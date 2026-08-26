@@ -1,49 +1,49 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import AddIcon from '@mui/icons-material/Add';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import WebhookIcon from '@mui/icons-material/Webhook';
 import {
+  Alert,
+  Autocomplete,
   Box,
+  Button,
   Card,
   CardContent,
-  Typography,
+  Chip,
+  Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Divider,
-  TextField,
-  Button,
-  Stack,
-  Alert,
+  FormControlLabel,
   IconButton,
   List,
   ListItem,
   ListItemText,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
+  Stack,
   Switch,
-  FormControlLabel,
-  Chip,
-  Collapse,
-  Autocomplete,
+  TextField,
   Tooltip,
+  Typography,
 } from '@mui/material';
-import WebhookIcon from '@mui/icons-material/Webhook';
-import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  getWebhooks,
   createWebhook,
-  updateWebhook,
   deleteWebhook,
-  testWebhook,
   getWebhookDeliveries,
-  Webhook,
-  WebhookCreateResponse,
-  WebhookDelivery,
+  getWebhooks,
+  testWebhook,
+  updateWebhook,
+  type Webhook,
+  type WebhookCreateResponse,
+  type WebhookDelivery,
 } from '../api/webhooks';
 
 const SUPPORTED_EVENTS = [
@@ -138,11 +138,11 @@ export default function WebhooksSettings() {
     try {
       if (editingId !== null) {
         const updated = await updateWebhook(editingId, form);
-        setWebhooks(prev => prev.map(w => (w.id === editingId ? updated : w)));
+        setWebhooks((prev) => prev.map((w) => (w.id === editingId ? updated : w)));
         setDialogOpen(false);
       } else {
         const created = await createWebhook(form);
-        setWebhooks(prev => [created, ...prev]);
+        setWebhooks((prev) => [created, ...prev]);
         setDialogOpen(false);
         setCreatedWebhook(created);
         setSecretCopied(false);
@@ -164,7 +164,7 @@ export default function WebhooksSettings() {
     setDeleting(true);
     try {
       await deleteWebhook(webhookToDelete.id);
-      setWebhooks(prev => prev.filter(w => w.id !== webhookToDelete.id));
+      setWebhooks((prev) => prev.filter((w) => w.id !== webhookToDelete.id));
       setDeleteDialogOpen(false);
       setWebhookToDelete(null);
     } catch (err) {
@@ -176,7 +176,7 @@ export default function WebhooksSettings() {
   };
 
   const handleTest = async (wh: Webhook) => {
-    setTesting(prev => ({ ...prev, [wh.id]: true }));
+    setTesting((prev) => ({ ...prev, [wh.id]: true }));
     setSuccess('');
     setError('');
     try {
@@ -185,31 +185,39 @@ export default function WebhooksSettings() {
       if (d.status_code && d.status_code >= 200 && d.status_code < 300) {
         setSuccess(t('settings.webhooks.testSuccess', { statusCode: d.status_code }));
       } else {
-        setError(t('settings.webhooks.testFailed', { error: d.error || `status ${d.status_code ?? 'unknown'}` }));
+        setError(
+          t('settings.webhooks.testFailed', {
+            error: d.error || `status ${d.status_code ?? 'unknown'}`,
+          }),
+        );
       }
       // Prepend the new delivery into the cached list so it shows immediately
-      setDeliveries(prev => ({ ...prev, [wh.id]: [d, ...(prev[wh.id] || [])] }));
+      setDeliveries((prev) => ({ ...prev, [wh.id]: [d, ...(prev[wh.id] || [])] }));
       // Auto-expand deliveries so the user can see the result
-      setExpandedDeliveries(prev => ({ ...prev, [wh.id]: true }));
+      setExpandedDeliveries((prev) => ({ ...prev, [wh.id]: true }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.webhooks.testFailed', { error: 'unknown' }));
+      setError(
+        err instanceof Error
+          ? err.message
+          : t('settings.webhooks.testFailed', { error: 'unknown' }),
+      );
     } finally {
-      setTesting(prev => ({ ...prev, [wh.id]: false }));
+      setTesting((prev) => ({ ...prev, [wh.id]: false }));
     }
   };
 
   const toggleDeliveries = async (wh: Webhook) => {
     const isOpen = expandedDeliveries[wh.id];
-    setExpandedDeliveries(prev => ({ ...prev, [wh.id]: !isOpen }));
+    setExpandedDeliveries((prev) => ({ ...prev, [wh.id]: !isOpen }));
     if (!isOpen && !deliveries[wh.id]) {
-      setLoadingDeliveries(prev => ({ ...prev, [wh.id]: true }));
+      setLoadingDeliveries((prev) => ({ ...prev, [wh.id]: true }));
       try {
         const data = await getWebhookDeliveries(wh.id);
-        setDeliveries(prev => ({ ...prev, [wh.id]: data }));
+        setDeliveries((prev) => ({ ...prev, [wh.id]: data }));
       } catch {
         // silently fail
       } finally {
-        setLoadingDeliveries(prev => ({ ...prev, [wh.id]: false }));
+        setLoadingDeliveries((prev) => ({ ...prev, [wh.id]: false }));
       }
     }
   };
@@ -222,7 +230,9 @@ export default function WebhooksSettings() {
     <>
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}
+          >
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <WebhookIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
               <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
@@ -246,8 +256,16 @@ export default function WebhooksSettings() {
               {t('settings.webhooks.description')}
             </Typography>
 
-            {error && <Alert severity="error" sx={{ py: 0 }} onClose={() => setError('')}>{error}</Alert>}
-            {success && <Alert severity="success" sx={{ py: 0 }} onClose={() => setSuccess('')}>{success}</Alert>}
+            {error && (
+              <Alert severity="error" sx={{ py: 0 }} onClose={() => setError('')}>
+                {error}
+              </Alert>
+            )}
+            {success && (
+              <Alert severity="success" sx={{ py: 0 }} onClose={() => setSuccess('')}>
+                {success}
+              </Alert>
+            )}
 
             {loading ? (
               <Typography variant="body2" color="text.secondary">
@@ -259,7 +277,7 @@ export default function WebhooksSettings() {
               </Typography>
             ) : (
               <List dense sx={{ py: 0 }}>
-                {webhooks.map(wh => (
+                {webhooks.map((wh) => (
                   <Box key={wh.id}>
                     <ListItem
                       sx={{ px: 0 }}
@@ -299,10 +317,16 @@ export default function WebhooksSettings() {
                         secondaryTypographyProps={{ component: 'div' }}
                         primary={
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 500 }}>{wh.name}</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                              {wh.name}
+                            </Typography>
                             <Chip
                               size="small"
-                              label={wh.is_active ? t('settings.webhooks.active') : t('settings.webhooks.inactive')}
+                              label={
+                                wh.is_active
+                                  ? t('settings.webhooks.active')
+                                  : t('settings.webhooks.inactive')
+                              }
                               color={wh.is_active ? 'success' : 'default'}
                               sx={{ height: 18, fontSize: '0.7rem' }}
                             />
@@ -310,8 +334,12 @@ export default function WebhooksSettings() {
                         }
                         secondary={
                           <Box>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                              {wh.url.length > 60 ? wh.url.slice(0, 57) + '...' : wh.url}
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ display: 'block' }}
+                            >
+                              {wh.url.length > 60 ? `${wh.url.slice(0, 57)}...` : wh.url}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
                               {wh.events.length} {t('settings.webhooks.eventsCount')}
@@ -325,27 +353,47 @@ export default function WebhooksSettings() {
                       <Button
                         size="small"
                         onClick={() => toggleDeliveries(wh)}
-                        endIcon={expandedDeliveries[wh.id] ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                        sx={{ fontSize: '0.75rem', color: 'text.secondary', textTransform: 'none', p: 0 }}
+                        endIcon={
+                          expandedDeliveries[wh.id] ? (
+                            <ExpandLessIcon fontSize="small" />
+                          ) : (
+                            <ExpandMoreIcon fontSize="small" />
+                          )
+                        }
+                        sx={{
+                          fontSize: '0.75rem',
+                          color: 'text.secondary',
+                          textTransform: 'none',
+                          p: 0,
+                        }}
                       >
                         {t('settings.webhooks.deliveries')}
                       </Button>
                       <Collapse in={expandedDeliveries[wh.id]}>
                         <Box sx={{ mt: 0.5 }}>
                           {loadingDeliveries[wh.id] ? (
-                            <Typography variant="caption" color="text.secondary">{t('settings.webhooks.loadingDeliveries')}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {t('settings.webhooks.loadingDeliveries')}
+                            </Typography>
                           ) : (deliveries[wh.id] || []).length === 0 ? (
-                            <Typography variant="caption" color="text.secondary">{t('settings.webhooks.noDeliveries')}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {t('settings.webhooks.noDeliveries')}
+                            </Typography>
                           ) : (
-                            (deliveries[wh.id] || []).slice(0, 5).map(d => (
-                              <Box key={d.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                            (deliveries[wh.id] || []).slice(0, 5).map((d) => (
+                              <Box
+                                key={d.id}
+                                sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}
+                              >
                                 <Chip
                                   size="small"
                                   label={d.status_code ?? 'err'}
                                   color={d.status_code && d.status_code < 300 ? 'success' : 'error'}
                                   sx={{ height: 18, fontSize: '0.7rem', minWidth: 36 }}
                                 />
-                                <Typography variant="caption" color="text.secondary">{d.event_type}</Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {d.event_type}
+                                </Typography>
                                 <Typography variant="caption" color="text.secondary">
                                   {new Date(d.created_at).toLocaleString()}
                                 </Typography>
@@ -378,7 +426,7 @@ export default function WebhooksSettings() {
             <TextField
               label={t('settings.webhooks.name')}
               value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               size="small"
               required
               fullWidth
@@ -386,7 +434,7 @@ export default function WebhooksSettings() {
             <TextField
               label={t('settings.webhooks.url')}
               value={form.url}
-              onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
               size="small"
               required
               fullWidth
@@ -396,10 +444,15 @@ export default function WebhooksSettings() {
               multiple
               options={SUPPORTED_EVENTS}
               value={form.events}
-              onChange={(_, value) => setForm(f => ({ ...f, events: value }))}
+              onChange={(_, value) => setForm((f) => ({ ...f, events: value }))}
               getOptionLabel={getEventLabel}
-              renderInput={params => (
-                <TextField {...params} label={t('settings.webhooks.events')} size="small" required />
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label={t('settings.webhooks.events')}
+                  size="small"
+                  required
+                />
               )}
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (
@@ -416,7 +469,7 @@ export default function WebhooksSettings() {
               control={
                 <Switch
                   checked={form.is_active}
-                  onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
+                  onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
                   size="small"
                 />
               }
@@ -425,9 +478,7 @@ export default function WebhooksSettings() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>
-            {t('settings.webhooks.cancel')}
-          </Button>
+          <Button onClick={() => setDialogOpen(false)}>{t('settings.webhooks.cancel')}</Button>
           <Button
             onClick={handleSave}
             variant="contained"
@@ -439,7 +490,12 @@ export default function WebhooksSettings() {
       </Dialog>
 
       {/* Secret revealed dialog — shown once after creation */}
-      <Dialog open={!!createdWebhook} onClose={() => setCreatedWebhook(null)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={!!createdWebhook}
+        onClose={() => setCreatedWebhook(null)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>{t('settings.webhooks.secretDialog.title')}</DialogTitle>
         <DialogContent>
           <Alert severity="warning" sx={{ mb: 2 }}>
@@ -453,7 +509,13 @@ export default function WebhooksSettings() {
               size="small"
               inputProps={{ style: { fontFamily: 'monospace', fontSize: '0.85rem' } }}
             />
-            <Tooltip title={secretCopied ? t('apiTokens.createdDialog.copied') : t('apiTokens.createdDialog.copy')}>
+            <Tooltip
+              title={
+                secretCopied
+                  ? t('apiTokens.createdDialog.copied')
+                  : t('apiTokens.createdDialog.copy')
+              }
+            >
               <IconButton
                 onClick={() => {
                   if (createdWebhook) {
@@ -463,7 +525,11 @@ export default function WebhooksSettings() {
                   }
                 }}
                 color={secretCopied ? 'success' : 'default'}
-                aria-label={secretCopied ? t('apiTokens.createdDialog.copied') : t('apiTokens.createdDialog.copy')}
+                aria-label={
+                  secretCopied
+                    ? t('apiTokens.createdDialog.copied')
+                    : t('apiTokens.createdDialog.copy')
+                }
               >
                 <ContentCopyIcon />
               </IconButton>

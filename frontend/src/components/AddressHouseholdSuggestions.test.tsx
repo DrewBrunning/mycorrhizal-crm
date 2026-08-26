@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { AddressHouseholdSuggestion } from '../api/households';
 import AddressHouseholdSuggestions from './AddressHouseholdSuggestions';
-import { AddressHouseholdSuggestion } from '../api/households';
 
 afterEach(cleanup);
 
@@ -20,7 +20,9 @@ const suggestion: AddressHouseholdSuggestion = {
   },
 };
 
-function renderSuggestions(props: Partial<React.ComponentProps<typeof AddressHouseholdSuggestions>> = {}) {
+function renderSuggestions(
+  props: Partial<React.ComponentProps<typeof AddressHouseholdSuggestions>> = {},
+) {
   const defaults: React.ComponentProps<typeof AddressHouseholdSuggestions> = {
     suggestions: [suggestion],
     onAccept: vi.fn(),
@@ -44,7 +46,7 @@ function stubContactsFetch() {
           { id: 2, uid: 'bob-uid', firstname: 'Bob', lastname: 'Brown' },
         ],
       }),
-    })
+    }),
   );
 }
 
@@ -86,7 +88,9 @@ test('dismiss calls onDismiss with the suggestion', async () => {
 test('shows the empty state with no suggestions', () => {
   renderSuggestions({ suggestions: [] });
   expect(
-    screen.getByText('No shared-address suggestions found. Add addresses to more contacts to find groups here.')
+    screen.getByText(
+      'No shared-address suggestions found. Add addresses to more contacts to find groups here.',
+    ),
   ).toBeInTheDocument();
 });
 
@@ -98,6 +102,8 @@ test('shows the empty state with no suggestions', () => {
 test('renders the empty state instead of throwing when suggestions is null', () => {
   renderSuggestions({ suggestions: null as unknown as AddressHouseholdSuggestion[] });
   expect(
-    screen.getByText('No shared-address suggestions found. Add addresses to more contacts to find groups here.')
+    screen.getByText(
+      'No shared-address suggestions found. Add addresses to more contacts to find groups here.',
+    ),
   ).toBeInTheDocument();
 });

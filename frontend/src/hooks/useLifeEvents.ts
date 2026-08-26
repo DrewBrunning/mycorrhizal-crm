@@ -1,14 +1,14 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { type Contact, getContactsByUid } from '../api/contacts';
 import {
-  getLifeEvents,
   createLifeEvent,
-  updateLifeEvent,
   deleteLifeEvent,
-  LifeEvent,
-  LifeEventInputData,
-  GetLifeEventsParams,
+  type GetLifeEventsParams,
+  getLifeEvents,
+  type LifeEvent,
+  type LifeEventInputData,
+  updateLifeEvent,
 } from '../api/lifeEvents';
-import { getContactsByUid, Contact } from '../api/contacts';
 import { handleFetchError } from '../utils/errorHandler';
 
 export function useLifeEvents(entityId: string | undefined) {
@@ -43,16 +43,14 @@ export function useLifeEvents(entityId: string | undefined) {
             }
           }
         }
-        setContactsByUid(
-          relatedUids.length > 0 ? await getContactsByUid(relatedUids) : new Map()
-        );
+        setContactsByUid(relatedUids.length > 0 ? await getContactsByUid(relatedUids) : new Map());
       } catch (err) {
         setError(handleFetchError(err, 'fetching life events'));
       } finally {
         setLoading(false);
       }
     },
-    [entityId]
+    [entityId],
   );
 
   useEffect(() => {
@@ -64,7 +62,7 @@ export function useLifeEvents(entityId: string | undefined) {
       await createLifeEvent(data);
       await refresh();
     },
-    [refresh]
+    [refresh],
   );
 
   const handleUpdate = useCallback(
@@ -72,7 +70,7 @@ export function useLifeEvents(entityId: string | undefined) {
       await updateLifeEvent(id, data);
       await refresh();
     },
-    [refresh]
+    [refresh],
   );
 
   const handleDelete = useCallback(
@@ -80,7 +78,7 @@ export function useLifeEvents(entityId: string | undefined) {
       await deleteLifeEvent(id);
       await refresh();
     },
-    [refresh]
+    [refresh],
   );
 
   return {

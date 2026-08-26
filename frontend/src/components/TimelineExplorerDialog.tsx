@@ -1,26 +1,32 @@
-import { useEffect } from 'react';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
   Box,
+  Button,
+  Checkbox,
+  CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   InputLabel,
-  Select,
-  MenuItem,
-  Checkbox,
   ListItemText,
+  MenuItem,
+  Select,
   Typography,
-  CircularProgress,
 } from '@mui/material';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { Activity } from '../api/activities';
+import type { Note } from '../api/notes';
+import {
+  TIMELINE_BUCKETS,
+  TIMELINE_TYPES,
+  type TimelineBucket,
+  type TimelineItem,
+  type TimelineType,
+} from '../api/timeline';
+import { useTimeline } from '../hooks/useTimeline';
 import AppDialog from './AppDialog';
 import ContactTimeline from './ContactTimeline';
-import { useTimeline } from '../hooks/useTimeline';
-import { TIMELINE_TYPES, TIMELINE_BUCKETS, TimelineBucket, TimelineType, TimelineItem } from '../api/timeline';
-import { Note } from '../api/notes';
-import { Activity } from '../api/activities';
 
 interface TimelineExplorerDialogProps {
   open: boolean;
@@ -126,7 +132,9 @@ export default function TimelineExplorerDialog({
             </FormControl>
 
             <FormControl size="small" sx={{ minWidth: 180 }}>
-              <InputLabel id="timeline-bucket-filter-label">{t('timeline.filterBucket')}</InputLabel>
+              <InputLabel id="timeline-bucket-filter-label">
+                {t('timeline.filterBucket')}
+              </InputLabel>
               <Select
                 labelId="timeline-bucket-filter-label"
                 value={bucket}

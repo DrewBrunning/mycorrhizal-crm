@@ -1,9 +1,9 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { ContactRecordResponse } from '../api/contacts';
 import ContactHeader from './ContactHeader';
-import { ContactRecordResponse } from '../api/contacts';
 
 afterEach(cleanup);
 
@@ -61,7 +61,7 @@ function renderHeader(props: Partial<React.ComponentProps<typeof ContactHeader>>
   return render(
     <ThemeProvider theme={defaultTheme}>
       <ContactHeader {...defaults} />
-    </ThemeProvider>
+    </ThemeProvider>,
   );
 }
 

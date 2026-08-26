@@ -1,12 +1,7 @@
 // Custom hook for fetching and managing notes
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { type GetNotesParams, getContactNotes, getUnassignedNotes, type Note } from '../api/notes';
 import { isAuthenticated } from '../auth';
-import {
-  getUnassignedNotes,
-  getContactNotes,
-  Note,
-  GetNotesParams,
-} from '../api/notes';
 import { handleFetchError } from '../utils/errorHandler';
 
 interface UseNotesResult {
@@ -27,10 +22,7 @@ interface UseNotesResult {
   loadMore: () => Promise<void>;
 }
 
-export function useNotes(
-	contactId?: string | number,
-	params: GetNotesParams = {}
-): UseNotesResult {
+export function useNotes(contactId?: string | number, params: GetNotesParams = {}): UseNotesResult {
   // Destructure params to use primitive values as dependencies
   // This prevents re-fetches when callers pass new object references with identical values
   const { cursor: _ignored, limit: paramLimit, search, fromDate, toDate } = params;
@@ -78,7 +70,13 @@ export function useNotes(
     setLoading(true);
     setError(null);
     try {
-      const data = await getUnassignedNotes({ cursor: nextCursor, limit: paramLimit, search, fromDate, toDate });
+      const data = await getUnassignedNotes({
+        cursor: nextCursor,
+        limit: paramLimit,
+        search,
+        fromDate,
+        toDate,
+      });
       setNotes((prev) => [...prev, ...(data.notes || [])]);
       setNextCursor(data.next_cursor || '');
       // The server recomputes the total each page; keeping it in sync means a

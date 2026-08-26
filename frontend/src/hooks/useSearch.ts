@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { searchAll, SearchResult } from '../api/search';
+import { useCallback, useState } from 'react';
+import { type SearchResult, searchAll } from '../api/search';
 import { handleFetchError } from '../utils/errorHandler';
 
 // useSearch backs the cross-entity (notes/activities) half of search. After

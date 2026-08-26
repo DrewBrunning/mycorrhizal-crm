@@ -1,59 +1,59 @@
-import { useState, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CloseIcon from '@mui/icons-material/Close';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import ErrorIcon from '@mui/icons-material/Error';
+import WarningIcon from '@mui/icons-material/Warning';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
+  Alert,
+  Avatar,
   Box,
-  Typography,
-  Stepper,
+  Button,
+  Chip,
+  CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  FormHelperText,
+  IconButton,
+  LinearProgress,
+  MenuItem,
+  Paper,
+  Select,
   Step,
   StepLabel,
-  Avatar,
-  Paper,
+  Stepper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
-  TableRow,
-  Select,
-  MenuItem,
-  FormControl,
-  FormHelperText,
-  Chip,
-  Alert,
-  LinearProgress,
-  IconButton,
   TablePagination,
-  CircularProgress,
+  TableRow,
+  Typography,
 } from '@mui/material';
-import AppDialog from './AppDialog';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import WarningIcon from '@mui/icons-material/Warning';
-import ErrorIcon from '@mui/icons-material/Error';
-import CloseIcon from '@mui/icons-material/Close';
-import { useSnackbar } from '../context/SnackbarContext';
-import { getErrorMessage } from '../utils/errorHandler';
+import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  uploadCSVForImport,
-  uploadVCFForImport,
-  getImportPreview,
+  CONTACT_FIELD_LABELS,
+  type ColumnMapping,
   confirmImport,
   confirmVCFImport,
-  ColumnMapping,
-  ImportUploadResponse,
-  ImportPreviewResponse,
-  RowImportAction,
-  ImportResult,
-  ImportRowPreview,
-  ImportMergeDiff,
+  getImportPreview,
   IMPORTABLE_CONTACT_FIELDS,
-  CONTACT_FIELD_LABELS,
+  type ImportMergeDiff,
+  type ImportPreviewResponse,
+  type ImportResult,
+  type ImportRowPreview,
+  type ImportUploadResponse,
   REPEATABLE_VALUE_FIELDS,
+  type RowImportAction,
+  uploadCSVForImport,
+  uploadVCFForImport,
 } from '../api/import';
+import { useSnackbar } from '../context/SnackbarContext';
+import { getErrorMessage } from '../utils/errorHandler';
+import AppDialog from './AppDialog';
 
 interface ImportContactsDialogProps {
   open: boolean;
@@ -139,9 +139,11 @@ export default function ImportContactsDialog({
     // MaxCSVSize (T56 raised them for full address-book imports).
     const maxSize = isVCF ? 50 * 1024 * 1024 : 20 * 1024 * 1024; // 50MB VCF, 20MB CSV
     if (file.size > maxSize) {
-      setError(t('contacts.import.errors.fileTooLarge', 'File is too large. Maximum size is {{size}}MB', {
-        size: maxSize / (1024 * 1024),
-      }));
+      setError(
+        t('contacts.import.errors.fileTooLarge', 'File is too large. Maximum size is {{size}}MB', {
+          size: maxSize / (1024 * 1024),
+        }),
+      );
       return;
     }
 
@@ -296,9 +298,10 @@ export default function ImportContactsDialog({
       });
 
       // Use appropriate confirm endpoint based on import type
-      const result = importType === 'vcf'
-        ? await confirmVCFImport(previewResponse.session_id, actions)
-        : await confirmImport(previewResponse.session_id, actions);
+      const result =
+        importType === 'vcf'
+          ? await confirmVCFImport(previewResponse.session_id, actions)
+          : await confirmImport(previewResponse.session_id, actions);
 
       setImportResult(result);
       setStep('result');
@@ -306,10 +309,14 @@ export default function ImportContactsDialog({
 
       if (result.created > 0 || result.updated > 0) {
         showSuccess(
-          t('contacts.import.result.success', 'Import completed: {{created}} created, {{updated}} updated', {
-            created: result.created,
-            updated: result.updated,
-          })
+          t(
+            'contacts.import.result.success',
+            'Import completed: {{created}} created, {{updated}} updated',
+            {
+              created: result.created,
+              updated: result.updated,
+            },
+          ),
         );
         onImportComplete();
       }
@@ -364,10 +371,16 @@ export default function ImportContactsDialog({
         />
         <CloudUploadIcon sx={{ fontSize: 48, color: 'grey.500', mb: 2 }} />
         <Typography variant="h6" gutterBottom>
-          {t('contacts.import.upload.dragDrop', 'Drag and drop a CSV or VCF file here, or click to select')}
+          {t(
+            'contacts.import.upload.dragDrop',
+            'Drag and drop a CSV or VCF file here, or click to select',
+          )}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          {t('contacts.import.upload.supportedFormats', 'Supported formats: CSV (spreadsheet), VCF (vCard)')}
+          {t(
+            'contacts.import.upload.supportedFormats',
+            'Supported formats: CSV (spreadsheet), VCF (vCard)',
+          )}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           {t('contacts.import.upload.maxSize', 'Maximum file size: 50MB (VCF) / 20MB (CSV)')}
@@ -398,8 +411,8 @@ export default function ImportContactsDialog({
       new Set(
         mappings
           .filter((m) => m.contact_field && conflictKeys.has(mappingKey(m)))
-          .map((m) => CONTACT_FIELD_LABELS[m.contact_field] || m.contact_field)
-      )
+          .map((m) => CONTACT_FIELD_LABELS[m.contact_field] || m.contact_field),
+      ),
     );
 
     return (
@@ -407,7 +420,7 @@ export default function ImportContactsDialog({
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {t(
             'contacts.import.mapping.description',
-            "Match your CSV columns to contact fields. Columns marked 'Ignore' will not be imported."
+            "Match your CSV columns to contact fields. Columns marked 'Ignore' will not be imported.",
           )}
         </Typography>
         {conflictLabels.length > 0 && (
@@ -415,7 +428,7 @@ export default function ImportContactsDialog({
             {t(
               'contacts.import.mapping.duplicateWarning',
               'These single-value fields are mapped to more than one column; only the last column will be used: {{fields}}',
-              { fields: conflictLabels.join(', ') }
+              { fields: conflictLabels.join(', ') },
             )}
           </Alert>
         )}
@@ -430,9 +443,9 @@ export default function ImportContactsDialog({
             </TableHead>
             <TableBody>
               {mappings.map((mapping, index) => {
-                const isConflict =
-                  !!mapping.contact_field && conflictKeys.has(mappingKey(mapping));
+                const isConflict = !!mapping.contact_field && conflictKeys.has(mappingKey(mapping));
                 return (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: import column mappings, no stable id
                   <TableRow key={index}>
                     <TableCell>
                       <Typography variant="body2" fontWeight="medium">
@@ -440,7 +453,12 @@ export default function ImportContactsDialog({
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 150 }}>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        noWrap
+                        sx={{ maxWidth: 150 }}
+                      >
                         {uploadResponse.sample_data[0]?.[index] || '-'}
                       </Typography>
                     </TableCell>
@@ -487,9 +505,11 @@ export default function ImportContactsDialog({
     // T96: how many duplicate/within-batch rows still sit on their seeded
     // default action, i.e. how many conflicts remain to be consciously
     // resolved ("Resolve Conflicts (N remaining)").
-    const conflictRows = previewResponse.rows.filter((r) => r.validation_errors.length === 0 && isConflictRow(r));
+    const conflictRows = previewResponse.rows.filter(
+      (r) => r.validation_errors.length === 0 && isConflictRow(r),
+    );
     const conflictsRemaining = conflictRows.filter(
-      (r) => (rowActions.get(r.row_index) ?? r.suggested_action) === r.suggested_action
+      (r) => (rowActions.get(r.row_index) ?? r.suggested_action) === r.suggested_action,
     ).length;
 
     // T56: client-side page of the preview rows. Rows whose index lands on
@@ -504,13 +524,17 @@ export default function ImportContactsDialog({
         <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
           <Chip
             icon={<CheckCircleIcon />}
-            label={t('contacts.import.preview.toCreate', '{{count}} to create', { count: toCreate })}
+            label={t('contacts.import.preview.toCreate', '{{count}} to create', {
+              count: toCreate,
+            })}
             color="success"
             variant="outlined"
           />
           <Chip
             icon={<WarningIcon />}
-            label={t('contacts.import.preview.toUpdate', '{{count}} to update', { count: toUpdate })}
+            label={t('contacts.import.preview.toUpdate', '{{count}} to update', {
+              count: toUpdate,
+            })}
             color="warning"
             variant="outlined"
           />
@@ -521,7 +545,9 @@ export default function ImportContactsDialog({
           {errorCount > 0 && (
             <Chip
               icon={<ErrorIcon />}
-              label={t('contacts.import.preview.errors', '{{count}} with errors', { count: errorCount })}
+              label={t('contacts.import.preview.errors', '{{count}} with errors', {
+                count: errorCount,
+              })}
               color="error"
               variant="outlined"
             />
@@ -540,22 +566,40 @@ export default function ImportContactsDialog({
             resolved set is not "everything below will be added as new". */}
         {conflictsRemaining > 0 ? (
           <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            {t('contacts.import.preview.resolveConflicts', 'Resolve Conflicts ({{count}} remaining)', {
-              count: conflictsRemaining,
-            })}
+            {t(
+              'contacts.import.preview.resolveConflicts',
+              'Resolve Conflicts ({{count}} remaining)',
+              {
+                count: conflictsRemaining,
+              },
+            )}
           </Typography>
         ) : conflictRows.length > 0 ? (
           <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            {t('contacts.import.preview.allResolved', 'All conflicts resolved — review the decisions below.')}
+            {t(
+              'contacts.import.preview.allResolved',
+              'All conflicts resolved — review the decisions below.',
+            )}
           </Typography>
         ) : (
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            {t('contacts.import.preview.noConflicts', 'No duplicate matches — everything below will be added as new.')}
+            {t(
+              'contacts.import.preview.noConflicts',
+              'No duplicate matches — everything below will be added as new.',
+            )}
           </Typography>
         )}
 
         {/* Per-row decision cards */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, maxHeight: 420, overflowY: 'auto' }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1.5,
+            maxHeight: 420,
+            overflowY: 'auto',
+          }}
+        >
           {pageRows.map((row) => (
             <ImportRowCard
               key={row.row_index}
@@ -615,6 +659,7 @@ export default function ImportContactsDialog({
               {t('contacts.import.result.errors', 'Errors')}:
             </Typography>
             {importResult.errors.map((error, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: import error strings, no stable id
               <Typography key={index} variant="body2" color="error">
                 {error}
               </Typography>
@@ -645,13 +690,16 @@ export default function ImportContactsDialog({
   const renderActions = () => {
     switch (step) {
       case 'upload':
-        return (
-          <Button onClick={handleClose}>{t('common.cancel', 'Cancel')}</Button>
-        );
+        return <Button onClick={handleClose}>{t('common.cancel', 'Cancel')}</Button>;
       case 'mapping':
         return (
           <>
-            <Button onClick={() => { setStep('upload'); setActiveStep(0); }}>
+            <Button
+              onClick={() => {
+                setStep('upload');
+                setActiveStep(0);
+              }}
+            >
               {t('common.back', 'Back')}
             </Button>
             <Button variant="contained" onClick={handleGeneratePreview} disabled={loading}>
@@ -681,7 +729,9 @@ export default function ImportContactsDialog({
             >
               {t('common.back', 'Back')}
             </Button>
-            <Button onClick={handleClose} disabled={loading}>{t('common.cancel', 'Cancel')}</Button>
+            <Button onClick={handleClose} disabled={loading}>
+              {t('common.cancel', 'Cancel')}
+            </Button>
             <Button
               variant="contained"
               onClick={handleConfirmImport}
@@ -691,7 +741,9 @@ export default function ImportContactsDialog({
               {loading
                 ? t('contacts.import.preview.importing', 'Importing…')
                 : t('contacts.import.preview.applyDecisions', 'Apply Decisions ({{count}})', {
-                    count: previewResponse?.rows.filter((r) => r.validation_errors.length === 0).length ?? 0,
+                    count:
+                      previewResponse?.rows.filter((r) => r.validation_errors.length === 0)
+                        .length ?? 0,
                   })}
             </Button>
           </>
@@ -786,14 +838,19 @@ function ImportMergeDiffSummary({ diff }: { diff: ImportMergeDiff }) {
         {t('contacts.import.preview.diffTitle', 'Will merge:')}
       </Typography>
       {added.map((a, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: import diff rows, no stable id
         <Typography key={`added-${i}`} variant="caption" display="block" color="text.secondary">
           {t('contacts.import.preview.diffAdded', '+ new {{kind}}: {{value}}', {
-            kind: t(`contacts.import.preview.kind.${a.kind}`, IMPORT_DIFF_KIND_LABELS[a.kind] || a.kind),
+            kind: t(
+              `contacts.import.preview.kind.${a.kind}`,
+              IMPORT_DIFF_KIND_LABELS[a.kind] || a.kind,
+            ),
             value: a.value,
           })}
         </Typography>
       ))}
       {updated.map((u, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: import diff rows, no stable id
         <Typography key={`updated-${i}`} variant="caption" display="block" color="text.secondary">
           {t('contacts.import.preview.diffUpdated', '{{label}}: {{old}} → {{new}}', {
             label: u.label,
@@ -851,7 +908,9 @@ function ImportRowCard({
       }}
     >
       <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-        <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: '1rem', flexShrink: 0 }}>
+        <Avatar
+          sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: '1rem', flexShrink: 0 }}
+        >
           {(row.parsed_contact.firstname || '?').charAt(0)}
         </Avatar>
         <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -867,6 +926,7 @@ function ImportRowCard({
           {hasErrors ? (
             <Box>
               {row.validation_errors.map((e, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: validation error strings, no stable id
                 <Typography key={i} variant="caption" color="error" display="block">
                   {e}
                 </Typography>
@@ -875,7 +935,10 @@ function ImportRowCard({
           ) : row.duplicate_match ? (
             <Typography variant="caption" sx={{ color: 'warning.main' }} display="block">
               {t('contacts.import.preview.duplicateOf', 'Matches: {{name}} ({{reason}})', {
-                name: [row.duplicate_match.existing_firstname, row.duplicate_match.existing_lastname]
+                name: [
+                  row.duplicate_match.existing_firstname,
+                  row.duplicate_match.existing_lastname,
+                ]
                   .filter(Boolean)
                   .join(' ')
                   .trim(),
@@ -884,9 +947,13 @@ function ImportRowCard({
             </Typography>
           ) : row.batch_duplicate_of !== null ? (
             <Typography variant="caption" sx={{ color: 'warning.main' }} display="block">
-              {t('contacts.import.preview.batchDuplicateOf', 'Duplicates row {{row}} of this import', {
-                row: (row.batch_duplicate_of ?? 0) + 1,
-              })}
+              {t(
+                'contacts.import.preview.batchDuplicateOf',
+                'Duplicates row {{row}} of this import',
+                {
+                  row: (row.batch_duplicate_of ?? 0) + 1,
+                },
+              )}
             </Typography>
           ) : (
             <Typography variant="caption" sx={{ color: 'success.main' }} display="block">

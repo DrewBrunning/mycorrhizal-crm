@@ -1,17 +1,17 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  getFieldDefinitions,
   createFieldDefinition,
-  updateFieldDefinition,
   deleteFieldDefinition,
+  type FieldDefinition,
+  type FieldDefinitionInput,
+  type FieldValue,
+  type FieldValueInput,
   getContactFieldValues,
+  getFieldDefinitions,
   replaceContactFieldValues,
-  FieldDefinition,
-  FieldDefinitionInput,
-  FieldValue,
-  FieldValueInput,
+  updateFieldDefinition,
 } from '../api/fieldDefinitions';
-import { handleFetchError, handleError, ErrorNotifier } from '../utils/errorHandler';
+import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
 // useFieldDefinitions drives the definition-management surface (the settings
 // page's create/edit/delete) AND supplies every contact-facing view with the
@@ -45,7 +45,7 @@ export function useFieldDefinitions(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [refresh, notifier]
+    [refresh, notifier],
   );
 
   const handleUpdate = useCallback(
@@ -58,7 +58,7 @@ export function useFieldDefinitions(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [refresh, notifier]
+    [refresh, notifier],
   );
 
   const handleDelete = useCallback(
@@ -71,7 +71,7 @@ export function useFieldDefinitions(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [refresh, notifier]
+    [refresh, notifier],
   );
 
   return {
@@ -89,7 +89,10 @@ export function useFieldDefinitions(notifier?: ErrorNotifier) {
 // contactId is the numeric contact ID the nested /contacts/:id/field-values
 // routes use; a value for a definition the contact has none of is absent from
 // valuesByDefinition rather than present with a null value.
-export function useContactFieldValues(contactId: string | number | undefined, notifier?: ErrorNotifier) {
+export function useContactFieldValues(
+  contactId: string | number | undefined,
+  notifier?: ErrorNotifier,
+) {
   const [values, setValues] = useState<FieldValue[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -114,21 +117,24 @@ export function useContactFieldValues(contactId: string | number | undefined, no
   // caller's record is resolved via state) can pass the freshly-fetched id
   // directly -- the same pattern refreshRelationshipEdges uses for its
   // overrideUid parameter, for the same reason.
-  const refresh = useCallback(async (overrideId?: string | number) => {
-    const id = overrideId ?? contactId;
-    if (id === undefined) return;
-    setLoading(true);
-    setError(null);
-    try {
-      setValues(await getContactFieldValues(id));
-    } catch (err) {
-      const msg = handleFetchError(err, 'fetching custom field values');
-      setError(msg);
-      handleError(err, { operation: 'fetching custom field values' }, notifierRef.current);
-    } finally {
-      setLoading(false);
-    }
-  }, [contactId]);
+  const refresh = useCallback(
+    async (overrideId?: string | number) => {
+      const id = overrideId ?? contactId;
+      if (id === undefined) return;
+      setLoading(true);
+      setError(null);
+      try {
+        setValues(await getContactFieldValues(id));
+      } catch (err) {
+        const msg = handleFetchError(err, 'fetching custom field values');
+        setError(msg);
+        handleError(err, { operation: 'fetching custom field values' }, notifierRef.current);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [contactId],
+  );
 
   const valuesByDefinition = useMemo(() => {
     const map = new Map<string, unknown>();
@@ -146,7 +152,7 @@ export function useContactFieldValues(contactId: string | number | undefined, no
         throw err;
       }
     },
-    [contactId]
+    [contactId],
   );
 
   return {

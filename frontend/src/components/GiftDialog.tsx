@@ -1,21 +1,21 @@
-import { useState, useEffect } from 'react';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
   Box,
+  Button,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   MenuItem,
+  TextField,
   Typography,
 } from '@mui/material';
-import AppDialog from './AppDialog';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Gift, GIFT_STATUSES, GiftStatus } from '../api/gifts';
-import { LifeEvent, partialDateDisplay } from '../api/lifeEvents';
-import { Activity } from '../api/activities';
+import type { Activity } from '../api/activities';
+import { GIFT_STATUSES, type Gift, type GiftStatus } from '../api/gifts';
+import { type LifeEvent, partialDateDisplay } from '../api/lifeEvents';
 import { useDateFormat } from '../DateFormatProvider';
 import { isHttpUrlString, looksLikeAbsoluteUri } from '../utils/linkResolution';
+import AppDialog from './AppDialog';
 
 // GiftFormData is what the dialog submits; the page adds entity_id and hands it
 // to the hook as a GiftInput.

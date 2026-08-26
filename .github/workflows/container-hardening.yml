@@ -34,6 +34,18 @@ name: Container Hardening (CIS)
 #     it locally.
 # Accepted findings for either go in .trivyignore (repo root), the same
 # ignore-list-with-justification shape as docker/cis-hardening.ignore.
+#
+# Issue #578: both trivy steps are now HARD GATES (exit-code: '1'), with the
+# first run's findings triaged into .trivyignore (DS-0002 — the documented
+# no-USER-instruction design, see the .trivyignore entry). The scheduled run
+# moved from weekly to nightly (see the cron below).
+#
+# Issue #578, A7 (Checkov spike): a report-only Checkov pass over the
+# Dockerfiles was trialed and found NOTHING net-new — its single finding
+# (CKV_DOCKER_3, "create a user for the container") is the same condition
+# trivy config already flags as DS-0002 and docker/cis-hardening.sh
+# documents as the intentional root-for-PUID/PGID-remap design. Checkov is
+# therefore NOT added: the coverage is "trivy config + CIS script".
 
 on:
   push:
@@ -41,7 +53,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: '30 4 * * 1' # Monday 04:30 UTC
+    - cron: '20 1 * * *' # 01:20 UTC nightly
 
 permissions:
   contents: read
@@ -125,16 +137,14 @@ jobs:
       # Same pin as docker-publish.yml's trivy step (pre-1.0, no stable
       # major to float on; #269 tracks it via Dependabot).
       #
-      # exit-code deliberately omitted (report-only) on first rollout: this
-      # repo's own CIS check already has a *known* documented exception for
-      # a real condition trivy's misconfig rules are likely to also flag —
-      # both Dockerfiles have no `USER` instruction at all, by design (see
-      # docker/cis-hardening.ignore's 4.1 note: docker/entrypoint.sh needs
-      # root to remap PUID/PGID, supervisord then drops the backend to
-      # appuser at runtime). Rather than guess at trivy's exact rule ID for
-      # that ahead of a real run, this ships informational-only; once the
-      # first run's findings are triaged into .trivyignore, add
-      # `exit-code: '1'` here to make it a real gate.
+      # Issue #578: hard gate (exit-code: '1'). The first rollout shipped
+      # informational-only pending triage; the first real run's single
+      # CRITICAL/HIGH finding (DS-0002, the documented no-USER-instruction
+      # design) is now triaged into .trivyignore. limit-severities-for-sarif
+      # is set so the exit code and the SARIF both respect the declared
+      # severity (CRITICAL,HIGH): without it the trivy-action unsets
+      # TRIVY_SEVERITY for SARIF mode and a LOW finding (DS-0026, fixed by
+      # adding HEALTHCHECKs to the split Dockerfiles) hard-failed the gate.
       - name: Trivy misconfig scan (Dockerfiles/compose)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -143,6 +153,8 @@ jobs:
           format: 'sarif'
           output: 'trivy-config-results.sarif'
           severity: 'CRITICAL,HIGH'
+          limit-severities-for-sarif: 'true'
+          exit-code: '1'
           trivyignores: '.trivyignore'
 
       - name: Upload Trivy misconfig results to GitHub Security tab
@@ -154,9 +166,9 @@ jobs:
 
       # Filesystem secret scan over the checked-out workspace — a CI
       # backstop behind the gitleaks pre-commit hook, not a replacement for
-      # it (see the workflow header comment above). Also report-only for the
-      # same reason as the misconfig step: gate it once a first real run
-      # confirms there's nothing to triage.
+      # it (see the workflow header comment above). Hard gate like the
+      # misconfig step (issue #578): the committed tree is secret-clean, so
+      # any finding here is a real regression and fails the job.
       - name: Trivy filesystem secret scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -165,6 +177,7 @@ jobs:
           scanners: 'secret'
           format: 'sarif'
           output: 'trivy-secret-results.sarif'
+          exit-code: '1'
           trivyignores: '.trivyignore'
 
       - name: Upload Trivy secret-scan results to GitHub Security tab

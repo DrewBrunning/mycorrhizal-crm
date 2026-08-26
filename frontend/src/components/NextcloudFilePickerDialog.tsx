@@ -1,26 +1,26 @@
-import { useState, useEffect } from 'react';
-import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Box,
-  List,
-  ListItemButton,
-  ListItemText,
-  ListItemIcon,
-  Typography,
-  CircularProgress,
-  Alert,
-  Breadcrumbs,
-  Link as MuiLink,
-} from '@mui/material';
 import FolderIcon from '@mui/icons-material/Folder';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import AppDialog from './AppDialog';
+import {
+  Alert,
+  Box,
+  Breadcrumbs,
+  Button,
+  CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Link as MuiLink,
+  Typography,
+} from '@mui/material';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { WebDAVItem } from '../api/nextcloud';
+import type { WebDAVItem } from '../api/nextcloud';
 import { getErrorMessage } from '../utils/errorHandler';
+import AppDialog from './AppDialog';
 
 interface NextcloudFilePickerDialogProps {
   open: boolean;
@@ -93,11 +93,16 @@ export default function NextcloudFilePickerDialog({
       <DialogTitle>{t('nextcloud.search.title')}</DialogTitle>
       <DialogContent>
         <Breadcrumbs sx={{ mb: 1.5 }} aria-label="breadcrumb">
-          <MuiLink component="button" underline="hover" color="inherit" onClick={() => enterDir('/')}>
+          <MuiLink
+            component="button"
+            underline="hover"
+            color="inherit"
+            onClick={() => enterDir('/')}
+          >
             /
           </MuiLink>
           {pathSegments.map((segment, idx) => {
-            const target = '/' + pathSegments.slice(0, idx + 1).join('/');
+            const target = `/${pathSegments.slice(0, idx + 1).join('/')}`;
             const isLast = idx === pathSegments.length - 1;
             return isLast ? (
               <Typography key={target} color="text.primary">
@@ -142,7 +147,11 @@ export default function NextcloudFilePickerDialog({
                 </ListItemButton>
               ))}
               {items.length === 0 && (
-                <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ py: 2, textAlign: 'center' }}
+                >
                   {t('nextcloud.search.emptyFolder')}
                 </Typography>
               )}

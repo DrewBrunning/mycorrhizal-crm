@@ -1,5 +1,5 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import ErrorBoundary from './ErrorBoundary';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -36,7 +36,7 @@ test('renders its children when nothing throws', () => {
   render(
     <ErrorBoundary name="ContactsList">
       <Bomb shouldThrow={false} />
-    </ErrorBoundary>
+    </ErrorBoundary>,
   );
 
   expect(screen.getByText('healthy content')).toBeInTheDocument();
@@ -49,7 +49,7 @@ test('captures a render error, renders the fallback UI, and reports it via onErr
   render(
     <ErrorBoundary name="PrepView" onError={onError}>
       <Bomb shouldThrow />
-    </ErrorBoundary>
+    </ErrorBoundary>,
   );
 
   expect(screen.getByText('Oops! Something went wrong')).toBeInTheDocument();
@@ -64,7 +64,7 @@ test('renders a custom fallback when one is provided', () => {
   render(
     <ErrorBoundary fallback={<div>custom fallback</div>}>
       <Bomb shouldThrow />
-    </ErrorBoundary>
+    </ErrorBoundary>,
   );
 
   expect(screen.getByText('custom fallback')).toBeInTheDocument();
@@ -75,7 +75,7 @@ test('shows the error details when showDetails is enabled', () => {
   render(
     <ErrorBoundary showDetails name="PrepView" errorMessage="Failed to load the prep view">
       <Bomb shouldThrow />
-    </ErrorBoundary>
+    </ErrorBoundary>,
   );
 
   expect(screen.getByText('Error Details (Development Only)')).toBeInTheDocument();
@@ -87,7 +87,7 @@ test('Try Again resets the boundary and re-renders children that stopped throwin
   const { rerender } = render(
     <ErrorBoundary name="PrepView">
       <Bomb shouldThrow />
-    </ErrorBoundary>
+    </ErrorBoundary>,
   );
   expect(screen.getByText('Oops! Something went wrong')).toBeInTheDocument();
 
@@ -95,7 +95,7 @@ test('Try Again resets the boundary and re-renders children that stopped throwin
   rerender(
     <ErrorBoundary name="PrepView">
       <Bomb shouldThrow={false} />
-    </ErrorBoundary>
+    </ErrorBoundary>,
   );
   expect(screen.getByText('Oops! Something went wrong')).toBeInTheDocument();
 
@@ -108,14 +108,14 @@ test('remounting the boundary with a fresh key restores normal rendering without
   const { rerender } = render(
     <ErrorBoundary name="PrepView">
       <Bomb shouldThrow />
-    </ErrorBoundary>
+    </ErrorBoundary>,
   );
   expect(screen.getByText('Oops! Something went wrong')).toBeInTheDocument();
 
   rerender(
     <ErrorBoundary key="fresh-boundary" name="PrepView">
       <Bomb shouldThrow={false} />
-    </ErrorBoundary>
+    </ErrorBoundary>,
   );
 
   expect(screen.getByText('healthy content')).toBeInTheDocument();
@@ -128,7 +128,7 @@ test('Reload Page reloads the page and Go Home navigates to the root', () => {
   render(
     <ErrorBoundary>
       <Bomb shouldThrow />
-    </ErrorBoundary>
+    </ErrorBoundary>,
   );
 
   fireEvent.click(screen.getByRole('button', { name: 'Reload Page' }));

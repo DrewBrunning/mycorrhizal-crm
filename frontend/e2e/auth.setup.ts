@@ -1,4 +1,4 @@
-import { test as setup, expect } from '@playwright/test';
+import { expect, test as setup } from '@playwright/test';
 import { TEST_USER } from './global-setup';
 
 export const STORAGE_STATE = 'playwright/.auth/user.json';

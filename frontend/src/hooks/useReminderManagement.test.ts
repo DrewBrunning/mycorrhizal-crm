@@ -1,15 +1,15 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { renderHook, cleanup, act } from '@testing-library/react';
-import { useReminderManagement } from './useReminderManagement';
+import { act, cleanup, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import {
-  getRemindersForContact,
-  createReminder,
-  updateReminder,
-  deleteReminder,
   completeReminder,
-  Reminder,
-  ReminderFormData,
+  createReminder,
+  deleteReminder,
+  getRemindersForContact,
+  type Reminder,
+  type ReminderFormData,
+  updateReminder,
 } from '../api/reminders';
+import { useReminderManagement } from './useReminderManagement';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(() => {
@@ -153,7 +153,7 @@ test('handleSaveReminder rethrows and notifies on failure', async () => {
   await expect(
     act(async () => {
       await result.current.handleSaveReminder(formData());
-    })
+    }),
   ).rejects.toThrow('save failed');
 
   expect(notifier.showError).toHaveBeenCalledWith('save failed');
@@ -184,7 +184,7 @@ test('handleCompleteReminder rethrows on failure', async () => {
   await expect(
     act(async () => {
       await result.current.handleCompleteReminder(1);
-    })
+    }),
   ).rejects.toThrow('complete failed');
 });
 
@@ -212,7 +212,7 @@ test('handleDeleteReminder rethrows on failure', async () => {
   await expect(
     act(async () => {
       await result.current.handleDeleteReminder(1);
-    })
+    }),
   ).rejects.toThrow('delete failed');
 });
 

@@ -6,8 +6,9 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    # Weekly, so new query packs get a chance to run against the latest code.
-    - cron: '37 4 * * 1'
+    # Nightly (issue #578: consolidated nightly suite) so fresh query packs get
+    # a chance to run against the latest code every day.
+    - cron: '5 3 * * *'
 
 permissions:
   contents: read

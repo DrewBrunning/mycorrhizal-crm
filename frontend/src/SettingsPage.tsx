@@ -1,76 +1,76 @@
-import { FormEvent, useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
-import BuildVersionCard from './components/BuildVersionCard';
-import { useDocumentTitle } from './hooks/useDocumentTitle';
+import AddIcon from '@mui/icons-material/Add';
+import BlockIcon from '@mui/icons-material/Block';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import KeyIcon from '@mui/icons-material/Key';
+import LanguageIcon from '@mui/icons-material/Language';
+import LockResetIcon from '@mui/icons-material/LockReset';
+import PersonIcon from '@mui/icons-material/Person';
 import {
+  Alert,
+  Autocomplete,
   Box,
+  Button,
   Card,
   CardContent,
-  Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
-  TextField,
-  Button,
+  FormControl,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
   Stack,
-  Alert,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  IconButton,
-  Chip,
-  CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  TextField,
   Tooltip,
-  Autocomplete,
+  Typography,
 } from '@mui/material';
-import AppDialog from './components/AppDialog';
-import { SelectChangeEvent } from '@mui/material/Select';
-import LanguageIcon from '@mui/icons-material/Language';
-import LockResetIcon from '@mui/icons-material/LockReset';
-import DarkModeIcon from '@mui/icons-material/DarkMode';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import KeyIcon from '@mui/icons-material/Key';
-import AddIcon from '@mui/icons-material/Add';
-import BlockIcon from '@mui/icons-material/Block';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import PersonIcon from '@mui/icons-material/Person';
-import { changePassword } from './api/auth';
-import { updateLanguage, updateDateFormat, updateSelfContact } from './api/users';
+import type { SelectChangeEvent } from '@mui/material/Select';
+import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { type ThemePreference, useThemePreference } from './AppThemeProvider';
 import { getCurrentUser } from './api/admin';
-import { fetchAndCacheUserInfo } from './auth';
-import { Contact, getContacts, getContactsByUid } from './api/contacts';
-import { ThemePreference, useThemePreference } from './AppThemeProvider';
-import { DateFormat, useDateFormat } from './DateFormatProvider';
 import {
-  getApiTokens,
-  createApiToken,
-  revokeApiToken,
-  ApiToken,
-  ApiTokenScope,
-  ApiTokenCreateResponse,
   API_TOKEN_EXPIRY_OPTIONS,
+  type ApiToken,
+  type ApiTokenCreateResponse,
+  type ApiTokenScope,
+  createApiToken,
   DEFAULT_API_TOKEN_EXPIRY_DAYS,
   DEFAULT_API_TOKEN_SCOPE,
+  getApiTokens,
+  revokeApiToken,
 } from './api/apiTokens';
-import { useSnackbar } from './context/SnackbarContext';
-import WebhooksSettings from './components/WebhooksSettings';
+import { changePassword } from './api/auth';
+import { type Contact, getContacts, getContactsByUid } from './api/contacts';
+import { updateDateFormat, updateLanguage, updateSelfContact } from './api/users';
+import { fetchAndCacheUserInfo } from './auth';
+import AppDialog from './components/AppDialog';
+import BuildVersionCard from './components/BuildVersionCard';
 import ImmichSettings from './components/ImmichSettings';
+import LinkFieldTypesSettings from './components/LinkFieldTypesSettings';
+import NextcloudSettings from './components/NextcloudSettings';
+import NotificationSettings from './components/NotificationSettings';
 import PaperlessSettings from './components/PaperlessSettings';
 import SeafileSettings from './components/SeafileSettings';
-import NextcloudSettings from './components/NextcloudSettings';
-import LinkFieldTypesSettings from './components/LinkFieldTypesSettings';
-import NotificationSettings from './components/NotificationSettings';
 import TwoFactorSettings from './components/TwoFactorSettings';
+import WebhooksSettings from './components/WebhooksSettings';
+import { useSnackbar } from './context/SnackbarContext';
+import { type DateFormat, useDateFormat } from './DateFormatProvider';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -98,7 +98,9 @@ export default function SettingsPage() {
   const [tokensError, setTokensError] = useState('');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newTokenName, setNewTokenName] = useState('');
-  const [newTokenExpiryDays, setNewTokenExpiryDays] = useState<number>(DEFAULT_API_TOKEN_EXPIRY_DAYS);
+  const [newTokenExpiryDays, setNewTokenExpiryDays] = useState<number>(
+    DEFAULT_API_TOKEN_EXPIRY_DAYS,
+  );
   const [newTokenScope, setNewTokenScope] = useState<ApiTokenScope>(DEFAULT_API_TOKEN_SCOPE);
   const [createLoading, setCreateLoading] = useState(false);
   const [createdToken, setCreatedToken] = useState<ApiTokenCreateResponse | null>(null);
@@ -179,7 +181,7 @@ export default function SettingsPage() {
     const newLang = event.target.value;
     // Update frontend i18n immediately for responsive UI
     i18n.changeLanguage(newLang);
-    
+
     // Sync to backend for email language preferences (fire and forget)
     try {
       await updateLanguage(newLang);
@@ -255,7 +257,9 @@ export default function SettingsPage() {
         if (!cancelled) setSelfContact(null);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // T90: options for the picker autocomplete — the same getContacts({search})
@@ -275,7 +279,7 @@ export default function SettingsPage() {
   useEffect(() => {
     const timeoutId = setTimeout(
       () => loadSelfContactOptions(selfContactSearch),
-      selfContactSearch ? 300 : 0
+      selfContactSearch ? 300 : 0,
     );
     return () => clearTimeout(timeoutId);
   }, [selfContactSearch, loadSelfContactOptions]);
@@ -294,7 +298,9 @@ export default function SettingsPage() {
       // Refresh the localStorage cache so the contact-detail badge reads the
       // change without a reload (auth.ts getCachedSelfContactVCardUID).
       await fetchAndCacheUserInfo();
-      showSuccess(contact ? t('settings.selfContact.saveSuccess') : t('settings.selfContact.clearSuccess'));
+      showSuccess(
+        contact ? t('settings.selfContact.saveSuccess') : t('settings.selfContact.clearSuccess'),
+      );
     } catch (error) {
       showError(error instanceof Error ? error.message : t('settings.selfContact.saveError'));
     } finally {
@@ -317,11 +323,9 @@ export default function SettingsPage() {
             </Typography>
           </Box>
           <Divider sx={{ mb: 1.5 }} />
-          
+
           <FormControl fullWidth size="small">
-            <InputLabel id="language-select-label">
-              {t('settings.language.label')}
-            </InputLabel>
+            <InputLabel id="language-select-label">{t('settings.language.label')}</InputLabel>
             <Select
               labelId="language-select-label"
               value={i18n.language}
@@ -335,7 +339,7 @@ export default function SettingsPage() {
               <MenuItem value="fr">Français</MenuItem>
             </Select>
           </FormControl>
-          
+
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
             {t('settings.language.description')}
           </Typography>
@@ -353,17 +357,15 @@ export default function SettingsPage() {
           <Divider sx={{ mb: 1.5 }} />
 
           <FormControl fullWidth size="small">
-            <InputLabel id="date-format-select-label">
-              {t('settings.dateFormat.label')}
-            </InputLabel>
+            <InputLabel id="date-format-select-label">{t('settings.dateFormat.label')}</InputLabel>
             <Select
               labelId="date-format-select-label"
               value={dateFormat}
               label={t('settings.dateFormat.label')}
               onChange={handleDateFormatChange}
             >
-              <MenuItem value="eu" >{t('settings.dateFormat.options.eu' )}</MenuItem>
-              <MenuItem value="us" >{t('settings.dateFormat.options.us' )}</MenuItem>
+              <MenuItem value="eu">{t('settings.dateFormat.options.eu')}</MenuItem>
+              <MenuItem value="us">{t('settings.dateFormat.options.us')}</MenuItem>
               <MenuItem value="iso">{t('settings.dateFormat.options.iso')}</MenuItem>
               <MenuItem value="ca">{t('settings.dateFormat.options.ca')}</MenuItem>
               <MenuItem value="eu-hyphen">{t('settings.dateFormat.options.eu-hyphen')}</MenuItem>
@@ -391,9 +393,7 @@ export default function SettingsPage() {
           <Divider sx={{ mb: 1.5 }} />
 
           <FormControl fullWidth size="small">
-            <InputLabel id="theme-select-label">
-              {t('settings.theme.label')}
-            </InputLabel>
+            <InputLabel id="theme-select-label">{t('settings.theme.label')}</InputLabel>
             <Select
               labelId="theme-select-label"
               value={themePreference}
@@ -434,7 +434,11 @@ export default function SettingsPage() {
             isOptionEqualToValue={(a, b) => a.uid === b.uid}
             noOptionsText={t('settings.selfContact.noMatches')}
             renderInput={(params) => (
-              <TextField {...params} label={t('settings.selfContact.label')} placeholder={t('settings.selfContact.placeholder')} />
+              <TextField
+                {...params}
+                label={t('settings.selfContact.label')}
+                placeholder={t('settings.selfContact.placeholder')}
+              />
             )}
           />
           {selfContact && (
@@ -470,13 +474,21 @@ export default function SettingsPage() {
               <Typography variant="body2" color="text.secondary">
                 {t('settings.password.description')}
               </Typography>
-              {passwordError && <Alert severity="error" sx={{ py: 0 }}>{passwordError}</Alert>}
-              {passwordSuccess && <Alert severity="success" sx={{ py: 0 }}>{passwordSuccess}</Alert>}
+              {passwordError && (
+                <Alert severity="error" sx={{ py: 0 }}>
+                  {passwordError}
+                </Alert>
+              )}
+              {passwordSuccess && (
+                <Alert severity="success" sx={{ py: 0 }}>
+                  {passwordSuccess}
+                </Alert>
+              )}
               <TextField
                 label={t('settings.password.current')}
                 type="password"
                 value={currentPassword}
-                onChange={event => setCurrentPassword(event.target.value)}
+                onChange={(event) => setCurrentPassword(event.target.value)}
                 fullWidth
                 required
                 size="small"
@@ -485,7 +497,7 @@ export default function SettingsPage() {
                 label={t('settings.password.new')}
                 type="password"
                 value={newPassword}
-                onChange={event => setNewPassword(event.target.value)}
+                onChange={(event) => setNewPassword(event.target.value)}
                 fullWidth
                 required
                 size="small"
@@ -494,13 +506,15 @@ export default function SettingsPage() {
                 label={t('settings.password.confirm')}
                 type="password"
                 value={confirmPassword}
-                onChange={event => setConfirmPassword(event.target.value)}
+                onChange={(event) => setConfirmPassword(event.target.value)}
                 fullWidth
                 required
                 size="small"
               />
               <Button type="submit" variant="contained" size="small" disabled={changingPassword}>
-                {changingPassword ? t('settings.password.changing') : t('settings.password.changeButton')}
+                {changingPassword
+                  ? t('settings.password.changing')
+                  : t('settings.password.changeButton')}
               </Button>
             </Stack>
           </form>
@@ -526,7 +540,9 @@ export default function SettingsPage() {
 
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}
+          >
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <KeyIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
               <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
@@ -612,7 +628,10 @@ export default function SettingsPage() {
                               <IconButton
                                 size="small"
                                 color="error"
-                                onClick={() => { setRevokingToken(token); setRevokeDialogOpen(true); }}
+                                onClick={() => {
+                                  setRevokingToken(token);
+                                  setRevokeDialogOpen(true);
+                                }}
                                 aria-label={t('apiTokens.revokeDialog.title')}
                               >
                                 <BlockIcon fontSize="small" />
@@ -631,7 +650,12 @@ export default function SettingsPage() {
       </Card>
 
       {/* Create token dialog */}
-      <AppDialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="sm" fullWidth>
+      <AppDialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>{t('apiTokens.createDialog.title')}</DialogTitle>
         <DialogContent>
           <TextField
@@ -639,7 +663,9 @@ export default function SettingsPage() {
             label={t('apiTokens.createDialog.nameLabel')}
             value={newTokenName}
             onChange={(e) => setNewTokenName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleCreateToken(); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleCreateToken();
+            }}
             fullWidth
             margin="normal"
             inputProps={{ maxLength: 100 }}
@@ -679,7 +705,11 @@ export default function SettingsPage() {
           <Button onClick={() => setCreateDialogOpen(false)} disabled={createLoading}>
             {t('common.cancel')}
           </Button>
-          <Button variant="contained" onClick={handleCreateToken} disabled={createLoading || !newTokenName.trim()}>
+          <Button
+            variant="contained"
+            onClick={handleCreateToken}
+            disabled={createLoading || !newTokenName.trim()}
+          >
             {t('apiTokens.createDialog.createButton')}
           </Button>
         </DialogActions>
@@ -700,9 +730,18 @@ export default function SettingsPage() {
               size="small"
               inputProps={{ style: { fontFamily: 'monospace', fontSize: '0.85rem' } }}
             />
-            <Tooltip title={copied ? t('apiTokens.createdDialog.copied') : t('apiTokens.createdDialog.copy')}>
-              <IconButton onClick={handleCopy} color={copied ? 'success' : 'default'}
-                aria-label={copied ? t('apiTokens.createdDialog.copied') : t('apiTokens.createdDialog.copy')}>
+            <Tooltip
+              title={
+                copied ? t('apiTokens.createdDialog.copied') : t('apiTokens.createdDialog.copy')
+              }
+            >
+              <IconButton
+                onClick={handleCopy}
+                color={copied ? 'success' : 'default'}
+                aria-label={
+                  copied ? t('apiTokens.createdDialog.copied') : t('apiTokens.createdDialog.copy')
+                }
+              >
                 <ContentCopyIcon />
               </IconButton>
             </Tooltip>

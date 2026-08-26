@@ -9,7 +9,7 @@
 // imports vite.config.ts, which pulls in vite + its plugins -- modules that
 // break under vitest's jsdom environment (esbuild refuses to run there) and
 // that belong to the tsconfig.node.json project, not the DOM project.
-import { describe, test, expect } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import viteConfig from './vite.config';
 
 describe('Vite configuration (T48)', () => {

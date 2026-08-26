@@ -1,10 +1,10 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import MarkDiscussedDialog from './MarkDiscussedDialog';
-import { ConversationAgenda } from '../api/conversationAgenda';
-import { Activity } from '../api/activities';
+import type { Activity } from '../api/activities';
+import type { ConversationAgenda } from '../api/conversationAgenda';
 import { DateFormatProvider } from '../DateFormatProvider';
+import MarkDiscussedDialog from './MarkDiscussedDialog';
 
 afterEach(cleanup);
 
@@ -17,8 +17,20 @@ const item: ConversationAgenda = {
 };
 
 const activities: Activity[] = [
-  { ID: 7, title: 'Coffee catch-up', date: '2026-08-03T10:00:00Z', CreatedAt: '2026-08-03T10:00:00Z', UpdatedAt: '2026-08-03T10:00:00Z' },
-  { ID: 9, title: 'Phone call', date: '2026-07-20T10:00:00Z', CreatedAt: '2026-07-20T10:00:00Z', UpdatedAt: '2026-07-20T10:00:00Z' },
+  {
+    ID: 7,
+    title: 'Coffee catch-up',
+    date: '2026-08-03T10:00:00Z',
+    CreatedAt: '2026-08-03T10:00:00Z',
+    UpdatedAt: '2026-08-03T10:00:00Z',
+  },
+  {
+    ID: 9,
+    title: 'Phone call',
+    date: '2026-07-20T10:00:00Z',
+    CreatedAt: '2026-07-20T10:00:00Z',
+    UpdatedAt: '2026-07-20T10:00:00Z',
+  },
 ];
 
 function renderDialog(props: Partial<React.ComponentProps<typeof MarkDiscussedDialog>> = {}) {
@@ -33,7 +45,7 @@ function renderDialog(props: Partial<React.ComponentProps<typeof MarkDiscussedDi
   return render(
     <DateFormatProvider>
       <MarkDiscussedDialog {...defaults} />
-    </DateFormatProvider>
+    </DateFormatProvider>,
   );
 }
 

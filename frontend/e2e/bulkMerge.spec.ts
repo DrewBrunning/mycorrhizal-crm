@@ -1,5 +1,12 @@
-import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact, waitForLoading, stableClick, selectedText } from './fixtures';
+import {
+  createTestContact,
+  deleteTestContact,
+  expect,
+  selectedText,
+  stableClick,
+  test,
+  waitForLoading,
+} from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
@@ -21,16 +28,31 @@ import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
  * depends on whatever else is in the shared test account.
  */
 test.describe('Bulk merge from the contacts list', () => {
-  test('enables only at exactly two selected and merges the pair, refreshing the list', async ({ page, request }) => {
+  test('enables only at exactly two selected and merges the pair, refreshing the list', async ({
+    page,
+    request,
+  }) => {
     const runId = `BulkMerge${Date.now()}`;
     const sharedEmail = `bulkmerge-${runId}@example.com`;
     const keeperName = `${E2E_CONTACT_PREFIX}${runId}Keeper`;
     const loserName = `${E2E_CONTACT_PREFIX}${runId}Loser`;
     const thirdName = `${E2E_CONTACT_PREFIX}${runId}Third`;
 
-    const keeper = await createTestContact(request, { firstname: keeperName, lastname: 'Scan', email: sharedEmail });
-    const loser = await createTestContact(request, { firstname: loserName, lastname: 'Scan', email: sharedEmail });
-    const third = await createTestContact(request, { firstname: thirdName, lastname: 'Scan', email: sharedEmail });
+    const keeper = await createTestContact(request, {
+      firstname: keeperName,
+      lastname: 'Scan',
+      email: sharedEmail,
+    });
+    const loser = await createTestContact(request, {
+      firstname: loserName,
+      lastname: 'Scan',
+      email: sharedEmail,
+    });
+    const third = await createTestContact(request, {
+      firstname: thirdName,
+      lastname: 'Scan',
+      email: sharedEmail,
+    });
 
     try {
       await page.goto(`/contacts?search=${encodeURIComponent(runId)}`);
@@ -76,15 +98,21 @@ test.describe('Bulk merge from the contacts list', () => {
       // keeper candidates, and the default keeper is the list's first row.
       await expect(mergeDialog.getByText(`Keep ${keeperName} Scan`)).toBeVisible();
       await expect(mergeDialog.getByText(`Keep ${loserName} Scan`)).toBeVisible();
-      await expect(mergeDialog.getByRole('radio', { name: `Keep ${keeperName} Scan` })).toBeChecked();
+      await expect(
+        mergeDialog.getByRole('radio', { name: `Keep ${keeperName} Scan` }),
+      ).toBeChecked();
 
       // The swap control must actually change which contact survives.
       await mergeDialog.getByRole('button', { name: 'Swap' }).click();
-      await expect(mergeDialog.getByRole('radio', { name: `Keep ${loserName} Scan` })).toBeChecked();
+      await expect(
+        mergeDialog.getByRole('radio', { name: `Keep ${loserName} Scan` }),
+      ).toBeChecked();
       // Swap back to the original keeper so the conflict resolution below
       // stays deterministic.
       await mergeDialog.getByRole('button', { name: 'Swap' }).click();
-      await expect(mergeDialog.getByRole('radio', { name: `Keep ${keeperName} Scan` })).toBeChecked();
+      await expect(
+        mergeDialog.getByRole('radio', { name: `Keep ${keeperName} Scan` }),
+      ).toBeChecked();
 
       // The distinct first names are a real scalar conflict the user must
       // resolve before the commit enables. Keep the keeper's first name.

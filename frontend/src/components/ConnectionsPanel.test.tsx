@@ -1,6 +1,6 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import ConnectionsPanel from './ConnectionsPanel';
 
@@ -19,7 +19,14 @@ const chainsResponse = () => ({
       target_vcard_uid: 'sister-uid',
       target_name: 'Sister',
       depth: 1,
-      steps: [{ contact_id: 2, contact_vcard_uid: 'sister-uid', contact_name: 'Sister', relation: 'sibling_of' }],
+      steps: [
+        {
+          contact_id: 2,
+          contact_vcard_uid: 'sister-uid',
+          contact_name: 'Sister',
+          relation: 'sibling_of',
+        },
+      ],
     },
     {
       target_id: 3,
@@ -27,8 +34,18 @@ const chainsResponse = () => ({
       target_name: 'Husband',
       depth: 2,
       steps: [
-        { contact_id: 2, contact_vcard_uid: 'sister-uid', contact_name: 'Sister', relation: 'sibling_of' },
-        { contact_id: 3, contact_vcard_uid: 'husband-uid', contact_name: 'Husband', relation: 'spouse_of' },
+        {
+          contact_id: 2,
+          contact_vcard_uid: 'sister-uid',
+          contact_name: 'Sister',
+          relation: 'sibling_of',
+        },
+        {
+          contact_id: 3,
+          contact_vcard_uid: 'husband-uid',
+          contact_name: 'Husband',
+          relation: 'spouse_of',
+        },
       ],
     },
   ],
@@ -42,7 +59,7 @@ function mockGraph(urlContains: string, respond: () => unknown) {
         return { ok: true, json: async () => respond() };
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
 }
 
@@ -50,7 +67,7 @@ function renderPanel(contactUid = 'john-uid') {
   return render(
     <MemoryRouter>
       <ConnectionsPanel contactUid={contactUid} />
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -111,7 +128,7 @@ test('changing the depth reloads with the new value', async () => {
         return { ok: true, json: async () => chainsResponse() };
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
   renderPanel();
 
@@ -138,7 +155,7 @@ test('applying a relation filter sends it as a query param', async () => {
         return { ok: true, json: async () => chainsResponse() };
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
   renderPanel();
 
@@ -161,7 +178,7 @@ test('changing the depth after applying a filter keeps the filter', async () => 
         return { ok: true, json: async () => chainsResponse() };
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
   renderPanel();
 
@@ -175,7 +192,9 @@ test('changing the depth after applying a filter keeps the filter', async () => 
   fireEvent.mouseDown(screen.getByLabelText('Depth'));
   fireEvent.click(screen.getByText('2'));
   await waitFor(() => {
-    expect(requested.some((u) => u.includes('depth=2') && u.includes('relation=brother'))).toBe(true);
+    expect(requested.some((u) => u.includes('depth=2') && u.includes('relation=brother'))).toBe(
+      true,
+    );
   });
 });
 
@@ -188,7 +207,14 @@ test('previews the first five chains and reveals the rest on demand', async () =
       target_vcard_uid: `c${from + i}-uid`,
       target_name: `Contact ${from + i}`,
       depth: 1,
-      steps: [{ contact_id: from + i, contact_vcard_uid: `c${from + i}-uid`, contact_name: `Contact ${from + i}`, relation: 'sibling_of' }],
+      steps: [
+        {
+          contact_id: from + i,
+          contact_vcard_uid: `c${from + i}-uid`,
+          contact_name: `Contact ${from + i}`,
+          relation: 'sibling_of',
+        },
+      ],
     }));
   mockGraph('/graph/connections?', () => ({
     from_vcard_uid: 'john-uid',

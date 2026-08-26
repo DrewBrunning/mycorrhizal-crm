@@ -1,9 +1,9 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import GiftDialog from './GiftDialog';
-import { Gift } from '../api/gifts';
+import type { Gift } from '../api/gifts';
 import { DateFormatProvider } from '../DateFormatProvider';
+import GiftDialog from './GiftDialog';
 
 afterEach(cleanup);
 
@@ -41,7 +41,7 @@ function renderDialog(props: Partial<React.ComponentProps<typeof GiftDialog>> = 
   return render(
     <DateFormatProvider>
       <GiftDialog {...defaults} />
-    </DateFormatProvider>
+    </DateFormatProvider>,
   );
 }
 
@@ -96,7 +96,7 @@ test('an empty description is rejected without calling onSave', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
   await vi.waitFor(() =>
-    expect(screen.getByText(/Describe the gift or idea/i)).toBeInTheDocument()
+    expect(screen.getByText(/Describe the gift or idea/i)).toBeInTheDocument(),
   );
   expect(onSave).not.toHaveBeenCalled();
 });
@@ -111,9 +111,7 @@ test('an amount without a currency is rejected', async () => {
   fireEvent.change(screen.getByLabelText('Amount (optional)'), { target: { value: '50' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-  await vi.waitFor(() =>
-    expect(screen.getByText(/currency is required/i)).toBeInTheDocument()
-  );
+  await vi.waitFor(() => expect(screen.getByText(/currency is required/i)).toBeInTheDocument());
   expect(onSave).not.toHaveBeenCalled();
 });
 
@@ -251,7 +249,7 @@ test('a brand-new gift opens pre-seeded to the section status, no dropdown detou
   expect(onSave.mock.calls[0][0]).toMatchObject({ status: 'given', description: 'The scarf' });
 });
 
-test('editing ignores initialStatus and keeps the gift\'s own status', async () => {
+test("editing ignores initialStatus and keeps the gift's own status", async () => {
   const onSave = vi.fn().mockResolvedValue(undefined);
   renderDialog({ gift: { ...gift, status: 'received' }, initialStatus: 'given', onSave });
 

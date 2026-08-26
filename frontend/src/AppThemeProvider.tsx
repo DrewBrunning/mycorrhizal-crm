@@ -1,39 +1,39 @@
-import { ReactNode, createContext, useContext, useEffect, useMemo, useState } from "react";
-import { ThemeProvider } from "@mui/material/styles";
-import CssBaseline from "@mui/material/CssBaseline";
-import { darkTheme, lightTheme } from "./theme";
+import CssBaseline from '@mui/material/CssBaseline';
+import { ThemeProvider } from '@mui/material/styles';
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { darkTheme, lightTheme } from './theme';
 
-export type ThemePreference = "system" | "light" | "dark";
+export type ThemePreference = 'system' | 'light' | 'dark';
 
 interface ThemePreferenceContextValue {
   preference: ThemePreference;
   setPreference: (preference: ThemePreference) => void;
-  mode: "light" | "dark";
+  mode: 'light' | 'dark';
 }
 
 const ThemePreferenceContext = createContext<ThemePreferenceContextValue | undefined>(undefined);
 
-const THEME_PREFERENCE_STORAGE_KEY = "themePreference";
+const THEME_PREFERENCE_STORAGE_KEY = 'themePreference';
 
 const getStoredPreference = (): ThemePreference => {
-  if (typeof window === "undefined") {
-    return "system";
+  if (typeof window === 'undefined') {
+    return 'system';
   }
 
   const storedValue = window.localStorage.getItem(THEME_PREFERENCE_STORAGE_KEY);
-  if (storedValue === "light" || storedValue === "dark" || storedValue === "system") {
+  if (storedValue === 'light' || storedValue === 'dark' || storedValue === 'system') {
     return storedValue;
   }
 
-  return "system";
+  return 'system';
 };
 
 const getSystemPrefersDark = () => {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
     return false;
   }
 
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
 };
 
 export function AppThemeProvider({ children }: { children: ReactNode }) {
@@ -41,22 +41,22 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
   const [systemPrefersDark, setSystemPrefersDark] = useState(() => getSystemPrefersDark());
 
   useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
       return;
     }
 
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = (event: MediaQueryListEvent) => setSystemPrefersDark(event.matches);
 
-    if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", handleChange);
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleChange);
     } else {
       mediaQuery.addListener(handleChange);
     }
 
     return () => {
-      if (typeof mediaQuery.removeEventListener === "function") {
-        mediaQuery.removeEventListener("change", handleChange);
+      if (typeof mediaQuery.removeEventListener === 'function') {
+        mediaQuery.removeEventListener('change', handleChange);
       } else {
         mediaQuery.removeListener(handleChange);
       }
@@ -64,26 +64,27 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (typeof window === 'undefined') {
       return;
     }
 
     window.localStorage.setItem(THEME_PREFERENCE_STORAGE_KEY, preference);
   }, [preference]);
 
-  const mode: "light" | "dark" = preference === "system" ? (systemPrefersDark ? "dark" : "light") : preference;
-  const theme = useMemo(() => (mode === "dark" ? darkTheme : lightTheme), [mode]);
+  const mode: 'light' | 'dark' =
+    preference === 'system' ? (systemPrefersDark ? 'dark' : 'light') : preference;
+  const theme = useMemo(() => (mode === 'dark' ? darkTheme : lightTheme), [mode]);
 
   // Mirrors `mode` onto the document root so colors.css's plain-CSS custom
   // properties (used outside MUI's own styling) can respond to the same
   // effective mode -- including a manual override, not just system
   // preference, which a `prefers-color-scheme` media query alone would miss.
   useEffect(() => {
-    if (typeof document === "undefined") {
+    if (typeof document === 'undefined') {
       return;
     }
 
-    document.documentElement.setAttribute("data-color-mode", mode);
+    document.documentElement.setAttribute('data-color-mode', mode);
   }, [mode]);
   const contextValue = useMemo(
     () => ({
@@ -91,7 +92,7 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
       setPreference,
       mode,
     }),
-    [preference, mode]
+    [preference, mode],
   );
 
   return (
@@ -108,7 +109,7 @@ export const useThemePreference = () => {
   const context = useContext(ThemePreferenceContext);
 
   if (!context) {
-    throw new Error("useThemePreference must be used within AppThemeProvider");
+    throw new Error('useThemePreference must be used within AppThemeProvider');
   }
 
   return context;

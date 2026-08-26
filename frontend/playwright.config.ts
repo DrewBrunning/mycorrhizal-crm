@@ -2,14 +2,14 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Playwright configuration for Mycorrhizal CRM E2E tests.
- * 
+ *
  * Run tests with: npx playwright test
  * Run with UI:    npx playwright test --ui
  * Run specific:   npx playwright test auth.spec.ts
  */
 export default defineConfig({
   testDir: './e2e',
-  
+
   fullyParallel: true,
 
   // Fail the build on CI if you accidentally left test.only in the source code
@@ -25,18 +25,15 @@ export default defineConfig({
   workers: process.env.CI ? 2 : undefined,
 
   // Reporter to use
-  reporter: [
-    ['html', { open: 'never' }],
-    ['list']
-  ],
-  
+  reporter: [['html', { open: 'never' }], ['list']],
+
   // Shared settings for all projects
   use: {
     baseURL: 'http://localhost:7300',
-    
+
     // Collect trace when retrying the failed test
     trace: 'on-first-retry',
-    
+
     screenshot: 'only-on-failure',
     video: 'on-first-retry',
   },

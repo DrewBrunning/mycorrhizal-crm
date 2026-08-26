@@ -1,9 +1,13 @@
-import { Fragment } from 'react';
-import { Box, Typography, IconButton, Stack, Paper, Chip } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import { Box, Chip, IconButton, Paper, Stack, Typography } from '@mui/material';
+import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Preference, PreferenceSection, PREFERENCE_CATEGORY_CONFIG } from '../api/preferences';
+import {
+  PREFERENCE_CATEGORY_CONFIG,
+  type Preference,
+  type PreferenceSection,
+} from '../api/preferences';
 
 interface PreferenceListProps {
   preferences: Preference[];
@@ -18,7 +22,14 @@ interface PreferenceListProps {
 const CATEGORY_TO_SECTION: Record<string, PreferenceSection> = Object.fromEntries(
   PREFERENCE_CATEGORY_CONFIG.map((c) => [c.category, c.section]),
 );
-const SECTION_ORDER: PreferenceSection[] = ['foodDrink', 'media', 'hobby', 'jewelry', 'giftPreferences', 'giftAvoid'];
+const SECTION_ORDER: PreferenceSection[] = [
+  'foodDrink',
+  'media',
+  'hobby',
+  'jewelry',
+  'giftPreferences',
+  'giftAvoid',
+];
 
 export default function PreferenceList({ preferences, onEdit, onDelete }: PreferenceListProps) {
   const { t } = useTranslation();
@@ -32,7 +43,12 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
   }
 
   const bySection: Record<PreferenceSection, Preference[]> = {
-    foodDrink: [], media: [], hobby: [], jewelry: [], giftPreferences: [], giftAvoid: [],
+    foodDrink: [],
+    media: [],
+    hobby: [],
+    jewelry: [],
+    giftPreferences: [],
+    giftAvoid: [],
   };
   const other: Preference[] = [];
   for (const p of preferences) {
@@ -53,16 +69,8 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Box sx={{ flex: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
-            <Chip
-              label={t(`preference.categories.${pref.category}`, pref.category)}
-              size="small"
-            />
-            {pref.key && (
-              <Chip
-                label={t(`preference.keys.${pref.key}`, pref.key)}
-                size="small"
-              />
-            )}
+            <Chip label={t(`preference.categories.${pref.category}`, pref.category)} size="small" />
+            {pref.key && <Chip label={t(`preference.keys.${pref.key}`, pref.key)} size="small" />}
             {pref.sensitivity !== 'normal' && (
               <Chip
                 label={t(`preference.sensitivities.${pref.sensitivity}`)}
@@ -71,9 +79,15 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
               />
             )}
           </Box>
-          <Typography variant="body1" sx={{ overflowWrap: 'anywhere' }}>{pref.value}</Typography>
+          <Typography variant="body1" sx={{ overflowWrap: 'anywhere' }}>
+            {pref.value}
+          </Typography>
           {pref.notes && (
-            <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere', mt: 0.25 }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ overflowWrap: 'anywhere', mt: 0.25 }}
+            >
               {pref.notes}
             </Typography>
           )}
@@ -102,7 +116,11 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
     if (items.length === 0) return null;
     return (
       <Box>
-        <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}>
+        <Typography
+          variant="overline"
+          color="text.secondary"
+          sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}
+        >
           {label}
         </Typography>
         <Stack spacing={1.5} sx={{ mt: 0.5 }}>
@@ -115,7 +133,9 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
   return (
     <Stack spacing={2.5}>
       {SECTION_ORDER.map((section) => (
-        <Fragment key={section}>{renderSection(t(`preference.sections.${section}`), bySection[section])}</Fragment>
+        <Fragment key={section}>
+          {renderSection(t(`preference.sections.${section}`), bySection[section])}
+        </Fragment>
       ))}
       {renderSection(t('preference.sections.other'), other)}
     </Stack>

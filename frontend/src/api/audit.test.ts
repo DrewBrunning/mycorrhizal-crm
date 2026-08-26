@@ -1,5 +1,5 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
-import { getAuditEvents, undoAuditEvent, exportAuditLog, AUDIT_ENTITY_TYPES } from './audit';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { AUDIT_ENTITY_TYPES, exportAuditLog, getAuditEvents, undoAuditEvent } from './audit';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -25,7 +25,9 @@ function stubDownloadEnvironment() {
 function auditFileResponse(filename?: string) {
   return {
     ok: true,
-    headers: new Headers(filename ? { 'Content-Disposition': `attachment; filename="${filename}"` } : {}),
+    headers: new Headers(
+      filename ? { 'Content-Disposition': `attachment; filename="${filename}"` } : {},
+    ),
     blob: async () => new Blob(['audit,csv,rows']),
   };
 }
@@ -60,7 +62,9 @@ describe('getAuditEvents', () => {
   });
 
   test('sends the entity_type and entity_id filters when supplied', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ audit_events: [], total: 0 }) });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ audit_events: [], total: 0 }) });
     vi.stubGlobal('fetch', fetchMock);
 
     await getAuditEvents({ entity_type: 'note', entity_id: '42', limit: 250 });
@@ -72,7 +76,9 @@ describe('getAuditEvents', () => {
   });
 
   test('omits empty filters rather than sending blank params', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ audit_events: [], total: 0 }) });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ audit_events: [], total: 0 }) });
     vi.stubGlobal('fetch', fetchMock);
 
     await getAuditEvents({ entity_id: '' });
@@ -85,7 +91,10 @@ describe('getAuditEvents', () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({
       ok: false,
       status: 500,
-      json: async () => ({ error: { code: 'DATABASE_ERROR', message: 'Failed to list audit events' }, request_id: 'req-1' }),
+      json: async () => ({
+        error: { code: 'DATABASE_ERROR', message: 'Failed to list audit events' },
+        request_id: 'req-1',
+      }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -166,7 +175,9 @@ describe('exportAuditLog', () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({
       ok: false,
       status: 500,
-      json: async () => ({ error: { code: 'DATABASE_ERROR', message: 'Failed to fetch audit events' } }),
+      json: async () => ({
+        error: { code: 'DATABASE_ERROR', message: 'Failed to fetch audit events' },
+      }),
     });
     vi.stubGlobal('fetch', fetchMock);
 

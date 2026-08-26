@@ -1,6 +1,6 @@
-import { describe, test, expect } from 'vitest';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { describe, expect, test } from 'vitest';
 
 // T48: the frontend migrated off Create React App (react-scripts) to Vite.
 // These guard rails pin the migration so a partial reversion -- a
@@ -16,7 +16,7 @@ const FRONTEND_ROOT = process.cwd();
 if (!existsSync(join(FRONTEND_ROOT, 'package.json'))) {
   throw new Error(
     'craMigrationGuard.test.ts must run from the frontend root (cd frontend && yarn test).\n' +
-    `cwd is ${FRONTEND_ROOT}`
+      `cwd is ${FRONTEND_ROOT}`,
   );
 }
 

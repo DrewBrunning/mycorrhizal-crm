@@ -1,5 +1,4 @@
-import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact } from './fixtures';
+import { createTestContact, deleteTestContact, expect, test } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 // replaces
@@ -42,9 +41,17 @@ test.describe('RelationshipEdges', () => {
     }
   });
 
-  test('add a linked-contact relationship, visible with the inverse label from the other contact\'s page', async ({ page }) => {
-    const alice = await createTestContact(page.request, { firstname: 'E2E-Alice', lastname: `Rel${Date.now()}` });
-    const bob = await createTestContact(page.request, { firstname: 'E2E-Bob', lastname: `Rel${Date.now()}` });
+  test("add a linked-contact relationship, visible with the inverse label from the other contact's page", async ({
+    page,
+  }) => {
+    const alice = await createTestContact(page.request, {
+      firstname: 'E2E-Alice',
+      lastname: `Rel${Date.now()}`,
+    });
+    const bob = await createTestContact(page.request, {
+      firstname: 'E2E-Bob',
+      lastname: `Rel${Date.now()}`,
+    });
 
     try {
       await page.goto(`/contacts/${alice.ID}`);
@@ -84,7 +91,7 @@ test.describe('RelationshipEdges', () => {
     }
   });
 
-  test('edit a relationship\'s type', async ({ page }) => {
+  test("edit a relationship's type", async ({ page }) => {
     const contact = await createTestContact(page.request);
     const relName = `E2E Edit ${Date.now()}`;
 
@@ -100,7 +107,7 @@ test.describe('RelationshipEdges', () => {
       await expect(createDialog).toBeHidden();
 
       // Hover the card to reveal the edit action, then edit the type.
-      const card = page.locator('text=' + relName).locator('..').locator('..');
+      const card = page.locator(`text=${relName}`).locator('..').locator('..');
       await card.hover();
       await card.getByLabel('Edit').click();
 
@@ -126,8 +133,14 @@ test.describe('RelationshipEdges', () => {
   // a human adult. Verified end-to-end: create the pet from a human contact's
   // page (the frontend sends source_thin on an owned_by edge), then open the
   // pet's own detail page and confirm the animal badge (T27's UI) renders.
-  test('a contact created as a pet relationship is labelled as an animal', async ({ page, request }) => {
-    const owner = await createTestContact(page.request, { firstname: 'E2E-Pet-Owner', lastname: `Rel${Date.now()}` });
+  test('a contact created as a pet relationship is labelled as an animal', async ({
+    page,
+    request,
+  }) => {
+    const owner = await createTestContact(page.request, {
+      firstname: 'E2E-Pet-Owner',
+      lastname: `Rel${Date.now()}`,
+    });
     const petName = `E2E-Pet ${Date.now()}`;
 
     try {
@@ -147,7 +160,7 @@ test.describe('RelationshipEdges', () => {
       // Resolve the pet's numeric contact ID via search so we can open its
       // detail page (the edge response only carries the pet's vcard UID).
       const searchResponse = await request.get(
-        `${API_BASE_URL}/search?q=${encodeURIComponent(petName)}&limit=10`
+        `${API_BASE_URL}/search?q=${encodeURIComponent(petName)}&limit=10`,
       );
       expect(searchResponse.ok(), `search for pet failed: ${searchResponse.status()}`).toBeTruthy();
       const searchBody = await searchResponse.json();
@@ -178,7 +191,7 @@ test.describe('RelationshipEdges', () => {
       await expect(page.getByText(relName)).toBeVisible();
 
       page.on('dialog', (d) => d.accept());
-      const card = page.locator('text=' + relName).locator('..').locator('..');
+      const card = page.locator(`text=${relName}`).locator('..').locator('..');
       await card.hover();
       await card.getByLabel('Delete').click();
 

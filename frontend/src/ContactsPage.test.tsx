@@ -1,19 +1,19 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
-import ContactsPage from './ContactsPage';
-import { SnackbarProvider } from './context/SnackbarContext';
-import { AnnouncerProvider } from './context/AnnouncerContext';
-import { DateFormatProvider } from './DateFormatProvider';
-import { getContacts, Contact, favoriteContact, unfavoriteContact } from './api/contacts';
-import { listCircles } from './api/circles';
-import { listTags } from './api/tags';
-import { getFieldDefinitions } from './api/fieldDefinitions';
 import { getCurrentUser } from './api/admin';
-import { runBulkOperation, BulkOperationResult } from './api/bulkOperations';
+import { type BulkOperationResult, runBulkOperation } from './api/bulkOperations';
+import { listCircles } from './api/circles';
+import { commitContactMerge, previewContactMerge } from './api/contactMerge';
+import { type Contact, favoriteContact, getContacts, unfavoriteContact } from './api/contacts';
+import { getFieldDefinitions } from './api/fieldDefinitions';
 import { searchAll } from './api/search';
-import { previewContactMerge, commitContactMerge } from './api/contactMerge';
+import { listTags } from './api/tags';
+import ContactsPage from './ContactsPage';
+import { AnnouncerProvider } from './context/AnnouncerContext';
+import { SnackbarProvider } from './context/SnackbarContext';
+import { DateFormatProvider } from './DateFormatProvider';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);
@@ -78,10 +78,26 @@ beforeEach(() => {
   vi.mocked(commitContactMerge).mockReset();
 
   vi.mocked(getCurrentUser).mockResolvedValue({ enabled_contact_fields: null } as never);
-  vi.mocked(listCircles).mockResolvedValue({ circles: [], members: [], next_cursor: '', limit: 100 } as never);
-  vi.mocked(listTags).mockResolvedValue({ tags: [], contacts: [], next_cursor: '', limit: 100 } as never);
+  vi.mocked(listCircles).mockResolvedValue({
+    circles: [],
+    members: [],
+    next_cursor: '',
+    limit: 100,
+  } as never);
+  vi.mocked(listTags).mockResolvedValue({
+    tags: [],
+    contacts: [],
+    next_cursor: '',
+    limit: 100,
+  } as never);
   vi.mocked(getFieldDefinitions).mockResolvedValue({ field_definitions: [] } as never);
-  vi.mocked(searchAll).mockResolvedValue({ query: '', resolved_relation: '', contacts: [], notes: [], activities: [] } as never);
+  vi.mocked(searchAll).mockResolvedValue({
+    query: '',
+    resolved_relation: '',
+    contacts: [],
+    notes: [],
+    activities: [],
+  } as never);
 });
 
 function contact(id: number, uid: string, firstname: string, isFavorite = false): Contact {
@@ -102,9 +118,17 @@ function selectedText(text: string) {
 function mockTwoPages() {
   vi.mocked(getContacts).mockImplementation((params) => {
     if (params?.cursor) {
-      return Promise.resolve({ contacts: [contact(3, 'uid-3', 'Carol')], next_cursor: '', limit: 10 });
+      return Promise.resolve({
+        contacts: [contact(3, 'uid-3', 'Carol')],
+        next_cursor: '',
+        limit: 10,
+      });
     }
-    return Promise.resolve({ contacts: [contact(1, 'uid-1', 'Alice'), contact(2, 'uid-2', 'Bob')], next_cursor: 'cursor-1', limit: 10 });
+    return Promise.resolve({
+      contacts: [contact(1, 'uid-1', 'Alice'), contact(2, 'uid-2', 'Bob')],
+      next_cursor: 'cursor-1',
+      limit: 10,
+    });
   });
 }
 
@@ -121,7 +145,7 @@ function renderPage() {
           </AnnouncerProvider>
         </SnackbarProvider>
       </DateFormatProvider>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -216,7 +240,7 @@ test('a bulk tag add sends the selected VCardUIDs and nothing else', async () =>
       action: 'add_tag',
       vcard_uids: ['uid-1'],
       tag_id: 't1',
-    })
+    }),
   );
 });
 
@@ -229,7 +253,9 @@ test('bulk delete asks for confirmation naming the count before running', async 
   fireEvent.click(screen.getByLabelText('Select Alice'));
   fireEvent.click(screen.getByText('Delete'));
 
-  expect(confirmSpy).toHaveBeenCalledWith('Delete 1 contacts? This permanently removes them and all of their data. This cannot be undone.');
+  expect(confirmSpy).toHaveBeenCalledWith(
+    'Delete 1 contacts? This permanently removes them and all of their data. This cannot be undone.',
+  );
   expect(runBulkOperation).not.toHaveBeenCalled();
 });
 
@@ -293,9 +319,7 @@ test('typing a search term filters the list through the debounced URL param', as
   });
 
   await waitFor(() =>
-    expect(getContacts).toHaveBeenCalledWith(
-      expect.objectContaining({ search: 'ali' })
-    )
+    expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ search: 'ali' })),
   );
 });
 
@@ -323,17 +347,13 @@ test('clearing the search field restores the unfiltered list', async () => {
   const field = screen.getByLabelText(/search contacts/i);
   fireEvent.change(field, { target: { value: 'ali' } });
   await waitFor(() =>
-    expect(getContacts).toHaveBeenCalledWith(
-      expect.objectContaining({ search: 'ali' })
-    )
+    expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ search: 'ali' })),
   );
 
   fireEvent.change(field, { target: { value: '' } });
 
   await waitFor(() =>
-    expect(getContacts).toHaveBeenLastCalledWith(
-      expect.objectContaining({ search: '' })
-    )
+    expect(getContacts).toHaveBeenLastCalledWith(expect.objectContaining({ search: '' })),
   );
 });
 
@@ -357,9 +377,7 @@ test('defaults to name (alphabetical) sort', async () => {
   renderPage();
   await screen.findByLabelText('Select Alice');
 
-  expect(getContacts).toHaveBeenCalledWith(
-    expect.objectContaining({ sort: 'name', order: 'asc' })
-  );
+  expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ sort: 'name', order: 'asc' }));
 });
 
 test('changing the sort control refetches with the chosen sort and direction', async () => {
@@ -372,8 +390,8 @@ test('changing the sort control refetches with the chosen sort and direction', a
 
   await waitFor(() =>
     expect(getContacts).toHaveBeenCalledWith(
-      expect.objectContaining({ sort: 'updated_at', order: 'desc' })
-    )
+      expect.objectContaining({ sort: 'updated_at', order: 'desc' }),
+    ),
   );
 });
 
@@ -390,8 +408,8 @@ test('changing the sort does not clear an in-progress selection', async () => {
 
   await waitFor(() =>
     expect(getContacts).toHaveBeenCalledWith(
-      expect.objectContaining({ sort: 'updated_at', order: 'desc' })
-    )
+      expect.objectContaining({ sort: 'updated_at', order: 'desc' }),
+    ),
   );
   // Sorting reorders the list but not which contacts are visible — the
   // selection is still valid and must survive (T77 trap).
@@ -408,9 +426,7 @@ test('defaults to the contactable-only filter on first load', async () => {
   renderPage();
   await screen.findByLabelText('Select Alice');
 
-  expect(getContacts).toHaveBeenCalledWith(
-    expect.objectContaining({ hasContactInfo: true })
-  );
+  expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ hasContactInfo: true }));
   // The "Show all" switch is present and off (the filter is on).
   expect(screen.getByLabelText('Show all')).not.toBeChecked();
 });
@@ -425,9 +441,7 @@ test('toggling Show all off the filter and writing the URL param', async () => {
   fireEvent.click(screen.getByLabelText('Show all'));
 
   await waitFor(() =>
-    expect(getContacts).toHaveBeenCalledWith(
-      expect.objectContaining({ hasContactInfo: false })
-    )
+    expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ hasContactInfo: false })),
   );
   expect(screen.getByLabelText('Show all')).toBeChecked();
 });
@@ -438,7 +452,11 @@ test('toggling Show all off the filter and writing the URL param', async () => {
 test('a has_contact_info=false URL is honoured on load', async () => {
   vi.mocked(getContacts).mockImplementation((params) => {
     expect(params?.hasContactInfo).toBe(false);
-    return Promise.resolve({ contacts: [contact(1, 'uid-1', 'Alice')], next_cursor: '', limit: 10 });
+    return Promise.resolve({
+      contacts: [contact(1, 'uid-1', 'Alice')],
+      next_cursor: '',
+      limit: 10,
+    });
   });
   render(
     <MemoryRouter initialEntries={['/contacts?has_contact_info=false']}>
@@ -451,7 +469,7 @@ test('a has_contact_info=false URL is honoured on load', async () => {
           </AnnouncerProvider>
         </SnackbarProvider>
       </DateFormatProvider>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
   await screen.findByLabelText('Select Alice');
   expect(screen.getByLabelText('Show all')).toBeChecked();
@@ -473,7 +491,11 @@ test('renders the hidden count while the filter is active', async () => {
 
   // Toggling Show all reveals them; the line disappears (no filter, no count).
   fireEvent.click(screen.getByLabelText('Show all'));
-  await waitFor(() => expect(screen.queryByText('2 contacts without contact info are hidden')).not.toBeInTheDocument());
+  await waitFor(() =>
+    expect(
+      screen.queryByText('2 contacts without contact info are hidden'),
+    ).not.toBeInTheDocument(),
+  );
 });
 
 test('a hidden count of zero renders nothing', async () => {
@@ -525,21 +547,36 @@ const noConflictPreview = {
     field_value_conflicts: [],
   },
   association_counts: {
-    notes: 0, activities: 0, reminders: 0, reminder_completions: 0,
-    relationship_edges: 0, household_memberships: 0, circle_memberships: 0,
-    tags: 0, life_events: 0, life_event_references: 0, field_values: 0,
-    contact_sync_links: 0, attachments: 0, preferences: 0,
-    external_identities: 0, external_activities: 0, cadence_policies: 0,
+    notes: 0,
+    activities: 0,
+    reminders: 0,
+    reminder_completions: 0,
+    relationship_edges: 0,
+    household_memberships: 0,
+    circle_memberships: 0,
+    tags: 0,
+    life_events: 0,
+    life_event_references: 0,
+    field_values: 0,
+    contact_sync_links: 0,
+    attachments: 0,
+    preferences: 0,
+    external_identities: 0,
+    external_activities: 0,
+    cadence_policies: 0,
   },
 };
 
 test('selecting exactly two contacts and merging opens the pair-mode dialog, then refreshes and clears', async () => {
   mockTwoPages();
-  vi.mocked(previewContactMerge).mockImplementation(async (keepId, mergeId) => ({
-    ...noConflictPreview,
-    keep_id: keepId,
-    merge_id: mergeId,
-  } as never));
+  vi.mocked(previewContactMerge).mockImplementation(
+    async (keepId, mergeId) =>
+      ({
+        ...noConflictPreview,
+        keep_id: keepId,
+        merge_id: mergeId,
+      }) as never,
+  );
   vi.mocked(commitContactMerge).mockResolvedValue({ message: 'merged', contact: {} } as never);
   renderPage();
   await screen.findByLabelText('Select Alice');
@@ -577,11 +614,14 @@ test('selecting exactly two contacts and merging opens the pair-mode dialog, the
 // work across the page boundary too (Alice on page one, Carol on page two).
 test('merging a pair selected across the pagination boundary resolves both rows from the loaded pages', async () => {
   mockTwoPages();
-  vi.mocked(previewContactMerge).mockImplementation(async (keepId, mergeId) => ({
-    ...noConflictPreview,
-    keep_id: keepId,
-    merge_id: mergeId,
-  } as never));
+  vi.mocked(previewContactMerge).mockImplementation(
+    async (keepId, mergeId) =>
+      ({
+        ...noConflictPreview,
+        keep_id: keepId,
+        merge_id: mergeId,
+      }) as never,
+  );
   vi.mocked(commitContactMerge).mockResolvedValue({ message: 'merged', contact: {} } as never);
   renderPage();
   await screen.findByLabelText('Select Alice');
@@ -615,12 +655,24 @@ test('merging a pair selected across the pagination boundary resolves both rows 
 test('a merge whose selected rows left the loaded page alerts and clears the stale selection', async () => {
   vi.mocked(getContacts).mockImplementation((params) => {
     if (params?.sort === 'updated_at') {
-      return Promise.resolve({ contacts: [contact(1, 'uid-1', 'Alice')], next_cursor: '', limit: 10 });
+      return Promise.resolve({
+        contacts: [contact(1, 'uid-1', 'Alice')],
+        next_cursor: '',
+        limit: 10,
+      });
     }
     if (params?.cursor) {
-      return Promise.resolve({ contacts: [contact(3, 'uid-3', 'Carol')], next_cursor: '', limit: 10 });
+      return Promise.resolve({
+        contacts: [contact(3, 'uid-3', 'Carol')],
+        next_cursor: '',
+        limit: 10,
+      });
     }
-    return Promise.resolve({ contacts: [contact(1, 'uid-1', 'Alice'), contact(2, 'uid-2', 'Bob')], next_cursor: 'cursor-1', limit: 10 });
+    return Promise.resolve({
+      contacts: [contact(1, 'uid-1', 'Alice'), contact(2, 'uid-2', 'Bob')],
+      next_cursor: 'cursor-1',
+      limit: 10,
+    });
   });
   const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
   renderPage();
@@ -702,7 +754,14 @@ test('clicking the star on a non-favorite POSTs to favorite and fills the star',
     next_cursor: '',
     limit: 10,
   });
-  vi.mocked(favoriteContact).mockResolvedValue({ ID: 1, uid: 'uid-1', firstname: 'Alice', lastname: '', archived: false, is_favorite: true });
+  vi.mocked(favoriteContact).mockResolvedValue({
+    ID: 1,
+    uid: 'uid-1',
+    firstname: 'Alice',
+    lastname: '',
+    archived: false,
+    is_favorite: true,
+  });
   renderPage();
 
   await screen.findByLabelText('Select Alice');
@@ -710,7 +769,9 @@ test('clicking the star on a non-favorite POSTs to favorite and fills the star',
   fireEvent.click(star);
 
   expect(favoriteContact).toHaveBeenCalledWith(1);
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Unmark Alice as favorite' })).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Unmark Alice as favorite' })).toBeInTheDocument(),
+  );
 });
 
 test('clicking the star on a favorite POSTs to unfavorite and empties the star', async () => {
@@ -719,7 +780,14 @@ test('clicking the star on a favorite POSTs to unfavorite and empties the star',
     next_cursor: '',
     limit: 10,
   });
-  vi.mocked(unfavoriteContact).mockResolvedValue({ ID: 1, uid: 'uid-1', firstname: 'Alice', lastname: '', archived: false, is_favorite: false });
+  vi.mocked(unfavoriteContact).mockResolvedValue({
+    ID: 1,
+    uid: 'uid-1',
+    firstname: 'Alice',
+    lastname: '',
+    archived: false,
+    is_favorite: false,
+  });
   renderPage();
 
   await screen.findByLabelText('Select Alice');
@@ -727,7 +795,9 @@ test('clicking the star on a favorite POSTs to unfavorite and empties the star',
   fireEvent.click(star);
 
   expect(unfavoriteContact).toHaveBeenCalledWith(1);
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Mark Alice as favorite' })).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Mark Alice as favorite' })).toBeInTheDocument(),
+  );
 });
 
 test('clicking the star does not navigate to the contact detail page', async () => {
@@ -736,7 +806,14 @@ test('clicking the star does not navigate to the contact detail page', async () 
     next_cursor: '',
     limit: 10,
   });
-  vi.mocked(favoriteContact).mockResolvedValue({ ID: 1, uid: 'uid-1', firstname: 'Alice', lastname: '', archived: false, is_favorite: true });
+  vi.mocked(favoriteContact).mockResolvedValue({
+    ID: 1,
+    uid: 'uid-1',
+    firstname: 'Alice',
+    lastname: '',
+    archived: false,
+    is_favorite: true,
+  });
   renderPage();
 
   await screen.findByLabelText('Select Alice');
@@ -756,9 +833,7 @@ test('toggling the favorites switch refetches with favorites: true', async () =>
   fireEvent.click(favoritesSwitch);
 
   await waitFor(() =>
-    expect(getContacts).toHaveBeenCalledWith(
-      expect.objectContaining({ favorites: true })
-    )
+    expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ favorites: true })),
   );
   expect(favoritesSwitch).toBeChecked();
 });

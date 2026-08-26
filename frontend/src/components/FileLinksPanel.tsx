@@ -1,31 +1,22 @@
-import { useState } from 'react';
-import {
-  Box,
-  Typography,
-  Paper,
-  Button,
-  IconButton,
-  Link,
-  Stack,
-  Alert,
-} from '@mui/material';
-import { mdiFileDocumentOutline, mdiFolderMultipleOutline, mdiCloudOutline } from '@mdi/js';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import DeleteIcon from '@mui/icons-material/Delete';
+import { mdiCloudOutline, mdiFileDocumentOutline, mdiFolderMultipleOutline } from '@mdi/js';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import FolderIcon from '@mui/icons-material/Folder';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import { useTranslation } from 'react-i18next';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { Alert, Box, Button, IconButton, Link, Paper, Stack, Typography } from '@mui/material';
 import type { TFunction } from 'i18next';
-import { ExternalIdentity } from '../api/externalLinks';
-import { PaperlessDocument } from '../api/paperless';
-import { SeafileLibrary, SeafileItem } from '../api/seafile';
-import { WebDAVItem } from '../api/nextcloud';
-import PaperlessDocumentSearchDialog from './PaperlessDocumentSearchDialog';
-import SeafileFilePickerDialog, { SeafileLinkTarget } from './SeafileFilePickerDialog';
-import NextcloudFilePickerDialog from './NextcloudFilePickerDialog';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { ExternalIdentity } from '../api/externalLinks';
+import type { WebDAVItem } from '../api/nextcloud';
+import type { PaperlessDocument } from '../api/paperless';
+import type { SeafileItem, SeafileLibrary } from '../api/seafile';
 import { useDateFormat } from '../DateFormatProvider';
 import { isHttpUrlString } from '../utils/linkResolution';
+import NextcloudFilePickerDialog from './NextcloudFilePickerDialog';
+import PaperlessDocumentSearchDialog from './PaperlessDocumentSearchDialog';
+import SeafileFilePickerDialog, { type SeafileLinkTarget } from './SeafileFilePickerDialog';
 
 // The three file-sharing integrations (P2a/P2b/P2c), rendered as rich rows with
 // a per-system "Add link" flow. Paperless links documents; Seafile and
@@ -71,13 +62,28 @@ export default function FileLinksPanel({
   const [nextcloudOpen, setNextcloudOpen] = useState(false);
 
   const systems: { system: FileSystem; icon: string; configured: boolean; label: string }[] = [
-    { system: 'paperless', icon: mdiFileDocumentOutline, configured: configured.paperless, label: t('fileLinks.paperless') },
-    { system: 'seafile', icon: mdiFolderMultipleOutline, configured: configured.seafile, label: t('fileLinks.seafile') },
-    { system: 'nextcloud', icon: mdiCloudOutline, configured: configured.nextcloud, label: t('fileLinks.nextcloud') },
+    {
+      system: 'paperless',
+      icon: mdiFileDocumentOutline,
+      configured: configured.paperless,
+      label: t('fileLinks.paperless'),
+    },
+    {
+      system: 'seafile',
+      icon: mdiFolderMultipleOutline,
+      configured: configured.seafile,
+      label: t('fileLinks.seafile'),
+    },
+    {
+      system: 'nextcloud',
+      icon: mdiCloudOutline,
+      configured: configured.nextcloud,
+      label: t('fileLinks.nextcloud'),
+    },
   ];
 
-  const fileIdentities = identities.filter((i) =>
-    i.system === 'paperless' || i.system === 'seafile' || i.system === 'nextcloud'
+  const fileIdentities = identities.filter(
+    (i) => i.system === 'paperless' || i.system === 'seafile' || i.system === 'nextcloud',
   );
 
   const handleUnlink = async (system: FileSystem, identityId: string) => {
@@ -95,7 +101,9 @@ export default function FileLinksPanel({
     <Stack spacing={1.5}>
       {fileIdentities.map((identity) => (
         <Paper key={identity.id} variant="outlined" sx={{ p: 1.5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
+          >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
               {identity.metadata?.type === 'dir' ? (
                 <FolderIcon color="action" fontSize="small" />
@@ -106,7 +114,11 @@ export default function FileLinksPanel({
                 <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
                   {identityName(identity)}
                 </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ overflowWrap: 'anywhere' }}
+                >
                   {identitySubtitle(identity, t, formatDate)}
                 </Typography>
               </Box>
@@ -118,14 +130,20 @@ export default function FileLinksPanel({
                     href={identity.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label={t('fileLinks.openExternal', { system: systemLabel(identity.system as FileSystem, t) })}
+                    aria-label={t('fileLinks.openExternal', {
+                      system: systemLabel(identity.system as FileSystem, t),
+                    })}
                   >
                     <OpenInNewIcon fontSize="small" />
                   </Link>
                 ) : (
                   // A URL that predates the write-time `httpurl` validator is
                   // shown as text, never as an href (T41).
-                  <Typography variant="caption" color="text.secondary" sx={{ maxWidth: 180, overflowWrap: 'anywhere' }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ maxWidth: 180, overflowWrap: 'anywhere' }}
+                  >
                     {identity.url}
                   </Typography>
                 ))}
@@ -150,7 +168,10 @@ export default function FileLinksPanel({
         // than opening a picker that would fetch nothing).
         const browseWired =
           (sys.system === 'paperless' && !!onFetchPaperlessDocuments && !!onLinkPaperless) ||
-          (sys.system === 'seafile' && !!onFetchSeafileLibraries && !!onFetchSeafileDir && !!onLinkSeafile) ||
+          (sys.system === 'seafile' &&
+            !!onFetchSeafileLibraries &&
+            !!onFetchSeafileDir &&
+            !!onLinkSeafile) ||
           (sys.system === 'nextcloud' && !!onFetchNextcloudDir && !!onLinkNextcloud);
         return sys.configured && browseWired ? (
           <Button
@@ -169,25 +190,37 @@ export default function FileLinksPanel({
         ) : null;
       })}
 
-      {error && <Alert severity="error" sx={{ py: 0 }}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ py: 0 }}>
+          {error}
+        </Alert>
+      )}
 
       <PaperlessDocumentSearchDialog
         open={paperlessOpen}
         onClose={() => setPaperlessOpen(false)}
-        onFetchDocuments={(query) => (onFetchPaperlessDocuments ? onFetchPaperlessDocuments(query) : Promise.resolve([]))}
+        onFetchDocuments={(query) =>
+          onFetchPaperlessDocuments ? onFetchPaperlessDocuments(query) : Promise.resolve([])
+        }
         onSelect={(doc) => (onLinkPaperless ? onLinkPaperless(doc) : Promise.resolve())}
       />
       <SeafileFilePickerDialog
         open={seafileOpen}
         onClose={() => setSeafileOpen(false)}
-        onFetchLibraries={() => (onFetchSeafileLibraries ? onFetchSeafileLibraries() : Promise.resolve([]))}
-        onFetchDir={(repoId, path) => (onFetchSeafileDir ? onFetchSeafileDir(repoId, path) : Promise.resolve([]))}
+        onFetchLibraries={() =>
+          onFetchSeafileLibraries ? onFetchSeafileLibraries() : Promise.resolve([])
+        }
+        onFetchDir={(repoId, path) =>
+          onFetchSeafileDir ? onFetchSeafileDir(repoId, path) : Promise.resolve([])
+        }
         onSelect={(target) => (onLinkSeafile ? onLinkSeafile(target) : Promise.resolve())}
       />
       <NextcloudFilePickerDialog
         open={nextcloudOpen}
         onClose={() => setNextcloudOpen(false)}
-        onFetchDir={(path) => (onFetchNextcloudDir ? onFetchNextcloudDir(path) : Promise.resolve([]))}
+        onFetchDir={(path) =>
+          onFetchNextcloudDir ? onFetchNextcloudDir(path) : Promise.resolve([])
+        }
         onSelect={(item) => (onLinkNextcloud ? onLinkNextcloud(item) : Promise.resolve())}
       />
     </Stack>
@@ -215,7 +248,7 @@ function identityName(identity: ExternalIdentity): string {
 function identitySubtitle(
   identity: ExternalIdentity,
   t: TFunction,
-  formatDate: (date: string) => string
+  formatDate: (date: string) => string,
 ): string {
   const meta = identity.metadata || {};
   const bits: string[] = [];
@@ -229,7 +262,8 @@ function identitySubtitle(
       bits.push(formatFileSize(meta.size));
     }
     const modified = typeof meta.modified_at === 'string' ? meta.modified_at : undefined;
-    const mtime = typeof meta.mtime === 'number' ? new Date(meta.mtime * 1000).toISOString() : undefined;
+    const mtime =
+      typeof meta.mtime === 'number' ? new Date(meta.mtime * 1000).toISOString() : undefined;
     const when = modified ?? mtime;
     if (when) {
       bits.push(t('fileLinks.modified', { date: formatDate(when) }));

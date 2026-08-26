@@ -2,7 +2,7 @@
 // A single batch endpoint runs one action across many contacts with
 // partial-success semantics. Mirrors backend/models/bulk_operation.go and
 // controllers/bulk_operation_controller.go.
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 export const BULK_ACTIONS = [
   'add_circle',

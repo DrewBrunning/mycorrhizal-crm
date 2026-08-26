@@ -1,5 +1,4 @@
-import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact } from './fixtures';
+import { createTestContact, deleteTestContact, expect, test } from './fixtures';
 
 // T40:
 // contacts who share an address but are not in a household together are
@@ -19,8 +18,16 @@ test.describe('Address-based household suggestions', () => {
     // crashed earlier run can never collide with this run's assertions (the
     // compose DB persists until `down -v`).
     const suffix = Date.now().toString();
-    const a = await createTestContact(page.request, { firstname: `E2EAddrA${suffix}`, lastname: 'T40', addresses: [sharedAddress] });
-    const b = await createTestContact(page.request, { firstname: `E2EAddrB${suffix}`, lastname: 'T40', addresses: [sharedAddress] });
+    const a = await createTestContact(page.request, {
+      firstname: `E2EAddrA${suffix}`,
+      lastname: 'T40',
+      addresses: [sharedAddress],
+    });
+    const b = await createTestContact(page.request, {
+      firstname: `E2EAddrB${suffix}`,
+      lastname: 'T40',
+      addresses: [sharedAddress],
+    });
 
     try {
       await page.goto('/households');
@@ -45,7 +52,9 @@ test.describe('Address-based household suggestions', () => {
       // members' first names. Member order is deterministic but derived from
       // the members' UUIDs (server-side sort), so match either order.
       await page.getByRole('button', { name: 'Accept' }).click();
-      const eitherOrder = new RegExp(`(${a.firstname}.*${b.firstname}|${b.firstname}.*${a.firstname})`);
+      const eitherOrder = new RegExp(
+        `(${a.firstname}.*${b.firstname}|${b.firstname}.*${a.firstname})`,
+      );
       // Scope to the household card's title (the generated name). A bare
       // getByText also matches the members rows (each shows both names beside
       // its role select), which is two elements and trips strict mode.

@@ -1,32 +1,38 @@
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Divider,
-  Button,
-  Stack,
-  Alert,
-  CircularProgress,
-} from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
+import InsightsIcon from '@mui/icons-material/Insights';
 import TuneIcon from '@mui/icons-material/Tune';
 import UploadIcon from '@mui/icons-material/Upload';
-import InsightsIcon from '@mui/icons-material/Insights';
-import { exportContacts, exportDataAsCsv, exportContactsAsVcf, ExportFormat, ExportSelection } from './api/export';
-import { suggestRelationshipEdges } from './api/relationshipEdges';
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  CircularProgress,
+  Divider,
+  Stack,
+  Typography,
+} from '@mui/material';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { suggestContactAddresses } from './api/dataSuggestions';
-import CustomFieldsSettings from './components/CustomFieldsSettings';
-import ContactFieldSettings from './components/ContactFieldSettings';
+import {
+  type ExportFormat,
+  type ExportSelection,
+  exportContacts,
+  exportContactsAsVcf,
+  exportDataAsCsv,
+} from './api/export';
+import { suggestRelationshipEdges } from './api/relationshipEdges';
 import CalendarSyncSettings from './components/CalendarSyncSettings';
+import ContactAddressSuggestions from './components/ContactAddressSuggestions';
+import ContactFieldSettings from './components/ContactFieldSettings';
+import CustomFieldsSettings from './components/CustomFieldsSettings';
 import ExportFieldPickerDialog from './components/ExportFieldPickerDialog';
 import ImportContactsDialog from './components/ImportContactsDialog';
 import RelationshipSuggestionsInbox from './components/RelationshipSuggestionsInbox';
-import ContactAddressSuggestions from './components/ContactAddressSuggestions';
-import { handleFetchError } from './utils/errorHandler';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { handleFetchError } from './utils/errorHandler';
 
 export default function DataSettingsPage() {
   const { t } = useTranslation();
@@ -69,7 +75,7 @@ export default function DataSettingsPage() {
       setRelationshipSuggestMessage(
         result.total > 0
           ? t('settings.data.propose.relationshipsGenerated', { count: result.total })
-          : t('settings.data.propose.noRelationshipSuggestions')
+          : t('settings.data.propose.noRelationshipSuggestions'),
       );
     } catch (error) {
       handleFetchError(error, 'suggesting relationships');
@@ -89,7 +95,7 @@ export default function DataSettingsPage() {
       setAddressSuggestMessage(
         result.total > 0
           ? t('settings.data.propose.addressesGenerated', { count: result.total })
-          : t('settings.data.propose.noAddressSuggestions')
+          : t('settings.data.propose.noAddressSuggestions'),
       );
     } catch (error) {
       handleFetchError(error, 'suggesting addresses');
@@ -139,7 +145,8 @@ export default function DataSettingsPage() {
       await exportContacts(format, selection);
       setCustomExportSuccess(t('settings.exportFieldPicker.success'));
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : t('settings.exportFieldPicker.exportError');
+      const errorMessage =
+        error instanceof Error ? error.message : t('settings.exportFieldPicker.exportError');
       setCustomExportError(errorMessage);
     } finally {
       setCustomExporting(false);
@@ -176,7 +183,11 @@ export default function DataSettingsPage() {
               <Button
                 variant="contained"
                 size="small"
-                startIcon={suggestingRelationships ? <CircularProgress size={16} color="inherit" /> : undefined}
+                startIcon={
+                  suggestingRelationships ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : undefined
+                }
                 onClick={handleSuggestRelationships}
                 disabled={suggestingRelationships}
               >
@@ -187,7 +198,9 @@ export default function DataSettingsPage() {
               <Button
                 variant="contained"
                 size="small"
-                startIcon={suggestingAddresses ? <CircularProgress size={16} color="inherit" /> : undefined}
+                startIcon={
+                  suggestingAddresses ? <CircularProgress size={16} color="inherit" /> : undefined
+                }
                 onClick={handleSuggestAddresses}
                 disabled={suggestingAddresses}
               >
@@ -196,10 +209,26 @@ export default function DataSettingsPage() {
                   : t('settings.data.propose.suggestAddresses')}
               </Button>
             </Stack>
-            {relationshipSuggestError && <Alert severity="error" sx={{ py: 0 }}>{relationshipSuggestError}</Alert>}
-            {relationshipSuggestMessage && <Alert severity="info" sx={{ py: 0 }}>{relationshipSuggestMessage}</Alert>}
-            {addressSuggestError && <Alert severity="error" sx={{ py: 0 }}>{addressSuggestError}</Alert>}
-            {addressSuggestMessage && <Alert severity="info" sx={{ py: 0 }}>{addressSuggestMessage}</Alert>}
+            {relationshipSuggestError && (
+              <Alert severity="error" sx={{ py: 0 }}>
+                {relationshipSuggestError}
+              </Alert>
+            )}
+            {relationshipSuggestMessage && (
+              <Alert severity="info" sx={{ py: 0 }}>
+                {relationshipSuggestMessage}
+              </Alert>
+            )}
+            {addressSuggestError && (
+              <Alert severity="error" sx={{ py: 0 }}>
+                {addressSuggestError}
+              </Alert>
+            )}
+            {addressSuggestMessage && (
+              <Alert severity="info" sx={{ py: 0 }}>
+                {addressSuggestMessage}
+              </Alert>
+            )}
           </Stack>
 
           <RelationshipSuggestionsInbox loadKey={relationshipLoadKey} />
@@ -249,12 +278,22 @@ export default function DataSettingsPage() {
             <Typography variant="body2" color="text.secondary">
               {t('settings.export.description')}
             </Typography>
-            {exportError && <Alert severity="error" sx={{ py: 0 }}>{exportError}</Alert>}
-            {exportSuccess && <Alert severity="success" sx={{ py: 0 }}>{exportSuccess}</Alert>}
+            {exportError && (
+              <Alert severity="error" sx={{ py: 0 }}>
+                {exportError}
+              </Alert>
+            )}
+            {exportSuccess && (
+              <Alert severity="success" sx={{ py: 0 }}>
+                {exportSuccess}
+              </Alert>
+            )}
             <Button
               variant="contained"
               size="small"
-              startIcon={exporting ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
+              startIcon={
+                exporting ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />
+              }
               onClick={handleExportData}
               disabled={exporting}
             >
@@ -278,17 +317,29 @@ export default function DataSettingsPage() {
             <Typography variant="body2" color="text.secondary">
               {t('settings.exportVcf.description')}
             </Typography>
-            {exportVcfError && <Alert severity="error" sx={{ py: 0 }}>{exportVcfError}</Alert>}
-            {exportVcfSuccess && <Alert severity="success" sx={{ py: 0 }}>{exportVcfSuccess}</Alert>}
+            {exportVcfError && (
+              <Alert severity="error" sx={{ py: 0 }}>
+                {exportVcfError}
+              </Alert>
+            )}
+            {exportVcfSuccess && (
+              <Alert severity="success" sx={{ py: 0 }}>
+                {exportVcfSuccess}
+              </Alert>
+            )}
             <Stack direction="row" spacing={1}>
               <Button
                 variant="contained"
                 size="small"
-                startIcon={exportingVcf ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
+                startIcon={
+                  exportingVcf ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />
+                }
                 onClick={handleExportVcf}
                 disabled={exportingVcf}
               >
-                {exportingVcf ? t('settings.exportVcf.exporting') : t('settings.exportVcf.downloadButton')}
+                {exportingVcf
+                  ? t('settings.exportVcf.exporting')
+                  : t('settings.exportVcf.downloadButton')}
               </Button>
               <Button
                 variant="outlined"
@@ -300,8 +351,16 @@ export default function DataSettingsPage() {
                 {t('settings.exportFieldPicker.customExportButton')}
               </Button>
             </Stack>
-            {customExportError && <Alert severity="error" sx={{ py: 0 }}>{customExportError}</Alert>}
-            {customExportSuccess && <Alert severity="success" sx={{ py: 0 }}>{customExportSuccess}</Alert>}
+            {customExportError && (
+              <Alert severity="error" sx={{ py: 0 }}>
+                {customExportError}
+              </Alert>
+            )}
+            {customExportSuccess && (
+              <Alert severity="success" sx={{ py: 0 }}>
+                {customExportSuccess}
+              </Alert>
+            )}
           </Stack>
         </CardContent>
       </Card>

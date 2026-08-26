@@ -1,14 +1,14 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import { DateFormatProvider } from '../DateFormatProvider';
-import { SnackbarProvider } from '../context/SnackbarContext';
-import ContactInformation from './ContactInformation';
-import { Card, CRMEnvelope } from '../api/contacts';
-import { ContactFieldKey } from '../contactFields';
+import type { Card, CRMEnvelope } from '../api/contacts';
 import { getLinkFieldTypes } from '../api/linkFieldTypes';
+import type { ContactFieldKey } from '../contactFields';
+import { SnackbarProvider } from '../context/SnackbarContext';
+import { DateFormatProvider } from '../DateFormatProvider';
 import { resolveLinkFieldTypeIcon } from '../linkFieldTypeIcons';
+import ContactInformation from './ContactInformation';
 
 // This codebase's vitest setup does not auto-cleanup between tests (no
 // `globals: true`, setupTests.ts doesn't register it) -- without this,
@@ -49,7 +49,10 @@ beforeEach(() => {
 function renderInformation(
   card: Card = {},
   crm: CRMEnvelope = {},
-  opts: { onUpdateCard?: (patch: Partial<Card>) => Promise<void>; enabledFields?: Set<ContactFieldKey> } = {}
+  opts: {
+    onUpdateCard?: (patch: Partial<Card>) => Promise<void>;
+    enabledFields?: Set<ContactFieldKey>;
+  } = {},
 ) {
   const onUpdateCard = opts.onUpdateCard ?? vi.fn(async () => {});
   const result = render(
@@ -71,7 +74,7 @@ function renderInformation(
           />
         </DateFormatProvider>
       </SnackbarProvider>
-    </ThemeProvider>
+    </ThemeProvider>,
   );
   return { ...result, onUpdateCard };
 }
@@ -113,15 +116,30 @@ test('hides the About subtitle when every About field is disabled', () => {
 test('hides the Contact subtitle when its fields are present but disabled', () => {
   // A value on the contact is not enough — the field must also be enabled in
   // field-visibility settings (the ticket's "non-empty but hidden" trap).
-  renderInformation({ phones: [{ number: '+15551234567' }] }, {}, { enabledFields: new Set<ContactFieldKey>(['birthday']) });
+  renderInformation(
+    { phones: [{ number: '+15551234567' }] },
+    {},
+    { enabledFields: new Set<ContactFieldKey>(['birthday']) },
+  );
   expect(screen.queryByText('Contact')).toBeNull();
 });
 
 test('hides the About subtitle when its fields are enabled but empty', () => {
   // The reverse trap: enabled in settings but nothing on the contact.
-  renderInformation({}, {}, {
-    enabledFields: new Set<ContactFieldKey>(['birthday', 'anniversary', 'anniversaries', 'personalInfo', 'keywords', 'preferredLanguages']),
-  });
+  renderInformation(
+    {},
+    {},
+    {
+      enabledFields: new Set<ContactFieldKey>([
+        'birthday',
+        'anniversary',
+        'anniversaries',
+        'personalInfo',
+        'keywords',
+        'preferredLanguages',
+      ]),
+    },
+  );
   expect(screen.queryByText('About')).toBeNull();
 });
 
@@ -242,20 +260,29 @@ test('an email is itself a mailto: link, plus a copy action', () => {
 
 test('an address with no coordinates links to a map search built from the formatted address', () => {
   renderInformation({
-    addresses: [{ components: [{ kind: 'locality', value: 'Springfield' }, { kind: 'region', value: 'IL' }] }],
+    addresses: [
+      {
+        components: [
+          { kind: 'locality', value: 'Springfield' },
+          { kind: 'region', value: 'IL' },
+        ],
+      },
+    ],
   });
   const row = fieldRow('Address');
   const link = within(row).getByText(/Springfield, IL/);
   expect(link.closest('a')).toHaveAttribute(
     'href',
-    'https://maps.google.com/?q=' + encodeURIComponent('Springfield, IL')
+    `https://maps.google.com/?q=${encodeURIComponent('Springfield, IL')}`,
   );
   expect(within(row).getByLabelText(/^Copy Address /)).toBeInTheDocument();
 });
 
 test('an address with coordinates links to the geo: URI directly', () => {
   renderInformation({
-    addresses: [{ components: [{ kind: 'locality', value: 'Springfield' }], coordinates: 'geo:39.78,-89.65' }],
+    addresses: [
+      { components: [{ kind: 'locality', value: 'Springfield' }], coordinates: 'geo:39.78,-89.65' },
+    ],
   });
   const row = fieldRow('Address');
   const link = within(row).getByText(/Springfield/);
@@ -266,7 +293,7 @@ test('a raw link (Card.Links) is directly tappable, plus a copy action', () => {
   renderInformation(
     { links: [{ uri: 'https://example.com/profile', contexts: ['home'] }] },
     {},
-    { enabledFields: new Set<ContactFieldKey>(['links']) }
+    { enabledFields: new Set<ContactFieldKey>(['links']) },
   );
   const row = fieldRow('Websites');
   const link = within(row).getByText(/https:\/\/example\.com\/profile/);
@@ -278,7 +305,7 @@ test('a social profile with no resolvable link renders as text with a copy actio
   renderInformation(
     { socialProfiles: [{ service: 'SomeUnknownService', user: 'alice' }] },
     {},
-    { enabledFields: new Set<ContactFieldKey>(['socialProfiles']) }
+    { enabledFields: new Set<ContactFieldKey>(['socialProfiles']) },
   );
   const row = fieldRow('Social Profiles');
   const text = within(row).getByText(/SomeUnknownService: alice/);
@@ -293,14 +320,20 @@ test('a social profile with no resolvable link renders as text with a copy actio
 test('a social profile resolves through the LinkFieldType registry to a working link', async () => {
   vi.mocked(getLinkFieldTypes).mockResolvedValue([
     {
-      id: 'whatsapp-id', name: 'WhatsApp', protocol: 'https://wa.me/{value}', category: 'messaging',
-      is_default: true, position: 0, created_at: '', updated_at: '',
+      id: 'whatsapp-id',
+      name: 'WhatsApp',
+      protocol: 'https://wa.me/{value}',
+      category: 'messaging',
+      is_default: true,
+      position: 0,
+      created_at: '',
+      updated_at: '',
     },
   ]);
   renderInformation(
     { socialProfiles: [{ service: 'WhatsApp', user: '15551234567' }] },
     {},
-    { enabledFields: new Set<ContactFieldKey>(['socialProfiles']) }
+    { enabledFields: new Set<ContactFieldKey>(['socialProfiles']) },
   );
   expect(getLinkFieldTypes).toHaveBeenCalled();
   const row = fieldRow('Social Profiles');
@@ -331,7 +364,7 @@ test('an IMPP entry with a full URI links directly and is copyable', async () =>
   renderInformation(
     { imppAddresses: [{ service: 'WhatsApp', uri: 'xmpp:alice@example.com' }] },
     {},
-    { enabledFields: new Set<ContactFieldKey>(['imppAddresses']) }
+    { enabledFields: new Set<ContactFieldKey>(['imppAddresses']) },
   );
   const row = fieldRow('Instant Messaging');
   const link = within(row).getByText(/xmpp:alice@example\.com/);
@@ -347,7 +380,7 @@ test('the IMPP editor is OnlineServiceEditor (uriOnly) and preserves a pre-exist
   const { onUpdateCard } = renderInformation(
     { imppAddresses: [{ uri: 'xmpp:alice@example.com' }] },
     {},
-    { enabledFields: new Set<ContactFieldKey>(['imppAddresses']) }
+    { enabledFields: new Set<ContactFieldKey>(['imppAddresses']) },
   );
   const row = fieldRow('Instant Messaging');
   fireEvent.click(within(row).getByLabelText('Edit'));
@@ -365,14 +398,21 @@ test('the IMPP editor is OnlineServiceEditor (uriOnly) and preserves a pre-exist
 test('the Social Profiles editor offers the registry as service Autocomplete options with icons', async () => {
   vi.mocked(getLinkFieldTypes).mockResolvedValue([
     {
-      id: 'instagram-id', name: 'Instagram', protocol: 'https://instagram.com/{value}', category: 'social',
-      is_default: true, position: 0, created_at: '', updated_at: '', icon: 'mdiInstagram',
+      id: 'instagram-id',
+      name: 'Instagram',
+      protocol: 'https://instagram.com/{value}',
+      category: 'social',
+      is_default: true,
+      position: 0,
+      created_at: '',
+      updated_at: '',
+      icon: 'mdiInstagram',
     },
   ]);
   renderInformation(
     { socialProfiles: [{ uri: 'https://instagram.com/janedoe' }] },
     {},
-    { enabledFields: new Set<ContactFieldKey>(['socialProfiles']) }
+    { enabledFields: new Set<ContactFieldKey>(['socialProfiles']) },
   );
   const row = fieldRow('Social Profiles');
   fireEvent.click(within(row).getByLabelText('Edit'));
@@ -388,7 +428,9 @@ test('the Social Profiles editor offers the registry as service Autocomplete opt
 // --- T34 regression: adding action buttons must not change the save round trip ---
 
 test('editing and saving a phone unchanged still round-trips through the same adapter shape', async () => {
-  const { onUpdateCard } = renderInformation({ phones: [{ number: '+15551234567', features: ['cell'] }] });
+  const { onUpdateCard } = renderInformation({
+    phones: [{ number: '+15551234567', features: ['cell'] }],
+  });
   const row = fieldRow('Phone');
   fireEvent.click(within(row).getByLabelText('Edit'));
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -397,7 +439,15 @@ test('editing and saving a phone unchanged still round-trips through the same ad
   // the pre-existing cardPhonesToValues/valuesToCardPhones round trip --
   // unrelated to T34's display changes, just the adapter's own behavior.
   expect(onUpdateCard).toHaveBeenCalledWith({
-    phones: [{ number: '+15551234567', features: ['cell'], contexts: ['cell'], pref: undefined, label: undefined }],
+    phones: [
+      {
+        number: '+15551234567',
+        features: ['cell'],
+        contexts: ['cell'],
+        pref: undefined,
+        label: undefined,
+      },
+    ],
   });
 });
 
@@ -408,7 +458,7 @@ test('anniversary rows render in the selected date format (not YYYY-MM-DD)', () 
   renderInformation(
     { anniversaries: [{ kind: 'wedding', date: { partial: { year: 2015, month: 6, day: 1 } } }] },
     {},
-    { enabledFields: new Set<ContactFieldKey>(['anniversaries']) }
+    { enabledFields: new Set<ContactFieldKey>(['anniversaries']) },
   );
   expect(screen.getByText(/01\.06\.2015/)).toBeInTheDocument();
   expect(screen.queryByText(/2015-06-01/)).toBeNull();
@@ -419,7 +469,7 @@ test('anniversary rows honor a US (MM/DD/YYYY) date format', () => {
   renderInformation(
     { anniversaries: [{ kind: 'wedding', date: { partial: { year: 2015, month: 6, day: 1 } } }] },
     {},
-    { enabledFields: new Set<ContactFieldKey>(['anniversaries']) }
+    { enabledFields: new Set<ContactFieldKey>(['anniversaries']) },
   );
   expect(screen.getByText(/06\/01\/2015/)).toBeInTheDocument();
   expect(screen.queryByText(/2015-06-01/)).toBeNull();
@@ -563,7 +613,7 @@ test('card notes and work information stay full-span (T88)', () => {
   renderInformation(
     { notes: [{ note: 'Loves hiking' }] },
     { work_information: 'Remote, PST hours' },
-    { enabledFields: new Set<ContactFieldKey>(['cardNotes', 'work_information']) }
+    { enabledFields: new Set<ContactFieldKey>(['cardNotes', 'work_information']) },
   );
   const classes = fullSpanClassNames(allStyles());
 

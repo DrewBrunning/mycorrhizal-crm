@@ -1,7 +1,7 @@
-import { useState, ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Box, Stack, Typography, IconButton, Button } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
+import { Box, Button, IconButton, Stack, Typography } from '@mui/material';
+import { type ReactNode, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface EditableArrayFieldProps<T> {
   icon: ReactNode;
@@ -95,7 +95,11 @@ export default function EditableArrayField<T>({
             Name and Circles/Tags, T89) instead of at the far right of the
             row -- see EditableField.tsx's matching comment. */}
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontFamily: '"IBM Plex Mono", monospace' }}
+          >
             {label}
           </Typography>
           <IconButton

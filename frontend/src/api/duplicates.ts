@@ -3,8 +3,8 @@
 // Mirrors backend/models/duplicate.go's DTOs by hand -- no dynamic schema
 // endpoint exists anywhere in this codebase, so this must be kept in sync
 // manually if the backend shape changes.
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
-import { Contact, ContactSummaryDTO, summaryToLegacyContact } from './contacts';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
+import { type Contact, type ContactSummaryDTO, summaryToLegacyContact } from './contacts';
 
 export type DuplicateReason = 'email' | 'name' | 'phone';
 
@@ -34,7 +34,9 @@ interface DuplicatePairDTO {
 }
 
 // getDuplicatePairs runs the scan. Already-dismissed pairs never come back.
-export async function getDuplicatePairs(params: { page?: number; limit?: number } = {}): Promise<DuplicatePairsResponse> {
+export async function getDuplicatePairs(
+  params: { page?: number; limit?: number } = {},
+): Promise<DuplicatePairsResponse> {
   const queryParams = new URLSearchParams({
     page: (params.page ?? 1).toString(),
     limit: (params.limit ?? 50).toString(),
@@ -44,7 +46,8 @@ export async function getDuplicatePairs(params: { page?: number; limit?: number 
   });
   if (!response.ok) throw await parseErrorResponse(response);
 
-  const data: { pairs: DuplicatePairDTO[]; total: number; page: number; limit: number } = await response.json();
+  const data: { pairs: DuplicatePairDTO[]; total: number; page: number; limit: number } =
+    await response.json();
   return {
     pairs: (data.pairs || []).map((p) => ({
       a: summaryToLegacyContact(p.a),

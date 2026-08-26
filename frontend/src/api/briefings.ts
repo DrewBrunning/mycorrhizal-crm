@@ -4,13 +4,14 @@
 // server-side from existing data (activities, notes, cadence health, agenda
 // items, relationship edges, life events, reminders, upcoming dates). Every
 // block degrades to empty when its source is absent.
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
-import { RelationshipEdge } from './relationshipEdges';
-import { LifeEvent } from './lifeEvents';
-import { ConversationAgenda } from './conversationAgenda';
-import { Note } from './notes';
-import { Reminder } from './reminders';
-import { CadencePolicy } from './cadencePolicies';
+
+import type { CadencePolicy } from './cadencePolicies';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
+import type { ConversationAgenda } from './conversationAgenda';
+import type { LifeEvent } from './lifeEvents';
+import type { Note } from './notes';
+import type { RelationshipEdge } from './relationshipEdges';
+import type { Reminder } from './reminders';
 
 // Mirrors backend/services/cadence_service.go's CadenceHealth + the briefing's
 // BriefingCadenceHealth wire shape.
@@ -77,10 +78,9 @@ export interface ContactBriefing {
 // for any contact with no history — i.e. every newly-created contact — and the
 // page crashed into its ErrorBoundary on first use.
 export async function getContactBriefing(id: string | number): Promise<ContactBriefing> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/contacts/${id}/briefing`,
-    { headers: getAuthHeaders() }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/contacts/${id}/briefing`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   const raw = await response.json();
   return {

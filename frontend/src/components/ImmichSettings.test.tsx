@@ -1,11 +1,14 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import ImmichSettings from './ImmichSettings';
 import { SnackbarProvider } from '../context/SnackbarContext';
+import ImmichSettings from './ImmichSettings';
 
 beforeEach(() => {
-  localStorage.setItem('user_info', JSON.stringify({ user_id: 1, username: 'test', is_admin: false }));
+  localStorage.setItem(
+    'user_info',
+    JSON.stringify({ user_id: 1, username: 'test', is_admin: false }),
+  );
 });
 
 afterEach(() => {
@@ -24,17 +27,25 @@ function mockFetchByUrl(handlers: Record<string, (init?: RequestInit) => unknown
         }
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
 }
 
 test('renders the connect form when nothing is configured', async () => {
-  mockFetchByUrl({ '/immich/config': () => ({ base_url: '', has_api_key: false, sync_enabled: true, last_sync_status: '', last_sync_error: '' }) });
+  mockFetchByUrl({
+    '/immich/config': () => ({
+      base_url: '',
+      has_api_key: false,
+      sync_enabled: true,
+      last_sync_status: '',
+      last_sync_error: '',
+    }),
+  });
 
   render(
     <SnackbarProvider>
       <ImmichSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   await waitFor(() => {
@@ -49,16 +60,28 @@ test('saving posts the base URL and API key, and the key never comes back', asyn
     '/immich/config': (init?: RequestInit) => {
       if (init && init.method === 'PUT') {
         putBody = JSON.parse(String(init.body));
-        return { base_url: 'http://immich:2283', has_api_key: true, sync_enabled: true, last_sync_status: '', last_sync_error: '' };
+        return {
+          base_url: 'http://immich:2283',
+          has_api_key: true,
+          sync_enabled: true,
+          last_sync_status: '',
+          last_sync_error: '',
+        };
       }
-      return { base_url: '', has_api_key: false, sync_enabled: true, last_sync_status: '', last_sync_error: '' };
+      return {
+        base_url: '',
+        has_api_key: false,
+        sync_enabled: true,
+        last_sync_status: '',
+        last_sync_error: '',
+      };
     },
   });
 
   render(
     <SnackbarProvider>
       <ImmichSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   await waitFor(() => expect(screen.getByLabelText('Base URL')).toBeInTheDocument());
@@ -80,14 +103,20 @@ test('a non-http(s) base URL is rejected client-side without sending a request (
       if (init && init.method === 'PUT') {
         putBody = JSON.parse(String(init.body));
       }
-      return { base_url: '', has_api_key: false, sync_enabled: true, last_sync_status: '', last_sync_error: '' };
+      return {
+        base_url: '',
+        has_api_key: false,
+        sync_enabled: true,
+        last_sync_status: '',
+        last_sync_error: '',
+      };
     },
   });
 
   render(
     <SnackbarProvider>
       <ImmichSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   await waitFor(() => expect(screen.getByLabelText('Base URL')).toBeInTheDocument());
@@ -103,13 +132,19 @@ test('a non-http(s) base URL is rejected client-side without sending a request (
 
 test('a configured connection shows the sync toggle and remove button', async () => {
   mockFetchByUrl({
-    '/immich/config': () => ({ base_url: 'http://immich:2283', has_api_key: true, sync_enabled: true, last_sync_status: 'success', last_sync_error: '' }),
+    '/immich/config': () => ({
+      base_url: 'http://immich:2283',
+      has_api_key: true,
+      sync_enabled: true,
+      last_sync_status: 'success',
+      last_sync_error: '',
+    }),
   });
 
   render(
     <SnackbarProvider>
       <ImmichSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   await waitFor(() => {
@@ -122,17 +157,29 @@ test('a configured connection shows the sync toggle and remove button', async ()
 
 test('test connection shows the backend-diagnosed success message', async () => {
   mockFetchByUrl({
-    '/immich/config': () => ({ base_url: 'http://immich:2283', has_api_key: true, sync_enabled: true, last_sync_status: '', last_sync_error: '' }),
-    '/immich/test-connection': () => ({ ok: true, stage: 'ok', message: 'Connected to Immich as alice@example.com' }),
+    '/immich/config': () => ({
+      base_url: 'http://immich:2283',
+      has_api_key: true,
+      sync_enabled: true,
+      last_sync_status: '',
+      last_sync_error: '',
+    }),
+    '/immich/test-connection': () => ({
+      ok: true,
+      stage: 'ok',
+      message: 'Connected to Immich as alice@example.com',
+    }),
   });
 
   render(
     <SnackbarProvider>
       <ImmichSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Test connection' })).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Test connection' })).toBeInTheDocument(),
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Test connection' }));
 
   await waitFor(() => {
@@ -142,17 +189,29 @@ test('test connection shows the backend-diagnosed success message', async () => 
 
 test('test connection shows the backend-diagnosed failure message, not a generic one', async () => {
   mockFetchByUrl({
-    '/immich/config': () => ({ base_url: 'http://immich:2283', has_api_key: true, sync_enabled: true, last_sync_status: '', last_sync_error: '' }),
-    '/immich/test-connection': () => ({ ok: false, stage: 'auth', message: 'Immich rejected the API key.' }),
+    '/immich/config': () => ({
+      base_url: 'http://immich:2283',
+      has_api_key: true,
+      sync_enabled: true,
+      last_sync_status: '',
+      last_sync_error: '',
+    }),
+    '/immich/test-connection': () => ({
+      ok: false,
+      stage: 'auth',
+      message: 'Immich rejected the API key.',
+    }),
   });
 
   render(
     <SnackbarProvider>
       <ImmichSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Test connection' })).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Test connection' })).toBeInTheDocument(),
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Test connection' }));
 
   await waitFor(() => {

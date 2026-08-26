@@ -1,6 +1,6 @@
 // Preference API calls -- T20a (T20a,
 // docs/adrs/0001-neutral-hub-and-spoke-contact-model.md).
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 // Mirrors backend/models/preference.go's conventional (open) category set.
 //
@@ -23,7 +23,13 @@ import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './cl
 // see GIFTS_TAB_SECTIONS below. hobby gets its own section (rather than
 // folding into giftPreferences) specifically so it stays in Preferences: an
 // activity is as much a conversational fact as a gift idea.
-export type PreferenceSection = 'foodDrink' | 'media' | 'hobby' | 'jewelry' | 'giftPreferences' | 'giftAvoid';
+export type PreferenceSection =
+  | 'foodDrink'
+  | 'media'
+  | 'hobby'
+  | 'jewelry'
+  | 'giftPreferences'
+  | 'giftAvoid';
 export type PreferenceKeyMode = 'disposition' | 'freeSolo';
 
 // Sections whose categories surface in the Gifts tab (alongside clothing
@@ -49,36 +55,131 @@ export const PREFERENCE_CATEGORY_CONFIG: PreferenceCategoryConfig[] = [
   // Food & Drink — presented as one merged section in the UI, but kept as
   // two DB categories so food-vs-drink stays separately filterable/exportable
   // (the CSV export's "Food Preference" column reads category=food only).
-  { category: 'food', section: 'foodDrink', keyMode: 'disposition', keySuggestions: ['favorite', 'dislike', 'allergy'] },
-  { category: 'drink', section: 'foodDrink', keyMode: 'disposition', keySuggestions: ['favorite', 'dislike', 'allergy'] },
+  {
+    category: 'food',
+    section: 'foodDrink',
+    keyMode: 'disposition',
+    keySuggestions: ['favorite', 'dislike', 'allergy'],
+  },
+  {
+    category: 'drink',
+    section: 'foodDrink',
+    keyMode: 'disposition',
+    keySuggestions: ['favorite', 'dislike', 'allergy'],
+  },
 
   // Media — medium (and, for music/books, facet) lives in the category.
-  { category: 'media_movie', section: 'media', keyMode: 'disposition', keySuggestions: DISPOSITION },
+  {
+    category: 'media_movie',
+    section: 'media',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION,
+  },
   { category: 'media_tv', section: 'media', keyMode: 'disposition', keySuggestions: DISPOSITION },
   { category: 'media_game', section: 'media', keyMode: 'disposition', keySuggestions: DISPOSITION },
-  { category: 'media_podcast', section: 'media', keyMode: 'disposition', keySuggestions: DISPOSITION },
-  { category: 'media_music_artist', section: 'media', keyMode: 'disposition', keySuggestions: DISPOSITION },
-  { category: 'media_music_album', section: 'media', keyMode: 'disposition', keySuggestions: DISPOSITION },
-  { category: 'media_music_genre', section: 'media', keyMode: 'disposition', keySuggestions: DISPOSITION },
-  { category: 'media_music_song', section: 'media', keyMode: 'disposition', keySuggestions: DISPOSITION },
-  { category: 'media_book_author', section: 'media', keyMode: 'disposition', keySuggestions: DISPOSITION },
-  { category: 'media_book_series', section: 'media', keyMode: 'disposition', keySuggestions: DISPOSITION },
-  { category: 'media_book_title', section: 'media', keyMode: 'disposition', keySuggestions: DISPOSITION },
+  {
+    category: 'media_podcast',
+    section: 'media',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION,
+  },
+  {
+    category: 'media_music_artist',
+    section: 'media',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION,
+  },
+  {
+    category: 'media_music_album',
+    section: 'media',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION,
+  },
+  {
+    category: 'media_music_genre',
+    section: 'media',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION,
+  },
+  {
+    category: 'media_music_song',
+    section: 'media',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION,
+  },
+  {
+    category: 'media_book_author',
+    section: 'media',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION,
+  },
+  {
+    category: 'media_book_series',
+    section: 'media',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION,
+  },
+  {
+    category: 'media_book_title',
+    section: 'media',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION,
+  },
 
   // Jewelry & Style — aspect (metal/stone/style/type) lives in the category.
-  { category: 'jewelry_metal', section: 'jewelry', keyMode: 'disposition', keySuggestions: DISPOSITION_WITH_ALLERGY },
-  { category: 'jewelry_stone', section: 'jewelry', keyMode: 'disposition', keySuggestions: DISPOSITION },
-  { category: 'jewelry_style', section: 'jewelry', keyMode: 'disposition', keySuggestions: DISPOSITION },
-  { category: 'jewelry_type', section: 'jewelry', keyMode: 'disposition', keySuggestions: DISPOSITION },
+  {
+    category: 'jewelry_metal',
+    section: 'jewelry',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION_WITH_ALLERGY,
+  },
+  {
+    category: 'jewelry_stone',
+    section: 'jewelry',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION,
+  },
+  {
+    category: 'jewelry_style',
+    section: 'jewelry',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION,
+  },
+  {
+    category: 'jewelry_type',
+    section: 'jewelry',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION,
+  },
 
   // Activities & Hobbies — a "get to know them" fact, stays in Preferences.
   { category: 'hobby', section: 'hobby', keyMode: 'disposition', keySuggestions: DISPOSITION },
 
   // Gift Preferences — single-facet "tastes", each its own category chip.
-  { category: 'flowers', section: 'giftPreferences', keyMode: 'disposition', keySuggestions: DISPOSITION_WITH_ALLERGY },
-  { category: 'color', section: 'giftPreferences', keyMode: 'disposition', keySuggestions: DISPOSITION },
-  { category: 'fragrance', section: 'giftPreferences', keyMode: 'disposition', keySuggestions: DISPOSITION_WITH_ALLERGY },
-  { category: 'cause', section: 'giftPreferences', keyMode: 'disposition', keySuggestions: ['favorite', 'like'] },
+  {
+    category: 'flowers',
+    section: 'giftPreferences',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION_WITH_ALLERGY,
+  },
+  {
+    category: 'color',
+    section: 'giftPreferences',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION,
+  },
+  {
+    category: 'fragrance',
+    section: 'giftPreferences',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION_WITH_ALLERGY,
+  },
+  {
+    category: 'cause',
+    section: 'giftPreferences',
+    keyMode: 'disposition',
+    keySuggestions: ['favorite', 'like'],
+  },
 
   // Gift Avoid — general, non-domain-specific avoidance notes.
   { category: 'dislike', section: 'giftAvoid', keyMode: 'freeSolo', keySuggestions: [] },
@@ -115,8 +216,18 @@ export function isGiftsTabCategory(category: string): boolean {
 // taste, so favorite/dislike don't apply.
 export const PREFERENCE_CLOTHING_SIZE = 'clothing_size';
 export const CLOTHING_TYPE_SUGGESTIONS = [
-  'shirt', 'pants', 'dress', 'skirt', 'undergarments', 'outerwear',
-  'shoe', 'hat', 'glove', 'belt', 'ring', 'socks',
+  'shirt',
+  'pants',
+  'dress',
+  'skirt',
+  'undergarments',
+  'outerwear',
+  'shoe',
+  'hat',
+  'glove',
+  'belt',
+  'ring',
+  'socks',
 ];
 
 // Mirrors backend/models/preference.go's closed Source set .
@@ -169,10 +280,9 @@ export async function getPreferences(params?: {
   const queryParams = new URLSearchParams({ limit: limit.toString() });
   if (entityId) queryParams.append('entity_id', entityId);
   if (cursor) queryParams.append('cursor', cursor);
-  const response = await apiFetch(
-    `${API_BASE_URL}/preferences?${queryParams.toString()}`,
-    { headers: getAuthHeaders() }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/preferences?${queryParams.toString()}`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }

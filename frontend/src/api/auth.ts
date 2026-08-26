@@ -1,4 +1,4 @@
-import { apiFetch, API_BASE_URL, getAuthHeaders } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders } from './client';
 import { handleResponse } from './errorHandling';
 
 export async function requestPasswordReset(email: string): Promise<string> {
@@ -27,7 +27,10 @@ export async function confirmPasswordReset(token: string, password: string): Pro
   return data?.message || 'Password reset successful.';
 }
 
-export async function changePassword(currentPassword: string, newPassword: string): Promise<string> {
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<string> {
   const response = await apiFetch(`${API_BASE_URL}/users/change-password`, {
     method: 'POST',
     headers: getAuthHeaders(),

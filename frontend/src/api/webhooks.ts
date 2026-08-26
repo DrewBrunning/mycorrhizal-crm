@@ -1,4 +1,4 @@
-import { apiFetch, API_BASE_URL, getAuthHeaders } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders } from './client';
 import { handleResponse } from './errorHandling';
 
 export interface Webhook {
@@ -48,7 +48,7 @@ export async function createWebhook(input: {
 
 export async function updateWebhook(
   id: number,
-  input: { name: string; url: string; events: string[]; is_active: boolean }
+  input: { name: string; url: string; events: string[]; is_active: boolean },
 ): Promise<Webhook> {
   const response = await apiFetch(`${API_BASE_URL}/webhooks/${id}`, {
     method: 'PUT',
@@ -71,7 +71,9 @@ export async function testWebhook(id: number): Promise<{ delivery: WebhookDelive
     method: 'POST',
     headers: getAuthHeaders(),
   });
-  return handleResponse(response, 'Unable to test webhook.') as Promise<{ delivery: WebhookDelivery }>;
+  return handleResponse(response, 'Unable to test webhook.') as Promise<{
+    delivery: WebhookDelivery;
+  }>;
 }
 
 export async function getWebhookDeliveries(id: number): Promise<WebhookDelivery[]> {

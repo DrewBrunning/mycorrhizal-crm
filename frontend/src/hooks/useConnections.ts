@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { getConnections, GraphConnectionsResponse } from '../api/graph';
+import { useCallback, useState } from 'react';
+import { type GraphConnectionsResponse, getConnections } from '../api/graph';
 import { handleFetchError } from '../utils/errorHandler';
 
 // useConnections backs the contact page's multi-hop chain surface (T10): from
@@ -33,7 +33,7 @@ export function useConnections(fromUid: string | undefined) {
         setLoading(false);
       }
     },
-    [fromUid]
+    [fromUid],
   );
 
   return {

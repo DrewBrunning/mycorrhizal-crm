@@ -1,6 +1,6 @@
+import { Box, Divider, Stack, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { Box, Typography, Stack, Divider } from '@mui/material';
-import { Card, CardResource } from '../api/contacts';
+import type { Card, CardResource } from '../api/contacts';
 
 interface ImportedResourcesSectionProps {
   card: Card;
@@ -64,7 +64,12 @@ export default function ImportedResourcesSection({ card }: ImportedResourcesSect
             </Typography>
             <Stack>
               {(card[field] as CardResource[]).map((r, i) => (
-                <Typography key={i} variant="body2" sx={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                <Typography
+                  // biome-ignore lint/suspicious/noArrayIndexKey: resource values, no stable id
+                  key={i}
+                  variant="body2"
+                  sx={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+                >
                   {renderResource(r)}
                 </Typography>
               ))}

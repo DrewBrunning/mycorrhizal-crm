@@ -1,11 +1,14 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import NotificationSettings from './NotificationSettings';
 import { SnackbarProvider } from '../context/SnackbarContext';
+import NotificationSettings from './NotificationSettings';
 
 beforeEach(() => {
-  localStorage.setItem('user_info', JSON.stringify({ user_id: 1, username: 'test', is_admin: false }));
+  localStorage.setItem(
+    'user_info',
+    JSON.stringify({ user_id: 1, username: 'test', is_admin: false }),
+  );
 });
 
 afterEach(() => {
@@ -24,7 +27,7 @@ function mockFetchByUrl(handlers: Record<string, (init?: RequestInit) => unknown
         }
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
 }
 
@@ -49,7 +52,7 @@ test('renders the settings card with all three channels', async () => {
   render(
     <SnackbarProvider>
       <NotificationSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   await waitFor(() => expect(screen.getByText('Send reminders via ntfy')).toBeInTheDocument());
@@ -85,11 +88,13 @@ test('saving posts the channel config and per-user toggles', async () => {
   render(
     <SnackbarProvider>
       <NotificationSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   await waitFor(() => expect(screen.getByLabelText('ntfy server URL')).toBeInTheDocument());
-  fireEvent.change(screen.getByLabelText('ntfy server URL'), { target: { value: 'https://ntfy.example.com' } });
+  fireEvent.change(screen.getByLabelText('ntfy server URL'), {
+    target: { value: 'https://ntfy.example.com' },
+  });
   fireEvent.change(screen.getByLabelText('Topic'), { target: { value: 'alerts' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save notification settings' }));
 
@@ -112,13 +117,15 @@ test('warns about a private ntfy URL before it is saved', async () => {
   render(
     <SnackbarProvider>
       <NotificationSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   await waitFor(() => expect(screen.getByLabelText('ntfy server URL')).toBeInTheDocument());
   expect(screen.queryByText(/WEBHOOK_BLOCK_PRIVATE_URLS/)).not.toBeInTheDocument();
 
-  fireEvent.change(screen.getByLabelText('ntfy server URL'), { target: { value: 'http://localhost:8000' } });
+  fireEvent.change(screen.getByLabelText('ntfy server URL'), {
+    target: { value: 'http://localhost:8000' },
+  });
 
   await waitFor(() => {
     expect(screen.getByText(/WEBHOOK_BLOCK_PRIVATE_URLS/)).toBeInTheDocument();
@@ -151,20 +158,29 @@ test('test notification shows the backend-diagnosed success', async () => {
   render(
     <SnackbarProvider>
       <NotificationSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
-  await waitFor(() => expect(screen.getAllByRole('button', { name: 'Send test notification' })[0]).toBeInTheDocument());
+  await waitFor(() =>
+    expect(
+      screen.getAllByRole('button', { name: 'Send test notification' })[0],
+    ).toBeInTheDocument(),
+  );
   fireEvent.click(screen.getAllByRole('button', { name: 'Send test notification' })[0]);
 
   await waitFor(() => expect(testChannel).not.toBeNull());
   expect(testChannel).toBe('ntfy');
-  await waitFor(() => expect(screen.getByText(/Test notification sent via ntfy/)).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText(/Test notification sent via ntfy/)).toBeInTheDocument(),
+  );
 });
 
 test('test failure surfaces the backend reason, not a generic message', async () => {
   mockFetchByUrl({
-    '/notifications/config/test': () => ({ ok: false, error: 'unexpected status 401 from notification endpoint' }),
+    '/notifications/config/test': () => ({
+      ok: false,
+      error: 'unexpected status 401 from notification endpoint',
+    }),
     '/notifications/config': () => ({
       ntfy_url: 'https://ntfy.example.com',
       ntfy_topic: 'alerts',
@@ -182,14 +198,20 @@ test('test failure surfaces the backend reason, not a generic message', async ()
   render(
     <SnackbarProvider>
       <NotificationSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
-  await waitFor(() => expect(screen.getAllByRole('button', { name: 'Send test notification' })[0]).toBeInTheDocument());
+  await waitFor(() =>
+    expect(
+      screen.getAllByRole('button', { name: 'Send test notification' })[0],
+    ).toBeInTheDocument(),
+  );
   fireEvent.click(screen.getAllByRole('button', { name: 'Send test notification' })[0]);
 
   await waitFor(() => {
-    expect(screen.getByText(/unexpected status 401 from notification endpoint/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/unexpected status 401 from notification endpoint/),
+    ).toBeInTheDocument();
   });
 });
 
@@ -212,7 +234,14 @@ test('registered devices are listed and can be removed', async () => {
           ok: true,
           json: async () => ({
             subscriptions: [
-              { id: 7, endpoint: 'https://push.example.com/x', p256dh: 'k', auth: 'a', device_label: 'Chrome', created_at: '2026-01-01T00:00:00Z' },
+              {
+                id: 7,
+                endpoint: 'https://push.example.com/x',
+                p256dh: 'k',
+                auth: 'a',
+                device_label: 'Chrome',
+                created_at: '2026-01-01T00:00:00Z',
+              },
             ],
           }),
         };
@@ -221,7 +250,7 @@ test('registered devices are listed and can be removed', async () => {
         return { ok: true, json: async () => ({ devices: [] }) };
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
 
   const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -229,7 +258,7 @@ test('registered devices are listed and can be removed', async () => {
   render(
     <SnackbarProvider>
       <NotificationSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   await waitFor(() => expect(screen.getByText('Chrome')).toBeInTheDocument());
@@ -249,7 +278,7 @@ test('the push enable button is disabled when the browser lacks push support', a
   render(
     <SnackbarProvider>
       <NotificationSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   await waitFor(() => expect(screen.getByText('Enable browser notifications')).toBeInTheDocument());
@@ -268,7 +297,14 @@ test('registered mobile devices (M2) are listed, can be removed, and unblock the
       }
       return {
         devices: [
-          { id: 3, token: 'fcm-token-abc', client: 'fcm', device_label: "Drew's Pixel", created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' },
+          {
+            id: 3,
+            token: 'fcm-token-abc',
+            client: 'fcm',
+            device_label: "Drew's Pixel",
+            created_at: '2026-01-01T00:00:00Z',
+            updated_at: '2026-01-01T00:00:00Z',
+          },
         ],
       };
     },
@@ -276,20 +312,23 @@ test('registered mobile devices (M2) are listed, can be removed, and unblock the
   // The DELETE response body is never read; override fetch for that one case
   // so the id makes it out of the mock (mockFetchByUrl's json() is lazy).
   const realFetch = globalThis.fetch;
-  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
-    if (String(url).includes('/notifications/devices/') && init?.method === 'DELETE') {
-      deleteId = Number(String(url).split('/').pop());
-      return { ok: true, json: async () => ({}) };
-    }
-    return realFetch(url, init);
-  }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).includes('/notifications/devices/') && init?.method === 'DELETE') {
+        deleteId = Number(String(url).split('/').pop());
+        return { ok: true, json: async () => ({}) };
+      }
+      return realFetch(url, init);
+    }),
+  );
 
   const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
   render(
     <SnackbarProvider>
       <NotificationSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   await waitFor(() => expect(screen.getByText("Drew's Pixel")).toBeInTheDocument());

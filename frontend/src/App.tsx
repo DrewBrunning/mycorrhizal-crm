@@ -34,69 +34,79 @@
 // 6. Announcement channel. One polite live region, owned by
 //    context/AnnouncerContext, reachable via useAnnouncer() by any component
 //    that needs to announce a status change.
-import { useState, useEffect, Suspense, useMemo } from 'react';
-import ContactsPage from './ContactsPage';
-import ContactDetailPage from './ContactDetailPage';
-import PrepViewPage from './PrepViewPage';
-import ActivitiesPage from './ActivitiesPage';
-import NotesPage from './NotesPage';
-import DashboardPage from './DashboardPage';
-import SettingsPage from './SettingsPage';
-import NetworkPage from './NetworkPage';
-import UsersPage from './UsersPage';
-import CircleTagTriagePage from './CircleTagTriagePage';
-import DataSettingsPage from './DataSettingsPage';
-import HouseholdsPage from './HouseholdsPage';
-import CirclesTagsPage from './CirclesTagsPage';
-import ContactSharesPage from './ContactSharesPage';
-import AuditPage from './AuditPage';
-import LoginPage from './LoginPage';
-import RegisterPage from './RegisterPage';
-import { getToken, logoutAndRedirect, isAdmin, fetchAndCacheUserInfo } from './auth';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate, useSearchParams } from 'react-router';
-import { useTranslation } from 'react-i18next';
+
+import { mdiGraphOutline, mdiNotebookOutline } from '@mdi/js';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import ClearIcon from '@mui/icons-material/Clear';
+import ContactsIcon from '@mui/icons-material/Contacts';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import EventNoteIcon from '@mui/icons-material/EventNote';
+import GroupIcon from '@mui/icons-material/Group';
+import HistoryIcon from '@mui/icons-material/History';
+import HomeWorkIcon from '@mui/icons-material/HomeWork';
+import LogoutIcon from '@mui/icons-material/Logout';
+import MenuIcon from '@mui/icons-material/Menu';
+import PeopleIcon from '@mui/icons-material/People';
+import SearchIcon from '@mui/icons-material/Search';
+import SettingsIcon from '@mui/icons-material/Settings';
+import ShareIcon from '@mui/icons-material/Share';
+import StorageIcon from '@mui/icons-material/Storage';
 import {
   AppBar,
-  Toolbar,
-  IconButton,
-  Typography,
+  Autocomplete,
+  Box,
+  Button,
+  Divider,
   Drawer,
+  IconButton,
+  InputAdornment,
   List,
   ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Box,
-  Button,
   Menu,
   MenuItem,
-  Divider,
-  useTheme,
-  useMediaQuery,
+  SvgIcon,
   TextField,
-  Autocomplete,
-  InputAdornment,
-  SvgIcon
+  Toolbar,
+  Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
-import { mdiGraphOutline, mdiNotebookOutline } from '@mdi/js';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  Link,
+  Navigate,
+  Route,
+  BrowserRouter as Router,
+  Routes,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router';
+import ActivitiesPage from './ActivitiesPage';
+import AuditPage from './AuditPage';
+import { type Contact, getContacts } from './api/contacts';
+import { fetchAndCacheUserInfo, getToken, isAdmin, logoutAndRedirect } from './auth';
+import CirclesTagsPage from './CirclesTagsPage';
+import CircleTagTriagePage from './CircleTagTriagePage';
+import ContactDetailPage from './ContactDetailPage';
+import ContactSharesPage from './ContactSharesPage';
+import ContactsPage from './ContactsPage';
 import BrandLogo from './components/BrandLogo';
 import RouteLoadingFallback from './components/RouteLoadingFallback';
-import SearchIcon from '@mui/icons-material/Search';
-import ClearIcon from '@mui/icons-material/Clear';
-import { getContacts, Contact } from './api/contacts';
-import MenuIcon from '@mui/icons-material/Menu';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import ContactsIcon from '@mui/icons-material/Contacts';
-import EventNoteIcon from '@mui/icons-material/EventNote';
-import SettingsIcon from '@mui/icons-material/Settings';
-import PeopleIcon from '@mui/icons-material/People';
-import HomeWorkIcon from '@mui/icons-material/HomeWork';
-import GroupIcon from '@mui/icons-material/Group';
-import ShareIcon from '@mui/icons-material/Share';
-import StorageIcon from '@mui/icons-material/Storage';
-import HistoryIcon from '@mui/icons-material/History';
-import LogoutIcon from '@mui/icons-material/Logout';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import DashboardPage from './DashboardPage';
+import DataSettingsPage from './DataSettingsPage';
+import HouseholdsPage from './HouseholdsPage';
+import LoginPage from './LoginPage';
+import NetworkPage from './NetworkPage';
+import NotesPage from './NotesPage';
+import PrepViewPage from './PrepViewPage';
+import RegisterPage from './RegisterPage';
+import SettingsPage from './SettingsPage';
+import UsersPage from './UsersPage';
 import './App.css';
 
 // T98: 180 -> 256. The old 180 was tight enough that four of the five locales
@@ -140,7 +150,13 @@ function SearchRedirect() {
 }
 
 // Inner component that can use useLocation (must be inside Router)
-function AppContent({ token, setToken }: { token: string | null; setToken: (token: string | null) => void }) {
+function AppContent({
+  token,
+  setToken,
+}: {
+  token: string | null;
+  setToken: (token: string | null) => void;
+}) {
   const { t } = useTranslation();
   const theme = useTheme();
   const location = useLocation();
@@ -156,7 +172,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Contact[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  
+
   const handleDrawerToggle = () => {
     setMobileDrawerOpen(!mobileDrawerOpen);
   };
@@ -204,8 +220,24 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
       { text: t('nav.dashboard'), icon: <DashboardIcon />, path: '/' },
       { text: t('nav.contacts'), icon: <ContactsIcon />, path: '/contacts' },
       { text: t('nav.activities'), icon: <EventNoteIcon />, path: '/activities' },
-      { text: t('nav.notes'), icon: <SvgIcon><path d={mdiNotebookOutline} /></SvgIcon>, path: '/notes' },
-      { text: t('nav.network'), icon: <SvgIcon><path d={mdiGraphOutline} /></SvgIcon>, path: '/network' },
+      {
+        text: t('nav.notes'),
+        icon: (
+          <SvgIcon>
+            <path d={mdiNotebookOutline} />
+          </SvgIcon>
+        ),
+        path: '/notes',
+      },
+      {
+        text: t('nav.network'),
+        icon: (
+          <SvgIcon>
+            <path d={mdiGraphOutline} />
+          </SvgIcon>
+        ),
+        path: '/network',
+      },
       { text: t('nav.households'), icon: <HomeWorkIcon />, path: '/households' },
       { text: t('nav.circlesTags'), icon: <GroupIcon />, path: '/circles' },
       { text: t('nav.shares'), icon: <ShareIcon />, path: '/shares' },
@@ -229,11 +261,11 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
   //   everything else is secondary and lives in the hamburger drawer.
   const primaryNavItems = useMemo(
     () => mainNavItems.filter((item) => PRIMARY_NAV_PATHS.includes(item.path)),
-    [mainNavItems]
+    [mainNavItems],
   );
   const accountNavItems = useMemo(
     () => mainNavItems.filter((item) => ACCOUNT_NAV_PATHS.includes(item.path)),
-    [mainNavItems]
+    [mainNavItems],
   );
 
   const drawerContent = (
@@ -242,7 +274,10 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
       <nav aria-label={t('nav.mainLabel')}>
         <List>
           {mainNavItems.map((item) => {
-            const isSelected = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
+            const isSelected =
+              item.path === '/'
+                ? location.pathname === '/'
+                : location.pathname.startsWith(item.path);
             return (
               <ListItem key={item.text} disablePadding>
                 <ListItemButton
@@ -272,7 +307,11 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
                       than merely different. T63 set the family and no size. */}
                   <ListItemText
                     primary={item.text}
-                    slotProps={{ primary: { sx: { fontFamily: '"EB Garamond", serif', fontSize: '1.0625rem' } } }}
+                    slotProps={{
+                      primary: {
+                        sx: { fontFamily: '"EB Garamond", serif', fontSize: '1.0625rem' },
+                      },
+                    }}
                   />
                 </ListItemButton>
               </ListItem>
@@ -303,9 +342,13 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
         component="a"
         href="#main-content"
         sx={{
-          position: 'absolute', left: -9999, top: 0,
+          position: 'absolute',
+          left: -9999,
+          top: 0,
           zIndex: (theme) => theme.zIndex.drawer + 2,
-          p: 2, bgcolor: 'background.paper', color: 'text.primary',
+          p: 2,
+          bgcolor: 'background.paper',
+          color: 'text.primary',
           '&:focus': { left: 0 },
         }}
       >
@@ -314,25 +357,25 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
       <AppBar
         position="fixed"
         sx={{
-          zIndex: (theme) => theme.zIndex.drawer + 1
+          zIndex: (theme) => theme.zIndex.drawer + 1,
         }}
       >
         <Toolbar>
           {isMobile && (
-            <IconButton 
-              edge="start" 
-              color="inherit" 
-              aria-label="menu" 
-              onClick={handleDrawerToggle} 
+            <IconButton
+              edge="start"
+              color="inherit"
+              aria-label="menu"
+              onClick={handleDrawerToggle}
               sx={{ mr: 0.5 }}
             >
               <MenuIcon />
             </IconButton>
           )}
-          <Typography 
-            variant="h6" 
-            component={Link} 
-            to="/" 
+          <Typography
+            variant="h6"
+            component={Link}
+            to="/"
             onClick={() => {
               setSearchQuery('');
               setSearchResults([]);
@@ -344,7 +387,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
               color: 'inherit',
               fontFamily: '"EB Garamond", serif',
               fontWeight: 600,
-              '&:hover': { opacity: 0.8 }
+              '&:hover': { opacity: 0.8 },
             }}
           >
             {t('app.title')}
@@ -395,7 +438,9 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
                 ))}
                 <Divider sx={{ my: 0.5 }} />
                 <MenuItem onClick={handleLogout}>
-                  <ListItemIcon><LogoutIcon /></ListItemIcon>
+                  <ListItemIcon>
+                    <LogoutIcon />
+                  </ListItemIcon>
                   <ListItemText>{t('app.logout')}</ListItemText>
                 </MenuItem>
               </Menu>
@@ -403,111 +448,109 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
           ) : (
             <>
               <Autocomplete
-            freeSolo
-            size="small"
-            options={searchResults}
-            getOptionLabel={(option) => 
-              typeof option === 'string' 
-                ? option 
-                : `${option.firstname} ${option.lastname}`
-            }
-            loading={searchLoading}
-            onInputChange={(_, value) => setSearchQuery(value)}
-            onChange={(_, value) => {
-              if (value && typeof value !== 'string') {
-                navigate(`/contacts/${value.ID}`);
-                setSearchQuery('');
-                setSearchResults([]);
-              }
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                handleSearchSubmit();
-              }
-            }}
-            inputValue={searchQuery}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                placeholder={t('contacts.search')}
-                variant="outlined"
-                sx={{
-                  width: { xs: 150, sm: 200, md: 250 },
-                  mr: 2,
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                    '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.25)',
-                    },
-                    '& fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.3)',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.5)',
-                    },
-                    // #186: checked per the issue's own instruction --
-                    // rgba(255,255,255,0.7) on the mycelium AppBar (#3E543E)
-                    // computes to 5.04:1, clearing the 3:1 floor. Not short,
-                    // no change needed here.
-                    '&.Mui-focused fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.7)',
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    color: 'white',
-                  },
-                  '& .MuiInputBase-input::placeholder': {
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    opacity: 1,
-                  },
+                freeSolo
+                size="small"
+                options={searchResults}
+                getOptionLabel={(option) =>
+                  typeof option === 'string' ? option : `${option.firstname} ${option.lastname}`
+                }
+                loading={searchLoading}
+                onInputChange={(_, value) => setSearchQuery(value)}
+                onChange={(_, value) => {
+                  if (value && typeof value !== 'string') {
+                    navigate(`/contacts/${value.ID}`);
+                    setSearchQuery('');
+                    setSearchResults([]);
+                  }
                 }}
-                InputProps={{
-                  ...params.InputProps,
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <IconButton
-                        size="small"
-                        onClick={handleSearchSubmit}
-                        aria-label={t('app.submitSearch')}
-                        sx={{ color: 'rgba(255, 255, 255, 0.7)', p: 0.5 }}
-                      >
-                        <SearchIcon />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                  endAdornment: searchQuery ? (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => {
-                          setSearchQuery('');
-                          setSearchResults([]);
-                        }}
-                        aria-label={t('contacts.searchClear')}
-                        sx={{ color: 'rgba(255, 255, 255, 0.7)', p: 0.5 }}
-                      >
-                        <ClearIcon fontSize="small" />
-                      </IconButton>
-                    </InputAdornment>
-                  ) : null,
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    handleSearchSubmit();
+                  }
                 }}
+                inputValue={searchQuery}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder={t('contacts.search')}
+                    variant="outlined"
+                    sx={{
+                      width: { xs: 150, sm: 200, md: 250 },
+                      mr: 2,
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                        '&:hover': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.25)',
+                        },
+                        '& fieldset': {
+                          borderColor: 'rgba(255, 255, 255, 0.3)',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: 'rgba(255, 255, 255, 0.5)',
+                        },
+                        // #186: checked per the issue's own instruction --
+                        // rgba(255,255,255,0.7) on the mycelium AppBar (#3E543E)
+                        // computes to 5.04:1, clearing the 3:1 floor. Not short,
+                        // no change needed here.
+                        '&.Mui-focused fieldset': {
+                          borderColor: 'rgba(255, 255, 255, 0.7)',
+                        },
+                      },
+                      '& .MuiInputBase-input': {
+                        color: 'white',
+                      },
+                      '& .MuiInputBase-input::placeholder': {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        opacity: 1,
+                      },
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <IconButton
+                            size="small"
+                            onClick={handleSearchSubmit}
+                            aria-label={t('app.submitSearch')}
+                            sx={{ color: 'rgba(255, 255, 255, 0.7)', p: 0.5 }}
+                          >
+                            <SearchIcon />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                      endAdornment: searchQuery ? (
+                        <InputAdornment position="end">
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              setSearchQuery('');
+                              setSearchResults([]);
+                            }}
+                            aria-label={t('contacts.searchClear')}
+                            sx={{ color: 'rgba(255, 255, 255, 0.7)', p: 0.5 }}
+                          >
+                            <ClearIcon fontSize="small" />
+                          </IconButton>
+                        </InputAdornment>
+                      ) : null,
+                    }}
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <li {...props} key={option.ID}>
+                    <Box>
+                      <Typography variant="body1">
+                        {option.firstname} {option.lastname}
+                      </Typography>
+                      {option.email && (
+                        <Typography variant="caption" color="text.secondary">
+                          {option.email}
+                        </Typography>
+                      )}
+                    </Box>
+                  </li>
+                )}
               />
-            )}
-            renderOption={(props, option) => (
-              <li {...props} key={option.ID}>
-                <Box>
-                  <Typography variant="body1">
-                    {option.firstname} {option.lastname}
-                  </Typography>
-                  {option.email && (
-                    <Typography variant="caption" color="text.secondary">
-                      {option.email}
-                    </Typography>
-                  )}
-                </Box>
-              </li>
-            )}
-          />
               <Button color="inherit" startIcon={<LogoutIcon />} onClick={handleLogout}>
                 {t('app.logout')}
               </Button>
@@ -517,13 +560,13 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
       </AppBar>
 
       {/* Mobile drawer */}
-      <Drawer 
+      <Drawer
         variant="temporary"
-        open={mobileDrawerOpen} 
+        open={mobileDrawerOpen}
         onClose={handleDrawerToggle}
         sx={{
           display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth }
+          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
         }}
       >
         {drawerContent}
@@ -536,10 +579,10 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
           display: { xs: 'none', md: 'block' },
           width: drawerWidth,
           flexShrink: 0,
-          '& .MuiDrawer-paper': { 
-            width: drawerWidth, 
-            boxSizing: 'border-box' 
-          }
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            boxSizing: 'border-box',
+          },
         }}
       >
         {drawerContent}
@@ -561,28 +604,133 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
           // overflow (T32/T33).
           minWidth: 0,
           width: { md: `calc(100% - ${drawerWidth}px)` },
-          mt: 7
+          mt: 7,
         }}
       >
         <Routes>
-          <Route path="/contacts" element={<Suspense fallback={<RouteLoadingFallback />}><ContactsPage /></Suspense>} />
-          <Route path="/contacts/:id" element={<Suspense fallback={<RouteLoadingFallback />}><ContactDetailPage /></Suspense>} />
-          <Route path="/contacts/:id/prep" element={<Suspense fallback={<RouteLoadingFallback />}><PrepViewPage /></Suspense>} />
-          <Route path="/notes" element={<Suspense fallback={<RouteLoadingFallback />}><NotesPage /></Suspense>} />
-          <Route path="/activities" element={<Suspense fallback={<RouteLoadingFallback />}><ActivitiesPage /></Suspense>} />
-          <Route path="/settings" element={<Suspense fallback={<RouteLoadingFallback />}><SettingsPage /></Suspense>} />
-          <Route path="/settings/data" element={<Suspense fallback={<RouteLoadingFallback />}><DataSettingsPage /></Suspense>} />
-          <Route path="/network" element={<Suspense fallback={<RouteLoadingFallback />}><NetworkPage /></Suspense>} />
-          <Route path="/households" element={<Suspense fallback={<RouteLoadingFallback />}><HouseholdsPage /></Suspense>} />
-          <Route path="/circles" element={<Suspense fallback={<RouteLoadingFallback />}><CirclesTagsPage /></Suspense>} />
+          <Route
+            path="/contacts"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <ContactsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/contacts/:id"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <ContactDetailPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/contacts/:id/prep"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <PrepViewPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/notes"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <NotesPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/activities"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <ActivitiesPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <SettingsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/settings/data"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <DataSettingsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/network"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <NetworkPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/households"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <HouseholdsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/circles"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <CirclesTagsPage />
+              </Suspense>
+            }
+          />
           <Route path="/tags" element={<Navigate to="/circles?tab=tags" replace />} />
-          <Route path="/shares" element={<Suspense fallback={<RouteLoadingFallback />}><ContactSharesPage /></Suspense>} />
+          <Route
+            path="/shares"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <ContactSharesPage />
+              </Suspense>
+            }
+          />
           <Route path="/search" element={<SearchRedirect />} />
-          <Route path="/audit" element={<Suspense fallback={<RouteLoadingFallback />}><AuditPage /></Suspense>} />
-          <Route path="/users" element={<Suspense fallback={<RouteLoadingFallback />}><UsersPage /></Suspense>} />
+          <Route
+            path="/audit"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <AuditPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <UsersPage />
+              </Suspense>
+            }
+          />
           <Route path="/api-tokens" element={<Navigate to="/settings" replace />} />
-          <Route path="/circle-tag-triage" element={<Suspense fallback={<RouteLoadingFallback />}><CircleTagTriagePage /></Suspense>} />
-          <Route path="/" element={<Suspense fallback={<RouteLoadingFallback />}><DashboardPage /></Suspense>} />
+          <Route
+            path="/circle-tag-triage"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <CircleTagTriagePage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <DashboardPage />
+              </Suspense>
+            }
+          />
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="/register" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -599,7 +747,7 @@ function App() {
     // Restore session after OIDC redirect: the server sets the auth cookie but
     // localStorage is empty, so we fetch user info once to populate it.
     if (!getToken()) {
-      fetchAndCacheUserInfo().then(info => {
+      fetchAndCacheUserInfo().then((info) => {
         if (info) setToken(getToken());
       });
     }

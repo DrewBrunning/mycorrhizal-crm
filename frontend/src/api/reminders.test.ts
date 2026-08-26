@@ -1,17 +1,17 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  getUpcomingReminders,
-  getRemindersForContact,
-  createReminder,
-  updateReminder,
   completeReminder,
-  skipReminder,
+  createReminder,
+  deleteCompletion,
   deleteReminder,
   getCompletionsForContact,
-  deleteCompletion,
-  Reminder,
-  ReminderFormData,
-  ReminderCompletion,
+  getRemindersForContact,
+  getUpcomingReminders,
+  type Reminder,
+  type ReminderCompletion,
+  type ReminderFormData,
+  skipReminder,
+  updateReminder,
 } from './reminders';
 
 afterEach(() => {
@@ -146,7 +146,7 @@ describe('createReminder', () => {
         recurrence: 'once',
         reoccur_from_completion: false,
         contact_id: 5,
-      })
+      }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
   });
 });
@@ -199,7 +199,10 @@ describe('completeReminder', () => {
 
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
-    await expect(completeReminder(1)).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(completeReminder(1)).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -242,7 +245,10 @@ describe('deleteReminder', () => {
 
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
-    await expect(deleteReminder(1)).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(deleteReminder(1)).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 

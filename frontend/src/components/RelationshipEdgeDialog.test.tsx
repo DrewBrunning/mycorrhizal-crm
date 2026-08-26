@@ -1,12 +1,12 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import RelationshipEdgeDialog from './RelationshipEdgeDialog';
-import { RelationshipEdge } from '../api/relationshipEdges';
-import { Contact } from '../api/contacts';
+import type { Contact } from '../api/contacts';
+import type { RelationshipEdge } from '../api/relationshipEdges';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import { DateFormatProvider } from '../DateFormatProvider';
+import RelationshipEdgeDialog from './RelationshipEdgeDialog';
 
 afterEach(cleanup);
 
@@ -25,7 +25,7 @@ function renderDialog(props: Partial<React.ComponentProps<typeof RelationshipEdg
           <RelationshipEdgeDialog {...defaults} />
         </SnackbarProvider>
       </DateFormatProvider>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -57,7 +57,9 @@ test('edit mode renders the other party as read-only text, not an editable field
   // The manual-entry Name text field (from create mode) must not be present.
   expect(screen.queryByLabelText('Name')).not.toBeInTheDocument();
   // The entry-mode radio toggle (manual vs linked) is also create-mode only.
-  expect(screen.queryByText('How would you like to add this relationship?')).not.toBeInTheDocument();
+  expect(
+    screen.queryByText('How would you like to add this relationship?'),
+  ).not.toBeInTheDocument();
 });
 
 test('edit mode submits source_id/target_id verbatim, never source_thin/target_thin', async () => {

@@ -1,11 +1,14 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import TwoFactorSettings from './TwoFactorSettings';
 import { SnackbarProvider } from '../context/SnackbarContext';
+import TwoFactorSettings from './TwoFactorSettings';
 
 beforeEach(() => {
-  localStorage.setItem('user_info', JSON.stringify({ user_id: 1, username: 'test', is_admin: false }));
+  localStorage.setItem(
+    'user_info',
+    JSON.stringify({ user_id: 1, username: 'test', is_admin: false }),
+  );
 });
 
 afterEach(() => {
@@ -31,7 +34,7 @@ function mockFetchByUrl(handlers: Record<string, (init?: RequestInit) => MockRes
         }
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
 }
 
@@ -43,7 +46,7 @@ test('shows the enable button when 2FA is disabled', async () => {
   render(
     <SnackbarProvider>
       <TwoFactorSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   await waitFor(() => expect(screen.getByText('Two-factor authentication')).toBeInTheDocument());
@@ -53,14 +56,23 @@ test('shows the enable button when 2FA is disabled', async () => {
 test('runs the enrollment wizard: setup → QR/key → confirm → recovery codes', async () => {
   mockFetchByUrl({
     '/users/2fa/status': () => ({ enabled: false }),
-    '/users/2fa/setup': () => ({ secret: 'JBSWY3DPEHPK3PXP', otpauth_url: 'otpauth://totp/mycorrhizal:test?secret=JBSWY3DPEHPK3PXP' }),
+    '/users/2fa/setup': () => ({
+      secret: 'JBSWY3DPEHPK3PXP',
+      otpauth_url: 'otpauth://totp/mycorrhizal:test?secret=JBSWY3DPEHPK3PXP',
+    }),
     '/users/2fa/confirm': (init?: RequestInit) => {
       const body = JSON.parse(String(init?.body));
       // The backend rejects a wrong code; only a "valid" one enables 2FA.
       if (body.code !== '123456') {
         return {
           ok: false,
-          body: { error: { code: 'INVALID_INPUT', message: 'x', details: { reason: 'Invalid code. Please try again.' } } },
+          body: {
+            error: {
+              code: 'INVALID_INPUT',
+              message: 'x',
+              details: { reason: 'Invalid code. Please try again.' },
+            },
+          },
         };
       }
       return { body: { message: 'enabled', recovery_codes: tenCodes } };
@@ -70,7 +82,7 @@ test('runs the enrollment wizard: setup → QR/key → confirm → recovery code
   render(
     <SnackbarProvider>
       <TwoFactorSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   const enable = await screen.findByText('Enable two-factor authentication');
@@ -84,13 +96,17 @@ test('runs the enrollment wizard: setup → QR/key → confirm → recovery code
   // A wrong code shows an inline error inside the dialog.
   fireEvent.change(screen.getByLabelText('Verification code *'), { target: { value: '000000' } });
   fireEvent.click(screen.getByText('Enable and continue'));
-  await waitFor(() => expect(screen.getByText('Invalid code. Please try again.')).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText('Invalid code. Please try again.')).toBeInTheDocument(),
+  );
 
   // The correct code confirms and shows the one-time recovery codes.
   fireEvent.change(screen.getByLabelText('Verification code *'), { target: { value: '123456' } });
   fireEvent.click(screen.getByText('Enable and continue'));
 
-  await waitFor(() => expect(screen.getByText('Two-factor authentication enabled.')).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText('Two-factor authentication enabled.')).toBeInTheDocument(),
+  );
 
   // Recovery codes are shown exactly once.
   await waitFor(() => expect(screen.getByText('Recovery codes')).toBeInTheDocument());
@@ -107,10 +123,12 @@ test('shows the enabled state with disable and regenerate buttons', async () => 
   render(
     <SnackbarProvider>
       <TwoFactorSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
-  await waitFor(() => expect(screen.getByText(/Two-factor authentication is enabled/)).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText(/Two-factor authentication is enabled/)).toBeInTheDocument(),
+  );
   expect(screen.getByText('Disable')).toBeInTheDocument();
   expect(screen.getByText('Regenerate recovery codes')).toBeInTheDocument();
 });
@@ -128,7 +146,7 @@ test('disables 2FA after confirming with a code', async () => {
   render(
     <SnackbarProvider>
       <TwoFactorSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   fireEvent.click(await screen.findByText('Disable'));
@@ -137,8 +155,12 @@ test('disables 2FA after confirming with a code', async () => {
   fireEvent.change(screen.getByLabelText('Verification code *'), { target: { value: '123456' } });
   fireEvent.click(screen.getByText('Confirm'));
 
-  await waitFor(() => expect(screen.getByText('Two-factor authentication disabled.')).toBeInTheDocument());
-  await waitFor(() => expect(screen.getByText('Enable two-factor authentication')).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText('Two-factor authentication disabled.')).toBeInTheDocument(),
+  );
+  await waitFor(() =>
+    expect(screen.getByText('Enable two-factor authentication')).toBeInTheDocument(),
+  );
 });
 
 test('regenerates recovery codes after confirming with a code', async () => {
@@ -151,7 +173,7 @@ test('regenerates recovery codes after confirming with a code', async () => {
   render(
     <SnackbarProvider>
       <TwoFactorSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   fireEvent.click(await screen.findByText('Regenerate recovery codes'));

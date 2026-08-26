@@ -1,21 +1,21 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { type Contact, getContactsByUid } from '../api/contacts';
 import {
-  getRelationshipEdges,
-  createRelationshipEdge,
-  updateRelationshipEdge,
-  deleteRelationshipEdge,
   acceptRelationshipEdge,
-  rejectRelationshipEdge,
+  createRelationshipEdge,
+  deleteRelationshipEdge,
   getOtherPartyId,
-  RelationshipEdge,
-  RelationshipEdgeInput,
+  getRelationshipEdges,
+  type RelationshipEdge,
+  type RelationshipEdgeInput,
+  rejectRelationshipEdge,
+  updateRelationshipEdge,
 } from '../api/relationshipEdges';
-import { getContactsByUid, Contact } from '../api/contacts';
-import { handleFetchError, handleError, ErrorNotifier } from '../utils/errorHandler';
+import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
 export function useRelationshipEdges(
   viewedContactUid: string | undefined,
-  notifier?: ErrorNotifier
+  notifier?: ErrorNotifier,
 ) {
   const [edges, setEdges] = useState<RelationshipEdge[]>([]);
   const [contactsByUid, setContactsByUid] = useState<Map<string, Contact>>(new Map());
@@ -32,23 +32,26 @@ export function useRelationshipEdges(
   // still resolving) can pass the freshly-fetched uid directly instead of
   // this callback closing over an undefined value from the render that
   // instantiated it.
-  const refreshRelationshipEdges = useCallback(async (overrideUid?: string) => {
-    const uid = overrideUid ?? viewedContactUid;
-    if (!uid) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await getRelationshipEdges({ contactId: uid, limit: 100 });
-      const fetched = response.relationship_edges || [];
-      setEdges(fetched);
-      const otherUids = fetched.map((e) => getOtherPartyId(e, uid));
-      setContactsByUid(otherUids.length > 0 ? await getContactsByUid(otherUids) : new Map());
-    } catch (err) {
-      setError(handleFetchError(err, 'fetching relationship edges'));
-    } finally {
-      setLoading(false);
-    }
-  }, [viewedContactUid]);
+  const refreshRelationshipEdges = useCallback(
+    async (overrideUid?: string) => {
+      const uid = overrideUid ?? viewedContactUid;
+      if (!uid) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await getRelationshipEdges({ contactId: uid, limit: 100 });
+        const fetched = response.relationship_edges || [];
+        setEdges(fetched);
+        const otherUids = fetched.map((e) => getOtherPartyId(e, uid));
+        setContactsByUid(otherUids.length > 0 ? await getContactsByUid(otherUids) : new Map());
+      } catch (err) {
+        setError(handleFetchError(err, 'fetching relationship edges'));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [viewedContactUid],
+  );
 
   const handleSaveRelationshipEdge = async (input: RelationshipEdgeInput) => {
     try {

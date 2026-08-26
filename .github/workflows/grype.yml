@@ -1,0 +1,66 @@
+name: Vulnerability Scan (Grype)
+
+# Issue #578: Grype is the second-opinion CVE scanner — a deliberately
+# different DB and cataloging engine from Trivy (which already scans images
+# at release and the build tree on PRs). Two independent databases disagreeing
+# is a feature: a CVE both of them flag is almost certainly real.
+#
+# Tier 2 + Tier 3: push to main + nightly. Not a PR gate (redundant with
+# Trivy's PR-time coverage; the value here is the second DB, not the extra
+# latency on every diff). Scans the source tree (path: .) — the same tree the
+# Syft workflow (syft-sbom.yml) turns into an SBOM; Grype catalogs it directly
+# rather than depending on a cross-workflow artifact handoff.
+#
+# Gates on CRITICAL + HIGH only (severity-cutoff), SARIF goes to the Security
+# tab under the `grype` category. Accepted findings live in .grype.yml's
+# ignore section, the ignore-list-with-justification convention.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '40 3 * * *' # 03:40 UTC nightly
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  grype:
+    name: Scan dependencies (grype, critical/high)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # security-events: write — upload the SARIF to the Security tab.
+      security-events: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # grype-version pinned so a fresh DB/engine update can't silently change
+      # the gate mid-branch; Dependabot bumps the action SHA (and the pinned
+      # version with it).
+      - name: Run Grype -> SARIF
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        with:
+          path: '.'
+          severity-cutoff: 'critical,high'
+          fail-build: true
+          output-format: sarif
+          output-file: 'grype-results.sarif'
+          grype-version: 'v0.117.0'
+          # Accepted findings (with justification) in the ignore section of
+          # .grype.yml, same ignore-list-with-justification shape as
+          # .trivyignore. Empty to start.
+          config: '.grype.yml'
+
+      - name: Upload Grype results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        with:
+          sarif_file: 'grype-results.sarif'
+          category: 'grype'

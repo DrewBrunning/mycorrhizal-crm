@@ -1,4 +1,12 @@
-import { ReactNode, createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 // The supported date formats. Keys are persisted backend-side as the user's
 // `date_format` preference, so they are a stable contract shared with
@@ -6,28 +14,62 @@ import { ReactNode, createContext, useContext, useEffect, useMemo, useState, use
 // backend/openapi.yaml — if you add a key here, add it in all three (and in
 // the reminder-service email formatters in backend/services/reminder_service.go).
 export type DateFormat =
-  | "eu"        // DD.MM.YYYY
-  | "us"        // MM/DD/YYYY
-  | "iso"       // YYYY-MM-DD
-  | "ca"        // DD/MM/YYYY
-  | "eu-hyphen" // DD-MM-YYYY
-  | "us-mmm"    // MMM D, YYYY (en-US, abbreviated month)
-  | "us-mmmm"   // MMMM D, YYYY (en-US, full month)
-  | "eu-mmm"    // D MMM, YYYY
-  | "eu-mmmm";  // DD MMMM, YYYY
+  | 'eu' // DD.MM.YYYY
+  | 'us' // MM/DD/YYYY
+  | 'iso' // YYYY-MM-DD
+  | 'ca' // DD/MM/YYYY
+  | 'eu-hyphen' // DD-MM-YYYY
+  | 'us-mmm' // MMM D, YYYY (en-US, abbreviated month)
+  | 'us-mmmm' // MMMM D, YYYY (en-US, full month)
+  | 'eu-mmm' // D MMM, YYYY
+  | 'eu-mmmm'; // DD MMMM, YYYY
 
 // Frontend enum mirrors of the backend `oneof` validator — keep in sync by
 // hand (see /CLAUDE.md frontend trap #4).
 const SUPPORTED_DATE_FORMATS: DateFormat[] = [
-  "eu", "us", "iso", "ca", "eu-hyphen", "us-mmm", "us-mmmm", "eu-mmm", "eu-mmmm",
+  'eu',
+  'us',
+  'iso',
+  'ca',
+  'eu-hyphen',
+  'us-mmm',
+  'us-mmmm',
+  'eu-mmm',
+  'eu-mmmm',
 ];
 
 // Month names for the month-name display formats. English by design: these
 // formats are the en-US-style "mmm/mmmm" tokens the user asked for, and they
 // are a display preference independent of UI language. Input still uses the
 // numeric form (see parseBirthdayInputWithFormat) so typing stays digit-driven.
-const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTHS_SHORT = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+const MONTHS_LONG = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
 
 interface DateFormatContextValue {
   dateFormat: DateFormat;
@@ -45,11 +87,11 @@ interface DateFormatContextValue {
 
 const DateFormatContext = createContext<DateFormatContextValue | undefined>(undefined);
 
-const DATE_FORMAT_STORAGE_KEY = "dateFormat";
+const DATE_FORMAT_STORAGE_KEY = 'dateFormat';
 
 // Initialize date format from backend value (called on login)
 export function initializeDateFormatFromBackend(dateFormat: string | undefined): void {
-  if (typeof window === "undefined") {
+  if (typeof window === 'undefined') {
     return;
   }
   if (dateFormat && SUPPORTED_DATE_FORMATS.includes(dateFormat as DateFormat)) {
@@ -58,8 +100,8 @@ export function initializeDateFormatFromBackend(dateFormat: string | undefined):
 }
 
 const getStoredFormat = (): DateFormat => {
-  if (typeof window === "undefined") {
-    return "eu";
+  if (typeof window === 'undefined') {
+    return 'eu';
   }
 
   const storedValue = window.localStorage.getItem(DATE_FORMAT_STORAGE_KEY);
@@ -67,7 +109,7 @@ const getStoredFormat = (): DateFormat => {
     return storedValue as DateFormat;
   }
 
-  return "eu";
+  return 'eu';
 };
 
 /**
@@ -88,7 +130,7 @@ export function calculateAgeFromBirthday(birthday: string): number | null {
   const month = parseInt(parts[1], 10);
   const day = parseInt(parts[2], 10);
 
-  if (isNaN(day) || isNaN(month) || isNaN(birthYear)) {
+  if (Number.isNaN(day) || Number.isNaN(month) || Number.isNaN(birthYear)) {
     return null;
   }
 
@@ -113,23 +155,23 @@ function formatFullDate(year: string, month: string, day: string, format: DateFo
   const dayNum = parseInt(day, 10);
   const monthNum = parseInt(month, 10);
   switch (format) {
-    case "eu":
+    case 'eu':
       return `${day}.${month}.${year}`;
-    case "us":
+    case 'us':
       return `${month}/${day}/${year}`;
-    case "iso":
+    case 'iso':
       return `${year}-${month}-${day}`;
-    case "ca":
+    case 'ca':
       return `${day}/${month}/${year}`;
-    case "eu-hyphen":
+    case 'eu-hyphen':
       return `${day}-${month}-${year}`;
-    case "us-mmm":
+    case 'us-mmm':
       return `${MONTHS_SHORT[monthNum - 1]} ${dayNum}, ${year}`;
-    case "us-mmmm":
+    case 'us-mmmm':
       return `${MONTHS_LONG[monthNum - 1]} ${dayNum}, ${year}`;
-    case "eu-mmm":
+    case 'eu-mmm':
       return `${dayNum} ${MONTHS_SHORT[monthNum - 1]}, ${year}`;
-    case "eu-mmmm":
+    case 'eu-mmmm':
       return `${day} ${MONTHS_LONG[monthNum - 1]}, ${year}`;
   }
 }
@@ -140,23 +182,23 @@ function formatYearlessDate(month: string, day: string, format: DateFormat): str
   const dayNum = parseInt(day, 10);
   const monthNum = parseInt(month, 10);
   switch (format) {
-    case "eu":
+    case 'eu':
       return `${day}.${month}.`;
-    case "us":
+    case 'us':
       return `${month}/${day}`;
-    case "iso":
+    case 'iso':
       return `${month}-${day}`;
-    case "ca":
+    case 'ca':
       return `${day}/${month}`;
-    case "eu-hyphen":
+    case 'eu-hyphen':
       return `${day}-${month}`;
-    case "us-mmm":
+    case 'us-mmm':
       return `${MONTHS_SHORT[monthNum - 1]} ${dayNum}`;
-    case "us-mmmm":
+    case 'us-mmmm':
       return `${MONTHS_LONG[monthNum - 1]} ${dayNum}`;
-    case "eu-mmm":
+    case 'eu-mmm':
       return `${dayNum} ${MONTHS_SHORT[monthNum - 1]}`;
-    case "eu-mmmm":
+    case 'eu-mmmm':
       return `${day} ${MONTHS_LONG[monthNum - 1]}`;
   }
 }
@@ -168,7 +210,7 @@ export function formatDateWithFormat(dateString: string, format: DateFormat): st
   if (!dateString) return '';
 
   const date = new Date(dateString);
-  if (isNaN(date.getTime())) return dateString;
+  if (Number.isNaN(date.getTime())) return dateString;
 
   const day = String(date.getUTCDate()).padStart(2, '0');
   const month = String(date.getUTCMonth() + 1).padStart(2, '0');
@@ -181,7 +223,11 @@ export function formatDateWithFormat(dateString: string, format: DateFormat): st
  * Format a birthday (YYYY-MM-DD or --MM-DD) to the user's preferred display format
  * Optionally includes age calculation
  */
-export function formatBirthdayWithFormat(birthday: string, format: DateFormat, includeAge: boolean = false): string {
+export function formatBirthdayWithFormat(
+  birthday: string,
+  format: DateFormat,
+  includeAge: boolean = false,
+): string {
   if (!birthday) return '';
 
   // Check if it's a year-less birthday (starts with --)
@@ -204,7 +250,7 @@ export function formatBirthdayWithFormat(birthday: string, format: DateFormat, i
     // Calculate age if requested and year is valid
     if (includeAge && year && year.length === 4) {
       const birthYear = parseInt(year, 10);
-      if (!isNaN(birthYear)) {
+      if (!Number.isNaN(birthYear)) {
         const today = new Date();
         const birthDate = new Date(birthYear, parseInt(month, 10) - 1, parseInt(day, 10));
         let age = today.getFullYear() - birthYear;
@@ -231,20 +277,20 @@ export function formatBirthdayWithFormat(birthday: string, format: DateFormat, i
 // digits, the read display shows the pretty month-name form.
 function inputStyle(format: DateFormat): { sep: string; dayFirst: boolean } {
   switch (format) {
-    case "eu":
-    case "eu-mmm":
-    case "eu-mmmm":
-      return { sep: ".", dayFirst: true };
-    case "us":
-    case "us-mmm":
-    case "us-mmmm":
-      return { sep: "/", dayFirst: false };
-    case "ca":
-      return { sep: "/", dayFirst: true };
-    case "eu-hyphen":
-      return { sep: "-", dayFirst: true };
+    case 'eu':
+    case 'eu-mmm':
+    case 'eu-mmmm':
+      return { sep: '.', dayFirst: true };
+    case 'us':
+    case 'us-mmm':
+    case 'us-mmmm':
+      return { sep: '/', dayFirst: false };
+    case 'ca':
+      return { sep: '/', dayFirst: true };
+    case 'eu-hyphen':
+      return { sep: '-', dayFirst: true };
     default: // iso — year first, handled separately
-      return { sep: "-", dayFirst: false };
+      return { sep: '-', dayFirst: false };
   }
 }
 
@@ -254,10 +300,10 @@ function inputStyle(format: DateFormat): { sep: string; dayFirst: boolean } {
 export function formatBirthdayForInputWithFormat(birthday: string, format: DateFormat): string {
   if (!birthday) return '';
 
-  const isEuFamily = format === "eu" || format === "eu-mmm" || format === "eu-mmmm";
-  const isCa = format === "ca";
-  const isEuHyphen = format === "eu-hyphen";
-  const isIso = format === "iso";
+  const isEuFamily = format === 'eu' || format === 'eu-mmm' || format === 'eu-mmmm';
+  const isCa = format === 'ca';
+  const isEuHyphen = format === 'eu-hyphen';
+  const isIso = format === 'iso';
 
   // Check if it's a year-less birthday (starts with --)
   if (birthday.startsWith('--')) {
@@ -311,9 +357,9 @@ export function parseBirthdayInputWithFormat(input: string, format: DateFormat):
     return trimmed;
   }
 
-  const isEuFamily = format === "eu" || format === "eu-mmm" || format === "eu-mmmm";
-  const isCa = format === "ca";
-  const isEuHyphen = format === "eu-hyphen";
+  const isEuFamily = format === 'eu' || format === 'eu-mmm' || format === 'eu-mmmm';
+  const isCa = format === 'ca';
+  const isEuHyphen = format === 'eu-hyphen';
 
   if (isEuFamily) {
     // EU format: DD.MM.YYYY or DD.MM.
@@ -396,7 +442,11 @@ export function parseBirthdayInputWithFormat(input: string, format: DateFormat):
   return null;
 }
 
-export function autoFormatBirthdayInputWithFormat(newValue: string, prevValue: string, format: DateFormat): string {
+export function autoFormatBirthdayInputWithFormat(
+  newValue: string,
+  prevValue: string,
+  format: DateFormat,
+): string {
   const newDigits = newValue.replace(/[^0-9]/g, '');
   const prevDigits = prevValue.replace(/[^0-9]/g, '');
 
@@ -411,8 +461,10 @@ export function autoFormatBirthdayInputWithFormat(newValue: string, prevValue: s
       return newValue;
     }
     const formatted =
-      newDigits.slice(0, 4) + '-' + newDigits.slice(4, 6) +
-      (newDigits.length > 6 ? '-' + newDigits.slice(6, 8) : '');
+      newDigits.slice(0, 4) +
+      '-' +
+      newDigits.slice(4, 6) +
+      (newDigits.length > 6 ? `-${newDigits.slice(6, 8)}` : '');
     // Preserve a separator the user just typed after YYYY-MM.
     if (
       newDigits.length === 6 &&
@@ -420,7 +472,7 @@ export function autoFormatBirthdayInputWithFormat(newValue: string, prevValue: s
       newValue.length > prevValue.length &&
       /-$/.test(newValue)
     ) {
-      return formatted + '-';
+      return `${formatted}-`;
     }
     return formatted;
   }
@@ -455,7 +507,7 @@ export function DateFormatProvider({ children }: { children: ReactNode }) {
   const [dateFormat, setDateFormat] = useState<DateFormat>(() => getStoredFormat());
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (typeof window === 'undefined') {
       return;
     }
 
@@ -464,85 +516,83 @@ export function DateFormatProvider({ children }: { children: ReactNode }) {
 
   const formatDate = useCallback(
     (dateString: string) => formatDateWithFormat(dateString, dateFormat),
-    [dateFormat]
+    [dateFormat],
   );
 
   const formatBirthday = useCallback(
-    (birthday: string, includeAge: boolean = false) => formatBirthdayWithFormat(birthday, dateFormat, includeAge),
-    [dateFormat]
+    (birthday: string, includeAge: boolean = false) =>
+      formatBirthdayWithFormat(birthday, dateFormat, includeAge),
+    [dateFormat],
   );
 
   const formatBirthdayForInput = useCallback(
     (birthday: string) => formatBirthdayForInputWithFormat(birthday, dateFormat),
-    [dateFormat]
+    [dateFormat],
   );
 
   const parseBirthdayInput = useCallback(
     (input: string) => parseBirthdayInputWithFormat(input, dateFormat),
-    [dateFormat]
+    [dateFormat],
   );
 
   const autoFormatBirthdayInput = useCallback(
     (newValue: string, prevValue: string) =>
       autoFormatBirthdayInputWithFormat(newValue, prevValue, dateFormat),
-    [dateFormat]
+    [dateFormat],
   );
 
   const getBirthdayPlaceholder = useCallback(() => {
     switch (dateFormat) {
-      case "eu":
-      case "eu-mmm":
-      case "eu-mmmm":
-        return "DD.MM.YYYY";
-      case "iso":
-        return "YYYY-MM-DD";
-      case "ca":
-        return "DD/MM/YYYY";
-      case "eu-hyphen":
-        return "DD-MM-YYYY";
+      case 'eu':
+      case 'eu-mmm':
+      case 'eu-mmmm':
+        return 'DD.MM.YYYY';
+      case 'iso':
+        return 'YYYY-MM-DD';
+      case 'ca':
+        return 'DD/MM/YYYY';
+      case 'eu-hyphen':
+        return 'DD-MM-YYYY';
       default: // us, us-mmm, us-mmmm
-        return "MM/DD/YYYY";
+        return 'MM/DD/YYYY';
     }
   }, [dateFormat]);
 
   const getBirthdayFormatHint = useCallback(() => {
     switch (dateFormat) {
-      case "eu":
-      case "eu-mmm":
-      case "eu-mmmm":
-        return "DD.MM.YYYY (year optional, e.g., 30.04.1990 or 30.04.)";
-      case "iso":
-        return "YYYY-MM-DD (year optional, e.g., 1990-04-30 or --04-30 or 04-30)";
-      case "ca":
-        return "DD/MM/YYYY (year optional, e.g., 30/04/1990 or 30/04)";
-      case "eu-hyphen":
-        return "DD-MM-YYYY (year optional, e.g., 30-04-1990 or 30-04)";
+      case 'eu':
+      case 'eu-mmm':
+      case 'eu-mmmm':
+        return 'DD.MM.YYYY (year optional, e.g., 30.04.1990 or 30.04.)';
+      case 'iso':
+        return 'YYYY-MM-DD (year optional, e.g., 1990-04-30 or --04-30 or 04-30)';
+      case 'ca':
+        return 'DD/MM/YYYY (year optional, e.g., 30/04/1990 or 30/04)';
+      case 'eu-hyphen':
+        return 'DD-MM-YYYY (year optional, e.g., 30-04-1990 or 30-04)';
       default: // us, us-mmm, us-mmmm
-        return "MM/DD/YYYY (year optional, e.g., 04/30/1990 or 04/30)";
+        return 'MM/DD/YYYY (year optional, e.g., 04/30/1990 or 04/30)';
     }
   }, [dateFormat]);
 
   const getDatePlaceholder = useCallback(() => {
     switch (dateFormat) {
-      case "eu":
-      case "eu-mmm":
-      case "eu-mmmm":
-        return "DD.MM.YYYY";
-      case "iso":
-        return "YYYY-MM-DD";
-      case "ca":
-        return "DD/MM/YYYY";
-      case "eu-hyphen":
-        return "DD-MM-YYYY";
+      case 'eu':
+      case 'eu-mmm':
+      case 'eu-mmmm':
+        return 'DD.MM.YYYY';
+      case 'iso':
+        return 'YYYY-MM-DD';
+      case 'ca':
+        return 'DD/MM/YYYY';
+      case 'eu-hyphen':
+        return 'DD-MM-YYYY';
       default: // us, us-mmm, us-mmmm
-        return "MM/DD/YYYY";
+        return 'MM/DD/YYYY';
     }
   }, [dateFormat]);
 
-  const calculateAge = useCallback(
-    (birthday: string) => calculateAgeFromBirthday(birthday),
-    []
-  );
+  const calculateAge = useCallback((birthday: string) => calculateAgeFromBirthday(birthday), []);
 
   const contextValue = useMemo(
     () => ({
@@ -558,21 +608,28 @@ export function DateFormatProvider({ children }: { children: ReactNode }) {
       getDatePlaceholder,
       calculateAge,
     }),
-    [dateFormat, formatDate, formatBirthday, formatBirthdayForInput, parseBirthdayInput, autoFormatBirthdayInput, getBirthdayPlaceholder, getBirthdayFormatHint, getDatePlaceholder, calculateAge]
+    [
+      dateFormat,
+      formatDate,
+      formatBirthday,
+      formatBirthdayForInput,
+      parseBirthdayInput,
+      autoFormatBirthdayInput,
+      getBirthdayPlaceholder,
+      getBirthdayFormatHint,
+      getDatePlaceholder,
+      calculateAge,
+    ],
   );
 
-  return (
-    <DateFormatContext.Provider value={contextValue}>
-      {children}
-    </DateFormatContext.Provider>
-  );
+  return <DateFormatContext.Provider value={contextValue}>{children}</DateFormatContext.Provider>;
 }
 
 export const useDateFormat = () => {
   const context = useContext(DateFormatContext);
 
   if (!context) {
-    throw new Error("useDateFormat must be used within DateFormatProvider");
+    throw new Error('useDateFormat must be used within DateFormatProvider');
   }
 
   return context;

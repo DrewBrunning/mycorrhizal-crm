@@ -1,4 +1,4 @@
-import { test, expect, vi, afterEach } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import { copyToClipboard } from './clipboard';
 
 afterEach(() => {

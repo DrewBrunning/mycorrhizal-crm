@@ -1,7 +1,7 @@
 // Tappable-field link building (T34): tel:/sms:/mailto: builders, the
 // client-side safe-URL guard, and OnlineService/address -> link resolution.
-import { CardOnlineService, ContactAddress } from '../api/contacts';
-import { LinkFieldType } from '../api/linkFieldTypes';
+import type { CardOnlineService, ContactAddress } from '../api/contacts';
+import type { LinkFieldType } from '../api/linkFieldTypes';
 
 export function buildTelLink(number: string): string {
   return `tel:${number}`;
@@ -98,9 +98,9 @@ export function looksLikeAbsoluteUri(value: string): boolean {
 // returned, regardless of which branch produced it.
 export function resolveOnlineServiceLink(
   service: CardOnlineService,
-  linkFieldTypes: LinkFieldType[]
+  linkFieldTypes: LinkFieldType[],
 ): string | null {
-  if (service.uri && service.uri.trim()) {
+  if (service.uri?.trim()) {
     // Must actually look like a URI, not just lack a dangerous scheme --
     // isSafeUrlString alone accepts a bare handle with no scheme at all
     // (e.g. a stray "alice@example.com" imported into the URI slot), which
@@ -110,9 +110,9 @@ export function resolveOnlineServiceLink(
 
   if (service.service && service.user) {
     const match = linkFieldTypes.find(
-      (lt) => lt.name.toLowerCase() === service.service!.toLowerCase()
+      (lt) => lt.name.toLowerCase() === service.service?.toLowerCase(),
     );
-    if (match?.protocol && match.protocol.includes('{value}')) {
+    if (match?.protocol?.includes('{value}')) {
       // split/join rather than a single .replace(): a user-authored template
       // may reference {value} more than once (e.g. "…/{value}?ref={value}"),
       // and .replace(string, ...) only substitutes the first occurrence.
@@ -130,10 +130,22 @@ export function resolveOnlineServiceLink(
 // uses (backend's FormatAddress, this file's own former duplicate). T79
 // added the sub-street parts between street and city, matching the backend.
 export function formatAddressLine(
-  address: Pick<ContactAddress, 'street' | 'pobox' | 'apartment' | 'floor' | 'city' | 'region' | 'postal' | 'country'>
+  address: Pick<
+    ContactAddress,
+    'street' | 'pobox' | 'apartment' | 'floor' | 'city' | 'region' | 'postal' | 'country'
+  >,
 ): string {
-  return [address.street, address.pobox, address.apartment, address.floor, address.city, address.region, address.postal, address.country]
-    .filter((part) => part && part.trim())
+  return [
+    address.street,
+    address.pobox,
+    address.apartment,
+    address.floor,
+    address.city,
+    address.region,
+    address.postal,
+    address.country,
+  ]
+    .filter((part) => part?.trim())
     .join(', ');
 }
 
@@ -144,7 +156,7 @@ export function formatAddressLine(
 // universal/app links — no UA-sniffing needed. Returns null when there is
 // nothing to link to (no coordinates and no formattable parts).
 export function buildAddressLink(address: ContactAddress): string | null {
-  if (address.coordinates && address.coordinates.trim()) {
+  if (address.coordinates?.trim()) {
     return isSafeUrlString(address.coordinates) ? address.coordinates : null;
   }
   const formatted = formatAddressLine(address);

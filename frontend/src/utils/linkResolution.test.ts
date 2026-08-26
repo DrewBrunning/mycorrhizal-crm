@@ -1,16 +1,16 @@
-import { test, expect } from 'vitest';
+import { expect, test } from 'vitest';
+import type { LinkFieldType } from '../api/linkFieldTypes';
 import {
-  buildTelLink,
-  buildSmsLink,
+  buildAddressLink,
   buildMailtoLink,
-  isSafeUrlString,
+  buildSmsLink,
+  buildTelLink,
+  formatAddressLine,
   isHttpUrlString,
+  isSafeUrlString,
   looksLikeAbsoluteUri,
   resolveOnlineServiceLink,
-  formatAddressLine,
-  buildAddressLink,
 } from './linkResolution';
-import { LinkFieldType } from '../api/linkFieldTypes';
 
 test('buildTelLink/buildSmsLink/buildMailtoLink build the expected scheme URIs', () => {
   expect(buildTelLink('+15551234567')).toBe('tel:+15551234567');
@@ -89,21 +89,39 @@ test('looksLikeAbsoluteUri distinguishes a real URI from a bare handle', () => {
 });
 
 const whatsapp: LinkFieldType = {
-  id: '1', name: 'WhatsApp', protocol: 'https://wa.me/{value}', category: 'messaging',
-  is_default: true, position: 0, created_at: '', updated_at: '',
+  id: '1',
+  name: 'WhatsApp',
+  protocol: 'https://wa.me/{value}',
+  category: 'messaging',
+  is_default: true,
+  position: 0,
+  created_at: '',
+  updated_at: '',
 };
 const noTemplate: LinkFieldType = {
-  id: '2', name: 'Discord', protocol: '', category: 'messaging',
-  is_default: true, position: 1, created_at: '', updated_at: '',
+  id: '2',
+  name: 'Discord',
+  protocol: '',
+  category: 'messaging',
+  is_default: true,
+  position: 1,
+  created_at: '',
+  updated_at: '',
 };
 
 test('resolveOnlineServiceLink prefers a full URI when present', () => {
-  const link = resolveOnlineServiceLink({ uri: 'https://example.com/alice', service: 'WhatsApp', user: '15551234567' }, [whatsapp]);
+  const link = resolveOnlineServiceLink(
+    { uri: 'https://example.com/alice', service: 'WhatsApp', user: '15551234567' },
+    [whatsapp],
+  );
   expect(link).toBe('https://example.com/alice');
 });
 
 test('resolveOnlineServiceLink rejects an unsafe full URI rather than falling back to the registry', () => {
-  const link = resolveOnlineServiceLink({ uri: 'javascript:alert(1)', service: 'WhatsApp', user: '15551234567' }, [whatsapp]);
+  const link = resolveOnlineServiceLink(
+    { uri: 'javascript:alert(1)', service: 'WhatsApp', user: '15551234567' },
+    [whatsapp],
+  );
   expect(link).toBeNull();
 });
 
@@ -123,7 +141,9 @@ test('resolveOnlineServiceLink returns null for a matched type with an empty pro
 });
 
 test('resolveOnlineServiceLink returns null when nothing matches and there is no URI', () => {
-  const link = resolveOnlineServiceLink({ service: 'SomeUnknownService', user: 'alice' }, [whatsapp]);
+  const link = resolveOnlineServiceLink({ service: 'SomeUnknownService', user: 'alice' }, [
+    whatsapp,
+  ]);
   expect(link).toBeNull();
 });
 
@@ -138,7 +158,10 @@ test('resolveOnlineServiceLink returns null when the handle is missing even if t
 // bogus relative/same-origin href instead of falling through to "not
 // tappable".
 test('resolveOnlineServiceLink rejects a URI value that has no scheme at all', () => {
-  const link = resolveOnlineServiceLink({ uri: 'alice@example.com', service: 'WhatsApp', user: '15551234567' }, [whatsapp]);
+  const link = resolveOnlineServiceLink(
+    { uri: 'alice@example.com', service: 'WhatsApp', user: '15551234567' },
+    [whatsapp],
+  );
   expect(link).toBeNull();
 });
 
@@ -152,41 +175,97 @@ test('resolveOnlineServiceLink rejects a protocol-relative URI value', () => {
 // first -- .replace(string, ...) only replaces the first match.
 test('resolveOnlineServiceLink substitutes every occurrence of {value} in the template', () => {
   const repeated: LinkFieldType = {
-    id: '3', name: 'Repeated', protocol: 'https://x.example.com/{value}?ref={value}', category: 'other',
-    is_default: false, position: 0, created_at: '', updated_at: '',
+    id: '3',
+    name: 'Repeated',
+    protocol: 'https://x.example.com/{value}?ref={value}',
+    category: 'other',
+    is_default: false,
+    position: 0,
+    created_at: '',
+    updated_at: '',
   };
   const link = resolveOnlineServiceLink({ service: 'Repeated', user: 'alice' }, [repeated]);
   expect(link).toBe('https://x.example.com/alice?ref=alice');
 });
 
 test('formatAddressLine joins non-empty parts and skips blanks', () => {
-  expect(formatAddressLine({ street: '', city: 'Springfield', region: 'IL', postal: '', country: '' })).toBe('Springfield, IL');
+  expect(
+    formatAddressLine({ street: '', city: 'Springfield', region: 'IL', postal: '', country: '' }),
+  ).toBe('Springfield, IL');
   expect(formatAddressLine({ street: '', city: '', region: '', postal: '', country: '' })).toBe('');
 });
 
 test('formatAddressLine places sub-street parts between street and city (T79)', () => {
   expect(
-    formatAddressLine({ street: '742 Clark St', pobox: 'PO Box 42', apartment: 'Apt 3B', floor: 'Floor 2', city: 'Springfield', region: 'IL', postal: '62701', country: 'USA' })
+    formatAddressLine({
+      street: '742 Clark St',
+      pobox: 'PO Box 42',
+      apartment: 'Apt 3B',
+      floor: 'Floor 2',
+      city: 'Springfield',
+      region: 'IL',
+      postal: '62701',
+      country: 'USA',
+    }),
   ).toBe('742 Clark St, PO Box 42, Apt 3B, Floor 2, Springfield, IL, 62701, USA');
-  expect(formatAddressLine({ street: '', pobox: 'PO Box 42', city: 'Springfield', region: '', postal: '', country: '' })).toBe('PO Box 42, Springfield');
+  expect(
+    formatAddressLine({
+      street: '',
+      pobox: 'PO Box 42',
+      city: 'Springfield',
+      region: '',
+      postal: '',
+      country: '',
+    }),
+  ).toBe('PO Box 42, Springfield');
 });
 
 test('buildAddressLink prefers a geo: URI when coordinates are present', () => {
-  const href = buildAddressLink({ type: '', street: '', city: 'Springfield', region: '', postal: '', country: '', coordinates: 'geo:39.78,-89.65' });
+  const href = buildAddressLink({
+    type: '',
+    street: '',
+    city: 'Springfield',
+    region: '',
+    postal: '',
+    country: '',
+    coordinates: 'geo:39.78,-89.65',
+  });
   expect(href).toBe('geo:39.78,-89.65');
 });
 
 test('buildAddressLink rejects an unsafe coordinates value', () => {
-  const href = buildAddressLink({ type: '', street: '', city: '', region: '', postal: '', country: '', coordinates: 'javascript:alert(1)' });
+  const href = buildAddressLink({
+    type: '',
+    street: '',
+    city: '',
+    region: '',
+    postal: '',
+    country: '',
+    coordinates: 'javascript:alert(1)',
+  });
   expect(href).toBeNull();
 });
 
 test('buildAddressLink falls back to a Google Maps search built from the formatted address', () => {
-  const href = buildAddressLink({ type: '', street: '', city: 'Springfield', region: 'IL', postal: '', country: '' });
-  expect(href).toBe('https://maps.google.com/?q=' + encodeURIComponent('Springfield, IL'));
+  const href = buildAddressLink({
+    type: '',
+    street: '',
+    city: 'Springfield',
+    region: 'IL',
+    postal: '',
+    country: '',
+  });
+  expect(href).toBe(`https://maps.google.com/?q=${encodeURIComponent('Springfield, IL')}`);
 });
 
 test('buildAddressLink returns null when there is nothing to link to', () => {
-  const href = buildAddressLink({ type: '', street: '', city: '', region: '', postal: '', country: '' });
+  const href = buildAddressLink({
+    type: '',
+    street: '',
+    city: '',
+    region: '',
+    postal: '',
+    country: '',
+  });
   expect(href).toBeNull();
 });

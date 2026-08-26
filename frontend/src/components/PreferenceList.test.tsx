@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { Preference } from '../api/preferences';
 import PreferenceList from './PreferenceList';
-import { Preference } from '../api/preferences';
 
 afterEach(cleanup);
 
@@ -28,7 +28,7 @@ test('renders preferences grouped into Food & Drink and Media sections', () => {
       ]}
       onEdit={vi.fn()}
       onDelete={vi.fn()}
-    />
+    />,
   );
 
   expect(screen.getByText('Vegetarian')).toBeInTheDocument();
@@ -48,7 +48,7 @@ test('jewelry and gift-preference categories land in their own sections', () => 
       ]}
       onEdit={vi.fn()}
       onDelete={vi.fn()}
-    />
+    />,
   );
 
   expect(screen.getByText('Jewelry & Style')).toBeInTheDocument();
@@ -62,12 +62,10 @@ test('jewelry and gift-preference categories land in their own sections', () => 
 test('an unrecognized category falls through to the Other section', () => {
   render(
     <PreferenceList
-      preferences={[
-        preference({ id: 'p3', category: 'ancient_category', value: 'Legacy data' }),
-      ]}
+      preferences={[preference({ id: 'p3', category: 'ancient_category', value: 'Legacy data' })]}
       onEdit={vi.fn()}
       onDelete={vi.fn()}
-    />
+    />,
   );
 
   expect(screen.getByText('Other Preferences')).toBeInTheDocument();
@@ -79,10 +77,12 @@ test('an unrecognized category falls through to the Other section', () => {
 test('shows notes when present', () => {
   render(
     <PreferenceList
-      preferences={[preference({ key: 'dislike', value: 'Alcohol', notes: "Doesn't drink alcohol" })]}
+      preferences={[
+        preference({ key: 'dislike', value: 'Alcohol', notes: "Doesn't drink alcohol" }),
+      ]}
       onEdit={vi.fn()}
       onDelete={vi.fn()}
-    />
+    />,
   );
 
   expect(screen.getByText('Alcohol')).toBeInTheDocument();
@@ -98,7 +98,7 @@ test('shows the sensitivity chip only for non-normal preferences', () => {
       ]}
       onEdit={vi.fn()}
       onDelete={vi.fn()}
-    />
+    />,
   );
 
   expect(screen.getByText('Secret')).toBeInTheDocument();

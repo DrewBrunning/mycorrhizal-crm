@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { createTestContact, deleteTestContact, waitForLoading } from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
@@ -23,7 +23,9 @@ import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
  * one row's entry points precisely.
  */
 test.describe('Gifts', () => {
-  test('quick-add captures an idea; the dialog adds a link and notes that persist', async ({ page }) => {
+  test('quick-add captures an idea; the dialog adds a link and notes that persist', async ({
+    page,
+  }) => {
     const contact = await createTestContact(page.request, {
       firstname: `${E2E_CONTACT_PREFIX}GiftIdea`,
       lastname: 'Subject',
@@ -51,7 +53,9 @@ test.describe('Gifts', () => {
       await expect(dialog.getByRole('heading', { name: 'Edit gift' })).toBeVisible();
 
       await dialog.getByLabel('Link (optional)').fill('https://shop.example.com/handmade-mug');
-      await dialog.getByLabel('Notes (optional)').fill('Size medium — check she has not bought it herself');
+      await dialog
+        .getByLabel('Notes (optional)')
+        .fill('Size medium — check she has not bought it herself');
       await dialog.getByRole('button', { name: 'Save' }).click();
       await expect(dialog).toBeHidden();
 
@@ -66,14 +70,18 @@ test.describe('Gifts', () => {
       // rather than only the client's optimistic state.
       await page.reload();
       await waitForLoading(page);
-      await expect(page.locator('#gifts').getByRole('link', { name: 'https://shop.example.com/handmade-mug' })).toBeVisible();
+      await expect(
+        page.locator('#gifts').getByRole('link', { name: 'https://shop.example.com/handmade-mug' }),
+      ).toBeVisible();
       await expect(page.locator('#gifts').getByText(/Size medium/)).toBeVisible();
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }
   });
 
-  test('the Given full-form entry point records a gift straight as given, never as an idea', async ({ page }) => {
+  test('the Given full-form entry point records a gift straight as given, never as an idea', async ({
+    page,
+  }) => {
     const contact = await createTestContact(page.request, {
       firstname: `${E2E_CONTACT_PREFIX}GiftGiven`,
       lastname: 'Subject',
@@ -84,7 +92,10 @@ test.describe('Gifts', () => {
       await waitForLoading(page);
 
       const gifts = page.locator('#gifts');
-      await gifts.getByRole('region', { name: 'Given' }).getByRole('button', { name: /Add with details/i }).click();
+      await gifts
+        .getByRole('region', { name: 'Given' })
+        .getByRole('button', { name: /Add with details/i })
+        .click();
 
       const dialog = page.getByRole('dialog');
       await expect(dialog.getByRole('heading', { name: 'Add a gift' })).toBeVisible();
@@ -101,11 +112,15 @@ test.describe('Gifts', () => {
       await expect(gifts.getByText('The espresso machine')).toBeVisible({ timeout: 15000 });
       // No item is filed as an idea — the Ideas column is header + entry point only.
       await expect(gifts.getByText('Idea', { exact: true })).toHaveCount(0);
-      await expect(gifts.getByRole('link', { name: 'https://shop.example.com/espresso' })).toBeVisible();
+      await expect(
+        gifts.getByRole('link', { name: 'https://shop.example.com/espresso' }),
+      ).toBeVisible();
 
       // The record's status really is `given` server-side — not an idea the UI
       // happens to be filing under the Given heading.
-      const list = await page.request.get(`${API_BASE_URL}/gifts?entity_id=${contact.uid}&limit=50`);
+      const list = await page.request.get(
+        `${API_BASE_URL}/gifts?entity_id=${contact.uid}&limit=50`,
+      );
       expect(list.ok(), `list failed: ${await list.text()}`).toBeTruthy();
       const body = await list.json();
       expect(body.gifts).toHaveLength(1);
@@ -117,7 +132,9 @@ test.describe('Gifts', () => {
     }
   });
 
-  test('the Given and Received quick-adds record straight at that status, with idea-level friction', async ({ page }) => {
+  test('the Given and Received quick-adds record straight at that status, with idea-level friction', async ({
+    page,
+  }) => {
     const contact = await createTestContact(page.request, {
       firstname: `${E2E_CONTACT_PREFIX}GiftQuick`,
       lastname: 'Subject',
@@ -149,7 +166,9 @@ test.describe('Gifts', () => {
       await expect(gifts.getByText('The saffron tin')).toBeVisible({ timeout: 15000 });
 
       // All three really landed at their own status server-side, not as ideas.
-      const list = await page.request.get(`${API_BASE_URL}/gifts?entity_id=${contact.uid}&limit=50`);
+      const list = await page.request.get(
+        `${API_BASE_URL}/gifts?entity_id=${contact.uid}&limit=50`,
+      );
       expect(list.ok(), `list failed: ${await list.text()}`).toBeTruthy();
       const body = await list.json();
       expect(body.gifts).toHaveLength(3);
@@ -171,7 +190,10 @@ test.describe('Gifts', () => {
       await waitForLoading(page);
 
       const gifts = page.locator('#gifts');
-      await gifts.getByRole('region', { name: 'Received' }).getByRole('button', { name: /Add with details/i }).click();
+      await gifts
+        .getByRole('region', { name: 'Received' })
+        .getByRole('button', { name: /Add with details/i })
+        .click();
 
       const dialog = page.getByRole('dialog');
       await expect(dialog.getByRole('heading', { name: 'Add a gift' })).toBeVisible();
@@ -184,7 +206,9 @@ test.describe('Gifts', () => {
 
       await expect(gifts.getByText('The wool blanket')).toBeVisible({ timeout: 15000 });
 
-      const list = await page.request.get(`${API_BASE_URL}/gifts?entity_id=${contact.uid}&limit=50`);
+      const list = await page.request.get(
+        `${API_BASE_URL}/gifts?entity_id=${contact.uid}&limit=50`,
+      );
       expect(list.ok(), `list failed: ${await list.text()}`).toBeTruthy();
       const body = await list.json();
       expect(body.gifts).toHaveLength(1);
@@ -223,7 +247,9 @@ test.describe('Gifts', () => {
 
       await expect(gifts.getByLabel('Mark as given')).toHaveCount(0);
 
-      const list = await page.request.get(`${API_BASE_URL}/gifts?entity_id=${contact.uid}&limit=50`);
+      const list = await page.request.get(
+        `${API_BASE_URL}/gifts?entity_id=${contact.uid}&limit=50`,
+      );
       const body = await list.json();
       expect(body.gifts).toHaveLength(1);
       expect(body.gifts[0].status).toBe('given');
@@ -250,7 +276,9 @@ test.describe('Gifts', () => {
       });
       expect(create.status()).toBe(400);
 
-      const list = await page.request.get(`${API_BASE_URL}/gifts?entity_id=${contact.uid}&limit=50`);
+      const list = await page.request.get(
+        `${API_BASE_URL}/gifts?entity_id=${contact.uid}&limit=50`,
+      );
       const body = await list.json();
       expect(body.gifts ?? []).toHaveLength(0);
     } finally {

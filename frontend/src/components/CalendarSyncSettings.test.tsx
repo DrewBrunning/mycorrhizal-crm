@@ -1,15 +1,15 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import CalendarSyncSettings from './CalendarSyncSettings';
 import {
-  getCalendarSubscriptions,
+  type CalendarSubscription,
   createCalendarSubscription,
-  updateCalendarSubscription,
   deleteCalendarSubscription,
+  getCalendarSubscriptions,
   syncCalendarSubscription,
-  CalendarSubscription,
+  updateCalendarSubscription,
 } from '../api/calendars';
+import CalendarSyncSettings from './CalendarSyncSettings';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
 afterEach(cleanup);
@@ -73,20 +73,27 @@ test('adding a calendar creates it and triggers an immediate sync', async () => 
   vi.mocked(getCalendarSubscriptions).mockResolvedValue([]);
   const created = calendar({ id: 5, name: 'New Calendar', url: 'https://example.com/cal/' });
   vi.mocked(createCalendarSubscription).mockResolvedValue(created);
-  vi.mocked(syncCalendarSubscription).mockResolvedValue({ message: 'ok', created: 3, updated: 0, skipped: 0 });
+  vi.mocked(syncCalendarSubscription).mockResolvedValue({
+    message: 'ok',
+    created: 3,
+    updated: 0,
+    skipped: 0,
+  });
 
   render(<CalendarSyncSettings />);
   await waitFor(() => expect(screen.getByText('No calendars connected yet.')).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: /add calendar/i }));
   fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'New Calendar' } });
-  fireEvent.change(screen.getByLabelText(/calendar url/i), { target: { value: 'https://example.com/cal/' } });
+  fireEvent.change(screen.getByLabelText(/calendar url/i), {
+    target: { value: 'https://example.com/cal/' },
+  });
   fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
   await waitFor(() =>
     expect(createCalendarSubscription).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'New Calendar', url: 'https://example.com/cal/' })
-    )
+      expect.objectContaining({ name: 'New Calendar', url: 'https://example.com/cal/' }),
+    ),
   );
   await waitFor(() => expect(syncCalendarSubscription).toHaveBeenCalledWith(5));
   await waitFor(() => expect(screen.getByText(/sync complete: 3 created/i)).toBeInTheDocument());
@@ -107,7 +114,10 @@ test('editing a calendar prefills the form and saves via update', async () => {
   fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
   await waitFor(() =>
-    expect(updateCalendarSubscription).toHaveBeenCalledWith(7, expect.objectContaining({ name: 'Renamed' }))
+    expect(updateCalendarSubscription).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ name: 'Renamed' }),
+    ),
   );
 });
 
@@ -130,8 +140,15 @@ test('deleting a calendar asks for confirmation before removing it', async () =>
 });
 
 test('manual sync reports the result and reloads the list', async () => {
-  vi.mocked(getCalendarSubscriptions).mockResolvedValue([calendar({ id: 9, name: 'Manual Sync Cal' })]);
-  vi.mocked(syncCalendarSubscription).mockResolvedValue({ message: 'ok', created: 0, updated: 2, skipped: 1 });
+  vi.mocked(getCalendarSubscriptions).mockResolvedValue([
+    calendar({ id: 9, name: 'Manual Sync Cal' }),
+  ]);
+  vi.mocked(syncCalendarSubscription).mockResolvedValue({
+    message: 'ok',
+    created: 0,
+    updated: 2,
+    skipped: 1,
+  });
 
   render(<CalendarSyncSettings />);
   await waitFor(() => expect(screen.getByText('Manual Sync Cal')).toBeInTheDocument());
@@ -139,7 +156,9 @@ test('manual sync reports the result and reloads the list', async () => {
   fireEvent.click(screen.getByRole('button', { name: /sync now/i }));
 
   await waitFor(() => expect(syncCalendarSubscription).toHaveBeenCalledWith(9));
-  await waitFor(() => expect(screen.getByText(/sync complete: 0 created, 2 updated/i)).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText(/sync complete: 0 created, 2 updated/i)).toBeInTheDocument(),
+  );
 });
 
 test('a sync failure surfaces the error instead of throwing', async () => {
@@ -160,7 +179,9 @@ test('warns when an http:// URL is paired with credentials', async () => {
   await waitFor(() => expect(screen.getByText('No calendars connected yet.')).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: /add calendar/i }));
-  fireEvent.change(screen.getByLabelText(/calendar url/i), { target: { value: 'http://example.com/cal/' } });
+  fireEvent.change(screen.getByLabelText(/calendar url/i), {
+    target: { value: 'http://example.com/cal/' },
+  });
 
   expect(screen.queryByText(/unencrypted http/i)).not.toBeInTheDocument();
 

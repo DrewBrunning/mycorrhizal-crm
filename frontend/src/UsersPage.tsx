@@ -1,44 +1,44 @@
-import { useState, useEffect, useCallback, FormEvent } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import SendIcon from '@mui/icons-material/Send';
 import {
+  Alert,
   Box,
-  Typography,
+  Button,
   Card,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
+  IconButton,
+  Paper,
+  Stack,
+  Switch,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  Chip,
   TablePagination,
-  CircularProgress,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
+  TableRow,
   TextField,
-  FormControlLabel,
-  Switch,
-  Stack,
+  Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import AppDialog from './components/AppDialog';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import SendIcon from '@mui/icons-material/Send';
-import AddIcon from '@mui/icons-material/Add';
-import { getUsers, createUser, updateUser, deleteUser, triggerReminders } from './api/admin';
+import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
+import { createUser, deleteUser, getUsers, triggerReminders, updateUser } from './api/admin';
 import { isAdmin } from './auth';
+import AppDialog from './components/AppDialog';
 import { useSnackbar } from './context/SnackbarContext';
-import type { User, UserUpdateInput, UserCreateInput } from './types';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import type { User, UserCreateInput, UserUpdateInput } from './types';
 
 export default function UsersPage() {
   const { t } = useTranslation();
@@ -60,7 +60,12 @@ export default function UsersPage() {
   const [triggerLoading, setTriggerLoading] = useState(false);
 
   // Create dialog state
-  const emptyCreateForm: UserCreateInput = { username: '', email: '', password: '', is_admin: false };
+  const emptyCreateForm: UserCreateInput = {
+    username: '',
+    email: '',
+    password: '',
+    is_admin: false,
+  };
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createForm, setCreateForm] = useState<UserCreateInput>(emptyCreateForm);
   const [createLoading, setCreateLoading] = useState(false);
@@ -201,7 +206,7 @@ export default function UsersPage() {
       }
 
       const updatedUser = await updateUser(editingUser.id, updateData);
-      setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
+      setUsers(users.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
       handleEditClose();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('users.updateError');
@@ -246,7 +251,7 @@ export default function UsersPage() {
 
     try {
       await deleteUser(deletingUser.id);
-      setUsers(users.filter(u => u.id !== deletingUser.id));
+      setUsers(users.filter((u) => u.id !== deletingUser.id));
       setTotal(total - 1);
       handleDeleteClose();
     } catch (err) {
@@ -267,16 +272,21 @@ export default function UsersPage() {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, gap: 1, flexWrap: 'wrap' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 1.5,
+          gap: 1,
+          flexWrap: 'wrap',
+        }}
+      >
         <Typography variant="h5" component="h1">
           {t('users.title')}
         </Typography>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleCreateClick}
-          >
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick}>
             {t('users.addUser')}
           </Button>
           <Button
@@ -301,16 +311,39 @@ export default function UsersPage() {
           <Stack spacing={1.5}>
             {users.map((user) => (
               <Card key={user.id} sx={{ p: 1.5 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    gap: 1,
+                  }}
+                >
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     {/* #211: a per-item title in a list, not a page heading. */}
-                    <Typography variant="subtitle1" component="p" sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
+                    <Typography
+                      variant="subtitle1"
+                      component="p"
+                      sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}
+                    >
                       {user.username}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ overflowWrap: 'anywhere' }}
+                    >
                       {user.email}
                     </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        mt: 0.5,
+                        flexWrap: 'wrap',
+                      }}
+                    >
                       <Chip
                         label={user.is_admin ? t('users.roles.admin') : t('users.roles.user')}
                         size="small"
@@ -536,7 +569,11 @@ export default function UsersPage() {
       <Dialog open={deleteDialogOpen} onClose={handleDeleteClose}>
         <DialogTitle>{t('users.deleteDialog.title')}</DialogTitle>
         <DialogContent>
-          {deleteError && <Alert severity="error" sx={{ mb: 2 }}>{deleteError}</Alert>}
+          {deleteError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {deleteError}
+            </Alert>
+          )}
           <Typography>
             {t('users.deleteDialog.message', { username: deletingUser?.username })}
           </Typography>
@@ -554,7 +591,7 @@ export default function UsersPage() {
             variant="contained"
             disabled={deleteLoading}
           >
-            {deleteLoading ? t('common.delete') + '...' : t('common.delete')}
+            {deleteLoading ? `${t('common.delete')}...` : t('common.delete')}
           </Button>
         </DialogActions>
       </Dialog>

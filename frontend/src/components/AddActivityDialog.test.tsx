@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import { type Contact, getContacts } from '../api/contacts';
 import AddActivityDialog from './AddActivityDialog';
-import { getContacts, Contact } from '../api/contacts';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
 afterEach(cleanup);
@@ -61,7 +61,9 @@ test('saves with the entered title, description, location, and date', async () =
   await waitFor(() => expect(getContacts).toHaveBeenCalled());
 
   fireEvent.change(screen.getByLabelText('Title *'), { target: { value: 'Coffee catchup' } });
-  fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Talked about the new job' } });
+  fireEvent.change(screen.getByLabelText('Description'), {
+    target: { value: 'Talked about the new job' },
+  });
   fireEvent.change(screen.getByLabelText('Location'), { target: { value: 'Blue Bottle' } });
   fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
@@ -72,8 +74,8 @@ test('saves with the entered title, description, location, and date', async () =
         description: 'Talked about the new job',
         location: 'Blue Bottle',
         contact_ids: [],
-      })
-    )
+      }),
+    ),
   );
   // The dialog closes itself (via the parent's onClose) once the save resolves.
   await waitFor(() => expect(onClose).toHaveBeenCalled());
@@ -81,7 +83,10 @@ test('saves with the entered title, description, location, and date', async () =
 
 test('preselects the contact passed via preselectedContactId', async () => {
   vi.mocked(getContacts).mockResolvedValue({
-    contacts: [contact({ ID: 1, firstname: 'Alice', lastname: 'Johnson' }), contact({ ID: 2, firstname: 'Bob', lastname: 'Smith' })],
+    contacts: [
+      contact({ ID: 1, firstname: 'Alice', lastname: 'Johnson' }),
+      contact({ ID: 2, firstname: 'Bob', lastname: 'Smith' }),
+    ],
     next_cursor: '',
   } as never);
 
@@ -106,7 +111,9 @@ test('selecting a contact from the autocomplete includes it in contact_ids', asy
 
   fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
-  await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ contact_ids: [3] })));
+  await waitFor(() =>
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ contact_ids: [3] })),
+  );
 });
 
 test('a save failure keeps the dialog open and shows an error', async () => {

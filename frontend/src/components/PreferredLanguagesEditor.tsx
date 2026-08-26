@@ -1,19 +1,19 @@
-import { useTranslation } from 'react-i18next';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import {
+  Autocomplete,
   Box,
-  Typography,
+  Button,
+  IconButton,
+  Paper,
   Stack,
   TextField,
-  IconButton,
-  Button,
-  Paper,
-  Autocomplete,
+  Typography,
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import { CardLanguagePref } from '../api/contacts';
-import { useRowKeys } from '../hooks/useRowKeys';
+import { useTranslation } from 'react-i18next';
+import type { CardLanguagePref } from '../api/contacts';
 import { CONTEXT_OPTIONS } from '../contactFields';
+import { useRowKeys } from '../hooks/useRowKeys';
 
 interface PreferredLanguagesEditorProps {
   label: string;
@@ -21,7 +21,11 @@ interface PreferredLanguagesEditorProps {
   onChange: (next: CardLanguagePref[]) => void;
 }
 
-export default function PreferredLanguagesEditor({ label, value, onChange }: PreferredLanguagesEditorProps) {
+export default function PreferredLanguagesEditor({
+  label,
+  value,
+  onChange,
+}: PreferredLanguagesEditorProps) {
   const { t } = useTranslation();
   const rowKeys = useRowKeys(value.length);
 
@@ -75,7 +79,11 @@ export default function PreferredLanguagesEditor({ label, value, onChange }: Pre
                 onChange={(_, newValue) => updateRow(index, { contexts: newValue as string[] })}
                 getOptionLabel={(opt) => t(`contacts.contexts.${opt}`, opt)}
                 renderInput={(params) => (
-                  <TextField {...params} label={t('contacts.preferredLanguages.contexts')} size="small" />
+                  <TextField
+                    {...params}
+                    label={t('contacts.preferredLanguages.contexts')}
+                    size="small"
+                  />
                 )}
               />
             </Stack>

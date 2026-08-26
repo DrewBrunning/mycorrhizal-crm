@@ -1,5 +1,5 @@
 // Contact-related API calls
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 export interface ContactValue {
   type: string;
@@ -104,7 +104,15 @@ export interface Contact {
 // ---------------------------------------------------------------------------
 
 export interface NameComponent {
-  kind: 'title' | 'given' | 'given2' | 'surname' | 'surname2' | 'credential' | 'generation' | 'separator';
+  kind:
+    | 'title'
+    | 'given'
+    | 'given2'
+    | 'surname'
+    | 'surname2'
+    | 'credential'
+    | 'generation'
+    | 'separator';
   value: string;
   phonetic?: string;
 }
@@ -379,7 +387,10 @@ export interface ContactSummaryDTO {
 // Adapter: nested wire shape <-> legacy flat Contact shape.
 // ---------------------------------------------------------------------------
 
-export function nameComponentValue(components: NameComponent[] | undefined, kind: NameComponent['kind']): string | undefined {
+export function nameComponentValue(
+  components: NameComponent[] | undefined,
+  kind: NameComponent['kind'],
+): string | undefined {
   return components?.find((c) => c.kind === kind)?.value;
 }
 
@@ -396,14 +407,7 @@ export function getContactDisplayName(record: Pick<ContactRecordResponse, 'card'
   const suffix = nameComponentValue(card.name?.components, 'generation');
   const nickname = card.nicknames?.[0]?.name;
 
-  return [
-    prefix,
-    firstname,
-    nickname ? `"${nickname}"` : '',
-    middleName,
-    lastname,
-    suffix,
-  ]
+  return [prefix, firstname, nickname ? `"${nickname}"` : '', middleName, lastname, suffix]
     .map((part) => part?.trim())
     .filter(Boolean)
     .join(' ');
@@ -438,7 +442,13 @@ export function parseAnniversaryDate(value: string): CardAnniversaryDate {
   }
   const full = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (full) {
-    return { partial: { year: parseInt(full[1], 10), month: parseInt(full[2], 10), day: parseInt(full[3], 10) } };
+    return {
+      partial: {
+        year: parseInt(full[1], 10),
+        month: parseInt(full[2], 10),
+        day: parseInt(full[3], 10),
+      },
+    };
   }
   // Unparseable input: pass through as a raw timestamp rather than
   // dropping it silently, matching the backend's own degradation policy.
@@ -463,12 +473,14 @@ export function cardEmailsToValues(emails: CardEmail[] | undefined): ContactValu
   }));
 }
 export function valuesToCardEmails(values: ContactValue[]): CardEmail[] {
-  return values.filter((e) => e.value.trim()).map((e) => ({
-    address: e.value,
-    contexts: e.contexts?.length ? e.contexts : e.type ? [e.type] : undefined,
-    pref: e.pref,
-    label: e.label || undefined,
-  }));
+  return values
+    .filter((e) => e.value.trim())
+    .map((e) => ({
+      address: e.value,
+      contexts: e.contexts?.length ? e.contexts : e.type ? [e.type] : undefined,
+      pref: e.pref,
+      label: e.label || undefined,
+    }));
 }
 
 export function cardPhonesToValues(phones: CardPhone[] | undefined): ContactValue[] {
@@ -482,13 +494,15 @@ export function cardPhonesToValues(phones: CardPhone[] | undefined): ContactValu
   }));
 }
 export function valuesToCardPhones(values: ContactValue[]): CardPhone[] {
-  return values.filter((p) => p.value.trim()).map((p) => ({
-    number: p.value,
-    features: p.features?.length ? p.features : undefined,
-    contexts: p.contexts?.length ? p.contexts : p.type ? [p.type] : undefined,
-    pref: p.pref ?? undefined,
-    label: p.label || undefined,
-  }));
+  return values
+    .filter((p) => p.value.trim())
+    .map((p) => ({
+      number: p.value,
+      features: p.features?.length ? p.features : undefined,
+      contexts: p.contexts?.length ? p.contexts : p.type ? [p.type] : undefined,
+      pref: p.pref ?? undefined,
+      label: p.label || undefined,
+    }));
 }
 
 export function cardLinksToValues(links: CardResource[] | undefined): ContactValue[] {
@@ -501,12 +515,14 @@ export function cardLinksToValues(links: CardResource[] | undefined): ContactVal
   }));
 }
 export function valuesToCardLinks(values: ContactValue[]): CardResource[] {
-  return values.filter((u) => u.value.trim()).map((u) => ({
-    uri: u.value,
-    contexts: u.contexts?.length ? u.contexts : u.type ? [u.type] : undefined,
-    pref: u.pref,
-    label: u.label || undefined,
-  }));
+  return values
+    .filter((u) => u.value.trim())
+    .map((u) => ({
+      uri: u.value,
+      contexts: u.contexts?.length ? u.contexts : u.type ? [u.type] : undefined,
+      pref: u.pref,
+      label: u.label || undefined,
+    }));
 }
 
 export function cardImppToValues(impps: CardOnlineService[] | undefined): ContactValue[] {
@@ -519,12 +535,14 @@ export function cardImppToValues(impps: CardOnlineService[] | undefined): Contac
   }));
 }
 export function valuesToCardImpp(values: ContactValue[]): CardOnlineService[] {
-  return values.filter((i) => i.value.trim()).map((i) => ({
-    uri: i.value,
-    contexts: i.contexts?.length ? i.contexts : i.type ? [i.type] : undefined,
-    pref: i.pref,
-    label: i.label || undefined,
-  }));
+  return values
+    .filter((i) => i.value.trim())
+    .map((i) => ({
+      uri: i.value,
+      contexts: i.contexts?.length ? i.contexts : i.type ? [i.type] : undefined,
+      pref: i.pref,
+      label: i.label || undefined,
+    }));
 }
 
 // ---------------------------------------------------------------------------
@@ -544,7 +562,9 @@ export interface OnlineServiceRow {
   pref?: number | null;
 }
 
-export function onlineServicesToRows(services: CardOnlineService[] | undefined): OnlineServiceRow[] {
+export function onlineServicesToRows(
+  services: CardOnlineService[] | undefined,
+): OnlineServiceRow[] {
   return (services || []).map((s) => ({
     id: s.id,
     service: s.service || '',
@@ -598,7 +618,17 @@ export function cardAddressesToValues(addresses: CardAddress[] | undefined): Con
     // Preserve components not mapped to the rendered fields so they survive
     // an edit-and-save round trip (T25). T79 added the three sub-street kinds
     // to the flat shape, so they no longer ride passthrough.
-    const knownKinds = new Set(['name', 'number', 'locality', 'region', 'postcode', 'country', 'postOfficeBox', 'apartment', 'floor']);
+    const knownKinds = new Set([
+      'name',
+      'number',
+      'locality',
+      'region',
+      'postcode',
+      'country',
+      'postOfficeBox',
+      'apartment',
+      'floor',
+    ]);
     const passthrough = comps.filter((c) => !knownKinds.has(c.kind));
     return {
       type: a.contexts?.[0] ? (ADDRESS_CONTEXT_TO_TYPE[a.contexts[0]] ?? a.contexts[0]) : '',
@@ -620,8 +650,17 @@ export function cardAddressesToValues(addresses: CardAddress[] | undefined): Con
 }
 export function valuesToCardAddresses(values: ContactAddress[]): CardAddress[] {
   return values
-    .filter((a) => a.street.trim() || a.city.trim() || a.region.trim() || a.postal.trim() || a.country.trim() ||
-      a.pobox?.trim() || a.apartment?.trim() || a.floor?.trim())
+    .filter(
+      (a) =>
+        a.street.trim() ||
+        a.city.trim() ||
+        a.region.trim() ||
+        a.postal.trim() ||
+        a.country.trim() ||
+        a.pobox?.trim() ||
+        a.apartment?.trim() ||
+        a.floor?.trim(),
+    )
     .map((a) => {
       const components: CardAddressComponent[] = [];
       if (a.street) components.push({ kind: 'name', value: a.street });
@@ -645,7 +684,10 @@ export function valuesToCardAddresses(values: ContactAddress[]): CardAddress[] {
     });
 }
 
-export function getAnniversaryField(anniversaries: CardAnniversary[] | undefined, kind: 'birth' | 'wedding'): string | undefined {
+export function getAnniversaryField(
+  anniversaries: CardAnniversary[] | undefined,
+  kind: 'birth' | 'wedding',
+): string | undefined {
   return formatAnniversaryDate((anniversaries || []).find((a) => a.kind === kind)?.date);
 }
 // withAnniversary replaces the single entry of `kind` (if any) with one
@@ -654,7 +696,7 @@ export function getAnniversaryField(anniversaries: CardAnniversary[] | undefined
 export function withAnniversary(
   anniversaries: CardAnniversary[] | undefined,
   kind: 'birth' | 'wedding',
-  value: string
+  value: string,
 ): CardAnniversary[] {
   const rest = (anniversaries || []).filter((a) => a.kind !== kind);
   return value ? [...rest, { kind, date: parseAnniversaryDate(value) }] : rest;
@@ -664,15 +706,23 @@ export function withAnniversary(
 // (like the legacy Contact shape it grew from) only ever edits one
 // organization and one title/role pair, even though the nested model
 // supports arrays of both.
-export function getOrganizationFields(organizations: CardOrganization[] | undefined): { organization?: string; department?: string } {
+export function getOrganizationFields(organizations: CardOrganization[] | undefined): {
+  organization?: string;
+  department?: string;
+} {
   const org = organizations?.[0];
   return { organization: org?.name, department: org?.units?.[0]?.name };
 }
 export function withOrganization(organization: string, department: string): CardOrganization[] {
-  return organization ? [{ name: organization, units: department ? [{ name: department }] : undefined }] : [];
+  return organization
+    ? [{ name: organization, units: department ? [{ name: department }] : undefined }]
+    : [];
 }
 
-export function getTitleField(titles: CardTitle[] | undefined, kind: 'title' | 'role'): string | undefined {
+export function getTitleField(
+  titles: CardTitle[] | undefined,
+  kind: 'title' | 'role',
+): string | undefined {
   if (kind === 'title') return titles?.find((t) => t.kind === 'title' || !t.kind)?.name;
   return titles?.find((t) => t.kind === 'role')?.name;
 }
@@ -713,13 +763,24 @@ export function toContactRecordInput(data: Partial<Contact>): ContactRecordInput
   if (data.lastname) nameComponents.push({ kind: 'surname', value: data.lastname });
   if (data.suffix) nameComponents.push({ kind: 'generation', value: data.suffix });
 
-  const emailValues = data.emails && data.emails.length > 0 ? data.emails : data.email ? [{ type: '', value: data.email }] : [];
-  const phoneValues = data.phones && data.phones.length > 0 ? data.phones : data.phone ? [{ type: '', value: data.phone }] : [];
-  const addressValues = data.addresses && data.addresses.length > 0
-    ? data.addresses
-    : data.address
-      ? [{ type: '', street: data.address, city: '', region: '', postal: '', country: '' }]
-      : [];
+  const emailValues =
+    data.emails && data.emails.length > 0
+      ? data.emails
+      : data.email
+        ? [{ type: '', value: data.email }]
+        : [];
+  const phoneValues =
+    data.phones && data.phones.length > 0
+      ? data.phones
+      : data.phone
+        ? [{ type: '', value: data.phone }]
+        : [];
+  const addressValues =
+    data.addresses && data.addresses.length > 0
+      ? data.addresses
+      : data.address
+        ? [{ type: '', street: data.address, city: '', region: '', postal: '', country: '' }]
+        : [];
 
   const emails = valuesToCardEmails(emailValues);
   const phones = valuesToCardPhones(phoneValues);
@@ -730,7 +791,7 @@ export function toContactRecordInput(data: Partial<Contact>): ContactRecordInput
   const anniversaries = withAnniversary(
     withAnniversary(undefined, 'birth', data.birthday || ''),
     'wedding',
-    data.anniversary || ''
+    data.anniversary || '',
   );
 
   const organizations = withOrganization(data.organization || '', data.department || '');
@@ -803,10 +864,19 @@ export interface GetContactsParams {
 }
 
 // Get a page of contacts with filters, resumable via next_cursor (T17).
-export async function getContacts(
-  params: GetContactsParams
-): Promise<ContactsResponse> {
-  const { cursor, limit = 25, search = '', circle = '', sort, order, includeArchived, archived, favorites, hasContactInfo } = params;
+export async function getContacts(params: GetContactsParams): Promise<ContactsResponse> {
+  const {
+    cursor,
+    limit = 25,
+    search = '',
+    circle = '',
+    sort,
+    order,
+    includeArchived,
+    archived,
+    favorites,
+    hasContactInfo,
+  } = params;
 
   const queryParams = new URLSearchParams({
     limit: limit.toString(),
@@ -820,18 +890,23 @@ export async function getContacts(
   if (includeArchived) queryParams.append('include_archived', 'true');
   if (archived !== undefined) queryParams.append('archived', archived.toString());
   if (favorites !== undefined) queryParams.append('favorites', favorites.toString());
-  if (hasContactInfo !== undefined) queryParams.append('has_contact_info', hasContactInfo.toString());
+  if (hasContactInfo !== undefined)
+    queryParams.append('has_contact_info', hasContactInfo.toString());
 
-  const response = await apiFetch(
-    `${API_BASE_URL}/contacts?${queryParams.toString()}`,
-    { headers: getAuthHeaders() }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/contacts?${queryParams.toString()}`, {
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw await parseErrorResponse(response);
   }
 
-  const data: { contacts: ContactSummaryDTO[]; next_cursor: string; limit: number; hidden_count?: number } = await response.json();
+  const data: {
+    contacts: ContactSummaryDTO[];
+    next_cursor: string;
+    limit: number;
+    hidden_count?: number;
+  } = await response.json();
   return {
     contacts: data.contacts.map(summaryToLegacyContact),
     next_cursor: data.next_cursor,
@@ -844,7 +919,9 @@ export async function getContacts(
 // "pull everything" affordance callers like the activity/network pages and
 // timeline editor need now that there is no page=1000 shortcut and no total
 // to size a loop with.
-export async function getAllContacts(params: Omit<GetContactsParams, 'cursor'> = {}): Promise<Contact[]> {
+export async function getAllContacts(
+  params: Omit<GetContactsParams, 'cursor'> = {},
+): Promise<Contact[]> {
   const contacts: Contact[] = [];
   let cursor: string | undefined;
   for (let guard = 0; guard < 100; guard++) {
@@ -868,9 +945,13 @@ export async function getContactsByUid(uids: string[]): Promise<Map<string, Cont
   if (wanted.length === 0) return map;
 
   const queryParams = new URLSearchParams({ include_archived: 'true' });
-  wanted.forEach((uid) => queryParams.append('vcard_uid', uid));
+  wanted.forEach((uid) => {
+    queryParams.append('vcard_uid', uid);
+  });
 
-  const response = await apiFetch(`${API_BASE_URL}/contacts?${queryParams.toString()}`, { headers: getAuthHeaders() });
+  const response = await apiFetch(`${API_BASE_URL}/contacts?${queryParams.toString()}`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
 
   const data: { contacts: ContactSummaryDTO[] } = await response.json();
@@ -887,10 +968,7 @@ export async function getContactsByUid(uids: string[]): Promise<Map<string, Cont
 // in the app itself round-trips a full record through the flat Contact shape
 // anymore.
 export async function getContactRecord(id: string | number): Promise<ContactRecordResponse> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/contacts/${id}`,
-    { headers: getAuthHeaders() }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/contacts/${id}`, { headers: getAuthHeaders() });
 
   if (!response.ok) {
     throw await parseErrorResponse(response);
@@ -899,15 +977,15 @@ export async function getContactRecord(id: string | number): Promise<ContactReco
   return response.json();
 }
 
-export async function updateContactRecord(id: string | number, input: ContactRecordInput): Promise<ContactRecordResponse> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/contacts/${id}`,
-    {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(input),
-    }
-  );
+export async function updateContactRecord(
+  id: string | number,
+  input: ContactRecordInput,
+): Promise<ContactRecordResponse> {
+  const response = await apiFetch(`${API_BASE_URL}/contacts/${id}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
+  });
 
   if (!response.ok) {
     throw await parseErrorResponse(response);
@@ -916,15 +994,14 @@ export async function updateContactRecord(id: string | number, input: ContactRec
   return response.json();
 }
 
-export async function createContactRecord(input: ContactRecordInput): Promise<ContactRecordResponse> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/contacts`,
-    {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(input),
-    }
-  );
+export async function createContactRecord(
+  input: ContactRecordInput,
+): Promise<ContactRecordResponse> {
+  const response = await apiFetch(`${API_BASE_URL}/contacts`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
+  });
 
   if (!response.ok) {
     throw await parseErrorResponse(response);
@@ -935,16 +1012,11 @@ export async function createContactRecord(input: ContactRecordInput): Promise<Co
 }
 
 // Delete contact
-export async function deleteContact(
-  id: string | number
-): Promise<void> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/contacts/${id}`,
-    {
-      method: 'DELETE',
-      headers: getAuthHeaders(),
-    }
-  );
+export async function deleteContact(id: string | number): Promise<void> {
+  const response = await apiFetch(`${API_BASE_URL}/contacts/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw await parseErrorResponse(response);
@@ -954,7 +1026,7 @@ export async function deleteContact(
 // Get contact profile picture
 export async function getContactProfilePicture(
   id: string | number,
-  thumbnail: boolean = false
+  thumbnail: boolean = false,
 ): Promise<Blob | null> {
   const url = thumbnail
     ? `${API_BASE_URL}/contacts/${id}/profile_picture?thumbnail=true`
@@ -969,20 +1041,14 @@ export async function getContactProfilePicture(
 }
 
 // Upload contact profile picture
-export async function uploadProfilePicture(
-  id: string | number,
-  imageBlob: Blob
-): Promise<void> {
+export async function uploadProfilePicture(id: string | number, imageBlob: Blob): Promise<void> {
   const formData = new FormData();
   formData.append('photo', imageBlob, 'profile.jpg');
 
-  const response = await apiFetch(
-    `${API_BASE_URL}/contacts/${id}/profile_picture`,
-    {
-      method: 'POST',
-      body: formData
-    }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/contacts/${id}/profile_picture`, {
+    method: 'POST',
+    body: formData,
+  });
 
   if (!response.ok) {
     throw await parseErrorResponse(response);
@@ -991,10 +1057,9 @@ export async function uploadProfilePicture(
 
 // Get all circles
 export async function getCircles(): Promise<string[]> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/contacts/circles`,
-    { headers: getAuthHeaders() }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/contacts/circles`, {
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw await parseErrorResponse(response);
@@ -1008,10 +1073,9 @@ export async function getCircles(): Promise<string[]> {
 // Temporary: reads legacy strings from the old flat Contact.Circles JSON
 // column. Used by the T2 triage page during migration. Remove after migration.
 export async function getLegacyCircles(): Promise<string[]> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/contacts/circles?legacy=true`,
-    { headers: getAuthHeaders() }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/contacts/circles?legacy=true`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   const data = await response.json();
   return Array.isArray(data) ? data : [];
@@ -1019,14 +1083,16 @@ export async function getLegacyCircles(): Promise<string[]> {
 
 // Temporary: filters contacts by a legacy flat-circle string. Used by the
 // T2 triage page's member-add step. Remove after migration.
-export async function getContactsByLegacyCircle(circle: string): Promise<{ contacts: Contact[]; total?: number }> {
+export async function getContactsByLegacyCircle(
+  circle: string,
+): Promise<{ contacts: Contact[]; total?: number }> {
   const queryParams = new URLSearchParams({
-    limit: '500', circle_legacy: circle,
+    limit: '500',
+    circle_legacy: circle,
   });
-  const response = await apiFetch(
-    `${API_BASE_URL}/contacts?${queryParams.toString()}`,
-    { headers: getAuthHeaders() }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/contacts?${queryParams.toString()}`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }
@@ -1040,10 +1106,7 @@ export async function getContactsByLegacyCircle(circle: string): Promise<{ conta
 // type's capital ID). Do NOT route this through toLegacyContact/
 // ContactRecordResponse -- there is no card/crm nesting to unwrap here.
 export async function getRandomContacts(): Promise<Contact[]> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/contacts/random`,
-    { headers: getAuthHeaders() }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/contacts/random`, { headers: getAuthHeaders() });
 
   if (!response.ok) {
     throw await parseErrorResponse(response);
@@ -1055,10 +1118,9 @@ export async function getRandomContacts(): Promise<Contact[]> {
 
 // Get upcoming birthdays (returns up to 10 birthdays for contacts)
 export async function getUpcomingBirthdays(): Promise<Birthday[]> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/contacts/birthdays`,
-    { headers: getAuthHeaders() }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/contacts/birthdays`, {
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw await parseErrorResponse(response);
@@ -1072,16 +1134,11 @@ export async function getUpcomingBirthdays(): Promise<Birthday[]> {
 // ArchiveContact/UnarchiveContact were deliberately left out of the
 // nested-Card API migration and still return models.Contact's raw flat
 // JSON directly -- no toLegacyContact translation needed or correct here.
-export async function archiveContact(
-  id: string | number
-): Promise<Contact> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/contacts/${id}/archive`,
-    {
-      method: 'POST',
-      headers: getAuthHeaders(),
-    }
-  );
+export async function archiveContact(id: string | number): Promise<Contact> {
+  const response = await apiFetch(`${API_BASE_URL}/contacts/${id}/archive`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw await parseErrorResponse(response);
@@ -1091,16 +1148,11 @@ export async function archiveContact(
 }
 
 // Unarchive a contact
-export async function unarchiveContact(
-  id: string | number
-): Promise<Contact> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/contacts/${id}/unarchive`,
-    {
-      method: 'POST',
-      headers: getAuthHeaders(),
-    }
-  );
+export async function unarchiveContact(id: string | number): Promise<Contact> {
+  const response = await apiFetch(`${API_BASE_URL}/contacts/${id}/unarchive`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw await parseErrorResponse(response);
@@ -1112,16 +1164,11 @@ export async function unarchiveContact(
 // Issue #173: favorite toggle. Same shape as archive/unarchive above — the
 // backend returns models.Contact's raw flat JSON, and the endpoint fires
 // hooks so the flip propagates through CardDAV sync and the ?since= feed.
-export async function favoriteContact(
-  id: string | number
-): Promise<Contact> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/contacts/${id}/favorite`,
-    {
-      method: 'POST',
-      headers: getAuthHeaders(),
-    }
-  );
+export async function favoriteContact(id: string | number): Promise<Contact> {
+  const response = await apiFetch(`${API_BASE_URL}/contacts/${id}/favorite`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw await parseErrorResponse(response);
@@ -1131,16 +1178,11 @@ export async function favoriteContact(
 }
 
 // Unfavorite a contact
-export async function unfavoriteContact(
-  id: string | number
-): Promise<Contact> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/contacts/${id}/unfavorite`,
-    {
-      method: 'POST',
-      headers: getAuthHeaders(),
-    }
-  );
+export async function unfavoriteContact(id: string | number): Promise<Contact> {
+  const response = await apiFetch(`${API_BASE_URL}/contacts/${id}/unfavorite`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw await parseErrorResponse(response);
