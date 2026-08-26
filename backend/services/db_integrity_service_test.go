@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -20,23 +21,55 @@ import (
 	"gorm.io/gorm"
 )
 
-// corruptTailPage truncates one page's worth of bytes off the end of a
-// closed SQLite file. The header (page 1) still claims the original page
-// count, so the file still opens fine — PRAGMA integrity_check is what
-// notices the missing/short pages, exactly the class of corruption this job
-// exists to catch.
-func corruptTailPage(t *testing.T, path string) {
+// corruptDataPage overwrites one whole page of a closed SQLite file with
+// garbage bytes, in place, well past the schema pages so it lands on real
+// notes-table data rather than the header.
+//
+// An earlier version of this helper truncated one page's worth of bytes off
+// the end instead. That shrinks the file below what page 1's header still
+// claims as the total page count, and whether that reads back as graceful
+// ("Page N: never used" / a freelist-count mismatch PRAGMA integrity_check
+// can report as text) or as a hard, unopenable "database disk image is
+// malformed" I/O error depends entirely on whether the now-missing tail
+// page happened to be on the freelist (unreferenced -- safe) or still
+// referenced by a live b-tree (a real short read past EOF -- fatal). Which
+// one you get is a function of the database's exact page count, which is
+// sensitive to incidental things like how many connections happened to
+// checkpoint the WAL before this file was sealed -- not something a test
+// should be pinned to. Overwriting a page's bytes in place instead never
+// changes the file's size, so it can never produce a short read: every page
+// the header claims still physically exists, and corruption is always the
+// gentler "this page's content doesn't parse" case integrity_check is
+// built to report as findings, not the fatal "this page doesn't exist"
+// case. See PR #579 review.
+func corruptDataPage(t *testing.T, path string) {
 	t.Helper()
+	const pageSize = 4096
 	info, err := os.Stat(path)
 	require.NoError(t, err)
-	const pageSize = 4096
-	require.Greater(t, info.Size(), int64(4*pageSize), "need enough pages for truncation to hit real data, not just the header")
-	require.NoError(t, os.Truncate(path, info.Size()-pageSize))
+	pageCount := info.Size() / pageSize
+	require.Greater(t, pageCount, int64(8), "need enough pages for the corruption target to land past the schema pages, on real notes data")
+
+	// The schema pages (sqlite_master, and the small users/webhooks/
+	// job_executions tables) sit at the front of the file; bulk notes data
+	// dominates everything after that. The middle of the file is
+	// comfortably inside that notes region without ever risking page 1
+	// (the file header) or the tables the webhook-delivery test depends on
+	// surviving untouched.
+	target := pageCount / 2
+
+	f, err := os.OpenFile(path, os.O_RDWR, 0)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, f.Close()) }()
+
+	garbage := bytes.Repeat([]byte{0xFF}, pageSize)
+	_, err = f.WriteAt(garbage, (target-1)*pageSize)
+	require.NoError(t, err)
 }
 
 // seededLiveDB builds a real migrated database (CLAUDE.md trap #1 — never
 // AutoMigrate) with enough bulk data that it spans multiple SQLite pages, so
-// corruptTailPage has real data to land on.
+// corruptDataPage has real data to land on.
 func seededLiveDB(t *testing.T, name string) (db *gorm.DB, path string) {
 	t.Helper()
 	path = filepath.Join(t.TempDir(), name)
@@ -66,7 +99,7 @@ func closeDB(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	// WAL mode means recent writes may still be sitting in the -wal sidecar
 	// rather than the main file; truncate-checkpoint first so the bulk data
-	// corruptTailPage depends on is actually in the file it truncates.
+	// corruptDataPage depends on is actually in the file it corrupts.
 	require.NoError(t, db.Exec("PRAGMA wal_checkpoint(TRUNCATE)").Error)
 	sqlDB, err := db.DB()
 	require.NoError(t, err)
@@ -102,7 +135,7 @@ func TestCheckDBIntegrityDetectsCorruption(t *testing.T) {
 	db, path := seededLiveDB(t, "corrupt.db")
 	closeDB(t, db)
 
-	corruptTailPage(t, path)
+	corruptDataPage(t, path)
 
 	raw := openRaw(t, path)
 	ok, detail, err := checkDBIntegrity(raw)
@@ -148,12 +181,12 @@ func TestCheckDBIntegrityScheduledFiresWebhookOnCorruption(t *testing.T) {
 	require.NoError(t, db.Where("username = ?", "integritytester").First(&user).Error)
 	closeDB(t, db)
 
-	corruptTailPage(t, path)
+	corruptDataPage(t, path)
 	raw := openRaw(t, path)
 
 	// job_executions and webhooks tables are created early by migrations and
 	// were empty at corruption time (all the bulk data went into notes), so
-	// they're expected to have survived the tail truncation intact.
+	// they're expected to have survived the corruption intact.
 	var hits int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&hits, 1)
