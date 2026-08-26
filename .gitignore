@@ -120,3 +120,6 @@ BACKLOG.md
 fly.demo.toml
 fly.test.toml
 .aider*
+
+# Compiled helper binary from `go build ./cmd/dastcanary` run in-tree.
+/backend/dastcanary

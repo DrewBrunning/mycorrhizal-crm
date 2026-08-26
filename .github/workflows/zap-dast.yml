@@ -144,6 +144,7 @@ jobs:
           # zapgate never got a report to gate on.
           chmod a+rwx zap
 
+          rc=0
           docker run --rm --network host \
             -e ZAP_AUTH_HEADER \
             -e ZAP_AUTH_HEADER_VALUE \
@@ -151,7 +152,28 @@ jobs:
             -v "$PWD/zap:/zap/wrk:rw" \
             -v "$PWD/backend/openapi.yaml:/zap/openapi.yaml:ro" \
             ghcr.io/zaproxy/zaproxy@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef \
-            zap.sh -Xmx3g -cmd -autorun /zap/wrk/zap-dast.yaml
+            zap.sh -Xmx3g -cmd -autorun /zap/wrk/zap-dast.yaml || rc=$?
+
+          # zap.sh -autorun exit codes: 0 clean, 1 the plan had *failures*,
+          # 2 the plan had *warnings* and no failure. A warning must not fail
+          # the build here -- zapgate is the gate, and letting an unrelated
+          # plan warning preempt it means the security verdict never gets
+          # computed. (Observed: a 404 on the canary's site root made the
+          # spider warn, exit 2, and skip zapgate entirely even though both
+          # reports had been written.)
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 2 ]; then
+            echo "::error::ZAP exited $rc (automation plan failure)"
+            exit "$rc"
+          fi
+
+          # An exit code is not evidence the report exists: ZAP reports a
+          # failed report-generation job at the very end, so a plan can run a
+          # full active scan and still leave zapgate nothing to read. Fail
+          # here, where the cause is obvious, rather than in the gate.
+          test -s zap/report.json || {
+            echo "::error::ZAP produced no report.json -- gate cannot run"
+            exit 1
+          }
 
       # The gate: apply zap/dast.ignore, fail on unaccepted High/Medium app
       # findings, and assert the canary self-test (planted XSS) was seen.
@@ -162,8 +184,21 @@ jobs:
           ZAPGATE_REPORT: ../zap/report.json
           ZAPGATE_IGNORE: ../zap/dast.ignore
 
+      # Best-effort, and deliberately not a gate. Code scanning anchors every
+      # result to a path inside the checkout, while ZAP's SARIF locates
+      # findings by the URL it scanned, so the upload is rejected:
+      #
+      #   SARIF URI scheme "http" did not match the checkout URI scheme "file"
+      #
+      # There is no honest repo-relative path for "the running app answered
+      # this way over HTTP", so this is a real model mismatch rather than a
+      # config slip -- mapping it needs a decision, tracked separately. The
+      # gate is zapgate plus the uploaded report.json artifact; those do not
+      # depend on this step, so a rejection must not turn the job red and hide
+      # the actual verdict.
       - name: Upload SARIF to code scanning
         if: always()
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
         with:
           sarif_file: zap/dast.sarif.json

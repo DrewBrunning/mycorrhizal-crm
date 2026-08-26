@@ -8,6 +8,33 @@ import (
 	"testing"
 )
 
+// The ZAP spider job starts at the canary's site root and treats a non-200
+// there as a plan warning, which makes zap.sh exit 2 and fails the workflow
+// step before zapgate runs. Go's ServeMux has no root pattern by default, so
+// "/" used to 404 and the DAST job could never go green.
+func TestIndexHandlerServesRoot(t *testing.T) {
+	rr := doRequest(t, http.MethodGet, "/")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET / status = %d, want %d", rr.Code, http.StatusOK)
+	}
+	// The spider follows links; the planted endpoints must be reachable from
+	// the root, not only from the requestor job's seed URLs.
+	for _, want := range []string{"/reflected?q=hello", "/idor/1", "/idor/2"} {
+		if !strings.Contains(rr.Body.String(), want) {
+			t.Errorf("GET / body does not link %q", want)
+		}
+	}
+}
+
+// "/" is ServeMux's catch-all, so the index must not swallow unknown paths
+// into a 200 — that would make the spider report phantom pages.
+func TestIndexHandlerNotFoundForUnknownPath(t *testing.T) {
+	rr := doRequest(t, http.MethodGet, "/no-such-path")
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("GET /no-such-path status = %d, want %d", rr.Code, http.StatusNotFound)
+	}
+}
+
 func TestHealthHandler(t *testing.T) {
 	rr := doRequest(t, http.MethodGet, "/health")
 	if rr.Code != http.StatusOK {
