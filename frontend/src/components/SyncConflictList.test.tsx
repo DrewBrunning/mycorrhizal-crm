@@ -1,9 +1,9 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { ContactSyncConflict } from '../api/contactSyncConflicts';
 import SyncConflictList from './SyncConflictList';
-import { ContactSyncConflict } from '../api/contactSyncConflicts';
 
 afterEach(cleanup);
 
@@ -37,7 +37,7 @@ function renderList(props: Partial<React.ComponentProps<typeof SyncConflictList>
   return render(
     <MemoryRouter>
       <SyncConflictList {...defaults} />
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -67,7 +67,11 @@ test('restore and dismiss handlers fire with the conflict', () => {
 });
 
 test('renders scalar values verbatim and the empty state when none exist', () => {
-  renderList({ conflicts: [conflict({ field: 'job_title', local_value: 'Local Title', remote_value: 'Remote Title' })] });
+  renderList({
+    conflicts: [
+      conflict({ field: 'job_title', local_value: 'Local Title', remote_value: 'Remote Title' }),
+    ],
+  });
   expect(screen.getByText(/Local Title/)).toBeInTheDocument();
 
   renderList({ conflicts: [] });

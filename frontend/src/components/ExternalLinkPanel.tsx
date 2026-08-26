@@ -1,35 +1,35 @@
-import { useState } from 'react';
-import {
-  Box,
-  Typography,
-  Stack,
-  Paper,
-  Button,
-  IconButton,
-  Chip,
-  Link,
-  Divider,
-  CircularProgress,
-  Alert,
-} from '@mui/material';
-import { mdiLinkVariant, mdiImageMultipleOutline } from '@mdi/js';
-import { SvgIcon } from '@mui/material';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import DeleteIcon from '@mui/icons-material/Delete';
+import { mdiImageMultipleOutline, mdiLinkVariant } from '@mdi/js';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import SyncIcon from '@mui/icons-material/Sync';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Divider,
+  IconButton,
+  Link,
+  Paper,
+  Stack,
+  SvgIcon,
+  Typography,
+} from '@mui/material';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ExternalIdentity } from '../api/externalLinks';
-import { ImmichPerson, ImmichPersonSummary, immichThumbnailUrl } from '../api/immich';
-import { PaperlessDocument } from '../api/paperless';
-import { SeafileLibrary, SeafileItem } from '../api/seafile';
-import { WebDAVItem } from '../api/nextcloud';
-import ImmichPersonSearchDialog from './ImmichPersonSearchDialog';
-import FileLinksPanel, { FileSystem } from './FileLinksPanel';
-import { SeafileLinkTarget } from './SeafileFilePickerDialog';
-import AuthImg from './AuthImg';
+import type { ExternalIdentity } from '../api/externalLinks';
+import { type ImmichPerson, type ImmichPersonSummary, immichThumbnailUrl } from '../api/immich';
+import type { WebDAVItem } from '../api/nextcloud';
+import type { PaperlessDocument } from '../api/paperless';
+import type { SeafileItem, SeafileLibrary } from '../api/seafile';
 import { useDateFormat } from '../DateFormatProvider';
 import { isHttpUrlString } from '../utils/linkResolution';
+import AuthImg from './AuthImg';
+import FileLinksPanel, { type FileSystem } from './FileLinksPanel';
+import ImmichPersonSearchDialog from './ImmichPersonSearchDialog';
+import type { SeafileLinkTarget } from './SeafileFilePickerDialog';
 
 interface ExternalLinkPanelProps {
   contactUid: string;
@@ -90,7 +90,9 @@ export default function ExternalLinkPanel({
 
   const immichIdentity = identities.find((i) => i.system === 'immich');
   const fileSystems = new Set(['paperless', 'seafile', 'nextcloud']);
-  const otherIdentities = identities.filter((i) => i.system !== 'immich' && !fileSystems.has(i.system));
+  const otherIdentities = identities.filter(
+    (i) => i.system !== 'immich' && !fileSystems.has(i.system),
+  );
 
   const handleLink = async (person: ImmichPerson) => {
     try {
@@ -118,8 +120,12 @@ export default function ExternalLinkPanel({
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <SvgIcon color="action"><path d={mdiImageMultipleOutline} /></SvgIcon>
-              <Typography variant="subtitle2" component="h3">{t('immich.panel.notLinkedTitle')}</Typography>
+              <SvgIcon color="action">
+                <path d={mdiImageMultipleOutline} />
+              </SvgIcon>
+              <Typography variant="subtitle2" component="h3">
+                {t('immich.panel.notLinkedTitle')}
+              </Typography>
             </Box>
             <Button
               size="small"
@@ -146,14 +152,22 @@ export default function ExternalLinkPanel({
               <AuthImg
                 src={immichThumbnailUrl(contactUid)}
                 alt=""
-                sx={{ width: 56, height: 56, borderRadius: 1, objectFit: 'cover', bgcolor: 'action.hover' }}
+                sx={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 1,
+                  objectFit: 'cover',
+                  bgcolor: 'action.hover',
+                }}
               />
             )}
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                 <Typography variant="subtitle2" component="h3" sx={{ fontWeight: 600 }}>
                   {immichSummary?.person_name ||
-                    (typeof immichIdentity.metadata?.person_name === 'string' ? immichIdentity.metadata.person_name : '') ||
+                    (typeof immichIdentity.metadata?.person_name === 'string'
+                      ? immichIdentity.metadata.person_name
+                      : '') ||
                     t('immich.panel.linkedPerson')}
                 </Typography>
                 <Chip size="small" label="Immich" />
@@ -171,7 +185,11 @@ export default function ExternalLinkPanel({
                     // A URL that predates the write-time `httpurl` validator
                     // (or arrived via a non-API path) is shown as text, never
                     // turned into an href (T41).
-                    <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ overflowWrap: 'anywhere' }}
+                    >
                       {immichIdentity.url}
                     </Typography>
                   ))}
@@ -181,11 +199,19 @@ export default function ExternalLinkPanel({
               </Typography>
               {immichSummary?.latest_at && (
                 <Typography variant="body2" color="text.secondary">
-                  {t('immich.panel.latestAppearance', { date: formatDate(immichSummary.latest_at) })}
+                  {t('immich.panel.latestAppearance', {
+                    date: formatDate(immichSummary.latest_at),
+                  })}
                 </Typography>
               )}
               <Box sx={{ display: 'flex', gap: 0.5, mt: 1 }}>
-                <IconButton size="small" title={t('immich.panel.syncNow')} aria-label={t('immich.panel.syncNow')} onClick={onSyncImmich} disabled={syncing}>
+                <IconButton
+                  size="small"
+                  title={t('immich.panel.syncNow')}
+                  aria-label={t('immich.panel.syncNow')}
+                  onClick={onSyncImmich}
+                  disabled={syncing}
+                >
                   <SyncIcon fontSize="small" />
                 </IconButton>
                 <IconButton
@@ -203,7 +229,11 @@ export default function ExternalLinkPanel({
         </Paper>
       )}
 
-      {error && <Alert severity="error" sx={{ py: 0 }}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ py: 0 }}>
+          {error}
+        </Alert>
+      )}
 
       <FileLinksPanel
         identities={identities}
@@ -227,36 +257,52 @@ export default function ExternalLinkPanel({
           {loading ? (
             <CircularProgress size={24} />
           ) : (
-            otherIdentities
-              .map((identity) => (
-                <Paper key={identity.id} variant="outlined" sx={{ p: 1.5 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-                      <SvgIcon color="action" fontSize="small"><path d={mdiLinkVariant} /></SvgIcon>
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
-                          {identity.system}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
-                          {identity.external_id}
-                        </Typography>
-                      </Box>
+            otherIdentities.map((identity) => (
+              <Paper key={identity.id} variant="outlined" sx={{ p: 1.5 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 1,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                    <SvgIcon color="action" fontSize="small">
+                      <path d={mdiLinkVariant} />
+                    </SvgIcon>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
+                        {identity.system}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ overflowWrap: 'anywhere' }}
+                      >
+                        {identity.external_id}
+                      </Typography>
                     </Box>
-                    {identity.url &&
-                      (isHttpUrlString(identity.url) ? (
-                        <Link href={identity.url} target="_blank" rel="noopener noreferrer">
-                          <OpenInNewIcon fontSize="small" />
-                        </Link>
-                      ) : (
-                        // Same render-time guard as the Immich row: an unsafe
-                        // or non-http URL is shown as text, not as an href.
-                        <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: 'anywhere', maxWidth: 240 }}>
-                          {identity.url}
-                        </Typography>
-                      ))}
                   </Box>
-                </Paper>
-              ))
+                  {identity.url &&
+                    (isHttpUrlString(identity.url) ? (
+                      <Link href={identity.url} target="_blank" rel="noopener noreferrer">
+                        <OpenInNewIcon fontSize="small" />
+                      </Link>
+                    ) : (
+                      // Same render-time guard as the Immich row: an unsafe
+                      // or non-http URL is shown as text, not as an href.
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ overflowWrap: 'anywhere', maxWidth: 240 }}
+                      >
+                        {identity.url}
+                      </Typography>
+                    ))}
+                </Box>
+              </Paper>
+            ))
           )}
         </>
       )}

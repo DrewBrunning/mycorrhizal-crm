@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { getContactBriefing } from './briefings';
 
 afterEach(() => {
@@ -18,7 +18,11 @@ describe('getContactBriefing', () => {
         recent_notes: [{ ID: 3, content: 'Talks about her garden', date: '2026-07-30T00:00:00Z' }],
         open_agenda_items: [{ id: 'a1', entity_id: 'alice-uid', content: 'Ask about the surgery' }],
         relationships: [
-          { edge: { id: 'e1', source_id: 'bob-uid', target_id: 'alice-uid', type: 'spouse_of' }, other_party_name: 'Bob Marley', display_token: 'spouse_of' },
+          {
+            edge: { id: 'e1', source_id: 'bob-uid', target_id: 'alice-uid', type: 'spouse_of' },
+            other_party_name: 'Bob Marley',
+            display_token: 'spouse_of',
+          },
         ],
         life_events: [{ id: 'le1', entity_id: 'alice-uid', type: 'graduated', description: 'PhD' }],
         upcoming_reminders: [{ ID: 5, message: 'Send card', remind_at: '2026-08-10T09:00:00Z' }],

@@ -1,44 +1,44 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import DeleteIcon from '@mui/icons-material/Delete';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
-  Typography,
+  CircularProgress,
   Divider,
-  TextField,
-  Button,
-  Stack,
-  Alert,
   FormControlLabel,
-  Switch,
   IconButton,
   List,
   ListItem,
   ListItemText,
-  CircularProgress,
+  Stack,
+  Switch,
+  TextField,
+  Typography,
 } from '@mui/material';
-import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import DeleteIcon from '@mui/icons-material/Delete';
-import NotificationsIcon from '@mui/icons-material/Notifications';
-import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
-import { useSnackbar } from '../context/SnackbarContext';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
+  createPushSubscription,
+  type DeviceRegistration,
+  deleteDeviceRegistration,
+  deletePushSubscription,
+  getDeviceRegistrations,
   getNotificationConfig,
+  getPushSubscriptions,
+  type NotificationChannel,
+  type NotificationConfig,
+  type PushSubscription,
   saveNotificationConfig,
   testNotificationChannel,
-  getPushSubscriptions,
-  deletePushSubscription,
-  createPushSubscription,
-  getDeviceRegistrations,
-  deleteDeviceRegistration,
-  NotificationConfig,
-  NotificationChannel,
-  PushSubscription,
-  DeviceRegistration,
 } from '../api/notifications';
-import { subscribeBrowserPush, browserSupportsPush } from '../pushSubscription';
+import { useSnackbar } from '../context/SnackbarContext';
+import { browserSupportsPush, subscribeBrowserPush } from '../pushSubscription';
 
 // isPrivateAddressURL does a lightweight client-side check for the most
 // common private/loopback targets so the Settings card can warn BEFORE the
@@ -84,7 +84,11 @@ export default function NotificationSettings() {
   const [saveError, setSaveError] = useState('');
 
   const [testing, setTesting] = useState<NotificationChannel | null>(null);
-  const [testResult, setTestResult] = useState<{ channel: NotificationChannel; ok: boolean; error?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    channel: NotificationChannel;
+    ok: boolean;
+    error?: string;
+  } | null>(null);
 
   const [subscriptions, setSubscriptions] = useState<PushSubscription[]>([]);
   const [subsLoading, setSubsLoading] = useState(false);
@@ -227,28 +231,42 @@ export default function NotificationSettings() {
   };
 
   const handleDeleteDevice = async (sub: PushSubscription) => {
-    if (!window.confirm(t('notifications.settings.deleteDeviceConfirm', { label: sub.device_label || 'Browser' }))) {
+    if (
+      !window.confirm(
+        t('notifications.settings.deleteDeviceConfirm', { label: sub.device_label || 'Browser' }),
+      )
+    ) {
       return;
     }
     try {
       await deletePushSubscription(sub.id);
-      setSubscriptions(prev => prev.filter(s => s.id !== sub.id));
+      setSubscriptions((prev) => prev.filter((s) => s.id !== sub.id));
       showSuccess(t('notifications.settings.deviceDeleted'));
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('notifications.settings.deviceDeleteFailed'));
+      showError(
+        err instanceof Error ? err.message : t('notifications.settings.deviceDeleteFailed'),
+      );
     }
   };
 
   const handleDeleteMobileDevice = async (device: DeviceRegistration) => {
-    if (!window.confirm(t('notifications.settings.deleteDeviceConfirm', { label: device.device_label || device.client }))) {
+    if (
+      !window.confirm(
+        t('notifications.settings.deleteDeviceConfirm', {
+          label: device.device_label || device.client,
+        }),
+      )
+    ) {
       return;
     }
     try {
       await deleteDeviceRegistration(device.id);
-      setDevices(prev => prev.filter(d => d.id !== device.id));
+      setDevices((prev) => prev.filter((d) => d.id !== device.id));
       showSuccess(t('notifications.settings.deviceDeleted'));
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('notifications.settings.deviceDeleteFailed'));
+      showError(
+        err instanceof Error ? err.message : t('notifications.settings.deviceDeleteFailed'),
+      );
     }
   };
 
@@ -274,14 +292,26 @@ export default function NotificationSettings() {
               {t('notifications.settings.description')}
             </Typography>
 
-            {loadError && <Alert severity="error" sx={{ py: 0 }}>{loadError}</Alert>}
-            {saveError && <Alert severity="error" sx={{ py: 0 }}>{saveError}</Alert>}
+            {loadError && (
+              <Alert severity="error" sx={{ py: 0 }}>
+                {loadError}
+              </Alert>
+            )}
+            {saveError && (
+              <Alert severity="error" sx={{ py: 0 }}>
+                {saveError}
+              </Alert>
+            )}
 
             {/* ntfy */}
             <Box>
               <FormControlLabel
                 control={
-                  <Switch checked={notifyNtfy} onChange={e => setNotifyNtfy(e.target.checked)} size="small" />
+                  <Switch
+                    checked={notifyNtfy}
+                    onChange={(e) => setNotifyNtfy(e.target.checked)}
+                    size="small"
+                  />
                 }
                 label={t('notifications.settings.ntfy.enable')}
               />
@@ -289,7 +319,7 @@ export default function NotificationSettings() {
                 <TextField
                   label={t('notifications.settings.ntfy.url')}
                   value={ntfyUrl}
-                  onChange={e => {
+                  onChange={(e) => {
                     setNtfyUrl(e.target.value);
                     setSaveError('');
                     setTestResult(null);
@@ -302,7 +332,7 @@ export default function NotificationSettings() {
                 <TextField
                   label={t('notifications.settings.ntfy.topic')}
                   value={ntfyTopic}
-                  onChange={e => {
+                  onChange={(e) => {
                     setNtfyTopic(e.target.value);
                     setSaveError('');
                     setTestResult(null);
@@ -322,9 +352,13 @@ export default function NotificationSettings() {
                     size="small"
                     startIcon={<PlayArrowIcon />}
                     onClick={() => handleTest('ntfy')}
-                    disabled={testing === 'ntfy' || !notifyNtfy || !ntfyUrl.trim() || !ntfyTopic.trim()}
+                    disabled={
+                      testing === 'ntfy' || !notifyNtfy || !ntfyUrl.trim() || !ntfyTopic.trim()
+                    }
                   >
-                    {testing === 'ntfy' ? t('notifications.settings.testing') : t('notifications.settings.test')}
+                    {testing === 'ntfy'
+                      ? t('notifications.settings.testing')
+                      : t('notifications.settings.test')}
                   </Button>
                 </Box>
               </Stack>
@@ -335,7 +369,11 @@ export default function NotificationSettings() {
             <Box>
               <FormControlLabel
                 control={
-                  <Switch checked={notifyGotify} onChange={e => setNotifyGotify(e.target.checked)} size="small" />
+                  <Switch
+                    checked={notifyGotify}
+                    onChange={(e) => setNotifyGotify(e.target.checked)}
+                    size="small"
+                  />
                 }
                 label={t('notifications.settings.gotify.enable')}
               />
@@ -343,7 +381,7 @@ export default function NotificationSettings() {
                 <TextField
                   label={t('notifications.settings.gotify.url')}
                   value={gotifyUrl}
-                  onChange={e => {
+                  onChange={(e) => {
                     setGotifyUrl(e.target.value);
                     setSaveError('');
                     setTestResult(null);
@@ -357,7 +395,7 @@ export default function NotificationSettings() {
                   label={t('notifications.settings.gotify.token')}
                   type="password"
                   value={gotifyToken}
-                  onChange={e => {
+                  onChange={(e) => {
                     setGotifyToken(e.target.value);
                     setSaveError('');
                     setTestResult(null);
@@ -381,9 +419,16 @@ export default function NotificationSettings() {
                     size="small"
                     startIcon={<PlayArrowIcon />}
                     onClick={() => handleTest('gotify')}
-                    disabled={testing === 'gotify' || !notifyGotify || !gotifyUrl.trim() || !gotifyToken.trim()}
+                    disabled={
+                      testing === 'gotify' ||
+                      !notifyGotify ||
+                      !gotifyUrl.trim() ||
+                      !gotifyToken.trim()
+                    }
                   >
-                    {testing === 'gotify' ? t('notifications.settings.testing') : t('notifications.settings.test')}
+                    {testing === 'gotify'
+                      ? t('notifications.settings.testing')
+                      : t('notifications.settings.test')}
                   </Button>
                 </Box>
               </Stack>
@@ -394,7 +439,11 @@ export default function NotificationSettings() {
             <Box>
               <FormControlLabel
                 control={
-                  <Switch checked={notifyPush} onChange={e => setNotifyPush(e.target.checked)} size="small" />
+                  <Switch
+                    checked={notifyPush}
+                    onChange={(e) => setNotifyPush(e.target.checked)}
+                    size="small"
+                  />
                 }
                 label={t('notifications.settings.push.enable')}
               />
@@ -416,7 +465,14 @@ export default function NotificationSettings() {
               </Stack>
 
               <Box sx={{ mt: 1.5 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    mb: 0.5,
+                  }}
+                >
                   <Typography variant="caption" color="text.secondary">
                     {t('notifications.settings.push.devices')}
                   </Typography>
@@ -428,7 +484,7 @@ export default function NotificationSettings() {
                   </Typography>
                 ) : (
                   <List dense sx={{ py: 0 }}>
-                    {subscriptions.map(sub => (
+                    {subscriptions.map((sub) => (
                       <ListItem
                         key={sub.id}
                         sx={{ px: 0, py: 0.5 }}
@@ -461,15 +517,28 @@ export default function NotificationSettings() {
                     size="small"
                     startIcon={<PlayArrowIcon />}
                     onClick={() => handleTest('push')}
-                    disabled={testing === 'push' || !notifyPush || (subscriptions.length === 0 && devices.length === 0)}
+                    disabled={
+                      testing === 'push' ||
+                      !notifyPush ||
+                      (subscriptions.length === 0 && devices.length === 0)
+                    }
                   >
-                    {testing === 'push' ? t('notifications.settings.testing') : t('notifications.settings.test')}
+                    {testing === 'push'
+                      ? t('notifications.settings.testing')
+                      : t('notifications.settings.test')}
                   </Button>
                 </Box>
               </Box>
 
               <Box sx={{ mt: 1.5 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    mb: 0.5,
+                  }}
+                >
                   <Typography variant="caption" color="text.secondary">
                     {t('notifications.settings.push.mobileDevicesTitle')}
                   </Typography>
@@ -481,7 +550,7 @@ export default function NotificationSettings() {
                   </Typography>
                 ) : (
                   <List dense sx={{ py: 0 }}>
-                    {devices.map(device => (
+                    {devices.map((device) => (
                       <ListItem
                         key={device.id}
                         sx={{ px: 0, py: 0.5 }}
@@ -515,8 +584,12 @@ export default function NotificationSettings() {
             {testResult && (
               <Alert severity={testResult.ok ? 'success' : 'warning'} sx={{ py: 0 }}>
                 {testResult.ok
-                  ? t('notifications.settings.testSuccess', { channel: t(`notifications.settings.channels.${testResult.channel}`) })
-                  : t('notifications.settings.testFailed', { error: testResult.error || 'unknown' })}
+                  ? t('notifications.settings.testSuccess', {
+                      channel: t(`notifications.settings.channels.${testResult.channel}`),
+                    })
+                  : t('notifications.settings.testFailed', {
+                      error: testResult.error || 'unknown',
+                    })}
               </Alert>
             )}
 

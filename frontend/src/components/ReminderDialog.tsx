@@ -1,20 +1,20 @@
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  FormControlLabel,
-  Checkbox,
-  MenuItem,
+  Alert,
   Box,
-  Alert
+  Button,
+  Checkbox,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
+  MenuItem,
+  TextField,
 } from '@mui/material';
-import AppDialog from './AppDialog';
-import { Reminder, ReminderFormData } from '../api/reminders';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { Reminder, ReminderFormData } from '../api/reminders';
 import { getErrorMessage } from '../utils/errorHandler';
+import AppDialog from './AppDialog';
 
 interface InitialReminderValues {
   message?: string;
@@ -36,7 +36,7 @@ export default function ReminderDialog({
   onSave,
   reminder,
   contactId,
-  initialValues
+  initialValues,
 }: ReminderDialogProps) {
   const { t } = useTranslation();
   const [message, setMessage] = useState('');
@@ -50,11 +50,21 @@ export default function ReminderDialog({
   const getDateForRecurrence = (rec: ReminderFormData['recurrence']): string => {
     const d = new Date();
     switch (rec) {
-      case 'weekly':      d.setDate(d.getDate() + 7); break;
-      case 'monthly':     d.setMonth(d.getMonth() + 1); break;
-      case 'quarterly':   d.setMonth(d.getMonth() + 3); break;
-      case 'six-months':  d.setMonth(d.getMonth() + 6); break;
-      case 'yearly':      d.setFullYear(d.getFullYear() + 1); break;
+      case 'weekly':
+        d.setDate(d.getDate() + 7);
+        break;
+      case 'monthly':
+        d.setMonth(d.getMonth() + 1);
+        break;
+      case 'quarterly':
+        d.setMonth(d.getMonth() + 3);
+        break;
+      case 'six-months':
+        d.setMonth(d.getMonth() + 6);
+        break;
+      case 'yearly':
+        d.setFullYear(d.getFullYear() + 1);
+        break;
     }
     return d.toISOString().split('T')[0];
   };
@@ -106,7 +116,7 @@ export default function ReminderDialog({
         remind_at: new Date(remindAt).toISOString(),
         recurrence,
         reoccur_from_completion: reoccurFromCompletion,
-        contact_id: contactId
+        contact_id: contactId,
       };
 
       await onSave(reminderData);
@@ -124,7 +134,7 @@ export default function ReminderDialog({
     { value: 'monthly', label: t('reminders.recurrence.monthly') },
     { value: 'quarterly', label: t('reminders.recurrence.quarterly') },
     { value: 'six-months', label: t('reminders.recurrence.six-months') },
-    { value: 'yearly', label: t('reminders.recurrence.yearly') }
+    { value: 'yearly', label: t('reminders.recurrence.yearly') },
   ];
 
   return (
@@ -153,7 +163,9 @@ export default function ReminderDialog({
             label={t('reminders.recurrence.label')}
             select
             value={recurrence}
-            onChange={(e) => handleRecurrenceChange(e.target.value as ReminderFormData['recurrence'])}
+            onChange={(e) =>
+              handleRecurrenceChange(e.target.value as ReminderFormData['recurrence'])
+            }
             required
             fullWidth
           >
@@ -171,7 +183,10 @@ export default function ReminderDialog({
             onChange={(e) => setRemindAt(e.target.value)}
             required
             fullWidth
-            slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: new Date().toISOString().split('T')[0] } }}
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { min: new Date().toISOString().split('T')[0] },
+            }}
           />
 
           {recurrence !== 'once' && (
@@ -187,12 +202,7 @@ export default function ReminderDialog({
           )}
 
           <FormControlLabel
-            control={
-              <Checkbox
-                checked={byMail}
-                onChange={(e) => setByMail(e.target.checked)}
-              />
-            }
+            control={<Checkbox checked={byMail} onChange={(e) => setByMail(e.target.checked)} />}
             label={t('reminders.sendEmail')}
           />
         </Box>

@@ -1,11 +1,17 @@
-import { test as base, expect, Page, Locator, APIRequestContext } from '@playwright/test';
+import * as crypto from 'node:crypto';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
-import * as crypto from 'crypto';
-import { TEST_USER, API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
+import {
+  type APIRequestContext,
+  test as base,
+  expect,
+  type Locator,
+  type Page,
+} from '@playwright/test';
 import { toContactRecordInput } from '../src/api/contacts';
+import { API_BASE_URL, E2E_CONTACT_PREFIX, TEST_USER } from './global-setup';
 
 export { expect } from '@playwright/test';
 
@@ -105,7 +111,7 @@ export const test = base.extend<{ page: Page }>({
         Promise.race([
           Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))),
           new Promise((resolve) => setTimeout(resolve, 500)),
-        ])
+        ]),
       )
       .catch(() => {});
 
@@ -193,7 +199,7 @@ async function acquireUserSettingsLock(timeoutMs = 60_000): Promise<void> {
       if (Date.now() > deadline) {
         throw new Error(
           'Timed out waiting for the shared e2e user-settings lock -- another test is holding it ' +
-          `(${USER_SETTINGS_LOCK_DIR}). If that directory is stale from a crashed run, delete it.`
+            `(${USER_SETTINGS_LOCK_DIR}). If that directory is stale from a crashed run, delete it.`,
         );
       }
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -257,13 +263,15 @@ export function makeThrowawayUser(label: string): ThrowawayUser {
  */
 export async function deleteThrowawayUser(
   adminRequest: APIRequestContext,
-  username: string
+  username: string,
 ): Promise<void> {
   try {
     const directory = await adminRequest.get(`${API_BASE_URL}/users/directory`);
     if (!directory.ok()) return;
     const { users } = await directory.json();
-    const match = (users || []).find((u: { id: number; username: string }) => u.username === username);
+    const match = (users || []).find(
+      (u: { id: number; username: string }) => u.username === username,
+    );
     if (match) {
       await adminRequest.delete(`${API_BASE_URL}/admin/users/${match.id}`).catch(() => {});
     }
@@ -364,9 +372,11 @@ export async function waitForLoading(page: Page): Promise<void> {
           const rect = el.getBoundingClientRect();
           return rect.width > 0 && rect.height > 0;
         };
-        return ![...document.querySelectorAll('[role="progressbar"], .MuiSkeleton-root')].some(isVisible);
+        return ![...document.querySelectorAll('[role="progressbar"], .MuiSkeleton-root')].some(
+          isVisible,
+        );
       },
-      { timeout: 10000 }
+      { timeout: 10000 },
     )
     .catch(() => {});
 
@@ -459,9 +469,10 @@ export interface CreatedContact {
  */
 export async function createTestContact(
   request: APIRequestContext,
-  overrides: Record<string, unknown> = {}
+  overrides: Record<string, unknown> = {},
 ): Promise<CreatedContact> {
-  const firstname = (overrides.firstname as string | undefined) ?? `${E2E_CONTACT_PREFIX}${uniqueToken()}`;
+  const firstname =
+    (overrides.firstname as string | undefined) ?? `${E2E_CONTACT_PREFIX}${uniqueToken()}`;
   const lastname = (overrides.lastname as string | undefined) ?? 'Temp';
   const response = await request.post(`${API_BASE_URL}/contacts`, {
     data: toContactRecordInput({ firstname, lastname, ...overrides }),
@@ -481,7 +492,7 @@ export async function createTestContact(
  */
 export async function deleteTestContact(
   request: APIRequestContext,
-  id: number | string
+  id: number | string,
 ): Promise<void> {
   await request.delete(`${API_BASE_URL}/contacts/${id}`).catch(() => {});
 }

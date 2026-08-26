@@ -1,9 +1,9 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { Circle } from '../api/circles';
+import type { Tag } from '../api/tags';
 import BulkActionsBar from './BulkActionsBar';
-import { Circle } from '../api/circles';
-import { Tag } from '../api/tags';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);
@@ -125,7 +125,9 @@ test('merge is disabled for a single selection and explains the constraint', asy
   // MUI Tooltip only opens when the pointer enters the wrapping element
   // itself, not a disabled descendant — hover the Tooltip's own <span>.
   fireEvent.mouseOver(mergeButton.parentElement as HTMLElement);
-  expect(await screen.findByRole('tooltip')).toHaveTextContent('Select exactly two contacts to merge.');
+  expect(await screen.findByRole('tooltip')).toHaveTextContent(
+    'Select exactly two contacts to merge.',
+  );
 });
 
 test('merge is disabled for three or more selections', () => {

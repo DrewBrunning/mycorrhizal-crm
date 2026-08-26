@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Box, Card, CardContent, Typography, Button, Stack, Divider, Alert } from '@mui/material';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
-import { AddressHouseholdSuggestion, formatSuggestionAddress } from '../api/households';
-import { getContactsByUid, Contact } from '../api/contacts';
+import { Alert, Box, Button, Card, CardContent, Divider, Stack, Typography } from '@mui/material';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { type Contact, getContactsByUid } from '../api/contacts';
+import { type AddressHouseholdSuggestion, formatSuggestionAddress } from '../api/households';
 import { handleFetchError } from '../utils/errorHandler';
 
 // T40:
@@ -48,7 +48,7 @@ export default function AddressHouseholdSuggestions({
   // a set of contacts, so a single getContactsByUid call covers all of them.
   const allUids = useMemo(
     () => [...new Set(suggestions.flatMap((s) => s.member_vcard_uids))],
-    [suggestions]
+    [suggestions],
   );
   useEffect(() => {
     if (allUids.length === 0) {
@@ -66,7 +66,9 @@ export default function AddressHouseholdSuggestions({
   if (suggestions.length === 0) {
     return (
       <Box sx={{ mt: 3 }}>
-        <Typography variant="h6" component="h2">{t('household.addressSuggestions')}</Typography>
+        <Typography variant="h6" component="h2">
+          {t('household.addressSuggestions')}
+        </Typography>
         <Typography variant="body2" color="text.secondary" paragraph>
           {t('household.addressSuggestionDescription')}
         </Typography>
@@ -93,7 +95,9 @@ export default function AddressHouseholdSuggestions({
 
   return (
     <Box sx={{ mt: 3 }}>
-      <Typography variant="h6" component="h2">{t('household.addressSuggestions')}</Typography>
+      <Typography variant="h6" component="h2">
+        {t('household.addressSuggestions')}
+      </Typography>
       <Typography variant="body2" color="text.secondary" paragraph>
         {t('household.addressSuggestionDescription')}
       </Typography>
@@ -104,7 +108,14 @@ export default function AddressHouseholdSuggestions({
           return (
             <Card key={key} variant="outlined">
               <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 2,
+                  }}
+                >
                   <Box>
                     <Typography variant="body1" fontWeight="medium">
                       {suggestion.member_vcard_uids.map(nameFor).join(' · ')}

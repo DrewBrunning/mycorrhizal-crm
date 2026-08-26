@@ -1,13 +1,13 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  listCircles,
+  type Circle,
+  type CircleMember,
   createCircle,
-  updateCircle,
   deleteCircle,
-  Circle,
-  CircleMember,
+  listCircles,
+  updateCircle,
 } from '../api/circles';
-import { handleFetchError, handleError, ErrorNotifier } from '../utils/errorHandler';
+import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
 export function useCircles(notifier?: ErrorNotifier) {
   const [circles, setCircles] = useState<Circle[]>([]);
@@ -62,7 +62,7 @@ export function useCircles(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [notifier]
+    [notifier],
   );
 
   const handleUpdate = useCallback(
@@ -78,7 +78,7 @@ export function useCircles(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [refresh, notifier]
+    [refresh, notifier],
   );
 
   const handleDelete = useCallback(
@@ -91,8 +91,18 @@ export function useCircles(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [refresh, notifier]
+    [refresh, notifier],
   );
 
-  return { circles, members, circleNamesByUid, loading, error, refresh, handleCreate, handleUpdate, handleDelete };
+  return {
+    circles,
+    members,
+    circleNamesByUid,
+    loading,
+    error,
+    refresh,
+    handleCreate,
+    handleUpdate,
+    handleDelete,
+  };
 }

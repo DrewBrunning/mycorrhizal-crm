@@ -1,21 +1,21 @@
+import { mdiLockOpenVariantOutline } from '@mdi/js';
+import LockOutlined from '@mui/icons-material/LockOutlined';
+import {
+  Box,
+  Button,
+  Checkbox,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  FormControlLabel,
+  FormLabel,
+  SvgIcon,
+  Typography,
+} from '@mui/material';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Button,
-  Box,
-  Typography,
-  Checkbox,
-  FormControlLabel,
-  FormControl,
-  FormLabel,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  SvgIcon,
-} from '@mui/material';
-import LockOutlined from '@mui/icons-material/LockOutlined';
-import { mdiLockOpenVariantOutline } from '@mdi/js';
 import { EXPORT_FIELD_SECTIONS } from '../api/export';
 
 interface FieldSectionPickerProps {
@@ -73,7 +73,10 @@ export default function FieldSectionPicker({
                     <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       {t(`settings.exportFieldPicker.sections.${section.token}`)}
                       {isSensitive && !locked && (
-                        <SvgIcon fontSize="small" sx={{ color: 'success.main', verticalAlign: 'middle' }}>
+                        <SvgIcon
+                          fontSize="small"
+                          sx={{ color: 'success.main', verticalAlign: 'middle' }}
+                        >
                           <path d={mdiLockOpenVariantOutline} />
                         </SvgIcon>
                       )}
@@ -81,7 +84,11 @@ export default function FieldSectionPicker({
                   }
                 />
                 {locked && (
-                  <LockOutlined fontSize="inherit" color="disabled" sx={{ ml: 0.5, opacity: 0.5 }} />
+                  <LockOutlined
+                    fontSize="inherit"
+                    color="disabled"
+                    sx={{ ml: 0.5, opacity: 0.5 }}
+                  />
                 )}
               </Box>
             );
@@ -100,7 +107,11 @@ export default function FieldSectionPicker({
           {t('settings.exportFieldPicker.revealButton')}
         </Button>
       ) : (
-        <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+        >
           <SvgIcon fontSize="small" color="success">
             <path d={mdiLockOpenVariantOutline} />
           </SvgIcon>
@@ -117,7 +128,9 @@ export default function FieldSectionPicker({
           <Typography variant="body2">{t('settings.exportFieldPicker.revealConfirm')}</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmOpen(false)}>{t('settings.exportFieldPicker.revealCancel')}</Button>
+          <Button onClick={() => setConfirmOpen(false)}>
+            {t('settings.exportFieldPicker.revealCancel')}
+          </Button>
           <Button onClick={handleRevealConfirm} variant="contained">
             {t('settings.exportFieldPicker.revealConfirmButton')}
           </Button>

@@ -1,15 +1,15 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { renderHook, cleanup, waitFor, act } from '@testing-library/react';
-import { useConversationAgenda } from './useConversationAgenda';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import {
-  getConversationAgenda,
+  type ConversationAgenda,
+  type ConversationAgendaListResponse,
   createConversationAgenda,
-  updateConversationAgenda,
-  discussConversationAgenda,
   deleteConversationAgenda,
-  ConversationAgenda,
-  ConversationAgendaListResponse,
+  discussConversationAgenda,
+  getConversationAgenda,
+  updateConversationAgenda,
 } from '../api/conversationAgenda';
+import { useConversationAgenda } from './useConversationAgenda';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(() => {
@@ -71,7 +71,7 @@ test('splits open and discussed items', async () => {
     listResponse([
       item('a-1'),
       item('a-2', { discussed_at: '2026-01-02T00:00:00Z', activity_id: 7 }),
-    ])
+    ]),
   );
 
   const { result } = renderHook(() => useConversationAgenda('uid-1'));

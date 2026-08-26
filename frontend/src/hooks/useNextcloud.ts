@@ -1,15 +1,15 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
-  getNextcloudConfig,
-  saveNextcloudConfig,
   deleteNextcloudConfig,
+  getNextcloudConfig,
   getNextcloudDir,
+  saveNextcloudConfig,
   testNextcloudConnection,
-  WebDAVConfigResponse,
-  WebDAVConnectionTestResult,
-  WebDAVItem,
+  type WebDAVConfigResponse,
+  type WebDAVConnectionTestResult,
+  type WebDAVItem,
 } from '../api/nextcloud';
-import { handleFetchError, handleError, ErrorNotifier } from '../utils/errorHandler';
+import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
 // useNextcloud backs both the settings connection card and the contact-page
 // Nextcloud/ownCloud (WebDAV) link surface (P2c). Connection config is
@@ -49,7 +49,7 @@ export function useNextcloud(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [notifier]
+    [notifier],
   );
 
   const removeConfig = useCallback(async () => {
@@ -71,7 +71,7 @@ export function useNextcloud(notifier?: ErrorNotifier) {
         setBrowsing(false);
       }
     },
-    [notifier]
+    [notifier],
   );
 
   const testConnection = useCallback(async () => {

@@ -1,5 +1,4 @@
-import { test, expect } from './fixtures';
-import { withExclusiveUserSettings } from './fixtures';
+import { expect, test, withExclusiveUserSettings } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 // N9 — the
@@ -30,7 +29,10 @@ test.describe('Notification settings', () => {
   // token is never echoed back by the API (see notification_controller.go's
   // notificationConfigResponse), so this spec never touches it and the
   // restore below doesn't need to recover one.
-  test('configures ntfy, persists across reload, warns on private URLs, and reports test failures', async ({ page, request }) => {
+  test('configures ntfy, persists across reload, warns on private URLs, and reports test failures', async ({
+    page,
+    request,
+  }) => {
     await withExclusiveUserSettings(async () => {
       const before = await request.get(`${API_BASE_URL}/notifications/config`);
       expect(before.ok()).toBeTruthy();
@@ -85,17 +87,19 @@ test.describe('Notification settings', () => {
         // Restore exactly what was there before -- not just "disabled" -- so
         // a run against an already-configured account (or a re-run of this
         // test) leaves the shared account the way it found it.
-        await request.put(`${API_BASE_URL}/notifications/config`, {
-          data: {
-            ntfy_url: original.ntfy_url ?? '',
-            ntfy_topic: original.ntfy_topic ?? '',
-            gotify_url: original.gotify_url ?? '',
-            gotify_token: '',
-            notify_ntfy: original.notify_ntfy ?? false,
-            notify_gotify: original.notify_gotify ?? false,
-            notify_push: original.notify_push ?? false,
-          },
-        }).catch(() => {});
+        await request
+          .put(`${API_BASE_URL}/notifications/config`, {
+            data: {
+              ntfy_url: original.ntfy_url ?? '',
+              ntfy_topic: original.ntfy_topic ?? '',
+              gotify_url: original.gotify_url ?? '',
+              gotify_token: '',
+              notify_ntfy: original.notify_ntfy ?? false,
+              notify_gotify: original.notify_gotify ?? false,
+              notify_push: original.notify_push ?? false,
+            },
+          })
+          .catch(() => {});
       }
     });
   });
@@ -105,7 +109,8 @@ test.describe('Notification settings', () => {
     const create = await request.post(`${API_BASE_URL}/notifications/push-subscriptions`, {
       data: {
         endpoint,
-        p256dh: 'BNNL5ZaTfK81qhXOx23-wewhigUeFb632jN6LvRWCFH1ubQr77FE_9qV1FuojuRmHP42zmf34rXgW80OvUVDgTk',
+        p256dh:
+          'BNNL5ZaTfK81qhXOx23-wewhigUeFb632jN6LvRWCFH1ubQr77FE_9qV1FuojuRmHP42zmf34rXgW80OvUVDgTk',
         auth: 'zqbxT6JKstKSY9JKibZLSQ',
         device_label: 'E2E device',
       },
@@ -118,15 +123,21 @@ test.describe('Notification settings', () => {
     const list = await request.get(`${API_BASE_URL}/notifications/push-subscriptions`);
     expect(list.status()).toBe(200);
     const listed = await list.json();
-    const found = (listed.subscriptions as Array<{ id: number; endpoint: string }>).find(s => s.endpoint === endpoint);
+    const found = (listed.subscriptions as Array<{ id: number; endpoint: string }>).find(
+      (s) => s.endpoint === endpoint,
+    );
     expect(found).toBeTruthy();
 
     // Delete cleans it up.
-    const del = await request.delete(`${API_BASE_URL}/notifications/push-subscriptions/${created.id}`);
+    const del = await request.delete(
+      `${API_BASE_URL}/notifications/push-subscriptions/${created.id}`,
+    );
     expect(del.status()).toBe(200);
 
     const after = await request.get(`${API_BASE_URL}/notifications/push-subscriptions`);
     const afterBody = await after.json();
-    expect((afterBody.subscriptions as Array<{ endpoint: string }>).some(s => s.endpoint === endpoint)).toBe(false);
+    expect(
+      (afterBody.subscriptions as Array<{ endpoint: string }>).some((s) => s.endpoint === endpoint),
+    ).toBe(false);
   });
 });

@@ -3,8 +3,8 @@
 // contact_merge.go's DTOs by hand -- no dynamic schema endpoint exists
 // anywhere in this codebase, so this must be kept in sync manually if the
 // backend shape changes.
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
-import { ContactValue, ContactAddress } from './contacts';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
+import type { ContactAddress, ContactValue } from './contacts';
 
 export interface ContactMergeFieldConflict {
   field: string;
@@ -57,9 +57,13 @@ export interface ContactMergePreviewResponse {
 // call this first, let the user resolve resolution.conflicts +
 // resolution.field_value_conflicts, then call commitContactMerge with those
 // choices.
-export async function previewContactMerge(keepId: number, mergeId: number): Promise<ContactMergePreviewResponse> {
+export async function previewContactMerge(
+  keepId: number,
+  mergeId: number,
+): Promise<ContactMergePreviewResponse> {
   const response = await apiFetch(`${API_BASE_URL}/contacts/merge/preview`, {
-    method: 'POST', headers: getAuthHeaders(),
+    method: 'POST',
+    headers: getAuthHeaders(),
     body: JSON.stringify({ keep_id: keepId, merge_id: mergeId }),
   });
   if (!response.ok) throw await parseErrorResponse(response);
@@ -75,10 +79,11 @@ export async function previewContactMerge(keepId: number, mergeId: number): Prom
 export async function commitContactMerge(
   keepId: number,
   mergeId: number,
-  resolutions: Record<string, string>
+  resolutions: Record<string, string>,
 ): Promise<{ message: string; contact: unknown }> {
   const response = await apiFetch(`${API_BASE_URL}/contacts/merge`, {
-    method: 'POST', headers: getAuthHeaders(),
+    method: 'POST',
+    headers: getAuthHeaders(),
     body: JSON.stringify({ keep_id: keepId, merge_id: mergeId, resolutions }),
   });
   if (!response.ok) throw await parseErrorResponse(response);

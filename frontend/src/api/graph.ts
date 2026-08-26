@@ -1,12 +1,10 @@
 // API client for network graph data
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
-import { GraphResponse } from '../types/graph';
+
+import type { GraphResponse } from '../types/graph';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 export async function getGraph(): Promise<GraphResponse> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/graph`,
-    { headers: getAuthHeaders() }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/graph`, { headers: getAuthHeaders() });
 
   if (!response.ok) {
     throw await parseErrorResponse(response);
@@ -51,7 +49,9 @@ export interface GetConnectionsParams {
 
 // GET /graph/connections — from a starting contact, every reachable contact
 // within depth hops, each with its chain of relation steps.
-export async function getConnections(params: GetConnectionsParams): Promise<GraphConnectionsResponse> {
+export async function getConnections(
+  params: GetConnectionsParams,
+): Promise<GraphConnectionsResponse> {
   const { from, depth, relation } = params;
   const queryParams = new URLSearchParams({ from });
   if (depth != null) queryParams.append('depth', String(depth));

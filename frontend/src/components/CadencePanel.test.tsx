@@ -1,13 +1,16 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import CadencePanel from './CadencePanel';
-import { CadencePolicy } from '../api/cadencePolicies';
+import type { CadencePolicy } from '../api/cadencePolicies';
 import { DateFormatProvider } from '../DateFormatProvider';
+import CadencePanel from './CadencePanel';
 
 afterEach(cleanup);
 
-function renderPanel(policy: CadencePolicy | null, overrides: Partial<React.ComponentProps<typeof CadencePanel>> = {}) {
+function renderPanel(
+  policy: CadencePolicy | null,
+  overrides: Partial<React.ComponentProps<typeof CadencePanel>> = {},
+) {
   const defaults: React.ComponentProps<typeof CadencePanel> = {
     policy,
     loading: false,
@@ -19,7 +22,7 @@ function renderPanel(policy: CadencePolicy | null, overrides: Partial<React.Comp
   return render(
     <DateFormatProvider>
       <CadencePanel {...defaults} />
-    </DateFormatProvider>
+    </DateFormatProvider>,
   );
 }
 
@@ -45,14 +48,28 @@ test('no policy shows the empty state with an add button', () => {
 });
 
 test('overdue health renders the warning badge', () => {
-  renderPanel(basePolicy({ has_qualifying_interaction: true, overdue_by: 3, next_due: '2026-01-01T00:00:00Z', last_interaction: '2025-12-01T00:00:00Z' }));
+  renderPanel(
+    basePolicy({
+      has_qualifying_interaction: true,
+      overdue_by: 3,
+      next_due: '2026-01-01T00:00:00Z',
+      last_interaction: '2025-12-01T00:00:00Z',
+    }),
+  );
 
   expect(screen.getByText('3 days overdue')).toBeInTheDocument();
   expect(screen.queryByText('On track')).not.toBeInTheDocument();
 });
 
 test('on-track health renders the success badge and next-due line', () => {
-  renderPanel(basePolicy({ has_qualifying_interaction: true, overdue_by: 0, next_due: '2026-02-01T00:00:00Z', last_interaction: '2026-01-02T00:00:00Z' }));
+  renderPanel(
+    basePolicy({
+      has_qualifying_interaction: true,
+      overdue_by: 0,
+      next_due: '2026-02-01T00:00:00Z',
+      last_interaction: '2026-01-02T00:00:00Z',
+    }),
+  );
 
   expect(screen.getByText('On track')).toBeInTheDocument();
   expect(screen.queryByText('3 days overdue')).not.toBeInTheDocument();
@@ -61,7 +78,9 @@ test('on-track health renders the success badge and next-due line', () => {
 test('no qualifying interactions yet renders the neutral hint, not overdue', () => {
   renderPanel(basePolicy({ has_qualifying_interaction: false, overdue_by: 0 }));
 
-  expect(screen.getByText('No qualifying interactions yet — cadence starts once you record one.')).toBeInTheDocument();
+  expect(
+    screen.getByText('No qualifying interactions yet — cadence starts once you record one.'),
+  ).toBeInTheDocument();
   expect(screen.queryByText('On track')).not.toBeInTheDocument();
   expect(screen.queryByText('3 days overdue')).not.toBeInTheDocument();
 });

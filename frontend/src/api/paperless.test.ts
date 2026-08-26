@@ -1,11 +1,11 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  getPaperlessConfig,
-  savePaperlessConfig,
   deletePaperlessConfig,
-  testPaperlessConnection,
+  getPaperlessConfig,
   getPaperlessDocuments,
   linkPaperlessDocument,
+  savePaperlessConfig,
+  testPaperlessConnection,
   unlinkPaperlessDocument,
 } from './paperless';
 
@@ -48,7 +48,10 @@ describe('getPaperlessConfig', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(getPaperlessConfig()).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(getPaperlessConfig()).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -57,7 +60,10 @@ describe('savePaperlessConfig', () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(okResponse(configResponse));
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await savePaperlessConfig({ base_url: 'https://paperless.example.com', api_token: 'secret' });
+    const result = await savePaperlessConfig({
+      base_url: 'https://paperless.example.com',
+      api_token: 'secret',
+    });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0];
@@ -73,7 +79,10 @@ describe('savePaperlessConfig', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(savePaperlessConfig({ base_url: 'x' })).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(savePaperlessConfig({ base_url: 'x' })).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -93,7 +102,10 @@ describe('deletePaperlessConfig', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(deletePaperlessConfig()).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(deletePaperlessConfig()).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -115,14 +127,23 @@ describe('testPaperlessConnection', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(testPaperlessConnection()).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(testPaperlessConnection()).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
 describe('getPaperlessDocuments', () => {
   test('GETs /paperless/documents with an encoded query param', async () => {
     const documents = [
-      { id: 1, title: 'Invoice', file_name: 'invoice.pdf', created: '2026-01-01', added: '2026-01-02' },
+      {
+        id: 1,
+        title: 'Invoice',
+        file_name: 'invoice.pdf',
+        created: '2026-01-01',
+        added: '2026-01-02',
+      },
     ];
     const fetchMock = vi.fn().mockResolvedValueOnce(okResponse({ documents }));
     vi.stubGlobal('fetch', fetchMock);
@@ -150,7 +171,10 @@ describe('getPaperlessDocuments', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(getPaperlessDocuments('x')).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(getPaperlessDocuments('x')).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -170,7 +194,10 @@ describe('linkPaperlessDocument', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(linkPaperlessDocument('alice-uid', 42)).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(linkPaperlessDocument('alice-uid', 42)).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 

@@ -1,5 +1,4 @@
-import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact, waitForLoading } from './fixtures';
+import { createTestContact, deleteTestContact, expect, test, waitForLoading } from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
@@ -14,7 +13,10 @@ import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
  * GenerateCSVPreview's separate wiring is covered too.
  */
 test.describe('Import merge review', () => {
-  test('Merge unions a new phone into the matched contact and reports the diff', async ({ page, request }) => {
+  test('Merge unions a new phone into the matched contact and reports the diff', async ({
+    page,
+    request,
+  }) => {
     const runId = `M${Date.now()}`;
     const existing = await createTestContact(request, {
       firstname: `${E2E_CONTACT_PREFIX}${runId}Jane`,
@@ -38,7 +40,10 @@ test.describe('Import merge review', () => {
     try {
       await page.goto('/settings/data');
       await waitForLoading(page);
-      await page.getByRole('button', { name: /import contacts/i }).first().click();
+      await page
+        .getByRole('button', { name: /import contacts/i })
+        .first()
+        .click();
 
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
@@ -68,15 +73,17 @@ test.describe('Import merge review', () => {
       const body = await detail.json();
       const record = body.contact || body;
       const phoneValues = (record.card?.phones ?? []).map((p: { number: string }) => p.number);
-      expect(phoneValues, 'the incoming phone must be added alongside the existing one (union, not replace)').toContain('+15559998888');
+      expect(
+        phoneValues,
+        'the incoming phone must be added alongside the existing one (union, not replace)',
+      ).toContain('+15559998888');
       expect(phoneValues, 'the existing phone must survive the merge').toContain('555-0000');
 
-      const count = await (
-        await request.get(`${API_BASE_URL}/contacts?limit=200`)
-      ).json();
+      const count = await (await request.get(`${API_BASE_URL}/contacts?limit=200`)).json();
       const matches = count.contacts.filter(
         (c: { email: string; firstname: string }) =>
-          c.primary_email === `merge-${runId}@example.com` || c.firstname === `${E2E_CONTACT_PREFIX}${runId}Jane`
+          c.primary_email === `merge-${runId}@example.com` ||
+          c.firstname === `${E2E_CONTACT_PREFIX}${runId}Jane`,
       );
       expect(matches.length, 'merging must not create a second contact').toBe(1);
     } finally {
@@ -84,7 +91,10 @@ test.describe('Import merge review', () => {
     }
   });
 
-  test('Keep Both leaves the existing record untouched and creates a second contact', async ({ page, request }) => {
+  test('Keep Both leaves the existing record untouched and creates a second contact', async ({
+    page,
+    request,
+  }) => {
     const runId = `K${Date.now()}`;
     const existing = await createTestContact(request, {
       firstname: `${E2E_CONTACT_PREFIX}${runId}Bob`,
@@ -103,7 +113,10 @@ test.describe('Import merge review', () => {
     try {
       await page.goto('/settings/data');
       await waitForLoading(page);
-      await page.getByRole('button', { name: /import contacts/i }).first().click();
+      await page
+        .getByRole('button', { name: /import contacts/i })
+        .first()
+        .click();
 
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
@@ -129,19 +142,15 @@ test.describe('Import merge review', () => {
       const record = body.contact || body;
       expect((record.card?.phones ?? []).length).toBe(0);
 
-      const count = await (
-        await request.get(`${API_BASE_URL}/contacts?limit=200`)
-      ).json();
+      const count = await (await request.get(`${API_BASE_URL}/contacts?limit=200`)).json();
       const matches = count.contacts.filter(
-        (c: { primary_email: string }) => c.primary_email === `keep-${runId}@example.com`
+        (c: { primary_email: string }) => c.primary_email === `keep-${runId}@example.com`,
       );
       expect(matches.length, 'Keep Both must leave two contacts').toBe(2);
     } finally {
-      const count = await (
-        await request.get(`${API_BASE_URL}/contacts?limit=200`)
-      ).json();
+      const count = await (await request.get(`${API_BASE_URL}/contacts?limit=200`)).json();
       const matches = count.contacts.filter(
-        (c: { primary_email: string }) => c.primary_email === `keep-${runId}@example.com`
+        (c: { primary_email: string }) => c.primary_email === `keep-${runId}@example.com`,
       );
       for (const c of matches) await deleteTestContact(request, c.id);
     }
@@ -166,7 +175,10 @@ test.describe('Import merge review', () => {
     try {
       await page.goto('/settings/data');
       await waitForLoading(page);
-      await page.getByRole('button', { name: /import contacts/i }).first().click();
+      await page
+        .getByRole('button', { name: /import contacts/i })
+        .first()
+        .click();
 
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
@@ -200,7 +212,10 @@ test.describe('Import merge review', () => {
     }
   });
 
-  test('CSV import merge review matches the existing record and merges via the mapping step', async ({ page, request }) => {
+  test('CSV import merge review matches the existing record and merges via the mapping step', async ({
+    page,
+    request,
+  }) => {
     const runId = `C${Date.now()}`;
     const existing = await createTestContact(request, {
       firstname: `${E2E_CONTACT_PREFIX}${runId}Casey`,
@@ -216,7 +231,10 @@ test.describe('Import merge review', () => {
     try {
       await page.goto('/settings/data');
       await waitForLoading(page);
-      await page.getByRole('button', { name: /import contacts/i }).first().click();
+      await page
+        .getByRole('button', { name: /import contacts/i })
+        .first()
+        .click();
 
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
@@ -250,7 +268,7 @@ test.describe('Import merge review', () => {
 
       const count = await (await request.get(`${API_BASE_URL}/contacts?limit=200`)).json();
       const matches = count.contacts.filter(
-        (c: { primary_email: string }) => c.primary_email === `csv-merge-${runId}@example.com`
+        (c: { primary_email: string }) => c.primary_email === `csv-merge-${runId}@example.com`,
       );
       expect(matches.length, 'a CSV merge must not create a second contact').toBe(1);
     } finally {
@@ -258,7 +276,10 @@ test.describe('Import merge review', () => {
     }
   });
 
-  test('a VCF containing the same person twice creates one contact, not two', async ({ page, request }) => {
+  test('a VCF containing the same person twice creates one contact, not two', async ({
+    page,
+    request,
+  }) => {
     const runId = `W${Date.now()}`;
     const given = `${E2E_CONTACT_PREFIX}${runId}Twin`;
     const email = `batch-${runId}@example.com`;
@@ -274,7 +295,10 @@ test.describe('Import merge review', () => {
     try {
       await page.goto('/settings/data');
       await waitForLoading(page);
-      await page.getByRole('button', { name: /import contacts/i }).first().click();
+      await page
+        .getByRole('button', { name: /import contacts/i })
+        .first()
+        .click();
 
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
@@ -294,16 +318,16 @@ test.describe('Import merge review', () => {
       await expect(dialog.getByText('1 contacts created')).toBeVisible();
       await dialog.getByRole('button', { name: /done/i }).click();
 
-      const count = await (
-        await request.get(`${API_BASE_URL}/contacts?limit=200`)
-      ).json();
-      const matches = count.contacts.filter((c: { primary_email: string }) => c.primary_email === email);
+      const count = await (await request.get(`${API_BASE_URL}/contacts?limit=200`)).json();
+      const matches = count.contacts.filter(
+        (c: { primary_email: string }) => c.primary_email === email,
+      );
       expect(matches.length, 'a within-batch duplicate must not create a twin').toBe(1);
     } finally {
-      const count = await (
-        await request.get(`${API_BASE_URL}/contacts?limit=200`)
-      ).json();
-      const matches = count.contacts.filter((c: { primary_email: string }) => c.primary_email === email);
+      const count = await (await request.get(`${API_BASE_URL}/contacts?limit=200`)).json();
+      const matches = count.contacts.filter(
+        (c: { primary_email: string }) => c.primary_email === email,
+      );
       for (const c of matches) await deleteTestContact(request, c.id);
     }
   });

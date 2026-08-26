@@ -1,4 +1,4 @@
-import { test, expect, LOGGED_OUT, loginUser } from './fixtures';
+import { expect, LOGGED_OUT, loginUser, test } from './fixtures';
 
 // Issue #419 — the session JWT is an httpOnly cookie (see #392), which keeps
 // it out of reach of XSS. #392's csrf_posture_test.go pins the cookie flags
@@ -31,7 +31,12 @@ const JWT_SHAPE = /\bey[\w-]+\.[\w-]+\.[\w-]+\b/;
 // (AppThemeProvider.tsx), `dateFormat` (DateFormatProvider.tsx). None hold a
 // credential. A key outside this set must be deliberately added here rather
 // than slipping in unnoticed.
-const KNOWN_BENIGN_LOCAL_STORAGE_KEYS = ['user_info', 'i18nextLng', 'themePreference', 'dateFormat'];
+const KNOWN_BENIGN_LOCAL_STORAGE_KEYS = [
+  'user_info',
+  'i18nextLng',
+  'themePreference',
+  'dateFormat',
+];
 
 // IndexedDB databases the app is known to create: `workbox-expiration` is
 // the production service worker's cache-expiration plugin (service-worker.ts,
@@ -61,7 +66,9 @@ test.describe('Credential storage (issue #419)', () => {
 
     // localStorage: only the known-benign keys, so an *added* key must be
     // deliberately taught to this test rather than slipping in unnoticed.
-    expect(Object.keys(storageDump.local).sort()).toEqual([...KNOWN_BENIGN_LOCAL_STORAGE_KEYS].sort());
+    expect(Object.keys(storageDump.local).sort()).toEqual(
+      [...KNOWN_BENIGN_LOCAL_STORAGE_KEYS].sort(),
+    );
 
     // `user_info` specifically: every key present must be one of the
     // known-safe cached-user-info fields (no token field ever added to it).
@@ -70,7 +77,7 @@ test.describe('Credential storage (issue #419)', () => {
     // case mismatch vs. the backend's lowercase id/username -- flagged
     // separately, not this ticket's concern) -- only that nothing
     // unexpected, i.e. credential-shaped, shows up.
-    const userInfo = JSON.parse(storageDump.local['user_info']);
+    const userInfo = JSON.parse(storageDump.local.user_info);
     const allowedUserInfoKeys = ['is_admin', 'self_contact_vcard_uid', 'user_id', 'username'];
     for (const key of Object.keys(userInfo)) {
       expect(allowedUserInfoKeys, `unexpected key '${key}' in cached user_info`).toContain(key);
@@ -91,7 +98,7 @@ test.describe('Credential storage (issue #419)', () => {
     const databases = await page.evaluate(() => indexedDB.databases());
     const names = databases.map((d) => d.name).sort();
     expect(names, 'only the known-benign IndexedDB databases may exist').toEqual(
-      [...KNOWN_BENIGN_INDEXEDDB_NAMES].sort()
+      [...KNOWN_BENIGN_INDEXEDDB_NAMES].sort(),
     );
   });
 
@@ -112,12 +119,12 @@ test.describe('Credential storage (issue #419)', () => {
     const authCookie = cookies.find((c) => c.name === 'auth_token');
     expect(authCookie, 'auth_token cookie must be set after login').toBeTruthy();
 
-    expect(authCookie!.httpOnly).toBe(true);
-    expect(authCookie!.sameSite).toBe('Strict');
+    expect(authCookie?.httpOnly).toBe(true);
+    expect(authCookie?.sameSite).toBe('Strict');
     // docker-compose.test.yml never sets COOKIE_SECURE, so it defaults to
     // false (see backend/config/config.go and securityHeaders.spec.ts's
     // matching HSTS-absent assertion) -- false here is the correct
     // assertion for "off", not a gap.
-    expect(authCookie!.secure).toBe(false);
+    expect(authCookie?.secure).toBe(false);
   });
 });

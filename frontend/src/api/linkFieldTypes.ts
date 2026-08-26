@@ -4,7 +4,7 @@
 // enums (contactFields.ts's own frontend-trap-4 convention) — see the
 // ticket's "Decisions made" section for why this one is a real CRUD
 // registry instead.
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 export type LinkFieldTypeCategory = 'messaging' | 'social' | 'other';
 
@@ -37,7 +37,9 @@ export interface LinkFieldTypeInput {
 }
 
 export async function getLinkFieldTypes(): Promise<LinkFieldType[]> {
-  const response = await apiFetch(`${API_BASE_URL}/link-field-types`, { headers: getAuthHeaders() });
+  const response = await apiFetch(`${API_BASE_URL}/link-field-types`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   const result = await response.json();
   return result.link_field_types || [];
@@ -45,16 +47,23 @@ export async function getLinkFieldTypes(): Promise<LinkFieldType[]> {
 
 export async function createLinkFieldType(input: LinkFieldTypeInput): Promise<LinkFieldType> {
   const response = await apiFetch(`${API_BASE_URL}/link-field-types`, {
-    method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(input),
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   const result = await response.json();
   return result.link_field_type;
 }
 
-export async function updateLinkFieldType(id: string, input: LinkFieldTypeInput): Promise<LinkFieldType> {
+export async function updateLinkFieldType(
+  id: string,
+  input: LinkFieldTypeInput,
+): Promise<LinkFieldType> {
   const response = await apiFetch(`${API_BASE_URL}/link-field-types/${id}`, {
-    method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(input),
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json(); // raw type, NOT wrapped -- unlike create
@@ -62,7 +71,8 @@ export async function updateLinkFieldType(id: string, input: LinkFieldTypeInput)
 
 export async function deleteLinkFieldType(id: string): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/link-field-types/${id}`, {
-    method: 'DELETE', headers: getAuthHeaders(),
+    method: 'DELETE',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
 }
@@ -72,7 +82,9 @@ export async function deleteLinkFieldType(id: string): Promise<void> {
 // duplicate-free set.
 export async function reorderLinkFieldTypes(order: string[]): Promise<LinkFieldType[]> {
   const response = await apiFetch(`${API_BASE_URL}/link-field-types/reorder`, {
-    method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ order }),
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ order }),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   const result = await response.json();

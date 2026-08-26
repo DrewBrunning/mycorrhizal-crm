@@ -1,15 +1,15 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
-  getPaperlessConfig,
-  savePaperlessConfig,
   deletePaperlessConfig,
+  getPaperlessConfig,
   getPaperlessDocuments,
+  type PaperlessConfigResponse,
+  type PaperlessConnectionTestResult,
+  type PaperlessDocument,
+  savePaperlessConfig,
   testPaperlessConnection,
-  PaperlessConfigResponse,
-  PaperlessConnectionTestResult,
-  PaperlessDocument,
 } from '../api/paperless';
-import { handleFetchError, handleError, ErrorNotifier } from '../utils/errorHandler';
+import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
 // usePaperless backs both the settings connection card and the contact-page
 // Paperless link surface (P2a). Connection config is per-user-global; per
@@ -48,7 +48,7 @@ export function usePaperless(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [notifier]
+    [notifier],
   );
 
   const removeConfig = useCallback(async () => {
@@ -70,7 +70,7 @@ export function usePaperless(notifier?: ErrorNotifier) {
         setDocumentsLoading(false);
       }
     },
-    [notifier]
+    [notifier],
   );
 
   const testConnection = useCallback(async () => {

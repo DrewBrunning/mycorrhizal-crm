@@ -1,0 +1,93 @@
+name: Biome (lint + format)
+
+# Issue #578: biome is the fast PR-gate linter+formatter for the frontend.
+# `biome ci` exits non-zero on any lint error or format violation, which is
+# the gate. It is deliberately NOT a replacement for ESLint: eslint.config.js
+# owns eslint-plugin-security + jsx-a11y rules biome cannot express (see the
+# issue's decisions section). Keep both; removing ESLint is a separate
+# follow-up.
+#
+# Config: frontend/biome.json (recommended preset, formatter enabled).
+# Baseline note: the tree is clean at the error level; a small set of
+# noExplicitAny/noNonNullAssertion warnings is the accepted starting
+# baseline and does not fail the gate — chip away at them over time.
+#
+# Path-gated on `frontend` and `workflows` (issue #264 pattern); a workflow
+# change re-runs every check because it can affect any of them.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Change detection on push needs the previous commit on main.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect changed areas
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+      - name: Report gating decision
+        run: |
+          echo "frontend=$FRONTEND_CHANGED"
+          echo "workflows=$WORKFLOWS_CHANGED"
+        env:
+          # Boolean outputs only (the *_files outputs are the
+          # attacker-influenced ones on PRs); passed as env vars so zizmor's
+          # template-injection audit has nothing to flag in this workflow.
+          FRONTEND_CHANGED: ${{ steps.filter.outputs.frontend }}
+          WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
+
+  biome:
+    name: Biome (lint + format)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      # `ci` (not `check`): exits non-zero on lint OR format violations — that
+      # is the gate. Runs the pinned @biomejs/biome from node_modules (2.5.10,
+      # frontend/package.json + yarn.lock), not whatever npx happens to fetch.
+      - name: Run biome ci
+        working-directory: frontend
+        run: npx @biomejs/biome ci .

@@ -1,18 +1,24 @@
-import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact, makeThrowawayUser, deleteThrowawayUser } from './fixtures';
 import { request } from '@playwright/test';
+import {
+  createTestContact,
+  deleteTestContact,
+  deleteThrowawayUser,
+  expect,
+  makeThrowawayUser,
+  test,
+} from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 test.describe('Multi-user isolation', () => {
-  test('a user cannot see another user\'s contacts', async ({ page }) => {
+  test("a user cannot see another user's contacts", async ({ page }) => {
     // Sanity: the seeded user (userA, via the shared storageState) can see Alice.
     const ownView = await page.request.get(
-      `${API_BASE_URL}/contacts?search=${encodeURIComponent('Alice Johnson')}&limit=10`
+      `${API_BASE_URL}/contacts?search=${encodeURIComponent('Alice Johnson')}&limit=10`,
     );
     expect(ownView.ok()).toBeTruthy();
     const own = await ownView.json();
     expect(
-      (own.contacts || []).some((c: any) => c.firstname === 'Alice' && c.lastname === 'Johnson')
+      (own.contacts || []).some((c: any) => c.firstname === 'Alice' && c.lastname === 'Johnson'),
     ).toBeTruthy();
 
     // A throwaway account used only to prove data isolation, uniquely
@@ -23,7 +29,10 @@ test.describe('Multi-user isolation', () => {
     const ctx = await request.newContext();
     try {
       const registered = await ctx.post(`${API_BASE_URL}/register`, { data: userB });
-      expect(registered.ok(), `userB registration should succeed: ${await registered.text()}`).toBeTruthy();
+      expect(
+        registered.ok(),
+        `userB registration should succeed: ${await registered.text()}`,
+      ).toBeTruthy();
 
       const login = await ctx.post(`${API_BASE_URL}/login`, {
         data: { identifier: userB.username, password: userB.password },
@@ -32,12 +41,14 @@ test.describe('Multi-user isolation', () => {
 
       // userB must not see any of userA's seeded contacts.
       const search = await ctx.get(
-        `${API_BASE_URL}/contacts?search=${encodeURIComponent('Alice Johnson')}&limit=10`
+        `${API_BASE_URL}/contacts?search=${encodeURIComponent('Alice Johnson')}&limit=10`,
       );
       expect(search.ok()).toBeTruthy();
       const result = await search.json();
       expect(
-        (result.contacts || []).some((c: any) => c.firstname === 'Alice' && c.lastname === 'Johnson')
+        (result.contacts || []).some(
+          (c: any) => c.firstname === 'Alice' && c.lastname === 'Johnson',
+        ),
       ).toBeFalsy();
     } finally {
       await ctx.dispose();
@@ -56,15 +67,25 @@ test.describe('Multi-user isolation', () => {
     let contact: Awaited<ReturnType<typeof createTestContact>> | undefined;
 
     try {
-      const recipientRegistered = await recipientCtx.post(`${API_BASE_URL}/register`, { data: shareRecipient });
-      expect(recipientRegistered.ok(), `recipient registration should succeed: ${await recipientRegistered.text()}`).toBeTruthy();
+      const recipientRegistered = await recipientCtx.post(`${API_BASE_URL}/register`, {
+        data: shareRecipient,
+      });
+      expect(
+        recipientRegistered.ok(),
+        `recipient registration should succeed: ${await recipientRegistered.text()}`,
+      ).toBeTruthy();
       const recipientLogin = await recipientCtx.post(`${API_BASE_URL}/login`, {
         data: { identifier: shareRecipient.username, password: shareRecipient.password },
       });
       expect(recipientLogin.ok(), 'recipient login should succeed').toBeTruthy();
 
-      const thirdRegistered = await thirdCtx.post(`${API_BASE_URL}/register`, { data: shareThirdParty });
-      expect(thirdRegistered.ok(), `third party registration should succeed: ${await thirdRegistered.text()}`).toBeTruthy();
+      const thirdRegistered = await thirdCtx.post(`${API_BASE_URL}/register`, {
+        data: shareThirdParty,
+      });
+      expect(
+        thirdRegistered.ok(),
+        `third party registration should succeed: ${await thirdRegistered.text()}`,
+      ).toBeTruthy();
       const thirdLogin = await thirdCtx.post(`${API_BASE_URL}/login`, {
         data: { identifier: shareThirdParty.username, password: shareThirdParty.password },
       });
@@ -81,7 +102,7 @@ test.describe('Multi-user isolation', () => {
       expect(directory.ok()).toBeTruthy();
       const directoryBody = await directory.json();
       const recipientEntry = (directoryBody.users || []).find(
-        (u: any) => u.username === shareRecipient.username
+        (u: any) => u.username === shareRecipient.username,
       );
       expect(recipientEntry, 'recipient should be discoverable via /users/directory').toBeTruthy();
 

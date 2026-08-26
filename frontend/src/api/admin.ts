@@ -1,6 +1,7 @@
 // Admin API calls for user management
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
-import type { User, UsersListResponse, UserUpdateInput, UserCreateInput } from '../types';
+
+import type { User, UserCreateInput, UsersListResponse, UserUpdateInput } from '../types';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 // Get current authenticated user's information
 export async function getCurrentUser(): Promise<User> {
@@ -16,12 +17,8 @@ export async function getCurrentUser(): Promise<User> {
   return response.json();
 }
 
-
 // Get paginated list of all users (admin only)
-export async function getUsers(
-  page: number = 1,
-  limit: number = 25
-): Promise<UsersListResponse> {
+export async function getUsers(page: number = 1, limit: number = 25): Promise<UsersListResponse> {
   const params = new URLSearchParams({
     page: page.toString(),
     limit: limit.toString(),
@@ -39,7 +36,6 @@ export async function getUsers(
   return response.json();
 }
 
-
 // Create a new user (admin only)
 export async function createUser(data: UserCreateInput): Promise<User> {
   const response = await apiFetch(`${API_BASE_URL}/admin/users`, {
@@ -56,10 +52,7 @@ export async function createUser(data: UserCreateInput): Promise<User> {
 }
 
 // Update a user (admin only)
-export async function updateUser(
-  id: number,
-  data: UserUpdateInput
-): Promise<User> {
+export async function updateUser(id: number, data: UserUpdateInput): Promise<User> {
   const response = await apiFetch(`${API_BASE_URL}/admin/users/${id}`, {
     method: 'PATCH',
     headers: getAuthHeaders(),

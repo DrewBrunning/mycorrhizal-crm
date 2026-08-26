@@ -1,7 +1,13 @@
-import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact, waitForLoading, stableClick } from './fixtures';
-import { API_BASE_URL } from './global-setup';
 import type { APIRequestContext } from '@playwright/test';
+import {
+  createTestContact,
+  deleteTestContact,
+  expect,
+  stableClick,
+  test,
+  waitForLoading,
+} from './fixtures';
+import { API_BASE_URL } from './global-setup';
 
 // T78:
 // the render side of the T66 work -- the contact timeline section truncates
@@ -14,42 +20,51 @@ async function createNote(
   request: APIRequestContext,
   contactId: number,
   content: string,
-  date: string
+  date: string,
 ): Promise<void> {
   const response = await request.post(`${API_BASE_URL}/contacts/${contactId}/notes`, {
     data: { content, date },
   });
-  expect(response.ok(), `failed to create note: ${response.status()} ${await response.text()}`).toBeTruthy();
+  expect(
+    response.ok(),
+    `failed to create note: ${response.status()} ${await response.text()}`,
+  ).toBeTruthy();
 }
 
 async function createGift(
   request: APIRequestContext,
   entityId: string,
   description: string,
-  date: string
+  date: string,
 ): Promise<void> {
   const response = await request.post(`${API_BASE_URL}/gifts`, {
     data: { entity_id: entityId, status: 'given', description, date },
   });
-  expect(response.ok(), `failed to create gift: ${response.status()} ${await response.text()}`).toBeTruthy();
+  expect(
+    response.ok(),
+    `failed to create gift: ${response.status()} ${await response.text()}`,
+  ).toBeTruthy();
 }
 
 async function createActivity(
   request: APIRequestContext,
   contactId: number,
   title: string,
-  date: string
+  date: string,
 ): Promise<void> {
   const response = await request.post(`${API_BASE_URL}/activities`, {
     data: { title, description: '', location: '', date, contact_ids: [contactId] },
   });
-  expect(response.ok(), `failed to create activity: ${response.status()} ${await response.text()}`).toBeTruthy();
+  expect(
+    response.ok(),
+    `failed to create activity: ${response.status()} ${await response.text()}`,
+  ).toBeTruthy();
 }
 
 async function createCompletion(
   request: APIRequestContext,
   contactId: number,
-  message: string
+  message: string,
 ): Promise<void> {
   const reminder = await request.post(`${API_BASE_URL}/contacts/${contactId}/reminders`, {
     data: {
@@ -61,16 +76,22 @@ async function createCompletion(
       contact_id: contactId,
     },
   });
-  expect(reminder.ok(), `failed to create reminder: ${reminder.status()} ${await reminder.text()}`).toBeTruthy();
+  expect(
+    reminder.ok(),
+    `failed to create reminder: ${reminder.status()} ${await reminder.text()}`,
+  ).toBeTruthy();
   const { reminder: created } = await reminder.json();
   const complete = await request.post(`${API_BASE_URL}/reminders/${created.ID}/complete`);
-  expect(complete.ok(), `failed to complete reminder: ${complete.status()} ${await complete.text()}`).toBeTruthy();
+  expect(
+    complete.ok(),
+    `failed to complete reminder: ${complete.status()} ${await complete.text()}`,
+  ).toBeTruthy();
 }
 
 async function createLifeEvent(
   request: APIRequestContext,
   entityId: string,
-  description: string
+  description: string,
 ): Promise<void> {
   const now = new Date();
   const response = await request.post(`${API_BASE_URL}/life-events`, {
@@ -82,13 +103,16 @@ async function createLifeEvent(
       description,
     },
   });
-  expect(response.ok(), `failed to create life event: ${response.status()} ${await response.text()}`).toBeTruthy();
+  expect(
+    response.ok(),
+    `failed to create life event: ${response.status()} ${await response.text()}`,
+  ).toBeTruthy();
 }
 
 async function createExternalActivity(
   request: APIRequestContext,
   entityId: string,
-  occurredAt: string
+  occurredAt: string,
 ): Promise<void> {
   const response = await request.post(`${API_BASE_URL}/external-activities`, {
     data: {
@@ -99,11 +123,16 @@ async function createExternalActivity(
       occurred_at: occurredAt,
     },
   });
-  expect(response.ok(), `failed to create external activity: ${response.status()} ${await response.text()}`).toBeTruthy();
+  expect(
+    response.ok(),
+    `failed to create external activity: ${response.status()} ${await response.text()}`,
+  ).toBeTruthy();
 }
 
 test.describe('Contact timeline explorer (T78)', () => {
-  test('preview shows 5 items by default and "View all" opens the full explorer', async ({ page }) => {
+  test('preview shows 5 items by default and "View all" opens the full explorer', async ({
+    page,
+  }) => {
     const ts = Date.now();
     const contact = await createTestContact(page.request, { firstname: `E2ET78Preview${ts}` });
     const now = new Date();
@@ -114,7 +143,7 @@ test.describe('Contact timeline explorer (T78)', () => {
           page.request,
           contact.ID,
           `E2E tl note ${i}`,
-          new Date(now.getTime() - i * 60 * 1000).toISOString()
+          new Date(now.getTime() - i * 60 * 1000).toISOString(),
         );
       }
 
@@ -149,7 +178,7 @@ test.describe('Contact timeline explorer (T78)', () => {
           page.request,
           contact.ID,
           `E2E tl type note ${i}`,
-          new Date(now.getTime() - i * 60 * 1000).toISOString()
+          new Date(now.getTime() - i * 60 * 1000).toISOString(),
         );
       }
       await createGift(page.request, contact.uid, 'E2E tl the scarf', now.toISOString());
@@ -174,7 +203,9 @@ test.describe('Contact timeline explorer (T78)', () => {
     }
   });
 
-  test('the recency bucket filters the explorer and combines with the type filter', async ({ page }) => {
+  test('the recency bucket filters the explorer and combines with the type filter', async ({
+    page,
+  }) => {
     const ts = Date.now();
     const contact = await createTestContact(page.request, { firstname: `E2ET78Bucket${ts}` });
     const now = new Date();
@@ -185,14 +216,14 @@ test.describe('Contact timeline explorer (T78)', () => {
           page.request,
           contact.ID,
           `E2E tl bucket recent ${i}`,
-          new Date(now.getTime() - i * 60 * 1000).toISOString()
+          new Date(now.getTime() - i * 60 * 1000).toISOString(),
         );
       }
       await createNote(
         page.request,
         contact.ID,
         'E2E tl bucket old',
-        new Date(now.getTime() - 40 * 24 * 60 * 60 * 1000).toISOString()
+        new Date(now.getTime() - 40 * 24 * 60 * 60 * 1000).toISOString(),
       );
 
       await page.goto(`/contacts/${contact.ID}`);
@@ -220,7 +251,9 @@ test.describe('Contact timeline explorer (T78)', () => {
     }
   });
 
-  test('the explorer pages through the cursor endpoint instead of fetching everything', async ({ page }) => {
+  test('the explorer pages through the cursor endpoint instead of fetching everything', async ({
+    page,
+  }) => {
     const ts = Date.now();
     const contact = await createTestContact(page.request, { firstname: `E2ET78Page${ts}` });
     const now = new Date();
@@ -232,7 +265,7 @@ test.describe('Contact timeline explorer (T78)', () => {
           page.request,
           contact.ID,
           `E2E tl page note ${i}`,
-          new Date(now.getTime() - i * 60 * 1000).toISOString()
+          new Date(now.getTime() - i * 60 * 1000).toISOString(),
         );
       }
 
@@ -256,7 +289,9 @@ test.describe('Contact timeline explorer (T78)', () => {
     }
   });
 
-  test('a contact with items across all six types renders a mixed 5-item preview and the full set in the explorer', async ({ page }) => {
+  test('a contact with items across all six types renders a mixed 5-item preview and the full set in the explorer', async ({
+    page,
+  }) => {
     const ts = Date.now();
     const contact = await createTestContact(page.request, { firstname: `E2ET78Mix${ts}` });
     const now = new Date();
@@ -268,13 +303,27 @@ test.describe('Contact timeline explorer (T78)', () => {
         page.request,
         contact.uid,
         'E2E tl mix gift',
-        new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString()
+        new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(),
       );
-      await createNote(page.request, contact.ID, 'E2E tl mix note', new Date(now.getTime() - 4 * 60 * 1000).toISOString());
-      await createActivity(page.request, contact.ID, 'E2E tl mix activity', new Date(now.getTime() - 3 * 60 * 1000).toISOString());
+      await createNote(
+        page.request,
+        contact.ID,
+        'E2E tl mix note',
+        new Date(now.getTime() - 4 * 60 * 1000).toISOString(),
+      );
+      await createActivity(
+        page.request,
+        contact.ID,
+        'E2E tl mix activity',
+        new Date(now.getTime() - 3 * 60 * 1000).toISOString(),
+      );
       await createCompletion(page.request, contact.ID, 'E2E tl mix completion');
       await createLifeEvent(page.request, contact.uid, 'E2E tl mix life event');
-      await createExternalActivity(page.request, contact.uid, new Date(now.getTime() - 60 * 1000).toISOString());
+      await createExternalActivity(
+        page.request,
+        contact.uid,
+        new Date(now.getTime() - 60 * 1000).toISOString(),
+      );
 
       await page.goto(`/contacts/${contact.ID}`);
       await waitForLoading(page);
@@ -285,11 +334,15 @@ test.describe('Contact timeline explorer (T78)', () => {
       await expect(page.getByText('E2E tl mix note')).toBeVisible();
       await expect(page.getByText('E2E tl mix activity')).toBeVisible();
       await expect(page.getByText('E2E tl mix completion')).toBeVisible();
-      await expect(page.locator('.MuiTimelineItem-root', { hasText: 'E2E tl mix life event' })).toHaveCount(1);
+      await expect(
+        page.locator('.MuiTimelineItem-root', { hasText: 'E2E tl mix life event' }),
+      ).toHaveCount(1);
       await expect(page.getByText('Photo appearance')).toBeVisible();
       // The gift also appears in the Gifts section card, so scope the
       // truncation assertion to the timeline rows specifically.
-      await expect(page.locator('.MuiTimelineItem-root', { hasText: 'E2E tl mix gift' })).toHaveCount(0);
+      await expect(
+        page.locator('.MuiTimelineItem-root', { hasText: 'E2E tl mix gift' }),
+      ).toHaveCount(0);
 
       await stableClick(page.getByRole('button', { name: 'View all' }));
       const dialog = page.getByRole('dialog');
@@ -307,7 +360,9 @@ test.describe('Contact timeline explorer (T78)', () => {
     }
   });
 
-  test('a contact with no timeline items renders an empty state in both surfaces', async ({ page }) => {
+  test('a contact with no timeline items renders an empty state in both surfaces', async ({
+    page,
+  }) => {
     const ts = Date.now();
     const contact = await createTestContact(page.request, { firstname: `E2ET78Empty${ts}` });
 
@@ -326,7 +381,9 @@ test.describe('Contact timeline explorer (T78)', () => {
     }
   });
 
-  test('editing a note from the explorer updates it in place (stacked dialogs + revision refresh)', async ({ page }) => {
+  test('editing a note from the explorer updates it in place (stacked dialogs + revision refresh)', async ({
+    page,
+  }) => {
     const ts = Date.now();
     const contact = await createTestContact(page.request, { firstname: `E2ET78Edit${ts}` });
     const now = new Date();

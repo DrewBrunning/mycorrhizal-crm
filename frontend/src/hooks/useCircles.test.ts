@@ -1,8 +1,15 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { renderHook, cleanup, waitFor, act } from '@testing-library/react';
-import { useCircles } from './useCircles';
-import { listCircles, createCircle, updateCircle, deleteCircle, Circle, CircleMember } from '../api/circles';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import {
+  type Circle,
+  type CircleMember,
+  createCircle,
+  deleteCircle,
+  listCircles,
+  updateCircle,
+} from '../api/circles';
 import { ApiError } from '../api/client';
+import { useCircles } from './useCircles';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(() => {
@@ -135,7 +142,7 @@ test('handleCreate creates a circle and returns it', async () => {
   const { result } = renderHook(() => useCircles());
   await waitFor(() => expect(result.current.loading).toBe(false));
 
-  let created;
+  let created: Circle | undefined;
   await act(async () => {
     created = await result.current.handleCreate('New');
   });
@@ -156,7 +163,7 @@ test('handleCreate surfaces a duplicate (409) error to the notifier', async () =
   await expect(
     act(async () => {
       await result.current.handleCreate('Duplicate');
-    })
+    }),
   ).rejects.toThrow('Circle already exists');
 
   expect(notifier.showError).toHaveBeenCalledWith('Circle already exists');
@@ -164,8 +171,18 @@ test('handleCreate surfaces a duplicate (409) error to the notifier', async () =
 
 test('handleUpdate renames the circle and refreshes the list', async () => {
   vi.mocked(listCircles)
-    .mockResolvedValueOnce({ circles: [circle('c-1', 'Old')], total: 1, next_cursor: '', limit: 200 })
-    .mockResolvedValueOnce({ circles: [circle('c-1', 'Renamed')], total: 1, next_cursor: '', limit: 200 });
+    .mockResolvedValueOnce({
+      circles: [circle('c-1', 'Old')],
+      total: 1,
+      next_cursor: '',
+      limit: 200,
+    })
+    .mockResolvedValueOnce({
+      circles: [circle('c-1', 'Renamed')],
+      total: 1,
+      next_cursor: '',
+      limit: 200,
+    });
   vi.mocked(updateCircle).mockResolvedValue(circle('c-1', 'Renamed'));
 
   const { result } = renderHook(() => useCircles());
@@ -183,8 +200,18 @@ test('handleUpdate renames the circle and refreshes the list', async () => {
 
 test('handleDelete removes the circle and refreshes the list', async () => {
   vi.mocked(listCircles)
-    .mockResolvedValueOnce({ circles: [circle('c-1', 'Gone'), circle('c-2', 'Stays')], total: 2, next_cursor: '', limit: 200 })
-    .mockResolvedValueOnce({ circles: [circle('c-2', 'Stays')], total: 1, next_cursor: '', limit: 200 });
+    .mockResolvedValueOnce({
+      circles: [circle('c-1', 'Gone'), circle('c-2', 'Stays')],
+      total: 2,
+      next_cursor: '',
+      limit: 200,
+    })
+    .mockResolvedValueOnce({
+      circles: [circle('c-2', 'Stays')],
+      total: 1,
+      next_cursor: '',
+      limit: 200,
+    });
   vi.mocked(deleteCircle).mockResolvedValue(undefined);
 
   const { result } = renderHook(() => useCircles());
@@ -211,7 +238,7 @@ test('handleDelete rethrows and notifies on failure', async () => {
   await expect(
     act(async () => {
       await result.current.handleDelete('c-1');
-    })
+    }),
   ).rejects.toThrow('delete failed');
 
   expect(notifier.showError).toHaveBeenCalledWith('delete failed');

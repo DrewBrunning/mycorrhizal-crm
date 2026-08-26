@@ -1,9 +1,9 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { ReachOutSuggestion } from '../api/reachOutSuggestions';
 import ReachOutSuggestionsList from './ReachOutSuggestionsList';
-import { ReachOutSuggestion } from '../api/reachOutSuggestions';
 
 // This codebase's vitest has no auto-cleanup (CLAUDE.md frontend trap #1).
 afterEach(cleanup);
@@ -36,7 +36,7 @@ function renderList(props: Partial<React.ComponentProps<typeof ReachOutSuggestio
   return render(
     <MemoryRouter>
       <ReachOutSuggestionsList {...defaults} />
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -64,7 +64,9 @@ test('calls onDismiss with the suggestion id and does not navigate', () => {
 });
 
 test('renders a kind chip labeled per the suggestion kind', () => {
-  renderList({ suggestions: [suggestion({ kind: 'address', old_value: '', new_value: '2 New Ave' })] });
+  renderList({
+    suggestions: [suggestion({ kind: 'address', old_value: '', new_value: '2 New Ave' })],
+  });
 
   expect(screen.getByText('Moved')).toBeInTheDocument();
   expect(screen.getByText('Now: 2 New Ave')).toBeInTheDocument();

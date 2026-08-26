@@ -1,11 +1,11 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  getLinkFieldTypes,
   createLinkFieldType,
-  updateLinkFieldType,
   deleteLinkFieldType,
+  getLinkFieldTypes,
+  type LinkFieldType,
   reorderLinkFieldTypes,
-  LinkFieldType,
+  updateLinkFieldType,
 } from './linkFieldTypes';
 
 afterEach(() => {
@@ -56,7 +56,11 @@ describe('createLinkFieldType', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await createLinkFieldType({ name: 'WhatsApp', protocol: 'https://wa.me/{value}', category: 'messaging' });
+    const result = await createLinkFieldType({
+      name: 'WhatsApp',
+      protocol: 'https://wa.me/{value}',
+      category: 'messaging',
+    });
 
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toContain('/link-field-types');
@@ -71,7 +75,11 @@ describe('updateLinkFieldType', () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => linkFieldType });
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await updateLinkFieldType('lft-1', { name: 'WhatsApp', protocol: 'https://wa.me/{value}', category: 'messaging' });
+    const result = await updateLinkFieldType('lft-1', {
+      name: 'WhatsApp',
+      protocol: 'https://wa.me/{value}',
+      category: 'messaging',
+    });
 
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toContain('/link-field-types/lft-1');
@@ -82,7 +90,10 @@ describe('updateLinkFieldType', () => {
 
 describe('deleteLinkFieldType', () => {
   test('DELETEs the type', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ message: 'Link field type deleted' }) });
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ message: 'Link field type deleted' }),
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     await deleteLinkFieldType('lft-1');
@@ -116,12 +127,14 @@ describe('error handling', () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({
       ok: false,
       status: 409,
-      json: async () => ({ error: { code: 'ALREADY_EXISTS', message: 'Link field type already exists' } }),
+      json: async () => ({
+        error: { code: 'ALREADY_EXISTS', message: 'Link field type already exists' },
+      }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(createLinkFieldType({ name: 'WhatsApp', protocol: '', category: 'messaging' })).rejects.toThrow(
-      'Link field type already exists'
-    );
+    await expect(
+      createLinkFieldType({ name: 'WhatsApp', protocol: '', category: 'messaging' }),
+    ).rejects.toThrow('Link field type already exists');
   });
 });

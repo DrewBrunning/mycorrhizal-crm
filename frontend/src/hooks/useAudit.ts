@@ -1,5 +1,10 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { getAuditEvents, undoAuditEvent, AuditEvent, AuditEntityType } from '../api/audit';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type AuditEntityType,
+  type AuditEvent,
+  getAuditEvents,
+  undoAuditEvent,
+} from '../api/audit';
 import { handleFetchError } from '../utils/errorHandler';
 
 const DEFAULT_LIMIT = 100;
@@ -83,7 +88,7 @@ export function useAudit() {
       await undoAuditEvent(id);
       await fetchEvents();
     },
-    [fetchEvents]
+    [fetchEvents],
   );
 
   return {

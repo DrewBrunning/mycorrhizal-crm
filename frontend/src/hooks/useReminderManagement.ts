@@ -1,19 +1,16 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
-  getRemindersForContact,
-  createReminder,
-  updateReminder,
-  deleteReminder,
   completeReminder,
-  Reminder,
-  ReminderFormData
+  createReminder,
+  deleteReminder,
+  getRemindersForContact,
+  type Reminder,
+  type ReminderFormData,
+  updateReminder,
 } from '../api/reminders';
-import { handleFetchError, handleError, ErrorNotifier } from '../utils/errorHandler';
+import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
-export function useReminderManagement(
-  contactId: string | undefined,
-  notifier?: ErrorNotifier
-) {
+export function useReminderManagement(contactId: string | undefined, notifier?: ErrorNotifier) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
@@ -23,7 +20,7 @@ export function useReminderManagement(
     if (!contactId) return;
     setError(null);
     try {
-      const fetchedReminders = await getRemindersForContact(parseInt(contactId));
+      const fetchedReminders = await getRemindersForContact(parseInt(contactId, 10));
       setReminders(fetchedReminders);
     } catch (err) {
       const message = handleFetchError(err, 'fetching reminders');
@@ -38,7 +35,7 @@ export function useReminderManagement(
       if (editingReminder) {
         await updateReminder(editingReminder.ID, reminderData);
       } else {
-        await createReminder(parseInt(contactId), reminderData);
+        await createReminder(parseInt(contactId, 10), reminderData);
       }
       await refreshReminders();
       setReminderDialogOpen(false);
@@ -92,6 +89,6 @@ export function useReminderManagement(
     handleAddReminder,
     setReminderDialogOpen,
     setEditingReminder,
-    setReminders
+    setReminders,
   };
 }

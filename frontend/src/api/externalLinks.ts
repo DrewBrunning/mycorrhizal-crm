@@ -4,7 +4,7 @@
 // that external system"; ExternalActivity = something that happened in an
 // external system, linkable into a contact's timeline. System-agnostic — no
 // integration-specific fields live here (they go in metadata/payload).
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 export interface ExternalIdentity {
   id: string;
@@ -87,9 +87,13 @@ export async function getExternalIdentities(params?: {
 
 // POST is wrapped in {external_identity: ...} (create asymmetry, same as
 // relationship-edges).
-export async function createExternalIdentity(input: ExternalIdentityInput): Promise<ExternalIdentity> {
+export async function createExternalIdentity(
+  input: ExternalIdentityInput,
+): Promise<ExternalIdentity> {
   const response = await apiFetch(`${API_BASE_URL}/external-identities`, {
-    method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(input),
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   const result = await response.json();
@@ -97,9 +101,14 @@ export async function createExternalIdentity(input: ExternalIdentityInput): Prom
 }
 
 // PUT returns the raw identity, not wrapped.
-export async function updateExternalIdentity(id: string, input: ExternalIdentityInput): Promise<ExternalIdentity> {
+export async function updateExternalIdentity(
+  id: string,
+  input: ExternalIdentityInput,
+): Promise<ExternalIdentity> {
   const response = await apiFetch(`${API_BASE_URL}/external-identities/${id}`, {
-    method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(input),
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
@@ -107,7 +116,8 @@ export async function updateExternalIdentity(id: string, input: ExternalIdentity
 
 export async function deleteExternalIdentity(id: string): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/external-identities/${id}`, {
-    method: 'DELETE', headers: getAuthHeaders(),
+    method: 'DELETE',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
 }
@@ -130,9 +140,13 @@ export async function getExternalActivities(params?: {
   return response.json();
 }
 
-export async function createExternalActivity(input: ExternalActivityInput): Promise<ExternalActivity> {
+export async function createExternalActivity(
+  input: ExternalActivityInput,
+): Promise<ExternalActivity> {
   const response = await apiFetch(`${API_BASE_URL}/external-activities`, {
-    method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(input),
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   const result = await response.json();
@@ -141,7 +155,8 @@ export async function createExternalActivity(input: ExternalActivityInput): Prom
 
 export async function deleteExternalActivity(id: string): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/external-activities/${id}`, {
-    method: 'DELETE', headers: getAuthHeaders(),
+    method: 'DELETE',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
 }

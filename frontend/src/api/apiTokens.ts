@@ -1,4 +1,4 @@
-import { apiFetch, API_BASE_URL, getAuthHeaders } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders } from './client';
 import { handleResponse } from './errorHandling';
 
 export type ApiTokenScope = 'full' | 'carddav';

@@ -1,20 +1,20 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
-  getImmichConfig,
-  saveImmichConfig,
   deleteImmichConfig,
-  getImmichPeople,
+  getImmichConfig,
   getImmichContactSummary,
+  getImmichPeople,
+  type ImmichConfigResponse,
+  type ImmichConnectionTestResult,
+  type ImmichPerson,
+  type ImmichPersonSummary,
   linkImmichPerson,
-  unlinkImmichPerson,
+  saveImmichConfig,
   syncImmich,
   testImmichConnection,
-  ImmichConfigResponse,
-  ImmichConnectionTestResult,
-  ImmichPerson,
-  ImmichPersonSummary,
+  unlinkImmichPerson,
 } from '../api/immich';
-import { handleFetchError, handleError, ErrorNotifier } from '../utils/errorHandler';
+import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
 // useImmich backs both the settings connection card and the contact-page
 // Immich link surface (T15/T16). Connection config is per-user-global; per
@@ -59,7 +59,7 @@ export function useImmich(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [notifier]
+    [notifier],
   );
 
   const removeConfig = useCallback(async () => {
@@ -98,7 +98,7 @@ export function useImmich(notifier?: ErrorNotifier) {
     async (contactUid: string, personId: string, personName: string) => {
       await linkImmichPerson(contactUid, personId, personName);
     },
-    []
+    [],
   );
 
   const unlinkPerson = useCallback(async (contactUid: string) => {

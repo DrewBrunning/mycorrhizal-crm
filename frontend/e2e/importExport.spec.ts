@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { createTestContact, deleteTestContact, waitForLoading } from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
@@ -61,7 +61,7 @@ test.describe('CSV import/export round trip', () => {
 
     const result = await importCSV(
       request,
-      `First Name,Last Name,Circles\n${name},Imported,${circleName}\n`
+      `First Name,Last Name,Circles\n${name},Imported,${circleName}\n`,
     );
     expect(result.created).toBe(1);
 
@@ -69,7 +69,9 @@ test.describe('CSV import/export round trip', () => {
     try {
       // The Circle entity — not the flat column — must now exist and carry
       // the contact as a member. This is what every UI surface reads.
-      const circlesResponse = await request.get(`${API_BASE_URL}/circles?limit=200&include_members=true`);
+      const circlesResponse = await request.get(
+        `${API_BASE_URL}/circles?limit=200&include_members=true`,
+      );
       expect(circlesResponse.ok()).toBeTruthy();
       const { circles, members } = await circlesResponse.json();
 
@@ -77,7 +79,7 @@ test.describe('CSV import/export round trip', () => {
       expect(circle, `import must create a Circle entity named ${circleName}`).toBeTruthy();
 
       const memberships = (members ?? []).filter(
-        (m: { circle_id: string }) => m.circle_id === circle.id
+        (m: { circle_id: string }) => m.circle_id === circle.id,
       );
       expect(memberships.length, 'the imported contact must be a member of that Circle').toBe(1);
 
@@ -105,18 +107,20 @@ test.describe('CSV import/export round trip', () => {
 
     const result = await importCSV(
       request,
-      `First Name,Last Name,Tags\n${name},Imported,${tagName}\n`
+      `First Name,Last Name,Tags\n${name},Imported,${tagName}\n`,
     );
     expect(result.created).toBe(1);
 
     let contactId: number | undefined;
     try {
-      const tagsResponse = await request.get(`${API_BASE_URL}/tags?limit=200&include_contacts=true`);
+      const tagsResponse = await request.get(
+        `${API_BASE_URL}/tags?limit=200&include_contacts=true`,
+      );
       expect(tagsResponse.ok()).toBeTruthy();
       const { tags } = await tagsResponse.json();
       expect(
         tags.find((t: { name: string }) => t.name === tagName),
-        'a Tags column must create a Tag entity'
+        'a Tags column must create a Tag entity',
       ).toBeTruthy();
 
       // Before T3 all four grouping vocabularies collapsed onto circles.
@@ -124,7 +128,7 @@ test.describe('CSV import/export round trip', () => {
       const { circles } = await circlesResponse.json();
       expect(
         circles.find((c: { name: string }) => c.name === tagName),
-        'a Tags column must NOT create a Circle'
+        'a Tags column must NOT create a Circle',
       ).toBeFalsy();
 
       const listResponse = await request.get(`${API_BASE_URL}/contacts?limit=200`);

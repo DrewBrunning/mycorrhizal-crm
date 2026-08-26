@@ -1,41 +1,46 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link as RouterLink } from 'react-router';
+import ClearIcon from '@mui/icons-material/Clear';
+import DownloadIcon from '@mui/icons-material/Download';
+import UndoIcon from '@mui/icons-material/Undo';
 import {
   Box,
-  Paper,
-  Typography,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  TextField,
+  Typography,
 } from '@mui/material';
-import { SelectChangeEvent } from '@mui/material/Select';
-import UndoIcon from '@mui/icons-material/Undo';
-import DownloadIcon from '@mui/icons-material/Download';
-import { useDocumentTitle } from './hooks/useDocumentTitle';
-import ClearIcon from '@mui/icons-material/Clear';
+import type { SelectChangeEvent } from '@mui/material/Select';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link as RouterLink } from 'react-router';
+import {
+  AUDIT_ENTITY_TYPES,
+  type AuditEntityType,
+  type AuditEvent,
+  exportAuditLog,
+} from './api/audit';
+import { ApiError } from './api/client';
+import { getContactsByUid } from './api/contacts';
+import { ListSkeleton } from './components/LoadingSkeletons';
+import { useSnackbar } from './context/SnackbarContext';
 import { useAudit } from './hooks/useAudit';
 import { useDebouncedValue } from './hooks/useDebounce';
-import { AuditEvent, AuditEntityType, AUDIT_ENTITY_TYPES, exportAuditLog } from './api/audit';
-import { getContactsByUid } from './api/contacts';
-import { useSnackbar } from './context/SnackbarContext';
-import { ListSkeleton } from './components/LoadingSkeletons';
-import { ApiError } from './api/client';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { getErrorMessage } from './utils/errorHandler';
 
 const OPERATION_COLORS: Record<AuditEvent['operation'], 'success' | 'info' | 'error'> = {
@@ -192,7 +197,9 @@ export default function AuditPage() {
           <Button
             variant="outlined"
             size="medium"
-            startIcon={exportingAuditLog ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
+            startIcon={
+              exportingAuditLog ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />
+            }
             onClick={handleExportAuditLog}
             disabled={exportingAuditLog}
             sx={{ ml: 'auto' }}
@@ -235,7 +242,11 @@ export default function AuditPage() {
                     <Typography variant="body2">{formatDateTime(event.created_at)}</Typography>
                   </TableCell>
                   <TableCell>
-                    <Chip size="small" variant="outlined" label={t(`audit.entityTypes.${event.entity_type}`)} />
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={t(`audit.entityTypes.${event.entity_type}`)}
+                    />
                   </TableCell>
                   <TableCell>
                     <Chip
@@ -292,7 +303,12 @@ export default function AuditPage() {
           <Button onClick={() => setPendingUndo(null)} disabled={undoing}>
             {t('common.cancel')}
           </Button>
-          <Button variant="contained" color="primary" onClick={handleUndoConfirm} disabled={undoing}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleUndoConfirm}
+            disabled={undoing}
+          >
             {t('audit.undo.confirm')}
           </Button>
         </DialogActions>
@@ -309,7 +325,9 @@ export default function AuditPage() {
 // when the actual set of contact uids changes — not on every events-array
 // mutation (Load more, filter change, undo refresh).
 function useContactsForEvents(events: AuditEvent[]) {
-  const [contactsByUid, setContactsByUid] = useState<Map<string, { ID: number; name: string }>>(new Map());
+  const [contactsByUid, setContactsByUid] = useState<Map<string, { ID: number; name: string }>>(
+    new Map(),
+  );
 
   // A stable string key derived from the sorted unique uid set. Two consecutive
   // events arrays that carry the same contact uids produce the same string,
@@ -333,7 +351,10 @@ function useContactsForEvents(events: AuditEvent[]) {
         if (cancelled) return;
         const next = new Map<string, { ID: number; name: string }>();
         for (const [uid, contact] of byUid) {
-          next.set(uid, { ID: contact.ID, name: `${contact.firstname} ${contact.lastname}`.trim() });
+          next.set(uid, {
+            ID: contact.ID,
+            name: `${contact.firstname} ${contact.lastname}`.trim(),
+          });
         }
         setContactsByUid(next);
       })
@@ -349,7 +370,13 @@ function useContactsForEvents(events: AuditEvent[]) {
   return contactsByUid;
 }
 
-function EntityIdCell({ event, contact }: { event: AuditEvent; contact?: { ID: number; name: string } }) {
+function EntityIdCell({
+  event,
+  contact,
+}: {
+  event: AuditEvent;
+  contact?: { ID: number; name: string };
+}) {
   const { t } = useTranslation();
   if (event.entity_type === 'contact' && contact) {
     return (
@@ -373,7 +400,11 @@ function EntityIdCell({ event, contact }: { event: AuditEvent; contact?: { ID: n
     );
   }
   return (
-    <Typography variant="body2" component="span" sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
+    <Typography
+      variant="body2"
+      component="span"
+      sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}
+    >
       {event.entity_id}
     </Typography>
   );
@@ -383,6 +414,6 @@ function EntityIdCell({ event, contact }: { event: AuditEvent; contact?: { ID: n
 // uses the user's locale rather than the date-only DateFormat preference.
 function formatDateTime(iso: string): string {
   const date = new Date(iso);
-  if (isNaN(date.getTime())) return iso;
+  if (Number.isNaN(date.getTime())) return iso;
   return date.toLocaleString();
 }

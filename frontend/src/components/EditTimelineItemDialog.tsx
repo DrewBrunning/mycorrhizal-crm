@@ -1,21 +1,21 @@
-import { useTranslation } from 'react-i18next';
-import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Box,
-  Autocomplete,
-  Chip,
-  IconButton,
-  CircularProgress,
-} from '@mui/material';
-import AppDialog from './AppDialog';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { useState, useCallback, useEffect } from 'react';
-import { Contact, getContacts } from '../api/contacts';
+import {
+  Autocomplete,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  TextField,
+} from '@mui/material';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { type Contact, getContacts } from '../api/contacts';
 import { handleFetchError } from '../utils/errorHandler';
+import AppDialog from './AppDialog';
 
 export interface TimelineItemValues {
   noteContent?: string;
@@ -66,7 +66,7 @@ export default function EditTimelineItemDialog({
   type,
   values,
   onChange,
-  allContacts
+  allContacts,
 }: EditTimelineItemDialogProps) {
   const { t } = useTranslation();
 
@@ -106,7 +106,12 @@ export default function EditTimelineItemDialog({
   // When the contact name is resolved, sync it into the Autocomplete value
   // so the picker shows the currently assigned contact.
   useEffect(() => {
-    if (type === 'note' && values.noteContactId != null && values.noteContactName && !noteSelectedContact) {
+    if (
+      type === 'note' &&
+      values.noteContactId != null &&
+      values.noteContactName &&
+      !noteSelectedContact
+    ) {
       setNoteSelectedContact({
         ID: values.noteContactId,
         firstname: values.noteContactName,
@@ -118,7 +123,12 @@ export default function EditTimelineItemDialog({
   // When a noteContactId is set but no resolved name yet, try to resolve it
   // from the loaded contact list.
   useEffect(() => {
-    if (type === 'note' && values.noteContactId != null && !values.noteContactName && noteContacts.length > 0) {
+    if (
+      type === 'note' &&
+      values.noteContactId != null &&
+      !values.noteContactName &&
+      noteContacts.length > 0
+    ) {
       const found = noteContacts.find((c) => c.ID === values.noteContactId);
       if (found) {
         onChange({ ...values, noteContactName: contactLabel(found) });
@@ -130,12 +140,14 @@ export default function EditTimelineItemDialog({
   // fetch so the user immediately sees who the note is assigned to).
   useEffect(() => {
     if (open && type === 'note' && values.noteContactId != null && !values.noteContactName) {
-      getContacts({ limit: 200 }).then((resp) => {
-        const found = (resp.contacts || []).find((c) => c.ID === values.noteContactId);
-        if (found) {
-          onChange({ ...values, noteContactName: contactLabel(toContactBrief(found)) });
-        }
-      }).catch(() => {});
+      getContacts({ limit: 200 })
+        .then((resp) => {
+          const found = (resp.contacts || []).find((c) => c.ID === values.noteContactId);
+          if (found) {
+            onChange({ ...values, noteContactName: contactLabel(toContactBrief(found)) });
+          }
+        })
+        .catch(() => {});
     }
     // Only run on open — values.noteContactId / noteContactName are deliberately
     // excluded so the fetch only fires once per open.
@@ -165,7 +177,10 @@ export default function EditTimelineItemDialog({
               <Box display="flex" alignItems="center" gap={1}>
                 <Chip
                   label={`${t('notes.assignedTo')} ${values.noteContactName}`}
-                  onDelete={() => { setNoteSelectedContact(null); onChange({ ...values, noteContactId: undefined, noteContactName: undefined }); }}
+                  onDelete={() => {
+                    setNoteSelectedContact(null);
+                    onChange({ ...values, noteContactId: undefined, noteContactName: undefined });
+                  }}
                   size="small"
                 />
               </Box>
@@ -177,7 +192,11 @@ export default function EditTimelineItemDialog({
               onChange={(_, value) => {
                 setNoteSelectedContact(value);
                 if (value) {
-                  onChange({ ...values, noteContactId: value.ID, noteContactName: contactLabel(value) });
+                  onChange({
+                    ...values,
+                    noteContactId: value.ID,
+                    noteContactName: contactLabel(value),
+                  });
                 }
               }}
               onInputChange={(_, value, reason) => {
@@ -194,7 +213,9 @@ export default function EditTimelineItemDialog({
                     ...params.InputProps,
                     endAdornment: (
                       <>
-                        {noteContactsLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                        {noteContactsLoading ? (
+                          <CircularProgress color="inherit" size={20} />
+                        ) : null}
                         {params.InputProps.endAdornment}
                       </>
                     ),
@@ -258,7 +279,9 @@ export default function EditTimelineItemDialog({
             <Autocomplete
               multiple
               options={allContacts}
-              getOptionLabel={(contact) => `${contact.firstname}${contact.nickname ? ` "${contact.nickname}"` : ''} ${contact.lastname}`}
+              getOptionLabel={(contact) =>
+                `${contact.firstname}${contact.nickname ? ` "${contact.nickname}"` : ''} ${contact.lastname}`
+              }
               value={values.activityContacts || []}
               onChange={(_, newValue) => onChange({ ...values, activityContacts: newValue })}
               renderInput={(params) => (
@@ -283,7 +306,7 @@ export default function EditTimelineItemDialog({
         )}
       </DialogContent>
       <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
-        <IconButton 
+        <IconButton
           color="error"
           onClick={handleDelete}
           title={t('contactDetail.delete')}

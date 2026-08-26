@@ -1,23 +1,33 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { WebDAVItem } from '../api/nextcloud';
 import NextcloudFilePickerDialog from './NextcloudFilePickerDialog';
-import { WebDAVItem } from '../api/nextcloud';
 
 afterEach(cleanup);
 
 const rootItems: WebDAVItem[] = [{ name: 'Documents', path: '/Documents/', type: 'dir' }];
 const docItems: WebDAVItem[] = [
-  { name: 'contract.pdf', path: '/Documents/contract.pdf', type: 'file', size: 4096, file_id: '123' },
+  {
+    name: 'contract.pdf',
+    path: '/Documents/contract.pdf',
+    type: 'file',
+    size: 4096,
+    file_id: '123',
+  },
 ];
 
-function renderDialog(overrides: Partial<React.ComponentProps<typeof NextcloudFilePickerDialog>> = {}) {
+function renderDialog(
+  overrides: Partial<React.ComponentProps<typeof NextcloudFilePickerDialog>> = {},
+) {
   const defaults: React.ComponentProps<typeof NextcloudFilePickerDialog> = {
     open: true,
     onClose: vi.fn(),
-    onFetchDir: vi.fn().mockImplementation((path?: string) =>
-      Promise.resolve(path && path.startsWith('/Documents') ? docItems : rootItems)
-    ),
+    onFetchDir: vi
+      .fn()
+      .mockImplementation((path?: string) =>
+        Promise.resolve(path?.startsWith('/Documents') ? docItems : rootItems),
+      ),
     onSelect: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
@@ -30,9 +40,11 @@ test('lists the dav root children on open', async () => {
 });
 
 test('descends into a folder and back via the breadcrumb', async () => {
-  const onFetchDir = vi.fn().mockImplementation((path?: string) =>
-    Promise.resolve(path && path.startsWith('/Documents') ? docItems : rootItems)
-  );
+  const onFetchDir = vi
+    .fn()
+    .mockImplementation((path?: string) =>
+      Promise.resolve(path?.startsWith('/Documents') ? docItems : rootItems),
+    );
   renderDialog({ onFetchDir });
 
   await waitFor(() => expect(screen.getByText('Documents')).toBeInTheDocument());

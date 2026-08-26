@@ -1,18 +1,27 @@
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { DialogTitle, DialogContent, DialogActions, Button, Box, Typography, CircularProgress, Alert } from '@mui/material';
-import AppDialog from './AppDialog';
-import ImmichPersonSearchDialog from './ImmichPersonSearchDialog';
-import AuthImg from './AuthImg';
 import {
-  ImmichPerson,
-  ImmichAssetSummary,
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Typography,
+} from '@mui/material';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { apiFetch } from '../api/client';
+import {
   getImmichContactAssets,
-  immichThumbnailUrl,
+  type ImmichAssetSummary,
+  type ImmichPerson,
   immichAssetImageUrl,
+  immichThumbnailUrl,
 } from '../api/immich';
 import { getErrorMessage } from '../utils/errorHandler';
-import { apiFetch } from '../api/client';
+import AppDialog from './AppDialog';
+import AuthImg from './AuthImg';
+import ImmichPersonSearchDialog from './ImmichPersonSearchDialog';
 
 interface ImmichPhotoPickerDialogProps {
   open: boolean;
@@ -98,7 +107,12 @@ export default function ImmichPhotoPickerDialog({
 
   if (!linked) {
     return (
-      <ImmichPersonSearchDialog open={open} onClose={onClose} onFetchPeople={onFetchPeople} onSelect={handleLink} />
+      <ImmichPersonSearchDialog
+        open={open}
+        onClose={onClose}
+        onFetchPeople={onFetchPeople}
+        onSelect={handleLink}
+      />
     );
   }
 
@@ -118,7 +132,9 @@ export default function ImmichPhotoPickerDialog({
           </Typography>
         )}
         {!loading && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, maxHeight: 360, overflowY: 'auto' }}>
+          <Box
+            sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, maxHeight: 360, overflowY: 'auto' }}
+          >
             <Box
               component="button"
               type="button"

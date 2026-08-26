@@ -1,5 +1,5 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
-import { getCachedSelfContactVCardUID, fetchAndCacheUserInfo, loginUser, login2FA } from './auth';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { fetchAndCacheUserInfo, getCachedSelfContactVCardUID, login2FA, loginUser } from './auth';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -16,13 +16,21 @@ describe('getCachedSelfContactVCardUID', () => {
   test('returns the cached self-contact uid', () => {
     localStorage.setItem(
       USER_INFO_KEY,
-      JSON.stringify({ user_id: 1, username: 'u', is_admin: false, self_contact_vcard_uid: 'uid-1' })
+      JSON.stringify({
+        user_id: 1,
+        username: 'u',
+        is_admin: false,
+        self_contact_vcard_uid: 'uid-1',
+      }),
     );
     expect(getCachedSelfContactVCardUID()).toBe('uid-1');
   });
 
   test('treats a cache with no self contact as unset', () => {
-    localStorage.setItem(USER_INFO_KEY, JSON.stringify({ user_id: 1, username: 'u', is_admin: false }));
+    localStorage.setItem(
+      USER_INFO_KEY,
+      JSON.stringify({ user_id: 1, username: 'u', is_admin: false }),
+    );
     expect(getCachedSelfContactVCardUID()).toBeNull();
   });
 
@@ -38,7 +46,12 @@ describe('fetchAndCacheUserInfo', () => {
     // lowercase response fields — mock what the module actually reads.
     const fetchMock = vi.fn().mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ ID: 1, Username: 'u', is_admin: false, self_contact_vcard_uid: 'uid-9' }),
+      json: async () => ({
+        ID: 1,
+        Username: 'u',
+        is_admin: false,
+        self_contact_vcard_uid: 'uid-9',
+      }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -70,7 +83,9 @@ describe('fetchAndCacheUserInfo', () => {
 
     const info = await fetchAndCacheUserInfo();
     expect(info).toBeNull();
-    expect(JSON.parse(localStorage.getItem(USER_INFO_KEY) || '{}').self_contact_vcard_uid).toBe('uid-old');
+    expect(JSON.parse(localStorage.getItem(USER_INFO_KEY) || '{}').self_contact_vcard_uid).toBe(
+      'uid-old',
+    );
   });
 });
 
@@ -93,7 +108,8 @@ describe('two-factor login', () => {
 
   test('loginUser caches user info when 2FA is not required', async () => {
     localStorage.removeItem(USER_INFO_KEY);
-    const fetchMock = vi.fn()
+    const fetchMock = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({ language: 'en', date_format: 'eu' }),
@@ -113,7 +129,8 @@ describe('two-factor login', () => {
 
   test('login2FA posts the code and caches user info on success', async () => {
     localStorage.removeItem(USER_INFO_KEY);
-    const fetchMock = vi.fn()
+    const fetchMock = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({ language: 'de', date_format: 'eu' }),
@@ -148,6 +165,8 @@ describe('two-factor login', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(login2FA('000000')).rejects.toThrow('Account temporarily locked. Try again in 60 seconds.');
+    await expect(login2FA('000000')).rejects.toThrow(
+      'Account temporarily locked. Try again in 60 seconds.',
+    );
   });
 });

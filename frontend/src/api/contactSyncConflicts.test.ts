@@ -1,8 +1,8 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
+  dismissContactSyncConflict,
   getContactSyncConflicts,
   restoreContactSyncConflict,
-  dismissContactSyncConflict,
 } from './contactSyncConflicts';
 
 afterEach(() => {
@@ -46,7 +46,9 @@ describe('getContactSyncConflicts', () => {
 
 describe('restoreContactSyncConflict', () => {
   test('POSTs the restore action for the conflict id', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ message: 'ok' }) });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ message: 'ok' }) });
     vi.stubGlobal('fetch', fetchMock);
 
     await restoreContactSyncConflict('c1');
@@ -70,7 +72,9 @@ describe('restoreContactSyncConflict', () => {
 
 describe('dismissContactSyncConflict', () => {
   test('POSTs the dismiss action for the conflict id', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ message: 'ok' }) });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ message: 'ok' }) });
     vi.stubGlobal('fetch', fetchMock);
 
     await dismissContactSyncConflict('c2');

@@ -1,5 +1,11 @@
-import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact, waitForLoading, stableClick } from './fixtures';
+import {
+  createTestContact,
+  deleteTestContact,
+  expect,
+  stableClick,
+  test,
+  waitForLoading,
+} from './fixtures';
 
 // Notes and activities both render in the contact's Timeline section. Each
 // test uses a throwaway contact and cleans it up (which cascades the

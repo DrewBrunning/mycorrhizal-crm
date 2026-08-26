@@ -1,23 +1,23 @@
+import { mdiHomePlusOutline, mdiMapMarkerMultipleOutline } from '@mdi/js';
+import { Alert, Box, Button, LinearProgress, Stack, SvgIcon, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Box, Typography, Button, Alert, LinearProgress, Stack, SvgIcon } from '@mui/material';
-import { mdiHomePlusOutline, mdiMapMarkerMultipleOutline } from '@mdi/js';
-import HouseholdDialog, { HouseholdFormData } from './components/HouseholdDialog';
-import HouseholdList from './components/HouseholdList';
-import { useDocumentTitle } from './hooks/useDocumentTitle';
-import AddressHouseholdSuggestions from './components/AddressHouseholdSuggestions';
-import { useHouseholds } from './hooks/useHouseholds';
-import { useSnackbar } from './context/SnackbarContext';
+import { type Contact, getContactsByUid } from './api/contacts';
+import { suggestContactAddresses } from './api/dataSuggestions';
 import {
-  Household,
-  HouseholdMember,
-  AddressHouseholdSuggestion,
-  suggestAddressHouseholds,
+  type AddressHouseholdSuggestion,
   acceptAddressHouseholdSuggestion,
   dismissAddressHouseholdSuggestion,
+  type Household,
+  type HouseholdMember,
+  suggestAddressHouseholds,
 } from './api/households';
-import { suggestContactAddresses } from './api/dataSuggestions';
-import { getContactsByUid, Contact } from './api/contacts';
+import AddressHouseholdSuggestions from './components/AddressHouseholdSuggestions';
+import HouseholdDialog, { type HouseholdFormData } from './components/HouseholdDialog';
+import HouseholdList from './components/HouseholdList';
+import { useSnackbar } from './context/SnackbarContext';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useHouseholds } from './hooks/useHouseholds';
 import { handleFetchError } from './utils/errorHandler';
 
 export default function HouseholdsPage() {
@@ -152,8 +152,11 @@ export default function HouseholdsPage() {
       await acceptAddressHouseholdSuggestion(suggestion.member_vcard_uids);
       setAddressSuggestions((prev) =>
         prev.filter(
-          (s) => !(s.address_hash === suggestion.address_hash && s.member_hash === suggestion.member_hash)
-        )
+          (s) =>
+            !(
+              s.address_hash === suggestion.address_hash && s.member_hash === suggestion.member_hash
+            ),
+        ),
       );
       await refresh();
       showSuccess(t('household.suggestionAccepted'));
@@ -168,8 +171,11 @@ export default function HouseholdsPage() {
       await dismissAddressHouseholdSuggestion(suggestion.member_vcard_uids);
       setAddressSuggestions((prev) =>
         prev.filter(
-          (s) => !(s.address_hash === suggestion.address_hash && s.member_hash === suggestion.member_hash)
-        )
+          (s) =>
+            !(
+              s.address_hash === suggestion.address_hash && s.member_hash === suggestion.member_hash
+            ),
+        ),
       );
       showInfo(t('household.suggestionDismissed'));
     } catch (err) {
@@ -189,11 +195,17 @@ export default function HouseholdsPage() {
           mb: 1,
         }}
       >
-        <Typography variant="h5" component="h1">{t('household.title')}</Typography>
+        <Typography variant="h5" component="h1">
+          {t('household.title')}
+        </Typography>
         <Stack direction="row" spacing={1}>
           <Button
             variant="outlined"
-            startIcon={<SvgIcon><path d={mdiMapMarkerMultipleOutline} /></SvgIcon>}
+            startIcon={
+              <SvgIcon>
+                <path d={mdiMapMarkerMultipleOutline} />
+              </SvgIcon>
+            }
             onClick={handleScanAddressSuggestions}
             disabled={suggestionsLoading}
           >
@@ -201,7 +213,11 @@ export default function HouseholdsPage() {
           </Button>
           <Button
             variant="contained"
-            startIcon={<SvgIcon><path d={mdiHomePlusOutline} /></SvgIcon>}
+            startIcon={
+              <SvgIcon>
+                <path d={mdiHomePlusOutline} />
+              </SvgIcon>
+            }
             onClick={handleOpenCreate}
           >
             {t('household.newHousehold')}
@@ -212,7 +228,11 @@ export default function HouseholdsPage() {
         {t('household.description')}
       </Typography>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
       {loading && <LinearProgress sx={{ mb: 2 }} />}
 
       {suggestionsLoaded && !suggestionsLoading && (
@@ -223,7 +243,11 @@ export default function HouseholdsPage() {
           busy={suggestionsLoading}
         />
       )}
-      {suggestionsError && <Alert severity="error" sx={{ mt: 2 }}>{suggestionsError}</Alert>}
+      {suggestionsError && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {suggestionsError}
+        </Alert>
+      )}
 
       <HouseholdList
         households={households}

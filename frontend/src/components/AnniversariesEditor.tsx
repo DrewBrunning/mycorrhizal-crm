@@ -1,17 +1,17 @@
-import { useTranslation } from 'react-i18next';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import {
   Box,
-  Typography,
+  Button,
+  IconButton,
+  MenuItem,
+  Paper,
   Stack,
   TextField,
-  IconButton,
-  Button,
-  Paper,
-  MenuItem,
+  Typography,
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import { CardAnniversary, parseAnniversaryDate } from '../api/contacts';
+import { useTranslation } from 'react-i18next';
+import { type CardAnniversary, parseAnniversaryDate } from '../api/contacts';
 import { useRowKeys } from '../hooks/useRowKeys';
 
 interface AnniversariesEditorProps {
@@ -65,11 +65,19 @@ export default function AnniversariesEditor({ label, value, onChange }: Annivers
                 label={t('contacts.anniversaryFields.kindLabel')}
                 size="small"
                 value={row.kind}
-                onChange={(e) => updateRow(index, { kind: e.target.value as CardAnniversary['kind'] })}
+                onChange={(e) =>
+                  updateRow(index, { kind: e.target.value as CardAnniversary['kind'] })
+                }
               >
-                <MenuItem value="birth">{t('contacts.anniversaryFields.kindOptions.birth')}</MenuItem>
-                <MenuItem value="death">{t('contacts.anniversaryFields.kindOptions.death')}</MenuItem>
-                <MenuItem value="wedding">{t('contacts.anniversaryFields.kindOptions.wedding')}</MenuItem>
+                <MenuItem value="birth">
+                  {t('contacts.anniversaryFields.kindOptions.birth')}
+                </MenuItem>
+                <MenuItem value="death">
+                  {t('contacts.anniversaryFields.kindOptions.death')}
+                </MenuItem>
+                <MenuItem value="wedding">
+                  {t('contacts.anniversaryFields.kindOptions.wedding')}
+                </MenuItem>
               </TextField>
               <TextField
                 label={t('contacts.anniversaryFields.date')}
@@ -89,8 +97,16 @@ export default function AnniversariesEditor({ label, value, onChange }: Annivers
               </IconButton>
             </Stack>
             {row.place && (row.place.components?.length || row.place.full) && (
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                {row.place.full || (row.place.components || []).map((c) => c.value).filter(Boolean).join(', ')}
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: 'block', mt: 0.5 }}
+              >
+                {row.place.full ||
+                  (row.place.components || [])
+                    .map((c) => c.value)
+                    .filter(Boolean)
+                    .join(', ')}
               </Typography>
             )}
           </Paper>

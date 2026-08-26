@@ -1,35 +1,35 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router';
-import { useTranslation } from 'react-i18next';
 import {
+  Alert,
+  Autocomplete,
   Box,
   Card,
-  Typography,
   CircularProgress,
-  FormControlLabel,
-  Switch,
-  Select,
-  MenuItem,
   FormControl,
+  FormControlLabel,
   InputLabel,
-  Alert,
-  SelectChangeEvent,
+  MenuItem,
+  Select,
+  type SelectChangeEvent,
+  Switch,
+  TextField,
+  Typography,
   useMediaQuery,
   useTheme,
-  Autocomplete,
-  TextField,
 } from '@mui/material';
-import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
+import { type Activity, deleteActivity, getActivity, updateActivity } from './api/activities';
+import { type Contact, getAllContacts } from './api/contacts';
+import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import NetworkGraph from './components/NetworkGraph';
 import NetworkLegend from './components/NetworkLegend';
 import NetworkListView from './components/NetworkListView';
-import EditTimelineItemDialog from './components/EditTimelineItemDialog';
-import { useGraph } from './hooks/useGraph';
 import { useCircles } from './hooks/useCircles';
-import { GraphNode } from './types/graph';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useGraph } from './hooks/useGraph';
+import type { GraphNode } from './types/graph';
 import { computeFilteredGraphData } from './utils/networkGraphData';
-import { Activity, getActivity, updateActivity, deleteActivity } from './api/activities';
-import { Contact, getAllContacts } from './api/contacts';
 
 export default function NetworkPage() {
   const { t } = useTranslation();
@@ -39,7 +39,6 @@ export default function NetworkPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { data, loading, error } = useGraph();
   const { circles: circleEntities, circleNamesByUid } = useCircles();
-
 
   const [selectedCircle, setSelectedCircle] = useState<string>('');
   const [showRelationships, setShowRelationships] = useState(() => {
@@ -81,7 +80,7 @@ export default function NetworkPage() {
 
   useEffect(() => {
     if (!data || !centeredNodeId) return;
-    const nodeExists = data.nodes.some(n => n.id === centeredNodeId);
+    const nodeExists = data.nodes.some((n) => n.id === centeredNodeId);
     if (!nodeExists) {
       setCenteredNodeId(null);
     }
@@ -89,13 +88,15 @@ export default function NetworkPage() {
 
   // Extract unique circle names from the Circle entity list
   const circleNames = useMemo(() => {
-    return circleEntities.map(c => c.name).sort();
+    return circleEntities.map((c) => c.name).sort();
   }, [circleEntities]);
 
   // Contact nodes for the center-on-contact autocomplete
   const contactNodes = useMemo(() => {
     if (!data) return [];
-    return data.nodes.filter(n => n.type === 'contact').sort((a, b) => a.label.localeCompare(b.label));
+    return data.nodes
+      .filter((n) => n.type === 'contact')
+      .sort((a, b) => a.label.localeCompare(b.label));
   }, [data]);
 
   // The same filtered node/edge set NetworkGraph draws to canvas -- computed
@@ -112,7 +113,15 @@ export default function NetworkPage() {
       centeredNodeId: centeredNodeId ?? undefined,
       circleNamesByUid,
     });
-  }, [data, selectedCircle, showRelationships, showActivities, showCircles, centeredNodeId, circleNamesByUid]);
+  }, [
+    data,
+    selectedCircle,
+    showRelationships,
+    showActivities,
+    showCircles,
+    centeredNodeId,
+    circleNamesByUid,
+  ]);
 
   // Handle node click - navigate to contact detail
   const handleNodeClick = (node: GraphNode) => {
@@ -155,8 +164,10 @@ export default function NetworkPage() {
         title: editValues.activityTitle,
         description: editValues.activityDescription || '',
         location: editValues.activityLocation || '',
-        date: editValues.activityDate ? new Date(editValues.activityDate).toISOString() : new Date().toISOString(),
-        contact_ids: editValues.activityContacts?.map(c => c.ID) || [],
+        date: editValues.activityDate
+          ? new Date(editValues.activityDate).toISOString()
+          : new Date().toISOString(),
+        contact_ids: editValues.activityContacts?.map((c) => c.ID) || [],
       });
       handleActivityEditClose();
     } catch (err) {
@@ -210,7 +221,16 @@ export default function NetworkPage() {
     // filling the viewport as before, but the container is no longer capped
     // there -- the always-in-DOM list view (#189) that follows the graph
     // needs the page free to grow and scroll past that point too.
-    <Box sx={{ minHeight: { xs: 'auto', md: 'calc(100vh - 100px)' }, display: 'flex', flexDirection: 'column', mt: 2, p: 2, maxWidth: '100%' }}>
+    <Box
+      sx={{
+        minHeight: { xs: 'auto', md: 'calc(100vh - 100px)' },
+        display: 'flex',
+        flexDirection: 'column',
+        mt: 2,
+        p: 2,
+        maxWidth: '100%',
+      }}
+    >
       <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 2 }}>
         {t('network.title')}
       </Typography>
@@ -233,15 +253,16 @@ export default function NetworkPage() {
           sx={{ minWidth: { xs: 0, sm: 200 }, width: isMobile ? '100%' : undefined }}
           options={contactNodes}
           getOptionLabel={(n) => n.label}
-          value={contactNodes.find(n => n.id === centeredNodeId) ?? null}
+          value={contactNodes.find((n) => n.id === centeredNodeId) ?? null}
           onChange={(_e, node) => setCenteredNodeId(node ? node.id : null)}
-          renderInput={(params) => (
-            <TextField {...params} label={t('network.filterByContact')} />
-          )}
+          renderInput={(params) => <TextField {...params} label={t('network.filterByContact')} />}
           clearOnEscape
         />
 
-        <FormControl size="small" sx={{ minWidth: { xs: 0, sm: 150 }, width: isMobile ? '100%' : undefined }}>
+        <FormControl
+          size="small"
+          sx={{ minWidth: { xs: 0, sm: 150 }, width: isMobile ? '100%' : undefined }}
+        >
           <InputLabel id="network-circle-filter-label">{t('network.filterByCircle')}</InputLabel>
           <Select
             value={selectedCircle}
@@ -250,8 +271,10 @@ export default function NetworkPage() {
             labelId="network-circle-filter-label"
           >
             <MenuItem value="">{t('network.allCircles')}</MenuItem>
-            {circleNames.map(c => (
-              <MenuItem key={c} value={c}>{c}</MenuItem>
+            {circleNames.map((c) => (
+              <MenuItem key={c} value={c}>
+                {c}
+              </MenuItem>
             ))}
           </Select>
         </FormControl>
@@ -291,21 +314,37 @@ export default function NetworkPage() {
 
         {!isMobile && (
           <Box sx={{ flexBasis: '100%' }}>
-            <NetworkLegend showCircles={showCircles} showActivities={showActivities} showRelationships={showRelationships} />
+            <NetworkLegend
+              showCircles={showCircles}
+              showActivities={showActivities}
+              showRelationships={showRelationships}
+            />
           </Box>
         )}
       </Card>
 
       {isMobile && (
         <Card sx={{ p: 1.5, mb: 2 }}>
-          <NetworkLegend showCircles={showCircles} showActivities={showActivities} showRelationships={showRelationships} />
+          <NetworkLegend
+            showCircles={showCircles}
+            showActivities={showActivities}
+            showRelationships={showRelationships}
+          />
         </Card>
       )}
 
       {/* Graph — the canvas sizes itself to this container, and the graph's
           own pan/zoom controls keep a wide 2D layout usable on phones without
           the page ever scrolling horizontally (T32). */}
-      <Card sx={{ flex: { xs: '0 0 auto', md: 1 }, height: { xs: '65vh', md: 'auto' }, minHeight: 400, position: 'relative', overflow: 'hidden' }}>
+      <Card
+        sx={{
+          flex: { xs: '0 0 auto', md: 1 },
+          height: { xs: '65vh', md: 'auto' },
+          minHeight: 400,
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
         <NetworkGraph
           data={data}
           onNodeClick={handleNodeClick}

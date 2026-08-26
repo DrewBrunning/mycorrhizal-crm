@@ -1,16 +1,16 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  getExternalIdentities,
-  createExternalIdentity,
-  updateExternalIdentity,
-  deleteExternalIdentity,
-  getExternalActivities,
   createExternalActivity,
+  createExternalIdentity,
   deleteExternalActivity,
-  ExternalIdentity,
-  ExternalIdentityInput,
-  ExternalActivity,
-  ExternalActivityInput,
+  deleteExternalIdentity,
+  type ExternalActivity,
+  type ExternalActivityInput,
+  type ExternalIdentity,
+  type ExternalIdentityInput,
+  getExternalActivities,
+  getExternalIdentities,
+  updateExternalIdentity,
 } from './externalLinks';
 
 afterEach(() => {
@@ -122,7 +122,7 @@ describe('createExternalIdentity', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
     await expect(
-      createExternalIdentity({ entity_id: 'u', system: '', external_id: '' })
+      createExternalIdentity({ entity_id: 'u', system: '', external_id: '' }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
   });
 });
@@ -151,7 +151,7 @@ describe('updateExternalIdentity', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
     await expect(
-      updateExternalIdentity('ident-1', { entity_id: 'u', system: 's', external_id: 'e' })
+      updateExternalIdentity('ident-1', { entity_id: 'u', system: 's', external_id: 'e' }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
   });
 });
@@ -249,7 +249,13 @@ describe('createExternalActivity', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
     await expect(
-      createExternalActivity({ entity_id: 'u', source_system: '', external_id: '', type: '', occurred_at: '' })
+      createExternalActivity({
+        entity_id: 'u',
+        source_system: '',
+        external_id: '',
+        type: '',
+        occurred_at: '',
+      }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
   });
 });

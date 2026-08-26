@@ -1,26 +1,26 @@
-import { useState } from 'react';
+import AddIcon from '@mui/icons-material/Add';
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import RedeemIcon from '@mui/icons-material/Redeem';
 import {
   Box,
   Button,
-  Typography,
-  IconButton,
-  Stack,
-  Paper,
-  TextField,
-  InputAdornment,
   Chip,
   Divider,
+  IconButton,
+  InputAdornment,
   Link,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import RedeemIcon from '@mui/icons-material/Redeem';
-import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Gift, GiftStatus } from '../api/gifts';
-import { LifeEvent } from '../api/lifeEvents';
-import { Activity } from '../api/activities';
+import type { Activity } from '../api/activities';
+import type { Gift, GiftStatus } from '../api/gifts';
+import type { LifeEvent } from '../api/lifeEvents';
 import { useDateFormat } from '../DateFormatProvider';
 import { isHttpUrlString } from '../utils/linkResolution';
 
@@ -115,7 +115,11 @@ function GiftSection({
   return (
     // An accessible region per status, so both tests and assistive tech can
     // target "the Given row" precisely instead of matching a repeated button.
-    <Box component="section" aria-label={title} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+    <Box
+      component="section"
+      aria-label={title}
+      sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}
+    >
       {divider && <Divider />}
       <Typography variant="subtitle2" component="h3" color="text.secondary">
         {title}
@@ -281,7 +285,13 @@ export default function GiftList({
                 label={t(`gifts.status.${gift.status}`, gift.status)}
               />
               {metas.map((m, i) => (
-                <Typography key={`${m}-${i}`} variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
+                <Typography
+                  // biome-ignore lint/suspicious/noArrayIndexKey: metadata may repeat; composite key needed
+                  key={`${m}-${i}`}
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ mr: 0.5 }}
+                >
                   {m}
                 </Typography>
               ))}

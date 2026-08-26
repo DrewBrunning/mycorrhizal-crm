@@ -1,13 +1,13 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import type { User } from '../types';
 import {
+  createUser,
+  deleteUser,
   getCurrentUser,
   getUsers,
-  createUser,
-  updateUser,
   triggerReminders,
-  deleteUser,
+  updateUser,
 } from './admin';
-import { User } from '../types';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -112,7 +112,12 @@ describe('createUser', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const payload = { username: 'admin', email: 'admin@example.com', password: 'secret', is_admin: true };
+    const payload = {
+      username: 'admin',
+      email: 'admin@example.com',
+      password: 'secret',
+      is_admin: true,
+    };
     const result = await createUser(payload);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -126,7 +131,7 @@ describe('createUser', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
     await expect(
-      createUser({ username: 'a', email: 'a@b.com', password: 'x' })
+      createUser({ username: 'a', email: 'a@b.com', password: 'x' }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
   });
 });
@@ -174,7 +179,10 @@ describe('triggerReminders', () => {
 
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
-    await expect(triggerReminders()).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(triggerReminders()).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 

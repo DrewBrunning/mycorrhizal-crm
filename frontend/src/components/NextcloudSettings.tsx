@@ -1,21 +1,21 @@
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { mdiCloudOutline } from '@mdi/js';
 import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
-  Typography,
-  Divider,
-  TextField,
-  Button,
-  Stack,
-  Alert,
   CircularProgress,
+  Divider,
+  Stack,
+  SvgIcon,
+  TextField,
+  Typography,
 } from '@mui/material';
-import { mdiCloudOutline } from '@mdi/js';
-import { SvgIcon } from '@mui/material';
-import { useNextcloud } from '../hooks/useNextcloud';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
+import { useNextcloud } from '../hooks/useNextcloud';
 import { isHttpUrlString } from '../utils/linkResolution';
 
 // NextcloudSettings is the settings-page card for the Nextcloud / ownCloud
@@ -192,7 +192,9 @@ export default function NextcloudSettings() {
                   }}
                   disabled={nextcloud.testing}
                 >
-                  {nextcloud.testing ? t('nextcloud.settings.testingConnection') : t('nextcloud.settings.testConnectionButton')}
+                  {nextcloud.testing
+                    ? t('nextcloud.settings.testingConnection')
+                    : t('nextcloud.settings.testConnectionButton')}
                 </Button>
               )}
               {nextcloud.config && (

@@ -1,38 +1,38 @@
-import { useState, useMemo, useEffect, MouseEvent } from 'react';
-import { useTranslation } from 'react-i18next';
-import {
-  Box,
-  Typography,
-  Paper,
-  TextField,
-  Button,
-  IconButton,
-  Popover,
-  Chip,
-  SvgIcon,
-} from '@mui/material';
+import { mdiNoteOutline, mdiNotePlusOutline } from '@mdi/js';
+import EditIcon from '@mui/icons-material/Edit';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import {
   Timeline,
-  TimelineItem,
-  TimelineSeparator,
   TimelineConnector,
   TimelineContent,
   TimelineDot,
+  TimelineItem,
   TimelineOppositeContent,
+  TimelineSeparator,
 } from '@mui/lab';
-import { mdiNotePlusOutline, mdiNoteOutline } from '@mdi/js';
-import EditIcon from '@mui/icons-material/Edit';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { ListSkeleton } from './components/LoadingSkeletons';
-import { useNotes } from './hooks/useNotes';
-import { useDebouncedValue } from './hooks/useDebounce';
-import { createUnassignedNote, updateNote, deleteNote, Note } from './api/notes';
+import {
+  Box,
+  Button,
+  Chip,
+  IconButton,
+  Paper,
+  Popover,
+  SvgIcon,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { type MouseEvent, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { createUnassignedNote, deleteNote, type Note, updateNote } from './api/notes';
 import AddNoteDialog from './components/AddNoteDialog';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
-import { handleError } from './utils/errorHandler';
-import { useDateFormat } from './DateFormatProvider';
-import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { ListSkeleton } from './components/LoadingSkeletons';
 import { useAnnouncer } from './context/AnnouncerContext';
+import { useDateFormat } from './DateFormatProvider';
+import { useDebouncedValue } from './hooks/useDebounce';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useNotes } from './hooks/useNotes';
+import { handleError } from './utils/errorHandler';
 
 const NotesPage: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -55,7 +55,7 @@ const NotesPage: React.FC = () => {
       fromDate: fromDate || undefined,
       toDate: toDate || undefined,
     }),
-    [debouncedSearch, fromDate, toDate]
+    [debouncedSearch, fromDate, toDate],
   );
 
   const {
@@ -73,7 +73,12 @@ const NotesPage: React.FC = () => {
   }, [loading, notes.length, announce, t]);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
-  const [editValues, setEditValues] = useState<{ noteContent?: string; noteDate?: string; noteContactId?: number; noteContactName?: string }>({});
+  const [editValues, setEditValues] = useState<{
+    noteContent?: string;
+    noteDate?: string;
+    noteContactId?: number;
+    noteContactName?: string;
+  }>({});
   const [infoAnchorEl, setInfoAnchorEl] = useState<HTMLElement | null>(null);
   const infoOpen = Boolean(infoAnchorEl);
   const infoPopoverId = infoOpen ? 'notes-info-popover' : undefined;
@@ -124,7 +129,9 @@ const NotesPage: React.FC = () => {
     try {
       await updateNote(editingNote.ID, {
         content: editValues.noteContent,
-        date: editValues.noteDate ? new Date(editValues.noteDate).toISOString() : new Date().toISOString(),
+        date: editValues.noteDate
+          ? new Date(editValues.noteDate).toISOString()
+          : new Date().toISOString(),
         contact_id: editValues.noteContactId ?? null,
       });
       setEditingNote(null);
@@ -168,7 +175,9 @@ const NotesPage: React.FC = () => {
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Box display="flex" alignItems="center" gap={1}>
-          <Typography variant="h5" component="h1">{t('notes.title')}</Typography>
+          <Typography variant="h5" component="h1">
+            {t('notes.title')}
+          </Typography>
           {/* Queue depth from the server's `total`, not notes.length -- the
               latter is the loaded page, so this under-counted anyone with
               more than one page of unfiled notes and then grew as they
@@ -188,7 +197,16 @@ const NotesPage: React.FC = () => {
             <InfoOutlinedIcon fontSize="small" />
           </IconButton>
         </Box>
-        <Button variant="contained" color="primary" startIcon={<SvgIcon><path d={mdiNotePlusOutline} /></SvgIcon>} onClick={handleAddNote}>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={
+            <SvgIcon>
+              <path d={mdiNotePlusOutline} />
+            </SvgIcon>
+          }
+          onClick={handleAddNote}
+        >
           {t('notes.addNote')}
         </Button>
       </Box>
@@ -221,7 +239,10 @@ const NotesPage: React.FC = () => {
             value={fromDate}
             onChange={(e) => handleFromDateChange(e.target.value)}
             variant="outlined"
-            slotProps={{ inputLabel: { shrink: true }, input: { placeholder: getDatePlaceholder(), lang: i18n.language } }}
+            slotProps={{
+              inputLabel: { shrink: true },
+              input: { placeholder: getDatePlaceholder(), lang: i18n.language },
+            }}
             sx={{ width: 160 }}
           />
           <TextField
@@ -231,7 +252,10 @@ const NotesPage: React.FC = () => {
             value={toDate}
             onChange={(e) => handleToDateChange(e.target.value)}
             variant="outlined"
-            slotProps={{ inputLabel: { shrink: true }, input: { placeholder: getDatePlaceholder(), lang: i18n.language } }}
+            slotProps={{
+              inputLabel: { shrink: true },
+              input: { placeholder: getDatePlaceholder(), lang: i18n.language },
+            }}
             sx={{ width: 160 }}
           />
         </Box>
@@ -250,13 +274,13 @@ const NotesPage: React.FC = () => {
           {notes.map((note, index) => (
             <TimelineItem key={note.ID}>
               <TimelineOppositeContent color="text.secondary" sx={{ flex: 0.2 }}>
-                <Typography variant="body2">
-                  {formatDate(note.date)}
-                </Typography>
+                <Typography variant="body2">{formatDate(note.date)}</Typography>
               </TimelineOppositeContent>
               <TimelineSeparator>
                 <TimelineDot color="primary">
-                  <SvgIcon><path d={mdiNoteOutline} /></SvgIcon>
+                  <SvgIcon>
+                    <path d={mdiNoteOutline} />
+                  </SvgIcon>
                 </TimelineDot>
                 {index < notes.length - 1 && <TimelineConnector />}
               </TimelineSeparator>
@@ -279,7 +303,11 @@ const NotesPage: React.FC = () => {
                         className="edit-actions"
                         sx={{ opacity: 0, transition: 'opacity 0.2s', display: 'flex', gap: 1 }}
                       >
-                        <IconButton size="small" onClick={() => handleEditClick(note)} aria-label={t('contactDetail.editNote')}>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEditClick(note)}
+                          aria-label={t('contactDetail.editNote')}
+                        >
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Box>

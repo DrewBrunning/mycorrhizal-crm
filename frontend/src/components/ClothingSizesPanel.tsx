@@ -1,12 +1,12 @@
-import { useState } from 'react';
-import { Box, Typography, IconButton, Stack, Paper, TextField, Autocomplete } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import { Autocomplete, Box, IconButton, Paper, Stack, TextField, Typography } from '@mui/material';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Preference, CLOTHING_TYPE_SUGGESTIONS } from '../api/preferences';
+import { CLOTHING_TYPE_SUGGESTIONS, type Preference } from '../api/preferences';
 
 interface ClothingSizesPanelProps {
   sizes: Preference[];
@@ -22,7 +22,12 @@ interface ClothingSizesPanelProps {
 // (shirt, ring, ...) rather than a disposition — sizing is a fact, not a
 // taste. Rows created before this type field existed have an empty `key` and
 // fall back to showing just the size.
-export default function ClothingSizesPanel({ sizes, onAdd, onEdit, onDelete }: ClothingSizesPanelProps) {
+export default function ClothingSizesPanel({
+  sizes,
+  onAdd,
+  onEdit,
+  onDelete,
+}: ClothingSizesPanelProps) {
   const { t } = useTranslation();
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
@@ -60,12 +65,20 @@ export default function ClothingSizesPanel({ sizes, onAdd, onEdit, onDelete }: C
 
   return (
     <Box>
-      <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}>
+      <Typography
+        variant="overline"
+        color="text.secondary"
+        sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}
+      >
         {t('gifts.clothingSizes')}
       </Typography>
       <Stack spacing={1} sx={{ mt: 0.5 }}>
         {sizes.map((size) => (
-          <Paper key={size.id} variant="outlined" sx={{ p: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Paper
+            key={size.id}
+            variant="outlined"
+            sx={{ p: 1, display: 'flex', alignItems: 'center', gap: 1 }}
+          >
             {editingId === size.id ? (
               <>
                 <Autocomplete
@@ -93,10 +106,19 @@ export default function ClothingSizesPanel({ sizes, onAdd, onEdit, onDelete }: C
                     }
                   }}
                 />
-                <IconButton size="small" color="primary" onClick={() => handleSaveEdit(size)} aria-label={t('common.save')}>
+                <IconButton
+                  size="small"
+                  color="primary"
+                  onClick={() => handleSaveEdit(size)}
+                  aria-label={t('common.save')}
+                >
                   <CheckIcon fontSize="small" />
                 </IconButton>
-                <IconButton size="small" onClick={() => setEditingId(null)} aria-label={t('common.cancel')}>
+                <IconButton
+                  size="small"
+                  onClick={() => setEditingId(null)}
+                  aria-label={t('common.cancel')}
+                >
                   <CloseIcon fontSize="small" />
                 </IconButton>
               </>
@@ -155,7 +177,12 @@ export default function ClothingSizesPanel({ sizes, onAdd, onEdit, onDelete }: C
             fullWidth
             InputProps={{
               endAdornment: (
-                <IconButton size="small" onClick={handleAdd} disabled={busy || !newValue.trim()} aria-label={t('gifts.add')}>
+                <IconButton
+                  size="small"
+                  onClick={handleAdd}
+                  disabled={busy || !newValue.trim()}
+                  aria-label={t('gifts.add')}
+                >
                   <AddIcon />
                 </IconButton>
               ),

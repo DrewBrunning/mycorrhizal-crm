@@ -1,6 +1,6 @@
-import { describe, test, expect } from 'vitest';
-import en from './locales/en.json';
+import { describe, expect, test } from 'vitest';
 import de from './locales/de.json';
+import en from './locales/en.json';
 import es from './locales/es.json';
 import fr from './locales/fr.json';
 import it from './locales/it.json';
@@ -47,12 +47,18 @@ describe.each(Object.entries(locales))('%s locale', (name, locale) => {
 
   test('has every key en has', () => {
     const missing = [...enKeys.keys()].filter((k) => !keys.has(k));
-    expect(missing, `${name}.json is missing keys present in en.json — these leak English to the user`).toEqual([]);
+    expect(
+      missing,
+      `${name}.json is missing keys present in en.json — these leak English to the user`,
+    ).toEqual([]);
   });
 
   test('has no keys en lacks', () => {
     const orphaned = [...keys.keys()].filter((k) => !enKeys.has(k));
-    expect(orphaned, `${name}.json has keys absent from en.json — dead entries nothing will ever read`).toEqual([]);
+    expect(
+      orphaned,
+      `${name}.json has keys absent from en.json — dead entries nothing will ever read`,
+    ).toEqual([]);
   });
 
   // An interpolation placeholder that exists in en but not in the translation
@@ -99,7 +105,7 @@ describe('no namespace is left wholly untranslated', () => {
       // Only consider blocks with enough substantial strings for "all
       // identical" to be meaningful rather than coincidental.
       const substantial = [...enKeys.entries()].filter(
-        ([k, v]) => k.startsWith(`${ns}.`) && v.length > 3
+        ([k, v]) => k.startsWith(`${ns}.`) && v.length > 3,
       );
       if (substantial.length < 5) continue;
 
@@ -109,7 +115,7 @@ describe('no namespace is left wholly untranslated', () => {
 
     expect(
       untranslated,
-      `these ${name} namespaces are byte-identical to English across every substantial key — they look like untranslated placeholders`
+      `these ${name} namespaces are byte-identical to English across every substantial key — they look like untranslated placeholders`,
     ).toEqual([]);
   });
 });

@@ -1,13 +1,16 @@
-import { useState, useCallback, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
+  Alert,
   Box,
-  Typography,
-  Paper,
   Button,
-  Stepper,
+  Chip,
+  FormControl,
+  LinearProgress,
+  MenuItem,
+  Paper,
+  Select,
   Step,
   StepLabel,
+  Stepper,
   Table,
   TableBody,
   TableCell,
@@ -15,18 +18,15 @@ import {
   TableHead,
   TableRow,
   TextField,
-  FormControl,
-  Select,
-  MenuItem,
-  Chip,
-  LinearProgress,
-  Alert,
+  Typography,
 } from '@mui/material';
-import { getLegacyCircles, getContactsByLegacyCircle } from './api/contacts';
-import { createCircle, addCircleMember, Circle, listCircles } from './api/circles';
-import { createTag, addContactTag, Tag, listTags } from './api/tags';
-import { handleFetchError } from './utils/errorHandler';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { addCircleMember, type Circle, createCircle, listCircles } from './api/circles';
+import { getContactsByLegacyCircle, getLegacyCircles } from './api/contacts';
+import { addContactTag, createTag, listTags, type Tag } from './api/tags';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { handleFetchError } from './utils/errorHandler';
 
 type Classification = 'circle' | 'tag' | 'skip';
 
@@ -48,11 +48,7 @@ export default function CircleTagTriagePage() {
   const [applyProgress, setApplyProgress] = useState({ current: 0, total: 0 });
   const [applyResult, setApplyResult] = useState<string[]>([]);
 
-  const steps = [
-    t('triage.stepClassify'),
-    t('triage.stepPreview'),
-    t('triage.stepApply'),
-  ];
+  const steps = [t('triage.stepClassify'), t('triage.stepPreview'), t('triage.stepApply')];
 
   // Step 0: Collect distinct strings from legacy circles
   const collect = useCallback(async () => {
@@ -76,10 +72,15 @@ export default function CircleTagTriagePage() {
             original: name,
             name,
             classification: 'circle' as Classification,
-            contactCount: resp.total ?? (resp.contacts?.length ?? 0),
+            contactCount: resp.total ?? resp.contacts?.length ?? 0,
           });
         } catch {
-          triaged.push({ original: name, name, classification: 'circle' as Classification, contactCount: 0 });
+          triaged.push({
+            original: name,
+            name,
+            classification: 'circle' as Classification,
+            contactCount: 0,
+          });
         }
       }
       // Sort by contact count descending so the user sees the biggest groups first.
@@ -168,10 +169,7 @@ export default function CircleTagTriagePage() {
     let allCircles: Circle[] = [];
     let allTags: Tag[] = [];
     try {
-      const [cr, tr] = await Promise.all([
-        listCircles({ limit: 200 }),
-        listTags({ limit: 200 }),
-      ]);
+      const [cr, tr] = await Promise.all([listCircles({ limit: 200 }), listTags({ limit: 200 })]);
       allCircles = cr.circles || [];
       allTags = tr.tags || [];
     } catch (err) {
@@ -198,10 +196,14 @@ export default function CircleTagTriagePage() {
             await addCircleMember(entity.id, c.uid);
           } catch (e: any) {
             if (e?.status === 409 || e?.response?.status === 409) continue;
-            results.push(`Failed to add ${c.firstname} ${c.lastname} to circle "${item.name}": ${e}`);
+            results.push(
+              `Failed to add ${c.firstname} ${c.lastname} to circle "${item.name}": ${e}`,
+            );
           }
         }
-        results.push(`Added ${contacts.filter((c) => c.uid).length} members to Circle "${item.name}"`);
+        results.push(
+          `Added ${contacts.filter((c) => c.uid).length} members to Circle "${item.name}"`,
+        );
       } catch (err) {
         results.push(`Failed to query contacts for circle "${item.name}": ${err}`);
       }
@@ -247,88 +249,101 @@ export default function CircleTagTriagePage() {
         {t('triage.description')}
       </Typography>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
       <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
         {steps.map((label) => (
-          <Step key={label}><StepLabel>{label}</StepLabel></Step>
+          <Step key={label}>
+            <StepLabel>{label}</StepLabel>
+          </Step>
         ))}
       </Stepper>
 
       {loading && <LinearProgress sx={{ mb: 2 }} />}
 
       {/* Step 0: Classify */}
-      {activeStep === 0 && !loading && (
-        <>
-          {items.length === 0 ? (
-            <Paper sx={{ p: 3, textAlign: 'center' }}>
-              <Typography color="text.secondary">{t('triage.noLegacyCircles')}</Typography>
-              <Button variant="outlined" sx={{ mt: 2 }} onClick={collect}>
-                {t('triage.refresh')}
-              </Button>
-            </Paper>
-          ) : (
-            <>
-              <TableContainer component={Paper}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>{t('triage.colCircleName')}</TableCell>
-                      <TableCell width={100}>{t('triage.colContactCount')}</TableCell>
-                      <TableCell width={140}>{t('triage.colClassification')}</TableCell>
+      {activeStep === 0 &&
+        !loading &&
+        (items.length === 0 ? (
+          <Paper sx={{ p: 3, textAlign: 'center' }}>
+            <Typography color="text.secondary">{t('triage.noLegacyCircles')}</Typography>
+            <Button variant="outlined" sx={{ mt: 2 }} onClick={collect}>
+              {t('triage.refresh')}
+            </Button>
+          </Paper>
+        ) : (
+          <>
+            <TableContainer component={Paper}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>{t('triage.colCircleName')}</TableCell>
+                    <TableCell width={100}>{t('triage.colContactCount')}</TableCell>
+                    <TableCell width={140}>{t('triage.colClassification')}</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {items.map((item, index) => (
+                    <TableRow key={item.original}>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          value={item.name}
+                          onChange={(e) => handleNameChange(index, e.target.value)}
+                          fullWidth
+                          variant="standard"
+                          inputProps={{ 'aria-label': t('triage.colCircleName') }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Chip label={item.contactCount} size="small" />
+                      </TableCell>
+                      <TableCell>
+                        <FormControl size="small" fullWidth>
+                          <Select
+                            value={item.classification}
+                            onChange={(e) =>
+                              handleClassificationChange(index, e.target.value as Classification)
+                            }
+                            inputProps={{ 'aria-label': t('triage.colClassification') }}
+                          >
+                            <MenuItem value="circle">{t('triage.classificationCircle')}</MenuItem>
+                            <MenuItem value="tag">{t('triage.classificationTag')}</MenuItem>
+                            <MenuItem value="skip">{t('triage.classificationSkip')}</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </TableCell>
                     </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {items.map((item, index) => (
-                      <TableRow key={item.original}>
-                        <TableCell>
-                          <TextField
-                            size="small"
-                            value={item.name}
-                            onChange={(e) => handleNameChange(index, e.target.value)}
-                            fullWidth
-                            variant="standard"
-                            inputProps={{ 'aria-label': t('triage.colCircleName') }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip label={item.contactCount} size="small" />
-                        </TableCell>
-                        <TableCell>
-                          <FormControl size="small" fullWidth>
-                            <Select
-                              value={item.classification}
-                              onChange={(e) => handleClassificationChange(index, e.target.value as Classification)}
-                              inputProps={{ 'aria-label': t('triage.colClassification') }}
-                            >
-                              <MenuItem value="circle">{t('triage.classificationCircle')}</MenuItem>
-                              <MenuItem value="tag">{t('triage.classificationTag')}</MenuItem>
-                              <MenuItem value="skip">{t('triage.classificationSkip')}</MenuItem>
-                            </Select>
-                          </FormControl>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                {t('triage.summary', { total: items.length, circles: circles.length, tags: tags.length, skipped: skipped.length })}
-              </Typography>
-              <Box display="flex" justifyContent="flex-end" mt={2}>
-                <Button variant="contained" onClick={() => setActiveStep(1)}>
-                  {t('triage.next')}
-                </Button>
-              </Box>
-            </>
-          )}
-        </>
-      )}
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+              {t('triage.summary', {
+                total: items.length,
+                circles: circles.length,
+                tags: tags.length,
+                skipped: skipped.length,
+              })}
+            </Typography>
+            <Box display="flex" justifyContent="flex-end" mt={2}>
+              <Button variant="contained" onClick={() => setActiveStep(1)}>
+                {t('triage.next')}
+              </Button>
+            </Box>
+          </>
+        ))}
 
       {/* Step 1: Preview */}
       {activeStep === 1 && (
         <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" component="h2" gutterBottom>{t('triage.previewTitle')}</Typography>
+          <Typography variant="h6" component="h2" gutterBottom>
+            {t('triage.previewTitle')}
+          </Typography>
 
           {circles.length > 0 && (
             <Box mb={2}>
@@ -371,7 +386,12 @@ export default function CircleTagTriagePage() {
 
           <Box display="flex" justifyContent="space-between" mt={2}>
             <Button onClick={() => setActiveStep(0)}>{t('triage.back')}</Button>
-            <Button variant="contained" color="success" onClick={() => setActiveStep(2)} disabled={circles.length === 0 && tags.length === 0}>
+            <Button
+              variant="contained"
+              color="success"
+              onClick={() => setActiveStep(2)}
+              disabled={circles.length === 0 && tags.length === 0}
+            >
               {t('triage.apply')}
             </Button>
           </Box>
@@ -381,11 +401,16 @@ export default function CircleTagTriagePage() {
       {/* Step 2: Apply */}
       {activeStep === 2 && (
         <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" component="h2" gutterBottom>{t('triage.applyTitle')}</Typography>
+          <Typography variant="h6" component="h2" gutterBottom>
+            {t('triage.applyTitle')}
+          </Typography>
 
           {applying && (
             <Box mb={2}>
-              <LinearProgress variant="determinate" value={(applyProgress.current / Math.max(applyProgress.total, 1)) * 100} />
+              <LinearProgress
+                variant="determinate"
+                value={(applyProgress.current / Math.max(applyProgress.total, 1)) * 100}
+              />
               <Typography variant="body2" color="text.secondary" mt={0.5}>
                 {applyProgress.current} / {applyProgress.total}
               </Typography>
@@ -411,7 +436,12 @@ export default function CircleTagTriagePage() {
           {applyResult.length > 0 && (
             <Paper variant="outlined" sx={{ p: 1.5, maxHeight: 300, overflow: 'auto' }}>
               {applyResult.map((r, i) => (
-                <Typography key={i} variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                <Typography
+                  // biome-ignore lint/suspicious/noArrayIndexKey: apply-result strings, no stable id
+                  key={i}
+                  variant="body2"
+                  sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
+                >
                   {r}
                 </Typography>
               ))}

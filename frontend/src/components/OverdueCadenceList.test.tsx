@@ -1,10 +1,10 @@
-import { test, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { afterEach, expect, test } from 'vitest';
 import '../i18n/config';
-import OverdueCadenceList from './OverdueCadenceList';
-import { OverdueCadence } from '../api/cadencePolicies';
+import type { OverdueCadence } from '../api/cadencePolicies';
 import { DateFormatProvider } from '../DateFormatProvider';
+import OverdueCadenceList from './OverdueCadenceList';
 
 afterEach(cleanup);
 
@@ -37,7 +37,7 @@ function renderList(props: Partial<React.ComponentProps<typeof OverdueCadenceLis
       <DateFormatProvider>
         <OverdueCadenceList {...defaults} />
       </DateFormatProvider>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 

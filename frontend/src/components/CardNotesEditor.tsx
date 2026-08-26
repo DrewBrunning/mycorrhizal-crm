@@ -1,8 +1,8 @@
-import { useTranslation } from 'react-i18next';
-import { Box, Typography, Stack, TextField, IconButton, Button, Paper } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import { CardNote } from '../api/contacts';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { Box, Button, IconButton, Paper, Stack, TextField, Typography } from '@mui/material';
+import { useTranslation } from 'react-i18next';
+import type { CardNote } from '../api/contacts';
 import { useRowKeys } from '../hooks/useRowKeys';
 
 interface CardNotesEditorProps {

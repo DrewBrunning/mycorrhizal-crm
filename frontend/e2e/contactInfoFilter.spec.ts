@@ -1,5 +1,11 @@
-import { test, expect } from './fixtures';
-import { waitForLoading, createTestContact, deleteTestContact, selectedText } from './fixtures';
+import {
+  createTestContact,
+  deleteTestContact,
+  expect,
+  selectedText,
+  test,
+  waitForLoading,
+} from './fixtures';
 import { E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
@@ -10,7 +16,10 @@ import { E2E_CONTACT_PREFIX } from './global-setup';
  * hidden-count disclosure, the toggle, and the URL round trip.
  */
 test.describe('Contacts contact-info filter (T103)', () => {
-  test('defaults to contactable-only, discloses the hidden count, and Show all round-trips in the URL', async ({ page, request }) => {
+  test('defaults to contactable-only, discloses the hidden count, and Show all round-trips in the URL', async ({
+    page,
+    request,
+  }) => {
     const ts = Date.now();
     const prefix = `${E2E_CONTACT_PREFIX}T103${ts}`;
     const contactable = await createTestContact(request, {
@@ -53,7 +62,10 @@ test.describe('Contacts contact-info filter (T103)', () => {
     }
   });
 
-  test('a fresh load defaults to the filter; a no-contact-info contact is hidden until Show all', async ({ page, request }) => {
+  test('a fresh load defaults to the filter; a no-contact-info contact is hidden until Show all', async ({
+    page,
+    request,
+  }) => {
     const stub = await createTestContact(request, {
       firstname: `${E2E_CONTACT_PREFIX}T103NoInfo${Date.now()}`,
       lastname: 'Stub',
@@ -79,7 +91,10 @@ test.describe('Contacts contact-info filter (T103)', () => {
     }
   });
 
-  test('a shared has_contact_info=false link reproduces Show all on a fresh load', async ({ page, request }) => {
+  test('a shared has_contact_info=false link reproduces Show all on a fresh load', async ({
+    page,
+    request,
+  }) => {
     const stub = await createTestContact(request, {
       firstname: `${E2E_CONTACT_PREFIX}T103Shared${Date.now()}`,
       lastname: 'Stub',
@@ -88,7 +103,9 @@ test.describe('Contacts contact-info filter (T103)', () => {
     try {
       // No toggle ever touched — the param alone must reproduce the state a
       // sender saw, exactly what a bookmarked/shared link depends on.
-      await page.goto(`/contacts?search=${encodeURIComponent(stub.firstname)}&has_contact_info=false`);
+      await page.goto(
+        `/contacts?search=${encodeURIComponent(stub.firstname)}&has_contact_info=false`,
+      );
       await waitForLoading(page);
 
       await expect(page.getByLabel('Show all')).toBeChecked();

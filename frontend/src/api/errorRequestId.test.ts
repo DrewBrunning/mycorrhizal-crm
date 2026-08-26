@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { ApiError } from './client';
 
 // Every backend error response and every backend log line carries a request_id
@@ -11,7 +11,13 @@ import { ApiError } from './client';
 // the user's own input, they need to fix a field, not file a report.
 describe('ApiError.getDisplayMessage request id', () => {
   test('appends the request id on a server error', () => {
-    const err = new ApiError('Database operation failed', 'DATABASE_ERROR', 500, undefined, 'req-abc-123');
+    const err = new ApiError(
+      'Database operation failed',
+      'DATABASE_ERROR',
+      500,
+      undefined,
+      'req-abc-123',
+    );
     expect(err.getDisplayMessage()).toBe('Database operation failed (ref: req-abc-123)');
   });
 
@@ -41,7 +47,7 @@ describe('ApiError.getDisplayMessage request id', () => {
       'VALIDATION_ERROR',
       500,
       { name: 'Name is too long' },
-      'req-1'
+      'req-1',
     );
     expect(err.getDisplayMessage()).toBe('Name is too long (ref: req-1)');
   });
