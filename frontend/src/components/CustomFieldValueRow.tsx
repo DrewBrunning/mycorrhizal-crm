@@ -1,16 +1,16 @@
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Box, Stack, Typography, IconButton, Button, CircularProgress } from '@mui/material';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
 import EditIcon from '@mui/icons-material/Edit';
-import { useSnackbar } from '../context/SnackbarContext';
+import { Box, Button, CircularProgress, IconButton, Stack, Typography } from '@mui/material';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  FieldDefinition,
+  editorToWireValue,
+  type FieldDefinition,
   fieldValueToDisplay,
   isEditorValueEmpty,
   wireToEditorValue,
-  editorToWireValue,
 } from '../api/fieldDefinitions';
+import { useSnackbar } from '../context/SnackbarContext';
 import { getErrorMessage } from '../utils/errorHandler';
 import FieldValueEditor from './FieldValueEditor';
 
@@ -26,7 +26,11 @@ interface CustomFieldValueRowProps {
 // wire value up to the caller, which is responsible for the full-replace
 // semantics of PUT /contacts/:id/field-values; null signals "remove this
 // definition's value".
-export default function CustomFieldValueRow({ definition, value, onSave }: CustomFieldValueRowProps) {
+export default function CustomFieldValueRow({
+  definition,
+  value,
+  onSave,
+}: CustomFieldValueRowProps) {
   const { t } = useTranslation();
   const { showError } = useSnackbar();
   const [editing, setEditing] = useState(false);
@@ -58,7 +62,8 @@ export default function CustomFieldValueRow({ definition, value, onSave }: Custo
     }
   };
 
-  const display = value === undefined || value === null ? '' : fieldValueToDisplay(definition, value);
+  const display =
+    value === undefined || value === null ? '' : fieldValueToDisplay(definition, value);
 
   return (
     <Box>
@@ -86,7 +91,11 @@ export default function CustomFieldValueRow({ definition, value, onSave }: Custo
           </Stack>
         </Stack>
       ) : (
-        <Typography variant="body2" color={display ? 'text.primary' : 'text.disabled'} sx={{ pl: '2.2rem' }}>
+        <Typography
+          variant="body2"
+          color={display ? 'text.primary' : 'text.disabled'}
+          sx={{ pl: '2.2rem' }}
+        >
           {display || '—'}
         </Typography>
       )}

@@ -2,7 +2,7 @@
 // channel toggles, per-channel test notifications, and Web Push device
 // registrations. The channels listed here must stay in sync with the backend
 // models.AllNotificationChannels (no dynamic type-list endpoint exists).
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 export type NotificationChannel = 'email' | 'ntfy' | 'gotify' | 'push';
 
@@ -64,12 +64,16 @@ export interface DeviceRegistration {
 }
 
 export async function getNotificationConfig(): Promise<NotificationConfig> {
-  const response = await apiFetch(`${API_BASE_URL}/notifications/config`, { headers: getAuthHeaders() });
+  const response = await apiFetch(`${API_BASE_URL}/notifications/config`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }
 
-export async function saveNotificationConfig(input: NotificationConfigInput): Promise<NotificationConfig> {
+export async function saveNotificationConfig(
+  input: NotificationConfigInput,
+): Promise<NotificationConfig> {
   const response = await apiFetch(`${API_BASE_URL}/notifications/config`, {
     method: 'PUT',
     headers: getAuthHeaders(),
@@ -82,7 +86,9 @@ export async function saveNotificationConfig(input: NotificationConfigInput): Pr
 // Sends a test notification through the given channel using the user's saved
 // config. A diagnosed failure (unconfigured, unreachable, private address
 // blocked) is still a 200 with ok:false.
-export async function testNotificationChannel(channel: NotificationChannel): Promise<NotificationTestResult> {
+export async function testNotificationChannel(
+  channel: NotificationChannel,
+): Promise<NotificationTestResult> {
   const response = await apiFetch(`${API_BASE_URL}/notifications/config/test`, {
     method: 'POST',
     headers: getAuthHeaders(),
@@ -93,13 +99,17 @@ export async function testNotificationChannel(channel: NotificationChannel): Pro
 }
 
 export async function getPushSubscriptions(): Promise<PushSubscription[]> {
-  const response = await apiFetch(`${API_BASE_URL}/notifications/push-subscriptions`, { headers: getAuthHeaders() });
+  const response = await apiFetch(`${API_BASE_URL}/notifications/push-subscriptions`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   const result = await response.json();
   return result.subscriptions || [];
 }
 
-export async function createPushSubscription(input: PushSubscriptionInput): Promise<PushSubscription> {
+export async function createPushSubscription(
+  input: PushSubscriptionInput,
+): Promise<PushSubscription> {
   const response = await apiFetch(`${API_BASE_URL}/notifications/push-subscriptions`, {
     method: 'POST',
     headers: getAuthHeaders(),
@@ -121,7 +131,9 @@ export async function deletePushSubscription(id: number): Promise<void> {
 // the native client after it obtains a platform push token; the web app only
 // views and deletes.
 export async function getDeviceRegistrations(): Promise<DeviceRegistration[]> {
-  const response = await apiFetch(`${API_BASE_URL}/notifications/devices`, { headers: getAuthHeaders() });
+  const response = await apiFetch(`${API_BASE_URL}/notifications/devices`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   const result = await response.json();
   return result.devices || [];

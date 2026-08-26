@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { createTestContact, deleteTestContact } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
@@ -13,18 +13,32 @@ import { API_BASE_URL } from './global-setup';
  * assertion (the fixture suite already owns pinning specific values).
  */
 test.describe('API contract: composite endpoints', () => {
-  test('GET /contacts/:id/detail returns every collection block as an array', async ({ request }) => {
-    const contact = await createTestContact(request, { firstname: 'ApiContract', lastname: 'Detail' });
+  test('GET /contacts/:id/detail returns every collection block as an array', async ({
+    request,
+  }) => {
+    const contact = await createTestContact(request, {
+      firstname: 'ApiContract',
+      lastname: 'Detail',
+    });
     try {
       const response = await request.get(`${API_BASE_URL}/contacts/${contact.ID}/detail`);
       expect(response.ok(), `detail: ${response.status()} ${await response.text()}`).toBeTruthy();
 
       const body = await response.json();
       for (const key of [
-        'notes', 'activities', 'completions', 'reminders',
-        'relationship_edges', 'life_events', 'agenda', 'gifts',
-        'field_values', 'external_identities', 'external_activities',
-        'circles', 'tags',
+        'notes',
+        'activities',
+        'completions',
+        'reminders',
+        'relationship_edges',
+        'life_events',
+        'agenda',
+        'gifts',
+        'field_values',
+        'external_identities',
+        'external_activities',
+        'circles',
+        'tags',
       ]) {
         expect(Array.isArray(body[key]), `${key} should be an array`).toBe(true);
       }
@@ -40,8 +54,12 @@ test.describe('API contract: composite endpoints', () => {
 
     const body = await response.json();
     for (const key of [
-      'birthdays', 'random_contacts', 'upcoming_reminders', 'overdue',
-      'favorites', 'reach_out_suggestions',
+      'birthdays',
+      'random_contacts',
+      'upcoming_reminders',
+      'overdue',
+      'favorites',
+      'reach_out_suggestions',
     ]) {
       expect(Array.isArray(body[key]), `${key} should be an array`).toBe(true);
     }

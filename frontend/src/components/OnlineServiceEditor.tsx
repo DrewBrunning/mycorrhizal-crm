@@ -1,21 +1,26 @@
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import {
+  Autocomplete,
+  Box,
+  Button,
+  IconButton,
+  Paper,
+  Stack,
+  SvgIcon,
+  TextField,
+  Typography,
+} from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import {
-  Box,
-  Typography,
-  Stack,
-  TextField,
-  IconButton,
-  Button,
-  Paper,
-  Autocomplete,
-  SvgIcon,
-} from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import { CardOnlineService, onlineServicesToRows, rowsToOnlineServices, OnlineServiceRow } from '../api/contacts';
-import { LinkFieldType } from '../api/linkFieldTypes';
-import { useRowKeys } from '../hooks/useRowKeys';
+  type CardOnlineService,
+  type OnlineServiceRow,
+  onlineServicesToRows,
+  rowsToOnlineServices,
+} from '../api/contacts';
+import type { LinkFieldType } from '../api/linkFieldTypes';
 import { CONTEXT_OPTIONS } from '../contactFields';
+import { useRowKeys } from '../hooks/useRowKeys';
 import { resolveLinkFieldTypeIcon } from '../linkFieldTypeIcons';
 
 interface OnlineServiceEditorProps {
@@ -84,7 +89,8 @@ export default function OnlineServiceEditor({
                   value={row.service}
                   onChange={(_, newValue) => {
                     // A selected option arrives as a LinkFieldType object.
-                    const service = typeof newValue === 'string' ? newValue : (newValue?.name ?? '');
+                    const service =
+                      typeof newValue === 'string' ? newValue : (newValue?.name ?? '');
                     updateRow(index, { service });
                   }}
                   onInputChange={(_, newInput, reason) => {
@@ -97,7 +103,12 @@ export default function OnlineServiceEditor({
                   }}
                   getOptionLabel={(opt) => (typeof opt === 'string' ? opt : opt.name)}
                   renderOption={({ key, ...optionProps }, opt) => (
-                    <Box component="li" key={key} {...optionProps} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box
+                      component="li"
+                      key={key}
+                      {...optionProps}
+                      sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                    >
                       <SvgIcon fontSize="small">
                         <path d={resolveLinkFieldTypeIcon(opt.icon)} />
                       </SvgIcon>
@@ -105,12 +116,18 @@ export default function OnlineServiceEditor({
                     </Box>
                   )}
                   renderInput={(params) => (
-                    <TextField {...params} label={t('contacts.onlineServices.service')} size="small" />
+                    <TextField
+                      {...params}
+                      label={t('contacts.onlineServices.service')}
+                      size="small"
+                    />
                   )}
                 />
               )}
               <TextField
-                label={uriOnly ? t('contacts.onlineServices.impp') : t('contacts.onlineServices.uri')}
+                label={
+                  uriOnly ? t('contacts.onlineServices.impp') : t('contacts.onlineServices.uri')
+                }
                 size="small"
                 fullWidth
                 type="url"
@@ -135,7 +152,11 @@ export default function OnlineServiceEditor({
                 onChange={(_, newValue) => updateRow(index, { contexts: newValue as string[] })}
                 getOptionLabel={(opt) => t(`contacts.contexts.${opt}`, opt)}
                 renderInput={(params) => (
-                  <TextField {...params} label={t('contacts.onlineServices.contexts')} size="small" />
+                  <TextField
+                    {...params}
+                    label={t('contacts.onlineServices.contexts')}
+                    size="small"
+                  />
                 )}
               />
               <Stack direction="row" spacing={1} alignItems="center">

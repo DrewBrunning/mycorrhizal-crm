@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { expect, test } from './fixtures';
 
 // T48: the frontend was rebuilt with Vite instead of Create React App. These
 // tests pin the *production build output*, which no unit test can see:
@@ -15,7 +15,9 @@ import { test, expect } from './fixtures';
 // by the all-in-one image (nginx on 7300) -- the dev server serves
 // unprocessed source and would prove nothing.
 test.describe('Vite production build output', () => {
-  test('serves a Vite app shell (module script, hashed assets, no CRA placeholders)', async ({ page }) => {
+  test('serves a Vite app shell (module script, hashed assets, no CRA placeholders)', async ({
+    page,
+  }) => {
     const response = await page.request.get('/');
     expect(response.status()).toBe(200);
     const html = await response.text();
@@ -30,7 +32,7 @@ test.describe('Vite production build output', () => {
     expect(entryMatch, 'the shell should reference a hashed module entry chunk').not.toBeNull();
 
     // The referenced entry chunk must actually be servable, not a dangling path.
-    const entry = await page.request.get(entryMatch![1]);
+    const entry = await page.request.get(entryMatch?.[1]);
     expect(entry.status()).toBe(200);
   });
 

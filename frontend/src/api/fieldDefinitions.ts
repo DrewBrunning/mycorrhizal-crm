@@ -3,7 +3,7 @@
 // and dtos.go's FieldDefinitionInput/ContactFieldValuesInput by hand -- no
 // dynamic schema endpoint exists anywhere in this codebase, so the type token
 // list MUST be kept in sync with the backend's `oneof` validators manually.
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 // Closed FieldDefinition.Type set, mirroring backend/models/field_definition.go's
 // FieldType* constants exactly.
@@ -26,8 +26,16 @@ export type FieldSensitivity = 'normal' | 'private' | 'secret';
 // `oneof=string text number boolean date datetime uri email phone enum`
 // validator (see the file-header note about manual sync).
 export const FIELD_TYPES: FieldType[] = [
-  'string', 'text', 'number', 'boolean', 'date', 'datetime',
-  'uri', 'email', 'phone', 'enum',
+  'string',
+  'text',
+  'number',
+  'boolean',
+  'date',
+  'datetime',
+  'uri',
+  'email',
+  'phone',
+  'enum',
 ];
 
 export interface FieldConstraints {
@@ -108,7 +116,10 @@ export async function createFieldDefinition(input: FieldDefinitionInput): Promis
   return result.field_definition;
 }
 
-export async function updateFieldDefinition(id: string, input: FieldDefinitionInput): Promise<FieldDefinition> {
+export async function updateFieldDefinition(
+  id: string,
+  input: FieldDefinitionInput,
+): Promise<FieldDefinition> {
   const response = await apiFetch(`${API_BASE_URL}/field-definitions/${id}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
@@ -140,7 +151,7 @@ export async function getContactFieldValues(contactId: string | number): Promise
 // are deleted server-side (matching the contact PUT full-overwrite contract).
 export async function replaceContactFieldValues(
   contactId: string | number,
-  fieldValues: FieldValueInput[]
+  fieldValues: FieldValueInput[],
 ): Promise<FieldValue[]> {
   const response = await apiFetch(`${API_BASE_URL}/contacts/${contactId}/field-values`, {
     method: 'PUT',

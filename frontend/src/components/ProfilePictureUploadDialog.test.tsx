@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { ImmichPerson } from '../api/immich';
 import ProfilePictureUploadDialog from './ProfilePictureUploadDialog';
-import { ImmichPerson } from '../api/immich';
 
 afterEach(() => {
   cleanup();
@@ -29,11 +29,13 @@ function mockFetchByUrl(handlers: Record<string, (init?: RequestInit) => unknown
         return { ok: true, blob: async () => blob };
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
 }
 
-function renderDialog(overrides: Partial<React.ComponentProps<typeof ProfilePictureUploadDialog>> = {}) {
+function renderDialog(
+  overrides: Partial<React.ComponentProps<typeof ProfilePictureUploadDialog>> = {},
+) {
   const defaults: React.ComponentProps<typeof ProfilePictureUploadDialog> = {
     open: true,
     onClose: vi.fn(),

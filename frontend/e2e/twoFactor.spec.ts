@@ -1,7 +1,14 @@
-import { test, expect, LOGGED_OUT, makeThrowawayUser, deleteThrowawayUser, waitForLoading } from './fixtures';
+import * as crypto from 'node:crypto';
 import { request } from '@playwright/test';
+import {
+  deleteThrowawayUser,
+  expect,
+  LOGGED_OUT,
+  makeThrowawayUser,
+  test,
+  waitForLoading,
+} from './fixtures';
 import { API_BASE_URL } from './global-setup';
-import * as crypto from 'crypto';
 
 // N8 (issue #158): the full two-factor auth lifecycle through the real UI —
 // enroll on /settings (QR/manual key + confirm + one-time recovery codes),
@@ -66,7 +73,9 @@ test.describe('Two-factor authentication', () => {
       await page.getByLabel(/username or email/i).fill(user.username);
       await page.getByLabel(/password/i).fill(user.password);
       await page.getByRole('button', { name: /login/i }).click();
-      await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible({ timeout: 15000 });
+      await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible({
+        timeout: 15000,
+      });
 
       // --- Enrollment ---
       await page.goto('/settings');
@@ -87,12 +96,12 @@ test.describe('Two-factor authentication', () => {
       await page.getByLabel('Verification code *').fill(totp(secret));
       await page.getByRole('button', { name: /enable and continue/i }).click();
 
-      await expect(page.getByText(/two-factor authentication enabled/i)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(/two-factor authentication enabled/i)).toBeVisible({
+        timeout: 10000,
+      });
       const recoveryDialog = page.locator('.MuiDialog-root').filter({ hasText: 'Recovery codes' });
       await expect(recoveryDialog).toBeVisible();
-      const recoveryCodes = await recoveryDialog
-        .getByText(RECOVERY_CODE_RE)
-        .allTextContents();
+      const recoveryCodes = await recoveryDialog.getByText(RECOVERY_CODE_RE).allTextContents();
       expect(recoveryCodes).toHaveLength(10);
       for (const code of recoveryCodes) {
         expect(code).toMatch(RECOVERY_CODE_RE);
@@ -120,7 +129,9 @@ test.describe('Two-factor authentication', () => {
       // The correct TOTP code completes the login.
       await page.getByLabel('Verification code *').fill(totp(secret));
       await page.getByRole('button', { name: /login/i }).click();
-      await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible({ timeout: 10000 });
+      await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible({
+        timeout: 10000,
+      });
 
       // --- Recovery code path: lose the authenticator, still get in ---
       await page.getByRole('button', { name: /logout/i }).click();
@@ -133,7 +144,9 @@ test.describe('Two-factor authentication', () => {
 
       await page.getByLabel('Verification code *').fill(recoveryCodes[0]);
       await page.getByRole('button', { name: /login/i }).click();
-      await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible({ timeout: 10000 });
+      await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible({
+        timeout: 10000,
+      });
     } finally {
       // Admin cleanup (the shared TEST_USER is auto-admin): hard-delete the
       // throwaway account so nothing accumulates across runs.

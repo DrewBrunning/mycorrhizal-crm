@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { renderHook, cleanup, act } from '@testing-library/react';
-import { useContactDialogs } from './useContactDialogs';
-import { createNote } from '../api/notes';
+import { act, cleanup, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { createActivity } from '../api/activities';
+import { createNote } from '../api/notes';
+import { useContactDialogs } from './useContactDialogs';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(() => {
@@ -80,9 +80,9 @@ test('handleSaveNote errors notify through the notifier and rethrow', async () =
   const showError = vi.fn();
 
   const { result } = renderHook(() => useContactDialogs('42', vi.fn(), { showError }));
-  await expect(
-    result.current.handleSaveNote('hello', '2026-08-12T10:00:00Z')
-  ).rejects.toThrow('boom');
+  await expect(result.current.handleSaveNote('hello', '2026-08-12T10:00:00Z')).rejects.toThrow(
+    'boom',
+  );
   expect(showError).toHaveBeenCalledWith('boom');
 });
 
@@ -129,7 +129,7 @@ test('handleSaveActivity errors notify through the notifier and rethrow', async 
       location: '',
       date: '2026-08-12T10:00:00Z',
       contact_ids: [42],
-    })
+    }),
   ).rejects.toThrow('boom');
   expect(showError).toHaveBeenCalledWith('boom');
 });

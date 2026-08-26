@@ -1,5 +1,11 @@
-import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact, waitForLoading, selectedText } from './fixtures';
+import {
+  createTestContact,
+  deleteTestContact,
+  expect,
+  selectedText,
+  test,
+  waitForLoading,
+} from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 // N5 bulk operations. Uses
@@ -8,14 +14,18 @@ import { API_BASE_URL } from './global-setup';
 // happens to be seeded/leftover in the shared test account -- the list page
 // size is 10, so 11 unique contacts reliably span two pages.
 test.describe('Bulk operations', () => {
-  test('select across two pages, bulk-tag, then bulk-delete with confirmation', async ({ page }) => {
+  test('select across two pages, bulk-tag, then bulk-delete with confirmation', async ({
+    page,
+  }) => {
     const runId = `BulkE2E${Date.now()}`;
     const contacts = [];
     for (let i = 0; i < 11; i++) {
       contacts.push(await createTestContact(page.request, { lastname: `${runId}-${i}` }));
     }
 
-    const tagRes = await page.request.post(`${API_BASE_URL}/tags`, { data: { name: `e2e-bulk-tag-${Date.now()}` } });
+    const tagRes = await page.request.post(`${API_BASE_URL}/tags`, {
+      data: { name: `e2e-bulk-tag-${Date.now()}` },
+    });
     expect(tagRes.ok(), `failed to create test tag: ${tagRes.status()}`).toBeTruthy();
     const tag = (await tagRes.json()).tag;
 

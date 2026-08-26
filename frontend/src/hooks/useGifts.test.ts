@@ -1,15 +1,15 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { renderHook, cleanup, waitFor, act } from '@testing-library/react';
-import { useGifts } from './useGifts';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import {
-  getGifts,
   createGift,
-  updateGift,
   deleteGift,
-  Gift,
-  GiftInput,
-  GiftListResponse,
+  type Gift,
+  type GiftInput,
+  type GiftListResponse,
+  getGifts,
+  updateGift,
 } from '../api/gifts';
+import { useGifts } from './useGifts';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(() => {
@@ -71,7 +71,7 @@ test('splits ideas from resolved gifts', async () => {
       gift('g-idea', { status: 'idea' }),
       gift('g-given', { status: 'given', date: '2026-01-01T00:00:00Z' }),
       gift('g-received', { status: 'received' }),
-    ])
+    ]),
   );
 
   const { result } = renderHook(() => useGifts('uid-1'));

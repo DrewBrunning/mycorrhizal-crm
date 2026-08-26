@@ -1,5 +1,4 @@
-import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact } from './fixtures';
+import { createTestContact, deleteTestContact, expect, test } from './fixtures';
 
 // T34 — tappable
 // contact fields (tel:/sms:/mailto:/geo:) + universal copy buttons.
@@ -15,7 +14,9 @@ import { createTestContact, deleteTestContact } from './fixtures';
 // instead in linkResolution.test.ts (pure resolution logic) and
 // ContactInformation.test.tsx (rendering), plus manual verification.
 test.describe('Contact field linking', () => {
-  test('phone/email/address fields are tappable per their type, with copy buttons throughout', async ({ page }) => {
+  test('phone/email/address fields are tappable per their type, with copy buttons throughout', async ({
+    page,
+  }) => {
     const contact = await createTestContact(page.request, {
       phones: [
         { type: '', value: '+15551234001', features: ['cell'] },
@@ -23,7 +24,9 @@ test.describe('Contact field linking', () => {
         { type: '', value: '+15551234003', features: ['fax'] },
       ],
       emails: [{ type: '', value: 'e2efixture@example.com' }],
-      addresses: [{ type: '', street: '', city: 'Springfield', region: 'IL', postal: '', country: '' }],
+      addresses: [
+        { type: '', street: '', city: 'Springfield', region: 'IL', postal: '', country: '' },
+      ],
     });
 
     try {
@@ -48,7 +51,7 @@ test.describe('Contact field linking', () => {
       await expect(page.locator('a[href="mailto:e2efixture@example.com"]')).toBeVisible();
 
       // Address with no coordinates falls back to a map search link.
-      const mapHref = 'https://maps.google.com/?q=' + encodeURIComponent('Springfield, IL');
+      const mapHref = `https://maps.google.com/?q=${encodeURIComponent('Springfield, IL')}`;
       await expect(page.locator(`a[href="${mapHref}"]`)).toBeVisible();
 
       // Copy button: click the email's copy action and verify the clipboard.
@@ -63,7 +66,17 @@ test.describe('Contact field linking', () => {
 
   test('an address with coordinates links to the geo: URI directly', async ({ page }) => {
     const contact = await createTestContact(page.request, {
-      addresses: [{ type: '', street: '', city: 'Springfield', region: 'IL', postal: '', country: '', coordinates: 'geo:39.78,-89.65' }],
+      addresses: [
+        {
+          type: '',
+          street: '',
+          city: 'Springfield',
+          region: 'IL',
+          postal: '',
+          country: '',
+          coordinates: 'geo:39.78,-89.65',
+        },
+      ],
     });
 
     try {

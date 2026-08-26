@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { ImmichPerson } from '../api/immich';
 import ImmichPersonSearchDialog from './ImmichPersonSearchDialog';
-import { ImmichPerson } from '../api/immich';
 
 afterEach(cleanup);
 
@@ -11,7 +11,9 @@ const people: ImmichPerson[] = [
   { id: 'p-bob', name: 'Bob Builder' },
 ];
 
-function renderDialog(overrides: Partial<React.ComponentProps<typeof ImmichPersonSearchDialog>> = {}) {
+function renderDialog(
+  overrides: Partial<React.ComponentProps<typeof ImmichPersonSearchDialog>> = {},
+) {
   const defaults: React.ComponentProps<typeof ImmichPersonSearchDialog> = {
     open: true,
     onClose: vi.fn(),

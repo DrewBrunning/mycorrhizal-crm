@@ -3,7 +3,7 @@
 // this notice (which field, the overwritten local value, the remote value
 // that replaced it) is the only record of what was lost. The user can
 // restore the local value or dismiss the notice.
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 // Field keys -- MUST be kept in sync by hand with
 // backend/models/contact_sync_conflict.go's SyncConflictField* constants and

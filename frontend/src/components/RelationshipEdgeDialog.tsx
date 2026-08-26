@@ -1,41 +1,41 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Box,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
   Autocomplete,
-  FormLabel,
+  Box,
+  Button,
   CircularProgress,
-  Typography,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  FormControlLabel,
+  FormLabel,
+  InputLabel,
   Link,
+  MenuItem,
+  Radio,
+  RadioGroup,
+  Select,
+  TextField,
+  Typography,
 } from '@mui/material';
-import { Link as RouterLink } from 'react-router';
-import AppDialog from './AppDialog';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link as RouterLink } from 'react-router';
+import { type Contact, getContacts } from '../api/contacts';
 import {
-  RelationshipEdge,
-  RelationshipEdgeInput,
-  RelationshipEdgeType,
-  RelationshipEdgeSensitivity,
-  RELATIONSHIP_EDGE_TYPE_TOKENS,
   getEffectiveType,
+  RELATIONSHIP_EDGE_TYPE_TOKENS,
+  type RelationshipEdge,
+  type RelationshipEdgeInput,
+  type RelationshipEdgeSensitivity,
+  type RelationshipEdgeType,
   toBackendType,
 } from '../api/relationshipEdges';
-import { Contact, getContacts } from '../api/contacts';
 import { GENDER_OPTIONS } from '../contactFields';
 import { useSnackbar } from '../context/SnackbarContext';
-import { handleError, handleFetchError, getErrorMessage } from '../utils/errorHandler';
 import { useDateFormat } from '../DateFormatProvider';
+import { getErrorMessage, handleError, handleFetchError } from '../utils/errorHandler';
+import AppDialog from './AppDialog';
 
 interface RelationshipEdgeDialogProps {
   open: boolean;
@@ -78,18 +78,21 @@ export default function RelationshipEdgeDialog({
   // me" selection back into the backend's Source-relative `type`.
   const viewedIsSource = edge ? edge.source_id === viewedContactUid : false;
 
-  const loadContacts = useCallback(async (search: string = '') => {
-    setContactsLoading(true);
-    try {
-      const response = await getContacts({ limit: 100, search });
-      const filteredContacts = response.contacts.filter((c) => c.uid !== viewedContactUid);
-      setContacts(filteredContacts);
-    } catch (err) {
-      handleFetchError(err, 'loading contacts');
-    } finally {
-      setContactsLoading(false);
-    }
-  }, [viewedContactUid]);
+  const loadContacts = useCallback(
+    async (search: string = '') => {
+      setContactsLoading(true);
+      try {
+        const response = await getContacts({ limit: 100, search });
+        const filteredContacts = response.contacts.filter((c) => c.uid !== viewedContactUid);
+        setContacts(filteredContacts);
+      } catch (err) {
+        handleFetchError(err, 'loading contacts');
+      } finally {
+        setContactsLoading(false);
+      }
+    },
+    [viewedContactUid],
+  );
 
   useEffect(() => {
     if (open && entryMode === 'linked' && !isEditing) {
@@ -234,9 +237,21 @@ export default function RelationshipEdgeDialog({
           {!isEditing && (
             <FormControl component="fieldset">
               <FormLabel component="legend">{t('relationships.entryMode')}</FormLabel>
-              <RadioGroup row value={entryMode} onChange={(e) => handleModeChange(e.target.value as EntryMode)}>
-                <FormControlLabel value="manual" control={<Radio />} label={t('relationships.enterManually')} />
-                <FormControlLabel value="linked" control={<Radio />} label={t('relationships.linkToContact')} />
+              <RadioGroup
+                row
+                value={entryMode}
+                onChange={(e) => handleModeChange(e.target.value as EntryMode)}
+              >
+                <FormControlLabel
+                  value="manual"
+                  control={<Radio />}
+                  label={t('relationships.enterManually')}
+                />
+                <FormControlLabel
+                  value="linked"
+                  control={<Radio />}
+                  label={t('relationships.linkToContact')}
+                />
               </RadioGroup>
             </FormControl>
           )}
@@ -245,7 +260,9 @@ export default function RelationshipEdgeDialog({
             <Box>
               <Typography variant="body2" color="text.secondary">
                 {otherPartyContact ? (
-                  <Link component={RouterLink} to={`/contacts/${otherPartyContact.ID}`}>{otherPartyLabel}</Link>
+                  <Link component={RouterLink} to={`/contacts/${otherPartyContact.ID}`}>
+                    {otherPartyLabel}
+                  </Link>
                 ) : (
                   t('relationships.unknownContact')
                 )}
@@ -285,7 +302,9 @@ export default function RelationshipEdgeDialog({
                 />
               )}
               isOptionEqualToValue={(option, value) => option.uid === value.uid}
-              noOptionsText={searchInput ? t('relationships.noContactsFound') : t('relationships.typeToSearch')}
+              noOptionsText={
+                searchInput ? t('relationships.noContactsFound') : t('relationships.typeToSearch')
+              }
             />
           )}
 
@@ -325,7 +344,11 @@ export default function RelationshipEdgeDialog({
             <Autocomplete
               freeSolo
               options={[...GENDER_OPTIONS]}
-              getOptionLabel={(v) => GENDER_OPTIONS.includes(v as (typeof GENDER_OPTIONS)[number]) ? t(`contacts.${v}`) : (v || '')}
+              getOptionLabel={(v) =>
+                GENDER_OPTIONS.includes(v as (typeof GENDER_OPTIONS)[number])
+                  ? t(`contacts.${v}`)
+                  : v || ''
+              }
               value={gender || null}
               onChange={(_, v) => setGender(v || '')}
               onInputChange={(_, v) => setGender(v)}
@@ -359,11 +382,7 @@ export default function RelationshipEdgeDialog({
             </Select>
           </FormControl>
 
-          {error && (
-            <Box sx={{ color: 'error.main', fontSize: '0.875rem' }}>
-              {error}
-            </Box>
-          )}
+          {error && <Box sx={{ color: 'error.main', fontSize: '0.875rem' }}>{error}</Box>}
         </Box>
       </DialogContent>
       <DialogActions>

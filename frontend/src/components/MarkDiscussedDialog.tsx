@@ -1,19 +1,19 @@
-import { useState, useEffect } from 'react';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
   Box,
+  Button,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   MenuItem,
   TextField,
   Typography,
 } from '@mui/material';
-import AppDialog from './AppDialog';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ConversationAgenda } from '../api/conversationAgenda';
-import { Activity } from '../api/activities';
+import type { Activity } from '../api/activities';
+import type { ConversationAgenda } from '../api/conversationAgenda';
 import { useDateFormat } from '../DateFormatProvider';
+import AppDialog from './AppDialog';
 
 interface MarkDiscussedDialogProps {
   open: boolean;

@@ -1,6 +1,6 @@
 // Browser Web Push subscription helper (N9). Turns the server's VAPID public
 // key into a browser PushSubscription and back into the API's wire shape.
-import { PushSubscriptionInput } from './api/notifications';
+import type { PushSubscriptionInput } from './api/notifications';
 
 // urlBase64ToUint8Array converts a base64url-encoded VAPID public key into the
 // Uint8Array the Push API expects for applicationServerKey.

@@ -1,9 +1,9 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import './i18n/config';
+import type { SearchResult } from './api/search';
 import SearchNotesActivities from './components/SearchNotesActivities';
 import { DateFormatProvider } from './DateFormatProvider';
-import { SearchResult } from './api/search';
 
 afterEach(cleanup);
 
@@ -19,7 +19,7 @@ function renderSection(result: SearchResult, onOpenContact?: (id: number) => voi
   return render(
     <DateFormatProvider>
       <SearchNotesActivities query="x" result={result} onOpenContact={onOpenContact} />
-    </DateFormatProvider>
+    </DateFormatProvider>,
   );
 }
 
@@ -54,7 +54,15 @@ test('shows the count header, collapsed by default', () => {
 test('expanding reveals the note and activity hits', () => {
   renderSection({
     ...emptyResult,
-    notes: [{ id: 1, content: 'secret note body', date: '2026-08-03T10:00:00Z', contact_id: 7, contact_name: 'Wolfgang' }],
+    notes: [
+      {
+        id: 1,
+        content: 'secret note body',
+        date: '2026-08-03T10:00:00Z',
+        contact_id: 7,
+        contact_name: 'Wolfgang',
+      },
+    ],
     activities: [{ id: 9, title: 'A walk', date: '2026-08-01T19:00:00Z' }],
   });
 
@@ -69,9 +77,17 @@ test('clicking a note contact chip opens the contact', () => {
   renderSection(
     {
       ...emptyResult,
-      notes: [{ id: 1, content: 'secret note body', date: '2026-08-03T10:00:00Z', contact_id: 7, contact_name: 'Wolfgang' }],
+      notes: [
+        {
+          id: 1,
+          content: 'secret note body',
+          date: '2026-08-03T10:00:00Z',
+          contact_id: 7,
+          contact_name: 'Wolfgang',
+        },
+      ],
     },
-    onOpenContact
+    onOpenContact,
   );
 
   fireEvent.click(screen.getByText('1 matches in notes and activities'));

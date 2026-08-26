@@ -1,26 +1,26 @@
-import { useState, useEffect, useCallback } from 'react';
-import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Box,
-  List,
-  ListItemButton,
-  ListItemText,
-  ListItemIcon,
-  Typography,
-  CircularProgress,
-  Alert,
-  Breadcrumbs,
-  Link as MuiLink,
-} from '@mui/material';
 import FolderIcon from '@mui/icons-material/Folder';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import AppDialog from './AppDialog';
+import {
+  Alert,
+  Box,
+  Breadcrumbs,
+  Button,
+  CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Link as MuiLink,
+  Typography,
+} from '@mui/material';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SeafileLibrary, SeafileItem } from '../api/seafile';
+import type { SeafileItem, SeafileLibrary } from '../api/seafile';
 import { getErrorMessage } from '../utils/errorHandler';
+import AppDialog from './AppDialog';
 
 // SeafileLinkTarget is what the picker hands to the caller on selection: the
 // browsed item plus the repo it lives in and its resolved repo-relative path.
@@ -123,7 +123,7 @@ export default function SeafileFilePickerDialog({
               /
             </MuiLink>
             {pathSegments.map((segment, idx) => {
-              const target = '/' + pathSegments.slice(0, idx + 1).join('/');
+              const target = `/${pathSegments.slice(0, idx + 1).join('/')}`;
               const isLast = idx === pathSegments.length - 1;
               return isLast ? (
                 <Typography key={target} color="text.primary">
@@ -162,7 +162,11 @@ export default function SeafileFilePickerDialog({
                 items.map((item) => (
                   <ListItemButton
                     key={item.name}
-                    onClick={() => (item.type === 'dir' ? enterDir(repoId, joinDirPath(path, item.name)) : handlePick(item))}
+                    onClick={() =>
+                      item.type === 'dir'
+                        ? enterDir(repoId, joinDirPath(path, item.name))
+                        : handlePick(item)
+                    }
                     disabled={selecting}
                   >
                     <ListItemIcon>
@@ -171,18 +175,28 @@ export default function SeafileFilePickerDialog({
                     <ListItemText
                       primary={item.name}
                       secondary={
-                        item.type === 'file' ? formatFileSize(item.size ?? 0) : t('seafile.search.folder')
+                        item.type === 'file'
+                          ? formatFileSize(item.size ?? 0)
+                          : t('seafile.search.folder')
                       }
                     />
                   </ListItemButton>
                 ))}
               {repoId !== null && items.length === 0 && (
-                <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ py: 2, textAlign: 'center' }}
+                >
                   {t('seafile.search.emptyFolder')}
                 </Typography>
               )}
               {repoId === null && libraries.length === 0 && (
-                <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ py: 2, textAlign: 'center' }}
+                >
                   {t('seafile.search.noLibraries')}
                 </Typography>
               )}
@@ -206,7 +220,7 @@ export default function SeafileFilePickerDialog({
 
 function joinDirPath(path: string, name: string): string {
   const base = path === '/' ? '' : path;
-  return base + '/' + name;
+  return `${base}/${name}`;
 }
 
 function parentDir(path: string): string {

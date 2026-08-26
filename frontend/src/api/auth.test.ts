@@ -1,5 +1,5 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
-import { requestPasswordReset, confirmPasswordReset, changePassword } from './auth';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { changePassword, confirmPasswordReset, requestPasswordReset } from './auth';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -20,9 +20,7 @@ const errorResponse = () => ({
 
 describe('requestPasswordReset', () => {
   test('POSTs the email and returns the server message', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(
-      okResponse({ message: 'Reset email sent.' })
-    );
+    const fetchMock = vi.fn().mockResolvedValueOnce(okResponse({ message: 'Reset email sent.' }));
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await requestPasswordReset('a@example.com');
@@ -49,9 +47,9 @@ describe('requestPasswordReset', () => {
 
 describe('confirmPasswordReset', () => {
   test('POSTs the token and password and returns the server message', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(
-      okResponse({ message: 'Password reset complete.' })
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(okResponse({ message: 'Password reset complete.' }));
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await confirmPasswordReset('tok-1', 'newpass');
@@ -78,9 +76,7 @@ describe('confirmPasswordReset', () => {
 
 describe('changePassword', () => {
   test('POSTs the passwords and returns the server message', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(
-      okResponse({ message: 'Password changed.' })
-    );
+    const fetchMock = vi.fn().mockResolvedValueOnce(okResponse({ message: 'Password changed.' }));
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await changePassword('oldpass', 'newpass');

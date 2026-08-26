@@ -1,9 +1,9 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { renderHook, cleanup, act } from '@testing-library/react';
-import { useTimelineEditing } from './useTimelineEditing';
+import { act, cleanup, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { type Activity, deleteActivity, updateActivity } from '../api/activities';
 import { getAllContacts } from '../api/contacts';
-import { updateNote, deleteNote, Note } from '../api/notes';
-import { updateActivity, deleteActivity, Activity } from '../api/activities';
+import { deleteNote, type Note, updateNote } from '../api/notes';
+import { useTimelineEditing } from './useTimelineEditing';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(() => {
@@ -64,7 +64,10 @@ test('starts editing a note with its content and date', async () => {
   });
 
   expect(result.current.editingTimelineItem).toEqual({ type: 'note', id: 1 });
-  expect(result.current.editTimelineValues).toEqual({ noteContent: 'hello', noteDate: '2026-08-12' });
+  expect(result.current.editTimelineValues).toEqual({
+    noteContent: 'hello',
+    noteDate: '2026-08-12',
+  });
   expect(getAllContacts).not.toHaveBeenCalled();
 });
 

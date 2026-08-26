@@ -1,10 +1,10 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  exportDataAsCsv,
-  exportContacts,
-  exportContact,
-  exportContactsAsVcf,
   EXPORT_FIELD_SECTIONS,
+  exportContact,
+  exportContacts,
+  exportContactsAsVcf,
+  exportDataAsCsv,
 } from './export';
 
 afterEach(() => {
@@ -22,14 +22,19 @@ function stubDownloadEnvironment(): {
   capturedLink = null;
   const createObjectURL = vi.fn(() => 'blob:http://localhost:7300/export-123');
   const revokeObjectURL = vi.fn();
-  const click = vi.spyOn(HTMLElement.prototype, 'click').mockImplementation(function (this: HTMLElement) {
+  const click = vi.spyOn(HTMLElement.prototype, 'click').mockImplementation(function (
+    this: HTMLElement,
+  ) {
     capturedLink = this as HTMLAnchorElement;
   });
   vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL });
   return { createObjectURL, revokeObjectURL, click };
 }
 
-function fileResponse(filename?: string, headers?: Record<string, string>): Record<string, unknown> {
+function fileResponse(
+  filename?: string,
+  headers?: Record<string, string>,
+): Record<string, unknown> {
   return {
     ok: true,
     headers: new Headers({
@@ -96,7 +101,10 @@ describe('exportDataAsCsv', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(exportDataAsCsv()).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(exportDataAsCsv()).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -150,7 +158,9 @@ describe('exportContacts', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(exportContacts('vcf4', { sections: ['emails'], includeSensitive: false })).rejects.toMatchObject({
+    await expect(
+      exportContacts('vcf4', { sections: ['emails'], includeSensitive: false }),
+    ).rejects.toMatchObject({
       code: 'VALIDATION_ERROR',
       status: 400,
     });
@@ -205,7 +215,10 @@ describe('exportContact', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(exportContact('vcf4', 'uid-1')).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(exportContact('vcf4', 'uid-1')).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -228,6 +241,9 @@ describe('exportContactsAsVcf', () => {
   test('propagates an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(exportContactsAsVcf()).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(exportContactsAsVcf()).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });

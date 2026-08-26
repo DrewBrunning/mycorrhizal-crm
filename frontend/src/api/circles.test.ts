@@ -1,13 +1,13 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  listCircles,
-  createCircle,
-  updateCircle,
-  deleteCircle,
   addCircleMember,
+  type Circle,
+  type CircleMember,
+  createCircle,
+  deleteCircle,
+  listCircles,
   removeCircleMember,
-  Circle,
-  CircleMember,
+  updateCircle,
 } from './circles';
 
 afterEach(() => {
@@ -104,7 +104,10 @@ describe('createCircle', () => {
 
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
-    await expect(createCircle('Family')).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(createCircle('Family')).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 

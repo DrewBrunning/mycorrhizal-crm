@@ -1,22 +1,22 @@
-import { useTranslation } from 'react-i18next';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import {
   Box,
-  Typography,
+  Button,
+  FormControl,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
   Stack,
   TextField,
-  IconButton,
-  Button,
-  Paper,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Select,
+  Typography,
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import { CardPersonalInfo } from '../api/contacts';
-import { useRowKeys } from '../hooks/useRowKeys';
+import { useTranslation } from 'react-i18next';
+import type { CardPersonalInfo } from '../api/contacts';
 import { PERSONAL_INFO_KIND_OPTIONS, PERSONAL_INFO_LEVEL_OPTIONS } from '../contactFields';
+import { useRowKeys } from '../hooks/useRowKeys';
 
 interface PersonalInfoEditorProps {
   label: string;

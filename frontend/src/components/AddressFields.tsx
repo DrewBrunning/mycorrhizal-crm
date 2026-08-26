@@ -1,19 +1,19 @@
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
+  Autocomplete,
   Box,
-  Typography,
+  Button,
+  IconButton,
+  Paper,
   Stack,
   TextField,
-  Autocomplete,
-  IconButton,
-  Button,
-  Paper,
+  Typography,
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { ContactAddress } from '../api/contacts';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { ContactAddress } from '../api/contacts';
 import { CONTACT_TYPE_OPTIONS } from '../contactFields';
 import { useRowKeys } from '../hooks/useRowKeys';
 

@@ -1,15 +1,15 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { renderHook, cleanup, waitFor, act } from '@testing-library/react';
-import { useLifeEvents } from './useLifeEvents';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { type Contact, getContactsByUid } from '../api/contacts';
 import {
-  getLifeEvents,
   createLifeEvent,
-  updateLifeEvent,
   deleteLifeEvent,
-  LifeEvent,
-  LifeEventInputData,
+  getLifeEvents,
+  type LifeEvent,
+  type LifeEventInputData,
+  updateLifeEvent,
 } from '../api/lifeEvents';
-import { getContactsByUid, Contact } from '../api/contacts';
+import { useLifeEvents } from './useLifeEvents';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(() => {
@@ -112,7 +112,10 @@ test('does not fetch without an entity id', async () => {
 
 test('handleCreate creates the event and refreshes', async () => {
   vi.mocked(getLifeEvents).mockResolvedValue({ life_events: [], next_cursor: '', limit: 50 });
-  vi.mocked(createLifeEvent).mockResolvedValue({ message: 'created', life_event: lifeEvent('le-9') });
+  vi.mocked(createLifeEvent).mockResolvedValue({
+    message: 'created',
+    life_event: lifeEvent('le-9'),
+  });
 
   const { result } = renderHook(() => useLifeEvents('uid-1'));
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -127,12 +130,20 @@ test('handleCreate creates the event and refreshes', async () => {
 });
 
 test('handleUpdate updates the event and refreshes', async () => {
-  vi.mocked(getLifeEvents).mockResolvedValue({ life_events: [lifeEvent('le-1')], next_cursor: '', limit: 50 });
+  vi.mocked(getLifeEvents).mockResolvedValue({
+    life_events: [lifeEvent('le-1')],
+    next_cursor: '',
+    limit: 50,
+  });
 
   const { result } = renderHook(() => useLifeEvents('uid-1'));
   await waitFor(() => expect(result.current.loading).toBe(false));
 
-  const data: LifeEventInputData = { entity_id: 'uid-1', type: 'moved', description: 'to a new city' };
+  const data: LifeEventInputData = {
+    entity_id: 'uid-1',
+    type: 'moved',
+    description: 'to a new city',
+  };
   await act(async () => {
     await result.current.handleUpdate('le-1', data);
   });
@@ -142,7 +153,11 @@ test('handleUpdate updates the event and refreshes', async () => {
 });
 
 test('handleDelete deletes the event and refreshes', async () => {
-  vi.mocked(getLifeEvents).mockResolvedValue({ life_events: [lifeEvent('le-1')], next_cursor: '', limit: 50 });
+  vi.mocked(getLifeEvents).mockResolvedValue({
+    life_events: [lifeEvent('le-1')],
+    next_cursor: '',
+    limit: 50,
+  });
 
   const { result } = renderHook(() => useLifeEvents('uid-1'));
   await waitFor(() => expect(result.current.loading).toBe(false));

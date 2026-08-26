@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Box,
   Button,
@@ -11,9 +10,10 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Circle } from '../api/circles';
-import { Tag } from '../api/tags';
+import type { Circle } from '../api/circles';
+import type { Tag } from '../api/tags';
 
 interface BulkActionsBarProps {
   selectedCount: number;
@@ -150,10 +150,20 @@ export default function BulkActionsBar({
               ))}
             </Select>
           </FormControl>
-          <Button size="small" variant="outlined" disabled={busy || !tagId} onClick={() => onAddTag(tagId)}>
+          <Button
+            size="small"
+            variant="outlined"
+            disabled={busy || !tagId}
+            onClick={() => onAddTag(tagId)}
+          >
             {t('bulk.addTag')}
           </Button>
-          <Button size="small" variant="outlined" disabled={busy || !tagId} onClick={() => onRemoveTag(tagId)}>
+          <Button
+            size="small"
+            variant="outlined"
+            disabled={busy || !tagId}
+            onClick={() => onRemoveTag(tagId)}
+          >
             {t('bulk.removeTag')}
           </Button>
 

@@ -6,11 +6,11 @@
 // Renders from the exact same computeFilteredGraphData output NetworkGraph
 // draws from (see networkGraphData.ts), so the list and the graph can never
 // disagree about what's currently visible under the five filters.
-import { List, ListItem, ListItemButton, ListItemText, Typography, Box } from '@mui/material';
+import { Box, List, ListItem, ListItemButton, ListItemText, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { GraphNode, GraphEdge } from '../types/graph';
+import { RELATIONSHIP_EDGE_TYPES, type RelationshipEdgeType } from '../api/relationshipEdges';
+import type { GraphEdge, GraphNode } from '../types/graph';
 import { edgeEndpointId } from '../utils/networkGraphData';
-import { RELATIONSHIP_EDGE_TYPES, RelationshipEdgeType } from '../api/relationshipEdges';
 
 interface NetworkListViewProps {
   nodes: GraphNode[];
@@ -20,9 +20,9 @@ interface NetworkListViewProps {
 
 export default function NetworkListView({ nodes, links, onContactClick }: NetworkListViewProps) {
   const { t } = useTranslation();
-  const nodesById = new Map(nodes.map(n => [n.id, n]));
+  const nodesById = new Map(nodes.map((n) => [n.id, n]));
   const contactNodes = nodes
-    .filter(n => n.type === 'contact')
+    .filter((n) => n.type === 'contact')
     .sort((a, b) => a.label.localeCompare(b.label));
 
   // Relation tokens describe the SOURCE's role relative to the TARGET (see
@@ -38,7 +38,7 @@ export default function NetworkListView({ nodes, links, onContactClick }: Networ
   const describeConnections = (contact: GraphNode): string[] => {
     const descriptions: string[] = [];
 
-    links.forEach(link => {
+    links.forEach((link) => {
       const sourceId = edgeEndpointId(link.source);
       const targetId = edgeEndpointId(link.target);
       if (sourceId !== contact.id && targetId !== contact.id) return;
@@ -51,7 +51,7 @@ export default function NetworkListView({ nodes, links, onContactClick }: Networ
           t('network.connectionRelationship', {
             type: relationLabelFor(contact.id, sourceId, link.label),
             name: otherNode.label,
-          })
+          }),
         );
       } else if (link.type === 'activity' && targetId === contact.id) {
         descriptions.push(t('network.connectionActivity', { title: link.label }));
@@ -69,10 +69,15 @@ export default function NetworkListView({ nodes, links, onContactClick }: Networ
         {t('network.listView')}
       </Typography>
       <List dense>
-        {contactNodes.map(contact => {
+        {contactNodes.map((contact) => {
           const descriptions = describeConnections(contact);
           return (
-            <ListItem key={contact.id} disableGutters disablePadding sx={{ display: 'block', mb: 0.5 }}>
+            <ListItem
+              key={contact.id}
+              disableGutters
+              disablePadding
+              sx={{ display: 'block', mb: 0.5 }}
+            >
               <ListItemButton
                 onClick={() => onContactClick(contact)}
                 sx={{ display: 'inline-flex', borderRadius: 1, py: 0.25 }}

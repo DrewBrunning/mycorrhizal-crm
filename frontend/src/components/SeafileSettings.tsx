@@ -1,21 +1,21 @@
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { mdiFolderMultipleOutline } from '@mdi/js';
 import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
-  Typography,
-  Divider,
-  TextField,
-  Button,
-  Stack,
-  Alert,
   CircularProgress,
+  Divider,
+  Stack,
+  SvgIcon,
+  TextField,
+  Typography,
 } from '@mui/material';
-import { mdiFolderMultipleOutline } from '@mdi/js';
-import { SvgIcon } from '@mui/material';
-import { useSeafile } from '../hooks/useSeafile';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
+import { useSeafile } from '../hooks/useSeafile';
 import { isHttpUrlString } from '../utils/linkResolution';
 
 // SeafileSettings is the settings-page card for the Seafile connection (P2b).
@@ -170,7 +170,9 @@ export default function SeafileSettings() {
                   }}
                   disabled={seafile.testing}
                 >
-                  {seafile.testing ? t('seafile.settings.testingConnection') : t('seafile.settings.testConnectionButton')}
+                  {seafile.testing
+                    ? t('seafile.settings.testingConnection')
+                    : t('seafile.settings.testConnectionButton')}
                 </Button>
               )}
               {seafile.config && (

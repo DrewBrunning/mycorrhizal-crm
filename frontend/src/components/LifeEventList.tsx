@@ -1,10 +1,10 @@
-import { Box, Typography, Chip, IconButton, Paper, Tooltip } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
 import CakeIcon from '@mui/icons-material/Cake';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import { Box, Chip, IconButton, Paper, Tooltip, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { LifeEvent, partialDateDisplay } from '../api/lifeEvents';
-import { Contact } from '../api/contacts';
+import type { Contact } from '../api/contacts';
+import { type LifeEvent, partialDateDisplay } from '../api/lifeEvents';
 
 interface LifeEventListProps {
   events: LifeEvent[];
@@ -49,11 +49,7 @@ export default function LifeEventList({
                     size="small"
                   />
                 )}
-                <Chip
-                  label={partialDateDisplay(event.date)}
-                  size="small"
-                  variant="outlined"
-                />
+                <Chip label={partialDateDisplay(event.date)} size="small" variant="outlined" />
                 {event.remind && (
                   <Tooltip title={t('lifeEvent.remindTooltip')}>
                     <Chip label={t('lifeEvent.remind')} size="small" />
@@ -61,7 +57,11 @@ export default function LifeEventList({
                 )}
               </Box>
               {event.description && (
-                <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', mb: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', mb: 0.5 }}
+                >
                   {event.description}
                 </Typography>
               )}
@@ -88,7 +88,11 @@ export default function LifeEventList({
               <IconButton size="small" onClick={() => onEdit(event)} aria-label={t('common.edit')}>
                 <EditIcon fontSize="small" />
               </IconButton>
-              <IconButton size="small" onClick={() => onDelete(event.id)} aria-label={t('common.delete')}>
+              <IconButton
+                size="small"
+                onClick={() => onDelete(event.id)}
+                aria-label={t('common.delete')}
+              >
                 <DeleteIcon fontSize="small" />
               </IconButton>
             </Box>

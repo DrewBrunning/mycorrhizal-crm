@@ -6,19 +6,20 @@
 // ContactDetailPage.tsx itself is NOT rewired onto this endpoint (its
 // incremental per-hook loading is deliberate web UX); that's a separate,
 // later ticket if it happens at all.
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
-import { ContactRecordResponse } from './contacts';
-import { Note } from './notes';
-import { Activity } from './activities';
-import { Reminder, ReminderCompletion } from './reminders';
-import { BriefingRelationship } from './briefings';
-import { LifeEvent } from './lifeEvents';
-import { ConversationAgenda } from './conversationAgenda';
-import { Gift } from './gifts';
-import { FieldValue } from './fieldDefinitions';
-import { ExternalIdentity, ExternalActivity } from './externalLinks';
-import { Circle } from './circles';
-import { Tag } from './tags';
+
+import type { Activity } from './activities';
+import type { BriefingRelationship } from './briefings';
+import type { Circle } from './circles';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
+import type { ContactRecordResponse } from './contacts';
+import type { ConversationAgenda } from './conversationAgenda';
+import type { ExternalActivity, ExternalIdentity } from './externalLinks';
+import type { FieldValue } from './fieldDefinitions';
+import type { Gift } from './gifts';
+import type { LifeEvent } from './lifeEvents';
+import type { Note } from './notes';
+import type { Reminder, ReminderCompletion } from './reminders';
+import type { Tag } from './tags';
 
 export interface ContactDetailUser {
   enabled_contact_fields: string[];
@@ -73,10 +74,9 @@ export interface ContactDetailResponse {
 // boundary rather than trusted, the same defensive posture api/briefings.ts
 // takes after the prep view's own regression (CLAUDE.md frontend trap 8).
 export async function getContactDetail(id: string | number): Promise<ContactDetailResponse> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/contacts/${id}/detail`,
-    { headers: getAuthHeaders() }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/contacts/${id}/detail`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   const raw = await response.json();
   return {

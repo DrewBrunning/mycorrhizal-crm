@@ -1,33 +1,33 @@
-import { useState, useCallback, useEffect } from 'react';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Box,
-  MenuItem,
   Autocomplete,
+  Box,
+  Button,
+  Checkbox,
   Chip,
   CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControlLabel,
-  Checkbox,
+  MenuItem,
+  TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
-import AppDialog from './AppDialog';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Contact, getContacts, getContactsByUid } from '../api/contacts';
+import { type Contact, getContacts, getContactsByUid } from '../api/contacts';
 import {
+  isKnownLifeEventCategory,
   LIFE_EVENT_CATEGORIES,
   LIFE_EVENT_TYPES_BY_CATEGORY,
-  LifeEventCategory,
-  PartialDate,
-  isKnownLifeEventCategory,
+  type LifeEventCategory,
+  type PartialDate,
   partialDateHasMonthDay,
   partialDateIsYearOnly,
 } from '../api/lifeEvents';
 import { handleFetchError } from '../utils/errorHandler';
+import AppDialog from './AppDialog';
 
 interface ContactBrief {
   uid: string;
@@ -108,9 +108,7 @@ export default function LifeEventDialog({
       setContactsLoading(true);
       try {
         const response = await getContacts({ limit: 40, search });
-        let filtered = (response.contacts || [])
-          .filter((c) => c.uid)
-          .map(toContactBrief);
+        let filtered = (response.contacts || []).filter((c) => c.uid).map(toContactBrief);
         if (excludeContactUid) {
           filtered = filtered.filter((c) => c.uid !== excludeContactUid);
         }
@@ -121,7 +119,7 @@ export default function LifeEventDialog({
         setContactsLoading(false);
       }
     },
-    [excludeContactUid]
+    [excludeContactUid],
   );
 
   useEffect(() => {
@@ -158,7 +156,7 @@ export default function LifeEventDialog({
         // useCustomType value is never read.
         setUseCustomType(
           initCategory !== UNCATEGORIZED &&
-            !LIFE_EVENT_TYPES_BY_CATEGORY[initCategory].includes(initial.type || '')
+            !LIFE_EVENT_TYPES_BY_CATEGORY[initCategory].includes(initial.type || ''),
         );
         if (initial.date) {
           setDateYear(initial.date.year != null ? String(initial.date.year) : '');
@@ -174,11 +172,15 @@ export default function LifeEventDialog({
         setRelatedContacts([]);
         // Pre-populate related contacts from their VCardUIDs.
         if (initial.relatedEntityIds && initial.relatedEntityIds.length > 0) {
-          getContactsByUid(initial.relatedEntityIds).then((byUid) => {
-            const briefs: ContactBrief[] = [];
-            byUid.forEach((c) => { if (c.uid) briefs.push(toContactBrief(c)); });
-            setRelatedContacts(briefs);
-          }).catch(() => {});
+          getContactsByUid(initial.relatedEntityIds)
+            .then((byUid) => {
+              const briefs: ContactBrief[] = [];
+              byUid.forEach((c) => {
+                if (c.uid) briefs.push(toContactBrief(c));
+              });
+              setRelatedContacts(briefs);
+            })
+            .catch(() => {});
         }
       } else {
         setCategory('');
@@ -259,16 +261,16 @@ export default function LifeEventDialog({
 
   return (
     <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        {isEditing ? t('lifeEvent.editTitle') : t('lifeEvent.createTitle')}
-      </DialogTitle>
+      <DialogTitle>{isEditing ? t('lifeEvent.editTitle') : t('lifeEvent.createTitle')}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <TextField
             select
             label={t('lifeEvent.category')}
             value={category}
-            onChange={(e) => handleCategoryChange(e.target.value as LifeEventCategory | typeof UNCATEGORIZED)}
+            onChange={(e) =>
+              handleCategoryChange(e.target.value as LifeEventCategory | typeof UNCATEGORIZED)
+            }
             fullWidth
             required
           >
@@ -301,7 +303,10 @@ export default function LifeEventDialog({
             <TextField
               label={t('lifeEvent.type')}
               value={type}
-              onChange={(e) => { setType(e.target.value); setError(''); }}
+              onChange={(e) => {
+                setType(e.target.value);
+                setError('');
+              }}
               fullWidth
               required
             />
@@ -328,7 +333,10 @@ export default function LifeEventDialog({
                 <TextField
                   label={t('lifeEvent.customTypeLabel')}
                   value={type}
-                  onChange={(e) => { setType(e.target.value); setError(''); }}
+                  onChange={(e) => {
+                    setType(e.target.value);
+                    setError('');
+                  }}
                   fullWidth
                   required
                   autoFocus
@@ -411,7 +419,9 @@ export default function LifeEventDialog({
               ))
             }
             isOptionEqualToValue={(option, value) => option.uid === value.uid}
-            noOptionsText={searchInput ? t('lifeEvent.noContactsFound') : t('lifeEvent.typeToSearch')}
+            noOptionsText={
+              searchInput ? t('lifeEvent.noContactsFound') : t('lifeEvent.typeToSearch')
+            }
           />
 
           <Tooltip

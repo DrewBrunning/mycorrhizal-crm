@@ -51,5 +51,13 @@ COPY --from=builder /app/build /usr/share/nginx/html
 # nginx-unprivileged runs on port 8080 by default
 EXPOSE 8080
 
+# Issue #578: the split frontend image is a published artifact (docker-publish
+# matrix) and must carry a HEALTHCHECK like the all-in-one does — trivy's
+# DS-0026 flagged its absence once the misconfig gate hard-gated. Probes the
+# SPA root (/) rather than /health, which proxies to the backend host and
+# would 502 when the frontend runs standalone.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/"]
+
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

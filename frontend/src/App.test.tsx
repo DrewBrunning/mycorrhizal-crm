@@ -1,10 +1,10 @@
-import { test, expect } from 'vitest';
 import { render } from '@testing-library/react';
+import { expect, test } from 'vitest';
 import App from './App';
 import { AppThemeProvider } from './AppThemeProvider';
-import { DateFormatProvider } from './DateFormatProvider';
-import { SnackbarProvider } from './context/SnackbarContext';
 import { AnnouncerProvider } from './context/AnnouncerContext';
+import { SnackbarProvider } from './context/SnackbarContext';
+import { DateFormatProvider } from './DateFormatProvider';
 
 // Mirrors index.tsx's real provider composition -- App itself doesn't
 // include these, they're only added at the root render call, so any
@@ -21,7 +21,7 @@ test('renders app component', () => {
           </AnnouncerProvider>
         </SnackbarProvider>
       </DateFormatProvider>
-    </AppThemeProvider>
+    </AppThemeProvider>,
   );
   expect(container).toBeTruthy();
 });

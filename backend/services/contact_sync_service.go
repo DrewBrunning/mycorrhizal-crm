@@ -389,6 +389,13 @@ func reconcileContactSync(db *gorm.DB, sub *models.ContactSubscription, updated 
 			case errors.Is(linkErr, gorm.ErrRecordNotFound):
 				contact := models.Contact{UserID: sub.UserID}
 				models.ApplyRecordToContact(&contact, record, photoDir)
+				// Issue #512: a CardDAV server is a second, untrusted
+				// ingestion point for the exact same hostile bytes the
+				// VCF/CSV import assistant already guards against (issue
+				// #416's SanitizeImportedContact) -- control characters and
+				// invalid UTF-8 in a synced vCard's free-text fields must be
+				// cleaned here too, not just on the import-assistant path.
+				SanitizeImportedContact(&contact)
 				syncedValues := syncConflictSnapshotJSON(syncConflictFieldSnapshot(&contact))
 				if err := tx.Create(&contact).Error; err != nil {
 					return err
@@ -447,6 +454,10 @@ func reconcileContactSync(db *gorm.DB, sub *models.ContactSubscription, updated 
 				// ContactSyncConflict the UI can surface and restore.
 				localSnapshot := syncConflictFieldSnapshot(&contact)
 				models.ApplyRecordToContact(&contact, record, photoDir)
+				// Issue #512: same fix-up as the create branch above -- clean
+				// before the remote snapshot is taken, so both the conflict
+				// record and the saved contact reflect sanitized data.
+				SanitizeImportedContact(&contact)
 				remoteSnapshot := syncConflictFieldSnapshot(&contact)
 				if err := recordSyncConflicts(tx, sub, &contact, link, localSnapshot, remoteSnapshot); err != nil {
 					return err

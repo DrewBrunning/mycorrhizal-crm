@@ -1,7 +1,7 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { renderHook, cleanup, act, waitFor } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { getTimeline, type TimelineItem, type TimelineResponse } from '../api/timeline';
 import { useTimeline } from './useTimeline';
-import { getTimeline, TimelineItem, TimelineResponse } from '../api/timeline';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);
@@ -43,16 +43,24 @@ test('a load-more that resolves after a filter change is discarded, not appended
     .mockResolvedValueOnce(page([noteItem('1', 'page one')], 'cursor-1'))
     // The load-more (cursor=1) hangs until we resolve it.
     .mockImplementationOnce(
-      () => new Promise((res) => { resolveLoadMore = res; })
+      () =>
+        new Promise((res) => {
+          resolveLoadMore = res;
+        }),
     )
     // The refresh after the filter change hangs until we resolve it.
     .mockImplementationOnce(
-      () => new Promise((res) => { resolveRefresh = res; })
+      () =>
+        new Promise((res) => {
+          resolveRefresh = res;
+        }),
     );
 
   const { result } = renderHook(() => useTimeline(42));
 
-  await act(async () => { await result.current.refresh(); });
+  await act(async () => {
+    await result.current.refresh();
+  });
   expect(result.current.items.map((i) => i.id)).toEqual(['1']);
 
   // Start a load-more against cursor-1 (it hangs in flight).
@@ -94,16 +102,22 @@ test('switching contacts clears the previous contact page', async () => {
     initialProps: { id: 1 as number | undefined },
   });
 
-  await act(async () => { await result.current.refresh(); });
+  await act(async () => {
+    await result.current.refresh();
+  });
   expect(result.current.items.map((i) => i.id)).toEqual(['1']);
 
   // Navigate to contact 2: the page should clear before any refetch, so
   // contact A's rows never render under contact B.
-  await act(async () => { rerender({ id: 2 }); });
+  await act(async () => {
+    rerender({ id: 2 });
+  });
 
   expect(result.current.items).toEqual([]);
   expect(result.current.nextCursor).toBe('');
 
-  await act(async () => { await result.current.refresh(); });
+  await act(async () => {
+    await result.current.refresh();
+  });
   await waitFor(() => expect(result.current.items.map((i) => i.id)).toEqual(['2']));
 });

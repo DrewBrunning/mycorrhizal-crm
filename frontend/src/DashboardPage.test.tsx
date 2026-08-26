@@ -1,13 +1,13 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
+import { listCircles } from './api/circles';
+import { dismissContactSyncConflict, restoreContactSyncConflict } from './api/contactSyncConflicts';
+import { type DashboardResponse, getDashboard } from './api/dashboard';
+import { completeReminder, getUpcomingReminders, skipReminder } from './api/reminders';
 import DashboardPage from './DashboardPage';
 import { DateFormatProvider } from './DateFormatProvider';
-import { getDashboard, DashboardResponse } from './api/dashboard';
-import { getUpcomingReminders, completeReminder, skipReminder } from './api/reminders';
-import { listCircles } from './api/circles';
-import { restoreContactSyncConflict, dismissContactSyncConflict } from './api/contactSyncConflicts';
 
 // M3: the page
 // now fetches one GET /dashboard composite instead of fanning out to four
@@ -24,7 +24,12 @@ vi.mock('./api/dashboard', async (importOriginal) => {
 });
 vi.mock('./api/reminders', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/reminders')>();
-  return { ...actual, getUpcomingReminders: vi.fn(), completeReminder: vi.fn(), skipReminder: vi.fn() };
+  return {
+    ...actual,
+    getUpcomingReminders: vi.fn(),
+    completeReminder: vi.fn(),
+    skipReminder: vi.fn(),
+  };
 });
 vi.mock('./api/circles', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/circles')>();
@@ -44,7 +49,15 @@ const restoreSyncConflictMock = vi.mocked(restoreContactSyncConflict);
 const dismissSyncConflictMock = vi.mocked(dismissContactSyncConflict);
 
 function emptyDashboard(): DashboardResponse {
-  return { birthdays: [], random_contacts: [], upcoming_reminders: [], overdue: [], favorites: [], reach_out_suggestions: [], contact_sync_conflicts: [] };
+  return {
+    birthdays: [],
+    random_contacts: [],
+    upcoming_reminders: [],
+    overdue: [],
+    favorites: [],
+    reach_out_suggestions: [],
+    contact_sync_conflicts: [],
+  };
 }
 
 beforeEach(() => {
@@ -55,7 +68,13 @@ beforeEach(() => {
   listCirclesMock.mockReset();
   restoreSyncConflictMock.mockReset();
   dismissSyncConflictMock.mockReset();
-  listCirclesMock.mockResolvedValue({ circles: [], total: 0, next_cursor: '', limit: 200, members: [] });
+  listCirclesMock.mockResolvedValue({
+    circles: [],
+    total: 0,
+    next_cursor: '',
+    limit: 200,
+    members: [],
+  });
 });
 
 function renderPage() {
@@ -67,7 +86,7 @@ function renderPage() {
           <Route path="/contacts/:id" element={<div>CONTACT DETAIL PAGE</div>} />
         </Routes>
       </DateFormatProvider>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -77,7 +96,18 @@ test('fetches the dashboard composite once and renders all four blocks', async (
     random_contacts: [{ ID: 2, firstname: 'Randy', lastname: 'Contact', archived: false }],
     favorites: [{ ID: 4, firstname: 'Fay', lastname: 'Vorite', is_favorite: true }],
     upcoming_reminders: [
-      { ID: 9, message: 'Call Nicky', by_mail: false, remind_at: '2026-08-12T00:00:00Z', recurrence: 'once', reoccur_from_completion: true, completed: false, email_sent: false, contact_id: 3, contact_name: 'Nicky Name' },
+      {
+        ID: 9,
+        message: 'Call Nicky',
+        by_mail: false,
+        remind_at: '2026-08-12T00:00:00Z',
+        recurrence: 'once',
+        reoccur_from_completion: true,
+        completed: false,
+        email_sent: false,
+        contact_id: 3,
+        contact_name: 'Nicky Name',
+      },
     ],
     overdue: [],
     reach_out_suggestions: [],
@@ -97,7 +127,7 @@ test('fetches the dashboard composite once and renders all four blocks', async (
   expect(getDashboardMock).toHaveBeenCalledTimes(1);
 });
 
-test('empty dashboard renders each column\'s empty state without crashing', async () => {
+test("empty dashboard renders each column's empty state without crashing", async () => {
   getDashboardMock.mockResolvedValue(emptyDashboard());
 
   renderPage();
@@ -112,12 +142,33 @@ test('completing a reminder refetches via the plain upcoming-reminders endpoint 
   getDashboardMock.mockResolvedValue({
     ...emptyDashboard(),
     upcoming_reminders: [
-      { ID: 9, message: 'Call Nicky', by_mail: false, remind_at: '2026-08-12T00:00:00Z', recurrence: 'once', reoccur_from_completion: true, completed: false, email_sent: false, contact_id: 3, contact_name: 'Nicky Name' },
+      {
+        ID: 9,
+        message: 'Call Nicky',
+        by_mail: false,
+        remind_at: '2026-08-12T00:00:00Z',
+        recurrence: 'once',
+        reoccur_from_completion: true,
+        completed: false,
+        email_sent: false,
+        contact_id: 3,
+        contact_name: 'Nicky Name',
+      },
     ],
   });
   completeReminderMock.mockResolvedValue({ message: 'ok' });
   getUpcomingRemindersMock.mockResolvedValue([
-    { ID: 9, message: 'Call Nicky', by_mail: false, remind_at: '2026-08-19T00:00:00Z', recurrence: 'weekly', reoccur_from_completion: true, completed: false, email_sent: false, contact_id: 3 },
+    {
+      ID: 9,
+      message: 'Call Nicky',
+      by_mail: false,
+      remind_at: '2026-08-19T00:00:00Z',
+      recurrence: 'weekly',
+      reoccur_from_completion: true,
+      completed: false,
+      email_sent: false,
+      contact_id: 3,
+    },
   ]);
 
   renderPage();
