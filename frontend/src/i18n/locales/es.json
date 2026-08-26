@@ -1501,9 +1501,17 @@
       "message": "¿Estás seguro de que quieres eliminar al usuario \"{{username}}\"?",
       "warning": "Esto eliminará permanentemente al usuario y todos sus datos, incluyendo contactos, actividades, notas y recordatorios."
     },
+    "resetTwoFactor": "Restablecer 2FA",
+    "resetTwoFactorDialog": {
+      "title": "Restablecer Autenticación de Dos Factores",
+      "message": "¿Estás seguro de que quieres restablecer la autenticación de dos factores de \"{{username}}\"?",
+      "warning": "Esto desactiva su aplicación de autenticación y elimina sus códigos de recuperación, y finaliza sus sesiones actuales. Úsalo solo cuando un usuario esté bloqueado y no pueda verificarse con su 2FA existente."
+    },
     "updateError": "Error al actualizar el usuario",
     "createError": "Error al crear el usuario",
     "deleteError": "Error al eliminar el usuario",
+    "resetTwoFactorSuccess": "Autenticación de dos factores restablecida para \"{{username}}\"",
+    "resetTwoFactorError": "Error al restablecer la autenticación de dos factores",
     "triggerReminders": "Enviar Emails de Recordatorio",
     "triggerRemindersSuccess": "Emails de recordatorio enviados exitosamente",
     "triggerRemindersError": "Error al enviar los emails de recordatorio"

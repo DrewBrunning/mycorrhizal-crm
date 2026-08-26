@@ -1501,9 +1501,17 @@
       "message": "Möchten Sie den Benutzer \"{{username}}\" wirklich löschen?",
       "warning": "Dies löscht den Benutzer und alle seine Daten dauerhaft, einschließlich Kontakte, Aktivitäten, Notizen und Erinnerungen."
     },
+    "resetTwoFactor": "2FA zurücksetzen",
+    "resetTwoFactorDialog": {
+      "title": "Zwei-Faktor-Authentifizierung zurücksetzen",
+      "message": "Möchten Sie die Zwei-Faktor-Authentifizierung für \"{{username}}\" wirklich zurücksetzen?",
+      "warning": "Dies deaktiviert die Authenticator-App und löscht die Wiederherstellungscodes und beendet die aktuellen Sitzungen. Verwenden Sie dies nur, wenn ein Benutzer ausgesperrt ist und sich nicht mit der vorhandenen 2FA verifizieren kann."
+    },
     "updateError": "Benutzer konnte nicht aktualisiert werden",
     "createError": "Benutzer konnte nicht erstellt werden",
     "deleteError": "Benutzer konnte nicht gelöscht werden",
+    "resetTwoFactorSuccess": "Zwei-Faktor-Authentifizierung für \"{{username}}\" zurückgesetzt",
+    "resetTwoFactorError": "Zwei-Faktor-Authentifizierung konnte nicht zurückgesetzt werden",
     "triggerReminders": "Erinnerungs-E-Mails senden",
     "triggerRemindersSuccess": "Erinnerungs-E-Mails erfolgreich gesendet",
     "triggerRemindersError": "Fehler beim Senden der Erinnerungs-E-Mails"

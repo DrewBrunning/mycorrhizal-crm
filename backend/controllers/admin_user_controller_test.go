@@ -718,6 +718,203 @@ func TestUpdateUser_RoleChange_RecordsAuditEvent(t *testing.T) {
 	assert.NotContains(t, ops, models.AuditOpPasswordReset, "no password reset was requested")
 }
 
+// --- ResetUserTwoFactor (issue #592): admin-only 2FA recovery path ---
+
+// TestResetUserTwoFactor_Success pins the core contract: TOTP is disabled,
+// every recovery code for the target is hard-deleted, and TokenVersion is
+// bumped to end their existing sessions -- the same three effects
+// DisableTwoFactor produces on the self-service path, minus the live-code
+// proof requirement.
+func TestResetUserTwoFactor_Success(t *testing.T) {
+	db, router := setupRouter()
+
+	secret := "encrypted-secret"
+	confirmedAt := time.Now()
+	target := models.User{
+		Username:            "target",
+		Email:               "target@example.com",
+		Password:            "password123",
+		TokenVersion:        3,
+		TOTPEnabled:         true,
+		TOTPSecretEncrypted: &secret,
+		TOTPConfirmedAt:     &confirmedAt,
+	}
+	require.NoError(t, db.Create(&target).Error)
+	require.NoError(t, db.Create(&models.RecoveryCode{UserID: target.ID, CodeHash: "hash-one"}).Error)
+	require.NoError(t, db.Create(&models.RecoveryCode{UserID: target.ID, CodeHash: "hash-two"}).Error)
+
+	router.POST("/users/:id/reset-2fa", ResetUserTwoFactor)
+
+	req, _ := http.NewRequest("POST", "/users/"+strconv.Itoa(int(target.ID))+"/reset-2fa", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var resp models.AdminUserResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, target.ID, resp.ID)
+
+	var updated models.User
+	require.NoError(t, db.First(&updated, target.ID).Error)
+	assert.False(t, updated.TOTPEnabled, "TOTP must be disabled")
+	assert.Nil(t, updated.TOTPSecretEncrypted, "the stale TOTP secret must not survive a reset")
+	assert.Nil(t, updated.TOTPConfirmedAt)
+	assert.Equal(t, uint(4), updated.TokenVersion, "resetting 2FA must bump TokenVersion to invalidate existing sessions (see middleware.TestAuthMiddleware_JWTRejectedAfterTokenVersionBump for the invalidation mechanism itself)")
+
+	var codeCount int64
+	require.NoError(t, db.Model(&models.RecoveryCode{}).Where("user_id = ?", target.ID).Count(&codeCount).Error)
+	assert.Zero(t, codeCount, "every recovery code must be hard-deleted")
+}
+
+// TestResetUserTwoFactor_Idempotent_NoOp covers a target with no 2FA enabled
+// at all: the endpoint must still succeed (200), not error, per issue #592's
+// idempotency requirement.
+func TestResetUserTwoFactor_Idempotent_NoOp(t *testing.T) {
+	db, router := setupRouter()
+
+	target := models.User{Username: "target", Email: "target@example.com", Password: "password123"}
+	require.NoError(t, db.Create(&target).Error)
+	require.False(t, target.TOTPEnabled)
+
+	router.POST("/users/:id/reset-2fa", ResetUserTwoFactor)
+
+	req, _ := http.NewRequest("POST", "/users/"+strconv.Itoa(int(target.ID))+"/reset-2fa", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var updated models.User
+	require.NoError(t, db.First(&updated, target.ID).Error)
+	assert.False(t, updated.TOTPEnabled)
+}
+
+func TestResetUserTwoFactor_NotFound(t *testing.T) {
+	_, router := setupRouter()
+
+	router.POST("/users/:id/reset-2fa", ResetUserTwoFactor)
+
+	req, _ := http.NewRequest("POST", "/users/99999/reset-2fa", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+}
+
+func TestResetUserTwoFactor_InvalidID(t *testing.T) {
+	_, router := setupRouter()
+
+	router.POST("/users/:id/reset-2fa", ResetUserTwoFactor)
+
+	req, _ := http.NewRequest("POST", "/users/not-a-number/reset-2fa", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+}
+
+// TestResetUserTwoFactor_NonAdmin_Forbidden mirrors
+// TestCreateUser_NonAdmin_Forbidden: a non-admin caller must be rejected by
+// AdminMiddleware before the handler ever runs, and the target's 2FA state
+// must be untouched.
+func TestResetUserTwoFactor_NonAdmin_Forbidden(t *testing.T) {
+	db, _ := setupRouter()
+
+	var nonAdmin models.User
+	require.NoError(t, db.Where("username = ?", "tester").First(&nonAdmin).Error)
+	require.False(t, nonAdmin.IsAdmin, "seeded test user must start as a non-admin for this test to be meaningful")
+
+	secret := "encrypted-secret"
+	target := models.User{
+		Username: "target", Email: "target@example.com", Password: "password123",
+		TOTPEnabled: true, TOTPSecretEncrypted: &secret,
+	}
+	require.NoError(t, db.Create(&target).Error)
+
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", nonAdmin.ID)
+		c.Next()
+	})
+	router.Use(middleware.AdminMiddleware())
+	router.POST("/users/:id/reset-2fa", ResetUserTwoFactor)
+
+	req, _ := http.NewRequest("POST", "/users/"+strconv.Itoa(int(target.ID))+"/reset-2fa", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+
+	var unchanged models.User
+	require.NoError(t, db.First(&unchanged, target.ID).Error)
+	assert.True(t, unchanged.TOTPEnabled, "a forbidden request must not touch the target's 2FA state")
+}
+
+// TestResetUserTwoFactor_RecordsAuditEvent pins issue #592's audit contract
+// against the real migrated schema (not AutoMigrate), since the operation
+// token is enforced by a CHECK constraint that only exists in the real
+// migrations (000036) -- an AutoMigrate-backed test could pass even if the
+// constraint were never widened, which is exactly the silent-failure trap
+// CLAUDE.md's backend trap #1 warns about.
+func TestResetUserTwoFactor_RecordsAuditEvent(t *testing.T) {
+	db, err := database.InitDB(filepath.Join(t.TempDir(), "admin-2fa-reset-audit.db"))
+	require.NoError(t, err)
+	models.RegisterAuditDB(db)
+	t.Cleanup(func() {
+		models.AuditFlush()
+		models.RegisterAuditDB(nil)
+	})
+
+	actor := models.User{Username: "adminactor", Password: "password123!A", Email: "adminactor@example.com", IsAdmin: true}
+	require.NoError(t, db.Create(&actor).Error)
+	secret := "encrypted-secret"
+	target := models.User{
+		Username: "lockedout", Password: "password123!A", Email: "lockedout@example.com",
+		TOTPEnabled: true, TOTPSecretEncrypted: &secret,
+	}
+	require.NoError(t, db.Create(&target).Error)
+	require.NoError(t, db.Create(&models.RecoveryCode{UserID: target.ID, CodeHash: "hash-one"}).Error)
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", actor.ID)
+		c.Set("username", actor.Username)
+		c.Set("cfg", config.Config{})
+		c.Next()
+	})
+	router.POST("/users/:id/reset-2fa", ResetUserTwoFactor)
+
+	req, _ := http.NewRequest("POST", "/users/"+strconv.Itoa(int(target.ID))+"/reset-2fa", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	models.AuditFlush()
+
+	var events []models.AuditEvent
+	require.NoError(t, db.
+		Where("entity_type = ? AND entity_id = ?", models.AuditEntityUser, strconv.Itoa(int(target.ID))).
+		Order("id asc").Find(&events).Error)
+
+	var resetEvent *models.AuditEvent
+	for i := range events {
+		if events[i].Operation == models.AuditOpTwoFactorAdminReset {
+			resetEvent = &events[i]
+		}
+	}
+	require.NotNil(t, resetEvent, "an admin 2FA reset must record AuditOpTwoFactorAdminReset")
+	assert.Equal(t, actor.ID, resetEvent.UserID, "the acting admin must be the audit actor, not the target")
+
+	for _, ev := range events {
+		assert.NotEqual(t, models.AuditOpTOTPDisable, ev.Operation,
+			"an admin-initiated reset must not be recorded as the self-service totp_disable event")
+	}
+}
+
 func TestUpdateUser_NotFound(t *testing.T) {
 	_, router := setupRouter()
 

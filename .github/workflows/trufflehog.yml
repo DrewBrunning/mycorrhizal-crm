@@ -52,5 +52,9 @@ jobs:
         uses: trufflesecurity/trufflehog@20652fbbdefffcdaa493a5bf57ab2ac6b1db715b # v3.97.1
         with:
           path: ./
-          version: 'v3.97.1'
+          # NOTE: this is a ghcr.io/trufflesecurity/trufflehog image tag, not
+          # the GitHub release tag above — that registry's tags have no "v"
+          # prefix (`3.97.1`, not `v3.97.1`); the `v`-prefixed tag 404s and
+          # docker exits 125 with "manifest unknown".
+          version: '3.97.1'
           extra_args: '--results=verified'

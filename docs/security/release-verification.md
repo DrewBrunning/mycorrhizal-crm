@@ -108,13 +108,12 @@ present.
 
 **2. cosign co-signature** (additional Sigstore-backed signal, **only within 30 days of the
 release build**): open the `docker-publish.yml` run for that tag under the repo's Actions tab,
-download the `apk-cosign-signature` artifact (contains `mycorrhizal-apk.crt` and
-`mycorrhizal-apk.sig`), then:
+download the `apk-cosign-signature` artifact (contains `mycorrhizal-apk.sigstore.json`, cosign
+v3's standardized bundle — cert, signature, and transparency log entry in one file), then:
 
 ```sh
 cosign verify-blob \
-  --certificate mycorrhizal-apk.crt \
-  --signature mycorrhizal-apk.sig \
+  --bundle mycorrhizal-apk.sigstore.json \
   --certificate-identity-regexp 'https://github.com/DrewBrunning/mycorrhizal-crm/.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   app-release.apk
@@ -160,8 +159,7 @@ release, `sbom-signatures` for a main-branch SBOM) and verify:
 
 ```sh
 cosign verify-blob \
-  --certificate sbom.spdx.json.crt \
-  --signature sbom.spdx.json.sig \
+  --bundle sbom.spdx.json.sigstore.json \
   --certificate-identity-regexp 'https://github.com/DrewBrunning/mycorrhizal-crm/.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   sbom.spdx.json
