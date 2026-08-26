@@ -3,6 +3,7 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -330,7 +331,6 @@ func TestDeviceRegistration_CRUD(t *testing.T) {
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
-
 	var remaining int64
 	require.NoError(t, db.Model(&models.DeviceRegistration{}).Count(&remaining).Error)
 	assert.Zero(t, remaining)
@@ -400,6 +400,85 @@ func TestDeviceRegistration_ListOwnershipScoped(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &listResp))
 	assert.Empty(t, listResp.Devices, "a user must only ever see their own device registrations")
+}
+
+// TestPushSubscription_OverCapRejected pins issue #415's per-user push-sub
+// bound: once a user holds MaxPushSubscriptionsPerUser registrations, the
+// next one is rejected with 409, and another user's quota is independent.
+func TestPushSubscription_OverCapRejected(t *testing.T) {
+	db, router := setupRouter()
+	router.POST("/notifications/push-subscriptions", withValidated(func() any { return &models.PushSubscriptionInput{} }), CreatePushSubscription)
+
+	var user models.User
+	db.First(&user)
+
+	for i := 0; i < MaxPushSubscriptionsPerUser; i++ {
+		body, _ := json.Marshal(models.PushSubscriptionInput{
+			Endpoint:    fmt.Sprintf("https://push.example.com/sub-%d", i),
+			P256dh:      "key",
+			Auth:        "auth",
+			DeviceLabel: "Desktop",
+		})
+		req, _ := http.NewRequest("POST", "/notifications/push-subscriptions", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusCreated, w.Code, "registrations up to the cap must succeed")
+	}
+
+	body, _ := json.Marshal(models.PushSubscriptionInput{
+		Endpoint:    "https://push.example.com/over-cap",
+		P256dh:      "key",
+		Auth:        "auth",
+		DeviceLabel: "Desktop",
+	})
+	req, _ := http.NewRequest("POST", "/notifications/push-subscriptions", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusConflict, w.Code, "a registration beyond the cap must be rejected")
+
+	var count int64
+	require.NoError(t, db.Model(&models.PushSubscription{}).Where("user_id = ?", user.ID).Count(&count).Error)
+	assert.Equal(t, int64(MaxPushSubscriptionsPerUser), count, "the over-cap registration must not be persisted")
+}
+
+// TestDeviceRegistration_OverCapRejected pins issue #415's per-user device
+// bound, mirroring TestPushSubscription_OverCapRejected.
+func TestDeviceRegistration_OverCapRejected(t *testing.T) {
+	db, router := setupRouter()
+	router.POST("/notifications/devices", withValidated(func() any { return &models.DeviceRegistrationInput{} }), CreateDeviceRegistration)
+
+	var user models.User
+	db.First(&user)
+
+	for i := 0; i < MaxDeviceRegistrationsPerUser; i++ {
+		body, _ := json.Marshal(models.DeviceRegistrationInput{
+			Token:       fmt.Sprintf("fcm-token-%d", i),
+			Client:      "fcm",
+			DeviceLabel: "Pixel",
+		})
+		req, _ := http.NewRequest("POST", "/notifications/devices", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusCreated, w.Code, "registrations up to the cap must succeed")
+	}
+
+	body, _ := json.Marshal(models.DeviceRegistrationInput{
+		Token:       "fcm-token-over-cap",
+		Client:      "fcm",
+		DeviceLabel: "Pixel",
+	})
+	req, _ := http.NewRequest("POST", "/notifications/devices", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusConflict, w.Code, "a registration beyond the cap must be rejected")
+
+	var count int64
+	require.NoError(t, db.Model(&models.DeviceRegistration{}).Where("user_id = ?", user.ID).Count(&count).Error)
+	assert.Equal(t, int64(MaxDeviceRegistrationsPerUser), count, "the over-cap registration must not be persisted")
 }
 
 func itoa(id uint) string {

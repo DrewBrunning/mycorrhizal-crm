@@ -5,9 +5,11 @@ import (
 	"mycorrhizal/config"
 	"mycorrhizal/database"
 	"mycorrhizal/models"
+	"mycorrhizal/services"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -96,6 +98,25 @@ func TestSearchAll_Validation(t *testing.T) {
 	w2 := httptest.NewRecorder()
 	router.ServeHTTP(w2, req2)
 	assert.Equal(t, http.StatusBadRequest, w2.Code)
+}
+
+// TestSearchAll_RejectsOversizedTerm pins issue #415's search-term bound: a
+// term longer than services.MaxSearchTermLen must be rejected with a 400
+// before any FTS5/LIKE work, and a term at the exact boundary must pass.
+func TestSearchAll_RejectsOversizedTerm(t *testing.T) {
+	_, router := searchRealRouter(t)
+
+	long := strings.Repeat("a", services.MaxSearchTermLen+1)
+	req, _ := http.NewRequest("GET", "/search?q="+long, nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	exact := strings.Repeat("a", services.MaxSearchTermLen)
+	req2, _ := http.NewRequest("GET", "/search?q="+exact, nil)
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+	assert.Equal(t, http.StatusOK, w2.Code)
 }
 
 func TestSearchAll_HouseholdScope(t *testing.T) {

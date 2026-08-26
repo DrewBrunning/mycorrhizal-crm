@@ -73,6 +73,15 @@ const (
 	searchMaxLimit     = 50
 )
 
+// MaxSearchTermLen bounds a free-text search term (issue #415). Both the
+// /search handler and GET /contacts?search= enforce it: an unbounded term
+// would push an arbitrarily long FTS5 MATCH / LIKE clause (with a %...%
+// wrap for the LIKE paths) at the query planner per request, and a 1MB
+// "term" is not a search, it is a request for CPU. Length in runes, not
+// bytes, so a multibyte term is judged by the number of characters the user
+// actually typed.
+const MaxSearchTermLen = 256
+
 // ResolveSearchSynonym reports whether the whole search term resolves to a
 // relation token through the type registry ("mom"/"mother" → parent_of,
 // "brother" → sibling_of) — T11's synonym consumer, also used by the graph

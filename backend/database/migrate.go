@@ -103,12 +103,30 @@ func newMigrator(db *sql.DB) (*migrate.Migrate, error) {
 	return m, nil
 }
 
+// closeMigrator releases the resources newMigrator opened. golang-migrate's
+// source driver leaves a goroutine parked forever waiting to hand off the
+// next migration until Close() runs, and Close()'s database half closes the
+// *sql.DB passed into newMigrator (sqliteDriver.Close(), see
+// sqlite_driver.go) -- both are silent leaks otherwise. Every real-DB test
+// (CLAUDE.md's "test against the real migrated schema" trap) calls InitDB,
+// so skipping this piles up one leaked goroutine + one open sqlite handle
+// per test; across the full suite that was enough to exhaust file
+// descriptors and blow the CI job's 20-minute timeout (issue #415 PR
+// review). *sql.DB.Close is idempotent, so this is safe even for callers
+// that also defer-close their own sqlDB.
+func closeMigrator(m *migrate.Migrate) {
+	if srcErr, dbErr := m.Close(); srcErr != nil || dbErr != nil {
+		logger.Warn().AnErr("source", srcErr).AnErr("database", dbErr).Msg("failed to close migrator")
+	}
+}
+
 // RunMigrations runs all pending database migrations
 func RunMigrations(db *sql.DB) error {
 	m, err := newMigrator(db)
 	if err != nil {
 		return err
 	}
+	defer closeMigrator(m)
 
 	// Get current version
 	version, dirty, err := m.Version()
@@ -172,6 +190,7 @@ func MigrationVersion(dbPath string) (version uint, dirty bool, ok bool, err err
 	if err != nil {
 		return 0, false, false, err
 	}
+	defer closeMigrator(m)
 
 	version, dirty, err = m.Version()
 	if err == migrate.ErrNilVersion {
@@ -203,6 +222,7 @@ func MigrateDown(dbPath string) error {
 	if err != nil {
 		return err
 	}
+	defer closeMigrator(m)
 
 	if err := m.Steps(-1); err != nil {
 		return fmt.Errorf("failed to rollback migration: %w", err)
