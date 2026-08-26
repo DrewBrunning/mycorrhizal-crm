@@ -137,9 +137,22 @@ func TestExportAuditLog_CSVFormulaInjectionNeutralized(t *testing.T) {
 }
 
 // TestExportAuditLog_RejectsOverCap pins issue #415's audit-export bound: a
-// log larger than MaxAuditExportRows must be rejected with a 400 (not loaded
-// into memory and OOM'd), and a log at exactly the cap must still export.
+// log larger than the cap must be rejected with a 400 (not loaded into
+// memory and OOM'd), and a log at exactly the cap must still export.
+//
+// The cap is exercised through the auditExportLimit seam lowered to a tiny
+// value: proving the boundary against the real 100k would mean inserting
+// 200k rows per run, which under CI's -race -covermode=atomic instrumentation
+// blew the controllers package's 20-minute go test timeout on this PR. The
+// seam's default is pinned to the real constant below, and the seam itself is
+// what the handler reads, so the mechanism tested here is exactly the
+// mechanism production runs.
 func TestExportAuditLog_RejectsOverCap(t *testing.T) {
+	require.Equal(t, 100000, MaxAuditExportRows, "the production audit-export cap must stay 100k")
+	original := auditExportLimit
+	auditExportLimit = 10
+	defer func() { auditExportLimit = original }()
+
 	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
 	registerAuditExportRoute(router)
 	models.AuditFlush()
@@ -157,9 +170,8 @@ func TestExportAuditLog_RejectsOverCap(t *testing.T) {
 		return rows
 	}
 
-	// cap+1 events, inserted in batches (a single Create of 100k rows would
-	// exceed SQLite's bound-variable limit).
-	require.NoError(t, db.CreateInBatches(makeEvents(MaxAuditExportRows+1), 1000).Error)
+	// cap+1 events.
+	require.NoError(t, db.CreateInBatches(makeEvents(auditExportLimit+1), 1000).Error)
 
 	req, _ := http.NewRequest("GET", "/audit/export", nil)
 	w := httptest.NewRecorder()
@@ -169,7 +181,7 @@ func TestExportAuditLog_RejectsOverCap(t *testing.T) {
 	// At exactly the cap it exports. Reset the user's events and insert
 	// exactly the cap.
 	require.NoError(t, db.Where("user_id = ?", user.ID).Delete(&models.AuditEvent{}).Error)
-	require.NoError(t, db.CreateInBatches(makeEvents(MaxAuditExportRows), 1000).Error)
+	require.NoError(t, db.CreateInBatches(makeEvents(auditExportLimit), 1000).Error)
 
 	req2, _ := http.NewRequest("GET", "/audit/export", nil)
 	w2 := httptest.NewRecorder()

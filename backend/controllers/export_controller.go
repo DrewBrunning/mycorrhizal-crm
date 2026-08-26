@@ -761,6 +761,15 @@ func ExportContactsAsJSContact(c *gin.Context) {
 // an over-limit log never even gets read past the bound.
 const MaxAuditExportRows = 100000
 
+// auditExportLimit is the mutable seam over MaxAuditExportRows. Production
+// always uses the constant; the boundary test lowers this to a tiny value so
+// it can prove over-limit rejection without inserting 100k rows under CI's
+// -race -covermode=atomic instrumentation (which blew the controllers
+// package's 20-minute go test timeout on this PR). Keep in sync with
+// MaxAuditExportRows — a drift between the two would only loosen or tighten
+// the seam, never the exported constant's contract.
+var auditExportLimit = MaxAuditExportRows
+
 // ExportAuditLog exports the caller's own audit trail as CSV (issue #416).
 // Unlike ListAuditEvents (audit_controller.go), which caps at 500 rows for
 // an interactive list view, this is a backup-style export with a far larger
@@ -799,19 +808,19 @@ func ExportAuditLog(c *gin.Context) {
 	}
 
 	var events []models.AuditEvent
-	// Issue #415: bound the export at MaxAuditExportRows with a capped query —
+	// Issue #415: bound the export at the audit-export cap with a capped query —
 	// Limit(cap+1) both prevents reading past the bound and distinguishes
 	// "exactly at the cap" (len == cap) from "over the cap" (len == cap+1).
 	if err := db.Where("user_id = ?", userID).
 		Order("created_at ASC").
-		Limit(MaxAuditExportRows + 1).
+		Limit(auditExportLimit + 1).
 		Find(&events).Error; err != nil {
 		log.Error().Err(err).Msg("Failed to fetch audit events for export")
 		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
 		return
 	}
-	if len(events) > MaxAuditExportRows {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("export", fmt.Sprintf("Audit log exceeds the export limit of %d rows; use the paginated /audit endpoint instead", MaxAuditExportRows)))
+	if len(events) > auditExportLimit {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("export", fmt.Sprintf("Audit log exceeds the export limit of %d rows; use the paginated /audit endpoint instead", auditExportLimit)))
 		return
 	}
 

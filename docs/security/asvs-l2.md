@@ -507,7 +507,7 @@ tested bound. "Own data" means the operation's cost is proportional to the calle
 | Graph traversal depth | 5 | `services/graph_traversal.go:35` | `graph_controller_test.go` |
 | Graph view (GET /graph) | own data (full graph of the caller's contacts/edges/activities) | `graph_controller.go:18-134` | `graph_controller_test.go` |
 | Export (CSV/VCF/JSContact) | own data (bounded by the caller's contact dataset) | `export_controller.go:173-750` | `export_controller_test.go` |
-| Audit-log export | 100 000 rows → 400 | `export_controller.go:762` `MaxAuditExportRows`, `Limit` at `:807` | `audit_export_controller_test.go` `TestExportAuditLog_RejectsOverCap` |
+| Audit-log export | 100 000 rows → 400 | `export_controller.go:762` `MaxAuditExportRows` (read via the `auditExportLimit:771` seam), `Limit` at `:816` | `audit_export_controller_test.go` `TestExportAuditLog_RejectsOverCap` |
 | Audit log list | 500 rows | `audit_controller.go:33-38` | `audit_controller_test.go` |
 | Webhooks / user | 20 | `webhook_controller.go:34` | `webhook_controller_test.go` |
 | Webhook Events per webhook | 12 (the oneof token count) | `models/dtos.go:533-538` | `webhook_controller_test.go` `TestCreateWebhook_TooManyEventTokens` |
