@@ -8,7 +8,7 @@ does not re-derive `file:line` evidence that already lives there.
 
 | | |
 |---|---|
-| **Last updated** | 2026-08-25 (issue [#377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/377)) |
+| **Last updated** | 2026-08-25 (issue [#377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/377); gating decision 3 revised by issue [#507](https://github.com/DrewBrunning/mycorrhizal-crm/issues/507)) |
 | **Scope** | Backend (Go/Gin + SQLite), frontend (React SPA), Android client, CardDAV/CalDAV sync, self-hosted deployment. |
 | **Companion docs** | `docs/security/asvs-l2.md` (backend/frontend/deployment controls, OWASP ASVS 4.0.3 + API Top 10), `docs/security/masvs-l1.md` (Android client controls, OWASP MASVS 1.5.0) |
 
@@ -136,14 +136,38 @@ a dedicated key-derivation abstraction is deferred to when a second algorithm is
 
 ### 3. MASVS-L2 resilience items (root detection, certificate pinning, screenshot prevention, tapjacking)
 
-**Keep the decline — the app claims MASVS-L1, not L2.** `android/.mobsf` ignore-list entries and
-`masvs-l1.md` P1/P3 already record this with full rationale: pinning a self-hosted origin the operator
-controls would break every cert rotation without answering a realistic MITM threat (P1); root/SafetyNet/
-screenshot/tapjacking hardening are L2/resilience controls that don't fit a single-user personal CRM,
-and SafetyNet itself is deprecated (P3). This doc's contribution is the explicit claim-level statement
-the issue asked for: **the Android client's assurance target is MASVS-L1**, and that's a deliberate
-scope decision, not an oversight — MASVS-L2 is not being claimed and none of its resilience rows are
-counted toward "satisfied" anywhere in `masvs-l1.md`.
+**Split decision, re-evaluated by issue [#507](https://github.com/DrewBrunning/mycorrhizal-crm/issues/507):
+two kept declined, two reversed.** All four were re-examined individually against this doc's actors
+(not as a block) — `masvs-l1.md` P1/P3/P6 record the full cost/benefit for each:
+
+- **Certificate pinning — keep declined** (`masvs-l1.md` P1). Every user runs their own self-hosted
+  server with a certificate the app cannot know in advance, frequently self-signed or from an internal
+  CA; a naive pin would be wrong on day one for most installs. The MITM actor it would answer is real
+  (Actors × trust boundaries, above) but is already neutralized by standard TLS + the KeyChain
+  import flow for self-signed certs. Trust-on-first-use/user-managed pinning remains a distinct,
+  uncosted feature this issue does not adopt.
+- **Root detection (+ SafetyNet) — keep declined** (`masvs-l1.md` P3). This is the audience-honesty
+  weighing the issue specifically asked for: self-hosted users are disproportionately likely to root
+  their devices deliberately, and the actor this control answers (attacker already has the device) is
+  already covered by data-at-rest controls (SQLCipher Room mirror, Keystore session token) that hold
+  regardless of root status. Blocking on root would punish this project's own audience for a threat
+  it doesn't add protection against. SafetyNet is additionally deprecated.
+- **Screenshot prevention — reversed** (`masvs-l1.md` P6, MSTG-STORAGE-9). Every screen renders
+  relationship PII; the recent-apps thumbnail is a concrete, zero-sophistication disclosure vector
+  (anyone with a moment's access to an unlocked-but-idle phone). `MainActivity` now sets
+  `FLAG_SECURE` unconditionally.
+- **Tapjacking protection — reversed** (`masvs-l1.md` P6, MSTG-PLATFORM-9). Near-zero cost —
+  `filterTouchesWhenObscured` only changes behavior when an overlay is actually present — against a
+  real actor class (malicious overlay apps tricking a tap on a destructive confirmation). `MainActivity`
+  now sets `filterTouchesWhenObscured = true` on its decor view.
+
+**Assurance-level consequence, stated explicitly (the issue's ask):** this does **not** move the
+claim to MASVS-L2. Root detection and certificate pinning stay declined, and other L2-only rows
+(`masvs-l1.md` STORAGE-10/11/13/14/15, and the entire V8 Resiliency chapter, which this doc's Android
+scope doesn't track at all) remain out of scope or unaddressed. **The Android client's assurance
+target is still MASVS-L1** — a deliberate scope decision, not an oversight — now with two L2 controls
+satisfied as a documented bonus rather than a level claim. None of MASVS-L2's resilience rows are
+counted toward "satisfied" for level-claiming purposes anywhere in `masvs-l1.md`.
 
 ### 4. mTLS / KMS / centralized log anomaly detection
 
@@ -169,8 +193,9 @@ must remain host-only rather than prefix-locked while plain-HTTP LAN deployments
 
 - A reviewer can answer "what happens if an attacker gets X?" for every asset in the Assets table by
   reading this doc plus the two companion checklists it cites into.
-- Each of the five gating decisions above has an explicit **keep** and a recorded reason — none is left
-  as an implication.
+- Each of the five gating decisions above has an explicit **keep** or **reverse** and a recorded reason
+  — none is left as an implication. Decision 3 is the one split decision: two items kept declined
+  (root detection, certificate pinning), two reversed (screenshot prevention, tapjacking protection).
 - `asvs-l2.md`'s V1.1.2, V1.1.4, and V6.1.1 rows cite this doc instead of re-deriving trust-boundary or
   threat-modeling detail.
 - The two open gaps found while drafting this doc are tracked, not just noted: sync-path hostile input
