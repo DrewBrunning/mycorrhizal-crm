@@ -62,9 +62,7 @@ test('warns the sender the share is frozen and cannot be recalled once sent', as
   renderDialog();
 
   await waitFor(() => expect(fetch).toHaveBeenCalled());
-  expect(
-    screen.getByText(/can't be recalled once sent/i)
-  ).toBeInTheDocument();
+  expect(screen.getByText(/can't be recalled once sent/i)).toBeInTheDocument();
 });
 
 test('sensitive sections stay locked by default, same guard as export', async () => {
