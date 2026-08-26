@@ -1,5 +1,9 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
-import { getReachOutSuggestions, dismissReachOutSuggestion, ReachOutSuggestion } from './reachOutSuggestions';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import {
+  dismissReachOutSuggestion,
+  getReachOutSuggestions,
+  type ReachOutSuggestion,
+} from './reachOutSuggestions';
 
 afterEach(() => {
   vi.unstubAllGlobals();

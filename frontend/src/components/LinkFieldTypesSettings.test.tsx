@@ -1,16 +1,16 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import {
+  createLinkFieldType,
+  deleteLinkFieldType,
+  getLinkFieldTypes,
+  type LinkFieldType,
+  reorderLinkFieldTypes,
+  updateLinkFieldType,
+} from '../api/linkFieldTypes';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import LinkFieldTypesSettings from './LinkFieldTypesSettings';
-import {
-  getLinkFieldTypes,
-  createLinkFieldType,
-  updateLinkFieldType,
-  deleteLinkFieldType,
-  reorderLinkFieldTypes,
-  LinkFieldType,
-} from '../api/linkFieldTypes';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
 afterEach(cleanup);
@@ -45,7 +45,7 @@ function renderSettings() {
   return render(
     <SnackbarProvider>
       <LinkFieldTypesSettings />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 }
 
@@ -65,7 +65,9 @@ test('shows the empty state when there are no link field types', async () => {
 });
 
 test('lists a link field type under its category, flagging seeded defaults', async () => {
-  vi.mocked(getLinkFieldTypes).mockResolvedValue([linkFieldType({ name: 'WhatsApp', category: 'messaging' })]);
+  vi.mocked(getLinkFieldTypes).mockResolvedValue([
+    linkFieldType({ name: 'WhatsApp', category: 'messaging' }),
+  ]);
   renderSettings();
 
   await waitFor(() => expect(screen.getByText('WhatsApp')).toBeInTheDocument());
@@ -74,7 +76,9 @@ test('lists a link field type under its category, flagging seeded defaults', asy
 });
 
 test('a user-added type with no is_default flag shows no Default badge', async () => {
-  vi.mocked(getLinkFieldTypes).mockResolvedValue([linkFieldType({ name: 'Custom', is_default: false })]);
+  vi.mocked(getLinkFieldTypes).mockResolvedValue([
+    linkFieldType({ name: 'Custom', is_default: false }),
+  ]);
   renderSettings();
 
   await waitFor(() => expect(screen.getByText('Custom')).toBeInTheDocument());
@@ -83,27 +87,39 @@ test('a user-added type with no is_default flag shows no Default badge', async (
 
 test('creating a link field type posts the form', async () => {
   vi.mocked(getLinkFieldTypes).mockResolvedValue([]);
-  vi.mocked(createLinkFieldType).mockResolvedValue(linkFieldType({ id: '9', name: 'Custom Chat', category: 'other', is_default: false }));
+  vi.mocked(createLinkFieldType).mockResolvedValue(
+    linkFieldType({ id: '9', name: 'Custom Chat', category: 'other', is_default: false }),
+  );
 
   renderSettings();
   await waitFor(() => expect(screen.getByText('No link field types yet.')).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: /add link type/i }));
   fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Custom Chat' } });
-  fireEvent.change(screen.getByLabelText('Link Template'), { target: { value: 'https://example.com/{value}' } });
+  fireEvent.change(screen.getByLabelText('Link Template'), {
+    target: { value: 'https://example.com/{value}' },
+  });
 
   fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
   await waitFor(() =>
     expect(createLinkFieldType).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Custom Chat', protocol: 'https://example.com/{value}', category: 'messaging' })
-    )
+      expect.objectContaining({
+        name: 'Custom Chat',
+        protocol: 'https://example.com/{value}',
+        category: 'messaging',
+      }),
+    ),
   );
 });
 
 test('editing a link field type prefills the form and saves via update, preserving is_default', async () => {
-  vi.mocked(getLinkFieldTypes).mockResolvedValue([linkFieldType({ id: '4', name: 'Discord', protocol: '' })]);
-  vi.mocked(updateLinkFieldType).mockResolvedValue(linkFieldType({ id: '4', name: 'Discord', protocol: 'https://discord.com/users/{value}' }));
+  vi.mocked(getLinkFieldTypes).mockResolvedValue([
+    linkFieldType({ id: '4', name: 'Discord', protocol: '' }),
+  ]);
+  vi.mocked(updateLinkFieldType).mockResolvedValue(
+    linkFieldType({ id: '4', name: 'Discord', protocol: 'https://discord.com/users/{value}' }),
+  );
 
   renderSettings();
   await waitFor(() => expect(screen.getByText('Discord')).toBeInTheDocument());
@@ -118,8 +134,8 @@ test('editing a link field type prefills the form and saves via update, preservi
   await waitFor(() =>
     expect(updateLinkFieldType).toHaveBeenCalledWith(
       '4',
-      expect.objectContaining({ name: 'Discord', protocol: 'https://discord.com/users/{value}' })
-    )
+      expect.objectContaining({ name: 'Discord', protocol: 'https://discord.com/users/{value}' }),
+    ),
   );
 });
 
@@ -160,7 +176,9 @@ test('moving a type down persists the swapped order within its category', async 
 });
 
 test('the first item in a category cannot move further up', async () => {
-  vi.mocked(getLinkFieldTypes).mockResolvedValue([linkFieldType({ id: 'a', name: 'Signal', position: 0 })]);
+  vi.mocked(getLinkFieldTypes).mockResolvedValue([
+    linkFieldType({ id: 'a', name: 'Signal', position: 0 }),
+  ]);
   renderSettings();
   await waitFor(() => expect(screen.getByText('Signal')).toBeInTheDocument());
 

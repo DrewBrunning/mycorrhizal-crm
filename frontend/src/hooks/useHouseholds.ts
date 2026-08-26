@@ -1,18 +1,18 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  listHouseholds,
-  createHousehold,
-  updateHousehold,
-  deleteHousehold,
   addHouseholdMember,
+  createHousehold,
+  deleteHousehold,
+  type Household,
+  type HouseholdInput,
+  type HouseholdMember,
+  listHouseholds,
   removeHouseholdMember,
-  updateHouseholdMember,
   suggestHouseholdRelationships,
-  Household,
-  HouseholdMember,
-  HouseholdInput,
+  updateHousehold,
+  updateHouseholdMember,
 } from '../api/households';
-import { handleFetchError, handleError, ErrorNotifier } from '../utils/errorHandler';
+import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
 export function useHouseholds(notifier?: ErrorNotifier) {
   const [households, setHouseholds] = useState<Household[]>([]);
@@ -49,7 +49,7 @@ export function useHouseholds(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [refresh, notifier]
+    [refresh, notifier],
   );
 
   const handleUpdate = useCallback(
@@ -62,7 +62,7 @@ export function useHouseholds(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [refresh, notifier]
+    [refresh, notifier],
   );
 
   const handleDelete = useCallback(
@@ -75,20 +75,23 @@ export function useHouseholds(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [refresh, notifier]
+    [refresh, notifier],
   );
 
   const handleAddMember = useCallback(
     async (householdId: string, memberVCardUid: string, role?: string) => {
       try {
-        await addHouseholdMember(householdId, { member_vcard_uid: memberVCardUid, role: role || undefined });
+        await addHouseholdMember(householdId, {
+          member_vcard_uid: memberVCardUid,
+          role: role || undefined,
+        });
         await refresh();
       } catch (err) {
         handleError(err, { operation: 'adding household member' }, notifier);
         throw err;
       }
     },
-    [refresh, notifier]
+    [refresh, notifier],
   );
 
   const handleRemoveMember = useCallback(
@@ -101,7 +104,7 @@ export function useHouseholds(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [refresh, notifier]
+    [refresh, notifier],
   );
 
   const handleUpdateMember = useCallback(
@@ -114,7 +117,7 @@ export function useHouseholds(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [refresh, notifier]
+    [refresh, notifier],
   );
 
   // Runs the suggestion trigger. Returns the number of newly-created
@@ -130,7 +133,7 @@ export function useHouseholds(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [notifier]
+    [notifier],
   );
 
   return {

@@ -1,8 +1,8 @@
 // Custom hook for fetching network graph data
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { isAuthenticated } from '../auth';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getGraph } from '../api/graph';
-import { GraphData } from '../types/graph';
+import { isAuthenticated } from '../auth';
+import type { GraphData } from '../types/graph';
 import { handleFetchError } from '../utils/errorHandler';
 
 interface UseGraphResult {

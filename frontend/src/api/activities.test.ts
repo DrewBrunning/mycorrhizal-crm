@@ -1,12 +1,12 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  getActivities,
-  getContactActivities,
-  getActivity,
+  type Activity,
   createActivity,
-  updateActivity,
   deleteActivity,
-  Activity,
+  getActivities,
+  getActivity,
+  getContactActivities,
+  updateActivity,
 } from './activities';
 
 afterEach(() => {
@@ -66,7 +66,10 @@ describe('getActivities', () => {
 
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
-    await expect(getActivities({})).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(getActivities({})).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -89,7 +92,10 @@ describe('getContactActivities', () => {
 
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
-    await expect(getContactActivities(5)).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(getContactActivities(5)).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -144,7 +150,7 @@ describe('createActivity', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
     await expect(
-      createActivity({ title: 'Coffee', description: '', location: '', date: '', contact_ids: [] })
+      createActivity({ title: 'Coffee', description: '', location: '', date: '', contact_ids: [] }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
   });
 });
@@ -192,6 +198,9 @@ describe('deleteActivity', () => {
 
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
-    await expect(deleteActivity(1)).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(deleteActivity(1)).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });

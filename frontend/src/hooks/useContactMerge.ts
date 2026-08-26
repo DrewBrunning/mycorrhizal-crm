@@ -1,10 +1,10 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
-  previewContactMerge,
+  type ContactMergePreviewResponse,
   commitContactMerge,
-  ContactMergePreviewResponse,
+  previewContactMerge,
 } from '../api/contactMerge';
-import { handleFetchError, handleError, ErrorNotifier } from '../utils/errorHandler';
+import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
 // useContactMerge drives the preview -> resolve conflicts -> commit flow for
 // ticket N1. One preview at a time (no list concept, unlike
@@ -73,7 +73,7 @@ export function useContactMerge(notifier?: ErrorNotifier) {
         setCommitting(false);
       }
     },
-    [resolutions, notifier]
+    [resolutions, notifier],
   );
 
   const reset = useCallback(() => {

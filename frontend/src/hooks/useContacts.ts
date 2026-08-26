@@ -1,11 +1,7 @@
 // Custom hook for fetching and managing contacts
-import { useState, useEffect, useCallback, Dispatch, SetStateAction } from 'react';
+import { type Dispatch, type SetStateAction, useCallback, useEffect, useState } from 'react';
+import { type Contact, type GetContactsParams, getContacts } from '../api/contacts';
 import { isAuthenticated } from '../auth';
-import {
-  getContacts,
-  GetContactsParams,
-  Contact
-} from '../api/contacts';
 import { handleFetchError } from '../utils/errorHandler';
 
 interface UseContactsResult {
@@ -30,7 +26,18 @@ interface UseContactsResult {
 export function useContacts(params: GetContactsParams = {}): UseContactsResult {
   // Destructure params to use primitive values as dependencies
   // This prevents re-fetches when callers pass new object references with identical values
-  const { cursor: _ignored, limit, search, circle, sort, order, includeArchived, archived, favorites, hasContactInfo } = params;
+  const {
+    cursor: _ignored,
+    limit,
+    search,
+    circle,
+    sort,
+    order,
+    includeArchived,
+    archived,
+    favorites,
+    hasContactInfo,
+  } = params;
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [nextCursor, setNextCursor] = useState('');
@@ -95,7 +102,18 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
     } finally {
       setLoading(false);
     }
-  }, [nextCursor, limit, search, circle, sort, order, includeArchived, archived, favorites, hasContactInfo]);
+  }, [
+    nextCursor,
+    limit,
+    search,
+    circle,
+    sort,
+    order,
+    includeArchived,
+    archived,
+    favorites,
+    hasContactInfo,
+  ]);
 
   useEffect(() => {
     fetchFirst();

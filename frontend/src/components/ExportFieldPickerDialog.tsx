@@ -1,26 +1,22 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Box,
-  Typography,
-  FormControl,
-  FormLabel,
-  RadioGroup,
-  Radio,
-  FormControlLabel,
   Alert,
+  Box,
+  Button,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  FormControlLabel,
+  FormLabel,
+  Radio,
+  RadioGroup,
+  Typography,
 } from '@mui/material';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { EXPORT_FIELD_SECTIONS, type ExportFormat, type ExportSelection } from '../api/export';
 import AppDialog from './AppDialog';
 import FieldSectionPicker from './FieldSectionPicker';
-import {
-  ExportFormat,
-  EXPORT_FIELD_SECTIONS,
-  ExportSelection,
-} from '../api/export';
 
 interface ExportFieldPickerDialogProps {
   open: boolean;
@@ -48,7 +44,7 @@ export default function ExportFieldPickerDialog({
 
   const defaultSelection = useMemo(
     () => new Set(EXPORT_FIELD_SECTIONS.filter((s) => !s.sensitive).map((s) => s.token)),
-    []
+    [],
   );
 
   useEffect(() => {
@@ -74,8 +70,7 @@ export default function ExportFieldPickerDialog({
 
   const handleExport = async () => {
     const includeSensitive =
-      sensitiveRevealed &&
-      EXPORT_FIELD_SECTIONS.some((s) => s.sensitive && selected.has(s.token));
+      sensitiveRevealed && EXPORT_FIELD_SECTIONS.some((s) => s.sensitive && selected.has(s.token));
 
     setExporting(true);
     setError('');
@@ -98,45 +93,67 @@ export default function ExportFieldPickerDialog({
   };
 
   return (
-      <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-        <DialogTitle>{t('settings.exportFieldPicker.title')}</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              {t('settings.exportFieldPicker.description')}
-            </Typography>
+    <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <DialogTitle>{t('settings.exportFieldPicker.title')}</DialogTitle>
+      <DialogContent>
+        <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            {t('settings.exportFieldPicker.description')}
+          </Typography>
 
-            <FormControl component="fieldset">
-              <FormLabel component="legend">{t('settings.exportFieldPicker.format')}</FormLabel>
-              <RadioGroup
-                row
-                value={format}
-                onChange={(e) => setFormat(e.target.value as ExportFormat)}
-              >
-                <FormControlLabel value="vcf4" control={<Radio />} label={t('settings.exportFieldPicker.formats.vcf4')} />
-                <FormControlLabel value="vcf3" control={<Radio />} label={t('settings.exportFieldPicker.formats.vcf3')} />
-                <FormControlLabel value="jscontact" control={<Radio />} label={t('settings.exportFieldPicker.formats.jscontact')} />
-              </RadioGroup>
-            </FormControl>
+          <FormControl component="fieldset">
+            <FormLabel component="legend">{t('settings.exportFieldPicker.format')}</FormLabel>
+            <RadioGroup
+              row
+              value={format}
+              onChange={(e) => setFormat(e.target.value as ExportFormat)}
+            >
+              <FormControlLabel
+                value="vcf4"
+                control={<Radio />}
+                label={t('settings.exportFieldPicker.formats.vcf4')}
+              />
+              <FormControlLabel
+                value="vcf3"
+                control={<Radio />}
+                label={t('settings.exportFieldPicker.formats.vcf3')}
+              />
+              <FormControlLabel
+                value="jscontact"
+                control={<Radio />}
+                label={t('settings.exportFieldPicker.formats.jscontact')}
+              />
+            </RadioGroup>
+          </FormControl>
 
-            <FieldSectionPicker
-              selected={selected}
-              onToggle={toggle}
-              sensitiveRevealed={sensitiveRevealed}
-              onReveal={() => setSensitiveRevealed(true)}
-            />
+          <FieldSectionPicker
+            selected={selected}
+            onToggle={toggle}
+            sensitiveRevealed={sensitiveRevealed}
+            onReveal={() => setSensitiveRevealed(true)}
+          />
 
-            {error && <Alert severity="error" sx={{ py: 0 }}>{error}</Alert>}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose} disabled={exporting}>
-            {t('common.cancel')}
-          </Button>
-          <Button onClick={handleExport} variant="contained" disabled={exporting || selected.size === 0}>
-            {exporting ? t('settings.exportFieldPicker.exporting') : t('settings.exportFieldPicker.exportButton')}
-          </Button>
-        </DialogActions>
-      </AppDialog>
+          {error && (
+            <Alert severity="error" sx={{ py: 0 }}>
+              {error}
+            </Alert>
+          )}
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleClose} disabled={exporting}>
+          {t('common.cancel')}
+        </Button>
+        <Button
+          onClick={handleExport}
+          variant="contained"
+          disabled={exporting || selected.size === 0}
+        >
+          {exporting
+            ? t('settings.exportFieldPicker.exporting')
+            : t('settings.exportFieldPicker.exportButton')}
+        </Button>
+      </DialogActions>
+    </AppDialog>
   );
 }

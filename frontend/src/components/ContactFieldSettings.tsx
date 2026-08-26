@@ -1,28 +1,30 @@
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import ViewListIcon from '@mui/icons-material/ViewList';
 import {
+  Alert,
   Box,
   Card,
   CardContent,
-  Typography,
   Divider,
-  Stack,
-  Alert,
   FormControlLabel,
+  Stack,
   Switch,
+  Typography,
 } from '@mui/material';
-import ViewListIcon from '@mui/icons-material/ViewList';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getEnabledContactFields, updateEnabledContactFields } from '../api/users';
 import {
-  CONTACT_FIELDS,
   CONTACT_FIELD_GROUPS,
-  ContactFieldKey,
+  CONTACT_FIELDS,
+  type ContactFieldKey,
   DEFAULT_ENABLED_CONTACT_FIELDS,
 } from '../contactFields';
 
 export default function ContactFieldSettings() {
   const { t } = useTranslation();
-  const [enabled, setEnabled] = useState<Set<ContactFieldKey>>(new Set(DEFAULT_ENABLED_CONTACT_FIELDS));
+  const [enabled, setEnabled] = useState<Set<ContactFieldKey>>(
+    new Set(DEFAULT_ENABLED_CONTACT_FIELDS),
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -32,7 +34,8 @@ export default function ContactFieldSettings() {
       try {
         setLoading(true);
         const stored = await getEnabledContactFields();
-        const keys = stored == null ? DEFAULT_ENABLED_CONTACT_FIELDS : (stored as ContactFieldKey[]);
+        const keys =
+          stored == null ? DEFAULT_ENABLED_CONTACT_FIELDS : (stored as ContactFieldKey[]);
         setEnabled(new Set(keys));
       } catch (err) {
         setError(err instanceof Error ? err.message : t('settings.contactFields.loadError'));
@@ -78,7 +81,11 @@ export default function ContactFieldSettings() {
             {t('settings.contactFields.description')}
           </Typography>
 
-          {error && <Alert severity="error" sx={{ py: 0 }}>{error}</Alert>}
+          {error && (
+            <Alert severity="error" sx={{ py: 0 }}>
+              {error}
+            </Alert>
+          )}
 
           {loading ? (
             <Typography variant="body2" color="text.secondary">

@@ -1,5 +1,5 @@
 // Attachment API calls -- N7.
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 export interface Attachment {
   // gorm.Model fields serialize with their Go names (no json tags on the
@@ -20,7 +20,9 @@ export interface AttachmentListResponse {
 }
 
 // GET /contacts/:id/attachments
-export async function listContactAttachments(contactId: number | string): Promise<AttachmentListResponse> {
+export async function listContactAttachments(
+  contactId: number | string,
+): Promise<AttachmentListResponse> {
   const response = await apiFetch(`${API_BASE_URL}/contacts/${contactId}/attachments`, {
     headers: getAuthHeaders(),
   });
@@ -29,7 +31,10 @@ export async function listContactAttachments(contactId: number | string): Promis
 }
 
 // POST /contacts/:id/attachments
-export async function uploadAttachment(contactId: number | string, file: File): Promise<Attachment> {
+export async function uploadAttachment(
+  contactId: number | string,
+  file: File,
+): Promise<Attachment> {
   const formData = new FormData();
   formData.append('file', file);
   const response = await apiFetch(`${API_BASE_URL}/contacts/${contactId}/attachments`, {

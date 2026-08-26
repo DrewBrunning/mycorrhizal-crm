@@ -1,18 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Box,
   Autocomplete,
+  Box,
+  Button,
   Chip,
   CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
 } from '@mui/material';
-import AppDialog from './AppDialog';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Contact, getContacts } from '../api/contacts';
+import { type Contact, getContacts } from '../api/contacts';
+import AppDialog from './AppDialog';
 
 interface AddActivityDialogProps {
   open: boolean;
@@ -81,7 +81,7 @@ export default function AddActivityDialog({
   // Debounced search effect
   useEffect(() => {
     if (!open) return;
-    
+
     const timeoutId = setTimeout(() => {
       loadContacts(searchInput);
     }, 300);
@@ -147,7 +147,7 @@ export default function AddActivityDialog({
             required
             autoFocus
           />
-          
+
           <TextField
             label={t('activityDialog.description')}
             placeholder={t('activityDialog.descriptionPlaceholder')}
@@ -157,7 +157,7 @@ export default function AddActivityDialog({
             onChange={(e) => setDescription(e.target.value)}
             fullWidth
           />
-          
+
           <TextField
             label={t('activityDialog.location')}
             placeholder={t('activityDialog.locationPlaceholder')}
@@ -165,7 +165,7 @@ export default function AddActivityDialog({
             onChange={(e) => setLocation(e.target.value)}
             fullWidth
           />
-          
+
           <TextField
             label={t('activityDialog.date')}
             type="date"
@@ -177,7 +177,7 @@ export default function AddActivityDialog({
               shrink: true,
             }}
           />
-          
+
           <Autocomplete
             multiple
             options={contacts}

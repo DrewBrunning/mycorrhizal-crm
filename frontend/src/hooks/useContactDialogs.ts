@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { createNote } from '../api/notes';
 import { createActivity } from '../api/activities';
-import { handleError, ErrorNotifier, getErrorMessage } from '../utils/errorHandler';
+import { createNote } from '../api/notes';
+import { type ErrorNotifier, getErrorMessage, handleError } from '../utils/errorHandler';
 
 export function useContactDialogs(
   contactId: string | undefined,
   onRefresh: () => Promise<void>,
-  notifier?: ErrorNotifier
+  notifier?: ErrorNotifier,
 ) {
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
@@ -18,7 +18,7 @@ export function useContactDialogs(
       await createNote(contactId, {
         content,
         date: new Date(date).toISOString(),
-        contact_id: parseInt(contactId)
+        contact_id: parseInt(contactId, 10),
       });
       await onRefresh();
     } catch (err) {
@@ -40,7 +40,7 @@ export function useContactDialogs(
         description: activity.description,
         location: activity.location,
         date: new Date(activity.date).toISOString(),
-        contact_ids: activity.contact_ids
+        contact_ids: activity.contact_ids,
       });
       await onRefresh();
     } catch (err) {
@@ -55,6 +55,6 @@ export function useContactDialogs(
     setNoteDialogOpen,
     setActivityDialogOpen,
     handleSaveNote,
-    handleSaveActivity
+    handleSaveActivity,
   };
 }

@@ -1,5 +1,11 @@
-import { test, expect } from './fixtures';
-import { waitForLoading, searchContact, createTestContact, deleteTestContact } from './fixtures';
+import {
+  createTestContact,
+  deleteTestContact,
+  expect,
+  searchContact,
+  test,
+  waitForLoading,
+} from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 // Authenticated via the shared storageState (see playwright.config.ts) — no
@@ -65,7 +71,9 @@ test.describe('Contacts', () => {
 
     try {
       await page.goto(`/contacts/${contact.ID}`);
-      await expect(page.getByRole('heading', { name: `${contact.firstname} Before` })).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: `${contact.firstname} Before` }),
+      ).toBeVisible();
 
       // Enter profile edit mode via the (hover-revealed) pencil next to the
       // name. Use the .edit-icon class — MUI strips icon data-testids from
@@ -91,7 +99,9 @@ test.describe('Contacts', () => {
     try {
       await page.goto(`/contacts/${contact.ID}`);
       await waitForLoading(page);
-      await expect(page.getByRole('heading', { name: `${contact.firstname} ToDelete` })).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: `${contact.firstname} ToDelete` }),
+      ).toBeVisible();
 
       // Deletion is confirmed via a native confirm() dialog.
       page.once('dialog', (dialog) => dialog.accept());
@@ -106,10 +116,13 @@ test.describe('Contacts', () => {
       // read snapshot), so poll briefly rather than asserting a single request.
       await expect(page).toHaveURL(/\/contacts$/);
       await expect
-        .poll(async () => (await page.request.get(`${API_BASE_URL}/contacts/${contact.ID}`)).status(), {
-          message: 'the deleted contact must no longer be retrievable',
-          timeout: 10000,
-        })
+        .poll(
+          async () => (await page.request.get(`${API_BASE_URL}/contacts/${contact.ID}`)).status(),
+          {
+            message: 'the deleted contact must no longer be retrievable',
+            timeout: 10000,
+          },
+        )
         .toBe(404);
     } finally {
       await deleteTestContact(page.request, contact.ID);

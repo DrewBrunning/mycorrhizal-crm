@@ -1,7 +1,6 @@
-import { test, expect } from './fixtures';
-import { waitForLoading, stableClick } from './fixtures';
-import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 import type { APIRequestContext } from '@playwright/test';
+import { expect, stableClick, test, waitForLoading } from './fixtures';
+import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 // T75:
 // a plain `db.Save` on a loaded contact used to silently destroy all Card-only
@@ -64,7 +63,10 @@ async function createRichContact(request: APIRequestContext, suffix: string): Pr
   const res = await request.post(`${API_BASE_URL}/contacts`, {
     data: richCardOnlyPayload(firstname),
   });
-  expect(res.ok(), `failed to create rich test contact: ${res.status()} ${await res.text()}`).toBeTruthy();
+  expect(
+    res.ok(),
+    `failed to create rich test contact: ${res.status()} ${await res.text()}`,
+  ).toBeTruthy();
   const body = await res.json();
   const created = body.contact || body;
   return { ID: created.id, uid: created.uid, firstname };
@@ -86,7 +88,10 @@ async function expectCardOnlyDataPreserved(request: APIRequestContext, id: numbe
 }
 
 test.describe('T75: plain saves no longer destroy Card-only data', () => {
-  test('profile-photo upload keeps pronouns, hobbies and address details', async ({ page, request }) => {
+  test('profile-photo upload keeps pronouns, hobbies and address details', async ({
+    page,
+    request,
+  }) => {
     const contact = await createRichContact(request, 'Photo');
 
     try {
@@ -122,7 +127,10 @@ test.describe('T75: plain saves no longer destroy Card-only data', () => {
     }
   });
 
-  test('audit Undo no longer wipes pronouns, hobbies and address details', async ({ page, request }) => {
+  test('audit Undo no longer wipes pronouns, hobbies and address details', async ({
+    page,
+    request,
+  }) => {
     const contact = await createRichContact(request, 'Undo');
 
     try {
@@ -139,10 +147,12 @@ test.describe('T75: plain saves no longer destroy Card-only data', () => {
       // Wait for the async audit write to land (fire-and-forget goroutine).
       await expect(async () => {
         const res = await request.get(
-          `${API_BASE_URL}/audit?entity_type=contact&entity_id=${contact.uid}&limit=100`
+          `${API_BASE_URL}/audit?entity_type=contact&entity_id=${contact.uid}&limit=100`,
         );
         const body = res.ok() ? await res.json() : { audit_events: [] };
-        expect((body.audit_events || []).some((e: { operation: string }) => e.operation === 'update')).toBeTruthy();
+        expect(
+          (body.audit_events || []).some((e: { operation: string }) => e.operation === 'update'),
+        ).toBeTruthy();
       }).toPass({ timeout: 15000 });
 
       await page.goto('/');
@@ -166,7 +176,7 @@ test.describe('T75: plain saves no longer destroy Card-only data', () => {
       const afterBody = await afterUndo.json();
       const afterRecord = afterBody.contact || afterBody;
       const surname = afterRecord.card.name.components.find(
-        (c: { kind: string }) => c.kind === 'surname'
+        (c: { kind: string }) => c.kind === 'surname',
       )?.value;
       expect(surname).toBe('T75');
       await expectCardOnlyDataPreserved(request, contact.ID);
@@ -175,7 +185,10 @@ test.describe('T75: plain saves no longer destroy Card-only data', () => {
     }
   });
 
-  test('CSV import merge into an existing contact keeps its Card-only data', async ({ page, request }) => {
+  test('CSV import merge into an existing contact keeps its Card-only data', async ({
+    page,
+    request,
+  }) => {
     const contact = await createRichContact(request, 'Merge');
 
     try {
@@ -183,7 +196,10 @@ test.describe('T75: plain saves no longer destroy Card-only data', () => {
 
       await page.goto('/settings/data');
       await waitForLoading(page);
-      await page.getByRole('button', { name: /import contacts/i }).first().click();
+      await page
+        .getByRole('button', { name: /import contacts/i })
+        .first()
+        .click();
 
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();

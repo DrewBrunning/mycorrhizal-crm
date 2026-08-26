@@ -1,17 +1,17 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
-  getSeafileConfig,
-  saveSeafileConfig,
   deleteSeafileConfig,
-  getSeafileLibraries,
+  getSeafileConfig,
   getSeafileDir,
+  getSeafileLibraries,
+  type SeafileConfigResponse,
+  type SeafileConnectionTestResult,
+  type SeafileItem,
+  type SeafileLibrary,
+  saveSeafileConfig,
   testSeafileConnection,
-  SeafileConfigResponse,
-  SeafileConnectionTestResult,
-  SeafileLibrary,
-  SeafileItem,
 } from '../api/seafile';
-import { handleFetchError, handleError, ErrorNotifier } from '../utils/errorHandler';
+import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
 // useSeafile backs both the settings connection card and the contact-page
 // Seafile link surface (P2b). Connection config is per-user-global; per
@@ -51,7 +51,7 @@ export function useSeafile(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [notifier]
+    [notifier],
   );
 
   const removeConfig = useCallback(async () => {
@@ -87,7 +87,7 @@ export function useSeafile(notifier?: ErrorNotifier) {
         setBrowsing(false);
       }
     },
-    [notifier]
+    [notifier],
   );
 
   const testConnection = useCallback(async () => {

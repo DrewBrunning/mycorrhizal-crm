@@ -10,7 +10,17 @@ const run = async () => {
   });
 
   const createResp = await context.request.post(`${BASE}/api/v1/contacts`, {
-    data: { card: { name: { components: [{ kind: 'given', value: 'Diag5' }, { kind: 'surname', value: 'X' }] } }, crm: {} },
+    data: {
+      card: {
+        name: {
+          components: [
+            { kind: 'given', value: 'Diag5' },
+            { kind: 'surname', value: 'X' },
+          ],
+        },
+      },
+      crm: {},
+    },
   });
   const created = await createResp.json();
   const contact = created.contact || created;

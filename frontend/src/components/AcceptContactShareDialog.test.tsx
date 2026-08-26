@@ -1,9 +1,9 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { ContactShare } from '../api/contactShares';
+import type { ImportPreviewResponse } from '../api/import';
 import AcceptContactShareDialog from './AcceptContactShareDialog';
-import { ContactShare } from '../api/contactShares';
-import { ImportPreviewResponse } from '../api/import';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);
@@ -61,7 +61,9 @@ function renderDialog(props: Partial<React.ComponentProps<typeof AcceptContactSh
     onClose: vi.fn(),
     share,
     onAcceptPreview: vi.fn().mockResolvedValue(preview),
-    onConfirm: vi.fn().mockResolvedValue({ total_processed: 1, created: 1, updated: 0, skipped: 0, errors: 0 }),
+    onConfirm: vi
+      .fn()
+      .mockResolvedValue({ total_processed: 1, created: 1, updated: 0, skipped: 0, errors: 0 }),
   };
   const merged = { ...defaults, ...props };
   render(<AcceptContactShareDialog {...merged} />);
@@ -90,7 +92,7 @@ test('loads the preview on open and confirms with the add action', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
 
   await waitFor(() =>
-    expect(onConfirm).toHaveBeenCalledWith('share-1', 'sess-1', [{ row_index: 0, action: 'add' }])
+    expect(onConfirm).toHaveBeenCalledWith('share-1', 'sess-1', [{ row_index: 0, action: 'add' }]),
   );
   await waitFor(() => expect(onClose).toHaveBeenCalled());
 });
@@ -106,7 +108,9 @@ test('a duplicate match shows the warning chip and preselects the update action'
   fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
 
   await waitFor(() =>
-    expect(onConfirm).toHaveBeenCalledWith('share-1', 'sess-1', [{ row_index: 0, action: 'update' }])
+    expect(onConfirm).toHaveBeenCalledWith('share-1', 'sess-1', [
+      { row_index: 0, action: 'update' },
+    ]),
   );
 });
 
@@ -122,7 +126,7 @@ test('selecting a different action before confirming sends that action', async (
   fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
 
   await waitFor(() =>
-    expect(onConfirm).toHaveBeenCalledWith('share-1', 'sess-1', [{ row_index: 0, action: 'skip' }])
+    expect(onConfirm).toHaveBeenCalledWith('share-1', 'sess-1', [{ row_index: 0, action: 'skip' }]),
   );
 });
 

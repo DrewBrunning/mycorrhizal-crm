@@ -1,13 +1,13 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  getPreferences,
   createPreference,
-  updatePreference,
   deletePreference,
-  Preference,
-  PreferenceInput,
+  getPreferences,
+  type Preference,
+  type PreferenceInput,
+  updatePreference,
 } from '../api/preferences';
-import { handleFetchError, handleError, ErrorNotifier } from '../utils/errorHandler';
+import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
 // usePreferences loads and manages the structured Preferences  for one
 // contact, keyed by the contact's VCardUID (entity_id).
@@ -48,7 +48,7 @@ export function usePreferences(entityId: string | undefined, notifier?: ErrorNot
         throw err;
       }
     },
-    [refresh, notifier]
+    [refresh, notifier],
   );
 
   const handleDelete = useCallback(
@@ -61,7 +61,7 @@ export function usePreferences(entityId: string | undefined, notifier?: ErrorNot
         throw err;
       }
     },
-    [refresh, notifier]
+    [refresh, notifier],
   );
 
   return { preferences, loading, error, refresh, handleSave, handleDelete };

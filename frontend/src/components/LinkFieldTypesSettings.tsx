@@ -1,41 +1,45 @@
-import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import AddIcon from '@mui/icons-material/Add';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import LinkIcon from '@mui/icons-material/Link';
 import {
+  Alert,
+  Autocomplete,
   Box,
+  Button,
   Card,
   CardContent,
-  Typography,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Divider,
-  TextField,
-  Button,
-  Stack,
-  Alert,
   IconButton,
   List,
   ListItem,
   ListItemText,
   ListSubheader,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
-  Chip,
   MenuItem,
-  Autocomplete,
+  Stack,
   SvgIcon,
+  TextField,
+  Typography,
 } from '@mui/material';
-import LinkIcon from '@mui/icons-material/Link';
-import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import { useLinkFieldTypes } from '../hooks/useLinkFieldTypes';
-import { LinkFieldType, LinkFieldTypeCategory, LinkFieldTypeInput } from '../api/linkFieldTypes';
-import { getErrorMessage } from '../utils/errorHandler';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type {
+  LinkFieldType,
+  LinkFieldTypeCategory,
+  LinkFieldTypeInput,
+} from '../api/linkFieldTypes';
 import { useSnackbar } from '../context/SnackbarContext';
+import { useLinkFieldTypes } from '../hooks/useLinkFieldTypes';
 import { LINK_FIELD_TYPE_ICON_OPTIONS, resolveLinkFieldTypeIcon } from '../linkFieldTypeIcons';
+import { getErrorMessage } from '../utils/errorHandler';
 
 const CATEGORIES: LinkFieldTypeCategory[] = ['messaging', 'social', 'other'];
 
@@ -130,14 +134,22 @@ export default function LinkFieldTypesSettings() {
     <>
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}
+          >
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <LinkIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
               <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
                 {t('settings.linkFieldTypes.title')}
               </Typography>
             </Box>
-            <Button variant="contained" color="primary" size="small" startIcon={<AddIcon />} onClick={openCreate}>
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<AddIcon />}
+              onClick={openCreate}
+            >
               {t('settings.linkFieldTypes.add')}
             </Button>
           </Box>
@@ -148,7 +160,11 @@ export default function LinkFieldTypesSettings() {
               {t('settings.linkFieldTypes.description')}
             </Typography>
 
-            {error && <Alert severity="error" sx={{ py: 0 }}>{error}</Alert>}
+            {error && (
+              <Alert severity="error" sx={{ py: 0 }}>
+                {error}
+              </Alert>
+            )}
 
             {loading ? (
               <Typography variant="body2" color="text.secondary">
@@ -218,7 +234,9 @@ export default function LinkFieldTypesSettings() {
                         secondaryTypographyProps={{ component: 'div' }}
                         primary={
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 500 }}>{lt.name}</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                              {lt.name}
+                            </Typography>
                             {lt.is_default && (
                               <Chip
                                 size="small"
@@ -246,7 +264,9 @@ export default function LinkFieldTypesSettings() {
       {/* Add/Edit dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {editingLinkFieldType ? t('settings.linkFieldTypes.editTitle') : t('settings.linkFieldTypes.addTitle')}
+          {editingLinkFieldType
+            ? t('settings.linkFieldTypes.editTitle')
+            : t('settings.linkFieldTypes.addTitle')}
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -272,7 +292,9 @@ export default function LinkFieldTypesSettings() {
               select
               label={t('settings.linkFieldTypes.category')}
               value={form.category}
-              onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as LinkFieldTypeCategory }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, category: e.target.value as LinkFieldTypeCategory }))
+              }
               size="small"
               required
               fullWidth
@@ -289,24 +311,31 @@ export default function LinkFieldTypesSettings() {
               value={form.icon}
               onInputChange={(_, value) => setForm((f) => ({ ...f, icon: value }))}
               renderOption={(props, option) => (
-                <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <SvgIcon fontSize="small"><path d={resolveLinkFieldTypeIcon(option)} /></SvgIcon>
+                <Box
+                  component="li"
+                  {...props}
+                  sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                >
+                  <SvgIcon fontSize="small">
+                    <path d={resolveLinkFieldTypeIcon(option)} />
+                  </SvgIcon>
                   {option}
                 </Box>
               )}
               renderInput={(params) => (
-                <TextField {...params} label={t('settings.linkFieldTypes.icon')} size="small" helperText={t('settings.linkFieldTypes.iconHelp')} />
+                <TextField
+                  {...params}
+                  label={t('settings.linkFieldTypes.icon')}
+                  size="small"
+                  helperText={t('settings.linkFieldTypes.iconHelp')}
+                />
               )}
             />
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
-          <Button
-            onClick={handleSave}
-            variant="contained"
-            disabled={saving || !form.name.trim()}
-          >
+          <Button onClick={handleSave} variant="contained" disabled={saving || !form.name.trim()}>
             {saving ? t('common.saving') : t('common.save')}
           </Button>
         </DialogActions>

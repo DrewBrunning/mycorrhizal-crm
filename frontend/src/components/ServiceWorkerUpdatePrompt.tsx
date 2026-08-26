@@ -1,7 +1,7 @@
+import { Alert, Button, Snackbar } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { Snackbar, Alert, Button } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { onUpdateAvailable, applyUpdate } from '../serviceWorkerUpdates';
+import { applyUpdate, onUpdateAvailable } from '../serviceWorkerUpdates';
 
 // ServiceWorkerUpdatePrompt tells the user a new build has been precached and
 // offers to switch to it.

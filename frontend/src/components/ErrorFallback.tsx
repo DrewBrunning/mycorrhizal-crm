@@ -1,13 +1,7 @@
-import React from 'react';
-import {
-  Box,
-  Typography,
-  Button,
-  Alert,
-  AlertTitle,
-} from '@mui/material';
-import RefreshIcon from '@mui/icons-material/Refresh';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import { Alert, AlertTitle, Box, Button, Typography } from '@mui/material';
+import type React from 'react';
 
 /**
  * Props for ErrorFallback component
@@ -29,10 +23,10 @@ interface ErrorFallbackProps {
 
 /**
  * ErrorFallback component
- * 
+ *
  * A simple, inline error fallback UI for use with ErrorBoundary
  * or as a standalone error display component.
- * 
+ *
  * @example
  * ```tsx
  * <ErrorBoundary fallback={<ErrorFallback title="Failed to load contacts" />}>
@@ -70,22 +64,17 @@ export const ErrorFallback: React.FC<ErrorFallbackProps> = ({
           mb: 2,
         }}
       />
-      
+
       <Typography variant={titleVariant} gutterBottom>
         {title}
       </Typography>
-      
+
       <Typography variant={bodyVariant} color="text.secondary" paragraph>
         {message}
       </Typography>
 
       {onReset && (
-        <Button
-          variant="contained"
-          startIcon={<RefreshIcon />}
-          onClick={onReset}
-          size={size}
-        >
+        <Button variant="contained" startIcon={<RefreshIcon />} onClick={onReset} size={size}>
           Try Again
         </Button>
       )}
@@ -105,7 +94,7 @@ export const ErrorFallback: React.FC<ErrorFallbackProps> = ({
 
 /**
  * SectionErrorFallback component
- * 
+ *
  * A minimal error fallback for small sections or cards.
  * Uses an Alert component for a less intrusive error display.
  */

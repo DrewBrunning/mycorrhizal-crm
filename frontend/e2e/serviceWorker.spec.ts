@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { expect, test } from './fixtures';
 
 // The service worker must stay registered across page loads.
 //
@@ -20,7 +20,9 @@ import { test, expect } from './fixtures';
 // (nginx on 7300) -- register() is deliberately a no-op in development builds,
 // so a dev-server run would prove nothing.
 test.describe('Service worker', () => {
-  test('registers and survives a page reload, so a push subscription can outlive it', async ({ page }) => {
+  test('registers and survives a page reload, so a push subscription can outlive it', async ({
+    page,
+  }) => {
     await page.goto('/');
 
     // Registration happens on window's load event, so poll rather than assume
@@ -28,7 +30,7 @@ test.describe('Service worker', () => {
     await expect
       .poll(
         () => page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length),
-        { message: 'the app should register its service worker on load', timeout: 15000 }
+        { message: 'the app should register its service worker on load', timeout: 15000 },
       )
       .toBeGreaterThan(0);
 

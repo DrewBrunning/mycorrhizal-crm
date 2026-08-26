@@ -1,30 +1,30 @@
-import { useState, useEffect } from 'react';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import {
+  Box,
+  Button,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
+  IconButton,
+  MenuItem,
+  Stack,
+  Switch,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  MenuItem,
-  FormControlLabel,
-  Switch,
-  Stack,
-  Box,
-  Typography,
-  IconButton,
-} from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import AppDialog from './AppDialog';
-import {
-  FieldDefinition,
-  FieldDefinitionInput,
-  FieldType,
-  FieldSensitivity,
   FIELD_TYPES,
+  type FieldDefinition,
+  type FieldDefinitionInput,
+  type FieldSensitivity,
+  type FieldType,
 } from '../api/fieldDefinitions';
 import { useRowKeys } from '../hooks/useRowKeys';
+import AppDialog from './AppDialog';
 
 interface FieldDefinitionDialogProps {
   open: boolean;
@@ -156,8 +156,12 @@ export default function FieldDefinitionDialog({
       label: form.label.trim(),
       key: form.key.trim(),
       type: form.type,
-      constraints: Object.keys(constraints).length > 0 ? (constraints as FieldDefinitionInput['constraints']) : undefined,
-      projection: form.projectionMode === 'vcard' ? `vcard:X-${form.vcardName.trim()}` : 'internal-only',
+      constraints:
+        Object.keys(constraints).length > 0
+          ? (constraints as FieldDefinitionInput['constraints'])
+          : undefined,
+      projection:
+        form.projectionMode === 'vcard' ? `vcard:X-${form.vcardName.trim()}` : 'internal-only',
       sensitivity: form.sensitivity,
     };
 
@@ -225,10 +229,7 @@ export default function FieldDefinitionDialog({
 
           <FormControlLabel
             control={
-              <Switch
-                checked={form.multi}
-                onChange={(e) => set({ multi: e.target.checked })}
-              />
+              <Switch checked={form.multi} onChange={(e) => set({ multi: e.target.checked })} />
             }
             label={t('customFields.multi')}
           />
@@ -272,7 +273,12 @@ export default function FieldDefinitionDialog({
               </Typography>
               <Stack spacing={1}>
                 {form.enumValues.map((value, index) => (
-                  <Stack key={enumRowKeys.keyAt(index)} direction="row" spacing={1} alignItems="center">
+                  <Stack
+                    key={enumRowKeys.keyAt(index)}
+                    direction="row"
+                    spacing={1}
+                    alignItems="center"
+                  >
                     <TextField
                       size="small"
                       fullWidth
@@ -290,7 +296,12 @@ export default function FieldDefinitionDialog({
                   </Stack>
                 ))}
                 <Box>
-                  <Button size="small" startIcon={<AddIcon />} onClick={addEnumRow} variant="outlined">
+                  <Button
+                    size="small"
+                    startIcon={<AddIcon />}
+                    onClick={addEnumRow}
+                    variant="outlined"
+                  >
                     {t('common.add')}
                   </Button>
                 </Box>

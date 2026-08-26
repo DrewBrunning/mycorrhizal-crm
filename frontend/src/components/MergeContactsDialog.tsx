@@ -1,30 +1,30 @@
-import { useState, useCallback, useEffect } from 'react';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Box,
-  Autocomplete,
-  CircularProgress,
-  Typography,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-  Divider,
   Alert,
+  Autocomplete,
+  Box,
+  Button,
+  CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  FormControlLabel,
   IconButton,
+  Radio,
+  RadioGroup,
+  TextField,
   Tooltip,
+  Typography,
 } from '@mui/material';
 import { createFilterOptions } from '@mui/material/Autocomplete';
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import AppDialog from './AppDialog';
-import { Contact, getContacts } from '../api/contacts';
-import { useContactMerge } from '../hooks/useContactMerge';
+import { type Contact, getContacts } from '../api/contacts';
 import { useSnackbar } from '../context/SnackbarContext';
+import { useContactMerge } from '../hooks/useContactMerge';
 import { getErrorMessage } from '../utils/errorHandler';
+import AppDialog from './AppDialog';
 
 interface MergeContactsDialogBaseProps {
   open: boolean;
@@ -60,7 +60,9 @@ interface MergeContactsDialogPairProps extends MergeContactsDialogBaseProps {
   currentContactName?: never;
 }
 
-export type MergeContactsDialogProps = MergeContactsDialogSingleProps | MergeContactsDialogPairProps;
+export type MergeContactsDialogProps =
+  | MergeContactsDialogSingleProps
+  | MergeContactsDialogPairProps;
 
 function contactName(c: Contact): string {
   return [c.firstname, c.lastname].filter(Boolean).join(' ').trim() || c.uid || '';
@@ -99,21 +101,36 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
   // dialog opens for a pair.
   const [keeperUid, setKeeperUid] = useState<string | undefined>(undefined);
 
-  const { preview, loading, committing, error, allConflictsResolved, loadPreview, setResolution, resolutions, commit, reset } =
-    useContactMerge();
+  const {
+    preview,
+    loading,
+    committing,
+    error,
+    allConflictsResolved,
+    loadPreview,
+    setResolution,
+    resolutions,
+    commit,
+    reset,
+  } = useContactMerge();
 
   const inPairMode = !!pair;
-  const keeper = inPairMode && pair ? (keeperUid === pair.b.uid ? pair.b : pair.a) : selectedContact;
-  const loserContact = inPairMode && pair ? (keeperUid === pair.b.uid ? pair.a : pair.b) : undefined;
+  const keeper =
+    inPairMode && pair ? (keeperUid === pair.b.uid ? pair.b : pair.a) : selectedContact;
+  const loserContact =
+    inPairMode && pair ? (keeperUid === pair.b.uid ? pair.a : pair.b) : undefined;
   const loserName = inPairMode ? contactName(loserContact!) : currentContactName || '';
   // Conflict labels: pair mode uses full display names (neither contact is
   // privileged); single mode keeps the historical firstname-only keeper label.
-  const keeperLabelName = inPairMode ? contactName(keeper!) : (selectedContact?.firstname || '');
+  const keeperLabelName = inPairMode ? contactName(keeper!) : selectedContact?.firstname || '';
 
   // T101: how many of the server's (deliberately broad) results the
   // client-side strict filter is hiding, so the picker can say so instead of
   // silently dropping rows the user might expect to see.
-  const filteredContacts = contactFilterOptions(contacts, { inputValue: searchInput, getOptionLabel: contactOptionLabel });
+  const filteredContacts = contactFilterOptions(contacts, {
+    inputValue: searchInput,
+    getOptionLabel: contactOptionLabel,
+  });
   const hiddenMatchCount = contacts.length - filteredContacts.length;
 
   const loadContacts = useCallback(
@@ -128,7 +145,7 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
         setContactsLoading(false);
       }
     },
-    [currentContactUid, showError]
+    [currentContactUid, showError],
   );
 
   useEffect(() => {
@@ -212,14 +229,25 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
   const counts = preview?.association_counts;
   const hasAssociations =
     counts &&
-    (counts.notes || counts.activities || counts.reminders || counts.reminder_completions ||
-      counts.relationship_edges || counts.household_memberships || counts.circle_memberships ||
-      counts.tags || counts.life_events || counts.life_event_references || counts.field_values ||
+    (counts.notes ||
+      counts.activities ||
+      counts.reminders ||
+      counts.reminder_completions ||
+      counts.relationship_edges ||
+      counts.household_memberships ||
+      counts.circle_memberships ||
+      counts.tags ||
+      counts.life_events ||
+      counts.life_event_references ||
+      counts.field_values ||
       counts.contact_sync_links ||
       // T107: a merge whose only effect is moving one of these must still
       // show the info box, not silently look like a no-op merge.
-      counts.attachments || counts.preferences || counts.external_identities ||
-      counts.external_activities || counts.cadence_policies);
+      counts.attachments ||
+      counts.preferences ||
+      counts.external_identities ||
+      counts.external_activities ||
+      counts.cadence_policies);
 
   return (
     <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
@@ -293,11 +321,20 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
                 />
               )}
               isOptionEqualToValue={(option, value) => option.uid === value.uid}
-              noOptionsText={searchInput ? t('contactMerge.noContactsFound') : t('contactMerge.typeToSearch')}
+              noOptionsText={
+                searchInput ? t('contactMerge.noContactsFound') : t('contactMerge.typeToSearch')
+              }
             />
             {hiddenMatchCount > 0 && (
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                {t('contactMerge.hiddenMatches', { shown: filteredContacts.length, hidden: hiddenMatchCount })}
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: 'block', mt: 0.5 }}
+              >
+                {t('contactMerge.hiddenMatches', {
+                  shown: filteredContacts.length,
+                  hidden: hiddenMatchCount,
+                })}
               </Typography>
             )}
           </>
@@ -319,7 +356,8 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
           <Box sx={{ mt: 2 }}>
             <Divider sx={{ mb: 2 }} />
 
-            {preview.resolution.conflicts.length === 0 && preview.resolution.field_value_conflicts.length === 0 ? (
+            {preview.resolution.conflicts.length === 0 &&
+            preview.resolution.field_value_conflicts.length === 0 ? (
               <Alert severity="info" sx={{ mb: 2 }}>
                 {t('contactMerge.noConflicts')}
               </Alert>
@@ -340,12 +378,18 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
                       <FormControlLabel
                         value={conflict.keeper_value}
                         control={<Radio size="small" />}
-                        label={t('contactMerge.keepValue', { name: keeperLabelName, value: conflict.keeper_value })}
+                        label={t('contactMerge.keepValue', {
+                          name: keeperLabelName,
+                          value: conflict.keeper_value,
+                        })}
                       />
                       <FormControlLabel
                         value={conflict.loser_value}
                         control={<Radio size="small" />}
-                        label={t('contactMerge.keepValue', { name: loserName, value: conflict.loser_value })}
+                        label={t('contactMerge.keepValue', {
+                          name: loserName,
+                          value: conflict.loser_value,
+                        })}
                       />
                     </RadioGroup>
                   </Box>
@@ -367,12 +411,18 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
                           <FormControlLabel
                             value={conflict.keeper_value}
                             control={<Radio size="small" />}
-                            label={t('contactMerge.keepValue', { name: keeperLabelName, value: conflict.keeper_value })}
+                            label={t('contactMerge.keepValue', {
+                              name: keeperLabelName,
+                              value: conflict.keeper_value,
+                            })}
                           />
                           <FormControlLabel
                             value={conflict.loser_value}
                             control={<Radio size="small" />}
-                            label={t('contactMerge.keepValue', { name: loserName, value: conflict.loser_value })}
+                            label={t('contactMerge.keepValue', {
+                              name: loserName,
+                              value: conflict.loser_value,
+                            })}
                           />
                         </RadioGroup>
                       </Box>

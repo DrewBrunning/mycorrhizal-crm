@@ -1,5 +1,11 @@
-import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact, waitForLoading, stableClick } from './fixtures';
+import {
+  createTestContact,
+  deleteTestContact,
+  expect,
+  stableClick,
+  test,
+  waitForLoading,
+} from './fixtures';
 
 // Authenticated via the shared storageState (see playwright.config.ts).
 // Each test runs against its own throwaway contact.

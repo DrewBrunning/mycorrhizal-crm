@@ -620,7 +620,42 @@ func SanitizeImportedContact(contact *models.Contact) []string {
 			notes = append(notes, fmt.Sprintf("Removed invalid characters from %s", fieldNames[i]))
 		}
 	}
+	if sanitizeCardName(contact) {
+		notes = append(notes, "Removed invalid characters from name")
+	}
 	return notes
+}
+
+// sanitizeCardName applies sanitizeImportedText to contact.Card.Name -- the
+// neutral full-fidelity copy ApplyRecordToContact populates alongside the
+// flat Firstname/Lastname/FN fields the loop above cleans. This is not
+// redundant with that loop: Contact.BeforeSave's cardSetDirectly branch
+// (models/contact.go) re-derives Firstname/Lastname/FN from contact.Card on
+// every save that follows an ApplyRecordToContact call -- VCF/JSContact
+// import confirm, CardDAV/CalDAV reconcile, and the REST API's
+// CreateContact/UpdateContact -- so cleaning only the flat fields and
+// leaving contact.Card.Name untouched would have that re-derivation quietly
+// undo the sanitization above the moment the contact is actually saved. A
+// real, hand-verified bug (not hypothetical): issue #512's CardDAV
+// hostile-input E2E coverage caught this by asserting against the saved,
+// reloaded row rather than the in-memory contact right after this function
+// returns -- see contact_sync_hostile_input_test.go.
+func sanitizeCardName(contact *models.Contact) bool {
+	if contact == nil || contact.Card.Name == nil {
+		return false
+	}
+	changed := false
+	if cleaned, ch := sanitizeImportedText(contact.Card.Name.Full); ch {
+		contact.Card.Name.Full = cleaned
+		changed = true
+	}
+	for i := range contact.Card.Name.Components {
+		if cleaned, ch := sanitizeImportedText(contact.Card.Name.Components[i].Value); ch {
+			contact.Card.Name.Components[i].Value = cleaned
+			changed = true
+		}
+	}
+	return changed
 }
 
 // ValidateImportedContact validates a contact built from either CSV or VCF and returns

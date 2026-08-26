@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
-  getExternalIdentities,
+  type ExternalActivity,
+  type ExternalIdentity,
   getExternalActivities,
-  ExternalIdentity,
-  ExternalActivity,
+  getExternalIdentities,
 } from '../api/externalLinks';
 import { handleFetchError } from '../utils/errorHandler';
 
@@ -36,7 +36,7 @@ export function useExternalLinks(contactUid: string | undefined) {
         setLoading(false);
       }
     },
-    [contactUid]
+    [contactUid],
   );
 
   return {

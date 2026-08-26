@@ -1,8 +1,8 @@
-import { Box, Typography, TextField, IconButton, Autocomplete } from '@mui/material';
-import { useTranslation } from 'react-i18next';
-import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
+import { Autocomplete, Box, IconButton, TextField, Typography } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 import CopyButton from './CopyButton';
 
 interface EditableFieldProps {
@@ -47,11 +47,15 @@ export default function EditableField({
   onEditSave,
   onEditValueChange,
   options,
-  getOptionLabel
+  getOptionLabel,
 }: EditableFieldProps) {
   const { t } = useTranslation();
   const baseDisplayValue = formattedDisplayValue || value;
-  const displayValue = baseDisplayValue ? (displaySuffix ? `${baseDisplayValue} ${displaySuffix}` : baseDisplayValue) : '-';
+  const displayValue = baseDisplayValue
+    ? displaySuffix
+      ? `${baseDisplayValue} ${displaySuffix}`
+      : baseDisplayValue
+    : '-';
   const showError = isEditing && validationError;
 
   return (
@@ -62,13 +66,11 @@ export default function EditableField({
         // :focus-within reveals the icon once the button itself is focused,
         // not just on mouse hover.
         '&:hover .edit-icon, &:focus-within .edit-icon': {
-          opacity: 1
-        }
+          opacity: 1,
+        },
       }}
     >
-      <Box
-        sx={{ display: 'flex', alignItems: multiline ? 'flex-start' : 'center' }}
-      >
+      <Box sx={{ display: 'flex', alignItems: multiline ? 'flex-start' : 'center' }}>
         {icon}
         {/* T74: minWidth: 0 lets this shrink below its content's natural width
             inside a narrower grid cell (a flex child defaults to min-width:
@@ -83,7 +85,11 @@ export default function EditableField({
               The label row is a flex sibling so the pencil rides the caption
               baseline; the value keeps its own row below. */}
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ fontFamily: '"IBM Plex Mono", monospace' }}
+            >
               {label}
             </Typography>
             {!isEditing && (
@@ -94,7 +100,14 @@ export default function EditableField({
                 onClick={() => onEditStart(field, value)}
                 aria-label={t('common.edit')}
                 // #188: the tight p:0.25 padding measured under 24x24 (2.5.8).
-                sx={{ ml: 0.5, p: 0.25, opacity: 0, transition: 'opacity 0.2s', minWidth: 24, minHeight: 24 }}
+                sx={{
+                  ml: 0.5,
+                  p: 0.25,
+                  opacity: 0,
+                  transition: 'opacity 0.2s',
+                  minWidth: 24,
+                  minHeight: 24,
+                }}
               >
                 <EditIcon sx={{ fontSize: 18 }} />
               </IconButton>
@@ -135,7 +148,12 @@ export default function EditableField({
                     placeholder={placeholder}
                   />
                 )}
-                <IconButton size="small" color="primary" onClick={() => onEditSave(field)} aria-label={t('common.save')}>
+                <IconButton
+                  size="small"
+                  color="primary"
+                  onClick={() => onEditSave(field)}
+                  aria-label={t('common.save')}
+                >
                   <SaveIcon fontSize="small" />
                 </IconButton>
                 <IconButton size="small" onClick={onEditCancel} aria-label={t('common.cancel')}>
@@ -149,7 +167,14 @@ export default function EditableField({
               )}
             </Box>
           ) : (
-            <Typography variant="body1" sx={{ overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: multiline ? 'pre-wrap' : undefined }}>
+            <Typography
+              variant="body1"
+              sx={{
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+                whiteSpace: multiline ? 'pre-wrap' : undefined,
+              }}
+            >
               {displayValue}
             </Typography>
           )}

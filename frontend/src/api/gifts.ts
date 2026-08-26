@@ -4,7 +4,7 @@
 // an idea captured opportunistically (status defaults to idea), the
 // offered/given gift with its date, and a received gift (reciprocity /
 // say-thanks tracking).
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 // Gift status tokens — must stay in sync with backend/models/gift.go's
 // GiftStatus* constants (this codebase's frontend registry copies are
@@ -70,10 +70,9 @@ export async function getGifts(params?: {
   const queryParams = new URLSearchParams({ limit: limit.toString() });
   if (entityId) queryParams.append('entity_id', entityId);
   if (cursor) queryParams.append('cursor', cursor);
-  const response = await apiFetch(
-    `${API_BASE_URL}/gifts?${queryParams.toString()}`,
-    { headers: getAuthHeaders() }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/gifts?${queryParams.toString()}`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }

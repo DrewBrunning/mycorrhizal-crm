@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { ContactValue } from '../api/contacts';
 import MultiValueField from './MultiValueField';
-import { ContactValue } from '../api/contacts';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);
@@ -97,7 +97,7 @@ test('free-text type mode renders a plain input and accepts custom tokens', () =
       value={[{ type: 'impp-x', value: 'user@example.com' }]}
       onChange={onChange}
       freeTextType
-    />
+    />,
   );
 
   const typeInput = screen.getByLabelText('Type');

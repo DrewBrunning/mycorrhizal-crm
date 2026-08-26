@@ -2,7 +2,7 @@
 // ): "things to bring up next time I see them". Contextual memory for a
 // contact, deliberately NOT date-scheduled — resolved by marking it discussed
 // (discussConversationAgenda), never by a timer.
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 export interface ConversationAgenda {
   id: string;
@@ -42,16 +42,17 @@ export async function getConversationAgenda(params?: {
   const queryParams = new URLSearchParams({ limit: limit.toString() });
   if (entityId) queryParams.append('entity_id', entityId);
   if (cursor) queryParams.append('cursor', cursor);
-  const response = await apiFetch(
-    `${API_BASE_URL}/conversation-agenda?${queryParams.toString()}`,
-    { headers: getAuthHeaders() }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/conversation-agenda?${queryParams.toString()}`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }
 
 // POST /conversation-agenda — create is wrapped in {conversation_agenda: ...}
-export async function createConversationAgenda(input: ConversationAgendaInput): Promise<ConversationAgenda> {
+export async function createConversationAgenda(
+  input: ConversationAgendaInput,
+): Promise<ConversationAgenda> {
   const response = await apiFetch(`${API_BASE_URL}/conversation-agenda`, {
     method: 'POST',
     headers: getAuthHeaders(),
@@ -65,7 +66,10 @@ export async function createConversationAgenda(input: ConversationAgendaInput): 
 // PUT /conversation-agenda/:id (full-replace of content fields; the resolved
 // discussed_at/activity_id state is owned by discussConversationAgenda and is
 // never touched here).
-export async function updateConversationAgenda(id: string, input: ConversationAgendaInput): Promise<ConversationAgenda> {
+export async function updateConversationAgenda(
+  id: string,
+  input: ConversationAgendaInput,
+): Promise<ConversationAgenda> {
   const response = await apiFetch(`${API_BASE_URL}/conversation-agenda/${id}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
@@ -79,7 +83,10 @@ export async function updateConversationAgenda(id: string, input: ConversationAg
 // activityId is optional: pass an Activity ID to link the interaction that
 // covered the item (feeding the timeline); omit to mark discussed without a
 // link.
-export async function discussConversationAgenda(id: string, activityId?: number): Promise<ConversationAgenda> {
+export async function discussConversationAgenda(
+  id: string,
+  activityId?: number,
+): Promise<ConversationAgenda> {
   const response = await apiFetch(`${API_BASE_URL}/conversation-agenda/${id}/discuss`, {
     method: 'PATCH',
     headers: getAuthHeaders(),

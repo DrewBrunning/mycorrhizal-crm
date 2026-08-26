@@ -1,17 +1,21 @@
-import { describe, test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import './i18n/config';
-import RegisterPage from './RegisterPage';
 import { AppThemeProvider } from './AppThemeProvider';
 import { useOIDCConfig } from './hooks/useOIDCConfig';
+import RegisterPage from './RegisterPage';
 
 vi.mock('./hooks/useOIDCConfig', () => ({ useOIDCConfig: vi.fn() }));
 
 const useOIDCConfigMock = vi.mocked(useOIDCConfig);
 
 beforeEach(() => {
-  useOIDCConfigMock.mockReturnValue({ enabled: false, provider_name: 'SSO', registration_disabled: false });
+  useOIDCConfigMock.mockReturnValue({
+    enabled: false,
+    provider_name: 'SSO',
+    registration_disabled: false,
+  });
 });
 
 afterEach(() => {
@@ -25,7 +29,7 @@ function renderRegister() {
       <AppThemeProvider>
         <RegisterPage />
       </AppThemeProvider>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -71,7 +75,11 @@ describe('RegisterPage registration gate', () => {
   });
 
   test('shows a disabled notice instead of the form when the server has registration disabled', () => {
-    useOIDCConfigMock.mockReturnValue({ enabled: false, provider_name: 'SSO', registration_disabled: true });
+    useOIDCConfigMock.mockReturnValue({
+      enabled: false,
+      provider_name: 'SSO',
+      registration_disabled: true,
+    });
     renderRegister();
 
     expect(screen.queryByLabelText(/username/i)).not.toBeInTheDocument();

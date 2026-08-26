@@ -1,23 +1,23 @@
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { mdiImageMultipleOutline } from '@mdi/js';
 import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
-  Typography,
-  Divider,
-  TextField,
-  Button,
-  Stack,
-  Alert,
   CircularProgress,
+  Divider,
   FormControlLabel,
+  Stack,
+  SvgIcon,
   Switch,
+  TextField,
+  Typography,
 } from '@mui/material';
-import { mdiImageMultipleOutline } from '@mdi/js';
-import { SvgIcon } from '@mui/material';
-import { useImmich } from '../hooks/useImmich';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
+import { useImmich } from '../hooks/useImmich';
 import { isHttpUrlString } from '../utils/linkResolution';
 
 // ImmichSettings is the settings-page card for the Immich connection
@@ -199,7 +199,9 @@ export default function ImmichSettings() {
                   }}
                   disabled={immich.testing}
                 >
-                  {immich.testing ? t('immich.settings.testingConnection') : t('immich.settings.testConnectionButton')}
+                  {immich.testing
+                    ? t('immich.settings.testingConnection')
+                    : t('immich.settings.testConnectionButton')}
                 </Button>
               )}
               {immich.config && (

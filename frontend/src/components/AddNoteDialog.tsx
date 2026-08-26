@@ -1,19 +1,19 @@
-import { useState, useCallback, useEffect } from 'react';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Box,
   Autocomplete,
-  CircularProgress,
+  Box,
+  Button,
   Chip,
+  CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
 } from '@mui/material';
-import AppDialog from './AppDialog';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Contact, getContacts } from '../api/contacts';
+import { type Contact, getContacts } from '../api/contacts';
 import { handleFetchError } from '../utils/errorHandler';
+import AppDialog from './AppDialog';
 
 interface ContactBrief {
   ID: number;
@@ -41,7 +41,13 @@ interface AddNoteDialogProps {
   noteContactName?: string;
 }
 
-export default function AddNoteDialog({ open, onClose, onSave, noteContactId, noteContactName }: AddNoteDialogProps) {
+export default function AddNoteDialog({
+  open,
+  onClose,
+  onSave,
+  noteContactId,
+  noteContactName,
+}: AddNoteDialogProps) {
   const { t } = useTranslation();
   const [content, setContent] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -89,11 +95,7 @@ export default function AddNoteDialog({ open, onClose, onSave, noteContactId, no
 
     setSaving(true);
     try {
-      await onSave(
-        content,
-        date,
-        lockedContact ? noteContactId : selectedContact?.ID
-      );
+      await onSave(content, date, lockedContact ? noteContactId : selectedContact?.ID);
       handleClose();
     } catch {
       setError(t('noteDialog.saveError'));

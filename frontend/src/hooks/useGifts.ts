@@ -1,11 +1,11 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
-  getGifts,
   createGift,
-  updateGift,
   deleteGift,
-  Gift,
-  GiftInput,
+  type Gift,
+  type GiftInput,
+  getGifts,
+  updateGift,
 } from '../api/gifts';
 import { handleFetchError } from '../utils/errorHandler';
 
@@ -33,7 +33,7 @@ export function useGifts(entityId: string | undefined) {
         setLoading(false);
       }
     },
-    [entityId]
+    [entityId],
   );
 
   const ideas = useMemo(() => items.filter((g) => g.status === 'idea'), [items]);
@@ -44,7 +44,7 @@ export function useGifts(entityId: string | undefined) {
       await createGift(data);
       await refresh();
     },
-    [refresh]
+    [refresh],
   );
 
   const handleUpdate = useCallback(
@@ -52,7 +52,7 @@ export function useGifts(entityId: string | undefined) {
       await updateGift(id, data);
       await refresh();
     },
-    [refresh]
+    [refresh],
   );
 
   const handleDelete = useCallback(
@@ -60,7 +60,7 @@ export function useGifts(entityId: string | undefined) {
       await deleteGift(id);
       await refresh();
     },
-    [refresh]
+    [refresh],
   );
 
   return {

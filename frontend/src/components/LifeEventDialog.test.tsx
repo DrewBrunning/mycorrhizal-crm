@@ -1,5 +1,5 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import LifeEventDialog from './LifeEventDialog';
 
@@ -85,7 +85,7 @@ test('saves a predefined type together with its category', async () => {
 
   await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
   expect(onSave).toHaveBeenCalledWith(
-    expect.objectContaining({ type: 'bought_a_home', category: 'home_living' })
+    expect.objectContaining({ type: 'bought_a_home', category: 'home_living' }),
   );
 });
 
@@ -102,7 +102,7 @@ test('"Add a new life event type" reveals a free-text field and saves the custom
 
   await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
   expect(onSave).toHaveBeenCalledWith(
-    expect.objectContaining({ type: 'Started a podcast', category: 'health_wellness' })
+    expect.objectContaining({ type: 'Started a podcast', category: 'health_wellness' }),
   );
 });
 
@@ -138,7 +138,7 @@ test('re-saving an uncategorized legacy event without picking a category omits c
 
   await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
   expect(onSave).toHaveBeenCalledWith(
-    expect.objectContaining({ type: 'Some legacy event', category: undefined })
+    expect.objectContaining({ type: 'Some legacy event', category: undefined }),
   );
 });
 

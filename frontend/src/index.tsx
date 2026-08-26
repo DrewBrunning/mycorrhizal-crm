@@ -4,25 +4,22 @@ import './colors.css';
 import './index.css';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
-import * as serviceWorkerRegistration from './serviceWorkerRegistration';
-import { notifyUpdateAvailable } from './serviceWorkerUpdates';
 import ServiceWorkerUpdatePrompt from './components/ServiceWorkerUpdatePrompt';
 import reportWebVitals from './reportWebVitals';
+import * as serviceWorkerRegistration from './serviceWorkerRegistration';
+import { notifyUpdateAvailable } from './serviceWorkerUpdates';
 import './i18n/config';
 import { AppThemeProvider } from './AppThemeProvider';
-import { DateFormatProvider } from './DateFormatProvider';
-import { SnackbarProvider } from './context/SnackbarContext';
 import { AnnouncerProvider } from './context/AnnouncerContext';
+import { SnackbarProvider } from './context/SnackbarContext';
+import { DateFormatProvider } from './DateFormatProvider';
 
 const logError = (error: Error, errorInfo: React.ErrorInfo) => {
   console.error('Application Error:', error);
   console.error('Error Info:', errorInfo);
-  
 };
 
-const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement
-);
+const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 
 root.render(
   <React.StrictMode>
@@ -30,11 +27,7 @@ root.render(
       <DateFormatProvider>
         <SnackbarProvider>
           <AnnouncerProvider>
-            <ErrorBoundary
-              name="Application"
-              onError={logError}
-              showDetails={import.meta.env.DEV}
-            >
+            <ErrorBoundary name="Application" onError={logError} showDetails={import.meta.env.DEV}>
               <App />
               <ServiceWorkerUpdatePrompt />
             </ErrorBoundary>
@@ -42,7 +35,7 @@ root.render(
         </SnackbarProvider>
       </DateFormatProvider>
     </AppThemeProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );
 
 // The service worker is REGISTERED, not unregistered (CRA scaffolds the

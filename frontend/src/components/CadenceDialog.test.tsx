@@ -1,9 +1,9 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import CadenceDialog from './CadenceDialog';
-import { CadencePolicy } from '../api/cadencePolicies';
+import type { CadencePolicy } from '../api/cadencePolicies';
 import { SnackbarProvider } from '../context/SnackbarContext';
+import CadenceDialog from './CadenceDialog';
 
 afterEach(cleanup);
 
@@ -18,7 +18,7 @@ function renderDialog(props: Partial<React.ComponentProps<typeof CadenceDialog>>
   return render(
     <SnackbarProvider>
       <CadenceDialog {...defaults} />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 }
 
@@ -71,6 +71,8 @@ test('rejects a non-positive interval without saving', async () => {
   fireEvent.change(interval, { target: { value: '0' } });
   screen.getByRole('button', { name: 'Save' }).click();
 
-  await vi.waitFor(() => expect(screen.getByText('Enter a positive number of days.')).toBeInTheDocument());
+  await vi.waitFor(() =>
+    expect(screen.getByText('Enter a positive number of days.')).toBeInTheDocument(),
+  );
   expect(onSave).not.toHaveBeenCalled();
 });

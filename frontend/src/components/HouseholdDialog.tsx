@@ -1,17 +1,17 @@
-import { useState, useEffect } from 'react';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
   Box,
+  Button,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   MenuItem,
+  TextField,
   Typography,
 } from '@mui/material';
-import AppDialog from './AppDialog';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { HOUSEHOLD_TYPES, Household, HouseholdType } from '../api/households';
+import { HOUSEHOLD_TYPES, type Household, type HouseholdType } from '../api/households';
+import AppDialog from './AppDialog';
 
 export interface HouseholdFormData {
   name: string;
@@ -25,7 +25,12 @@ interface HouseholdDialogProps {
   household?: Household | null;
 }
 
-export default function HouseholdDialog({ open, onClose, onSave, household }: HouseholdDialogProps) {
+export default function HouseholdDialog({
+  open,
+  onClose,
+  onSave,
+  household,
+}: HouseholdDialogProps) {
   const { t } = useTranslation();
   const isEditing = !!household;
 
@@ -68,7 +73,10 @@ export default function HouseholdDialog({ open, onClose, onSave, household }: Ho
           <TextField
             label={t('household.name')}
             value={name}
-            onChange={(e) => { setName(e.target.value); setError(''); }}
+            onChange={(e) => {
+              setName(e.target.value);
+              setError('');
+            }}
             fullWidth
             required
             autoFocus
@@ -77,7 +85,10 @@ export default function HouseholdDialog({ open, onClose, onSave, household }: Ho
             select
             label={t('household.type')}
             value={type}
-            onChange={(e) => { setType(e.target.value as HouseholdType); setError(''); }}
+            onChange={(e) => {
+              setType(e.target.value as HouseholdType);
+              setError('');
+            }}
             fullWidth
             required
           >

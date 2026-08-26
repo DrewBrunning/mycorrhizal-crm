@@ -1,9 +1,9 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, within, cleanup } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import GiftList from './GiftList';
-import { Gift } from '../api/gifts';
+import type { Gift } from '../api/gifts';
 import { DateFormatProvider } from '../DateFormatProvider';
+import GiftList from './GiftList';
 
 // This codebase's vitest setup does not auto-cleanup between tests (no
 // `globals: true`, setupTests.ts doesn't register it) -- without this, each
@@ -43,7 +43,7 @@ function renderList(props: Partial<React.ComponentProps<typeof GiftList>> = {}) 
   return render(
     <DateFormatProvider>
       <GiftList {...defaults} />
-    </DateFormatProvider>
+    </DateFormatProvider>,
   );
 }
 
@@ -165,7 +165,10 @@ test('an idea renders under the Ideas section', () => {
 });
 
 test('delete asks for confirmation before calling onDelete', () => {
-  vi.stubGlobal('confirm', vi.fn(() => true));
+  vi.stubGlobal(
+    'confirm',
+    vi.fn(() => true),
+  );
   const onDelete = vi.fn();
   renderList({ items: [item()], onDelete });
 
@@ -176,7 +179,10 @@ test('delete asks for confirmation before calling onDelete', () => {
 });
 
 test('a declining delete confirmation does not call onDelete', () => {
-  vi.stubGlobal('confirm', vi.fn(() => false));
+  vi.stubGlobal(
+    'confirm',
+    vi.fn(() => false),
+  );
   const onDelete = vi.fn();
   renderList({ items: [item()], onDelete });
 
@@ -251,7 +257,7 @@ test('a gift with neither URL nor notes renders neither', () => {
   expect(screen.getByText('She liked the ceramics shop')).toBeInTheDocument();
 });
 
-test('each section\'s full-form button pre-seeds its own status, leaving the quick-add alone', () => {
+test("each section's full-form button pre-seeds its own status, leaving the quick-add alone", () => {
   const onAddFull = vi.fn();
   const onAdd = vi.fn().mockResolvedValue(undefined);
   renderList({ onAddFull, onAdd });

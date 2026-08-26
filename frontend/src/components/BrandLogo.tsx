@@ -8,14 +8,10 @@ interface BrandLogoProps {
 
 export default function BrandLogo({ height = 'auto', width = 'auto' }: BrandLogoProps) {
   const { mode } = useThemePreference();
-  const src = mode === 'dark' ? '/mycorrhizal-logo-dark_512.png' : '/mycorrhizal-logo-light_512.png';
+  const src =
+    mode === 'dark' ? '/mycorrhizal-logo-dark_512.png' : '/mycorrhizal-logo-light_512.png';
 
   return (
-    <Box
-      component="img"
-      src={src}
-      alt="Mycorrhizal CRM"
-      sx={{ height, width, flexShrink: 0 }}
-    />
+    <Box component="img" src={src} alt="Mycorrhizal CRM" sx={{ height, width, flexShrink: 0 }} />
   );
 }

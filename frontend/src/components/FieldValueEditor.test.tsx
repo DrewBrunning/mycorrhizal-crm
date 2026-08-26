@@ -1,10 +1,14 @@
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import FieldValueEditor from './FieldValueEditor';
-import { FieldDefinition, FieldValueEditorState, emptyEditorValue } from '../api/fieldDefinitions';
+import {
+  emptyEditorValue,
+  type FieldDefinition,
+  type FieldValueEditorState,
+} from '../api/fieldDefinitions';
 import { DateFormatProvider } from '../DateFormatProvider';
+import FieldValueEditor from './FieldValueEditor';
 
 afterEach(cleanup);
 
@@ -23,11 +27,15 @@ function def(overrides: Partial<FieldDefinition>): FieldDefinition {
   };
 }
 
-function renderEditor(defn: FieldDefinition, value: string | boolean | string[], onChange = vi.fn()) {
+function renderEditor(
+  defn: FieldDefinition,
+  value: string | boolean | string[],
+  onChange = vi.fn(),
+) {
   return render(
     <DateFormatProvider>
       <FieldValueEditor definition={defn} value={value} onChange={onChange} />
-    </DateFormatProvider>
+    </DateFormatProvider>,
   );
 }
 
@@ -66,7 +74,10 @@ test('enum scalar reports the picked value through onChange', () => {
 });
 
 test('Multi enum renders an add/remove list, not a single select', () => {
-  const multiEnum = def({ type: 'enum', constraints: { values: ['she/her', 'he/him'], multi: true } });
+  const multiEnum = def({
+    type: 'enum',
+    constraints: { values: ['she/her', 'he/him'], multi: true },
+  });
   renderEditor(multiEnum, ['she/her']);
 
   // The list starts with the existing element as its own row.

@@ -1,5 +1,4 @@
-import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact } from './fixtures';
+import { createTestContact, deleteTestContact, expect, test } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 // T104 + address suggestions: the "propose data" surface on the Data settings
@@ -12,11 +11,23 @@ import { API_BASE_URL } from './global-setup';
 // Both are scoped to this test's own throwaway contacts so the shared
 // account's other data can never confuse the assertions.
 test.describe('Data suggestions (propose data)', () => {
-  test('suggests a relationship from relationships and accepting it confirms it', async ({ page, request }) => {
+  test('suggests a relationship from relationships and accepting it confirms it', async ({
+    page,
+    request,
+  }) => {
     const suffix = Date.now().toString();
-    const parent = await createTestContact(page.request, { firstname: `E2ESugParent${suffix}`, lastname: 'T104' });
-    const child1 = await createTestContact(page.request, { firstname: `E2ESugChild1${suffix}`, lastname: 'T104' });
-    const child2 = await createTestContact(page.request, { firstname: `E2ESugChild2${suffix}`, lastname: 'T104' });
+    const parent = await createTestContact(page.request, {
+      firstname: `E2ESugParent${suffix}`,
+      lastname: 'T104',
+    });
+    const child1 = await createTestContact(page.request, {
+      firstname: `E2ESugChild1${suffix}`,
+      lastname: 'T104',
+    });
+    const child2 = await createTestContact(page.request, {
+      firstname: `E2ESugChild2${suffix}`,
+      lastname: 'T104',
+    });
 
     try {
       // Seed the two confirmed edges the rule R2 (parent · sibling -> parent_of)
@@ -42,7 +53,10 @@ test.describe('Data suggestions (propose data)', () => {
 
       // Accept the specific suggestion (scoped to child2's unique name so a
       // parallel test's edges can't be matched).
-      const row = page.locator('.MuiPaper-outlined').filter({ hasText: child2.firstname }).filter({ hasText: 'Parent' });
+      const row = page
+        .locator('.MuiPaper-outlined')
+        .filter({ hasText: child2.firstname })
+        .filter({ hasText: 'Parent' });
       await row.getByRole('button', { name: 'Accept' }).click();
 
       // Accepting promotes the edge to confirmed, so it leaves the suggested
@@ -60,7 +74,10 @@ test.describe('Data suggestions (propose data)', () => {
     }
   });
 
-  test('suggests a shared address and applying it writes it to the contact', async ({ page, request }) => {
+  test('suggests a shared address and applying it writes it to the contact', async ({
+    page,
+    request,
+  }) => {
     const suffix = Date.now().toString();
     const address = {
       street: `88 ${suffix} Lane`,
@@ -69,7 +86,10 @@ test.describe('Data suggestions (propose data)', () => {
       postal: '62704',
       type: 'home',
     };
-    const alice = await createTestContact(page.request, { firstname: `E2ESugAddrA${suffix}`, lastname: 'T167' });
+    const alice = await createTestContact(page.request, {
+      firstname: `E2ESugAddrA${suffix}`,
+      lastname: 'T167',
+    });
     const bob = await createTestContact(page.request, {
       firstname: `E2ESugAddrB${suffix}`,
       lastname: 'T167',
@@ -92,7 +112,10 @@ test.describe('Data suggestions (propose data)', () => {
       // Alice's row shows her name, the proposed address, and Bob as the source.
       // `.MuiPaper-outlined` scopes to the suggestion rows (the outer "Propose
       // data" Card is `.MuiPaper-elevation`, so the ancestor can't be matched).
-      const row = page.locator('.MuiPaper-outlined').filter({ hasText: alice.firstname }).filter({ hasText: addressLine });
+      const row = page
+        .locator('.MuiPaper-outlined')
+        .filter({ hasText: alice.firstname })
+        .filter({ hasText: addressLine });
       await expect(row).toBeVisible({ timeout: 15000 });
       await expect(row.getByText(new RegExp(bob.firstname))).toBeVisible();
 
@@ -106,7 +129,7 @@ test.describe('Data suggestions (propose data)', () => {
       expect(rescan.ok(), `rescan: ${await rescan.text()}`).toBeTruthy();
       const body = await rescan.json();
       const stillSuggested = (body.suggestions || []).some(
-        (s: { contact_vcard_uid: string }) => s.contact_vcard_uid === alice.uid
+        (s: { contact_vcard_uid: string }) => s.contact_vcard_uid === alice.uid,
       );
       expect(stillSuggested, 'the applied address must no longer be suggested').toBe(false);
     } finally {

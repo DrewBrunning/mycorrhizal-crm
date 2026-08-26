@@ -1,11 +1,11 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
+  type CadencePolicy,
+  createCadencePolicy,
+  deleteCadencePolicy,
   getCadencePolicies,
   getOverdueCadences,
-  createCadencePolicy,
   updateCadencePolicy,
-  deleteCadencePolicy,
-  CadencePolicy,
 } from './cadencePolicies';
 
 afterEach(() => {
@@ -67,7 +67,11 @@ describe('createCadencePolicy', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await createCadencePolicy({ entity_id: 'alice-uid', target_interval_days: 30, qualifying_types: ['call'] });
+    const result = await createCadencePolicy({
+      entity_id: 'alice-uid',
+      target_interval_days: 30,
+      qualifying_types: ['call'],
+    });
 
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toContain('/cadence-policies');
@@ -85,7 +89,10 @@ describe('updateCadencePolicy', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await updateCadencePolicy('policy-1', { entity_id: 'alice-uid', target_interval_days: 60 });
+    const result = await updateCadencePolicy('policy-1', {
+      entity_id: 'alice-uid',
+      target_interval_days: 60,
+    });
 
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toContain('/cadence-policies/policy-1');
@@ -97,7 +104,10 @@ describe('updateCadencePolicy', () => {
 
 describe('deleteCadencePolicy', () => {
   test('DELETEs the policy', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ message: 'Cadence policy deleted' }) });
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ message: 'Cadence policy deleted' }),
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     await deleteCadencePolicy('policy-1');

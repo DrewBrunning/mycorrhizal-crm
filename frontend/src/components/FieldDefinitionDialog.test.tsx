@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { FieldDefinition } from '../api/fieldDefinitions';
 import FieldDefinitionDialog from './FieldDefinitionDialog';
-import { FieldDefinition } from '../api/fieldDefinitions';
 
 afterEach(cleanup);
 
@@ -92,6 +92,8 @@ test('an empty enum value list is rejected before save', async () => {
 
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-  expect(await screen.findByText('Enum fields need at least one allowed value.')).toBeInTheDocument();
+  expect(
+    await screen.findByText('Enum fields need at least one allowed value.'),
+  ).toBeInTheDocument();
   expect(onSave).not.toHaveBeenCalled();
 });

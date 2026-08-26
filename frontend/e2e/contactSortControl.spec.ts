@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { createTestContact, deleteTestContact, waitForLoading } from './fixtures';
 import { E2E_CONTACT_PREFIX } from './global-setup';
 
@@ -48,9 +48,18 @@ test.describe('Contacts list sort control (T77)', () => {
   test('re-orders a searched list when the sort changes', async ({ page, request }) => {
     const ts = Date.now();
     const created = await Promise.all([
-      createTestContact(request, { firstname: `${E2E_CONTACT_PREFIX}T77SortA${ts}`, lastname: 'T77Alpha' }),
-      createTestContact(request, { firstname: `${E2E_CONTACT_PREFIX}T77SortZ${ts}`, lastname: 'T77Zulu' }),
-      createTestContact(request, { firstname: `${E2E_CONTACT_PREFIX}T77SortM${ts}`, lastname: 'T77Mike' }),
+      createTestContact(request, {
+        firstname: `${E2E_CONTACT_PREFIX}T77SortA${ts}`,
+        lastname: 'T77Alpha',
+      }),
+      createTestContact(request, {
+        firstname: `${E2E_CONTACT_PREFIX}T77SortZ${ts}`,
+        lastname: 'T77Zulu',
+      }),
+      createTestContact(request, {
+        firstname: `${E2E_CONTACT_PREFIX}T77SortM${ts}`,
+        lastname: 'T77Mike',
+      }),
     ]);
 
     try {

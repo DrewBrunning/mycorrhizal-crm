@@ -1,22 +1,22 @@
-import { useState, useEffect } from 'react';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
+  Alert,
   Box,
+  Button,
+  CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   List,
   ListItemButton,
   ListItemText,
+  TextField,
   Typography,
-  CircularProgress,
-  Alert,
 } from '@mui/material';
-import AppDialog from './AppDialog';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ImmichPerson } from '../api/immich';
+import type { ImmichPerson } from '../api/immich';
 import { getErrorMessage } from '../utils/errorHandler';
+import AppDialog from './AppDialog';
 
 interface ImmichPersonSearchDialogProps {
   open: boolean;
@@ -97,7 +97,11 @@ export default function ImmichPersonSearchDialog({
         <Box sx={{ maxHeight: 360, overflowY: 'auto' }}>
           <List dense>
             {filtered.map((person) => (
-              <ListItemButton key={person.id} onClick={() => handlePick(person)} disabled={selecting}>
+              <ListItemButton
+                key={person.id}
+                onClick={() => handlePick(person)}
+                disabled={selecting}
+              >
                 <ListItemText
                   primary={person.name || t('immich.search.unnamed')}
                   secondary={person.id}

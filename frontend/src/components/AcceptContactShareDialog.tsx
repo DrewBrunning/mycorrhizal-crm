@@ -1,22 +1,22 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Box,
-  Typography,
-  TextField,
-  MenuItem,
   Alert,
+  Box,
+  Button,
   Chip,
   CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  MenuItem,
+  TextField,
+  Typography,
 } from '@mui/material';
-import AppDialog from './AppDialog';
-import { ContactShare } from '../api/contactShares';
-import { ImportPreviewResponse, RowImportAction } from '../api/import';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { ContactShare } from '../api/contactShares';
+import type { ImportPreviewResponse, RowImportAction } from '../api/import';
 import { getErrorMessage } from '../utils/errorHandler';
+import AppDialog from './AppDialog';
 
 type RowAction = 'add' | 'update' | 'skip';
 
@@ -133,7 +133,11 @@ export default function AcceptContactShareDialog({
             </>
           )}
 
-          {error && <Alert severity="error" sx={{ py: 0 }}>{error}</Alert>}
+          {error && (
+            <Alert severity="error" sx={{ py: 0 }}>
+              {error}
+            </Alert>
+          )}
         </Box>
       </DialogContent>
       <DialogActions>
@@ -141,7 +145,9 @@ export default function AcceptContactShareDialog({
           {t('common.cancel')}
         </Button>
         <Button onClick={handleConfirmClick} variant="contained" disabled={confirming || !row}>
-          {confirming ? t('contactShares.acceptDialog.confirming') : t('contactShares.acceptDialog.confirm')}
+          {confirming
+            ? t('contactShares.acceptDialog.confirming')
+            : t('contactShares.acceptDialog.confirm')}
         </Button>
       </DialogActions>
     </AppDialog>

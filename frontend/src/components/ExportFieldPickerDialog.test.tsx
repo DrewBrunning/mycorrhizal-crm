@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import { EXPORT_FIELD_SECTIONS, type ExportFormat, type ExportSelection } from '../api/export';
 import ExportFieldPickerDialog from './ExportFieldPickerDialog';
-import { EXPORT_FIELD_SECTIONS, ExportFormat, ExportSelection } from '../api/export';
 
 afterEach(cleanup);
 
@@ -77,7 +77,9 @@ test('cancelling the reveal keeps the controls locked', async () => {
 
   // The confirm dialog must finish closing (and lift its aria-hidden on the
   // main dialog) before the main dialog's controls are queryable again.
-  await waitFor(() => expect(screen.queryByText('Include sensitive data?')).not.toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.queryByText('Include sensitive data?')).not.toBeInTheDocument(),
+  );
   expect(await screen.findByRole('checkbox', { name: 'Relationships' })).toBeDisabled();
 });
 
@@ -124,7 +126,9 @@ test('revealing but not selecting a sensitive section does NOT imply the opt-in'
 
   fireEvent.click(screen.getByRole('button', { name: 'Enable sensitive fields' }));
   fireEvent.click(screen.getByRole('button', { name: 'Enable' }));
-  await waitFor(() => expect(screen.queryByText('Include sensitive data?')).not.toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.queryByText('Include sensitive data?')).not.toBeInTheDocument(),
+  );
   // No sensitive section selected.
 
   fireEvent.click(screen.getByRole('button', { name: 'Export' }));
