@@ -1,6 +1,7 @@
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import LockResetIcon from '@mui/icons-material/LockReset';
 import SendIcon from '@mui/icons-material/Send';
 import {
   Alert,
@@ -33,7 +34,14 @@ import {
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
-import { createUser, deleteUser, getUsers, triggerReminders, updateUser } from './api/admin';
+import {
+  createUser,
+  deleteUser,
+  getUsers,
+  resetUserTwoFactor,
+  triggerReminders,
+  updateUser,
+} from './api/admin';
 import { isAdmin } from './auth';
 import AppDialog from './components/AppDialog';
 import { useSnackbar } from './context/SnackbarContext';
@@ -83,6 +91,12 @@ export default function UsersPage() {
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+
+  // Reset-2FA dialog state (issue #592)
+  const [resetTwoFactorDialogOpen, setResetTwoFactorDialogOpen] = useState(false);
+  const [resettingTwoFactorUser, setResettingTwoFactorUser] = useState<User | null>(null);
+  const [resetTwoFactorLoading, setResetTwoFactorLoading] = useState(false);
+  const [resetTwoFactorError, setResetTwoFactorError] = useState('');
 
   // Check admin access
   useEffect(() => {
@@ -262,6 +276,37 @@ export default function UsersPage() {
     }
   };
 
+  // Reset-2FA handlers (issue #592)
+  const handleResetTwoFactorClick = (user: User) => {
+    setResettingTwoFactorUser(user);
+    setResetTwoFactorError('');
+    setResetTwoFactorDialogOpen(true);
+  };
+
+  const handleResetTwoFactorClose = () => {
+    setResetTwoFactorDialogOpen(false);
+    setResettingTwoFactorUser(null);
+    setResetTwoFactorError('');
+  };
+
+  const handleResetTwoFactorConfirm = async () => {
+    if (!resettingTwoFactorUser) return;
+
+    setResetTwoFactorLoading(true);
+    setResetTwoFactorError('');
+
+    try {
+      await resetUserTwoFactor(resettingTwoFactorUser.id);
+      showSuccess(t('users.resetTwoFactorSuccess', { username: resettingTwoFactorUser.username }));
+      handleResetTwoFactorClose();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : t('users.resetTwoFactorError');
+      setResetTwoFactorError(errorMessage);
+    } finally {
+      setResetTwoFactorLoading(false);
+    }
+  };
+
   if (loading && users.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -364,6 +409,14 @@ export default function UsersPage() {
                     </IconButton>
                     <IconButton
                       size="small"
+                      onClick={() => handleResetTwoFactorClick(user)}
+                      title={t('users.resetTwoFactor')}
+                      aria-label={t('users.resetTwoFactor')}
+                    >
+                      <LockResetIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
                       onClick={() => handleDeleteClick(user)}
                       title={t('common.delete')}
                       aria-label={t('common.delete')}
@@ -424,6 +477,14 @@ export default function UsersPage() {
                       aria-label={t('common.edit')}
                     >
                       <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleResetTwoFactorClick(user)}
+                      title={t('users.resetTwoFactor')}
+                      aria-label={t('users.resetTwoFactor')}
+                    >
+                      <LockResetIcon fontSize="small" />
                     </IconButton>
                     <IconButton
                       size="small"
@@ -592,6 +653,41 @@ export default function UsersPage() {
             disabled={deleteLoading}
           >
             {deleteLoading ? `${t('common.delete')}...` : t('common.delete')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reset 2FA Confirmation Dialog (issue #592) */}
+      <Dialog open={resetTwoFactorDialogOpen} onClose={handleResetTwoFactorClose}>
+        <DialogTitle>{t('users.resetTwoFactorDialog.title')}</DialogTitle>
+        <DialogContent>
+          {resetTwoFactorError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {resetTwoFactorError}
+            </Alert>
+          )}
+          <Typography>
+            {t('users.resetTwoFactorDialog.message', {
+              username: resettingTwoFactorUser?.username,
+            })}
+          </Typography>
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            {t('users.resetTwoFactorDialog.warning')}
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleResetTwoFactorClose} disabled={resetTwoFactorLoading}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            onClick={handleResetTwoFactorConfirm}
+            color="warning"
+            variant="contained"
+            disabled={resetTwoFactorLoading}
+          >
+            {resetTwoFactorLoading
+              ? `${t('users.resetTwoFactor')}...`
+              : t('users.resetTwoFactor')}
           </Button>
         </DialogActions>
       </Dialog>

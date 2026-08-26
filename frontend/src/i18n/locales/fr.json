@@ -1501,9 +1501,17 @@
       "message": "Êtes-vous sûr de vouloir supprimer l'utilisateur \"{{username}}\" ?",
       "warning": "Cela supprimera définitivement l'utilisateur et toutes ses données, y compris les contacts, activités, notes et rappels."
     },
+    "resetTwoFactor": "Réinitialiser la 2FA",
+    "resetTwoFactorDialog": {
+      "title": "Réinitialiser l'authentification à deux facteurs",
+      "message": "Êtes-vous sûr de vouloir réinitialiser l'authentification à deux facteurs de \"{{username}}\" ?",
+      "warning": "Cela désactive son application d'authentification et supprime ses codes de récupération, et met fin à ses sessions actuelles. À utiliser uniquement lorsqu'un utilisateur est bloqué et ne peut pas se vérifier avec sa 2FA existante."
+    },
     "updateError": "Échec de la mise à jour de l'utilisateur",
     "createError": "Échec de la création de l'utilisateur",
     "deleteError": "Échec de la suppression de l'utilisateur",
+    "resetTwoFactorSuccess": "Authentification à deux facteurs réinitialisée pour \"{{username}}\"",
+    "resetTwoFactorError": "Échec de la réinitialisation de l'authentification à deux facteurs",
     "triggerReminders": "Envoyer les e-mails de rappel",
     "triggerRemindersSuccess": "E-mails de rappel envoyés avec succès",
     "triggerRemindersError": "Échec de l'envoi des e-mails de rappel"
