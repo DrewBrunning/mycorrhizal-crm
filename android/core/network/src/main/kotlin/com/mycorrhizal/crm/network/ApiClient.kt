@@ -158,6 +158,11 @@ import com.mycorrhizal.crm.model.network.ContactSharesPage
 import com.mycorrhizal.crm.model.network.CreateContactShareResponse
 import com.mycorrhizal.crm.model.network.UserDirectoryEntry
 import com.mycorrhizal.crm.model.network.UserDirectoryResponse
+import com.mycorrhizal.crm.model.network.ApiToken
+import com.mycorrhizal.crm.model.network.ApiTokenCreateResponse
+import com.mycorrhizal.crm.model.network.ApiTokenInput
+import com.mycorrhizal.crm.model.network.ApiTokensResponse
+import com.mycorrhizal.crm.model.network.RevokeAllApiTokensResponse
 import com.mycorrhizal.crm.model.network.UpdateDateFormatRequest
 import com.mycorrhizal.crm.model.network.UpdateLanguageRequest
 import com.mycorrhizal.crm.model.network.Webhook
@@ -351,6 +356,45 @@ class ApiClient(
     suspend fun getWebhookDeliveries(id: Int): Result<List<WebhookDelivery>> =
         executeGet("$PLACEHOLDER_ORIGIN$WEBHOOKS_PATH/$id/deliveries") { _, body ->
             moshi.adapter(WebhookDeliveriesResponse::class.java).fromJson(body)?.deliveries
+        }
+
+    // --- Issue #413 / #573: API token lifecycle (list/create/revoke/rotate). ---
+    // The endpoints pre-date the Android client (backend/routes/routes.go); the
+    // gap this closes is the missing Android surface, same as webhooks (M25).
+
+    /** GET /api/v1/api-tokens — `{ tokens: [...] }`, unwrapped here. */
+    suspend fun listApiTokens(): Result<List<ApiToken>> =
+        executeGet("$PLACEHOLDER_ORIGIN$API_TOKENS_PATH") { _, body ->
+            moshi.adapter(ApiTokensResponse::class.java).fromJson(body)?.tokens
+        }
+
+    /** POST /api/v1/api-tokens — 201; the only response that carries the plaintext token. */
+    suspend fun createApiToken(input: ApiTokenInput): Result<ApiTokenCreateResponse> =
+        executePost(API_TOKENS_PATH, input) { _, body ->
+            moshi.adapter(ApiTokenCreateResponse::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/api-tokens/{id} — `{ message }`. */
+    suspend fun revokeApiToken(id: Int): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$API_TOKENS_PATH/$id")
+
+    /**
+     * POST /api/v1/api-tokens/revoke-all — ends every one of the caller's
+     * standing tokens at once (e.g. a lost device); `{ revoked: N }`.
+     */
+    suspend fun revokeAllApiTokens(): Result<RevokeAllApiTokensResponse> =
+        executePostEmpty("$API_TOKENS_PATH/revoke-all") { _, body ->
+            moshi.adapter(RevokeAllApiTokensResponse::class.java).fromJson(body)
+        }
+
+    /**
+     * POST /api/v1/api-tokens/{id}/rotate — 201; revokes the token and
+     * reissues a new one with the same name/scope. Like create, the new
+     * plaintext is shown exactly once.
+     */
+    suspend fun rotateApiToken(id: Int): Result<ApiTokenCreateResponse> =
+        executePostEmpty("$API_TOKENS_PATH/$id/rotate") { _, body ->
+            moshi.adapter(ApiTokenCreateResponse::class.java).fromJson(body)
         }
 
     /** GET /api/v1/contacts (cursor-paginated list). */
@@ -1796,6 +1840,7 @@ class ApiClient(
         private const val USERS_PATH = "$API_V1/users"
         private const val ADMIN_USERS_PATH = "$API_V1/admin/users"
         private const val WEBHOOKS_PATH = "$API_V1/webhooks"
+        private const val API_TOKENS_PATH = "$API_V1/api-tokens"
         private const val NOTIFICATIONS_CONFIG_PATH = "$API_V1/notifications/config"
         private const val NOTIFICATIONS_DEVICES_PATH = "$API_V1/notifications/devices"
         private const val CONTACTS_PATH = "$API_V1/contacts"

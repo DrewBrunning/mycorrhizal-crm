@@ -208,6 +208,24 @@ class SettingsScreenTest {
         assertTrue(channels)
     }
 
+    // Issue #413's Android follow-up (#573).
+    @Test
+    fun `api tokens row invokes its navigation callback`() {
+        var apiTokens = false
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(),
+                    onApiTokens = { apiTokens = true },
+                    onLogout = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("API Tokens").performScrollTo().performClick()
+        assertTrue(apiTokens)
+    }
+
     // --- T104 / data suggestions ---
 
     @Test

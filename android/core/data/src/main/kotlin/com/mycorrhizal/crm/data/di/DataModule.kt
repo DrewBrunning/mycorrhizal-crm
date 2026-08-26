@@ -53,6 +53,7 @@ import com.mycorrhizal.crm.data.repository.NotificationSettingsRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AppSettingsRepositoryImpl
 import com.mycorrhizal.crm.data.repository.UserManagementRepositoryImpl
 import com.mycorrhizal.crm.data.repository.WebhookRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ApiTokenRepositoryImpl
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.SessionDataCleaner
 import com.mycorrhizal.crm.data.session.SessionManager
@@ -88,6 +89,7 @@ import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
 import com.mycorrhizal.crm.domain.repository.NotificationSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.WebhookRepository
+import com.mycorrhizal.crm.domain.repository.ApiTokenRepository
 import com.mycorrhizal.crm.domain.repository.UserManagementRepository
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.BaseUrlProvider
@@ -380,6 +382,10 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindWebhookRepository(impl: WebhookRepositoryImpl): WebhookRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindApiTokenRepository(impl: ApiTokenRepositoryImpl): ApiTokenRepository
 
     @Binds
     @Singleton

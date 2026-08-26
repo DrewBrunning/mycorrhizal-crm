@@ -414,6 +414,45 @@
     <string name="settings_webhooks_event_reminder_triggered">Rappel déclenché</string>
     <string name="settings_webhooks_event_birthday_occurred">Anniversaire</string>
 
+    <!-- Settings: API tokens (issue #413's Android follow-up, #573) -->
+    <string name="settings_api_tokens_title">Jetons API</string>
+    <string name="settings_api_tokens_create">Créer un jeton</string>
+    <string name="settings_api_tokens_revoke_all">Tout révoquer</string>
+    <string name="settings_api_tokens_empty">Aucun jeton API pour l\'instant</string>
+    <string name="settings_api_tokens_active">Actif</string>
+    <string name="settings_api_tokens_revoked">Révoqué</string>
+    <string name="settings_api_tokens_expired">Expiré</string>
+    <string name="settings_api_tokens_scope_full">Accès complet</string>
+    <string name="settings_api_tokens_scope_carddav">CardDAV uniquement</string>
+    <string name="settings_api_tokens_created">Créé %1$s</string>
+    <string name="settings_api_tokens_last_used">Dernière utilisation : %1$s</string>
+    <string name="settings_api_tokens_never_used">Jamais</string>
+    <string name="settings_api_tokens_expires">Expire %1$s</string>
+    <string name="settings_api_tokens_rotate_named">Faire pivoter %1$s</string>
+    <string name="settings_api_tokens_revoke_named">Révoquer %1$s</string>
+    <string name="settings_api_tokens_create_title">Créer un jeton API</string>
+    <string name="settings_api_tokens_name_label">Nom du jeton</string>
+    <string name="settings_api_tokens_expiry_label">Expire dans</string>
+    <string name="settings_api_tokens_expiry_days">%1$d jours</string>
+    <string name="settings_api_tokens_scope_label">Accès</string>
+    <string name="settings_api_tokens_scope_full_help">Peut être utilisé partout où l\'API accepte un jeton, y compris pour la synchronisation CardDAV.</string>
+    <string name="settings_api_tokens_scope_carddav_help">Fonctionne uniquement pour la synchronisation des contacts CardDAV. Un identifiant d\'appareil compromis ne peut pas être utilisé contre le reste de l\'API.</string>
+    <string name="settings_api_tokens_created_title">Jeton créé</string>
+    <string name="settings_api_tokens_created_warning">Ce jeton ne sera plus affiché. Copiez-le maintenant et conservez-le en lieu sûr.</string>
+    <string name="settings_api_tokens_rotated_title">Jeton pivoté</string>
+    <string name="settings_api_tokens_rotated_warning">L\'ancien jeton est désormais révoqué. Ce nouveau jeton ne sera plus affiché — copiez-le maintenant et conservez-le en lieu sûr.</string>
+    <string name="settings_api_tokens_copy">Copier</string>
+    <string name="settings_api_tokens_done">Terminé, je l\'ai sauvegardé</string>
+    <string name="settings_api_tokens_revoke_title">Révoquer le jeton</string>
+    <string name="settings_api_tokens_revoke_body">Révoquer \"%1$s\" ? Cette action est irréversible.</string>
+    <string name="settings_api_tokens_revoke_confirm">Révoquer</string>
+    <string name="settings_api_tokens_revoke_all_title">Révoquer tous les jetons</string>
+    <string name="settings_api_tokens_revoke_all_body">Révoquer les %1$d jetons API actifs ? Cette action est irréversible et interrompra immédiatement tout ce qui les utilise.</string>
+    <string name="settings_api_tokens_revoke_all_success">%1$d jetons révoqués</string>
+    <string name="settings_api_tokens_rotate_title">Faire pivoter le jeton</string>
+    <string name="settings_api_tokens_rotate_body">Faire pivoter \"%1$s\" le révoque immédiatement et émet un nouveau jeton avec le même nom et la même portée. Le nouveau jeton ne sera affiché qu\'une seule fois.</string>
+    <string name="settings_api_tokens_rotate_confirm">Pivoter</string>
+
     <!-- Settings: notification channels — ntfy/Gotify (M25) -->
     <string name="settings_notifications_title">Canaux de notification</string>
     <string name="settings_notifications_description">Choisissez comment recevoir vos rappels. L\'e-mail est configuré côté serveur et activé par rappel ; les canaux ci-dessous envoient vos rappels à vos services push auto-hébergés.</string>

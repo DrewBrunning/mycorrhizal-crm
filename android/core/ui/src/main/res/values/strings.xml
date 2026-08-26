@@ -422,6 +422,45 @@
     <string name="settings_webhooks_event_reminder_triggered">Reminder Triggered</string>
     <string name="settings_webhooks_event_birthday_occurred">Birthday</string>
 
+    <!-- Settings: API tokens (issue #413's Android follow-up, #573) -->
+    <string name="settings_api_tokens_title">API Tokens</string>
+    <string name="settings_api_tokens_create">Create Token</string>
+    <string name="settings_api_tokens_revoke_all">Revoke All</string>
+    <string name="settings_api_tokens_empty">No API tokens yet</string>
+    <string name="settings_api_tokens_active">Active</string>
+    <string name="settings_api_tokens_revoked">Revoked</string>
+    <string name="settings_api_tokens_expired">Expired</string>
+    <string name="settings_api_tokens_scope_full">Full access</string>
+    <string name="settings_api_tokens_scope_carddav">CardDAV only</string>
+    <string name="settings_api_tokens_created">Created %1$s</string>
+    <string name="settings_api_tokens_last_used">Last used: %1$s</string>
+    <string name="settings_api_tokens_never_used">Never</string>
+    <string name="settings_api_tokens_expires">Expires %1$s</string>
+    <string name="settings_api_tokens_rotate_named">Rotate %1$s</string>
+    <string name="settings_api_tokens_revoke_named">Revoke %1$s</string>
+    <string name="settings_api_tokens_create_title">Create API Token</string>
+    <string name="settings_api_tokens_name_label">Token Name</string>
+    <string name="settings_api_tokens_expiry_label">Expires in</string>
+    <string name="settings_api_tokens_expiry_days">%1$d days</string>
+    <string name="settings_api_tokens_scope_label">Access</string>
+    <string name="settings_api_tokens_scope_full_help">Can be used anywhere the API accepts a token, including CardDAV sync.</string>
+    <string name="settings_api_tokens_scope_carddav_help">Only works for CardDAV contact sync. A leaked device credential can\'t be used against the rest of the API.</string>
+    <string name="settings_api_tokens_created_title">Token Created</string>
+    <string name="settings_api_tokens_created_warning">This token will not be shown again. Copy it now and store it securely.</string>
+    <string name="settings_api_tokens_rotated_title">Token Rotated</string>
+    <string name="settings_api_tokens_rotated_warning">The old token is now revoked. This new token will not be shown again — copy it now and store it securely.</string>
+    <string name="settings_api_tokens_copy">Copy</string>
+    <string name="settings_api_tokens_done">Done, I saved it</string>
+    <string name="settings_api_tokens_revoke_title">Revoke Token</string>
+    <string name="settings_api_tokens_revoke_body">Revoke \"%1$s\"? This cannot be undone.</string>
+    <string name="settings_api_tokens_revoke_confirm">Revoke</string>
+    <string name="settings_api_tokens_revoke_all_title">Revoke All Tokens</string>
+    <string name="settings_api_tokens_revoke_all_body">Revoke all %1$d active API tokens? This cannot be undone and will immediately break anything using them.</string>
+    <string name="settings_api_tokens_revoke_all_success">%1$d tokens revoked</string>
+    <string name="settings_api_tokens_rotate_title">Rotate Token</string>
+    <string name="settings_api_tokens_rotate_body">Rotating \"%1$s\" immediately revokes it and issues a new token with the same name and scope. The new token will only be shown once.</string>
+    <string name="settings_api_tokens_rotate_confirm">Rotate</string>
+
     <!-- Settings: notification channels — ntfy/Gotify (M25) -->
     <string name="settings_notifications_title">Notification channels</string>
     <string name="settings_notifications_description">Choose how reminder notifications reach you. Email is configured server-side and toggled per reminder; the channels below deliver reminders to your self-hosted push services.</string>
