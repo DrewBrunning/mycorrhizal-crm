@@ -18,19 +18,24 @@ ignore-rules:
   # standard single-activity launcher pattern.
   - android_task_hijacking1
   - android_task_hijacking2
-  # Absence-type INFO rules that don't apply to a personal CRM: no certificate
-  # pinning (the backend does not pin either; transport is standard TLS),
-  # no root/SafetyNet/screenshot/tapjacking hardening. These would be
-  # informational at best and are not decisions this app makes.
+  # Absence-type INFO rules for the two MASVS-L2 resilience controls kept
+  # declined after the issue #507 re-evaluation (docs/security/masvs-l1.md P1
+  # and P3, docs/security/threat-model.md gating decision 3): no certificate
+  # pinning (the backend does not pin either; transport is standard TLS to a
+  # self-hosted origin the operator controls), no root/SafetyNet detection
+  # (SafetyNet is deprecated; root detection would punish the self-hosted
+  # audience, who overlap heavily with legitimate rooted-device users).
+  #
+  # android_prevent_screenshot and android_detect_tapjacking/android_tapjacking
+  # are deliberately NOT in this ignore-list any more — issue #507 reversed
+  # both (MainActivity.kt: FLAG_SECURE + filterTouchesWhenObscured), so mobsf
+  # should flag their absence if they ever regress.
   - android_certificate_pinning
   - android_certificate_transparency
   - android_ssl_pinning
   - android_root_detection
   - android_safetynet
   - android_safetynet_api
-  - android_prevent_screenshot
-  - android_detect_tapjacking
-  - android_tapjacking
   # Debug-build-only cleartext to the emulator loopback (10.0.2.2/127.0.0.1)
   # so adb-driven local-backend testing works; documented in
   # app/src/debug/res/xml/network_security_config.xml and never shipped (the
