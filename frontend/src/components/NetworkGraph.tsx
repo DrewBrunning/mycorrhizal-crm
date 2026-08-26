@@ -1,16 +1,16 @@
-import { useRef, useCallback, useMemo, useEffect, useState } from 'react';
-import ForceGraph2D from 'react-force-graph-2d';
-import { forceX, forceY } from 'd3-force';
-import { useTheme, Box, Typography, IconButton, useMediaQuery } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import RemoveIcon from '@mui/icons-material/Remove';
 import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import RemoveIcon from '@mui/icons-material/Remove';
+import { Box, IconButton, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { forceX, forceY } from 'd3-force';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ForceGraph2D from 'react-force-graph-2d';
 import { useTranslation } from 'react-i18next';
-import { GraphData, GraphNode, GraphEdge } from '../types/graph';
+import type { GraphData, GraphEdge, GraphNode } from '../types/graph';
 import { computeFilteredGraphData } from '../utils/networkGraphData';
 
 interface NetworkGraphProps {
@@ -99,15 +99,31 @@ export default function NetworkGraph({
   // NetworkPage's accessible list view (T189) filters identically -- same
   // pure function, same inputs, so the two can never disagree.
   const graphData: ForceGraphData = useMemo(
-    () => computeFilteredGraphData(data, { selectedCircle, showRelationships, showActivities, showCircles, centeredNodeId, circleNamesByUid }),
-    [data, selectedCircle, showRelationships, showActivities, showCircles, centeredNodeId, circleNamesByUid]
+    () =>
+      computeFilteredGraphData(data, {
+        selectedCircle,
+        showRelationships,
+        showActivities,
+        showCircles,
+        centeredNodeId,
+        circleNamesByUid,
+      }),
+    [
+      data,
+      selectedCircle,
+      showRelationships,
+      showActivities,
+      showCircles,
+      centeredNodeId,
+      circleNamesByUid,
+    ],
   );
 
   // Center and zoom to selected node when centeredNodeId changes
   useEffect(() => {
     if (!centeredNodeId || !graphRef.current) return;
 
-    const node = graphData.nodes.find(n => n.id === centeredNodeId);
+    const node = graphData.nodes.find((n) => n.id === centeredNodeId);
     if (!node || node.x == null || node.y == null) return;
 
     graphRef.current.centerAt(node.x, node.y, 800);
@@ -124,66 +140,80 @@ export default function NetworkGraph({
   };
 
   // Custom node rendering
-  const nodeCanvasObject = useCallback((node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
-    const isContact = node.type === 'contact';
-    const isActivity = node.type === 'activity';
-    const isCircleNode = node.type === 'circle';
-    const size = getNodeSize(node.type);
-    const fontSize = Math.max(10 / globalScale, 3);
-    const isCentered = node.id === centeredNodeId;
+  const nodeCanvasObject = useCallback(
+    (node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
+      const isContact = node.type === 'contact';
+      const isActivity = node.type === 'activity';
+      const isCircleNode = node.type === 'circle';
+      const size = getNodeSize(node.type);
+      const fontSize = Math.max(10 / globalScale, 3);
+      const isCentered = node.id === centeredNodeId;
 
-    // Draw highlight ring for centered contact
-    if (isCentered) {
+      // Draw highlight ring for centered contact
+      if (isCentered) {
+        ctx.beginPath();
+        ctx.arc(node.x || 0, node.y || 0, size + 5, 0, 2 * Math.PI);
+        ctx.strokeStyle = theme.palette.primary.light;
+        ctx.lineWidth = 3 / globalScale;
+        ctx.stroke();
+      }
+
+      // Draw node circle
       ctx.beginPath();
-      ctx.arc(node.x || 0, node.y || 0, size + 5, 0, 2 * Math.PI);
-      ctx.strokeStyle = theme.palette.primary.light;
-      ctx.lineWidth = 3 / globalScale;
+      ctx.arc(node.x || 0, node.y || 0, size, 0, 2 * Math.PI);
+      if (isContact) {
+        ctx.fillStyle = nodeColor;
+      } else if (isActivity) {
+        ctx.fillStyle = activityNodeColor;
+      } else {
+        ctx.fillStyle = circleNodeColor;
+      }
+      ctx.fill();
+
+      // Draw border
+      ctx.strokeStyle = bgColor;
+      ctx.lineWidth = 2 / globalScale;
       ctx.stroke();
-    }
 
-    // Draw node circle
-    ctx.beginPath();
-    ctx.arc(node.x || 0, node.y || 0, size, 0, 2 * Math.PI);
-    if (isContact) {
-      ctx.fillStyle = nodeColor;
-    } else if (isActivity) {
-      ctx.fillStyle = activityNodeColor;
-    } else {
-      ctx.fillStyle = circleNodeColor;
-    }
-    ctx.fill();
+      // Draw initials for contacts
+      if (isContact && globalScale > 0.5) {
+        ctx.font = `bold ${fontSize * 1.2}px Helvetica, Helvetica Neue, Roboto, Arial, sans-serif`;
 
-    // Draw border
-    ctx.strokeStyle = bgColor;
-    ctx.lineWidth = 2 / globalScale;
-    ctx.stroke();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(getInitials(node.label), node.x || 0, node.y || 0);
+      }
 
-    // Draw initials for contacts
-    if (isContact && globalScale > 0.5) {
-      ctx.font = `bold ${fontSize * 1.2}px Helvetica, Helvetica Neue, Roboto, Arial, sans-serif`;
-
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillText(getInitials(node.label), node.x || 0, node.y || 0);
-    }
-
-    // Draw label below node when zoomed in enough
-    if (globalScale > 0.6 && (isContact || isActivity || isCircleNode)) {
-      ctx.font = `${fontSize}px Helvetica, Helvetica Neue, Roboto, Arial, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillStyle = textColor;
-      ctx.fillText(node.label, node.x || 0, (node.y || 0) + size + 4);
-    }
-  }, [nodeColor, activityNodeColor, circleNodeColor, bgColor, textColor, centeredNodeId, theme.palette.primary.light]);
+      // Draw label below node when zoomed in enough
+      if (globalScale > 0.6 && (isContact || isActivity || isCircleNode)) {
+        ctx.font = `${fontSize}px Helvetica, Helvetica Neue, Roboto, Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = textColor;
+        ctx.fillText(node.label, node.x || 0, (node.y || 0) + size + 4);
+      }
+    },
+    [
+      nodeColor,
+      activityNodeColor,
+      circleNodeColor,
+      bgColor,
+      textColor,
+      centeredNodeId,
+      theme.palette.primary.light,
+    ],
+  );
 
   // Custom link rendering
-  const linkColor = useCallback((link: GraphEdge) => {
-    if (link.type === 'relationship') return relationshipColor;
-    if (link.type === 'activity') return activityColor;
-    return circleEdgeColor;
-  }, [relationshipColor, activityColor, circleEdgeColor]);
+  const linkColor = useCallback(
+    (link: GraphEdge) => {
+      if (link.type === 'relationship') return relationshipColor;
+      if (link.type === 'activity') return activityColor;
+      return circleEdgeColor;
+    },
+    [relationshipColor, activityColor, circleEdgeColor],
+  );
 
   // Handle node hover
   const handleNodeHover = useCallback((node: GraphNode | null) => {
@@ -197,13 +227,16 @@ export default function NetworkGraph({
   }, []);
 
   // Handle node click
-  const handleNodeClick = useCallback((node: GraphNode) => {
-    if (node.type === 'contact') {
-      onNodeClick(node);
-    } else if (node.type === 'activity') {
-      onActivityClick?.(node);
-    }
-  }, [onNodeClick, onActivityClick]);
+  const handleNodeClick = useCallback(
+    (node: GraphNode) => {
+      if (node.type === 'contact') {
+        onNodeClick(node);
+      } else if (node.type === 'activity') {
+        onActivityClick?.(node);
+      }
+    },
+    [onNodeClick, onActivityClick],
+  );
 
   // Configure forces to prevent isolated nodes from drifting too far
   useEffect(() => {
@@ -277,9 +310,9 @@ export default function NetworkGraph({
   // nested inside it, or a screen reader user could lose the buttons this
   // ticket exists to add.
   const graphSummary = t('network.graphSummary', {
-    contacts: graphData.nodes.filter(n => n.type === 'contact').length,
-    activities: graphData.nodes.filter(n => n.type === 'activity').length,
-    circles: graphData.nodes.filter(n => n.type === 'circle').length,
+    contacts: graphData.nodes.filter((n) => n.type === 'contact').length,
+    activities: graphData.nodes.filter((n) => n.type === 'activity').length,
+    circles: graphData.nodes.filter((n) => n.type === 'circle').length,
     connections: graphData.links.length,
   });
 
@@ -342,7 +375,11 @@ export default function NetworkGraph({
                 {hoveredNode.label}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {hoveredNode.type === 'contact' ? t('network.legend.contact') : hoveredNode.type === 'activity' ? t('network.legend.activity') : t('network.legend.circle')}
+                {hoveredNode.type === 'contact'
+                  ? t('network.legend.contact')
+                  : hoveredNode.type === 'activity'
+                    ? t('network.legend.activity')
+                    : t('network.legend.circle')}
               </Typography>
             </>
           ) : hoveredEdge ? (

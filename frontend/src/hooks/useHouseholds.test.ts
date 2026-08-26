@@ -1,20 +1,20 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { renderHook, cleanup, waitFor, act } from '@testing-library/react';
-import { useHouseholds } from './useHouseholds';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import {
-  listHouseholds,
-  createHousehold,
-  updateHousehold,
-  deleteHousehold,
   addHouseholdMember,
+  createHousehold,
+  deleteHousehold,
+  type Household,
+  type HouseholdInput,
+  type HouseholdListResponse,
+  type HouseholdMember,
+  listHouseholds,
   removeHouseholdMember,
-  updateHouseholdMember,
   suggestHouseholdRelationships,
-  Household,
-  HouseholdMember,
-  HouseholdInput,
-  HouseholdListResponse,
+  updateHousehold,
+  updateHouseholdMember,
 } from '../api/households';
+import { useHouseholds } from './useHouseholds';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(() => {
@@ -132,7 +132,10 @@ test('handleAddMember adds a member with its role', async () => {
     await result.current.handleAddMember('h-1', 'uid-9', 'child');
   });
 
-  expect(addHouseholdMember).toHaveBeenCalledWith('h-1', { member_vcard_uid: 'uid-9', role: 'child' });
+  expect(addHouseholdMember).toHaveBeenCalledWith('h-1', {
+    member_vcard_uid: 'uid-9',
+    role: 'child',
+  });
 });
 
 test('handleAddMember omits role when none is given', async () => {
@@ -145,7 +148,10 @@ test('handleAddMember omits role when none is given', async () => {
     await result.current.handleAddMember('h-1', 'uid-9');
   });
 
-  expect(addHouseholdMember).toHaveBeenCalledWith('h-1', { member_vcard_uid: 'uid-9', role: undefined });
+  expect(addHouseholdMember).toHaveBeenCalledWith('h-1', {
+    member_vcard_uid: 'uid-9',
+    role: undefined,
+  });
 });
 
 test('handleRemoveMember removes and refreshes', async () => {
@@ -199,9 +205,9 @@ test('mutation errors notify through the notifier and rethrow', async () => {
   const { result } = renderHook(() => useHouseholds({ showError }));
   await waitFor(() => expect(result.current.loading).toBe(false));
 
-  await expect(
-    result.current.handleUpdate('h-1', { name: 'x', type: 'other' })
-  ).rejects.toThrow('boom');
+  await expect(result.current.handleUpdate('h-1', { name: 'x', type: 'other' })).rejects.toThrow(
+    'boom',
+  );
   expect(showError).toHaveBeenCalledWith('boom');
 });
 

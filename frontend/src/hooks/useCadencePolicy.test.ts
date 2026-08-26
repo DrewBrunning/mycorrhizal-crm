@@ -1,15 +1,15 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { renderHook, cleanup, waitFor, act } from '@testing-library/react';
-import { useCadencePolicy } from './useCadencePolicy';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import {
-  getCadencePolicies,
+  type CadencePoliciesResponse,
+  type CadencePolicy,
+  type CadencePolicyInput,
   createCadencePolicy,
-  updateCadencePolicy,
   deleteCadencePolicy,
-  CadencePolicy,
-  CadencePolicyInput,
-  CadencePoliciesResponse,
+  getCadencePolicies,
+  updateCadencePolicy,
 } from '../api/cadencePolicies';
+import { useCadencePolicy } from './useCadencePolicy';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(() => {

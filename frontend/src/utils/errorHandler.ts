@@ -1,6 +1,6 @@
 /**
  * Centralized error handling utility for consistent error management across the application.
- * 
+ *
  * This module provides:
  * - Consistent error message extraction from various error types
  * - Structured logging with context information
@@ -33,15 +33,15 @@ export function getErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     return error.getDisplayMessage();
   }
-  
+
   if (error instanceof Error) {
     return error.message;
   }
-  
+
   if (typeof error === 'string') {
     return error;
   }
-  
+
   return 'An unexpected error occurred';
 }
 
@@ -78,12 +78,12 @@ function logError(error: unknown, context: ErrorContext): void {
 /**
  * Handle an error by logging it and optionally notifying the user.
  * Use this for operations where the error should be visible to users.
- * 
+ *
  * @param error - The error to handle
  * @param context - Context about the operation
  * @param notifier - Optional notifier to show user-facing messages
  * @returns The user-friendly error message
- * 
+ *
  * @example
  * ```ts
  * try {
@@ -97,23 +97,23 @@ function logError(error: unknown, context: ErrorContext): void {
 export function handleError(
   error: unknown,
   context: ErrorContext,
-  notifier?: ErrorNotifier
+  notifier?: ErrorNotifier,
 ): string {
   const message = getErrorMessage(error);
-  
+
   logError(error, context);
-  
+
   if (notifier) {
     notifier.showError(message);
   }
-  
+
   return message;
 }
 
 /**
  * Hook-friendly error handler that returns a consistent error message.
  * Use this in hooks that need to set error state.
- * 
+ *
  * @example
  * ```ts
  * const fetchData = async () => {

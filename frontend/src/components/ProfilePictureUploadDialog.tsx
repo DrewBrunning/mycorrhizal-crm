@@ -1,29 +1,29 @@
-import { useState, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
-import Cropper, { Area } from 'react-easy-crop';
-import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Box,
-  Slider,
-  Typography,
-  CircularProgress,
-  Alert,
-  TextField,
-  Divider
-} from '@mui/material';
-import AppDialog from './AppDialog';
-import ImmichPhotoPickerDialog from './ImmichPhotoPickerDialog';
-import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import { mdiImageMultipleOutline } from '@mdi/js';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import LinkIcon from '@mui/icons-material/Link';
-import { mdiImageMultipleOutline } from '@mdi/js';
-import { SvgIcon } from '@mui/material';
-import { handleError, getErrorMessage } from '../utils/errorHandler';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Slider,
+  SvgIcon,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { useCallback, useState } from 'react';
+import Cropper, { type Area } from 'react-easy-crop';
+import { useTranslation } from 'react-i18next';
 import { API_BASE_URL, apiFetch } from '../api/client';
-import { ImmichPerson } from '../api/immich';
+import type { ImmichPerson } from '../api/immich';
+import { getErrorMessage, handleError } from '../utils/errorHandler';
+import AppDialog from './AppDialog';
+import ImmichPhotoPickerDialog from './ImmichPhotoPickerDialog';
 
 interface ProfilePictureUploadDialogProps {
   open: boolean;
@@ -43,7 +43,7 @@ interface ProfilePictureUploadDialogProps {
 async function getCroppedImg(
   imageSrc: string,
   pixelCrop: Area,
-  outputSize: number = 400
+  outputSize: number = 400,
 ): Promise<Blob> {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
@@ -67,7 +67,7 @@ async function getCroppedImg(
     0,
     0,
     outputSize,
-    outputSize
+    outputSize,
   );
 
   // Return as blob
@@ -81,7 +81,7 @@ async function getCroppedImg(
         }
       },
       'image/jpeg',
-      0.9
+      0.9,
     );
   });
 }
@@ -100,7 +100,7 @@ export default function ProfilePictureUploadDialog({
   open,
   onClose,
   onUpload,
-  immich
+  immich,
 }: ProfilePictureUploadDialogProps) {
   const { t } = useTranslation();
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -163,7 +163,7 @@ export default function ProfilePictureUploadDialog({
       }
 
       const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.startsWith('image/')) {
+      if (!contentType?.startsWith('image/')) {
         throw new Error(t('profilePicture.invalidFileType'));
       }
 
@@ -256,8 +256,8 @@ export default function ProfilePictureUploadDialog({
                 cursor: 'pointer',
                 '&:hover': {
                   borderColor: 'primary.main',
-                  bgcolor: 'action.hover'
-                }
+                  bgcolor: 'action.hover',
+                },
               }}
               component="label"
             >
@@ -298,7 +298,7 @@ export default function ProfilePictureUploadDialog({
                   }
                 }}
                 InputProps={{
-                  startAdornment: <LinkIcon sx={{ mr: 1, color: 'text.secondary' }} />
+                  startAdornment: <LinkIcon sx={{ mr: 1, color: 'text.secondary' }} />,
                 }}
               />
               <Button
@@ -343,7 +343,7 @@ export default function ProfilePictureUploadDialog({
                 height: 350,
                 bgcolor: 'black',
                 borderRadius: 1,
-                overflow: 'hidden'
+                overflow: 'hidden',
               }}
             >
               <Cropper
@@ -374,11 +374,7 @@ export default function ProfilePictureUploadDialog({
 
             {/* Change image button */}
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
-              <Button
-                component="label"
-                size="small"
-                variant="text"
-              >
+              <Button component="label" size="small" variant="text">
                 {t('profilePicture.changeImage')}
                 <input
                   type="file"

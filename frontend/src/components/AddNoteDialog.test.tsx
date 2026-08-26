@@ -1,12 +1,15 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import AddNoteDialog from './AddNoteDialog';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import { DateFormatProvider } from '../DateFormatProvider';
+import AddNoteDialog from './AddNoteDialog';
 
 beforeEach(() => {
-  localStorage.setItem('user_info', JSON.stringify({ user_id: 1, username: 'test', is_admin: false }));
+  localStorage.setItem(
+    'user_info',
+    JSON.stringify({ user_id: 1, username: 'test', is_admin: false }),
+  );
 });
 
 afterEach(() => {
@@ -25,7 +28,7 @@ function mockFetchByUrl(handlers: Record<string, () => unknown>) {
         }
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
 }
 
@@ -52,7 +55,7 @@ test('renders contact autocomplete for assigning a contact at creation', async (
           onSave={vi.fn().mockResolvedValue(undefined)}
         />
       </DateFormatProvider>
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   // The contact Autocomplete placeholder is rendered
@@ -82,7 +85,7 @@ test('renders the dialog title', async () => {
           onSave={vi.fn().mockResolvedValue(undefined)}
         />
       </DateFormatProvider>
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   await waitFor(() => {

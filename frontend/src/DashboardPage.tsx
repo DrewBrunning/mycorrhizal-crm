@@ -1,43 +1,47 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router';
+import CakeIcon from '@mui/icons-material/Cake';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import EmailIcon from '@mui/icons-material/Email';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import RepeatIcon from '@mui/icons-material/Repeat';
+import ShuffleIcon from '@mui/icons-material/Shuffle';
+import SkipNextIcon from '@mui/icons-material/SkipNext';
+import StarIcon from '@mui/icons-material/Star';
+import WarningIcon from '@mui/icons-material/Warning';
 import {
+  Alert,
+  Avatar,
   Box,
-  Typography,
   Card,
   CardContent,
-  Avatar,
-  Stack,
   Chip,
-  Alert,
   IconButton,
+  Popover,
+  Stack,
   Tooltip,
-  Popover
+  Typography,
 } from '@mui/material';
-import CakeIcon from '@mui/icons-material/Cake';
-import ShuffleIcon from '@mui/icons-material/Shuffle';
-import StarIcon from '@mui/icons-material/Star';
-import NotificationsIcon from '@mui/icons-material/Notifications';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import SkipNextIcon from '@mui/icons-material/SkipNext';
-import EmailIcon from '@mui/icons-material/Email';
-import RepeatIcon from '@mui/icons-material/Repeat';
-import WarningIcon from '@mui/icons-material/Warning';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { Contact, Birthday } from './api/contacts';
-import { useCircles } from './hooks/useCircles';
-import { getUpcomingReminders, completeReminder, skipReminder } from './api/reminders';
-import { OverdueCadence } from './api/cadencePolicies';
-import { getDashboard, DashboardReminder } from './api/dashboard';
-import { ReachOutSuggestion, dismissReachOutSuggestion } from './api/reachOutSuggestions';
-import { ContactSyncConflict, restoreContactSyncConflict, dismissContactSyncConflict } from './api/contactSyncConflicts';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link, useNavigate } from 'react-router';
+import type { OverdueCadence } from './api/cadencePolicies';
+import {
+  type ContactSyncConflict,
+  dismissContactSyncConflict,
+  restoreContactSyncConflict,
+} from './api/contactSyncConflicts';
+import type { Birthday, Contact } from './api/contacts';
+import { type DashboardReminder, getDashboard } from './api/dashboard';
+import { dismissReachOutSuggestion, type ReachOutSuggestion } from './api/reachOutSuggestions';
+import { completeReminder, getUpcomingReminders, skipReminder } from './api/reminders';
+import { ContactListSkeleton } from './components/LoadingSkeletons';
 import OverdueCadenceList from './components/OverdueCadenceList';
 import ReachOutSuggestionsList from './components/ReachOutSuggestionsList';
 import SyncConflictList from './components/SyncConflictList';
-import { ContactListSkeleton } from './components/LoadingSkeletons';
-import { handleFetchError, handleError } from './utils/errorHandler';
 import { useDateFormat } from './DateFormatProvider';
+import { useCircles } from './hooks/useCircles';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { handleError, handleFetchError } from './utils/errorHandler';
 
 function DashboardPage() {
   const { t } = useTranslation();
@@ -97,9 +101,12 @@ function DashboardPage() {
   // decision 2). This refetch is deliberately kept as the plain endpoint
   // (interaction path, unrelated to the M3 composite) rather than
   // re-fetching the whole dashboard for one completed/skipped reminder.
-  const attachKnownContactNames = (prev: DashboardReminder[], reminders: Awaited<ReturnType<typeof getUpcomingReminders>>): DashboardReminder[] => {
-    const nameById = new Map(prev.map(r => [r.ID, r.contact_name]));
-    return reminders.map(r => ({ ...r, contact_name: nameById.get(r.ID) || '' }));
+  const attachKnownContactNames = (
+    prev: DashboardReminder[],
+    reminders: Awaited<ReturnType<typeof getUpcomingReminders>>,
+  ): DashboardReminder[] => {
+    const nameById = new Map(prev.map((r) => [r.ID, r.contact_name]));
+    return reminders.map((r) => ({ ...r, contact_name: nameById.get(r.ID) || '' }));
   };
 
   const handleCompleteReminder = async (reminderId: number) => {
@@ -107,7 +114,7 @@ function DashboardPage() {
       await completeReminder(reminderId);
       // Reload reminders after completion
       const reminders = await getUpcomingReminders();
-      setUpcomingReminders(prev => attachKnownContactNames(prev, reminders));
+      setUpcomingReminders((prev) => attachKnownContactNames(prev, reminders));
     } catch (err) {
       handleError(err, { operation: 'completing reminder' });
     }
@@ -121,7 +128,7 @@ function DashboardPage() {
       await skipReminder(reminderId);
       // Reload reminders after skipping
       const reminders = await getUpcomingReminders();
-      setUpcomingReminders(prev => attachKnownContactNames(prev, reminders));
+      setUpcomingReminders((prev) => attachKnownContactNames(prev, reminders));
     } catch (err) {
       handleError(err, { operation: 'skipping reminder' });
     }
@@ -130,7 +137,7 @@ function DashboardPage() {
   const handleDismissReachOutSuggestion = async (id: string) => {
     try {
       await dismissReachOutSuggestion(id);
-      setReachOutSuggestions(prev => prev.filter(s => s.id !== id));
+      setReachOutSuggestions((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
       handleError(err, { operation: 'dismissing reach-out suggestion' });
     }
@@ -144,7 +151,7 @@ function DashboardPage() {
     }
     try {
       await restoreContactSyncConflict(conflict.id);
-      setSyncConflicts(prev => prev.filter(c => c.id !== conflict.id));
+      setSyncConflicts((prev) => prev.filter((c) => c.id !== conflict.id));
     } catch (err) {
       handleError(err, { operation: 'restoring sync conflict' });
     }
@@ -153,7 +160,7 @@ function DashboardPage() {
   const handleDismissSyncConflict = async (id: string) => {
     try {
       await dismissContactSyncConflict(id);
-      setSyncConflicts(prev => prev.filter(c => c.id !== id));
+      setSyncConflicts((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
       handleError(err, { operation: 'dismissing sync conflict' });
     }
@@ -166,27 +173,27 @@ function DashboardPage() {
   const isBirthdayToday = (birthday: string | undefined) => {
     if (!birthday) return false;
     // Birthday is either "YYYY-MM-DD" or "--MM-DD"; compare month and day to today
-    const parts = birthday.split('-').filter(p => p !== '');
+    const parts = birthday.split('-').filter((p) => p !== '');
     if (parts.length < 2) return false;
     const month = parseInt(parts[parts.length - 2], 10);
     const day = parseInt(parts[parts.length - 1], 10);
-    if (isNaN(month) || isNaN(day)) return false;
+    if (Number.isNaN(month) || Number.isNaN(day)) return false;
     const today = new Date();
     return today.getMonth() + 1 === month && today.getDate() === day;
   };
 
   const formatBirthday = (birthday: string | undefined) => {
     if (!birthday) return '';
-    
+
     // Use the date format provider's birthday formatter
     const formattedDate = formatBirthdayDate(birthday);
-    
+
     // Check if year is present to calculate age
     if (!birthday.startsWith('--')) {
       const parts = birthday.split('-');
       if (parts.length === 3 && parts[0].length === 4) {
         const birthYear = parseInt(parts[0], 10);
-        if (!isNaN(birthYear)) {
+        if (!Number.isNaN(birthYear)) {
           const currentYear = new Date().getFullYear();
           const age = currentYear - birthYear;
           // Remove the year from the formatted date for dashboard display (just show DD.MM. or MM/DD)
@@ -195,7 +202,7 @@ function DashboardPage() {
         }
       }
     }
-    
+
     return formattedDate;
   };
 
@@ -204,18 +211,19 @@ function DashboardPage() {
     return `${contact.firstname} ${contact.lastname}`;
   };
 
-
   if (loading) {
     return (
       <Box sx={{ maxWidth: 1400, mx: 'auto', mt: 2, p: 2 }}>
         <Typography variant="h5" component="h1" gutterBottom>
           {t('dashboard.title')}
         </Typography>
-        <Box sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: 'repeat(4, 1fr)' },
-          gap: 3
-        }}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: 'repeat(4, 1fr)' },
+            gap: 3,
+          }}
+        >
           <Box>
             <ContactListSkeleton count={5} />
           </Box>
@@ -287,11 +295,13 @@ function DashboardPage() {
         </Box>
       )}
 
-      <Box sx={{
-        display: 'grid',
-        gridTemplateColumns: { xs: '1fr', md: 'repeat(4, 1fr)' },
-        gap: 2
-      }}>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', md: 'repeat(4, 1fr)' },
+          gap: 2,
+        }}
+      >
         {/* Issue #173: Column 1 — Favorites (quick access). */}
         <Box>
           <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -338,8 +348,8 @@ function DashboardPage() {
                     '&:hover': {
                       boxShadow: 2,
                       transform: 'translateY(-1px)',
-                      transition: 'all 0.2s'
-                    }
+                      transition: 'all 0.2s',
+                    },
                   }}
                 >
                   <CardContent sx={{ py: 1.5 }}>
@@ -356,15 +366,18 @@ function DashboardPage() {
                         </Typography>
                         {(circleNamesByUid.get(contact.uid || '') || []).length > 0 && (
                           <Box sx={{ mt: 0.5 }}>
-                            {(circleNamesByUid.get(contact.uid || '') || []).slice(0, 2).map((circle, idx) => (
-                              <Chip
-                                key={idx}
-                                label={circle}
-                                size="small"
-                                variant="outlined"
-                                sx={{ mr: 0.5, height: 20, fontSize: '0.7rem' }}
-                              />
-                            ))}
+                            {(circleNamesByUid.get(contact.uid || '') || [])
+                              .slice(0, 2)
+                              .map((circle, idx) => (
+                                <Chip
+                                  // biome-ignore lint/suspicious/noArrayIndexKey: sliced lookup, no stable id
+                                  key={idx}
+                                  label={circle}
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{ mr: 0.5, height: 20, fontSize: '0.7rem' }}
+                                />
+                              ))}
                           </Box>
                         )}
                       </Box>
@@ -416,40 +429,41 @@ function DashboardPage() {
                 const today = isBirthdayToday(birthday.birthday);
 
                 return (
-                <Card
-                  key={`${birthday.type}-${birthday.contact_id}-${index}`}
-                  component={Link}
-                  to={`/contacts/${birthday.contact_id}`}
-                  sx={{
-                    textDecoration: 'none',
-                    border: '1px solid',
-                    borderColor: today ? 'success.main' : 'divider',
-                    '&:hover': {
-                      boxShadow: 2,
-                      transform: 'translateY(-1px)',
-                      transition: 'all 0.2s'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ py: 1.5 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Avatar
-                        src={birthday.photo_thumbnail}
-                        sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}
-                      >
-                        {birthday.name.charAt(0)}
-                      </Avatar>
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant="body2" fontWeight={500}>
-                          {birthday.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {formatBirthday(birthday.birthday)}
-                        </Typography>
+                  <Card
+                    // biome-ignore lint/suspicious/noArrayIndexKey: contact_id may repeat across sections
+                    key={`${birthday.type}-${birthday.contact_id}-${index}`}
+                    component={Link}
+                    to={`/contacts/${birthday.contact_id}`}
+                    sx={{
+                      textDecoration: 'none',
+                      border: '1px solid',
+                      borderColor: today ? 'success.main' : 'divider',
+                      '&:hover': {
+                        boxShadow: 2,
+                        transform: 'translateY(-1px)',
+                        transition: 'all 0.2s',
+                      },
+                    }}
+                  >
+                    <CardContent sx={{ py: 1.5 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Avatar
+                          src={birthday.photo_thumbnail}
+                          sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}
+                        >
+                          {birthday.name.charAt(0)}
+                        </Avatar>
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Typography variant="body2" fontWeight={500}>
+                            {birthday.name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {formatBirthday(birthday.birthday)}
+                          </Typography>
+                        </Box>
                       </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
                 );
               })}
             </Stack>
@@ -505,8 +519,8 @@ function DashboardPage() {
                       '&:hover': {
                         boxShadow: 2,
                         transform: 'translateY(-1px)',
-                        transition: 'all 0.2s'
-                      }
+                        transition: 'all 0.2s',
+                      },
                     }}
                     onClick={() => navigate(`/contacts/${reminder.contact_id}`)}
                   >
@@ -521,7 +535,15 @@ function DashboardPage() {
                               {reminder.contact_name}
                             </Typography>
                           )}
-                          <Box sx={{ mt: 0.75, display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <Box
+                            sx={{
+                              mt: 0.75,
+                              display: 'flex',
+                              gap: 0.5,
+                              flexWrap: 'wrap',
+                              alignItems: 'center',
+                            }}
+                          >
                             <Chip
                               icon={overdue ? <WarningIcon fontSize="small" /> : undefined}
                               label={formatDate(reminder.remind_at)}
@@ -579,7 +601,8 @@ function DashboardPage() {
                               }}
                               aria-label={t('reminders.complete')}
                               sx={{
-                                transition: 'transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out',
+                                transition:
+                                  'transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out',
                                 '&:hover': {
                                   transform: 'scale(1.15)',
                                   boxShadow: '0 0 8px rgba(76, 175, 80, 0.5)',
@@ -645,8 +668,8 @@ function DashboardPage() {
                     '&:hover': {
                       boxShadow: 2,
                       transform: 'translateY(-1px)',
-                      transition: 'all 0.2s'
-                    }
+                      transition: 'all 0.2s',
+                    },
                   }}
                 >
                   <CardContent sx={{ py: 1.5 }}>
@@ -663,15 +686,18 @@ function DashboardPage() {
                         </Typography>
                         {(circleNamesByUid.get(contact.uid || '') || []).length > 0 && (
                           <Box sx={{ mt: 0.5 }}>
-                            {(circleNamesByUid.get(contact.uid || '') || []).slice(0, 2).map((circle, idx) => (
-                              <Chip
-                                key={idx}
-                                label={circle}
-                                size="small"
-                                variant="outlined"
-                                sx={{ mr: 0.5, height: 20, fontSize: '0.7rem' }}
-                              />
-                            ))}
+                            {(circleNamesByUid.get(contact.uid || '') || [])
+                              .slice(0, 2)
+                              .map((circle, idx) => (
+                                <Chip
+                                  // biome-ignore lint/suspicious/noArrayIndexKey: sliced lookup, no stable id
+                                  key={idx}
+                                  label={circle}
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{ mr: 0.5, height: 20, fontSize: '0.7rem' }}
+                                />
+                              ))}
                           </Box>
                         )}
                       </Box>

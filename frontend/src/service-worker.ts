@@ -9,7 +9,7 @@
 
 import { clientsClaim } from 'workbox-core';
 import { ExpirationPlugin } from 'workbox-expiration';
-import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
+import { createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { StaleWhileRevalidate } from 'workbox-strategies';
 
@@ -26,7 +26,7 @@ precacheAndRoute(self.__WB_MANIFEST);
 // Set up App Shell-style routing, so that all navigation requests
 // are fulfilled with your index.html shell. Learn more at
 // https://developers.google.com/web/fundamentals/architecture/app-shell
-const fileExtensionRegexp = new RegExp('/[^/?]+\\.[^/]+$');
+const fileExtensionRegexp = /\/[^/?]+\.[^/]+$/;
 registerRoute(
   // Return false to exempt requests from being fulfilled by index.html.
   ({ request, url }: { request: Request; url: URL }) => {
@@ -49,7 +49,7 @@ registerRoute(
     // Return true to signal that we want to use the handler.
     return true;
   },
-  createHandlerBoundToURL(self.location.origin + '/index.html')
+  createHandlerBoundToURL(`${self.location.origin}/index.html`),
 );
 
 // An example runtime caching route for requests that aren't handled by the
@@ -65,7 +65,7 @@ registerRoute(
       // least-recently used images are removed.
       new ExpirationPlugin({ maxEntries: 50 }),
     ],
-  })
+  }),
 );
 
 // This allows the web app to trigger skipWaiting via
@@ -93,7 +93,7 @@ self.addEventListener('push', (event) => {
       body: data.body || '',
       icon: '/notification-icon-96.png',
       badge: '/notification-icon-96.png',
-    })
+    }),
   );
 });
 
@@ -101,7 +101,10 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
     (async () => {
-      const windowClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const windowClients = await self.clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      });
       for (const client of windowClients) {
         if ('focus' in client) {
           client.focus();
@@ -109,7 +112,7 @@ self.addEventListener('notificationclick', (event) => {
         }
       }
       await self.clients.openWindow('/');
-    })()
+    })(),
   );
 });
 

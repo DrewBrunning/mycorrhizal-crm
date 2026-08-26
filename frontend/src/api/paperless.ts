@@ -3,7 +3,7 @@
 // links are written as ExternalIdentity (system: "paperless"). All of these go
 // through the backend, never straight to Paperless (the API token stays
 // server-side, encrypted at rest).
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 export interface PaperlessConfigResponse {
   base_url: string;
@@ -31,14 +31,20 @@ export interface PaperlessConnectionTestResult {
 }
 
 export async function getPaperlessConfig(): Promise<PaperlessConfigResponse> {
-  const response = await apiFetch(`${API_BASE_URL}/paperless/config`, { headers: getAuthHeaders() });
+  const response = await apiFetch(`${API_BASE_URL}/paperless/config`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }
 
-export async function savePaperlessConfig(input: PaperlessConfigInput): Promise<PaperlessConfigResponse> {
+export async function savePaperlessConfig(
+  input: PaperlessConfigInput,
+): Promise<PaperlessConfigResponse> {
   const response = await apiFetch(`${API_BASE_URL}/paperless/config`, {
-    method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(input),
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
@@ -46,7 +52,8 @@ export async function savePaperlessConfig(input: PaperlessConfigInput): Promise<
 
 export async function deletePaperlessConfig(): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/paperless/config`, {
-    method: 'DELETE', headers: getAuthHeaders(),
+    method: 'DELETE',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
 }
@@ -57,7 +64,8 @@ export async function deletePaperlessConfig(): Promise<void> {
 // saved connection throws.
 export async function testPaperlessConnection(): Promise<PaperlessConnectionTestResult> {
   const response = await apiFetch(`${API_BASE_URL}/paperless/test-connection`, {
-    method: 'POST', headers: getAuthHeaders(),
+    method: 'POST',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
@@ -75,15 +83,23 @@ export async function getPaperlessDocuments(query?: string): Promise<PaperlessDo
 
 export async function linkPaperlessDocument(contactUid: string, documentId: number): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/paperless/contacts/${contactUid}/link`, {
-    method: 'POST', headers: getAuthHeaders(),
+    method: 'POST',
+    headers: getAuthHeaders(),
     body: JSON.stringify({ document_id: String(documentId) }),
   });
   if (!response.ok) throw await parseErrorResponse(response);
 }
 
-export async function unlinkPaperlessDocument(contactUid: string, identityId: string): Promise<void> {
-  const response = await apiFetch(`${API_BASE_URL}/paperless/contacts/${contactUid}/links/${identityId}`, {
-    method: 'DELETE', headers: getAuthHeaders(),
-  });
+export async function unlinkPaperlessDocument(
+  contactUid: string,
+  identityId: string,
+): Promise<void> {
+  const response = await apiFetch(
+    `${API_BASE_URL}/paperless/contacts/${contactUid}/links/${identityId}`,
+    {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    },
+  );
   if (!response.ok) throw await parseErrorResponse(response);
 }

@@ -1,8 +1,8 @@
-import tseslint from 'typescript-eslint';
-import reactHooks from 'eslint-plugin-react-hooks';
-import react from 'eslint-plugin-react';
-import security from 'eslint-plugin-security';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
+import react from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
+import security from 'eslint-plugin-security';
+import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {

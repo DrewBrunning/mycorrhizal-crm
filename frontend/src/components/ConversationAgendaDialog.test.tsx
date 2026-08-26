@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { ConversationAgenda } from '../api/conversationAgenda';
 import ConversationAgendaDialog from './ConversationAgendaDialog';
-import { ConversationAgenda } from '../api/conversationAgenda';
 
 afterEach(cleanup);
 
@@ -53,7 +53,9 @@ test('an empty content is rejected without calling onSave', async () => {
 
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-  await vi.waitFor(() => expect(screen.getByText(/Enter what you want to bring up/i)).toBeInTheDocument());
+  await vi.waitFor(() =>
+    expect(screen.getByText(/Enter what you want to bring up/i)).toBeInTheDocument(),
+  );
   expect(onSave).not.toHaveBeenCalled();
 });
 

@@ -1,14 +1,14 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  getWebhooks,
   createWebhook,
-  updateWebhook,
   deleteWebhook,
-  testWebhook,
   getWebhookDeliveries,
-  Webhook,
-  WebhookCreateResponse,
-  WebhookDelivery,
+  getWebhooks,
+  testWebhook,
+  updateWebhook,
+  type Webhook,
+  type WebhookCreateResponse,
+  type WebhookDelivery,
 } from './webhooks';
 
 afterEach(() => {
@@ -101,7 +101,7 @@ describe('createWebhook', () => {
   test('throws the parsed error message when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
     await expect(
-      createWebhook({ name: 'x', url: 'not-a-url', events: [], is_active: true })
+      createWebhook({ name: 'x', url: 'not-a-url', events: [], is_active: true }),
     ).rejects.toThrow('Invalid URL');
   });
 });
@@ -130,7 +130,7 @@ describe('updateWebhook', () => {
   test('throws the parsed error message when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
     await expect(
-      updateWebhook(1, { name: 'x', url: 'not-a-url', events: [], is_active: true })
+      updateWebhook(1, { name: 'x', url: 'not-a-url', events: [], is_active: true }),
     ).rejects.toThrow('Invalid URL');
   });
 });

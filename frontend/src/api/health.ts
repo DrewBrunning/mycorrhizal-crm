@@ -4,7 +4,7 @@
 // version, commit and build date injected at link time (backend/buildinfo);
 // before that it returned a hardcoded "0.1.0" for every build ever made, so a
 // bug report could not be tied to the binary that produced it.
-import { API_BASE_URL, getAuthHeaders, parseErrorResponse, apiFetch } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 // /health is registered at the server root, NOT under /api/v1 (see
 // backend/routes/routes.go), so the versioned prefix has to be stripped.

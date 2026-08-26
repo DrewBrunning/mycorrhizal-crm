@@ -1,10 +1,19 @@
-import { useTranslation } from 'react-i18next';
-import { Box, Typography, Stack, TextField, Autocomplete, IconButton, Button, Tooltip } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
-import { ContactValue } from '../api/contacts';
+import {
+  Autocomplete,
+  Box,
+  Button,
+  IconButton,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import { useTranslation } from 'react-i18next';
+import type { ContactValue } from '../api/contacts';
 import { CONTACT_TYPE_OPTIONS } from '../contactFields';
 import { useRowKeys } from '../hooks/useRowKeys';
 
@@ -56,7 +65,7 @@ export default function MultiValueField({
           return { ...row, pref: isCurrentlyPreferred ? undefined : 1 };
         }
         return row.pref === 1 ? { ...row, pref: undefined } : row;
-      })
+      }),
     );
   };
 
@@ -112,7 +121,9 @@ export default function MultiValueField({
             >
               <DeleteIcon fontSize="small" />
             </IconButton>
-            <Tooltip title={row.pref === 1 ? t('contacts.preferred') : t('contacts.setAsPreferred')}>
+            <Tooltip
+              title={row.pref === 1 ? t('contacts.preferred') : t('contacts.setAsPreferred')}
+            >
               <IconButton
                 size="small"
                 onClick={() => togglePreferred(index)}

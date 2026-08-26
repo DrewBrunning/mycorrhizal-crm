@@ -1,17 +1,28 @@
+import DeleteIcon from '@mui/icons-material/Delete';
+import DownloadIcon from '@mui/icons-material/Download';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import UploadIcon from '@mui/icons-material/Upload';
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  IconButton,
+  List,
+  ListItem,
+  ListItemText,
+  Tooltip,
+  Typography,
+} from '@mui/material';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Box, Typography, Button, List, ListItem, ListItemText, IconButton, Tooltip, Alert, CircularProgress } from '@mui/material';
-import UploadIcon from '@mui/icons-material/Upload';
-import DownloadIcon from '@mui/icons-material/Download';
-import DeleteIcon from '@mui/icons-material/Delete';
-import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import {
-  Attachment,
+  type Attachment,
+  attachmentDownloadUrl,
+  deleteAttachment,
+  formatAttachmentSize,
   listContactAttachments,
   uploadAttachment,
-  deleteAttachment,
-  attachmentDownloadUrl,
-  formatAttachmentSize,
 } from '../api/attachments';
 import { useSnackbar } from '../context/SnackbarContext';
 import { getErrorMessage } from '../utils/errorHandler';
@@ -87,7 +98,13 @@ export default function AttachmentsSection({ contactId }: AttachmentsSectionProp
         <Typography variant="body2" color="text.secondary">
           {t('attachments.description', 'Documents, scans, and files attached to this contact.')}
         </Typography>
-        <input ref={fileInputRef} type="file" style={{ display: 'none' }} aria-label={t('attachments.upload')} onChange={handleFileChange} />
+        <input
+          ref={fileInputRef}
+          type="file"
+          style={{ display: 'none' }}
+          aria-label={t('attachments.upload')}
+          onChange={handleFileChange}
+        />
         <Button
           size="small"
           variant="contained"
@@ -101,7 +118,11 @@ export default function AttachmentsSection({ contactId }: AttachmentsSectionProp
         </Button>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 1 }}>
+          {error}
+        </Alert>
+      )}
 
       {loading ? (
         <CircularProgress size={20} sx={{ display: 'block', mx: 'auto', my: 2 }} />

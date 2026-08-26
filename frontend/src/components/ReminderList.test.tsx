@@ -1,9 +1,9 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import ReminderList from './ReminderList';
-import { Reminder } from '../api/reminders';
+import type { Reminder } from '../api/reminders';
 import { DateFormatProvider } from '../DateFormatProvider';
+import ReminderList from './ReminderList';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);
@@ -34,7 +34,7 @@ function renderList(props: Partial<React.ComponentProps<typeof ReminderList>> = 
   render(
     <DateFormatProvider>
       <ReminderList {...merged} />
-    </DateFormatProvider>
+    </DateFormatProvider>,
   );
   return {
     onComplete: merged.onComplete,
@@ -51,9 +51,7 @@ test('shows the empty state when there are no reminders', () => {
 
 test('renders a reminder with its date, email and recurrence metadata', () => {
   renderList({
-    reminders: [
-      reminder({ recurrence: 'monthly' }),
-    ],
+    reminders: [reminder({ recurrence: 'monthly' })],
   });
 
   expect(screen.getByText('Water the plants')).toBeInTheDocument();

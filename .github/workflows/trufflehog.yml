@@ -1,0 +1,56 @@
+name: Secret Scan (TruffleHog)
+
+# Issue #578: git-history secret scanning — the complement to the gitleaks
+# pre-commit hook (.githooks/pre-commit) and `trivy fs --scanners secret`
+# (container-hardening.yml), which only ever see the working tree. TruffleHog
+# walks every commit ever made, so a credential that was committed and later
+# deleted still gets caught and verified against the live API.
+#
+# Only VERIFIED findings fail the gate: the detector confirms the credential
+# is live/active against the API before reporting it, so the false-positive
+# rate is near zero. A verified finding is a live credential and must be
+# rotated — it is NOT something to silence (see .trufflehogignore, which
+# exists to document the process, not to accept findings).
+#
+# Tier 2 + Tier 3: push to main scans the pushed commits; the nightly run
+# scans the full history. No PR trigger (history scans are slow) and no
+# path-gating (it must scan the whole repo, not a diff).
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '15 3 * * *' # 03:15 UTC nightly
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trufflehog:
+    name: Scan git history (verified secrets)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history is the whole point — the current working tree is
+          # already covered by gitleaks + trivy fs.
+          fetch-depth: 0
+          persist-credentials: false
+
+      # The official action (SHA-pinned; Dependabot keeps it current): runs
+      # `trufflehog git file://. --fail --no-update --github-actions` inside a
+      # pinned-version container. On push it scans the pushed commit range;
+      # on schedule/workflow_dispatch (base/head unset) it scans the full
+      # history. `--results=verified` filters to live/verified credentials
+      # only, so the `--fail` exit code (183 on findings) gates on real leaks
+      # without drowning in unverified entropy matches.
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@20652fbbdefffcdaa493a5bf57ab2ac6b1db715b # v3.97.1
+        with:
+          path: ./
+          version: 'v3.97.1'
+          extra_args: '--results=verified'

@@ -1,5 +1,15 @@
-import { test, expect, loginUser, LOGGED_OUT } from './fixtures';
-import { createTestContact, deleteTestContact, searchContact, waitForLoading, makeThrowawayUser, deleteThrowawayUser } from './fixtures';
+import {
+  createTestContact,
+  deleteTestContact,
+  deleteThrowawayUser,
+  expect,
+  LOGGED_OUT,
+  loginUser,
+  makeThrowawayUser,
+  searchContact,
+  test,
+  waitForLoading,
+} from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 // Each test below registers its own uniquely-suffixed throwaway recipient
@@ -12,10 +22,16 @@ import { API_BASE_URL } from './global-setup';
 // `finally` instead of accumulating forever (mirrors isolation.spec.ts).
 
 test.describe('Contact sharing', () => {
-  test('share a contact; the recipient accepts it and it lands in their account with the shared field', async ({ page, browser }) => {
+  test('share a contact; the recipient accepts it and it lands in their account with the shared field', async ({
+    page,
+    browser,
+  }) => {
     const recipient = makeThrowawayUser('share_recipient');
     const registered = await page.request.post(`${API_BASE_URL}/register`, { data: recipient });
-    expect(registered.ok(), `recipient registration should succeed: ${await registered.text()}`).toBeTruthy();
+    expect(
+      registered.ok(),
+      `recipient registration should succeed: ${await registered.text()}`,
+    ).toBeTruthy();
 
     const contact = await createTestContact(page.request, {
       firstname: 'E2EShareAccept',
@@ -52,7 +68,9 @@ test.describe('Contact sharing', () => {
       await expect(reviewDialog).toBeVisible({ timeout: 10000 });
       // No existing match for this contact in a fresh account -- "add" is
       // the only/default action, and Confirm should be immediately usable.
-      await expect(reviewDialog.getByRole('button', { name: /^confirm$/i })).toBeEnabled({ timeout: 10000 });
+      await expect(reviewDialog.getByRole('button', { name: /^confirm$/i })).toBeEnabled({
+        timeout: 10000,
+      });
       await reviewDialog.getByRole('button', { name: /^confirm$/i }).click();
       await expect(reviewDialog).toBeHidden();
       await expect(shareRow.getByText('Accepted')).toBeVisible();
@@ -79,10 +97,16 @@ test.describe('Contact sharing', () => {
     }
   });
 
-  test('the recipient can decline a share; nothing is created and the sender keeps their copy', async ({ page, browser }) => {
+  test('the recipient can decline a share; nothing is created and the sender keeps their copy', async ({
+    page,
+    browser,
+  }) => {
     const recipient = makeThrowawayUser('share_recipient');
     const registered = await page.request.post(`${API_BASE_URL}/register`, { data: recipient });
-    expect(registered.ok(), `recipient registration should succeed: ${await registered.text()}`).toBeTruthy();
+    expect(
+      registered.ok(),
+      `recipient registration should succeed: ${await registered.text()}`,
+    ).toBeTruthy();
 
     const contact = await createTestContact(page.request, {
       firstname: 'E2EShareDecline',

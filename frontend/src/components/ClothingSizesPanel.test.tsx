@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { Preference } from '../api/preferences';
 import ClothingSizesPanel from './ClothingSizesPanel';
-import { Preference } from '../api/preferences';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);

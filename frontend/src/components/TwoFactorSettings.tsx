@@ -1,33 +1,33 @@
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
-  Typography,
-  Divider,
-  TextField,
-  Button,
-  Stack,
-  Alert,
   CircularProgress,
   Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Stack,
+  TextField,
+  Typography,
 } from '@mui/material';
 import { QRCodeSVG } from 'qrcode.react';
-import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import AppDialog from './AppDialog';
-import { useSnackbar } from '../context/SnackbarContext';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  getTwoFactorStatus,
-  setupTwoFactor,
   confirmTwoFactor,
   disableTwoFactor,
+  getTwoFactorStatus,
   regenerateRecoveryCodes,
+  setupTwoFactor,
 } from '../api/users';
+import { useSnackbar } from '../context/SnackbarContext';
+import AppDialog from './AppDialog';
 
 // TwoFactorSettings is the settings-page card for N8 (issue #158): enroll,
 // disable, and regenerate recovery codes for TOTP two-factor auth.
@@ -179,12 +179,18 @@ export default function TwoFactorSettings() {
                 onClick={handleStartSetup}
                 disabled={enrolling}
               >
-                {enrolling ? t('settings.twoFactor.settingUp') : t('settings.twoFactor.enableButton')}
+                {enrolling
+                  ? t('settings.twoFactor.settingUp')
+                  : t('settings.twoFactor.enableButton')}
               </Button>
             </Box>
             {/* Only shown when the setup dialog is closed — while it is open the
                 same error renders inside the dialog. */}
-            {setupError && !setupOpen && <Alert severity="error" sx={{ py: 0 }}>{setupError}</Alert>}
+            {setupError && !setupOpen && (
+              <Alert severity="error" sx={{ py: 0 }}>
+                {setupError}
+              </Alert>
+            )}
           </Stack>
         ) : (
           <Stack spacing={1}>
@@ -198,7 +204,12 @@ export default function TwoFactorSettings() {
               <Button size="small" variant="outlined" onClick={() => openAction('regenerate')}>
                 {t('settings.twoFactor.regenerateButton')}
               </Button>
-              <Button size="small" variant="outlined" color="error" onClick={() => openAction('disable')}>
+              <Button
+                size="small"
+                variant="outlined"
+                color="error"
+                onClick={() => openAction('disable')}
+              >
                 {t('settings.twoFactor.disableButton')}
               </Button>
             </Stack>
@@ -207,7 +218,12 @@ export default function TwoFactorSettings() {
       </CardContent>
 
       {/* Enrollment wizard: QR + manual key + confirm code */}
-      <AppDialog open={setupOpen} onClose={() => !enrolling && setSetupOpen(false)} maxWidth="sm" fullWidth>
+      <AppDialog
+        open={setupOpen}
+        onClose={() => !enrolling && setSetupOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>{t('settings.twoFactor.setup.title')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2}>
@@ -234,16 +250,26 @@ export default function TwoFactorSettings() {
                   type="text"
                   inputMode="numeric"
                   value={confirmCode}
-                  onChange={e => setConfirmCode(e.target.value)}
+                  onChange={(e) => setConfirmCode(e.target.value)}
                   required
                   fullWidth
                   size="small"
                   autoFocus
                   helperText={t('settings.twoFactor.setup.codeHelp')}
                 />
-                {setupError && <Alert severity="error" sx={{ py: 0 }}>{setupError}</Alert>}
-                <Button type="submit" variant="contained" disabled={enrolling || confirmCode.trim().length === 0}>
-                  {enrolling ? t('settings.twoFactor.setup.enabling') : t('settings.twoFactor.setup.confirmButton')}
+                {setupError && (
+                  <Alert severity="error" sx={{ py: 0 }}>
+                    {setupError}
+                  </Alert>
+                )}
+                <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={enrolling || confirmCode.trim().length === 0}
+                >
+                  {enrolling
+                    ? t('settings.twoFactor.setup.enabling')
+                    : t('settings.twoFactor.setup.confirmButton')}
                 </Button>
               </Stack>
             </form>
@@ -257,7 +283,12 @@ export default function TwoFactorSettings() {
       </AppDialog>
 
       {/* Code prompt for disable / regenerate */}
-      <AppDialog open={action !== null} onClose={() => !actionBusy && setAction(null)} maxWidth="xs" fullWidth>
+      <AppDialog
+        open={action !== null}
+        onClose={() => !actionBusy && setAction(null)}
+        maxWidth="xs"
+        fullWidth
+      >
         <DialogTitle>
           {action === 'disable'
             ? t('settings.twoFactor.disable.title')
@@ -275,14 +306,23 @@ export default function TwoFactorSettings() {
                 label={t('settings.twoFactor.codePromptLabel')}
                 type="text"
                 value={actionCode}
-                onChange={e => setActionCode(e.target.value)}
+                onChange={(e) => setActionCode(e.target.value)}
                 required
                 fullWidth
                 size="small"
                 autoFocus
               />
-              {actionError && <Alert severity="error" sx={{ py: 0 }}>{actionError}</Alert>}
-              <Button type="submit" variant="contained" color={action === 'disable' ? 'error' : 'primary'} disabled={actionBusy}>
+              {actionError && (
+                <Alert severity="error" sx={{ py: 0 }}>
+                  {actionError}
+                </Alert>
+              )}
+              <Button
+                type="submit"
+                variant="contained"
+                color={action === 'disable' ? 'error' : 'primary'}
+                disabled={actionBusy}
+              >
                 {actionBusy ? t('settings.twoFactor.submitting') : t('settings.twoFactor.confirm')}
               </Button>
             </Stack>
@@ -318,7 +358,7 @@ export default function TwoFactorSettings() {
               gap: 0.5,
             }}
           >
-            {recoveryCodes?.map(code => (
+            {recoveryCodes?.map((code) => (
               <Typography key={code} variant="body2" sx={{ fontFamily: 'monospace' }}>
                 {code}
               </Typography>
@@ -326,7 +366,9 @@ export default function TwoFactorSettings() {
           </Box>
           <Box sx={{ mt: 1 }}>
             <Button size="small" startIcon={<ContentCopyIcon />} onClick={handleCopyCodes}>
-              {copied ? t('settings.twoFactor.recovery.copied') : t('settings.twoFactor.recovery.copy')}
+              {copied
+                ? t('settings.twoFactor.recovery.copied')
+                : t('settings.twoFactor.recovery.copy')}
             </Button>
           </Box>
         </DialogContent>

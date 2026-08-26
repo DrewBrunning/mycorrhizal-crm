@@ -1,9 +1,8 @@
-import { test, expect } from '../fixtures';
-import { createTestContact, deleteTestContact } from '../fixtures';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createTestContact, deleteTestContact, expect, test } from '../fixtures';
 import { API_BASE_URL } from '../global-setup';
-import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,7 +15,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // repo and is a no-op unless explicitly opted into, so a bare `yarn test:e2e`
 // (locally or in CI) never touches the checked-in fixtures as a side effect.
 test('capture contract fixtures from the real backend', async ({ request }) => {
-  test.skip(!process.env.CAPTURE_FIXTURES, 'manual fixture-capture script, not a CI test — see testdata/contract-fixtures/README.md');
+  test.skip(
+    !process.env.CAPTURE_FIXTURES,
+    'manual fixture-capture script, not a CI test — see testdata/contract-fixtures/README.md',
+  );
 
   // ---------------------------------------------------------------------
   // Seed: one richly-populated contact (most Card/CRM fields set, but
@@ -30,7 +32,16 @@ test('capture contract fixtures from the real backend', async ({ request }) => {
     nickname: 'Fix',
     emails: [{ type: 'home', value: 'fixture.primary@example.com' }],
     phones: [{ type: 'mobile', value: '+1 555-0100' }],
-    addresses: [{ type: 'home', street: '1 Fixture Way', city: 'Fixtureville', region: 'CA', postal: '94000', country: 'US' }],
+    addresses: [
+      {
+        type: 'home',
+        street: '1 Fixture Way',
+        city: 'Fixtureville',
+        region: 'CA',
+        postal: '94000',
+        country: 'US',
+      },
+    ],
     birthday: '1990-06-15',
   });
   const other = await createTestContact(request, { firstname: 'Fixture', lastname: 'Other' });
@@ -45,7 +56,13 @@ test('capture contract fixtures from the real backend', async ({ request }) => {
     expect(note.ok(), `note: ${note.status()} ${await note.text()}`).toBeTruthy();
 
     const activity = await request.post(`${API_BASE_URL}/activities`, {
-      data: { title: 'Fixture activity', description: '', location: '', date: nowIso, contact_ids: [primary.ID] },
+      data: {
+        title: 'Fixture activity',
+        description: '',
+        location: '',
+        date: nowIso,
+        contact_ids: [primary.ID],
+      },
     });
     expect(activity.ok(), `activity: ${activity.status()} ${await activity.text()}`).toBeTruthy();
 
@@ -62,40 +79,69 @@ test('capture contract fixtures from the real backend', async ({ request }) => {
     expect(reminder.ok(), `reminder: ${reminder.status()} ${await reminder.text()}`).toBeTruthy();
 
     const lifeEvent = await request.post(`${API_BASE_URL}/life-events`, {
-      data: { entity_id: primary.uid, type: 'graduated', category: 'work_education', description: 'Fixture life event' },
+      data: {
+        entity_id: primary.uid,
+        type: 'graduated',
+        category: 'work_education',
+        description: 'Fixture life event',
+      },
     });
-    expect(lifeEvent.ok(), `life event: ${lifeEvent.status()} ${await lifeEvent.text()}`).toBeTruthy();
+    expect(
+      lifeEvent.ok(),
+      `life event: ${lifeEvent.status()} ${await lifeEvent.text()}`,
+    ).toBeTruthy();
 
     const gift = await request.post(`${API_BASE_URL}/gifts`, {
-      data: { entity_id: primary.uid, status: 'idea', description: 'Fixture gift idea', date: nowIso },
+      data: {
+        entity_id: primary.uid,
+        status: 'idea',
+        description: 'Fixture gift idea',
+        date: nowIso,
+      },
     });
     expect(gift.ok(), `gift: ${gift.status()} ${await gift.text()}`).toBeTruthy();
 
-    const tagRes = await request.post(`${API_BASE_URL}/tags`, { data: { name: `contract-fixture-${Date.now()}` } });
+    const tagRes = await request.post(`${API_BASE_URL}/tags`, {
+      data: { name: `contract-fixture-${Date.now()}` },
+    });
     expect(tagRes.ok(), `tag: ${tagRes.status()} ${await tagRes.text()}`).toBeTruthy();
     const { tag } = await tagRes.json();
     const tagAttach = await request.post(`${API_BASE_URL}/tags/${tag.id}/contacts`, {
       data: { contact_vcard_uid: primary.uid },
     });
-    expect(tagAttach.ok(), `tag attach: ${tagAttach.status()} ${await tagAttach.text()}`).toBeTruthy();
+    expect(
+      tagAttach.ok(),
+      `tag attach: ${tagAttach.status()} ${await tagAttach.text()}`,
+    ).toBeTruthy();
 
-    const circleRes = await request.post(`${API_BASE_URL}/circles`, { data: { name: `contract-fixture-circle-${Date.now()}` } });
+    const circleRes = await request.post(`${API_BASE_URL}/circles`, {
+      data: { name: `contract-fixture-circle-${Date.now()}` },
+    });
     expect(circleRes.ok(), `circle: ${circleRes.status()} ${await circleRes.text()}`).toBeTruthy();
     const { circle } = await circleRes.json();
     const memberAdd = await request.post(`${API_BASE_URL}/circles/${circle.id}/members`, {
       data: { member_vcard_uid: primary.uid },
     });
-    expect(memberAdd.ok(), `circle member: ${memberAdd.status()} ${await memberAdd.text()}`).toBeTruthy();
+    expect(
+      memberAdd.ok(),
+      `circle member: ${memberAdd.status()} ${await memberAdd.text()}`,
+    ).toBeTruthy();
 
     const fieldDefRes = await request.post(`${API_BASE_URL}/field-definitions`, {
       data: { label: 'Fixture Field', key: `contract_fixture_field_${Date.now()}`, type: 'string' },
     });
-    expect(fieldDefRes.ok(), `field definition: ${fieldDefRes.status()} ${await fieldDefRes.text()}`).toBeTruthy();
+    expect(
+      fieldDefRes.ok(),
+      `field definition: ${fieldDefRes.status()} ${await fieldDefRes.text()}`,
+    ).toBeTruthy();
     const { field_definition: fieldDef } = await fieldDefRes.json();
     const fieldValueRes = await request.put(`${API_BASE_URL}/contacts/${primary.ID}/field-values`, {
       data: { field_values: [{ field_definition_id: fieldDef.id, value: 'fixture value' }] },
     });
-    expect(fieldValueRes.ok(), `field value: ${fieldValueRes.status()} ${await fieldValueRes.text()}`).toBeTruthy();
+    expect(
+      fieldValueRes.ok(),
+      `field value: ${fieldValueRes.status()} ${await fieldValueRes.text()}`,
+    ).toBeTruthy();
 
     const edge = await request.post(`${API_BASE_URL}/relationship-edges`, {
       data: { source_id: primary.uid, target_id: other.uid, type: 'friend_of' },
@@ -126,7 +172,7 @@ test('capture contract fixtures from the real backend', async ({ request }) => {
 });
 
 function writeFixture(dir: string, filename: string, body: unknown): void {
-  fs.writeFileSync(path.join(dir, filename), JSON.stringify(body, null, 2) + '\n');
+  fs.writeFileSync(path.join(dir, filename), `${JSON.stringify(body, null, 2)}\n`);
   // eslint-disable-next-line no-console
   console.log(`Captured ${filename}`);
 }

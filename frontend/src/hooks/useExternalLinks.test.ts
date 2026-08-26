@@ -1,12 +1,12 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { renderHook, cleanup, waitFor, act } from '@testing-library/react';
-import { useExternalLinks } from './useExternalLinks';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import {
-  getExternalIdentities,
+  type ExternalActivity,
+  type ExternalIdentity,
   getExternalActivities,
-  ExternalIdentity,
-  ExternalActivity,
+  getExternalIdentities,
 } from '../api/externalLinks';
+import { useExternalLinks } from './useExternalLinks';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(() => {

@@ -1,24 +1,15 @@
+import { Alert, Box, Button, Divider, Paper, Stack, TextField, Typography } from '@mui/material';
 import { useState } from 'react';
-import { loginUser, login2FA, isAuthenticated, API_BASE_URL } from './auth';
-import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import i18n from './i18n/config';
+import { Link, useNavigate, useSearchParams } from 'react-router';
+import { API_BASE_URL, isAuthenticated, login2FA, loginUser } from './auth';
+import BrandLogo from './components/BrandLogo';
+import ForgotPasswordDialog from './components/ForgotPasswordDialog';
 import { initializeDateFormatFromBackend } from './DateFormatProvider';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
-import {
-  Box,
-  TextField,
-  Button,
-  Typography,
-  Alert,
-  Paper,
-  Stack,
-  Divider,
-} from '@mui/material';
-import ForgotPasswordDialog from './components/ForgotPasswordDialog';
-import BrandLogo from './components/BrandLogo';
-import { useOIDCConfig } from './hooks/useOIDCConfig';
 import { useErrorAlertFocus } from './hooks/useErrorAlertFocus';
+import { useOIDCConfig } from './hooks/useOIDCConfig';
+import i18n from './i18n/config';
 
 type LoginPageProps = {
   setToken?: (token: string | null) => void;
@@ -52,7 +43,13 @@ export default function LoginPage({ setToken }: LoginPageProps) {
   const navigate = useNavigate();
   const oidcConfig = useOIDCConfig();
 
-  const finishLogin = async ({ language, date_format }: { language?: string; date_format?: string }) => {
+  const finishLogin = async ({
+    language,
+    date_format,
+  }: {
+    language?: string;
+    date_format?: string;
+  }) => {
     // Signal that user is now authenticated (token is in httpOnly cookie)
     if (setToken) setToken(isAuthenticated() ? 'authenticated' : null);
 
@@ -101,7 +98,9 @@ export default function LoginPage({ setToken }: LoginPageProps) {
       // lockout text, not a generic "invalid code" that invites more guessing.
       const rawMessage = err instanceof Error ? err.message : '';
       const errorMessage =
-        rawMessage === 'Invalid code' ? t('login.invalidCode') : rawMessage || t('login.invalidCode');
+        rawMessage === 'Invalid code'
+          ? t('login.invalidCode')
+          : rawMessage || t('login.invalidCode');
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -121,7 +120,9 @@ export default function LoginPage({ setToken }: LoginPageProps) {
         </Box>
         {step === 'twoFactor' ? (
           <>
-            <Typography variant="h5" component="h1" mb={1}>{t('login.twoFactorTitle')}</Typography>
+            <Typography variant="h5" component="h1" mb={1}>
+              {t('login.twoFactorTitle')}
+            </Typography>
             <Typography variant="body2" color="text.secondary" mb={2}>
               {t('login.twoFactorDescription')}
             </Typography>
@@ -131,7 +132,7 @@ export default function LoginPage({ setToken }: LoginPageProps) {
                   label={t('login.twoFactorCode')}
                   type="text"
                   value={code}
-                  onChange={e => setCode(e.target.value)}
+                  onChange={(e) => setCode(e.target.value)}
                   required
                   fullWidth
                   autoFocus
@@ -149,7 +150,12 @@ export default function LoginPage({ setToken }: LoginPageProps) {
                 {/* #187: these were color="secondary" (lichen, ~2.6:1 on the
                     login card) — the audit's worst contrast failure. Primary
                     (mycelium, 8.26:1) keeps a brand accent and passes AA. */}
-                <Button variant="text" color="primary" onClick={backToCredentials} disabled={loading}>
+                <Button
+                  variant="text"
+                  color="primary"
+                  onClick={backToCredentials}
+                  disabled={loading}
+                >
                   {t('login.backToCredentials')}
                 </Button>
               </Stack>
@@ -157,14 +163,16 @@ export default function LoginPage({ setToken }: LoginPageProps) {
           </>
         ) : (
           <>
-            <Typography variant="h5" component="h1" mb={2}>{t('login.title')}</Typography>
+            <Typography variant="h5" component="h1" mb={2}>
+              {t('login.title')}
+            </Typography>
             <form onSubmit={handleSubmit}>
               <Stack spacing={2}>
                 <TextField
                   label={t('login.identifier')}
                   type="text"
                   value={identifier}
-                  onChange={e => setIdentifier(e.target.value)}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   required
                   fullWidth
                   error={Boolean(error)}
@@ -174,7 +182,7 @@ export default function LoginPage({ setToken }: LoginPageProps) {
                   label={t('login.password')}
                   type="password"
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                   fullWidth
                   error={Boolean(error)}
@@ -202,7 +210,9 @@ export default function LoginPage({ setToken }: LoginPageProps) {
                     <Button
                       variant="outlined"
                       color="primary"
-                      onClick={() => { window.location.href = `${API_BASE_URL}/auth/oidc/login`; }}
+                      onClick={() => {
+                        window.location.href = `${API_BASE_URL}/auth/oidc/login`;
+                      }}
                     >
                       {t('login.ssoButton', { provider: oidcConfig.provider_name })}
                     </Button>

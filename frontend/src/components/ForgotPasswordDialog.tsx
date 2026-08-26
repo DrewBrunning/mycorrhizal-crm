@@ -1,18 +1,18 @@
-import { FormEvent, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Stack,
   Alert,
-  Typography
+  Button,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Stack,
+  TextField,
+  Typography,
 } from '@mui/material';
-import AppDialog from './AppDialog';
-import { requestPasswordReset, confirmPasswordReset } from '../api/auth';
+import { type FormEvent, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { confirmPasswordReset, requestPasswordReset } from '../api/auth';
 import { useErrorAlertFocus } from '../hooks/useErrorAlertFocus';
+import AppDialog from './AppDialog';
 
 type ForgotPasswordDialogProps = {
   open: boolean;
@@ -72,7 +72,8 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
       setMessage(responseMessage);
       setStep('confirm');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : t('passwordReset.errors.requestFailed');
+      const errorMessage =
+        err instanceof Error ? err.message : t('passwordReset.errors.requestFailed');
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -104,7 +105,8 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
       setMessage(responseMessage);
       setStep('done');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : t('passwordReset.errors.confirmFailed');
+      const errorMessage =
+        err instanceof Error ? err.message : t('passwordReset.errors.confirmFailed');
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -139,7 +141,7 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
             <TextField
               label={t('passwordReset.token')}
               value={token}
-              onChange={event => setToken(event.target.value)}
+              onChange={(event) => setToken(event.target.value)}
               fullWidth
               required
               error={Boolean(error)}
@@ -149,7 +151,7 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
               label={t('passwordReset.newPassword')}
               type="password"
               value={newPassword}
-              onChange={event => setNewPassword(event.target.value)}
+              onChange={(event) => setNewPassword(event.target.value)}
               fullWidth
               required
               error={Boolean(error)}
@@ -159,7 +161,7 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
               label={t('passwordReset.confirmPassword')}
               type="password"
               value={confirmPassword}
-              onChange={event => setConfirmPassword(event.target.value)}
+              onChange={(event) => setConfirmPassword(event.target.value)}
               fullWidth
               required
               error={Boolean(error)}
@@ -188,7 +190,7 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
             label={t('passwordReset.email')}
             type="email"
             value={email}
-            onChange={event => setEmail(event.target.value)}
+            onChange={(event) => setEmail(event.target.value)}
             fullWidth
             required
             error={Boolean(error)}

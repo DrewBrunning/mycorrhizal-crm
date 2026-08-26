@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Box, CircularProgress, SxProps } from '@mui/material';
+import { Box, CircularProgress, type SxProps } from '@mui/material';
+import { useEffect, useState } from 'react';
 
 interface AuthImgProps {
   src: string;
@@ -52,12 +52,5 @@ export default function AuthImg({ src, alt, sx }: AuthImgProps) {
   if (loading) return <CircularProgress size={24} />;
   if (error || !dataUrl) return null;
 
-  return (
-    <Box
-      component="img"
-      src={dataUrl}
-      alt={alt}
-      sx={sx}
-    />
-  );
+  return <Box component="img" src={dataUrl} alt={alt} sx={sx} />;
 }

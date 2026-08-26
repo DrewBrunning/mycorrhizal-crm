@@ -1,12 +1,13 @@
 // M3 dashboard composite — one call replacing the
 // birthdays/random-contacts/upcoming-reminders/overdue-cadences Promise.all
 // DashboardPage used to fire, plus its per-reminder contact-name N+1.
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
-import { Birthday, Contact } from './contacts';
-import { Reminder } from './reminders';
-import { OverdueCadence } from './cadencePolicies';
-import { ReachOutSuggestion } from './reachOutSuggestions';
-import { ContactSyncConflict } from './contactSyncConflicts';
+
+import type { OverdueCadence } from './cadencePolicies';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
+import type { ContactSyncConflict } from './contactSyncConflicts';
+import type { Birthday, Contact } from './contacts';
+import type { ReachOutSuggestion } from './reachOutSuggestions';
+import type { Reminder } from './reminders';
 
 // A Reminder enriched with its contact's display name (nickname-preferred,
 // falling back to firstname+lastname) so the dashboard never needs a second

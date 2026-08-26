@@ -1,14 +1,14 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
-  getLinkFieldTypes,
   createLinkFieldType,
-  updateLinkFieldType,
   deleteLinkFieldType,
+  getLinkFieldTypes,
+  type LinkFieldType,
+  type LinkFieldTypeInput,
   reorderLinkFieldTypes,
-  LinkFieldType,
-  LinkFieldTypeInput,
+  updateLinkFieldType,
 } from '../api/linkFieldTypes';
-import { handleFetchError, handleError, ErrorNotifier } from '../utils/errorHandler';
+import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
 // Owns LinkFieldType list + dialog state (T34), following
 // useRelationshipEdges.ts's shape. Used both read-only (ContactInformation's
@@ -76,7 +76,9 @@ export function useLinkFieldTypes(notifier?: ErrorNotifier) {
   const handleMoveLinkFieldType = async (id: string, direction: -1 | 1) => {
     const item = linkFieldTypes.find((lt) => lt.id === id);
     if (!item) return;
-    const groupIds = linkFieldTypes.filter((lt) => lt.category === item.category).map((lt) => lt.id);
+    const groupIds = linkFieldTypes
+      .filter((lt) => lt.category === item.category)
+      .map((lt) => lt.id);
     const index = groupIds.indexOf(id);
     const swapIndex = index + direction;
     if (swapIndex < 0 || swapIndex >= groupIds.length) return;

@@ -1,5 +1,5 @@
-import { test, expect, Page } from '@playwright/test';
-import { createTestContact, deleteTestContact, waitForLoading, stableClick } from './fixtures';
+import { expect, type Page, test } from '@playwright/test';
+import { createTestContact, deleteTestContact, stableClick, waitForLoading } from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
@@ -17,7 +17,10 @@ import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
  * makes this unambiguous regardless of what ContactTimeline also renders.
  */
 function lifeEventCard(page: Page, typeText: string) {
-  const panel = page.getByRole('heading', { name: 'Life Events', exact: true }).locator('..').locator('..');
+  const panel = page
+    .getByRole('heading', { name: 'Life Events', exact: true })
+    .locator('..')
+    .locator('..');
   return panel.locator('.MuiPaper-root').filter({ hasText: typeText });
 }
 
@@ -51,7 +54,9 @@ test.describe('Life events', () => {
       await waitForLoading(page);
 
       // Rendered twice (list row + its title attribute), hence .first().
-      await expect(page.getByText('Finished their doctorate').first()).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText('Finished their doctorate').first()).toBeVisible({
+        timeout: 15000,
+      });
     } finally {
       await deleteTestContact(request, contact.ID);
     }
@@ -76,11 +81,13 @@ test.describe('Life events', () => {
       });
       expect(create.ok(), `create failed: ${await create.text()}`).toBeTruthy();
 
-      const list = await request.get(`${API_BASE_URL}/life-events?entity_id=${contact.uid}&limit=50`);
+      const list = await request.get(
+        `${API_BASE_URL}/life-events?entity_id=${contact.uid}&limit=50`,
+      );
       expect(list.ok()).toBeTruthy();
       const body = await list.json();
       const event = (body.life_events ?? []).find(
-        (e: { description: string }) => e.description === 'Moved to Lisbon'
+        (e: { description: string }) => e.description === 'Moved to Lisbon',
       );
       expect(event, 'the life event must round-trip through the list endpoint').toBeTruthy();
       expect(event.date?.year).toBe(2015);
@@ -99,7 +106,12 @@ test.describe('Life events', () => {
 
     try {
       const create = await request.post(`${API_BASE_URL}/life-events`, {
-        data: { entity_id: contact.uid, type: 'new_job', description: 'Started at Acme', date: { year: 2024 } },
+        data: {
+          entity_id: contact.uid,
+          type: 'new_job',
+          description: 'Started at Acme',
+          date: { year: 2024 },
+        },
       });
       expect(create.ok()).toBeTruthy();
       const created = await create.json();
@@ -108,7 +120,9 @@ test.describe('Life events', () => {
       const del = await request.delete(`${API_BASE_URL}/life-events/${eventId}`);
       expect(del.ok(), `delete failed: ${await del.text()}`).toBeTruthy();
 
-      const list = await request.get(`${API_BASE_URL}/life-events?entity_id=${contact.uid}&limit=50`);
+      const list = await request.get(
+        `${API_BASE_URL}/life-events?entity_id=${contact.uid}&limit=50`,
+      );
       const body = await list.json();
       expect(body.life_events ?? []).toHaveLength(0);
     } finally {
@@ -124,7 +138,12 @@ test.describe('Life events', () => {
 
     try {
       const create = await request.post(`${API_BASE_URL}/life-events`, {
-        data: { entity_id: contact.uid, type: 'married', description: 'Got married', date: { year: 2020 } },
+        data: {
+          entity_id: contact.uid,
+          type: 'married',
+          description: 'Got married',
+          date: { year: 2020 },
+        },
       });
       expect(create.ok()).toBeTruthy();
 
@@ -193,14 +212,18 @@ test.describe('Life events', () => {
 
       // Confirm through the API, not just the UI chip -- proves the value
       // actually round-tripped through the backend, not just local state.
-      const list = await request.get(`${API_BASE_URL}/life-events?entity_id=${subject.uid}&limit=10`);
+      const list = await request.get(
+        `${API_BASE_URL}/life-events?entity_id=${subject.uid}&limit=10`,
+      );
       expect(list.ok()).toBeTruthy();
       const body = await list.json();
       const event = (body.life_events ?? []).find(
-        (e: { type: string }) => e.type === 'started_a_relationship'
+        (e: { type: string }) => e.type === 'started_a_relationship',
       );
       expect(event, 'the life event must have been created').toBeTruthy();
-      expect(event.related_entity_ids, 'the picked related contact must have been saved').toEqual([related.uid]);
+      expect(event.related_entity_ids, 'the picked related contact must have been saved').toEqual([
+        related.uid,
+      ]);
     } finally {
       await deleteTestContact(request, subject.ID);
       await deleteTestContact(request, related.ID);
@@ -212,7 +235,10 @@ test.describe('Life events', () => {
   // affordance, and the "Other / Uncategorized" bucket for a pre-existing
   // event with no category.
   test.describe('T36 category picker', () => {
-    test('creates a life event via the cascading category -> type picker', async ({ page, request }) => {
+    test('creates a life event via the cascading category -> type picker', async ({
+      page,
+      request,
+    }) => {
       const contact = await createTestContact(request, {
         firstname: `${E2E_CONTACT_PREFIX}CategoryPicker`,
         lastname: 'Subject',
@@ -242,7 +268,10 @@ test.describe('Life events', () => {
       }
     });
 
-    test('creates a custom life event type via "Add a new life event type"', async ({ page, request }) => {
+    test('creates a custom life event type via "Add a new life event type"', async ({
+      page,
+      request,
+    }) => {
       const contact = await createTestContact(request, {
         firstname: `${E2E_CONTACT_PREFIX}CustomType`,
         lastname: 'Subject',
@@ -260,7 +289,9 @@ test.describe('Life events', () => {
         await stableClick(page.getByRole('option', { name: 'Health & Wellness', exact: true }));
 
         await stableClick(dialog.getByLabel('Event Type *'));
-        await stableClick(page.getByRole('option', { name: 'Add a new life event type', exact: true }));
+        await stableClick(
+          page.getByRole('option', { name: 'Add a new life event type', exact: true }),
+        );
 
         await dialog.getByLabel('Custom event name *').fill('Ran a marathon');
         await dialog.getByRole('button', { name: /^save$/i }).click();
@@ -273,7 +304,10 @@ test.describe('Life events', () => {
       }
     });
 
-    test('editing re-files an event under a different category, pre-filling the existing one first', async ({ page, request }) => {
+    test('editing re-files an event under a different category, pre-filling the existing one first', async ({
+      page,
+      request,
+    }) => {
       const contact = await createTestContact(request, {
         firstname: `${E2E_CONTACT_PREFIX}RecategorizeEdit`,
         lastname: 'Subject',
@@ -281,7 +315,12 @@ test.describe('Life events', () => {
 
       try {
         const create = await request.post(`${API_BASE_URL}/life-events`, {
-          data: { entity_id: contact.uid, type: 'married', category: 'family_relationships', date: { year: 2020 } },
+          data: {
+            entity_id: contact.uid,
+            type: 'married',
+            category: 'family_relationships',
+            date: { year: 2020 },
+          },
         });
         expect(create.ok(), `create failed: ${await create.text()}`).toBeTruthy();
 
@@ -329,7 +368,10 @@ test.describe('Life events', () => {
       }
     });
 
-    test('an event with no category (pre-migration/legacy) edits gracefully via the Other / Uncategorized bucket', async ({ page, request }) => {
+    test('an event with no category (pre-migration/legacy) edits gracefully via the Other / Uncategorized bucket', async ({
+      page,
+      request,
+    }) => {
       const contact = await createTestContact(request, {
         firstname: `${E2E_CONTACT_PREFIX}Uncategorized`,
         lastname: 'Subject',

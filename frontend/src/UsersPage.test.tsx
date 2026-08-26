@@ -1,12 +1,12 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
-import UsersPage from './UsersPage';
-import { SnackbarProvider } from './context/SnackbarContext';
-import { getUsers, createUser, updateUser, deleteUser, triggerReminders } from './api/admin';
+import { createUser, deleteUser, getUsers, triggerReminders, updateUser } from './api/admin';
 import { isAdmin } from './auth';
+import { SnackbarProvider } from './context/SnackbarContext';
 import type { User } from './types';
+import UsersPage from './UsersPage';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
 afterEach(cleanup);
@@ -76,13 +76,19 @@ function renderPage() {
           <Route path="/" element={<div>DASHBOARD PAGE</div>} />
         </Routes>
       </SnackbarProvider>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
 test('a non-admin visiting the page is redirected away', async () => {
   vi.mocked(isAdmin).mockReturnValue(false);
-  vi.mocked(getUsers).mockResolvedValue({ users: [], total: 0, page: 1, limit: 25, total_pages: 0 });
+  vi.mocked(getUsers).mockResolvedValue({
+    users: [],
+    total: 0,
+    page: 1,
+    limit: 25,
+    total_pages: 0,
+  });
 
   renderPage();
 
@@ -91,7 +97,10 @@ test('a non-admin visiting the page is redirected away', async () => {
 
 test('lists users with their role', async () => {
   vi.mocked(getUsers).mockResolvedValue({
-    users: [user({ username: 'root-admin', is_admin: true }), user({ id: 2, username: 'plain-user' })],
+    users: [
+      user({ username: 'root-admin', is_admin: true }),
+      user({ id: 2, username: 'plain-user' }),
+    ],
     total: 2,
     page: 1,
     limit: 25,
@@ -131,7 +140,13 @@ test('reflows to stacked user cards below the sm breakpoint (T32)', async () => 
 });
 
 test('shows the empty state when there are no users', async () => {
-  vi.mocked(getUsers).mockResolvedValue({ users: [], total: 0, page: 1, limit: 25, total_pages: 0 });
+  vi.mocked(getUsers).mockResolvedValue({
+    users: [],
+    total: 0,
+    page: 1,
+    limit: 25,
+    total_pages: 0,
+  });
   renderPage();
 
   await waitFor(() => expect(screen.getByText('No users found')).toBeInTheDocument());
@@ -157,7 +172,7 @@ test('creating a user submits the form, refetches the current page, and shows th
       total_pages: 1,
     });
   vi.mocked(createUser).mockResolvedValue(
-    user({ id: 11, username: 'brand-new', email: 'brand-new@example.com' })
+    user({ id: 11, username: 'brand-new', email: 'brand-new@example.com' }),
   );
 
   renderPage();
@@ -166,7 +181,9 @@ test('creating a user submits the form, refetches the current page, and shows th
   fireEvent.click(screen.getByRole('button', { name: /add user/i }));
 
   fireEvent.change(screen.getByLabelText('Username *'), { target: { value: 'brand-new' } });
-  fireEvent.change(screen.getByLabelText('Email *'), { target: { value: 'brand-new@example.com' } });
+  fireEvent.change(screen.getByLabelText('Email *'), {
+    target: { value: 'brand-new@example.com' },
+  });
   fireEvent.change(screen.getByLabelText('Password *'), { target: { value: 'brandNewPassw0rd!' } });
   fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
@@ -176,7 +193,7 @@ test('creating a user submits the form, refetches the current page, and shows th
       email: 'brand-new@example.com',
       password: 'brandNewPassw0rd!',
       is_admin: false,
-    })
+    }),
   );
   await waitFor(() => expect(screen.getByText('brand-new')).toBeInTheDocument());
   // The refetch, not a local splice, is what supplied the row above.
@@ -187,14 +204,16 @@ test('creating an admin user includes is_admin in the create payload', async () 
   vi.mocked(getUsers)
     .mockResolvedValueOnce({ users: [], total: 0, page: 1, limit: 25, total_pages: 0 })
     .mockResolvedValueOnce({
-      users: [user({ id: 12, username: 'new-admin', email: 'new-admin@example.com', is_admin: true })],
+      users: [
+        user({ id: 12, username: 'new-admin', email: 'new-admin@example.com', is_admin: true }),
+      ],
       total: 1,
       page: 1,
       limit: 25,
       total_pages: 1,
     });
   vi.mocked(createUser).mockResolvedValue(
-    user({ id: 12, username: 'new-admin', email: 'new-admin@example.com', is_admin: true })
+    user({ id: 12, username: 'new-admin', email: 'new-admin@example.com', is_admin: true }),
   );
 
   renderPage();
@@ -203,7 +222,9 @@ test('creating an admin user includes is_admin in the create payload', async () 
   fireEvent.click(screen.getByRole('button', { name: /add user/i }));
 
   fireEvent.change(screen.getByLabelText('Username *'), { target: { value: 'new-admin' } });
-  fireEvent.change(screen.getByLabelText('Email *'), { target: { value: 'new-admin@example.com' } });
+  fireEvent.change(screen.getByLabelText('Email *'), {
+    target: { value: 'new-admin@example.com' },
+  });
   fireEvent.change(screen.getByLabelText('Password *'), { target: { value: 'brandNewPassw0rd!' } });
   fireEvent.click(screen.getByLabelText('Administrator'));
   fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
@@ -214,12 +235,18 @@ test('creating an admin user includes is_admin in the create payload', async () 
       email: 'new-admin@example.com',
       password: 'brandNewPassw0rd!',
       is_admin: true,
-    })
+    }),
   );
 });
 
 test('a failed create surfaces the error and keeps the dialog open', async () => {
-  vi.mocked(getUsers).mockResolvedValue({ users: [], total: 0, page: 1, limit: 25, total_pages: 0 });
+  vi.mocked(getUsers).mockResolvedValue({
+    users: [],
+    total: 0,
+    page: 1,
+    limit: 25,
+    total_pages: 0,
+  });
   vi.mocked(createUser).mockRejectedValue(new Error('Username or email already in use'));
 
   renderPage();
@@ -232,13 +259,21 @@ test('a failed create surfaces the error and keeps the dialog open', async () =>
   fireEvent.change(screen.getByLabelText('Password *'), { target: { value: 'brandNewPassw0rd!' } });
   fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
-  await waitFor(() => expect(screen.getByText('Username or email already in use')).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText('Username or email already in use')).toBeInTheDocument(),
+  );
   // Dialog stays open with the entered values, ready to retry.
   expect(screen.getByLabelText('Username *')).toBeInTheDocument();
 });
 
 test('closing and reopening the create dialog resets the form', async () => {
-  vi.mocked(getUsers).mockResolvedValue({ users: [], total: 0, page: 1, limit: 25, total_pages: 0 });
+  vi.mocked(getUsers).mockResolvedValue({
+    users: [],
+    total: 0,
+    page: 1,
+    limit: 25,
+    total_pages: 0,
+  });
 
   renderPage();
   await waitFor(() => expect(screen.getByText('No users found')).toBeInTheDocument());
@@ -264,7 +299,9 @@ test('editing a user prefills the form and only submits changed fields', async (
     limit: 25,
     total_pages: 1,
   });
-  vi.mocked(updateUser).mockResolvedValue(user({ id: 7, username: 'renamed', email: 'original@example.com' }));
+  vi.mocked(updateUser).mockResolvedValue(
+    user({ id: 7, username: 'renamed', email: 'original@example.com' }),
+  );
 
   renderPage();
   await waitFor(() => expect(screen.getByText('original')).toBeInTheDocument());
@@ -287,7 +324,9 @@ test('promoting a user to admin includes is_admin in the update', async () => {
     limit: 25,
     total_pages: 1,
   });
-  vi.mocked(updateUser).mockResolvedValue(user({ id: 9, username: 'future-admin', is_admin: true }));
+  vi.mocked(updateUser).mockResolvedValue(
+    user({ id: 9, username: 'future-admin', is_admin: true }),
+  );
 
   renderPage();
   await waitFor(() => expect(screen.getByText('future-admin')).toBeInTheDocument());
@@ -343,7 +382,13 @@ test('a failed delete surfaces the error and keeps the user listed', async () =>
 });
 
 test('triggering reminder emails calls the endpoint', async () => {
-  vi.mocked(getUsers).mockResolvedValue({ users: [], total: 0, page: 1, limit: 25, total_pages: 0 });
+  vi.mocked(getUsers).mockResolvedValue({
+    users: [],
+    total: 0,
+    page: 1,
+    limit: 25,
+    total_pages: 0,
+  });
   vi.mocked(triggerReminders).mockResolvedValue(undefined);
 
   renderPage();

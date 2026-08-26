@@ -1,5 +1,5 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { renderHook, cleanup, waitFor } from '@testing-library/react';
+import { cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import { useContactFieldValues } from './useFieldDefinitions';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -32,10 +32,9 @@ vi.mock('../api/fieldDefinitions', () => ({
  */
 test('refresh keeps a stable identity when the caller passes a fresh notifier literal', async () => {
   const showError = vi.fn();
-  const { result, rerender } = renderHook(
-    ({ notifier }) => useContactFieldValues(1, notifier),
-    { initialProps: { notifier: { showError } } }
-  );
+  const { result, rerender } = renderHook(({ notifier }) => useContactFieldValues(1, notifier), {
+    initialProps: { notifier: { showError } },
+  });
 
   await waitFor(() => expect(result.current.loading).toBe(false));
   const first = result.current.refresh;
@@ -48,10 +47,9 @@ test('refresh keeps a stable identity when the caller passes a fresh notifier li
 
 test('save keeps a stable identity when the caller passes a fresh notifier literal', async () => {
   const showError = vi.fn();
-  const { result, rerender } = renderHook(
-    ({ notifier }) => useContactFieldValues(1, notifier),
-    { initialProps: { notifier: { showError } } }
-  );
+  const { result, rerender } = renderHook(({ notifier }) => useContactFieldValues(1, notifier), {
+    initialProps: { notifier: { showError } },
+  });
 
   await waitFor(() => expect(result.current.loading).toBe(false));
   const first = result.current.save;
@@ -66,10 +64,9 @@ test('save keeps a stable identity when the caller passes a fresh notifier liter
 // new callback, or the page would keep fetching the previous contact's values.
 test('refresh takes a new identity when the contact id actually changes', async () => {
   const showError = vi.fn();
-  const { result, rerender } = renderHook(
-    ({ id }) => useContactFieldValues(id, { showError }),
-    { initialProps: { id: 1 } }
-  );
+  const { result, rerender } = renderHook(({ id }) => useContactFieldValues(id, { showError }), {
+    initialProps: { id: 1 },
+  });
 
   await waitFor(() => expect(result.current.loading).toBe(false));
   const first = result.current.refresh;

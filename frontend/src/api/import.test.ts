@@ -1,15 +1,15 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  uploadCSVForImport,
-  getImportPreview,
+  CONTACT_FIELD_LABELS,
+  type ColumnMapping,
   confirmImport,
-  uploadVCFForImport,
   confirmVCFImport,
+  getImportPreview,
   IMPORTABLE_CONTACT_FIELDS,
   REPEATABLE_VALUE_FIELDS,
-  CONTACT_FIELD_LABELS,
-  ColumnMapping,
-  RowImportAction,
+  type RowImportAction,
+  uploadCSVForImport,
+  uploadVCFForImport,
 } from './import';
 
 afterEach(() => {
@@ -40,7 +40,10 @@ const uploadResponse = {
     { csv_column: 'Email', contact_field: 'email', group: 0 },
   ],
   row_count: 2,
-  sample_data: [['Alice', 'alice@example.com'], ['Bob', 'bob@example.com']],
+  sample_data: [
+    ['Alice', 'alice@example.com'],
+    ['Bob', 'bob@example.com'],
+  ],
 };
 
 const previewResponse = {
@@ -92,7 +95,10 @@ describe('uploadCSVForImport', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(uploadCSVForImport(csvFile)).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(uploadCSVForImport(csvFile)).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -118,7 +124,10 @@ describe('getImportPreview', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(getImportPreview('sess-1', [])).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(getImportPreview('sess-1', [])).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -141,7 +150,10 @@ describe('confirmImport', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(confirmImport('sess-1', [])).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(confirmImport('sess-1', [])).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -164,7 +176,10 @@ describe('uploadVCFForImport', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(uploadVCFForImport(vcfFile)).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(uploadVCFForImport(vcfFile)).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -187,7 +202,10 @@ describe('confirmVCFImport', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(confirmVCFImport('sess-1', [])).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(confirmVCFImport('sess-1', [])).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 

@@ -1,12 +1,12 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  getCalendarSubscriptions,
+  type CalendarSubscription,
+  type CalendarSubscriptionInput,
   createCalendarSubscription,
-  updateCalendarSubscription,
   deleteCalendarSubscription,
+  getCalendarSubscriptions,
   syncCalendarSubscription,
-  CalendarSubscription,
-  CalendarSubscriptionInput,
+  updateCalendarSubscription,
 } from './calendars';
 
 afterEach(() => {
@@ -43,9 +43,7 @@ const errorResponse = () => ({
 
 describe('getCalendarSubscriptions', () => {
   test('GETs the calendars URL and unwraps the calendars array', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(
-      okResponse({ calendars: [subscription] })
-    );
+    const fetchMock = vi.fn().mockResolvedValueOnce(okResponse({ calendars: [subscription] }));
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await getCalendarSubscriptions();
@@ -95,9 +93,9 @@ describe('createCalendarSubscription', () => {
 
   test('throws the parsed error message when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
-    await expect(
-      createCalendarSubscription({ name: 'x', url: 'not-a-url' })
-    ).rejects.toThrow('Invalid URL');
+    await expect(createCalendarSubscription({ name: 'x', url: 'not-a-url' })).rejects.toThrow(
+      'Invalid URL',
+    );
   });
 });
 
@@ -124,7 +122,7 @@ describe('updateCalendarSubscription', () => {
   test('throws the parsed error message when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
     await expect(
-      updateCalendarSubscription(1, { name: 'x', url: 'https://cal.example.com/x.ics' })
+      updateCalendarSubscription(1, { name: 'x', url: 'https://cal.example.com/x.ics' }),
     ).rejects.toThrow('Invalid URL');
   });
 });
@@ -150,9 +148,9 @@ describe('deleteCalendarSubscription', () => {
 
 describe('syncCalendarSubscription', () => {
   test('POSTs to the sync URL and returns the sync result', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(
-      okResponse({ message: 'Synced', created: 2, updated: 1, skipped: 0 })
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(okResponse({ message: 'Synced', created: 2, updated: 1, skipped: 0 }));
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await syncCalendarSubscription(1);

@@ -1,10 +1,10 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  getConversationAgenda,
   createConversationAgenda,
-  updateConversationAgenda,
-  discussConversationAgenda,
   deleteConversationAgenda,
+  discussConversationAgenda,
+  getConversationAgenda,
+  updateConversationAgenda,
 } from './conversationAgenda';
 
 afterEach(() => {
@@ -67,7 +67,10 @@ describe('updateConversationAgenda', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    await updateConversationAgenda('a1', { entity_id: 'alice-uid', content: 'Ask about the new job' });
+    await updateConversationAgenda('a1', {
+      entity_id: 'alice-uid',
+      content: 'Ask about the new job',
+    });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0];

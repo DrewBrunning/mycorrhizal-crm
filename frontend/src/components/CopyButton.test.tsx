@@ -1,9 +1,9 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { SnackbarProvider } from '../context/SnackbarContext';
-import CopyButton from './CopyButton';
 import * as clipboard from '../utils/clipboard';
+import CopyButton from './CopyButton';
 
 afterEach(() => {
   cleanup();
@@ -14,7 +14,7 @@ test('has an accessible name derived from the label prop', () => {
   render(
     <SnackbarProvider>
       <CopyButton value="alice@example.com" label="Email" />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
   expect(screen.getByLabelText('Copy Email')).toBeInTheDocument();
 });
@@ -23,7 +23,7 @@ test('falls back to a generic accessible name without a label', () => {
   render(
     <SnackbarProvider>
       <CopyButton value="alice@example.com" />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
   expect(screen.getByLabelText('Copy')).toBeInTheDocument();
 });
@@ -33,7 +33,7 @@ test('copies the raw value and confirms via the snackbar on success', async () =
   render(
     <SnackbarProvider>
       <CopyButton value="+15551234567" label="Phone" />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   fireEvent.click(screen.getByLabelText('Copy Phone'));
@@ -47,7 +47,7 @@ test('shows an error snackbar when the copy fails', async () => {
   render(
     <SnackbarProvider>
       <CopyButton value="+15551234567" label="Phone" />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   fireEvent.click(screen.getByLabelText('Copy Phone'));

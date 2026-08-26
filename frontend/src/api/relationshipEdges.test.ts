@@ -1,13 +1,13 @@
-import { describe, test, expect } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import {
+  getDisplayLabel,
+  getEffectiveType,
+  getOtherPartyId,
   RELATIONSHIP_EDGE_TYPE_TOKENS,
   RELATIONSHIP_EDGE_TYPES,
-  RelationshipEdge,
-  RelationshipEdgeType,
-  getEffectiveType,
-  getDisplayLabel,
+  type RelationshipEdge,
+  type RelationshipEdgeType,
   toBackendType,
-  getOtherPartyId,
 } from './relationshipEdges';
 
 // the direction-
@@ -68,15 +68,25 @@ describe('getEffectiveType / getDisplayLabel', () => {
   });
 
   const symmetricTokens: RelationshipEdgeType[] = [
-    'spouse_of', 'sibling_of', 'friend_of', 'roommate_of', 'partner_of',
-    'co_parent_of', 'gets_along_with', 'conflicts_with', 'related_to',
+    'spouse_of',
+    'sibling_of',
+    'friend_of',
+    'roommate_of',
+    'partner_of',
+    'co_parent_of',
+    'gets_along_with',
+    'conflicts_with',
+    'related_to',
   ];
-  test.each(symmetricTokens)('%s is symmetric: label identical regardless of viewed side', (token) => {
-    const edge = makeEdge({ source_id: 'alice', target_id: 'bob', type: token });
-    expect(getEffectiveType(edge, 'alice')).toBe(token);
-    expect(getEffectiveType(edge, 'bob')).toBe(token);
-    expect(RELATIONSHIP_EDGE_TYPES[token].symmetric).toBe(true);
-  });
+  test.each(symmetricTokens)(
+    '%s is symmetric: label identical regardless of viewed side',
+    (token) => {
+      const edge = makeEdge({ source_id: 'alice', target_id: 'bob', type: token });
+      expect(getEffectiveType(edge, 'alice')).toBe(token);
+      expect(getEffectiveType(edge, 'bob')).toBe(token);
+      expect(RELATIONSHIP_EDGE_TYPES[token].symmetric).toBe(true);
+    },
+  );
 
   test('unregistered type falls back to related_to without throwing', () => {
     const edge = makeEdge({ type: 'some_future_token_this_frontend_mirror_does_not_know_about' });

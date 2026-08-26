@@ -1,33 +1,37 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router';
-import { useTranslation } from 'react-i18next';
+import { mdiNoteMultipleOutline } from '@mdi/js';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import CakeIcon from '@mui/icons-material/Cake';
+import CelebrationIcon from '@mui/icons-material/Celebration';
+import ChatIcon from '@mui/icons-material/Chat';
+import EventIcon from '@mui/icons-material/Event';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import WarningIcon from '@mui/icons-material/Warning';
 import {
+  Alert,
+  Avatar,
   Box,
+  Button,
   Card,
   CardContent,
-  Typography,
   Chip,
-  Avatar,
   CircularProgress,
-  Alert,
-  Button,
   Divider,
   Stack,
   SvgIcon,
+  Typography,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import WarningIcon from '@mui/icons-material/Warning';
-import EventIcon from '@mui/icons-material/Event';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import ChatIcon from '@mui/icons-material/Chat';
-import CakeIcon from '@mui/icons-material/Cake';
-import CelebrationIcon from '@mui/icons-material/Celebration';
-import { mdiNoteMultipleOutline } from '@mdi/js';
-import { getContactBriefing, ContactBriefing, BriefingRelationship } from './api/briefings';
-import { useDateFormat } from './DateFormatProvider';
-import { handleFetchError } from './utils/errorHandler';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link, useNavigate, useParams } from 'react-router';
+import {
+  type BriefingRelationship,
+  type ContactBriefing,
+  getContactBriefing,
+} from './api/briefings';
 import { useSnackbar } from './context/SnackbarContext';
+import { useDateFormat } from './DateFormatProvider';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { handleFetchError } from './utils/errorHandler';
 
 // N2 prep view: the "person
 // briefing" — everything the user wants to remember in the five minutes
@@ -67,7 +71,9 @@ export default function PrepViewPage() {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id, showError]);
 
   if (loading) {
@@ -87,7 +93,9 @@ export default function PrepViewPage() {
   }
 
   const relationshipLabel = (r: BriefingRelationship): string =>
-    r.display_token ? t(`relationships.types.${r.display_token}`, r.display_token) : t('relationships.types.related_to');
+    r.display_token
+      ? t(`relationships.types.${r.display_token}`, r.display_token)
+      : t('relationships.types.related_to');
 
   return (
     <Box sx={{ maxWidth: 900, mx: 'auto', mt: 1, px: 2, pb: 2 }}>
@@ -103,30 +111,46 @@ export default function PrepViewPage() {
       {/* Header */}
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5, display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Avatar src={briefing.photo_thumbnail || undefined} sx={{ width: 56, height: 56, bgcolor: 'primary.main' }}>
+          <Avatar
+            src={briefing.photo_thumbnail || undefined}
+            sx={{ width: 56, height: 56, bgcolor: 'primary.main' }}
+          >
             {(briefing.name || '?').charAt(0).toUpperCase()}
           </Avatar>
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-            <Typography variant="h5" component="h1" sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}>
+            <Typography
+              variant="h5"
+              component="h1"
+              sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}
+            >
               {briefing.name || t('prep.unknownContact')}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               {t('prep.subtitle')}
             </Typography>
           </Box>
-          {briefing.kind === 'animal' && (
-            <Chip label={t('contactDetail.animal')} size="small" />
-          )}
+          {briefing.kind === 'animal' && <Chip label={t('contactDetail.animal')} size="small" />}
         </CardContent>
       </Card>
 
       {/* Cadence health — "how overdue is this relationship" */}
       {briefing.cadence && (
-        <Card sx={{ mb: 2, border: '1px solid', borderColor: briefing.cadence.health.overdue_by > 0 ? 'warning.main' : 'divider' }}>
+        <Card
+          sx={{
+            mb: 2,
+            border: '1px solid',
+            borderColor: briefing.cadence.health.overdue_by > 0 ? 'warning.main' : 'divider',
+          }}
+        >
           <CardContent sx={{ py: 1.5 }}>
             <Stack direction="row" alignItems="center" spacing={1}>
-              <WarningIcon fontSize="small" color={briefing.cadence.health.overdue_by > 0 ? 'warning' : 'disabled'} />
-              <Typography variant="subtitle2" component="h2">{t('prep.cadence.title')}</Typography>
+              <WarningIcon
+                fontSize="small"
+                color={briefing.cadence.health.overdue_by > 0 ? 'warning' : 'disabled'}
+              />
+              <Typography variant="subtitle2" component="h2">
+                {t('prep.cadence.title')}
+              </Typography>
             </Stack>
             {briefing.cadence.health.has_qualifying_interaction ? (
               <Box sx={{ mt: 0.5 }}>
@@ -146,7 +170,9 @@ export default function PrepViewPage() {
                 )}
                 {briefing.cadence.health.last_interaction && (
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                    {t('cadence.lastInteraction', { date: formatDate(briefing.cadence.health.last_interaction) })}
+                    {t('cadence.lastInteraction', {
+                      date: formatDate(briefing.cadence.health.last_interaction),
+                    })}
                   </Typography>
                 )}
               </Box>
@@ -165,7 +191,9 @@ export default function PrepViewPage() {
           <CardContent sx={{ py: 1.5 }}>
             <Stack direction="row" alignItems="center" spacing={1}>
               <ChatIcon fontSize="small" color="action" />
-              <Typography variant="subtitle2" component="h2">{t('prep.agenda.title')}</Typography>
+              <Typography variant="subtitle2" component="h2">
+                {t('prep.agenda.title')}
+              </Typography>
             </Stack>
             <Stack spacing={0.5} sx={{ mt: 0.5 }}>
               {briefing.open_agenda_items.map((item) => (
@@ -183,7 +211,9 @@ export default function PrepViewPage() {
         <CardContent sx={{ py: 1.5 }}>
           <Stack direction="row" alignItems="center" spacing={1}>
             <EventIcon fontSize="small" color="action" />
-            <Typography variant="subtitle2" component="h2">{t('prep.lastInteraction.title')}</Typography>
+            <Typography variant="subtitle2" component="h2">
+              {t('prep.lastInteraction.title')}
+            </Typography>
           </Stack>
           {briefing.last_activity ? (
             <Box sx={{ mt: 0.5 }}>
@@ -197,7 +227,10 @@ export default function PrepViewPage() {
                 {formatDate(briefing.last_activity.date)}
               </Typography>
               {briefing.last_activity.description && (
-                <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                <Typography
+                  variant="body2"
+                  sx={{ mt: 0.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
+                >
                   {briefing.last_activity.description}
                 </Typography>
               )}
@@ -212,12 +245,20 @@ export default function PrepViewPage() {
             <>
               <Divider sx={{ my: 1 }} />
               <Stack direction="row" alignItems="center" spacing={1}>
-                <SvgIcon fontSize="small" color="action"><path d={mdiNoteMultipleOutline} /></SvgIcon>
-                <Typography variant="subtitle2" component="h2">{t('prep.recentNotes.title')}</Typography>
+                <SvgIcon fontSize="small" color="action">
+                  <path d={mdiNoteMultipleOutline} />
+                </SvgIcon>
+                <Typography variant="subtitle2" component="h2">
+                  {t('prep.recentNotes.title')}
+                </Typography>
               </Stack>
               <Stack spacing={0.5} sx={{ mt: 0.5 }}>
                 {briefing.recent_notes.map((note) => (
-                  <Typography key={note.ID} variant="body2" sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
+                  <Typography
+                    key={note.ID}
+                    variant="body2"
+                    sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}
+                  >
                     • {note.content}
                   </Typography>
                 ))}
@@ -233,7 +274,9 @@ export default function PrepViewPage() {
           <CardContent sx={{ py: 1.5 }}>
             <Stack direction="row" alignItems="center" spacing={1}>
               <FavoriteIcon fontSize="small" color="action" />
-              <Typography variant="subtitle2" component="h2">{t('prep.relationships.title')}</Typography>
+              <Typography variant="subtitle2" component="h2">
+                {t('prep.relationships.title')}
+              </Typography>
             </Stack>
             <Stack spacing={0.5} sx={{ mt: 0.5 }}>
               {briefing.relationships.map((r) => (
@@ -243,7 +286,10 @@ export default function PrepViewPage() {
                     {r.display_token ? ` — ${relationshipLabel(r)}` : ''}
                   </Typography>
                   {r.other_party_contact_id && (
-                    <Link to={`/contacts/${r.other_party_contact_id}`} style={{ display: 'inline-flex' }}>
+                    <Link
+                      to={`/contacts/${r.other_party_contact_id}`}
+                      style={{ display: 'inline-flex' }}
+                    >
                       <Chip label={t('prep.view')} size="small" variant="outlined" />
                     </Link>
                   )}
@@ -260,7 +306,9 @@ export default function PrepViewPage() {
           <CardContent sx={{ py: 1.5 }}>
             <Stack direction="row" alignItems="center" spacing={1}>
               <EventIcon fontSize="small" color="action" />
-              <Typography variant="subtitle2" component="h2">{t('prep.lifeEvents.title')}</Typography>
+              <Typography variant="subtitle2" component="h2">
+                {t('prep.lifeEvents.title')}
+              </Typography>
             </Stack>
             <Stack spacing={0.5} sx={{ mt: 0.5 }}>
               {briefing.life_events.map((event) => (
@@ -280,13 +328,14 @@ export default function PrepViewPage() {
           <CardContent sx={{ py: 1.5 }}>
             <Stack direction="row" alignItems="center" spacing={1}>
               <EventIcon fontSize="small" color="action" />
-              <Typography variant="subtitle2" component="h2">{t('prep.reminders.title')}</Typography>
+              <Typography variant="subtitle2" component="h2">
+                {t('prep.reminders.title')}
+              </Typography>
             </Stack>
             <Stack spacing={0.5} sx={{ mt: 0.5 }}>
               {briefing.upcoming_reminders.map((reminder) => (
                 <Typography key={reminder.ID} variant="body2">
-                  • {reminder.message}
-                  {' '}
+                  • {reminder.message}{' '}
                   <Typography component="span" variant="caption" color="text.secondary">
                     ({formatDate(reminder.remind_at)})
                   </Typography>
@@ -303,10 +352,13 @@ export default function PrepViewPage() {
           <CardContent sx={{ py: 1.5 }}>
             <Stack direction="row" alignItems="center" spacing={1}>
               <CakeIcon fontSize="small" color="action" />
-              <Typography variant="subtitle2" component="h2">{t('prep.upcomingDates.title')}</Typography>
+              <Typography variant="subtitle2" component="h2">
+                {t('prep.upcomingDates.title')}
+              </Typography>
             </Stack>
             <Stack spacing={0.5} sx={{ mt: 0.5 }}>
               {briefing.upcoming_dates.map((d, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: upcoming date rows, no stable id
                 <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   {d.label === 'birthday' ? (
                     <CakeIcon fontSize="small" color="action" />
@@ -314,9 +366,7 @@ export default function PrepViewPage() {
                     <CelebrationIcon fontSize="small" color="action" />
                   )}
                   <Typography variant="body2">
-                    {t(`prep.upcomingDates.${d.label}`)}
-                    {' '}
-                    {formatBirthday(d.date)}
+                    {t(`prep.upcomingDates.${d.label}`)} {formatBirthday(d.date)}
                   </Typography>
                   <Chip
                     label={t('prep.upcomingDates.inDays', { days: d.days_until })}

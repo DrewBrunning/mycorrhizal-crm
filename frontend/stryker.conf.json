@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/stryker.json",
+  "mutate": ["src/api/contacts.ts", "src/api/relationshipEdges.ts", "src/api/lifeEvents.ts"],
+  "testRunner": "vitest",
+  "coverageAnalysis": "perTest",
+  "reporters": ["clear-text", "html", "progress"],
+  "htmlReporter": {
+    "fileName": "reports/mutation/index.html"
+  },
+  "allowConsoleColors": true,
+  "timeoutMs": 60000,
+  "vitest": {
+    "configFile": "vitest.config.ts",
+    "related": true
+  }
+}

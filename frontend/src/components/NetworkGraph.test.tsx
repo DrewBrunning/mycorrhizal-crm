@@ -1,9 +1,9 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { forwardRef, useImperativeHandle } from 'react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { GraphData } from '../types/graph';
 import NetworkGraph from './NetworkGraph';
-import { GraphData } from '../types/graph';
 
 // This codebase's vitest setup does not auto-cleanup between tests -- see
 // RelationshipEdgeList.test.tsx's matching comment.
@@ -51,9 +51,7 @@ function sampleData(): GraphData {
       { id: 'c-1', type: 'contact', label: 'Alice' },
       { id: 'c-2', type: 'contact', label: 'Bob' },
     ],
-    edges: [
-      { id: 'e-1', source: 'c-1', target: 'c-2', type: 'relationship', label: 'friend_of' },
-    ],
+    edges: [{ id: 'e-1', source: 'c-1', target: 'c-2', type: 'relationship', label: 'friend_of' }],
   };
 }
 
@@ -67,7 +65,7 @@ test('the canvas wrapper is role=img with a data-driven aria-label, and the pan/
       showRelationships
       showActivities
       showCircles={false}
-    />
+    />,
   );
 
   const img = screen.getByRole('img');
@@ -94,7 +92,7 @@ test('pan/zoom controls call the graph ref API', () => {
       showRelationships
       showActivities
       showCircles={false}
-    />
+    />,
   );
 
   screen.getByRole('button', { name: 'Zoom in' }).click();

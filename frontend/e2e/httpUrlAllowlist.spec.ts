@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { createTestContact, deleteTestContact, waitForLoading } from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
@@ -23,11 +23,17 @@ import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 function agendaPanel(page: Page) {
   // Same PanelCard-traversal trick lifeEvents.spec.ts uses: the heading's
   // two parents up is the card; the agenda items are MuiPaper rows inside it.
-  return page.getByRole('heading', { name: 'Conversation Agenda', exact: true }).locator('..').locator('..');
+  return page
+    .getByRole('heading', { name: 'Conversation Agenda', exact: true })
+    .locator('..')
+    .locator('..');
 }
 
 test.describe('Web-link http(s) allowlist', () => {
-  test('the gift dialog rejects a previously-accepted non-http scheme with a readable message', async ({ page, request }) => {
+  test('the gift dialog rejects a previously-accepted non-http scheme with a readable message', async ({
+    page,
+    request,
+  }) => {
     const contact = await createTestContact(request, {
       firstname: `${E2E_CONTACT_PREFIX}GiftScheme`,
       lastname: 'Subject',
@@ -40,7 +46,10 @@ test.describe('Web-link http(s) allowlist', () => {
       const gifts = page.locator('#gifts');
       // T46: each status column has its own "Add with details" button, so the
       // click has to target one section's region instead of a global match.
-      await gifts.getByRole('region', { name: 'Ideas' }).getByRole('button', { name: /Add with details/i }).click();
+      await gifts
+        .getByRole('region', { name: 'Ideas' })
+        .getByRole('button', { name: /Add with details/i })
+        .click();
       const dialog = page.getByRole('dialog');
       await expect(dialog.getByRole('heading', { name: 'Add a gift' })).toBeVisible();
 
@@ -61,7 +70,10 @@ test.describe('Web-link http(s) allowlist', () => {
     }
   });
 
-  test('the gift dialog defaults a scheme-less URL to https, which then renders as a link', async ({ page, request }) => {
+  test('the gift dialog defaults a scheme-less URL to https, which then renders as a link', async ({
+    page,
+    request,
+  }) => {
     const contact = await createTestContact(request, {
       firstname: `${E2E_CONTACT_PREFIX}GiftSchemeLess`,
       lastname: 'Subject',
@@ -72,7 +84,10 @@ test.describe('Web-link http(s) allowlist', () => {
       await waitForLoading(page);
 
       const gifts = page.locator('#gifts');
-      await gifts.getByRole('region', { name: 'Ideas' }).getByRole('button', { name: /Add with details/i }).click();
+      await gifts
+        .getByRole('region', { name: 'Ideas' })
+        .getByRole('button', { name: /Add with details/i })
+        .click();
       const dialog = page.getByRole('dialog');
       await expect(dialog.getByRole('heading', { name: 'Add a gift' })).toBeVisible();
 
@@ -88,7 +103,9 @@ test.describe('Web-link http(s) allowlist', () => {
     }
   });
 
-  test('the API rejects a previously-accepted non-http scheme on all four web-link fields', async ({ request }) => {
+  test('the API rejects a previously-accepted non-http scheme on all four web-link fields', async ({
+    request,
+  }) => {
     const contact = await createTestContact(request, {
       firstname: `${E2E_CONTACT_PREFIX}SchemeReject`,
       lastname: 'Subject',
@@ -101,12 +118,21 @@ test.describe('Web-link http(s) allowlist', () => {
       expect(gift.status(), `gift: ${await gift.text()}`).toBe(400);
 
       const agenda = await request.post(`${API_BASE_URL}/conversation-agenda`, {
-        data: { entity_id: contact.uid, content: 'Ask about the thing', reference_url: 'intent://example.com/#Intent;scheme=zebra;end' },
+        data: {
+          entity_id: contact.uid,
+          content: 'Ask about the thing',
+          reference_url: 'intent://example.com/#Intent;scheme=zebra;end',
+        },
       });
       expect(agenda.status(), `agenda: ${await agenda.text()}`).toBe(400);
 
       const identity = await request.post(`${API_BASE_URL}/external-identities`, {
-        data: { entity_id: contact.uid, system: 'paperless', external_id: 'doc-1', url: 'ftp://paperless.example/doc-1' },
+        data: {
+          entity_id: contact.uid,
+          system: 'paperless',
+          external_id: 'doc-1',
+          url: 'ftp://paperless.example/doc-1',
+        },
       });
       expect(identity.status(), `identity: ${await identity.text()}`).toBe(400);
 
@@ -119,7 +145,10 @@ test.describe('Web-link http(s) allowlist', () => {
     }
   });
 
-  test('the agenda edit dialog rejects a previously-accepted non-http reference scheme with a readable message', async ({ page, request }) => {
+  test('the agenda edit dialog rejects a previously-accepted non-http reference scheme with a readable message', async ({
+    page,
+    request,
+  }) => {
     const contact = await createTestContact(request, {
       firstname: `${E2E_CONTACT_PREFIX}AgendaScheme`,
       lastname: 'Subject',
@@ -127,7 +156,11 @@ test.describe('Web-link http(s) allowlist', () => {
 
     try {
       const create = await request.post(`${API_BASE_URL}/conversation-agenda`, {
-        data: { entity_id: contact.uid, content: 'Ask about the article', reference_url: 'https://example.com/article' },
+        data: {
+          entity_id: contact.uid,
+          content: 'Ask about the article',
+          reference_url: 'https://example.com/article',
+        },
       });
       expect(create.ok(), `create failed: ${await create.text()}`).toBeTruthy();
 

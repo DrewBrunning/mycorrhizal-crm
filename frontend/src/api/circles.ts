@@ -1,4 +1,4 @@
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 export interface Circle {
   id: string;
@@ -44,10 +44,9 @@ export async function listCircles(params?: {
   });
   if (cursor) queryParams.append('cursor', cursor);
   if (include_members) queryParams.append('include_members', 'true');
-  const response = await apiFetch(
-    `${API_BASE_URL}/circles?${queryParams.toString()}`,
-    { headers: getAuthHeaders() }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/circles?${queryParams.toString()}`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }
@@ -86,7 +85,7 @@ export async function deleteCircle(id: string): Promise<void> {
 // POST /circles/:id/members
 export async function addCircleMember(
   circleId: string,
-  memberVCardUid: string
+  memberVCardUid: string,
 ): Promise<CircleMember> {
   const response = await apiFetch(`${API_BASE_URL}/circles/${circleId}/members`, {
     method: 'POST',
@@ -98,13 +97,10 @@ export async function addCircleMember(
 }
 
 // DELETE /circles/:id/members/:vcard_uid
-export async function removeCircleMember(
-  circleId: string,
-  memberVCardUid: string
-): Promise<void> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/circles/${circleId}/members/${memberVCardUid}`,
-    { method: 'DELETE', headers: getAuthHeaders() }
-  );
+export async function removeCircleMember(circleId: string, memberVCardUid: string): Promise<void> {
+  const response = await apiFetch(`${API_BASE_URL}/circles/${circleId}/members/${memberVCardUid}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
 }

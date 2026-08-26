@@ -1,13 +1,13 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  listTags,
-  createTag,
-  updateTag,
-  deleteTag,
   addContactTag,
+  type ContactTag,
+  createTag,
+  deleteTag,
+  listTags,
   removeContactTag,
-  Tag,
-  ContactTag,
+  type Tag,
+  updateTag,
 } from './tags';
 
 afterEach(() => {
@@ -104,7 +104,10 @@ describe('createTag', () => {
 
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
-    await expect(createTag('Friend')).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(createTag('Friend')).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -147,7 +150,10 @@ describe('deleteTag', () => {
 
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
-    await expect(deleteTag('tag-1')).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(deleteTag('tag-1')).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 

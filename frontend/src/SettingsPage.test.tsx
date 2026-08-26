@@ -1,16 +1,16 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
-import SettingsPage from './SettingsPage';
 import { AppThemeProvider } from './AppThemeProvider';
-import { DateFormatProvider } from './DateFormatProvider';
-import { SnackbarProvider } from './context/SnackbarContext';
-import { changePassword } from './api/auth';
-import { getApiTokens, createApiToken, revokeApiToken, ApiToken } from './api/apiTokens';
 import { getCurrentUser } from './api/admin';
+import { type ApiToken, createApiToken, getApiTokens, revokeApiToken } from './api/apiTokens';
+import { changePassword } from './api/auth';
+import { type Contact, getContacts, getContactsByUid } from './api/contacts';
 import { updateSelfContact } from './api/users';
-import { getContacts, getContactsByUid, Contact } from './api/contacts';
 import { fetchAndCacheUserInfo } from './auth';
+import { SnackbarProvider } from './context/SnackbarContext';
+import { DateFormatProvider } from './DateFormatProvider';
+import SettingsPage from './SettingsPage';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
 afterEach(cleanup);
@@ -57,13 +57,16 @@ vi.mock('./auth', async (importOriginal) => {
 // jsdom doesn't implement matchMedia; AppThemeProvider's system-theme
 // listener needs it to exist.
 beforeEach(() => {
-  window.matchMedia = window.matchMedia || (() => ({
-    matches: false,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    addListener: () => {},
-    removeListener: () => {},
-  }) as unknown as MediaQueryList);
+  window.matchMedia =
+    window.matchMedia ||
+    (() =>
+      ({
+        matches: false,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+      }) as unknown as MediaQueryList);
 
   vi.mocked(changePassword).mockReset();
   vi.mocked(getApiTokens).mockReset();
@@ -116,7 +119,7 @@ function renderPage() {
           <SettingsPage />
         </SnackbarProvider>
       </DateFormatProvider>
-    </AppThemeProvider>
+    </AppThemeProvider>,
   );
 }
 
@@ -128,11 +131,15 @@ test('changing the password submits current/new and shows the success message', 
 
   fireEvent.change(screen.getByLabelText('Current password *'), { target: { value: 'old-pass' } });
   fireEvent.change(screen.getByLabelText('New password *'), { target: { value: 'new-pass-123' } });
-  fireEvent.change(screen.getByLabelText('Confirm new password *'), { target: { value: 'new-pass-123' } });
+  fireEvent.change(screen.getByLabelText('Confirm new password *'), {
+    target: { value: 'new-pass-123' },
+  });
   fireEvent.click(screen.getByRole('button', { name: /update password/i }));
 
   await waitFor(() => expect(changePassword).toHaveBeenCalledWith('old-pass', 'new-pass-123'));
-  await waitFor(() => expect(screen.getByText('Password updated successfully.')).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText('Password updated successfully.')).toBeInTheDocument(),
+  );
 
   // The form clears the sensitive fields after a successful change.
   expect((screen.getByLabelText('Current password *') as HTMLInputElement).value).toBe('');
@@ -144,7 +151,9 @@ test('a mismatched confirmation is rejected before calling the API', async () =>
 
   fireEvent.change(screen.getByLabelText('Current password *'), { target: { value: 'old-pass' } });
   fireEvent.change(screen.getByLabelText('New password *'), { target: { value: 'new-pass-123' } });
-  fireEvent.change(screen.getByLabelText('Confirm new password *'), { target: { value: 'does-not-match' } });
+  fireEvent.change(screen.getByLabelText('Confirm new password *'), {
+    target: { value: 'does-not-match' },
+  });
   fireEvent.click(screen.getByRole('button', { name: /update password/i }));
 
   await waitFor(() => expect(screen.getByText(/do not match/i)).toBeInTheDocument());
@@ -157,10 +166,14 @@ test('a rejected password change surfaces the server error', async () => {
 
   fireEvent.change(screen.getByLabelText('Current password *'), { target: { value: 'wrong' } });
   fireEvent.change(screen.getByLabelText('New password *'), { target: { value: 'new-pass-123' } });
-  fireEvent.change(screen.getByLabelText('Confirm new password *'), { target: { value: 'new-pass-123' } });
+  fireEvent.change(screen.getByLabelText('Confirm new password *'), {
+    target: { value: 'new-pass-123' },
+  });
   fireEvent.click(screen.getByRole('button', { name: /update password/i }));
 
-  await waitFor(() => expect(screen.getByText('current password is incorrect')).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText('current password is incorrect')).toBeInTheDocument(),
+  );
 });
 
 // --- API tokens ----------------------------------------------------------
@@ -171,7 +184,9 @@ test('shows the empty state when there are no API tokens', async () => {
 });
 
 test('lists an existing token with its scope and status', async () => {
-  vi.mocked(getApiTokens).mockResolvedValue({ tokens: [apiToken({ name: 'Sync script', scope: 'carddav' })] });
+  vi.mocked(getApiTokens).mockResolvedValue({
+    tokens: [apiToken({ name: 'Sync script', scope: 'carddav' })],
+  });
   renderPage();
 
   await waitFor(() => expect(screen.getByText('Sync script')).toBeInTheDocument());
@@ -201,11 +216,9 @@ test('creating a token shows the secret exactly once and refreshes the list', as
   fireEvent.change(screen.getByLabelText(/token name/i), { target: { value: 'New token' } });
   fireEvent.click(screen.getByRole('button', { name: /^create$/i }));
 
-  await waitFor(() =>
-    expect(createApiToken).toHaveBeenCalledWith('New token', 90, 'full')
-  );
+  await waitFor(() => expect(createApiToken).toHaveBeenCalledWith('New token', 90, 'full'));
   await waitFor(() => expect(screen.getByDisplayValue('mcrh_live_abc123')).toBeInTheDocument());
-  await waitFor(() => expect(getApiTokens).toHaveBeenCalledTimes(2), );
+  await waitFor(() => expect(getApiTokens).toHaveBeenCalledTimes(2));
 });
 
 test('revoking a token requires confirmation before calling the API', async () => {
@@ -229,8 +242,14 @@ test('revoking a token requires confirmation before calling the API', async () =
 test('shows the current self-contact in the picker (T90)', async () => {
   const me = contact({ ID: 7, uid: 'uid-me', firstname: 'Me', lastname: 'Contact' });
   vi.mocked(getCurrentUser).mockResolvedValue({
-    id: 1, email: 'a@b.c', username: 'u', language: 'en', is_admin: false,
-    created_at: '', updated_at: '', self_contact_vcard_uid: 'uid-me',
+    id: 1,
+    email: 'a@b.c',
+    username: 'u',
+    language: 'en',
+    is_admin: false,
+    created_at: '',
+    updated_at: '',
+    self_contact_vcard_uid: 'uid-me',
   });
   vi.mocked(getContactsByUid).mockResolvedValue(new Map([['uid-me', me]]));
 
@@ -257,8 +276,14 @@ test('selecting a contact patches the self contact and refreshes the cache (T90)
 test('the clear button patches a null self contact (T90)', async () => {
   const me = contact({ ID: 7, uid: 'uid-me', firstname: 'Me', lastname: 'Contact' });
   vi.mocked(getCurrentUser).mockResolvedValue({
-    id: 1, email: 'a@b.c', username: 'u', language: 'en', is_admin: false,
-    created_at: '', updated_at: '', self_contact_vcard_uid: 'uid-me',
+    id: 1,
+    email: 'a@b.c',
+    username: 'u',
+    language: 'en',
+    is_admin: false,
+    created_at: '',
+    updated_at: '',
+    self_contact_vcard_uid: 'uid-me',
   });
   vi.mocked(getContactsByUid).mockResolvedValue(new Map([['uid-me', me]]));
 
@@ -273,11 +298,17 @@ test('the clear button patches a null self contact (T90)', async () => {
 test('a failed self-contact save surfaces the error and keeps the old selection (T90)', async () => {
   const me = contact({ ID: 7, uid: 'uid-me', firstname: 'Me', lastname: 'Contact' });
   vi.mocked(getCurrentUser).mockResolvedValue({
-    id: 1, email: 'a@b.c', username: 'u', language: 'en', is_admin: false,
-    created_at: '', updated_at: '', self_contact_vcard_uid: 'uid-me',
+    id: 1,
+    email: 'a@b.c',
+    username: 'u',
+    language: 'en',
+    is_admin: false,
+    created_at: '',
+    updated_at: '',
+    self_contact_vcard_uid: 'uid-me',
   });
   vi.mocked(getContactsByUid).mockResolvedValue(new Map([['uid-me', me]]));
-  vi.mocked(updateSelfContact).mockRejectedValue(new Error('Couldn\'t update your self contact.'));
+  vi.mocked(updateSelfContact).mockRejectedValue(new Error("Couldn't update your self contact."));
 
   renderPage();
   await waitFor(() => expect(screen.getByDisplayValue('Me Contact')).toBeInTheDocument());
@@ -285,7 +316,9 @@ test('a failed self-contact save surfaces the error and keeps the old selection 
   fireEvent.click(screen.getByRole('button', { name: /clear/i }));
 
   await waitFor(() => expect(updateSelfContact).toHaveBeenCalledWith(null));
-  await waitFor(() => expect(screen.getByText("Couldn't update your self contact.")).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText("Couldn't update your self contact.")).toBeInTheDocument(),
+  );
   expect(screen.getByDisplayValue('Me Contact')).toBeInTheDocument();
   expect(fetchAndCacheUserInfo).not.toHaveBeenCalled();
 });

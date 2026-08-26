@@ -1,15 +1,15 @@
-import {
-  test,
-  expect,
-  LOGGED_OUT,
-  createTestContact,
-  deleteTestContact,
-  assertNoBlockingA11yViolations,
-  SKIP_A11Y_SCAN,
-} from './fixtures';
-import { waitForLoading } from './fixtures';
 import type { Page } from '@playwright/test';
 import { request as apiRequest } from '@playwright/test';
+import {
+  assertNoBlockingA11yViolations,
+  createTestContact,
+  deleteTestContact,
+  expect,
+  LOGGED_OUT,
+  SKIP_A11Y_SCAN,
+  test,
+  waitForLoading,
+} from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 /**
@@ -102,7 +102,7 @@ test.beforeAll(async () => {
       const { contacts } = await search.json();
       const alice = (contacts || []).find(
         (c: { firstname: string; lastname: string }) =>
-          c.firstname === 'Alice' && c.lastname === 'Johnson'
+          c.firstname === 'Alice' && c.lastname === 'Johnson',
       );
       if (alice) {
         contactId = alice.id;
@@ -132,7 +132,9 @@ test.afterAll(async () => {
   }
 });
 
-test.describe('accessibility route scans', { annotation: { type: SKIP_A11Y_SCAN, description: 'already scans explicitly per route/theme' } }, () => {
+test.describe('accessibility route scans', {
+  annotation: { type: SKIP_A11Y_SCAN, description: 'already scans explicitly per route/theme' },
+}, () => {
   test.describe('authenticated routes', () => {
     for (const theme of THEMES) {
       for (const [name, route] of AUTH_ROUTES) {
@@ -158,34 +160,44 @@ test.describe('accessibility route scans', { annotation: { type: SKIP_A11Y_SCAN,
   });
 });
 
-test.describe('accessibility dialog scans', { annotation: { type: SKIP_A11Y_SCAN, description: 'already scans explicitly per dialog/theme' } }, () => {
+test.describe('accessibility dialog scans', {
+  annotation: { type: SKIP_A11Y_SCAN, description: 'already scans explicitly per dialog/theme' },
+}, () => {
   // The audit's first pass only scanned page loads and missed every dialog.
   // Scan the dialog element itself (not the page behind it), in both themes —
   // color-contrast findings are theme-dependent, so a light-only pass could
   // still ship a dark-mode regression.
   for (const theme of THEMES) {
-    test(`add contact dialog (${theme}) has no critical or serious a11y violations`, async ({ page }) => {
+    test(`add contact dialog (${theme}) has no critical or serious a11y violations`, async ({
+      page,
+    }) => {
       await gotoWithTheme(page, '/contacts', theme);
       await page.getByRole('button', { name: /add/i }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       await assertNoBlockingViolations(page, '[role="dialog"]');
     });
 
-    test(`import dialog (${theme}) has no critical or serious a11y violations`, async ({ page }) => {
+    test(`import dialog (${theme}) has no critical or serious a11y violations`, async ({
+      page,
+    }) => {
       await gotoWithTheme(page, '/contacts', theme);
       await page.getByRole('button', { name: /import/i }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       await assertNoBlockingViolations(page, '[role="dialog"]');
     });
 
-    test(`review duplicates dialog (${theme}) has no critical or serious a11y violations`, async ({ page }) => {
+    test(`review duplicates dialog (${theme}) has no critical or serious a11y violations`, async ({
+      page,
+    }) => {
       await gotoWithTheme(page, '/contacts', theme);
       await page.getByRole('button', { name: /review duplicates/i }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       await assertNoBlockingViolations(page, '[role="dialog"]');
     });
 
-    test(`contact edit form (${theme}) has no critical or serious a11y violations`, async ({ page }) => {
+    test(`contact edit form (${theme}) has no critical or serious a11y violations`, async ({
+      page,
+    }) => {
       await gotoWithTheme(page, `/contacts/${contactId}`, theme);
       // Unlike the other dialogs, profile editing here is an inline form in
       // the contact header (no [role="dialog"]), so scan the document with

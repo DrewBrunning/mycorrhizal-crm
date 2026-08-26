@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { CardSpeakToAs } from '../api/contacts';
 import SpeakToAsEditor from './SpeakToAsEditor';
-import { CardSpeakToAs } from '../api/contacts';
 
 afterEach(cleanup);
 

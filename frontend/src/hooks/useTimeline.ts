@@ -1,10 +1,10 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   getTimeline,
   TIMELINE_TYPES,
-  TimelineItem,
-  TimelineType,
-  TimelineBucket,
+  type TimelineBucket,
+  type TimelineItem,
+  type TimelineType,
 } from '../api/timeline';
 import { handleFetchError } from '../utils/errorHandler';
 

@@ -1,24 +1,24 @@
-import { useState, useEffect } from 'react';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Box,
-  Avatar,
-  Typography,
-  Chip,
-  Divider,
   Alert,
+  Avatar,
+  Box,
+  Button,
+  Chip,
   CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Typography,
 } from '@mui/material';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { Contact } from '../api/contacts';
+import type { DuplicatePair, DuplicateReason } from '../api/duplicates';
+import { useSnackbar } from '../context/SnackbarContext';
+import { useDuplicatePairs } from '../hooks/useDuplicatePairs';
 import AppDialog from './AppDialog';
 import MergeContactsDialog from './MergeContactsDialog';
-import { useDuplicatePairs } from '../hooks/useDuplicatePairs';
-import { DuplicatePair, DuplicateReason } from '../api/duplicates';
-import { Contact } from '../api/contacts';
-import { useSnackbar } from '../context/SnackbarContext';
 
 interface ReviewDuplicatesDialogProps {
   open: boolean;
@@ -57,16 +57,23 @@ function PairLine({
 
   const reasonLabel = (r: DuplicateReason) => {
     switch (r) {
-      case 'email': return t('duplicates.reason.email');
-      case 'name': return t('duplicates.reason.name');
-      case 'phone': return t('duplicates.reason.phone');
-      default: return r;
+      case 'email':
+        return t('duplicates.reason.email');
+      case 'name':
+        return t('duplicates.reason.name');
+      case 'phone':
+        return t('duplicates.reason.phone');
+      default:
+        return r;
     }
   };
 
   const renderContact = (c: Contact) => (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flex: 1 }}>
-      <Avatar src={c.photo_thumbnail || undefined} sx={{ width: 40, height: 40, bgcolor: 'primary.main', flexShrink: 0 }}>
+      <Avatar
+        src={c.photo_thumbnail || undefined}
+        sx={{ width: 40, height: 40, bgcolor: 'primary.main', flexShrink: 0 }}
+      >
         {c.firstname.charAt(0)}
       </Avatar>
       <Box sx={{ minWidth: 0 }}>
@@ -77,7 +84,11 @@ function PairLine({
           {c.email || c.phone || (c.archived ? t('contacts.archived') : '')}
         </Typography>
         {c.archived && (
-          <Chip label={t('contacts.archived')} size="small" sx={{ height: 16, fontSize: '0.65rem', mt: 0.25 }} />
+          <Chip
+            label={t('contacts.archived')}
+            size="small"
+            sx={{ height: 16, fontSize: '0.65rem', mt: 0.25 }}
+          />
         )}
       </Box>
     </Box>
@@ -94,7 +105,13 @@ function PairLine({
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.75, flexWrap: 'wrap' }}>
         {pair.reasons.map((r) => (
-          <Chip key={r} label={reasonLabel(r)} size="small" color="default" sx={{ height: 20, fontSize: '0.7rem' }} />
+          <Chip
+            key={r}
+            label={reasonLabel(r)}
+            size="small"
+            color="default"
+            sx={{ height: 20, fontSize: '0.7rem' }}
+          />
         ))}
         <Chip
           label={t('duplicates.confidence', { percent: Math.round(pair.confidence * 100) })}

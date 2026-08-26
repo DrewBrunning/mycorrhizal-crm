@@ -1,6 +1,6 @@
 // Household API calls -- T1.
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
-import { RelationshipEdge } from './relationshipEdges';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
+import type { RelationshipEdge } from './relationshipEdges';
 
 // Mirrors backend/models/household.go's HouseholdType* constants and the
 // `oneof=family_unit roommates other` validator on Household.Type. No dynamic
@@ -77,10 +77,9 @@ export async function listHouseholds(params?: {
   });
   if (cursor) queryParams.append('cursor', cursor);
   if (include_members) queryParams.append('include_members', 'true');
-  const response = await apiFetch(
-    `${API_BASE_URL}/households?${queryParams.toString()}`,
-    { headers: getAuthHeaders() }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/households?${queryParams.toString()}`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }
@@ -120,7 +119,7 @@ export async function deleteHousehold(id: string): Promise<void> {
 // POST /households/:id/members
 export async function addHouseholdMember(
   householdId: string,
-  input: HouseholdMemberInput
+  input: HouseholdMemberInput,
 ): Promise<HouseholdMember> {
   const response = await apiFetch(`${API_BASE_URL}/households/${householdId}/members`, {
     method: 'POST',
@@ -135,11 +134,11 @@ export async function addHouseholdMember(
 // DELETE /households/:id/members/:vcard_uid
 export async function removeHouseholdMember(
   householdId: string,
-  memberVCardUid: string
+  memberVCardUid: string,
 ): Promise<void> {
   const response = await apiFetch(
     `${API_BASE_URL}/households/${householdId}/members/${memberVCardUid}`,
-    { method: 'DELETE', headers: getAuthHeaders() }
+    { method: 'DELETE', headers: getAuthHeaders() },
   );
   if (!response.ok) throw await parseErrorResponse(response);
 }
@@ -148,11 +147,11 @@ export async function removeHouseholdMember(
 export async function updateHouseholdMember(
   householdId: string,
   memberVCardUid: string,
-  role: string
+  role: string,
 ): Promise<void> {
   const response = await apiFetch(
     `${API_BASE_URL}/households/${householdId}/members/${memberVCardUid}`,
-    { method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify({ role }) }
+    { method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify({ role }) },
   );
   if (!response.ok) throw await parseErrorResponse(response);
 }
@@ -161,11 +160,11 @@ export async function updateHouseholdMember(
 // suggested RelationshipEdges for every applicable member pair. Idempotent:
 // re-running never duplicates edges (services.GenerateHouseholdSuggestions).
 export async function suggestHouseholdRelationships(
-  householdId: string
+  householdId: string,
 ): Promise<SuggestRelationshipsResponse> {
   const response = await apiFetch(
     `${API_BASE_URL}/households/${householdId}/suggest-relationships`,
-    { method: 'POST', headers: getAuthHeaders() }
+    { method: 'POST', headers: getAuthHeaders() },
   );
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
@@ -213,7 +212,7 @@ export function formatSuggestionAddress(address: AddressHouseholdSuggestion['add
   }
   const parts = ['name', 'locality', 'region', 'postcode', 'country']
     .map((kind) => byKind[kind])
-    .filter((v) => v && v.trim());
+    .filter((v) => v?.trim());
   return parts.join(', ');
 }
 
@@ -233,7 +232,7 @@ export async function suggestAddressHouseholds(): Promise<SuggestAddressHousehol
 // VCardUIDs.
 export async function acceptAddressHouseholdSuggestion(
   memberVCardUids: string[],
-  input?: { name?: string; type?: HouseholdType }
+  input?: { name?: string; type?: HouseholdType },
 ): Promise<Household> {
   const response = await apiFetch(`${API_BASE_URL}/households/suggestions/accept`, {
     method: 'POST',
@@ -247,9 +246,7 @@ export async function acceptAddressHouseholdSuggestion(
 
 // POST /households/suggestions/dismiss -- permanently dismiss a suggested
 // group so the scan stops offering it.
-export async function dismissAddressHouseholdSuggestion(
-  memberVCardUids: string[]
-): Promise<void> {
+export async function dismissAddressHouseholdSuggestion(memberVCardUids: string[]): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/households/suggestions/dismiss`, {
     method: 'POST',
     headers: getAuthHeaders(),

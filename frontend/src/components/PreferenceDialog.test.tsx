@@ -1,5 +1,5 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import PreferenceDialog from './PreferenceDialog';
 
@@ -41,7 +41,9 @@ test('saves with the selected category, value, notes, and sensitivity', async ()
   fireEvent.change(screen.getByLabelText('Value *'), { target: { value: 'Severance' } });
   fireEvent.mouseDown(screen.getByLabelText('Category *'));
   fireEvent.click(await screen.findByRole('option', { name: 'TV show' }));
-  fireEvent.change(screen.getByLabelText('Notes (optional)'), { target: { value: 'Watched together' } });
+  fireEvent.change(screen.getByLabelText('Notes (optional)'), {
+    target: { value: 'Watched together' },
+  });
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
   await vi.waitFor(() => expect(onSave).toHaveBeenCalled());

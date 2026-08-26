@@ -1,18 +1,18 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { renderHook, cleanup, waitFor, act } from '@testing-library/react';
-import { useRelationshipEdges } from './useRelationshipEdges';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { type Contact, getContactsByUid } from '../api/contacts';
 import {
-  getRelationshipEdges,
-  createRelationshipEdge,
-  updateRelationshipEdge,
-  deleteRelationshipEdge,
   acceptRelationshipEdge,
+  createRelationshipEdge,
+  deleteRelationshipEdge,
+  getRelationshipEdges,
+  type RelationshipEdge,
+  type RelationshipEdgeInput,
+  type RelationshipEdgesResponse,
   rejectRelationshipEdge,
-  RelationshipEdge,
-  RelationshipEdgeInput,
-  RelationshipEdgesResponse,
+  updateRelationshipEdge,
 } from '../api/relationshipEdges';
-import { getContactsByUid, Contact } from '../api/contacts';
+import { useRelationshipEdges } from './useRelationshipEdges';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(() => {
@@ -90,10 +90,7 @@ test('loads edges and resolves the other parties', async () => {
 
 test('splits confirmed and suggested edges', async () => {
   vi.mocked(getRelationshipEdges).mockResolvedValue(
-    listResponse([
-      edge('e-1'),
-      edge('e-2', { status: 'suggested', source: 'household-inferred' }),
-    ])
+    listResponse([edge('e-1'), edge('e-2', { status: 'suggested', source: 'household-inferred' })]),
   );
   vi.mocked(getContactsByUid).mockResolvedValue(new Map());
 
@@ -166,7 +163,11 @@ test('handleSaveRelationshipEdge updates when editing an existing edge', async (
 
   act(() => result.current.handleEditRelationshipEdge(result.current.edges[0]));
 
-  const input: RelationshipEdgeInput = { source_id: 'alice-uid', target_id: 'bob-uid', type: 'spouse_of' };
+  const input: RelationshipEdgeInput = {
+    source_id: 'alice-uid',
+    target_id: 'bob-uid',
+    type: 'spouse_of',
+  };
   await act(async () => {
     await result.current.handleSaveRelationshipEdge(input);
   });
@@ -238,7 +239,7 @@ test('save errors notify through the notifier and rethrow', async () => {
   await waitFor(() => expect(result.current.loading).toBe(false));
 
   await expect(
-    result.current.handleSaveRelationshipEdge({ target_id: 'bob-uid', type: 'friend_of' })
+    result.current.handleSaveRelationshipEdge({ target_id: 'bob-uid', type: 'friend_of' }),
   ).rejects.toThrow('boom');
   expect(showError).toHaveBeenCalledWith('boom');
 });

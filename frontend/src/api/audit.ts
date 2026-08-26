@@ -1,7 +1,7 @@
 // Audit event API calls -- T60,
 // the frontend half of T18's already-shipped backend (GET /audit, POST
 // /audit/:id/undo).
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 import { downloadFileFromResponse } from './export';
 
 // Mirrors backend/models/audit.go's AuditEntity* tokens and backend/openapi.yaml's
@@ -87,13 +87,17 @@ export interface GetAuditEventsParams {
 
 // GET /audit -- the caller's immutable events, newest first. The API does all
 // the IDOR gating (every row is scoped to the session user server-side).
-export async function getAuditEvents(params: GetAuditEventsParams = {}): Promise<AuditEventsResponse> {
+export async function getAuditEvents(
+  params: GetAuditEventsParams = {},
+): Promise<AuditEventsResponse> {
   const { entity_type, entity_id, limit = 100 } = params;
   const queryParams = new URLSearchParams({ limit: limit.toString() });
   if (entity_type) queryParams.append('entity_type', entity_type);
   if (entity_id) queryParams.append('entity_id', entity_id);
 
-  const response = await apiFetch(`${API_BASE_URL}/audit?${queryParams.toString()}`, { headers: getAuthHeaders() });
+  const response = await apiFetch(`${API_BASE_URL}/audit?${queryParams.toString()}`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }

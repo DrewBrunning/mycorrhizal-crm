@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
-import { Box, Card, CardContent, Divider, Typography, Tooltip, IconButton } from '@mui/material';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import { Box, Card, CardContent, Divider, IconButton, Tooltip, Typography } from '@mui/material';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getHealth, formatBuildVersion, HealthResponse } from '../api/health';
+import { formatBuildVersion, getHealth, type HealthResponse } from '../api/health';
 import { useSnackbar } from '../context/SnackbarContext';
 
 /**

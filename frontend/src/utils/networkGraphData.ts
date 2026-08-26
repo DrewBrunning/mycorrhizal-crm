@@ -5,7 +5,7 @@
 // pure function and the same inputs. Two independent re-implementations of
 // this filtering would be free to drift out of sync silently; a single
 // shared function cannot.
-import { GraphData, GraphNode, GraphEdge } from '../types/graph';
+import type { GraphData, GraphEdge, GraphNode } from '../types/graph';
 
 export interface NetworkGraphFilters {
   selectedCircle?: string;
@@ -27,7 +27,14 @@ export function edgeEndpointId(end: string | GraphNode): string {
 
 export function computeFilteredGraphData(
   data: GraphData,
-  { selectedCircle, showRelationships, showActivities, showCircles, centeredNodeId, circleNamesByUid }: NetworkGraphFilters
+  {
+    selectedCircle,
+    showRelationships,
+    showActivities,
+    showCircles,
+    centeredNodeId,
+    circleNamesByUid,
+  }: NetworkGraphFilters,
 ): FilteredGraphData {
   let filteredNodes = data.nodes;
 
@@ -35,38 +42,39 @@ export function computeFilteredGraphData(
   if (selectedCircle) {
     const contactsInCircle = new Set(
       data.nodes
-        .filter(n => {
+        .filter((n) => {
           if (n.type !== 'contact' || !circleNamesByUid) return false;
           const contactId = n.id.replace('c-', '');
           return (circleNamesByUid.get(contactId) || []).includes(selectedCircle);
         })
-        .map(n => n.id)
+        .map((n) => n.id),
     );
 
     // Include contacts in circle and activities that have at least 2 contacts in the circle
-    filteredNodes = data.nodes.filter(n => {
+    filteredNodes = data.nodes.filter((n) => {
       if (n.type === 'contact') {
         return contactsInCircle.has(n.id);
       }
       // For activities, check if they connect contacts in this circle
       const activityEdges = data.edges.filter(
-        e => e.type === 'activity' &&
-        edgeEndpointId(e.source) === n.id
+        (e) => e.type === 'activity' && edgeEndpointId(e.source) === n.id,
       );
-      const connectedContacts = activityEdges.filter(e => contactsInCircle.has(edgeEndpointId(e.target)));
+      const connectedContacts = activityEdges.filter((e) =>
+        contactsInCircle.has(edgeEndpointId(e.target)),
+      );
       return connectedContacts.length >= 2;
     });
   }
 
   // Hide activity nodes when the activities toggle is off
   if (!showActivities) {
-    filteredNodes = filteredNodes.filter(n => n.type !== 'activity');
+    filteredNodes = filteredNodes.filter((n) => n.type !== 'activity');
   }
 
-  const nodeIds = new Set(filteredNodes.map(n => n.id));
+  const nodeIds = new Set(filteredNodes.map((n) => n.id));
 
   // Filter edges based on visibility toggles and filtered nodes
-  let filteredEdges = data.edges.filter(e => {
+  let filteredEdges = data.edges.filter((e) => {
     const sourceId = edgeEndpointId(e.source);
     const targetId = edgeEndpointId(e.target);
 
@@ -77,14 +85,14 @@ export function computeFilteredGraphData(
 
   // Synthesize circle nodes and edges from contact circle memberships
   if (showCircles && circleNamesByUid) {
-    const visibleContacts = filteredNodes.filter(n => n.type === 'contact');
+    const visibleContacts = filteredNodes.filter((n) => n.type === 'contact');
 
     // Count contacts per circle
     const circleContactMap = new Map<string, string[]>();
-    visibleContacts.forEach(contact => {
+    visibleContacts.forEach((contact) => {
       const contactId = contact.id.replace('c-', '');
       const names = circleNamesByUid.get(contactId) || [];
-      names.forEach(circleName => {
+      names.forEach((circleName) => {
         const existing = circleContactMap.get(circleName) ?? [];
         existing.push(contact.id);
         circleContactMap.set(circleName, existing);
@@ -104,7 +112,7 @@ export function computeFilteredGraphData(
         label: circleName,
       });
 
-      contactIds.forEach(contactId => {
+      contactIds.forEach((contactId) => {
         circleEdges.push({
           id: `ce-${contactId}-${circleName}`,
           type: 'circle',
@@ -122,15 +130,15 @@ export function computeFilteredGraphData(
   if (centeredNodeId) {
     const directNeighbors = new Set<string>([centeredNodeId]);
 
-    filteredEdges.forEach(e => {
+    filteredEdges.forEach((e) => {
       const srcId = edgeEndpointId(e.source);
       const tgtId = edgeEndpointId(e.target);
       if (srcId === centeredNodeId) directNeighbors.add(tgtId);
       if (tgtId === centeredNodeId) directNeighbors.add(srcId);
     });
 
-    filteredNodes = filteredNodes.filter(n => directNeighbors.has(n.id));
-    filteredEdges = filteredEdges.filter(e => {
+    filteredNodes = filteredNodes.filter((n) => directNeighbors.has(n.id));
+    filteredEdges = filteredEdges.filter((e) => {
       const srcId = edgeEndpointId(e.source);
       const tgtId = edgeEndpointId(e.target);
       return directNeighbors.has(srcId) && directNeighbors.has(tgtId);

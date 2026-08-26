@@ -1,5 +1,4 @@
-import { test, expect } from './fixtures';
-import { waitForLoading } from './fixtures';
+import { expect, test, waitForLoading } from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 // T56: the bulk
@@ -16,7 +15,10 @@ test.describe('Bulk contacts import in Data Settings', () => {
       await page.goto('/settings/data');
       await waitForLoading(page);
 
-      await page.getByRole('button', { name: /import contacts/i }).first().click();
+      await page
+        .getByRole('button', { name: /import contacts/i })
+        .first()
+        .click();
 
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
@@ -43,12 +45,14 @@ test.describe('Bulk contacts import in Data Settings', () => {
       await expect(dialog).toBeHidden();
 
       // The imported contacts are real: findable via the API.
-      const search = await request.get(`${API_BASE_URL}/search?q=${encodeURIComponent(name)}&limit=10`);
+      const search = await request.get(
+        `${API_BASE_URL}/search?q=${encodeURIComponent(name)}&limit=10`,
+      );
       expect(search.ok()).toBeTruthy();
       const body = await search.json();
       expect(
         body.contacts.some((c: { firstname: string }) => c.firstname === name),
-        'the imported contact must be searchable'
+        'the imported contact must be searchable',
       ).toBeTruthy();
     } finally {
       // Clean up the imported contacts (skip/ignore failures — the contacts
@@ -60,10 +64,12 @@ test.describe('Bulk contacts import in Data Settings', () => {
       // relying on that catching it isn't a given either).
       for (const firstname of [name, second]) {
         const list = await request.get(
-          `${API_BASE_URL}/contacts?search=${encodeURIComponent(firstname)}&limit=10`
+          `${API_BASE_URL}/contacts?search=${encodeURIComponent(firstname)}&limit=10`,
         );
         const { contacts } = await list.json();
-        const match = (contacts || []).find((c: { firstname: string }) => c.firstname === firstname);
+        const match = (contacts || []).find(
+          (c: { firstname: string }) => c.firstname === firstname,
+        );
         if (match) await request.delete(`${API_BASE_URL}/contacts/${match.id}`).catch(() => {});
       }
     }

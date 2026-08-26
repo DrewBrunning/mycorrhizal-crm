@@ -1,10 +1,10 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { Contact } from '../api/contacts';
+import type { RelationshipEdge } from '../api/relationshipEdges';
 import RelationshipEdgeList from './RelationshipEdgeList';
-import { RelationshipEdge } from '../api/relationshipEdges';
-import { Contact } from '../api/contacts';
 
 // This codebase's vitest setup does not auto-cleanup between tests (no
 // `globals: true`, setupTests.ts doesn't register it) -- without this,
@@ -47,7 +47,10 @@ test('renders a suggested edge with the warning chip and working accept/reject a
   const edge = suggestedEdge();
   const contactsByUid = new Map([['bob-uid', bobContact()]]);
 
-  vi.stubGlobal('confirm', vi.fn(() => true));
+  vi.stubGlobal(
+    'confirm',
+    vi.fn(() => true),
+  );
 
   render(
     <MemoryRouter>
@@ -61,7 +64,7 @@ test('renders a suggested edge with the warning chip and working accept/reject a
         onAccept={onAccept}
         onReject={onReject}
       />
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 
   expect(screen.getByText('Bob Brown')).toBeInTheDocument();
@@ -77,7 +80,14 @@ test('renders a suggested edge with the warning chip and working accept/reject a
 });
 
 test('confirmed edges render without a suggested chip and without accept/reject actions', () => {
-  const confirmed: RelationshipEdge = { ...suggestedEdge(), id: 'edge-2', status: 'confirmed', source: 'user-confirmed', confidence: 1.0, type: 'friend_of' };
+  const confirmed: RelationshipEdge = {
+    ...suggestedEdge(),
+    id: 'edge-2',
+    status: 'confirmed',
+    source: 'user-confirmed',
+    confidence: 1.0,
+    type: 'friend_of',
+  };
   const contactsByUid = new Map([['bob-uid', bobContact()]]);
 
   render(
@@ -92,7 +102,7 @@ test('confirmed edges render without a suggested chip and without accept/reject 
         onAccept={vi.fn()}
         onReject={vi.fn()}
       />
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 
   expect(screen.getByText('Bob Brown')).toBeInTheDocument();
@@ -113,7 +123,7 @@ test('shows the empty state when there are no edges at all', () => {
         onAccept={vi.fn()}
         onReject={vi.fn()}
       />
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 
   expect(screen.getByText('No relationships yet')).toBeInTheDocument();

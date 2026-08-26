@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { expect, test } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 // T34 — the
@@ -6,12 +6,18 @@ import { API_BASE_URL } from './global-setup';
 // named (timestamped) custom type and deletes it again in a finally block,
 // so a crashed run doesn't leave registry cruft behind for the shared
 // TEST_USER across other e2e specs.
-async function deleteLinkTypeIfPresent(page: import('@playwright/test').Page, name: string): Promise<void> {
+async function deleteLinkTypeIfPresent(
+  page: import('@playwright/test').Page,
+  name: string,
+): Promise<void> {
   await page.goto('/settings');
   const deleteButton = page.getByLabel(`Delete ${name}`);
   if (!(await deleteButton.isVisible({ timeout: 1000 }).catch(() => false))) return;
   await deleteButton.click();
-  await page.getByRole('button', { name: /^delete$/i }).last().click();
+  await page
+    .getByRole('button', { name: /^delete$/i })
+    .last()
+    .click();
   await expect(page.getByRole('dialog')).toBeHidden();
   await expect(page.getByText(name)).toBeHidden();
 }
@@ -21,11 +27,13 @@ async function deleteLinkTypeIfPresent(page: import('@playwright/test').Page, na
 // the meaningful, testable invariant for a same-category "move up".
 async function socialRank(
   page: import('@playwright/test').Page,
-  name: string
+  name: string,
 ): Promise<{ rank: number; length: number }> {
   const resp = await page.request.get(`${API_BASE_URL}/link-field-types`);
   const body = await resp.json();
-  const social = (body.link_field_types as Array<{ name: string; category: string; position: number }>)
+  const social = (
+    body.link_field_types as Array<{ name: string; category: string; position: number }>
+  )
     .filter((lt) => lt.category === 'social')
     .sort((a, b) => a.position - b.position);
   return { rank: social.findIndex((lt) => lt.name === name), length: social.length };
@@ -53,7 +61,7 @@ test.describe('LinkFieldTypes settings', () => {
     }
   });
 
-  test('edit a link type\'s protocol', async ({ page }) => {
+  test("edit a link type's protocol", async ({ page }) => {
     const name = `E2ELinkTypeEdit${Date.now()}`;
 
     try {
@@ -122,7 +130,9 @@ test.describe('LinkFieldTypes settings', () => {
       expect(before.rank).toBe(before.length - 1);
 
       await Promise.all([
-        page.waitForResponse((r) => r.url().includes('/link-field-types/reorder') && r.request().method() === 'PUT'),
+        page.waitForResponse(
+          (r) => r.url().includes('/link-field-types/reorder') && r.request().method() === 'PUT',
+        ),
         row.getByLabel(`Move ${name} up`).click(),
       ]);
 

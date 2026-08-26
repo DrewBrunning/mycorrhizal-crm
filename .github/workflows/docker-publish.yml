@@ -229,6 +229,30 @@ jobs:
         with:
           subject-path: android/app/build/outputs/apk/release/*.apk
 
+      # Issue #578, B3: cosign co-signature on the release APK — additive
+      # ONLY. It does NOT replace the SIGNING_* keystore signing above, which
+      # is what makes the APK installable; cosign gives an independent
+      # keyless (Sigstore) verifier on top of the GH attestation. Verify with
+      # cosign verify-blob --certificate ... --signature ... <apk>.
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Cosign-sign the release APK (keyless, additive)
+        run: |
+          cosign sign-blob --yes \
+            --output-certificate "$RUNNER_TEMP/mycorrhizal-apk.crt" \
+            --output-signature "$RUNNER_TEMP/mycorrhizal-apk.sig" \
+            android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload APK cosign signature + certificate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: apk-cosign-signature
+          path: |
+            ${{ runner.temp }}/mycorrhizal-apk.crt
+            ${{ runner.temp }}/mycorrhizal-apk.sig
+          retention-days: 30
+
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
@@ -368,11 +392,17 @@ jobs:
 
       # The lowercase reference again, shared by the attest step below (GitHub
       # Actions expressions have no lower() function, so it's done in bash the
-      # same way the cosign line above does it).
+      # same way the cosign line above does it). Also emits the semver-tagged
+      # reference (RELEASE_TAG with the leading 'v' stripped, matching what the
+      # build actually pushed — see the scan job's identical derivation) for
+      # the image SBOM generation below.
       - name: Compute lowercase image reference
         env:
           SUFFIX: ${{ matrix.suffix }}
-        run: echo "IMAGE_REF=ghcr.io/${GITHUB_REPOSITORY,,}${SUFFIX}" >> "$GITHUB_ENV"
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+        run: |
+          echo "IMAGE_REF=ghcr.io/${GITHUB_REPOSITORY,,}${SUFFIX}" >> "$GITHUB_ENV"
+          echo "IMAGE_REF_TAGGED=ghcr.io/${GITHUB_REPOSITORY,,}${SUFFIX}:${RELEASE_TAG#v}" >> "$GITHUB_ENV"
 
       # GH-native SLSA build provenance, in addition to the buildkit provenance
       # (`provenance: true` on the build above) and the cosign signature just
@@ -388,6 +418,67 @@ jobs:
         with:
           subject-name: ${{ env.IMAGE_REF }}
           subject-digest: ${{ steps.build.outputs.digest }}
+
+      # Issue #578, B3: portable signed SBOMs for the released images, in
+      # addition to buildkit's in-toto SBOM referrer (registry-only) and the
+      # GH attestation above. syft scans the *published* image (the exact
+      # artifact users pull), emits SPDX + CycloneDX, and cosign signs both
+      # keyless with the same pattern as the image sign above. syft-version
+      # pinned for reproducible output; per-suffix artifact names avoid matrix
+      # collisions.
+      - name: Generate SPDX SBOM from image
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: ${{ env.IMAGE_REF_TAGGED }}
+          format: 'spdx-json'
+          output-file: 'sbom${{ matrix.suffix }}.spdx.json'
+          syft-version: 'v1.51.0'
+          artifact-name: 'sbom-spdx${{ matrix.suffix }}'
+          upload-artifact-retention: 30
+          registry-username: ${{ github.actor }}
+          registry-password: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate CycloneDX SBOM from image
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: ${{ env.IMAGE_REF_TAGGED }}
+          format: 'cyclonedx-json'
+          output-file: 'sbom${{ matrix.suffix }}.cdx.json'
+          syft-version: 'v1.51.0'
+          artifact-name: 'sbom-cdx${{ matrix.suffix }}'
+          upload-artifact-retention: 30
+          registry-username: ${{ github.actor }}
+          registry-password: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Keyless blob signing, same OIDC pattern as the "Sign the published
+      # image" step (the cosign-installer above is reused). The cert +
+      # signature files ride along as artifacts so a consumer can verify:
+      # cosign verify-blob --certificate ... --signature ... <sbom>
+      - name: Sign the image SBOMs (keyless)
+        env:
+          SUFFIX: ${{ matrix.suffix }}
+        run: |
+          cosign sign-blob --yes \
+            --output-certificate "sbom${SUFFIX}.spdx.json.crt" \
+            --output-signature "sbom${SUFFIX}.spdx.json.sig" \
+            "sbom${SUFFIX}.spdx.json"
+          cosign sign-blob --yes \
+            --output-certificate "sbom${SUFFIX}.cdx.json.crt" \
+            --output-signature "sbom${SUFFIX}.cdx.json.sig" \
+            "sbom${SUFFIX}.cdx.json"
+
+      - name: Upload image SBOM signatures
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: sbom-signatures${{ matrix.suffix }}
+          path: |
+            sbom${{ matrix.suffix }}.spdx.json.crt
+            sbom${{ matrix.suffix }}.spdx.json.sig
+            sbom${{ matrix.suffix }}.cdx.json.crt
+            sbom${{ matrix.suffix }}.cdx.json.sig
+          retention-days: 30
 
   scan:
     runs-on: ubuntu-latest

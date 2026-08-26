@@ -1,23 +1,23 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router';
-import {
-  Box,
-  Typography,
-  Stack,
-  Paper,
-  TextField,
-  MenuItem,
-  Button,
-  CircularProgress,
-  Alert,
-  Chip,
-  Link,
-  Divider,
-} from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Divider,
+  Link,
+  MenuItem,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
+import type { GraphChain } from '../api/graph';
 import { useConnections } from '../hooks/useConnections';
-import { GraphChain } from '../api/graph';
 
 interface ConnectionsPanelProps {
   contactUid: string;
@@ -77,7 +77,7 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
           observer.disconnect();
         }
       },
-      { rootMargin: '300px 0px' }
+      { rootMargin: '300px 0px' },
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -111,7 +111,10 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
           {chain.steps.map((step, idx) => (
-            <Box key={step.contact_vcard_uid} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+            <Box
+              key={step.contact_vcard_uid}
+              sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+            >
               {/* #187: both were text.disabled (2.62:1 on parchment) -- that
                   token is MUI's lowest-contrast text and reads as "disabled/
                   greyed out". The direction arrow and relation label are not
@@ -174,7 +177,11 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
         </Button>
       </Box>
 
-      {error && <Alert severity="error" sx={{ py: 0 }}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ py: 0 }}>
+          {error}
+        </Alert>
+      )}
 
       {loading ? (
         <CircularProgress size={24} />
@@ -197,7 +204,9 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
             </>
           )}
           <Stack spacing={1}>
-            {(showAll ? connections.chains : connections.chains.slice(0, PREVIEW_LIMIT)).map(renderChain)}
+            {(showAll ? connections.chains : connections.chains.slice(0, PREVIEW_LIMIT)).map(
+              renderChain,
+            )}
           </Stack>
           {connections.chains.length > PREVIEW_LIMIT && (
             <Button size="small" variant="outlined" onClick={() => setShowAll((v) => !v)}>

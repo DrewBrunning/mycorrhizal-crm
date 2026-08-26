@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { renderHook, cleanup, waitFor, act } from '@testing-library/react';
-import { useGraph } from './useGraph';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { getGraph } from '../api/graph';
-import { GraphResponse } from '../types/graph';
+import type { GraphResponse } from '../types/graph';
+import { useGraph } from './useGraph';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(() => {

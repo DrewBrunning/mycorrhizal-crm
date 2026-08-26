@@ -4,7 +4,7 @@
 // "immich"); enrichment lands as ExternalActivity. All of these go through
 // the backend, never straight to Immich (the API key stays server-side,
 // encrypted at rest).
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 export interface ImmichConfigResponse {
   base_url: string;
@@ -63,7 +63,9 @@ export async function getImmichConfig(): Promise<ImmichConfigResponse> {
 
 export async function saveImmichConfig(input: ImmichConfigInput): Promise<ImmichConfigResponse> {
   const response = await apiFetch(`${API_BASE_URL}/immich/config`, {
-    method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(input),
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
@@ -71,7 +73,8 @@ export async function saveImmichConfig(input: ImmichConfigInput): Promise<Immich
 
 export async function deleteImmichConfig(): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/immich/config`, {
-    method: 'DELETE', headers: getAuthHeaders(),
+    method: 'DELETE',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
 }
@@ -82,7 +85,8 @@ export async function deleteImmichConfig(): Promise<void> {
 // saved connection throws.
 export async function testImmichConnection(): Promise<ImmichConnectionTestResult> {
   const response = await apiFetch(`${API_BASE_URL}/immich/test-connection`, {
-    method: 'POST', headers: getAuthHeaders(),
+    method: 'POST',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
@@ -95,9 +99,14 @@ export async function getImmichPeople(): Promise<ImmichPerson[]> {
   return result.people || [];
 }
 
-export async function linkImmichPerson(contactUid: string, personId: string, personName: string): Promise<void> {
+export async function linkImmichPerson(
+  contactUid: string,
+  personId: string,
+  personName: string,
+): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/immich/contacts/${contactUid}/link`, {
-    method: 'POST', headers: getAuthHeaders(),
+    method: 'POST',
+    headers: getAuthHeaders(),
     body: JSON.stringify({ person_id: personId, person_name: personName }),
   });
   if (!response.ok) throw await parseErrorResponse(response);
@@ -105,12 +114,15 @@ export async function linkImmichPerson(contactUid: string, personId: string, per
 
 export async function unlinkImmichPerson(contactUid: string): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/immich/contacts/${contactUid}/link`, {
-    method: 'DELETE', headers: getAuthHeaders(),
+    method: 'DELETE',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
 }
 
-export async function getImmichContactSummary(contactUid: string): Promise<ImmichPersonSummary | null> {
+export async function getImmichContactSummary(
+  contactUid: string,
+): Promise<ImmichPersonSummary | null> {
   const response = await apiFetch(`${API_BASE_URL}/immich/contacts/${contactUid}/summary`, {
     headers: getAuthHeaders(),
   });
@@ -121,7 +133,8 @@ export async function getImmichContactSummary(contactUid: string): Promise<Immic
 
 export async function syncImmich(): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/immich/sync`, {
-    method: 'POST', headers: getAuthHeaders(),
+    method: 'POST',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
 }
