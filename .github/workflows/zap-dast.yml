@@ -111,6 +111,14 @@ jobs:
           TOKEN="$(python3 -c 'import json; print(json.load(open("/tmp/token.json"))["token"])')"
 
           test -n "${TOKEN}"
+          # Register the token as a secret BEFORE it reaches $GITHUB_ENV.
+          # Without this the "not shown" below is untrue: the next step
+          # interpolates DAST_TOKEN into ZAP_AUTH_HEADER_VALUE, and the runner
+          # prints every step's resolved `env:` block, so the bearer token
+          # appeared in plaintext in the log. It is minted per run against the
+          # ephemeral compose stack, so the blast radius was small -- but the
+          # step already intended to hide it.
+          echo "::add-mask::${TOKEN}"
           echo "DAST_TOKEN=${TOKEN}" >> "$GITHUB_ENV"
           echo "Authenticated session ready (token minted, not shown)."
 
@@ -127,6 +135,15 @@ jobs:
           ZAP_AUTH_HEADER_VALUE: "Bearer ${{ env.DAST_TOKEN }}"
           ZAP_AUTH_HEADER_SITE: localhost:7300
         run: |
+          # The zaproxy image runs as uid 1000 (`zap`); the checkout is owned
+          # by the runner user, so the container could read the plan out of
+          # the bind mount but not create report.json / dast.sarif.json in it.
+          # ZAP reported that only at the end -- "Job report failed to generate
+          # report: AccessDeniedException /zap/wrk/report.json" -- after a full
+          # six-minute active scan, so the scan ran, emitted nothing, and
+          # zapgate never got a report to gate on.
+          chmod a+rwx zap
+
           docker run --rm --network host \
             -e ZAP_AUTH_HEADER \
             -e ZAP_AUTH_HEADER_VALUE \
