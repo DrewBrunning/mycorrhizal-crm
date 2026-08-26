@@ -386,8 +386,8 @@ L3-only, out of scope: 10.1.1, 10.2.3, 10.2.4, 10.2.5, 10.2.6.
 |---|---|---|---|
 | 11.1.1 | Sequential, unbypassable flows | satisfied | No multi-step business flows to bypass; the one two-step flow (2FA enrollment setup→confirm) is server-state-enforced (`two_factor_controller.go:60-191`) |
 | 11.1.2 | Realistic human-time steps | not-applicable | No multi-step flows; anti-automation covers the rest (11.1.4) |
-| 11.1.3 | Per-user limits on business actions | partial | Rate limiting is per-IP (API) + per-account (auth only); no per-user quotas on content creation. Gap: quotas would be a product decision. |
-| 11.1.4 | Anti-automation / anti-DoS | satisfied | Body-size limits 10 MB/1 MB (`middleware/body_limit.go:11-40`), `MaxMultipartMemory` (`main.go:188`), API rate limiter, account lockout |
+| 11.1.3 | Per-user limits on business actions | partial | Per-user quotas exist on the fan-out/operational surfaces (issue #415): 20 webhooks (`webhook_controller.go:34`), 5 concurrent in-memory import sessions (`services/import_session.go:28` `MaxImportSessionsPerUser`, enforced by `import_session.go:184` `CountActive` + the upload/accept handlers), 20 push subscriptions + 20 device registrations (`notification_controller.go:24-26`). No quotas on content creation (contacts/notes/activities). Gap: content quotas would be a product decision. |
+| 11.1.4 | Anti-automation / anti-DoS | satisfied | Body-size limits 10 MB/1 MB (`middleware/body_limit.go:11-40`), `MaxMultipartMemory` (`main.go:188`), API rate limiter, account lockout, plus the issue #415 inventory below (search-term 256-rune cap, import row/size + session caps, bulk-500, audit-export 100k, webhook fan-out bounds, graph-depth-5) |
 | 11.1.5 | Business-logic limits per threat model | satisfied | Duplicate-add 409s (`circle_controller.go:242`, `household_controller.go:245`, `tag_controller.go:242`), one cadence policy per contact (`cadence_controller.go:66-74`), gift value⇒currency rule (`gift_controller.go:19-24`), self-edge rejection (`relationship_edge_controller.go:104-106`), accept-only-suggested (`:365-368`) |
 | 11.1.6 | No TOCTOU/race conditions | satisfied | `_txlock=immediate` + WAL so write transactions take the write lock up front (`database/migrate.go:56-57`); pinned by `database/concurrent_write_test.go`; single-use recovery code consumed in one `WHERE` (`twofactor.go:171-175`) |
 | 11.1.7 | Monitor unusual business activity | partial | Anomaly signals exist (429s, lockouts) and are logged; no standing business-anomaly monitoring. Gap: product decision. |
@@ -476,13 +476,54 @@ closes the last remaining gap in the "Network, Headers" hardening checklist
 | **API1** | Broken Object Level Authorization (BOLA/IDOR) | satisfied | Every handler AND-scopes by `user_id`/`VCardUID` (`circle_controller.go:49`); 404-masking hides existence (`contact_share_controller.go:212-233`); cross-user tests per entity (V4.2.1, incl. `sync_conflict_controller_test.go:109`); exhaustive every-route × six-persona authorization matrix (`backend/routes/authorization_matrix_test.go`, issue #371); automated cross-account sweep (`backend/cmd/bolacheck`, `schemathesis.yml`) |
 | **API2** | Broken Authentication | satisfied | bcrypt cost 10 + explicit 72-byte cap (P1); dummy bcrypt compare on unknown users (`carddav/auth.go:16-19,56-57`); per-account exponential lockout (`rate_limiter.go:12-22,68-110`); TOTP 2FA (V2.8); `TokenVersion` revocation (`auth.go:141-154`) |
 | **API3** | Broken Object Property Level Authorization (BOPLA) | satisfied | DTO allowlists; `IsAdmin`/status/provenance/confidence client-unsets (`models/dtos.go:294-300,339-354`); field-by-field update copies (`life_event_controller.go:346-353`); spec-derived request fuzzing (`schemathesis.yml`, `backend/cmd/schemagate`) |
-| **API4** | Unrestricted Resource Consumption | satisfied | Body limits 10 MB/1 MB (`body_limit.go:11-40`), `MaxMultipartMemory` (`main.go:188`), per-IP API limiter (`rate_limiter.go:249`), timeouts (`HTTP_READ/WRITE_TIMEOUT`, `.env.example`) |
+| **API4** | Unrestricted Resource Consumption | satisfied | Body limits 10 MB/1 MB (`body_limit.go:11-40`), `MaxMultipartMemory` (`main.go:188`), per-IP API limiter (`rate_limiter.go:249`), timeouts (`HTTP_READ/WRITE_TIMEOUT`, `.env.example`); the per-operation bounds are inventoried in the issue #415 table below |
 | **API5** | Broken Function Level Authorization | satisfied | Admin routes gated by `AdminMiddleware` (`middleware/admin.go`); `is_admin` never in JWT (`services/user_service.go:43`); CardDAV-scope tokens blocked from API (`auth.go:54-58`) |
 | **API6** | Unrestricted Access to Sensitive Business Flows | satisfied | Rate limits on auth/business endpoints (`routes/routes.go:27-49,53`); sensitivity filtering in exports/sync/graph (V1.8.2); account lockout on login and 2FA (`two_factor_controller.go:346-356`) |
 | **API7** | Server Side Request Forgery | satisfied | Public-IP-only dialer with DNS-rebinding pinning (`httputil/safedial.go:27-47`); pre-flight checks (`fetch.go:17-58`); enforced always on photo proxy/import, opt-in per service (V5.2.6); tests `httputil/fetch_test.go`, `webhook_ssrf_test.go`, `webhook_ssrf_integration_test.go` (live webhook job path), `notification_service_test.go` (push path) |
 | **API8** | Security Misconfiguration | satisfied | Boot-time config validation (`config.go:269-279,359-364,375-380`); security headers (V14.4); release-mode guards; `/.well-known/security.txt` (RFC 9116); config tests `config_test.go` |
 | **API9** | Improper Inventory Management | partial | `openapi.yaml` maintained + drift-checked (`backend/openapi_spotcheck_test.go`, `openapi_request_test.go`); no formal versioning/deprecation policy beyond API v1 path. Gap: endpoint inventory doc. |
 | **API10** | Unsafe Consumption of APIs | satisfied | SSRF-guarded dialers on every outbound fetch (V5.2.6); response size caps (`fetch.go:61,152-160`); content-type enforcement on fetched media (`fetch.go:126-163`); SVG/HTML rejection (`photo_controller.go:361-369`, `attachment_controller.go:42-63`) |
+
+---
+
+## Resource-exhaustion / application-level DoS limits (issue #415)
+
+The invariant: **a single authenticated user must not consume unbounded CPU, memory, disk, DB
+connections, or outbound bandwidth.** IP rate limiting does not stop an authenticated caller from
+repeatedly invoking expensive operations, so every expensive operation below carries an explicit,
+tested bound. "Own data" means the operation's cost is proportional to the caller's own dataset
+(paginated/own-scoped), which is the documented bound for the read-mostly surfaces.
+
+| Operation | Bound | Where | Test |
+|---|---|---|---|
+| Request body size (engine-wide) | 10 MB; import uploads 20 MB CSV / 50 MB VCF+JSContact | `middleware/body_limit.go:12,31-35`, `routes/routes.go:141-160` | `middleware/body_limit_test.go`, `controllers/import_body_size_limit_e2e_test.go` |
+| Attachment upload | 25 MB (effectively ≤10 MB under the engine-wide cap) | `attachment_controller.go:96-115` | `attachment_real_db_test.go` |
+| Profile photo | 10 MB + decompression-bomb/dimension guards | `photo_controller.go:147-151`, `photostore/photostore.go:39-72` | `photostore/decompression_bomb_test.go`, `controllers/hostile_input_e2e_test.go` |
+| Search result count | 50 per section, default 10 | `services/search_service.go:72-73` | `search_service_test.go` |
+| Search term length | 256 runes → 400 | `services/search_service.go:83` `MaxSearchTermLen`; enforced `search_controller.go:35`, `contact_controller.go:385` | `search_controller_test.go`, `contact_controller_test.go` |
+| Import size / row count | CSV 20 MB / 20 000 rows; VCF+JSContact 50 MB / 20 000 contacts; records 500 | `services/import_service.go:33-37`, `models/import.go:126` | `import_service_vcf_test.go`, `import_controller_test.go` |
+| In-memory import sessions / user | 5 concurrent → 429 | `services/import_session.go:28` `MaxImportSessionsPerUser`, `CountActive:184`; enforced in all upload + share-accept handlers | `import_session_test.go` `TestCountActive`, `import_controller_test.go` `TestUploadCSVForImport_SessionOverLimit` |
+| Bulk contact ops | 500 targets | `models/bulk_operation.go:20` | `bulk_operation_controller_test.go` |
+| Graph traversal depth | 5 | `services/graph_traversal.go:35` | `graph_controller_test.go` |
+| Graph view (GET /graph) | own data (full graph of the caller's contacts/edges/activities) | `graph_controller.go:18-134` | `graph_controller_test.go` |
+| Export (CSV/VCF/JSContact) | own data (bounded by the caller's contact dataset) | `export_controller.go:173-750` | `export_controller_test.go` |
+| Audit-log export | 100 000 rows → 400 | `export_controller.go:762` `MaxAuditExportRows`, `Limit` at `:807` | `audit_export_controller_test.go` `TestExportAuditLog_RejectsOverCap` |
+| Audit log list | 500 rows | `audit_controller.go:33-38` | `audit_controller_test.go` |
+| Webhooks / user | 20 | `webhook_controller.go:34` | `webhook_controller_test.go` |
+| Webhook Events per webhook | 12 (the oneof token count) | `models/dtos.go:533-538` | `webhook_controller_test.go` `TestCreateWebhook_TooManyEventTokens` |
+| Webhook delivery fan-out | semaphore 10 concurrent outbound; 15 s timeout; ≤3 redirects; 3 attempts | `webhook_service.go:24,37-60,71` | `webhook_service_test.go`, `webhook_delivery_test.go` |
+| Push subscriptions / user | 20 → 409 | `notification_controller.go:24,209` | `notification_controller_test.go` `TestPushSubscription_OverCapRejected` |
+| Device registrations / user | 20 → 409 | `notification_controller.go:26,301` | `notification_controller_test.go` `TestDeviceRegistration_OverCapRejected` |
+| Pagination | max 100/page | `helpers.go:20` | `helpers_test.go` |
+| Rate limiting | per-IP 100 req/min sustained (API), burst 1000; per-account lockout on auth | `rate_limiter.go:249,258` | `rate_limiter_test.go` |
+| HTTP timeouts | read/write/idle (`HTTP_READ/WRITE/IDLE_TIMEOUT`, 1–300 s) | `main.go:314-320`, `config/config.go:56-57` | `config_test.go` |
+
+Parser recursion: the vCard2.1/3.0/4.0 adapters are line-based/iterative (`vcard4/`, `vcard3/`,
+`vcard21_normalize.go`), and JSContact parsing goes through `encoding/json` (depth-limited);
+vCard parsing is additionally bounded by the 50 MB file cap and the 20 000-contact row cap above.
+Concurrent operations beyond the webhook semaphore are bounded by the HTTP timeouts + the per-IP
+rate limiter; there is no global in-process semaphore (deliberate — this is single-process
+self-hosted, and bounding per-operation work is cheaper than bounding concurrency).
 
 ---
 

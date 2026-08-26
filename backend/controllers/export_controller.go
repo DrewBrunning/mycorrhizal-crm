@@ -749,12 +749,27 @@ func ExportContactsAsJSContact(c *gin.Context) {
 		Msg("JSContact export completed successfully")
 }
 
+// MaxAuditExportRows is the row bound for the audit-log export (issue #415).
+// The audit table grows with every write across every surface (REST, CardDAV,
+// CalDAV, background jobs) and is bounded only by AUDIT_RETENTION_DAYS, so
+// the export is the one surface where a single request's memory cost is not
+// proportional to the user's contact data. The interactive list endpoint caps
+// at 500; this backup-style export gets a far larger but still finite cap —
+// 100k rows is comfortably beyond what any real instance's 90-day window
+// accumulates — and a log beyond it is rejected with a 400 rather than loaded
+// into memory and OOM'd. The check runs on a capped query (Limit(cap+1)), so
+// an over-limit log never even gets read past the bound.
+const MaxAuditExportRows = 100000
+
 // ExportAuditLog exports the caller's own audit trail as CSV (issue #416).
 // Unlike ListAuditEvents (audit_controller.go), which caps at 500 rows for
-// an interactive list view, this has no row cap -- consistent with
-// ExportData's "full personal-data backup" precedent above. Large-export
-// bounding across every export endpoint (including this one) is explicitly
-// deferred to the resource-exhaustion ticket (#415), per #416's own text.
+// an interactive list view, this is a backup-style export with a far larger
+// but still finite bound — MaxAuditExportRows (100k, issue #415). A log
+// beyond the bound is rejected with a 400 rather than loaded into memory;
+// unlike ExportData/ExportContactsAsVCF/ExportContactsAsJSContact (whose
+// cost is bounded by the user's contact data), the audit table grows with
+// every write and is only bounded by AUDIT_RETENTION_DAYS, so it is the one
+// export surface that needed its own explicit bound.
 //
 // BeforeSnapshot is deliberately NOT included by default. It is already
 // redacted for credentials (models.AuditEvent's auditDenyList), but --
@@ -784,11 +799,19 @@ func ExportAuditLog(c *gin.Context) {
 	}
 
 	var events []models.AuditEvent
+	// Issue #415: bound the export at MaxAuditExportRows with a capped query —
+	// Limit(cap+1) both prevents reading past the bound and distinguishes
+	// "exactly at the cap" (len == cap) from "over the cap" (len == cap+1).
 	if err := db.Where("user_id = ?", userID).
 		Order("created_at ASC").
+		Limit(MaxAuditExportRows + 1).
 		Find(&events).Error; err != nil {
 		log.Error().Err(err).Msg("Failed to fetch audit events for export")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch audit events"))
+		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+		return
+	}
+	if len(events) > MaxAuditExportRows {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("export", fmt.Sprintf("Audit log exceeds the export limit of %d rows; use the paginated /audit endpoint instead", MaxAuditExportRows)))
 		return
 	}
 

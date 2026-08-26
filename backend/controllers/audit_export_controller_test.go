@@ -135,3 +135,44 @@ func TestExportAuditLog_CSVFormulaInjectionNeutralized(t *testing.T) {
 	entityIDCol := record[2]
 	assert.True(t, strings.HasPrefix(entityIDCol, "'"), "a formula-leading entity_id must be neutralized: %q", entityIDCol)
 }
+
+// TestExportAuditLog_RejectsOverCap pins issue #415's audit-export bound: a
+// log larger than MaxAuditExportRows must be rejected with a 400 (not loaded
+// into memory and OOM'd), and a log at exactly the cap must still export.
+func TestExportAuditLog_RejectsOverCap(t *testing.T) {
+	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
+	registerAuditExportRoute(router)
+	models.AuditFlush()
+
+	makeEvents := func(n int) []models.AuditEvent {
+		rows := make([]models.AuditEvent, n)
+		for i := range rows {
+			rows[i] = models.AuditEvent{
+				EntityType: models.AuditEntityContact,
+				EntityID:   "cap-fixture",
+				Operation:  models.AuditOpCreate,
+				UserID:     user.ID,
+			}
+		}
+		return rows
+	}
+
+	// cap+1 events, inserted in batches (a single Create of 100k rows would
+	// exceed SQLite's bound-variable limit).
+	require.NoError(t, db.CreateInBatches(makeEvents(MaxAuditExportRows+1), 1000).Error)
+
+	req, _ := http.NewRequest("GET", "/audit/export", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code, "an over-cap audit log must be rejected, not loaded")
+
+	// At exactly the cap it exports. Reset the user's events and insert
+	// exactly the cap.
+	require.NoError(t, db.Where("user_id = ?", user.ID).Delete(&models.AuditEvent{}).Error)
+	require.NoError(t, db.CreateInBatches(makeEvents(MaxAuditExportRows), 1000).Error)
+
+	req2, _ := http.NewRequest("GET", "/audit/export", nil)
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+	assert.Equal(t, http.StatusOK, w2.Code, "an audit log at exactly the cap must still export")
+}

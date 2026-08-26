@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -29,6 +30,10 @@ func SearchAll(c *gin.Context) {
 	term := strings.TrimSpace(c.Query("q"))
 	if term == "" {
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("q", "q (a search term) is required"))
+		return
+	}
+	if len([]rune(term)) > services.MaxSearchTermLen {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("q", fmt.Sprintf("q must be at most %d characters", services.MaxSearchTermLen)))
 		return
 	}
 

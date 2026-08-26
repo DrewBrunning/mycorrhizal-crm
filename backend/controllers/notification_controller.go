@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -11,6 +12,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+)
+
+// Per-user registration caps (issue #415): every registered push
+// subscription / device token is a fan-out target for each reminder and
+// notification, so an unbounded count lets one user amplify a single
+// outbound send into thousands. Generous — nobody legitimately owns hundreds
+// of browsers/devices — and cheap to raise if a deployment needs it.
+const (
+	// MaxPushSubscriptionsPerUser bounds browser Web Push subscriptions.
+	MaxPushSubscriptionsPerUser = 20
+	// MaxDeviceRegistrationsPerUser bounds mobile push device tokens.
+	MaxDeviceRegistrationsPerUser = 20
 )
 
 // notificationConfigResponse is the Settings card's full view of a user's
@@ -188,6 +201,16 @@ func CreatePushSubscription(c *gin.Context) {
 		return
 	}
 
+	var count int64
+	if err := db.Model(&models.PushSubscription{}).Where("user_id = ?", userID).Count(&count).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to count push subscriptions").WithError(err))
+		return
+	}
+	if count >= MaxPushSubscriptionsPerUser {
+		apperrors.AbortWithError(c, apperrors.ErrConflict(fmt.Sprintf("maximum of %d push subscriptions per user reached", MaxPushSubscriptionsPerUser)))
+		return
+	}
+
 	sub, err := services.CreatePushSubscription(db, userID, *input)
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to register push subscription").WithError(err))
@@ -267,6 +290,16 @@ func CreateDeviceRegistration(c *gin.Context) {
 	input, appErr := middleware.GetValidated[models.DeviceRegistrationInput](c)
 	if appErr != nil {
 		apperrors.AbortWithError(c, appErr)
+		return
+	}
+
+	var count int64
+	if err := db.Model(&models.DeviceRegistration{}).Where("user_id = ?", userID).Count(&count).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to count device registrations").WithError(err))
+		return
+	}
+	if count >= MaxDeviceRegistrationsPerUser {
+		apperrors.AbortWithError(c, apperrors.ErrConflict(fmt.Sprintf("maximum of %d device registrations per user reached", MaxDeviceRegistrationsPerUser)))
 		return
 	}
 
