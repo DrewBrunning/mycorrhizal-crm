@@ -15,7 +15,7 @@ header, findings, and changelog — not 301 duplicated rows.
 |---|---|
 | **Pass** | #1 (initial self-assessment) |
 | **Date** | 2026-08-26 |
-| **Commit verified** | `6a7cb7a2` (branch `claude/issue-378-v0-6-1-6e589d`), release line v0.6.1 |
+| **Commit verified** | `6a7cb7a2` (branch `claude/issue-378-v0-6-1-6e589d`), release line v0.6.1. Re-verified after merging `main` into the branch mid-review, which is how the workflow-citation shifts noted in §8 were caught. |
 | **Standards** | OWASP ASVS 4.0.3 (V1–V14), OWASP API Security Top 10 (2023), OWASP MASVS 1.5.0 (V2–V7) |
 | **Scope** | Backend (Go/Gin + SQLite), web frontend (React SPA), Android client, deployment artifacts (Docker/nginx/compose), CI |
 | **Performed by** | Self-assessment (issue #378). Third-party verification is explicitly out of scope and is tracked separately as issue #511. |
@@ -89,6 +89,10 @@ Two method notes worth writing down, because they bound how much this pass prove
   to a citation shares any vocabulary with the lines it cites. It has false positives by design
   (negative claims and pure-structure citations legitimately share no words with their target), so
   its output is a review queue, never a gate.
+- **Your own edits are a drift source.** The gate proves in-bounds-ness, which survives almost any
+  edit; the content check does not. Any change to a cited file — including the workflow that carries
+  the gate, and including a merge from `main` — invalidates line numbers below the edit point
+  silently. See §8 step 2.
 - **Ambiguous basenames resolve permissively.** The checklists cite `auth.go:141-154` where the
   surrounding row makes clear whether that is `middleware/auth.go` or `carddav/auth.go`.
   `citecheck` accepts a line range that is valid for *any* candidate with that basename. The
@@ -396,6 +400,14 @@ A re-pass is a diff against this file, not a rewrite. In order:
    anything else; the rest of the report means little on top of broken citations.
 2. `cd backend && go run ./cmd/citecheck -drift` — read every candidate. Correct the range, or
    satisfy yourself it is a false positive. This is the step that found F-1.
+
+   **Run this step last, after every other edit in the pass, and then run it again.** Your own
+   changes move lines too. In this pass, the `unit-tests.yml:175-177` → `:201-203` correction for
+   govulncheck was made *before* the `docs-citations` job was inserted into that same file, and the
+   40 lines of new job pushed govulncheck to `:241-243` — re-breaking a citation that had just been
+   fixed, in the very commit that added the gate. The exact gate stayed green throughout (the range
+   was still in bounds); only the drift pass saw it. Merging `main` into the branch has the same
+   effect and needs the same re-run.
 3. Run the suites in §3 and record the results, including scale, so a shrinking suite is visible.
 4. Redo the four manual audits in §4. A/B/C/D are cheap: the scripts and one-liners behind them are
    described inline, and each produced a candidate list of single digits.
