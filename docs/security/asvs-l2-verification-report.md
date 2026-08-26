@@ -483,12 +483,12 @@ Two things about that model are worth being honest about:
 | An outbound HTTP client | **No** — a client bypassing `SafeDialContext` is an unflagged SSRF regression. Issue **#609** (semgrep rule). |
 | A cookie | **No** — audit B was 18 call sites read by hand and would have to be redone every pass. Issue **#610** (pin it as a router-driven test). |
 | An entity or table | **No** — cascade completeness rests on a hand-written enumeration plus, for hard-deleted parents only, SQL `ON DELETE CASCADE`; nothing checks a new table is covered by either. Trap 6's own history is 14 tables already missed once. Issue **#611** (schema-driven coverage test). |
-| A crypto call site | gosec and CodeQL catch weak primitives; nothing ties a new call site to a row. |
+| A crypto call site | **No** — gosec and CodeQL answer "is this primitive weak?", not "is this call site accounted for?". Rows 6.2.5 and 6.2.7 assert a *closed* cryptographic surface; audit C established that by hand and nothing keeps it closed. v0.6.1 added two call sites (`backend/atrest` #380, `models/audit_chain.go` #381). Issue **#612** (bidirectional inventory check in `citecheck`). |
 
 The pattern worth generalising from the one row that *is* enforced: the authorization matrix is strong
 evidence because it derives its subject list from the running system and **fails on an undeclared
 member**, in both directions. Every future "is this still true?" check here should be built that
-shape — #609, #610 and #611 are all written to that spec on purpose.
+shape — #609, #610, #611 and #612 are all written to that spec on purpose.
 
 ### Why not a recurring audit issue
 
@@ -497,7 +497,7 @@ rejected for the rows above, because it fires on a calendar rather than on the e
 It finds a new unguarded client weeks after merge, assigned to someone without the context, with no
 forcing function; a periodic issue can always be closed with "looked, seemed fine". Converting each
 row to a check that fails *at the moment of introduction* is strictly better, and is what #609/#610/
-#611 do.
+#611/#612 do.
 
 What a calendar genuinely cannot be replaced for is the row that does not exist yet: a surface
 *class* nobody has thought of — a new client platform, a new persistence target, a new auth path.
@@ -505,6 +505,13 @@ No mechanical check can enumerate categories that have not been invented. That j
 by the milestone gate instead of a schedule, because the person closing a gate knows what that
 milestone just added, and someone opening a quarterly reminder does not. It is the last standing
 criterion in `.github/ISSUE_TEMPLATE/milestone_gate.md`.
+
+That criterion has now been exercised once, which is the only evidence that it works. Closing the
+v0.6.1 gate (#531) asked the question of this milestone and found two answers: the new outbound
+integration (HIBP, #561) was already covered by the outbound-client row above, and the two new
+cryptographic call sites (#380, #381) landed against the one row that named neither a mechanism
+nor an issue. Issue **#612** is that gap, filed by the gate rather than by a scheduled audit —
+which is the behaviour this design predicted, on the first attempt.
 
 The one case where a schedule *is* right — risk that changes with time rather than with code
 (dependency CVEs, expiring certificates) — is already covered by the nightly tier (Grype, Trivy,
