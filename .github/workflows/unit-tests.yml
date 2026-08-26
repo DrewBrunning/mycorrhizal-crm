@@ -65,6 +65,46 @@ jobs:
           OPENAPI_CHANGED: ${{ steps.filter.outputs.openapi }}
           WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
 
+  # Issue #378: the security checklists (docs/security/asvs-l2.md,
+  # masvs-l1.md, threat-model.md) claim a `file:line` or test citation behind
+  # every control. Those citations rot when *code moves*, not when the doc is
+  # edited — the 2026-08-26 ASVS L2 verification pass found 74 line ranges
+  # that had drifted out from under their rows. So this job is deliberately
+  # NOT path-gated: a PR that touches only backend/ or only android/ can
+  # orphan a citation just as easily as one that edits the doc, and
+  # .github/filters.yaml maps docs/** to nothing. It is a few seconds of pure
+  # Go with no services, so running it unconditionally is cheaper than
+  # reasoning about which paths could invalidate a citation.
+  docs-citations:
+    permissions:
+      contents: read
+    name: Security-doc citations
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Verify every security-doc citation resolves
+        working-directory: backend
+        run: go run ./cmd/citecheck
+
+      # Advisory, never gating: lists citations whose target has moved but
+      # whose line range is still in bounds (the class the gate above cannot
+      # see). Reviewed by hand during a verification pass — see
+      # docs/security/asvs-l2-verification-report.md.
+      - name: Drift triage (advisory)
+        working-directory: backend
+        run: go run ./cmd/citecheck -drift
+
   backend:
     permissions:
       contents: read
