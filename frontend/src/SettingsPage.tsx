@@ -1,4 +1,5 @@
 import AddIcon from '@mui/icons-material/Add';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
 import BlockIcon from '@mui/icons-material/Block';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -52,7 +53,9 @@ import {
   DEFAULT_API_TOKEN_EXPIRY_DAYS,
   DEFAULT_API_TOKEN_SCOPE,
   getApiTokens,
+  revokeAllApiTokens,
   revokeApiToken,
+  rotateApiToken,
 } from './api/apiTokens';
 import { changePassword } from './api/auth';
 import { type Contact, getContacts, getContactsByUid } from './api/contacts';
@@ -104,10 +107,16 @@ export default function SettingsPage() {
   const [newTokenScope, setNewTokenScope] = useState<ApiTokenScope>(DEFAULT_API_TOKEN_SCOPE);
   const [createLoading, setCreateLoading] = useState(false);
   const [createdToken, setCreatedToken] = useState<ApiTokenCreateResponse | null>(null);
+  const [createdTokenIsRotation, setCreatedTokenIsRotation] = useState(false);
   const [copied, setCopied] = useState(false);
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
   const [revokingToken, setRevokingToken] = useState<ApiToken | null>(null);
   const [revokeLoading, setRevokeLoading] = useState(false);
+  const [revokeAllDialogOpen, setRevokeAllDialogOpen] = useState(false);
+  const [revokeAllLoading, setRevokeAllLoading] = useState(false);
+  const [rotateDialogOpen, setRotateDialogOpen] = useState(false);
+  const [rotatingToken, setRotatingToken] = useState<ApiToken | null>(null);
+  const [rotateLoading, setRotateLoading] = useState(false);
 
   const fetchTokens = useCallback(async () => {
     setTokensLoading(true);
@@ -136,6 +145,7 @@ export default function SettingsPage() {
       setNewTokenExpiryDays(DEFAULT_API_TOKEN_EXPIRY_DAYS);
       setNewTokenScope(DEFAULT_API_TOKEN_SCOPE);
       setCreatedToken(result);
+      setCreatedTokenIsRotation(false);
       setCopied(false);
       await fetchTokens();
     } catch (err) {
@@ -176,6 +186,42 @@ export default function SettingsPage() {
 
   const isExpired = (token: ApiToken) =>
     token.expires_at !== null && new Date(token.expires_at) <= new Date();
+
+  const isActive = (token: ApiToken) => !token.revoked_at && !isExpired(token);
+  const activeTokenCount = tokens.filter(isActive).length;
+
+  const handleRevokeAll = async () => {
+    setRevokeAllLoading(true);
+    try {
+      const result = await revokeAllApiTokens();
+      setRevokeAllDialogOpen(false);
+      showSuccess(t('apiTokens.revokeAllSuccess', { count: result.revoked }));
+      await fetchTokens();
+    } catch (err) {
+      showError(err instanceof Error ? err.message : t('apiTokens.revokeAllError'));
+    } finally {
+      setRevokeAllLoading(false);
+    }
+  };
+
+  const handleRotate = async () => {
+    if (!rotatingToken) return;
+    setRotateLoading(true);
+    try {
+      const result = await rotateApiToken(rotatingToken.id);
+      setRotateDialogOpen(false);
+      setRotatingToken(null);
+      setCreatedToken(result);
+      setCreatedTokenIsRotation(true);
+      setCopied(false);
+      showSuccess(t('apiTokens.rotateSuccess'));
+      await fetchTokens();
+    } catch (err) {
+      showError(err instanceof Error ? err.message : t('apiTokens.rotateError'));
+    } finally {
+      setRotateLoading(false);
+    }
+  };
 
   const handleLanguageChange = async (event: SelectChangeEvent) => {
     const newLang = event.target.value;
@@ -549,14 +595,26 @@ export default function SettingsPage() {
                 {t('apiTokens.title')}
               </Typography>
             </Box>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<AddIcon />}
-              onClick={() => setCreateDialogOpen(true)}
-            >
-              {t('apiTokens.createButton')}
-            </Button>
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="outlined"
+                size="small"
+                color="error"
+                startIcon={<BlockIcon />}
+                onClick={() => setRevokeAllDialogOpen(true)}
+                disabled={activeTokenCount === 0}
+              >
+                {t('apiTokens.revokeAllButton')}
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={() => setCreateDialogOpen(true)}
+              >
+                {t('apiTokens.createButton')}
+              </Button>
+            </Stack>
           </Box>
           <Divider sx={{ mb: 1.5 }} />
           {tokensLoading && <CircularProgress />}
@@ -623,20 +681,34 @@ export default function SettingsPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {!token.revoked_at && !isExpired(token) && (
-                            <Tooltip title={t('apiTokens.revokeDialog.title')}>
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={() => {
-                                  setRevokingToken(token);
-                                  setRevokeDialogOpen(true);
-                                }}
-                                aria-label={t('apiTokens.revokeDialog.title')}
-                              >
-                                <BlockIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
+                          {isActive(token) && (
+                            <Stack direction="row" spacing={0.5}>
+                              <Tooltip title={t('apiTokens.rotateDialog.title')}>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => {
+                                    setRotatingToken(token);
+                                    setRotateDialogOpen(true);
+                                  }}
+                                  aria-label={t('apiTokens.rotateDialog.title')}
+                                >
+                                  <AutorenewIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title={t('apiTokens.revokeDialog.title')}>
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => {
+                                    setRevokingToken(token);
+                                    setRevokeDialogOpen(true);
+                                  }}
+                                  aria-label={t('apiTokens.revokeDialog.title')}
+                                >
+                                  <BlockIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </Stack>
                           )}
                         </TableCell>
                       </TableRow>
@@ -715,12 +787,27 @@ export default function SettingsPage() {
         </DialogActions>
       </AppDialog>
 
-      {/* Token created dialog */}
-      <Dialog open={!!createdToken} onClose={() => setCreatedToken(null)} maxWidth="sm" fullWidth>
-        <DialogTitle>{t('apiTokens.createdDialog.title')}</DialogTitle>
+      {/* Token created dialog -- shared by create and rotate, since rotate
+          also mints a fresh plaintext that's only shown this once. */}
+      <Dialog
+        open={!!createdToken}
+        onClose={() => {
+          setCreatedToken(null);
+          setCreatedTokenIsRotation(false);
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {createdTokenIsRotation
+            ? t('apiTokens.rotatedDialog.title')
+            : t('apiTokens.createdDialog.title')}
+        </DialogTitle>
         <DialogContent>
           <Alert severity="warning" sx={{ mb: 2 }}>
-            {t('apiTokens.createdDialog.warning')}
+            {createdTokenIsRotation
+              ? t('apiTokens.rotatedDialog.warning')
+              : t('apiTokens.createdDialog.warning')}
           </Alert>
           <Stack direction="row" alignItems="center" spacing={1}>
             <TextField
@@ -748,7 +835,13 @@ export default function SettingsPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button variant="contained" onClick={() => setCreatedToken(null)}>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setCreatedToken(null);
+              setCreatedTokenIsRotation(false);
+            }}
+          >
             {t('apiTokens.createdDialog.done')}
           </Button>
         </DialogActions>
@@ -768,6 +861,47 @@ export default function SettingsPage() {
           </Button>
           <Button variant="contained" color="error" onClick={handleRevoke} disabled={revokeLoading}>
             {t('apiTokens.revokeDialog.confirm')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Revoke-all confirmation dialog (issue #572) */}
+      <Dialog open={revokeAllDialogOpen} onClose={() => setRevokeAllDialogOpen(false)}>
+        <DialogTitle>{t('apiTokens.revokeAllDialog.title')}</DialogTitle>
+        <DialogContent>
+          <Typography>
+            {t('apiTokens.revokeAllDialog.message', { count: activeTokenCount })}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRevokeAllDialogOpen(false)} disabled={revokeAllLoading}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleRevokeAll}
+            disabled={revokeAllLoading || activeTokenCount === 0}
+          >
+            {t('apiTokens.revokeAllDialog.confirm')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Rotate confirmation dialog (issue #572) */}
+      <Dialog open={rotateDialogOpen} onClose={() => setRotateDialogOpen(false)}>
+        <DialogTitle>{t('apiTokens.rotateDialog.title')}</DialogTitle>
+        <DialogContent>
+          <Typography>
+            {t('apiTokens.rotateDialog.message', { name: rotatingToken?.name || '' })}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRotateDialogOpen(false)} disabled={rotateLoading}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="contained" onClick={handleRotate} disabled={rotateLoading}>
+            {t('apiTokens.rotateDialog.confirm')}
           </Button>
         </DialogActions>
       </Dialog>

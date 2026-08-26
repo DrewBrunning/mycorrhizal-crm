@@ -59,3 +59,31 @@ export async function revokeApiToken(id: number): Promise<void> {
   });
   await handleResponse(response, 'Unable to revoke API token.');
 }
+
+export interface RevokeAllApiTokensResponse {
+  revoked: number;
+}
+
+/** Issue #413: end every one of the caller's standing tokens at once (e.g. a lost device). */
+export async function revokeAllApiTokens(): Promise<RevokeAllApiTokensResponse> {
+  const response = await apiFetch(`${API_BASE_URL}/api-tokens/revoke-all`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  const data = await handleResponse(response, 'Unable to revoke all API tokens.');
+  return data as RevokeAllApiTokensResponse;
+}
+
+/**
+ * Issue #413: revoke a token and reissue a new one with the same name and
+ * scope in a single step. Like createApiToken, the plaintext is returned
+ * exactly once.
+ */
+export async function rotateApiToken(id: number): Promise<ApiTokenCreateResponse> {
+  const response = await apiFetch(`${API_BASE_URL}/api-tokens/${id}/rotate`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  const data = await handleResponse(response, 'Unable to rotate API token.');
+  return data as ApiTokenCreateResponse;
+}

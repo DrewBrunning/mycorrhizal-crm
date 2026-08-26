@@ -1408,6 +1408,12 @@
     "createError": "API-Token konnte nicht erstellt werden",
     "revokeError": "API-Token konnte nicht widerrufen werden",
     "revokeSuccess": "Token erfolgreich widerrufen",
+    "revokeAllButton": "Alle widerrufen",
+    "revokeAllError": "Alle API-Tokens konnten nicht widerrufen werden",
+    "revokeAllSuccess_one": "{{count}} Token widerrufen",
+    "revokeAllSuccess_other": "{{count}} Tokens widerrufen",
+    "rotateError": "API-Token konnte nicht rotiert werden",
+    "rotateSuccess": "Token erfolgreich rotiert",
     "columns": {
       "name": "Name",
       "scope": "Zugriff",
@@ -1440,6 +1446,21 @@
       "title": "Token widerrufen",
       "message": "Möchten Sie \"{{name}}\" wirklich widerrufen? Dies kann nicht rückgängig gemacht werden.",
       "confirm": "Widerrufen"
+    },
+    "revokeAllDialog": {
+      "title": "Alle Tokens widerrufen",
+      "message_one": "Möchten Sie wirklich {{count}} aktives API-Token widerrufen? Dies kann nicht rückgängig gemacht werden und beeinträchtigt sofort alles, was es verwendet.",
+      "message_other": "Möchten Sie wirklich alle {{count}} aktiven API-Tokens widerrufen? Dies kann nicht rückgängig gemacht werden und beeinträchtigt sofort alles, was sie verwenden.",
+      "confirm": "Alle widerrufen"
+    },
+    "rotateDialog": {
+      "title": "Token rotieren",
+      "message": "Das Rotieren von \"{{name}}\" widerruft es sofort und stellt ein neues Token mit demselben Namen und Geltungsbereich aus. Das neue Token wird nur einmal angezeigt.",
+      "confirm": "Rotieren"
+    },
+    "rotatedDialog": {
+      "title": "Token rotiert",
+      "warning": "Das alte Token wurde widerrufen. Dieses neue Token wird nicht erneut angezeigt — kopieren Sie es jetzt und bewahren Sie es sicher auf."
     },
     "expired": "Abgelaufen"
   },
