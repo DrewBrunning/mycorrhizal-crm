@@ -16,11 +16,27 @@
 # findings are expected — those never need an entry here; zapgate treats them
 # as the self-test signal, not app findings.
 
-# Spring4Shell (40045) is a Java/Spring RCE; the backend is Go/Gin and the
-# image contains no Java/Spring at all. ZAP's 40045 false-positives on the 400
-# returned by /check-password-strength when a payload merely echoes a class
-# name into the error path. No Spring => no Spring4Shell.
-40045 high .*check-password-strength.*  # false positive: Go/Gin app, no Spring in the image
+# Spring4Shell (40045) is a Java/Spring RCE via data binding; the backend is
+# Go/Gin and the image contains no Java, no JVM and no Spring at all, so the
+# vulnerable code path does not exist to be reached.
+#
+# The rule fires on a *response shape*, not on evidence of Spring: it POSTs
+# `class.module.classLoader.DefaultAssertionStatus=nonsense` and treats a 400
+# as a positive, because in a real Spring app a 400 means the binder processed
+# the malicious property. Here the 400 is `middleware.ValidateJSONMiddleware`
+# rejecting a malformed body — which every endpoint taking a validated JSON
+# body does, to every malformed body. The reported evidence is literally
+# `HTTP/1.1 400 Bad Request` and nothing else.
+#
+# Scoped to `.*` deliberately. This entry used to name a single endpoint
+# (`check-password-strength`), which was the wrong axis: the justification is a
+# property of the *image* (no Spring anywhere), not of one route, so URL
+# scoping could only ever mean "accepted until the same false positive lands on
+# a different endpoint". That is exactly what happened — the first run of this
+# job to produce a report at all flagged /login/2fa,
+# /password-reset/confirm and /password-reset/request instead, and
+# check-password-strength not at all.
+40045 high .*  # false positive: Go/Gin app, no Java/JVM/Spring in the image; 40045 reads a 400 from JSON validation as a hit
 
 # The SPA CSP is a deliberate, documented posture (docker/nginx.conf:21 and
 # frontend/nginx.conf). style-src 'unsafe-inline' is required by MUI's
