@@ -254,10 +254,27 @@ logs the panic value and stack server-side and returns a generic 500
 self-service "test my notification channel" endpoint echoes the upstream error verbatim
 (`notification_controller.go:167`). That is defensible — the endpoint exists so a user can find out
 why *their own* ntfy/Gotify/push target rejected the message, and a generic message would make the
-feature useless — but the string is unbounded and originates from an outbound HTTP client, which is
-also a potential SSRF oracle if the guard's own errors are distinguishable. Accepted and now
-**documented** in row 7.4.1 rather than left as an unexplained outlier; bounding the string is issue
-#606.
+feature useless.
+
+The outbound path was then traced to the end, because "unbounded error from an HTTP client" reads
+like an SSRF oracle and it is worth being exact about whether it is one. **It is not, on the default
+configuration.** `WEBHOOK_BLOCK_PRIVATE_URLS` defaults to `false` (`config/config.go:148`), so
+`postNotificationJSON` skips its private-address pre-flight and `clientFor` returns the unguarded
+client (`services/notification_service.go:836`, `services/webhook_service.go:64-70`); save-time
+validation checks only the scheme (`middleware/validation.go:182-194`). That is the documented
+opt-in-per-service position (row 5.2.6 / API7), and it is deliberate: pointing a self-hosted app at
+an ntfy instance on your own LAN is the intended use, so defaulting the block on would break the
+common case. The caller therefore already chose the target and already learns its reachability from
+the returned status; the error text grants no capability they lack.
+
+The genuine leak is the inverse, and only in the hardened configuration: with the flag **on**, the
+guarded dialer returns two distinct sentinels — `ErrWebhookUnreachable` and
+`ErrWebhookPrivateAddress` (`services/webhook_service.go:29-30`, `httputil/safedial.go:27-47`) — and
+both are echoed verbatim, so an operator who turned the flag on to declare internal targets
+off-limits gets an endpoint that reports which rule a target tripped. Thin (it confirms "the address
+you supplied is private", about an address the caller supplied) but the wrong direction. Accepted and
+now **documented** in row 7.4.1 rather than left as an unexplained outlier; bounding the string and
+collapsing the two sentinels is issue #606.
 
 ---
 
@@ -294,7 +311,7 @@ What this pass actually did per chapter, beyond the automated citation checks th
 | **F-2** | **13 rows were `satisfied` with no citation whatsoever**, contradicting the checklist's own stated promise ("No row is left `satisfied` without a citation"). All 13 were negative controls — "no password expiry", "no KBA", "no CDN", "no plugin system" — where there is no `file:line` for a thing that does not exist, so they had been left as bare assertions. | Medium: unverifiable rows in a verification document | **Fixed on this branch.** Each now cites the artifact that proves the absence — the model/migration that has no such column, the Semgrep rule that fails a PR reintroducing it, the CSP that admits no external origin, the lockfiles. `citecheck` now fails a `satisfied` row that cites nothing. |
 | **F-3** | **`threat-model.md` §5 stated the session cookie is `SameSite=Lax`.** It has been `Strict` since issue #392. A factual error, not a stale line number. | Medium: the threat model understated an implemented control | **Fixed on this branch**, including the reason `Lax` is retained for the OIDC handshake cookies only. |
 | **F-4** | **OIDC handshake cookies hardcode `Secure=true`** on the `oidc_client` set and all four clears, while their siblings use `COOKIE_SECURE` (manual audit B). Stricter than configured, so not a confidentiality gap — but on the supported plain-HTTP deployment the browser rejects the cookie, so Android OIDC silently falls back to the web redirect and the handshake cookies are never actively cleared. | Low, fails closed | **Filed as issue #605** (v0.6.2). Recorded in row 3.4.1. |
-| **F-5** | **The test-notification endpoint echoes an unbounded upstream error** to the client (manual audit D) — the only backend site bypassing the error envelope. Defensible as a self-service diagnostic, but unbounded and potentially an SSRF oracle. | Low–medium | **Filed as issue #606** (v0.6.2). Accepted as a documented exception in row 7.4.1. |
+| **F-5** | **The test-notification endpoint echoes an unbounded upstream error** to the client (manual audit D) — the only backend site bypassing the error envelope. Defensible as a self-service diagnostic (the user needs to know why *their own* ntfy/Gotify target refused the message), but unbounded. Traced to the end during review: **not** an SSRF oracle on the default configuration, because `WEBHOOK_BLOCK_PRIVATE_URLS` defaults off and pointing a self-hosted app at your own LAN is the intended use (row 5.2.6's opt-in-per-service position) — the caller already chose the target and already learns its reachability from the status code. The real, thin leak runs the other way: with the flag *on*, the guarded dialer's two distinct sentinels are echoed verbatim, so the hardening flag makes this endpoint marginally more informative rather than less. | Low | **Filed as issue #606** (v0.6.2, `p3`). Accepted as a documented exception in row 7.4.1. |
 | **F-6** | **Row 3.2.4 overstated the JWT algorithm pin** as HS256-exact; the code pins the HMAC family. The security property (rejects `alg: none` and asymmetric confusion) is unchanged, but the row claimed more precision than the code has. | Low | **Fixed on this branch**: the row now states the family pin and why no downgrade is reachable. |
 
 No finding in this pass required flipping a control from `satisfied` to `fail`. F-1 through F-3 and
