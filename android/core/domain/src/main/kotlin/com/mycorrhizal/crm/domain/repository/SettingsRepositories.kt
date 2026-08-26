@@ -1,8 +1,12 @@
 package com.mycorrhizal.crm.domain.repository
 
+import com.mycorrhizal.crm.model.network.ApiToken
+import com.mycorrhizal.crm.model.network.ApiTokenCreateResponse
+import com.mycorrhizal.crm.model.network.ApiTokenInput
 import com.mycorrhizal.crm.model.network.NotificationConfig
 import com.mycorrhizal.crm.model.network.NotificationConfigInput
 import com.mycorrhizal.crm.model.network.NotificationTestResult
+import com.mycorrhizal.crm.model.network.RevokeAllApiTokensResponse
 import com.mycorrhizal.crm.model.network.Webhook
 import com.mycorrhizal.crm.model.network.WebhookCreateResponse
 import com.mycorrhizal.crm.model.network.WebhookDelivery
@@ -22,6 +26,22 @@ interface WebhookRepository {
     suspend fun delete(id: Int): Result<Unit>
     suspend fun test(id: Int): Result<WebhookDelivery>
     suspend fun deliveries(id: Int): Result<List<WebhookDelivery>>
+}
+
+/**
+ * API token lifecycle (issue #413's Android follow-up, #573): list, create,
+ * revoke a single token, revoke every standing token at once, and rotate
+ * (revoke + reissue under the same name/scope). Mirrors web's
+ * `frontend/src/api/apiTokens.ts` exactly; the plaintext appears only on
+ * [create] and [rotate] and must never be logged or persisted locally beyond
+ * the one-shot reveal dialog.
+ */
+interface ApiTokenRepository {
+    suspend fun list(): Result<List<ApiToken>>
+    suspend fun create(input: ApiTokenInput): Result<ApiTokenCreateResponse>
+    suspend fun revoke(id: Int): Result<Unit>
+    suspend fun revokeAll(): Result<RevokeAllApiTokensResponse>
+    suspend fun rotate(id: Int): Result<ApiTokenCreateResponse>
 }
 
 /**

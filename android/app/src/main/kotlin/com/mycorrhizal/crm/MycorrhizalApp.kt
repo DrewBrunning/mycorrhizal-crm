@@ -109,6 +109,7 @@ import com.mycorrhizal.crm.feature.settings.DataScreen
 import com.mycorrhizal.crm.feature.settings.ImmichSettingsScreen
 import com.mycorrhizal.crm.feature.settings.NotificationChannelsScreen
 import com.mycorrhizal.crm.feature.settings.SettingsScreen
+import com.mycorrhizal.crm.feature.settings.ApiTokensScreen
 import com.mycorrhizal.crm.feature.settings.WebhooksScreen
 import com.mycorrhizal.crm.feature.shares.ContactSharesScreen
 import com.mycorrhizal.crm.feature.shares.ShareContactScreen
@@ -1007,6 +1008,8 @@ private fun AppNavGraph(
                 onLoggedOut = { navController.popBackStack() },
                 onCustomLinks = { navController.navigate("custom-links") },
                 onWebhooks = { navController.navigate("webhooks") },
+                // Issue #413's Android follow-up (#573): API token management.
+                onApiTokens = { navController.navigate("api-tokens") },
                 onNotificationChannels = { navController.navigate("notification-channels") },
                 onImmichSettings = { navController.navigate("immich-settings") },
                 // M26: the one-time legacy circle/tag cleanup tool.
@@ -1047,6 +1050,12 @@ private fun AppNavGraph(
         }
         composable("webhooks") {
             WebhooksScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+        // Issue #413's Android follow-up (#573): API token management.
+        composable("api-tokens") {
+            ApiTokensScreen(
                 onBack = { navController.popBackStack() },
             )
         }

@@ -1,10 +1,15 @@
 package com.mycorrhizal.crm.data.repository
 
+import com.mycorrhizal.crm.domain.repository.ApiTokenRepository
 import com.mycorrhizal.crm.domain.repository.NotificationSettingsRepository
 import com.mycorrhizal.crm.domain.repository.WebhookRepository
+import com.mycorrhizal.crm.model.network.ApiToken
+import com.mycorrhizal.crm.model.network.ApiTokenCreateResponse
+import com.mycorrhizal.crm.model.network.ApiTokenInput
 import com.mycorrhizal.crm.model.network.NotificationConfig
 import com.mycorrhizal.crm.model.network.NotificationConfigInput
 import com.mycorrhizal.crm.model.network.NotificationTestResult
+import com.mycorrhizal.crm.model.network.RevokeAllApiTokensResponse
 import com.mycorrhizal.crm.model.network.Webhook
 import com.mycorrhizal.crm.model.network.WebhookCreateResponse
 import com.mycorrhizal.crm.model.network.WebhookDelivery
@@ -37,6 +42,31 @@ class WebhookRepositoryImpl @Inject constructor(
 
     override suspend fun deliveries(id: Int): Result<List<WebhookDelivery>> =
         apiClient.getWebhookDeliveries(id).mapError()
+
+    private fun <T> Result<T>.mapError(): Result<T> =
+        fold(onSuccess = { Result.success(it) }, onFailure = { Result.failure(it.toApiError()) })
+}
+
+/** Issue #413 / #573: API token list/create/revoke/rotate, thin over [ApiClient]. */
+@Singleton
+class ApiTokenRepositoryImpl @Inject constructor(
+    private val apiClient: ApiClient,
+) : ApiTokenRepository {
+
+    override suspend fun list(): Result<List<ApiToken>> =
+        apiClient.listApiTokens().mapError()
+
+    override suspend fun create(input: ApiTokenInput): Result<ApiTokenCreateResponse> =
+        apiClient.createApiToken(input).mapError()
+
+    override suspend fun revoke(id: Int): Result<Unit> =
+        apiClient.revokeApiToken(id).mapError()
+
+    override suspend fun revokeAll(): Result<RevokeAllApiTokensResponse> =
+        apiClient.revokeAllApiTokens().mapError()
+
+    override suspend fun rotate(id: Int): Result<ApiTokenCreateResponse> =
+        apiClient.rotateApiToken(id).mapError()
 
     private fun <T> Result<T>.mapError(): Result<T> =
         fold(onSuccess = { Result.success(it) }, onFailure = { Result.failure(it.toApiError()) })

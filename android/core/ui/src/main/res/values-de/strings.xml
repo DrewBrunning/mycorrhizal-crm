@@ -414,6 +414,45 @@
     <string name="settings_webhooks_event_reminder_triggered">Erinnerung ausgelöst</string>
     <string name="settings_webhooks_event_birthday_occurred">Geburtstag</string>
 
+    <!-- Settings: API tokens (issue #413's Android follow-up, #573) -->
+    <string name="settings_api_tokens_title">API-Tokens</string>
+    <string name="settings_api_tokens_create">Token erstellen</string>
+    <string name="settings_api_tokens_revoke_all">Alle widerrufen</string>
+    <string name="settings_api_tokens_empty">Noch keine API-Tokens vorhanden</string>
+    <string name="settings_api_tokens_active">Aktiv</string>
+    <string name="settings_api_tokens_revoked">Widerrufen</string>
+    <string name="settings_api_tokens_expired">Abgelaufen</string>
+    <string name="settings_api_tokens_scope_full">Voller Zugriff</string>
+    <string name="settings_api_tokens_scope_carddav">Nur CardDAV</string>
+    <string name="settings_api_tokens_created">Erstellt %1$s</string>
+    <string name="settings_api_tokens_last_used">Zuletzt verwendet: %1$s</string>
+    <string name="settings_api_tokens_never_used">Nie</string>
+    <string name="settings_api_tokens_expires">Läuft ab %1$s</string>
+    <string name="settings_api_tokens_rotate_named">%1$s rotieren</string>
+    <string name="settings_api_tokens_revoke_named">%1$s widerrufen</string>
+    <string name="settings_api_tokens_create_title">API-Token erstellen</string>
+    <string name="settings_api_tokens_name_label">Token-Name</string>
+    <string name="settings_api_tokens_expiry_label">Läuft ab in</string>
+    <string name="settings_api_tokens_expiry_days">%1$d Tage</string>
+    <string name="settings_api_tokens_scope_label">Zugriff</string>
+    <string name="settings_api_tokens_scope_full_help">Kann überall verwendet werden, wo die API einen Token akzeptiert, einschließlich CardDAV-Synchronisierung.</string>
+    <string name="settings_api_tokens_scope_carddav_help">Funktioniert nur für die CardDAV-Kontaktsynchronisierung. Ein durchgesickertes Geräte-Credential kann nicht für den Rest der API verwendet werden.</string>
+    <string name="settings_api_tokens_created_title">Token erstellt</string>
+    <string name="settings_api_tokens_created_warning">Dieser Token wird nicht erneut angezeigt. Kopieren Sie ihn jetzt und bewahren Sie ihn sicher auf.</string>
+    <string name="settings_api_tokens_rotated_title">Token rotiert</string>
+    <string name="settings_api_tokens_rotated_warning">Das alte Token wurde widerrufen. Dieses neue Token wird nicht erneut angezeigt — kopieren Sie es jetzt und bewahren Sie es sicher auf.</string>
+    <string name="settings_api_tokens_copy">Kopieren</string>
+    <string name="settings_api_tokens_done">Fertig, ich habe ihn gespeichert</string>
+    <string name="settings_api_tokens_revoke_title">Token widerrufen</string>
+    <string name="settings_api_tokens_revoke_body">\"%1$s\" widerrufen? Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="settings_api_tokens_revoke_confirm">Widerrufen</string>
+    <string name="settings_api_tokens_revoke_all_title">Alle Tokens widerrufen</string>
+    <string name="settings_api_tokens_revoke_all_body">Alle %1$d aktiven API-Tokens widerrufen? Dies kann nicht rückgängig gemacht werden und beeinträchtigt sofort alles, was sie verwenden.</string>
+    <string name="settings_api_tokens_revoke_all_success">%1$d Tokens widerrufen</string>
+    <string name="settings_api_tokens_rotate_title">Token rotieren</string>
+    <string name="settings_api_tokens_rotate_body">Das Rotieren von \"%1$s\" widerruft es sofort und stellt ein neues Token mit demselben Namen und Geltungsbereich aus. Das neue Token wird nur einmal angezeigt.</string>
+    <string name="settings_api_tokens_rotate_confirm">Rotieren</string>
+
     <!-- Settings: notification channels — ntfy/Gotify (M25) -->
     <string name="settings_notifications_title">Benachrichtigungskanäle</string>
     <string name="settings_notifications_description">Wähle, wie dich Erinnerungs-Benachrichtigungen erreichen. E-Mail wird serverseitig konfiguriert und pro Erinnerung aktiviert; die Kanäle unten liefern Erinnerungen an deine selbst gehosteten Push-Dienste.</string>

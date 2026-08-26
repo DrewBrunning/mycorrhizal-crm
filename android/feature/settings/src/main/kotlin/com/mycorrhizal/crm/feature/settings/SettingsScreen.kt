@@ -63,6 +63,8 @@ fun SettingsScreen(
     onLoggedOut: () -> Unit,
     onCustomLinks: () -> Unit = {},
     onWebhooks: () -> Unit = {},
+    // Issue #413's Android follow-up (#573): API token management.
+    onApiTokens: () -> Unit = {},
     onNotificationChannels: () -> Unit = {},
     // Issue #236: the Immich connection-config settings screen.
     onImmichSettings: () -> Unit = {},
@@ -124,6 +126,7 @@ fun SettingsScreen(
             state = state,
             onCustomLinks = onCustomLinks,
             onWebhooks = onWebhooks,
+            onApiTokens = onApiTokens,
             onNotificationChannels = onNotificationChannels,
             onImmichSettings = onImmichSettings,
             onCircleTagTriage = onCircleTagTriage,
@@ -148,6 +151,7 @@ fun SettingsContent(
     state: SettingsUiState,
     onCustomLinks: () -> Unit = {},
     onWebhooks: () -> Unit = {},
+    onApiTokens: () -> Unit = {},
     onNotificationChannels: () -> Unit = {},
     onImmichSettings: () -> Unit = {},
     onCircleTagTriage: () -> Unit = {},
@@ -377,6 +381,8 @@ fun SettingsContent(
 
         // M25: channels surfaces.
         NavigationRow(stringResource(R.string.settings_webhooks_title), onClick = onWebhooks)
+        // Issue #413's Android follow-up (#573): API token management.
+        NavigationRow(stringResource(R.string.settings_api_tokens_title), onClick = onApiTokens)
         NavigationRow(stringResource(R.string.settings_notifications_title), onClick = onNotificationChannels)
         // Issue #236: the Immich connection-config settings screen.
         NavigationRow(stringResource(R.string.settings_immich_title), onClick = onImmichSettings)

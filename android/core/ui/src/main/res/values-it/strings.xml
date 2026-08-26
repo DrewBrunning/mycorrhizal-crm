@@ -414,6 +414,45 @@
     <string name="settings_webhooks_event_reminder_triggered">Promemoria attivato</string>
     <string name="settings_webhooks_event_birthday_occurred">Compleanno</string>
 
+    <!-- Settings: API tokens (issue #413's Android follow-up, #573) -->
+    <string name="settings_api_tokens_title">Token API</string>
+    <string name="settings_api_tokens_create">Crea Token</string>
+    <string name="settings_api_tokens_revoke_all">Revoca tutti</string>
+    <string name="settings_api_tokens_empty">Ancora nessun token API</string>
+    <string name="settings_api_tokens_active">Attivo</string>
+    <string name="settings_api_tokens_revoked">Revocato</string>
+    <string name="settings_api_tokens_expired">Scaduto</string>
+    <string name="settings_api_tokens_scope_full">Accesso completo</string>
+    <string name="settings_api_tokens_scope_carddav">Solo CardDAV</string>
+    <string name="settings_api_tokens_created">Creato %1$s</string>
+    <string name="settings_api_tokens_last_used">Ultimo utilizzo: %1$s</string>
+    <string name="settings_api_tokens_never_used">Mai</string>
+    <string name="settings_api_tokens_expires">Scade %1$s</string>
+    <string name="settings_api_tokens_rotate_named">Ruota %1$s</string>
+    <string name="settings_api_tokens_revoke_named">Revoca %1$s</string>
+    <string name="settings_api_tokens_create_title">Crea Token API</string>
+    <string name="settings_api_tokens_name_label">Nome Token</string>
+    <string name="settings_api_tokens_expiry_label">Scade tra</string>
+    <string name="settings_api_tokens_expiry_days">%1$d giorni</string>
+    <string name="settings_api_tokens_scope_label">Accesso</string>
+    <string name="settings_api_tokens_scope_full_help">Può essere usato ovunque l\'API accetti un token, inclusa la sincronizzazione CardDAV.</string>
+    <string name="settings_api_tokens_scope_carddav_help">Funziona solo per la sincronizzazione dei contatti CardDAV. Una credenziale del dispositivo trapelata non può essere usata contro il resto dell\'API.</string>
+    <string name="settings_api_tokens_created_title">Token Creato</string>
+    <string name="settings_api_tokens_created_warning">Questo token non verrà mostrato di nuovo. Copialo ora e conservalo in modo sicuro.</string>
+    <string name="settings_api_tokens_rotated_title">Token Ruotato</string>
+    <string name="settings_api_tokens_rotated_warning">Il vecchio token è ora revocato. Questo nuovo token non verrà mostrato di nuovo: copialo ora e conservalo in modo sicuro.</string>
+    <string name="settings_api_tokens_copy">Copia</string>
+    <string name="settings_api_tokens_done">Fatto, l\'ho salvato</string>
+    <string name="settings_api_tokens_revoke_title">Revoca Token</string>
+    <string name="settings_api_tokens_revoke_body">Revocare \"%1$s\"? Questo non può essere annullato.</string>
+    <string name="settings_api_tokens_revoke_confirm">Revoca</string>
+    <string name="settings_api_tokens_revoke_all_title">Revoca tutti i token</string>
+    <string name="settings_api_tokens_revoke_all_body">Revocare tutti i %1$d token API attivi? L\'operazione non può essere annullata e interromperà immediatamente tutto ciò che li utilizza.</string>
+    <string name="settings_api_tokens_revoke_all_success">%1$d token revocati</string>
+    <string name="settings_api_tokens_rotate_title">Ruota token</string>
+    <string name="settings_api_tokens_rotate_body">Ruotare \"%1$s\" lo revoca immediatamente ed emette un nuovo token con lo stesso nome e ambito. Il nuovo token verrà mostrato solo una volta.</string>
+    <string name="settings_api_tokens_rotate_confirm">Ruota</string>
+
     <!-- Settings: notification channels — ntfy/Gotify (M25) -->
     <string name="settings_notifications_title">Canali di notifica</string>
     <string name="settings_notifications_description">Scegli come ricevere i promemoria. L\'email è configurata lato server e attivata per ogni promemoria; i canali qui sotto inviano i promemoria ai tuoi servizi push self-hosted.</string>

@@ -155,3 +155,67 @@ data class WebhookDeliveriesResponse(
 data class WebhookTestResponse(
     val delivery: WebhookDelivery? = null,
 )
+
+/**
+ * API token lifecycle (issue #413's Android follow-up, #573). Mirrors web's
+ * `frontend/src/api/apiTokens.ts` data model exactly. A token's plaintext is
+ * only ever present on [ApiTokenCreateResponse] (create and rotate) — never
+ * on the plain list/detail [ApiToken] shape, and never logged or persisted
+ * beyond the one-shot reveal dialog.
+ */
+val API_TOKEN_SCOPES: List<String> = listOf("full", "carddav")
+
+/** Selectable lifetimes; the backend caps this at 365 days ([MAX_API_TOKEN_EXPIRY_DAYS]). */
+val API_TOKEN_EXPIRY_OPTIONS: List<Int> = listOf(30, 60, 90, 180, 365)
+
+const val DEFAULT_API_TOKEN_EXPIRY_DAYS = 90
+const val DEFAULT_API_TOKEN_SCOPE = "full"
+
+/** GET/POST /api-tokens response for a token — never contains the hash or plaintext. */
+@JsonClass(generateAdapter = true)
+data class ApiToken(
+    val id: Int = 0,
+    val name: String = "",
+    @Json(name = "created_at") val createdAt: String? = null,
+    @Json(name = "last_used_at") val lastUsedAt: String? = null,
+    @Json(name = "revoked_at") val revokedAt: String? = null,
+    /** Null only for tokens created before expiry was introduced. */
+    @Json(name = "expires_at") val expiresAt: String? = null,
+    val scope: String = DEFAULT_API_TOKEN_SCOPE,
+)
+
+/** POST /api-tokens request body. [expiresInDays]/[scope] omitted apply the backend defaults. */
+@JsonClass(generateAdapter = true)
+data class ApiTokenInput(
+    val name: String,
+    @Json(name = "expires_in_days") val expiresInDays: Int? = null,
+    val scope: String? = null,
+)
+
+/**
+ * POST /api-tokens (201) and POST /api-tokens/:id/rotate (201) response — the
+ * only responses that carry the plaintext [token], shown exactly once.
+ */
+@JsonClass(generateAdapter = true)
+data class ApiTokenCreateResponse(
+    val id: Int = 0,
+    val name: String = "",
+    @Json(name = "created_at") val createdAt: String? = null,
+    @Json(name = "last_used_at") val lastUsedAt: String? = null,
+    @Json(name = "revoked_at") val revokedAt: String? = null,
+    @Json(name = "expires_at") val expiresAt: String? = null,
+    val scope: String = DEFAULT_API_TOKEN_SCOPE,
+    val token: String? = null,
+)
+
+/** GET /api-tokens — `{ tokens: [...] }`. */
+@JsonClass(generateAdapter = true)
+data class ApiTokensResponse(
+    val tokens: List<ApiToken> = emptyList(),
+)
+
+/** POST /api-tokens/revoke-all — `{ revoked: N }`, the count of tokens actually revoked. */
+@JsonClass(generateAdapter = true)
+data class RevokeAllApiTokensResponse(
+    val revoked: Int = 0,
+)
