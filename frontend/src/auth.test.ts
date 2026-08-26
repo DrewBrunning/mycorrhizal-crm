@@ -34,11 +34,11 @@ describe('getCachedSelfContactVCardUID', () => {
 
 describe('fetchAndCacheUserInfo', () => {
   test('caches the self-contact uid returned by /users/me', async () => {
-    // auth.ts reads data.ID / data.Username (PascalCase) alongside the
-    // lowercase response fields — mock what the module actually reads.
+    // /users/me (models.CurrentUserResponse, backend/models/dtos.go) serializes
+    // with lowercase JSON tags -- mock the real wire shape, not PascalCase.
     const fetchMock = vi.fn().mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ ID: 1, Username: 'u', is_admin: false, self_contact_vcard_uid: 'uid-9' }),
+      json: async () => ({ id: 1, username: 'u', is_admin: false, self_contact_vcard_uid: 'uid-9' }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -52,7 +52,7 @@ describe('fetchAndCacheUserInfo', () => {
   test('caches a null self contact when the server has none', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ ID: 1, Username: 'u', is_admin: false }),
+      json: async () => ({ id: 1, username: 'u', is_admin: false }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -71,6 +71,25 @@ describe('fetchAndCacheUserInfo', () => {
     const info = await fetchAndCacheUserInfo();
     expect(info).toBeNull();
     expect(JSON.parse(localStorage.getItem(USER_INFO_KEY) || '{}').self_contact_vcard_uid).toBe('uid-old');
+  });
+
+  // Regression test for the case mismatch where auth.ts read data.ID/data.Username
+  // (PascalCase) against a lowercase `id`/`username` wire response: both fields
+  // silently came back undefined and JSON.stringify dropped them from the cache.
+  test('populates user_id and username from the lowercase /users/me response', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ id: 42, username: 'bob', is_admin: true, self_contact_vcard_uid: null }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const info = await fetchAndCacheUserInfo();
+
+    expect(info?.user_id).toBe(42);
+    expect(info?.username).toBe('bob');
+    const cached = JSON.parse(localStorage.getItem(USER_INFO_KEY) || '{}');
+    expect(cached.user_id).toBe(42);
+    expect(cached.username).toBe('bob');
   });
 });
 
@@ -100,7 +119,7 @@ describe('two-factor login', () => {
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ ID: 1, Username: 'alice', is_admin: false }),
+        json: async () => ({ id: 1, username: 'alice', is_admin: false }),
       });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -120,7 +139,7 @@ describe('two-factor login', () => {
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ ID: 1, Username: 'alice', is_admin: false }),
+        json: async () => ({ id: 1, username: 'alice', is_admin: false }),
       });
     vi.stubGlobal('fetch', fetchMock);
 
