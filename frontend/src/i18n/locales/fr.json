@@ -2156,6 +2156,58 @@
       "webhook": "Webhooks"
     }
   },
+  "backgroundJobs": {
+    "title": "Tâches en arrière-plan",
+    "description": "La dernière exécution de chaque tâche planifiée : résultat, durée et nombre d'exécutions ayant échoué d'affilée.",
+    "refresh": "Actualiser",
+    "status": {
+      "healthy": "Sain",
+      "failing": "En échec",
+      "unknown": "Inconnu"
+    },
+    "result": {
+      "success": "Réussite",
+      "failure": "Échec",
+      "skipped": "Ignorée"
+    },
+    "lastRun": "Dernière exécution",
+    "duration": "Durée",
+    "durationTrend": "moy. {{avg}}, max {{max}} sur {{n}} exécutions",
+    "consecutiveFailures": "En échec {{n}} fois d'affilée",
+    "incidentSince": "depuis {{time}}",
+    "itemsProcessed": "{{n}} traités",
+    "never": "jamais",
+    "history": "Historique des exécutions",
+    "noHistory": "Aucune exécution enregistrée pour cette tâche pour l'instant.",
+    "close": "Fermer",
+    "trigger": {
+      "scheduled": "planifiée",
+      "initial": "démarrage",
+      "manual": "manuelle"
+    },
+    "columns": {
+      "result": "Résultat",
+      "started": "Démarrée",
+      "duration": "Durée",
+      "items": "Éléments",
+      "error": "Erreur"
+    },
+    "jobs": {
+      "daily_reminders": "Rappels quotidiens",
+      "webhook_retries": "Nouvelles tentatives de webhooks",
+      "calendar_sync": "Synchronisation du calendrier",
+      "purge_deleted": "Purge des lignes supprimées",
+      "audit_purge": "Purge du journal d'audit",
+      "system_event_purge": "Purge des événements système",
+      "cadence_overdue": "Webhooks de cadence en retard",
+      "reach_out_detection": "Détection des occasions de contact",
+      "immich_sync": "Synchronisation Immich",
+      "db_integrity_check": "Vérification de l'intégrité de la base de données",
+      "restore_drill": "Test de restauration de sauvegarde",
+      "alert_eval": "Évaluation des alertes",
+      "job_run_purge": "Purge de l'historique des exécutions"
+    }
+  },
   "errorAggregation": {
     "title": "Erreurs par cause",
     "description": "Défaillances opérationnelles des {{hours}} dernières heures, regroupées par cause. Une cause qui se répète mérite l'attention ; un cas isolé rarement.",

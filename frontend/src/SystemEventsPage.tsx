@@ -33,6 +33,7 @@ import {
   type SystemEventSeverity,
   type SystemEventType,
 } from './api/systemEvents';
+import BackgroundJobsPanel from './components/BackgroundJobsPanel';
 import ErrorAggregationPanel from './components/ErrorAggregationPanel';
 import { ListSkeleton } from './components/LoadingSkeletons';
 import SubsystemHealthPanel from './components/SubsystemHealthPanel';
@@ -121,6 +122,8 @@ export default function SystemEventsPage() {
       </Typography>
 
       <SubsystemHealthPanel onSelectComponent={(component) => patchFilters({ component })} />
+
+      <BackgroundJobsPanel />
 
       <ErrorAggregationPanel onViewEvents={showErrors} />
 
