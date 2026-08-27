@@ -172,6 +172,9 @@ func probeWritableDir(dir string) string {
 		return "is not a directory"
 	}
 	probe := filepath.Join(dir, ".health-write-probe")
+	// #nosec G304 -- dir is an operator-supplied config path (PROFILE_PHOTO_DIR /
+	// ATTACHMENTS_DIR, validated absolute at startup), never request input; the
+	// filename is a hardcoded constant.
 	f, err := os.OpenFile(probe, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		return "is not writable"
