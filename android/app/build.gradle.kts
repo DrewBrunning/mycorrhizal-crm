@@ -83,6 +83,7 @@ dependencies {
     implementation(project(":feature:cadence"))
     implementation(project(":feature:shares"))
     implementation(project(":feature:audit"))
+    implementation(project(":feature:sysevents"))
     implementation(project(":feature:network"))
     implementation(project(":feature:users"))
 

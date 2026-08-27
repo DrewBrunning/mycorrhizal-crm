@@ -22,6 +22,7 @@ import com.mycorrhizal.crm.model.network.AddHouseholdMemberResponse
 import com.mycorrhizal.crm.model.network.AuditEventsResponse
 import com.mycorrhizal.crm.model.network.AuthConfig
 import com.mycorrhizal.crm.model.network.AuditUndoResponse
+import com.mycorrhizal.crm.model.network.SystemEventsResponse
 import com.mycorrhizal.crm.model.network.BackendError
 import com.mycorrhizal.crm.model.network.BirthdaysResponse
 import com.mycorrhizal.crm.model.network.CadencePoliciesResponse
@@ -1614,6 +1615,33 @@ class ApiClient(
             moshi.adapter(AuditUndoResponse::class.java).fromJson(body)
         }
 
+    // --- System events (issue #424 — the operational-event timeline) ---
+
+    /**
+     * GET /admin/system-events — the operational-event timeline, newest first,
+     * with server-side component / severity / event_type / correlation_id
+     * filters. Admin-only and instance-wide (not user-scoped). [limit] is the
+     * window (default 100, max 500); the API has no cursor.
+     */
+    suspend fun getSystemEvents(
+        component: String? = null,
+        severity: String? = null,
+        eventType: String? = null,
+        correlationId: String? = null,
+        limit: Int = 100,
+    ): Result<SystemEventsResponse> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$ADMIN_SYSTEM_EVENTS_PATH".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("limit", limit.toString())
+        component?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("component", it) }
+        severity?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("severity", it) }
+        eventType?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("event_type", it) }
+        correlationId?.takeIf { it.isNotBlank() }
+            ?.let { urlBuilder.addQueryParameter("correlation_id", it) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(SystemEventsResponse::class.java).fromJson(body)
+        }
+    }
+
     // M14: the ego-centric network graph. `GET /graph/connections` (T10's
     // traversal) returns names already resolved and inverses already applied,
     // so this client needs no name resolution of its own — the design decision
@@ -1864,6 +1892,7 @@ class ApiClient(
         private const val EXPORT_VCF_PATH = "$API_V1/export/vcf"
         private const val CONTACT_SHARES_PATH = "$API_V1/contact-shares"
         private const val AUDIT_PATH = "$API_V1/audit"
+        private const val ADMIN_SYSTEM_EVENTS_PATH = "$API_V1/admin/system-events"
         private const val GRAPH_CONNECTIONS_PATH = "$API_V1/graph/connections"
         private const val EXTERNAL_IDENTITIES_PATH = "$API_V1/external-identities"
         private const val IMMICH_PATH = "$API_V1/immich"
