@@ -272,6 +272,14 @@ Either job logs and fires a webhook (`db.integrity_check_failed` / `db.restore_d
 Settings → Webhooks) on failure, so "test restores regularly" above is now something the app does
 for you rather than a manual chore.
 
+Since issue #428 these failures also flow through **alerting on state transitions**: a scheduled
+evaluator watches the per-subsystem health, disk usage, and scheduled-job liveness, and dispatches
+one notification when a condition breaks (`alert.raised`) and one when it clears
+(`🟢 Backup recovered after 3 failures` — `alert.cleared`), de-duplicated so a persistent failure
+does not page you on every run. Webhooks go to all subscribers; email/ntfy/Gotify/push go to admin
+users. Full condition list and the `ALERT_*` env vars are in
+`docs/operations/observability.md` → "Alerting on state transitions".
+
 ### Backup confidentiality & retention
 
 A backup is a **complete copy of the CRM's sensitive data** — not a sanitized extract — so the rules

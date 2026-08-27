@@ -57,6 +57,11 @@ var excludedFromRestoreDrill = map[string]bool{
 	"job_executions":            true,
 	"system_events":             true,
 	"operational_check_results": true,
+	// alert_states (#428): the scheduled alert evaluator fires alongside this
+	// drill and upserts a row per condition in the snapshot-vs-live window, so
+	// a delta here is a guaranteed false positive — same reasoning as the rows
+	// above.
+	"alert_states": true,
 }
 
 // liveTables lists every real, non-internal, non-excluded table in the

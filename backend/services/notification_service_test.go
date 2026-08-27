@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"mycorrhizal/config"
 	"mycorrhizal/i18n"
@@ -1274,4 +1276,64 @@ func TestTestNotificationChannel_FCMDeviceWithoutServerConfig(t *testing.T) {
 	err = TestNotificationChannel(db, cfg, user, models.ChannelPush)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not configured")
+}
+
+// TestNotificationTestErrorMessage_TruncatesLongError pins issue #606's
+// bounding: an arbitrary upstream error must not be reflected wholesale into
+// the Settings card, no matter how long it is. The truncated message stays a
+// prefix of the raw error (it is a cut, not a substitute), cut at a rune
+// boundary.
+func TestNotificationTestErrorMessage_TruncatesLongError(t *testing.T) {
+	long := strings.Repeat("a", 500)
+	err := fmt.Errorf("upstream: %s", long)
+	got := NotificationTestErrorMessage(config.Config{}, err)
+
+	assert.LessOrEqual(t, len(got), maxTestNotificationErrorLen,
+		"the echoed diagnostic must be bounded to %d bytes", maxTestNotificationErrorLen)
+	assert.True(t, strings.HasPrefix(err.Error(), got),
+		"the truncated message must be a prefix of the raw error")
+}
+
+// TestNotificationTestErrorMessage_TruncatesAtRuneBoundary ensures a multi-byte
+// upstream message is cut without splitting a UTF-8 sequence, so the JSON
+// response body stays valid.
+func TestNotificationTestErrorMessage_TruncatesAtRuneBoundary(t *testing.T) {
+	long := strings.Repeat("\u00e9", 500) // é is 2 bytes
+	got := NotificationTestErrorMessage(config.Config{}, fmt.Errorf("%s", long))
+
+	assert.LessOrEqual(t, len(got), maxTestNotificationErrorLen)
+	assert.True(t, utf8.ValidString(got), "the truncated message must be valid UTF-8")
+}
+
+// TestNotificationTestErrorMessage_CollapsesGuardSentinels pins issue #606's
+// central fix: with WEBHOOK_BLOCK_PRIVATE_URLS on, the three distinct
+// SSRF-guard rejections (notification pre-flight + both guarded-dialer
+// sentinels) must yield the SAME client-visible message, so the hardening flag
+// cannot turn the test endpoint into an address-reachability oracle. The raw
+// errors remain distinguishable — that is what the server-side log carries.
+func TestNotificationTestErrorMessage_CollapsesGuardSentinels(t *testing.T) {
+	cfg := config.Config{WebhookBlockPrivateURLs: true}
+
+	sentinels := []error{ErrNotificationPrivateAddress, ErrWebhookUnreachable, ErrWebhookPrivateAddress}
+	for _, s := range sentinels {
+		got := NotificationTestErrorMessage(cfg, s)
+		assert.Equal(t, NotificationOutboundPolicyMessage, got,
+			"sentinel %q must collapse to the neutral outbound-policy message", s.Error())
+	}
+
+	// The sentinels are genuinely distinct — the collapse is what makes them
+	// indistinguishable to the client, not an accident of identical text.
+	assert.NotEqual(t, ErrWebhookUnreachable.Error(), ErrWebhookPrivateAddress.Error())
+	assert.NotEqual(t, ErrNotificationPrivateAddress.Error(), ErrWebhookUnreachable.Error())
+	assert.NotEqual(t, ErrNotificationPrivateAddress.Error(), ErrWebhookPrivateAddress.Error())
+}
+
+// TestNotificationTestErrorMessage_LeavesOtherErrorsAlone ensures the collapse
+// is narrowly scoped: with the flag on, a non-guard diagnostic still reaches
+// the client verbatim (bounded), because the whole point of the endpoint is to
+// tell the user why their own target rejected the message.
+func TestNotificationTestErrorMessage_LeavesOtherErrorsAlone(t *testing.T) {
+	cfg := config.Config{WebhookBlockPrivateURLs: true}
+	short := "ntfy is not configured — set a URL and topic and save first"
+	assert.Equal(t, short, NotificationTestErrorMessage(cfg, errors.New(short)))
 }

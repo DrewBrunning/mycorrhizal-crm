@@ -265,10 +265,10 @@ logs the panic value and stack server-side and returns a generic 500
 (`errors/middleware.go:27-44`). Both are pinned by tests (#366).
 
 **One exception found**, and it is the only site in the backend that bypasses the envelope: the
-self-service "test my notification channel" endpoint echoes the upstream error verbatim
-(`notification_controller.go:167`). That is defensible — the endpoint exists so a user can find out
-why *their own* ntfy/Gotify/push target rejected the message, and a generic message would make the
-feature useless.
+self-service "test my notification channel" endpoint reports a diagnostic string rather than an
+envelope error (`notification_controller.go:167-172`). That is defensible — the endpoint exists so a
+user can find out why *their own* ntfy/Gotify/push target rejected the message, and a generic message
+would make the feature useless.
 
 The outbound path was then traced to the end, because "unbounded error from an HTTP client" reads
 like an SSRF oracle and it is worth being exact about whether it is one. **It is not, on the default
@@ -284,11 +284,16 @@ the returned status; the error text grants no capability they lack.
 The genuine leak is the inverse, and only in the hardened configuration: with the flag **on**, the
 guarded dialer returns two distinct sentinels — `ErrWebhookUnreachable` and
 `ErrWebhookPrivateAddress` (`services/webhook_service.go:29-30`, `httputil/safedial.go:27-47`) — and
-both are echoed verbatim, so an operator who turned the flag on to declare internal targets
-off-limits gets an endpoint that reports which rule a target tripped. Thin (it confirms "the address
-you supplied is private", about an address the caller supplied) but the wrong direction. Accepted and
-now **documented** in row 7.4.1 rather than left as an unexplained outlier; bounding the string and
-collapsing the two sentinels is issue #606.
+both were echoed verbatim, so an operator who turned the flag on to declare internal targets
+off-limits got an endpoint that reports which rule a target tripped. Thin (it confirms "the address
+you supplied is private", about an address the caller supplied) but the wrong direction. **Fixed by
+issue #606**: the echoed string is now capped at 256 bytes and, with the flag on, all three guard
+sentinels collapse to one neutral "not reachable under this instance's outbound policy" message,
+while the full diagnostic still goes to the server log — so the endpoint stays useful on the default
+configuration and stops distinguishing rejection rules under the hardening flag (pinned by
+`notification_controller_test.go` `TestNotificationConfig_TestNtfy_ErrorTruncated`,
+`TestNotificationConfig_TestNtfy_PrivateAddressCollapsedWhenGuarded`,
+`TestNotificationConfig_TestNtfy_UnresolvableCollapsedWhenGuarded`).
 
 **Re-checked for issue #421** (the `/health` → `/health/live` + `/health/ready` + deep-`/health`
 split). All three are unauthenticated and build their own JSON rather than going through the error
@@ -338,12 +343,12 @@ What this pass actually did per chapter, beyond the automated citation checks th
 | **F-2** | **13 rows were `satisfied` with no citation whatsoever**, contradicting the checklist's own stated promise ("No row is left `satisfied` without a citation"). All 13 were negative controls — "no password expiry", "no KBA", "no CDN", "no plugin system" — where there is no `file:line` for a thing that does not exist, so they had been left as bare assertions. | Medium: unverifiable rows in a verification document | **Fixed on this branch.** Each now cites the artifact that proves the absence — the model/migration that has no such column, the Semgrep rule that fails a PR reintroducing it, the CSP that admits no external origin, the lockfiles. `citecheck` now fails a `satisfied` row that cites nothing. |
 | **F-3** | **`threat-model.md` §5 stated the session cookie is `SameSite=Lax`.** It has been `Strict` since issue #392. A factual error, not a stale line number. | Medium: the threat model understated an implemented control | **Fixed on this branch**, including the reason `Lax` is retained for the OIDC handshake cookies only. |
 | **F-4** | **OIDC handshake cookies hardcode `Secure=true`** on the `oidc_client` set and all four clears, while their siblings use `COOKIE_SECURE` (manual audit B). Stricter than configured, so not a confidentiality gap — but on the supported plain-HTTP deployment the browser rejects the cookie, so Android OIDC silently falls back to the web redirect and the handshake cookies are never actively cleared. | Low, fails closed | **Filed as issue #605** (v0.6.2). Recorded in row 3.4.1. |
-| **F-5** | **The test-notification endpoint echoes an unbounded upstream error** to the client (manual audit D) — the only backend site bypassing the error envelope. Defensible as a self-service diagnostic (the user needs to know why *their own* ntfy/Gotify target refused the message), but unbounded. Traced to the end during review: **not** an SSRF oracle on the default configuration, because `WEBHOOK_BLOCK_PRIVATE_URLS` defaults off and pointing a self-hosted app at your own LAN is the intended use (row 5.2.6's opt-in-per-service position) — the caller already chose the target and already learns its reachability from the status code. The real, thin leak runs the other way: with the flag *on*, the guarded dialer's two distinct sentinels are echoed verbatim, so the hardening flag makes this endpoint marginally more informative rather than less. | Low | **Filed as issue #606** (v0.6.2, `p3`). Accepted as a documented exception in row 7.4.1. |
+| **F-5** | **The test-notification endpoint echoes an unbounded upstream error** to the client (manual audit D) — the only backend site bypassing the error envelope. Defensible as a self-service diagnostic (the user needs to know why *their own* ntfy/Gotify target refused the message), but unbounded. Traced to the end during review: **not** an SSRF oracle on the default configuration, because `WEBHOOK_BLOCK_PRIVATE_URLS` defaults off and pointing a self-hosted app at your own LAN is the intended use (row 5.2.6's opt-in-per-service position) — the caller already chose the target and already learns its reachability from the status code. The real, thin leak runs the other way: with the flag *on*, the guarded dialer's two distinct sentinels are echoed verbatim, so the hardening flag makes this endpoint marginally more informative rather than less. | Low | **Fixed by issue #606** (v0.6.2). Echoed string capped at 256 bytes; with the flag on, the guard sentinels collapse to one neutral outbound-policy message client-side while the full diagnostic stays in the server log. Remains a documented exception in row 7.4.1 (bounded diagnostic, not the envelope) by design. |
 | **F-6** | **Row 3.2.4 overstated the JWT algorithm pin** as HS256-exact; the code pins the HMAC family. The security property (rejects `alg: none` and asymmetric confusion) is unchanged, but the row claimed more precision than the code has. | Low | **Fixed on this branch**: the row now states the family pin and why no downgrade is reachable. |
 
 No finding in this pass required flipping a control from `satisfied` to `fail`. F-1 through F-3 and
 F-6 were failures of the *documentation* to remain true; F-4 and F-5 are real code findings, both
-low-severity and both failing closed.
+low-severity and both failing closed. F-5 has since been fixed by issue #606 (§4 D, row 7.4.1).
 
 Three further issues came out of asking what keeps this report true rather than out of the audit
 itself, and are tracked in §9: **#608** (fold the gate and the re-verification obligation into the
@@ -537,3 +542,4 @@ govulncheck).
 |---|---|---|---|---|
 | 1 | 2026-08-26 | `6a7cb7a2` | ASVS L2 with 31 documented exceptions; MASVS-L1 with 1 | 6 (F-1…F-6): 4 documentation defects fixed on the branch, 2 code findings filed as issues #605 and #606. No control flipped to `fail`. |
 | 1.1 | 2026-08-27 | (see PR) | ASVS L2 with **29** documented exceptions; MASVS-L1 with 1 | Not a full re-pass — a single-row delta. Issue #509 added `docs/security/incident-response.md` (operator incident-response + credential/key-rotation runbook, rotation procedures exercised against a real build). The stated gap for **1.6.1** and **1.6.3** was "no standalone rotation doc"; both move `partial → satisfied` in `asvs-l2.md`. §7's "Partial mechanism" group and the headline exception count are Pass-1 figures and reconcile fully at the next release re-pass; the running count is 29. |
+| 1.2 | 2026-08-27 | (see PR) | ASVS L2 with 31 documented exceptions; MASVS-L1 with 1 | Not a full re-pass — issue #606 (finding F-5) landed: the test-notification endpoint's echoed diagnostic is now capped at 256 bytes and, under `WEBHOOK_BLOCK_PRIVATE_URLS`, the SSRF guard's sentinels collapse to one neutral message client-side while the full error stays in the server log (§4 D, row 7.4.1). The row remains `satisfied` with the same documented exception (a bounded diagnostic instead of the envelope) — no count changes. |

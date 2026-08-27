@@ -60,4 +60,9 @@ const (
 	// JobNameSystemEventPurge is the job name for the periodic removal of
 	// system_events rows past their retention window (issue #424).
 	JobNameSystemEventPurge = "system_event_purge"
+
+	// JobNameAlertEval is the job name for the scheduled alert evaluator that
+	// detects failure/recovery transitions on the tracked subsystems and
+	// notifies on them (issue #428).
+	JobNameAlertEval = "alert_eval"
 )
