@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
@@ -62,8 +62,7 @@ func alertStateFor(t *testing.T, db *gorm.DB, key string) (models.AlertState, bo
 // first) — the services package is already near the CI -race timeout.
 func TestEvaluateAlerts(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "alerting.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 

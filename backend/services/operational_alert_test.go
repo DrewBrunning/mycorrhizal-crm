@@ -2,13 +2,12 @@ package services
 
 import (
 	"context"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -41,8 +40,7 @@ func newAlertUser(t *testing.T, db *gorm.DB, name string, isAdmin bool, ntfyURL 
 // admin users only — infra health is an operator concern, not something to page
 // every user of a shared instance about (issue #428).
 func TestDeliverOperationalAlert_AdminOnly(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "op-alert.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
