@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"mycorrhizal/atrest"
 	"mycorrhizal/buildinfo"
@@ -29,59 +30,133 @@ import (
 )
 
 // runJob executes fn under a per-run correlation ID ("job:<name>:<uuid>") with
-// panic recovery and standardized start/finish logging (issue #425). A
-// recovered panic is additionally recorded as a job_failed operational event
-// so it lands on the admin timeline (issue #424); the ordinary completion is
-// a log line only, since the scheduler ticks often and a per-tick row would
-// swamp the event stream. "job_completed" here means the wrapper returned
-// without panicking — a job that swallows an internal error still counts as
-// completed, and that internal failure surfaces as its own subsystem event
-// (sync_failed, backup_failed, ...).
-func runJob(db *gorm.DB, name string, fn func()) {
-	ctx := logger.JobContext(name)
+// panic recovery and standardized start/finish logging (issue #425), and
+// persists one job_runs row per invocation (issue #391): job name, trigger,
+// duration, and outcome — success, failure (a returned error or a recovered
+// panic), or skipped (fn returns services.ErrJobSkipped: the job lock was held
+// or it ran too recently). A recovered panic is additionally recorded as a
+// job_failed operational event so it lands on the admin timeline (issue #424);
+// the ordinary completion stays a log line + the job_runs row, not a
+// system_events row, since the scheduler ticks often and a per-tick event
+// would swamp that stream.
+//
+// jobName is the canonical models.JobName* token (so job_runs history groups
+// per job regardless of which trigger fired it); trigger is
+// models.JobTrigger{Scheduled,Initial}.
+func runJob(db *gorm.DB, jobName, trigger string, fn func() error) {
+	execJob(db, jobName, trigger, func() (*int, error) { return nil, fn() })
+}
+
+// runJobReport is runJob for a job that also reports how many items the run
+// acted on (reminders sent, suggestions created) — persisted as
+// job_runs.items_processed.
+func runJobReport(db *gorm.DB, jobName, trigger string, fn func() (int, error)) {
+	execJob(db, jobName, trigger, func() (*int, error) {
+		n, err := fn()
+		return &n, err
+	})
+}
+
+// execJob is the shared implementation behind runJob / runJobReport.
+func execJob(db *gorm.DB, jobName, trigger string, fn func() (*int, error)) {
+	ctx := logger.JobContext(jobName)
 	start := time.Now()
 	logger.Ctx(ctx).Info().
 		Str(logger.FieldEvent, models.SysEventJobStarted).
-		Str(logger.FieldOperation, name).
+		Str(logger.FieldOperation, jobName).
+		Str("trigger", trigger).
 		Msg("scheduled job started")
 
-	defer func() {
-		durMS := time.Since(start).Milliseconds()
-		if r := recover(); r != nil {
-			logger.Ctx(ctx).Error().
-				Str(logger.FieldEvent, models.SysEventJobFailed).
-				Str(logger.FieldComponent, logger.ComponentScheduler).
-				Str(logger.FieldOperation, name).
-				Str(logger.FieldResult, logger.ResultFailure).
-				Int64(logger.FieldDurationMS, durMS).
-				Interface("panic", r).
-				Str("stack", string(debug.Stack())).
-				Msg("scheduled job panicked — recovered")
-			models.RecordSystemEvent(ctx, db, models.SystemEvent{
-				EventType:  models.SysEventJobFailed,
-				Component:  logger.ComponentScheduler,
-				Operation:  name,
-				Result:     models.SysResult(logger.ResultFailure),
-				DurationMS: &durMS,
-				Error:      fmt.Sprintf("panic: %v", r),
-			})
-			return
-		}
+	var (
+		items  *int
+		jobErr error
+		panicV any
+	)
+	func() {
+		defer func() { panicV = recover() }()
+		items, jobErr = fn()
+	}()
+
+	durMS := time.Since(start).Milliseconds()
+	result := logger.ResultSuccess
+	errStr := ""
+
+	switch {
+	case panicV != nil:
+		result = logger.ResultFailure
+		errStr = fmt.Sprintf("panic: %v", panicV)
+		items = nil
+		logger.Ctx(ctx).Error().
+			Str(logger.FieldEvent, models.SysEventJobFailed).
+			Str(logger.FieldComponent, logger.ComponentScheduler).
+			Str(logger.FieldOperation, jobName).
+			Str(logger.FieldResult, logger.ResultFailure).
+			Int64(logger.FieldDurationMS, durMS).
+			Interface("panic", panicV).
+			Str("stack", string(debug.Stack())).
+			Msg("scheduled job panicked — recovered")
+		models.RecordSystemEvent(ctx, db, models.SystemEvent{
+			EventType:  models.SysEventJobFailed,
+			Component:  logger.ComponentScheduler,
+			Operation:  jobName,
+			Result:     models.SysResult(logger.ResultFailure),
+			DurationMS: &durMS,
+			Error:      errStr,
+		})
+	case errors.Is(jobErr, services.ErrJobSkipped):
+		result = logger.ResultSkipped
+		items = nil
 		logger.Ctx(ctx).Info().
 			Str(logger.FieldEvent, models.SysEventJobCompleted).
 			Str(logger.FieldComponent, logger.ComponentScheduler).
-			Str(logger.FieldOperation, name).
+			Str(logger.FieldOperation, jobName).
+			Str(logger.FieldResult, logger.ResultSkipped).
+			Int64(logger.FieldDurationMS, durMS).
+			Msg("scheduled job skipped")
+	case jobErr != nil:
+		result = logger.ResultFailure
+		errStr = jobErr.Error()
+		items = nil
+		logger.Ctx(ctx).Error().
+			Str(logger.FieldEvent, models.SysEventJobFailed).
+			Str(logger.FieldComponent, logger.ComponentScheduler).
+			Str(logger.FieldOperation, jobName).
+			Str(logger.FieldResult, logger.ResultFailure).
+			Int64(logger.FieldDurationMS, durMS).
+			Err(jobErr).
+			Msg("scheduled job failed")
+	default:
+		logger.Ctx(ctx).Info().
+			Str(logger.FieldEvent, models.SysEventJobCompleted).
+			Str(logger.FieldComponent, logger.ComponentScheduler).
+			Str(logger.FieldOperation, jobName).
 			Str(logger.FieldResult, logger.ResultSuccess).
 			Int64(logger.FieldDurationMS, durMS).
 			Msg("scheduled job completed")
-	}()
-	fn()
+	}
+
+	models.RecordJobRun(ctx, db, models.JobRun{
+		JobName:        jobName,
+		Trigger:        trigger,
+		StartedAt:      start,
+		FinishedAt:     start.Add(time.Duration(durMS) * time.Millisecond),
+		DurationMS:     durMS,
+		Result:         result,
+		Error:          errStr,
+		ItemsProcessed: items,
+	})
 }
 
-// safeGo runs fn in a goroutine via runJob (panic recovery + correlation ID),
-// so an unhandled panic in a background task doesn't crash the server.
-func safeGo(db *gorm.DB, name string, fn func()) {
-	go runJob(db, name, fn)
+// safeGo runs fn in a goroutine via runJob (panic recovery + correlation ID +
+// job_runs row), so an unhandled panic in a background task doesn't crash the
+// server.
+func safeGo(db *gorm.DB, jobName, trigger string, fn func() error) {
+	go runJob(db, jobName, trigger, fn)
+}
+
+// safeGoReport is safeGo for a job that reports an item count (see runJobReport).
+func safeGoReport(db *gorm.DB, jobName, trigger string, fn func() (int, error)) {
+	go runJobReport(db, jobName, trigger, fn)
 }
 
 // recoverJob wraps fn for a recurring gocron registration (s.Every(...).Do(...)).
@@ -90,8 +165,13 @@ func safeGo(db *gorm.DB, name string, fn func()) {
 // globally (it isn't here). Without this, a panic on any scheduled invocation
 // would crash the whole process on its next scheduled tick. Always pass the
 // wrapped result to .Do(), never fn itself.
-func recoverJob(db *gorm.DB, name string, fn func()) func() {
-	return func() { runJob(db, name, fn) }
+func recoverJob(db *gorm.DB, jobName, trigger string, fn func() error) func() {
+	return func() { runJob(db, jobName, trigger, fn) }
+}
+
+// recoverJobReport is recoverJob for a job that reports an item count.
+func recoverJobReport(db *gorm.DB, jobName, trigger string, fn func() (int, error)) func() {
+	return func() { runJobReport(db, jobName, trigger, fn) }
 }
 
 func main() {
@@ -183,101 +263,113 @@ func main() {
 		logger.Warn().Msg("No Mails to be sent since Resend configuration is not set")
 	}
 	s := gocron.NewScheduler(cfg.GetReminderLocation())
-	task := func() {
-		// Use rate-limited version to prevent duplicate emails during rapid restarts
-		if err := services.SendRemindersWithRateLimit(db, *cfg); err != nil {
-			logger.Error().Err(err).Msg("Error sending reminders")
-		}
-	}
-	s.Every(1).Day().At(cfg.ReminderTime).Do(recoverJob(db, "reminder-scheduled-run", task))
-	go safeGo(db, "reminder-initial-run", task)
-	s.Every(5).Minutes().Do(recoverJob(db, "webhook-retries-scheduled-run", func() {
+
+	// Every scheduled job runs through runJob / runJobReport (main.go's wrapper),
+	// which times it, recovers a panic, and persists one job_runs row per
+	// invocation (issue #391): job name, trigger, duration, and outcome. The
+	// jobName is the canonical models.JobName* token so history groups per job
+	// regardless of which trigger fired it.
+
+	// Daily reminder digest + push-style channels. Reports the number of sends
+	// that succeeded; a send failure marks the run failed (issue #391 item 3).
+	reminderTask := func() (int, error) { return services.SendRemindersWithRateLimit(db, *cfg) }
+	s.Every(1).Day().At(cfg.ReminderTime).Do(recoverJobReport(db, models.JobNameDailyReminders, models.JobTriggerScheduled, reminderTask))
+	go safeGoReport(db, models.JobNameDailyReminders, models.JobTriggerInitial, reminderTask)
+
+	s.Every(5).Minutes().Do(recoverJob(db, models.JobNameWebhookRetries, models.JobTriggerScheduled, func() error {
 		services.ProcessWebhookRetries(db, *cfg)
+		return nil
 	}))
-	// Sync calendar subscriptions regularly (rate-limited via job lock)
-	calendarSyncTask := func() {
+
+	// Sync calendar subscriptions regularly (rate-limited via job lock).
+	calendarSyncTask := func() error {
 		services.SyncCalendarsWithRateLimit(db, *cfg)
+		return nil
 	}
-	s.Every(cfg.CalDAVSyncIntervalHours).Hours().Do(recoverJob(db, "calendar-sync-scheduled-run", calendarSyncTask))
-	go safeGo(db, "calendar-sync-initial-run", calendarSyncTask)
+	s.Every(cfg.CalDAVSyncIntervalHours).Hours().Do(recoverJob(db, models.JobNameCalendarSync, models.JobTriggerScheduled, calendarSyncTask))
+	go safeGo(db, models.JobNameCalendarSync, models.JobTriggerInitial, calendarSyncTask)
 
 	// Purge soft-deleted rows past their retention window (T26).
-	s.Every(24).Hours().Do(recoverJob(db, "purge-scheduled-run", func() {
+	purgeDeletedTask := func() error {
 		services.PurgeDeletedRows(db, *cfg)
-	}))
-	go safeGo(db, "purge-initial-run", func() {
-		services.PurgeDeletedRows(db, *cfg)
-	})
+		return nil
+	}
+	s.Every(24).Hours().Do(recoverJob(db, models.JobNamePurgeDeleted, models.JobTriggerScheduled, purgeDeletedTask))
+	go safeGo(db, models.JobNamePurgeDeleted, models.JobTriggerInitial, purgeDeletedTask)
 
 	// Purge expired audit events past their retention window (T18).
-	s.Every(24).Hours().Do(recoverJob(db, "audit-purge-scheduled-run", func() {
+	auditPurgeTask := func() error {
 		services.PurgeExpiredAuditEventsScheduled(db, *cfg)
-	}))
-	go safeGo(db, "audit-purge-initial-run", func() {
-		services.PurgeExpiredAuditEventsScheduled(db, *cfg)
-	})
+		return nil
+	}
+	s.Every(24).Hours().Do(recoverJob(db, models.JobNameAuditPurge, models.JobTriggerScheduled, auditPurgeTask))
+	go safeGo(db, models.JobNameAuditPurge, models.JobTriggerInitial, auditPurgeTask)
 
 	// Purge expired system_events past their retention window (issue #424).
-	s.Every(24).Hours().Do(recoverJob(db, "system-event-purge-scheduled-run", func() {
+	systemEventPurgeTask := func() error {
 		services.PurgeExpiredSystemEventsScheduled(db, *cfg)
-	}))
-	go safeGo(db, "system-event-purge-initial-run", func() {
-		services.PurgeExpiredSystemEventsScheduled(db, *cfg)
-	})
+		return nil
+	}
+	s.Every(24).Hours().Do(recoverJob(db, models.JobNameSystemEventPurge, models.JobTriggerScheduled, systemEventPurgeTask))
+	go safeGo(db, models.JobNameSystemEventPurge, models.JobTriggerInitial, systemEventPurgeTask)
+
+	// Purge expired job_runs past their retention window (issue #391).
+	jobRunPurgeTask := func() error {
+		services.PurgeExpiredJobRunsScheduled(db, *cfg)
+		return nil
+	}
+	s.Every(24).Hours().Do(recoverJob(db, models.JobNameJobRunPurge, models.JobTriggerScheduled, jobRunPurgeTask))
+	go safeGo(db, models.JobNameJobRunPurge, models.JobTriggerInitial, jobRunPurgeTask)
 
 	// Emit overdue-cadence webhooks daily (T19). Job-lock guarded so a
-	// multi-instance deploy does not double-fire.
-	s.Every(24).Hours().Do(recoverJob(db, "cadence-overdue-scheduled-run", func() {
-		services.ProcessOverdueCadences(db, *cfg)
-	}))
-	go safeGo(db, "cadence-overdue-initial-run", func() {
-		services.ProcessOverdueCadences(db, *cfg)
-	})
+	// multi-instance deploy does not double-fire. Reports the number emitted.
+	cadenceOverdueTask := func() (int, error) { return services.ProcessOverdueCadences(db, *cfg) }
+	s.Every(24).Hours().Do(recoverJobReport(db, models.JobNameCadenceOverdue, models.JobTriggerScheduled, cadenceOverdueTask))
+	go safeGoReport(db, models.JobNameCadenceOverdue, models.JobTriggerInitial, cadenceOverdueTask)
 
 	// Detect event-driven reach-out suggestions daily (issue #177). Job-lock
-	// guarded so a multi-instance deploy does not double-fire.
-	s.Every(24).Hours().Do(recoverJob(db, "reach-out-detection-scheduled-run", func() {
-		services.DetectReachOutSuggestions(db, *cfg)
-	}))
-	go safeGo(db, "reach-out-detection-initial-run", func() {
-		services.DetectReachOutSuggestions(db, *cfg)
-	})
+	// guarded so a multi-instance deploy does not double-fire. Reports the
+	// number of suggestions created.
+	reachOutTask := func() (int, error) { return services.DetectReachOutSuggestions(db, *cfg) }
+	s.Every(24).Hours().Do(recoverJobReport(db, models.JobNameReachOutDetection, models.JobTriggerScheduled, reachOutTask))
+	go safeGoReport(db, models.JobNameReachOutDetection, models.JobTriggerInitial, reachOutTask)
 
 	// Sync Immich enrichment regularly (T16). Job-lock guarded so a
 	// multi-instance deploy does not double-sync.
-	immichSyncTask := func() {
+	immichSyncTask := func() error {
 		services.SyncImmichWithRateLimit(db, *cfg)
+		return nil
 	}
-	s.Every(cfg.ImmichSyncIntervalHours).Hours().Do(recoverJob(db, "immich-sync-scheduled-run", immichSyncTask))
-	go safeGo(db, "immich-sync-initial-run", immichSyncTask)
+	s.Every(cfg.ImmichSyncIntervalHours).Hours().Do(recoverJob(db, models.JobNameImmichSync, models.JobTriggerScheduled, immichSyncTask))
+	go safeGo(db, models.JobNameImmichSync, models.JobTriggerInitial, immichSyncTask)
 
 	// Check the live database for corruption on a schedule (issue #273).
 	// Job-lock guarded, config-gated (DB_INTEGRITY_CHECK_ENABLED).
-	s.Every(cfg.DBIntegrityCheckIntervalHours).Hours().Do(recoverJob(db, "db-integrity-check-scheduled-run", func() {
+	dbIntegrityTask := func() error {
 		services.CheckDBIntegrityScheduled(db, *cfg)
-	}))
-	go safeGo(db, "db-integrity-check-initial-run", func() {
-		services.CheckDBIntegrityScheduled(db, *cfg)
-	})
+		return nil
+	}
+	s.Every(cfg.DBIntegrityCheckIntervalHours).Hours().Do(recoverJob(db, models.JobNameDBIntegrityCheck, models.JobTriggerScheduled, dbIntegrityTask))
+	go safeGo(db, models.JobNameDBIntegrityCheck, models.JobTriggerInitial, dbIntegrityTask)
 
 	// Periodically prove a backup actually restores (issue #275). Job-lock
 	// guarded, config-gated (DB_RESTORE_DRILL_ENABLED).
-	s.Every(cfg.DBRestoreDrillIntervalHours).Hours().Do(recoverJob(db, "restore-drill-scheduled-run", func() {
+	restoreDrillTask := func() error {
 		services.RunRestoreDrillScheduled(db, *cfg)
-	}))
-	go safeGo(db, "restore-drill-initial-run", func() {
-		services.RunRestoreDrillScheduled(db, *cfg)
-	})
+		return nil
+	}
+	s.Every(cfg.DBRestoreDrillIntervalHours).Hours().Do(recoverJob(db, models.JobNameRestoreDrill, models.JobTriggerScheduled, restoreDrillTask))
+	go safeGo(db, models.JobNameRestoreDrill, models.JobTriggerInitial, restoreDrillTask)
 
 	// Evaluate alert conditions on a schedule (issue #428): detect
 	// failure/recovery transitions on the tracked subsystems and notify on
 	// them. Job-lock guarded, config-gated (ALERTING_ENABLED).
-	s.Every(cfg.AlertEvalIntervalMinutes).Minutes().Do(recoverJob(db, "alert-eval-scheduled-run", func() {
+	alertEvalTask := func() error {
 		services.EvaluateAlerts(db, *cfg)
-	}))
-	go safeGo(db, "alert-eval-initial-run", func() {
-		services.EvaluateAlerts(db, *cfg)
-	})
+		return nil
+	}
+	s.Every(cfg.AlertEvalIntervalMinutes).Minutes().Do(recoverJob(db, models.JobNameAlertEval, models.JobTriggerScheduled, alertEvalTask))
+	go safeGo(db, models.JobNameAlertEval, models.JobTriggerInitial, alertEvalTask)
 
 	go s.StartBlocking()
 

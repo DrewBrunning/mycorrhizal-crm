@@ -196,7 +196,7 @@ func TestSendReminders_DispatchesToNtfy(t *testing.T) {
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{UseResend: true, ResendAPIKey: "k", ResendFromEmail: "noreply@example.com", ReminderTime: "12:00"}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 
 	require.Equal(t, 1, fake.count(), "the ntfy topic must receive exactly one POST")
 	assert.Equal(t, "/my-topic", fake.hits[0], "the POST must go to /{topic}")
@@ -210,7 +210,7 @@ func TestSendReminders_DispatchesToNtfy(t *testing.T) {
 	assert.Nil(t, deliveries[0].Error)
 
 	// Second run: the sent delivery makes the reminder not-due for ntfy.
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 	assert.Equal(t, 1, fake.count(), "the sent delivery must prevent a second ntfy POST")
 }
 
@@ -229,7 +229,7 @@ func TestSendReminders_ChannelFailureIsolation(t *testing.T) {
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{UseResend: true, ResendAPIKey: "k", ResendFromEmail: "noreply@example.com", ReminderTime: "12:00", JWTSecretKey: "test-jwt-secret-that-is-long-enough"}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersExpectErrT(t, db, cfg)
 
 	// ntfy succeeded, gotify failed — both delivered independently.
 	var ntfyHits, gotifyHits int
@@ -255,8 +255,8 @@ func TestSendReminders_ChannelFailureIsolation(t *testing.T) {
 	assert.Equal(t, "sent", statusByChannel["ntfy"])
 	assert.Equal(t, "failed", statusByChannel["gotify"])
 
-	// A second run retries only the failed gotify channel.
-	require.NoError(t, SendReminders(db, cfg))
+	// A second run retries only the failed gotify channel (still 500).
+	sendRemindersExpectErrT(t, db, cfg)
 
 	ntfyHits, gotifyHits = 0, 0
 	for _, p := range fake.hits {
@@ -289,7 +289,7 @@ func TestSendReminders_PrivateAddressPerPolicy(t *testing.T) {
 
 	// Guard on: the loopback fake server must never be reached.
 	cfg.WebhookBlockPrivateURLs = true
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersExpectErrT(t, db, cfg)
 	assert.Equal(t, 0, fake.count(), "the guarded dispatch must never reach a private-address target")
 
 	var deliveries []models.NotificationDelivery
@@ -299,9 +299,9 @@ func TestSendReminders_PrivateAddressPerPolicy(t *testing.T) {
 	require.NotNil(t, deliveries[0].Error)
 	assert.Contains(t, *deliveries[0].Error, "private or loopback", "the delivery record must carry the SSRF reason")
 
-	// Guard off (default): the same private target is reached.
+	// Guard off (default): the same private target is reached and succeeds.
 	cfg.WebhookBlockPrivateURLs = false
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 	require.Equal(t, 1, fake.count(), "the default (unfiltered) policy must reach a private ntfy server")
 }
 
@@ -331,7 +331,7 @@ func TestSendReminders_PushPrivateAddressBlocked(t *testing.T) {
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{ReminderTime: "12:00", WebhookBlockPrivateURLs: true}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersExpectErrT(t, db, cfg)
 
 	assert.Equal(t, 0, fake.count(), "the guarded push client must never reach a loopback endpoint")
 
@@ -368,7 +368,7 @@ func TestSendReminders_PushDeliversAndRecords(t *testing.T) {
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{ReminderTime: "12:00"}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 
 	require.Equal(t, 1, fake.count(), "the push service must receive one encrypted push")
 
@@ -407,7 +407,7 @@ func TestPushSender_RemovesStaleSubscription(t *testing.T) {
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{ReminderTime: "12:00"}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 
 	var remaining int64
 	require.NoError(t, db.Model(&models.PushSubscription{}).Where("id = ?", sub.ID).Count(&remaining).Error)
@@ -436,7 +436,7 @@ func TestSendReminders_EmailAndNtfyBothDispatch(t *testing.T) {
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{UseResend: true, ResendAPIKey: "k", ResendFromEmail: "noreply@example.com", ReminderTime: "12:00"}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 
 	assert.Equal(t, 1, emailCalls, "the email digest must dispatch")
 	assert.Equal(t, 1, fake.count(), "ntfy must dispatch")
@@ -690,8 +690,10 @@ func TestSendReminders_JobLockStillPreventsDoubleSend(t *testing.T) {
 	defer func() { ReminderMinInterval = originalInterval }()
 
 	cfg := config.Config{ReminderTime: "12:00"}
-	require.NoError(t, SendRemindersWithRateLimit(db, cfg))
-	require.NoError(t, SendRemindersWithRateLimit(db, cfg))
+	_, err := SendRemindersWithRateLimit(db, cfg)
+	require.NoError(t, err)
+	_, err = SendRemindersWithRateLimit(db, cfg)
+	require.ErrorIs(t, err, ErrJobSkipped, "a rate-limited run is reported as skipped (issue #391)")
 
 	assert.Equal(t, 1, fake.count(), "the job lock must prevent a second dispatch run")
 }
@@ -1056,7 +1058,7 @@ func TestSendReminders_FCMDelivers(t *testing.T) {
 	require.NoError(t, os.WriteFile(saPath, data, 0o600))
 
 	cfg := config.Config{ReminderTime: "12:00", FCMServiceAccountFile: saPath}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 
 	require.Equal(t, 1, fake.count(), "the FCM endpoint must receive one messages:send")
 	assert.Equal(t, "/projects/my-project/messages:send", fake.hits[0])
@@ -1121,7 +1123,7 @@ func TestSendReminders_FCMStaleRegistrationDropped(t *testing.T) {
 	require.NoError(t, os.WriteFile(saPath, data, 0o600))
 
 	cfg := config.Config{ReminderTime: "12:00", FCMServiceAccountFile: saPath}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 
 	var remaining int64
 	require.NoError(t, db.Model(&models.DeviceRegistration{}).Where("id = ?", device.ID).Count(&remaining).Error)
@@ -1148,7 +1150,7 @@ func TestSendReminders_APNSNeverMarkedSent(t *testing.T) {
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{ReminderTime: "12:00"}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 
 	var deliveries []models.NotificationDelivery
 	require.NoError(t, db.Find(&deliveries).Error)
@@ -1199,7 +1201,7 @@ func TestSendReminders_PushChannelDispatchToBoth(t *testing.T) {
 	require.NoError(t, os.WriteFile(saPath, data, 0o600))
 
 	cfg := config.Config{ReminderTime: "12:00", FCMServiceAccountFile: saPath}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 
 	// The web push POST goes to /push, the FCM send to /projects/...
 	webHits, fcmHits := 0, 0

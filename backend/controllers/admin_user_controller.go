@@ -1,12 +1,14 @@
 package controllers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"mycorrhizal/attachments"
 	"mycorrhizal/config"
@@ -20,12 +22,38 @@ import (
 	"gorm.io/gorm"
 )
 
+// recordManualJobRun persists one job_runs row (trigger "manual") for an
+// operator-forced run via the /admin/trigger-* endpoints, so a hand-triggered
+// run shows up in the background-job monitor alongside the scheduled ones
+// (issue #391).
+func recordManualJobRun(ctx context.Context, db *gorm.DB, jobName string, start time.Time, items *int, err error) {
+	result := models.JobRunResultSuccess
+	errStr := ""
+	if err != nil {
+		result = models.JobRunResultFailure
+		errStr = err.Error()
+		items = nil
+	}
+	models.RecordJobRun(ctx, db, models.JobRun{
+		JobName:        jobName,
+		Trigger:        models.JobTriggerManual,
+		StartedAt:      start,
+		FinishedAt:     time.Now(),
+		Result:         result,
+		Error:          errStr,
+		ItemsProcessed: items,
+	})
+}
+
 // TriggerReminders manually triggers the reminder email job (admin only)
 func TriggerReminders(c *gin.Context, cfg config.Config) {
 	log := logger.FromContext(c)
 	db := c.MustGet("db").(*gorm.DB)
 
-	if err := services.SendReminders(db, cfg); err != nil {
+	start := time.Now()
+	sent, err := services.SendReminders(db, cfg)
+	recordManualJobRun(c.Request.Context(), db, models.JobNameDailyReminders, start, &sent, err)
+	if err != nil {
 		log.Error().Err(err).Msg("Failed to trigger reminder emails")
 		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to send reminder emails").WithError(err))
 		return
@@ -37,8 +65,10 @@ func TriggerReminders(c *gin.Context, cfg config.Config) {
 // TriggerPurge manually triggers the delete-purge job (admin only, T26).
 func TriggerPurge(c *gin.Context, cfg config.Config) {
 	db := c.MustGet("db").(*gorm.DB)
+	start := time.Now()
 	services.PurgeSoftDeletedRows(db, cfg)
 	services.PurgeExpiredContactShares(db, cfg)
+	recordManualJobRun(c.Request.Context(), db, models.JobNamePurgeDeleted, start, nil, nil)
 	c.JSON(http.StatusOK, gin.H{"message": "Purge completed"})
 }
 
