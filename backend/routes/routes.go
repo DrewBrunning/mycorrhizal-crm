@@ -533,6 +533,10 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// Operational-event timeline (issue #424) — instance-wide
 			// diagnostics, admin-only.
 			admin.GET("/system-events", controllers.ListSystemEvents)
+
+			// Per-subsystem last-known-good state (issue #427), derived on
+			// read from system_events — instance-wide diagnostics, admin-only.
+			admin.GET("/subsystem-health", controllers.GetSubsystemHealth)
 		}
 	}
 

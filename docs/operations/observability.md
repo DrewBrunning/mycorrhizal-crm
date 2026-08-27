@@ -107,6 +107,37 @@ their events and log lines carry the ID.
 (`system_event_purge`) hard-deletes rows older than the window; `<=0` disables the purge (it never
 deletes everything). Rows are present in a backup and are only as fresh as the snapshot.
 
+## Per-subsystem health (last-known-good)
+
+`GET /admin/subsystem-health` (admin-only) rolls the timeline up into a **last-known-good** state per
+subsystem (issue [#427](https://github.com/DrewBrunning/mycorrhizal-crm/issues/427)): for
+`contact_sync`, `calendar_sync`, `notification`, `backup`, `scheduler`, and `webhook` it reports the
+current `status` (`healthy` / `failing` / `unknown`), `last_attempt_at`, `last_success_at`,
+`last_failure_at`, `incident_first_failure_at` (the first failure of the current unbroken run),
+`consecutive_failures`, and the most recent `last_error`. "A sync failed" becomes "the last success
+was 17:04, it has failed 9 times in a row, and this incident started at 17:19".
+
+It is **derived on read** by folding `system_events` (each `*_completed` / `*_failed` / `*_sent` row
+for the subsystem's `component` advances the fold) — there is no second write path and no stored
+state, so it survives a restart for free and can never drift from the events it summarizes. Each
+`*_completed`/`*_failed` event advances the state; a success resets `consecutive_failures` to 0 and
+closes the incident.
+
+**Limitation**: `scheduler` and `webhook` emit only a *failure* event today (`job_failed` on a
+recovered panic; `integration_failed` once a delivery exhausts its retry budget). They can therefore
+report `failing` / `unknown` and a rising `consecutive_failures`, but never `healthy`, and their
+incident cannot auto-close until a success-side event exists — webhook via
+[#422](https://github.com/DrewBrunning/mycorrhizal-crm/issues/422); the scheduler intentionally does
+not emit `job_completed` (a per-tick row would swamp the timeline). The token sets are lists, so a
+future `job_completed` / `backup_completed` producer needs no code change.
+
+Consumers of this state: `/metrics`
+([#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389)) exports the counters as gauges;
+error aggregation ([#426](https://github.com/DrewBrunning/mycorrhizal-crm/issues/426)) and alerting
+on `Healthy`↔`Failing` transitions
+([#428](https://github.com/DrewBrunning/mycorrhizal-crm/issues/428)) read it directly. Rendered at
+`/system-events` (web) and Settings → System events (Android), above the event timeline.
+
 ## Related knobs
 
 | env var | default | effect |

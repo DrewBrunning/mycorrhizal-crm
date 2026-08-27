@@ -8099,6 +8099,38 @@ paths:
         "403":
           description: Not an admin, or an API token was used on an admin path.
 
+  /admin/subsystem-health:
+    get:
+      summary: Per-subsystem last-known-good state (admin)
+      operationId: adminGetSubsystemHealth
+      description: >
+        The last-known-good state (issue #427) of every tracked operational
+        subsystem — CardDAV sync, CalDAV sync, notification dispatch,
+        backup/restore drill, the scheduler, and webhook delivery. For each:
+        current status, last attempt / success / failure, the first failure of
+        the current incident, the consecutive-failure count, and the most
+        recent error. Derived on read from the operational-event stream
+        (system_events), so it survives a restart and never drifts. The
+        scheduler and webhook subsystems emit only a failure event today, so
+        they report `failing` / `unknown` (never `healthy`) until a
+        success-side event exists. Instance-wide, admin-only, read-only.
+      responses:
+        "200":
+          description: One entry per tracked subsystem.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subsystems:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SubsystemHealth"
+        "401":
+          description: Not authenticated (cookie or full-scope bearer token required).
+        "403":
+          description: Not an admin, or an API token was used on an admin path.
+
   /admin/users:
     get:
       summary: List all users (admin)
@@ -9597,6 +9629,29 @@ components:
         error: { type: string, description: "Sanitized, length-capped error string on the failure path" }
         detail: { type: string, description: "Bounded low-cardinality context (counts, subsystem names) — never a contact id or raw URL" }
         user_id: { type: integer, nullable: true, description: "The acting user when attributable; absent for background work" }
+    SubsystemHealth:
+      type: object
+      description: >
+        The last-known-good state of one operational subsystem (issue #427),
+        derived on read from the system_events stream. `subsystem` is the
+        system_events `component` value (contact_sync, calendar_sync,
+        notification, backup, scheduler, webhook).
+      properties:
+        subsystem: { type: string, enum: [contact_sync, calendar_sync, notification, backup, scheduler, webhook] }
+        status:
+          type: string
+          enum: [healthy, failing, unknown]
+          description: "healthy = last terminal event was a success; failing = last was a failure; unknown = no terminal event on record"
+        last_attempt_at: { type: string, format: date-time, nullable: true, description: "Most recent terminal event (success or failure)" }
+        last_success_at: { type: string, format: date-time, nullable: true }
+        last_failure_at: { type: string, format: date-time, nullable: true }
+        incident_first_failure_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: "First failure of the current unbroken run — non-null exactly when consecutive_failures > 0"
+        consecutive_failures: { type: integer, description: "Failures in a row since the last success; a success resets it to 0" }
+        last_error: { type: string, description: "Sanitized error of the most recent failure; empty unless status is failing" }
     AuditEvent:
       type: object
       description: One immutable create/update/delete or auth/admin lifecycle record in the audit log (T18, issue #381).
