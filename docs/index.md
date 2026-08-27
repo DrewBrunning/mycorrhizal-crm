@@ -25,5 +25,6 @@ The name comes from mycorrhiza, the symbiotic network fungi form with plant root
 - [Observability: logs, correlation IDs, and the system-event timeline](operations/observability.md)
 - [Security checklist (OWASP ASVS L2 + API Security Top 10)](security/asvs-l2.md)
 - [Deployment security baseline (operator security boundary)](security/deployment-baseline.md)
+- [Incident response & credential rotation runbook](security/incident-response.md)
 - [Verifying release artifacts](security/release-verification.md)
 
