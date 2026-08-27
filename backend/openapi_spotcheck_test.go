@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/routes"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -28,8 +28,7 @@ func TestOpenAPIResponseSpotCheck(t *testing.T) {
 	cfg := openAPITestConfig()
 	cfg.DBPath = filepath.Join(t.TempDir(), "spot.db")
 
-	db, err := database.InitDB(cfg.DBPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, cfg.DBPath)
 
 	router := gin.New()
 	router.Use(func(c *gin.Context) {

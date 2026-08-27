@@ -3,11 +3,10 @@ package controllers
 import (
 	"encoding/json"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -312,9 +311,7 @@ func TestGetContacts_ContactInfoFilterFeedUnaffected(t *testing.T) {
 // urls columns are the hand-written migration SQL — not GORM's AutoMigrate
 // derivation.
 func TestGetContacts_ContactInfoFilterRealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "t103-real-filter.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "realdb-contactinfo", Password: "password123!A", Email: "realdb-contactinfo@example.com"}
 	require.NoError(t, db.Create(&user).Error)

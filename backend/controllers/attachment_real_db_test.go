@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 
@@ -29,8 +29,7 @@ import (
 // of them) exactly as main.go does, ahead of the route handlers.
 func setupAttachmentRouter(t *testing.T) (*gorm.DB, *gin.Engine, models.User, string) {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "attachments-test.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	user := models.User{Username: "attachments", Password: "password123!A", Email: "attachments@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 

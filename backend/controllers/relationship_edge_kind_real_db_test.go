@@ -3,12 +3,11 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -28,9 +27,7 @@ import (
 // whole point of T37 is that BeforeSave must NOT re-derive and discard it —
 // exactly the class of bug AutoMigrate-based tests cannot see.
 func TestThinContactPetKind_RealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "pet-kind-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "petkind", Password: "password123!A", Email: "petkind@example.com"}
 	require.NoError(t, db.Create(&user).Error)

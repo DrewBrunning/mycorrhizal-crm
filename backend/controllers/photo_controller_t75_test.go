@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"testing"
 
 	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
@@ -92,8 +91,7 @@ func assertCardOnlyDataPreserved(t *testing.T, c models.Contact) {
 // shape that, before T75's BeforeSave merge, silently destroyed every
 // Card-only member.
 func TestAddPhotoToContact_PreservesCardOnlyData(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "t75-photo-ctrl.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "t75photoc", Password: "password123!A", Email: "t75photoc@example.com"}
 	require.NoError(t, db.Create(&user).Error)

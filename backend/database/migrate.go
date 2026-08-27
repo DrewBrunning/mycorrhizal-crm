@@ -84,6 +84,21 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 	return db, nil
 }
 
+// OpenMigratedFile opens dbPath with this app's standard connection pragmas
+// (journal_mode(WAL), foreign_keys(1), busy_timeout(5000), _txlock=immediate --
+// see openDSN) but WITHOUT running migrations. dbPath must already be at the
+// current schema: this is for callers that copied a pre-migrated database file
+// (internal/dbtest builds the migrated schema once per test binary and hands
+// each test a byte copy) or are reopening a database the same process already
+// migrated. Use InitDB for a fresh or possibly-stale database.
+func OpenMigratedFile(dbPath string) (*gorm.DB, error) {
+	db, err := gorm.Open(sqlite.Open(openDSN(dbPath)), &gorm.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect with GORM: %w", err)
+	}
+	return db, nil
+}
+
 // newMigrator builds a golang-migrate instance over the EMBEDDED migrations FS
 // for an already-open database handle. Every migration entry point in this
 // package goes through it, so the source of migration SQL can never differ

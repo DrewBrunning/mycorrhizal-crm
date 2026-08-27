@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
@@ -56,8 +55,7 @@ func cardFixture(given, surname, email, phone string) contactmodel.Card {
 }
 
 func TestUploadImportRecords_PreviewDetectsDuplicateAndComputesDiff(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96-records.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "t96records", Password: "password123!A", Email: "t96records@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -113,8 +111,7 @@ func TestUploadImportRecords_PreviewDetectsDuplicateAndComputesDiff(t *testing.T
 // struct can't see the difference (absent and `[]` both become a nil slice),
 // so this reads the raw JSON body.
 func TestUploadImportRecords_MergeDiffArraysSerializeAsEmptyArrays(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96-records-null.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "t96recordsn", Password: "password123!A", Email: "t96recordsn@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -157,8 +154,7 @@ func TestUploadImportRecords_MergeDiffArraysSerializeAsEmptyArrays(t *testing.T)
 }
 
 func TestUploadImportRecords_ConfirmViaVCFRouteMergesIntoExisting(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96-records-merge.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "t96recordsm", Password: "password123!A", Email: "t96recordsm@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -220,8 +216,7 @@ func TestUploadImportRecords_ConfirmViaVCFRouteMergesIntoExisting(t *testing.T) 
 }
 
 func TestUploadImportRecords_ConfirmAddsNewContact(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96-records-add.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "t96recordsa", Password: "password123!A", Email: "t96recordsa@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -259,8 +254,7 @@ func TestUploadImportRecords_ConfirmAddsNewContact(t *testing.T) {
 }
 
 func TestUploadImportRecords_WithinBatchDuplicateDefaultsToSkip(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96-records-batch.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "t96recordsb", Password: "password123!A", Email: "t96recordsb@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -300,8 +294,7 @@ func TestUploadImportRecords_WithinBatchDuplicateDefaultsToSkip(t *testing.T) {
 }
 
 func TestUploadImportRecords_ValidationRejectsEmptyBatch(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96-records-empty.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "t96recordse", Password: "password123!A", Email: "t96recordse@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -319,8 +312,7 @@ func TestUploadImportRecords_ValidationRejectsEmptyBatch(t *testing.T) {
 }
 
 func TestUploadImportRecords_NoAuth_Unauthorized(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96-records-noauth.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	_ = db
 
 	gin.SetMode(gin.ReleaseMode)

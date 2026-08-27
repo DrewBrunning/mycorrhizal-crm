@@ -2,12 +2,11 @@ package services
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -18,8 +17,7 @@ import (
 // is older than SYSTEM_EVENT_RETENTION_DAYS are removed, newer rows survive,
 // and a non-positive retention disables purging entirely.
 func TestPurgeExpiredSystemEvents(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "sysevent-purge.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 	// InitDB's migration run records a migration_completed event; clear it so
@@ -58,8 +56,7 @@ func TestPurgeExpiredSystemEvents(t *testing.T) {
 // TestPurgeExpiredSystemEventsScheduled_JobLock proves the scheduled entry
 // point takes the job lock and does not panic on repeated invocation.
 func TestPurgeExpiredSystemEventsScheduled_JobLock(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "sysevent-purge-lock.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 	// InitDB's migration run records a migration_completed event; clear it so

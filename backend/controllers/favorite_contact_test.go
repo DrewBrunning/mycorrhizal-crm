@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -168,9 +167,7 @@ func TestFavoriteContact_BumpsETagAndChangeFeed(t *testing.T) {
 // migration SQL, and the flag must round-trip through a real
 // database.InitDB-migrated file DB.
 func TestFavoriteFlag_RealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "favorite-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "realdb-fav", Password: "password123!A", Email: "realdb-fav@example.com"}
 	require.NoError(t, db.Create(&user).Error)

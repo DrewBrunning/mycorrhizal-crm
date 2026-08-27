@@ -5,13 +5,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -40,8 +39,7 @@ func twoFactorTestEnv(t *testing.T) (*gorm.DB, *gin.Engine, *config.Config, mode
 	t.Helper()
 	gin.SetMode(gin.ReleaseMode)
 
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "test.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	cfg := &config.Config{JWTSecretKey: testJWTSecret, JWTExpiryHours: 24}
 

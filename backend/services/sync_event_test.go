@@ -3,11 +3,10 @@ package services
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
@@ -16,8 +15,7 @@ import (
 )
 
 func TestRecordSyncEvent_Success(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "sync-ev-ok.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
@@ -40,8 +38,7 @@ func TestRecordSyncEvent_Success(t *testing.T) {
 }
 
 func TestRecordSyncEvent_Failure(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "sync-ev-fail.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 

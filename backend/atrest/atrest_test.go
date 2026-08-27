@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -153,8 +153,7 @@ func TestDecrypt_EncryptedValueWhenUninitializedFailsClosed(t *testing.T) {
 }
 
 func TestVerifyBackupDecryptable_NoKeyConfiguredPasses(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "verify-nokey.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
@@ -165,8 +164,7 @@ func TestVerifyBackupDecryptable_NoKeyConfiguredPasses(t *testing.T) {
 }
 
 func TestVerifyBackupDecryptable_MissingDEKRowPasses(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "verify-norow.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
@@ -180,8 +178,7 @@ func TestVerifyBackupDecryptable_MissingDEKRowPasses(t *testing.T) {
 }
 
 func TestVerifyBackupDecryptable_CorrectKeyPasses(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "verify-correct.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
@@ -195,8 +192,7 @@ func TestVerifyBackupDecryptable_CorrectKeyPasses(t *testing.T) {
 }
 
 func TestVerifyBackupDecryptable_WrongKeyFailsClosed(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "verify-wrong.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
@@ -208,7 +204,7 @@ func TestVerifyBackupDecryptable_WrongKeyFailsClosed(t *testing.T) {
 
 	wrong := make([]byte, keySize)
 	wrong[0] = 0xFF
-	err = VerifyBackupDecryptable(db, wrong)
+	err := VerifyBackupDecryptable(db, wrong)
 	require.Error(t, err, "a backup keyed under a different master key must fail restore verification")
 	assert.Contains(t, err.Error(), "does not unwrap under the current master key")
 }

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,8 +30,7 @@ import (
 //     the identical behavior, with its ETag derived from the UUID string PK.
 func TestActivityAndLifeEventETag_RealMigratedSchema(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "etag-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := User{Username: "realdbtester", Password: "password123!A", Email: "realdb@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -92,8 +91,7 @@ func TestActivityAndLifeEventETag_RealMigratedSchema(t *testing.T) {
 // agree.
 func TestLifeEventCategory_RealMigratedSchema(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "category-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := User{Username: "categorytester", Password: "password123!A", Email: "category@example.com"}
 	require.NoError(t, db.Create(&user).Error)

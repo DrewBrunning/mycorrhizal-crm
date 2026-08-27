@@ -3,12 +3,11 @@ package controllers
 import (
 	"encoding/json"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -44,8 +43,7 @@ type searchAct struct {
 // the search routes wired.
 func searchRealRouter(t *testing.T) (*gorm.DB, *gin.Engine) {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "search-ctrl.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
