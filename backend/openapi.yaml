@@ -13,7 +13,8 @@ info:
 
     T8 (T8) extended this spec to cover
     the whole REST surface: every route registered by
-    backend/routes/routes.go under /api/v1 plus the unversioned /health. The
+    backend/routes/routes.go under /api/v1 plus the unversioned health
+    endpoints (/health, /health/live, /health/ready — issue #421). The
     drift test (backend/openapi_test.go) enumerates the live Gin router and
     fails on any registered route with no spec entry, so this file cannot go
     stale again.
@@ -65,18 +66,72 @@ security:
   - sessionCookie: []
   - bearerAuth: []
 paths:
-  # Unversioned health endpoint (registered outside /api/v1 in routes.go —
-  # served at the app root, hence the path-level server override).
+  # Unversioned health surface (registered outside /api/v1 in routes.go —
+  # served at the app root, hence the path-level server override). Three
+  # endpoints, each answering a different operator question (issue #421); all
+  # unauthenticated and secret-free.
+  /health/live:
+    servers:
+      - url: /
+    get:
+      summary: Liveness probe
+      description: >
+        Is the process running? Returns immediately, touching no database,
+        filesystem, or config. This is what a container restart policy should
+        hit — it must never fail because a dependency is slow or down.
+      operationId: getHealthLive
+      security: []
+      responses:
+        "200":
+          description: The process is alive.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LivenessResponse"
+  /health/ready:
+    servers:
+      - url: /
+    get:
+      summary: Readiness probe
+      description: >
+        Can this instance serve requests? Checks database connectivity,
+        migration state (applied, not dirty, none pending), and required
+        filesystem access. This is what a load balancer should gate traffic on.
+      operationId: getHealthReady
+      security: []
+      responses:
+        "200":
+          description: The instance is ready to serve.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessResponse"
+        "503":
+          description: >
+            Not ready (same body shape, status not_ready) — the database or
+            filesystem is unreachable, or migrations are pending/dirty.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessResponse"
   /health:
     servers:
       - url: /
     get:
-      summary: Health check
+      summary: Deep health check
+      description: >
+        Is the CRM actually operational? Everything /health/ready checks, plus
+        the last recorded DB-integrity-check and restore-drill outcomes,
+        background-job lock state, and reachability of server-scoped
+        integrations. status is healthy | degraded | unhealthy; only a
+        database read failure returns 503. "degraded" (an optional integration
+        unreachable, a scheduled job stale) is still 200 — degraded-but-alive
+        is not down.
       operationId: getHealth
       security: []
       responses:
         "200":
-          description: The service is healthy.
+          description: The service is healthy or degraded.
           content:
             application/json:
               schema:
@@ -8325,10 +8380,37 @@ components:
       properties:
         message: { type: string }
         redirect_url: { type: string, description: "Present only for OIDC sessions whose provider advertises an end-session endpoint." }
-    HealthResponse:
+    LivenessResponse:
       type: object
       properties:
-        status: { type: string, enum: [healthy, unhealthy] }
+        status: { type: string, enum: [live] }
+    ReadinessResponse:
+      type: object
+      description: >
+        checks maps each readiness facet (database, migrations, filesystem) to
+        its status; any failed facet makes the overall status not_ready and the
+        response 503.
+      properties:
+        status: { type: string, enum: [ready, not_ready] }
+        checks:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              status: { type: string, enum: [ok, failed] }
+              reason: { type: string }
+    HealthCheckDetail:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, degraded, unhealthy, not_configured] }
+        reason: { type: string }
+    HealthResponse:
+      type: object
+      description: >
+        The flat status/database/version fields are retained from the
+        pre-split /health; the per-facet breakdown is under checks.
+      properties:
+        status: { type: string, enum: [healthy, degraded, unhealthy] }
         timestamp: { type: string, format: date-time }
         database:
           type: object
@@ -8336,6 +8418,33 @@ components:
             status: { type: string, enum: [healthy, unhealthy] }
             response_time_ms: { type: number }
         version: { type: string, example: "0.1.0" }
+        commit: { type: string }
+        build_date: { type: string }
+        checks:
+          type: object
+          properties:
+            status: { type: string, enum: [healthy, degraded, unhealthy] }
+            database: { $ref: "#/components/schemas/HealthCheckDetail" }
+            migrations: { $ref: "#/components/schemas/HealthCheckDetail" }
+            integrity_check: { $ref: "#/components/schemas/HealthCheckDetail" }
+            restore_drill: { $ref: "#/components/schemas/HealthCheckDetail" }
+            background_jobs:
+              type: object
+              properties:
+                status: { type: string, enum: [ok, degraded] }
+                reason: { type: string }
+                jobs:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name: { type: string }
+                      last_run_at: { type: string, format: date-time }
+                      locked: { type: boolean }
+                      stuck: { type: boolean }
+            integrations:
+              type: object
+              additionalProperties: { $ref: "#/components/schemas/HealthCheckDetail" }
 
     # --- Auth & users ---
     UserRegistrationInput:

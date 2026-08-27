@@ -160,11 +160,14 @@ ENV GIN_MODE=release
 # nginx listens on 8080 (no root needed to bind)
 EXPOSE 8080
 
-# Health check hits nginx, which proxies /health to the backend. JSON-array
-# form (hadolint DL3025): wget --spider already exits non-zero on failure, so
-# the shell form's `|| exit 1` was redundant.
+# Health check hits nginx, which proxies to the backend. It probes
+# /health/live (liveness, issue #421) — is the process up — NOT /health (deep
+# check) or /health/ready: a restart policy must not cycle the container just
+# because an optional integration is unreachable or migrations are mid-run.
+# JSON-array form (hadolint DL3025): wget --spider already exits non-zero on
+# failure, so the shell form's `|| exit 1` was redundant.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health"]
+    CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health/live"]
 
 # Entrypoint remaps PUID/PGID + chowns data dirs, then launches supervisord
 ENTRYPOINT ["/app/entrypoint.sh"]

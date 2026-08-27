@@ -48,7 +48,11 @@ services:
       # Frontend and same-origin /api are both served by nginx on 8080
       - "7300:8080"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health"]
+      # Liveness (issue #421). The Go server only starts listening after
+      # InitDB's migrations and RegisterRoutes complete (backend/main.go), so a
+      # 200 here already implies the app can serve — no need for the heavier
+      # /health or /health/ready in the test gate.
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health/live"]
       interval: 2s
       timeout: 5s
       retries: 15

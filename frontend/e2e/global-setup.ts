@@ -77,7 +77,9 @@ async function waitForBackend(maxRetries = 30): Promise<void> {
 
   for (let i = 0; i < maxRetries; i++) {
     try {
-      const response = await fetch(`${APP_ORIGIN}/health`);
+      // Liveness probe (issue #421): cheapest "is it up" signal, and it never
+      // reports 503 for a degraded-but-serving backend.
+      const response = await fetch(`${APP_ORIGIN}/health/live`);
       if (response.ok) {
         console.log('Backend is ready');
         return;

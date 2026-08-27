@@ -305,6 +305,21 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
 - **Backups**: only the encrypted credential row; the external content is that service's own backup
   story.
 
+## 14. Operational self-check results (`operational_check_results`) — not user data
+
+- **Where / who**: one row per named self-check (`db_integrity_check`, `restore_drill`, and an
+  internal `_db_write_probe`), written by the scheduled jobs and read by the deep `GET /health`
+  endpoint (issue #421). No `user_id` — it is server-global operational bookkeeping, like
+  `job_executions`.
+- **What it contains**: a check name, an `ok`/`failed`/`error` status, a timestamp, and a short
+  detail string (an `integrity_check` problem line, or a restore-drill row-count mismatch such as
+  `contacts: live=10 restored=9`). **No contact data, no credentials, no PII.**
+- **Retention / deletion**: hard state, upserted in place — at most one row per check name, each
+  overwritten on the next run. Not tied to any user, so account deletion neither touches nor needs
+  to touch it. Dropped wholesale by migration `000037`'s `down.sql`.
+- **Backups**: included in the DB snapshot like any other table; carries nothing sensitive, so it
+  needs no special handling in the backup-confidentiality boundary (§10).
+
 ## Known gaps
 
 One item surfaced by walking every data type through the four questions above. It does not block this
