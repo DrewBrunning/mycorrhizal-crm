@@ -84,5 +84,11 @@ the emitted events and log lines carry the correlation ID.
   the "last-known-good" foundation this ADR's Context anticipates) is a **read-side fold** over this
   stream — `services.ComputeSubsystemHealth`, surfaced at `GET /admin/subsystem-health`. No second
   write path, no stored state: it recomputes from `system_events` on every read, so it survives a
-  restart and never drifts. `/metrics` (#389), error aggregation (#426), and transition alerting
-  (#428) consume it rather than each deriving their own.
+  restart and never drifts. `/metrics` (#389) and transition alerting (#428) consume that rollup
+  rather than each deriving their own.
+- Error aggregation ([#426](https://github.com/DrewBrunning/mycorrhizal-crm/issues/426),
+  `services.AggregateOperationalErrors`, `GET /admin/error-aggregation`) is a **sibling read-side
+  fold** over the same stream — not a consumer of `ComputeSubsystemHealth`. It buckets the failure
+  rows in a rolling window by `(component, normalized error string)` so a recurring cause collapses
+  to one counted row, and adds no persistent data of its own. `GET /admin/system-events?ids=` is the
+  exact-row drill-down from a bucket to its underlying events.

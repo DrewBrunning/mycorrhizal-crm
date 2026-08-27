@@ -8071,6 +8071,15 @@ paths:
           in: query
           required: false
           schema: { type: string, format: date-time }
+        - name: ids
+          in: query
+          required: false
+          description: >
+            Comma-separated system_events row ids — the exact-row drill-down
+            used by the error-aggregation surface (issue #426) to open the
+            events behind one cause bucket. Non-numeric tokens are skipped;
+            caps at 500.
+          schema: { type: string }
         - name: limit
           in: query
           required: false
@@ -8126,6 +8135,43 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/SubsystemHealth"
+        "401":
+          description: Not authenticated (cookie or full-scope bearer token required).
+        "403":
+          description: Not an admin, or an API token was used on an admin path.
+
+  /admin/error-aggregation:
+    get:
+      summary: Operational errors bucketed by cause (admin)
+      operationId: adminGetErrorAggregation
+      description: >
+        Operational failures over a rolling window (issue #426), aggregated by
+        *cause* rather than by raw message: one bucket per (component,
+        normalized error string), so the same failure across many runs collapses
+        to a single row with a count. Each bucket carries the count, whether it
+        recurs, the first/last time it was seen, a sample of the raw error, and
+        the exact system_events row ids behind it — pass those to
+        `GET /admin/system-events?ids=` to open the underlying events. Derived on
+        read from system_events; instance-wide, admin-only, read-only.
+      parameters:
+        - name: window_hours
+          in: query
+          required: false
+          description: Rolling window to aggregate over, in hours.
+          schema: { type: integer, default: 24, minimum: 1, maximum: 168 }
+      responses:
+        "200":
+          description: Error buckets over the window, most frequent first.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorAggregationResponse"
+        "400":
+          description: Invalid window_hours.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Not authenticated (cookie or full-scope bearer token required).
         "403":
@@ -9652,6 +9698,41 @@ components:
           description: "First failure of the current unbroken run — non-null exactly when consecutive_failures > 0"
         consecutive_failures: { type: integer, description: "Failures in a row since the last success; a success resets it to 0" }
         last_error: { type: string, description: "Sanitized error of the most recent failure; empty unless status is failing" }
+    ErrorBucket:
+      type: object
+      description: >
+        One aggregated operational-error cause over the window (issue #426):
+        every system_events failure row sharing a `component` and a normalized
+        error string, collapsed to one row with a count.
+      properties:
+        component: { type: string, description: "The system_events component the failures share" }
+        cause: { type: string, description: "The normalized error string — the low-cardinality bucket key" }
+        sample_error: { type: string, description: "The most recent raw error string in the bucket (sanitized, length-capped)" }
+        event_types:
+          type: array
+          items: { type: string }
+          description: "Sorted distinct event_type values in the bucket (usually one, e.g. sync_failed)"
+        count: { type: integer }
+        recurring: { type: boolean, description: "count >= 3 — a repeating cause, worth surfacing prominently; a single transient failure is false" }
+        first_seen: { type: string, format: date-time }
+        last_seen: { type: string, format: date-time }
+        event_ids:
+          type: array
+          items: { type: integer }
+          description: "The system_events row ids in the bucket (capped at 500); pass to GET /admin/system-events?ids="
+        event_ids_truncated: { type: boolean, description: "True when the bucket has more than 500 rows and event_ids was capped" }
+    ErrorAggregationResponse:
+      type: object
+      properties:
+        window_hours: { type: integer, description: "The rolling window aggregated over" }
+        since: { type: string, format: date-time }
+        until: { type: string, format: date-time }
+        total_events: { type: integer, description: "Total failure rows folded (across all buckets)" }
+        buckets:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorBucket"
+          description: "Most frequent first, then most recently seen"
     AuditEvent:
       type: object
       description: One immutable create/update/delete or auth/admin lifecycle record in the audit log (T18, issue #381).
