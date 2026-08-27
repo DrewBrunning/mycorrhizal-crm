@@ -34,6 +34,7 @@ type ContactSubscription struct {
 	LastSyncedAt      *time.Time `json:"last_synced_at"`
 	LastSyncStatus    string     `json:"last_sync_status"`
 	LastSyncError     string     `json:"last_sync_error"`
+	SyncHealthFields
 }
 
 // ContactSyncLink maps a synced CardDAV address object (by resource path,

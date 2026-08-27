@@ -14,6 +14,15 @@ export interface CalendarSubscription {
   last_sync_status: '' | 'success' | 'error';
   last_sync_error: string;
   created_at: string;
+  // Sync-health last-known-good state (issue #390). Always present; timestamps
+  // are null until the relevant run has happened.
+  last_attempt_at: string | null;
+  last_success_at: string | null;
+  last_failure_at: string | null;
+  consecutive_failures: number;
+  incident_first_failure_at: string | null;
+  last_run_duration_ms: number | null;
+  last_run_stats: Record<string, number>;
 }
 
 export interface CalendarSubscriptionInput {
