@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/json"
@@ -112,8 +113,17 @@ func isPrivateURL(rawURL string) bool {
 }
 
 // TriggerWebhooks fires webhooks for all active subscriptions matching eventType for the user.
-// Runs each delivery in its own goroutine (non-blocking).
-func TriggerWebhooks(db *gorm.DB, cfg config.Config, userID uint, eventType string, data interface{}) {
+// Runs each delivery in its own goroutine (non-blocking). The correlation ID
+// on ctx (if any) rides along to the delivery so a webhook receiver's log can
+// be tied back to the action that fired it (issue #425); pass
+// context.Background() from a fire-and-forget path with no correlation ID.
+func TriggerWebhooks(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, eventType string, data interface{}) {
+	// The goroutines below outlive the caller (a handler returns as soon as
+	// this function does), so detach from ctx's cancellation/deadline while
+	// keeping its values — the correlation ID rides along, but the request
+	// ending does not abort an in-flight delivery.
+	deliveryCtx := context.WithoutCancel(ctx)
+
 	var webhooks []models.Webhook
 	if err := db.Where("user_id = ? AND is_active = ? AND deleted_at IS NULL", userID, true).Find(&webhooks).Error; err != nil {
 		logger.Error().Err(err).Uint("user_id", userID).Msg("Failed to load webhooks for triggering")
@@ -142,7 +152,7 @@ func TriggerWebhooks(db *gorm.DB, cfg config.Config, userID uint, eventType stri
 		go func() {
 			deliverySem <- struct{}{}
 			defer func() { <-deliverySem }()
-			deliverWebhook(db, cfg, wh, eventType, body, 1)
+			deliverWebhook(deliveryCtx, db, cfg, wh, eventType, body, 1)
 		}()
 	}
 }
@@ -159,29 +169,58 @@ func TestWebhookDelivery(db *gorm.DB, cfg config.Config, wh models.Webhook) mode
 		db.Create(&d)
 		return d
 	}
-	return deliverWebhook(db, cfg, wh, "test", body, 1)
+	return deliverWebhook(context.Background(), db, cfg, wh, "test", body, 1)
 }
 
-func deliverWebhook(db *gorm.DB, cfg config.Config, wh models.Webhook, eventType string, body []byte, attempt int) models.WebhookDelivery {
+func deliverWebhook(ctx context.Context, db *gorm.DB, cfg config.Config, wh models.Webhook, eventType string, body []byte, attempt int) models.WebhookDelivery {
+	start := time.Now()
+	finish := func(d models.WebhookDelivery, errMsg string) models.WebhookDelivery {
+		// integration_failed once a delivery has exhausted its retries and is
+		// still failing — the point at which an operator needs to know an
+		// external integration is down (issue #424). Detail carries the event
+		// type only, never the webhook URL (#424 non-goal).
+		if errMsg != "" && attempt >= maxDeliveryAttempts {
+			durMS := time.Since(start).Milliseconds()
+			logger.Ctx(ctx).Warn().
+				Str(logger.FieldEvent, models.SysEventIntegrationFailed).
+				Str(logger.FieldComponent, logger.ComponentWebhook).
+				Str(logger.FieldResult, logger.ResultFailure).
+				Int64(logger.FieldDurationMS, durMS).
+				Uint("webhook_id", wh.ID).
+				Str(logger.FieldError, logger.SanitizeLogField(errMsg)).
+				Msg("webhook delivery exhausted its retries")
+			models.RecordSystemEvent(ctx, db, models.SystemEvent{
+				EventType: models.SysEventIntegrationFailed, Component: logger.ComponentWebhook,
+				Operation: eventType, Result: models.SysResult(logger.ResultFailure),
+				DurationMS: &durMS, Error: errMsg,
+				Detail: fmt.Sprintf("event=%s attempts=%d", eventType, attempt),
+			})
+		}
+		return d
+	}
+
 	if cfg.WebhookBlockPrivateURLs && isPrivateURL(wh.URL) {
 		errStr := "webhook URL resolves to a private or loopback address"
-		return saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, nil)
+		return finish(saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, nil), errStr)
 	}
 
 	sig := computeSignature(wh.Secret, body)
 	req, err := http.NewRequest("POST", wh.URL, bytes.NewReader(body))
 	if err != nil {
 		errStr := err.Error()
-		return saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, retryAt(attempt))
+		return finish(saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, retryAt(attempt)), errStr)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Webhook-Signature", "sha256="+sig)
 	req.Header.Set("X-Mycorrhizal-Event", eventType)
+	if id := logger.CorrelationID(ctx); id != "" {
+		req.Header.Set("X-Correlation-ID", id)
+	}
 
 	resp, err := clientFor(cfg).Do(req)
 	if err != nil {
 		errStr := err.Error()
-		return saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, retryAt(attempt))
+		return finish(saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, retryAt(attempt)), errStr)
 	}
 	defer func() {
 		io.Copy(io.Discard, resp.Body) //nolint:errcheck
@@ -193,7 +232,7 @@ func deliverWebhook(db *gorm.DB, cfg config.Config, wh models.Webhook, eventType
 		return saveDelivery(db, wh.ID, eventType, string(body), &statusCode, nil, attempt, nil)
 	}
 	errStr := fmt.Sprintf("unexpected status %d", statusCode)
-	return saveDelivery(db, wh.ID, eventType, string(body), &statusCode, &errStr, attempt, retryAt(attempt))
+	return finish(saveDelivery(db, wh.ID, eventType, string(body), &statusCode, &errStr, attempt, retryAt(attempt)), errStr)
 }
 
 func computeSignature(secret string, body []byte) string {
@@ -230,6 +269,7 @@ func saveDelivery(db *gorm.DB, webhookID uint, eventType, payload string, status
 // Guarded by a job lock (matching reminders/calendar sync) so multiple
 // instances don't double-process the same retry window.
 func ProcessWebhookRetries(db *gorm.DB, cfg config.Config) {
+	ctx := logger.JobContext(models.JobNameWebhookRetries)
 	// Shorter than the 5-minute cron cadence (main.go) so the lock doesn't
 	// suppress every other tick, unlike reminders/calendar sync which run far
 	// less often.
@@ -275,7 +315,7 @@ func ProcessWebhookRetries(db *gorm.DB, cfg config.Config) {
 			deliverySem <- struct{}{}
 			defer func() { <-deliverySem }()
 			// Replay the original payload so retries share the same event ID and timestamp
-			deliverWebhook(db, cfg, wh, d.EventType, []byte(d.Payload), d.Attempts+1)
+			deliverWebhook(ctx, db, cfg, wh, d.EventType, []byte(d.Payload), d.Attempts+1)
 		}()
 	}
 }

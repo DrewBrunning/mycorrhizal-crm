@@ -11,6 +11,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestFromContextAttachesUserID pins the gin context key FromContext reads for
+// the acting user. The auth middleware stores it under "userID"
+// (middleware/auth.go); FromContext read "user_id" for a long time and so
+// silently attached no user_id to any request-scoped log line (issue #425).
+func TestFromContextAttachesUserID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	buf := captureLogger(t)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/contacts", nil)
+	c.Set("request_id", "req-1")
+	c.Set("userID", uint(42))
+
+	FromContext(c).Info().Msg("request")
+
+	line := lastLine(t, buf)
+	require.Equal(t, float64(42), line[FieldUserID])
+	require.Equal(t, "req-1", line[FieldRequestID])
+	require.Equal(t, "req-1", line[FieldCorrelationID])
+}
+
 // TestFromContextSanitizesPath covers the FromContext path field wiring
 // (logger.go): c.Request.URL.Path is user-controlled and every controller
 // logs through FromContext, so it must pass through SanitizeLogField before

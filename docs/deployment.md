@@ -135,6 +135,17 @@ If you consider even that too much for an unauthenticated endpoint, put `/health
 auth and leave `/health/live` + `/health/ready` open. The all-in-one image's nginx serves all three
 with `X-Robots-Tag: noindex` so they are never crawled.
 
+## Diagnostics & logging
+
+When something is failing in production, `docs/operations/observability.md` is the map: the
+structured log field vocabulary, how a correlation ID threads one UI action through every background
+step and outbound call it triggers (and how to grep for it), and the admin **System events**
+timeline (`/system-events` on web, Settings → System events on Android) — a persisted, restart-
+surviving record of scheduled job runs, sync runs, backup/restore drills, and migrations.
+
+Quick reference: `LOG_LEVEL` (`info` default), `LOG_PRETTY` (JSON off in release), and
+`SYSTEM_EVENT_RETENTION_DAYS` (`30` default) for how long the timeline keeps rows.
+
 ## Backups
 
 A backup is two (or three) independent pieces, and missing any of them means the backup is not a

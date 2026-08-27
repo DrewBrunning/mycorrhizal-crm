@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"mycorrhizal/config"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
@@ -14,7 +15,7 @@ import (
 // subscriptions, so this only needs the distinct set of candidate user IDs,
 // mirroring how DetectReachOutSuggestions collects its per-user worklist
 // (reach_out_trigger_service.go).
-func triggerWebhooksForAllUsers(db *gorm.DB, cfg config.Config, eventType string, data interface{}) {
+func triggerWebhooksForAllUsers(ctx context.Context, db *gorm.DB, cfg config.Config, eventType string, data interface{}) {
 	var userIDs []uint
 	if err := db.Model(&models.Webhook{}).
 		Where("is_active = ? AND deleted_at IS NULL", true).
@@ -23,6 +24,6 @@ func triggerWebhooksForAllUsers(db *gorm.DB, cfg config.Config, eventType string
 		return
 	}
 	for _, userID := range userIDs {
-		TriggerWebhooks(db, cfg, userID, eventType, data)
+		TriggerWebhooks(ctx, db, cfg, userID, eventType, data)
 	}
 }

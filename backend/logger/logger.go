@@ -56,6 +56,11 @@ func InitLogger(cfg Config) {
 	// Set global logger
 	log.Logger = Logger
 
+	// Make the global logger the fallback for zerolog.Ctx / logger.Ctx, so a
+	// context with no logger bound still logs (rather than silently dropping
+	// the line through a disabled logger).
+	zerolog.DefaultContextLogger = &Logger
+
 	Logger.Info().
 		Str("level", cfg.Level).
 		Bool("pretty", cfg.Pretty).
@@ -86,17 +91,21 @@ func parseLevel(level string) zerolog.Level {
 func FromContext(c *gin.Context) *zerolog.Logger {
 	l := Logger.With().Logger()
 
-	// Add request ID if available
+	// Add request ID if available. The request ID doubles as the correlation
+	// ID for the whole chain of work this request spawns (issue #425), so
+	// emit both keys.
 	if requestID, exists := c.Get("request_id"); exists {
 		if id, ok := requestID.(string); ok {
-			l = l.With().Str("request_id", id).Logger()
+			l = l.With().Str(FieldRequestID, id).Str(FieldCorrelationID, id).Logger()
 		}
 	}
 
-	// Add user ID if available
-	if userID, exists := c.Get("user_id"); exists {
+	// Add user ID if available. The auth middleware stores this under
+	// "userID" (middleware/auth.go); reading "user_id" here — as this did
+	// for a long time — silently attached nothing.
+	if userID, exists := c.Get("userID"); exists {
 		if id, ok := userID.(uint); ok {
-			l = l.With().Uint("user_id", id).Logger()
+			l = l.With().Uint(FieldUserID, id).Logger()
 		}
 	}
 
