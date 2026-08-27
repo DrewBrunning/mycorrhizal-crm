@@ -260,6 +260,8 @@ func toCalendarResponse(sub models.CalendarSubscription) models.CalendarSubscrip
 		LastSyncStatus: sub.LastSyncStatus,
 		LastSyncError:  sub.LastSyncError,
 		CreatedAt:      sub.CreatedAt,
+
+		SyncHealthResponse: models.NewSyncHealthResponse(sub.SyncHealthFields),
 	}
 }
 

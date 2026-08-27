@@ -26,6 +26,13 @@ const subscription: CalendarSubscription = {
   last_sync_status: 'success',
   last_sync_error: '',
   created_at: '2026-07-01T00:00:00Z',
+  last_attempt_at: '2026-08-01T00:00:00Z',
+  last_success_at: '2026-08-01T00:00:00Z',
+  last_failure_at: null,
+  consecutive_failures: 0,
+  incident_first_failure_at: null,
+  last_run_duration_ms: 1200,
+  last_run_stats: { created: 0, updated: 2, skipped: 5 },
 };
 
 const okResponse = (body: unknown) => ({
