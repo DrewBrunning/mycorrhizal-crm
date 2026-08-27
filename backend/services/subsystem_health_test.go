@@ -2,11 +2,10 @@ package services
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
@@ -38,13 +37,10 @@ func healthFor(t *testing.T, hs []SubsystemHealth, name string) SubsystemHealth 
 }
 
 // TestComputeSubsystemHealth folds the operational-event stream into a
-// last-known-good state per subsystem (issue #427). One real migrated DB is
-// shared across the cases — each clears system_events first — so all
-// migrations run once, not once per case (the services/controllers packages
-// are already near the CI -race timeout).
+// last-known-good state per subsystem (issue #427). One migrated DB is shared
+// across the cases — each clears system_events first.
 func TestComputeSubsystemHealth(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "subsystem-health.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
