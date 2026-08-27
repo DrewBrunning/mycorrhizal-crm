@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -43,6 +44,7 @@ const reachOutDetectionMinInterval = 23 * time.Hour
 // companion Reminder + reach_out_suggested webhook for each. Job-lock guarded
 // (T19's pattern) so a multi-instance deploy does not double-fire.
 func DetectReachOutSuggestions(db *gorm.DB, cfg config.Config) {
+	ctx := logger.JobContext(models.JobNameReachOutDetection)
 	acquired, err := acquireJobLock(db, models.JobNameReachOutDetection, reachOutDetectionMinInterval)
 	if err != nil {
 		logger.Error().Err(err).Msg("reach-out: failed to check job lock")
@@ -68,7 +70,7 @@ func DetectReachOutSuggestions(db *gorm.DB, cfg config.Config) {
 
 	created := 0
 	for _, userID := range userIDs {
-		n, err := detectReachOutSuggestionsForUser(db, cfg, userID)
+		n, err := detectReachOutSuggestionsForUser(ctx, db, cfg, userID)
 		if err != nil {
 			logger.Error().Err(err).Uint("user_id", userID).Msg("reach-out: detection failed for user")
 			continue
@@ -82,7 +84,7 @@ func DetectReachOutSuggestions(db *gorm.DB, cfg config.Config) {
 
 // detectReachOutSuggestionsForUser runs the detection algorithm for one user
 // and returns the number of suggestions created.
-func detectReachOutSuggestionsForUser(db *gorm.DB, cfg config.Config, userID uint) (int, error) {
+func detectReachOutSuggestionsForUser(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint) (int, error) {
 	var cursor models.ReachOutCursor
 	if err := db.Where("user_id = ?", userID).First(&cursor).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -128,7 +130,7 @@ func detectReachOutSuggestionsForUser(db *gorm.DB, cfg config.Config, userID uin
 
 	for _, uid := range uids {
 		baseline := baselineByContact[uid]
-		n, err := processContactBaseline(db, cfg, userID, baseline)
+		n, err := processContactBaseline(ctx, db, cfg, userID, baseline)
 		if err != nil {
 			logger.Error().Err(err).Str("contact_vcard_uid", uid).Msg("reach-out: failed to process contact")
 			anyFailed = true
@@ -179,7 +181,7 @@ type detectedChange struct {
 // against its live current state, and creates a ReachOutSuggestion +
 // Reminder + webhook for each meaningful change detected. Returns the number
 // created.
-func processContactBaseline(db *gorm.DB, cfg config.Config, userID uint, baseline models.AuditEvent) (int, error) {
+func processContactBaseline(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, baseline models.AuditEvent) (int, error) {
 	if baseline.BeforeSnapshot == "" {
 		return 0, nil
 	}
@@ -210,7 +212,7 @@ func processContactBaseline(db *gorm.DB, cfg config.Config, userID uint, baselin
 		if exists {
 			continue
 		}
-		if err := createReachOutSuggestion(db, cfg, userID, after, baseline.ID, ch); err != nil {
+		if err := createReachOutSuggestion(ctx, db, cfg, userID, after, baseline.ID, ch); err != nil {
 			return created, err
 		}
 		created++
@@ -347,7 +349,7 @@ func reachOutKindLabel(kind string) string {
 // one-off Reminder in a single transaction, then fires the
 // reach_out_suggested webhook (fire-and-forget, matching
 // cadence_service.go's ProcessOverdueCadences).
-func createReachOutSuggestion(db *gorm.DB, cfg config.Config, userID uint, contact models.Contact, auditEventID uint, ch detectedChange) error {
+func createReachOutSuggestion(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, contact models.Contact, auditEventID uint, ch detectedChange) error {
 	// displayContactName (address_suggestion_service.go) has the fallback
 	// chain a bare firstname+lastname concat lacks (full name -> FN ->
 	// nickname -> VCardUID), so an org/nickname-only contact still gets an
@@ -396,7 +398,7 @@ func createReachOutSuggestion(db *gorm.DB, cfg config.Config, userID uint, conta
 		"new_value":         ch.NewValue,
 		"reminder_id":       reminderID,
 	}
-	go TriggerWebhooks(db, cfg, userID, "reach_out_suggested", payload)
+	go TriggerWebhooks(ctx, db, cfg, userID, "reach_out_suggested", payload)
 	return nil
 }
 

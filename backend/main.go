@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"mycorrhizal/atrest"
+	"mycorrhizal/buildinfo"
 	"mycorrhizal/config"
 	"mycorrhizal/database"
 	apperrors "mycorrhizal/errors"
@@ -380,10 +381,19 @@ func main() {
 	}()
 
 	logger.Info().Msg("Server is ready to handle requests")
+	models.RecordSystemEvent(context.Background(), db, models.SystemEvent{
+		EventType: models.SysEventApplicationStarted,
+		Component: logger.ComponentApp,
+		Detail:    "version=" + buildinfo.Get().Version,
+	})
 
 	// Block until we receive a shutdown signal
 	<-quit
 	logger.Info().Msg("Shutting down server...")
+	models.RecordSystemEvent(context.Background(), db, models.SystemEvent{
+		EventType: models.SysEventApplicationStopped,
+		Component: logger.ComponentApp,
+	})
 
 	// Stop the scheduler first to prevent new jobs from starting
 	logger.Info().Msg("Stopping scheduler...")

@@ -177,6 +177,7 @@ type notificationDeliveryKey struct {
 // and never blocks another channel from dispatching. Email remains a per-user
 // digest (it also carries birthdays); the push-style channels send per reminder.
 func SendReminders(db *gorm.DB, config config.Config) error {
+	ctx := logger.JobContext(models.JobNameDailyReminders)
 	logger.Info().Msg("Sending reminders...")
 	var reminders []models.Reminder
 	// Get the current time in the configured reminder timezone
@@ -325,20 +326,20 @@ func SendReminders(db *gorm.DB, config config.Config) error {
 				continue
 			}
 
-			if err := sender.Send(db, config, user, eligible); err != nil {
+			if err := sender.Send(ctx, db, config, user, eligible); err != nil {
 				logger.Error().Err(err).Uint("user_id", user.ID).Str("channel", string(channel)).Msg("Error sending notifications")
 			}
 		}
 
 		// Fire reminder.triggered webhooks regardless of channel config
 		for _, reminder := range userReminders {
-			go TriggerWebhooks(db, config, reminder.UserID, "reminder.triggered", reminder)
+			go TriggerWebhooks(ctx, db, config, reminder.UserID, "reminder.triggered", reminder)
 		}
 
 		// Fire birthday.occurred for each birthday that falls today regardless of channel config
 		for _, bday := range todayBirthdays {
 			bday := bday
-			go TriggerWebhooks(db, config, userID, "birthday.occurred", bday)
+			go TriggerWebhooks(ctx, db, config, userID, "birthday.occurred", bday)
 		}
 	}
 

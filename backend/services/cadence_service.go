@@ -303,6 +303,7 @@ const cadenceOverdueMinInterval = 23 * time.Hour
 // would be an unbounded scan once per day. At that scale the loop should be
 // driven by iterating users rather than loading every policy at once.
 func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) {
+	ctx := logger.JobContext(models.JobNameCadenceOverdue)
 	acquired, err := acquireJobLock(db, models.JobNameCadenceOverdue, cadenceOverdueMinInterval)
 	if err != nil {
 		logger.Error().Err(err).Msg("cadence: failed to check job lock")
@@ -373,7 +374,7 @@ func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) {
 				continue
 			}
 			payload := buildOverduePayload(p, health, contactID[key{p.UserID, p.EntityID}])
-			go TriggerWebhooks(db, cfg, p.UserID, "cadence.overdue", payload)
+			go TriggerWebhooks(ctx, db, cfg, p.UserID, "cadence.overdue", payload)
 			emitted++
 		}
 	}

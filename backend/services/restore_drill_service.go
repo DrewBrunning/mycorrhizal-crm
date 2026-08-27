@@ -228,7 +228,7 @@ func RunRestoreDrillScheduled(db *gorm.DB, cfg config.Config) {
 			Operation: models.JobNameRestoreDrill, Result: models.SysResult(logger.ResultFailure),
 			DurationMS: &durMS, Error: err.Error(), Detail: "restore drill could not run",
 		})
-		triggerWebhooksForAllUsers(db, cfg, EventRestoreDrillFailed, map[string]interface{}{
+		triggerWebhooksForAllUsers(ctx, db, cfg, EventRestoreDrillFailed, map[string]interface{}{
 			"error": err.Error(),
 		})
 		return
@@ -246,7 +246,7 @@ func RunRestoreDrillScheduled(db *gorm.DB, cfg config.Config) {
 			Operation: models.JobNameRestoreDrill, Result: models.SysResult(logger.ResultFailure),
 			DurationMS: &durMS, Detail: detail,
 		})
-		triggerWebhooksForAllUsers(db, cfg, EventRestoreDrillFailed, map[string]interface{}{
+		triggerWebhooksForAllUsers(ctx, db, cfg, EventRestoreDrillFailed, map[string]interface{}{
 			"detail": detail,
 		})
 		return
