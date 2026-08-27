@@ -4,7 +4,9 @@ The answer to "what happens if an attacker gets X?" for every asset this app hol
 every gating security decision this project has deliberately made rather than left implied. This doc is
 the ASVS V1.2 (threat modeling) and V1.14 (security architecture) artifact; `docs/security/asvs-l2.md`
 and `docs/security/masvs-l1.md` are the per-control checklists this doc's claims cite into — this doc
-does not re-derive `file:line` evidence that already lives there.
+does not re-derive `file:line` evidence that already lives there. `docs/security/pii-inventory.md`
+covers the orthogonal *minimization* question — not "is this asset protected?" but "should it
+exist, and is it more or kept longer than needed?".
 
 | | |
 |---|---|

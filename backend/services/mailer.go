@@ -33,7 +33,7 @@ func SendEmail(cfg config.Config, msg EmailMessage) error {
 	}
 
 	if !cfg.EmailEnabled() {
-		logger.Warn().Str("to", msg.To).Msg("No email channel configured; email not sent")
+		logger.Warn().Str("to", logger.MaskEmail(msg.To)).Msg("No email channel configured; email not sent")
 		return nil
 	}
 
@@ -46,7 +46,7 @@ func SendEmail(cfg config.Config, msg EmailMessage) error {
 	if cfg.UseResend {
 		attempted++
 		if err := sendViaResend(cfg, msg); err != nil {
-			logger.Error().Err(err).Str("to", msg.To).Msg("Failed to send email via Resend")
+			logger.Error().Err(err).Str("to", logger.MaskEmail(msg.To)).Msg("Failed to send email via Resend")
 			errs = append(errs, fmt.Sprintf("resend: %v", err))
 		} else {
 			succeeded++
@@ -56,7 +56,7 @@ func SendEmail(cfg config.Config, msg EmailMessage) error {
 	if cfg.UseSMTP {
 		attempted++
 		if err := sendViaSMTP(cfg, msg); err != nil {
-			logger.Error().Err(err).Str("to", msg.To).Msg("Failed to send email via SMTP")
+			logger.Error().Err(err).Str("to", logger.MaskEmail(msg.To)).Msg("Failed to send email via SMTP")
 			errs = append(errs, fmt.Sprintf("smtp: %v", err))
 		} else {
 			succeeded++
@@ -68,7 +68,7 @@ func SendEmail(cfg config.Config, msg EmailMessage) error {
 	}
 
 	if len(errs) > 0 {
-		logger.Warn().Str("to", msg.To).Int("succeeded", succeeded).Int("attempted", attempted).Msg("Email delivered on some but not all channels")
+		logger.Warn().Str("to", logger.MaskEmail(msg.To)).Int("succeeded", succeeded).Int("attempted", attempted).Msg("Email delivered on some but not all channels")
 	}
 
 	return nil
@@ -90,7 +90,7 @@ func sendViaResend(cfg config.Config, msg EmailMessage) error {
 		return err
 	}
 
-	logger.Info().Str("email_id", sent.Id).Str("to", msg.To).Msg("Email sent via Resend")
+	logger.Info().Str("email_id", sent.Id).Str("to", logger.MaskEmail(msg.To)).Msg("Email sent via Resend")
 	return nil
 }
 
@@ -115,7 +115,7 @@ func sendViaSMTP(cfg config.Config, msg EmailMessage) error {
 		}
 	}
 
-	logger.Info().Str("to", msg.To).Msg("Email sent via SMTP")
+	logger.Info().Str("to", logger.MaskEmail(msg.To)).Msg("Email sent via SMTP")
 	return nil
 }
 

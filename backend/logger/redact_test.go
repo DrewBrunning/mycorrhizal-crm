@@ -13,22 +13,26 @@ func TestRedactQueryValues(t *testing.T) {
 		want string
 	}{
 		{name: "empty", in: "", want: ""},
-		{name: "no query kept intact", in: "page=2&sort=name", want: "page=2&sort=name"},
-		{name: "single sensitive key", in: "code=SECRET", want: "code=[REDACTED]"},
-		{name: "sensitive key among others", in: "page=2&code=SECRET&sort=name", want: "page=2&code=[REDACTED]&sort=name"},
-		{name: "first key sensitive", in: "token=abc&page=2", want: "token=[REDACTED]&page=2"},
-		{name: "last key sensitive", in: "page=2&password=hunter2", want: "page=2&password=[REDACTED]"},
-		{name: "all listed keys", in: "code=a&token=b&access_token=c&key=d&secret=e&password=f&signature=g",
+		{name: "allow-listed pair kept intact", in: "page=2&sort=name", want: "page=2&sort=name"},
+		{name: "search term redacted", in: "search=Ada%20Lovelace", want: "search=[REDACTED]"},
+		{name: "q redacted", in: "q=words+from+a+private+note", want: "q=[REDACTED]"},
+		{name: "email redacted", in: "email=someone@example.com", want: "email=[REDACTED]"},
+		{name: "mixed safe and unsafe", in: "page=2&search=Bob&sort=name", want: "page=2&search=[REDACTED]&sort=name"},
+		{name: "credential-shaped keys still redacted", in: "code=a&token=b&access_token=c&key=d&secret=e&password=f&signature=g",
 			want: "code=[REDACTED]&token=[REDACTED]&access_token=[REDACTED]&key=[REDACTED]&secret=[REDACTED]&password=[REDACTED]&signature=[REDACTED]"},
-		{name: "case-insensitive key", in: "Code=SECRET", want: "Code=[REDACTED]"},
-		{name: "percent-encoded key", in: "c%6Fde=SECRET", want: "c%6Fde=[REDACTED]"},
-		{name: "sensitive key with empty value", in: "code=&page=2", want: "code=[REDACTED]&page=2"},
-		{name: "sensitive bare key has no value", in: "code&page=2", want: "code&page=2"},
-		{name: "non-sensitive key named similarly", in: "coder=value", want: "coder=value"},
-		{name: "semicolon separator", in: "page=2;code=SECRET", want: "page=2;code=[REDACTED]"},
-		{name: "value with ampersand not split", in: "url=a%26b&code=SECRET", want: "url=a%26b&code=[REDACTED]"},
-		{name: "raw ampersand in value belongs to pair", in: "next=a&b&code=SECRET", want: "next=a&b&code=[REDACTED]"},
-		{name: "value with equals", in: "code=a=b&page=2", want: "code=[REDACTED]&page=2"},
+		{name: "internal ids redacted", in: "contact_id=42&vcard_uid=abc-123&entity_id=x", want: "contact_id=[REDACTED]&vcard_uid=[REDACTED]&entity_id=[REDACTED]"},
+		{name: "oidc state redacted", in: "state=csrf-token-value&code=authcode", want: "state=[REDACTED]&code=[REDACTED]"},
+		{name: "case-insensitive allow-list", in: "Page=2", want: "Page=2"},
+		{name: "case-insensitive redaction", in: "Search=Bob", want: "Search=[REDACTED]"},
+		{name: "percent-encoded key cannot smuggle", in: "s%65arch=Bob", want: "s%65arch=[REDACTED]"},
+		{name: "bare key untouched", in: "search&page=2", want: "search&page=2"},
+		{name: "empty value on unsafe key", in: "search=&page=2", want: "search=[REDACTED]&page=2"},
+		{name: "semicolon separator", in: "page=2;search=Bob", want: "page=2;search=[REDACTED]"},
+		{name: "value with ampersand not split", in: "search=a%26b&page=2", want: "search=[REDACTED]&page=2"},
+		{name: "raw ampersand in value belongs to pair", in: "next=a&b&search=Bob", want: "next=[REDACTED]&b&search=[REDACTED]"},
+		{name: "value with equals", in: "search=a=b&page=2", want: "search=[REDACTED]&page=2"},
+		{name: "boolean filters kept", in: "archived=true&include_sensitive=false&favorites=1", want: "archived=true&include_sensitive=false&favorites=1"},
+		{name: "cursor and since kept", in: "cursor=eyJpZCI6MTB9&since=2026-01-01", want: "cursor=eyJpZCI6MTB9&since=2026-01-01"},
 	}
 
 	for _, tt := range tests {
@@ -38,13 +42,16 @@ func TestRedactQueryValues(t *testing.T) {
 	}
 }
 
-func TestRedactQueryValuesDoesNotLeakSensitiveValues(t *testing.T) {
-	// Every sensitive key must be scrubbed regardless of position or encoding.
-	raw := "state=ok&code=TOP-SECRET&access_token=TOKEN_VALUE_XYZ&redirect_uri=https%3A%2F%2Fx"
+func TestRedactQueryValuesDoesNotLeakUnsafeValues(t *testing.T) {
+	// Every non-allow-listed value must be scrubbed regardless of position.
+	raw := "page=1&search=Ada+Lovelace&email=ada@example.com&code=TOP-SECRET&sort=name"
 	out := RedactQueryValues(raw)
+	require.NotContains(t, out, "Ada")
+	require.NotContains(t, out, "Lovelace")
+	require.NotContains(t, out, "ada@example.com")
 	require.NotContains(t, out, "TOP-SECRET")
-	require.NotContains(t, out, "TOKEN_VALUE_XYZ")
-	require.Contains(t, out, "code=[REDACTED]")
-	require.Contains(t, out, "access_token=[REDACTED]")
-	require.Contains(t, out, "state=ok", "non-sensitive pairs must be preserved")
+	require.Contains(t, out, "page=1", "allow-listed pairs must be preserved")
+	require.Contains(t, out, "sort=name", "allow-listed pairs must be preserved")
+	require.Contains(t, out, "search=[REDACTED]")
+	require.Contains(t, out, "email=[REDACTED]")
 }
