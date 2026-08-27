@@ -4,10 +4,11 @@
 # eslint-plugin-security) cannot see because they are domain-specific to
 # this codebase's conventions, not generic vulnerability patterns.
 #
-# Issue #370. Each rule is hand-verified against a deliberately-broken
-# snippet (must match, annotated `// ruleid: <id>`) and the corresponding
-# clean snippet (must not match, annotated `// ok: <id>`) under
-# .semgrep/tests/. `semgrep --test` itself can't drive that verification here
+# Issue #370 (and #609 for the SSRF-dialer rule). Each rule is hand-verified
+# against a deliberately-broken snippet (must match, annotated `// ruleid:
+# <id>`) and the corresponding clean snippet (must not match, annotated
+# `// ok: <id>`) under .semgrep/tests/. `semgrep --test` itself can't drive
+# that verification here
 # — pointing it at a single multi-rule config file plus a directory of
 # per-rule test files hits a crash in the CLI's test-file-matching heuristic
 # (semgrep 1.172.0-1.174.0, tuple index out of range in
@@ -172,6 +173,93 @@ rules:
       - pattern: $C.DefaultQuery("secret", ...)
       - pattern: $C.DefaultQuery("password", ...)
       - pattern: $C.DefaultQuery("code", ...)
+    paths:
+      exclude:
+        - "*_test.go"
+
+  # Issue #609: SSRF regression guard. The safe outbound dialer
+  # (httputil/safedial.go) is where DNS rebinding and redirect-to-internal-
+  # address attacks are closed, because every connection a transport opens —
+  # including ones for redirect targets — passes through DialContext. Seven
+  # integration clients route through it today by convention (webhook,
+  # photo-fetch, CardDAV, CalDAV, Immich, Seafile, WebDAV, Paperless); a rule
+  # is what stops the eighth from quietly breaking that convention. Two shapes
+  # are structurally catchable without false positives on the existing seven:
+  #
+  #   * a transport inlined into an http.Client literal (the webhook_service.go
+  #     / httputil/fetch.go shape) must declare a DialContext — an inline
+  #     literal can never be guarded later, so a missing DialContext is always
+  #     a regression;
+  #   * any http.Transport literal whose DialContext is neither a call to
+  #     httputil.SafeDialContext(...) nor a bare identifier — a raw
+  #     (&net.Dialer{}).DialContext, a func literal, a non-safe call. The bare
+  #     identifier is allowed because httputil/fetch.go binds SafeDialContext's
+  #     result to a local before the literal; the wrappers the sync clients
+  #     use (privateBlockingDialContext & co.) are wired by field mutation
+  #     after construction, never in a struct literal, so they are out of
+  #     scope here by construction.
+  #
+  # Clients that only ever talk to a compile-time-constant host (HIBP, the
+  # load-smoke harness) deliberately carry no DialContext and are not inlined
+  # transports, so they are untouched.
+  - id: mycorrhizal-unguarded-outbound-dialer
+    languages: [go]
+    severity: ERROR
+    message: >-
+      Outbound HTTP client whose dialer does not route through
+      httputil.SafeDialContext (backend/httputil/safedial.go): an unguarded
+      DialContext lets DNS rebinding or a redirect to an internal address
+      reach loopback/private networks from the server (SSRF, ASVS 5.2.6 /
+      API7). Wire `DialContext: httputil.SafeDialContext(...)` onto the
+      transport, or — if this client only ever talks to a compile-time-
+      constant host — suppress with a `// nosemgrep:
+      mycorrhizal-unguarded-outbound-dialer` comment explaining why. See
+      issue #609.
+    patterns:
+      - pattern-either:
+          # Inline transport in an http.Client literal: cannot be guarded
+          # later, so it must declare its DialContext here.
+          - patterns:
+              - pattern: |
+                  &http.Client{
+                    Transport: &http.Transport{ ... },
+                    ...,
+                  }
+              - pattern-not: |
+                  &http.Client{
+                    Transport: &http.Transport{ DialContext: ..., ... },
+                    ...,
+                  }
+          # A raw dialer method value wired straight into the literal
+          # ((&net.Dialer{}).DialContext and friends).
+          - pattern: |
+              &http.Transport{
+                DialContext: $D.DialContext,
+                ...,
+              }
+          # A DialContext that is neither a SafeDialContext call nor a bare
+          # identifier (a func literal, a non-safe call, a composite literal).
+          - patterns:
+              - pattern: |
+                  &http.Transport{
+                    DialContext: $D,
+                    ...,
+                  }
+              - pattern-not: |
+                  &http.Transport{
+                    DialContext: httputil.SafeDialContext(...),
+                    ...,
+                  }
+              - pattern-not: |
+                  &http.Transport{
+                    DialContext: SafeDialContext(...),
+                    ...,
+                  }
+              - metavariable-regex:
+                  metavariable: $D
+                  # Exclude plain identifiers (SafeDialContext's result bound
+                  # to a local, as httputil/fetch.go does).
+                  regex: ".*[^A-Za-z0-9_].*"
     paths:
       exclude:
         - "*_test.go"
