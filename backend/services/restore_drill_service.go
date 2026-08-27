@@ -209,6 +209,7 @@ func RunRestoreDrillScheduled(db *gorm.DB, cfg config.Config) {
 	ok, detail, err := runRestoreDrill(db, cfg)
 	if err != nil {
 		logger.Error().Err(err).Msg("restore drill: failed to run")
+		RecordOperationalCheckResult(db, models.JobNameRestoreDrill, models.OpCheckStatusError, err.Error())
 		triggerWebhooksForAllUsers(db, cfg, EventRestoreDrillFailed, map[string]interface{}{
 			"error": err.Error(),
 		})
@@ -216,11 +217,13 @@ func RunRestoreDrillScheduled(db *gorm.DB, cfg config.Config) {
 	}
 	if !ok {
 		logger.Error().Str("detail", detail).Msg("restore drill: row-count mismatch")
+		RecordOperationalCheckResult(db, models.JobNameRestoreDrill, models.OpCheckStatusFailed, detail)
 		triggerWebhooksForAllUsers(db, cfg, EventRestoreDrillFailed, map[string]interface{}{
 			"detail": detail,
 		})
 		return
 	}
 
+	RecordOperationalCheckResult(db, models.JobNameRestoreDrill, models.OpCheckStatusOK, "")
 	logger.Info().Msg("restore drill: ok")
 }

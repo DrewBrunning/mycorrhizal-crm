@@ -4,7 +4,10 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"io/fs"
 	"mycorrhizal/logger"
+	"strconv"
+	"strings"
 
 	"github.com/glebarez/sqlite"
 	"github.com/golang-migrate/migrate/v4"
@@ -230,4 +233,61 @@ func MigrateDown(dbPath string) error {
 
 	logger.Info().Msg("Migration rolled back successfully")
 	return nil
+}
+
+// LatestMigrationVersion reports the highest migration version bundled in the
+// embedded migrations FS — i.e. the version a freshly-migrated database should
+// be at. It parses the numeric prefix of every `NNNNNN_*.up.sql` entry and
+// returns the maximum. Used by the readiness/deep-health checks (issue #421)
+// to detect a database that is behind the binary's schema without opening a
+// second connection or running a migration.
+func LatestMigrationVersion() (uint, error) {
+	entries, err := fs.ReadDir(migrationsFS, "migrations")
+	if err != nil {
+		return 0, fmt.Errorf("failed to read embedded migrations: %w", err)
+	}
+
+	var latest uint
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, ".up.sql") {
+			continue
+		}
+		prefix, _, found := strings.Cut(name, "_")
+		if !found {
+			continue
+		}
+		v, err := strconv.ParseUint(prefix, 10, 64)
+		if err != nil {
+			continue
+		}
+		if uint(v) > latest {
+			latest = uint(v)
+		}
+	}
+
+	if latest == 0 {
+		return 0, fmt.Errorf("no migration files found in embedded FS")
+	}
+	return latest, nil
+}
+
+// AppliedMigrationVersion reads the currently-applied migration version and
+// dirty flag straight from the live database's schema_migrations table, using
+// the app's existing *gorm.DB (no second sql.Open, unlike MigrationVersion,
+// which the frequently-polled readiness probe should not pay per request).
+// ok is false when no migration has ever been applied (empty table).
+func AppliedMigrationVersion(db *gorm.DB) (version uint, dirty bool, ok bool, err error) {
+	var row struct {
+		Version uint
+		Dirty   bool
+	}
+	res := db.Raw("SELECT version, dirty FROM " + defaultMigrationsTable + " LIMIT 1").Scan(&row)
+	if res.Error != nil {
+		return 0, false, false, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return 0, false, false, nil
+	}
+	return row.Version, row.Dirty, true, nil
 }

@@ -97,6 +97,44 @@ came from this project's official build pipeline unmodified, see
 `docs/security/release-verification.md` for exact commands (`cosign`, `gh attestation verify`) —
 no supply-chain background required.
 
+## Health, liveness & readiness endpoints
+
+The server exposes three unauthenticated, secret-free health endpoints (issue #421). They answer
+different questions, and wiring the wrong one to the wrong consumer causes outages (e.g. a monitor
+restarting a healthy app because an optional integration is down).
+
+| Endpoint | Question | Cost | Who should hit it |
+|---|---|---|---|
+| `GET /health/live` | Is the process running? | Instant — touches nothing | Container / orchestrator **restart policy** (`HEALTHCHECK`, Kubernetes `livenessProbe`) |
+| `GET /health/ready` | Can this instance serve? | DB ping + migration state + filesystem write probe | **Load balancer / traffic gate** (Kubernetes `readinessProbe`) |
+| `GET /health` | Is the CRM actually operational? | Deep — persisted check outcomes, job locks, integration reachability (30 s cached) | **Humans and monitoring aggregators** (dashboards, alerting) |
+
+- `/health/live` returns `200 {"status":"live"}` and never does I/O. It must not fail because a
+  dependency is slow — that would make the orchestrator kill a working process.
+- `/health/ready` returns `200 {"status":"ready", ...}` or `503 {"status":"not_ready", ...}`. It is
+  `not_ready` while the database or a configured file directory is unreachable, or while migrations
+  are pending or dirty. Gate inbound traffic on this, not on `/health`.
+- `/health` returns `healthy`, `degraded`, or `unhealthy` with a per-facet `checks` breakdown
+  (database read/write, migration lag, last DB-integrity-check and restore-drill outcomes,
+  background-job locks, and reachability of server-scoped integrations — OIDC, email, FCM).
+  **`degraded` is still HTTP 200** — an unreachable optional integration or a stale scheduled job is
+  degraded-but-alive, not down. Only a database read failure returns `503`. This is the endpoint
+  that reports the running build's version/commit.
+
+The bundled Docker image's `HEALTHCHECK` and the CI boot-wait probes all use `/health/live`. The
+single-container nginx is not a load balancer, so `/health/ready` is not wired to anything by
+default — put it in front of your own proxy/LB if you run more than one instance.
+
+All three endpoints are unauthenticated (like the original `/health`) and deliberately carry no
+secrets. The deep endpoint's `reason`/`detail` strings are generic categories only — the underlying
+errors, absolute paths, the SMTP host/OIDC URL, and any table names or row counts from a failed
+integrity check / restore drill go to the **server log and the failure webhook**, never the
+response body. It does expose the build version/commit, the applied migration number, and
+scheduled-job names — same class of operational metadata the pre-split `/health` already returned.
+If you consider even that too much for an unauthenticated endpoint, put `/health` behind your proxy's
+auth and leave `/health/live` + `/health/ready` open. The all-in-one image's nginx serves all three
+with `X-Robots-Tag: noindex` so they are never crawled.
+
 ## Backups
 
 A backup is two (or three) independent pieces, and missing any of them means the backup is not a

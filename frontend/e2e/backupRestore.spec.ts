@@ -123,7 +123,8 @@ async function waitForHealth(port: number, timeoutMs = 30000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      const res = await fetch(`http://localhost:${port}/health`);
+      // Liveness probe (issue #421) — just "is the process serving".
+      const res = await fetch(`http://localhost:${port}/health/live`);
       if (res.ok) return;
     } catch {
       // not up yet

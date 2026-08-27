@@ -67,6 +67,7 @@ func TestOpenAPISpecValidates(t *testing.T) {
 		"ContactSubscriptionInput", "ContactSubscriptionResponse",
 		// T8: everything the drift test now covers.
 		"Error", "MessageResponse", "LogoutResponse", "HealthResponse",
+		"LivenessResponse", "ReadinessResponse", "HealthCheckDetail",
 		"UserRegistrationInput", "LoginInput", "PasswordResetRequestInput",
 		"PasswordResetConfirmInput", "ChangePasswordInput",
 		"UpdateLanguageInput", "UpdateDateFormatInput",

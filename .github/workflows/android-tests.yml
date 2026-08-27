@@ -249,7 +249,7 @@ jobs:
           # 10.0.2.2 (or adb reverse 127.0.0.1 — the tests pass the serverUrl
           # below so the transport doesn't matter).
           echo "Waiting for services to be ready..."
-          timeout 120 bash -c 'until curl -s http://localhost:7300/health > /dev/null 2>&1; do sleep 2; done'
+          timeout 120 bash -c 'until curl -s http://localhost:7300/health/live > /dev/null 2>&1; do sleep 2; done'
           echo "App is ready"
 
       # Hardware acceleration for the emulator (required by android-emulator-runner).

@@ -15,8 +15,11 @@ import (
 
 func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcProvider *services.OIDCProvider) {
 
-	// Health check endpoint (no versioning, standard practice)
+	// Health surface (no versioning, standard practice; all unauthenticated,
+	// see health_controller.go for the live/ready/deep split — issue #421).
 	router.GET("/health", controllers.HealthCheck)
+	router.GET("/health/live", controllers.LivenessCheck)
+	router.GET("/health/ready", controllers.ReadinessCheck)
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")

@@ -2,27 +2,51 @@ package controllers
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"mycorrhizal/buildinfo"
+	"mycorrhizal/database"
+	"mycorrhizal/logger"
+	"mycorrhizal/services"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-// HealthResponse represents the health check response structure.
+// The health surface is three endpoints, each answering a different operator
+// question (issue #421):
 //
-// Version/Commit/BuildDate come from the buildinfo package, injected at link
-// time. They were previously a hardcoded "0.1.0" string literal, so every
-// build ever made reported the same version and a bug report could not be
-// tied to the binary that produced it.
+//   - GET /health/live  — liveness. Is the process up? Answers instantly,
+//     touches nothing. This is what a restart policy hits; a slow or failing
+//     dependency must never make it fail, or the orchestrator restarts a
+//     healthy app.
+//   - GET /health/ready — readiness. Can THIS instance serve? Checks DB
+//     connectivity, migration state, and required filesystem access. 503 while
+//     any of those is not satisfied. This is what a load balancer gates traffic
+//     on.
+//   - GET /health       — deep health. Is the CRM actually operational?
+//     Everything /ready checks, plus persisted integrity-check / restore-drill
+//     outcomes, background-job locks, and server-scoped integration
+//     reachability. Reports healthy | degraded | unhealthy; only a database
+//     read failure yields 503. "degraded" (an optional integration is down, a
+//     scheduled job is stale) is still 200 — degraded-but-alive is not down.
+//
+// All three are unauthenticated and carry no secrets, matching the original
+// single /health.
+
+// HealthResponse is the deep GET /health body. The flat database/version
+// fields are retained for backward compatibility with the pre-split endpoint;
+// the per-facet breakdown is under checks.
 type HealthResponse struct {
-	Status    string         `json:"status"`
-	Timestamp string         `json:"timestamp"`
-	Database  DatabaseHealth `json:"database"`
-	Version   string         `json:"version"`
-	Commit    string         `json:"commit,omitempty"`
-	BuildDate string         `json:"build_date,omitempty"`
+	Status    string              `json:"status"` // healthy | degraded | unhealthy
+	Timestamp string              `json:"timestamp"`
+	Database  DatabaseHealth      `json:"database"`
+	Version   string              `json:"version"`
+	Commit    string              `json:"commit,omitempty"`
+	BuildDate string              `json:"build_date,omitempty"`
+	Checks    services.DeepHealth `json:"checks"`
 }
 
 // DatabaseHealth represents the database health status
@@ -31,34 +55,174 @@ type DatabaseHealth struct {
 	ResponseTime float64 `json:"response_time_ms"`
 }
 
-// HealthCheck handles the health check endpoint
-// GET /health
-func HealthCheck(c *gin.Context) {
-	db := c.MustGet("db").(*gorm.DB)
+// LivenessResponse is the GET /health/live body.
+type LivenessResponse struct {
+	Status string `json:"status"` // always "live"
+}
 
-	// Check database connectivity
-	dbHealth := checkDatabaseHealth(db)
+// ReadinessResponse is the GET /health/ready body.
+type ReadinessResponse struct {
+	Status string                          `json:"status"` // ready | not_ready
+	Checks map[string]ReadinessCheckDetail `json:"checks"`
+}
 
-	// Determine overall status
-	status := "healthy"
+// ReadinessCheckDetail is one readiness facet.
+type ReadinessCheckDetail struct {
+	Status string `json:"status"` // ok | failed
+	Reason string `json:"reason,omitempty"`
+}
+
+// LivenessCheck handles GET /health/live. It must not touch the database, the
+// filesystem, or config — only that the process is running and serving.
+func LivenessCheck(c *gin.Context) {
+	c.JSON(http.StatusOK, LivenessResponse{Status: "live"})
+}
+
+// ReadinessCheck handles GET /health/ready.
+func ReadinessCheck(c *gin.Context) {
+	checks := map[string]ReadinessCheckDetail{
+		"database":   readinessDatabase(c),
+		"migrations": readinessMigrations(c),
+		"filesystem": readinessFilesystem(c),
+	}
+
+	status := "ready"
 	httpStatus := http.StatusOK
+	for _, ck := range checks {
+		if ck.Status != "ok" {
+			status = "not_ready"
+			httpStatus = http.StatusServiceUnavailable
+			break
+		}
+	}
 
-	if dbHealth.Status == "unhealthy" {
-		status = "unhealthy"
+	c.JSON(httpStatus, ReadinessResponse{Status: status, Checks: checks})
+}
+
+func readinessDatabase(c *gin.Context) ReadinessCheckDetail {
+	db, ok := dbFromContext(c)
+	if !ok {
+		return ReadinessCheckDetail{Status: "failed", Reason: "no database handle"}
+	}
+	h := checkDatabaseHealth(db)
+	if h.Status != "healthy" {
+		return ReadinessCheckDetail{Status: "failed", Reason: "database is unreachable"}
+	}
+	return ReadinessCheckDetail{Status: "ok"}
+}
+
+func readinessMigrations(c *gin.Context) ReadinessCheckDetail {
+	db, ok := dbFromContext(c)
+	if !ok {
+		return ReadinessCheckDetail{Status: "failed", Reason: "no database handle"}
+	}
+	applied, dirty, ok, err := database.AppliedMigrationVersion(db)
+	if err != nil {
+		logger.Error().Err(err).Msg("readiness: cannot read migration state")
+		return ReadinessCheckDetail{Status: "failed", Reason: "cannot read migration state"}
+	}
+	if !ok {
+		return ReadinessCheckDetail{Status: "failed", Reason: "no migrations have been applied"}
+	}
+	if dirty {
+		return ReadinessCheckDetail{Status: "failed", Reason: "migration is in a dirty state"}
+	}
+	latest, err := database.LatestMigrationVersion()
+	if err != nil {
+		logger.Error().Err(err).Msg("readiness: cannot resolve latest migration version")
+		return ReadinessCheckDetail{Status: "failed", Reason: "cannot resolve latest migration version"}
+	}
+	if applied < latest {
+		return ReadinessCheckDetail{Status: "failed", Reason: "pending migrations (schema is behind the binary)"}
+	}
+	return ReadinessCheckDetail{Status: "ok"}
+}
+
+func readinessFilesystem(c *gin.Context) ReadinessCheckDetail {
+	cfg := currentConfig(c)
+	for label, dir := range map[string]string{
+		"profile photo directory": cfg.ProfilePhotoDir,
+		"attachments directory":   cfg.AttachmentsDir,
+	} {
+		if dir == "" {
+			continue
+		}
+		if reason := probeWritableDir(dir); reason != "" {
+			// The absolute path and errno go to the log, not the
+			// unauthenticated response body (ASVS 7.4.1).
+			logger.Error().Str("dir", dir).Msg("readiness: " + label + " " + reason)
+			return ReadinessCheckDetail{Status: "failed", Reason: label + " " + reason}
+		}
+	}
+	return ReadinessCheckDetail{Status: "ok"}
+}
+
+// probeWritableDir returns "" when dir exists, is a directory, and a file can
+// be created in it; otherwise a generic, path-free reason (the detail is
+// logged by the caller).
+func probeWritableDir(dir string) string {
+	info, err := os.Stat(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "is missing"
+		}
+		return "is not accessible"
+	}
+	if !info.IsDir() {
+		return "is not a directory"
+	}
+	probe := filepath.Join(dir, ".health-write-probe")
+	f, err := os.OpenFile(probe, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		return "is not writable"
+	}
+	_ = f.Close()
+	_ = os.Remove(probe)
+	return ""
+}
+
+// HealthCheck handles the deep health check endpoint, GET /health.
+func HealthCheck(c *gin.Context) {
+	db, _ := dbFromContext(c)
+	cfg := currentConfig(c)
+
+	dbHealth := DatabaseHealth{Status: "unhealthy"}
+	var deep services.DeepHealth
+	if db != nil {
+		dbHealth = checkDatabaseHealth(db)
+		deep = services.DeepHealthSnapshot(db, cfg)
+	} else {
+		deep.Status = services.DeepStatusUnhealthy
+		deep.Database = services.HealthCheckDetail{Status: services.DeepStatusUnhealthy, Reason: "no database handle"}
+	}
+
+	httpStatus := http.StatusOK
+	if deep.Status == services.DeepStatusUnhealthy {
 		httpStatus = http.StatusServiceUnavailable
 	}
 
 	build := buildinfo.Get()
-	response := HealthResponse{
-		Status:    status,
+	c.JSON(httpStatus, HealthResponse{
+		Status:    deep.Status,
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 		Database:  dbHealth,
 		Version:   build.Version,
 		Commit:    build.Commit,
 		BuildDate: build.BuildDate,
-	}
+		Checks:    deep,
+	})
+}
 
-	c.JSON(httpStatus, response)
+// dbFromContext safely pulls the *gorm.DB the middleware injects, without the
+// panic c.MustGet would raise on a misconfigured router — a health endpoint
+// should report "unavailable", not 500.
+func dbFromContext(c *gin.Context) (*gorm.DB, bool) {
+	v, exists := c.Get("db")
+	if !exists {
+		return nil, false
+	}
+	db, ok := v.(*gorm.DB)
+	return db, ok
 }
 
 // checkDatabaseHealth checks if the database is accessible and responsive

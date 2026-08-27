@@ -65,7 +65,7 @@ jobs:
         run: |
           docker compose -f docker-compose.test.yml up -d
           echo "Waiting for the app to be ready..."
-          timeout 120 bash -c 'until curl -s http://localhost:7300/health > /dev/null 2>&1; do sleep 2; done'
+          timeout 120 bash -c 'until curl -s http://localhost:7300/health/live > /dev/null 2>&1; do sleep 2; done'
           echo "App is ready"
 
       # dastcanary is the deliberately-vulnerable sibling server whose planted
@@ -78,7 +78,7 @@ jobs:
           go build -o dastcanary ./cmd/dastcanary
           nohup ./dastcanary > /tmp/dastcanary.log 2>&1 </dev/null &
           echo "Waiting for the canary to be ready..."
-          timeout 30 bash -c 'until curl -s http://localhost:7301/health > /dev/null 2>&1; do sleep 1; done'
+          timeout 30 bash -c 'until curl -s http://localhost:7301/health/live > /dev/null 2>&1; do sleep 1; done'
           echo "Canary is ready"
 
       # The app's login only sets an httpOnly cookie, so ZAP cannot drive it

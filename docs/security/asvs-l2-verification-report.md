@@ -251,8 +251,8 @@ cleared. Functional inconsistency, fails closed; recorded in row 3.4.1.
 | Symmetric encryption | AES-256-GCM only — authenticated as it encrypts — for TOTP/integration credentials (`services/credential_crypto.go:33-58`, key HKDF-SHA256-derived from `JWT_SECRET_KEY`) and the at-rest field envelope (`backend/atrest`, single wrapped DEK, see P4). No unauthenticated mode is reachable by a caller. |
 | Weak primitives | No MD5/DES/RC4/ECB/Blowfish anywhere. The tree's single `crypto/sha1` import is HIBP's own k-anonymity wire format, annotated at the import (`services/hibp_service.go:6`). SHA-256 is used only for non-reversible one-time token digests. |
 | Random | `crypto/rand` for TOTP secrets and recovery codes (`services/twofactor.go:4,107`); bcrypt supplies its own per-hash salt. No `math/rand` in a security path. |
-| Unauthenticated route surface | **13 registrations**, enumerated from `routes/routes.go`: `/health`; the two `.well-known` CardDAV/CalDAV redirects; `/auth/oidc/config` plus `login`/`callback` (registered only when OIDC is enabled); `register`; `login`; `login/2fa`; `logout`; `check-password-strength`; `password-reset/request`; `password-reset/confirm`. Every one that touches credentials carries `AuthRateLimitMiddleware`. Against 241 `protected.` + 9 `admin.` + 9 CardDAV/CalDAV Basic-auth routes. |
-| Any way to turn auth off | **None.** No `DISABLE_AUTH` / `SKIP_AUTH` / `INSECURE_*` switch exists in any non-test Go file; `AuthMiddleware` is applied at the group level, so a route is either inside `protected`/`admin` or is one of the 13 above. The authorization matrix's `unauth` persona asserts this for every route rather than trusting the grouping. |
+| Unauthenticated route surface | **15 registrations**, enumerated from `routes/routes.go`: `/health`, `/health/live`, `/health/ready` (the deep/liveness/readiness split, issue #421 — all secret-free, status + reason strings only); the two `.well-known` CardDAV/CalDAV redirects; `/auth/oidc/config` plus `login`/`callback` (registered only when OIDC is enabled); `register`; `login`; `login/2fa`; `logout`; `check-password-strength`; `password-reset/request`; `password-reset/confirm`. Every one that touches credentials carries `AuthRateLimitMiddleware`. Against 241 `protected.` + 9 `admin.` + 9 CardDAV/CalDAV Basic-auth routes. |
+| Any way to turn auth off | **None.** No `DISABLE_AUTH` / `SKIP_AUTH` / `INSECURE_*` switch exists in any non-test Go file; `AuthMiddleware` is applied at the group level, so a route is either inside `protected`/`admin` or is one of the 15 above. The authorization matrix's `unauth` persona asserts this for every route rather than trusting the grouping. |
 
 ### D. Error paths do not leak internals
 
@@ -289,6 +289,19 @@ off-limits gets an endpoint that reports which rule a target tripped. Thin (it c
 you supplied is private", about an address the caller supplied) but the wrong direction. Accepted and
 now **documented** in row 7.4.1 rather than left as an unexplained outlier; bounding the string and
 collapsing the two sentinels is issue #606.
+
+**Re-checked for issue #421** (the `/health` → `/health/live` + `/health/ready` + deep-`/health`
+split). All three are unauthenticated and build their own JSON rather than going through the error
+envelope, so each was walked for the same "raw `err.Error()` / unbounded string in the body"
+pattern. They pass by construction: every failing facet logs the underlying error / path / host /
+`operational_check_results.detail` server-side (`logger`) and returns a fixed category string —
+`"database read failed"`, `"unreachable"`, `"cannot read migration state"`, `"attachments directory
+is missing"`, `"the last run reported failed"`. Migration version *numbers* and scheduled-job
+*names* are returned deliberately (both are already public — `git` tags, open-source job registry —
+and are the point of the endpoint); table names, row counts, absolute paths, the operator's SMTP
+host and OIDC URL, and raw dial errors are not. Guarded by
+`controllers/health_endpoints_test.go`'s `TestDeepHealth_ResponseBodyLeaksNoInternals` and the
+path-free assertions in the readiness-filesystem tests.
 
 ---
 

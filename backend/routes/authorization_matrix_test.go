@@ -225,6 +225,8 @@ func buildTable(s seeded) map[string]authzRow {
 	return map[string]authzRow{
 		// --- public (no auth boundary) -------------------------------------
 		"GET /health":                          {class: classPublic},
+		"GET /health/live":                     {class: classPublic},
+		"GET /health/ready":                    {class: classPublic},
 		"GET /api/v1/auth/oidc/config":         {class: classPublic},
 		"POST /api/v1/register":                {class: classPublic},
 		"POST /api/v1/login":                   {class: classPublic},

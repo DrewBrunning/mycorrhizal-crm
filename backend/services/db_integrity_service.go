@@ -108,6 +108,7 @@ func CheckDBIntegrityScheduled(db *gorm.DB, cfg config.Config) {
 	ok, detail, err := checkDBIntegrity(db)
 	if err != nil {
 		logger.Error().Err(err).Msg("db integrity check: failed to run PRAGMA integrity_check")
+		RecordOperationalCheckResult(db, models.JobNameDBIntegrityCheck, models.OpCheckStatusError, err.Error())
 		triggerWebhooksForAllUsers(db, cfg, EventDBIntegrityCheckFailed, map[string]interface{}{
 			"error": err.Error(),
 		})
@@ -115,11 +116,13 @@ func CheckDBIntegrityScheduled(db *gorm.DB, cfg config.Config) {
 	}
 	if !ok {
 		logger.Error().Str("detail", detail).Msg("db integrity check: corruption detected")
+		RecordOperationalCheckResult(db, models.JobNameDBIntegrityCheck, models.OpCheckStatusFailed, detail)
 		triggerWebhooksForAllUsers(db, cfg, EventDBIntegrityCheckFailed, map[string]interface{}{
 			"detail": detail,
 		})
 		return
 	}
 
+	RecordOperationalCheckResult(db, models.JobNameDBIntegrityCheck, models.OpCheckStatusOK, "")
 	logger.Info().Msg("db integrity check: ok")
 }

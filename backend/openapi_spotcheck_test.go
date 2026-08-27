@@ -203,10 +203,13 @@ func TestOpenAPIResponseSpotCheck(t *testing.T) {
 	validateResponse(t, replayResp, "POST", "/contacts/import/vcf/confirm", nil)
 	require.JSONEq(t, confirmResp.Body.String(), replayResp.Body.String(), "the replayed result must be byte-identical to the original")
 
-	// 5. GET /health (public, unversioned, path-level server override).
-	healthReq := httptest.NewRequest("GET", "/health", nil)
-	healthResp := httptest.NewRecorder()
-	router.ServeHTTP(healthResp, healthReq)
-	require.Equal(t, 200, healthResp.Code, healthResp.Body.String())
-	validateResponse(t, healthResp, "GET", "/health", nil)
+	// 5. The health surface (public, unversioned, path-level server override).
+	// Deep /health can be 200 healthy or degraded depending on scheduled-job
+	// state; both are spec-valid HealthResponse bodies.
+	for _, hp := range []string{"/health", "/health/live", "/health/ready"} {
+		hr := httptest.NewRecorder()
+		router.ServeHTTP(hr, httptest.NewRequest("GET", hp, nil))
+		require.Contains(t, []int{200, 503}, hr.Code, "%s -> %s", hp, hr.Body.String())
+		validateResponse(t, hr, "GET", hp, nil)
+	}
 }
