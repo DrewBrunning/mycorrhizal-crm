@@ -65,4 +65,8 @@ const (
 	// detects failure/recovery transitions on the tracked subsystems and
 	// notifies on them (issue #428).
 	JobNameAlertEval = "alert_eval"
+
+	// JobNameJobRunPurge is the job name for the periodic removal of job_runs
+	// rows past their retention window (issue #391).
+	JobNameJobRunPurge = "job_run_purge"
 )

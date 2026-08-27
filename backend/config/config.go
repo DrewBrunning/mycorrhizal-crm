@@ -71,6 +71,7 @@ type Config struct {
 	AuditRetentionDays        int    // Days audit events survive before the retention purge removes them (T18, default 90)
 	ContactShareRetentionDays int    // Days a ContactShare snapshot survives before the purge job hard-deletes it (issue #574, default 30)
 	SystemEventRetentionDays  int    // Days system_events rows survive before the retention purge removes them (issue #424, default 30)
+	JobRunRetentionDays       int    // Days job_runs rows survive before the retention purge removes them (issue #391, default 30)
 
 	// General-API rate limiting, per client IP. Configurable because the
 	// hardcoded values had already been raised once to stop a full Playwright
@@ -171,6 +172,7 @@ func LoadConfig() *Config {
 		AuditRetentionDays:            getIntEnv("AUDIT_RETENTION_DAYS", 90),
 		ContactShareRetentionDays:     getIntEnv("CONTACT_SHARE_RETENTION_DAYS", 30),
 		SystemEventRetentionDays:      getIntEnv("SYSTEM_EVENT_RETENTION_DAYS", 30),
+		JobRunRetentionDays:           getIntEnv("JOB_RUN_RETENTION_DAYS", 30),
 		APIRateLimitInterval:          time.Duration(getIntEnv("API_RATE_LIMIT_INTERVAL_MS", 600)) * time.Millisecond,
 		APIRateLimitBurst:             getIntEnv("API_RATE_LIMIT_BURST", 1000),
 		ImmichSyncIntervalHours:       getIntEnv("IMMICH_SYNC_INTERVAL_HOURS", 6),
