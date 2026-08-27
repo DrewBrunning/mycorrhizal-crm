@@ -7,7 +7,7 @@ each asset, not how long it survives.
 
 | | |
 |---|---|
-| **Last updated** | 2026-08-25 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420)) |
+| **Last updated** | 2026-08-27 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420), [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424)) |
 | **Scope** | Backend (Go/Gin + SQLite), CardDAV/CalDAV (server role), Android client, browser/frontend, operator backups. |
 | **Companion docs** | `docs/security/pii-inventory.md` (the *minimization* lens — should each store exist, and is it more/kept-longer than needed), `docs/security/asvs-l2.md` V8 (Data Protection), `docs/deployment.md` (Backups section — the authoritative backup/restore runbook), `docs/security/masvs-l1.md` (Android storage controls). |
 
@@ -109,6 +109,31 @@ It sits outside the soft-delete model above precisely because it is a copy, not 
 - **Backups**: yes, and a restored backup's audit trail is only as fresh as the snapshot.
 - **Verification**: `backend/services/audit_purge_service_test.go` (`TestPurgeExpiredAuditEvents*`, 3
   cases including the re-link and a swallowed-recompute-failure case).
+
+### System events (`SystemEvent`, issue #424)
+
+`system_events` is the persisted operational-event timeline — application start/stop, scheduled job
+runs, sync runs, notification dispatch, backup/restore drills. System-generated diagnostics, **not
+user data**: no `user_id` scoping on the query (it records what happened to the *instance*), no
+external mirror, admin-only over the API (`GET /admin/system-events`).
+
+- **Where / who**: `system_events` table in `mycorrhizal.db`. Read only via an admin API session; no
+  CardDAV/CalDAV projection, not in the Android offline mirror.
+- **Retention**: `SYSTEM_EVENT_RETENTION_DAYS` (default 30, `config/config.go`) — short by design:
+  long enough to investigate a recent incident, short enough to bound growth on a single-file
+  database. Deliberately shorter than the 90-day audit window — operational noise is not an
+  investigation record.
+- **Deletion / propagation**: `PurgeExpiredSystemEvents`
+  (`backend/services/system_event_purge_service.go`) hard-deletes rows whose `occurred_at` is older
+  than the window, daily via cron (`backend/main.go`) under the `system_event_purge` job lock.
+  `SYSTEM_EVENT_RETENTION_DAYS<=0` is treated as "disabled", never "delete everything". No hash chain
+  (unlike audit) — this is diagnostics, not a tamper-evident record. The free-text `error`/`detail`
+  fields are sanitized + length-capped by `models.RecordSystemEvent`, and the model carries no
+  high-cardinality fields (no contact IDs, no raw URLs) by construction.
+- **Backups**: yes, and a restored backup's timeline is only as fresh as the snapshot.
+- **Verification**: `backend/models/system_event_test.go`,
+  `backend/services/system_event_purge_service_test.go`,
+  `backend/database/migrate_system_events_test.go`.
 
 ## 4. Sessions & short-lived secrets
 
