@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
+import { getErrorAggregation } from './api/errorAggregation';
 import { getSubsystemHealth } from './api/subsystemHealth';
 import { getSystemEvents, type SystemEvent } from './api/systemEvents';
 import SystemEventsPage from './SystemEventsPage';
@@ -20,6 +21,11 @@ vi.mock('./api/systemEvents', async (importOriginal) => {
 vi.mock('./api/subsystemHealth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/subsystemHealth')>();
   return { ...actual, getSubsystemHealth: vi.fn() };
+});
+
+vi.mock('./api/errorAggregation', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/errorAggregation')>();
+  return { ...actual, getErrorAggregation: vi.fn() };
 });
 
 const getMock = vi.mocked(getSystemEvents);
@@ -42,6 +48,14 @@ beforeEach(() => {
   getMock.mockResolvedValue({ system_events: [], total: 0 });
   vi.mocked(getSubsystemHealth).mockReset();
   vi.mocked(getSubsystemHealth).mockResolvedValue({ subsystems: [] });
+  vi.mocked(getErrorAggregation).mockReset();
+  vi.mocked(getErrorAggregation).mockResolvedValue({
+    window_hours: 24,
+    since: '2026-08-26T12:00:00Z',
+    until: '2026-08-27T12:00:00Z',
+    total_events: 0,
+    buckets: [],
+  });
 });
 
 function renderPage() {
@@ -119,6 +133,39 @@ test('"View related" queries by correlation_id, drops other filters, and shows t
     ),
   );
   expect(screen.getByText(/chain-XYZ/)).toBeInTheDocument();
+});
+
+test('"View N events" on an error bucket queries the timeline by those ids and shows the banner', async () => {
+  vi.mocked(getErrorAggregation).mockResolvedValue({
+    window_hours: 24,
+    since: '2026-08-26T12:00:00Z',
+    until: '2026-08-27T12:00:00Z',
+    total_events: 9,
+    buckets: [
+      {
+        component: 'contact_sync',
+        cause: 'carddav auth rejected (http <n>)',
+        sample_error: 'CardDAV auth rejected (HTTP 401)',
+        event_types: ['sync_failed'],
+        count: 9,
+        recurring: true,
+        first_seen: '2026-08-27T09:00:00Z',
+        last_seen: '2026-08-27T11:00:00Z',
+        event_ids: [11, 12, 13],
+        event_ids_truncated: false,
+      },
+    ],
+  });
+
+  renderPage();
+  await waitFor(() => expect(getMock).toHaveBeenCalled());
+
+  fireEvent.click(await screen.findByRole('button', { name: 'View 3 events' }));
+
+  await waitFor(() =>
+    expect(getMock).toHaveBeenLastCalledWith(expect.objectContaining({ ids: [11, 12, 13] })),
+  );
+  expect(screen.getByText(/Showing 3 events/)).toBeInTheDocument();
 });
 
 test('shows the empty state when the API returns nothing', async () => {

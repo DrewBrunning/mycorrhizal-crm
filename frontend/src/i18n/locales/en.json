@@ -2124,6 +2124,7 @@
       "viewRelated": "View related"
     },
     "relatedBanner": "Showing every event in chain {{id}}.",
+    "errorsBanner": "Showing {{n}} events from one error group.",
     "empty": "No system events match your filters.",
     "emptyNoFilters": "No system events recorded yet."
   },
@@ -2148,6 +2149,21 @@
       "backup": "Backup & restore",
       "scheduler": "Background jobs",
       "webhook": "Webhooks"
+    }
+  },
+  "errorAggregation": {
+    "title": "Errors by cause",
+    "description": "Operational failures from the last {{hours}}h, grouped by cause. A cause that repeats is worth attention; a one-off usually isn't.",
+    "refresh": "Refresh",
+    "empty": "No repeated errors in the last {{hours}}h.",
+    "recurring": "Recurring",
+    "viewEvents": "View {{n}} events",
+    "columns": {
+      "count": "Count",
+      "component": "Component",
+      "error": "Error",
+      "lastSeen": "Last seen",
+      "actions": "Actions"
     }
   }
 }

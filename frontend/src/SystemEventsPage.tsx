@@ -33,6 +33,7 @@ import {
   type SystemEventSeverity,
   type SystemEventType,
 } from './api/systemEvents';
+import ErrorAggregationPanel from './components/ErrorAggregationPanel';
 import { ListSkeleton } from './components/LoadingSkeletons';
 import SubsystemHealthPanel from './components/SubsystemHealthPanel';
 import { useDebouncedValue } from './hooks/useDebounce';
@@ -80,6 +81,7 @@ export default function SystemEventsPage() {
     patchFilters,
     clearFilters,
     showRelated,
+    showErrors,
     canLoadMore,
     loadMore,
   } = useSystemEvents();
@@ -119,6 +121,8 @@ export default function SystemEventsPage() {
       </Typography>
 
       <SubsystemHealthPanel onSelectComponent={(component) => patchFilters({ component })} />
+
+      <ErrorAggregationPanel onViewEvents={showErrors} />
 
       <Paper sx={{ p: 1.5, mb: 2 }}>
         <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
@@ -205,6 +209,15 @@ export default function SystemEventsPage() {
           <HubIcon fontSize="small" color="action" />
           <Typography variant="body2">
             {t('systemEvents.relatedBanner', { id: filters.correlationId })}
+          </Typography>
+        </Paper>
+      )}
+
+      {filters.ids.length > 0 && (
+        <Paper sx={{ p: 1.5, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <HubIcon fontSize="small" color="action" />
+          <Typography variant="body2">
+            {t('systemEvents.errorsBanner', { n: filters.ids.length })}
           </Typography>
         </Paper>
       )}
