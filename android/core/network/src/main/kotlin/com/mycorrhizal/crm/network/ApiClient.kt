@@ -22,6 +22,7 @@ import com.mycorrhizal.crm.model.network.AddHouseholdMemberResponse
 import com.mycorrhizal.crm.model.network.AuditEventsResponse
 import com.mycorrhizal.crm.model.network.AuthConfig
 import com.mycorrhizal.crm.model.network.AuditUndoResponse
+import com.mycorrhizal.crm.model.network.ErrorAggregationResponse
 import com.mycorrhizal.crm.model.network.SubsystemHealthResponse
 import com.mycorrhizal.crm.model.network.SystemEventsResponse
 import com.mycorrhizal.crm.model.network.BackendError
@@ -1622,13 +1623,16 @@ class ApiClient(
      * GET /admin/system-events — the operational-event timeline, newest first,
      * with server-side component / severity / event_type / correlation_id
      * filters. Admin-only and instance-wide (not user-scoped). [limit] is the
-     * window (default 100, max 500); the API has no cursor.
+     * window (default 100, max 500); the API has no cursor. [ids] is the
+     * exact-row drill-down from an error-aggregation bucket (issue #426), sent
+     * comma-separated; the backend caps it at 500.
      */
     suspend fun getSystemEvents(
         component: String? = null,
         severity: String? = null,
         eventType: String? = null,
         correlationId: String? = null,
+        ids: List<Long>? = null,
         limit: Int = 100,
     ): Result<SystemEventsResponse> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$ADMIN_SYSTEM_EVENTS_PATH".toHttpUrl().newBuilder()
@@ -1638,8 +1642,26 @@ class ApiClient(
         eventType?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("event_type", it) }
         correlationId?.takeIf { it.isNotBlank() }
             ?.let { urlBuilder.addQueryParameter("correlation_id", it) }
+        ids?.takeIf { it.isNotEmpty() }
+            ?.let { urlBuilder.addQueryParameter("ids", it.joinToString(",")) }
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(SystemEventsResponse::class.java).fromJson(body)
+        }
+    }
+
+    /**
+     * GET /admin/error-aggregation — operational failures over a rolling window
+     * bucketed by cause (issue #426): one bucket per (component, normalized
+     * error) with its count, whether it recurs, first/last seen, a sample raw
+     * error, and the exact system_events ids behind it. Admin-only,
+     * instance-wide; the server derives it from the operational-event stream.
+     */
+    suspend fun getErrorAggregation(windowHours: Int = 24): Result<ErrorAggregationResponse> {
+        val url = "$PLACEHOLDER_ORIGIN$ADMIN_ERROR_AGGREGATION_PATH".toHttpUrl().newBuilder()
+            .addQueryParameter("window_hours", windowHours.toString())
+            .build().toString()
+        return executeGet(url) { _, body ->
+            moshi.adapter(ErrorAggregationResponse::class.java).fromJson(body)
         }
     }
 
@@ -1907,6 +1929,7 @@ class ApiClient(
         private const val AUDIT_PATH = "$API_V1/audit"
         private const val ADMIN_SYSTEM_EVENTS_PATH = "$API_V1/admin/system-events"
         private const val ADMIN_SUBSYSTEM_HEALTH_PATH = "$API_V1/admin/subsystem-health"
+        private const val ADMIN_ERROR_AGGREGATION_PATH = "$API_V1/admin/error-aggregation"
         private const val GRAPH_CONNECTIONS_PATH = "$API_V1/graph/connections"
         private const val EXTERNAL_IDENTITIES_PATH = "$API_V1/external-identities"
         private const val IMMICH_PATH = "$API_V1/immich"

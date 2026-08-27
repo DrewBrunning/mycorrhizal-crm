@@ -1214,4 +1214,10 @@
     <string name="subsystem_name_backup">Sauvegarde et restauration</string>
     <string name="subsystem_name_scheduler">Tâches en arrière-plan</string>
     <string name="subsystem_name_webhook">Webhooks</string>
+    <!-- Error aggregation (issue #426) -->
+    <string name="sysevents_errors_banner">Affichage de %1$d événements d\'un même groupe d\'erreurs.</string>
+    <string name="error_aggregation_title">Erreurs par cause</string>
+    <string name="error_aggregation_refresh">Actualiser</string>
+    <string name="error_aggregation_recurring">Récurrent</string>
+    <string name="error_aggregation_view_events">Voir %1$d événements</string>
 </resources>
