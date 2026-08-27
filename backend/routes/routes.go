@@ -538,6 +538,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// read from system_events — instance-wide diagnostics, admin-only.
 			admin.GET("/subsystem-health", controllers.GetSubsystemHealth)
 
+			// Background-job run history + folded per-job health (issue #391),
+			// derived on read from job_runs — instance-wide diagnostics,
+			// admin-only.
+			admin.GET("/job-runs", controllers.ListJobRuns)
+			admin.GET("/job-runs/health", controllers.GetJobRunHealth)
+
 			// Operational errors bucketed by cause over a rolling window
 			// (issue #426), derived on read from system_events — instance-wide
 			// diagnostics, admin-only.
