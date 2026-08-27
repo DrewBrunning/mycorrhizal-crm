@@ -23,6 +23,17 @@ We'll acknowledge new reports within 5 business days and aim to provide a
 fix or mitigation timeline once the report is triaged. Coordinated
 disclosure is welcome — let us know if you have a timeline in mind.
 
+## If You Operate an Instance and Suspect a Compromise
+
+If you run your own instance and think it (or a credential, key, or backup)
+has been exposed, the operator runbook is
+[`docs/security/incident-response.md`](docs/security/incident-response.md): a
+step-by-step for contain → assess → rotate → recover → notify, a per-secret
+rotation reference (`JWT_SECRET_KEY`, the at-rest key, API tokens, account
+passwords, 2FA, the OIDC client secret), and scenario playbooks (compromised
+account, leaked key, leaked backup, compromised host). Preserve evidence
+first — the runbook's capture step comes before any rotation or restore.
+
 ## Supported Versions
 
 This project is pre-1.0 (currently in beta) and does not yet maintain
@@ -59,3 +70,6 @@ pull request, and pins its Go toolchain and container base images. See
   control checklist for the backend, frontend, and deployment.
 - [`docs/security/masvs-l1.md`](docs/security/masvs-l1.md) — OWASP MASVS 1.5.0 (L1) control checklist
   for the Android client.
+- [`docs/security/incident-response.md`](docs/security/incident-response.md) — operator runbook for
+  responding to a suspected compromise: containment, credential/key rotation procedures, and
+  scenario playbooks.

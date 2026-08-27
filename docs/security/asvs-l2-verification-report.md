@@ -536,3 +536,4 @@ govulncheck).
 | Pass | Date | Commit | Claim | Findings |
 |---|---|---|---|---|
 | 1 | 2026-08-26 | `6a7cb7a2` | ASVS L2 with 31 documented exceptions; MASVS-L1 with 1 | 6 (F-1…F-6): 4 documentation defects fixed on the branch, 2 code findings filed as issues #605 and #606. No control flipped to `fail`. |
+| 1.1 | 2026-08-27 | (see PR) | ASVS L2 with **29** documented exceptions; MASVS-L1 with 1 | Not a full re-pass — a single-row delta. Issue #509 added `docs/security/incident-response.md` (operator incident-response + credential/key-rotation runbook, rotation procedures exercised against a real build). The stated gap for **1.6.1** and **1.6.3** was "no standalone rotation doc"; both move `partial → satisfied` in `asvs-l2.md`. §7's "Partial mechanism" group and the headline exception count are Pass-1 figures and reconcile fully at the next release re-pass; the running count is 29. |
