@@ -257,7 +257,10 @@ func LatestMigrationVersion() (uint, error) {
 		if !found {
 			continue
 		}
-		v, err := strconv.ParseUint(prefix, 10, 64)
+		// bitSize 32 (not 64): migration prefixes are 6-digit NNNNNN, and
+		// parsing to a width no larger than uint's guaranteed minimum keeps the
+		// uint(v) conversion provably in range (CodeQL go/incorrect-integer-conversion).
+		v, err := strconv.ParseUint(prefix, 10, 32)
 		if err != nil {
 			continue
 		}
