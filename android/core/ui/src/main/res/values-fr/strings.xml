@@ -1198,4 +1198,20 @@
     <string name="sysevents_related_banner">Affichage de tous les événements de la chaîne %1$s.</string>
     <string name="sysevents_empty">Aucun événement système ne correspond à vos filtres.</string>
     <string name="sysevents_empty_no_filters">Aucun événement système enregistré pour l’instant.</string>
+    <!-- Subsystem health (issue #427) -->
+    <string name="subsystem_health_title">État des sous-systèmes</string>
+    <string name="subsystem_health_refresh">Actualiser</string>
+    <string name="subsystem_health_status_healthy">Sain</string>
+    <string name="subsystem_health_status_failing">En échec</string>
+    <string name="subsystem_health_status_unknown">Inconnu</string>
+    <string name="subsystem_health_consecutive_failures">Échecs consécutifs : %1$d</string>
+    <string name="subsystem_health_incident_since">Incident depuis %1$s</string>
+    <string name="subsystem_health_last_success">Dernier succès : %1$s</string>
+    <string name="subsystem_health_never">jamais</string>
+    <string name="subsystem_name_contact_sync">Synchronisation CardDAV</string>
+    <string name="subsystem_name_calendar_sync">Synchronisation CalDAV</string>
+    <string name="subsystem_name_notification">Notifications</string>
+    <string name="subsystem_name_backup">Sauvegarde et restauration</string>
+    <string name="subsystem_name_scheduler">Tâches en arrière-plan</string>
+    <string name="subsystem_name_webhook">Webhooks</string>
 </resources>

@@ -22,6 +22,7 @@ import com.mycorrhizal.crm.model.network.AddHouseholdMemberResponse
 import com.mycorrhizal.crm.model.network.AuditEventsResponse
 import com.mycorrhizal.crm.model.network.AuthConfig
 import com.mycorrhizal.crm.model.network.AuditUndoResponse
+import com.mycorrhizal.crm.model.network.SubsystemHealthResponse
 import com.mycorrhizal.crm.model.network.SystemEventsResponse
 import com.mycorrhizal.crm.model.network.BackendError
 import com.mycorrhizal.crm.model.network.BirthdaysResponse
@@ -1642,6 +1643,18 @@ class ApiClient(
         }
     }
 
+    /**
+     * GET /admin/subsystem-health — the per-subsystem last-known-good state
+     * (issue #427): for each subsystem its current status, last attempt /
+     * success / failure, the first failure of the current incident, and the
+     * consecutive-failure count. Admin-only, instance-wide, no parameters; the
+     * server derives it from the operational-event stream.
+     */
+    suspend fun getSubsystemHealth(): Result<SubsystemHealthResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$ADMIN_SUBSYSTEM_HEALTH_PATH") { _, body ->
+            moshi.adapter(SubsystemHealthResponse::class.java).fromJson(body)
+        }
+
     // M14: the ego-centric network graph. `GET /graph/connections` (T10's
     // traversal) returns names already resolved and inverses already applied,
     // so this client needs no name resolution of its own — the design decision
@@ -1893,6 +1906,7 @@ class ApiClient(
         private const val CONTACT_SHARES_PATH = "$API_V1/contact-shares"
         private const val AUDIT_PATH = "$API_V1/audit"
         private const val ADMIN_SYSTEM_EVENTS_PATH = "$API_V1/admin/system-events"
+        private const val ADMIN_SUBSYSTEM_HEALTH_PATH = "$API_V1/admin/subsystem-health"
         private const val GRAPH_CONNECTIONS_PATH = "$API_V1/graph/connections"
         private const val EXTERNAL_IDENTITIES_PATH = "$API_V1/external-identities"
         private const val IMMICH_PATH = "$API_V1/immich"
