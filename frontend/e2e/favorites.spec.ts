@@ -28,10 +28,16 @@ test.describe('Favorites', () => {
       const unmark = page.getByRole('button', { name: 'Unmark as favorite' });
       await expect(unmark).toBeVisible();
 
-      // The flag persisted server-side: the API must now report it.
-      const record = await request.get(`${API_BASE_URL}/contacts/${contact.ID}`);
-      const body = await record.json();
-      expect(body.is_favorite).toBe(true);
+      // The flag persisted server-side: the API must now report it. The header
+      // flips optimistically (ContactDetailPage.handleToggleFavorite sets state
+      // before awaiting POST /contacts/:id/favorite), so poll the API until the
+      // write lands rather than reading once against that race.
+      await expect
+        .poll(async () => {
+          const record = await request.get(`${API_BASE_URL}/contacts/${contact.ID}`);
+          return (await record.json()).is_favorite as boolean;
+        })
+        .toBe(true);
 
       // Toggle back off and confirm.
       await unmark.click();
