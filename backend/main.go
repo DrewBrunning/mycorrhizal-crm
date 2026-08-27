@@ -225,6 +225,15 @@ func main() {
 		services.PurgeExpiredSystemEventsScheduled(db, *cfg)
 	})
 
+	// Purge expired webhook deliveries past their retention window (issue
+	// #622). Job-lock guarded so a multi-instance deploy does not double-purge.
+	s.Every(24).Hours().Do(recoverJob(db, "webhook-delivery-purge-scheduled-run", func() {
+		services.PurgeExpiredWebhookDeliveriesScheduled(db, *cfg)
+	}))
+	go safeGo(db, "webhook-delivery-purge-initial-run", func() {
+		services.PurgeExpiredWebhookDeliveriesScheduled(db, *cfg)
+	})
+
 	// Emit overdue-cadence webhooks daily (T19). Job-lock guarded so a
 	// multi-instance deploy does not double-fire.
 	s.Every(24).Hours().Do(recoverJob(db, "cadence-overdue-scheduled-run", func() {

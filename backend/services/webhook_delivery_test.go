@@ -163,6 +163,113 @@ func TestSaveDeliveryPersistsFailureRecordWithRetry(t *testing.T) {
 	assert.WithinDuration(t, next, *loaded.NextRetryAt, time.Second)
 }
 
+// ---- trimSuccessfulDeliveryPayload (issue #622) -----------------------
+
+// The stored receipt for a successful delivery is the event envelope only —
+// id, event, timestamp — with the entity body (`data`) removed. The signature
+// and the wire body are unaffected (they are built from the full payload
+// before this trimming ever runs); only the persisted copy is minimized.
+func TestTrimSuccessfulDeliveryPayloadDropsEntityData(t *testing.T) {
+	body := []byte(`{"id":"evt_1","event":"contact.created","timestamp":"2026-01-01T00:00:00Z","data":{"fullName":"Alice","email":"alice@example.com","phones":["+15550009999"]}}`)
+
+	trimmed := trimSuccessfulDeliveryPayload(body)
+
+	var env map[string]interface{}
+	require.NoError(t, json.Unmarshal(trimmed, &env))
+	assert.Equal(t, "evt_1", env["id"])
+	assert.Equal(t, "contact.created", env["event"])
+	assert.Equal(t, "2026-01-01T00:00:00Z", env["timestamp"])
+	assert.NotContains(t, env, "data", "the serialized entity body must not survive in a successful delivery's stored payload")
+	assert.NotContains(t, string(trimmed), "alice@example.com", "no contact PII may survive in a successful delivery's stored payload")
+	assert.NotContains(t, string(trimmed), "+15550009999")
+}
+
+// The envelope is exactly the receipt a consumer needs; keep every envelope
+// field so a reader of delivery records sees the same top-level shape it saw
+// before, minus the entity.
+func TestTrimSuccessfulDeliveryPayloadKeepsEnvelopeShape(t *testing.T) {
+	body := []byte(`{"id":"evt_2","event":"contact.updated","timestamp":"2026-02-02T00:00:00Z","data":{}}`)
+
+	trimmed := trimSuccessfulDeliveryPayload(body)
+
+	assert.Equal(t, `{"event":"contact.updated","id":"evt_2","timestamp":"2026-02-02T00:00:00Z"}`, string(trimmed),
+		"the trimmed payload must be exactly the three envelope fields (Go marshals maps with sorted keys)")
+}
+
+// Fails safe: a body that is not the known envelope shape is kept verbatim —
+// trimming must never mangle a receipt it does not understand.
+func TestTrimSuccessfulDeliveryPayloadKeepsNonEnvelopeBody(t *testing.T) {
+	cases := []struct {
+		name string
+		body []byte
+	}{
+		{"not-json", []byte(`not json`)},
+		{"no-data-key", []byte(`{"id":"x","event":"e"}`)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.body, trimSuccessfulDeliveryPayload(tc.body))
+		})
+	}
+}
+
+// A successful delivery through the real HTTP path persists the trimmed
+// payload while still sending the full body (and its signature) over the wire.
+func TestDeliverWebhookSuccessPersistsTrimmedPayload(t *testing.T) {
+	db := setupWebhookRetryTestDB(t)
+
+	var receivedBody []byte
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		receivedBody = b
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	wh := newTestWebhook(server.URL, "secret")
+	require.NoError(t, db.Create(&wh).Error)
+
+	body := []byte(`{"id":"evt_3","event":"contact.created","timestamp":"2026-03-03T00:00:00Z","data":{"fullName":"Ada","email":"ada@example.com"}}`)
+	delivery := deliverWebhook(context.Background(), db, config.Config{}, wh, "contact.created", body, 1)
+
+	require.NotNil(t, delivery.StatusCode)
+	assert.Equal(t, 200, *delivery.StatusCode)
+
+	// The wire body is the full payload (the receiver still gets the entity)...
+	assert.Equal(t, body, receivedBody, "the HTTP request must carry the full entity body")
+	// ...but the persisted copy is the envelope only.
+	var loaded models.WebhookDelivery
+	require.NoError(t, db.First(&loaded, delivery.ID).Error)
+	assert.NotContains(t, loaded.Payload, "ada@example.com", "the stored delivery must not keep the entity body")
+	assert.NotContains(t, loaded.Payload, "data")
+	assert.Contains(t, loaded.Payload, `"event":"contact.created"`)
+}
+
+// A failed delivery keeps the full payload: ProcessWebhookRetries replays it
+// verbatim on the next attempt, so trimming there would break re-delivery.
+func TestDeliverWebhookFailureKeepsFullPayload(t *testing.T) {
+	db := setupWebhookRetryTestDB(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	wh := newTestWebhook(server.URL, "secret")
+	require.NoError(t, db.Create(&wh).Error)
+
+	body := []byte(`{"id":"evt_4","event":"contact.created","timestamp":"2026-04-04T00:00:00Z","data":{"fullName":"Bob","email":"bob@example.com"}}`)
+	delivery := deliverWebhook(context.Background(), db, config.Config{}, wh, "contact.created", body, 1)
+
+	require.NotNil(t, delivery.StatusCode)
+	assert.Equal(t, 500, *delivery.StatusCode)
+
+	var loaded models.WebhookDelivery
+	require.NoError(t, db.First(&loaded, delivery.ID).Error)
+	assert.Equal(t, string(body), loaded.Payload, "a failed delivery must retain the full body for re-send")
+	require.NotNil(t, loaded.NextRetryAt, "the failed delivery must still be scheduled for retry")
+}
+
 // ---- deliverWebhook ---------------------------------------------------
 
 func newTestWebhook(url, secret string) models.Webhook {

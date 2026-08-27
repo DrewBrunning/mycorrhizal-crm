@@ -7,7 +7,7 @@ each asset, not how long it survives.
 
 | | |
 |---|---|
-| **Last updated** | 2026-08-27 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420), [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424)) |
+| **Last updated** | 2026-08-27 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420), [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622)) |
 | **Scope** | Backend (Go/Gin + SQLite), CardDAV/CalDAV (server role), Android client, browser/frontend, operator backups. |
 | **Companion docs** | `docs/security/pii-inventory.md` (the *minimization* lens — should each store exist, and is it more/kept-longer than needed), `docs/security/asvs-l2.md` V8 (Data Protection), `docs/deployment.md` (Backups section — the authoritative backup/restore runbook), `docs/security/masvs-l1.md` (Android storage controls). |
 
@@ -134,6 +134,39 @@ external mirror, admin-only over the API (`GET /admin/system-events`).
 - **Verification**: `backend/models/system_event_test.go`,
   `backend/services/system_event_purge_service_test.go`,
   `backend/database/migrate_system_events_test.go`.
+
+### Webhook deliveries (`WebhookDelivery`, issue #622)
+
+`webhook_deliveries` is the per-attempt receipt log for outbound webhooks: event type, status code,
+error, retry state, and — before this ticket — a **full plaintext copy of the serialized entity that
+triggered the event**. A `contact.created` delivery carried the whole contact record (names, emails,
+phones, addresses). Surfaced by the #510 privacy/data-minimization review as the one high-volume table
+#414's per-table window pattern missed.
+
+- **Where / who**: `webhook_deliveries` table, reachable only via the owning webhook's owner session
+  and admin (`webhook_controller.go`'s delivery-list endpoint is scoped to the webhook the
+  authenticated user owns). The `payload` column is **never exposed by the API** — it exists only for
+  retry replay, so trimming it is invisible to the UI.
+- **Retention**: `WEBHOOK_DELIVERY_RETENTION_DAYS` (default 30, `config/config.go`), anchored on
+  `created_at` — the moment of the delivery attempt. A row older than the window is far past every
+  retry a webhook can take (max 3 attempts across a ~20-minute backoff), so the purge being the last
+  word is a retention decision, not a lost delivery.
+- **Payload minimization (the deliberate trim)**: a successful (2xx) delivery stores only the event
+  envelope (`id`/`event`/`timestamp`) — `trimSuccessfulDeliveryPayload`
+  (`backend/services/webhook_service.go`) drops the entity body because a 2xx row is never re-sent and
+  the full body would serve no purpose. Failed/retrying rows keep the full body because
+  `ProcessWebhookRetries` replays it verbatim. So the PII copy is now bounded *and* minimized: fresh
+  failures may hold the body for re-send, successful receipts never do.
+- **Deletion / propagation**: `PurgeExpiredWebhookDeliveries`
+  (`backend/services/webhook_delivery_purge_service.go`) hard-deletes rows past the window, daily via
+  cron (`backend/main.go`) under the `webhook_delivery_purge` job lock, and via the admin `TriggerPurge`
+  endpoint. `WEBHOOK_DELIVERY_RETENTION_DAYS<=0` is treated as "disabled", never "delete everything".
+  Account deletion and webhook deletion still cascade as before.
+- **Backups**: yes — a delivery (including any still-untrimmed failed row) sits in every snapshot
+  taken before the purge; restoring such a backup resurrects it.
+- **Verification**: `backend/services/webhook_delivery_purge_service_test.go`
+  (`TestPurgeExpiredWebhookDeliveries_*` — window-pinned, failed-row policy, disabled-when-zero,
+  idempotent, scheduled-lock) plus the trim pins in `backend/services/webhook_delivery_test.go`.
 
 ## 4. Sessions & short-lived secrets
 
@@ -382,6 +415,7 @@ per §1/§7/§8), but it is a genuine, named gap rather than a silently-accepted
 | Soft-deleted rows / purge window | `backend/services/purge_service_test.go` (8 cases) |
 | ContactShare snapshot purge window | `backend/services/contact_share_purge_service_test.go` (9 cases) |
 | Audit retention + re-link | `backend/services/audit_purge_service_test.go` (3 cases) |
+| Webhook delivery purge window + payload trim | `backend/services/webhook_delivery_purge_service_test.go` (9 cases), `webhook_delivery_test.go` trim pins |
 | Admin purge trigger + window | `backend/controllers/admin_user_controller_test.go` M1/M1b/M5 |
 | Sync-horizon 410 Gone matches purge window | `backend/controllers/cursor_feed_test.go` |
 | FTS index follows soft/hard delete | `backend/database/migrate_test.go`, FTS trigger coverage |

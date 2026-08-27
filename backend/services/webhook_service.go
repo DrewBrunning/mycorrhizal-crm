@@ -88,6 +88,39 @@ func buildPayloadBody(eventType string, data interface{}) ([]byte, error) {
 	return json.Marshal(payload)
 }
 
+// trimSuccessfulDeliveryPayload drops the entity body from a webhook delivery
+// record once the delivery has succeeded. This is the issue #622 decision: a
+// successful (2xx) delivery is never re-sent (NextRetryAt is nil), so the
+// stored receipt only needs the event envelope — id, event, timestamp — not
+// the full serialized entity that triggered it. Before this, a `contact.created`
+// delivery left a plaintext copy of the whole contact record in
+// webhook_deliveries.payload forever, and the table's only other bound was the
+// retention window added alongside this. Failed/retrying rows keep the full
+// body because ProcessWebhookRetries replays it verbatim.
+//
+// The webhook-deliveries API response (`toDeliveryResponse`) never exposes
+// payload, so trimming is invisible to the UI; the retry loop only reads
+// payload for rows that still have a retry scheduled, which successful rows
+// never do.
+//
+// Fails safe: if the payload is not the known envelope shape (missing `data`),
+// the full body is kept rather than risking a mangled receipt.
+func trimSuccessfulDeliveryPayload(body []byte) []byte {
+	var env map[string]json.RawMessage
+	if err := json.Unmarshal(body, &env); err != nil {
+		return body
+	}
+	if _, ok := env["data"]; !ok {
+		return body
+	}
+	delete(env, "data")
+	trimmed, err := json.Marshal(env)
+	if err != nil {
+		return body
+	}
+	return trimmed
+}
+
 // isPrivateURL reports whether rawURL resolves to any non-public address. It
 // is only a fast pre-flight so the stored delivery record carries a clear
 // error; the authoritative check is the pinning dialer on
@@ -229,7 +262,12 @@ func deliverWebhook(ctx context.Context, db *gorm.DB, cfg config.Config, wh mode
 
 	statusCode := resp.StatusCode
 	if statusCode >= 200 && statusCode < 300 {
-		return saveDelivery(db, wh.ID, eventType, string(body), &statusCode, nil, attempt, nil)
+		// A successful delivery is never re-sent, so the stored receipt only
+		// needs the event envelope — not the full entity body that triggered
+		// it (issue #622). Failed/retrying rows keep the full body because
+		// ProcessWebhookRetries replays it.
+		trimmed := trimSuccessfulDeliveryPayload(body)
+		return saveDelivery(db, wh.ID, eventType, string(trimmed), &statusCode, nil, attempt, nil)
 	}
 	errStr := fmt.Sprintf("unexpected status %d", statusCode)
 	return finish(saveDelivery(db, wh.ID, eventType, string(body), &statusCode, &errStr, attempt, retryAt(attempt)), errStr)

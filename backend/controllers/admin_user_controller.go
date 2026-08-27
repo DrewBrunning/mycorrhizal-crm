@@ -39,6 +39,7 @@ func TriggerPurge(c *gin.Context, cfg config.Config) {
 	db := c.MustGet("db").(*gorm.DB)
 	services.PurgeSoftDeletedRows(db, cfg)
 	services.PurgeExpiredContactShares(db, cfg)
+	services.PurgeExpiredWebhookDeliveries(db, cfg)
 	c.JSON(http.StatusOK, gin.H{"message": "Purge completed"})
 }
 

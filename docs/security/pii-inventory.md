@@ -166,7 +166,7 @@ here so #425 lands against a written rule.
 | Store | Personal data | Necessity | Notes |
 |---|---|---|---|
 | `notification_deliveries` | `channel`, `status`, `error` string, `reminder_id` | `necessary` (dedupe: "was this reminder sent on this channel?") | `error` can echo a provider message; low risk, no address column |
-| `webhook_deliveries` | `payload` — the **full serialized entity** (a `contact.created` delivery carries the whole contact record), plaintext, plus `error` | `kept-longer-than-necessary →` **[#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622)** | **No retention window and no purge job.** Only deleted on parent-webhook or account deletion. Every other high-volume table got a window in #414; this one was missed |
+| `webhook_deliveries` | `payload` — the **full serialized entity** (a `contact.created` delivery carries the whole contact record), plaintext, plus `error` | `deliberate, documented` — 30-day window (`WEBHOOK_DELIVERY_RETENTION_DAYS`), and successful deliveries store only the event envelope, never the entity body | issue [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622) closed; `data-retention-lifecycle.md` §3 |
 | `carddav_sync`, `contact_sync_links`, `calendar_event_links` | Sync tokens, `href`s, content hashes — no PII beyond an opaque UID/URL | `necessary` | hard-delete with parent (`data-retention-lifecycle.md` §2/§7) |
 | `job_executions`, `server_settings` | None (job names, lock holder hostname; instance settings) | `necessary` | `locked_by` is a hostname, not a person |
 
@@ -248,7 +248,7 @@ the sentinel values; `DELETE` it; then inspect each store the inventory lists.
 | `contacts_fts` / `notes_fts` / `activities_fts` | **row gone immediately** via trigger — unsearchable at once | — |
 | Attachment file on disk | **deleted immediately** after the transaction commits | — |
 | `audit_events.before_snapshot` | **retained** — holds a redacted snapshot of the deleted contact | hard-deleted at `AUDIT_RETENTION_DAYS` (90), i.e. ~60 days *after* the row itself is purged. **Deliberate**, documented in `../privacy.md` |
-| `webhook_deliveries.payload` | **retained** if a webhook fired on this contact — full plaintext copy, no window (**[#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622)**) | still retained |
+| `webhook_deliveries.payload` | **retained** if a webhook fired on this contact — a plaintext copy of the deleted contact | hard-deleted at `WEBHOOK_DELIVERY_RETENTION_DAYS` (30), i.e. ~30 days after the delivery attempt; successful (2xx) deliveries no longer hold the entity body at all (only the event envelope) |
 | Operator backups | **retained** in every snapshot predating the delete; a restore resurrects the (soft-deleted, not yet purged) contact | ages out of *new* snapshots after the purge; survives in old snapshots until the operator deletes them |
 | Android Room mirror | dropped on the next sync (T17 tombstone id list) or on logout wipe | — |
 | CardDAV/CalDAV clients | contact stops appearing in the next full listing (no delta protocol; `data-retention-lifecycle.md` §7) | — |
@@ -266,7 +266,7 @@ is gone at or before the 30-day mark.
 | Full query string (search terms, ids) in the request log | `more-than-necessary` | **Fixed in this PR** — allow-list in `logger.RedactQueryValues` | — |
 | gin's duplicate unredacted request logger | `more-than-necessary` | **Fixed in this PR** — `gin.New()` + `gin.Recovery()` | — |
 | GORM SQL echo with interpolated PII on error/slow queries | `more-than-necessary` | Filed — needs `ParameterizedQueries: true` + test; touches DB init | [#621](https://github.com/DrewBrunning/mycorrhizal-crm/issues/621) |
-| `webhook_deliveries.payload` retained forever, full entity body | `kept-longer-than-necessary` | Filed — add `WEBHOOK_DELIVERY_RETENTION_DAYS` + purge job | [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622) |
+| `webhook_deliveries.payload` retained forever, full entity body | `kept-longer-than-necessary` | **Fixed** — 30-day window (`WEBHOOK_DELIVERY_RETENTION_DAYS`) + purge job; successful deliveries store only the event envelope, never the entity body | [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622) |
 | `notes.content` / `activities.*` / `webhooks.secret` not at-rest-encrypted | protection gap, not minimization | Owned elsewhere | [#380](https://github.com/DrewBrunning/mycorrhizal-crm/issues/380) |
 | User directory exposes usernames to all co-tenants | `deliberate, documented` | Stated in `../privacy.md` | — |
 | Audit snapshots outlive the deleted row by ~60 days | `deliberate, documented` | Stated in `../privacy.md` and §8 | [#381](https://github.com/DrewBrunning/mycorrhizal-crm/issues/381) |
@@ -297,8 +297,9 @@ Everything not listed here was walked and judged `necessary`.
     **no** log line, before or after — only the search-term and SQL-echo paths carried them.
 - **Deletion** (§8): verified by the FTS trigger coverage in `backend/database/migrate_test.go`,
   the purge-window tests in `backend/services/purge_service_test.go`, and the audit-retention
-  tests in `backend/services/audit_purge_service_test.go`; the `webhook_deliveries` gap by
-  `grep` showing no purge call site.
+  tests in `backend/services/audit_purge_service_test.go`; the `webhook_deliveries` gap was
+  found by `grep` showing no purge call site and is closed by
+  `backend/services/webhook_delivery_purge_service_test.go` (issue #622).
 - **Regression pins added in this PR**: `backend/logger/mask_test.go` (local part never echoed),
   `backend/logger/redact_test.go` (allow-list semantics; search terms / ids / OIDC state
   redacted), `backend/services/mailer_test.go::TestSendEmail_LogsMaskRecipientAddress`
@@ -308,4 +309,5 @@ Everything not listed here was walked and judged `necessary`.
 
 | Date | Change |
 |---|---|
+| 2026-08-27 | `webhook_deliveries` retention gap closed (issue #622): `WEBHOOK_DELIVERY_RETENTION_DAYS` (default 30) + daily purge job + admin trigger, and successful deliveries now store only the event envelope (never the entity body). Disposition updated `kept-longer-than-necessary → deliberate, documented`. |
 | 2026-08-26 | Created (issue #510). Log leaks F1–F3 fixed in the same PR; F4 → #621, `webhook_deliveries` retention → #622. |
