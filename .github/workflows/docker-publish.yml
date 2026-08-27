@@ -271,6 +271,15 @@ jobs:
       attestations: write
 
     strategy:
+      # One leg's failure must not cancel the others. With the default
+      # (fail-fast: true), the backend leg failing on its last step killed the
+      # all-in-one and frontend legs *mid-push* -- both had uploaded their
+      # manifests but were cancelled before `Install cosign`, so v0.6.1 shipped
+      # two images with no signature and no provenance while
+      # docs/security/release-verification.md tells operators to cosign-verify
+      # all three. These legs are independent images; there is nothing to fail
+      # fast about.
+      fail-fast: false
       matrix:
         include:
           - context: ./backend
@@ -438,6 +447,15 @@ jobs:
           syft-version: 'v1.51.0'
           artifact-name: 'sbom-spdx${{ matrix.suffix }}'
           upload-artifact-retention: 30
+          # The action attaches SBOMs to the GitHub Release by default, which
+          # needs `contents: write`; this job is deliberately `contents: read`.
+          # That mismatch is what failed the backend leg on v0.6.1 -- image
+          # built, signed and attested, then `Resource not accessible by
+          # integration` on the release upload. Turned off rather than widening
+          # the token: release-verification.md already documents the standalone
+          # SBOMs as 30-day workflow artifacts, not Release assets, so this
+          # makes the workflow match what the doc promises.
+          upload-release-assets: false
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -451,6 +469,8 @@ jobs:
           syft-version: 'v1.51.0'
           artifact-name: 'sbom-cdx${{ matrix.suffix }}'
           upload-artifact-retention: 30
+          # Same reason as the SPDX step above.
+          upload-release-assets: false
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
