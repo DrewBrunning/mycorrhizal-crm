@@ -161,24 +161,31 @@ func RunMigrations(db *sql.DB) error {
 		return fmt.Errorf("failed to get final version: %w", err)
 	}
 
-	if err == migrate.ErrNilVersion {
+	elapsed := time.Since(start)
+	schemaAdvanced := upErr != migrate.ErrNoChange && version != startVersion
+
+	switch {
+	case err == migrate.ErrNilVersion:
 		logger.Info().Msg("No migrations applied (database is empty)")
-	} else {
+	case schemaAdvanced:
 		logger.Info().
-			Str("event", "migration_completed").
-			Str("component", "migration").
+			Str(logger.FieldEvent, "migration_completed").
+			Str(logger.FieldComponent, "migration").
 			Uint("from_version", startVersion).
+			Int64(logger.FieldDurationMS, elapsed.Milliseconds()).
 			Uint("version", version).
-			Dur("duration_ms", time.Since(start)).
+			Str(logger.FieldResult, logger.ResultSuccess).
 			Msg("Migrations applied successfully")
+	default:
+		logger.Info().Uint("version", version).Msg("No pending migrations")
 	}
 
 	// Best-effort operational event when migrations actually advanced the
 	// schema (issue #424). Written by raw SQL on the same *sql.DB — the
 	// system_events table exists once migration 000037 has run, and any
 	// earlier-schema path where it does not yet exist simply drops the row.
-	if upErr != migrate.ErrNoChange && version != startVersion {
-		recordMigrationEvent(db, startVersion, version, time.Since(start))
+	if schemaAdvanced {
+		recordMigrationEvent(db, startVersion, version, elapsed)
 	}
 
 	return nil
