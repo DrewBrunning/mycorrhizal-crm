@@ -6,7 +6,7 @@ long each of these records survives).
 
 | | |
 |---|---|
-| **Last updated** | 2026-08-27 (issues [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#425](https://github.com/DrewBrunning/mycorrhizal-crm/issues/425)) |
+| **Last updated** | 2026-08-27 (issues [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#425](https://github.com/DrewBrunning/mycorrhizal-crm/issues/425), [#426](https://github.com/DrewBrunning/mycorrhizal-crm/issues/426), [#427](https://github.com/DrewBrunning/mycorrhizal-crm/issues/427)) |
 | **Audience** | Operators diagnosing a failure without local reproduction. |
 | **ADR** | [`docs/adrs/0005-operational-event-model.md`](../adrs/0005-operational-event-model.md) |
 
@@ -133,9 +133,38 @@ future `job_completed` / `backup_completed` producer needs no code change.
 
 Consumers of this state: `/metrics`
 ([#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389)) exports the counters as gauges;
-error aggregation ([#426](https://github.com/DrewBrunning/mycorrhizal-crm/issues/426)) and alerting
-on `Healthy`↔`Failing` transitions (next section) read it directly. Rendered at
-`/system-events` (web) and Settings → System events (Android), above the event timeline.
+alerting on `Healthy`↔`Failing` transitions
+([#428](https://github.com/DrewBrunning/mycorrhizal-crm/issues/428), *Alerting on state transitions*
+below) reads it directly. Error aggregation (next section) is a *sibling* fold over the same stream,
+not a consumer of this one. Rendered at `/system-events` (web) and Settings → System events
+(Android), above the event timeline.
+
+## Operational error aggregation
+
+`GET /admin/error-aggregation` (admin-only) rolls the *failure* rows of `system_events` over a
+rolling window (`?window_hours=`, default `24`, 1–168) up into one bucket **per cause** (issue
+[#426](https://github.com/DrewBrunning/mycorrhizal-crm/issues/426)) — so an operator sees "CardDAV
+authentication — 17" instead of 17 separate rows to correlate by hand.
+
+A bucket's key is `(component, normalized error string)`. The normalization masks the parts of an
+error that vary run to run — numbers and HTTP status codes, UUIDs, hex, IPs, `host:port`, URLs,
+RFC3339 timestamps, quoted substrings, unix paths — so `carddav auth rejected … subscription 4821
+(HTTP 401)` and `… 9137 (HTTP 403)` collapse to one bucket while `database is locked (SQLITE_BUSY)`
+stays its own (the ordered substitution list is `causeMasks` in
+`backend/services/error_aggregation.go`; it is unit-tested against the examples above).
+
+Each bucket carries `count`, `recurring` (`count >= 3` — a single transient failure is `false`, a
+repeating cause is `true` and shown prominently), `first_seen` / `last_seen`, `event_types`, a
+`sample_error` (the most recent *raw* string, so a real instance is still visible), and `event_ids`
+— the exact `system_events` rows behind it (capped at 500). Passing those to
+`GET /admin/system-events?ids=<comma-separated>` opens the underlying events in the timeline; that is
+how the web / Android "View N events" action links a bucket to its history.
+
+Like per-subsystem health this is **derived on read** by folding `system_events` — no table, no
+retention of its own, survives a restart. A failure event with no `error` string carries no cause
+and is skipped (the only known case is the restore-drill row-count-mismatch path, which sets
+`detail` not `error`). Rendered at `/system-events` (web) and Settings → System events (Android),
+between the subsystem-health panel and the timeline.
 
 ## Alerting on state transitions
 

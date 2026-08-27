@@ -2129,6 +2129,7 @@
       "viewRelated": "Voir les événements liés"
     },
     "relatedBanner": "Affichage de tous les événements de la chaîne {{id}}.",
+    "errorsBanner": "Affichage de {{n}} événements d'un même groupe d'erreurs.",
     "empty": "Aucun événement système ne correspond à vos filtres.",
     "emptyNoFilters": "Aucun événement système enregistré pour l'instant."
   },
@@ -2153,6 +2154,21 @@
       "backup": "Sauvegarde et restauration",
       "scheduler": "Tâches en arrière-plan",
       "webhook": "Webhooks"
+    }
+  },
+  "errorAggregation": {
+    "title": "Erreurs par cause",
+    "description": "Défaillances opérationnelles des {{hours}} dernières heures, regroupées par cause. Une cause qui se répète mérite l'attention ; un cas isolé rarement.",
+    "refresh": "Actualiser",
+    "empty": "Aucune erreur répétée au cours des {{hours}} dernières heures.",
+    "recurring": "Récurrent",
+    "viewEvents": "Voir {{n}} événements",
+    "columns": {
+      "count": "Nombre",
+      "component": "Composant",
+      "error": "Erreur",
+      "lastSeen": "Vu la dernière fois",
+      "actions": "Actions"
     }
   }
 }

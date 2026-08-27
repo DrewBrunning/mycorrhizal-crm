@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
@@ -102,6 +103,38 @@ func TestListSystemEvents_FilterBySeverityAndComponent(t *testing.T) {
 	events := decodeSystemEvents(t, w.Body.Bytes())
 	require.Len(t, events, 1)
 	assert.Equal(t, models.SysEventSyncFailed, events[0].EventType)
+}
+
+func TestListSystemEvents_FilterByIDs(t *testing.T) {
+	db, router := setupSystemEventRouter(t)
+	rows := []models.SystemEvent{
+		{EventType: models.SysEventSyncFailed, Component: "contact_sync", Severity: "error", OccurredAt: time.Now().Add(-3 * time.Hour)},
+		{EventType: models.SysEventSyncFailed, Component: "contact_sync", Severity: "error", OccurredAt: time.Now().Add(-2 * time.Hour)},
+		{EventType: models.SysEventSyncFailed, Component: "contact_sync", Severity: "error", OccurredAt: time.Now().Add(-1 * time.Hour)},
+	}
+	for i := range rows {
+		require.NoError(t, db.Create(&rows[i]).Error)
+	}
+
+	// A real subset — the error-aggregation drill-down passes the exact ids.
+	target := strconv.FormatUint(uint64(rows[0].ID), 10) + "," + strconv.FormatUint(uint64(rows[2].ID), 10)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/admin/system-events?ids="+target, nil)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	got := decodeSystemEvents(t, w.Body.Bytes())
+	require.Len(t, got, 2)
+	assert.ElementsMatch(t, []uint{rows[0].ID, rows[2].ID}, []uint{got[0].ID, got[1].ID})
+
+	// Unknown ids and non-numeric tokens are not an error — they just match
+	// nothing.
+	for _, q := range []string{"?ids=999999", "?ids=abc", "?ids=,,"} {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest(http.MethodGet, "/admin/system-events"+q, nil)
+		router.ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Code, q)
+		assert.Empty(t, decodeSystemEvents(t, w.Body.Bytes()), q)
+	}
 }
 
 func TestListSystemEvents_RejectsBadSinceTimestamp(t *testing.T) {

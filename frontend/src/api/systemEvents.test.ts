@@ -47,6 +47,7 @@ describe('getSystemEvents', () => {
       severity: 'error',
       event_type: 'job_failed',
       correlation_id: 'job:purge_deleted:abc',
+      ids: [11, 12, 13],
       since: '2026-08-01T00:00:00Z',
       limit: 250,
     });
@@ -56,8 +57,19 @@ describe('getSystemEvents', () => {
     expect(url).toContain('severity=error');
     expect(url).toContain('event_type=job_failed');
     expect(url).toContain('correlation_id=job%3Apurge_deleted%3Aabc');
+    expect(url).toContain('ids=11%2C12%2C13');
     expect(url).toContain('since=2026-08-01');
     expect(url).toContain('limit=250');
+  });
+
+  test('omits the ids filter when the list is empty', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ system_events: [], total: 0 }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await getSystemEvents({ ids: [] });
+    expect(fetchMock.mock.calls[0][0]).not.toContain('ids=');
   });
 
   test('omits empty filters', async () => {

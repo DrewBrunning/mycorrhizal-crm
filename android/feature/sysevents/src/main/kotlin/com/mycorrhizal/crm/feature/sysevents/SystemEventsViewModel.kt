@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.sysevents
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.SystemEventRepository
+import com.mycorrhizal.crm.model.network.ErrorBucket
 import com.mycorrhizal.crm.model.network.SubsystemHealth
 import com.mycorrhizal.crm.model.network.SystemEvent
 import com.mycorrhizal.crm.network.foldApiError
@@ -34,6 +35,12 @@ data class SystemEventsUiState(
      * raising the list's loud error.
      */
     val subsystemHealth: List<SubsystemHealth> = emptyList(),
+    /**
+     * Operational failures over the last 24h bucketed by cause (issue #426),
+     * shown above the timeline. Same load policy as [subsystemHealth]: fetched
+     * on open and on explicit refresh, a failure leaves it empty.
+     */
+    val errorBuckets: List<ErrorBucket> = emptyList(),
     val isLoading: Boolean = false,
     /** Transient list-load failure (toasted). Cleared at the start of every fetch. */
     val error: String? = null,
@@ -45,13 +52,19 @@ data class SystemEventsUiState(
     val eventType: String? = null,
     /** Applied, debounced correlation-id filter (empty = no filter). */
     val correlationId: String = "",
+    /**
+     * Exact-row drill-down from an error-aggregation bucket (issue #426). When
+     * non-empty it is used alone — every other mutator clears it.
+     */
+    val eventIds: List<Long> = emptyList(),
     val limit: Int = DEFAULT_LIMIT,
 ) {
     val canLoadMore: Boolean
         get() = events.size >= limit && limit < MAX_LIMIT
 
     val hasActiveFilters: Boolean
-        get() = component != null || severity != null || eventType != null || correlationId.isNotBlank()
+        get() = component != null || severity != null || eventType != null ||
+            correlationId.isNotBlank() || eventIds.isNotEmpty()
 }
 
 @HiltViewModel
@@ -70,6 +83,7 @@ class SystemEventsViewModel @Inject constructor(
     init {
         load()
         refreshSubsystemHealth()
+        refreshErrorAggregation()
     }
 
     /**
@@ -88,6 +102,21 @@ class SystemEventsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Reload the error-aggregation panel (issue #426). Best-effort, same as
+     * [refreshSubsystemHealth] — a failure leaves the panel as it was.
+     */
+    fun refreshErrorAggregation() {
+        viewModelScope.launch {
+            repository.errorAggregation().foldApiError(
+                onSuccess = { response ->
+                    _uiState.update { it.copy(errorBuckets = response.buckets) }
+                },
+                onError = { },
+            )
+        }
+    }
+
     fun load() {
         viewModelScope.launch {
             val requestId = ++requestRef
@@ -98,6 +127,7 @@ class SystemEventsViewModel @Inject constructor(
                 severity = state.severity,
                 eventType = state.eventType,
                 correlationId = state.correlationId.takeIf { it.isNotBlank() },
+                ids = state.eventIds.takeIf { it.isNotEmpty() },
                 limit = state.limit,
             )
             if (requestRef != requestId) return@launch
@@ -121,22 +151,43 @@ class SystemEventsViewModel @Inject constructor(
 
     fun applyComponent(value: String?) {
         val next = value?.takeIf { it.isNotBlank() }
-        if (next == _uiState.value.component) return
-        _uiState.update { it.copy(component = next, limit = DEFAULT_LIMIT) }
+        if (next == _uiState.value.component && _uiState.value.eventIds.isEmpty()) return
+        _uiState.update { it.copy(component = next, eventIds = emptyList(), limit = DEFAULT_LIMIT) }
         load()
     }
 
     fun applySeverity(value: String?) {
         val next = value?.takeIf { it.isNotBlank() }
-        if (next == _uiState.value.severity) return
-        _uiState.update { it.copy(severity = next, limit = DEFAULT_LIMIT) }
+        if (next == _uiState.value.severity && _uiState.value.eventIds.isEmpty()) return
+        _uiState.update { it.copy(severity = next, eventIds = emptyList(), limit = DEFAULT_LIMIT) }
         load()
     }
 
     fun applyEventType(value: String?) {
         val next = value?.takeIf { it.isNotBlank() }
-        if (next == _uiState.value.eventType) return
-        _uiState.update { it.copy(eventType = next, limit = DEFAULT_LIMIT) }
+        if (next == _uiState.value.eventType && _uiState.value.eventIds.isEmpty()) return
+        _uiState.update { it.copy(eventType = next, eventIds = emptyList(), limit = DEFAULT_LIMIT) }
+        load()
+    }
+
+    /**
+     * Show exactly the events behind one error-aggregation bucket (issue
+     * #426). Drops every other filter so the bucket is shown whole, and widens
+     * the window to the cap.
+     */
+    fun applyEventIds(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        correlationDebounceJob?.cancel()
+        _uiState.update {
+            it.copy(
+                component = null,
+                severity = null,
+                eventType = null,
+                correlationId = "",
+                eventIds = ids,
+                limit = MAX_LIMIT,
+            )
+        }
         load()
     }
 
@@ -146,8 +197,10 @@ class SystemEventsViewModel @Inject constructor(
         correlationDebounceJob = viewModelScope.launch {
             delay(CORRELATION_DEBOUNCE_MS)
             val trimmed = raw.trim()
-            if (trimmed == _uiState.value.correlationId) return@launch
-            _uiState.update { it.copy(correlationId = trimmed, limit = DEFAULT_LIMIT) }
+            if (trimmed == _uiState.value.correlationId && _uiState.value.eventIds.isEmpty()) {
+                return@launch
+            }
+            _uiState.update { it.copy(correlationId = trimmed, eventIds = emptyList(), limit = DEFAULT_LIMIT) }
             load()
         }
     }
@@ -165,6 +218,7 @@ class SystemEventsViewModel @Inject constructor(
                 severity = null,
                 eventType = null,
                 correlationId = correlationId,
+                eventIds = emptyList(),
                 limit = MAX_LIMIT,
             )
         }
@@ -180,6 +234,7 @@ class SystemEventsViewModel @Inject constructor(
                 severity = null,
                 eventType = null,
                 correlationId = "",
+                eventIds = emptyList(),
                 limit = DEFAULT_LIMIT,
             )
         }

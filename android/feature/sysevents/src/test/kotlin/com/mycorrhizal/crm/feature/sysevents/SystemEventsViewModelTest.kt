@@ -1,6 +1,8 @@
 package com.mycorrhizal.crm.feature.sysevents
 
 import com.mycorrhizal.crm.domain.repository.SystemEventRepository
+import com.mycorrhizal.crm.model.network.ErrorAggregationResponse
+import com.mycorrhizal.crm.model.network.ErrorBucket
 import com.mycorrhizal.crm.model.network.SubsystemHealth
 import com.mycorrhizal.crm.model.network.SubsystemHealthResponse
 import com.mycorrhizal.crm.model.network.SystemEvent
@@ -29,8 +31,9 @@ class SystemEventsViewModelTest {
     private val repository = mockk<SystemEventRepository>()
 
     @Before
-    fun stubSubsystemHealthByDefault() {
+    fun stubPanelsByDefault() {
         coEvery { repository.subsystemHealth() } returns Result.success(SubsystemHealthResponse())
+        coEvery { repository.errorAggregation(any()) } returns Result.success(ErrorAggregationResponse())
     }
 
     private fun viewModel() = SystemEventsViewModel(repository)
@@ -52,6 +55,7 @@ class SystemEventsViewModelTest {
                 severity = any(),
                 eventType = any(),
                 correlationId = any(),
+                ids = any(),
                 limit = any(),
             )
         } returns Result.success(response)
@@ -212,6 +216,75 @@ class SystemEventsViewModelTest {
         }
 
     @Test
+    fun `error aggregation is fetched on open and lands in state`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubList(SystemEventsResponse(systemEvents = emptyList()))
+            coEvery { repository.errorAggregation(any()) } returns Result.success(
+                ErrorAggregationResponse(
+                    totalEvents = 17,
+                    buckets = listOf(
+                        ErrorBucket(component = "contact_sync", count = 17, recurring = true, eventIds = listOf(1, 2, 3)),
+                    ),
+                ),
+            )
+
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            assertEquals(1, vm.uiState.value.errorBuckets.size)
+            assertEquals(17, vm.uiState.value.errorBuckets.first().count)
+            assertTrue(vm.uiState.value.errorBuckets.first().recurring)
+        }
+
+    @Test
+    fun `a error-aggregation failure is swallowed and leaves the list unaffected`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubList(SystemEventsResponse(systemEvents = listOf(event(1))))
+            coEvery { repository.errorAggregation(any()) } returns Result.failure(IOException("nope"))
+
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.errorBuckets.isEmpty())
+            assertNull(vm.uiState.value.error)
+            assertEquals(1, vm.uiState.value.events.size)
+        }
+
+    @Test
+    fun `applyEventIds queries the timeline by those ids alone and widens the window`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubList(SystemEventsResponse(systemEvents = emptyList()))
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            vm.applyComponent("scheduler")
+            advanceUntilIdle()
+
+            vm.applyEventIds(listOf(11L, 12L, 13L))
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertEquals(listOf(11L, 12L, 13L), state.eventIds)
+            assertNull(state.component)
+            assertTrue(state.hasActiveFilters)
+            coVerify {
+                repository.list(
+                    component = null,
+                    severity = null,
+                    eventType = null,
+                    correlationId = null,
+                    ids = listOf(11L, 12L, 13L),
+                    limit = 500,
+                )
+            }
+
+            // A component filter change clears the id drill-down.
+            vm.applyComponent("notification")
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.eventIds.isEmpty())
+        }
+
+    @Test
     fun `a list failure surfaces an error and keeps isLoading false`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery {
@@ -220,6 +293,7 @@ class SystemEventsViewModelTest {
                     severity = any(),
                     eventType = any(),
                     correlationId = any(),
+                    ids = any(),
                     limit = any(),
                 )
             } returns Result.failure(IOException("boom"))

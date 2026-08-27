@@ -16,6 +16,9 @@ export interface SystemEventFilters {
   severity: SystemEventSeverity | '';
   eventType: SystemEventType | '';
   correlationId: string;
+  // Exact-row drill-down from an error-aggregation bucket (issue #426). When
+  // set it is used alone — any other filter change clears it.
+  ids: number[];
 }
 
 const EMPTY_FILTERS: SystemEventFilters = {
@@ -23,6 +26,7 @@ const EMPTY_FILTERS: SystemEventFilters = {
   severity: '',
   eventType: '',
   correlationId: '',
+  ids: [],
 };
 
 // useSystemEvents drives the operational-event timeline (issue #424).
@@ -49,6 +53,7 @@ export function useSystemEvents() {
       severity: filters.severity || undefined,
       event_type: filters.eventType || undefined,
       correlation_id: filters.correlationId.trim() || undefined,
+      ids: filters.ids.length > 0 ? filters.ids : undefined,
       limit,
     };
 
@@ -68,9 +73,10 @@ export function useSystemEvents() {
     fetchEvents();
   }, [fetchEvents]);
 
-  // Any filter change restarts the window at the default limit.
+  // Any filter change restarts the window at the default limit, and leaves the
+  // exact-ids drill-down (which is used alone) unless the patch sets it.
   const patchFilters = useCallback((patch: Partial<SystemEventFilters>) => {
-    setFilters((prev) => ({ ...prev, ...patch }));
+    setFilters((prev) => ({ ...prev, ids: [], ...patch }));
     setLimit(DEFAULT_LIMIT);
   }, []);
 
@@ -87,11 +93,19 @@ export function useSystemEvents() {
     setLimit(MAX_LIMIT);
   }, []);
 
+  // Jump to exactly the events behind one error-aggregation bucket (issue
+  // #426). Clears every other filter so the bucket is shown whole.
+  const showErrors = useCallback((ids: number[]) => {
+    setFilters({ ...EMPTY_FILTERS, ids });
+    setLimit(MAX_LIMIT);
+  }, []);
+
   const hasFilters =
     filters.component !== '' ||
     filters.severity !== '' ||
     filters.eventType !== '' ||
-    filters.correlationId.trim() !== '';
+    filters.correlationId.trim() !== '' ||
+    filters.ids.length > 0;
 
   const canLoadMore = events.length >= limit && limit < MAX_LIMIT;
   const loadMore = useCallback(() => {
@@ -107,6 +121,7 @@ export function useSystemEvents() {
     patchFilters,
     clearFilters,
     showRelated,
+    showErrors,
     refetch: fetchEvents,
     canLoadMore,
     loadMore,
