@@ -8036,6 +8036,69 @@ paths:
                 $ref: "#/components/schemas/Error"
 
   # --- Admin ---
+  /admin/system-events:
+    get:
+      summary: List operational events (admin)
+      operationId: adminListSystemEvents
+      description: >
+        The system event timeline (issue #424) — reverse-chronological by
+        occurrence, filterable by component / severity / event_type /
+        correlation_id / time range. Instance-wide operational diagnostics,
+        admin-only, read-only. Filter by correlation_id to see every event in
+        one chain of work (the timeline's "view related" drill-down).
+      parameters:
+        - name: component
+          in: query
+          required: false
+          schema: { type: string }
+        - name: severity
+          in: query
+          required: false
+          schema: { type: string, enum: [info, warn, error] }
+        - name: event_type
+          in: query
+          required: false
+          schema: { type: string }
+        - name: correlation_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: since
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+        - name: until
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 100, maximum: 500 }
+      responses:
+        "200":
+          description: System events.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  system_events:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SystemEvent"
+                  total: { type: integer }
+        "400":
+          description: Invalid since/until timestamp.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated (cookie or full-scope bearer token required).
+        "403":
+          description: Not an admin, or an API token was used on an admin path.
+
   /admin/users:
     get:
       summary: List all users (admin)
@@ -9509,6 +9572,31 @@ components:
         source_kind: { type: string, enum: [relationship, household] }
         source_id: { type: string }
         address_key: { type: string }
+    SystemEvent:
+      type: object
+      description: >
+        One persisted operational event (issue #424) — application start/stop,
+        a migration, a scheduled job run, a sync run, a notification dispatch,
+        a backup/restore drill. Distinct from AuditEvent (who changed user
+        data). System-generated, read-only, admin-only, bounded retention
+        (SYSTEM_EVENT_RETENTION_DAYS). Enum values mirror
+        backend/models/system_event.go and migration 000037 — keep in sync.
+      properties:
+        id: { type: integer }
+        created_at: { type: string, format: date-time, description: "When the row was written" }
+        occurred_at: { type: string, format: date-time, description: "When the event actually happened" }
+        event_type:
+          type: string
+          enum: [application_started, application_stopped, migration_started, migration_completed, migration_failed, job_started, job_completed, job_failed, sync_started, sync_completed, sync_failed, notification_sent, notification_failed, backup_completed, backup_failed, restore_test_completed, integration_failed]
+        severity: { type: string, enum: [info, warn, error] }
+        component: { type: string, description: "Subsystem, e.g. scheduler, contact_sync, notification" }
+        operation: { type: string, description: "The specific unit of work, e.g. a job name" }
+        duration_ms: { type: integer, nullable: true, description: "Wall-clock duration; absent for instantaneous events" }
+        result: { type: string, nullable: true, enum: [success, failure, skipped] }
+        correlation_id: { type: string, description: "Ties the event to its chain of work: an HTTP request id, or job:<name>:<uuid>" }
+        error: { type: string, description: "Sanitized, length-capped error string on the failure path" }
+        detail: { type: string, description: "Bounded low-cardinality context (counts, subsystem names) — never a contact id or raw URL" }
+        user_id: { type: integer, nullable: true, description: "The acting user when attributable; absent for background work" }
     AuditEvent:
       type: object
       description: One immutable create/update/delete or auth/admin lifecycle record in the audit log (T18, issue #381).

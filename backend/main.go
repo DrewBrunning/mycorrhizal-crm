@@ -196,6 +196,14 @@ func main() {
 		services.PurgeExpiredAuditEventsScheduled(db, *cfg)
 	})
 
+	// Purge expired system_events past their retention window (issue #424).
+	s.Every(24).Hours().Do(recoverJob("system-event-purge-scheduled-run", func() {
+		services.PurgeExpiredSystemEventsScheduled(db, *cfg)
+	}))
+	go safeGo("system-event-purge-initial-run", func() {
+		services.PurgeExpiredSystemEventsScheduled(db, *cfg)
+	})
+
 	// Emit overdue-cadence webhooks daily (T19). Job-lock guarded so a
 	// multi-instance deploy does not double-fire.
 	s.Every(24).Hours().Do(recoverJob("cadence-overdue-scheduled-run", func() {
