@@ -1441,3 +1441,81 @@ func TestAuditHashChainMigration(t *testing.T) {
 	_, err = sqlDB.Exec(`UPDATE audit_events SET operation = 'delete' WHERE entity_id = 'vcard-1'`)
 	assert.Error(t, err, "the immutability trigger must be restored by the down migration")
 }
+
+// TestSyncHealthFieldsMigration pins migration 000038's shape (issue #390):
+// both subscription tables gain the last-known-good columns, existing rows get
+// their history backfilled from the single last_sync_status bit they already
+// carried, and a rollback drops the columns without destroying rows.
+func TestSyncHealthFieldsMigration(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "sync-health-migration.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	require.NoError(t, m.Steps(37)) // through 000037_operational_check_results
+
+	_, err = sqlDB.Exec("INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 't390', 'x', 't390@example.com')")
+	require.NoError(t, err)
+
+	// One healthy and one failing subscription of each kind, on the pre-000038
+	// schema (last_synced_at + last_sync_status only).
+	for _, table := range []string{"contact_subscriptions", "calendar_subscriptions"} {
+		_, err = sqlDB.Exec(fmt.Sprintf(`
+			INSERT INTO %s (created_at, updated_at, user_id, name, url, sync_enabled, last_synced_at, last_sync_status)
+			VALUES (datetime('now'), datetime('now'), 1, 'ok', 'https://ok.example', 1, '2026-08-20 09:00:00', 'success')`, table))
+		require.NoError(t, err)
+		_, err = sqlDB.Exec(fmt.Sprintf(`
+			INSERT INTO %s (created_at, updated_at, user_id, name, url, sync_enabled, last_synced_at, last_sync_status)
+			VALUES (datetime('now'), datetime('now'), 1, 'bad', 'https://bad.example', 1, '2026-08-21 10:30:00', 'error')`, table))
+		require.NoError(t, err)
+	}
+
+	require.NoError(t, m.Steps(1)) // 000038
+
+	for _, table := range []string{"contact_subscriptions", "calendar_subscriptions"} {
+		var cols int64
+		require.NoError(t, sqlDB.QueryRow(fmt.Sprintf(
+			`SELECT COUNT(*) FROM pragma_table_info('%s') WHERE name IN
+			 ('last_attempt_at','last_success_at','last_failure_at','consecutive_failures','incident_first_failure_at','last_run_duration_ms','last_run_stats')`,
+			table)).Scan(&cols))
+		assert.EqualValues(t, 7, cols, "%s must gain all seven sync-health columns", table)
+
+		// Healthy row: last_success_at / last_attempt_at backfilled to equal
+		// the row's own last_synced_at, no incident.
+		var okSynced, okSuccess, okAttempt sql.NullString
+		var okConsec int64
+		var okIncident sql.NullString
+		require.NoError(t, sqlDB.QueryRow(fmt.Sprintf(
+			"SELECT last_synced_at, last_success_at, last_attempt_at, consecutive_failures, incident_first_failure_at FROM %s WHERE name = 'ok'", table)).
+			Scan(&okSynced, &okSuccess, &okAttempt, &okConsec, &okIncident))
+		assert.Equal(t, okSynced.String, okSuccess.String, "%s healthy row: last_success_at backfilled from last_synced_at", table)
+		assert.Equal(t, okSynced.String, okAttempt.String)
+		assert.Zero(t, okConsec)
+		assert.False(t, okIncident.Valid, "%s healthy row: no open incident", table)
+
+		// Failing row: one failure deep into an incident that started at last_synced_at.
+		var badSynced, badFailure, badIncident sql.NullString
+		var badConsec int64
+		var badSuccess sql.NullString
+		require.NoError(t, sqlDB.QueryRow(fmt.Sprintf(
+			"SELECT last_synced_at, last_failure_at, incident_first_failure_at, consecutive_failures, last_success_at FROM %s WHERE name = 'bad'", table)).
+			Scan(&badSynced, &badFailure, &badIncident, &badConsec, &badSuccess))
+		assert.Equal(t, badSynced.String, badFailure.String)
+		assert.Equal(t, badSynced.String, badIncident.String)
+		assert.EqualValues(t, 1, badConsec, "%s failing row: honest floor of one failure", table)
+		assert.False(t, badSuccess.Valid, "%s failing row: never succeeded", table)
+	}
+
+	// Down: columns gone, rows kept.
+	require.NoError(t, MigrateDown(dbPath))
+	for _, table := range []string{"contact_subscriptions", "calendar_subscriptions"} {
+		var cols, rows int64
+		require.NoError(t, sqlDB.QueryRow(fmt.Sprintf(
+			"SELECT COUNT(*) FROM pragma_table_info('%s') WHERE name = 'consecutive_failures'", table)).Scan(&cols))
+		assert.Zero(t, cols, "%s: the down migration must drop the sync-health columns", table)
+		require.NoError(t, sqlDB.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s", table)).Scan(&rows))
+		assert.EqualValues(t, 2, rows, "%s: a rollback must not destroy subscriptions", table)
+	}
+}

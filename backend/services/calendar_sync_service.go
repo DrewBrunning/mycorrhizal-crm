@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -194,7 +195,9 @@ func (s *CalendarSyncService) SyncSubscription(ctx context.Context, db *gorm.DB,
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	start := time.Now()
 	stats, err := s.syncSubscription(ctx, db, cfg, sub)
+	runDuration := time.Since(start)
 	err = redactURLPassword(err, sub.URL)
 
 	now := time.Now().UTC()
@@ -206,11 +209,17 @@ func (s *CalendarSyncService) SyncSubscription(ctx context.Context, db *gorm.DB,
 		sub.LastSyncStatus = models.CalendarSyncStatusSuccess
 		sub.LastSyncError = ""
 	}
-	if saveErr := db.Model(&models.CalendarSubscription{}).Where("id = ?", sub.ID).Updates(map[string]interface{}{
+	updates := map[string]interface{}{
 		"last_synced_at":   sub.LastSyncedAt,
 		"last_sync_status": sub.LastSyncStatus,
 		"last_sync_error":  sub.LastSyncError,
-	}).Error; saveErr != nil {
+	}
+	// Sync-health last-known-good state (issue #390): fold this run into the
+	// consecutive-failure / incident / last-success bookkeeping.
+	for k, v := range sub.AdvanceForRun(now, runDuration, marshalSyncRunStats(stats), err) {
+		updates[k] = v
+	}
+	if saveErr := db.Model(&models.CalendarSubscription{}).Where("id = ?", sub.ID).Updates(updates).Error; saveErr != nil {
 		logger.Error().Err(saveErr).Uint("subscription_id", sub.ID).Msg("Failed to update calendar sync status")
 	}
 
@@ -1029,6 +1038,19 @@ func clampRunes(value string, maxRunes int) string {
 		return value
 	}
 	return string(runes[:maxRunes])
+}
+
+// marshalSyncRunStats JSON-encodes a per-run counter struct (CalendarSyncStats
+// or ContactSyncStats) for models.SyncHealthFields.LastRunStats. Both structs
+// are small and flat; an encode failure is not worth failing a sync over, so
+// it degrades to an empty string, which the response DTO maps to {}.
+func marshalSyncRunStats(stats interface{}) string {
+	b, err := json.Marshal(stats)
+	if err != nil {
+		logger.Warn().Err(err).Msg("Failed to marshal sync run stats for health tracking")
+		return ""
+	}
+	return string(b)
 }
 
 // SyncAllCalendars syncs every enabled subscription. Failures on one

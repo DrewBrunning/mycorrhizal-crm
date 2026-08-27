@@ -10300,6 +10300,13 @@ components:
         last_sync_status: { type: string }
         last_sync_error: { type: string }
         created_at: { type: string, format: date-time }
+        last_attempt_at: { type: string, format: date-time, nullable: true, description: "Sync-health (issue #390): most recent run, success or failure." }
+        last_success_at: { type: string, format: date-time, nullable: true, description: "Most recent run that succeeded." }
+        last_failure_at: { type: string, format: date-time, nullable: true, description: "Most recent run that failed." }
+        consecutive_failures: { type: integer, description: "Runs failed in a row; 0 after any success." }
+        incident_first_failure_at: { type: string, format: date-time, nullable: true, description: "First failure of the current unbroken run of failures; null when consecutive_failures is 0." }
+        last_run_duration_ms: { type: integer, nullable: true, description: "Wall-clock duration of the last run." }
+        last_run_stats: { type: object, additionalProperties: { type: integer }, description: "Last run's counter tallies (created/updated/skipped, plus archived for contacts). {} before the first run." }
     ContactSubscriptionInput:
       type: object
       required: [name, url]
@@ -10328,6 +10335,14 @@ components:
         last_sync_status: { type: string }
         last_sync_error: { type: string }
         created_at: { type: string, format: date-time }
+        last_attempt_at: { type: string, format: date-time, nullable: true, description: "Sync-health (issue #390): most recent run, success or failure." }
+        last_success_at: { type: string, format: date-time, nullable: true, description: "Most recent run that succeeded." }
+        last_failure_at: { type: string, format: date-time, nullable: true, description: "Most recent run that failed." }
+        consecutive_failures: { type: integer, description: "Runs failed in a row; 0 after any success." }
+        incident_first_failure_at: { type: string, format: date-time, nullable: true, description: "First failure of the current unbroken run of failures; null when consecutive_failures is 0." }
+        last_run_duration_ms: { type: integer, nullable: true, description: "Wall-clock duration of the last run." }
+        last_run_stats: { type: object, additionalProperties: { type: integer }, description: "Last run's counter tallies (created/updated/archived/skipped). {} before the first run." }
+        pending_conflicts: { type: integer, description: "Unreviewed local edits this subscription's syncs have overwritten (issue #395). Contacts only." }
     ApiTokenInput:
       type: object
       required: [name]

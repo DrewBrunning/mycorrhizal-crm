@@ -184,7 +184,9 @@ func (s *ContactSyncService) SyncSubscription(ctx context.Context, db *gorm.DB, 
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	start := time.Now()
 	stats, newToken, err := s.syncSubscription(ctx, db, cfg, sub)
+	runDuration := time.Since(start)
 	err = redactURLPassword(err, sub.URL)
 
 	now := time.Now().UTC()
@@ -203,6 +205,12 @@ func (s *ContactSyncService) SyncSubscription(ctx context.Context, db *gorm.DB, 
 	}
 	updates["last_sync_status"] = sub.LastSyncStatus
 	updates["last_sync_error"] = sub.LastSyncError
+
+	// Sync-health last-known-good state (issue #390): fold this run into the
+	// consecutive-failure / incident / last-success bookkeeping.
+	for k, v := range sub.AdvanceForRun(now, runDuration, marshalSyncRunStats(stats), err) {
+		updates[k] = v
+	}
 
 	if saveErr := db.Model(&models.ContactSubscription{}).Where("id = ?", sub.ID).Updates(updates).Error; saveErr != nil {
 		logger.Error().Err(saveErr).Uint("subscription_id", sub.ID).Msg("Failed to update contact sync status")
