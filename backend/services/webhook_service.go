@@ -118,9 +118,11 @@ func isPrivateURL(rawURL string) bool {
 // be tied back to the action that fired it (issue #425); pass
 // context.Background() from a fire-and-forget path with no correlation ID.
 func TriggerWebhooks(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, eventType string, data interface{}) {
-	// The goroutines below outlive the caller, so capture the correlation ID
-	// as a value rather than holding a context that may be cancelled.
-	corrID := logger.CorrelationID(ctx)
+	// The goroutines below outlive the caller (a handler returns as soon as
+	// this function does), so detach from ctx's cancellation/deadline while
+	// keeping its values — the correlation ID rides along, but the request
+	// ending does not abort an in-flight delivery.
+	deliveryCtx := context.WithoutCancel(ctx)
 
 	var webhooks []models.Webhook
 	if err := db.Where("user_id = ? AND is_active = ? AND deleted_at IS NULL", userID, true).Find(&webhooks).Error; err != nil {
@@ -150,8 +152,7 @@ func TriggerWebhooks(ctx context.Context, db *gorm.DB, cfg config.Config, userID
 		go func() {
 			deliverySem <- struct{}{}
 			defer func() { <-deliverySem }()
-			dctx := logger.WithCorrelationID(context.Background(), corrID)
-			deliverWebhook(dctx, db, cfg, wh, eventType, body, 1)
+			deliverWebhook(deliveryCtx, db, cfg, wh, eventType, body, 1)
 		}()
 	}
 }
