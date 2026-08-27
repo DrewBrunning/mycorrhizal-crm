@@ -241,6 +241,24 @@ jobs:
       # cosign verify-blob --bundle mycorrhizal-apk.sigstore.json <apk>.
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          # Pinned explicitly rather than trusting the action's own default --
+          # v4.1.2's baked-in default is v3.0.6, and that specific cosign
+          # release has a keyless-signing regression against a registry with
+          # no OCI 1.1 Referrers API support (GHCR is one): `cosign sign`
+          # prints "Generating ephemeral keys... Signing artifact..." and
+          # exits 0, but never prints "tlog entry created" / "Pushing
+          # signature to:" and no signature ever lands in the registry. Found
+          # via v0.6.1: three images published, none verifiable
+          # (`cosign verify` -> "no signatures found" on every one), while the
+          # prior release's identical step -- an older cosign-installer
+          # version with a different baked-in default -- signed cleanly.
+          # v3.1.x's changelog lists "Sign exclusively via sigstore-go" and
+          # "Require bundle output or registry upload", consistent with a
+          # registry-upload fix in the keyless path. Pin the version, not the
+          # installer's default, so a future installer bump can't silently
+          # swap this out from under the workflow again.
+          cosign-release: 'v3.1.3'
 
       - name: Cosign-sign the release APK (keyless, additive)
         run: |
@@ -399,6 +417,24 @@ jobs:
 
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          # Pinned explicitly rather than trusting the action's own default --
+          # v4.1.2's baked-in default is v3.0.6, and that specific cosign
+          # release has a keyless-signing regression against a registry with
+          # no OCI 1.1 Referrers API support (GHCR is one): `cosign sign`
+          # prints "Generating ephemeral keys... Signing artifact..." and
+          # exits 0, but never prints "tlog entry created" / "Pushing
+          # signature to:" and no signature ever lands in the registry. Found
+          # via v0.6.1: three images published, none verifiable
+          # (`cosign verify` -> "no signatures found" on every one), while the
+          # prior release's identical step -- an older cosign-installer
+          # version with a different baked-in default -- signed cleanly.
+          # v3.1.x's changelog lists "Sign exclusively via sigstore-go" and
+          # "Require bundle output or registry upload", consistent with a
+          # registry-upload fix in the keyless path. Pin the version, not the
+          # installer's default, so a future installer bump can't silently
+          # swap this out from under the workflow again.
+          cosign-release: 'v3.1.3'
 
       # Keyless signing via cosign's ambient GitHub Actions OIDC detection --
       # no --certificate-identity/--certificate-oidc-issuer flags here, those
