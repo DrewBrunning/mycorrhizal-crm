@@ -114,6 +114,12 @@ type contactRoundTripper struct {
 }
 
 func (t *contactRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Carry the caller's correlation ID onto the outbound request so the
+	// remote's access log (and ours, on the response) can be tied back to the
+	// UI action or scheduled run that triggered the sync (issue #425).
+	if id := logger.CorrelationID(req.Context()); id != "" {
+		req.Header.Set("X-Correlation-ID", id)
+	}
 	resp, err := t.base.RoundTrip(req)
 	if err != nil {
 		return nil, err

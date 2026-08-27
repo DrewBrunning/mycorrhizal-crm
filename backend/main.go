@@ -33,7 +33,10 @@ func safeGo(name string, fn func()) {
 		defer func() {
 			if r := recover(); r != nil {
 				logger.Error().
-					Str("goroutine", name).
+					Str(logger.FieldEvent, "goroutine_panicked").
+					Str(logger.FieldComponent, logger.ComponentScheduler).
+					Str(logger.FieldOperation, name).
+					Str(logger.FieldResult, logger.ResultFailure).
 					Interface("panic", r).
 					Str("stack", string(debug.Stack())).
 					Msg("Background goroutine panicked — recovered")
@@ -57,7 +60,10 @@ func recoverJob(name string, fn func()) func() {
 		defer func() {
 			if r := recover(); r != nil {
 				logger.Error().
-					Str("job", name).
+					Str(logger.FieldEvent, "job_panicked").
+					Str(logger.FieldComponent, logger.ComponentScheduler).
+					Str(logger.FieldOperation, name).
+					Str(logger.FieldResult, logger.ResultFailure).
 					Interface("panic", r).
 					Str("stack", string(debug.Stack())).
 					Msg("Scheduled job panicked — recovered")
