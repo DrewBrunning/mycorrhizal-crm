@@ -93,10 +93,15 @@ Which producers emit today:
 | Contact / calendar sync | `sync_completed` (with counts) / `sync_failed` (with the classified error) |
 | Restore drill (issue #275) | `restore_test_completed` on a healthy run; `backup_failed` (`severity=error`) on a failed or mismatched run |
 | Migration runner | `migration_completed` (with the from/to version) when the schema actually advanced |
+| Notification dispatch | `notification_sent` / `notification_failed` per channel (`detail` = channel name only) |
+| Webhook delivery | `integration_failed` once a delivery exhausts its retry budget and is still failing; the outbound POST also carries `X-Correlation-ID` |
+| Process | `application_started` (with build version) / `application_stopped` |
 
-Notification and webhook delivery keep their own per-delivery records
-(`notification_deliveries`, `webhook_deliveries`) and their own follow-up
-([#422](https://github.com/DrewBrunning/mycorrhizal-crm/issues/422)); they are not duplicated here.
+The per-delivery *detail* tables (`notification_deliveries`, `webhook_deliveries`) still exist — the
+`system_events` row is the timeline summary, not a replacement. Per-channel delivery *health*
+(rates, last-good state) is [#422](https://github.com/DrewBrunning/mycorrhizal-crm/issues/422). The
+ntfy/Gotify/FCM push channels do not yet set an outbound correlation header (no standard one exists);
+their events and log lines carry the ID.
 
 **Retention**: `SYSTEM_EVENT_RETENTION_DAYS` (default `30`). A daily purge job
 (`system_event_purge`) hard-deletes rows older than the window; `<=0` disables the purge (it never

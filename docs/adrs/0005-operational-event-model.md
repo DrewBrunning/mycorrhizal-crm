@@ -56,11 +56,17 @@ table.
 
 The operational producers whose failures an operator needs on the timeline: the scheduler
 (`job_failed` on a recovered panic), contact/calendar sync (`sync_completed` / `sync_failed`), the
-restore drill (`restore_test_completed` / `backup_failed`), and the migration runner
-(`migration_completed`). Notification and webhook delivery keep their existing per-delivery tables
-(`notification_deliveries`, `webhook_deliveries`) and their own follow-up
-([#422](https://github.com/DrewBrunning/mycorrhizal-crm/issues/422)); they are not duplicated into
-`system_events`.
+restore drill (`restore_test_completed` / `backup_failed`), the migration runner
+(`migration_completed`), notification dispatch (`notification_sent` / `notification_failed`, per
+channel), webhook delivery (`integration_failed` once a delivery exhausts its retry budget), and the
+process itself (`application_started` / `application_stopped`).
+
+Notification and webhook delivery keep their per-delivery *detail* tables
+(`notification_deliveries`, `webhook_deliveries`) — the `system_events` row is the timeline summary,
+not a replacement; per-channel delivery *health* (rates, last-good) is still
+[#422](https://github.com/DrewBrunning/mycorrhizal-crm/issues/422)'s concern. The ntfy/Gotify/FCM
+push channels do not yet set an outbound correlation header (their protocols have no standard one);
+the emitted events and log lines carry the correlation ID.
 
 ## Consequences
 
