@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.model.network.ErrorBucket
+import com.mycorrhizal.crm.model.network.JobRunHealth
 import com.mycorrhizal.crm.model.network.SubsystemHealth
 import com.mycorrhizal.crm.model.network.SystemEvent
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -155,6 +156,43 @@ class SystemEventsScreenTest {
             }
         }
         composeTestRule.onNodeWithTag("sysevents-subsystem-health").assertDoesNotExist()
+    }
+
+    @Test
+    fun `background jobs section renders a card per job with failure detail`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                BackgroundJobsSection(
+                    jobs = listOf(
+                        JobRunHealth(
+                            jobName = "daily_reminders",
+                            status = "failing",
+                            consecutiveFailures = 4,
+                            lastError = "2 notification send(s) failed",
+                            lastDurationMs = 40000,
+                        ),
+                        JobRunHealth(jobName = "calendar_sync", status = "healthy", lastDurationMs = 820),
+                    ),
+                    onRefresh = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Daily reminders").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Calendar sync").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Failed 4 times in a row").assertIsDisplayed()
+        composeTestRule.onNodeWithText("2 notification send(s) failed").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("background-job-card-daily_reminders").assertIsDisplayed()
+    }
+
+    @Test
+    fun `background jobs section is hidden until data arrives`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                BackgroundJobsSection(jobs = emptyList(), onRefresh = {})
+            }
+        }
+        composeTestRule.onNodeWithTag("sysevents-background-jobs").assertDoesNotExist()
     }
 
     @Test

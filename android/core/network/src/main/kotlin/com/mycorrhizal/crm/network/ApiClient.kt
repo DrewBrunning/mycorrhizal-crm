@@ -23,6 +23,8 @@ import com.mycorrhizal.crm.model.network.AuditEventsResponse
 import com.mycorrhizal.crm.model.network.AuthConfig
 import com.mycorrhizal.crm.model.network.AuditUndoResponse
 import com.mycorrhizal.crm.model.network.ErrorAggregationResponse
+import com.mycorrhizal.crm.model.network.JobRunHealthResponse
+import com.mycorrhizal.crm.model.network.JobRunsResponse
 import com.mycorrhizal.crm.model.network.SubsystemHealthResponse
 import com.mycorrhizal.crm.model.network.SystemEventsResponse
 import com.mycorrhizal.crm.model.network.BackendError
@@ -1677,6 +1679,41 @@ class ApiClient(
             moshi.adapter(SubsystemHealthResponse::class.java).fromJson(body)
         }
 
+    /**
+     * GET /admin/job-runs — background-job run history (issue #391), newest
+     * first, with optional server-side job_name / result / since / until
+     * filters. Admin-only, instance-wide. [limit] defaults to 100, max 500.
+     */
+    suspend fun getJobRuns(
+        jobName: String? = null,
+        result: String? = null,
+        since: String? = null,
+        until: String? = null,
+        limit: Int = 100,
+    ): Result<JobRunsResponse> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$ADMIN_JOB_RUNS_PATH".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("limit", limit.toString())
+        jobName?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("job_name", it) }
+        result?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("result", it) }
+        since?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("since", it) }
+        until?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("until", it) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(JobRunsResponse::class.java).fromJson(body)
+        }
+    }
+
+    /**
+     * GET /admin/job-runs/health — the folded per-job run health (issue #391):
+     * for each known background job its status, last run / success / failure,
+     * the consecutive-failure run and its first-failure time, and an avg/max
+     * duration trend. Admin-only, instance-wide, no parameters; the server
+     * derives it from the job_runs history.
+     */
+    suspend fun getJobRunHealth(): Result<JobRunHealthResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$ADMIN_JOB_RUNS_HEALTH_PATH") { _, body ->
+            moshi.adapter(JobRunHealthResponse::class.java).fromJson(body)
+        }
+
     // M14: the ego-centric network graph. `GET /graph/connections` (T10's
     // traversal) returns names already resolved and inverses already applied,
     // so this client needs no name resolution of its own — the design decision
@@ -1930,6 +1967,8 @@ class ApiClient(
         private const val ADMIN_SYSTEM_EVENTS_PATH = "$API_V1/admin/system-events"
         private const val ADMIN_SUBSYSTEM_HEALTH_PATH = "$API_V1/admin/subsystem-health"
         private const val ADMIN_ERROR_AGGREGATION_PATH = "$API_V1/admin/error-aggregation"
+        private const val ADMIN_JOB_RUNS_PATH = "$API_V1/admin/job-runs"
+        private const val ADMIN_JOB_RUNS_HEALTH_PATH = "$API_V1/admin/job-runs/health"
         private const val GRAPH_CONNECTIONS_PATH = "$API_V1/graph/connections"
         private const val EXTERNAL_IDENTITIES_PATH = "$API_V1/external-identities"
         private const val IMMICH_PATH = "$API_V1/immich"

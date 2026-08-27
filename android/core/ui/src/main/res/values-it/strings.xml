@@ -1214,6 +1214,29 @@
     <string name="subsystem_name_backup">Backup e ripristino</string>
     <string name="subsystem_name_scheduler">Processi in background</string>
     <string name="subsystem_name_webhook">Webhook</string>
+    <!-- Background jobs (issue #391) -->
+    <string name="jobruns_title">Attività in background</string>
+    <string name="jobruns_refresh">Aggiorna</string>
+    <string name="jobruns_status_healthy">Integro</string>
+    <string name="jobruns_status_failing">In errore</string>
+    <string name="jobruns_status_unknown">Sconosciuto</string>
+    <string name="jobruns_consecutive_failures">Fallita %1$d volte di fila</string>
+    <string name="jobruns_last_run">Ultima esecuzione: %1$s</string>
+    <string name="jobruns_duration">Durata: %1$s</string>
+    <string name="jobruns_never">mai</string>
+    <string name="jobruns_job_daily_reminders">Promemoria giornalieri</string>
+    <string name="jobruns_job_webhook_retries">Nuovi tentativi webhook</string>
+    <string name="jobruns_job_calendar_sync">Sincronizzazione calendario</string>
+    <string name="jobruns_job_purge_deleted">Pulizia righe eliminate</string>
+    <string name="jobruns_job_audit_purge">Pulizia registro di controllo</string>
+    <string name="jobruns_job_system_event_purge">Pulizia eventi di sistema</string>
+    <string name="jobruns_job_cadence_overdue">Webhook di cadenza scaduta</string>
+    <string name="jobruns_job_reach_out_detection">Rilevamento occasioni di contatto</string>
+    <string name="jobruns_job_immich_sync">Sincronizzazione Immich</string>
+    <string name="jobruns_job_db_integrity_check">Controllo integrità database</string>
+    <string name="jobruns_job_restore_drill">Prova di ripristino del backup</string>
+    <string name="jobruns_job_alert_eval">Valutazione degli avvisi</string>
+    <string name="jobruns_job_job_run_purge">Pulizia cronologia esecuzioni</string>
     <!-- Error aggregation (issue #426) -->
     <string name="sysevents_errors_banner">Visualizzazione di %1$d eventi di un gruppo di errori.</string>
     <string name="error_aggregation_title">Errori per causa</string>

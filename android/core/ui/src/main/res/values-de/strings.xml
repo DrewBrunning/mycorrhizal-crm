@@ -1214,6 +1214,29 @@
     <string name="subsystem_name_backup">Sicherung &amp; Wiederherstellung</string>
     <string name="subsystem_name_scheduler">Hintergrundaufgaben</string>
     <string name="subsystem_name_webhook">Webhooks</string>
+    <!-- Background jobs (issue #391) -->
+    <string name="jobruns_title">Hintergrundaufgaben</string>
+    <string name="jobruns_refresh">Aktualisieren</string>
+    <string name="jobruns_status_healthy">Fehlerfrei</string>
+    <string name="jobruns_status_failing">Fehlerhaft</string>
+    <string name="jobruns_status_unknown">Unbekannt</string>
+    <string name="jobruns_consecutive_failures">%1$d-mal in Folge fehlgeschlagen</string>
+    <string name="jobruns_last_run">Letzter Lauf: %1$s</string>
+    <string name="jobruns_duration">Dauer: %1$s</string>
+    <string name="jobruns_never">nie</string>
+    <string name="jobruns_job_daily_reminders">Tägliche Erinnerungen</string>
+    <string name="jobruns_job_webhook_retries">Webhook-Wiederholungen</string>
+    <string name="jobruns_job_calendar_sync">Kalendersynchronisierung</string>
+    <string name="jobruns_job_purge_deleted">Gelöschte Datensätze bereinigen</string>
+    <string name="jobruns_job_audit_purge">Audit-Protokoll bereinigen</string>
+    <string name="jobruns_job_system_event_purge">Systemereignisse bereinigen</string>
+    <string name="jobruns_job_cadence_overdue">Webhooks für überfällige Kontaktrhythmen</string>
+    <string name="jobruns_job_reach_out_detection">Erkennung von Kontaktanlässen</string>
+    <string name="jobruns_job_immich_sync">Immich-Synchronisierung</string>
+    <string name="jobruns_job_db_integrity_check">Datenbank-Integritätsprüfung</string>
+    <string name="jobruns_job_restore_drill">Backup-Wiederherstellungstest</string>
+    <string name="jobruns_job_alert_eval">Alarmauswertung</string>
+    <string name="jobruns_job_job_run_purge">Laufverlauf bereinigen</string>
     <!-- Error aggregation (issue #426) -->
     <string name="sysevents_errors_banner">%1$d Ereignisse aus einer Fehlergruppe werden angezeigt.</string>
     <string name="error_aggregation_title">Fehler nach Ursache</string>

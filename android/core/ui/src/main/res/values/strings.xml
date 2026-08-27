@@ -1216,6 +1216,29 @@
     <string name="subsystem_name_backup">Backup &amp; restore</string>
     <string name="subsystem_name_scheduler">Background jobs</string>
     <string name="subsystem_name_webhook">Webhooks</string>
+    <!-- Background jobs (issue #391) -->
+    <string name="jobruns_title">Background jobs</string>
+    <string name="jobruns_refresh">Refresh</string>
+    <string name="jobruns_status_healthy">Healthy</string>
+    <string name="jobruns_status_failing">Failing</string>
+    <string name="jobruns_status_unknown">Unknown</string>
+    <string name="jobruns_consecutive_failures">Failed %1$d times in a row</string>
+    <string name="jobruns_last_run">Last run: %1$s</string>
+    <string name="jobruns_duration">Duration: %1$s</string>
+    <string name="jobruns_never">never</string>
+    <string name="jobruns_job_daily_reminders">Daily reminders</string>
+    <string name="jobruns_job_webhook_retries">Webhook retries</string>
+    <string name="jobruns_job_calendar_sync">Calendar sync</string>
+    <string name="jobruns_job_purge_deleted">Purge deleted rows</string>
+    <string name="jobruns_job_audit_purge">Audit log purge</string>
+    <string name="jobruns_job_system_event_purge">System event purge</string>
+    <string name="jobruns_job_cadence_overdue">Overdue cadence webhooks</string>
+    <string name="jobruns_job_reach_out_detection">Reach-out detection</string>
+    <string name="jobruns_job_immich_sync">Immich sync</string>
+    <string name="jobruns_job_db_integrity_check">Database integrity check</string>
+    <string name="jobruns_job_restore_drill">Backup restore drill</string>
+    <string name="jobruns_job_alert_eval">Alert evaluation</string>
+    <string name="jobruns_job_job_run_purge">Job history purge</string>
     <!-- Error aggregation (issue #426) -->
     <string name="sysevents_errors_banner">Showing %1$d events from one error group.</string>
     <string name="error_aggregation_title">Errors by cause</string>

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.SystemEventRepository
 import com.mycorrhizal.crm.model.network.ErrorBucket
+import com.mycorrhizal.crm.model.network.JobRunHealth
 import com.mycorrhizal.crm.model.network.SubsystemHealth
 import com.mycorrhizal.crm.model.network.SystemEvent
 import com.mycorrhizal.crm.network.foldApiError
@@ -41,6 +42,12 @@ data class SystemEventsUiState(
      * on open and on explicit refresh, a failure leaves it empty.
      */
     val errorBuckets: List<ErrorBucket> = emptyList(),
+    /**
+     * Folded per-job background-job run health (issue #391), shown above the
+     * timeline. Same load policy as [subsystemHealth] / [errorBuckets]:
+     * fetched on open and on explicit refresh, a failure leaves it empty.
+     */
+    val jobRunHealth: List<JobRunHealth> = emptyList(),
     val isLoading: Boolean = false,
     /** Transient list-load failure (toasted). Cleared at the start of every fetch. */
     val error: String? = null,
@@ -84,6 +91,22 @@ class SystemEventsViewModel @Inject constructor(
         load()
         refreshSubsystemHealth()
         refreshErrorAggregation()
+        refreshJobRunHealth()
+    }
+
+    /**
+     * Reload the background-job monitor panel (issue #391). Best-effort, same
+     * as [refreshSubsystemHealth] — a failure leaves the panel as it was.
+     */
+    fun refreshJobRunHealth() {
+        viewModelScope.launch {
+            repository.jobRunHealth().foldApiError(
+                onSuccess = { response ->
+                    _uiState.update { it.copy(jobRunHealth = response.jobs) }
+                },
+                onError = { },
+            )
+        }
     }
 
     /**

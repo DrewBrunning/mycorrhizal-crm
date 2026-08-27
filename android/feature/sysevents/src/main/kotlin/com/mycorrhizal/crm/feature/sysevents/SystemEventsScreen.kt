@@ -57,6 +57,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.ErrorBucket
+import com.mycorrhizal.crm.model.network.JobRunHealth
+import com.mycorrhizal.crm.model.network.JobRunStatuses
 import com.mycorrhizal.crm.model.network.SubsystemHealth
 import com.mycorrhizal.crm.model.network.Subsystems
 import com.mycorrhizal.crm.model.network.SubsystemStatuses
@@ -139,6 +141,11 @@ fun SystemEventsScreen(
                 health = state.subsystemHealth,
                 onSelectSubsystem = viewModel::applyComponent,
                 onRefresh = viewModel::refreshSubsystemHealth,
+            )
+
+            BackgroundJobsSection(
+                jobs = state.jobRunHealth,
+                onRefresh = viewModel::refreshJobRunHealth,
             )
 
             ErrorAggregationSection(
@@ -525,6 +532,154 @@ internal fun subsystemStatusLabel(token: String): String = when (token) {
     SubsystemStatuses.UNKNOWN -> stringResource(R.string.subsystem_health_status_unknown)
     else -> token
 }
+
+/**
+ * Per-job background-job run health (issue #391), above the timeline: a
+ * horizontal strip of cards, one per scheduled job, each with its status, last
+ * run, duration, and — when failing — the consecutive-failure count and last
+ * error. Mirrors [SubsystemHealthSection]. Hidden until the first fetch lands.
+ */
+@Composable
+internal fun BackgroundJobsSection(
+    jobs: List<JobRunHealth>,
+    onRefresh: () -> Unit,
+) {
+    if (jobs.isEmpty()) return
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .testTag("sysevents-background-jobs"),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.jobruns_title),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            TextButton(
+                onClick = onRefresh,
+                modifier = Modifier.testTag("background-jobs-refresh"),
+            ) {
+                Text(stringResource(R.string.jobruns_refresh))
+            }
+        }
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(jobs, key = { it.jobName }) { item ->
+                BackgroundJobCard(item = item)
+            }
+        }
+    }
+}
+
+@Composable
+private fun BackgroundJobCard(item: JobRunHealth) {
+    val failing = item.status == JobRunStatuses.FAILING
+    val statusColor = when (item.status) {
+        JobRunStatuses.HEALTHY -> MaterialTheme.colorScheme.primary
+        JobRunStatuses.FAILING -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Card(
+        modifier = Modifier
+            .width(220.dp)
+            .testTag("background-job-card-${item.jobName}"),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = jobRunLabel(item.jobName),
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = jobRunStatusLabel(item.status),
+                style = MaterialTheme.typography.labelMedium,
+                color = statusColor,
+            )
+            if (failing) {
+                Text(
+                    text = stringResource(
+                        R.string.jobruns_consecutive_failures,
+                        item.consecutiveFailures,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                if (item.lastError.isNotBlank()) {
+                    Text(
+                        text = item.lastError,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Text(
+                text = stringResource(
+                    R.string.jobruns_last_run,
+                    item.lastRunAt?.let { formatEventTime(it) }
+                        ?: stringResource(R.string.jobruns_never),
+                ),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            item.lastDurationMs?.let { ms ->
+                Text(
+                    text = stringResource(R.string.jobruns_duration, formatJobRunDuration(ms)),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun jobRunStatusLabel(token: String): String = when (token) {
+    JobRunStatuses.HEALTHY -> stringResource(R.string.jobruns_status_healthy)
+    JobRunStatuses.FAILING -> stringResource(R.string.jobruns_status_failing)
+    JobRunStatuses.UNKNOWN -> stringResource(R.string.jobruns_status_unknown)
+    else -> token
+}
+
+/**
+ * Friendly label for a canonical job name. Hand-maintained mirror of
+ * backend/models/job_run.go's KnownJobNames and web's backgroundJobs.jobs.*
+ * (frontend trap #4) — an unknown token from a future job still renders as-is.
+ */
+@Composable
+internal fun jobRunLabel(token: String): String = when (token) {
+    "daily_reminders" -> stringResource(R.string.jobruns_job_daily_reminders)
+    "webhook_retries" -> stringResource(R.string.jobruns_job_webhook_retries)
+    "calendar_sync" -> stringResource(R.string.jobruns_job_calendar_sync)
+    "purge_deleted" -> stringResource(R.string.jobruns_job_purge_deleted)
+    "audit_purge" -> stringResource(R.string.jobruns_job_audit_purge)
+    "system_event_purge" -> stringResource(R.string.jobruns_job_system_event_purge)
+    "cadence_overdue" -> stringResource(R.string.jobruns_job_cadence_overdue)
+    "reach_out_detection" -> stringResource(R.string.jobruns_job_reach_out_detection)
+    "immich_sync" -> stringResource(R.string.jobruns_job_immich_sync)
+    "db_integrity_check" -> stringResource(R.string.jobruns_job_db_integrity_check)
+    "restore_drill" -> stringResource(R.string.jobruns_job_restore_drill)
+    "alert_eval" -> stringResource(R.string.jobruns_job_alert_eval)
+    "job_run_purge" -> stringResource(R.string.jobruns_job_job_run_purge)
+    else -> token
+}
+
+/** Formats a millisecond duration as "820 ms" / "1.4 s". */
+private fun formatJobRunDuration(ms: Long): String =
+    if (ms < 1000) "$ms ms" else "%.1f s".format(ms / 1000.0)
 
 /**
  * Operational failures over the last 24h bucketed by cause (issue #426), above
