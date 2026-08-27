@@ -345,6 +345,25 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
 - **Backups**: included in the DB snapshot like any other table; carries nothing sensitive, so it
   needs no special handling in the backup-confidentiality boundary (§10).
 
+## 15. Alert state (`alert_states`) — not user data
+
+- **Where / who**: one row per alert condition (`backup`, `disk_space`, `sync:contact_sync`, …),
+  written by the scheduled alert evaluator (`alert_eval`, issue #428) and read only by that same
+  job. No `user_id` — server-global operational bookkeeping, like `operational_check_results` and
+  `job_executions`.
+- **What it contains**: a condition key, an `ok`/`alerting` state, the timestamp it entered that
+  state, a consecutive-failure count, and a short sanitized detail string (e.g.
+  `disk usage 92% of /var/lib/mycorrhizal`, or a subsystem's last error as already sanitized into
+  `system_events`). **No contact data, no credentials, no PII.**
+- **Retention / deletion**: hard state, upserted in place — at most one row per condition, each
+  overwritten on the next evaluation. Not tied to any user, so account deletion neither touches nor
+  needs to touch it. Dropped wholesale by migration `000040`'s `down.sql`; the next evaluator run
+  rebuilds every row from current subsystem health.
+- **Backups**: included in the DB snapshot like any other table; carries nothing sensitive, so it
+  needs no special handling in the backup-confidentiality boundary (§10). Excluded from the
+  restore-drill row-count comparison for the same reason as `system_events` /
+  `operational_check_results` — the evaluator writes it in the snapshot-vs-live window.
+
 ## Known gaps
 
 One item surfaced by walking every data type through the four questions above. It does not block this

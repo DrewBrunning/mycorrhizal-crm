@@ -1183,7 +1183,12 @@
         "activity.updated": "Activité mise à jour",
         "activity.deleted": "Activité supprimée",
         "reminder.triggered": "Rappel déclenché",
-        "birthday.occurred": "Anniversaire"
+        "birthday.occurred": "Anniversaire",
+        "reach_out_suggested": "Prise de contact suggérée",
+        "db.integrity_check_failed": "Échec du contrôle d'intégrité de la base de données",
+        "db.restore_drill_failed": "Échec du test de restauration",
+        "alert.raised": "Alerte déclenchée",
+        "alert.cleared": "Alerte levée"
       },
       "secretDialog": {
         "title": "Secret du webhook"
