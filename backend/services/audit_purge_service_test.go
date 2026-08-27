@@ -1,12 +1,11 @@
 package services
 
 import (
-	"path/filepath"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -17,8 +16,7 @@ import (
 // AUDIT_RETENTION_DAYS are removed, newer rows survive, and a non-positive
 // retention disables purging entirely (never deletes everything).
 func TestPurgeExpiredAuditEvents(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "audit-purge.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 
 	user := models.User{Username: "auditpurge", Password: "password123!A", Email: "auditpurge@example.com"}
@@ -52,8 +50,7 @@ func TestPurgeExpiredAuditEvents(t *testing.T) {
 // tamper-evident hash chain at its head, so after purging the survivors must
 // verify as a clean chain again (RecomputeAuditChain re-links them).
 func TestPurgeExpiredAuditEvents_RelinksHashChain(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "audit-purge-chain.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() {
 		models.AuditFlush()
@@ -101,8 +98,7 @@ func TestPurgeExpiredAuditEvents_RelinksHashChain(t *testing.T) {
 // panic: the retention delete already happened, so losing the re-link must not
 // take the whole purge down.
 func TestPurgeExpiredAuditEvents_RecomputeFailureIsSwallowed(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "audit-purge-fail.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() {
 		models.AuditFlush()

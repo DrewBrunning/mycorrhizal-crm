@@ -3,7 +3,7 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
@@ -30,8 +30,7 @@ import (
 // recreate for the same contact.
 func TestGift_RealMigratedSchema(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "gift-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "gift-realdb", Password: "password123!A", Email: "gift-realdb@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -144,8 +143,7 @@ func TestGift_RealMigratedSchema(t *testing.T) {
 // shim, so the `safeurl` validator genuinely runs on the unsafe-scheme case.
 func TestGift_URLAndNotes_RealMigratedSchema(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "gift-url-notes.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "gift-urlnotes", Password: "password123!A", Email: "gift-urlnotes@example.com"}
 	require.NoError(t, db.Create(&user).Error)

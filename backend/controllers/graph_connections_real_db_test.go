@@ -3,11 +3,10 @@ package controllers
 import (
 	"encoding/json"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -21,9 +20,7 @@ import (
 // not the AutoMigrate-derived one. Exercises a two-hop chain with the
 // direction-aware labels.
 func TestGraphConnections_RealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "graph-connections-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "graph-realdb", Password: "password123!A", Email: "graph-realdb@example.com"}
 	require.NoError(t, db.Create(&user).Error)

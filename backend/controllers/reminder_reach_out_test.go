@@ -1,11 +1,10 @@
 package controllers
 
 import (
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -21,8 +20,7 @@ import (
 // doesn't linger on the dashboard after the user already acted via the
 // reminder. Real migrated schema (CLAUDE.md backend trap 1).
 func TestCompleteReminder_DismissesLinkedReachOutSuggestion(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "reminder-reach-out.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "rrouser", Password: "password123!A", Email: "rrouser@example.com"}
 	require.NoError(t, db.Create(&user).Error)

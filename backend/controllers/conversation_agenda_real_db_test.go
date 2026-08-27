@@ -3,11 +3,10 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -27,9 +26,7 @@ import (
 // (with an activity link) -> still visible in the list -> soft-delete ->
 // recreate.
 func TestConversationAgenda_RealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "agenda-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "agenda-realdb", Password: "password123!A", Email: "agenda-realdb@example.com"}
 	require.NoError(t, db.Create(&user).Error)

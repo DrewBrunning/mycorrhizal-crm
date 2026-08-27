@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
@@ -24,8 +23,7 @@ import (
 // reads.
 func setupAuditRouter(t *testing.T, cfg config.Config) (*gorm.DB, *gin.Engine, models.User) {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "audit-ctrl.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	// The audit recorder is a package-level global. Leaving it pointing at this
 	// test's temp-dir DB would make every later test (which has no audit DB of

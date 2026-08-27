@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"mycorrhizal/config"
 	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -29,8 +30,7 @@ func setupCountingRouter(tb testing.TB) (*gorm.DB, *gin.Engine, *database.QueryC
 	gin.SetMode(gin.ReleaseMode)
 
 	dbPath := filepath.Join(tb.TempDir(), "hot-path.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(tb, err)
+	db := dbtest.NewAt(tb, dbPath)
 
 	user := models.User{Username: "perftest", Password: "password123!A", Email: "perftest@example.com"}
 	require.NoError(tb, db.Create(&user).Error)

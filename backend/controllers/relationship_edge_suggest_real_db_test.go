@@ -3,11 +3,10 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -20,9 +19,7 @@ import (
 // infers suggestions from confirmed edges, stamps them graph-inferred, never
 // duplicates on re-run, and stays scoped to the caller's own data.
 func TestSuggestRelationshipEdges_RealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "relationship-suggest-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "suggesttester", Password: "password123!A", Email: "suggest@example.com"}
 	require.NoError(t, db.Create(&user).Error)

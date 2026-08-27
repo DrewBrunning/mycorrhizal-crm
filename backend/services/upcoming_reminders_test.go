@@ -1,11 +1,10 @@
 package services
 
 import (
-	"path/filepath"
 	"testing"
 	"time"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -17,8 +16,7 @@ import (
 // trap 1 — Reminder's columns must come from migration SQL, not AutoMigrate).
 func setupUpcomingReminderTestDB(t *testing.T) (*gorm.DB, models.User) {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "upcoming-reminders.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	user := models.User{Username: "upcominguser", Password: "password123!A", Email: "upcoming@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 	return db, user

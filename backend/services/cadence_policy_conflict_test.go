@@ -1,10 +1,9 @@
 package services
 
 import (
-	"path/filepath"
 	"testing"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -17,8 +16,7 @@ import (
 // cannot see) and creates a test user.
 func setupCadenceConflictTestDB(t *testing.T) (*gorm.DB, models.User) {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "cadence-conflict.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	user := models.User{Username: "cadenceuser", Password: "password123!A", Email: "cadence@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 	return db, user

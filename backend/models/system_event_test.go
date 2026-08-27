@@ -2,10 +2,9 @@ package models
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/logger"
 
 	"github.com/stretchr/testify/require"
@@ -17,8 +16,7 @@ import (
 // exercised, not GORM's AutoMigrate guess.
 func newSystemEventTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "sysevent-test.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	t.Cleanup(func() { RegisterAuditDB(nil) })
 	// InitDB's migration run records its own migration_completed event; clear
 	// it so each test controls the full row set it asserts on.

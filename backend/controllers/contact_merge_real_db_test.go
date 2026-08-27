@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -28,8 +28,7 @@ import (
 // resolution rejection path.
 func TestContactMerge_RealMigratedSchema(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "contact-merge-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 	closeTestDBAtTeardown(t, db)
 
 	user := models.User{Username: "mergetester", Password: "password123!A", Email: "merge@example.com"}
@@ -412,8 +411,7 @@ func TestContactMerge_RealMigratedSchema(t *testing.T) {
 // to hide behind.
 func TestContactMerge_SharedCircleAndTag_Deduped(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "contact-merge-shared-membership.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 	closeTestDBAtTeardown(t, db)
 
 	user := models.User{Username: "dedupetester", Password: "password123!A", Email: "dedupe@example.com"}
@@ -522,8 +520,7 @@ func TestContactMerge_KeepEqualsMerge_Rejected(t *testing.T) {
 // the keeper actually ends up with the loser's values, not silently kept.
 func TestContactMerge_CadencePolicyConflict(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "contact-merge-cadence-conflict.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 	closeTestDBAtTeardown(t, db)
 
 	user := models.User{Username: "cadencetester", Password: "password123!A", Email: "cadence@example.com"}
@@ -658,8 +655,7 @@ func TestContactMerge_CadencePolicyConflict(t *testing.T) {
 // involved), so there is no dedupe case to cover here, only a plain repoint.
 func TestContactMerge_ExternalIdentityAndActivityPlainRepoint(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "contact-merge-external-repoint.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 	closeTestDBAtTeardown(t, db)
 
 	user := models.User{Username: "externalrepointtester", Password: "password123!A", Email: "extrepoint@example.com"}
@@ -709,8 +705,7 @@ func TestContactMerge_ExternalIdentityAndActivityPlainRepoint(t *testing.T) {
 // file surviving (or not) on disk, not just the Contact.Photo string.
 func TestContactMerge_PhotoAdoptionAndDiscard(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "contact-merge-photo.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 	closeTestDBAtTeardown(t, db)
 	photoDir := t.TempDir()
 

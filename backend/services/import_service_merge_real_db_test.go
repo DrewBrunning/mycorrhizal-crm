@@ -1,7 +1,7 @@
 package services
 
 import (
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"path/filepath"
 	"testing"
@@ -25,8 +25,7 @@ import (
 // reachability this test pins is exactly a real-schema concern.
 func TestMergeImportedContact_RealDB_VCF(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "vcf-merge-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "vcf-merge-realdb", Password: "password123!A", Email: "vcf-merge-realdb@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -92,8 +91,7 @@ func TestMergeImportedContact_RealDB_VCF(t *testing.T) {
 // exploitable the same way.
 func TestMergeImportedContact_RealDB_CSV(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "csv-merge-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "csv-merge-realdb", Password: "password123!A", Email: "csv-merge-realdb@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -142,8 +140,7 @@ func TestMergeImportedContact_RealDB_CSV(t *testing.T) {
 
 func TestDetectDuplicate_PhoneKeyCountryCode(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "dedup-phonekey.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "dedup-phonekey", Password: "password123!A", Email: "dedup-phonekey@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -165,8 +162,7 @@ func TestDetectDuplicate_PhoneKeyCountryCode(t *testing.T) {
 
 func TestDetectDuplicate_PhoneUkTrunkPrefix(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "dedup-uk.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "dedup-uk", Password: "password123!A", Email: "dedup-uk@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -188,8 +184,7 @@ func TestDetectDuplicate_PhoneUkTrunkPrefix(t *testing.T) {
 
 func TestDetectDuplicate_PhoneTooShortNoMatch(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "dedup-short.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "dedup-short", Password: "password123!A", Email: "dedup-short@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -209,8 +204,7 @@ func TestDetectDuplicate_PhoneTooShortNoMatch(t *testing.T) {
 
 func TestDetectDuplicate_PhoneTooShortDoesNotMatchOtherShort(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "dedup-twoshort.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "dedup-twoshort", Password: "password123!A", Email: "dedup-twoshort@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -230,8 +224,7 @@ func TestDetectDuplicate_PhoneTooShortDoesNotMatchOtherShort(t *testing.T) {
 
 func TestDetectDuplicate_PhonePunctuationNormalization(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "dedup-punct.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "dedup-punct", Password: "password123!A", Email: "dedup-punct@example.com"}
 	require.NoError(t, db.Create(&user).Error)

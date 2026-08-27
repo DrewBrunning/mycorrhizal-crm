@@ -7,11 +7,10 @@ import (
 	"fmt"
 	"io"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -222,9 +221,7 @@ func TestReconcileContactSyncOverwritesLocalEditsOnRemoteChange(t *testing.T) {
 // bug — only a database.InitDB-migrated DB, which applies the real
 // migration SQL, can.
 func TestContactSyncLinkETagSavesAgainstRealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "contact-sync-etag.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := createContactSyncTestUser(t, db)
 	cfg := contactSyncTestConfig()

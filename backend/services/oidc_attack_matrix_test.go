@@ -9,12 +9,11 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -243,8 +242,7 @@ func TestExchangeAndVerify_RejectsMismatchedIssuer(t *testing.T) {
 
 func realUserDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "oidc-attack-matrix.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	return db
 }
 

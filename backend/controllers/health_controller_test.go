@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/services"
 
 	"github.com/gin-gonic/gin"
@@ -26,8 +25,7 @@ func migratedHealthRouter(t *testing.T) (*gorm.DB, *config.Config, *gin.Engine) 
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "health.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	cfg := &config.Config{
 		ProfilePhotoDir: t.TempDir(),

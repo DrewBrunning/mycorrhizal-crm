@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
@@ -18,8 +18,7 @@ import (
 // a duration and result=success.
 func TestRestoreDrillScheduled_EmitsRestoreTestCompleted(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "drill-ev-ok.db")
-	db, err := database.InitDB(path)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, path)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
@@ -43,8 +42,7 @@ func TestRestoreDrillScheduled_EmitsRestoreTestCompleted(t *testing.T) {
 // severity=error is written.
 func TestRestoreDrillScheduled_EmitsBackupFailed(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "drill-ev-fail.db")
-	db, err := database.InitDB(path)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, path)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()

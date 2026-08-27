@@ -1,10 +1,9 @@
 package models
 
 import (
-	"path/filepath"
 	"testing"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/vcard4"
 
 	"github.com/stretchr/testify/assert"
@@ -42,8 +41,7 @@ func TestVCardImportSaveExportRoundTrip_SubStreetParts(t *testing.T) {
 	require.Equal(t, "Apt 3B", kinds["apartment"])
 	require.Equal(t, "Floor 2", kinds["floor"])
 
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "t79-roundtrip.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	user := User{Username: "t79-roundtrip", Password: "password123!A", Email: "t79-roundtrip@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 

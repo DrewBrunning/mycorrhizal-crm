@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/require"
@@ -32,8 +32,7 @@ func createUser(t *testing.T, db *gorm.DB, username string) uint {
 func realDB(t *testing.T) (*gorm.DB, []byte) {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "atrest.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	kek := make([]byte, keySize)
 	for i := range kek {
@@ -61,8 +60,7 @@ func TestInitialize_CreatesWrappedDEK(t *testing.T) {
 
 func TestInitialize_WrongKeyFailsClosed(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "atrest.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	kek := make([]byte, keySize)
 	for i := range kek {
@@ -74,7 +72,7 @@ func TestInitialize_WrongKeyFailsClosed(t *testing.T) {
 	// unwrapped → fail closed at boot.
 	wrong := make([]byte, keySize)
 	wrong[0] = 0xFF
-	err = Initialize(db, wrong)
+	err := Initialize(db, wrong)
 	require.Error(t, err, "a wrong master key must fail closed at initialize time")
 	require.Contains(t, err.Error(), "wrong DATA_ENCRYPTION_KEY")
 }
@@ -83,8 +81,7 @@ func TestInitialize_PersistsAcrossRestart(t *testing.T) {
 	// Simulate a restart: the DEK row survives, and re-initializing with the
 	// same key decrypts rows written before the restart.
 	dbPath := filepath.Join(t.TempDir(), "atrest.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	kek := make([]byte, keySize)
 	for i := range kek {
@@ -164,14 +161,13 @@ func TestRotateMasterKey_NoDEKYet(t *testing.T) {
 	// Initialize called on it — the "rotate before the server has ever
 	// booted with a key" operator mistake.
 	dbPath := filepath.Join(t.TempDir(), "atrest.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	kek := make([]byte, keySize)
 	for i := range kek {
 		kek[i] = byte(i)
 	}
-	err = RotateMasterKey(db, kek, kek)
+	err := RotateMasterKey(db, kek, kek)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "no wrapped DEK found")
 }
@@ -197,15 +193,14 @@ func TestLoadOrCreateDEK_PersistFails(t *testing.T) {
 	// mode distinct from "table missing". query_only rejects the INSERT
 	// while still allowing the preceding SELECT to succeed.
 	dbPath := filepath.Join(t.TempDir(), "atrest.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 	require.NoError(t, db.Exec("PRAGMA query_only = ON").Error)
 
 	kek := make([]byte, keySize)
 	for i := range kek {
 		kek[i] = byte(i)
 	}
-	_, err = loadOrCreateDEK(db, kek)
+	_, err := loadOrCreateDEK(db, kek)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "persist wrapped DEK")
 }
@@ -373,8 +368,7 @@ func TestBackfill_AlreadyEncryptedRowsUntouched(t *testing.T) {
 }
 
 func TestBackfill_NoOpWhenNotArmed(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "atrest.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	require.NoError(t, Initialize(db, nil)) // no key → pass-through
 
 	require.NoError(t, db.Table("contacts").Create(map[string]interface{}{

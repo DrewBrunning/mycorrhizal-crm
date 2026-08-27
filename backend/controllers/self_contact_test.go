@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"testing"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 
@@ -45,8 +44,7 @@ func selfContactTestRouter(t *testing.T, db *gorm.DB, userID uint) *gin.Engine {
 
 func selfContactTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "self-contact.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	closeTestDBAtTeardown(t, db)
 	return db
 }
