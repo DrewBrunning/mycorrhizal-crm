@@ -1,0 +1,26 @@
+# Accepted crypto call-site exceptions (issue #612).
+#
+# The `cmd/citecheck` crypto-surface gate enumerates every non-test Go file
+# that imports crypto/*, golang.org/x/crypto/*, or a JWT/signing library and
+# requires each one to be accounted for by an ASVS V6 row in asvs-l2.md OR by
+# an entry here. A file that imports crypto with no V6 row and no entry here
+# FAILS the gate, and an entry here whose file no longer imports crypto ALSO
+# fails — so this file cannot quietly accumulate dead suppressions, the same
+# bidirectional convention as .trivyignore, .grype.yml and
+# citation-drift.ignore.
+#
+# These are NOT crypto-decision call sites: they import a crypto package for a
+# reason other than choosing a cryptographic primitive, so no ASVS V6 row
+# claims them as surface. Each entry is a decision someone wrote down.
+#
+# Format:  <backend-relative path>  # why this is not a crypto call site
+
+backend/services/calendar_sync_service.go  # crypto/sha256 over joined event parts as a deterministic dedup/content key for imported calendar events — a stable content hash, not a cryptographic decision (no security property is derived from it)
+backend/services/contact_sync_service.go    # crypto/sha256 over the synced contact payload as a change-detection content hash (skip when unchanged) — same non-crypto-decision reasoning as calendar_sync_service.go
+backend/services/household_service.go       # crypto/sha256 over address/member keys as deterministic grouping keys for the household suggestion engine — a stable hash key, not a cryptographic decision
+backend/services/immich_client.go           # crypto/tls for the outbound Immich transport (TLS config, not a primitive choice) — same class as the other file-integration clients
+backend/services/mailer.go                  # crypto/tls for SMTP transport (TLS config, not a primitive choice)
+backend/services/paperless_client.go        # crypto/tls for the outbound Paperless-ngx transport (TLS config, not a primitive choice)
+backend/services/seafile_client.go          # crypto/tls for the outbound Seafile transport (TLS config, not a primitive choice)
+backend/services/webdav_client.go           # crypto/tls for the outbound Nextcloud/WebDAV transport (TLS config, not a primitive choice)
+backend/controllers/oidc_controller.go      # crypto/subtle constant-time comparison of OIDC state/nonce cookies — a comparison helper, not a primitive selection; 6.2.8 (constant-time) is out-of-scope L3

@@ -237,7 +237,16 @@ multi-line calls, with the governing `SetSameSite` resolved per site), then read
 hardcode `Secure=true` instead of `cfg.CookieSecure`. That is *stricter* than configured, so it is
 not a confidentiality gap — but on the supported plain-HTTP deployment a browser rejects the cookie
 outright, so the Android client hint is never stored and the handshake cookies are never actively
-cleared. Functional inconsistency, fails closed; recorded in row 3.4.1.
+cleared. Functional inconsistency, fails closed; recorded in row 3.4.1. **Fixed in #605.**
+
+**Becomes a test (issue #610).** This audit is no longer a hand-read enumeration that has to be
+redone every verification pass: `controllers/cookie_flags_test.go` drives every flow that mints or
+clears a cookie (login, login+2FA, logout, password change, 2FA management, OIDC login start, OIDC
+callback) against a real migrated schema and enumerates the `Set-Cookie` surface from the responses,
+asserting `HttpOnly`, `Secure=cfg.CookieSecure`, and `SameSite` against a declared per-name policy
+table. The table is exhaustive in both directions — an observed cookie with no declared row fails, a
+declared row never observed fails — and the whole suite runs twice (once `CookieSecure=true`, once
+`false`). Rows 3.4.1–3.4.3 cite it instead of a list of call sites.
 
 ### C. Cryptography, and the absence of unauthenticated modes
 
@@ -253,6 +262,14 @@ cleared. Functional inconsistency, fails closed; recorded in row 3.4.1.
 | Random | `crypto/rand` for TOTP secrets and recovery codes (`services/twofactor.go:4,107`); bcrypt supplies its own per-hash salt. No `math/rand` in a security path. |
 | Unauthenticated route surface | **15 registrations**, enumerated from `routes/routes.go`: `/health`, `/health/live`, `/health/ready` (the deep/liveness/readiness split, issue #421 — all secret-free, status + reason strings only); the two `.well-known` CardDAV/CalDAV redirects; `/auth/oidc/config` plus `login`/`callback` (registered only when OIDC is enabled); `register`; `login`; `login/2fa`; `logout`; `check-password-strength`; `password-reset/request`; `password-reset/confirm`. Every one that touches credentials carries `AuthRateLimitMiddleware`. Against 241 `protected.` + 9 `admin.` + 9 CardDAV/CalDAV Basic-auth routes. |
 | Any way to turn auth off | **None.** No `DISABLE_AUTH` / `SKIP_AUTH` / `INSECURE_*` switch exists in any non-test Go file; `AuthMiddleware` is applied at the group level, so a route is either inside `protected`/`admin` or is one of the 15 above. The authorization matrix's `unauth` persona asserts this for every route rather than trusting the grouping. |
+
+**Becomes a test (issue #612).** The "closed cryptographic surface" claim this audit read by hand is
+now pinned by `cmd/citecheck`'s crypto-surface gate: it enumerates every non-test Go file importing
+`crypto/*`, `golang.org/x/crypto/*` or a JWT/signing library and requires each to be cited by a V6
+row in `asvs-l2.md` or to carry a justified entry in `docs/security/crypto-surface.ignore`,
+failing in both directions (a new unaccounted call site, a declared one that stops importing
+crypto). It runs in the same `Security-doc citations` job as the rest of citecheck, so a new call
+site fails the build at the moment of introduction rather than at the next verification pass.
 
 ### D. Error paths do not leak internals
 
@@ -499,9 +516,9 @@ Two things about that model are worth being honest about:
 |---|---|
 | A route | **Yes.** `routes/authorization_matrix_test.go` enumerates from the live router and fails when a new route has no declared authorization row. Self-maintaining. |
 | An outbound HTTP client | **No** — a client bypassing `SafeDialContext` is an unflagged SSRF regression. Issue **#609** (semgrep rule). |
-| A cookie | **No** — audit B was 18 call sites read by hand and would have to be redone every pass. Issue **#610** (pin it as a router-driven test). |
-| An entity or table | **No** — cascade completeness rests on a hand-written enumeration plus, for hard-deleted parents only, SQL `ON DELETE CASCADE`; nothing checks a new table is covered by either. Trap 6's own history is 14 tables already missed once. Issue **#611** (schema-driven coverage test). |
-| A crypto call site | **No** — gosec and CodeQL answer "is this primitive weak?", not "is this call site accounted for?". Rows 6.2.5 and 6.2.7 assert a *closed* cryptographic surface; audit C established that by hand and nothing keeps it closed. v0.6.1 added two call sites (`backend/atrest` #380, `models/audit_chain.go` #381). Issue **#612** (bidirectional inventory check in `citecheck`). |
+| A cookie | **Yes.** `controllers/cookie_flags_test.go` drives every flow that mints or clears a cookie against the real migrated schema and enumerates the `Set-Cookie` surface from the responses, asserting `HttpOnly`/`Secure=cfg.CookieSecure`/`SameSite` per name against a declared table that fails in both directions (an undeclared cookie observed, a declared one never observed) — run twice, once `CookieSecure=true` and once `false`. Built by issue **#610**. |
+| An entity or table | **Yes.** `controllers/delete_cascade_coverage_test.go` enumerates every table from the real migrated schema and requires a declared deletion bucket (`go-cascade-user`/`go-cascade-contact`/`fk-cascade-user`/`exempt`), failing on an unclassified table and on a stale declaration; it asserts `fk-cascade-user` tables really carry an `ON DELETE CASCADE` FK to `users`, rejects a contact-scoped table relying on a cascade from the soft-deleted `contacts` row (trap 6), and behaviorally verifies `DeleteUser`/`deleteContactAssociations` empty every declared table. Built by issue **#611**. |
+| A crypto call site | **Yes.** `cmd/citecheck`'s crypto-surface gate enumerates every non-test Go file importing `crypto/*`, `golang.org/x/crypto/*` or a JWT/signing library and requires each to be cited by a V6 row in `asvs-l2.md` or to carry a justified entry in `docs/security/crypto-surface.ignore` — failing in both directions (a new unaccounted call site, and a declared one that stops importing crypto). Lands in the existing `Security-doc citations` job, so it fails the build at the moment of introduction. Built by issue **#612**. |
 | A persistence target for instance data | **Partly.** `v0.6.2` added `system_events` (#424) — system-generated operational diagnostics, not user data, admin-only, hard-delete, `SYSTEM_EVENT_RETENTION_DAYS` purge. Recorded in `data-retention-lifecycle.md` §3 and [ADR 0005](../adrs/0005-operational-event-model.md); its free-text fields are sanitized (row 7.3.1). It is outside the cascade-coverage concern above (no user-data parent, nothing cascades into it). No mechanical check yet asserts a *new* diagnostic/telemetry table gets a retention-lifecycle row — folded into #611's schema-driven coverage scope. |
 
 The pattern worth generalising from the one row that *is* enforced: the authorization matrix is strong
