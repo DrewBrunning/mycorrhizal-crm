@@ -52,13 +52,27 @@ func statfsDiskUsage(path string) (int, error) {
 	if err := syscall.Statfs(path, &st); err != nil {
 		return 0, err
 	}
-	total := st.Blocks * uint64(st.Bsize)
-	if total == 0 {
-		return 0, fmt.Errorf("statfs reported zero blocks for %s", path)
+	// Statfs_t.Bsize is int64 on Linux; Blocks/Bavail are uint64. Do the
+	// arithmetic in float64 to keep gosec's integer-overflow check (G115)
+	// satisfied without a suppression — a percentage needs no more precision
+	// than float64 gives, even for petabyte volumes.
+	if st.Bsize <= 0 || st.Blocks == 0 {
+		return 0, fmt.Errorf("statfs returned unusable geometry for %s (bsize=%d blocks=%d)", path, st.Bsize, st.Blocks)
 	}
-	free := st.Bavail * uint64(st.Bsize)
-	used := total - free
-	return int(used * 100 / total), nil
+	bsize := float64(st.Bsize)
+	total := float64(st.Blocks) * bsize
+	free := float64(st.Bavail) * bsize
+	if free > total {
+		free = total
+	}
+	pct := int((total - free) / total * 100)
+	if pct < 0 {
+		pct = 0
+	}
+	if pct > 100 {
+		pct = 100
+	}
+	return pct, nil
 }
 
 // evaluateAlertConditions computes every enabled condition's verdict for one
