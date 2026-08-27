@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -27,9 +26,7 @@ import (
 // routes plus DeleteContact's cascade against a database.InitDB-migrated real
 // file database instead.
 func TestExternalLinkSubstrate_RealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "external-link-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	// This test fires Contact create/delete audit events through the global
 	// fire-and-forget audit recorder (database.InitDB registers it), which

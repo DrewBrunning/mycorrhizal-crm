@@ -1,11 +1,10 @@
 package services
 
 import (
-	"path/filepath"
 	"testing"
 
-	"mycorrhizal/database"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -15,8 +14,7 @@ import (
 
 func setupAddressSuggestionTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "addr-suggest.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	return db
 }
 

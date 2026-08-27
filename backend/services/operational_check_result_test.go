@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -16,8 +16,7 @@ import (
 
 func freshDB(t *testing.T, name string) *gorm.DB {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), name))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	t.Cleanup(func() {
 		if sqlDB, e := db.DB(); e == nil {
 			_ = sqlDB.Close()
@@ -63,8 +62,7 @@ func TestCheckDBIntegrityScheduled_RecordsOKResult(t *testing.T) {
 
 func TestRunRestoreDrillScheduled_RecordsOKResult(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "drill-record.db")
-	db, err := database.InitDB(path)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, path)
 	t.Cleanup(func() {
 		if sqlDB, e := db.DB(); e == nil {
 			_ = sqlDB.Close()

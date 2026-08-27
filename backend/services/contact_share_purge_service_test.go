@@ -1,12 +1,11 @@
 package services
 
 import (
-	"path/filepath"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -28,8 +27,7 @@ import (
 func newSharePurgeDB(t *testing.T) (*gorm.DB, uint, uint) {
 	t.Helper()
 
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "sharepurge.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	from := models.User{Username: "share-from", Email: "share-from@example.com", Password: "x"}
 	to := models.User{Username: "share-to", Email: "share-to@example.com", Password: "x"}

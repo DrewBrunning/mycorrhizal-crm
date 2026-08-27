@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -30,9 +29,7 @@ import (
 // would have been rejected before this ticket too, and proves nothing about
 // the new validator.
 func TestHTTPURLAllowlist_RealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "httpurl-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "httpurl-realdb", Password: "password123!A", Email: "httpurl-realdb@example.com"}
 	require.NoError(t, db.Create(&user).Error)

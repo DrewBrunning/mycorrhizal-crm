@@ -2,11 +2,10 @@ package models
 
 import (
 	"encoding/json"
-	"path/filepath"
 	"testing"
 
 	"mycorrhizal/contactmodel"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -217,9 +216,7 @@ func TestApplyFieldSelection_NilRecordIsSafe(t *testing.T) {
 func buildSensitiveProjectionFixture(t *testing.T) (*gorm.DB, User, Contact) {
 	t.Helper()
 
-	dbPath := filepath.Join(t.TempDir(), "field-selection-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := User{Username: "seltester", Password: "password123!A", Email: "seltester@example.com"}
 	require.NoError(t, db.Create(&user).Error)

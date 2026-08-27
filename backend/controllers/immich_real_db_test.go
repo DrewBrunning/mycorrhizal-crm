@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -25,9 +24,7 @@ import (
 // runs the config save → delete → re-save round trip against a real
 // database.InitDB-migrated file.
 func TestImmichConfig_RealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "immich-config-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "immich-cfg-realdb", Password: "password123!A", Email: "immich-cfg-realdb@example.com"}
 	require.NoError(t, db.Create(&user).Error)

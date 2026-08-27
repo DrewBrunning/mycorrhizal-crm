@@ -39,14 +39,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 
@@ -73,8 +72,7 @@ func lifecycleEnv(t *testing.T) (*gorm.DB, *gin.Engine, *config.Config) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "lifecycle.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	db.Logger = logger.Default.LogMode(logger.Silent)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {

@@ -3,11 +3,10 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"testing"
 
@@ -25,9 +24,7 @@ import (
 // tripping a definition + a typed value through the HTTP surface, and
 // pinning the FK cascade that AutoMigrate does not replicate.
 func TestCustomFieldsRealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "custom-fields-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "realdbtester", Password: "password123!A", Email: "realdb@example.com"}
 	require.NoError(t, db.Create(&user).Error)

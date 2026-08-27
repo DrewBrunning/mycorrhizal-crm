@@ -3,11 +3,10 @@ package services
 import (
 	"encoding/json"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -24,8 +23,7 @@ import (
 // AuditEvent rows the detection job reads.
 func setupReachOutTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "reach-out.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 	return db

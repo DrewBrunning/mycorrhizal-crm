@@ -1,11 +1,10 @@
 package services
 
 import (
-	"path/filepath"
 	"testing"
 
 	"mycorrhizal/contactmodel"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/google/uuid"
@@ -20,8 +19,7 @@ import (
 
 func setupWeddingSyncDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "wedding-sync.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	return db
 }
 

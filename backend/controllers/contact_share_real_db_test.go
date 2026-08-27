@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -25,9 +24,7 @@ import (
 // create -> accept -> confirm round trip against a database.InitDB-migrated
 // real file database instead.
 func TestContactShare_RealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "contact-share-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	sender := models.User{Username: "share-realdb-sender", Password: "password123!A", Email: "share-realdb-sender@example.com"}
 	require.NoError(t, db.Create(&sender).Error)

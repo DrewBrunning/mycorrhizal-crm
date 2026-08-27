@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"sort"
 	"testing"
 	"time"
@@ -34,9 +33,7 @@ type timelineTestEnv struct {
 
 func newTimelineTestEnv(t *testing.T) *timelineTestEnv {
 	t.Helper()
-	dbPath := filepath.Join(t.TempDir(), "t66-timeline.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "t66-user", Password: "password123!A", Email: "t66-user@example.com"}
 	require.NoError(t, db.Create(&user).Error)

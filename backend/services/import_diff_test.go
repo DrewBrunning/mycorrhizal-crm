@@ -1,11 +1,10 @@
 package services
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -257,8 +256,7 @@ func TestContactsMatchWithinBatch_ShortPhoneDoesNotMatch(t *testing.T) {
 // person twice must flag the second row as a within-batch duplicate defaulting
 // to skip, not as a DB duplicate.
 func TestParseVCF_WithinBatchDuplicate(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "t96batch", Password: "password123!A", Email: "t96batch@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -289,8 +287,7 @@ func TestParseVCF_WithinBatchDuplicate(t *testing.T) {
 // per-row merge diff is populated when a row matches an existing DB contact
 // and describes what "Merge" would change.
 func TestParseVCF_DuplicateOfExistingCarriesMergeDiff(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "t96diff", Password: "password123!A", Email: "t96diff@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -347,8 +344,7 @@ func mergeDiffUpdatedValue(diff *models.ImportMergeDiff, field string) string {
 // a CSV carrying the same person twice must flag the second row as a
 // within-batch duplicate defaulting to skip, with no DB match involved.
 func TestGenerateCSVPreview_WithinBatchDuplicate(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96-csv-batch.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "t96csvbatch", Password: "password123!A", Email: "t96csvbatch@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -387,8 +383,7 @@ func TestGenerateCSVPreview_WithinBatchDuplicate(t *testing.T) {
 // duplicate match (with its merge diff), and default to skip so neither a
 // second contact is created nor a second merge is applied silently.
 func TestParseVCF_WithinBatchAndDbDuplicateCombined(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96-combined.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "t96combined", Password: "password123!A", Email: "t96combined@example.com"}
 	require.NoError(t, db.Create(&user).Error)

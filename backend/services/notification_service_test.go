@@ -21,8 +21,8 @@ import (
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
 	"mycorrhizal/i18n"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
@@ -38,8 +38,7 @@ import (
 // the migration creates).
 func setupNotificationTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "n9.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	t.Cleanup(func() {
 		sqlDB, err := db.DB()
 		if err == nil {

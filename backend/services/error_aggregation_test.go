@@ -2,12 +2,11 @@ package services
 
 import (
 	"context"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
@@ -91,8 +90,7 @@ func seedErr(t *testing.T, db *gorm.DB, component, eventType string, occurredAt 
 // cases — each clears system_events first — mirroring the #427 tests, since the
 // services package sits near the CI -race timeout.
 func TestAggregateOperationalErrors(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "error-aggregation.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 

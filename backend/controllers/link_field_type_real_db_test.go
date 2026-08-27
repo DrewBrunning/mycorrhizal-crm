@@ -3,7 +3,7 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
@@ -25,8 +25,7 @@ import (
 // (this fork's own recurring bug class) would be caught here.
 func TestLinkFieldType_RealMigratedSchema(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "link-field-types-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "linkfieldtype-realdb", Password: "password123!A", Email: "linkfieldtype-realdb@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -218,8 +217,7 @@ func TestLinkFieldType_RealMigratedSchema(t *testing.T) {
 // for pinning this class of bug (database/concurrent_write_test.go).
 func TestLinkFieldType_ConcurrentSeeding(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "link-field-types-concurrent.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "linkfieldtype-concurrent", Password: "password123!A", Email: "linkfieldtype-concurrent@example.com"}
 	require.NoError(t, db.Create(&user).Error)

@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
@@ -42,8 +41,7 @@ type errorAggregationResponse struct {
 // One real migrated DB is shared across the sub-cases (each clears
 // system_events first) so migrations run once, not per case.
 func TestGetErrorAggregation(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "error-aggregation-ctrl.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 

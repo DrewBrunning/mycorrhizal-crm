@@ -2,13 +2,12 @@ package caldav
 
 import (
 	"context"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"mycorrhizal/contactmodel"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/emersion/go-ical"
@@ -21,8 +20,7 @@ import (
 // backend trap 1) and returns it with a context bound to user.
 func newTestBackend(t *testing.T) (*Backend, context.Context, models.User) {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "caldav-test.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "caldavuser", Password: "password123!A", Email: "caldav@example.com"}
 	require.NoError(t, db.Create(&user).Error)

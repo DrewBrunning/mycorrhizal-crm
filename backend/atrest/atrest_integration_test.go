@@ -1,14 +1,13 @@
 package atrest_test
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"mycorrhizal/atrest"
 	"mycorrhizal/contactmodel"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 
@@ -23,9 +22,7 @@ import (
 
 func setup(t *testing.T) (*gorm.DB, uint) {
 	t.Helper()
-	dbPath := filepath.Join(t.TempDir(), "atrest-int.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	kek := make([]byte, 32)
 	for i := range kek {

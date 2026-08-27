@@ -2,10 +2,9 @@ package services
 
 import (
 	"errors"
-	"path/filepath"
 	"testing"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -18,8 +17,7 @@ import (
 // migrations — CLAUDE.md backend trap 1).
 func setupExternalConfigTestDB(t *testing.T) (*gorm.DB, models.User) {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "external-config.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	user := models.User{Username: "extconfig", Password: "password123!A", Email: "extconfig@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 	return db, user

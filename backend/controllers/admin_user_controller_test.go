@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -673,8 +672,7 @@ func TestUpdateUser_PasswordReset_IncrementsTokenVersion(t *testing.T) {
 // plain update event and a dedicated role_change event, attributed to the
 // acting admin.
 func TestUpdateUser_RoleChange_RecordsAuditEvent(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "admin-role-audit.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() {
 		models.AuditFlush()
@@ -859,8 +857,7 @@ func TestResetUserTwoFactor_NonAdmin_Forbidden(t *testing.T) {
 // constraint were never widened, which is exactly the silent-failure trap
 // CLAUDE.md's backend trap #1 warns about.
 func TestResetUserTwoFactor_RecordsAuditEvent(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "admin-2fa-reset-audit.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() {
 		models.AuditFlush()

@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
@@ -42,11 +41,10 @@ func getSubsystemHealth(t *testing.T, router *gin.Engine) []subsystemHealthRow {
 }
 
 // TestGetSubsystemHealth exercises GET /admin/subsystem-health (issue #427).
-// One real migrated DB is shared across the sub-cases (each clears
-// system_events first) so migrations run once, not per case.
+// One migrated DB is shared across the sub-cases (each clears system_events
+// first).
 func TestGetSubsystemHealth(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "subsystem-health-ctrl.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 

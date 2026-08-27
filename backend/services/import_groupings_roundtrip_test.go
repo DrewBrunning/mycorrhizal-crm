@@ -1,10 +1,9 @@
 package services
 
 import (
-	"path/filepath"
 	"testing"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -24,8 +23,7 @@ import (
 // asserted on Contact.Circles, the column that had stopped mattering.
 
 func TestImportCSV_MaterializesCirclesIntoRealEntities(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "import-roundtrip.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "roundtrip", Email: "roundtrip@example.com", Password: "x"}
 	require.NoError(t, db.Create(&user).Error)
@@ -92,8 +90,7 @@ func TestImportCSV_MaterializesCirclesIntoRealEntities(t *testing.T) {
 // A "Tags" column used to be mapped onto the flat circles field, so importing
 // tags produced circles. The synonym table now splits by target.
 func TestImportCSV_TagColumnDoesNotBecomeACircle(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "import-tags.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "tagsonly", Email: "tagsonly@example.com", Password: "x"}
 	require.NoError(t, db.Create(&user).Error)

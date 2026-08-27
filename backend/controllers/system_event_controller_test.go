@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
@@ -21,8 +20,7 @@ import (
 
 func setupSystemEventRouter(t *testing.T) (*gorm.DB, *gin.Engine) {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "sysevent-ctrl.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 	// InitDB's migration run records a migration_completed event; clear it so

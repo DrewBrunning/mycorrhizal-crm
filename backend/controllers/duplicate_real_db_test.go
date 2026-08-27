@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
@@ -30,8 +30,7 @@ import (
 // on contact delete.
 func TestDuplicatePairs_RealMigratedSchema(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "duplicates-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "dupuser", Password: "password123!A", Email: "dupuser@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -223,8 +222,7 @@ func TestDuplicatePairs_RealMigratedSchema(t *testing.T) {
 // the two indistinguishable, which is exactly how this class of bug ships.
 func TestDuplicatePairs_EmptyResultIsJSONArrayNotNull(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "duplicates-empty.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "dupempty", Password: "password123!A", Email: "dupempty@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -265,8 +263,7 @@ func orderedUID(a, b string, wantLow bool) string {
 // success, not a 500.
 func TestDuplicatePairs_DismissIdempotentUnderConcurrency(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "duplicates-concurrent.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "dupconc", Password: "password123!A", Email: "dupconc@example.com"}
 	require.NoError(t, db.Create(&user).Error)

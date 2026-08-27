@@ -50,13 +50,12 @@ package routes
 import (
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -590,8 +589,7 @@ func routeKey(method, path string) string {
 func TestAuthorizationMatrix(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "authz-matrix.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	// The loose BOLA probes deliberately hit non-existent fabricated ids, so
 	// handlers log an expected "record not found" on every one. Silence GORM's
 	// logger to keep the test output to real failures.

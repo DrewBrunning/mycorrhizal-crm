@@ -4,13 +4,12 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -22,8 +21,7 @@ import (
 // subscribed to the given event type gets a delivery; an inactive webhook
 // and a webhook subscribed to a different event do not.
 func TestTriggerWebhooksForAllUsers(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "broadcast.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()

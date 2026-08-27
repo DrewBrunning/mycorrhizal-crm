@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mycorrhizal/config"
 	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"path/filepath"
 	"testing"
@@ -63,8 +64,7 @@ func TestDetectReachOutSuggestions_QueryCountIsBounded(t *testing.T) {
 	const contacts = 200
 
 	dbPath := filepath.Join(t.TempDir(), "reach-out-count.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "reachoutcount", Password: "password123!A", Email: "reachoutcount@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -99,8 +99,7 @@ func BenchmarkDetectReachOutSuggestions(b *testing.B) {
 	const contacts = 20000
 
 	dbPath := filepath.Join(b.TempDir(), "reach-out-bench.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(b, err)
+	db := dbtest.NewAt(b, dbPath)
 	sqlDB, err := db.DB()
 	require.NoError(b, err)
 	b.Cleanup(func() { _ = sqlDB.Close() })
