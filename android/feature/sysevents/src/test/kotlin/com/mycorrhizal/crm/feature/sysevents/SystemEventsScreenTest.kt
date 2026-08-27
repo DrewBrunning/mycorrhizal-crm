@@ -7,6 +7,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.mycorrhizal.crm.model.network.SubsystemHealth
 import com.mycorrhizal.crm.model.network.SystemEvent
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
@@ -114,5 +115,44 @@ class SystemEventsScreenTest {
         }
         composeTestRule.onNodeWithTag("sysevents-clear-filters").assertIsEnabled().performClick()
         assert(cleared)
+    }
+
+    @Test
+    fun `subsystem health section renders a card per subsystem and filters on tap`() {
+        var picked: String? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SubsystemHealthSection(
+                    health = listOf(
+                        SubsystemHealth(
+                            subsystem = "contact_sync",
+                            status = "failing",
+                            consecutiveFailures = 9,
+                            incidentFirstFailureAt = "2026-08-27T17:19:00Z",
+                            lastError = "carddav auth rejected",
+                        ),
+                        SubsystemHealth(subsystem = "backup", status = "healthy"),
+                    ),
+                    onSelectSubsystem = { picked = it },
+                    onRefresh = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("CardDAV sync").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Consecutive failures: 9").assertIsDisplayed()
+        composeTestRule.onNodeWithText("carddav auth rejected").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("subsystem-health-card-contact_sync").performClick()
+        assertEquals("contact_sync", picked)
+    }
+
+    @Test
+    fun `subsystem health section is hidden until data arrives`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SubsystemHealthSection(health = emptyList(), onSelectSubsystem = {}, onRefresh = {})
+            }
+        }
+        composeTestRule.onNodeWithTag("sysevents-subsystem-health").assertDoesNotExist()
     }
 }

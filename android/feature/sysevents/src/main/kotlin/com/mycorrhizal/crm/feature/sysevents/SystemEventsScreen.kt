@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -54,6 +56,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.model.network.SubsystemHealth
+import com.mycorrhizal.crm.model.network.Subsystems
+import com.mycorrhizal.crm.model.network.SubsystemStatuses
 import com.mycorrhizal.crm.model.network.SystemEvent
 import com.mycorrhizal.crm.model.network.SystemEventComponents
 import com.mycorrhizal.crm.model.network.SystemEventSeverities
@@ -127,6 +132,12 @@ fun SystemEventsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+
+            SubsystemHealthSection(
+                health = state.subsystemHealth,
+                onSelectSubsystem = viewModel::applyComponent,
+                onRefresh = viewModel::refreshSubsystemHealth,
             )
 
             SystemEventsFilterToolbar(
@@ -347,6 +358,144 @@ private fun FilterDropdown(
             }
         }
     }
+}
+
+/**
+ * Per-subsystem last-known-good state (issue #427), above the timeline: a
+ * horizontal strip of cards, one per subsystem, each tappable to filter the
+ * timeline below to that component. Hidden until the first fetch lands.
+ */
+@Composable
+internal fun SubsystemHealthSection(
+    health: List<SubsystemHealth>,
+    onSelectSubsystem: (String) -> Unit,
+    onRefresh: () -> Unit,
+) {
+    if (health.isEmpty()) return
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .testTag("sysevents-subsystem-health"),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.subsystem_health_title),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            TextButton(
+                onClick = onRefresh,
+                modifier = Modifier.testTag("subsystem-health-refresh"),
+            ) {
+                Text(stringResource(R.string.subsystem_health_refresh))
+            }
+        }
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(health, key = { it.subsystem }) { item ->
+                SubsystemHealthCard(item = item, onClick = { onSelectSubsystem(item.subsystem) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubsystemHealthCard(item: SubsystemHealth, onClick: () -> Unit) {
+    val failing = item.status == SubsystemStatuses.FAILING
+    val statusColor = when (item.status) {
+        SubsystemStatuses.HEALTHY -> MaterialTheme.colorScheme.primary
+        SubsystemStatuses.FAILING -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Card(
+        modifier = Modifier
+            .width(220.dp)
+            .testTag("subsystem-health-card-${item.subsystem}"),
+        onClick = onClick,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = subsystemLabel(item.subsystem),
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = subsystemStatusLabel(item.status),
+                style = MaterialTheme.typography.labelMedium,
+                color = statusColor,
+            )
+            if (failing) {
+                Text(
+                    text = stringResource(
+                        R.string.subsystem_health_consecutive_failures,
+                        item.consecutiveFailures,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                val incidentStart = item.incidentFirstFailureAt
+                if (!incidentStart.isNullOrBlank()) {
+                    Text(
+                        text = stringResource(
+                            R.string.subsystem_health_incident_since,
+                            formatEventTime(incidentStart),
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (item.lastError.isNotBlank()) {
+                    Text(
+                        text = item.lastError,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            } else {
+                Text(
+                    text = stringResource(
+                        R.string.subsystem_health_last_success,
+                        item.lastSuccessAt?.let { formatEventTime(it) }
+                            ?: stringResource(R.string.subsystem_health_never),
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun subsystemLabel(token: String): String = when (token) {
+    Subsystems.CONTACT_SYNC -> stringResource(R.string.subsystem_name_contact_sync)
+    Subsystems.CALENDAR_SYNC -> stringResource(R.string.subsystem_name_calendar_sync)
+    Subsystems.NOTIFICATION -> stringResource(R.string.subsystem_name_notification)
+    Subsystems.BACKUP -> stringResource(R.string.subsystem_name_backup)
+    Subsystems.SCHEDULER -> stringResource(R.string.subsystem_name_scheduler)
+    Subsystems.WEBHOOK -> stringResource(R.string.subsystem_name_webhook)
+    else -> token
+}
+
+@Composable
+internal fun subsystemStatusLabel(token: String): String = when (token) {
+    SubsystemStatuses.HEALTHY -> stringResource(R.string.subsystem_health_status_healthy)
+    SubsystemStatuses.FAILING -> stringResource(R.string.subsystem_health_status_failing)
+    SubsystemStatuses.UNKNOWN -> stringResource(R.string.subsystem_health_status_unknown)
+    else -> token
 }
 
 @Composable

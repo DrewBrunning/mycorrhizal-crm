@@ -1200,4 +1200,20 @@
     <string name="sysevents_related_banner">Showing every event in chain %1$s.</string>
     <string name="sysevents_empty">No system events match your filters.</string>
     <string name="sysevents_empty_no_filters">No system events recorded yet.</string>
+    <!-- Subsystem health (issue #427) -->
+    <string name="subsystem_health_title">Subsystem health</string>
+    <string name="subsystem_health_refresh">Refresh</string>
+    <string name="subsystem_health_status_healthy">Healthy</string>
+    <string name="subsystem_health_status_failing">Failing</string>
+    <string name="subsystem_health_status_unknown">Unknown</string>
+    <string name="subsystem_health_consecutive_failures">Consecutive failures: %1$d</string>
+    <string name="subsystem_health_incident_since">Incident since %1$s</string>
+    <string name="subsystem_health_last_success">Last success: %1$s</string>
+    <string name="subsystem_health_never">never</string>
+    <string name="subsystem_name_contact_sync">CardDAV sync</string>
+    <string name="subsystem_name_calendar_sync">CalDAV sync</string>
+    <string name="subsystem_name_notification">Notifications</string>
+    <string name="subsystem_name_backup">Backup &amp; restore</string>
+    <string name="subsystem_name_scheduler">Background jobs</string>
+    <string name="subsystem_name_webhook">Webhooks</string>
 </resources>
