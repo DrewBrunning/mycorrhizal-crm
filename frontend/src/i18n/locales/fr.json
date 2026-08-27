@@ -2126,5 +2126,28 @@
     "relatedBanner": "Affichage de tous les événements de la chaîne {{id}}.",
     "empty": "Aucun événement système ne correspond à vos filtres.",
     "emptyNoFilters": "Aucun événement système enregistré pour l'instant."
+  },
+  "subsystemHealth": {
+    "title": "État des sous-systèmes",
+    "description": "Dernier état correct connu par sous-système : quand chacun a réussi pour la dernière fois, combien d'exécutions ont échoué d'affilée et quand l'incident actuel a commencé.",
+    "refresh": "Actualiser",
+    "status": {
+      "healthy": "Sain",
+      "failing": "En échec",
+      "unknown": "Inconnu"
+    },
+    "consecutiveFailures": "Échecs consécutifs : {{n}}",
+    "incidentSince": "Incident depuis {{time}}",
+    "lastSuccess": "Dernier succès",
+    "lastFailure": "Dernier échec",
+    "never": "jamais",
+    "subsystems": {
+      "contact_sync": "Synchronisation CardDAV",
+      "calendar_sync": "Synchronisation CalDAV",
+      "notification": "Notifications",
+      "backup": "Sauvegarde et restauration",
+      "scheduler": "Tâches en arrière-plan",
+      "webhook": "Webhooks"
+    }
   }
 }

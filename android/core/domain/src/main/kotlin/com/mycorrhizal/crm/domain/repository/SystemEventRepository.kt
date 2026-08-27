@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.domain.repository
 
+import com.mycorrhizal.crm.model.network.SubsystemHealthResponse
 import com.mycorrhizal.crm.model.network.SystemEventsResponse
 
 /**
@@ -23,4 +24,11 @@ interface SystemEventRepository {
         correlationId: String? = null,
         limit: Int = 100,
     ): Result<SystemEventsResponse>
+
+    /**
+     * GET /admin/subsystem-health — the per-subsystem last-known-good state
+     * (issue #427), derived on the server from the operational-event stream.
+     * No parameters, uncached, admin-only (the backend 403s non-admins).
+     */
+    suspend fun subsystemHealth(): Result<SubsystemHealthResponse>
 }

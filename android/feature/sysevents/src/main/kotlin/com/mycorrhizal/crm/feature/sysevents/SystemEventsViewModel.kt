@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.sysevents
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.SystemEventRepository
+import com.mycorrhizal.crm.model.network.SubsystemHealth
 import com.mycorrhizal.crm.model.network.SystemEvent
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,6 +27,13 @@ private const val CORRELATION_DEBOUNCE_MS = 350L
 
 data class SystemEventsUiState(
     val events: List<SystemEvent> = emptyList(),
+    /**
+     * Per-subsystem last-known-good state (issue #427), shown above the
+     * timeline. Loaded once on open and on an explicit refresh — it does not
+     * re-fetch on a filter change. A load failure leaves it empty rather than
+     * raising the list's loud error.
+     */
+    val subsystemHealth: List<SubsystemHealth> = emptyList(),
     val isLoading: Boolean = false,
     /** Transient list-load failure (toasted). Cleared at the start of every fetch. */
     val error: String? = null,
@@ -61,6 +69,23 @@ class SystemEventsViewModel @Inject constructor(
 
     init {
         load()
+        refreshSubsystemHealth()
+    }
+
+    /**
+     * Reload the per-subsystem health panel (issue #427). Best-effort: a
+     * failure is swallowed so the panel just stays as it was — the timeline's
+     * own error is the one worth shouting about.
+     */
+    fun refreshSubsystemHealth() {
+        viewModelScope.launch {
+            repository.subsystemHealth().foldApiError(
+                onSuccess = { response ->
+                    _uiState.update { it.copy(subsystemHealth = response.subsystems) }
+                },
+                onError = { },
+            )
+        }
     }
 
     fun load() {

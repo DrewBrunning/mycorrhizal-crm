@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.data.repository
 
 import com.mycorrhizal.crm.domain.repository.SystemEventRepository
+import com.mycorrhizal.crm.model.network.SubsystemHealthResponse
 import com.mycorrhizal.crm.model.network.SystemEventsResponse
 import com.mycorrhizal.crm.network.ApiClient
 import javax.inject.Inject
@@ -27,4 +28,7 @@ class SystemEventRepositoryImpl @Inject constructor(
             correlationId = correlationId,
             limit = limit,
         )
+
+    override suspend fun subsystemHealth(): Result<SubsystemHealthResponse> =
+        apiClient.getSubsystemHealth()
 }

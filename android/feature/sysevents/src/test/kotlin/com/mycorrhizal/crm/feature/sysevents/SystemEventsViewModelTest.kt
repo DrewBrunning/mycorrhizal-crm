@@ -1,6 +1,8 @@
 package com.mycorrhizal.crm.feature.sysevents
 
 import com.mycorrhizal.crm.domain.repository.SystemEventRepository
+import com.mycorrhizal.crm.model.network.SubsystemHealth
+import com.mycorrhizal.crm.model.network.SubsystemHealthResponse
 import com.mycorrhizal.crm.model.network.SystemEvent
 import com.mycorrhizal.crm.model.network.SystemEventsResponse
 import com.mycorrhizal.crm.testing.MainDispatcherRule
@@ -13,6 +15,8 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import java.io.IOException
@@ -23,6 +27,11 @@ class SystemEventsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val repository = mockk<SystemEventRepository>()
+
+    @Before
+    fun stubSubsystemHealthByDefault() {
+        coEvery { repository.subsystemHealth() } returns Result.success(SubsystemHealthResponse())
+    }
 
     private fun viewModel() = SystemEventsViewModel(repository)
 
@@ -146,6 +155,60 @@ class SystemEventsViewModelTest {
                     limit = 100,
                 )
             }
+        }
+
+    @Test
+    fun `subsystem health is fetched on open and lands in state`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubList(SystemEventsResponse(systemEvents = emptyList()))
+            coEvery { repository.subsystemHealth() } returns Result.success(
+                SubsystemHealthResponse(
+                    subsystems = listOf(
+                        SubsystemHealth(subsystem = "contact_sync", status = "failing", consecutiveFailures = 9),
+                        SubsystemHealth(subsystem = "backup", status = "healthy"),
+                    ),
+                ),
+            )
+
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            assertEquals(2, vm.uiState.value.subsystemHealth.size)
+            assertEquals("contact_sync", vm.uiState.value.subsystemHealth.first().subsystem)
+            assertEquals(9, vm.uiState.value.subsystemHealth.first().consecutiveFailures)
+        }
+
+    @Test
+    fun `refreshSubsystemHealth re-fetches the panel without touching the list`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubList(SystemEventsResponse(systemEvents = emptyList()))
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            coEvery { repository.subsystemHealth() } returns Result.success(
+                SubsystemHealthResponse(
+                    subsystems = listOf(SubsystemHealth(subsystem = "webhook", status = "unknown")),
+                ),
+            )
+            vm.refreshSubsystemHealth()
+            advanceUntilIdle()
+
+            assertEquals(listOf("webhook"), vm.uiState.value.subsystemHealth.map { it.subsystem })
+            coVerify(atLeast = 2) { repository.subsystemHealth() }
+        }
+
+    @Test
+    fun `a subsystem-health failure is swallowed and leaves the list unaffected`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubList(SystemEventsResponse(systemEvents = listOf(event(1))))
+            coEvery { repository.subsystemHealth() } returns Result.failure(IOException("nope"))
+
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.subsystemHealth.isEmpty())
+            assertNull(vm.uiState.value.error)
+            assertEquals(1, vm.uiState.value.events.size)
         }
 
     @Test

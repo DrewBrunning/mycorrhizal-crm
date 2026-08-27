@@ -80,3 +80,9 @@ the emitted events and log lines carry the correlation ID.
 - Raw-log storage/search remains the operator's stdout log driver (self-hosted, single process). The
   timeline's "view related" is a pivot across `system_events` by correlation ID, not an in-app log
   browser; `docs/operations/observability.md` says so explicitly.
+- The per-subsystem last-known-good rollup ([#427](https://github.com/DrewBrunning/mycorrhizal-crm/issues/427),
+  the "last-known-good" foundation this ADR's Context anticipates) is a **read-side fold** over this
+  stream — `services.ComputeSubsystemHealth`, surfaced at `GET /admin/subsystem-health`. No second
+  write path, no stored state: it recomputes from `system_events` on every read, so it survives a
+  restart and never drifts. `/metrics` (#389), error aggregation (#426), and transition alerting
+  (#428) consume it rather than each deriving their own.
