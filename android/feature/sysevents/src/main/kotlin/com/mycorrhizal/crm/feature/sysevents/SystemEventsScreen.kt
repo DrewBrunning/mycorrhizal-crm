@@ -252,7 +252,6 @@ internal fun SystemEventsFilterToolbar(
         ) {
             FilterDropdown(
                 label = stringResource(R.string.sysevents_filter_component),
-                selectedToken = component,
                 selectedLabel = component ?: stringResource(R.string.sysevents_filter_all),
                 options = SystemEventComponents.ALL,
                 optionLabel = { it },
@@ -261,7 +260,6 @@ internal fun SystemEventsFilterToolbar(
             )
             FilterDropdown(
                 label = stringResource(R.string.sysevents_filter_severity),
-                selectedToken = severity,
                 selectedLabel = severity?.let { severityLabel(it) }
                     ?: stringResource(R.string.sysevents_filter_all),
                 options = SystemEventSeverities.ALL,
@@ -271,7 +269,6 @@ internal fun SystemEventsFilterToolbar(
             )
             FilterDropdown(
                 label = stringResource(R.string.sysevents_filter_event_type),
-                selectedToken = eventType,
                 selectedLabel = eventType?.let { eventTypeLabel(it) }
                     ?: stringResource(R.string.sysevents_filter_all),
                 options = SystemEventTypes.ALL,
@@ -310,7 +307,6 @@ internal fun SystemEventsFilterToolbar(
 @Composable
 private fun FilterDropdown(
     label: String,
-    selectedToken: String?,
     selectedLabel: String,
     options: List<String>,
     optionLabel: @Composable (String) -> String,
