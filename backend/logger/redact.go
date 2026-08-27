@@ -5,32 +5,53 @@ import (
 	"strings"
 )
 
-// sensitiveQueryKeys are query-string keys whose values must never reach a log
-// line. They cover the OAuth/OIDC `code` exchanged on the callback endpoint
-// plus the generic credential-shaped key names that should never appear in a
-// URL. A value for any of these keys (matched case-insensitively, after
-// percent-decoding the key) is replaced with [REDACTED].
-var sensitiveQueryKeys = map[string]struct{}{
-	"code":         {},
-	"token":        {},
-	"access_token": {},
-	"key":          {},
-	"secret":       {},
-	"password":     {},
-	"signature":    {},
+// safeQueryKeys is the allow-list of query-string keys whose values may be
+// written verbatim to the request log. Everything else is redacted.
+//
+// This is an allow-list, not a deny-list, on purpose (issue #510, data
+// minimization): the request log is instance-wide and attributes each line to
+// a user, so a free-text value that rode along in the query string —
+// `?search=<a contact's name>`, `?q=<words from a private note>`,
+// `?email=<someone's address>` — is a cross-user disclosure of personal data
+// even though every API handler is correctly `user_id`-scoped. A deny-list
+// only redacts the key names someone thought to add; an allow-list redacts
+// every key that has not been positively judged non-identifying. The keys here
+// are pagination, sorting, and low-cardinality boolean/enum filters — the
+// parts of a query string that are actually useful in a log and carry no PII.
+// Internal record IDs (contact_id, vcard_uid, entity_id, …) are deliberately
+// NOT on the list: they are linkable to a person and high-cardinality.
+//
+// Matched case-insensitively after percent-decoding the key. Keep this in sync
+// with the query-parameter surface in controllers/ when a new non-PII operational
+// parameter is added.
+var safeQueryKeys = map[string]struct{}{
+	// pagination / cursors
+	"page": {}, "page_size": {}, "per_page": {}, "limit": {}, "offset": {},
+	"skip": {}, "cursor": {}, "since": {},
+	// ordering
+	"sort": {}, "order": {}, "dir": {}, "direction": {},
+	// low-cardinality filters / toggles
+	"archived": {}, "include_archived": {}, "favorites": {}, "favorite": {},
+	"has_contact_info": {}, "include": {}, "includes": {}, "include_contacts": {},
+	"include_members": {}, "include_sensitive": {}, "include_snapshots": {},
+	"sections": {}, "status": {}, "type": {}, "relation": {}, "kind": {},
+	"bucket": {}, "depth": {}, "thumbnail": {}, "format": {},
+	// client/protocol metadata
+	"client": {}, "version": {}, "legacy": {}, "circle_legacy": {},
 }
 
-// RedactQueryValues scrubs the values of sensitive query-string keys from a raw
-// query string before it is logged. It preserves the order, separators, and
-// every non-sensitive byte of the input — only the value portion of a sensitive
-// key/value pair is replaced — so a legitimately useful query (e.g.
-// "page=2&sort=name") is logged intact while "code=SECRET" becomes
-// "code=[REDACTED]".
+const redactedMarker = "[REDACTED]"
+
+// RedactQueryValues rewrites a raw query string so it is safe to log: the value
+// of every key NOT in safeQueryKeys is replaced with [REDACTED]. It preserves
+// the order, separators, and every byte of a safe key's pair, so a useful query
+// ("page=2&sort=name") is logged intact while "search=Ada%20Lovelace" becomes
+// "search=[REDACTED]" and "code=SECRET" becomes "code=[REDACTED]".
 //
-// Keys are percent-decoded before the sensitive-key check so a caller cannot
-// bypass redaction by encoding the key name (e.g. "c%6Fde"). A key that fails
-// to decode is compared verbatim. Values are never decoded, so a value that
-// itself contains an '&' or ';' cannot split the pair and hide a secret.
+// Keys are percent-decoded before the allow-list check so a caller cannot smuggle
+// a value through by encoding the key name (e.g. "s%65arch"). A key that fails to
+// decode is compared verbatim. Values are never decoded, so a value that itself
+// contains '&' or ';' cannot split the pair.
 func RedactQueryValues(raw string) string {
 	if raw == "" {
 		return raw
@@ -52,11 +73,12 @@ func RedactQueryValues(raw string) string {
 	return b.String()
 }
 
-// redactQueryPair redacts the value of a single key/value pair if the key is
-// sensitive. seg is the pair without its trailing separator.
+// redactQueryPair redacts the value of a single key/value pair unless the key
+// is allow-listed. seg is the pair without its trailing separator.
 func redactQueryPair(seg string) string {
 	eq := strings.IndexByte(seg, '=')
 	if eq < 0 {
+		// A bare key with no value: nothing to redact.
 		return seg
 	}
 	keyRaw := seg[:eq]
@@ -64,8 +86,8 @@ func redactQueryPair(seg string) string {
 	if err != nil {
 		key = keyRaw
 	}
-	if _, sensitive := sensitiveQueryKeys[strings.ToLower(key)]; sensitive {
-		return keyRaw + "=[REDACTED]"
+	if _, safe := safeQueryKeys[strings.ToLower(key)]; safe {
+		return seg
 	}
-	return seg
+	return keyRaw + "=" + redactedMarker
 }

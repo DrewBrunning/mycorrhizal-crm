@@ -2,15 +2,57 @@ package services
 
 import (
 	"bufio"
+	"bytes"
 	"net"
 	"strings"
 	"testing"
 
 	"mycorrhizal/config"
+	"mycorrhizal/logger"
 
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// captureLoggerOutput redirects the package logger to a buffer for the
+// duration of the test and returns the buffer.
+func captureLoggerOutput(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	buf := &bytes.Buffer{}
+	old := logger.Logger
+	oldLevel := zerolog.GlobalLevel()
+	logger.Logger = zerolog.New(buf)
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	t.Cleanup(func() {
+		logger.Logger = old
+		zerolog.SetGlobalLevel(oldLevel)
+	})
+	return buf
+}
+
+// TestSendEmail_LogsMaskRecipientAddress pins the issue #510 data-minimization
+// fix: the recipient address is instance-wide log data and the local part —
+// its identifying half — must never be written verbatim. Every SendEmail log
+// path that names the recipient runs it through logger.MaskEmail first.
+func TestSendEmail_LogsMaskRecipientAddress(t *testing.T) {
+	buf := captureLoggerOutput(t)
+
+	// No channel configured -> the "not sent" warning path, which names the
+	// recipient. This is the exact line the pre-fix real-log capture caught.
+	err := SendEmail(config.Config{}, EmailMessage{
+		To:      "sensitive.person@recipient.example",
+		Subject: "hi",
+		HTML:    "<p>hi</p>",
+	})
+	require.NoError(t, err)
+
+	out := buf.String()
+	require.NotEmpty(t, out, "expected a log line for the no-channel path")
+	require.NotContains(t, out, "sensitive.person", "local part of the recipient address must not reach the log")
+	require.NotContains(t, out, "sensitive.person@recipient.example")
+	require.Contains(t, out, "s***@recipient.example", "the masked form should still be logged for delivery diagnostics")
+}
 
 // startFakeSMTPServer starts a minimal single-connection SMTP server on an
 // ephemeral local port and returns its host/port. It speaks just enough of

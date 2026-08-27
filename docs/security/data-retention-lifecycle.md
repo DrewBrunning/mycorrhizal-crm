@@ -9,7 +9,7 @@ each asset, not how long it survives.
 |---|---|
 | **Last updated** | 2026-08-25 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420)) |
 | **Scope** | Backend (Go/Gin + SQLite), CardDAV/CalDAV (server role), Android client, browser/frontend, operator backups. |
-| **Companion docs** | `docs/security/asvs-l2.md` V8 (Data Protection), `docs/deployment.md` (Backups section — the authoritative backup/restore runbook), `docs/security/masvs-l1.md` (Android storage controls). |
+| **Companion docs** | `docs/security/pii-inventory.md` (the *minimization* lens — should each store exist, and is it more/kept-longer than needed), `docs/security/asvs-l2.md` V8 (Data Protection), `docs/deployment.md` (Backups section — the authoritative backup/restore runbook), `docs/security/masvs-l1.md` (Android storage controls). |
 
 Every row below answers the same four questions from the issue: **where** it's stored and who can reach
 it, **how long** it's retained, **how** deletion happens and whether it propagates to other copies, and
