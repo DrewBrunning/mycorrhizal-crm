@@ -269,6 +269,16 @@ func main() {
 		services.RunRestoreDrillScheduled(db, *cfg)
 	})
 
+	// Evaluate alert conditions on a schedule (issue #428): detect
+	// failure/recovery transitions on the tracked subsystems and notify on
+	// them. Job-lock guarded, config-gated (ALERTING_ENABLED).
+	s.Every(cfg.AlertEvalIntervalMinutes).Minutes().Do(recoverJob(db, "alert-eval-scheduled-run", func() {
+		services.EvaluateAlerts(db, *cfg)
+	}))
+	go safeGo(db, "alert-eval-initial-run", func() {
+		services.EvaluateAlerts(db, *cfg)
+	})
+
 	go s.StartBlocking()
 
 	// gin.New() rather than gin.Default(): the app installs its own

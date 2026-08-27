@@ -63,7 +63,13 @@ const SUPPORTED_EVENTS = [
   // Issue #273/#275: scheduled DB integrity check / restore drill failures.
   'db.integrity_check_failed',
   'db.restore_drill_failed',
+  // Issue #428: alerting on subsystem failure/recovery transitions. One pair,
+  // with the specific condition carried in the payload.
+  'alert.raised',
+  'alert.cleared',
 ];
+// This list mirrors the backend `oneof` in models/dtos.go's WebhookInput and
+// must stay in sync with it (frontend trap 4).
 
 interface WebhookFormState {
   name: string;

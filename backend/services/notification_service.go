@@ -1049,29 +1049,73 @@ func TestNotificationChannel(db *gorm.DB, cfg config.Config, user models.User, c
 		// Web Push subscriptions AND FCM mobile devices — mirroring
 		// pushNotificationSender.Send's dispatch (design decision 5: one
 		// "push" channel, tested as one unit).
-		var subs []models.PushSubscription
-		if err := db.Where("user_id = ?", user.ID).Find(&subs).Error; err != nil {
+		return deliverPushToUser(db, cfg, user, title, message)
+
+	default:
+		return fmt.Errorf("unsupported notification channel %q", channel)
+	}
+}
+
+// deliverPushToUser sends one arbitrary title/body to every push endpoint the
+// user has registered — browser Web Push subscriptions and FCM mobile devices —
+// deleting any that come back stale. It returns the first send error, a
+// "not configured" error when the user has no usable endpoint, and nil when at
+// least one endpoint accepted the message. Shared by the Settings "test" button
+// (TestNotificationChannel) and operational alerting (issue #428), so the two
+// dispatch the push channel identically.
+func deliverPushToUser(db *gorm.DB, cfg config.Config, user models.User, title, message string) error {
+	var subs []models.PushSubscription
+	if err := db.Where("user_id = ?", user.ID).Find(&subs).Error; err != nil {
+		return err
+	}
+	var devices []models.DeviceRegistration
+	if err := db.Where("user_id = ? AND client = ?", user.ID, string(models.PushClientFCM)).Find(&devices).Error; err != nil {
+		return err
+	}
+	if len(subs) == 0 && len(devices) == 0 {
+		return fmt.Errorf("no push devices registered — enable browser notifications or register a mobile device first")
+	}
+
+	var sendErr error
+	var attempted bool
+
+	if len(subs) > 0 {
+		vapidPublic, vapidPrivate, err := GetVAPIDKeys(db)
+		if err != nil {
 			return err
 		}
-		var devices []models.DeviceRegistration
-		if err := db.Where("user_id = ? AND client = ?", user.ID, string(models.PushClientFCM)).Find(&devices).Error; err != nil {
-			return err
-		}
-		if len(subs) == 0 && len(devices) == 0 {
-			return fmt.Errorf("no push devices registered — enable browser notifications or register a mobile device first")
-		}
-
-		var sendErr error
-		var attempted bool
-
-		if len(subs) > 0 {
-			vapidPublic, vapidPrivate, err := GetVAPIDKeys(db)
+		for _, sub := range subs {
+			attempted = true
+			stale, err := sendPushMessage(db, cfg, user, sub, vapidPublic, vapidPrivate, title, message)
 			if err != nil {
-				return err
+				if sendErr == nil {
+					sendErr = err
+				}
+				continue
 			}
-			for _, sub := range subs {
+			if stale {
+				if delErr := db.Delete(&sub).Error; delErr != nil {
+					logger.Warn().Err(delErr).Uint("subscription_id", sub.ID).Msg("Failed to delete stale push subscription")
+				}
+			}
+		}
+	}
+
+	if len(devices) > 0 {
+		fcmAccount, err := LoadFCMServiceAccount(cfg.FCMServiceAccountFile)
+		if err != nil || fcmAccount == nil {
+			if len(subs) == 0 {
+				// Nothing else was even attempted — a silent no-op would
+				// look like success. Surface the missing config instead.
+				return fmt.Errorf("mobile push delivery is not configured on this server (FCM_SERVICE_ACCOUNT_FILE unset)")
+			}
+			// A web subscription was already probed above; an
+			// unconfigured FCM device is inert-by-design (M2 design
+			// decision 4), not a failure of the channel as a whole.
+		} else {
+			for _, device := range devices {
 				attempted = true
-				stale, err := sendPushMessage(db, cfg, user, sub, vapidPublic, vapidPrivate, title, message)
+				stale, err := sendFCMMessage(cfg, fcmAccount, device.Token, title, message, nil)
 				if err != nil {
 					if sendErr == nil {
 						sendErr = err
@@ -1079,51 +1123,18 @@ func TestNotificationChannel(db *gorm.DB, cfg config.Config, user models.User, c
 					continue
 				}
 				if stale {
-					if delErr := db.Delete(&sub).Error; delErr != nil {
-						logger.Warn().Err(delErr).Uint("subscription_id", sub.ID).Msg("Failed to delete stale push subscription")
+					if delErr := db.Delete(&device).Error; delErr != nil {
+						logger.Warn().Err(delErr).Uint("device_id", device.ID).Msg("Failed to delete stale FCM device registration")
 					}
 				}
 			}
 		}
-
-		if len(devices) > 0 {
-			fcmAccount, err := LoadFCMServiceAccount(cfg.FCMServiceAccountFile)
-			if err != nil || fcmAccount == nil {
-				if len(subs) == 0 {
-					// Nothing else was even attempted — a silent no-op would
-					// look like success. Surface the missing config instead.
-					return fmt.Errorf("mobile push delivery is not configured on this server (FCM_SERVICE_ACCOUNT_FILE unset)")
-				}
-				// A web subscription was already probed above; an
-				// unconfigured FCM device is inert-by-design (M2 design
-				// decision 4), not a failure of the channel as a whole.
-			} else {
-				for _, device := range devices {
-					attempted = true
-					stale, err := sendFCMMessage(cfg, fcmAccount, device.Token, title, message, nil)
-					if err != nil {
-						if sendErr == nil {
-							sendErr = err
-						}
-						continue
-					}
-					if stale {
-						if delErr := db.Delete(&device).Error; delErr != nil {
-							logger.Warn().Err(delErr).Uint("device_id", device.ID).Msg("Failed to delete stale FCM device registration")
-						}
-					}
-				}
-			}
-		}
-
-		if !attempted {
-			return fmt.Errorf("no push devices registered — enable browser notifications or register a mobile device first")
-		}
-		return sendErr
-
-	default:
-		return fmt.Errorf("unsupported notification channel %q", channel)
 	}
+
+	if !attempted {
+		return fmt.Errorf("no push devices registered — enable browser notifications or register a mobile device first")
+	}
+	return sendErr
 }
 
 // ListPushSubscriptions returns the user's registered push devices.

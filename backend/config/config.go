@@ -90,8 +90,26 @@ type Config struct {
 	DBIntegrityCheckIntervalHours int           // Interval in hours for the scheduled DB integrity check
 	DBRestoreDrillEnabled         bool          // Enable the scheduled backup-restore drill job (issue #275)
 	DBRestoreDrillIntervalHours   int           // Interval in hours for the scheduled restore drill (default weekly)
-	HIBPCheckEnabled              bool          // Check new/changed passwords against HIBP's k-anonymity range API (issue #376). Off by default: an outbound call on a self-hosted app is a deliberate opt-in, not a safe default — see docs/security/asvs-l2.md's P3.
-	OIDC                          OIDCConfig
+
+	// Alerting on state transitions (issue #428). The scheduled evaluator
+	// (services.EvaluateAlerts) detects failure/recovery transitions on the
+	// tracked subsystems (#427) plus a few threshold checks, and dispatches one
+	// notification per transition through the existing webhook + notification
+	// channels. Personal channels (email/ntfy/Gotify/push) go to admin users
+	// only; webhooks broadcast as usual.
+	AlertingEnabled             bool // Master switch for the alert evaluator
+	AlertEvalIntervalMinutes    int  // How often the evaluator runs
+	AlertDiskUsagePercent       int  // Raise disk_space when used% >= this; 0 disables the condition
+	AlertSyncFailureThreshold   int  // Consecutive sync failures before sync:* fires
+	AlertNotifyFailureThreshold int  // Consecutive notification failures before the notifications condition fires
+	AlertBackupMaxAgeHours      int  // Raise backup_stale when the last backup success is older than this; 0 => 2 * DBRestoreDrillIntervalHours
+	AlertJobStaleMultiplier     int  // Raise job_stopped when a job's last successful run is older than interval * this
+	AlertIncidentQuietHours     int  // integrations recovers when no new integration_failed event lands within this window
+	AlertBackupEnabled          bool // Enable the backup / backup_stale conditions
+	AlertDBIntegrityEnabled     bool // Enable the db_integrity condition
+	AlertJobStoppedEnabled      bool // Enable the job_stopped condition
+	HIBPCheckEnabled            bool // Check new/changed passwords against HIBP's k-anonymity range API (issue #376). Off by default: an outbound call on a self-hosted app is a deliberate opt-in, not a safe default — see docs/security/asvs-l2.md's P3.
+	OIDC                        OIDCConfig
 
 	// DataEncryptionKey is the base64-encoded 32-byte master key for
 	// field-level at-rest encryption (issue #380, ASVS V6.4/V8.3). When unset,
@@ -165,6 +183,17 @@ func LoadConfig() *Config {
 		DBIntegrityCheckIntervalHours: getIntEnv("DB_INTEGRITY_CHECK_INTERVAL_HOURS", 24),
 		DBRestoreDrillEnabled:         getBoolEnv("DB_RESTORE_DRILL_ENABLED", true),
 		DBRestoreDrillIntervalHours:   getIntEnv("DB_RESTORE_DRILL_INTERVAL_HOURS", 168),
+		AlertingEnabled:               getBoolEnv("ALERTING_ENABLED", true),
+		AlertEvalIntervalMinutes:      getIntEnv("ALERT_EVAL_INTERVAL_MINUTES", 15),
+		AlertDiskUsagePercent:         getIntEnv("ALERT_DISK_USAGE_PERCENT", 90),
+		AlertSyncFailureThreshold:     getIntEnv("ALERT_SYNC_FAILURE_THRESHOLD", 3),
+		AlertNotifyFailureThreshold:   getIntEnv("ALERT_NOTIFY_FAILURE_THRESHOLD", 3),
+		AlertBackupMaxAgeHours:        getIntEnv("ALERT_BACKUP_MAX_AGE_HOURS", 0),
+		AlertJobStaleMultiplier:       getIntEnv("ALERT_JOB_STALE_MULTIPLIER", 3),
+		AlertIncidentQuietHours:       getIntEnv("ALERT_INCIDENT_QUIET_HOURS", 6),
+		AlertBackupEnabled:            getBoolEnv("ALERT_BACKUP_ENABLED", true),
+		AlertDBIntegrityEnabled:       getBoolEnv("ALERT_DB_INTEGRITY_ENABLED", true),
+		AlertJobStoppedEnabled:        getBoolEnv("ALERT_JOB_STOPPED_ENABLED", true),
 		HIBPCheckEnabled:              getBoolEnv("HIBP_CHECK_ENABLED", false),
 		DataEncryptionKey:             getEnv("DATA_ENCRYPTION_KEY", ""),
 		DataEncryptionKeyFile:         getEnv("DATA_ENCRYPTION_KEY_FILE", ""),
@@ -188,6 +217,33 @@ func LoadConfig() *Config {
 	if cfg.DBRestoreDrillIntervalHours < 1 {
 		log.Println("WARN: DB_RESTORE_DRILL_INTERVAL_HOURS must be at least 1, using 1")
 		cfg.DBRestoreDrillIntervalHours = 1
+	}
+
+	if cfg.AlertEvalIntervalMinutes < 1 {
+		log.Println("WARN: ALERT_EVAL_INTERVAL_MINUTES must be at least 1, using 1")
+		cfg.AlertEvalIntervalMinutes = 1
+	}
+
+	if cfg.AlertDiskUsagePercent < 0 || cfg.AlertDiskUsagePercent > 99 {
+		log.Println("WARN: ALERT_DISK_USAGE_PERCENT must be between 0 and 99, using 90")
+		cfg.AlertDiskUsagePercent = 90
+	}
+
+	if cfg.AlertSyncFailureThreshold < 1 {
+		cfg.AlertSyncFailureThreshold = 1
+	}
+	if cfg.AlertNotifyFailureThreshold < 1 {
+		cfg.AlertNotifyFailureThreshold = 1
+	}
+	if cfg.AlertJobStaleMultiplier < 2 {
+		log.Println("WARN: ALERT_JOB_STALE_MULTIPLIER must be at least 2, using 2")
+		cfg.AlertJobStaleMultiplier = 2
+	}
+	if cfg.AlertIncidentQuietHours < 1 {
+		cfg.AlertIncidentQuietHours = 1
+	}
+	if cfg.AlertBackupMaxAgeHours < 0 {
+		cfg.AlertBackupMaxAgeHours = 0
 	}
 
 	// An email channel is enabled only when it is fully configured

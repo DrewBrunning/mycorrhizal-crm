@@ -1210,7 +1210,12 @@
         "activity.updated": "Activity Updated",
         "activity.deleted": "Activity Deleted",
         "reminder.triggered": "Reminder Triggered",
-        "birthday.occurred": "Birthday"
+        "birthday.occurred": "Birthday",
+        "reach_out_suggested": "Reach-Out Suggested",
+        "db.integrity_check_failed": "Database Integrity Check Failed",
+        "db.restore_drill_failed": "Restore Drill Failed",
+        "alert.raised": "Alert Raised",
+        "alert.cleared": "Alert Cleared"
       },
       "secretDialog": {
         "title": "Webhook Secret"

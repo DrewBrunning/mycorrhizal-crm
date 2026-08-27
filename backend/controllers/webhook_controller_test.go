@@ -98,7 +98,7 @@ func TestCreateWebhook(t *testing.T) {
 // TestCreateWebhook_TooManyEventTokens pins issue #415's Events-array bound:
 // dive/oneof alone would let a client repeat a valid token (e.g.
 // "contact.created") hundreds of times, turning one webhook into a
-// hundreds-wide fan-out target on every matching event. The max=12 tag
+// hundreds-wide fan-out target on every matching event. The max=16 tag
 // (exactly the number of oneof tokens) rejects such a payload with a 400.
 func TestCreateWebhook_TooManyEventTokens(t *testing.T) {
 	db, _ := setupRouter()
@@ -106,12 +106,12 @@ func TestCreateWebhook_TooManyEventTokens(t *testing.T) {
 	db.First(&user)
 
 	router := routerForUser(db, user.ID)
-	// The real ValidateJSONMiddleware (not withValidated) so the max=12
+	// The real ValidateJSONMiddleware (not withValidated) so the max=16
 	// Events bound is actually enforced, matching how routes.go registers the
 	// webhook routes.
 	router.POST("/webhooks", middleware.ValidateJSONMiddleware(&models.WebhookInput{}), CreateWebhook)
 
-	events := make([]string, 13)
+	events := make([]string, 17)
 	for i := range events {
 		events[i] = "contact.created"
 	}

@@ -134,9 +134,47 @@ future `job_completed` / `backup_completed` producer needs no code change.
 Consumers of this state: `/metrics`
 ([#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389)) exports the counters as gauges;
 error aggregation ([#426](https://github.com/DrewBrunning/mycorrhizal-crm/issues/426)) and alerting
-on `Healthy`↔`Failing` transitions
-([#428](https://github.com/DrewBrunning/mycorrhizal-crm/issues/428)) read it directly. Rendered at
+on `Healthy`↔`Failing` transitions (next section) read it directly. Rendered at
 `/system-events` (web) and Settings → System events (Android), above the event timeline.
+
+## Alerting on state transitions
+
+A scheduled evaluator (`alert_eval`, every `ALERT_EVAL_INTERVAL_MINUTES`, job-lock guarded,
+config-gated by `ALERTING_ENABLED`; issue
+[#428](https://github.com/DrewBrunning/mycorrhizal-crm/issues/428)) watches the per-subsystem
+health above plus a few threshold checks and dispatches **exactly one notification per state
+transition** — a failure *and* its recovery. It replaces the two fire-on-every-failed-run webhooks
+(`db.integrity_check_failed`, `db.restore_drill_failed`) that had no recovery counterpart and no
+de-duplication.
+
+**How it avoids alert storms**: the current per-condition state (`ok` / `alerting`, and since
+when) is persisted in `alert_states`, one row per condition. A dispatch happens only when the
+freshly-computed verdict differs from the stored one, so a condition that keeps failing produces
+one alert, not one per evaluation.
+
+**Conditions** (each individually configurable; a `0` threshold disables that condition):
+
+| condition | fires when | recovers when |
+|---|---|---|
+| `backup` | the `backup` subsystem is `failing` | it reports a success again (`backup_completed` / `restore_test_completed`) |
+| `backup_stale` | backups have succeeded before but not within `ALERT_BACKUP_MAX_AGE_HOURS` (default `2 ×` the restore-drill interval) | a success lands inside the window |
+| `sync:contact_sync` / `sync:calendar_sync` | the subsystem is `failing` with ≥ `ALERT_SYNC_FAILURE_THRESHOLD` consecutive failures | it reports healthy |
+| `notifications` | the `notification` subsystem is `failing` with ≥ `ALERT_NOTIFY_FAILURE_THRESHOLD` consecutive failures | it reports healthy |
+| `integrations` | the `webhook` subsystem is `failing` and its last failure is within `ALERT_INCIDENT_QUIET_HOURS` | no new `integration_failed` for that window (the webhook subsystem emits no success token — [#422](https://github.com/DrewBrunning/mycorrhizal-crm/issues/422)) |
+| `db_integrity` | the last scheduled `PRAGMA integrity_check` result is `failed` / `error` | it flips back to `ok` |
+| `disk_space` | the filesystem holding the DB is ≥ `ALERT_DISK_USAGE_PERCENT` full | usage drops 5 points below the threshold (hysteresis) |
+| `job_stopped` | any config-enabled scheduled job's last **successful** completion is older than its interval × `ALERT_JOB_STALE_MULTIPLIER` | every watched job is fresh again |
+
+**Delivery** reuses the existing paths:
+
+- **Webhooks** — `alert.raised` / `alert.cleared`, broadcast to every subscriber (like the current
+  `db.*` operator events). One event pair; the specific condition, state, detail, failure count and
+  `since` timestamp are in the payload. Subscribe under Settings → Webhooks.
+- **Personal channels** (email / ntfy / Gotify / push) — sent to **admin users only** (`is_admin`),
+  through each admin's own notification config. Infra health is an operator concern, not something
+  to page every user of a shared instance about.
+
+Subjects follow `🔴 Backup failed` … `🟢 Backup recovered after 3 failures`.
 
 ## Related knobs
 
@@ -147,3 +185,11 @@ on `Healthy`↔`Failing` transitions
 | `SYSTEM_EVENT_RETENTION_DAYS` | `30` | how long `system_events` rows survive |
 | `DB_INTEGRITY_CHECK_ENABLED` / `_INTERVAL_HOURS` | on / `24` | scheduled `PRAGMA integrity_check` |
 | `DB_RESTORE_DRILL_ENABLED` / `_INTERVAL_HOURS` | on / `168` | scheduled backup-restore drill |
+| `ALERTING_ENABLED` | on | master switch for the alert evaluator |
+| `ALERT_EVAL_INTERVAL_MINUTES` | `15` | how often conditions are re-evaluated |
+| `ALERT_DISK_USAGE_PERCENT` | `90` | `disk_space` threshold; `0` disables the condition |
+| `ALERT_SYNC_FAILURE_THRESHOLD` / `ALERT_NOTIFY_FAILURE_THRESHOLD` | `3` / `3` | consecutive failures before `sync:*` / `notifications` fire |
+| `ALERT_BACKUP_MAX_AGE_HOURS` | `0` → `2 ×` restore-drill interval | `backup_stale` threshold |
+| `ALERT_JOB_STALE_MULTIPLIER` | `3` | `job_stopped` fires at interval × this |
+| `ALERT_INCIDENT_QUIET_HOURS` | `6` | `integrations` recovery window |
+| `ALERT_BACKUP_ENABLED` / `ALERT_DB_INTEGRITY_ENABLED` / `ALERT_JOB_STOPPED_ENABLED` | on | per-condition switches for the conditions with no numeric knob |
