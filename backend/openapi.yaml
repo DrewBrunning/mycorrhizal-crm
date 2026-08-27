@@ -8409,9 +8409,9 @@ paths:
           description: The job failed.
   /admin/trigger-purge:
     post:
-      summary: Trigger the soft-delete purge job now (admin)
+      summary: Trigger the retention purge jobs now (admin)
       operationId: adminTriggerPurge
-      description: Best-effort; always reports success.
+      description: Runs the soft-delete, contact-share, and webhook-delivery retention purges on demand. Best-effort; always reports success.
       responses:
         "401":
           description: Not authenticated (missing or invalid session cookie or full-scope bearer token).

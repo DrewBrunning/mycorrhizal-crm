@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -260,20 +261,27 @@ func TestRestoreDrillMinIntervalAboveMargin(t *testing.T) {
 	assert.Equal(t, 168*time.Hour-restoreDrillMinIntervalMargin, got)
 }
 
-// newTestWebhookServer spins up an httptest server recording hits, and
-// registers an active webhook for user subscribed to eventType. Shared by
-// the RunRestoreDrillScheduled full-path tests below.
-func newTestWebhookServer(t *testing.T, db *gorm.DB, userID uint, eventType string) *int32 {
+// newTestWebhookServer spins up an httptest server recording hits and the
+// raw request bodies, and registers an active webhook for user subscribed to
+// eventType. Both the hit counter and the captured body are returned — the
+// body because, since issue #622, the stored delivery receipt no longer keeps
+// the entity body, so the wire body is the only place the payload's data is
+// still observable. Shared by the RunRestoreDrillScheduled full-path tests
+// below.
+func newTestWebhookServer(t *testing.T, db *gorm.DB, userID uint, eventType string) (*int32, *[]byte) {
 	t.Helper()
 	var hits int32
+	var bodies []byte
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&hits, 1)
+		b, _ := io.ReadAll(r.Body)
+		bodies = append(bodies, b...)
 		w.WriteHeader(http.StatusOK)
 	}))
 	t.Cleanup(server.Close)
 	wh := models.Webhook{UserID: userID, Name: "alerts", URL: server.URL, Events: []string{eventType}, Secret: "s", IsActive: true}
 	require.NoError(t, db.Create(&wh).Error)
-	return &hits
+	return &hits, &bodies
 }
 
 // TestRunRestoreDrillScheduledFiresWebhookOnMismatch exercises
@@ -306,7 +314,7 @@ func TestRunRestoreDrillScheduledFiresWebhookOnMismatch(t *testing.T) {
 		require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "post-snapshot write", Date: time.Now()}).Error)
 	}))
 
-	hits := newTestWebhookServer(t, db, user.ID, EventRestoreDrillFailed)
+	hits, deliveredBody := newTestWebhookServer(t, db, user.ID, EventRestoreDrillFailed)
 
 	cfg := config.Config{DBPath: path, DBRestoreDrillEnabled: true, DBRestoreDrillIntervalHours: 168}
 	require.NotPanics(t, func() { RunRestoreDrillScheduled(db, cfg) })
@@ -325,14 +333,25 @@ func TestRunRestoreDrillScheduledFiresWebhookOnMismatch(t *testing.T) {
 	require.Len(t, deliveries, 1)
 	assert.Equal(t, EventRestoreDrillFailed, deliveries[0].EventType)
 
+	// The wire body carries the full payload; the stored receipt is the
+	// trimmed envelope (issue #622: a successful delivery never needs the
+	// entity body it carried).
 	var envelope struct {
 		Event string `json:"event"`
 		Data  struct {
 			Detail string `json:"detail"`
 		} `json:"data"`
 	}
-	require.NoError(t, json.Unmarshal([]byte(deliveries[0].Payload), &envelope))
+	require.NoError(t, json.Unmarshal(*deliveredBody, &envelope))
 	assert.Contains(t, envelope.Data.Detail, "notes")
+
+	var storedEnvelope struct {
+		Event string          `json:"event"`
+		Data  json.RawMessage `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(deliveries[0].Payload), &storedEnvelope))
+	assert.Equal(t, EventRestoreDrillFailed, storedEnvelope.Event)
+	assert.Nil(t, storedEnvelope.Data, "the stored receipt must not retain the entity body")
 
 	var job models.JobExecution
 	require.NoError(t, db.Where("job_name = ?", models.JobNameRestoreDrill).First(&job).Error)
@@ -354,7 +373,7 @@ func TestRunRestoreDrillScheduledFiresWebhookOnError(t *testing.T) {
 	})
 	user := seedNotes(t, db, "drillerrortester", 3)
 
-	hits := newTestWebhookServer(t, db, user.ID, EventRestoreDrillFailed)
+	hits, deliveredBody := newTestWebhookServer(t, db, user.ID, EventRestoreDrillFailed)
 
 	cfg := config.Config{DBPath: filepath.Join(t.TempDir(), "does-not-exist.db"), DBRestoreDrillEnabled: true, DBRestoreDrillIntervalHours: 168}
 	require.NotPanics(t, func() { RunRestoreDrillScheduled(db, cfg) })
@@ -371,14 +390,24 @@ func TestRunRestoreDrillScheduledFiresWebhookOnError(t *testing.T) {
 	require.Len(t, deliveries, 1)
 	assert.Equal(t, EventRestoreDrillFailed, deliveries[0].EventType)
 
+	// The wire body carries the full payload; the stored receipt is the
+	// trimmed envelope (issue #622).
 	var envelope struct {
 		Event string `json:"event"`
 		Data  struct {
 			Error string `json:"error"`
 		} `json:"data"`
 	}
-	require.NoError(t, json.Unmarshal([]byte(deliveries[0].Payload), &envelope))
+	require.NoError(t, json.Unmarshal(*deliveredBody, &envelope))
 	assert.NotEmpty(t, envelope.Data.Error)
+
+	var storedEnvelope struct {
+		Event string          `json:"event"`
+		Data  json.RawMessage `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(deliveries[0].Payload), &storedEnvelope))
+	assert.Equal(t, EventRestoreDrillFailed, storedEnvelope.Event)
+	assert.Nil(t, storedEnvelope.Data, "the stored receipt must not retain the entity body")
 
 	var job models.JobExecution
 	require.NoError(t, db.Where("job_name = ?", models.JobNameRestoreDrill).First(&job).Error)
@@ -399,7 +428,7 @@ func TestRunRestoreDrillScheduledHealthyRun(t *testing.T) {
 	})
 	user := seedNotes(t, db, "drillhealthytester", 10)
 
-	hits := newTestWebhookServer(t, db, user.ID, EventRestoreDrillFailed)
+	hits, _ := newTestWebhookServer(t, db, user.ID, EventRestoreDrillFailed)
 
 	cfg := config.Config{DBPath: path, DBRestoreDrillEnabled: true, DBRestoreDrillIntervalHours: 168}
 	require.NotPanics(t, func() { RunRestoreDrillScheduled(db, cfg) })

@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"io"
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
@@ -45,8 +46,10 @@ func TestDetectReachOutSuggestions_OrganizationChange(t *testing.T) {
 	user, contact := createTestUserAndContact(t, db, "OldCo", "")
 
 	var hits int32
+	var receivedBody []byte
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&hits, 1)
+		receivedBody, _ = io.ReadAll(r.Body)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -90,9 +93,20 @@ func TestDetectReachOutSuggestions_OrganizationChange(t *testing.T) {
 			NewValue string `json:"new_value"`
 		} `json:"data"`
 	}
-	require.NoError(t, json.Unmarshal([]byte(deliveries[0].Payload), &envelope))
+	require.NoError(t, json.Unmarshal(receivedBody, &envelope))
 	assert.Equal(t, "organization", envelope.Data.Kind)
 	assert.Equal(t, "NewCo", envelope.Data.NewValue)
+
+	// The delivered body above carries the full payload; the stored receipt
+	// is the trimmed envelope (issue #622: a successful delivery never needs
+	// the entity body it carried).
+	var storedEnvelope struct {
+		Event string          `json:"event"`
+		Data  json.RawMessage `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(deliveries[0].Payload), &storedEnvelope))
+	assert.Equal(t, "reach_out_suggested", storedEnvelope.Event)
+	assert.Nil(t, storedEnvelope.Data, "the stored receipt must not retain the entity body")
 }
 
 func TestDetectReachOutSuggestions_TitleChange(t *testing.T) {

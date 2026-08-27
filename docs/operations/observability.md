@@ -212,6 +212,7 @@ Subjects follow `🔴 Backup failed` … `🟢 Backup recovered after 3 failures
 | `LOG_LEVEL` | `info` | `debug` \| `info` \| `warn` \| `error` |
 | `LOG_PRETTY` | off in `release` | human-readable console output instead of JSON (dev) |
 | `SYSTEM_EVENT_RETENTION_DAYS` | `30` | how long `system_events` rows survive |
+| `WEBHOOK_DELIVERY_RETENTION_DAYS` | `30` | how long `webhook_deliveries` rows survive |
 | `DB_INTEGRITY_CHECK_ENABLED` / `_INTERVAL_HOURS` | on / `24` | scheduled `PRAGMA integrity_check` |
 | `DB_RESTORE_DRILL_ENABLED` / `_INTERVAL_HOURS` | on / `168` | scheduled backup-restore drill |
 | `ALERTING_ENABLED` | on | master switch for the alert evaluator |
