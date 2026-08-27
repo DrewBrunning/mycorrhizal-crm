@@ -1183,7 +1183,12 @@
         "activity.updated": "Aktivität aktualisiert",
         "activity.deleted": "Aktivität gelöscht",
         "reminder.triggered": "Erinnerung ausgelöst",
-        "birthday.occurred": "Geburtstag"
+        "birthday.occurred": "Geburtstag",
+        "reach_out_suggested": "Kontaktaufnahme vorgeschlagen",
+        "db.integrity_check_failed": "Datenbank-Integritätsprüfung fehlgeschlagen",
+        "db.restore_drill_failed": "Wiederherstellungstest fehlgeschlagen",
+        "alert.raised": "Warnung ausgelöst",
+        "alert.cleared": "Warnung aufgehoben"
       },
       "secretDialog": {
         "title": "Webhook-Secret"
