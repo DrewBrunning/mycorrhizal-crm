@@ -115,6 +115,46 @@ export const test = base.extend<{ page: Page }>({
       )
       .catch(() => {});
 
+    // Then wait out an *in-flight smooth scroll* -- e.g. the contact detail
+    // jump nav's scrollIntoView({ behavior: 'smooth' }) (issue #614). A smooth
+    // scroll is not a Web Animation, so it never shows up in
+    // document.getAnimations() and the wait above returns immediately while the
+    // page is still scrolling; axe then samples geometry at a random scroll
+    // offset, and a position:sticky element (the jump nav) partially obscuring
+    // an interactive target mid-scroll trips `target-size` at random. Resolve
+    // on whichever comes first: a `scrollend` event, or the scroll position
+    // holding steady across three consecutive animation frames (the fallback
+    // for when nothing is scrolling at all, so `scrollend` never fires). Same
+    // capped-timeout discipline as the animation wait -- a page that never
+    // stops scrolling (an auto-advancing ticker) can't hang the scan.
+    await page
+      .evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            const deadline = performance.now() + 1500;
+            let done = false;
+            const finish = () => {
+              if (done) return;
+              done = true;
+              window.removeEventListener('scrollend', finish, true);
+              resolve();
+            };
+            window.addEventListener('scrollend', finish, true);
+            let last = `${window.scrollX},${window.scrollY}`;
+            let stableFrames = 0;
+            const tick = () => {
+              if (done) return;
+              const now = `${window.scrollX},${window.scrollY}`;
+              stableFrames = now === last ? stableFrames + 1 : 0;
+              last = now;
+              if (stableFrames >= 3 || performance.now() > deadline) finish();
+              else requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+          }),
+      )
+      .catch(() => {});
+
     await assertNoBlockingA11yViolations(page);
   },
 });
