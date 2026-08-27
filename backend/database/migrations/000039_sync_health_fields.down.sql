@@ -1,4 +1,4 @@
--- Reverses 000038. Destructive by nature: dropping the columns discards the
+-- Reverses 000039. Destructive by nature: dropping the columns discards the
 -- per-subscription sync-health history (consecutive-failure counts, incident
 -- start times, per-run stats). The single state bit (last_synced_at /
 -- last_sync_status / last_sync_error) predates this migration and stays.

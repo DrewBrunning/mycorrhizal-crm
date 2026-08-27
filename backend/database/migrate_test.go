@@ -1442,7 +1442,7 @@ func TestAuditHashChainMigration(t *testing.T) {
 	assert.Error(t, err, "the immutability trigger must be restored by the down migration")
 }
 
-// TestSyncHealthFieldsMigration pins migration 000038's shape (issue #390):
+// TestSyncHealthFieldsMigration pins migration 000039's shape (issue #390):
 // both subscription tables gain the last-known-good columns, existing rows get
 // their history backfilled from the single last_sync_status bit they already
 // carried, and a rollback drops the columns without destroying rows.
@@ -1454,12 +1454,12 @@ func TestSyncHealthFieldsMigration(t *testing.T) {
 
 	m, err := newMigrator(sqlDB)
 	require.NoError(t, err)
-	require.NoError(t, m.Steps(37)) // through 000037_operational_check_results
+	require.NoError(t, m.Steps(38)) // through 000038_system_events
 
 	_, err = sqlDB.Exec("INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 't390', 'x', 't390@example.com')")
 	require.NoError(t, err)
 
-	// One healthy and one failing subscription of each kind, on the pre-000038
+	// One healthy and one failing subscription of each kind, on the pre-000039
 	// schema (last_synced_at + last_sync_status only).
 	for _, table := range []string{"contact_subscriptions", "calendar_subscriptions"} {
 		_, err = sqlDB.Exec(fmt.Sprintf(`
@@ -1472,7 +1472,7 @@ func TestSyncHealthFieldsMigration(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	require.NoError(t, m.Steps(1)) // 000038
+	require.NoError(t, m.Steps(1)) // 000039
 
 	for _, table := range []string{"contact_subscriptions", "calendar_subscriptions"} {
 		var cols int64

@@ -63,8 +63,11 @@ func TestMigrationsAddSystemEvents(t *testing.T) {
 
 	require.NoError(t, sqlDB.Close())
 
-	// Down drops the table.
-	require.NoError(t, MigrateDown(dbPath))
+	// Down drops the table. 000038 is no longer the migration tip —
+	// 000039_sync_health_fields (issue #390) sits on top — so roll back that
+	// one first, then 000038's own down migration.
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000039_sync_health_fields
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000038_system_events
 
 	sqlDB2, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)
