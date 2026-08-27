@@ -8,12 +8,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 
+	"mycorrhizal/config"
+	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 
+	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -197,6 +202,130 @@ func TestNotificationConfig_TestUnknownChannel(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// newNotificationTestRouter wires the Settings card's notification endpoints
+// (config save + test button) under an explicit cfg. The shared setupRouter
+// middleware hardcodes its own cfg, so the test route is registered with a
+// per-request override to exercise the SSRF policy (issue #606).
+func newNotificationTestRouter(cfg config.Config) *gin.Engine {
+	_, router := setupRouter()
+	router.PUT("/notifications/config", withValidated(func() any { return &models.NotificationConfigInput{} }), SaveNotificationConfig)
+	router.POST("/notifications/config/test", func(c *gin.Context) {
+		c.Set("cfg", cfg)
+		c.Next()
+	}, TestNotificationChannel)
+	return router
+}
+
+func testChannel(t *testing.T, router http.Handler, channel string) map[string]any {
+	t.Helper()
+	req, _ := http.NewRequest("POST", "/notifications/config/test", bytes.NewBufferString(`{"channel":"`+channel+`"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+	var result map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &result))
+	return result
+}
+
+// TestNotificationConfig_TestNtfy_ErrorTruncated pins issue #606's bounding:
+// an upstream error is echoed only up to a fixed length, even on the default
+// (unguarded) policy where the diagnostic is legitimately wanted. A hostname
+// long enough that the dial error — which echoes the hostname — exceeds the
+// bound is refused by DNS (.invalid never resolves), so the Settings card
+// gets the beginning of the real dial error, truncated, never the full
+// unbounded text.
+func TestNotificationConfig_TestNtfy_ErrorTruncated(t *testing.T) {
+	buf := captureTestLogger(t)
+	router := newNotificationTestRouter(config.Config{})
+
+	long := strings.Repeat("a", 300)
+	body, _ := json.Marshal(models.NotificationConfigInput{NtfyURL: "http://" + long + ".invalid", NtfyTopic: "alerts"})
+	req, _ := http.NewRequest("PUT", "/notifications/config", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	result := testChannel(t, router, "ntfy")
+	assert.Equal(t, false, result["ok"])
+	errMsg, ok := result["error"].(string)
+	require.True(t, ok)
+	assert.LessOrEqual(t, len(errMsg), 256,
+		"the echoed diagnostic must be bounded to the 256-byte cap the service enforces")
+	assert.True(t, strings.HasPrefix(errMsg, `Post "http://`),
+		"the truncated message must still be the beginning of the real dial error")
+	assert.False(t, strings.Contains(errMsg, long),
+		"the truncated message must not carry the full hostname")
+
+	// The full diagnostic — unbounded — still reaches the server log.
+	assert.Contains(t, buf.String(), "no such host", "the raw dial error must be logged server-side")
+}
+
+// TestNotificationConfig_TestNtfy_PrivateAddressCollapsedWhenGuarded pins
+// issue #606's core fix: with WEBHOOK_BLOCK_PRIVATE_URLS on, a private-address
+// target does not report *which* rule it tripped. The client-visible text is
+// the neutral outbound-policy message, and the distinct sentinel stays in the
+// server log.
+func TestNotificationConfig_TestNtfy_PrivateAddressCollapsedWhenGuarded(t *testing.T) {
+	buf := captureTestLogger(t)
+	router := newNotificationTestRouter(config.Config{WebhookBlockPrivateURLs: true})
+
+	body, _ := json.Marshal(models.NotificationConfigInput{NtfyURL: "http://127.0.0.1:1", NtfyTopic: "alerts"})
+	req, _ := http.NewRequest("PUT", "/notifications/config", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	result := testChannel(t, router, "ntfy")
+	assert.Equal(t, false, result["ok"])
+	assert.Equal(t, "the configured endpoint is not reachable under this instance's outbound policy", result["error"],
+		"a private-address target must collapse to the neutral outbound-policy message")
+	assert.Contains(t, buf.String(), "notification URL resolves to a private or loopback address",
+		"the raw guard sentinel must still be distinguishable in the server log")
+}
+
+// TestNotificationConfig_TestNtfy_UnresolvableCollapsedWhenGuarded is the
+// unresolvable-target half of issue #606's collapse: under the same hardened
+// policy, a target that cannot be resolved yields exactly the SAME client-visible
+// text as a private-address target, so the flag cannot be used to probe which
+// rule a target tripped.
+func TestNotificationConfig_TestNtfy_UnresolvableCollapsedWhenGuarded(t *testing.T) {
+	buf := captureTestLogger(t)
+	router := newNotificationTestRouter(config.Config{WebhookBlockPrivateURLs: true})
+
+	body, _ := json.Marshal(models.NotificationConfigInput{NtfyURL: "http://nonexistent.invalid", NtfyTopic: "alerts"})
+	req, _ := http.NewRequest("PUT", "/notifications/config", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	result := testChannel(t, router, "ntfy")
+	assert.Equal(t, false, result["ok"])
+	assert.Equal(t, "the configured endpoint is not reachable under this instance's outbound policy", result["error"],
+		"an unresolvable target must collapse to the same message as a private-address target")
+	assert.Contains(t, buf.String(), "notification URL resolves to a private or loopback address",
+		"the raw guard sentinel must still be distinguishable in the server log")
+}
+
+// captureTestLogger swaps the global logger for an in-memory buffer so a test
+// can assert on what reached the server-side log.
+func captureTestLogger(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	buf := &bytes.Buffer{}
+	oldLogger := logger.Logger
+	oldLevel := zerolog.GlobalLevel()
+	logger.Logger = zerolog.New(buf)
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	t.Cleanup(func() {
+		logger.Logger = oldLogger
+		zerolog.SetGlobalLevel(oldLevel)
+	})
+	return buf
 }
 
 func TestPushSubscription_CRUD(t *testing.T) {

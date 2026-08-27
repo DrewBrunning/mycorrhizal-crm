@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/SherClockHolmes/webpush-go"
 	"github.com/golang-jwt/jwt/v4"
@@ -1135,6 +1136,55 @@ func deliverPushToUser(db *gorm.DB, cfg config.Config, user models.User, title, 
 		return fmt.Errorf("no push devices registered — enable browser notifications or register a mobile device first")
 	}
 	return sendErr
+}
+
+// maxTestNotificationErrorLen bounds the diagnostic echoed to the Settings
+// card by the test-notification endpoint (issue #606). The whole point of the
+// endpoint is to tell the user why their own ntfy/Gotify/push target rejected
+// the message, so the upstream reason is surfaced — but never reflected
+// wholesale from an arbitrary upstream response.
+const maxTestNotificationErrorLen = 256
+
+// NotificationOutboundPolicyMessage is the single client-visible reason for
+// every SSRF-guard rejection the test-notification endpoint reports while
+// WEBHOOK_BLOCK_PRIVATE_URLS is on. The guard's distinct sentinels
+// (ErrNotificationPrivateAddress, ErrWebhookUnreachable,
+// ErrWebhookPrivateAddress) each tell an operator something different —
+// "private address" vs "could not be resolved" — and that distinction stays in
+// the server-side log. Collapsing them client-side stops the opt-in hardening
+// flag from turning this endpoint into an address-reachability oracle (issue
+// #606): an operator who switches the flag on to declare internal targets
+// off-limits must not get an endpoint that reports *which* rule a target
+// tripped.
+const NotificationOutboundPolicyMessage = "the configured endpoint is not reachable under this instance's outbound policy"
+
+// NotificationTestErrorMessage maps a TestNotificationChannel failure to the
+// string the Settings card displays (issue #606). It bounds the echoed
+// diagnostic so an arbitrary upstream response cannot be reflected wholesale,
+// and — when WEBHOOK_BLOCK_PRIVATE_URLS is on — collapses the SSRF guard's
+// distinct sentinels into NotificationOutboundPolicyMessage so the hardening
+// flag cannot be used to distinguish a private-address target from an
+// unresolvable one. The caller always logs the raw error; only what reaches
+// the client is normalized.
+func NotificationTestErrorMessage(cfg config.Config, err error) string {
+	msg := err.Error()
+	if cfg.WebhookBlockPrivateURLs {
+		switch {
+		case errors.Is(err, ErrNotificationPrivateAddress),
+			errors.Is(err, ErrWebhookUnreachable),
+			errors.Is(err, ErrWebhookPrivateAddress):
+			msg = NotificationOutboundPolicyMessage
+		}
+	}
+	if len(msg) > maxTestNotificationErrorLen {
+		// Cut at a rune boundary so a multi-byte upstream message cannot
+		// produce invalid UTF-8 in the response body.
+		msg = msg[:maxTestNotificationErrorLen]
+		for !utf8.ValidString(msg) {
+			msg = msg[:len(msg)-1]
+		}
+	}
+	return msg
 }
 
 // ListPushSubscriptions returns the user's registered push devices.
