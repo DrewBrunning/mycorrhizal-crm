@@ -38,6 +38,7 @@
     "data": "Daten",
     "shares": "Freigaben",
     "audit": "Audit-Protokoll",
+    "systemEvents": "Systemereignisse",
     "mainLabel": "Hauptnavigation",
     "skipToContent": "Zum Inhalt springen"
   },
@@ -2058,5 +2059,67 @@
       "retentionGone": "Dieses Ereignis liegt außerhalb des Aufbewahrungsfensters und kann nicht mehr rückgängig gemacht werden",
       "partialNote": "Details, die in diesem Eintrag nie erfasst wurden (Pronomen, persönliche Informationen, Adressdetails), bleiben unverändert."
     }
+  },
+  "systemEvents": {
+    "title": "Systemereignisse",
+    "description": "Ein chronologisches Protokoll betrieblicher Ereignisse – geplante Aufgaben, Synchronisierungsläufe, Sicherungen, Migrationen. Die erste Anlaufstelle, wenn etwas nicht funktioniert.",
+    "filters": {
+      "component": "Komponente",
+      "severity": "Schweregrad",
+      "eventType": "Ereignistyp",
+      "correlationId": "Korrelations-ID",
+      "all": "Alle",
+      "clear": "Filter zurücksetzen"
+    },
+    "columns": {
+      "time": "Wann",
+      "severity": "Schweregrad",
+      "component": "Komponente",
+      "event": "Ereignis",
+      "operation": "Vorgang",
+      "result": "Ergebnis",
+      "duration": "Dauer",
+      "actions": "Aktionen"
+    },
+    "severities": {
+      "info": "Info",
+      "warn": "Warnung",
+      "error": "Fehler"
+    },
+    "results": {
+      "success": "Erfolg",
+      "failure": "Fehlgeschlagen",
+      "skipped": "Übersprungen"
+    },
+    "eventTypes": {
+      "application_started": "Anwendung gestartet",
+      "application_stopped": "Anwendung gestoppt",
+      "migration_started": "Migration gestartet",
+      "migration_completed": "Migration abgeschlossen",
+      "migration_failed": "Migration fehlgeschlagen",
+      "job_started": "Aufgabe gestartet",
+      "job_completed": "Aufgabe abgeschlossen",
+      "job_failed": "Aufgabe fehlgeschlagen",
+      "sync_started": "Synchronisierung gestartet",
+      "sync_completed": "Synchronisierung abgeschlossen",
+      "sync_failed": "Synchronisierung fehlgeschlagen",
+      "notification_sent": "Benachrichtigung gesendet",
+      "notification_failed": "Benachrichtigung fehlgeschlagen",
+      "backup_completed": "Sicherung abgeschlossen",
+      "backup_failed": "Sicherung fehlgeschlagen",
+      "restore_test_completed": "Wiederherstellungstest abgeschlossen",
+      "integration_failed": "Integration fehlgeschlagen"
+    },
+    "details": {
+      "button": "Details",
+      "title": "Ereignisdetails",
+      "correlationId": "Korrelations-ID",
+      "detail": "Detail",
+      "error": "Fehler",
+      "viewRelated": "Zugehörige anzeigen"
+    },
+    "relatedBanner": "Alle Ereignisse in Kette {{id}} werden angezeigt.",
+    "empty": "Keine Systemereignisse entsprechen Ihren Filtern.",
+    "emptyNoFilters": "Noch keine Systemereignisse aufgezeichnet."
   }
 }

@@ -38,6 +38,7 @@
     "data": "Dati",
     "shares": "Condivisioni",
     "audit": "Registro di controllo",
+    "systemEvents": "Eventi di sistema",
     "mainLabel": "Navigazione principale",
     "skipToContent": "Vai al contenuto"
   },
@@ -2058,5 +2059,67 @@
       "retentionGone": "Questo evento è oltre la sua finestra di conservazione e non può più essere annullato",
       "partialNote": "I dettagli mai registrati in questa voce (pronomi, informazioni personali, dettagli dell'indirizzo) vengono conservati invariati."
     }
+  },
+  "systemEvents": {
+    "title": "Eventi di sistema",
+    "description": "Un registro cronologico degli eventi operativi: attività pianificate, sincronizzazioni, backup, migrazioni. Il primo posto in cui guardare quando qualcosa non funziona.",
+    "filters": {
+      "component": "Componente",
+      "severity": "Gravità",
+      "eventType": "Tipo di evento",
+      "correlationId": "ID di correlazione",
+      "all": "Tutti",
+      "clear": "Cancella filtri"
+    },
+    "columns": {
+      "time": "Quando",
+      "severity": "Gravità",
+      "component": "Componente",
+      "event": "Evento",
+      "operation": "Operazione",
+      "result": "Esito",
+      "duration": "Durata",
+      "actions": "Azioni"
+    },
+    "severities": {
+      "info": "Info",
+      "warn": "Avviso",
+      "error": "Errore"
+    },
+    "results": {
+      "success": "Riuscito",
+      "failure": "Non riuscito",
+      "skipped": "Ignorato"
+    },
+    "eventTypes": {
+      "application_started": "Applicazione avviata",
+      "application_stopped": "Applicazione arrestata",
+      "migration_started": "Migrazione avviata",
+      "migration_completed": "Migrazione completata",
+      "migration_failed": "Migrazione non riuscita",
+      "job_started": "Attività avviata",
+      "job_completed": "Attività completata",
+      "job_failed": "Attività non riuscita",
+      "sync_started": "Sincronizzazione avviata",
+      "sync_completed": "Sincronizzazione completata",
+      "sync_failed": "Sincronizzazione non riuscita",
+      "notification_sent": "Notifica inviata",
+      "notification_failed": "Notifica non riuscita",
+      "backup_completed": "Backup completato",
+      "backup_failed": "Backup non riuscito",
+      "restore_test_completed": "Test di ripristino completato",
+      "integration_failed": "Integrazione non riuscita"
+    },
+    "details": {
+      "button": "Dettagli",
+      "title": "Dettagli dell'evento",
+      "correlationId": "ID di correlazione",
+      "detail": "Dettaglio",
+      "error": "Errore",
+      "viewRelated": "Mostra correlati"
+    },
+    "relatedBanner": "Visualizzazione di tutti gli eventi della catena {{id}}.",
+    "empty": "Nessun evento di sistema corrisponde ai filtri.",
+    "emptyNoFilters": "Nessun evento di sistema registrato finora."
   }
 }

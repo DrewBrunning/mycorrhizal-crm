@@ -38,6 +38,7 @@
     "data": "Data",
     "shares": "Shares",
     "audit": "Audit log",
+    "systemEvents": "System events",
     "mainLabel": "Main navigation",
     "skipToContent": "Skip to content"
   },
@@ -2058,5 +2059,67 @@
       "retentionGone": "This event is past its retention window and can no longer be undone",
       "partialNote": "Details that were never captured in this record (pronouns, personal information, address details) are preserved unchanged."
     }
+  },
+  "systemEvents": {
+    "title": "System events",
+    "description": "A chronological record of operational events — scheduled jobs, synchronization runs, backups, migrations. The first place to look when something isn't working.",
+    "filters": {
+      "component": "Component",
+      "severity": "Severity",
+      "eventType": "Event type",
+      "correlationId": "Correlation ID",
+      "all": "All",
+      "clear": "Clear filters"
+    },
+    "columns": {
+      "time": "When",
+      "severity": "Severity",
+      "component": "Component",
+      "event": "Event",
+      "operation": "Operation",
+      "result": "Result",
+      "duration": "Duration",
+      "actions": "Actions"
+    },
+    "severities": {
+      "info": "Info",
+      "warn": "Warning",
+      "error": "Error"
+    },
+    "results": {
+      "success": "Success",
+      "failure": "Failure",
+      "skipped": "Skipped"
+    },
+    "eventTypes": {
+      "application_started": "Application started",
+      "application_stopped": "Application stopped",
+      "migration_started": "Migration started",
+      "migration_completed": "Migration completed",
+      "migration_failed": "Migration failed",
+      "job_started": "Job started",
+      "job_completed": "Job completed",
+      "job_failed": "Job failed",
+      "sync_started": "Sync started",
+      "sync_completed": "Sync completed",
+      "sync_failed": "Sync failed",
+      "notification_sent": "Notification sent",
+      "notification_failed": "Notification failed",
+      "backup_completed": "Backup completed",
+      "backup_failed": "Backup failed",
+      "restore_test_completed": "Restore test completed",
+      "integration_failed": "Integration failed"
+    },
+    "details": {
+      "button": "Details",
+      "title": "Event details",
+      "correlationId": "Correlation ID",
+      "detail": "Detail",
+      "error": "Error",
+      "viewRelated": "View related"
+    },
+    "relatedBanner": "Showing every event in chain {{id}}.",
+    "empty": "No system events match your filters.",
+    "emptyNoFilters": "No system events recorded yet."
   }
 }
