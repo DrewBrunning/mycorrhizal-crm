@@ -14,26 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 )
-
-func setupSubsystemHealthRouter(t *testing.T) (*gorm.DB, *gin.Engine) {
-	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "subsystem-health-ctrl.db"))
-	require.NoError(t, err)
-	models.RegisterAuditDB(db)
-	t.Cleanup(func() { models.RegisterAuditDB(nil) })
-	require.NoError(t, db.Exec("DELETE FROM system_events").Error)
-
-	gin.SetMode(gin.ReleaseMode)
-	router := gin.New()
-	router.Use(func(c *gin.Context) {
-		c.Set("db", db)
-		c.Next()
-	})
-	router.GET("/admin/subsystem-health", GetSubsystemHealth)
-	return db, router
-}
 
 type subsystemHealthRow struct {
 	Subsystem              string     `json:"subsystem"`
@@ -60,65 +41,86 @@ func getSubsystemHealth(t *testing.T, router *gin.Engine) []subsystemHealthRow {
 	return resp.Subsystems
 }
 
-func TestGetSubsystemHealth_FreshDB(t *testing.T) {
-	_, router := setupSubsystemHealthRouter(t)
+// TestGetSubsystemHealth exercises GET /admin/subsystem-health (issue #427).
+// One real migrated DB is shared across the sub-cases (each clears
+// system_events first) so migrations run once, not per case.
+func TestGetSubsystemHealth(t *testing.T) {
+	db, err := database.InitDB(filepath.Join(t.TempDir(), "subsystem-health-ctrl.db"))
+	require.NoError(t, err)
+	models.RegisterAuditDB(db)
+	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
-	rows := getSubsystemHealth(t, router)
-	require.Len(t, rows, 6)
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Next()
+	})
+	router.GET("/admin/subsystem-health", GetSubsystemHealth)
 
-	names := make([]string, len(rows))
-	for i, r := range rows {
-		names[i] = r.Subsystem
-		assert.Equal(t, "unknown", r.Status)
-		assert.Zero(t, r.ConsecutiveFailures)
-		assert.Nil(t, r.LastAttemptAt)
+	reset := func(t *testing.T) {
+		t.Helper()
+		require.NoError(t, db.Exec("DELETE FROM system_events").Error)
 	}
-	assert.Equal(t, []string{
-		"contact_sync", "calendar_sync", "notification", "backup", "scheduler", "webhook",
-	}, names)
-}
 
-func TestGetSubsystemHealth_FailingThenRecovered(t *testing.T) {
-	db, router := setupSubsystemHealthRouter(t)
-	now := time.Now().UTC()
+	t.Run("fresh DB lists every subsystem as unknown, in order", func(t *testing.T) {
+		reset(t)
 
-	for i := 0; i < 9; i++ {
+		rows := getSubsystemHealth(t, router)
+		require.Len(t, rows, 6)
+
+		names := make([]string, len(rows))
+		for i, r := range rows {
+			names[i] = r.Subsystem
+			assert.Equal(t, "unknown", r.Status)
+			assert.Zero(t, r.ConsecutiveFailures)
+			assert.Nil(t, r.LastAttemptAt)
+		}
+		assert.Equal(t, []string{
+			"contact_sync", "calendar_sync", "notification", "backup", "scheduler", "webhook",
+		}, names)
+	})
+
+	t.Run("a failing subsystem reports the count and first-failure time, then recovers", func(t *testing.T) {
+		reset(t)
+		now := time.Now().UTC()
+
+		for i := 0; i < 9; i++ {
+			require.NoError(t, db.Create(&models.SystemEvent{
+				Component:  "contact_sync",
+				EventType:  models.SysEventSyncFailed,
+				OccurredAt: now.Add(time.Duration(-9+i) * time.Hour),
+				Error:      "carddav auth rejected",
+			}).Error)
+		}
+
+		rows := getSubsystemHealth(t, router)
+		cs := findRow(rows, "contact_sync")
+		assert.Equal(t, "failing", cs.Status)
+		assert.Equal(t, 9, cs.ConsecutiveFailures)
+		assert.Equal(t, "carddav auth rejected", cs.LastError)
+		require.NotNil(t, cs.IncidentFirstFailureAt)
+		assert.WithinDuration(t, now.Add(-9*time.Hour), *cs.IncidentFirstFailureAt, time.Second)
+
 		require.NoError(t, db.Create(&models.SystemEvent{
 			Component:  "contact_sync",
-			EventType:  models.SysEventSyncFailed,
-			OccurredAt: now.Add(time.Duration(-9+i) * time.Hour),
-			Error:      "carddav auth rejected",
+			EventType:  models.SysEventSyncCompleted,
+			OccurredAt: now,
 		}).Error)
-	}
 
-	rows := getSubsystemHealth(t, router)
-	var cs subsystemHealthRow
+		cs = findRow(getSubsystemHealth(t, router), "contact_sync")
+		assert.Equal(t, "healthy", cs.Status)
+		assert.Zero(t, cs.ConsecutiveFailures)
+		assert.Nil(t, cs.IncidentFirstFailureAt)
+		assert.Empty(t, cs.LastError)
+	})
+}
+
+func findRow(rows []subsystemHealthRow, subsystem string) subsystemHealthRow {
 	for _, r := range rows {
-		if r.Subsystem == "contact_sync" {
-			cs = r
+		if r.Subsystem == subsystem {
+			return r
 		}
 	}
-	assert.Equal(t, "failing", cs.Status)
-	assert.Equal(t, 9, cs.ConsecutiveFailures)
-	assert.Equal(t, "carddav auth rejected", cs.LastError)
-	require.NotNil(t, cs.IncidentFirstFailureAt)
-	assert.WithinDuration(t, now.Add(-9*time.Hour), *cs.IncidentFirstFailureAt, time.Second)
-
-	// One success closes the incident.
-	require.NoError(t, db.Create(&models.SystemEvent{
-		Component:  "contact_sync",
-		EventType:  models.SysEventSyncCompleted,
-		OccurredAt: now,
-	}).Error)
-
-	rows = getSubsystemHealth(t, router)
-	for _, r := range rows {
-		if r.Subsystem == "contact_sync" {
-			cs = r
-		}
-	}
-	assert.Equal(t, "healthy", cs.Status)
-	assert.Zero(t, cs.ConsecutiveFailures)
-	assert.Nil(t, cs.IncidentFirstFailureAt)
-	assert.Empty(t, cs.LastError)
+	return subsystemHealthRow{}
 }
