@@ -42,17 +42,21 @@ type countRow struct {
 }
 
 // excludedFromRestoreDrill are tables deliberately left out of the row-count
-// comparison. job_executions is operational bookkeeping, not user data, and
-// it is uniquely guaranteed to be under concurrent write pressure at exactly
-// the moment this job runs: every other scheduled job (including this one)
-// writes its own lock row there on every fire, and at boot they all fire
-// together (each registered with its own go safeGo(...) initial run in
-// main.go). Confirmed live: a local run reported "job_executions: live=9
-// restored=7" purely from other jobs' concurrent initial-run lock rows
-// landing in the gap between the snapshot and the live count read — a false
-// alarm on data nobody would call a backup failure over.
+// comparison: operational bookkeeping, not user data, and each is written
+// *by this job itself* (or by the other scheduled jobs firing alongside it)
+// in the window between the snapshot and the live count read, so a live-vs-
+// restored delta on them is a guaranteed false positive, not a backup failure.
+//   - job_executions: every scheduled job writes its lock row on every fire;
+//     at boot they all fire together (each `go safeGo(...)` initial run in
+//     main.go). Confirmed live: "job_executions: live=9 restored=7".
+//   - system_events (#424) / operational_check_results (#421/#620): the drill
+//     records its own restore_test_completed / backup_failed row and its own
+//     check-result row while it runs — the live count is always ahead of the
+//     snapshot by exactly those.
 var excludedFromRestoreDrill = map[string]bool{
-	"job_executions": true,
+	"job_executions":            true,
+	"system_events":             true,
+	"operational_check_results": true,
 }
 
 // liveTables lists every real, non-internal, non-excluded table in the
