@@ -370,8 +370,26 @@ jobs:
             APP_VERSION=${{ steps.meta.outputs.version }}
             APP_COMMIT=${{ steps.stamp.outputs.commit }}
             APP_BUILD_DATE=${{ steps.stamp.outputs.date }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # scope is required, not cosmetic, once this step runs as a matrix:
+          # the GHA cache backend's default scope is shared across the whole
+          # workflow, so the three legs -- running concurrently -- read and
+          # write the same cache namespace. Docker's own docs call this out
+          # ("cache scopes need to be unique for each [matrix] entry, otherwise
+          # the cache will be overwritten"), and it is not hypothetical here:
+          # v0.6.1's libssl3/libcrypto3 fix (CVE-2026-14456) landed in the
+          # Dockerfile, built clean locally from a fresh no-cache clone of the
+          # exact merged commit, and then the re-dispatched release build still
+          # pushed the pre-fix layer -- `docker history` on the pushed image
+          # showed the *old* apk add command verbatim, even though the image's
+          # own OCI revision label named the commit with the fix. The
+          # instruction text differed, so BuildKit's own per-layer cache key
+          # should have missed; the shared, unscoped GHA namespace being
+          # written and read by all three concurrent legs is what let a stale
+          # layer come back as a hit anyway. Scoped per matrix leg so each
+          # image's cache is isolated from the other two and from itself
+          # across runs in the way the key is supposed to guarantee.
+          cache-from: type=gha,scope=docker-publish${{ matrix.suffix }}
+          cache-to: type=gha,mode=max,scope=docker-publish${{ matrix.suffix }}
           # SBOM + SLSA provenance attestations, pushed alongside the image
           # as referrers. Trivy scans more accurately with an SBOM present,
           # and provenance lets a user verify which commit actually produced
