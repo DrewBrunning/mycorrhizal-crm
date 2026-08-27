@@ -57,6 +57,15 @@ var securityDocs = []string{
 // is a decision someone wrote down, not a mute button.
 const driftBaselineFile = "docs/security/citation-drift.ignore"
 
+// cryptoSurfaceIgnoreFile is the justified-exception list for the
+// cryptographic call-site inventory (issue #612): every non-test Go file that
+// imports crypto/*, golang.org/x/crypto/*, or a JWT/signing library must be
+// accounted for either by a V6 row in asvs-l2.md or by an entry here. Same
+// ignore-list-with-justification convention as .trivyignore and
+// citation-drift.ignore: an unlisted importer fails, and a listed file that no
+// longer imports crypto also fails, so dead suppressions cannot accumulate.
+const cryptoSurfaceIgnoreFile = "docs/security/crypto-surface.ignore"
+
 // searchPrefixes are tried in order when a citation is written relative to a
 // tree rather than to the repo root — the checklists cite `config/config.go`
 // (backend-relative), `unit-tests.yml` (workflow-relative), `asvs-l2.md`
@@ -80,6 +89,10 @@ var skipDirs = map[string]bool{
 	".git": true, "node_modules": true, "vendor": true, "build": true,
 	"dist": true, ".gradle": true, ".idea": true, "coverage": true,
 	"_site": true, ".venv": true, "__pycache__": true,
+	// .claude holds local worktrees and scratch state; it is gitignored and
+	// never part of the reviewed tree, so its copies of backend files must not
+	// show up as crypto importers or drift candidates.
+	".claude": true,
 }
 
 // allowedMissing are citations that deliberately name something that is not a
@@ -195,6 +208,13 @@ func run(w io.Writer) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	cryptoCode, err := checkCryptoSurface(w, root, idx, securityDocs)
+	if err != nil {
+		return 0, err
+	}
+	if cryptoCode != 0 {
+		code = cryptoCode
+	}
 	driftCode, err := reportDrift(w, root, idx, securityDocs)
 	if err != nil {
 		return 0, err
@@ -270,6 +290,201 @@ func check(w io.Writer, root string, idx *treeIndex, docs []string) (int, error)
 		fmt.Fprintf(w, "  %s:%d  %s\n", f.doc, f.line, f.msg)
 	}
 	return 1, nil
+}
+
+// checkCryptoSurface is the cryptographic call-site inventory gate (issue
+// #612): every non-test Go file that imports crypto/*, golang.org/x/crypto/*,
+// or a JWT/signing library must be accounted for by a V6 row in asvs-l2.md or
+// by a justified entry in docs/security/crypto-surface.ignore.
+//
+// Rows 6.2.5 and 6.2.7 in asvs-l2.md assert a *closed* cryptographic surface
+// ("the whole cryptographic surface is AES-256-GCM, bcrypt and SHA-256 for
+// one-way token digests", "every ciphertext this app writes is AES-256-GCM").
+// gosec and CodeQL answer "is this primitive weak?", not "is this call site
+// accounted for?" — a new AES-GCM call site with a hardcoded nonce passes both
+// scanners and appears in no ASVS row. This check closes that gap, in the
+// same bidirectional shape as the authorization matrix (#371): a file that
+// imports crypto and appears in no V6 row FAILS (a new unaccounted call site),
+// and a file the V6 rows cite that no longer imports crypto also FAILS (a
+// stale row), so the inventory cannot rot in either direction.
+func checkCryptoSurface(w io.Writer, root string, idx *treeIndex, docs []string) (int, error) {
+	// --- resolve the V6 rows' cited files ---------------------------------
+	// A file is "V6-accounted" if any V6 row's evidence cell cites it. Rows
+	// 6.2.x/6.3.x are the closed-surface claims; 6.4.x (key management) cites
+	// config.go and atrest.go too, but the closed-primitive claims are what
+	// this check protects, so scope to the cryptographic-primitive rows.
+	v6Cited := map[string]bool{} // repo-relative file -> cited by a V6 row
+	for _, doc := range docs {
+		body, err := readRepoFile(root, doc)
+		if err != nil {
+			return 0, fmt.Errorf("reading %s: %w", doc, err)
+		}
+		for _, row := range parseControlRows(strings.Split(string(body), "\n")) {
+			if !isCryptoRow(row) {
+				continue
+			}
+			for _, c := range extractPathCitations([]string{row.evidence}) {
+				for _, cand := range idx.resolve(c.path) {
+					if strings.HasSuffix(cand, ".go") && !strings.HasSuffix(cand, "_test.go") {
+						v6Cited[cand] = true
+					}
+				}
+			}
+		}
+	}
+
+	// --- enumerate the live crypto importers ------------------------------
+	importers, err := cryptoImporters(root, idx)
+	if err != nil {
+		return 0, err
+	}
+	importerSet := map[string]bool{}
+	for _, f := range importers {
+		importerSet[f] = true
+	}
+
+	// --- load the justified exceptions -------------------------------------
+	ignore, err := loadIgnoreSet(root, cryptoSurfaceIgnoreFile)
+	if err != nil {
+		return 0, err
+	}
+
+	// --- bidirectional completeness ---------------------------------------
+	var missing, stale []string
+	for _, f := range importers {
+		if !v6Cited[f] && !ignore[f] {
+			missing = append(missing, f)
+		}
+	}
+	// A V6-cited file is declared *by the rows*; the ignore file is the other
+	// declared surface. A declared file that no longer imports crypto is stale
+	// in both directions.
+	for f := range ignore {
+		if !importerSet[f] {
+			stale = append(stale, f)
+		}
+	}
+	// The V6 side of the stale direction: a file the V6 rows cite as crypto
+	// evidence must still import crypto, or the row's claim has rotted. (Files
+	// like config.go are cited by 6.4.1 for key-management reasons and never
+	// import crypto — filter by the rows that are actually about primitives
+	// via isCryptoRow above, and by what the row says it is citing.)
+	for f := range v6Cited {
+		if !importerSet[f] {
+			stale = append(stale, f)
+		}
+	}
+
+	if len(missing) == 0 && len(stale) == 0 {
+		fmt.Fprintf(w, "crypto surface: %d crypto-importing files, %d V6-accounted, %d ignored\n",
+			len(importers), len(v6Cited), len(ignore))
+		return 0, nil
+	}
+
+	sort.Strings(missing)
+	sort.Strings(stale)
+	fmt.Fprintf(w, "\n%d crypto call-site problem(s):\n", len(missing)+len(stale))
+	for _, f := range missing {
+		fmt.Fprintf(w, "  %s imports a crypto library but is cited by no V6 row and has no entry in %s — "+
+			"a new call site must map to an ASVS V6 row (or be a written-down exception)\n", f, cryptoSurfaceIgnoreFile)
+	}
+	for _, f := range stale {
+		if ignore[f] {
+			fmt.Fprintf(w, "  %s has an entry in %s but no longer imports crypto — dead suppression, delete the entry\n", f, cryptoSurfaceIgnoreFile)
+		} else {
+			fmt.Fprintf(w, "  %s is cited by a V6 row as crypto evidence but no longer imports crypto — stale row\n", f)
+		}
+	}
+	return 1, nil
+}
+
+// cryptoSurfaceRows are the V6 rows whose evidence asserts a closed set of
+// cryptographic call sites. Rows 6.2.2–6.2.7 (approved algorithms, IV/mode,
+// weak hashes, nonces, authenticated ciphertext) and 6.3.1 (CSPRNG) name the
+// files that constitute the surface. Other 6.x rows are deliberately
+// excluded: 6.1.1 cites atrest/backfill.go (a migration runner that calls
+// atrest but imports no crypto), 6.2.1 cites errors/errors.go (generic 500s,
+// not a crypto call site), 6.3.2 cites models/circle.go and models/contact.go
+// (google/uuid, which does its own crypto under the hood), and 6.4.x cites
+// config.go for key *management* — none of these import a crypto library
+// themselves, so including them would produce false stale rows.
+var cryptoSurfaceRows = map[string]bool{
+	"6.2.2": true,
+	"6.2.3": true,
+	"6.2.5": true,
+	"6.2.6": true,
+	"6.2.7": true,
+	"6.3.1": true,
+}
+
+// isCryptoRow reports whether a control row is one of the closed-surface
+// cryptographic claims the surface inventory protects (see cryptoSurfaceRows).
+func isCryptoRow(row controlRow) bool {
+	return cryptoSurfaceRows[row.id] && (row.status == "satisfied" || row.status == "partial")
+}
+
+// cryptoImporters returns every non-test Go file whose import block contains a
+// crypto/*, golang.org/x/crypto/*, or JWT/signing library import.
+func cryptoImporters(root string, idx *treeIndex) ([]string, error) {
+	var out []string
+	for _, rel := range idx.paths {
+		if !strings.HasSuffix(rel, ".go") || strings.HasSuffix(rel, "_test.go") {
+			continue
+		}
+		body, err := readRepoFile(root, rel)
+		if err != nil {
+			return nil, err
+		}
+		if hasCryptoImport(body) {
+			out = append(out, rel)
+		}
+	}
+	return out, nil
+}
+
+// cryptoImportPatterns are the import paths that constitute a cryptographic
+// call site. JWT/signing libraries are included per issue #612 ("crypto/*,
+// golang.org/x/crypto/*, or a JWT/signing library").
+var cryptoImportPatterns = []string{
+	`"crypto/`,
+	`"golang.org/x/crypto/`,
+	`"github.com/golang-jwt/`,
+	`"github.com/coreos/go-oidc`,
+	`"github.com/go-jose/`,
+}
+
+// hasCryptoImport reports whether the file's import block contains a crypto
+// import. Matching on the import path rather than any string keeps a comment
+// or string literal mentioning "crypto/rand" from producing a false positive.
+func hasCryptoImport(body []byte) bool {
+	inImport := false
+	for _, line := range strings.Split(string(body), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "import") || strings.HasPrefix(trimmed, "import (") {
+			inImport = true
+			// single-line import:  import "crypto/rand"
+			for _, p := range cryptoImportPatterns {
+				if strings.Contains(trimmed, p) {
+					return true
+				}
+			}
+			if !strings.HasPrefix(trimmed, "import (") {
+				return false
+			}
+			continue
+		}
+		if inImport {
+			if trimmed == ")" {
+				return false
+			}
+			for _, p := range cryptoImportPatterns {
+				if strings.Contains(trimmed, p) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 // findRepoRoot walks up from start until it finds the checklist the whole
@@ -863,6 +1078,36 @@ func citedRangeMentions(idx *treeIndex, rel string, from, to int, words []string
 		}
 	}
 	return false, nil
+}
+
+// extractPathCitations returns just the path citations in a set of lines.
+func extractPathCitations(lines []string) []citation {
+	cites, _ := extractCitations(lines)
+	return cites
+}
+
+// loadIgnoreSet reads a file of "path  # justification" entries into a set of
+// paths. Same shape as loadDriftBaseline: comments and blank lines are
+// ignored, an entry is one path per line. A missing file is an empty set (no
+// suppressions accepted yet), never an error.
+func loadIgnoreSet(root, rel string) (map[string]bool, error) {
+	body, err := readRepoFile(root, rel)
+	if os.IsNotExist(err) {
+		return map[string]bool{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]bool{}
+	for _, line := range strings.Split(string(body), "\n") {
+		if i := strings.Index(line, "#"); i >= 0 {
+			line = line[:i] // trailing justification
+		}
+		if line = strings.TrimSpace(line); line != "" {
+			out[line] = true
+		}
+	}
+	return out, nil
 }
 
 // loadDriftBaseline reads the accepted-drift file into a set of keys. A

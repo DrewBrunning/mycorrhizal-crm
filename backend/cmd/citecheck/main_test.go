@@ -489,3 +489,113 @@ func TestReadRepoFileRefusesEscapingPaths(t *testing.T) {
 		}
 	}
 }
+
+// --- crypto-surface gate (issue #612) ---------------------------------------
+
+// cryptoFixture runs checkCryptoSurface over a fixture repo and returns the
+// exit code and output. extra keys are written as repo-relative files.
+func cryptoFixture(t *testing.T, extra map[string]string) (int, string) {
+	t.Helper()
+	root := fixtureRoot(t, header, extra)
+	idx, err := buildIndex(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	code, err := checkCryptoSurface(&out, root, idx, []string{"docs/security/asvs-l2.md"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return code, out.String()
+}
+
+// cryptoRow is the minimal V6 surface row the fixtures cite.
+const cryptoRow = "| 6.2.5 | No weak modes/hashes | satisfied | AES-256-GCM (`backend/services/credential_crypto.go`); the whole surface |\n"
+
+const cryptoImporter = "package services\n\nimport \"crypto/aes\"\n\nfunc init() { _ = aes.BlockSize }\n"
+
+func TestCryptoSurface_NewImporterWithNoV6RowFails(t *testing.T) {
+	code, out := cryptoFixture(t, map[string]string{
+		"backend/services/scratch.go": cryptoImporter,
+	})
+	if code == 0 {
+		t.Fatalf("expected a new crypto importer with no V6 row to fail, got a clean pass:\n%s", out)
+	}
+	if !strings.Contains(out, "backend/services/scratch.go imports a crypto library") {
+		t.Fatalf("expected the importer to be named, got:\n%s", out)
+	}
+}
+
+func TestCryptoSurface_V6CitedImporterPasses(t *testing.T) {
+	code, out := cryptoFixture(t, map[string]string{
+		"backend/services/credential_crypto.go": cryptoImporter,
+		"docs/security/asvs-l2.md":              header + cryptoRow,
+	})
+	if code != 0 {
+		t.Fatalf("expected a V6-cited crypto importer to pass, got:\n%s", out)
+	}
+}
+
+func TestCryptoSurface_IgnoredImporterPasses(t *testing.T) {
+	code, out := cryptoFixture(t, map[string]string{
+		"backend/services/scratch.go": cryptoImporter,
+		cryptoSurfaceIgnoreFile:       "backend/services/scratch.go  # transport TLS only\n",
+		"docs/security/asvs-l2.md":    header,
+	})
+	if code != 0 {
+		t.Fatalf("expected a justified-ignore importer to pass, got:\n%s", out)
+	}
+}
+
+func TestCryptoSurface_V6CitedFileNoLongerImportsCryptoFails(t *testing.T) {
+	code, out := cryptoFixture(t, map[string]string{
+		"backend/services/credential_crypto.go": "package services\n\nfunc init() {}\n",
+		"docs/security/asvs-l2.md":              header + cryptoRow,
+	})
+	if code == 0 {
+		t.Fatalf("expected a V6-cited file that stopped importing crypto to fail as stale, got a clean pass:\n%s", out)
+	}
+	if !strings.Contains(out, "no longer imports crypto — stale row") {
+		t.Fatalf("expected the stale-row message, got:\n%s", out)
+	}
+}
+
+func TestCryptoSurface_DeadIgnoreEntryFails(t *testing.T) {
+	code, out := cryptoFixture(t, map[string]string{
+		"backend/services/gone.go": "package services\n\nfunc init() {}\n",
+		cryptoSurfaceIgnoreFile:    "backend/services/gone.go  # was crypto/rand\n",
+		"docs/security/asvs-l2.md": header,
+	})
+	if code == 0 {
+		t.Fatalf("expected a dead ignore entry to fail, got a clean pass:\n%s", out)
+	}
+	if !strings.Contains(out, "dead suppression") {
+		t.Fatalf("expected the dead-suppression message, got:\n%s", out)
+	}
+}
+
+func TestHasCryptoImport_IgnoresMentionsOutsideImportBlock(t *testing.T) {
+	body := []byte("package services\n\n// crypto/rand is mentioned in a comment\nfunc init() { _ = \"crypto/rand\" }\n")
+	if hasCryptoImport(body) {
+		t.Fatalf("a comment/string mention of crypto/rand must not count as an import")
+	}
+	body = []byte("package services\n\nimport (\n\t\"crypto/rand\"\n)\n")
+	if !hasCryptoImport(body) {
+		t.Fatalf("an import-block crypto/rand must count")
+	}
+	body = []byte("package services\n\nimport \"github.com/golang-jwt/jwt/v4\"\n")
+	if !hasCryptoImport(body) {
+		t.Fatalf("a JWT/signing library import must count (issue #612 includes JWT libraries)")
+	}
+}
+
+func TestCryptoSurface_SkipsTestFiles(t *testing.T) {
+	// A _test.go file importing crypto is not a call site the surface rows
+	// claim — tests exercise the primitives, they don't choose them.
+	code, out := cryptoFixture(t, map[string]string{
+		"backend/services/credential_crypto_test.go": "package services\n\nimport \"crypto/aes\"\n",
+	})
+	if code != 0 {
+		t.Fatalf("a test-only crypto importer must not fail the surface gate:\n%s", out)
+	}
+}
