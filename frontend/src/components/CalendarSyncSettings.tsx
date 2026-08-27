@@ -214,6 +214,43 @@ export default function CalendarSyncSettings() {
     });
   };
 
+  // Sync-health line (issue #390): a standing failure shows how long it has
+  // been failing and when it last worked; a healthy sync shows the last run's
+  // tallies. Returns null when there is nothing useful to say yet.
+  const renderHealthLine = (cal: CalendarSubscription) => {
+    if (cal.consecutive_failures > 0) {
+      const since = cal.incident_first_failure_at
+        ? new Date(cal.incident_first_failure_at).toLocaleString()
+        : t('settings.calendarSync.neverSynced');
+      const lastGood = cal.last_success_at
+        ? t('settings.calendarSync.healthLastSuccess', {
+            date: new Date(cal.last_success_at).toLocaleString(),
+          })
+        : t('settings.calendarSync.healthNeverSucceeded');
+      return (
+        <Typography variant="caption" color="error" component="span" display="block">
+          {t('settings.calendarSync.healthFailing', {
+            since,
+            count: cal.consecutive_failures,
+          })}{' '}
+          · {lastGood}
+        </Typography>
+      );
+    }
+    if (cal.last_sync_status === 'success' && Object.keys(cal.last_run_stats).length > 0) {
+      return (
+        <Typography variant="caption" color="text.secondary" component="span" display="block">
+          {t('settings.calendarSync.healthLastRun', {
+            created: cal.last_run_stats.created ?? 0,
+            updated: cal.last_run_stats.updated ?? 0,
+            skipped: cal.last_run_stats.skipped ?? 0,
+          })}
+        </Typography>
+      );
+    }
+    return null;
+  };
+
   return (
     <>
       <Card sx={{ mb: 2 }}>
@@ -317,16 +354,30 @@ export default function CalendarSyncSettings() {
                               <Chip
                                 size="small"
                                 color="error"
-                                label={t('settings.calendarSync.syncFailed')}
+                                label={
+                                  cal.consecutive_failures > 1
+                                    ? t('settings.calendarSync.syncFailedCount', {
+                                        count: cal.consecutive_failures,
+                                      })
+                                    : t('settings.calendarSync.syncFailed')
+                                }
                               />
                             </Tooltip>
                           )}
                         </Stack>
                       }
                       secondary={
-                        <Typography variant="caption" color="text.secondary" component="span">
-                          {cal.url} — {formatLastSync(cal)}
-                        </Typography>
+                        <>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            component="span"
+                            display="block"
+                          >
+                            {cal.url} — {formatLastSync(cal)}
+                          </Typography>
+                          {renderHealthLine(cal)}
+                        </>
                       }
                     />
                   </ListItem>

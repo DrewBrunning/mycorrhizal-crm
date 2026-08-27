@@ -32,7 +32,36 @@ func ListContactSubscriptions(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"contact_subscriptions": toContactSubscriptionResponses(subscriptions)})
+	counts, err := pendingConflictCounts(db, userID)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("query"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"contact_subscriptions": toContactSubscriptionResponses(subscriptions, counts)})
+}
+
+// pendingConflictCounts returns the per-subscription tally of unreviewed
+// CardDAV sync conflicts (issue #395), for the sync-health surface (issue
+// #390). One grouped query, not a per-subscription COUNT.
+func pendingConflictCounts(db *gorm.DB, userID uint) (map[uint]int64, error) {
+	type row struct {
+		SubscriptionID uint
+		N              int64
+	}
+	var rows []row
+	if err := db.Model(&models.ContactSyncConflict{}).
+		Select("subscription_id, COUNT(*) AS n").
+		Where("user_id = ? AND status = ?", userID, models.SyncConflictStatusPending).
+		Group("subscription_id").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	out := make(map[uint]int64, len(rows))
+	for _, r := range rows {
+		out[r.SubscriptionID] = r.N
+	}
+	return out, nil
 }
 
 func CreateContactSubscription(c *gin.Context) {
@@ -83,7 +112,8 @@ func CreateContactSubscription(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, toContactSubscriptionResponse(subscription))
+	// A just-created subscription has no sync history and no conflicts yet.
+	c.JSON(http.StatusCreated, toContactSubscriptionResponse(subscription, 0))
 }
 
 func UpdateContactSubscription(c *gin.Context) {
@@ -140,7 +170,15 @@ func UpdateContactSubscription(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, toContactSubscriptionResponse(subscription))
+	var pendingConflicts int64
+	if err := db.Model(&models.ContactSyncConflict{}).
+		Where("user_id = ? AND subscription_id = ? AND status = ?", userID, subscription.ID, models.SyncConflictStatusPending).
+		Count(&pendingConflicts).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("query"))
+		return
+	}
+
+	c.JSON(http.StatusOK, toContactSubscriptionResponse(subscription, pendingConflicts))
 }
 
 func DeleteContactSubscription(c *gin.Context) {
@@ -250,7 +288,7 @@ func findContactSubscription(c *gin.Context, db *gorm.DB, userID uint) (models.C
 	return subscription, true
 }
 
-func toContactSubscriptionResponse(sub models.ContactSubscription) models.ContactSubscriptionResponse {
+func toContactSubscriptionResponse(sub models.ContactSubscription, pendingConflicts int64) models.ContactSubscriptionResponse {
 	return models.ContactSubscriptionResponse{
 		ID:             sub.ID,
 		Name:           sub.Name,
@@ -262,13 +300,16 @@ func toContactSubscriptionResponse(sub models.ContactSubscription) models.Contac
 		LastSyncStatus: sub.LastSyncStatus,
 		LastSyncError:  sub.LastSyncError,
 		CreatedAt:      sub.CreatedAt,
+
+		SyncHealthResponse: models.NewSyncHealthResponse(sub.SyncHealthFields),
+		PendingConflicts:   pendingConflicts,
 	}
 }
 
-func toContactSubscriptionResponses(subs []models.ContactSubscription) []models.ContactSubscriptionResponse {
+func toContactSubscriptionResponses(subs []models.ContactSubscription, pendingConflicts map[uint]int64) []models.ContactSubscriptionResponse {
 	out := make([]models.ContactSubscriptionResponse, len(subs))
 	for i, sub := range subs {
-		out[i] = toContactSubscriptionResponse(sub)
+		out[i] = toContactSubscriptionResponse(sub, pendingConflicts[sub.ID])
 	}
 	return out
 }

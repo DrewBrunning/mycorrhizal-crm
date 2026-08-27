@@ -1181,7 +1181,7 @@ func TestDeleteContactWithNoPhotos(t *testing.T) {
 }
 
 // M3/T26: re-import with same vcard_uid after soft-delete must succeed.
-// The partial unique index (migration 000039) only applies WHERE
+// The partial unique index idx_contacts_vcard_uid_user only applies WHERE
 // deleted_at IS NULL, so a soft-deleted contact no longer occupies the
 // vcard_uid slot.
 func TestRecreateContactAfterDeleteUsesSameVCardUID(t *testing.T) {

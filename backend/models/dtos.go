@@ -246,6 +246,7 @@ type CalendarSubscriptionResponse struct {
 	LastSyncStatus string     `json:"last_sync_status"`
 	LastSyncError  string     `json:"last_sync_error"`
 	CreatedAt      time.Time  `json:"created_at"`
+	SyncHealthResponse
 }
 
 // ContactSubscriptionInput is the DTO for creating/updating a CardDAV
@@ -276,6 +277,11 @@ type ContactSubscriptionResponse struct {
 	LastSyncStatus string     `json:"last_sync_status"`
 	LastSyncError  string     `json:"last_sync_error"`
 	CreatedAt      time.Time  `json:"created_at"`
+	SyncHealthResponse
+	// PendingConflicts is the count of unreviewed local edits this
+	// subscription's syncs have overwritten (issue #395's ContactSyncConflict
+	// rows, status = pending). Calendars have no analog.
+	PendingConflicts int64 `json:"pending_conflicts"`
 }
 
 // NoteInput represents the DTO for creating/updating notes
