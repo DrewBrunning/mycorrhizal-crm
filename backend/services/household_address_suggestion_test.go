@@ -3,11 +3,10 @@ package services
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"path/filepath"
 	"sort"
 	"testing"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -21,8 +20,7 @@ import (
 // migration SQL, not AutoMigrate) and creates a fresh test user.
 func householdAddressTestDB(t *testing.T) (*gorm.DB, models.User) {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "address-suggestion.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	user := models.User{Username: "addruser", Password: "password123!A", Email: "addr@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 	return db, user

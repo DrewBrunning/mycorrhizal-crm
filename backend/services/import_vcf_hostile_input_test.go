@@ -16,11 +16,10 @@ package services
 // against a real database.InitDB-migrated schema to prove the save, not
 // just the in-memory preview, ends up clean.
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -28,9 +27,7 @@ import (
 )
 
 func TestConfirmVCF_RealDB_ControlCharactersAndInvalidUTF8_StaySanitizedOnSave(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "vcf-hostile-controlchars.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "vcf-hostile", Password: "password123!A", Email: "vcf-hostile@example.com"}
 	require.NoError(t, db.Create(&user).Error)

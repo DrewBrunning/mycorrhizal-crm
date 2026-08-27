@@ -3,12 +3,11 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -28,9 +27,7 @@ import (
 // embedded) -> update -> soft-delete -> recreate (partial unique index) ->
 // overdue list.
 func TestCadencePolicy_RealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "cadence-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "cadence-realdb", Password: "password123!A", Email: "cadence-realdb@example.com"}
 	require.NoError(t, db.Create(&user).Error)

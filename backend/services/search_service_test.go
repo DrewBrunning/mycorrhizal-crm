@@ -1,9 +1,8 @@
 package services
 
 import (
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -21,8 +20,7 @@ import (
 // only a real-schema test can catch.
 func newSearchDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "search-real.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	return db
 }
 

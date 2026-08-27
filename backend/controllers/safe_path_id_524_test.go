@@ -2,15 +2,13 @@ package controllers
 
 import (
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // TestOtherControllers_MalformedID_NotServerError is issue #524 follow-up
@@ -134,8 +132,7 @@ func TestDownloadAttachment_MalformedID_Returns400(t *testing.T) {
 // shape (not the vulnerable magic-second-arg one), so a malformed id is a
 // clean 404, not a 500.
 func TestUndoAuditEvent_MalformedID_Returns404(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "x.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()

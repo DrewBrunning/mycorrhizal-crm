@@ -19,11 +19,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/emersion/go-vcard"
@@ -57,8 +56,7 @@ func hostileTestCard(uid, fn, familyName, givenName, note string) vcard.Card {
 // file.
 func realMigratedContactSyncDB(t *testing.T, name string) *gorm.DB {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), name))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	return db
 }
 

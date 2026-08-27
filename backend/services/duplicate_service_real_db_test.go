@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"path/filepath"
 	"testing"
@@ -37,8 +37,7 @@ func (l countingLogger) Trace(ctx context.Context, begin time.Time, fc func() (s
 // magnitude on the 150 contacts seeded here, so the assertion catches it.
 func TestFindDuplicatePairs_QueryCountIsBounded(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "dup-count.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "dupcount", Password: "password123!A", Email: "dupcount@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -81,8 +80,7 @@ func TestFindDuplicatePairs_QueryCountIsBounded(t *testing.T) {
 // must differ from keep_id".
 func TestFindDuplicatePairs_NeverPairsContactWithItself(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "dup-selfpair.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "selfpair", Password: "password123!A", Email: "selfpair@example.com"}
 	require.NoError(t, db.Create(&user).Error)

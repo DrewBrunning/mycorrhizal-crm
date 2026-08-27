@@ -10,7 +10,7 @@ import (
 
 	"mycorrhizal/attachments"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
@@ -132,8 +132,7 @@ func TestDeleteUser_RemovesAttachmentFilesFromDisk(t *testing.T) {
 // #1).
 func realDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "admin-delete-test.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	return db
 }
 

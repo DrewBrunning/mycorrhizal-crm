@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/glebarez/sqlite"
@@ -73,8 +73,7 @@ func corruptDataPage(t *testing.T, path string) {
 func seededLiveDB(t *testing.T, name string) (db *gorm.DB, path string) {
 	t.Helper()
 	path = filepath.Join(t.TempDir(), name)
-	db, err := database.InitDB(path)
-	require.NoError(t, err)
+	db = dbtest.NewAt(t, path)
 
 	user := models.User{Username: "integritytester", Password: "password123!A", Email: "integrity@example.com"}
 	require.NoError(t, db.Create(&user).Error)

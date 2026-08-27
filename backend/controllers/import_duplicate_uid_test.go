@@ -27,11 +27,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -52,8 +51,7 @@ func vcfWithUID(uid, given, family, email string) string {
 }
 
 func TestConfirmVCF_DuplicateUIDWithinFile_OneCreated_OneGracefulError(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "dup-uid-within-file.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	user := models.User{Username: "dupuidwithin", Password: "password123!A", Email: "dupuidwithin@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 
@@ -99,8 +97,7 @@ func TestConfirmVCF_DuplicateUIDWithinFile_OneCreated_OneGracefulError(t *testin
 }
 
 func TestConfirmVCF_DuplicateUIDAgainstExistingContact_ExistingUntouched(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "dup-uid-existing.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	user := models.User{Username: "dupuidexisting", Password: "password123!A", Email: "dupuidexisting@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 

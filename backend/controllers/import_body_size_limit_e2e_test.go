@@ -17,12 +17,11 @@ package controllers
 
 import (
 	"net/http"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -47,8 +46,7 @@ const tinyVCard3Block = "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:A B\r\nN:B;A;;;\r\nEND
 const vcfUploadRoutePath = "/api/v1/contacts/import/vcf/upload"
 
 func TestUploadVCFForImport_RealMiddlewareStack_OverDefaultLimitReachesHandler(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "vcf-body-limit-test.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	user := models.User{Username: "vcfbodylimit", Password: "password123!A", Email: "vcfbodylimit@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 	cfg := &config.Config{}
@@ -98,8 +96,7 @@ func TestUploadVCFForImport_RealMiddlewareStack_OverDefaultLimitReachesHandler(t
 // the control case for the test above: an ordinary small VCF file through
 // the identical real-middleware route still succeeds end-to-end.
 func TestUploadVCFForImport_RealMiddlewareStack_OrdinaryUploadStillSucceeds(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "vcf-body-limit-ok-test.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	user := models.User{Username: "vcfbodylimitok", Password: "password123!A", Email: "vcfbodylimitok@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 	cfg := &config.Config{}

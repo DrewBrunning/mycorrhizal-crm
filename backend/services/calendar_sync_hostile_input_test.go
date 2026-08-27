@@ -16,11 +16,10 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -41,8 +40,7 @@ import (
 //   - an event with no usable DTSTART at all -- must be skipped, not crash
 //     the sync for the other two events in the same feed.
 func TestCalendarSync_HostileVEVENT_OversizedAndHTMLClampedNotCrashed(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "calendar-hostile-vevent.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	cfg := calendarTestConfig()
 	user := createCalendarTestUser(t, db)
 
@@ -118,13 +116,12 @@ func TestSyncSubscription_OversizedCalendarResponse_RejectedNotSilentlyAccepted(
 	}))
 	defer server.Close()
 
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "calendar-hostile-oversized.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	cfg := calendarTestConfig()
 	user := createCalendarTestUser(t, db)
 	sub := newTestSubscription(t, db, cfg, user.ID, server.URL+"/cal.ics", "", "")
 
-	_, err = NewCalendarSyncService(false).SyncSubscription(context.Background(), db, cfg, sub)
+	_, err := NewCalendarSyncService(false).SyncSubscription(context.Background(), db, cfg, sub)
 	require.Error(t, err, "an oversized calendar response must not be silently accepted")
 
 	var count int64

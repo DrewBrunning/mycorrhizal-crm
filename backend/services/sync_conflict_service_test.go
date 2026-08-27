@@ -1,11 +1,10 @@
 package services
 
 import (
-	"path/filepath"
 	"testing"
 
-	"mycorrhizal/database"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/emersion/go-webdav/carddav"
@@ -189,9 +188,7 @@ func TestReconcileContactSyncNoBaselineNoConflicts(t *testing.T) {
 // new column + table against GORM/ migration drift the AutoMigrate-based test
 // DBs cannot see (CLAUDE.md backend trap 1).
 func TestContactSyncLinkSyncedValuesSavesAgainstRealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "contact-sync-conflicts.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := createContactSyncTestUser(t, db)
 	cfg := contactSyncTestConfig()

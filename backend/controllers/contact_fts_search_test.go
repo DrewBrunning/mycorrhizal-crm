@@ -3,12 +3,11 @@ package controllers
 import (
 	"encoding/json"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -29,8 +28,7 @@ import (
 // wired, for T85's FTS-composition tests.
 func ftsRealRouter(t *testing.T, dbName string) (*gorm.DB, *gin.Engine, models.User) {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), dbName))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "fts-" + dbName, Password: "password123!A", Email: "fts-" + dbName + "@example.com"}
 	require.NoError(t, db.Create(&user).Error)

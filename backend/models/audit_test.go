@@ -2,12 +2,11 @@ package models
 
 import (
 	"encoding/json"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,8 +17,7 @@ import (
 // registers the audit recorder against it so hooks persist events.
 func newAuditTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "audit-test.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	RegisterAuditDB(db)
 	// AuditFlush drains in-flight writes, then unregister the recorder so a
 	// later test in this package (which has no audit DB of its own) does not
@@ -180,8 +178,7 @@ func TestAudit_HookFailureDoesNotRollBackTheRealWrite(t *testing.T) {
 
 	// Point the recorder at a session whose pool is closed, so every audit
 	// write fails — while the app's own db stays healthy.
-	brokenDB, err := database.InitDB(filepath.Join(t.TempDir(), "broken-audit.db"))
-	require.NoError(t, err)
+	brokenDB := dbtest.New(t)
 	brokenSQL, err := brokenDB.DB()
 	require.NoError(t, err)
 	require.NoError(t, brokenSQL.Close())

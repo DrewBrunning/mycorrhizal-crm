@@ -3,7 +3,7 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
@@ -24,8 +24,7 @@ import (
 // index come from the real migration SQL, not AutoMigrate.
 func TestAddressHouseholdSuggestions_RealMigratedSchema(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "addr-suggest-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "addrsuggest", Password: "password123!A", Email: "addrsuggest@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -196,8 +195,7 @@ func TestAddressHouseholdSuggestions_RealMigratedSchema(t *testing.T) {
 // this shipped unnoticed — so this test asserts against the raw bytes.
 func TestAddressHouseholdSuggestions_EmptyResultIsJSONArrayNotNull(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "addr-suggest-empty.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, dbPath)
 
 	user := models.User{Username: "addrsuggestempty", Password: "password123!A", Email: "addrsuggestempty@example.com"}
 	require.NoError(t, db.Create(&user).Error)

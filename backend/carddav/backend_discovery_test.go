@@ -2,10 +2,9 @@ package carddav
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 
 	webdavcarddav "github.com/emersion/go-webdav/carddav"
 	"github.com/stretchr/testify/assert"
@@ -20,8 +19,7 @@ import (
 // contacts table would produce the real tables' absence as logged errors).
 func newDiscoveryBackend(t *testing.T) (*Backend, *gorm.DB) {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "carddav-discovery.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	return NewBackend(db, t.TempDir()), db
 }
 
