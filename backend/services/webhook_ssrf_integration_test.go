@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -68,7 +69,7 @@ func TestTriggerWebhooksSSRFBlockedOnLivePath(t *testing.T) {
 	}
 
 	cfg := config.Config{WebhookBlockPrivateURLs: true}
-	TriggerWebhooks(db, cfg, user.ID, "contact.created", map[string]string{"name": "Ada"})
+	TriggerWebhooks(context.Background(), db, cfg, user.ID, "contact.created", map[string]string{"name": "Ada"})
 
 	// Deliveries are written asynchronously from per-webhook goroutines, so
 	// wait for all of them to land rather than racing the first one.

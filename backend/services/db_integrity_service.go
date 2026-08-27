@@ -87,6 +87,7 @@ func checkDBIntegrity(db *gorm.DB) (ok bool, detail string, err error) {
 // Job-lock guarded (the T19 pattern) so a multi-instance deploy or a rapid
 // restart doesn't re-run it back to back.
 func CheckDBIntegrityScheduled(db *gorm.DB, cfg config.Config) {
+	ctx := logger.JobContext(models.JobNameDBIntegrityCheck)
 	if !cfg.DBIntegrityCheckEnabled {
 		return
 	}
@@ -109,7 +110,7 @@ func CheckDBIntegrityScheduled(db *gorm.DB, cfg config.Config) {
 	if err != nil {
 		logger.Error().Err(err).Msg("db integrity check: failed to run PRAGMA integrity_check")
 		RecordOperationalCheckResult(db, models.JobNameDBIntegrityCheck, models.OpCheckStatusError, err.Error())
-		triggerWebhooksForAllUsers(db, cfg, EventDBIntegrityCheckFailed, map[string]interface{}{
+		triggerWebhooksForAllUsers(ctx, db, cfg, EventDBIntegrityCheckFailed, map[string]interface{}{
 			"error": err.Error(),
 		})
 		return
@@ -117,7 +118,7 @@ func CheckDBIntegrityScheduled(db *gorm.DB, cfg config.Config) {
 	if !ok {
 		logger.Error().Str("detail", detail).Msg("db integrity check: corruption detected")
 		RecordOperationalCheckResult(db, models.JobNameDBIntegrityCheck, models.OpCheckStatusFailed, detail)
-		triggerWebhooksForAllUsers(db, cfg, EventDBIntegrityCheckFailed, map[string]interface{}{
+		triggerWebhooksForAllUsers(ctx, db, cfg, EventDBIntegrityCheckFailed, map[string]interface{}{
 			"detail": detail,
 		})
 		return

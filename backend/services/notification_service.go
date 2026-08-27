@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
@@ -75,7 +76,7 @@ type NotificationSender interface {
 	// for one reminder must never prevent the others from being delivered, and
 	// must never mark any reminder as sent. Returns nil when every reminder was
 	// handled (sent or recorded failed).
-	Send(db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error
+	Send(ctx context.Context, db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error
 }
 
 // notificationSenders is the channel registry, in dispatch order.
@@ -90,7 +91,12 @@ var notificationSenders = []NotificationSender{
 // attempt. sent=false stores status 'failed' plus the error message; the
 // reminder stays "due" for that channel (no 'sent' row), so the next run
 // retries it.
-func recordNotificationDelivery(db *gorm.DB, reminderID uint, channel models.NotificationChannel, sent bool, errMsg string) {
+//
+// It also emits the operational notification_sent / notification_failed event
+// (issue #424) and a standardized log line (issue #425). `detail` carries the
+// channel name only — never a recipient address, ntfy topic, or push endpoint
+// (#424 non-goal).
+func recordNotificationDelivery(ctx context.Context, db *gorm.DB, reminderID uint, channel models.NotificationChannel, sent bool, errMsg string) {
 	var (
 		sentAt *time.Time
 		status = "failed"
@@ -113,7 +119,34 @@ func recordNotificationDelivery(db *gorm.DB, reminderID uint, channel models.Not
 		Error:      errPtr,
 	}
 	if err := db.Create(&d).Error; err != nil {
-		logger.Error().Err(err).Uint("reminder_id", reminderID).Str("channel", string(channel)).Msg("Failed to record notification delivery")
+		logger.Ctx(ctx).Error().Err(err).Uint("reminder_id", reminderID).Str("channel", string(channel)).Msg("Failed to record notification delivery")
+	}
+
+	if sent {
+		logger.Ctx(ctx).Info().
+			Str(logger.FieldEvent, models.SysEventNotificationSent).
+			Str(logger.FieldComponent, logger.ComponentNotify).
+			Str(logger.FieldResult, logger.ResultSuccess).
+			Str("channel", string(channel)).
+			Msg("notification sent")
+		models.RecordSystemEvent(ctx, db, models.SystemEvent{
+			EventType: models.SysEventNotificationSent, Component: logger.ComponentNotify,
+			Operation: string(channel), Result: models.SysResult(logger.ResultSuccess),
+			Detail: "channel=" + string(channel),
+		})
+	} else {
+		logger.Ctx(ctx).Warn().
+			Str(logger.FieldEvent, models.SysEventNotificationFailed).
+			Str(logger.FieldComponent, logger.ComponentNotify).
+			Str(logger.FieldResult, logger.ResultFailure).
+			Str("channel", string(channel)).
+			Str(logger.FieldError, logger.SanitizeLogField(errMsg)).
+			Msg("notification failed")
+		models.RecordSystemEvent(ctx, db, models.SystemEvent{
+			EventType: models.SysEventNotificationFailed, Component: logger.ComponentNotify,
+			Operation: string(channel), Result: models.SysResult(logger.ResultFailure),
+			Error: errMsg, Detail: "channel=" + string(channel),
+		})
 	}
 }
 
@@ -148,7 +181,7 @@ func (emailNotificationSender) Enabled(_ *gorm.DB, cfg config.Config, user model
 // reminder gets a 'sent' delivery row AND its legacy email_sent mirror flipped
 // (pre-N9 consumers still read it); on failure each gets a 'failed' row and
 // email_sent stays untouched so the next run retries.
-func (emailNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
+func (emailNotificationSender) Send(ctx context.Context, db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
 	eligible := make([]models.Reminder, 0, len(reminders))
 	for _, r := range reminders {
 		if r.ByMail != nil && *r.ByMail {
@@ -158,7 +191,7 @@ func (emailNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.
 
 	if err := sendReminderEmailFn(user, eligible, cfg, db); err != nil {
 		for _, r := range eligible {
-			recordNotificationDelivery(db, r.ID, models.ChannelEmail, false, err.Error())
+			recordNotificationDelivery(ctx, db, r.ID, models.ChannelEmail, false, err.Error())
 		}
 		return err
 	}
@@ -170,7 +203,7 @@ func (emailNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.
 		if err := db.Save(&r).Error; err != nil {
 			logger.Error().Err(err).Uint("reminder_id", r.ID).Msg("Failed to update reminder after sending email")
 		}
-		recordNotificationDelivery(db, r.ID, models.ChannelEmail, true, "")
+		recordNotificationDelivery(ctx, db, r.ID, models.ChannelEmail, true, "")
 	}
 	return nil
 }
@@ -205,7 +238,7 @@ func sendNtfyMessage(cfg config.Config, nc *models.NotificationConfig, title, me
 	return postNotificationJSON(cfg, target, payload, "", "")
 }
 
-func (ntfyNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
+func (ntfyNotificationSender) Send(ctx context.Context, db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
 	nc, err := GetNotificationConfigForUser(db, user.ID)
 	if err != nil {
 		return fmt.Errorf("failed to load notification config: %w", err)
@@ -222,13 +255,13 @@ func (ntfyNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.U
 	for _, r := range reminders {
 		body := notificationShortBody(r, contactMap)
 		if err := sendNtfyMessage(cfg, nc, title, body); err != nil {
-			recordNotificationDelivery(db, r.ID, models.ChannelNtfy, false, err.Error())
+			recordNotificationDelivery(ctx, db, r.ID, models.ChannelNtfy, false, err.Error())
 			if sendErr == nil {
 				sendErr = err
 			}
 			continue
 		}
-		recordNotificationDelivery(db, r.ID, models.ChannelNtfy, true, "")
+		recordNotificationDelivery(ctx, db, r.ID, models.ChannelNtfy, true, "")
 	}
 	return sendErr
 }
@@ -271,7 +304,7 @@ func sendGotifyMessage(cfg config.Config, nc *models.NotificationConfig, title, 
 	return postNotificationJSON(cfg, target, payload, "X-Gotify-Key", token)
 }
 
-func (gotifyNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
+func (gotifyNotificationSender) Send(ctx context.Context, db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
 	nc, err := GetNotificationConfigForUser(db, user.ID)
 	if err != nil {
 		return fmt.Errorf("failed to load notification config: %w", err)
@@ -288,13 +321,13 @@ func (gotifyNotificationSender) Send(db *gorm.DB, cfg config.Config, user models
 	for _, r := range reminders {
 		body := notificationShortBody(r, contactMap)
 		if err := sendGotifyMessage(cfg, nc, title, body); err != nil {
-			recordNotificationDelivery(db, r.ID, models.ChannelGotify, false, err.Error())
+			recordNotificationDelivery(ctx, db, r.ID, models.ChannelGotify, false, err.Error())
 			if sendErr == nil {
 				sendErr = err
 			}
 			continue
 		}
-		recordNotificationDelivery(db, r.ID, models.ChannelGotify, true, "")
+		recordNotificationDelivery(ctx, db, r.ID, models.ChannelGotify, true, "")
 	}
 	return sendErr
 }
@@ -458,7 +491,7 @@ func sendPushMessage(db *gorm.DB, cfg config.Config, user models.User, sub model
 	return false, fmt.Errorf("unexpected status %d from push service", resp.StatusCode)
 }
 
-func (pushNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
+func (pushNotificationSender) Send(ctx context.Context, db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
 	var subs []models.PushSubscription
 	if err := db.Where("user_id = ?", user.ID).Find(&subs).Error; err != nil {
 		return fmt.Errorf("failed to load push subscriptions: %w", err)
@@ -498,7 +531,7 @@ func (pushNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.U
 			body := notificationShortBody(r, contactMap)
 			stale, err := sendPushMessage(db, cfg, user, sub, vapidPublic, vapidPrivate, title, body)
 			if err != nil {
-				recordNotificationDelivery(db, r.ID, models.ChannelPush, false, err.Error())
+				recordNotificationDelivery(ctx, db, r.ID, models.ChannelPush, false, err.Error())
 				if sendErr == nil {
 					sendErr = err
 				}
@@ -512,7 +545,7 @@ func (pushNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.U
 				}
 				continue
 			}
-			recordNotificationDelivery(db, r.ID, models.ChannelPush, true, "")
+			recordNotificationDelivery(ctx, db, r.ID, models.ChannelPush, true, "")
 		}
 	}
 
@@ -534,7 +567,7 @@ func (pushNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.U
 			body := notificationShortBody(r, contactMap)
 			stale, err := sendFCMMessage(cfg, fcmAccount, device.Token, title, body, fcmReminderData(r))
 			if err != nil {
-				recordNotificationDelivery(db, r.ID, models.ChannelPush, false, err.Error())
+				recordNotificationDelivery(ctx, db, r.ID, models.ChannelPush, false, err.Error())
 				if sendErr == nil {
 					sendErr = err
 				}
@@ -548,7 +581,7 @@ func (pushNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.U
 				}
 				continue
 			}
-			recordNotificationDelivery(db, r.ID, models.ChannelPush, true, "")
+			recordNotificationDelivery(ctx, db, r.ID, models.ChannelPush, true, "")
 		}
 	}
 

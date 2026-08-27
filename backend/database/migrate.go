@@ -5,6 +5,8 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"time"
+
 	"mycorrhizal/logger"
 	"strconv"
 	"strings"
@@ -144,9 +146,13 @@ func RunMigrations(db *sql.DB) error {
 		}
 	}
 
+	startVersion := version
+	start := time.Now()
+
 	// Run migrations
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("failed to apply migrations: %w", err)
+	upErr := m.Up()
+	if upErr != nil && upErr != migrate.ErrNoChange {
+		return fmt.Errorf("failed to apply migrations: %w", upErr)
 	}
 
 	// Get final version
@@ -155,13 +161,50 @@ func RunMigrations(db *sql.DB) error {
 		return fmt.Errorf("failed to get final version: %w", err)
 	}
 
-	if err == migrate.ErrNilVersion {
+	elapsed := time.Since(start)
+	schemaAdvanced := upErr != migrate.ErrNoChange && version != startVersion
+
+	switch {
+	case err == migrate.ErrNilVersion:
 		logger.Info().Msg("No migrations applied (database is empty)")
-	} else {
-		logger.Info().Uint("version", version).Msg("Migrations applied successfully")
+	case schemaAdvanced:
+		logger.Info().
+			Str(logger.FieldEvent, "migration_completed").
+			Str(logger.FieldComponent, "migration").
+			Uint("from_version", startVersion).
+			Int64(logger.FieldDurationMS, elapsed.Milliseconds()).
+			Uint("version", version).
+			Str(logger.FieldResult, logger.ResultSuccess).
+			Msg("Migrations applied successfully")
+	default:
+		logger.Info().Uint("version", version).Msg("No pending migrations")
+	}
+
+	// Best-effort operational event when migrations actually advanced the
+	// schema (issue #424). Written by raw SQL on the same *sql.DB — the
+	// system_events table exists once migration 000038 has run, and any
+	// earlier-schema path where it does not yet exist simply drops the row.
+	if schemaAdvanced {
+		recordMigrationEvent(db, startVersion, version, elapsed)
 	}
 
 	return nil
+}
+
+// recordMigrationEvent inserts one migration_completed row, swallowing every
+// error: a diagnostic write must never be able to fail a boot.
+func recordMigrationEvent(db *sql.DB, from, to uint, elapsed time.Duration) {
+	defer func() { _ = recover() }()
+	now := time.Now().UTC()
+	ms := elapsed.Milliseconds()
+	_, err := db.Exec(
+		`INSERT INTO system_events (created_at, occurred_at, event_type, severity, component, operation, duration_ms, result, detail)
+		 VALUES (?, ?, 'migration_completed', 'info', 'migration', 'run_migrations', ?, 'success', ?)`,
+		now, now, ms, fmt.Sprintf("from_version=%d to_version=%d", from, to),
+	)
+	if err != nil {
+		logger.Debug().Err(err).Msg("could not record migration_completed system event (pre-000038 schema?)")
+	}
 }
 
 // MigrateUp applies every pending migration to the database at dbPath. Thin

@@ -98,7 +98,7 @@ func CreateContact(c *gin.Context) {
 		logger.FromContext(c).Error().Err(err).Msg("Error syncing wedding anniversary to life event")
 	}
 
-	go services.TriggerWebhooks(db, currentConfig(c), userID, "contact.created", contact)
+	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "contact.created", contact)
 	c.JSON(http.StatusCreated, gin.H{"message": "Contact created successfully", "contact": models.NewContactRecordResponse(&contact, currentConfig(c).ProfilePhotoDir, db)})
 }
 
@@ -679,7 +679,7 @@ func UpdateContact(c *gin.Context) {
 		logger.FromContext(c).Error().Err(err).Msg("Error syncing wedding anniversary to life event")
 	}
 
-	go services.TriggerWebhooks(db, currentConfig(c), userID, "contact.updated", contact)
+	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "contact.updated", contact)
 	c.JSON(http.StatusOK, models.NewContactRecordResponse(&contact, currentConfig(c).ProfilePhotoDir, db))
 }
 
@@ -889,7 +889,7 @@ func DeleteContact(c *gin.Context) {
 	deleteContactPhotos(c, contact)
 	deleteContactAttachmentFiles(c, attachmentNames)
 
-	go services.TriggerWebhooks(db, currentConfig(c), userID, "contact.deleted", gin.H{"id": contact.ID})
+	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "contact.deleted", gin.H{"id": contact.ID})
 	c.JSON(http.StatusOK, gin.H{"message": "Contact deleted"})
 }
 

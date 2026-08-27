@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -22,6 +23,7 @@ import (
 	"mycorrhizal/config"
 	"mycorrhizal/database"
 	"mycorrhizal/i18n"
+	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
@@ -713,7 +715,7 @@ func TestRecordNotificationDeliveryFailureCarriesError(t *testing.T) {
 	first := newDueReminder(t, db, user, "first")
 	second := newDueReminder(t, db, user, "second")
 
-	recordNotificationDelivery(db, first.ID, models.ChannelNtfy, false, "boom")
+	recordNotificationDelivery(context.Background(), db, first.ID, models.ChannelNtfy, false, "boom")
 
 	var d models.NotificationDelivery
 	require.NoError(t, db.First(&d).Error)
@@ -722,11 +724,27 @@ func TestRecordNotificationDeliveryFailureCarriesError(t *testing.T) {
 	require.NotNil(t, d.Error)
 	assert.Equal(t, "boom", *d.Error)
 
-	recordNotificationDelivery(db, second.ID, models.ChannelGotify, true, "")
+	recordNotificationDelivery(context.Background(), db, second.ID, models.ChannelGotify, true, "")
 	var sent models.NotificationDelivery
 	require.NoError(t, db.Where("reminder_id = ?", second.ID).First(&sent).Error)
 	assert.Equal(t, "sent", sent.Status)
 	require.NotNil(t, sent.SentAt)
+
+	// Each attempt also emits an operational event (issue #424): the failed
+	// ntfy attempt -> notification_failed (severity error), the successful
+	// gotify one -> notification_sent. detail carries the channel name only.
+	var failedEv models.SystemEvent
+	require.NoError(t, db.Where("event_type = ?", models.SysEventNotificationFailed).First(&failedEv).Error)
+	assert.Equal(t, logger.ComponentNotify, failedEv.Component)
+	assert.Equal(t, logger.SeverityError, failedEv.Severity)
+	assert.Equal(t, "channel=ntfy", failedEv.Detail)
+	assert.Equal(t, "boom", failedEv.Error)
+
+	var sentEv models.SystemEvent
+	require.NoError(t, db.Where("event_type = ?", models.SysEventNotificationSent).First(&sentEv).Error)
+	assert.Equal(t, "channel=gotify", sentEv.Detail)
+	require.NotNil(t, sentEv.Result)
+	assert.Equal(t, logger.ResultSuccess, *sentEv.Result)
 	assert.Nil(t, sent.Error)
 }
 
@@ -755,8 +773,8 @@ func TestDeleteNotificationDeliveries(t *testing.T) {
 	first := newDueReminder(t, db, user, "first")
 	second := newDueReminder(t, db, user, "second")
 
-	recordNotificationDelivery(db, first.ID, models.ChannelNtfy, true, "")
-	recordNotificationDelivery(db, second.ID, models.ChannelGotify, true, "")
+	recordNotificationDelivery(context.Background(), db, first.ID, models.ChannelNtfy, true, "")
+	recordNotificationDelivery(context.Background(), db, second.ID, models.ChannelGotify, true, "")
 
 	require.NoError(t, DeleteNotificationDeliveries(db, []uint{first.ID}))
 

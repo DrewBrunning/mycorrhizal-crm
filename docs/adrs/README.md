@@ -10,3 +10,4 @@ ticket backlog moved to GitHub Issues.
 | [0002](0002-correspondence-table-locked-oracle.md) | Correspondence table as the locked mapping oracle | accepted |
 | [0003](0003-golden-fixtures-external-test-oracle.md) | Golden fixtures as the external test oracle | accepted |
 | [0004](0004-soft-vs-hard-delete-semantics.md) | Soft vs hard delete semantics | accepted |
+| [0005](0005-operational-event-model.md) | Operational-event model, separate from the audit trail | accepted |

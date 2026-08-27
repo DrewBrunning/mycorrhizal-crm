@@ -26,7 +26,7 @@ func setupWebhookRetryTestDB(t *testing.T) *gorm.DB {
 	require.NoError(t, err)
 	sqlDB.SetMaxOpenConns(1)
 
-	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Webhook{}, &models.WebhookDelivery{}, &models.JobExecution{}))
+	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Webhook{}, &models.WebhookDelivery{}, &models.JobExecution{}, &models.SystemEvent{}))
 	return db
 }
 
