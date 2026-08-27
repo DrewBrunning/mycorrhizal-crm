@@ -92,7 +92,10 @@ func parseUintList(raw string, max int) []uint {
 		if len(ids) >= max {
 			break
 		}
-		n, err := strconv.ParseUint(strings.TrimSpace(p), 10, 64)
+		// Parse at uint width (strconv.IntSize), not 64: an out-of-range token
+		// is then rejected here rather than silently truncated by uint(n) on a
+		// 32-bit build. Matches notification_controller.go's idiom.
+		n, err := strconv.ParseUint(strings.TrimSpace(p), 10, strconv.IntSize)
 		if err != nil {
 			continue
 		}
