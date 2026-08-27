@@ -529,6 +529,10 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// Rebuild the FTS search index (T11) — needed after bulk data
 			// changes that bypassed the FTS triggers
 			admin.POST("/search/rebuild", controllers.RebuildSearchIndexHandler)
+
+			// Operational-event timeline (issue #424) — instance-wide
+			// diagnostics, admin-only.
+			admin.GET("/system-events", controllers.ListSystemEvents)
 		}
 	}
 

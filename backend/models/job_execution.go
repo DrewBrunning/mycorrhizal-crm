@@ -56,4 +56,8 @@ const (
 	// JobNameRestoreDrill is the job name for the scheduled backup-restore
 	// drill job (issue #275).
 	JobNameRestoreDrill = "restore_drill"
+
+	// JobNameSystemEventPurge is the job name for the periodic removal of
+	// system_events rows past their retention window (issue #424).
+	JobNameSystemEventPurge = "system_event_purge"
 )

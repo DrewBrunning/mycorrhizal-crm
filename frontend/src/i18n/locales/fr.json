@@ -38,6 +38,7 @@
     "data": "Données",
     "shares": "Partages",
     "audit": "Journal d'audit",
+    "systemEvents": "Événements système",
     "mainLabel": "Navigation principale",
     "skipToContent": "Passer au contenu"
   },
@@ -2063,5 +2064,67 @@
       "retentionGone": "Cet événement est hors de sa fenêtre de conservation et ne peut plus être annulé",
       "partialNote": "Les détails qui n'ont jamais été enregistrés dans cette entrée (pronoms, informations personnelles, détails d'adresse) sont conservés tels quels."
     }
+  },
+  "systemEvents": {
+    "title": "Événements système",
+    "description": "Un journal chronologique des événements opérationnels : tâches planifiées, synchronisations, sauvegardes, migrations. Le premier endroit où regarder quand quelque chose ne fonctionne pas.",
+    "filters": {
+      "component": "Composant",
+      "severity": "Gravité",
+      "eventType": "Type d'événement",
+      "correlationId": "ID de corrélation",
+      "all": "Tous",
+      "clear": "Effacer les filtres"
+    },
+    "columns": {
+      "time": "Quand",
+      "severity": "Gravité",
+      "component": "Composant",
+      "event": "Événement",
+      "operation": "Opération",
+      "result": "Résultat",
+      "duration": "Durée",
+      "actions": "Actions"
+    },
+    "severities": {
+      "info": "Info",
+      "warn": "Avertissement",
+      "error": "Erreur"
+    },
+    "results": {
+      "success": "Réussite",
+      "failure": "Échec",
+      "skipped": "Ignoré"
+    },
+    "eventTypes": {
+      "application_started": "Application démarrée",
+      "application_stopped": "Application arrêtée",
+      "migration_started": "Migration démarrée",
+      "migration_completed": "Migration terminée",
+      "migration_failed": "Migration échouée",
+      "job_started": "Tâche démarrée",
+      "job_completed": "Tâche terminée",
+      "job_failed": "Tâche échouée",
+      "sync_started": "Synchronisation démarrée",
+      "sync_completed": "Synchronisation terminée",
+      "sync_failed": "Synchronisation échouée",
+      "notification_sent": "Notification envoyée",
+      "notification_failed": "Notification échouée",
+      "backup_completed": "Sauvegarde terminée",
+      "backup_failed": "Sauvegarde échouée",
+      "restore_test_completed": "Test de restauration terminé",
+      "integration_failed": "Intégration échouée"
+    },
+    "details": {
+      "button": "Détails",
+      "title": "Détails de l'événement",
+      "correlationId": "ID de corrélation",
+      "detail": "Détail",
+      "error": "Erreur",
+      "viewRelated": "Voir les événements liés"
+    },
+    "relatedBanner": "Affichage de tous les événements de la chaîne {{id}}.",
+    "empty": "Aucun événement système ne correspond à vos filtres.",
+    "emptyNoFilters": "Aucun événement système enregistré pour l'instant."
   }
 }

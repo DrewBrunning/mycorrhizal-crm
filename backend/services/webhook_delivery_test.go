@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/json"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -206,7 +208,7 @@ func TestDeliverWebhookSendsValidSignature(t *testing.T) {
 	body := []byte(`{"id":"evt_1","event":"contact.created","data":{"name":"Ada"}}`)
 	cfg := config.Config{WebhookBlockPrivateURLs: false}
 
-	delivery := deliverWebhook(db, cfg, wh, "contact.created", body, 1)
+	delivery := deliverWebhook(context.Background(), db, cfg, wh, "contact.created", body, 1)
 
 	require.NotNil(t, delivery.StatusCode)
 	assert.Equal(t, 200, *delivery.StatusCode)
@@ -242,7 +244,7 @@ func TestDeliverWebhookNon2xxSchedulesRetryAndRecordsStatus(t *testing.T) {
 	cfg := config.Config{}
 
 	before := time.Now()
-	delivery := deliverWebhook(db, cfg, wh, "contact.created", []byte(`{}`), 1)
+	delivery := deliverWebhook(context.Background(), db, cfg, wh, "contact.created", []byte(`{}`), 1)
 	after := time.Now()
 
 	require.NotNil(t, delivery.StatusCode)
@@ -267,12 +269,60 @@ func TestDeliverWebhookFinalAttemptDoesNotScheduleRetry(t *testing.T) {
 
 	// attempt 3 exceeds len(retryDelays) == 2, so no further retry is scheduled
 	// even though the request itself still fails.
-	delivery := deliverWebhook(db, cfg, wh, "contact.created", []byte(`{}`), maxDeliveryAttempts)
+	delivery := deliverWebhook(context.Background(), db, cfg, wh, "contact.created", []byte(`{}`), maxDeliveryAttempts)
 
 	require.NotNil(t, delivery.StatusCode)
 	assert.Equal(t, 500, *delivery.StatusCode)
 	assert.Nil(t, delivery.NextRetryAt, "exhausted retry budget must not schedule another retry")
 	assert.Equal(t, maxDeliveryAttempts, delivery.Attempts)
+
+	// The exhausted, still-failing delivery emits one integration_failed
+	// operational event (issue #424) — the point an operator needs to know an
+	// external integration is down. Detail carries the event type, never the URL.
+	var ev models.SystemEvent
+	require.NoError(t, db.Where("event_type = ?", models.SysEventIntegrationFailed).First(&ev).Error)
+	assert.Equal(t, logger.ComponentWebhook, ev.Component)
+	assert.Equal(t, logger.SeverityError, ev.Severity)
+	assert.Contains(t, ev.Detail, "event=contact.created")
+	assert.NotContains(t, ev.Detail, server.URL)
+}
+
+func TestDeliverWebhookMidRetryDoesNotEmitIntegrationFailed(t *testing.T) {
+	db := setupWebhookRetryTestDB(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	wh := newTestWebhook(server.URL, "secret")
+	require.NoError(t, db.Create(&wh).Error)
+
+	// attempt 1 of 3 — a retry is still scheduled, so this is not yet a
+	// "the integration is down" event.
+	deliverWebhook(context.Background(), db, config.Config{}, wh, "contact.created", []byte(`{}`), 1)
+
+	var count int64
+	require.NoError(t, db.Model(&models.SystemEvent{}).
+		Where("event_type = ?", models.SysEventIntegrationFailed).Count(&count).Error)
+	assert.Zero(t, count, "a mid-retry failure must not emit integration_failed")
+}
+
+func TestDeliverWebhookSetsCorrelationHeader(t *testing.T) {
+	db := setupWebhookRetryTestDB(t)
+	var gotCorr string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotCorr = r.Header.Get("X-Correlation-ID")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	wh := newTestWebhook(server.URL, "secret")
+	require.NoError(t, db.Create(&wh).Error)
+
+	ctx := logger.WithCorrelationID(context.Background(), "req-abc-123")
+	deliverWebhook(ctx, db, config.Config{}, wh, "contact.created", []byte(`{}`), 1)
+
+	assert.Equal(t, "req-abc-123", gotCorr)
 }
 
 func TestDeliverWebhookConnectionErrorSchedulesRetry(t *testing.T) {
@@ -284,7 +334,7 @@ func TestDeliverWebhookConnectionErrorSchedulesRetry(t *testing.T) {
 	require.NoError(t, db.Create(&wh).Error)
 	cfg := config.Config{WebhookBlockPrivateURLs: false}
 
-	delivery := deliverWebhook(db, cfg, wh, "contact.created", []byte(`{}`), 1)
+	delivery := deliverWebhook(context.Background(), db, cfg, wh, "contact.created", []byte(`{}`), 1)
 
 	assert.Nil(t, delivery.StatusCode, "a transport-level failure never gets a status code")
 	require.NotNil(t, delivery.Error)
@@ -302,7 +352,7 @@ func TestDeliverWebhookMalformedURLSchedulesRetry(t *testing.T) {
 	require.NoError(t, db.Create(&wh).Error)
 	cfg := config.Config{WebhookBlockPrivateURLs: false}
 
-	delivery := deliverWebhook(db, cfg, wh, "contact.created", []byte(`{}`), 1)
+	delivery := deliverWebhook(context.Background(), db, cfg, wh, "contact.created", []byte(`{}`), 1)
 
 	assert.Nil(t, delivery.StatusCode)
 	require.NotNil(t, delivery.Error)
@@ -325,7 +375,7 @@ func TestDeliverWebhookBlocksPrivateURLWhenConfigured(t *testing.T) {
 	require.NoError(t, db.Create(&wh).Error)
 	cfg := config.Config{WebhookBlockPrivateURLs: true}
 
-	delivery := deliverWebhook(db, cfg, wh, "contact.created", []byte(`{}`), 1)
+	delivery := deliverWebhook(context.Background(), db, cfg, wh, "contact.created", []byte(`{}`), 1)
 
 	assert.Equal(t, int32(0), atomic.LoadInt32(&hits), "the guarded delivery must never reach the destination server")
 	assert.Nil(t, delivery.StatusCode)
@@ -373,7 +423,7 @@ func TestTriggerWebhooksFansOutToSubscribedActiveWebhooksOnly(t *testing.T) {
 	require.NoError(t, db.Delete(&softDeleted).Error)
 
 	cfg := config.Config{}
-	TriggerWebhooks(db, cfg, userID, "contact.created", map[string]string{"name": "Ada"})
+	TriggerWebhooks(context.Background(), db, cfg, userID, "contact.created", map[string]string{"name": "Ada"})
 
 	require.Eventually(t, func() bool {
 		return atomic.LoadInt32(&hits) >= 1
@@ -400,7 +450,7 @@ func TestTriggerWebhooksNoActiveSubscriptionsDeliversNothing(t *testing.T) {
 	cfg := config.Config{}
 
 	assert.NotPanics(t, func() {
-		TriggerWebhooks(db, cfg, 999, "contact.created", map[string]string{"x": "y"})
+		TriggerWebhooks(context.Background(), db, cfg, 999, "contact.created", map[string]string{"x": "y"})
 	})
 
 	time.Sleep(50 * time.Millisecond)
@@ -418,7 +468,7 @@ func TestTriggerWebhooksDBQueryErrorIsNoop(t *testing.T) {
 	require.NoError(t, db.Migrator().DropTable(&models.Webhook{}))
 
 	assert.NotPanics(t, func() {
-		TriggerWebhooks(db, config.Config{}, 1, "contact.created", map[string]string{"x": "y"})
+		TriggerWebhooks(context.Background(), db, config.Config{}, 1, "contact.created", map[string]string{"x": "y"})
 	})
 }
 
@@ -443,7 +493,7 @@ func TestTriggerWebhooksPayloadMarshalFailureIsNoop(t *testing.T) {
 	unmarshalable := make(chan int)
 
 	assert.NotPanics(t, func() {
-		TriggerWebhooks(db, config.Config{}, userID, "contact.created", unmarshalable)
+		TriggerWebhooks(context.Background(), db, config.Config{}, userID, "contact.created", unmarshalable)
 	})
 
 	time.Sleep(150 * time.Millisecond)

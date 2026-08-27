@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"mycorrhizal/logger"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -21,6 +23,14 @@ func RequestIDMiddleware() gin.HandlerFunc {
 
 		// Add to response headers
 		c.Header("X-Request-ID", requestID)
+
+		// Bind the same ID as the correlation ID on the request's
+		// context.Context, so any background work or outbound call a handler
+		// starts from c.Request.Context() shares one ID with the HTTP log
+		// lines (issue #425).
+		c.Request = c.Request.WithContext(
+			logger.WithCorrelationID(c.Request.Context(), requestID),
+		)
 
 		c.Next()
 	}

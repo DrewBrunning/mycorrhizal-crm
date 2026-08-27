@@ -31,7 +31,7 @@ func CreateCircle(c *gin.Context) {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save circle").WithError(err))
 		return
 	}
-	go services.TriggerWebhooks(db, currentConfig(c), userID, "circle.created", circle)
+	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "circle.created", circle)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Circle created successfully", "circle": circle})
 }
@@ -166,7 +166,7 @@ func UpdateCircle(c *gin.Context) {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save circle").WithError(err))
 		return
 	}
-	go services.TriggerWebhooks(db, currentConfig(c), userID, "circle.updated", circle)
+	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "circle.updated", circle)
 
 	c.JSON(http.StatusOK, circle)
 }
@@ -195,7 +195,7 @@ func DeleteCircle(c *gin.Context) {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to delete circle").WithError(err))
 		return
 	}
-	go services.TriggerWebhooks(db, currentConfig(c), userID, "circle.deleted", gin.H{"id": circle.ID})
+	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "circle.deleted", gin.H{"id": circle.ID})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Circle deleted"})
 }

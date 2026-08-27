@@ -123,6 +123,10 @@ type calendarRoundTripper struct {
 }
 
 func (t *calendarRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Carry the caller's correlation ID onto the outbound request (issue #425).
+	if id := logger.CorrelationID(req.Context()); id != "" {
+		req.Header.Set("X-Correlation-ID", id)
+	}
 	resp, err := t.base.RoundTrip(req)
 	if err != nil {
 		return nil, err
@@ -199,6 +203,9 @@ func (s *CalendarSyncService) SyncSubscription(ctx context.Context, db *gorm.DB,
 	stats, err := s.syncSubscription(ctx, db, cfg, sub)
 	runDuration := time.Since(start)
 	err = redactURLPassword(err, sub.URL)
+
+	recordSyncEvent(ctx, db, logger.ComponentCalendarSync, sub.UserID, start, err,
+		fmt.Sprintf("created=%d updated=%d skipped=%d", stats.Created, stats.Updated, stats.Skipped))
 
 	now := time.Now().UTC()
 	sub.LastSyncedAt = &now
