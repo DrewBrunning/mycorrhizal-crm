@@ -135,6 +135,10 @@ func TestOIDCLoginHandler_AndroidClientCookie(t *testing.T) {
 	clientCookie := findCookie(w.Result().Cookies(), "oidc_client")
 	require.NotNil(t, clientCookie, "client=android must set the oidc_client cookie")
 	assert.Equal(t, "android", clientCookie.Value)
+	// Issue #605: with COOKIE_SECURE=false (the plain-HTTP deployment) the
+	// cookie must NOT carry the Secure attribute, or a browser would reject
+	// it outright and the android hint would never reach the callback.
+	assert.False(t, clientCookie.Secure, "oidc_client must respect CookieSecure=false")
 	for _, name := range []string{"oidc_state", "oidc_nonce", "oidc_pkce"} {
 		require.NotNil(t, findCookie(w.Result().Cookies(), name), "%s cookie must still be set", name)
 	}
@@ -144,6 +148,23 @@ func TestOIDCLoginHandler_AndroidClientCookie(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEqual(t, "android", parsedLoc.Query().Get("client"),
 		"the client=android marker must not be forwarded to the provider")
+}
+
+func TestOIDCLoginHandler_AndroidClientCookieSecureWhenConfigured(t *testing.T) {
+	provider := newFakeOIDCProviderForLogout(t, "")
+	cfg := &config.Config{CookieDomain: "", CookieSecure: true}
+
+	_, router := setupRouter()
+	router.GET("/login", OIDCLoginHandler(provider, cfg))
+
+	req, _ := http.NewRequest("GET", "/login?client=android", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusFound, w.Code)
+	clientCookie := findCookie(w.Result().Cookies(), "oidc_client")
+	require.NotNil(t, clientCookie)
+	assert.True(t, clientCookie.Secure, "oidc_client must respect CookieSecure=true")
 }
 
 func TestOIDCLoginHandler_NoClientCookieWithoutAndroidParam(t *testing.T) {
@@ -399,10 +420,14 @@ func TestOIDCCallbackHandler_ClearsCookiesEvenOnFailure(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	for _, name := range []string{"oidc_state", "oidc_nonce", "oidc_pkce"} {
+	// Booted with cfg := &config.Config{} (CookieSecure=false); Issue #605:
+	// the clears must follow the same flag rule as the sets, or the clear
+	// would itself be rejected by a browser on plain HTTP.
+	for _, name := range []string{"oidc_state", "oidc_nonce", "oidc_pkce", "oidc_client"} {
 		c := findCookie(w.Result().Cookies(), name)
 		require.NotNil(t, c, "expected %s cookie to be cleared", name)
 		assert.Equal(t, -1, c.MaxAge)
+		assert.False(t, c.Secure, "%s clear must respect CookieSecure=false", name)
 	}
 }
 
