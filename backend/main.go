@@ -236,7 +236,15 @@ func main() {
 
 	go s.StartBlocking()
 
-	r := gin.Default()
+	// gin.New() rather than gin.Default(): the app installs its own
+	// middleware.LoggingMiddleware() below, which is redaction-aware (query
+	// values are allow-listed, see logger.RedactQueryValues). gin.Default()
+	// additionally attaches gin's own Logger(), which writes a second,
+	// unredacted request line ("GET /api/v1/contacts?search=<a name>") to
+	// stdout — an instance-wide disclosure of the same personal data the
+	// custom logger exists to keep out (issue #510). Recovery() is kept.
+	r := gin.New()
+	r.Use(gin.Recovery())
 
 	// Limit multipart form memory to 10MB to prevent DoS via large request bodies
 	r.MaxMultipartMemory = 10 << 20 // 10 MB

@@ -48,7 +48,7 @@ func SendPasswordResetEmail(email, token, lang string, cfg *config.Config) error
 	}
 
 	if !cfg.EmailEnabled() {
-		logger.Warn().Str("email", email).Msg("No email channel configured; password reset email not sent")
+		logger.Warn().Str("email", logger.MaskEmail(email)).Msg("No email channel configured; password reset email not sent")
 		return nil
 	}
 
@@ -76,7 +76,7 @@ func SendPasswordResetEmail(email, token, lang string, cfg *config.Config) error
 		return err
 	}
 
-	logger.Info().Str("email", email).Str("language", lang).Msg("Password reset email sent")
+	logger.Info().Str("email", logger.MaskEmail(email)).Str("language", lang).Msg("Password reset email sent")
 	return nil
 }
 
@@ -91,7 +91,7 @@ func SendPasswordChangedEmail(email, lang string, cfg *config.Config) error {
 	}
 
 	if !cfg.EmailEnabled() {
-		logger.Warn().Str("email", email).Msg("No email channel configured; password-changed notification not sent")
+		logger.Warn().Str("email", logger.MaskEmail(email)).Msg("No email channel configured; password-changed notification not sent")
 		return nil
 	}
 
@@ -116,6 +116,6 @@ func SendPasswordChangedEmail(email, lang string, cfg *config.Config) error {
 		return err
 	}
 
-	logger.Info().Str("email", email).Str("language", lang).Msg("Password-changed notification email sent")
+	logger.Info().Str("email", logger.MaskEmail(email)).Str("language", lang).Msg("Password-changed notification email sent")
 	return nil
 }
