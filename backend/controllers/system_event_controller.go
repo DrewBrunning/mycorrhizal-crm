@@ -5,6 +5,7 @@ import (
 	"mycorrhizal/models"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -41,6 +42,13 @@ func ListSystemEvents(c *gin.Context) {
 	if v := c.Query("correlation_id"); v != "" {
 		query = query.Where("correlation_id = ?", v)
 	}
+	// ids: the exact-row drill-down used by the error-aggregation surface
+	// (issue #426) to open the events behind one bucket. Comma-separated,
+	// capped at systemEventMaxLimit; non-numeric tokens are skipped and an
+	// all-invalid list matches nothing rather than erroring.
+	if v := c.Query("ids"); v != "" {
+		query = query.Where("id IN ?", parseUintList(v, systemEventMaxLimit))
+	}
 	if v := c.Query("since"); v != "" {
 		t, err := time.Parse(time.RFC3339, v)
 		if err != nil {
@@ -71,4 +79,27 @@ func ListSystemEvents(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"system_events": events, "total": len(events)})
+}
+
+// parseUintList parses a comma-separated list of unsigned integers, skipping
+// blank or non-numeric tokens and stopping at max entries. An empty result is
+// returned as an empty (non-nil) slice, which GORM renders as `IN (NULL)` — i.e.
+// matches no rows.
+func parseUintList(raw string, max int) []uint {
+	parts := strings.Split(raw, ",")
+	ids := make([]uint, 0, len(parts))
+	for _, p := range parts {
+		if len(ids) >= max {
+			break
+		}
+		// Parse at uint width (strconv.IntSize), not 64: an out-of-range token
+		// is then rejected here rather than silently truncated by uint(n) on a
+		// 32-bit build. Matches notification_controller.go's idiom.
+		n, err := strconv.ParseUint(strings.TrimSpace(p), 10, strconv.IntSize)
+		if err != nil {
+			continue
+		}
+		ids = append(ids, uint(n))
+	}
+	return ids
 }

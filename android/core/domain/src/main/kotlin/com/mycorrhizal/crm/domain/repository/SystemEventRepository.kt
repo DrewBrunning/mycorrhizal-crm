@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.domain.repository
 
+import com.mycorrhizal.crm.model.network.ErrorAggregationResponse
 import com.mycorrhizal.crm.model.network.SubsystemHealthResponse
 import com.mycorrhizal.crm.model.network.SystemEventsResponse
 
@@ -22,6 +23,7 @@ interface SystemEventRepository {
         severity: String? = null,
         eventType: String? = null,
         correlationId: String? = null,
+        ids: List<Long>? = null,
         limit: Int = 100,
     ): Result<SystemEventsResponse>
 
@@ -31,4 +33,11 @@ interface SystemEventRepository {
      * No parameters, uncached, admin-only (the backend 403s non-admins).
      */
     suspend fun subsystemHealth(): Result<SubsystemHealthResponse>
+
+    /**
+     * GET /admin/error-aggregation — operational failures over [windowHours]
+     * bucketed by cause (issue #426), derived on the server from the
+     * operational-event stream. Uncached, admin-only.
+     */
+    suspend fun errorAggregation(windowHours: Int = 24): Result<ErrorAggregationResponse>
 }

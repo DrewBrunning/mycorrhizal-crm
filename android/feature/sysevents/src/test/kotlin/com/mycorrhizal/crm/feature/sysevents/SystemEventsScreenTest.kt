@@ -7,6 +7,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.mycorrhizal.crm.model.network.ErrorBucket
 import com.mycorrhizal.crm.model.network.SubsystemHealth
 import com.mycorrhizal.crm.model.network.SystemEvent
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -154,5 +155,44 @@ class SystemEventsScreenTest {
             }
         }
         composeTestRule.onNodeWithTag("sysevents-subsystem-health").assertDoesNotExist()
+    }
+
+    @Test
+    fun `error aggregation section renders a card per cause and views its events on tap`() {
+        var viewed: List<Long>? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ErrorAggregationSection(
+                    buckets = listOf(
+                        ErrorBucket(
+                            component = "contact_sync",
+                            cause = "carddav authentication failed (http <n>)",
+                            sampleError = "CardDAV authentication failed (HTTP 401)",
+                            count = 17,
+                            recurring = true,
+                            eventIds = listOf(1, 2, 3),
+                        ),
+                    ),
+                    onViewEvents = { viewed = it },
+                    onRefresh = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("17").assertIsDisplayed()
+        composeTestRule.onNodeWithText("CardDAV authentication failed (HTTP 401)").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Recurring").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("error-bucket-view-contact_sync").performClick()
+        assertEquals(listOf(1L, 2L, 3L), viewed)
+    }
+
+    @Test
+    fun `error aggregation section is hidden until data arrives`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ErrorAggregationSection(buckets = emptyList(), onViewEvents = {}, onRefresh = {})
+            }
+        }
+        composeTestRule.onNodeWithTag("sysevents-error-aggregation").assertDoesNotExist()
     }
 }

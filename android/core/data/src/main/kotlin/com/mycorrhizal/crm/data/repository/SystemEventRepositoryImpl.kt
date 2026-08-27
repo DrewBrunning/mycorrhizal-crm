@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.data.repository
 
 import com.mycorrhizal.crm.domain.repository.SystemEventRepository
+import com.mycorrhizal.crm.model.network.ErrorAggregationResponse
 import com.mycorrhizal.crm.model.network.SubsystemHealthResponse
 import com.mycorrhizal.crm.model.network.SystemEventsResponse
 import com.mycorrhizal.crm.network.ApiClient
@@ -19,6 +20,7 @@ class SystemEventRepositoryImpl @Inject constructor(
         severity: String?,
         eventType: String?,
         correlationId: String?,
+        ids: List<Long>?,
         limit: Int,
     ): Result<SystemEventsResponse> =
         apiClient.getSystemEvents(
@@ -26,9 +28,13 @@ class SystemEventRepositoryImpl @Inject constructor(
             severity = severity,
             eventType = eventType,
             correlationId = correlationId,
+            ids = ids,
             limit = limit,
         )
 
     override suspend fun subsystemHealth(): Result<SubsystemHealthResponse> =
         apiClient.getSubsystemHealth()
+
+    override suspend fun errorAggregation(windowHours: Int): Result<ErrorAggregationResponse> =
+        apiClient.getErrorAggregation(windowHours)
 }

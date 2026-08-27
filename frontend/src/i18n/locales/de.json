@@ -2129,6 +2129,7 @@
       "viewRelated": "Zugehörige anzeigen"
     },
     "relatedBanner": "Alle Ereignisse in Kette {{id}} werden angezeigt.",
+    "errorsBanner": "{{n}} Ereignisse aus einer Fehlergruppe werden angezeigt.",
     "empty": "Keine Systemereignisse entsprechen Ihren Filtern.",
     "emptyNoFilters": "Noch keine Systemereignisse aufgezeichnet."
   },
@@ -2153,6 +2154,21 @@
       "backup": "Sicherung & Wiederherstellung",
       "scheduler": "Hintergrundaufgaben",
       "webhook": "Webhooks"
+    }
+  },
+  "errorAggregation": {
+    "title": "Fehler nach Ursache",
+    "description": "Betriebsfehler der letzten {{hours}} Stunden, nach Ursache gruppiert. Eine wiederkehrende Ursache verdient Aufmerksamkeit, ein Einzelfall meist nicht.",
+    "refresh": "Aktualisieren",
+    "empty": "Keine wiederholten Fehler in den letzten {{hours}} Stunden.",
+    "recurring": "Wiederkehrend",
+    "viewEvents": "{{n}} Ereignisse anzeigen",
+    "columns": {
+      "count": "Anzahl",
+      "component": "Komponente",
+      "error": "Fehler",
+      "lastSeen": "Zuletzt gesehen",
+      "actions": "Aktionen"
     }
   }
 }

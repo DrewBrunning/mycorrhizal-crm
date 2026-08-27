@@ -145,3 +145,37 @@ data class SubsystemHealth(
 data class SubsystemHealthResponse(
     val subsystems: List<SubsystemHealth> = emptyList(),
 )
+
+/**
+ * One aggregated operational-error cause from `GET /admin/error-aggregation`
+ * (issue #426): every system_events failure row sharing a [component] and a
+ * normalized error string, collapsed to one row with a [count]. [recurring] is
+ * `count >= 3` — a single transient failure is not an alarm, a repeating cause
+ * is. [eventIds] are the exact system_events rows behind the bucket (capped at
+ * 500); pass them to `GET /admin/system-events?ids=` for the timeline
+ * drill-down. [sampleError] is the most recent raw error string, kept so an
+ * operator still sees a real instance.
+ */
+@JsonClass(generateAdapter = true)
+data class ErrorBucket(
+    val component: String = "",
+    val cause: String = "",
+    @Json(name = "sample_error") val sampleError: String = "",
+    @Json(name = "event_types") val eventTypes: List<String> = emptyList(),
+    val count: Int = 0,
+    val recurring: Boolean = false,
+    @Json(name = "first_seen") val firstSeen: String = "",
+    @Json(name = "last_seen") val lastSeen: String = "",
+    @Json(name = "event_ids") val eventIds: List<Long> = emptyList(),
+    @Json(name = "event_ids_truncated") val eventIdsTruncated: Boolean = false,
+)
+
+/** GET /admin/error-aggregation response — `{ window_hours, since, until, total_events, buckets }`. */
+@JsonClass(generateAdapter = true)
+data class ErrorAggregationResponse(
+    @Json(name = "window_hours") val windowHours: Int = 24,
+    val since: String = "",
+    val until: String = "",
+    @Json(name = "total_events") val totalEvents: Int = 0,
+    val buckets: List<ErrorBucket> = emptyList(),
+)

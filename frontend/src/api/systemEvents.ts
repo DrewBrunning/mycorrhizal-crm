@@ -92,6 +92,9 @@ export interface GetSystemEventsParams {
   severity?: SystemEventSeverity | '';
   event_type?: SystemEventType | '';
   correlation_id?: string;
+  // Exact-row drill-down: the system_events ids behind one error-aggregation
+  // bucket (issue #426). Sent comma-separated; the backend caps it at 500.
+  ids?: number[];
   since?: string;
   until?: string;
   limit?: number;
@@ -109,6 +112,7 @@ export async function getSystemEvents(
   if (params.severity) q.append('severity', params.severity);
   if (params.event_type) q.append('event_type', params.event_type);
   if (params.correlation_id) q.append('correlation_id', params.correlation_id);
+  if (params.ids?.length) q.append('ids', params.ids.join(','));
   if (params.since) q.append('since', params.since);
   if (params.until) q.append('until', params.until);
 

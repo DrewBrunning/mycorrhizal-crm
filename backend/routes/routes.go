@@ -537,6 +537,11 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// Per-subsystem last-known-good state (issue #427), derived on
 			// read from system_events — instance-wide diagnostics, admin-only.
 			admin.GET("/subsystem-health", controllers.GetSubsystemHealth)
+
+			// Operational errors bucketed by cause over a rolling window
+			// (issue #426), derived on read from system_events — instance-wide
+			// diagnostics, admin-only.
+			admin.GET("/error-aggregation", controllers.GetErrorAggregation)
 		}
 	}
 

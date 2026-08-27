@@ -56,6 +56,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.model.network.ErrorBucket
 import com.mycorrhizal.crm.model.network.SubsystemHealth
 import com.mycorrhizal.crm.model.network.Subsystems
 import com.mycorrhizal.crm.model.network.SubsystemStatuses
@@ -97,7 +98,7 @@ fun SystemEventsScreen(
     var selected by remember { mutableStateOf<SystemEvent?>(null) }
 
     val hasFilters = state.component != null || state.severity != null ||
-        state.eventType != null || correlationInput.isNotBlank()
+        state.eventType != null || correlationInput.isNotBlank() || state.eventIds.isNotEmpty()
 
     Scaffold(
         topBar = {
@@ -140,6 +141,12 @@ fun SystemEventsScreen(
                 onRefresh = viewModel::refreshSubsystemHealth,
             )
 
+            ErrorAggregationSection(
+                buckets = state.errorBuckets,
+                onViewEvents = viewModel::applyEventIds,
+                onRefresh = viewModel::refreshErrorAggregation,
+            )
+
             SystemEventsFilterToolbar(
                 component = state.component,
                 severity = state.severity,
@@ -175,6 +182,27 @@ fun SystemEventsScreen(
                     )
                     Text(
                         text = stringResource(R.string.sysevents_related_banner, state.correlationId),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+
+            if (state.eventIds.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .testTag("sysevents-errors-banner"),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Outlined.Hub,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = stringResource(R.string.sysevents_errors_banner, state.eventIds.size),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -496,6 +524,107 @@ internal fun subsystemStatusLabel(token: String): String = when (token) {
     SubsystemStatuses.FAILING -> stringResource(R.string.subsystem_health_status_failing)
     SubsystemStatuses.UNKNOWN -> stringResource(R.string.subsystem_health_status_unknown)
     else -> token
+}
+
+/**
+ * Operational failures over the last 24h bucketed by cause (issue #426), above
+ * the timeline: a horizontal strip of cards, one per cause, each with its
+ * count, the component, a sample of the raw error, and a "View N events"
+ * action that filters the timeline below to exactly those system_events rows.
+ * Hidden until the first fetch lands.
+ */
+@Composable
+internal fun ErrorAggregationSection(
+    buckets: List<ErrorBucket>,
+    onViewEvents: (List<Long>) -> Unit,
+    onRefresh: () -> Unit,
+) {
+    if (buckets.isEmpty()) return
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .testTag("sysevents-error-aggregation"),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.error_aggregation_title),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            TextButton(
+                onClick = onRefresh,
+                modifier = Modifier.testTag("error-aggregation-refresh"),
+            ) {
+                Text(stringResource(R.string.error_aggregation_refresh))
+            }
+        }
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(buckets, key = { "${it.component}${it.cause}" }) { bucket ->
+                ErrorBucketCard(bucket = bucket, onViewEvents = { onViewEvents(bucket.eventIds) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun ErrorBucketCard(bucket: ErrorBucket, onViewEvents: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .width(240.dp)
+            .testTag("error-bucket-card-${bucket.component}"),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = bucket.count.toString(),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (bucket.recurring) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                )
+                Text(
+                    text = subsystemLabel(bucket.component),
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (bucket.recurring) {
+                Text(
+                    text = stringResource(R.string.error_aggregation_recurring),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            Text(
+                text = bucket.sampleError.ifBlank { bucket.cause },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            TextButton(
+                onClick = onViewEvents,
+                enabled = bucket.eventIds.isNotEmpty(),
+                modifier = Modifier.testTag("error-bucket-view-${bucket.component}"),
+            ) {
+                Text(stringResource(R.string.error_aggregation_view_events, bucket.eventIds.size))
+            }
+        }
+    }
 }
 
 @Composable
