@@ -24,7 +24,7 @@ import (
 // derivation disagrees with hand-written migration SQL for acronyms/IDs and
 // AutoMigrate-based tests cannot see it (CLAUDE.md backend trap 1). The
 // event-type / severity / result vocabularies are mirrored in migration
-// 000037's CHECK constraint and in frontend/src/api/systemEvents.ts — keep
+// 000038's CHECK constraint and in frontend/src/api/systemEvents.ts — keep
 // the three in sync (frontend trap 4).
 type SystemEvent struct {
 	ID        uint      `gorm:"column:id;primarykey" json:"id"`
@@ -67,7 +67,7 @@ type SystemEvent struct {
 	UserID *uint `gorm:"column:user_id" json:"user_id,omitempty"`
 }
 
-// SystemEvent type tokens. Mirrored by migration 000037's CHECK constraint
+// SystemEvent type tokens. Mirrored by migration 000038's CHECK constraint
 // and frontend/src/api/systemEvents.ts.
 const (
 	SysEventApplicationStarted = "application_started"
@@ -96,7 +96,7 @@ const (
 )
 
 // SystemEventTypes is the full token set, for validation and tests. Keep in
-// sync with the consts above and migration 000037.
+// sync with the consts above and migration 000038.
 var SystemEventTypes = []string{
 	SysEventApplicationStarted, SysEventApplicationStopped,
 	SysEventMigrationStarted, SysEventMigrationCompleted, SysEventMigrationFailed,

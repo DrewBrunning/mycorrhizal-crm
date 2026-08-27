@@ -9580,7 +9580,7 @@ components:
         a backup/restore drill. Distinct from AuditEvent (who changed user
         data). System-generated, read-only, admin-only, bounded retention
         (SYSTEM_EVENT_RETENTION_DAYS). Enum values mirror
-        backend/models/system_event.go and migration 000037 — keep in sync.
+        backend/models/system_event.go and migration 000038 — keep in sync.
       properties:
         id: { type: integer }
         created_at: { type: string, format: date-time, description: "When the row was written" }

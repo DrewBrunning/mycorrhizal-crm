@@ -341,7 +341,7 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   `contacts: live=10 restored=9`). **No contact data, no credentials, no PII.**
 - **Retention / deletion**: hard state, upserted in place — at most one row per check name, each
   overwritten on the next run. Not tied to any user, so account deletion neither touches nor needs
-  to touch it. Dropped wholesale by migration `000037`'s `down.sql`.
+  to touch it. Dropped wholesale by migration `000038`'s `down.sql`.
 - **Backups**: included in the DB snapshot like any other table; carries nothing sensitive, so it
   needs no special handling in the backup-confidentiality boundary (§10).
 

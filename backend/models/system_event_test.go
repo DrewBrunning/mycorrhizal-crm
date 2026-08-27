@@ -13,7 +13,7 @@ import (
 )
 
 // newSystemEventTestDB builds a real migrated schema (CLAUDE.md backend trap
-// 1) so the CHECK constraints and column names in migration 000037 are
+// 1) so the CHECK constraints and column names in migration 000038 are
 // exercised, not GORM's AutoMigrate guess.
 func newSystemEventTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
@@ -68,7 +68,7 @@ func TestRecordSystemEvent_UnknownTypeRejectedByCheckConstraint(t *testing.T) {
 	db := newSystemEventTestDB(t)
 
 	// The emitter swallows the error (best-effort), so assert on the row
-	// count: the CHECK constraint in migration 000037 must reject it.
+	// count: the CHECK constraint in migration 000038 must reject it.
 	RecordSystemEvent(context.Background(), db, SystemEvent{
 		EventType: "not_a_real_event",
 		Component: "x",

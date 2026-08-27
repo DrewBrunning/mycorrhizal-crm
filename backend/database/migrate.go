@@ -182,7 +182,7 @@ func RunMigrations(db *sql.DB) error {
 
 	// Best-effort operational event when migrations actually advanced the
 	// schema (issue #424). Written by raw SQL on the same *sql.DB — the
-	// system_events table exists once migration 000037 has run, and any
+	// system_events table exists once migration 000038 has run, and any
 	// earlier-schema path where it does not yet exist simply drops the row.
 	if schemaAdvanced {
 		recordMigrationEvent(db, startVersion, version, elapsed)
@@ -203,7 +203,7 @@ func recordMigrationEvent(db *sql.DB, from, to uint, elapsed time.Duration) {
 		now, now, ms, fmt.Sprintf("from_version=%d to_version=%d", from, to),
 	)
 	if err != nil {
-		logger.Debug().Err(err).Msg("could not record migration_completed system event (pre-000037 schema?)")
+		logger.Debug().Err(err).Msg("could not record migration_completed system event (pre-000038 schema?)")
 	}
 }
 

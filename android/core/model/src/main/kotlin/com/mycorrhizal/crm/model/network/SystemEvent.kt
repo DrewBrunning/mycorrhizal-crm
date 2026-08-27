@@ -5,7 +5,7 @@ import com.squareup.moshi.JsonClass
 
 /**
  * System-event type tokens mirroring `backend/models/system_event.go`'s
- * SysEvent* constants, migration 000037's CHECK constraint, and web's
+ * SysEvent* constants, migration 000038's CHECK constraint, and web's
  * `frontend/src/api/systemEvents.ts` exactly. Hardcoded mirror — no dynamic
  * type-list endpoint exists (frontend trap #4); keep the four in sync by hand.
  */

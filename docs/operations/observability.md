@@ -80,7 +80,7 @@ events (Android). Reverse-chronological, filterable by `component`, `severity`
 (`info`/`warn`/`error`), `event_type`, `correlation_id`, and a time range.
 
 Event types (the full `CHECK`-constrained set is in `backend/models/system_event.go` and migration
-`000037`): `application_started`/`application_stopped`, `migration_started`/`migration_completed`/
+`000038`): `application_started`/`application_stopped`, `migration_started`/`migration_completed`/
 `migration_failed`, `job_started`/`job_completed`/`job_failed`, `sync_started`/`sync_completed`/
 `sync_failed`, `notification_sent`/`notification_failed`, `backup_completed`/`backup_failed`/
 `restore_test_completed`, `integration_failed`.

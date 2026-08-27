@@ -68,7 +68,7 @@ restore drill (`restore_test_completed` / `backup_failed`), and the migration ru
   `docs/security/data-retention-lifecycle.md` (§3) and
   `docs/security/asvs-l2-verification-report.md` §9.
 - Adding a new operational producer means adding a `RecordSystemEvent` call at its state transitions
-  and, if it is a new *kind* of event, a token in `models/system_event.go`, migration `000037`'s
+  and, if it is a new *kind* of event, a token in `models/system_event.go`, migration `000038`'s
   `CHECK` list, `frontend/src/api/systemEvents.ts`, and the Android `SystemEventTypes` mirror — the
   same hand-sync discipline as the audit vocabulary (CLAUDE.md frontend trap #4).
 - Raw-log storage/search remains the operator's stdout log driver (self-hosted, single process). The

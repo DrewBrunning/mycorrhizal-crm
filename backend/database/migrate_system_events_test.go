@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestMigrationsAddSystemEvents covers 000037: the system_events table is
+// TestMigrationsAddSystemEvents covers 000038: the system_events table is
 // created with its CHECK vocabularies and indexes, accepts a valid row,
 // rejects an out-of-vocabulary event_type, and the down migration drops it
 // cleanly. system_events holds only system-generated diagnostic data, so
@@ -18,7 +18,7 @@ func TestMigrationsAddSystemEvents(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "sys-events.db")
 
 	db, err := InitDB(dbPath)
-	require.NoError(t, err, "full migration chain incl. 000037 must apply to an empty database")
+	require.NoError(t, err, "full migration chain incl. 000038 must apply to an empty database")
 	sqlDB, err := db.DB()
 	require.NoError(t, err)
 
@@ -41,7 +41,7 @@ func TestMigrationsAddSystemEvents(t *testing.T) {
 	require.NoError(t, err)
 
 	// RunMigrations records its own migration_completed operational event
-	// (issue #424) once 000037 has created the table — so a fresh InitDB that
+	// (issue #424) once 000038 has created the table — so a fresh InitDB that
 	// applied the whole chain must have left one behind.
 	var migRows int64
 	require.NoError(t, sqlDB.QueryRow(

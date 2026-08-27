@@ -3,7 +3,7 @@
 import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 // Mirrors backend/models/system_event.go's SysEvent* tokens, migration
-// 000037's CHECK constraint, and backend/openapi.yaml's SystemEvent.event_type
+// 000038's CHECK constraint, and backend/openapi.yaml's SystemEvent.event_type
 // enum EXACTLY. No dynamic type-list endpoint exists anywhere in this codebase
 // — every enum is a hand-maintained mirror of the backend validators
 // (CLAUDE.md frontend trap #4). Keep all four in sync.
