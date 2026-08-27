@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
+import { getSubsystemHealth } from './api/subsystemHealth';
 import { getSystemEvents, type SystemEvent } from './api/systemEvents';
 import SystemEventsPage from './SystemEventsPage';
 
@@ -14,6 +15,11 @@ afterEach(() => {
 vi.mock('./api/systemEvents', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/systemEvents')>();
   return { ...actual, getSystemEvents: vi.fn() };
+});
+
+vi.mock('./api/subsystemHealth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/subsystemHealth')>();
+  return { ...actual, getSubsystemHealth: vi.fn() };
 });
 
 const getMock = vi.mocked(getSystemEvents);
@@ -34,6 +40,8 @@ function ev(overrides: Partial<SystemEvent>): SystemEvent {
 beforeEach(() => {
   getMock.mockReset();
   getMock.mockResolvedValue({ system_events: [], total: 0 });
+  vi.mocked(getSubsystemHealth).mockReset();
+  vi.mocked(getSubsystemHealth).mockResolvedValue({ subsystems: [] });
 });
 
 function renderPage() {

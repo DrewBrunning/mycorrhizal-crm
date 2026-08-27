@@ -2121,5 +2121,28 @@
     "relatedBanner": "Visualizzazione di tutti gli eventi della catena {{id}}.",
     "empty": "Nessun evento di sistema corrisponde ai filtri.",
     "emptyNoFilters": "Nessun evento di sistema registrato finora."
+  },
+  "subsystemHealth": {
+    "title": "Stato dei sottosistemi",
+    "description": "Ultimo stato valido noto per sottosistema: quando ciascuno ha avuto successo l'ultima volta, quante esecuzioni sono fallite di seguito e quando è iniziato l'incidente attuale.",
+    "refresh": "Aggiorna",
+    "status": {
+      "healthy": "Integro",
+      "failing": "In errore",
+      "unknown": "Sconosciuto"
+    },
+    "consecutiveFailures": "Errori consecutivi: {{n}}",
+    "incidentSince": "Incidente da {{time}}",
+    "lastSuccess": "Ultimo successo",
+    "lastFailure": "Ultimo errore",
+    "never": "mai",
+    "subsystems": {
+      "contact_sync": "Sincronizzazione CardDAV",
+      "calendar_sync": "Sincronizzazione CalDAV",
+      "notification": "Notifiche",
+      "backup": "Backup e ripristino",
+      "scheduler": "Processi in background",
+      "webhook": "Webhook"
+    }
   }
 }

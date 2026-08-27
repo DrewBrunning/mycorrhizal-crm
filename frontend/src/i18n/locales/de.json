@@ -2121,5 +2121,28 @@
     "relatedBanner": "Alle Ereignisse in Kette {{id}} werden angezeigt.",
     "empty": "Keine Systemereignisse entsprechen Ihren Filtern.",
     "emptyNoFilters": "Noch keine Systemereignisse aufgezeichnet."
+  },
+  "subsystemHealth": {
+    "title": "Subsystem-Zustand",
+    "description": "Letzter bekannter guter Zustand je Subsystem: wann jedes zuletzt erfolgreich war, wie viele Durchläufe hintereinander fehlgeschlagen sind und wann der aktuelle Vorfall begann.",
+    "refresh": "Aktualisieren",
+    "status": {
+      "healthy": "Fehlerfrei",
+      "failing": "Fehlerhaft",
+      "unknown": "Unbekannt"
+    },
+    "consecutiveFailures": "Aufeinanderfolgende Fehler: {{n}}",
+    "incidentSince": "Vorfall seit {{time}}",
+    "lastSuccess": "Letzter Erfolg",
+    "lastFailure": "Letzter Fehler",
+    "never": "nie",
+    "subsystems": {
+      "contact_sync": "CardDAV-Synchronisierung",
+      "calendar_sync": "CalDAV-Synchronisierung",
+      "notification": "Benachrichtigungen",
+      "backup": "Sicherung & Wiederherstellung",
+      "scheduler": "Hintergrundaufgaben",
+      "webhook": "Webhooks"
+    }
   }
 }

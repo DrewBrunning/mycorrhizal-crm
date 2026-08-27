@@ -34,6 +34,7 @@ import {
   type SystemEventType,
 } from './api/systemEvents';
 import { ListSkeleton } from './components/LoadingSkeletons';
+import SubsystemHealthPanel from './components/SubsystemHealthPanel';
 import { useDebouncedValue } from './hooks/useDebounce';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useSystemEvents } from './hooks/useSystemEvents';
@@ -116,6 +117,8 @@ export default function SystemEventsPage() {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {t('systemEvents.description')}
       </Typography>
+
+      <SubsystemHealthPanel onSelectComponent={(component) => patchFilters({ component })} />
 
       <Paper sx={{ p: 1.5, mb: 2 }}>
         <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">

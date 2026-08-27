@@ -2121,5 +2121,28 @@
     "relatedBanner": "Showing every event in chain {{id}}.",
     "empty": "No system events match your filters.",
     "emptyNoFilters": "No system events recorded yet."
+  },
+  "subsystemHealth": {
+    "title": "Subsystem health",
+    "description": "Last-known-good state per subsystem: when each last succeeded, how many runs have failed in a row, and when the current incident began.",
+    "refresh": "Refresh",
+    "status": {
+      "healthy": "Healthy",
+      "failing": "Failing",
+      "unknown": "Unknown"
+    },
+    "consecutiveFailures": "Consecutive failures: {{n}}",
+    "incidentSince": "Incident since {{time}}",
+    "lastSuccess": "Last success",
+    "lastFailure": "Last failure",
+    "never": "never",
+    "subsystems": {
+      "contact_sync": "CardDAV sync",
+      "calendar_sync": "CalDAV sync",
+      "notification": "Notifications",
+      "backup": "Backup & restore",
+      "scheduler": "Background jobs",
+      "webhook": "Webhooks"
+    }
   }
 }
