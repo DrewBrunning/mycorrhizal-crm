@@ -198,8 +198,12 @@ func (s *CalendarSyncService) SyncSubscription(ctx context.Context, db *gorm.DB,
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	start := time.Now()
 	stats, err := s.syncSubscription(ctx, db, cfg, sub)
 	err = redactURLPassword(err, sub.URL)
+
+	recordSyncEvent(ctx, db, logger.ComponentCalendarSync, sub.UserID, start, err,
+		fmt.Sprintf("created=%d updated=%d skipped=%d", stats.Created, stats.Updated, stats.Skipped))
 
 	now := time.Now().UTC()
 	sub.LastSyncedAt = &now

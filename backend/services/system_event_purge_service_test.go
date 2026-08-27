@@ -22,6 +22,9 @@ func TestPurgeExpiredSystemEvents(t *testing.T) {
 	require.NoError(t, err)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() { models.RegisterAuditDB(nil) })
+	// InitDB's migration run records a migration_completed event; clear it so
+	// the retention assertions count only rows this test inserts.
+	require.NoError(t, db.Exec("DELETE FROM system_events").Error)
 
 	old := models.SystemEvent{
 		EventType: models.SysEventJobCompleted, Severity: "info",
@@ -59,6 +62,9 @@ func TestPurgeExpiredSystemEventsScheduled_JobLock(t *testing.T) {
 	require.NoError(t, err)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() { models.RegisterAuditDB(nil) })
+	// InitDB's migration run records a migration_completed event; clear it so
+	// the retention assertions count only rows this test inserts.
+	require.NoError(t, db.Exec("DELETE FROM system_events").Error)
 
 	cfg := config.Config{SystemEventRetentionDays: 30}
 	require.NotPanics(t, func() {

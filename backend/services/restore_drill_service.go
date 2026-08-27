@@ -192,9 +192,11 @@ func RunRestoreDrillScheduled(db *gorm.DB, cfg config.Config) {
 		return
 	}
 
+	ctx := logger.JobContext(models.JobNameRestoreDrill)
+
 	acquired, err := acquireJobLock(db, models.JobNameRestoreDrill, restoreDrillMinInterval(cfg))
 	if err != nil {
-		logger.Error().Err(err).Msg("restore drill: failed to check job lock")
+		logger.Ctx(ctx).Error().Err(err).Msg("restore drill: failed to check job lock")
 		return
 	}
 	if !acquired {
@@ -202,22 +204,48 @@ func RunRestoreDrillScheduled(db *gorm.DB, cfg config.Config) {
 	}
 	defer func() {
 		if err := releaseJobLock(db, models.JobNameRestoreDrill, true); err != nil {
-			logger.Error().Err(err).Msg("restore drill: failed to release job lock")
+			logger.Ctx(ctx).Error().Err(err).Msg("restore drill: failed to release job lock")
 		}
 	}()
 
+	start := time.Now()
 	ok, detail, err := runRestoreDrill(db, cfg)
+	durMS := time.Since(start).Milliseconds()
+
 	if err != nil {
-		logger.Error().Err(err).Msg("restore drill: failed to run")
+		logger.Ctx(ctx).Error().Err(err).
+			Str(logger.FieldEvent, models.SysEventBackupFailed).
+			Str(logger.FieldComponent, logger.ComponentBackup).
+			Str(logger.FieldResult, logger.ResultFailure).
+			Int64(logger.FieldDurationMS, durMS).
+			Msg("restore drill: failed to run")
+		// Last-known status per subsystem (#421/#620) and the operational-event
+		// timeline (#424) are complementary: the former is "what state is it in
+		// now", the latter is the dated history.
 		RecordOperationalCheckResult(db, models.JobNameRestoreDrill, models.OpCheckStatusError, err.Error())
+		models.RecordSystemEvent(ctx, db, models.SystemEvent{
+			EventType: models.SysEventBackupFailed, Component: logger.ComponentBackup,
+			Operation: models.JobNameRestoreDrill, Result: models.SysResult(logger.ResultFailure),
+			DurationMS: &durMS, Error: err.Error(), Detail: "restore drill could not run",
+		})
 		triggerWebhooksForAllUsers(db, cfg, EventRestoreDrillFailed, map[string]interface{}{
 			"error": err.Error(),
 		})
 		return
 	}
 	if !ok {
-		logger.Error().Str("detail", detail).Msg("restore drill: row-count mismatch")
+		logger.Ctx(ctx).Error().Str("detail", detail).
+			Str(logger.FieldEvent, models.SysEventBackupFailed).
+			Str(logger.FieldComponent, logger.ComponentBackup).
+			Str(logger.FieldResult, logger.ResultFailure).
+			Int64(logger.FieldDurationMS, durMS).
+			Msg("restore drill: row-count mismatch")
 		RecordOperationalCheckResult(db, models.JobNameRestoreDrill, models.OpCheckStatusFailed, detail)
+		models.RecordSystemEvent(ctx, db, models.SystemEvent{
+			EventType: models.SysEventBackupFailed, Component: logger.ComponentBackup,
+			Operation: models.JobNameRestoreDrill, Result: models.SysResult(logger.ResultFailure),
+			DurationMS: &durMS, Detail: detail,
+		})
 		triggerWebhooksForAllUsers(db, cfg, EventRestoreDrillFailed, map[string]interface{}{
 			"detail": detail,
 		})
@@ -225,5 +253,15 @@ func RunRestoreDrillScheduled(db *gorm.DB, cfg config.Config) {
 	}
 
 	RecordOperationalCheckResult(db, models.JobNameRestoreDrill, models.OpCheckStatusOK, "")
-	logger.Info().Msg("restore drill: ok")
+	logger.Ctx(ctx).Info().
+		Str(logger.FieldEvent, models.SysEventRestoreTestCompleted).
+		Str(logger.FieldComponent, logger.ComponentBackup).
+		Str(logger.FieldResult, logger.ResultSuccess).
+		Int64(logger.FieldDurationMS, durMS).
+		Msg("restore drill: ok")
+	models.RecordSystemEvent(ctx, db, models.SystemEvent{
+		EventType: models.SysEventRestoreTestCompleted, Component: logger.ComponentBackup,
+		Operation: models.JobNameRestoreDrill, Result: models.SysResult(logger.ResultSuccess),
+		DurationMS: &durMS,
+	})
 }

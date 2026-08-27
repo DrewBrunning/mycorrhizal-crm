@@ -40,6 +40,15 @@ func TestMigrationsAddSystemEvents(t *testing.T) {
 		VALUES (datetime('now'), datetime('now'), 'sync_completed', 'info', 'contact_sync', 'chain-1')`)
 	require.NoError(t, err)
 
+	// RunMigrations records its own migration_completed operational event
+	// (issue #424) once 000037 has created the table — so a fresh InitDB that
+	// applied the whole chain must have left one behind.
+	var migRows int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM system_events WHERE event_type = 'migration_completed' AND component = 'migration'",
+	).Scan(&migRows))
+	assert.Equal(t, int64(1), migRows, "InitDB's migration run must record a migration_completed event")
+
 	// An out-of-vocabulary event_type is rejected by the CHECK constraint.
 	_, err = sqlDB.Exec(`
 		INSERT INTO system_events (created_at, occurred_at, event_type, severity)

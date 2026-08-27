@@ -14,7 +14,7 @@ import (
 // the caller — the direct analogue of what safeGo already guarantees for
 // each job's initial run.
 func TestRecoverJob_UnitRecoversPanic(t *testing.T) {
-	wrapped := recoverJob("test-panic-job", func() {
+	wrapped := recoverJob(nil, "test-panic-job", func() {
 		panic("boom")
 	})
 
@@ -41,7 +41,7 @@ func TestRecoverJob_SchedulerSurvivesPanic(t *testing.T) {
 
 	s := gocron.NewScheduler(time.UTC)
 
-	_, err := s.Every(1).Second().Do(recoverJob("panic-job", func() {
+	_, err := s.Every(1).Second().Do(recoverJob(nil, "panic-job", func() {
 		mu.Lock()
 		panicJobRuns++
 		mu.Unlock()

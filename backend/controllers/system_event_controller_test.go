@@ -24,6 +24,9 @@ func setupSystemEventRouter(t *testing.T) (*gorm.DB, *gin.Engine) {
 	require.NoError(t, err)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() { models.RegisterAuditDB(nil) })
+	// InitDB's migration run records a migration_completed event; clear it so
+	// each test controls the full row set.
+	require.NoError(t, db.Exec("DELETE FROM system_events").Error)
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
