@@ -205,7 +205,10 @@ Detail and the hard-won traps for each layer follow.
 - **Lives in** `frontend/e2e/` (specs, `fixtures.ts`, `global-setup.ts`).
 - **Runs via** `npx playwright test`; CI `e2e-tests.yml` `e2e` job (builds the
   all-in-one image, starts compose, waits on `/health/live`, runs Playwright, then
-  the `cmd/loadsmoke` concurrent-write pass against the running instance).
+  the `cmd/loadsmoke` concurrent-write pass against the running instance). The
+  workflow also runs on the nightly schedule (un-path-gated, 03:25 UTC) so a
+  backend-only change that breaks a shipped user flow is caught overnight — see
+  [Layers vs CI path gating](#layers-vs-ci-path-gating).
 - **Production-default pass (issue #274):** the main suite runs against
   `docker-compose.test.yml`, which raises the API rate limit and enables CalDAV
   so a full parallel run can finish — so the shipped defaults (real rate limit,
@@ -311,7 +314,7 @@ gap to file, never something to silently absorb.
 | Route↔spec drift, binding-shape drift, dropped response keys | API contract | v0.6.3 (#266) |
 | Client/server contract mismatch | API contract + E2E web/Android | v0.6.10 |
 | vCard/JSContact/CSV/iCal format correctness, lossy conversions, unknown fields, malformed input, sensitivity filtering | Import/export interop | v0.6.5 |
-| Round-trip fidelity, repeated-conversion stability | Import/export interop | v0.6.5 |
+| Round-trip fidelity, repeated-conversion stability | Import/export interop | v0.6.3 (TEST-03 #431, pulled forward from v0.6.5) |
 | Migration data loss, semantic drift across schema versions, dirty/version mishandling | Migration | v0.6.4 |
 | Interrupted migration, migration rollback/recovery, first-boot migration on empty DB | Migration + release/install smoke | v0.6.4, v0.6.6, #438/#452 |
 | Monica/Meerkat import mapping errors | Import/export interop (fixtures per DATA-*) | v0.6.4 (#351/#353) |
@@ -351,7 +354,7 @@ success, so all checks can be required in branch protection.
 | Migration | `backend` |
 | Frontend unit | `frontend` |
 | Android unit/Robolectric | `android` |
-| E2E web | `frontend` + `openapi` + `infra` (builds/runs the deployed artifact) |
+| E2E web | `frontend` + `openapi` + `infra` (builds/runs the deployed artifact) + nightly full-suite run (schedule, 2026-08-28) |
 | E2E Android | `android` + `openapi` + `infra` (push:main + nightly + manual only, #578) |
 | Release/install smoke | `infra` (planned, #450) |
 | Performance/load | `backend` (benchmarks) + `infra` (loadsmoke in the e2e job) |
@@ -370,9 +373,13 @@ Two nuances worth writing down, because the mapping is *almost* clean:
   intended: the contract's home is `openapi`.
 - The **web** E2E suite gates on `frontend`/`openapi`/`infra`/`workflows`, not
   `backend`: a pure `backend/**` change is covered by the Go checks in
-  `unit-tests.yml` and does not re-run the full e2e stack (e2e-tests.yml header
-  comment). A backend-only change that breaks a user flow is therefore caught by
-  the nightly full suite, not by the PR — a deliberate cost/speed trade.
+  `unit-tests.yml` and does not re-run the full e2e stack on the PR. A
+  backend-only change that breaks a shipped user flow is therefore caught by
+  the **nightly** full web suite — `e2e-tests.yml` also triggers on the
+  schedule event (03:25 UTC, un-path-gated since a scheduled run has no diff to
+  gate on) — not by the PR. That is a deliberate cost/speed trade: the PR path
+  skips the deployed-artifact stack for backend-only diffs, and the overnight
+  run is where that signal lands.
 
 ## Anti-goal: coverage percentage is not the acceptance criterion
 
@@ -410,6 +417,24 @@ developer-specific state:
   do not depend on local state or ordering (Playwright reuses a `storageState`
   captured in the `setup` project).
 
+## Bug disposition: a test that catches a bug owns it
+
+The layers this page describes are the gate for every milestone from v0.6.3
+forward, so a bug they catch must not wait for its "natural" domain milestone
+to be fixed. Standing policy (2026-08-28, recorded in the v0.6.3 milestone
+description and gate #533):
+
+- **File or fix it in the milestone where it was found.** Any bug a test layer
+  reveals is fixed as part of that milestone, or filed as an issue in that
+  milestone with an explicit disposition — never silently deferred to an
+  arbitrary later milestone. The milestone that builds the tests is the
+  milestone that owns the bugs they catch; that is the whole reason the layers
+  land before the domains they validate.
+- **A failing test in these layers blocks a milestone.** The gate #533 standing
+  criterion is that these layers' tests are green on the merge commit of every
+  milestone from here forward. A bug the tests catch keeps a milestone blocked
+  until it is fixed — it does not get "exempted because it was found late."
+
 ## References
 
 - Issue #429 (TEST-01) — this pyramid; #533 — the v0.6.3 milestone gate.
@@ -419,6 +444,8 @@ developer-specific state:
   `docs/golden-fixtures/`.
 - TEST-02 (#430) — the canonical pathological dataset that the DB, migration,
   and interop layers will consume; MIG-01 (#436) — versioned migration fixtures.
+- TEST-03 (#431) — the semantic round-trip comparison (pulled forward into
+  v0.6.3 so TEST-07 #435 can consume it).
 - DEPLOY-01 (#450) — the release/install smoke layer; TEST-06 (#434) — failure
   injection; PERF-01 (#468) — performance at scale.
 - Issue #257 — contract fixtures; #266 — the spec-derived contract fixture.

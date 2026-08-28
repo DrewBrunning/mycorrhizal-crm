@@ -44,6 +44,14 @@ cd backend && go build ./... && go vet ./... && gofmt -l . && go test ./...
 cd frontend && npx tsc --noEmit && npx vitest run
 ```
 
+Contract fixtures (issues #257 + #266): the shared web+Android contract-test files in
+`testdata/contract-fixtures/` are **generated** from `backend/openapi.yaml`'s response examples by
+`cd backend && go run ./cmd/gencontract` (or `make gen-contract-fixtures`) — never hand-captured or
+hand-edited. A backend response-shape change is: edit the `example:` (and schema) in openapi.yaml,
+regenerate, commit the fixture diff. The drift test `backend/contract_fixtures_test.go` fails CI until
+they're regenerated; the spec's own validator rejects an example that doesn't fit its schema, so the
+fixtures can't silently drift from the documented contract.
+
 Android instrumented E2E (issue #238): the suite in `android/app/src/androidTest` drives the real app
 against the real `docker-compose.test.yml` backend on an emulator/device — login → list → detail →
 edit, favorites (issue #212), archive/delete + audit undo. Emulator: `cd android && ./gradlew
