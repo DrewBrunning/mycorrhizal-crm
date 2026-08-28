@@ -489,9 +489,14 @@ function StorageCard({ status }: { status: SystemStatusResponse }) {
           ],
           [
             t('systemStatus.storage.growth30d'),
-            growth30 != null ? t('systemStatus.storage.grew', { bytes: formatBytes(growth30) }) : '—',
+            growth30 != null
+              ? t('systemStatus.storage.grew', { bytes: formatBytes(growth30) })
+              : '—',
           ],
-          [t('systemStatus.storage.projectedFull'), projectedFull ? formatDateTime(projectedFull) : '—'],
+          [
+            t('systemStatus.storage.projectedFull'),
+            projectedFull ? formatDateTime(projectedFull) : '—',
+          ],
         ]}
       />
 
