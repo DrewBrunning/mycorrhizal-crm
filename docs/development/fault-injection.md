@@ -1,0 +1,113 @@
+---
+title: Failure Injection & Chaos
+parent: Development
+nav_order: 7
+---
+
+# Failure Injection & Chaos (TEST-06)
+
+This page is issue #434's written-down deliverable: the split-harness rule, the
+in-process injection mechanism, the external-fault CI job, and **the fault
+catalog** — the table the `v0.8.0` adversarial audit (issue #500) reviews to
+find the faults this list omits.
+
+## The split-harness rule
+
+There are two mechanisms, and a hard rule for choosing between them:
+
+> **If the fault can be expressed as an error returned across an existing
+> interface, inject it in-process. If it requires the process or the filesystem
+> to actually misbehave, it belongs in the external-fault CI job.**
+
+The failure mode of a split harness is people guessing which side a fault
+belongs on. Don't. A fault that fits through an interface (a DB error
+mid-transaction, a sentinel from an integration client) is injected
+in-process via the `faults` package and tested in the normal Go suite. A fault
+that genuinely needs the process to die or the disk to fill (SIGKILL
+mid-migration, `ENOSPC` during backup) is driven by the external job
+(`.github/workflows/chaos-tests.yml`), which is slow, few, and high-value.
+
+## The in-process mechanism: `backend/internal/faults`
+
+Faults are inert unless armed. Production code checks a fault at a real seam
+with one `faults.Hook(name)` call and routes the returned error through its
+existing error path — **that path is what the injection test asserts**. An
+unarmed hook is a read-lock map lookup returning nil; it changes nothing.
+
+Arming is programmatic (the test suite) or environment-driven (the external
+job):
+
+```bash
+# A subprocess the test cannot reach from inside (the external job):
+MYCORRHIZAL_FAULTS=fault.name,fault:err:message,fault:pause:5s
+```
+
+| Entry form | Effect |
+|---|---|
+| `name` | error fault, standard `injected fault: <name>` |
+| `name:err:<text>` | error fault with custom text (may contain colons) |
+| `name:pause:<duration>` | pause fault: block for the duration, log a greppable marker, return nil |
+
+In-process, tests use `faults.ArmError(name, err)`, `faults.ArmPause(name, d)`,
+`faults.Disarm(name)`, and `faults.Reset()` (in `t.Cleanup`). `errors.Is`
+against the armed error (or `faults.ErrInjected`) is the portable assertion.
+
+Seams are deliberately few and at real boundaries — the migration driver's
+per-migration point, an import confirm's transaction, an integration client's
+request path. They are not sprinkled through business logic. Where a listed
+fault has no seam yet, adding one is the work of the ticket that needs it.
+
+## The external-fault job
+
+`.github/workflows/chaos-tests.yml` runs the faults that must actually break a
+process or a filesystem. It is gated to its own `chaos` paths filter (see
+`.github/filters.yaml`), so it does **not** run on every push — only when the
+injection harness itself changes, on a nightly schedule, or on manual dispatch.
+
+The external job does not observe "it errored"; it asserts **the outcome is
+defined**: recovered, or failed closed with the data intact. `PRAGMA
+integrity_check` passes on the database after every interruption it performs.
+
+## Fault catalog
+
+Each row names the fault, its seam, what it simulates, the **defined outcome**
+that must hold, and where each outcome is pinned. `in-process` tests run in the
+normal Go suite; `external` tests run in the chaos job. A fault with no row
+here is a gap to file, never something to silently absorb.
+
+| Fault (env name) | Seam | Simulates | Defined outcome | Pinned by |
+|---|---|---|---|---|
+| `database.migration.statement` | `database/sqlite_driver.go` `Run` | Process killed between a migration's commit and its clean-mark (crash leaves the version dirty, migration applied) | The run returns an error naming the failing version + file (issue #532 gate); the DB is left **dirty** at that version with the migration's schema applied; `PRAGMA integrity_check` is `ok`; the next run **recovers deterministically** to the latest schema (dirty-force + re-run from N+1), not dirty | in-process: `database/fault_injection_test.go` `TestInjectedMigrationFaultFailsClosedAndRecovers`, `...MidFlightRecordsEvent`, `...PauseBlocksThenCompletes`; external: chaos job `migration-kill` |
+| `services.import.confirm` | `services/import_session.go` `Confirm` + `ConfirmVCF` transaction | DB error mid-import-confirm | The whole confirm **fails closed**: every contact row rolls back, the session stays unconsumed, a retry after the fault clears applies the same import cleanly — no silent partial state | in-process: `services/import_fault_injection_test.go` `TestConfirmInjectedDBErrorFailsClosed`, `TestConfirmVCFInjectedDBErrorFailsClosed`, `TestConfirmInjectedFaultDoesNotLeakToOtherSessions` |
+| `services.immich.request` | `services/immich_client.go` `doRequest` | Unreachable / auth-expired / resource-deleted-remotely / arbitrary upstream failure | The armed sentinel crosses the request boundary unchanged; callers hit their documented error path (T42 classification, service degrade-to-cache), never a swallow or a panic; the seam is inert once disarmed | in-process: `services/immich_fault_injection_test.go` `TestImmichInjectedRequestFaultCrossesBoundaryUnchanged`, `...DoesNotPersistBeyondArm`, `...ReachesServiceDiagnostics` |
+| Real `ENOSPC` during backup | `cmd/backup` → `database.BackupSnapshot` | Disk exhaustion while snapshotting | The CLI exits non-zero; the source database is untouched (`integrity_check` ok); no partial file appears at the output path (temp-then-link, fail-closed) | external: chaos job `disk-full-backup` |
+
+### Planned (filed) — same technique, consumers
+
+These are the tickets that consume the harness above; the domain milestones own
+the acceptance criteria, TEST-06 owns the technique:
+
+- **MIG-04 / MIG-05 (#439/#440)** — fail-closed + rollback/recovery procedures
+  for migrations, exercising `database.migration.statement` including the
+  pause/SIGKILL window.
+- **DEPLOY-03 (#452)** — interrupted startup before/during/after migration.
+- **CON-04 (#459)** and **#526** — retry paths and ambiguous failures (the
+  write succeeded but the response was lost), injected in-process.
+- **#498** — constrained resources; **#530** — pre-migration backup, whose
+  failure path the backup seam must exercise.
+- The remaining integration clients (Paperless, Seafile, WebDAV, CardDAV/CalDAV,
+  webhooks, notification channels) take the same seam shape as
+  `services.immich.request`; their sentinel handling is already pinned by the
+  httptest-based fake-server suites in `services/`.
+
+## Hand-verification
+
+Per CLAUDE.md, an injection test must prove it pins its recovery path: remove
+the recovery branch and confirm the test fails, then restore. Done for the
+migration seam: deleting the dirty-state `m.Force(version)` branch in
+`database/migrate.go` `RunMigrations` fails
+`TestInjectedMigrationFaultFailsClosedAndRecovers` on its second `MigrateUp`
+("Dirty database version 1. Fix and force version."). The equivalent exercise
+for the import seam is removing the `txErr` check that returns
+`apperrors.ErrDatabase` — the injected error then surfaces as a success with
+zero rows, and the test's "must fail closed" assertions fail.

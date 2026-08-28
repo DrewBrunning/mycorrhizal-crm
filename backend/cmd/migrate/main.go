@@ -27,6 +27,7 @@ import (
 	"os"
 
 	"mycorrhizal/database"
+	"mycorrhizal/logger"
 )
 
 // defaultDBPath matches config.Config's own SQLITE_DB_PATH default so the CLI
@@ -53,7 +54,24 @@ func dbPath() string {
 	return defaultDBPath
 }
 
+// initCLILogger mirrors the server's LOG_LEVEL / LOG_PRETTY env contract so
+// the database package's structured logs reach stderr/stdout. Without an
+// initialized logger the zero-value zerolog.Logger discards every event, so a
+// bare `make migrate-up` produced NO diagnostics — no migration_failed line,
+// and no issue #434 injection-pause marker for the external-fault CI job to
+// grep. Split out of run so the env branches are covered by tests.
+func initCLILogger() {
+	level := os.Getenv("LOG_LEVEL")
+	if level == "" {
+		level = "info"
+	}
+	pretty := os.Getenv("LOG_PRETTY") == "true" || os.Getenv("LOG_PRETTY") == "1"
+	logger.InitLogger(logger.Config{Level: level, Pretty: pretty})
+}
+
 func run(command string) error {
+	initCLILogger()
+
 	path := dbPath()
 
 	switch command {

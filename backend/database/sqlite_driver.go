@@ -15,11 +15,26 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"mycorrhizal/internal/faults"
+
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database"
 )
 
 var defaultMigrationsTable = "schema_migrations"
+
+// faultMigrationStatement is the failure-injection seam for the migration
+// driver's per-migration boundary (issue #434). Armed via the faults package,
+// it fires inside golang-migrate's Run AFTER the migration body has committed
+// but BEFORE golang-migrate marks the version clean — the crash signature a
+// SIGKILL between a migration's commit and its clean-mark leaves behind:
+// version dirty at N, migration N fully applied. The existing dirty-state
+// recovery (force version + re-run from N+1) is provably correct for exactly
+// this window, which is what the injection tests pin. The external-fault CI
+// job uses `MYCORRHIZAL_FAULTS=database.migration.statement:pause:<dur>` to
+// park a subprocess in this window and then SIGKILL it. See
+// docs/development/fault-injection.md.
+const faultMigrationStatement = "database.migration.statement"
 
 var (
 	errDatabaseDirty = fmt.Errorf("database is dirty")
@@ -192,7 +207,22 @@ func (m *sqliteDriver) Run(migration io.Reader) error {
 	if m.config.NoTxWrap {
 		return m.executeQueryNoTx(query)
 	}
-	return m.executeQuery(query)
+	if err := m.executeQuery(query); err != nil {
+		return err
+	}
+
+	// Issue #434 failure-injection seam. The migration body has just committed;
+	// golang-migrate has NOT yet cleared the dirty flag (SetVersion(false)
+	// happens after Run returns). An armed error fault therefore fails the run
+	// with the version left dirty — the exact crash signature of a process
+	// killed between a migration's commit and its clean-mark — and the
+	// dirty-state recovery (force + re-run from N+1) is what the injection
+	// tests assert. A pause fault parks here for the external-fault CI job to
+	// SIGKILL. Unarmed, faults.Hook is a nil-returning map lookup.
+	if err := faults.Hook(faultMigrationStatement); err != nil {
+		return &database.Error{OrigErr: err, Query: []byte(query)}
+	}
+	return nil
 }
 
 func (m *sqliteDriver) executeQuery(query string) error {
