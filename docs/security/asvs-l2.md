@@ -479,7 +479,7 @@ L3-only, out of scope: 14.1.5.
 | 14.2.2 | Unneeded features removed | satisfied | No debug endpoints; release-mode config guards (`config.go:575-583`); no sample data |
 | 14.2.3 | SRI for CDN assets | not-applicable | All assets self-hosted; no CDN |
 | 14.2.4 | Third-party from trusted repos | satisfied | Pinned actions by SHA (zizmor), lockfiles (`go.sum`, `yarn.lock`), pinned Go toolchain |
-| 14.2.5 | SBOM maintained | satisfied | SBOM generated + attached as image referrer (`docker-publish.yml:411-416`); standalone signed SPDX/CycloneDX SBOMs per release and per main-branch merge (`syft-sbom.yml`); how to fetch and verify one — `docs/security/release-verification.md` |
+| 14.2.5 | SBOM maintained | satisfied | SBOM generated + attached as image referrer (`docker-publish.yml:431-436`); standalone signed SPDX/CycloneDX SBOMs per release and per main-branch merge (`syft-sbom.yml`); how to fetch and verify one — `docs/security/release-verification.md` |
 | 14.2.6 | Third-party sandboxed | not-applicable | Single-process app; dependency vetting via scanners (14.2.1) |
 | 14.3.2 | Debug modes disabled in production | satisfied | `GIN_MODE=release` required for prod-safe config (`.env.example:21,102`); enforced by config tests (`config_test.go:45-91`) |
 | 14.3.3 | No version disclosure in headers | satisfied | No version headers/`X-Powered-By`; server errors are generic (V7.4.1) |
