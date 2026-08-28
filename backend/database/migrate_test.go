@@ -3,15 +3,21 @@ package database
 import (
 	"bytes"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"io/fs"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -1580,4 +1586,97 @@ func TestSyncHealthFieldsMigration(t *testing.T) {
 		require.NoError(t, sqlDB.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s", table)).Scan(&rows))
 		assert.EqualValues(t, 2, rows, "%s: a rollback must not destroy subscriptions", table)
 	}
+}
+
+// captureMigrationLogger swaps the package logger for one writing JSON to buf
+// and restores it afterwards. Mirrors logger/context_test.go's captureLogger —
+// this package reaches the same seams (logger.Logger, zerolog.DefaultContextLogger,
+// zerolog global level) so it can assert on the structured failure line.
+func captureMigrationLogger(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	buf := &bytes.Buffer{}
+	old := logger.Logger
+	oldDefault := zerolog.DefaultContextLogger
+	oldLevel := zerolog.GlobalLevel()
+	logger.Logger = zerolog.New(buf)
+	zerolog.DefaultContextLogger = &logger.Logger
+	zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	t.Cleanup(func() {
+		logger.Logger = old
+		zerolog.DefaultContextLogger = oldDefault
+		zerolog.SetGlobalLevel(oldLevel)
+	})
+	return buf
+}
+
+// firstCreateTable extracts the table name of the first CREATE TABLE (or
+// CREATE VIRTUAL TABLE) statement in an embedded migration file. Used to
+// sabotage the last migration's table so a re-run fails in a controlled way.
+func firstCreateTable(t *testing.T, filename string) string {
+	t.Helper()
+	raw, err := fs.ReadFile(migrationsFS, filepath.Join("migrations", filename))
+	require.NoError(t, err)
+	re := regexp.MustCompile(`(?i)CREATE\s+(?:VIRTUAL\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([\w_]+)`)
+	m := re.FindStringSubmatch(string(raw))
+	if m == nil {
+		return ""
+	}
+	return m[1]
+}
+
+// TestMigrationFailureIdentifiesMigrationAndRecordsEvent pins the milestone
+// v0.6.2 gate criterion "Migration failures provide actionable diagnostics"
+// (issue #532): a failed migration must name the failing version and file,
+// emit a structured migration_failed log line, and persist a migration_failed
+// system event — not just echo the SQL error.
+//
+// Setup: fully migrate a temp database, then drop and re-create the last
+// migration's table with a conflicting schema and roll schema_migrations back
+// one. golang-migrate then re-applies the last migration and fails — a failure
+// that lands after 000038, so system_events exists and the event row is real.
+func TestMigrationFailureIdentifiesMigrationAndRecordsEvent(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "fail.db")
+	require.NoError(t, MigrateUp(dbPath))
+
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	latest, err := LatestMigrationVersion()
+	require.NoError(t, err)
+	require.NotZero(t, latest, "need at least one migration")
+	name := migrationFileForVersion(latest)
+	require.NotEmpty(t, name, "last migration file must resolve by version")
+	table := firstCreateTable(t, name)
+	require.NotEmpty(t, table, "test assumes the last migration creates a table; update it if the tail migration changes shape")
+
+	_, err = sqlDB.Exec("DROP TABLE " + table)
+	require.NoError(t, err)
+	_, err = sqlDB.Exec("CREATE TABLE " + table + " (sabotage INTEGER)")
+	require.NoError(t, err)
+	_, err = sqlDB.Exec("UPDATE schema_migrations SET version = ?, dirty = 0", latest-1)
+	require.NoError(t, err)
+
+	buf := captureMigrationLogger(t)
+	err = RunMigrations(sqlDB)
+	require.Error(t, err, "sabotaged last migration must fail")
+	assert.Contains(t, err.Error(), strconv.FormatUint(uint64(latest), 10), "returned error must name the failing migration version")
+	assert.Contains(t, err.Error(), name, "returned error must name the failing migration file")
+
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	require.NotEmpty(t, lines, "a structured migration_failed log line must be emitted")
+	var line map[string]any
+	require.NoError(t, json.Unmarshal([]byte(lines[len(lines)-1]), &line))
+	assert.Equal(t, "migration_failed", line["event"])
+	assert.Equal(t, strconv.FormatUint(uint64(latest), 10), fmt.Sprintf("%v", line["version"]))
+	assert.Equal(t, name, line["migration"])
+
+	var count int64
+	// RunMigrations' closeMigrator closes sqlDB (migrate.go's note: Close()'s
+	// database half closes the *sql.DB), so count on a fresh connection.
+	checkDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer checkDB.Close()
+	require.NoError(t, checkDB.QueryRow("SELECT COUNT(*) FROM system_events WHERE event_type = 'migration_failed'").Scan(&count))
+	assert.EqualValues(t, 1, count, "a migration_failed system event must be recorded")
 }

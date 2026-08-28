@@ -123,3 +123,8 @@ fly.test.toml
 
 # Compiled helper binary from `go build ./cmd/dastcanary` run in-tree.
 /backend/dastcanary
+
+# Local DAST scan output (zap-dast.yml uploads these as CI artifacts; the
+# decision in issue #615 is that the SARIF is deliberately NOT uploaded to
+# code scanning, so it must never land in git either).
+/zap/

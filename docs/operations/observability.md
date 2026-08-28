@@ -267,6 +267,26 @@ one alert, not one per evaluation.
 
 Subjects follow `🔴 Backup failed` … `🟢 Backup recovered after 3 failures`.
 
+## Import/export diagnostics
+
+Import and export are user-triggered, so their failure signal lives with the user rather than in a
+scheduler row — but the two halves are deliberately asymmetric:
+
+**Imports** persist a **run history** (`import_runs`, issue #651). Every confirmed import writes one
+row: `format` (`csv` / `vcf` / `jscontact` / `records`), the processed/created/updated/skipped/error
+counts, and `created_at`. It is per-user, newest-first, capped at the 50 most recent runs, and
+consulted on the **Data** settings page. An import that partially failed keeps its per-record error
+strings only in the live response (`ImportResult`); the history stores counts, not messages
+(`models/import_run.go`).
+
+**Exports** identify failures by **operation + category** rather than by history (issue #532 gate).
+Every export handler attaches `operation` (`export:csv`, `export:vcard4`, `export:jscontact`,
+`export:audit`) and `category` (`database` / `serialization` / `validation`) to both the structured
+log line and the HTTP error response's `error.details`. A CSV export whose contacts query fails,
+for example, logs `operation=export:csv category=database` and returns
+`{"error":{"code":"INTERNAL_ERROR","details":{"operation":"export:csv","category":"database"}, …}}`.
+Filtering the log stream on `operation=export:*` or `category=` covers every export failure path.
+
 ## Related knobs
 
 | env var | default | effect |

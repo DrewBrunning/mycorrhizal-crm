@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 )
 
@@ -127,6 +128,39 @@ func groupingNamesByContact(db *gorm.DB, userID uint, joinTable, entityTable, jo
 	return out, nil
 }
 
+// Export operation tokens and failure categories. Milestone v0.6.2 gate
+// (issue #532): an export failure must identify the relevant operation and
+// failure category in both the operator log and the client response — the
+// same contract import_runs gives the import side.
+const (
+	exportOpCSV       = "export:csv"
+	exportOpVCard4    = "export:vcard4"
+	exportOpJSContact = "export:jscontact"
+	exportOpAudit     = "export:audit"
+)
+
+const (
+	exportCatDatabase      = "database"
+	exportCatSerialization = "serialization"
+	exportCatValidation    = "validation"
+)
+
+// abortExportError logs one structured export failure — operation, category,
+// and the underlying error — and aborts with an INTERNAL_ERROR whose response
+// details carry the same operation and category. The HTTP status is unchanged
+// from the pre-existing behavior (500) so the frontend's download flow is
+// unaffected; only the diagnostic signal is added.
+func abortExportError(c *gin.Context, log *zerolog.Logger, operation, category, message string, err error) {
+	log.Error().
+		Err(err).
+		Str("operation", operation).
+		Str("category", category).
+		Msg(message)
+	apperrors.AbortWithError(c, apperrors.ErrInternal(message).
+		WithDetails("operation", operation).
+		WithDetails("category", category))
+}
+
 // parseExportFieldSelection reads the ?sections= and ?include_sensitive=
 // query params accepted by the vCard/JSContact export handlers (T9,
 // T9). sections is a
@@ -141,7 +175,7 @@ func groupingNamesByContact(db *gorm.DB, userID uint, joinTable, entityTable, jo
 //
 // The second return is false when the caller should abort (an error has
 // already been written to the response).
-func parseExportFieldSelection(c *gin.Context) (*models.FieldSelection, bool) {
+func parseExportFieldSelection(c *gin.Context, operation string) (*models.FieldSelection, bool) {
 	raw := c.Query("sections")
 	var sel *models.FieldSelection
 	if raw == "" {
@@ -154,7 +188,9 @@ func parseExportFieldSelection(c *gin.Context) (*models.FieldSelection, bool) {
 				continue
 			}
 			if err := sel.Enable(token); err != nil {
-				apperrors.AbortWithError(c, apperrors.ErrValidation(err.Error()))
+				apperrors.AbortWithError(c, apperrors.ErrValidation(err.Error()).
+					WithDetails("operation", operation).
+					WithDetails("category", exportCatValidation))
 				return nil, false
 			}
 		}
@@ -187,8 +223,7 @@ func ExportData(c *gin.Context) {
 	// if any.
 	var definitions []models.FieldDefinition
 	if err := db.Where("user_id = ?", userID).Order("label ASC").Find(&definitions).Error; err != nil {
-		log.Error().Err(err).Msg("Failed to fetch field definitions for export")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch field definitions"))
+		abortExportError(c, log, "export:csv", "database", "Failed to fetch field definitions for export", err)
 		return
 	}
 
@@ -197,8 +232,7 @@ func ExportData(c *gin.Context) {
 	if err := db.Where("user_id = ?", userID).
 		Order("firstname ASC, lastname ASC").
 		Find(&contacts).Error; err != nil {
-		log.Error().Err(err).Msg("Failed to fetch contacts for export")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch contacts"))
+		abortExportError(c, log, "export:csv", "database", "Failed to fetch contacts for export", err)
 		return
 	}
 
@@ -210,8 +244,7 @@ func ExportData(c *gin.Context) {
 	// export, which filters non-normal in projectCustomFields' query).
 	var fieldValues []models.FieldValue
 	if err := db.Where("user_id = ?", userID).Find(&fieldValues).Error; err != nil {
-		log.Error().Err(err).Msg("Failed to fetch field values for export")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch field values"))
+		abortExportError(c, log, "export:csv", "database", "Failed to fetch field values for export", err)
 		return
 	}
 	valueByContactAndDef := make(map[string]map[string]json.RawMessage, len(fieldValues))
@@ -230,8 +263,7 @@ func ExportData(c *gin.Context) {
 	if err := db.Where("user_id = ?", userID).
 		Order("created_at ASC").
 		Find(&relationshipEdges).Error; err != nil {
-		log.Error().Err(err).Msg("Failed to fetch relationship edges for export")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch relationship edges"))
+		abortExportError(c, log, "export:csv", "database", "Failed to fetch relationship edges for export", err)
 		return
 	}
 	type contactRef struct {
@@ -251,8 +283,7 @@ func ExportData(c *gin.Context) {
 		Preload("Contacts").
 		Order("date DESC").
 		Find(&activities).Error; err != nil {
-		log.Error().Err(err).Msg("Failed to fetch activities for export")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch activities"))
+		abortExportError(c, log, "export:csv", "database", "Failed to fetch activities for export", err)
 		return
 	}
 
@@ -261,8 +292,7 @@ func ExportData(c *gin.Context) {
 		Preload("Contact").
 		Order("date DESC").
 		Find(&notes).Error; err != nil {
-		log.Error().Err(err).Msg("Failed to fetch notes for export")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch notes"))
+		abortExportError(c, log, "export:csv", "database", "Failed to fetch notes for export", err)
 		return
 	}
 
@@ -271,8 +301,7 @@ func ExportData(c *gin.Context) {
 		Preload("Contact").
 		Order("remind_at ASC").
 		Find(&reminders).Error; err != nil {
-		log.Error().Err(err).Msg("Failed to fetch reminders for export")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch reminders"))
+		abortExportError(c, log, "export:csv", "database", "Failed to fetch reminders for export", err)
 		return
 	}
 
@@ -284,8 +313,7 @@ func ExportData(c *gin.Context) {
 	var foodPreferences []models.Preference
 	if err := db.Where("user_id = ? AND category = ?", userID, models.PreferenceCategoryFood).
 		Find(&foodPreferences).Error; err != nil {
-		log.Error().Err(err).Msg("Failed to fetch food preferences for export")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch food preferences"))
+		abortExportError(c, log, "export:csv", "database", "Failed to fetch food preferences for export", err)
 		return
 	}
 	foodByVCardUID := make(map[string][]string, len(foodPreferences))
@@ -302,15 +330,13 @@ func ExportData(c *gin.Context) {
 	circlesByVCardUID, err := groupingNamesByContact(db, userID,
 		"circle_members", "circles", "circle_id", "member_vcard_uid")
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to fetch circle memberships for export")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch circle memberships"))
+		abortExportError(c, log, "export:csv", "database", "Failed to fetch circle memberships for export", err)
 		return
 	}
 	tagsByVCardUID, err := groupingNamesByContact(db, userID,
 		"contact_tags", "tags", "tag_id", "contact_vcard_uid")
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to fetch tag assignments for export")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch tag assignments"))
+		abortExportError(c, log, "export:csv", "database", "Failed to fetch tag assignments for export", err)
 		return
 	}
 
@@ -334,8 +360,7 @@ func ExportData(c *gin.Context) {
 		contactHeaders = append(contactHeaders, def.Label)
 	}
 	if err := writer.Write(csvSafeRecord(contactHeaders)); err != nil {
-		log.Error().Err(err).Msg("Failed to write contact headers")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+		abortExportError(c, log, "export:csv", "serialization", "Failed to write contact headers", err)
 		return
 	}
 
@@ -366,8 +391,7 @@ func ExportData(c *gin.Context) {
 			record = append(record, serializeFieldValueForCSV(values[def.ID]))
 		}
 		if err := writer.Write(csvSafeRecord(record)); err != nil {
-			log.Error().Err(err).Msg("Failed to write contact record")
-			apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+			abortExportError(c, log, "export:csv", "serialization", "Failed to write contact record", err)
 			return
 		}
 	}
@@ -386,8 +410,7 @@ func ExportData(c *gin.Context) {
 		"Target Contact Name", "Status", "Sensitivity", "Source", "Created At", "Updated At",
 	}
 	if err := writer.Write(relationshipHeaders); err != nil {
-		log.Error().Err(err).Msg("Failed to write relationship headers")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+		abortExportError(c, log, "export:csv", "serialization", "Failed to write relationship headers", err)
 		return
 	}
 
@@ -419,8 +442,7 @@ func ExportData(c *gin.Context) {
 			edge.UpdatedAt.Format(time.RFC3339),
 		}
 		if err := writer.Write(csvSafeRecord(record)); err != nil {
-			log.Error().Err(err).Msg("Failed to write relationship record")
-			apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+			abortExportError(c, log, "export:csv", "serialization", "Failed to write relationship record", err)
 			return
 		}
 	}
@@ -433,8 +455,7 @@ func ExportData(c *gin.Context) {
 		"ID", "Title", "Description", "Location", "Date", "Contact Names", "Created At", "Updated At",
 	}
 	if err := writer.Write(activityHeaders); err != nil {
-		log.Error().Err(err).Msg("Failed to write activity headers")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+		abortExportError(c, log, "export:csv", "serialization", "Failed to write activity headers", err)
 		return
 	}
 
@@ -454,8 +475,7 @@ func ExportData(c *gin.Context) {
 			activity.UpdatedAt.Format(time.RFC3339),
 		}
 		if err := writer.Write(csvSafeRecord(record)); err != nil {
-			log.Error().Err(err).Msg("Failed to write activity record")
-			apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+			abortExportError(c, log, "export:csv", "serialization", "Failed to write activity record", err)
 			return
 		}
 	}
@@ -468,8 +488,7 @@ func ExportData(c *gin.Context) {
 		"ID", "Contact ID", "Contact Name", "Content", "Date", "Created At", "Updated At",
 	}
 	if err := writer.Write(noteHeaders); err != nil {
-		log.Error().Err(err).Msg("Failed to write note headers")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+		abortExportError(c, log, "export:csv", "serialization", "Failed to write note headers", err)
 		return
 	}
 
@@ -490,8 +509,7 @@ func ExportData(c *gin.Context) {
 			note.UpdatedAt.Format(time.RFC3339),
 		}
 		if err := writer.Write(csvSafeRecord(record)); err != nil {
-			log.Error().Err(err).Msg("Failed to write note record")
-			apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+			abortExportError(c, log, "export:csv", "serialization", "Failed to write note record", err)
 			return
 		}
 	}
@@ -505,8 +523,7 @@ func ExportData(c *gin.Context) {
 		"By Mail", "Reoccur From Completion", "Completed", "Last Sent", "Created At", "Updated At",
 	}
 	if err := writer.Write(reminderHeaders); err != nil {
-		log.Error().Err(err).Msg("Failed to write reminder headers")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+		abortExportError(c, log, "export:csv", "serialization", "Failed to write reminder headers", err)
 		return
 	}
 
@@ -548,8 +565,7 @@ func ExportData(c *gin.Context) {
 			reminder.UpdatedAt.Format(time.RFC3339),
 		}
 		if err := writer.Write(csvSafeRecord(record)); err != nil {
-			log.Error().Err(err).Msg("Failed to write reminder record")
-			apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+			abortExportError(c, log, "export:csv", "serialization", "Failed to write reminder record", err)
 			return
 		}
 	}
@@ -557,8 +573,7 @@ func ExportData(c *gin.Context) {
 
 	// Check for any CSV writer errors
 	if err := writer.Error(); err != nil {
-		log.Error().Err(err).Msg("CSV writer error")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+		abortExportError(c, log, "export:csv", "serialization", "CSV writer error", err)
 		return
 	}
 
@@ -616,7 +631,7 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 	// override apply here (the shared Card filter runs before the adapter) —
 	// NOT to ExportData, which is the user's own full CSV backup and
 	// deliberately includes everything .
-	sel, ok := parseExportFieldSelection(c)
+	sel, ok := parseExportFieldSelection(c, exportOpVCard4)
 	if !ok {
 		return
 	}
@@ -630,8 +645,7 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 	if err := query.
 		Order("firstname ASC, lastname ASC").
 		Find(&contacts).Error; err != nil {
-		log.Error().Err(err).Msg("Failed to fetch contacts for VCF export")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch contacts"))
+		abortExportError(c, log, "export:vcard4", "database", "Failed to fetch contacts for VCF export", err)
 		return
 	}
 
@@ -699,7 +713,7 @@ func ExportContactsAsJSContact(c *gin.Context) {
 
 	// Same T9 field-picker query params as ExportContactsAsVCF; never
 	// applied to ExportData (the user's own full CSV backup).
-	sel, ok := parseExportFieldSelection(c)
+	sel, ok := parseExportFieldSelection(c, exportOpJSContact)
 	if !ok {
 		return
 	}
@@ -708,8 +722,7 @@ func ExportContactsAsJSContact(c *gin.Context) {
 	if err := db.Where("user_id = ?", userID).
 		Order("firstname ASC, lastname ASC").
 		Find(&contacts).Error; err != nil {
-		log.Error().Err(err).Msg("Failed to fetch contacts for JSContact export")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch contacts"))
+		abortExportError(c, log, "export:jscontact", "database", "Failed to fetch contacts for JSContact export", err)
 		return
 	}
 
@@ -730,8 +743,7 @@ func ExportContactsAsJSContact(c *gin.Context) {
 
 	payload, err := json.Marshal(cards)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to marshal JSContact export")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+		abortExportError(c, log, "export:jscontact", "serialization", "Failed to marshal JSContact export", err)
 		return
 	}
 
@@ -815,12 +827,13 @@ func ExportAuditLog(c *gin.Context) {
 		Order("created_at ASC").
 		Limit(auditExportLimit + 1).
 		Find(&events).Error; err != nil {
-		log.Error().Err(err).Msg("Failed to fetch audit events for export")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+		abortExportError(c, log, "export:audit", "database", "Failed to fetch audit events for export", err)
 		return
 	}
 	if len(events) > auditExportLimit {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("export", fmt.Sprintf("Audit log exceeds the export limit of %d rows; use the paginated /audit endpoint instead", auditExportLimit)))
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("export", fmt.Sprintf("Audit log exceeds the export limit of %d rows; use the paginated /audit endpoint instead", auditExportLimit)).
+			WithDetails("operation", exportOpAudit).
+			WithDetails("category", exportCatValidation))
 		return
 	}
 
@@ -832,8 +845,7 @@ func ExportAuditLog(c *gin.Context) {
 		headers = append(headers, "Before Snapshot")
 	}
 	if err := writer.Write(headers); err != nil {
-		log.Error().Err(err).Msg("Failed to write audit export headers")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+		abortExportError(c, log, "export:audit", "serialization", "Failed to write audit export headers", err)
 		return
 	}
 
@@ -851,15 +863,13 @@ func ExportAuditLog(c *gin.Context) {
 			record = append(record, event.BeforeSnapshot)
 		}
 		if err := writer.Write(csvSafeRecord(record)); err != nil {
-			log.Error().Err(err).Msg("Failed to write audit export record")
-			apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+			abortExportError(c, log, "export:audit", "serialization", "Failed to write audit export record", err)
 			return
 		}
 	}
 	writer.Flush()
 	if err := writer.Error(); err != nil {
-		log.Error().Err(err).Msg("CSV writer error")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+		abortExportError(c, log, "export:audit", "serialization", "CSV writer error", err)
 		return
 	}
 
