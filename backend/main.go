@@ -11,6 +11,7 @@ import (
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/i18n"
 	"mycorrhizal/logger"
+	"mycorrhizal/metrics"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/routes"
@@ -134,6 +135,11 @@ func execJob(db *gorm.DB, jobName, trigger string, fn func() (*int, error)) {
 			Int64(logger.FieldDurationMS, durMS).
 			Msg("scheduled job completed")
 	}
+
+	// Prometheus counters (issue #389): job_runs_total{job,result} +
+	// job_duration_seconds{job}. result is already the folded outcome
+	// (success / failure / skipped).
+	metrics.JobRun(jobName, result, float64(durMS)/1000.0)
 
 	models.RecordJobRun(ctx, db, models.JobRun{
 		JobName:        jobName,
@@ -432,6 +438,10 @@ func main() {
 
 	// Add logging middleware (after request ID)
 	r.Use(middleware.LoggingMiddleware())
+
+	// Record per-request Prometheus metrics (issue #389). Cheap and always on;
+	// the /metrics endpoint that exposes them is still opt-in via METRICS_TOKEN.
+	r.Use(middleware.MetricsMiddleware())
 
 	// Add error handling middleware
 	r.Use(apperrors.ErrorHandlerMiddleware())

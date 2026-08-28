@@ -120,6 +120,13 @@ type Config struct {
 	// with zero config. See backend/atrest/atrest.go.
 	DataEncryptionKey     string // base64, 32 bytes
 	DataEncryptionKeyFile string // path to a file whose trimmed contents are the base64 key
+
+	// MetricsToken gates the Prometheus GET /metrics endpoint (issue #389).
+	// Opt-in: when empty the route is not registered at all. When set, every
+	// scrape must carry `Authorization: Bearer <MetricsToken>`. Minimum 16
+	// characters (enforced in Validate) — a short scrape credential is worse
+	// than none.
+	MetricsToken string
 }
 
 // LoadConfig reads environment variables (with sensible defaults) into a
@@ -201,6 +208,7 @@ func LoadConfig() *Config {
 		HIBPCheckEnabled:              getBoolEnv("HIBP_CHECK_ENABLED", false),
 		DataEncryptionKey:             getEnv("DATA_ENCRYPTION_KEY", ""),
 		DataEncryptionKeyFile:         getEnv("DATA_ENCRYPTION_KEY_FILE", ""),
+		MetricsToken:                  getEnv("METRICS_TOKEN", ""),
 	}
 
 	if cfg.CalDAVSyncIntervalHours < 1 {
@@ -618,6 +626,15 @@ func (c *Config) Validate() []ValidationError {
 		errors = append(errors, ValidationError{
 			Field:   "HTTP_IDLE_TIMEOUT",
 			Message: fmt.Sprintf("Invalid idle timeout '%d'. Must be between 1 and 300 seconds.", c.IdleTimeout),
+		})
+	}
+
+	// A configured metrics scrape token must be long enough to be worth
+	// having (issue #389). Empty is fine — it just leaves /metrics unregistered.
+	if c.MetricsToken != "" && len(c.MetricsToken) < 16 {
+		errors = append(errors, ValidationError{
+			Field:   "METRICS_TOKEN",
+			Message: "METRICS_TOKEN must be at least 16 characters when set.",
 		})
 	}
 

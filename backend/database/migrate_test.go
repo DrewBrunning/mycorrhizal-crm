@@ -1,6 +1,7 @@
 package database
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"path/filepath"
@@ -9,8 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/models"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
+	gormLogger "gorm.io/gorm/logger"
 )
 
 // columnExists reports whether table has the named column, via SQLite's
@@ -1006,6 +1011,63 @@ func TestOpenDSN_PragmasArePresent(t *testing.T) {
 		"openDSN must include the foreign_keys pragma")
 	assert.True(t, strings.HasPrefix(dsn, "/path/to/db.sqlite?"),
 		"openDSN must preserve the db path as the DSN prefix")
+}
+
+// TestGormLoggerDoesNotInterpolatePII pins issue #621: every connection opened
+// through this package must use a logger that never echoes literal query
+// values. GORM's default logger interpolates the WHERE/VALUES clause into
+// error/slow-query logs, so a missing row or a constraint failure used to
+// print `SELECT ... WHERE email = "<address>"` verbatim into an instance-wide
+// log with no redaction layer (surfaced by the #510 privacy review).
+// newGormLogger closes it two ways: ParameterizedQueries replaces values with
+// `?`, and IgnoreRecordNotFoundError stops the benign not-found SELECTs
+// entirely.
+func TestGormLoggerDoesNotInterpolatePII(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "gorm-logger.db")
+	db, err := InitDB(dbPath)
+	require.NoError(t, err)
+	defer func() {
+		sqlDB, err := db.DB()
+		require.NoError(t, err)
+		require.NoError(t, sqlDB.Close())
+	}()
+
+	// InitDB must wire the redacting logger onto its connection, not the bare
+	// GORM default (gorm.Open defaults Logger to logger.Default when nil —
+	// reverting the config to `&gorm.Config{}` makes this equal and fails).
+	assert.NotEqual(t, gormLogger.Default, db.Logger,
+		"InitDB must configure the parameterized/not-found-suppressing GORM logger")
+
+	// Re-point the app's own logger at a buffer so we can assert on exactly
+	// what it would emit for the real migrated schema.
+	var buf bytes.Buffer
+	db.Logger = newGormLogger(&buf)
+
+	const sentinel = "ghost.unknown.sentinel@example.test"
+
+	// A not-found lookup carrying PII: with IgnoreRecordNotFoundError it is
+	// not logged at all.
+	buf.Reset()
+	var ghost models.User
+	err = db.Where("email = ?", sentinel).First(&ghost).Error
+	require.ErrorIs(t, err, gorm.ErrRecordNotFound)
+	assert.Empty(t, buf.String(),
+		"a not-found lookup must not be logged at all (IgnoreRecordNotFoundError)")
+
+	// A constraint violation carrying PII: logged (Warn level reaches error
+	// traces) but with `?` placeholders, never the interpolated value.
+	buf.Reset()
+	first := models.User{Username: "alice", Password: "x", Email: sentinel}
+	require.NoError(t, db.Create(&first).Error)
+	err = db.Create(&models.User{Username: "alice2", Password: "x", Email: sentinel}).Error
+	require.Error(t, err, "the duplicate email must violate the unique index")
+
+	out := buf.String()
+	assert.NotEmpty(t, out, "the constraint failure must be logged at Warn level")
+	assert.Contains(t, out, "INSERT INTO `users`", "the failed INSERT is the statement the test is about")
+	assert.Contains(t, out, "?", "GORM must log `?` placeholders, not interpolated values")
+	assert.NotContains(t, out, sentinel, "the PII value must never reach the log")
+	assert.NotContains(t, out, `"`+sentinel+`"`, "the PII value must never reach the log")
 }
 
 // TestInitDBDoesNotLeakMigratorGoroutines pins a real leak found while

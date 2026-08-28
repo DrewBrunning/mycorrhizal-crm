@@ -2,11 +2,13 @@ package main
 
 import (
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/metrics"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 
@@ -120,4 +122,22 @@ func TestRecoverJob_SchedulerSurvivesPanic(t *testing.T) {
 	}, 5*time.Second, 50*time.Millisecond,
 		"scheduler must keep ticking both jobs after the panicking job panics repeatedly — "+
 			"an unrecovered panic would crash the process on the job's first scheduled run")
+}
+
+// TestRunJob_RecordsJobMetrics pins that runJob feeds the Prometheus
+// job_runs_total / job_duration_seconds families on both the success and the
+// recovered-panic path (issue #389).
+func TestRunJob_RecordsJobMetrics(t *testing.T) {
+	runJob(nil, "metrics-unit-ok", models.JobTriggerScheduled, func() error { return nil })
+	require.NotPanics(t, func() {
+		runJob(nil, "metrics-unit-boom", models.JobTriggerScheduled, func() error { panic("boom") })
+	})
+
+	var sb strings.Builder
+	require.NoError(t, metrics.Default().WritePrometheus(&sb))
+	out := sb.String()
+
+	require.Contains(t, out, `job_runs_total{job="metrics-unit-ok",result="success"} 1`+"\n")
+	require.Contains(t, out, `job_runs_total{job="metrics-unit-boom",result="failure"} 1`+"\n")
+	require.Contains(t, out, `job_duration_seconds_count{job="metrics-unit-ok"} 1`+"\n")
 }
