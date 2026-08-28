@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"mycorrhizal/logger"
+	"mycorrhizal/metrics"
 
 	"gorm.io/gorm"
 )
@@ -134,6 +135,16 @@ func RecordSystemEvent(ctx context.Context, db *gorm.DB, ev SystemEvent) {
 	}
 	ev.Error = truncateRunes(logger.SanitizeLogField(ev.Error), maxSystemEventFieldLen)
 	ev.Detail = truncateRunes(logger.SanitizeLogField(ev.Detail), maxSystemEventFieldLen)
+
+	// Prometheus counter for the same event (issue #389). Done here, before
+	// the insert, so a failed diagnostic write still shows up in the metric —
+	// and because this is the single choke point every sync / notification /
+	// backup / webhook / job outcome already flows through.
+	var result string
+	if ev.Result != nil {
+		result = *ev.Result
+	}
+	metrics.SystemEvent(ev.EventType, ev.Component, result)
 
 	// Own timestamp; the row is never updated after insert.
 	ev.CreatedAt = time.Now().UTC()

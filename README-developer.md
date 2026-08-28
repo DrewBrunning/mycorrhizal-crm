@@ -31,6 +31,22 @@
 - Container defaults (`PORT`, `SQLITE_DB_PATH`, `PROFILE_PHOTO_DIR`) are set in the root [Dockerfile](Dockerfile); override via `.env` if needed. `PORT` is the backend's internal bind port (8081) — nginx listens on 8080, which is what's actually exposed from the container.
 - The frontend bundle is built with an empty `VITE_API_URL` so it calls the API on relative paths; nginx (see [docker/nginx.conf](docker/nginx.conf)) proxies `/api`, `/health`, and `/carddav` to the backend on `127.0.0.1:8081`.
 
+**Metrics (Prometheus, issue #389)**
+- `GET /metrics` exposes a Prometheus text exposition (0.0.4). It is **opt-in**: the route is registered only when `METRICS_TOKEN` is set (16+ chars), and every scrape must send `Authorization: Bearer <METRICS_TOKEN>`. No token → no route.
+- Implemented without a new dependency — a small hand-rolled registry in [backend/metrics](backend/metrics); the endpoint handler is [backend/controllers/metrics_controller.go](backend/controllers/metrics_controller.go).
+- Families: `http_requests_total` / `http_request_duration_seconds` / `http_requests_in_flight` (labelled by method + matched route *template* + status), `job_runs_total` / `job_duration_seconds`, `system_events_total` (sync / notification / backup / webhook / job outcomes, via `models.RecordSystemEvent`), `db_connections_*`, `go_*` / `process_*`, `mycorrhizal_build_info`, `mycorrhizal_storage_bytes` + `filesystem_{free,size}_bytes`. Labels are deliberately bounded — never a contact ID or a raw path.
+- Quick check: `curl -s -H "Authorization: Bearer $METRICS_TOKEN" localhost:8080/metrics`.
+- Example Prometheus scrape config:
+  ```yaml
+  scrape_configs:
+    - job_name: mycorrhizal
+      metrics_path: /metrics
+      authorization:
+        credentials: <METRICS_TOKEN>
+      static_configs:
+        - targets: ["mycorrhizal.example.com"]
+  ```
+
 **Testing**
 - Backend Go tests (`go test ./...` or `make test`) spin up in-memory SQLite in helpers like [backend/controllers/activity_controller_test.go](backend/controllers/activity_controller_test.go); mirror that pattern for new suites.
 - Validation and middleware behavior has dedicated coverage in [backend/middleware/validation_test.go](backend/middleware/validation_test.go) and related files—extend these before touching shared validators.
