@@ -8300,6 +8300,46 @@ paths:
         "403":
           description: Not an admin, or an API token was used on an admin path.
 
+  /admin/diagnostics:
+    get:
+      summary: Run instance diagnostics (admin)
+      operationId: adminRunDiagnostics
+      description: >
+        The admin-gated "is this install healthy?" sweep (issue #423) — run
+        after an install, an upgrade, a migration, or a config change. One
+        read-only pass folds the same single-check paths the continuous
+        surfaces use into an ok / warning / error checklist with a summary
+        ("2 warnings, 0 errors"): configuration and required environment
+        variables (redacted — only the *names* of failing variables are ever
+        reported), database connectivity + migration state, filesystem
+        writability for the storage directories (profile photos, attachments,
+        the database directory where backups land by default) + the FCM
+        service-account file, the persisted restore-drill result (the latest
+        backup-validity proof), per-channel notification delivery health,
+        integration reachability (CardDAV/CalDAV serve locally; the distinct
+        configured Immich / Paperless / Seafile / Nextcloud base URLs are
+        probed with a short timeout, honoring each integration's
+        block-private-URLs SSRF policy), disk usage, background-job liveness,
+        and version/update state.
+
+        Every check is time-bounded and the whole sweep runs under a total
+        budget, so an unreachable remote cannot hang it. The response never
+        contains a secret: config values are not echoed and integration base
+        URLs / transport errors go to the log only. A broken install still
+        returns 200 — the diagnosis IS the payload. Instance-wide,
+        admin-only, read-only.
+      responses:
+        "200":
+          description: The diagnostics checklist and summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticsResponse"
+        "401":
+          description: Not authenticated (cookie or full-scope bearer token required).
+        "403":
+          description: Not an admin, or an API token was used on an admin path.
+
   /admin/users:
     get:
       summary: List all users (admin)
@@ -9905,6 +9945,42 @@ components:
         last_error: { type: string, description: "Length-capped error of the most recent failed delivery; empty unless status is failing" }
         attempted_count: { type: integer, description: "Terminal delivery attempts (sent + failed); pending rows are not attempts" }
         delivered_count: { type: integer, description: "Successfully-delivered rows" }
+    DiagnosticCheck:
+      type: object
+      description: >
+        One row of the instance-diagnostics sweep (issue #423): a stable
+        identifier, an ok / warning / error status, and a short, secret-free
+        human message. Check names: `config`, `database`, `migrations`,
+        `filesystem`, `backup`, `notification_<channel>` (one per delivery
+        channel), `integration_<system>` (carddav, caldav, immich, paperless,
+        seafile, nextcloud), `disk_space`, `background_jobs`, `version`.
+      properties:
+        name: { type: string, description: "Stable snake_case identifier" }
+        status: { type: string, enum: [ok, warning, error] }
+        message: { type: string, description: "Short, secret-free human detail" }
+    DiagnosticsResponse:
+      type: object
+      description: >
+        The instance-diagnostics sweep output (issue #423). Read-only and
+        secret-free: config values are never echoed and integration base URLs /
+        transport errors go to the log only. Always HTTP 200 when the caller is
+        an admin — a broken install is reported in the checklist, not as a
+        non-2xx.
+      required: [timestamp, summary, checks]
+      properties:
+        timestamp: { type: string, format: date-time }
+        summary:
+          type: object
+          required: [status, ok, warnings, errors]
+          properties:
+            status: { type: string, enum: [ok, warning, error], description: "error dominates warning dominates ok" }
+            ok: { type: integer }
+            warnings: { type: integer }
+            errors: { type: integer }
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiagnosticCheck"
     ErrorBucket:
       type: object
       description: >

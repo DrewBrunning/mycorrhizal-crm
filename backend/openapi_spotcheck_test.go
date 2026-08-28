@@ -211,4 +211,16 @@ func TestOpenAPIResponseSpotCheck(t *testing.T) {
 		require.Contains(t, []int{200, 503}, hr.Code, "%s -> %s", hp, hr.Body.String())
 		validateResponse(t, hr, "GET", hp, nil)
 	}
+
+	// 6. The admin diagnostics sweep (issue #423). The first registered user
+	// is an admin, so the session cookie admits the admin-gated route; the
+	// response body — a mixture of ok/warning/error checks, since the test
+	// config's storage dirs are not provisioned — must validate against the
+	// documented DiagnosticsResponse schema.
+	diagReq := httptest.NewRequest("GET", "/api/v1/admin/diagnostics", nil)
+	diagReq.Header.Set("Cookie", cookie)
+	diagResp := httptest.NewRecorder()
+	router.ServeHTTP(diagResp, diagReq)
+	require.Equal(t, 200, diagResp.Code, diagResp.Body.String())
+	validateResponse(t, diagResp, "GET", "/admin/diagnostics", nil)
 }

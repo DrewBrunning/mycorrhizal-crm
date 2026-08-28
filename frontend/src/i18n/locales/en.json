@@ -2248,5 +2248,37 @@
       "gotify": "Gotify",
       "push": "Web Push"
     }
+  },
+  "diagnostics": {
+    "title": "Diagnostics",
+    "description": "A one-pass health sweep of this install: configuration, database and migrations, storage, backups, notifications, integrations, disk space, and background jobs.",
+    "run": "Run diagnostics",
+    "running": "Running…",
+    "status": {
+      "ok": "OK",
+      "warning": "Warning",
+      "error": "Error"
+    },
+    "summary": "{{warnings}} warning(s), {{errors}} error(s)",
+    "checks": {
+      "config": "Configuration",
+      "database": "Database",
+      "migrations": "Migrations",
+      "filesystem": "Filesystem",
+      "backup": "Backup",
+      "notification_email": "Email notifications",
+      "notification_ntfy": "ntfy notifications",
+      "notification_gotify": "Gotify notifications",
+      "notification_push": "Web Push notifications",
+      "integration_carddav": "CardDAV",
+      "integration_caldav": "CalDAV",
+      "integration_immich": "Immich",
+      "integration_paperless": "Paperless",
+      "integration_seafile": "Seafile",
+      "integration_nextcloud": "Nextcloud",
+      "disk_space": "Disk space",
+      "background_jobs": "Background jobs",
+      "version": "Version"
+    }
   }
 }

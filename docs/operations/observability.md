@@ -6,9 +6,37 @@ long each of these records survives).
 
 | | |
 |---|---|
-| **Last updated** | 2026-08-27 (issues [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#425](https://github.com/DrewBrunning/mycorrhizal-crm/issues/425), [#426](https://github.com/DrewBrunning/mycorrhizal-crm/issues/426), [#427](https://github.com/DrewBrunning/mycorrhizal-crm/issues/427)) |
+| **Last updated** | 2026-08-27 (issues [#423](https://github.com/DrewBrunning/mycorrhizal-crm/issues/423), [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#425](https://github.com/DrewBrunning/mycorrhizal-crm/issues/425), [#426](https://github.com/DrewBrunning/mycorrhizal-crm/issues/426), [#427](https://github.com/DrewBrunning/mycorrhizal-crm/issues/427)) |
 | **Audience** | Operators diagnosing a failure without local reproduction. |
 | **ADR** | [`docs/adrs/0005-operational-event-model.md`](../adrs/0005-operational-event-model.md) |
+
+## The one-pass diagnostics sweep
+
+`GET /admin/diagnostics` (admin-only) is the "is this install healthy?" run
+(issue [#423](https://github.com/DrewBrunning/mycorrhizal-crm/issues/423)) — the
+manual, one-pass sweep for after an install, an upgrade, a migration, or a
+config change. It folds the same single-check paths the surfaces below use into
+one `ok` / `warning` / `error` checklist with a summary
+(`"summary": {"status": "warning", "ok": 15, "warnings": 2, "errors": 1}`):
+
+| check | what it validates |
+|---|---|
+| `config` | `config.Validate()` — the same gate boot enforces; only the *names* of failing variables are reported, never values |
+| `database` / `migrations` | the deep-health DB read probe + migration lag |
+| `filesystem` | writability of the profile-photo, attachments, and database directories (where backups land by default), plus the FCM service-account file |
+| `backup` | the persisted restore-drill result (the latest backup-validity proof); disabled = ok, stale/failed = warning |
+| `notification_<channel>` | per-channel delivery health (#422): `failing` = error, `no_devices` = warning, `unconfigured`/`healthy` = ok |
+| `integration_<system>` | CardDAV/CalDAV (served locally — enabled is reachable); the distinct configured Immich/Paperless/Seafile/Nextcloud base URLs probed with a 2 s timeout, honoring each integration's block-private-URLs SSRF policy |
+| `disk_space` | the alert evaluator's statfs fold (#428): warning at the configured threshold (default 90%), error when essentially full |
+| `background_jobs` | the job-run-health fold (#391) + deep-health lock liveness: any failing job or stuck lock = warning |
+| `version` | build version / commit / build date |
+
+It is read-only and secret-free: config values are never echoed, and
+integration base URLs / transport errors go to the log only. Every check is
+time-bounded and the whole sweep runs under a total budget, so an unreachable
+remote cannot hang it. A broken install still returns HTTP 200 — the diagnosis
+**is** the payload, so the checklist is the source of truth, not the status
+code.
 
 ## The three places diagnostics live
 
