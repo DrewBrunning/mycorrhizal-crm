@@ -10,7 +10,12 @@ import { API_BASE_URL } from './global-setup';
 
 // Authenticated via the shared storageState (see playwright.config.ts) — no
 // per-test login needed.
-test.describe('Contacts', () => {
+//
+// Tagged @prod-defaults (issue #274): part of the small subset re-run under
+// production-default settings (real rate limit, CardDAV off) — list → search
+// → detail → create → edit → delete covers the core CRUD surface a real
+// browser session exercises.
+test.describe('Contacts', { tag: '@prod-defaults' }, () => {
   test('should display contacts page with filter controls', async ({ page }) => {
     await page.goto('/contacts');
 

@@ -206,6 +206,17 @@ Detail and the hard-won traps for each layer follow.
 - **Runs via** `npx playwright test`; CI `e2e-tests.yml` `e2e` job (builds the
   all-in-one image, starts compose, waits on `/health/live`, runs Playwright, then
   the `cmd/loadsmoke` concurrent-write pass against the running instance).
+- **Production-default pass (issue #274):** the main suite runs against
+  `docker-compose.test.yml`, which raises the API rate limit and enables CalDAV
+  so a full parallel run can finish — so the shipped defaults (real rate limit,
+  CardDAV off) are never exercised unless a job asks for them. A second CI job
+  (`e2e-prod-defaults`) boots the same image with
+  `docker-compose.prod-defaults.yml` layered on top and runs only the
+  `@prod-defaults`-tagged subset (auth, contacts, dashboard) single-worker,
+  which keeps it comfortably under the production limit (burst 1000, 600ms
+  refill). The override nulls the rate-limit vars to empty strings rather than
+  pinning their values, so the run exercises the genuine `getIntEnv` default
+  path and would catch a future change to the shipped default.
 - **Planned (filed):** visual-regression testing — issue #258 (v0.6.3).
 
 ## Release/install smoke (planned — DEPLOY-01, issue #450)

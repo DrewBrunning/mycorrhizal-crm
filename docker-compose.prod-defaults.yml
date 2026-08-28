@@ -1,0 +1,33 @@
+# Mycorrhizal CRM Docker Compose - production-defaults E2E override
+#
+# Layers on top of docker-compose.test.yml and restores the *shipped
+# production defaults* so the real config path gets exercised in CI (issue
+# #274). docker-compose.test.yml deliberately raises the API rate limit and
+# enables CalDAV so a full parallel Playwright run can finish — but that means
+# the production default (real rate limit, CardDAV off) never runs anywhere
+# unless a job specifically asks for it.
+#
+# Why empty strings for the rate-limit keys: a Compose override cannot *unset*
+# an env var that a base file set, and the production limit must not be
+# hardcoded here (that would defeat the point — a future change to the shipped
+# default would go unexercised). An empty value is an invalid integer, which
+# backend/config/config.go's getIntEnv() falls back to the shipped default
+# for (600ms interval, burst 1000), so this exercises the genuine default
+# path rather than a copy of its values.
+#
+# USAGE:
+#   docker compose -f docker-compose.test.yml -f docker-compose.prod-defaults.yml up -d --wait
+#   npx playwright test --grep @prod-defaults
+#   docker compose -f docker-compose.test.yml -f docker-compose.prod-defaults.yml down -v
+
+services:
+  mycorrhizal:
+    environment:
+      # CardDAV serving off — the production default (config.go defaults
+      # CALDAV_ENABLED to false; test.yml turns it on for the full suite).
+      CALDAV_ENABLED: "false"
+      # Production-default API rate limit (see the header comment): empty
+      # string -> getIntEnv() parse failure -> shipped default burst 1000 at
+      # a 600ms interval.
+      API_RATE_LIMIT_INTERVAL_MS: ""
+      API_RATE_LIMIT_BURST: ""

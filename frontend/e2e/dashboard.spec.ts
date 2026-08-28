@@ -1,7 +1,12 @@
 import { expect, test, waitForLoading } from './fixtures';
 
 // Authenticated via the shared storageState (see playwright.config.ts).
-test.describe('Dashboard', () => {
+//
+// Tagged @prod-defaults (issue #274): part of the small subset re-run under
+// production-default settings (real rate limit, CardDAV off) — the dashboard
+// is the post-login landing page, and the navigation tests cover the sidebar
+// the whole session depends on.
+test.describe('Dashboard', { tag: '@prod-defaults' }, () => {
   test('should display dashboard', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible();
@@ -25,7 +30,7 @@ test.describe('Dashboard', () => {
   });
 });
 
-test.describe('Navigation', () => {
+test.describe('Navigation', { tag: '@prod-defaults' }, () => {
   test('should navigate to contacts from sidebar', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('link', { name: /contacts/i }).click();

@@ -4,7 +4,11 @@ import { TEST_USER } from './global-setup';
 // Auth flows must start from logged-out browser
 test.use({ storageState: LOGGED_OUT });
 
-test.describe('Authentication', () => {
+// Tagged @prod-defaults (issue #274): part of the small subset re-run under
+// production-default settings (real rate limit, CardDAV off) — the login →
+// logout → register browser flow is the core "real session" path that rate
+// limit exists to protect.
+test.describe('Authentication', { tag: '@prod-defaults' }, () => {
   test.describe('Login', () => {
     test('should display login page when not authenticated', async ({ page }) => {
       await page.goto('/');
