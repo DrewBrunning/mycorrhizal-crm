@@ -8372,9 +8372,10 @@ paths:
         value GET /health returns), build identity, process uptime, migration
         numbers (applied / latest / pending / dirty), a live read-back of
         cfg.Validate(), the enabled feature-flag set, SQLite operational facts
-        (version, journal mode, -wal size), and storage sizing (database
+        (version, journal mode, -wal size), storage sizing (database
         footprint, the filesystem holding it, and a recursive walk of each
-        configured storage directory). This is the counterpart to the
+        configured storage directory), and the opt-in update-availability
+        block (issue #650). This is the counterpart to the
         unauthenticated /health surface, which deliberately withholds
         build/version, migration numbers and storage facts, and to /metrics,
         which is Prometheus-only behind METRICS_TOKEN. Instance-wide,
@@ -10075,6 +10076,9 @@ components:
         The admin-scoped operational snapshot (issue #388). No field carries a
         secret value: `config.features` is booleans only and each
         `config.validation` entry is a field name plus a remediation message.
+        `update` is the opt-in update-availability block (issue #650): when
+        `UPDATE_CHECK_ENABLED` is unset it is exactly `{"enabled": false}` and
+        no outbound call is made.
       properties:
         overall:
           type: string
@@ -10172,6 +10176,21 @@ components:
                   bytes: { type: integer }
                   file_count: { type: integer }
                   truncated: { type: boolean, description: "A hard cap (200000 entries or depth 8) stopped the walk early; bytes is a lower bound" }
+        update:
+          type: object
+          description: >
+            Opt-in update-availability block (issue #650). `enabled` mirrors
+            UPDATE_CHECK_ENABLED (default off). When off the block is exactly
+            `{"enabled": false}` and no outbound call is made. When on,
+            `current` is the running build's version and a lookup error leaves
+            `latest` absent ("unknown") with `update_available` absent — the
+            endpoint still returns 200.
+          properties:
+            enabled: { type: boolean, description: "UPDATE_CHECK_ENABLED — when false, nothing else is populated" }
+            current: { type: string, description: "buildinfo version of the running build" }
+            latest: { type: string, description: "Latest published release tag, or absent when unknown/disabled" }
+            update_available: { type: boolean, description: "Present only when a comparison was possible; true when a newer release exists" }
+            checked_at: { type: string, format: date-time, description: "When the latest release was last fetched (cached 6h)" }
     AuditEvent:
       type: object
       description: One immutable create/update/delete or auth/admin lifecycle record in the audit log (T18, issue #381).

@@ -112,6 +112,18 @@ export interface SystemStatusStorage {
   directories: DirectoryUsage[];
 }
 
+// Opt-in update-availability block (issue #650). `enabled` mirrors
+// UPDATE_CHECK_ENABLED (default off); the rest is only populated when the
+// flag is on and a lookup succeeded, so every field except `enabled` is
+// optional — an operator with the flag off sees exactly `{enabled: false}`.
+export interface SystemStatusUpdate {
+  enabled: boolean;
+  current?: string;
+  latest?: string;
+  update_available?: boolean;
+  checked_at?: string | null;
+}
+
 // Field-for-field mirror of backend SystemStatusResponse
 // (backend/controllers/system_status_controller.go).
 export interface SystemStatusResponse {
@@ -123,6 +135,7 @@ export interface SystemStatusResponse {
   config: SystemStatusConfig;
   database: SystemStatusDatabase;
   storage: SystemStatusStorage;
+  update: SystemStatusUpdate;
 }
 
 // GET /admin/system-status — the composite operational snapshot.

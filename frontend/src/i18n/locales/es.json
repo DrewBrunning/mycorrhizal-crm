@@ -1144,7 +1144,8 @@
       "copy": "Copiar detalles de la compilación",
       "copied": "Detalles de la compilación copiados",
       "reportHint": "Inclúyalo al informar de un problema.",
-      "viewSystemStatus": "Ver estado del sistema"
+      "viewSystemStatus": "Ver estado del sistema",
+      "updateAvailable": "Actualización disponible: {{version}}"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -2257,6 +2258,14 @@
     "feature": {
       "on": "Activado",
       "off": "Desactivado"
+    },
+    "update": {
+      "title": "Comprobación de actualizaciones",
+      "available": "Actualización disponible: {{version}}",
+      "upToDate": "Estás ejecutando la última versión publicada.",
+      "current": "Versión actual",
+      "latest": "Última versión publicada",
+      "checkedAt": "Comprobado el"
     },
     "error": "No se pudo cargar el estado del sistema."
   },

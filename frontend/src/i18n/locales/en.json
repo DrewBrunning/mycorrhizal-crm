@@ -1171,7 +1171,8 @@
       "copy": "Copy build details",
       "copied": "Build details copied",
       "reportHint": "Include this when reporting a problem.",
-      "viewSystemStatus": "View system status"
+      "viewSystemStatus": "View system status",
+      "updateAvailable": "Update available: {{version}}"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -2257,6 +2258,14 @@
     "feature": {
       "on": "On",
       "off": "Off"
+    },
+    "update": {
+      "title": "Update check",
+      "available": "Update available: {{version}}",
+      "upToDate": "You are running the latest release.",
+      "current": "Current version",
+      "latest": "Latest release",
+      "checkedAt": "Checked at"
     },
     "error": "Could not load system status."
   },

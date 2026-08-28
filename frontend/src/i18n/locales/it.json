@@ -1144,7 +1144,8 @@
       "copy": "Copia i dettagli della build",
       "copied": "Dettagli della build copiati",
       "reportHint": "Includilo quando segnali un problema.",
-      "viewSystemStatus": "Visualizza stato del sistema"
+      "viewSystemStatus": "Visualizza stato del sistema",
+      "updateAvailable": "Aggiornamento disponibile: {{version}}"
     },
     "webhooks": {
       "title": "Webhook",
@@ -2257,6 +2258,14 @@
     "feature": {
       "on": "Attivata",
       "off": "Disattivata"
+    },
+    "update": {
+      "title": "Controllo aggiornamenti",
+      "available": "Aggiornamento disponibile: {{version}}",
+      "upToDate": "Stai eseguendo l'ultima versione pubblicata.",
+      "current": "Versione attuale",
+      "latest": "Ultima versione pubblicata",
+      "checkedAt": "Verificato il"
     },
     "error": "Impossibile caricare lo stato del sistema."
   },
