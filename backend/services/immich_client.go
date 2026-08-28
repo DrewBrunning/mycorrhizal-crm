@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"mycorrhizal/httputil"
+	"mycorrhizal/internal/faults"
 	"mycorrhizal/logger"
 	"net"
 	"net/http"
@@ -241,7 +242,27 @@ func (c *ImmichClient) doPost(path string, body any) (*http.Response, error) {
 	return c.doRequest(http.MethodPost, path, body)
 }
 
+// faultImmichRequest is the failure-injection seam for the Immich client's
+// request boundary (issue #434). Armed via the faults package, it fails
+// doRequest before any network I/O, so every caller exercises its existing
+// error path with a deterministic sentinel — the same class of failure as an
+// unreachable/auth-expired/not-found upstream, but injected in-process. The
+// injection test asserts each sentinel crosses the boundary unchanged;
+// service-layer handling of those sentinels is pinned by the httptest-based
+// suites (immich_client_test.go / immich_service_test.go). The external-fault
+// job can arm the same seam by name against a live process. See
+// docs/development/fault-injection.md.
+const faultImmichRequest = "services.immich.request"
+
 func (c *ImmichClient) doRequest(method, path string, body any) (*http.Response, error) {
+	// Issue #434 failure-injection seam. Unarmed, faults.Hook returns nil and
+	// this line is a no-op; armed, the fault's error replaces the request —
+	// which is exactly how an unreachable/auth-expired/not-found upstream
+	// presents to every caller of this client.
+	if err := faults.Hook(faultImmichRequest); err != nil {
+		return nil, err
+	}
+
 	var bodyReader io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)

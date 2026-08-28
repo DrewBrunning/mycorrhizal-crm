@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/faults"
 	"mycorrhizal/models"
 	"mycorrhizal/photostore"
 	"sync"
@@ -15,6 +16,15 @@ import (
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 )
+
+// faultImportConfirm is the failure-injection seam for the import confirm
+// transaction (issue #434). Armed via the faults package, it fails the whole
+// confirm at the transaction boundary — every contact created or updated
+// inside the transaction rolls back, the session is left unconsumed (a retry
+// works), and no partial import can survive. The injection tests assert that
+// failed-closed outcome; the external-fault job can arm the same seam by name.
+// See docs/development/fault-injection.md.
+const faultImportConfirm = "services.import.confirm"
 
 // sessionExpiry is how long an in-progress import wizard session is kept server-side.
 const sessionExpiry = 15 * time.Minute
@@ -409,6 +419,13 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 	isVCFImport := sessionData.importType == "vcf"
 
 	txErr := db.Transaction(func(tx *gorm.DB) error {
+		// Issue #434 failure-injection seam: an armed fault here fails the
+		// entire confirm, so the transaction rolls back and no partial import
+		// can survive. Unarmed, faults.Hook returns nil immediately.
+		if err := faults.Hook(faultImportConfirm); err != nil {
+			return err
+		}
+
 		for _, preview := range sessionData.session.PreviewRows {
 			action := actionMap[preview.RowIndex]
 			if action == "" {
@@ -565,6 +582,13 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 	var photoTasks []photoTask
 
 	txErr := db.Transaction(func(tx *gorm.DB) error {
+		// Issue #434 failure-injection seam: same contract as Confirm's — an
+		// armed fault fails the whole confirm closed, contact rows roll back,
+		// the session stays consumable for a retry.
+		if err := faults.Hook(faultImportConfirm); err != nil {
+			return err
+		}
+
 		for _, preview := range sessionData.session.PreviewRows {
 			action := actionMap[preview.RowIndex]
 			if action == "" {

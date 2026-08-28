@@ -294,9 +294,12 @@ own failure classes the 0.6.x milestones name, so they get explicit homes.
   triggers (PR/push/nightly per workflow); a feature PR writes tests in the
   pyramid, not in these. The security checklist (`docs/security/asvs-l2.md`) is
   the tracking surface for which control each one evidences.
-- **Planned (filed):** deterministic failure-injection / chaos scenarios —
-  TEST-06, issue #434 (v0.6.3), the automated evidence behind v0.8.0's
-  adversarial audit.
+- **Owns** the failure-injection / chaos scenarios — TEST-06, issue #434
+  (v0.6.3): the in-process `faults` harness, the external-fault CI job
+  (`chaos-tests.yml`), and the fault catalog
+  (`docs/development/fault-injection.md`). It is the mechanism behind v0.8.0's
+  adversarial audit; the domain milestones (MIG-04/05 #439/#440, DEPLOY-03
+  #452, CON-04 #459, #526) consume it.
 
 ## Failure classes by owner
 
@@ -327,10 +330,10 @@ gap to file, never something to silently absorb.
 | Service-worker lifecycle, stale-cache stranding | E2E web (`serviceWorker.spec.ts`) | v0.6.10 |
 | Android real-app flows (favorites, archive/delete + undo) | E2E Android | #212/#238 |
 | Referential integrity, orphan detection, reciprocal-relationship consistency, derived-data (FTS/flat-columns/cadence) drift | DB/integration (DB-01 checker, SEARCH-*) | v0.6.8 (#460/#461–463/#497) |
-| External-integration failure behavior, retries | DB/integration (services-level) + failure injection | v0.6.9, #434 |
+| External-integration failure behavior, retries | DB/integration (services-level) + failure injection (`docs/development/fault-injection.md`) | v0.6.9, #434 |
 | Query/scale performance, resource exhaustion, N+1 | Performance/load | v0.6.9 (#468, #261) |
 | Security vulnerabilities (BOLA, auth bypass, injection, SSRF) | Security/adversarial tooling | v0.6.12, v0.8.0 |
-| Adversarial/chaos scenarios | Failure injection (TEST-06, #434) | v0.8.0 |
+| Adversarial/chaos scenarios | Failure injection (TEST-06, #434 — in-process seams + external chaos job) | v0.8.0 |
 
 Where a row names a milestone but the concrete ticket lives elsewhere (e.g. the
 "test infrastructure supports historical fixtures" acceptance criterion → MIG-01

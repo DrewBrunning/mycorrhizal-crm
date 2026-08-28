@@ -53,5 +53,20 @@ infra:
   - 'docker-compose*.yml'
   - 'docker/**'
 
+# chaos (issue #434): the external-fault CI job's harness. Deliberately much
+# narrower than backend/** — chaos tests are slow by design and must not run
+# on every backend change, only when the injection mechanism itself or the
+# subprocesses/seams the external tests actually drive change (plus the
+# nightly schedule and manual dispatch). The in-process seams under
+# services/** are exercised by the normal Go suite, not this job.
+chaos:
+  - '.github/workflows/chaos-tests.yml'
+  - 'backend/internal/faults/**'
+  - 'backend/database/sqlite_driver.go'
+  - 'backend/database/backup.go'
+  - 'backend/cmd/dbinspect/**'
+  - 'backend/cmd/migrate/**'
+  - 'backend/cmd/backup/**'
+
 workflows:
   - '.github/**'

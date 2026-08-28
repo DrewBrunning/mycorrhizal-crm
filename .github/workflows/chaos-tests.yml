@@ -1,0 +1,255 @@
+name: Chaos Tests (failure injection)
+
+# Issue #434 (TEST-06): the external-fault CI job — the faults that cannot be
+# expressed as an error across an existing interface and therefore must make
+# the process or the filesystem actually misbehave. The rule is written down
+# in docs/development/fault-injection.md:
+#
+#   "If the fault can be expressed as an error returned across an existing
+#   interface, inject it in-process. If it requires the process or the
+#   filesystem to actually misbehave, it belongs in the external-fault CI job."
+#
+# Two high-value interruptions run here, each asserting a *defined outcome*
+# (recovered, or failed closed with the data intact) — not merely "it
+# errored":
+#
+#   - SIGKILL mid-migration (cmd/migrate parked at the
+#     database.migration.statement pause fault) and deterministic recovery on
+#     restart (dirty-force + re-run from N+1), with PRAGMA integrity_check ok.
+#   - real ENOSPC during backup (VACUUM INTO against a tiny tmpfs) — the CLI
+#     fails closed, no partial file at the output path, the source database
+#     intact.
+#
+# Gating (chaos filter in .github/filters.yaml): the suite is slow by design
+# and does NOT run on every push — only when the injection harness itself
+# changes, on the nightly schedule, or on manual dispatch.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '55 3 * * *' # 03:55 UTC nightly (consolidated nightly suite)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Issue #264 pattern: path-gated checks — see unit-tests.yml.
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      chaos: ${{ steps.filter.outputs.chaos }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect changed areas
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+      # Boolean outputs only (the *_files outputs are the attacker-influenced
+      # ones on PRs and are never used). Passed as env vars so zizmor's
+      # template-injection audit has nothing to flag.
+      - name: Report gating decision
+        run: |
+          echo "chaos=$CHAOS_CHANGED"
+          echo "workflows=$WORKFLOWS_CHANGED"
+        env:
+          CHAOS_CHANGED: ${{ steps.filter.outputs.chaos }}
+          WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
+
+  migration-kill:
+    permissions:
+      contents: read
+    name: SIGKILL mid-migration, restart recovers
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: changes
+    # Scheduled runs and manual dispatch always run (no diff to gate on);
+    # otherwise only when the harness or the driven subprocesses change.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Build the migrate and dbinspect CLIs
+        working-directory: backend
+        run: |
+          go build -o "$RUNNER_TEMP/migrate" ./cmd/migrate
+          go build -o "$RUNNER_TEMP/dbinspect" ./cmd/dbinspect
+
+      # The pause fault parks cmd/migrate right after the first migration's
+      # commit, before its clean-mark — the SIGKILL window. The process is
+      # deliberately backgrounded; the next step waits for the marker, which
+      # is the proof it has actually reached the seam.
+      - name: Start a migration parked mid-flight
+        working-directory: backend
+        run: |
+          rm -f "$RUNNER_TEMP/chaos.db" "$RUNNER_TEMP/chaos.db-wal" "$RUNNER_TEMP/chaos.db-shm"
+          MYCORRHIZAL_FAULTS='database.migration.statement:pause:300s' SQLITE_DB_PATH="$RUNNER_TEMP/chaos.db" "$RUNNER_TEMP/migrate" up > /tmp/migrate1.log 2>&1 &
+          echo "$!" > /tmp/migrate.pid
+
+      - name: Wait for the mid-migration pause marker
+        run: |
+          for i in $(seq 1 60); do
+            if grep -q 'injected fault pause' /tmp/migrate1.log; then
+              echo "paused mid-migration after ${i}s"
+              grep 'injected fault pause' /tmp/migrate1.log
+              exit 0
+            fi
+            if ! kill -0 "$(cat /tmp/migrate.pid)" 2>/dev/null; then
+              echo "::error::migrate exited before reaching the pause fault"
+              cat /tmp/migrate1.log
+              exit 1
+            fi
+            sleep 1
+          done
+          echo "::error::migrate never reached the pause fault (fault did not fire — this is the 'not silently skipped' check)"
+          cat /tmp/migrate1.log
+          exit 1
+
+      - name: SIGKILL mid-migration
+        run: |
+          kill -9 "$(cat /tmp/migrate.pid)"
+          echo "killed"
+
+      # The crash signature: version 1 applied and committed, clean-mark never
+      # written, PRAGMA integrity_check ok. This is the state a restart must
+      # recover from.
+      - name: Assert the interrupted database is dirty at the first migration
+        run: |
+          state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/chaos.db")"
+          echo "post-kill: $state"
+          case "$state" in
+            "integrity_check=ok version=1 dirty=true") ;;
+            *) echo "::error::unexpected post-kill state: $state"; exit 1 ;;
+          esac
+
+      # The defined outcome: restart without the fault reaches the latest
+      # schema, not dirty, integrity intact — MIG-04/05's "deterministic
+      # recovery path". The latest version is derived from the migration file
+      # count rather than hardcoded so the assertion does not rot as schema
+      # migrations are added.
+      - name: Restart without the fault and assert deterministic recovery
+        working-directory: backend
+        run: |
+          SQLITE_DB_PATH="$RUNNER_TEMP/chaos.db" "$RUNNER_TEMP/migrate" up
+          latest="$(find database/migrations -maxdepth 1 -name '*.up.sql' | wc -l | tr -d ' ')"
+          expected="integrity_check=ok version=${latest} dirty=false"
+          state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/chaos.db")"
+          echo "post-recovery: $state (expected $expected)"
+          if [ "$state" != "$expected" ]; then
+            echo "::error::recovery did not reach a clean latest schema"
+            exit 1
+          fi
+
+  disk-full-backup:
+    permissions:
+      contents: read
+    name: ENOSPC during backup fails closed
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Build the backup, migrate and dbinspect CLIs
+        working-directory: backend
+        run: |
+          go build -o "$RUNNER_TEMP/backup" ./cmd/backup
+          go build -o "$RUNNER_TEMP/migrate" ./cmd/migrate
+          go build -o "$RUNNER_TEMP/dbinspect" ./cmd/dbinspect
+
+      - name: Create a populated source database
+        working-directory: backend
+        run: |
+          rm -f "$RUNNER_TEMP/src.db" "$RUNNER_TEMP/src.db-wal" "$RUNNER_TEMP/src.db-shm"
+          SQLITE_DB_PATH="$RUNNER_TEMP/src.db" "$RUNNER_TEMP/migrate" up
+
+      # A 512 KiB tmpfs is guaranteed smaller than the migrated schema DB
+      # (~1 MiB+), so VACUUM INTO runs out of space mid-write — a real ENOSPC,
+      # not a mocked one.
+      - name: Mount a tiny filesystem to simulate disk exhaustion
+        run: |
+          sudo mkdir -p /mnt/diskfull
+          sudo mount -t tmpfs -o size=512k tmpfs /mnt/diskfull
+          echo "mounted 512k tmpfs at /mnt/diskfull"
+
+      # Defined outcome: the CLI exits non-zero, no partial file appears at
+      # the output path (backup is temp-then-link, fail-closed), and nothing
+      # on the source is disturbed.
+      - name: Backup to the full disk must fail closed
+        working-directory: backend
+        run: |
+          set +e
+          SQLITE_DB_PATH="$RUNNER_TEMP/src.db" "$RUNNER_TEMP/backup" /mnt/diskfull/backup.db > /tmp/backup.log 2>&1
+          rc=$?
+          set -e
+          echo "backup exit=$rc"
+          cat /tmp/backup.log
+          if [ "$rc" -eq 0 ]; then
+            echo "::error::backup succeeded against a full disk"
+            exit 1
+          fi
+          if [ -e /mnt/diskfull/backup.db ]; then
+            echo "::error::a partial backup appeared at the output path (must fail closed)"
+            exit 1
+          fi
+          echo "failed closed: no output file, non-zero exit"
+
+      - name: Assert the source database is untouched
+        run: |
+          state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/src.db")"
+          echo "source: $state"
+          case "$state" in
+            "integrity_check=ok version="*) ;;
+            *) echo "::error::source database is not intact: $state"; exit 1 ;;
+          esac
+
+      # A successful backup to healthy storage is VACUUM INTO + verifyBackup,
+      # so this proves the source was readable and structurally sound all
+      # along — the ENOSPC failure did not touch it.
+      - name: Prove the source still backs up to healthy storage
+        working-directory: backend
+        run: |
+          rm -f "$RUNNER_TEMP/healthy.db"
+          SQLITE_DB_PATH="$RUNNER_TEMP/src.db" "$RUNNER_TEMP/backup" "$RUNNER_TEMP/healthy.db"
+          "$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/healthy.db"
+
+      - name: Unmount the tiny filesystem
+        if: always()
+        run: |
+          sudo umount /mnt/diskfull || true
