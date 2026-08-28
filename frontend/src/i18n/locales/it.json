@@ -39,6 +39,7 @@
     "shares": "Condivisioni",
     "audit": "Registro di controllo",
     "systemEvents": "Eventi di sistema",
+    "systemStatus": "Stato del sistema",
     "mainLabel": "Navigazione principale",
     "skipToContent": "Vai al contenuto"
   },
@@ -1142,7 +1143,8 @@
       "built": "Compilato il {{date}}",
       "copy": "Copia i dettagli della build",
       "copied": "Dettagli della build copiati",
-      "reportHint": "Includilo quando segnali un problema."
+      "reportHint": "Includilo quando segnali un problema.",
+      "viewSystemStatus": "Visualizza stato del sistema"
     },
     "webhooks": {
       "title": "Webhook",
@@ -2155,6 +2157,91 @@
       "scheduler": "Processi in background",
       "webhook": "Webhook"
     }
+  },
+  "systemStatus": {
+    "title": "Stato del sistema",
+    "description": "Il quadro operativo completo di questa istanza: aspetti di salute profonda, identità della build, stato delle migrazioni, validazione della configurazione, dati SQLite e spazio di archiviazione.",
+    "overall": "Stato complessivo",
+    "refresh": "Aggiorna",
+    "status": {
+      "healthy": "Sano",
+      "degraded": "Degradato",
+      "unhealthy": "Non sano",
+      "ok": "OK",
+      "not_configured": "Non configurato"
+    },
+    "version": {
+      "title": "Versione e attività",
+      "version": "Versione",
+      "commit": "Commit",
+      "buildDate": "Data di compilazione",
+      "startedAt": "Avviato il",
+      "uptime": "Attività"
+    },
+    "health": {
+      "title": "Controlli di salute",
+      "description": "Stato di salute profondo per aspetto: lo stesso riepilogo restituito dall'endpoint /health senza autenticazione.",
+      "facet": "Controllo",
+      "status": "Stato",
+      "reason": "Motivo",
+      "facets": {
+        "database": "Database",
+        "migrations": "Migrazioni",
+        "integrity_check": "Controllo integrità DB",
+        "restore_drill": "Prova di ripristino",
+        "background_jobs": "Processi in background",
+        "integrations": "Integrazioni"
+      }
+    },
+    "migration": {
+      "title": "Migrazioni",
+      "applied": "Applicata",
+      "latest": "Più recente",
+      "pending": "In sospeso",
+      "dirty": "Sporca",
+      "dirtyYes": "Sì",
+      "dirtyNo": "No"
+    },
+    "config": {
+      "title": "Configurazione",
+      "validationTitle": "Validazione",
+      "validationPass": "Tutti i controlli di configurazione sono superati.",
+      "field": "Campo",
+      "message": "Messaggio",
+      "features": "Funzionalità abilitate"
+    },
+    "database": {
+      "title": "Database",
+      "sqliteVersion": "Versione di SQLite",
+      "journalMode": "Modalità journal",
+      "walBytes": "Dimensione del file WAL"
+    },
+    "storage": {
+      "title": "Archiviazione",
+      "databaseSize": "Dimensione del database",
+      "filesystem": "File system",
+      "usedOf": "{{used}} di {{total}} usati",
+      "free": "Libero",
+      "directories": "Directory di archiviazione",
+      "path": "Percorso",
+      "size": "Dimensione",
+      "files": "File",
+      "approx": "circa"
+    },
+    "features": {
+      "carddav": "CardDAV",
+      "caldav": "CalDAV",
+      "oidc": "OIDC",
+      "email": "E-mail",
+      "metrics": "Metriche",
+      "db_integrity_check": "Controllo integrità DB",
+      "db_restore_drill": "Prova di ripristino del DB"
+    },
+    "feature": {
+      "on": "Attivata",
+      "off": "Disattivata"
+    },
+    "error": "Impossibile caricare lo stato del sistema."
   },
   "backgroundJobs": {
     "title": "Attività in background",

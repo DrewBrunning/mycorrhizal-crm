@@ -147,7 +147,8 @@ Quick reference: `LOG_LEVEL` (`info` default), `LOG_PRETTY` (JSON off in release
 `SYSTEM_EVENT_RETENTION_DAYS` (`30` default) for how long the timeline keeps rows. Webhook delivery
 receipts are bounded by `WEBHOOK_DELIVERY_RETENTION_DAYS` (`30` default, issue #622) — each row
 carries a copy of the entity that triggered the event, so the window is a data-retention decision,
-not just a log-size knob.
+not just a log-size knob. For the live tail of what the running container is writing right now:
+`docker compose logs -f mycorrhizal`.
 
 ## Backups
 
