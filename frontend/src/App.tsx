@@ -42,6 +42,7 @@ import ContactsIcon from '@mui/icons-material/Contacts';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import GroupIcon from '@mui/icons-material/Group';
+import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 import HistoryIcon from '@mui/icons-material/History';
 import HomeWorkIcon from '@mui/icons-material/HomeWork';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -108,6 +109,7 @@ import PrepViewPage from './PrepViewPage';
 import RegisterPage from './RegisterPage';
 import SettingsPage from './SettingsPage';
 import SystemEventsPage from './SystemEventsPage';
+import SystemStatusPage from './SystemStatusPage';
 import UsersPage from './UsersPage';
 import './App.css';
 
@@ -253,6 +255,11 @@ function AppContent({
         text: t('nav.systemEvents'),
         icon: <MonitorHeartIcon />,
         path: '/system-events',
+      });
+      items.push({
+        text: t('nav.systemStatus'),
+        icon: <HealthAndSafetyIcon />,
+        path: '/system-status',
       });
     }
     return items;
@@ -726,6 +733,14 @@ function AppContent({
             element={
               <Suspense fallback={<RouteLoadingFallback />}>
                 <SystemEventsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/system-status"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <SystemStatusPage />
               </Suspense>
             }
           />

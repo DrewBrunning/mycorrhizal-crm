@@ -39,6 +39,7 @@
     "shares": "Comparticiones",
     "audit": "Registro de auditoría",
     "systemEvents": "Eventos del sistema",
+    "systemStatus": "Estado del sistema",
     "mainLabel": "Navegación principal",
     "skipToContent": "Saltar al contenido"
   },
@@ -1142,7 +1143,8 @@
       "built": "Compilado el {{date}}",
       "copy": "Copiar detalles de la compilación",
       "copied": "Detalles de la compilación copiados",
-      "reportHint": "Inclúyalo al informar de un problema."
+      "reportHint": "Inclúyalo al informar de un problema.",
+      "viewSystemStatus": "Ver estado del sistema"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -2155,6 +2157,91 @@
       "scheduler": "Tareas en segundo plano",
       "webhook": "Webhooks"
     }
+  },
+  "systemStatus": {
+    "title": "Estado del sistema",
+    "description": "La imagen operativa completa de esta instancia: facetas de salud profunda, identidad de la compilación, estado de las migraciones, validación de la configuración, datos de SQLite y almacenamiento.",
+    "overall": "Estado general",
+    "refresh": "Actualizar",
+    "status": {
+      "healthy": "Saludable",
+      "degraded": "Degradado",
+      "unhealthy": "No saludable",
+      "ok": "OK",
+      "not_configured": "No configurado"
+    },
+    "version": {
+      "title": "Versión y tiempo de actividad",
+      "version": "Versión",
+      "commit": "Confirmación",
+      "buildDate": "Fecha de compilación",
+      "startedAt": "Iniciado el",
+      "uptime": "Tiempo de actividad"
+    },
+    "health": {
+      "title": "Comprobaciones de salud",
+      "description": "Estado de salud profunda por faceta: el mismo resumen que informa el punto de conexión /health sin autenticación.",
+      "facet": "Comprobación",
+      "status": "Estado",
+      "reason": "Motivo",
+      "facets": {
+        "database": "Base de datos",
+        "migrations": "Migraciones",
+        "integrity_check": "Comprobación de integridad de la BD",
+        "restore_drill": "Prueba de restauración",
+        "background_jobs": "Trabajos en segundo plano",
+        "integrations": "Integraciones"
+      }
+    },
+    "migration": {
+      "title": "Migraciones",
+      "applied": "Aplicada",
+      "latest": "Más reciente",
+      "pending": "Pendiente",
+      "dirty": "Sucio",
+      "dirtyYes": "Sí",
+      "dirtyNo": "No"
+    },
+    "config": {
+      "title": "Configuración",
+      "validationTitle": "Validación",
+      "validationPass": "Todas las comprobaciones de configuración se superaron.",
+      "field": "Campo",
+      "message": "Mensaje",
+      "features": "Funciones habilitadas"
+    },
+    "database": {
+      "title": "Base de datos",
+      "sqliteVersion": "Versión de SQLite",
+      "journalMode": "Modo de registro",
+      "walBytes": "Tamaño del archivo WAL"
+    },
+    "storage": {
+      "title": "Almacenamiento",
+      "databaseSize": "Tamaño de la base de datos",
+      "filesystem": "Sistema de archivos",
+      "usedOf": "{{used}} de {{total}} usados",
+      "free": "Libre",
+      "directories": "Directorios de almacenamiento",
+      "path": "Ruta",
+      "size": "Tamaño",
+      "files": "Archivos",
+      "approx": "aprox."
+    },
+    "features": {
+      "carddav": "CardDAV",
+      "caldav": "CalDAV",
+      "oidc": "OIDC",
+      "email": "Correo electrónico",
+      "metrics": "Métricas",
+      "db_integrity_check": "Comprobación de integridad de la BD",
+      "db_restore_drill": "Prueba de restauración de la BD"
+    },
+    "feature": {
+      "on": "Activado",
+      "off": "Desactivado"
+    },
+    "error": "No se pudo cargar el estado del sistema."
   },
   "backgroundJobs": {
     "title": "Tareas en segundo plano",
