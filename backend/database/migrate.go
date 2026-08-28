@@ -4,7 +4,10 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"io"
 	"io/fs"
+	"log"
+	"os"
 	"time"
 
 	"mycorrhizal/logger"
@@ -15,6 +18,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"gorm.io/gorm"
+	gormLogger "gorm.io/gorm/logger"
 )
 
 //go:embed migrations/*.sql
@@ -62,6 +66,36 @@ func openDSN(dbPath string) string {
 	return dbPath + "?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_txlock=immediate"
 }
 
+// newGormLogger returns the GORM logger every connection opened through this
+// package uses.
+//
+// GORM's default logger (logger.Default) writes the full SQL statement with
+// literal values interpolated on every query that errors, is slow, or returns
+// ErrRecordNotFound, and it is not gated by LOG_LEVEL — it writes straight to
+// os.Stdout via its own log.New, independently of zerolog. Because this is an
+// instance-wide log with no redaction layer, a missing row or a constraint
+// failure echoed its WHERE/VALUES clause verbatim — a password-reset miss
+// logged `SELECT ... WHERE email = "<address>"` (issue #510, filed as #621).
+// Two flags close it:
+//   - ParameterizedQueries: log `?` placeholders instead of interpolated
+//     values, so the email/vcard_uid/column value never reaches the log.
+//   - IgnoreRecordNotFoundError: stop logging the common, benign not-found
+//     SELECTs entirely.
+//
+// The writer is injectable so a test can point it at a *bytes.Buffer and
+// assert on exactly what GORM would emit.
+func newGormLogger(w io.Writer) gormLogger.Interface {
+	return gormLogger.New(
+		log.New(w, "", log.LstdFlags),
+		gormLogger.Config{
+			SlowThreshold:             200 * time.Millisecond,
+			LogLevel:                  gormLogger.Warn,
+			IgnoreRecordNotFoundError: true,
+			ParameterizedQueries:      true,
+		},
+	)
+}
+
 // InitDB initializes the database connection and runs migrations
 func InitDB(dbPath string) (*gorm.DB, error) {
 	// Open database connection for migrations
@@ -76,7 +110,7 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 	}
 
 	// Open GORM connection
-	db, err := gorm.Open(sqlite.Open(openDSN(dbPath)), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(openDSN(dbPath)), &gorm.Config{Logger: newGormLogger(os.Stdout)})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect with GORM: %w", err)
 	}
@@ -92,7 +126,7 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 // each test a byte copy) or are reopening a database the same process already
 // migrated. Use InitDB for a fresh or possibly-stale database.
 func OpenMigratedFile(dbPath string) (*gorm.DB, error) {
-	db, err := gorm.Open(sqlite.Open(openDSN(dbPath)), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(openDSN(dbPath)), &gorm.Config{Logger: newGormLogger(os.Stdout)})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect with GORM: %w", err)
 	}

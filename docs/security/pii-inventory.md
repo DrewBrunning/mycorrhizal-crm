@@ -8,7 +8,7 @@ longer than we need?* — and records the answer.
 
 | | |
 |---|---|
-| **Last updated** | 2026-08-26 (issue [#510](https://github.com/DrewBrunning/mycorrhizal-crm/issues/510)) |
+| **Last updated** | 2026-08-27 (issues [#510](https://github.com/DrewBrunning/mycorrhizal-crm/issues/510), [#621](https://github.com/DrewBrunning/mycorrhizal-crm/issues/621)) |
 | **Scope** | Backend (Go/Gin + SQLite), CardDAV/CalDAV server role, structured + access logs, operator backups, Android offline mirror, browser storage. |
 | **Companion docs** | `data-retention-lifecycle.md` (retention/deletion, cited here rather than repeated), `asvs-l2.md` V7 (logging) / V8 (data protection), `deployment-baseline.md` (operator boundary), `../privacy.md` (the plain-language operator/adopter summary). |
 | **Method** | Schema walked table-by-table from `backend/database/migrations/*.up.sql`; logs checked against **real captured output**, not by reading the logging code (see [How this was verified](#how-this-was-verified)). |
@@ -148,11 +148,11 @@ found and **fixed four instance-wide leaks** in the same PR:
 | F1 | zerolog, `services/mailer.go` + `services/password_reset_service.go` | Recipient email address verbatim (`"email":"alice@example.test"`) at info/warn on every send and every "no channel configured" no-op | `logger.MaskEmail` — local part reduced to `a***`, domain kept for delivery diagnostics (`backend/logger/mask.go`) |
 | F2 | zerolog request log, `middleware/logging.go` `query` field | Full query string, including `?search=<a contact's name>` and `?q=<words from a private note>` | `logger.RedactQueryValues` reworked from a credential deny-list to an **allow-list** (`backend/logger/redact.go`): pagination/sort/enum params logged verbatim, everything else — search terms, ids, OIDC `state` — `[REDACTED]` |
 | F3 | gin's own `Logger()` (`gin.Default()` in `main.go`) | A **second, entirely unredacted** request line: `GET /api/v1/contacts?search=<name>` | `gin.New()` + `gin.Recovery()` — the app's own redaction-aware `LoggingMiddleware` is the only request logger now |
-| F4 | GORM default logger (`database/migrate.go`) | Full SQL with **interpolated literal values** on any errored/slow/not-found query: `SELECT ... WHERE email = "<address>"`. Not gated by `LOG_LEVEL` | **Filed as [#621](https://github.com/DrewBrunning/mycorrhizal-crm/issues/621)** — needs an explicit `gormlogger.Config{ParameterizedQueries: true, IgnoreRecordNotFoundError: true}` and a test; touches DB init, so scoped out of this PR |
+| F4 | GORM default logger (`database/migrate.go`) | Full SQL with **interpolated literal values** on any errored/slow/not-found query: `SELECT ... WHERE email = "<address>"`. Not gated by `LOG_LEVEL` | **Fixed (issue [#621](https://github.com/DrewBrunning/mycorrhizal-crm/issues/621))**: every connection through `database/migrate.go` uses `newGormLogger` — `ParameterizedQueries: true` logs `?` placeholders, `IgnoreRecordNotFoundError: true` drops the benign not-found SELECTs — pinned by `database/migrate_test.go::TestGormLoggerDoesNotInterpolatePII` |
 
-After F1–F3, a full scripted exercise of the API (register, login, create contact with
+After F1–F4, a full scripted exercise of the API (register, login, create contact with
 name+email+phone, note, search, list, password-reset, delete) produces **no personal data in the
-captured logs** except F4's SQL echo. Evidence in [How this was verified](#how-this-was-verified).
+captured logs**. Evidence in [How this was verified](#how-this-was-verified).
 
 What the logs legitimately retain: `user_id`, `request_id`, method, path (no query), status,
 duration, client IP, User-Agent. `user_id` + IP is the deliberate minimum for rate-limit and
@@ -179,7 +179,7 @@ The #510 question: *can an instance-wide store name a specific user's personal d
 | Store | Instance-wide? | Attributes PII to a user? | Recorded reason |
 |---|---|---|---|
 | Structured logs (zerolog) | yes | `user_id` + client IP, and (until this PR) email/search terms — **now fixed**, F1–F3 | `user_id` + IP is the minimum for rate-limit/abuse response; no contact data after the fix |
-| GORM SQL echo | yes | yes, on error/slow queries — **[#621](https://github.com/DrewBrunning/mycorrhizal-crm/issues/621)** | pending fix |
+| GORM SQL echo | yes | yes, on error/slow queries — **now fixed** [#621](https://github.com/DrewBrunning/mycorrhizal-crm/issues/621) | parameterized + not-found suppressed (`backend/database/migrate.go` `newGormLogger`, pinned by `database/migrate_test.go::TestGormLoggerDoesNotInterpolatePII`) |
 | `audit_events` | table is instance-wide; every row has `user_id` | yes, by design | Undo + investigation; ages out at 90 days (§3.2) |
 | `users` directory (`GET /api/v1/users/directory`, `ListUserDirectory`) | yes | **usernames are visible to every other authenticated user** on the instance | `deliberate, documented` — required for contact-sharing (issue [#574](https://github.com/DrewBrunning/mycorrhizal-crm/issues/574)); the operator must know usernames are not private between co-tenants. Stated in `../privacy.md` |
 | `contact_shares` | table instance-wide; rows scoped to `from_user_id`/`to_user_id` | `contact_display_name` + frozen `payload` cross a user boundary **by the sending user's explicit action** | `deliberate, documented` — 30-day window (`CONTACT_SHARE_RETENTION_DAYS`), `data-retention-lifecycle.md` §1 |
@@ -265,7 +265,7 @@ is gone at or before the 30-day mark.
 | Recipient email address logged verbatim (mailer + password-reset) | `more-than-necessary` | **Fixed in this PR** — `logger.MaskEmail` | — |
 | Full query string (search terms, ids) in the request log | `more-than-necessary` | **Fixed in this PR** — allow-list in `logger.RedactQueryValues` | — |
 | gin's duplicate unredacted request logger | `more-than-necessary` | **Fixed in this PR** — `gin.New()` + `gin.Recovery()` | — |
-| GORM SQL echo with interpolated PII on error/slow queries | `more-than-necessary` | Filed — needs `ParameterizedQueries: true` + test; touches DB init | [#621](https://github.com/DrewBrunning/mycorrhizal-crm/issues/621) |
+| GORM SQL echo with interpolated PII on error/slow queries | `more-than-necessary` | **Fixed** — `newGormLogger` (`ParameterizedQueries: true` + `IgnoreRecordNotFoundError: true`) wired into `InitDB`/`OpenMigratedFile`, pinned by `database/migrate_test.go` | [#621](https://github.com/DrewBrunning/mycorrhizal-crm/issues/621) |
 | `webhook_deliveries.payload` retained forever, full entity body | `kept-longer-than-necessary` | **Fixed** — 30-day window (`WEBHOOK_DELIVERY_RETENTION_DAYS`) + purge job; successful deliveries store only the event envelope, never the entity body | [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622) |
 | `notes.content` / `activities.*` / `webhooks.secret` not at-rest-encrypted | protection gap, not minimization | Owned elsewhere | [#380](https://github.com/DrewBrunning/mycorrhizal-crm/issues/380) |
 | User directory exposes usernames to all co-tenants | `deliberate, documented` | Stated in `../privacy.md` | — |
@@ -292,7 +292,9 @@ Everything not listed here was walked and judged `necessary`.
     and `query="q=SECRET_NOTE_BODY_SENTINEL…"` in the zerolog request line; the same two as raw
     `[GIN]` lines; `SELECT … WHERE email = "…"` from GORM.
   - **After**: `"email":"a***@example.test"`; `query="search=[REDACTED]"` / `query="q=[REDACTED]"`;
-    no `[GIN]` lines at all; GORM SELECT still present (**[#621](https://github.com/DrewBrunning/mycorrhizal-crm/issues/621)**).
+    no `[GIN]` lines at all; and after **#621** no GORM SELECT is logged with a literal value
+    (`?` placeholders instead, and not-found lookups not at all — pinned by
+    `database/migrate_test.go::TestGormLoggerDoesNotInterpolatePII`).
   - The contact name, phone, and note body from the create/note/list/delete calls appeared in
     **no** log line, before or after — only the search-term and SQL-echo paths carried them.
 - **Deletion** (§8): verified by the FTS trigger coverage in `backend/database/migrate_test.go`,
@@ -309,5 +311,6 @@ Everything not listed here was walked and judged `necessary`.
 
 | Date | Change |
 |---|---|
+| 2026-08-27 | GORM SQL echo leak (F4) closed (issue #621): every connection through `database/migrate.go` uses `newGormLogger` — `ParameterizedQueries: true` logs `?` placeholders instead of interpolated values, `IgnoreRecordNotFoundError: true` drops benign not-found SELECTs. Pinned by `database/migrate_test.go::TestGormLoggerDoesNotInterpolatePII` (hand-verified to fail against the pre-fix default logger). §3.3 / §4 / §9 dispositions updated from "pending/filed" to fixed. |
 | 2026-08-27 | `webhook_deliveries` retention gap closed (issue #622): `WEBHOOK_DELIVERY_RETENTION_DAYS` (default 30) + daily purge job + admin trigger, and successful deliveries now store only the event envelope (never the entity body). Disposition updated `kept-longer-than-necessary → deliberate, documented`. |
 | 2026-08-26 | Created (issue #510). Log leaks F1–F3 fixed in the same PR; F4 → #621, `webhook_deliveries` retention → #622. |
