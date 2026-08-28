@@ -217,7 +217,36 @@ Detail and the hard-won traps for each layer follow.
   refill). The override nulls the rate-limit vars to empty strings rather than
   pinning their values, so the run exercises the genuine `getIntEnv` default
   path and would catch a future change to the shipped default.
-- **Planned (filed):** visual-regression testing — issue #258 (v0.6.3).
+
+### Visual regression (issue #258)
+
+`frontend/e2e/visual.spec.ts` snapshots a small, curated set of stable views —
+the dashboard, the contacts list, a contact detail page and the "Add reminder"
+dialog, at desktop (1280×720) and phone (390×844) widths. An unintended layout
+or theme change to a pinned view fails the e2e job as a pixel diff. Baselines
+are committed under `frontend/e2e/visual.spec.ts-snapshots/` and compared as
+part of the normal Playwright run; the automatic per-test a11y scan
+(`fixtures.ts`) also runs after each shot, so the views are pixel-identical
+*and* axe-clean.
+
+Regenerate baselines after an **intentional** visual change:
+
+```sh
+cd frontend
+npx playwright test visual.spec.ts --update-snapshots
+```
+
+then review the regenerated images (the HTML report / `--ui` shows before/after
+and the diff) before committing them. Snapshot files are suffixed
+`-chromium-linux` — CI's platform, and the only suffix that should be committed.
+
+The shots are made deterministic on purpose — see the spec header comment.
+Dates are pinned with a frozen page clock, the app's primary font is injected
+as a committed webfont (`e2e/fixtures/fonts/`, route-intercepted) so rendering
+never depends on host fonts, and the dashboard/list responses are intercepted
+with fixed payloads (the dashboard's "Stay in Touch" column is server-random).
+Only add a view here that you are willing to regenerate when the design
+changes.
 
 ## Release/install smoke (planned — DEPLOY-01, issue #450)
 
@@ -291,6 +320,7 @@ gap to file, never something to silently absorb.
 | Component/hook state bugs, i18n key/placeholder drift, format-provider bugs | Frontend unit | v0.6.11 |
 | Android view-model/editor/offline/local-migration bugs | Android unit/Robolectric | v0.6.7, v0.6.10 |
 | Whole-user-flow breakage (register→create→search→export), shipped-artifact boot | E2E web | v0.6.3, v0.6.6 |
+| Layout/theme regressions (a CSS refactor shifting a card or breaking a dialog) | E2E web (`visual.spec.ts`) | v0.6.3 (#258) |
 | Service-worker lifecycle, stale-cache stranding | E2E web (`serviceWorker.spec.ts`) | v0.6.10 |
 | Android real-app flows (favorites, archive/delete + undo) | E2E Android | #212/#238 |
 | Referential integrity, orphan detection, reciprocal-relationship consistency, derived-data (FTS/flat-columns/cadence) drift | DB/integration (DB-01 checker, SEARCH-*) | v0.6.8 (#460/#461–463/#497) |
