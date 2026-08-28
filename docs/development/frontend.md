@@ -57,4 +57,7 @@ All user-facing strings must be translated. Add keys to both `src/i18n/locales/e
 
 ## Testing
 
-The frontend is tested via Playwright E2E tests against a running application. See [Testing](testing.md).
+The frontend has two test layers: vitest unit/component tests co-located in
+`src/` (mocked network, no browser) and Playwright E2E tests against a running
+application in `e2e/`. Which layer a test belongs to is decided in
+[Testing](testing.md) — the explicit test pyramid.

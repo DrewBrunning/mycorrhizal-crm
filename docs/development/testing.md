@@ -4,47 +4,380 @@ parent: Development
 nav_order: 4
 ---
 
-# Testing
+# Test Pyramid
 
-## Backend Tests
+This page is the explicit test pyramid (issue #429, TEST-01): the answer to
+"where does this test go?" that a reviewer can get **without asking**. Every
+`0.6.x` milestone assumes a layer exists to hold its tests; this page names the
+layers, the failure class each one owns, and how each maps onto CI path gating
+(`.github/filters.yaml`, issue #264).
 
-### Running Tests
+The rule of the page is one sentence:
 
-```sh
-cd backend
-go test ./...
-```
+> A test goes in the **lowest layer that can catch its failure class** — and a
+> failure class with no owning layer is a **gap to file**, not a test to absorb
+> into the nearest layer.
 
-### Test Database
+Coverage percentages are deliberately **not** the acceptance structure — see
+the [anti-goal](#anti-goal-coverage-percentage-is-not-the-acceptance-criterion)
+at the bottom. The diff-based coverage gate (issue #267) is a separate,
+orthogonal mechanism; this page is about *which layer a test belongs to*, not
+*how much of a change is covered*.
 
-Tests use an in-memory SQLite database that is auto-migrated before each test. No external dependencies required.
+## The layers at a glance
 
-### Writing Tests
+| Layer | Responsible for | Must not be used for | Lives in | Runs via (local) | CI job / filter |
+|---|---|---|---|---|---|
+| Backend unit | Pure logic, no DB: parsing, temporal math, relationship-type inversion, cadence, validation | Persistence, GORM hooks, route wiring | `*_test.go` co-located per package | `go test ./...` | `backend-tests` legs + `backend-checks` / `backend` |
+| DB/integration | Everything that touches the **real migrated schema**: hooks, flat-field derivation, delete semantics, ownership scoping, transactions, sync/backup/import services | Pure logic; JSON contract; format bytes | any `*_test.go` using `dbtest.New` or `database.InitDB(t.TempDir())` | `go test ./...` | `backend-tests` legs / `backend` |
+| API contract | Route↔`openapi.yaml` drift, request-body binding, response DTO shapes, captured-response fixtures | Business logic, persistence, UI | `backend/openapi*_test.go`, `testdata/contract-fixtures/` | `go test ./...`, `npx vitest run`, `./gradlew testDebugUnitTest` | `openapi` (+ `schemathesis.yml`) |
+| Import/export interop | vCard 3/4, JSContact, CSV, iCal/CalDAV against the RFC golden fixtures; round-trip semantics | Neutral-model logic, persistence | `backend/{vcard3,vcard4,jscontact,correspondence}/`, `internal/rfctest/`, `docs/golden-fixtures/` | `go test ./...` | `backend-tests`/`backend-checks` (fuzz) / `backend` |
+| Migration | Schema evolution: up/down pairs, version/dirty tracking, data preservation, interrupted-migration recovery | Current-schema app behavior; deploy sequencing | `backend/database/migrations/`, `backend/database/migrate_*_test.go` | `go test ./...` | `backend-tests` (`rest` leg) / `backend` |
+| Frontend unit | Component state/rendering, hooks, i18n key parity, contract-fixture parsing (vitest) | Real network, end-to-end flows | `frontend/src/**/*.test.ts(x)`, `frontend/viteConfig.test.ts` | `npx vitest run` + `npx tsc --noEmit` | `frontend` job / `frontend` |
+| Android unit/Robolectric | View models, editors, screens, network parsing, offline/local-DB logic | Emulator/device flows, real backend | `android/**/src/test/` | `./gradlew testDebugUnitTest` | `test` job / `android` |
+| E2E web | Complete user flows through the **shipped** artifact (image + compose + nginx + backend) | Anything reachable in a lower layer | `frontend/e2e/` | `npx playwright test` | `e2e` job / `frontend`+`openapi`+`infra` |
+| E2E Android | Real app on emulator against the real backend; the Playwright analog | JVM-testable logic | `android/app/src/androidTest/` | `:app:connectedDebugAndroidTest` (see README-developer.md) | `android-e2e` job / `android`+`openapi`+`infra` |
+| Release/install smoke | Clean install from nothing; misconfiguration diagnostics; startup ordering | Anything presupposing a working install | *not built yet* — DEPLOY-01, issue #450 (v0.6.6) | planned | planned / `infra` |
+| Performance/load | N+1/query-count regressions, benchmark bodies, concurrent-write smoke vs the deployed artifact, scale (planned) | Correctness (that's the pyramid) | `backend/**/benchmark` tests, `backend/cmd/loadsmoke` | `go test -bench . -benchtime=1x`, `go run ./cmd/loadsmoke` | `backend-checks` + e2e `loadsmoke` step |
+| Security/adversarial | BOLA/IDOR, spec fuzzing, DAST, static analysis — the vulnerability classes no pyramid layer is shaped to catch | — | their own workflows | per-workflow | `schemathesis.yml`, `zap-dast.yml`, `codeql.yml`, `sast.yml`, … |
 
-Use the test helpers in the `_test` files alongside each package. Set up a test DB with `database.NewTestDB()` (or equivalent), create a Gin test context, and call controller functions directly. Assert on the `httptest.ResponseRecorder`.
+Detail and the hard-won traps for each layer follow.
 
-## Frontend Tests
+## Backend layers
 
-There are no isolated frontend tests with yarn test, since this requires code/logic duplication for mocking. Instead Playwright is used to run integrated E2E tests.
+### Backend unit
 
-### Setup
+- **Responsible for** pure computations with no database and no HTTP: vCard/CSV/iCal
+  line encode and decode, date and timezone math, `RelationshipEdge.Type` inversion
+  (`relationship_type_registry.go`), cadence and `Activity.Qualifying()` logic, name
+  and sort-key computation, validation rules, i18n tokens.
+- **Must not be used for** anything that touches the schema, GORM hooks /
+  `BeforeSave` derivation, controller routing, or ownership scoping — those are
+  DB/integration or contract concerns, and a unit test would silently miss them.
+- **Lives in** `*_test.go` files co-located with each package
+  (`models/`, `vcard3/`, `vcard4/`, `jscontact/`, `correspondence/`, `contactmodel/`).
+- **Runs via** `go test ./...`. The same `go test` process also runs the
+  DB/integration tests — the layer is a property of what the test *touches*, not
+  which command runs it.
 
-```sh
-cd frontend
-yarn playwright install  # install browsers (first time only)
-```
+### DB/integration
 
-The E2E tests expect the full application running on `http://localhost:7300`. `global-setup.ts` seeds a test user before the suite runs.
+- **Responsible for** everything that persists to or reads from the **real
+  migrated schema**:
+  - GORM hooks and `BeforeSave`/`BeforeCreate` derivation, and the
+    `RecordForContact`-vs-`RecordFromContact` / `contact_card_merge.go` data-loss
+    bug classes (CLAUDE.md backend traps #2 and #3);
+  - soft- vs hard-delete semantics and the `DeleteContact`/`DeleteUser` cascade
+    lists (trap #6/#7), including unique-index interactions with soft-deleted rows;
+  - ownership scoping — zero IDOR holes (trap #5);
+  - transactions, `SQLITE_BUSY` / `_txlock=immediate` behavior
+    (`database/concurrent_write_test.go`, trap #9);
+  - services that orchestrate multi-row operations: CardDAV/CalDAV sync,
+    backup/restore (`database/backup_test.go`), import.
+- **Must not be used for** pure logic (unit), the JSON wire contract (API
+  contract), or format bytes (interop).
+- **The non-negotiable fixture rule** (CLAUDE.md trap #1): test against the real
+  migrated schema, never `AutoMigrate`. Prefer `internal/dbtest.New(t)`, which
+  builds the migrated template once per test binary and hands each test an
+  isolated copy (issue #632); the `database` package's own tests call
+  `database.InitDB(filepath.Join(t.TempDir(), "x.db"))` directly because `dbtest`
+  cannot import it (deliberate import cycle).
+- **Lives in** any `*_test.go` that takes a `*gorm.DB` — `controllers/`,
+  `services/`, `models/`, `database/`.
+- **Runs via** `go test ./...`; CI `backend-tests` matrix (`controllers` /
+  `services` / `rest` legs, gotestsum retry-on-failure + a separate no-rerun
+  coverage pass).
 
-### Running E2E Tests
+### API contract
 
-```sh
-yarn test:e2e           # headless
-yarn test:e2e:headed    # with browser visible
-yarn test:e2e:ui        # Playwright UI mode
-yarn test:e2e:debug     # debug mode
-```
+- **Responsible for** the boundary between the OpenAPI spec and the
+  implementation:
+  - route-vs-spec drift and schema presence (`backend/openapi_test.go`);
+  - request-body binding shapes and whether validation tags actually run
+    (`openapi_request_test.go`, issue #256);
+  - response DTOs not silently dropping required keys — the `omitempty` + required
+    TS field crash (CLAUDE.md frontend trap #8);
+  - captured real responses, one canonical copy consumed by both web and Android
+    parse tests: `testdata/contract-fixtures/` → `frontend/src/api/contractFixtures.test.ts`
+    and `android/core/network/.../ContractFixtureTest.kt` (issue #257; the
+    spec-derived shared fixture is issue #266);
+  - property-based spec fuzzing of the running app (Schemathesis + `cmd/schemagate`,
+    issue #369) and the deterministic cross-account BOLA sweep (`cmd/bolacheck`).
+- **Must not be used for** business logic, persistence, or UI behavior.
+- **Runs via** `go test ./...` (drift tests), `npx vitest run` + `./gradlew
+  testDebugUnitTest` (fixture consumers), and the `schemathesis.yml` workflow
+  (fuzz). The live counterpart is `frontend/e2e/apiContract.spec.ts`.
 
-### Writing E2E Tests
+### Import/export interop
 
-Tests live in `frontend/e2e/`. Use the shared fixtures from `fixtures.ts` for login/logout helpers and the `TEST_USER` credentials from `global-setup.ts`. Group tests with `test.describe` and keep each test independent.
+- **Responsible for** the formats crossing the boundary: vCard 3.0/4.0, JSContact,
+  CSV, iCal/CalDAV.
+  - **Directional correctness against the RFC-verbatim golden fixtures**
+    (ADR-0003): `docs/golden-fixtures/` is the external test oracle; adapters
+    copy fixtures into `backend/internal/rfctest/fixtures/` **unchanged** and
+    tests assert against the RFC bytes. A green test that shares a misconception
+    with its code proves nothing — the fixtures are what anchor the bytes.
+  - **Round-trip semantics, not byte identity.** A round trip `canonical →
+    format → canonical` must preserve *meaning*; repeated conversions must not
+    progressively corrupt data. This is the milestone's
+    "distinguish semantic equivalence from byte-for-byte representation."
+  - Lossy/unknown-field behavior, sensitivity filtering in the query, malformed
+    input reject/ignore/preserve rules.
+  - Hostile-input fuzzing seeded from the fixtures (issues #265/#376).
+- **Must not be used for** the neutral model's own logic (unit) or persistence
+  (DB/integration).
+- **Runs via** `go test ./...`; fuzz targets run in `backend-checks` (short
+  smoke on PR, 2m per target on the nightly schedule).
+
+### Migration
+
+- **Responsible for** schema evolution:
+  - hand-written up/down pairs, append-only numbering, version tracking and the
+    dirty flag (`schema_migrations`) — see `migrate_version_test.go`;
+  - **data preservation** across migrations: real production data exists since
+    `v0.2.0-alpha-candidate` (deployed 2026-08-04), so a rename/drop/retype needs
+    a backfill, not a silent clean removal (`migrate_datapreservation_test.go`);
+  - interrupted-migration behavior and failure diagnostics (v0.6.4, #436/#437/#438).
+  - **Planned (MIG-01, #436, v0.6.4):** versioned historical-schema fixtures —
+    one schema-only dump per supported release (floor `v0.6.0`, issue #529),
+    populated at test time from the TEST-02 manifest, with `schema_migrations`
+    rows so each presents the correct, non-dirty version. A release without a
+    dump fails CI.
+- **Must not be used for** current-schema application behavior (DB/integration)
+  or deploy sequencing (release/install smoke).
+- **Runs via** `go test ./...` (the `database` package lands in the `rest` leg).
+
+## Frontend layer
+
+### Frontend unit (vitest)
+
+- **Responsible for** component state and rendering, hooks/data-fetching logic,
+  i18n key parity across all five locales (`src/i18n/locales.test.ts`),
+  date-format providers, and contract-fixture parsing. Network is mocked; no
+  browser.
+- **Must not be used for** end-to-end flows (that's Playwright).
+- **Gotchas that live here** (CLAUDE.md frontend traps): no auto-cleanup and no
+  `globals: true` — add `afterEach(cleanup)` explicitly; MUI appends `" *"` to a
+  required field's accessible label; don't nest `<Chip>` in `<Typography>`.
+- **Runs via** `npx vitest run` + `npx tsc --noEmit`; CI `unit-tests.yml`
+  `frontend` job (`yarn test:coverage`, type check, lint).
+
+## Android layers
+
+### Android unit / Robolectric
+
+- **Responsible for** view models, editors (`MultiValueEditor`, `AddressEditor`),
+  screens, network parsing (`ContractFixtureTest.kt`), and offline/local-DB logic,
+  all on the JVM via Robolectric.
+- **Must not be used for** real device/emulator flows (instrumented) or a real
+  backend.
+- **Runs via** `./gradlew testDebugUnitTest`; CI `android-tests.yml` `test` job
+  (also runs detekt, `lintDebug`, `assembleDebug`, and the aggregated JaCoCo
+  report).
+- **Known gap, filed:** `SmsReceiver` is untestable under the current Hilt
+  whole-app-graph test component — issue #327.
+
+### E2E Android (instrumented)
+
+- **Responsible for** the real app on an emulator/device against the **real**
+  backend (`docker-compose.test.yml`): login → list → detail → edit → favorites →
+  archive/delete + audit undo (issues #212, #238). This replaced the old manual
+  Pixel 8a gate; runbook in `README-developer.md`.
+- **Must not be used for** JVM-testable logic.
+- **Runs via** `./gradlew :app:connectedDebugAndroidTest` (emulator), or
+  `adb reverse tcp:7300 tcp:7300` + the same with
+  `-Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300`
+  on a physical device. CI `android-tests.yml` `android-e2e` job is deliberately
+  **off the PR path** (issue #578, B5): push:main + nightly + manual, so an
+  Android PR is gated by Robolectric only and the emulator signal lands
+  post-merge and nightly.
+
+## E2E web (Playwright)
+
+- **Responsible for** complete user workflows through the **shipped artifact** —
+  the all-in-one image (nginx + backend under supervisord) via
+  `docker-compose.test.yml` on `localhost:7300`: register → login → create/edit
+  contact → search → import/export → merge → favorites → archive → audit undo →
+  backup/restore → admin/system-status → service worker → security headers →
+  timeline endpoints. The only layer that exercises the whole deployed web stack,
+  including the real first-boot migration path against a fresh DB.
+- **Must not be used for** anything reachable cheaper in a lower layer.
+- **Lives in** `frontend/e2e/` (specs, `fixtures.ts`, `global-setup.ts`).
+- **Runs via** `npx playwright test`; CI `e2e-tests.yml` `e2e` job (builds the
+  all-in-one image, starts compose, waits on `/health/live`, runs Playwright, then
+  the `cmd/loadsmoke` concurrent-write pass against the running instance).
+- **Planned (filed):** visual-regression testing — issue #258 (v0.6.3).
+
+## Release/install smoke (planned — DEPLOY-01, issue #450)
+
+- **Responsible for** (once built, v0.6.6) a clean install that proves the
+  **workflow**, not the boot: start from nothing (no volumes, no DB, only
+  documented operator config), then register the first user, log in, create a
+  contact with several field types, add a relationship, attach a file, upload a
+  profile photo, search, export, and read it back — each step touching a different
+  subsystem a fresh install gets wrong (FTS index creation, attachment/photo
+  directory permissions, JWT signing).
+- Also owns startup ordering (health/readiness distinguish *migrating* from
+  *ready* on first boot) and the misconfiguration cases real operators hit
+  (missing `JWT_SECRET_KEY`, relative `ATTACHMENTS_DIR`, mismatched
+  `FRONTEND_URL` — each must fail naming the variable).
+- **Gates under `infra`** using the same compose artifact the e2e suites use.
+- This is the layer that v0.6.6 (install/upgrade/backup/recovery) and its sibling
+  DEPLOY-02 (#451, upgrade) / DEPLOY-03 (#452, interrupted startup) assume exists.
+
+## Cross-cutting: performance/load and security
+
+Two sets are **not** pyramid layers in the "write a test here" sense, but they
+own failure classes the 0.6.x milestones name, so they get explicit homes.
+
+### Performance/load
+
+- **Owns** N+1 / query-count regressions (the `*_QueryCountIsBounded` tests,
+  issue #261), benchmark bodies (`-bench . -benchtime=1x` in `backend-checks`),
+  and concurrent-write stability against the **deployed** artifact
+  (`cmd/loadsmoke` in the e2e job — the deployed counterpart to
+  `database/concurrent_write_test.go`).
+- **Planned (filed):** scale characterization and resource/capacity testing —
+  PERF-01, issue #468 (v0.6.9), which builds *scale* on top of the TEST-02
+  dataset rather than a separate fixture.
+
+### Security/adversarial tooling
+
+- **Owns** the vulnerability classes no layer above is shaped to catch: BOLA/IDOR
+  (`cmd/bolacheck`, the deterministic complement to Schemathesis), spec-derived
+  fuzzing for 5xx/auth (Schemathesis + `cmd/schemagate` + ignore list), DAST
+  (ZAP, weekly), static analysis (CodeQL, golangci-lint/gosec, detekt, mobsfscan),
+  dependency and workflow audits. These are **their own workflows** with their own
+  triggers (PR/push/nightly per workflow); a feature PR writes tests in the
+  pyramid, not in these. The security checklist (`docs/security/asvs-l2.md`) is
+  the tracking surface for which control each one evidences.
+- **Planned (filed):** deterministic failure-injection / chaos scenarios —
+  TEST-06, issue #434 (v0.6.3), the automated evidence behind v0.8.0's
+  adversarial audit.
+
+## Failure classes by owner
+
+The `0.6.x` milestones name failure classes, not layers. Each one below is owned
+by **exactly one** layer (or a filed gap issue); a class with no row here is a
+gap to file, never something to silently absorb.
+
+| Failure class | Owning layer | Milestone / issue |
+|---|---|---|
+| Pure-computation bugs: parsing, temporal/DST math, relationship-type inversion, cadence, validation | Backend unit | v0.6.11 |
+| ORM-vs-migration schema drift, GORM column derivation | DB/integration | everywhere (trap #1) |
+| Persistence bugs: silently swallowed `.Error`, flat-field derivation, `RecordForContact` vs `RecordFromContact`, delete/cascade semantics, soft-deleted unique-index collisions | DB/integration | v0.6.4, v0.6.8 (traps #2/#3/#6/#7) |
+| IDOR / missing ownership scoping | DB/integration (+ `cmd/bolacheck` evidence) | v0.6.12 (trap #5) |
+| Concurrent writes, `SQLITE_BUSY`, lost updates, stale writes, idempotency | DB/integration (`concurrent_write_test.go`) + E2E web (`loadsmoke`) | v0.6.7 |
+| Route↔spec drift, binding-shape drift, dropped response keys | API contract | v0.6.3 (#266) |
+| Client/server contract mismatch | API contract + E2E web/Android | v0.6.10 |
+| vCard/JSContact/CSV/iCal format correctness, lossy conversions, unknown fields, malformed input, sensitivity filtering | Import/export interop | v0.6.5 |
+| Round-trip fidelity, repeated-conversion stability | Import/export interop | v0.6.5 |
+| Migration data loss, semantic drift across schema versions, dirty/version mishandling | Migration | v0.6.4 |
+| Interrupted migration, migration rollback/recovery, first-boot migration on empty DB | Migration + release/install smoke | v0.6.4, v0.6.6, #438/#452 |
+| Monica/Meerkat import mapping errors | Import/export interop (fixtures per DATA-*) | v0.6.4 (#351/#353) |
+| Clean-install failure (env vars, CORS, permissions, empty-DB migration) | Release/install smoke (planned) | v0.6.6 (#450) |
+| Backup/restore/cross-version restore failure | DB/integration (`backup_test.go`, restore tests) + release/install smoke | v0.6.6 |
+| Component/hook state bugs, i18n key/placeholder drift, format-provider bugs | Frontend unit | v0.6.11 |
+| Android view-model/editor/offline/local-migration bugs | Android unit/Robolectric | v0.6.7, v0.6.10 |
+| Whole-user-flow breakage (register→create→search→export), shipped-artifact boot | E2E web | v0.6.3, v0.6.6 |
+| Service-worker lifecycle, stale-cache stranding | E2E web (`serviceWorker.spec.ts`) | v0.6.10 |
+| Android real-app flows (favorites, archive/delete + undo) | E2E Android | #212/#238 |
+| Referential integrity, orphan detection, reciprocal-relationship consistency, derived-data (FTS/flat-columns/cadence) drift | DB/integration (DB-01 checker, SEARCH-*) | v0.6.8 (#460/#461–463/#497) |
+| External-integration failure behavior, retries | DB/integration (services-level) + failure injection | v0.6.9, #434 |
+| Query/scale performance, resource exhaustion, N+1 | Performance/load | v0.6.9 (#468, #261) |
+| Security vulnerabilities (BOLA, auth bypass, injection, SSRF) | Security/adversarial tooling | v0.6.12, v0.8.0 |
+| Adversarial/chaos scenarios | Failure injection (TEST-06, #434) | v0.8.0 |
+
+Where a row names a milestone but the concrete ticket lives elsewhere (e.g. the
+"test infrastructure supports historical fixtures" acceptance criterion → MIG-01
+#436, and "large/representative datasets" → TEST-02 #430), that ticket is the
+implementer of the layer's capability, not a different layer.
+
+## Layers vs CI path gating
+
+Each layer maps onto an existing area of `.github/filters.yaml` (issue #264) —
+the single source of truth for path gating. **No new filter is required**; every
+layer has a home, and a layer's tests are gated exactly when its filter fires.
+The `changes` job's named outputs gate the suite jobs; skipped suites report
+success, so all checks can be required in branch protection.
+
+| Layer | Filter area(s) in `.github/filters.yaml` |
+|---|---|
+| Backend unit | `backend` |
+| DB/integration | `backend` |
+| API contract | `openapi` (drift tests ride `backend`; fixture consumers ride `frontend`/`android`; spec fuzz + `cmd/schemagate` ride `openapi`) |
+| Import/export interop | `backend` |
+| Migration | `backend` |
+| Frontend unit | `frontend` |
+| Android unit/Robolectric | `android` |
+| E2E web | `frontend` + `openapi` + `infra` (builds/runs the deployed artifact) |
+| E2E Android | `android` + `openapi` + `infra` (push:main + nightly + manual only, #578) |
+| Release/install smoke | `infra` (planned, #450) |
+| Performance/load | `backend` (benchmarks) + `infra` (loadsmoke in the e2e job) |
+| Security/adversarial | not a filter area — each workflow has its own triggers |
+
+The `workflows` filter (`.github/**`) re-runs everything, because a workflow
+change can affect any check. `docs/**` intentionally maps to nothing: a change
+to this page triggers only the docs job — correct, because a documentation edit
+cannot break a test layer.
+
+Two nuances worth writing down, because the mapping is *almost* clean:
+
+- `backend/openapi.yaml` matches **both** `backend` and `openapi`, so a contract
+  change re-runs the Go suite and the spec-fuzz/contract suites, and the
+  `frontend`/`android` jobs re-run their fixture-consuming tests. That is
+  intended: the contract's home is `openapi`.
+- The **web** E2E suite gates on `frontend`/`openapi`/`infra`/`workflows`, not
+  `backend`: a pure `backend/**` change is covered by the Go checks in
+  `unit-tests.yml` and does not re-run the full e2e stack (e2e-tests.yml header
+  comment). A backend-only change that breaks a user flow is therefore caught by
+  the nightly full suite, not by the PR — a deliberate cost/speed trade.
+
+## Anti-goal: coverage percentage is not the acceptance criterion
+
+The milestone states it verbatim, and this project means it: **coverage is
+measured where useful, but coverage percentage is not the primary acceptance
+criterion.**
+
+- **Acceptance is layer ownership.** A failure class is "covered" when its
+  owning layer has a test that would catch it — not when a number crosses a
+  threshold. "Where does this test go?" is answered by the layer map above;
+  "is this failure class covered anywhere?" is answered by the ownership table.
+- **The coverage gate is a different mechanism.** Issue #267's `codecov/patch`
+  gate (target 100% on *new uncovered lines in changed files*, per area: Go /
+  vitest / JaCoCo) is a gate on **changes**, not an acceptance criterion for
+  milestones. The project-wide `codecov/project` number is deliberately
+  informational. Full mechanics: `docs/development/coverage.md`.
+- **Coverage ≠ correctness.** A line can be 100% covered while every assertion
+  misses what a planted bug changes — that is exactly what mutation testing
+  (`stryker.yml`, nightly, report-only on the core domain modules) measures, and
+  why it complements rather than replaces the layers.
+
+## Determinism and isolation (the "test infrastructure" acceptance criteria)
+
+The layers above presuppose tests that are deterministic and isolated from
+developer-specific state:
+
+- **Real schema, per test.** `internal/dbtest.New(t)` hands each test an
+  isolated byte copy of the per-binary migrated template (issue #632); the
+  `database` package uses `database.InitDB(filepath.Join(t.TempDir(), "x.db"))`.
+  No test ever depends on a developer's working DB.
+- **Fresh artifact per e2e run.** The Playwright, instrumented-Android, and
+  Schemathesis suites boot `docker-compose.test.yml` (`down -v` teardown) — a
+  throwaway DB, never production data.
+- **Deterministic identities.** `global-setup.ts` seeds the `TEST_USER`; tests
+  do not depend on local state or ordering (Playwright reuses a `storageState`
+  captured in the `setup` project).
+
+## References
+
+- Issue #429 (TEST-01) — this pyramid; #533 — the v0.6.3 milestone gate.
+- Issue #264 — path gating; `.github/filters.yaml` is the source of truth.
+- Issue #267 — the diff-based coverage gate; `docs/development/coverage.md`.
+- ADR-0003 — golden fixtures as the external test oracle;
+  `docs/golden-fixtures/`.
+- TEST-02 (#430) — the canonical pathological dataset that the DB, migration,
+  and interop layers will consume; MIG-01 (#436) — versioned migration fixtures.
+- DEPLOY-01 (#450) — the release/install smoke layer; TEST-06 (#434) — failure
+  injection; PERF-01 (#468) — performance at scale.
+- Issue #257 — contract fixtures; #266 — the spec-derived contract fixture.
