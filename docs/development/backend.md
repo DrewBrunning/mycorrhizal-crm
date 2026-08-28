@@ -72,4 +72,10 @@ Complex business logic lives in `services/`. Controllers call services; services
 go test ./...
 ```
 
-Tests use an in-memory SQLite database (auto-migrated). See [Testing](testing.md).
+Tests that touch persistence run against the **real migrated schema** — never
+GORM `AutoMigrate` (CLAUDE.md backend trap #1). Use `internal/dbtest.New(t)`,
+which hands each test an isolated copy of a per-binary migrated template
+(issue #632); the `database` package's own tests call
+`database.InitDB(filepath.Join(t.TempDir(), "x.db"))` directly. Which layer a
+test belongs to is decided in [Testing](testing.md) — the explicit test
+pyramid.
