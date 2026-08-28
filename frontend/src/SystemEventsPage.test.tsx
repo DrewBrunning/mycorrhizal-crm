@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
 import { getErrorAggregation } from './api/errorAggregation';
+import { getNotificationChannelHealth } from './api/notificationHealth';
 import { getSubsystemHealth } from './api/subsystemHealth';
 import { getSystemEvents, type SystemEvent } from './api/systemEvents';
 import SystemEventsPage from './SystemEventsPage';
@@ -26,6 +27,11 @@ vi.mock('./api/subsystemHealth', async (importOriginal) => {
 vi.mock('./api/errorAggregation', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/errorAggregation')>();
   return { ...actual, getErrorAggregation: vi.fn() };
+});
+
+vi.mock('./api/notificationHealth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/notificationHealth')>();
+  return { ...actual, getNotificationChannelHealth: vi.fn() };
 });
 
 const getMock = vi.mocked(getSystemEvents);
@@ -56,6 +62,8 @@ beforeEach(() => {
     total_events: 0,
     buckets: [],
   });
+  vi.mocked(getNotificationChannelHealth).mockReset();
+  vi.mocked(getNotificationChannelHealth).mockResolvedValue({ channels: [] });
 });
 
 function renderPage() {
