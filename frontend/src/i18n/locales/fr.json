@@ -2248,5 +2248,37 @@
       "gotify": "Gotify",
       "push": "Push web"
     }
+  },
+  "diagnostics": {
+    "title": "Diagnostic",
+    "description": "Un bilan de santé complet de cette installation : configuration, base de données et migrations, stockage, sauvegardes, notifications, intégrations, espace disque et tâches de fond.",
+    "run": "Lancer le diagnostic",
+    "running": "En cours…",
+    "status": {
+      "ok": "OK",
+      "warning": "Avertissement",
+      "error": "Erreur"
+    },
+    "summary": "{{warnings}} avertissement(s), {{errors}} erreur(s)",
+    "checks": {
+      "config": "Configuration",
+      "database": "Base de données",
+      "migrations": "Migrations",
+      "filesystem": "Système de fichiers",
+      "backup": "Sauvegarde",
+      "notification_email": "Notifications par e-mail",
+      "notification_ntfy": "Notifications ntfy",
+      "notification_gotify": "Notifications Gotify",
+      "notification_push": "Notifications push web",
+      "integration_carddav": "CardDAV",
+      "integration_caldav": "CalDAV",
+      "integration_immich": "Immich",
+      "integration_paperless": "Paperless",
+      "integration_seafile": "Seafile",
+      "integration_nextcloud": "Nextcloud",
+      "disk_space": "Espace disque",
+      "background_jobs": "Tâches de fond",
+      "version": "Version"
+    }
   }
 }

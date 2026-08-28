@@ -565,6 +565,14 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// distinction the issue calls out. Instance-wide, admin-only.
 			admin.GET("/notification-health", controllers.GetNotificationChannelHealth)
 
+			// One-pass instance diagnostics (issue #423) — the admin-gated
+			// "is this install healthy?" sweep: config, database + migration
+			// state, filesystem writability, backup validity, notification
+			// channels, integration reachability, disk usage, background-job
+			// liveness, and version, folded into an ok/warning/error checklist
+			// with a summary. Read-only and secret-free.
+			admin.GET("/diagnostics", controllers.RunDiagnostics)
+
 			// Aggregated build/version, migration numbers, live
 			// config-validation read-back, enabled feature flags, SQLite
 			// operational facts and storage sizing (issue #388) — the

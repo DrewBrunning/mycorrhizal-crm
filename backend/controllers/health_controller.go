@@ -2,8 +2,6 @@ package controllers
 
 import (
 	"net/http"
-	"os"
-	"path/filepath"
 	"time"
 
 	"mycorrhizal/buildinfo"
@@ -147,7 +145,7 @@ func readinessFilesystem(c *gin.Context) ReadinessCheckDetail {
 		if dir == "" {
 			continue
 		}
-		if reason := probeWritableDir(dir); reason != "" {
+		if reason := services.ProbeWritableDir(dir); reason != "" {
 			// The absolute path and errno go to the log, not the
 			// unauthenticated response body (ASVS 7.4.1).
 			logger.Error().Str("dir", dir).Msg("readiness: " + label + " " + reason)
@@ -155,33 +153,6 @@ func readinessFilesystem(c *gin.Context) ReadinessCheckDetail {
 		}
 	}
 	return ReadinessCheckDetail{Status: "ok"}
-}
-
-// probeWritableDir returns "" when dir exists, is a directory, and a file can
-// be created in it; otherwise a generic, path-free reason (the detail is
-// logged by the caller).
-func probeWritableDir(dir string) string {
-	info, err := os.Stat(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "is missing"
-		}
-		return "is not accessible"
-	}
-	if !info.IsDir() {
-		return "is not a directory"
-	}
-	probe := filepath.Join(dir, ".health-write-probe")
-	// #nosec G304 -- dir is an operator-supplied config path (PROFILE_PHOTO_DIR /
-	// ATTACHMENTS_DIR, validated absolute at startup), never request input; the
-	// filename is a hardcoded constant.
-	f, err := os.OpenFile(probe, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
-	if err != nil {
-		return "is not writable"
-	}
-	_ = f.Close()
-	_ = os.Remove(probe)
-	return ""
 }
 
 // HealthCheck handles the deep health check endpoint, GET /health.

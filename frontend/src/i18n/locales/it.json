@@ -2248,5 +2248,37 @@
       "gotify": "Gotify",
       "push": "Push web"
     }
+  },
+  "diagnostics": {
+    "title": "Diagnostica",
+    "description": "Un controllo di salute completo di questa installazione: configurazione, database e migrazioni, archiviazione, backup, notifiche, integrazioni, spazio su disco e processi in background.",
+    "run": "Esegui diagnostica",
+    "running": "In esecuzione…",
+    "status": {
+      "ok": "OK",
+      "warning": "Avviso",
+      "error": "Errore"
+    },
+    "summary": "{{warnings}} avviso/i, {{errors}} errore/i",
+    "checks": {
+      "config": "Configurazione",
+      "database": "Database",
+      "migrations": "Migrazioni",
+      "filesystem": "File system",
+      "backup": "Backup",
+      "notification_email": "Notifiche e-mail",
+      "notification_ntfy": "Notifiche ntfy",
+      "notification_gotify": "Notifiche Gotify",
+      "notification_push": "Notifiche push web",
+      "integration_carddav": "CardDAV",
+      "integration_caldav": "CalDAV",
+      "integration_immich": "Immich",
+      "integration_paperless": "Paperless",
+      "integration_seafile": "Seafile",
+      "integration_nextcloud": "Nextcloud",
+      "disk_space": "Spazio su disco",
+      "background_jobs": "Processi in background",
+      "version": "Versione"
+    }
   }
 }
