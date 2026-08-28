@@ -8177,6 +8177,41 @@ paths:
         "403":
           description: Not an admin, or an API token was used on an admin path.
 
+  /admin/notification-health:
+    get:
+      summary: Per-channel notification delivery health (admin)
+      operationId: adminGetNotificationHealth
+      description: >
+        The delivery-health state of every reminder notification channel —
+        email, ntfy, Gotify, and Web Push (issue #422). For each: whether it
+        is configured, whether it is currently reachable, how many users have
+        it enabled, the last successful delivery / last failure, the
+        consecutive-failure run, the last failure reason, and the
+        attempted / successfully-delivered totals. Derived on read from
+        notification_deliveries and the per-user channel config, so it
+        survives a restart and never drifts. The status separates three
+        different remedies: `unconfigured` (nothing to deliver on), `failing`
+        (configured but the last attempt failed), and `no_devices` (push is
+        provisioned but no browser subscription / mobile device can receive —
+        not a red failure). Instance-wide, admin-only, read-only. Never
+        contains a Gotify token or per-user delivery content.
+      responses:
+        "200":
+          description: One entry per delivery channel, in dispatch order.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  channels:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/NotificationChannelHealth"
+        "401":
+          description: Not authenticated (cookie or full-scope bearer token required).
+        "403":
+          description: Not an admin, or an API token was used on an admin path.
+
   /admin/users:
     get:
       summary: List all users (admin)
@@ -9698,6 +9733,35 @@ components:
           description: "First failure of the current unbroken run — non-null exactly when consecutive_failures > 0"
         consecutive_failures: { type: integer, description: "Failures in a row since the last success; a success resets it to 0" }
         last_error: { type: string, description: "Sanitized error of the most recent failure; empty unless status is failing" }
+    NotificationChannelHealth:
+      type: object
+      description: >
+        The delivery-health state of one reminder notification channel (issue
+        #422), derived on read from notification_deliveries and the per-user
+        channel config. `channel` is one of email, ntfy, gotify, push. The
+        `status` distinguishes three remedies: `unconfigured` (the server for
+        email, or no user for the push-style channels, has nothing set up),
+        `failing` (configured, but the most recent delivery attempt failed),
+        and `no_devices` (push is provisioned but no browser subscription or
+        mobile device can currently receive), alongside `healthy`.
+      properties:
+        channel: { type: string, enum: [email, ntfy, gotify, push], description: "The notification channel wire name, in dispatch order" }
+        status:
+          type: string
+          enum: [unconfigured, no_devices, healthy, failing]
+          description: "unconfigured = nothing to deliver on; no_devices = push provisioned but no endpoint registered; healthy = configured and the last terminal delivery succeeded; failing = configured and the last terminal delivery failed"
+        configured: { type: boolean, description: "The channel can be dispatched at all (server mailer for email; at least one user's connection settings for ntfy/Gotify; VAPID keys / FCM service account for push)" }
+        reachable: { type: boolean, description: "True exactly when status is healthy — the other statuses are each a different reason the channel cannot deliver right now" }
+        enabled_user_count: { type: integer, description: "Number of users for whom the channel is actually on (per-user toggle + usable per-user config)" }
+        device_count: { type: integer, description: "Currently-receivable push endpoints (web subscriptions + FCM devices when FCM is configured); 0 for non-push channels" }
+        fcm_configured: { type: boolean, description: "Push-only: the server has an FCM service account file (M2); false for non-push channels" }
+        last_attempt_at: { type: string, format: date-time, nullable: true, description: "Most recent terminal delivery (sent or failed)" }
+        last_sent_at: { type: string, format: date-time, nullable: true, description: "Most recent successful delivery" }
+        last_failed_at: { type: string, format: date-time, nullable: true, description: "Most recent failed delivery" }
+        consecutive_failures: { type: integer, description: "Unbroken failed-delivery run since the last success; non-zero exactly when status is failing" }
+        last_error: { type: string, description: "Length-capped error of the most recent failed delivery; empty unless status is failing" }
+        attempted_count: { type: integer, description: "Terminal delivery attempts (sent + failed); pending rows are not attempts" }
+        delivered_count: { type: integer, description: "Successfully-delivered rows" }
     ErrorBucket:
       type: object
       description: >

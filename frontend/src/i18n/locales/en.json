@@ -2170,5 +2170,31 @@
       "lastSeen": "Last seen",
       "actions": "Actions"
     }
+  },
+  "notificationHealth": {
+    "title": "Notification delivery health",
+    "description": "Whether each reminder channel is working: configured or not, when it last succeeded, and whether it is currently failing.",
+    "refresh": "Refresh",
+    "status": {
+      "unconfigured": "Unconfigured",
+      "no_devices": "No devices",
+      "healthy": "Healthy",
+      "failing": "Failing"
+    },
+    "consecutiveFailures": "Consecutive failures: {{n}}",
+    "noDevicesHint": "Push is configured, but no browser subscription or mobile device is registered.",
+    "enabledUsers": "Enabled users",
+    "deliveredCount": "Delivered: {{delivered}} / {{attempted}}",
+    "deviceCount": "Devices: {{n}}",
+    "fcmConfigured": "FCM configured",
+    "lastSuccess": "Last success",
+    "lastFailure": "Last failure",
+    "never": "never",
+    "channels": {
+      "email": "Email",
+      "ntfy": "ntfy",
+      "gotify": "Gotify",
+      "push": "Web Push"
+    }
   }
 }

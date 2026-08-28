@@ -35,6 +35,7 @@ import {
 } from './api/systemEvents';
 import ErrorAggregationPanel from './components/ErrorAggregationPanel';
 import { ListSkeleton } from './components/LoadingSkeletons';
+import NotificationHealthPanel from './components/NotificationHealthPanel';
 import SubsystemHealthPanel from './components/SubsystemHealthPanel';
 import { useDebouncedValue } from './hooks/useDebounce';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
@@ -121,6 +122,8 @@ export default function SystemEventsPage() {
       </Typography>
 
       <SubsystemHealthPanel onSelectComponent={(component) => patchFilters({ component })} />
+
+      <NotificationHealthPanel />
 
       <ErrorAggregationPanel onViewEvents={showErrors} />
 
