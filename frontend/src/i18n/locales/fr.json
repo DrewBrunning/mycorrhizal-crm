@@ -39,6 +39,7 @@
     "shares": "Partages",
     "audit": "Journal d'audit",
     "systemEvents": "Événements système",
+    "systemStatus": "État du système",
     "mainLabel": "Navigation principale",
     "skipToContent": "Passer au contenu"
   },
@@ -1142,7 +1143,8 @@
       "built": "Compilé le {{date}}",
       "copy": "Copier les détails de la version",
       "copied": "Détails de la version copiés",
-      "reportHint": "À joindre lors du signalement d'un problème."
+      "reportHint": "À joindre lors du signalement d'un problème.",
+      "viewSystemStatus": "Voir l'état du système"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -2172,6 +2174,91 @@
       "scheduler": "Tâches en arrière-plan",
       "webhook": "Webhooks"
     }
+  },
+  "systemStatus": {
+    "title": "État du système",
+    "description": "L'image opérationnelle complète de cette instance : facettes de santé profonde, identité du binaire, état des migrations, validation de la configuration, données SQLite et stockage.",
+    "overall": "État général",
+    "refresh": "Actualiser",
+    "status": {
+      "healthy": "Sain",
+      "degraded": "Dégradé",
+      "unhealthy": "Non sain",
+      "ok": "OK",
+      "not_configured": "Non configuré"
+    },
+    "version": {
+      "title": "Version et durée de fonctionnement",
+      "version": "Version",
+      "commit": "Commit",
+      "buildDate": "Date de compilation",
+      "startedAt": "Démarré à",
+      "uptime": "Durée de fonctionnement"
+    },
+    "health": {
+      "title": "Contrôles de santé",
+      "description": "État de santé profond par facette — le même récapitulatif que renvoie le point d'accès /health sans authentification.",
+      "facet": "Contrôle",
+      "status": "Statut",
+      "reason": "Raison",
+      "facets": {
+        "database": "Base de données",
+        "migrations": "Migrations",
+        "integrity_check": "Contrôle d'intégrité de la BD",
+        "restore_drill": "Essai de restauration",
+        "background_jobs": "Tâches de fond",
+        "integrations": "Intégrations"
+      }
+    },
+    "migration": {
+      "title": "Migrations",
+      "applied": "Appliquée",
+      "latest": "Plus récente",
+      "pending": "En attente",
+      "dirty": "Sale",
+      "dirtyYes": "Oui",
+      "dirtyNo": "Non"
+    },
+    "config": {
+      "title": "Configuration",
+      "validationTitle": "Validation",
+      "validationPass": "Tous les contrôles de configuration sont réussis.",
+      "field": "Champ",
+      "message": "Message",
+      "features": "Fonctionnalités activées"
+    },
+    "database": {
+      "title": "Base de données",
+      "sqliteVersion": "Version de SQLite",
+      "journalMode": "Mode journal",
+      "walBytes": "Taille du fichier WAL"
+    },
+    "storage": {
+      "title": "Stockage",
+      "databaseSize": "Taille de la base de données",
+      "filesystem": "Système de fichiers",
+      "usedOf": "{{used}} sur {{total}} utilisés",
+      "free": "Libre",
+      "directories": "Répertoires de stockage",
+      "path": "Chemin",
+      "size": "Taille",
+      "files": "Fichiers",
+      "approx": "env."
+    },
+    "features": {
+      "carddav": "CardDAV",
+      "caldav": "CalDAV",
+      "oidc": "OIDC",
+      "email": "E-mail",
+      "metrics": "Métriques",
+      "db_integrity_check": "Contrôle d'intégrité de la BD",
+      "db_restore_drill": "Essai de restauration de la BD"
+    },
+    "feature": {
+      "on": "Activé",
+      "off": "Désactivé"
+    },
+    "error": "Impossible de charger l'état du système."
   },
   "backgroundJobs": {
     "title": "Tâches en arrière-plan",

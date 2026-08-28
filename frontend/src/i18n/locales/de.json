@@ -39,6 +39,7 @@
     "shares": "Freigaben",
     "audit": "Audit-Protokoll",
     "systemEvents": "Systemereignisse",
+    "systemStatus": "Systemstatus",
     "mainLabel": "Hauptnavigation",
     "skipToContent": "Zum Inhalt springen"
   },
@@ -1142,7 +1143,8 @@
       "built": "Erstellt am {{date}}",
       "copy": "Build-Details kopieren",
       "copied": "Build-Details kopiert",
-      "reportHint": "Bitte bei einer Fehlermeldung mit angeben."
+      "reportHint": "Bitte bei einer Fehlermeldung mit angeben.",
+      "viewSystemStatus": "Systemstatus anzeigen"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -2172,6 +2174,91 @@
       "scheduler": "Hintergrundaufgaben",
       "webhook": "Webhooks"
     }
+  },
+  "systemStatus": {
+    "title": "Systemstatus",
+    "description": "Das zusammengesetzte Betriebsbild dieser Instanz – Deep-Health-Aspekte, Build-Identität, Migrationsstand, Konfigurationsprüfung, SQLite-Fakten und Speicher.",
+    "overall": "Gesamtstatus",
+    "refresh": "Aktualisieren",
+    "status": {
+      "healthy": "Gesund",
+      "degraded": "Beeinträchtigt",
+      "unhealthy": "Nicht gesund",
+      "ok": "OK",
+      "not_configured": "Nicht konfiguriert"
+    },
+    "version": {
+      "title": "Version & Laufzeit",
+      "version": "Version",
+      "commit": "Commit",
+      "buildDate": "Build-Datum",
+      "startedAt": "Gestartet um",
+      "uptime": "Laufzeit"
+    },
+    "health": {
+      "title": "Gesundheitsprüfungen",
+      "description": "Deep-Health-Status pro Aspekt – dieselbe Zusammenfassung, die der /health-Endpunkt ohne Authentifizierung meldet.",
+      "facet": "Prüfung",
+      "status": "Status",
+      "reason": "Grund",
+      "facets": {
+        "database": "Datenbank",
+        "migrations": "Migrationen",
+        "integrity_check": "DB-Integritätsprüfung",
+        "restore_drill": "Wiederherstellungstest",
+        "background_jobs": "Hintergrundaufträge",
+        "integrations": "Integrationen"
+      }
+    },
+    "migration": {
+      "title": "Migrationen",
+      "applied": "Angewendet",
+      "latest": "Neueste",
+      "pending": "Ausstehend",
+      "dirty": "Fehlerhaft",
+      "dirtyYes": "Ja",
+      "dirtyNo": "Nein"
+    },
+    "config": {
+      "title": "Konfiguration",
+      "validationTitle": "Validierung",
+      "validationPass": "Alle Konfigurationsprüfungen bestanden.",
+      "field": "Feld",
+      "message": "Meldung",
+      "features": "Aktivierte Funktionen"
+    },
+    "database": {
+      "title": "Datenbank",
+      "sqliteVersion": "SQLite-Version",
+      "journalMode": "Journal-Modus",
+      "walBytes": "Größe der WAL-Datei"
+    },
+    "storage": {
+      "title": "Speicher",
+      "databaseSize": "Datenbankgröße",
+      "filesystem": "Dateisystem",
+      "usedOf": "{{used}} von {{total}} verwendet",
+      "free": "Frei",
+      "directories": "Speicherverzeichnisse",
+      "path": "Pfad",
+      "size": "Größe",
+      "files": "Dateien",
+      "approx": "ca."
+    },
+    "features": {
+      "carddav": "CardDAV",
+      "caldav": "CalDAV",
+      "oidc": "OIDC",
+      "email": "E-Mail",
+      "metrics": "Metriken",
+      "db_integrity_check": "DB-Integritätsprüfung",
+      "db_restore_drill": "DB-Wiederherstellungstest"
+    },
+    "feature": {
+      "on": "Ein",
+      "off": "Aus"
+    },
+    "error": "Systemstatus konnte nicht geladen werden."
   },
   "backgroundJobs": {
     "title": "Hintergrundaufgaben",

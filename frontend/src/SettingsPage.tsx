@@ -25,6 +25,7 @@ import {
   FormControl,
   IconButton,
   InputLabel,
+  Link,
   MenuItem,
   Paper,
   Select,
@@ -42,6 +43,7 @@ import {
 import type { SelectChangeEvent } from '@mui/material/Select';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link as RouterLink } from 'react-router';
 import { type ThemePreference, useThemePreference } from './AppThemeProvider';
 import { getCurrentUser } from './api/admin';
 import {
@@ -60,7 +62,7 @@ import {
 import { changePassword } from './api/auth';
 import { type Contact, getContacts, getContactsByUid } from './api/contacts';
 import { updateDateFormat, updateLanguage, updateSelfContact } from './api/users';
-import { fetchAndCacheUserInfo } from './auth';
+import { fetchAndCacheUserInfo, isAdmin } from './auth';
 import AppDialog from './components/AppDialog';
 import BuildVersionCard from './components/BuildVersionCard';
 import ImmichSettings from './components/ImmichSettings';
@@ -908,6 +910,16 @@ export default function SettingsPage() {
 
       {/* Which build is running -- what a user quotes in a bug report. */}
       <BuildVersionCard />
+
+      {/* The full operational snapshot lives on its own admin page (issue
+          #649); admins get a cross-link from here, non-admins never see it. */}
+      {isAdmin() && (
+        <Box sx={{ mb: 2 }}>
+          <Link component={RouterLink} to="/system-status">
+            {t('settings.about.viewSystemStatus')}
+          </Link>
+        </Box>
+      )}
     </Box>
   );
 }

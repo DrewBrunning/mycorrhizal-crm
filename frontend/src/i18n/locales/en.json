@@ -39,6 +39,7 @@
     "shares": "Shares",
     "audit": "Audit log",
     "systemEvents": "System events",
+    "systemStatus": "System status",
     "mainLabel": "Main navigation",
     "skipToContent": "Skip to content"
   },
@@ -1169,7 +1170,8 @@
       "built": "Built {{date}}",
       "copy": "Copy build details",
       "copied": "Build details copied",
-      "reportHint": "Include this when reporting a problem."
+      "reportHint": "Include this when reporting a problem.",
+      "viewSystemStatus": "View system status"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -2172,6 +2174,91 @@
       "scheduler": "Background jobs",
       "webhook": "Webhooks"
     }
+  },
+  "systemStatus": {
+    "title": "System status",
+    "description": "The composite operational picture of this instance — deep-health facets, build identity, migration state, configuration validation, SQLite facts, and storage.",
+    "overall": "Overall status",
+    "refresh": "Refresh",
+    "status": {
+      "healthy": "Healthy",
+      "degraded": "Degraded",
+      "unhealthy": "Unhealthy",
+      "ok": "OK",
+      "not_configured": "Not configured"
+    },
+    "version": {
+      "title": "Version & uptime",
+      "version": "Version",
+      "commit": "Commit",
+      "buildDate": "Build date",
+      "startedAt": "Started at",
+      "uptime": "Uptime"
+    },
+    "health": {
+      "title": "Health checks",
+      "description": "Per-facet deep-health status — the same roll-up the unauthenticated /health endpoint reports.",
+      "facet": "Check",
+      "status": "Status",
+      "reason": "Reason",
+      "facets": {
+        "database": "Database",
+        "migrations": "Migrations",
+        "integrity_check": "DB integrity check",
+        "restore_drill": "Restore drill",
+        "background_jobs": "Background jobs",
+        "integrations": "Integrations"
+      }
+    },
+    "migration": {
+      "title": "Migrations",
+      "applied": "Applied",
+      "latest": "Latest",
+      "pending": "Pending",
+      "dirty": "Dirty",
+      "dirtyYes": "Yes",
+      "dirtyNo": "No"
+    },
+    "config": {
+      "title": "Configuration",
+      "validationTitle": "Validation",
+      "validationPass": "All configuration checks pass.",
+      "field": "Field",
+      "message": "Message",
+      "features": "Enabled features"
+    },
+    "database": {
+      "title": "Database",
+      "sqliteVersion": "SQLite version",
+      "journalMode": "Journal mode",
+      "walBytes": "WAL file size"
+    },
+    "storage": {
+      "title": "Storage",
+      "databaseSize": "Database size",
+      "filesystem": "Filesystem",
+      "usedOf": "{{used}} of {{total}} used",
+      "free": "Free",
+      "directories": "Storage directories",
+      "path": "Path",
+      "size": "Size",
+      "files": "Files",
+      "approx": "approx."
+    },
+    "features": {
+      "carddav": "CardDAV",
+      "caldav": "CalDAV",
+      "oidc": "OIDC",
+      "email": "Email",
+      "metrics": "Metrics",
+      "db_integrity_check": "DB integrity check",
+      "db_restore_drill": "DB restore drill"
+    },
+    "feature": {
+      "on": "On",
+      "off": "Off"
+    },
+    "error": "Could not load system status."
   },
   "backgroundJobs": {
     "title": "Background jobs",
