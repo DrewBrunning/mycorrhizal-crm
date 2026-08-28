@@ -205,6 +205,7 @@ func foldResult(result string) string {
 var knownComponents = map[string]struct{}{
 	"app": {}, "scheduler": {}, "migration": {}, "contact_sync": {},
 	"calendar_sync": {}, "notification": {}, "webhook": {}, "backup": {},
+	"storage": {},
 }
 
 func foldComponent(component string) string {

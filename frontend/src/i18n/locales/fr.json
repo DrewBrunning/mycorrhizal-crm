@@ -2244,7 +2244,12 @@
       "path": "Chemin",
       "size": "Taille",
       "files": "Fichiers",
-      "approx": "env."
+      "approx": "env.",
+      "growth30d": "Croissance (30 jours)",
+      "grew": "Augmentation de {{bytes}} sur les 30 derniers jours",
+      "projectedFull": "Remplissage prévu",
+      "thresholdWarning": "Avertissement : {{percent}} % de stockage utilisé",
+      "thresholdCritical": "Critique : {{percent}} % de stockage utilisé"
     },
     "features": {
       "carddav": "CardDAV",

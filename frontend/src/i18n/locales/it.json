@@ -2244,7 +2244,12 @@
       "path": "Percorso",
       "size": "Dimensione",
       "files": "File",
-      "approx": "circa"
+      "approx": "circa",
+      "growth30d": "Crescita (30 giorni)",
+      "grew": "Aumentato di {{bytes}} negli ultimi 30 giorni",
+      "projectedFull": "Pieno previsto",
+      "thresholdWarning": "Avviso: {{percent}} % di spazio usato",
+      "thresholdCritical": "Critico: {{percent}} % di spazio usato"
     },
     "features": {
       "carddav": "CardDAV",

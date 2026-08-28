@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"mycorrhizal/buildinfo"
 	"mycorrhizal/config"
@@ -122,7 +123,14 @@ func TestGetSystemStatus_MigratedDB_ReportsCleanState(t *testing.T) {
 	require.NoError(t, json.Unmarshal(body, &resp))
 
 	assert.Contains(t, []string{"healthy", "degraded", "unhealthy"}, resp.Overall)
-	assert.Equal(t, resp.Overall, resp.Health.Status, "overall must be DeepHealth.Status verbatim")
+	// overall is DeepHealth.Status unless the storage threshold elevates it:
+	// a warning/critical tier folds a healthy overall up to degraded (issue
+	// #652 item 4).
+	if resp.Storage.Threshold == services.StorageThresholdWarning || resp.Storage.Threshold == services.StorageThresholdCritical {
+		assert.Equal(t, "degraded", resp.Overall, "a warning/critical storage threshold must fold overall to degraded")
+	} else {
+		assert.Equal(t, resp.Overall, resp.Health.Status, "overall must be DeepHealth.Status when the storage threshold is ok")
+	}
 
 	// On a DB migrated to head.
 	assert.Greater(t, resp.Migration.Applied, uint(0))
@@ -292,6 +300,95 @@ func setBuildVersionForTest(t *testing.T, v string) {
 // default posture: UPDATE_CHECK_ENABLED unset means update.enabled == false
 // and the endpoint makes NO outbound request (asserted with an injected
 // transport that records calls).
+// TestGetSystemStatus_StorageTrendBlock verifies the storage-growth trend and
+// tiered threshold fields land on the wire (issue #652): the three growth
+// deltas from the persisted storage_samples series, usage_percent, and the
+// threshold — which must be one of ok | warning | critical depending on the
+// host filesystem's real usage.
+func TestGetSystemStatus_StorageTrendBlock(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "x.db")
+	db := dbtest.NewAt(t, dbPath)
+	admin := seedAdmin(t, db)
+
+	// Seed 31 daily samples, each half a day before its nominal day boundary
+	// so no sample sits on a window edge the controller's own time.Now() could
+	// exclude (the storage trend uses real time internally, not an injectable
+	// clock). Sample d sits at now-(d+0.5) days with value 1e9 - d*10e6.
+	for d := 0; d <= 30; d++ {
+		require.NoError(t, db.Create(&models.StorageSample{
+			TakenAt:       time.Now().Add(-time.Duration(d)*24*time.Hour - 12*time.Hour),
+			DatabaseBytes: 1_000_000_000 - int64(d)*10_000_000,
+			FSUsedBytes:   int64(d) * 100,
+			FSTotalBytes:  1 << 40,
+		}).Error)
+	}
+
+	router := systemStatusEnv(t, db, validSystemStatusConfig(t, dbPath), admin.ID)
+	w, body := getSystemStatus(t, router)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var resp SystemStatusResponse
+	require.NoError(t, json.Unmarshal(body, &resp))
+
+	// 7d window: oldest in-window sample is d=6 (7 days ago, value 940e6);
+	// delta = 1e9 - 940e6 = 60e6.
+	require.NotNil(t, resp.Storage.Growth7DBytes)
+	assert.Equal(t, int64(60_000_000), *resp.Storage.Growth7DBytes)
+
+	// 30d window: oldest in-window sample is d=29 (30 days ago, value 710e6);
+	// delta = 290e6.
+	require.NotNil(t, resp.Storage.Growth30DBytes)
+	assert.Equal(t, int64(290_000_000), *resp.Storage.Growth30DBytes)
+
+	// 90d window: only 31 days of history exist, so the oldest sample of all
+	// (d=30, 31 days ago, value 700e6) is the fallback; delta = 300e6 — the
+	// growth over "as much history as exists", not null.
+	require.NotNil(t, resp.Storage.Growth90DBytes)
+	assert.Equal(t, int64(300_000_000), *resp.Storage.Growth90DBytes)
+
+	// usage_percent + threshold: the filesystem holding the temp DB is
+	// stat'able, so usage_percent must be populated and the threshold one of
+	// the three tiers.
+	require.NotNil(t, resp.Storage.UsagePercent)
+	assert.InDelta(t, 0, *resp.Storage.UsagePercent, 100, "a fresh temp dir must be nearly empty")
+	assert.Contains(t, []string{
+		services.StorageThresholdOK,
+		services.StorageThresholdWarning,
+		services.StorageThresholdCritical,
+	}, resp.Storage.Threshold)
+
+	// The threshold computation persisted its tier into alert_states (the
+	// hysteresis state), keyed storage_threshold.
+	var stateCount int64
+	require.NoError(t, db.Model(&models.AlertState{}).
+		Where("condition_key = ?", "storage_threshold").
+		Count(&stateCount).Error)
+	assert.Equal(t, int64(1), stateCount, "the storage threshold must persist its tier for hysteresis")
+}
+
+// TestOverallWithStorageThreshold pins the fold-in rule (issue #652 item 4):
+// warning/critical elevate a healthy overall to degraded, never to unhealthy,
+// and other statuses pass through untouched.
+func TestOverallWithStorageThreshold(t *testing.T) {
+	cases := []struct {
+		name       string
+		deepStatus string
+		threshold  string
+		want       string
+	}{
+		{"healthy + ok stays healthy", "healthy", services.StorageThresholdOK, "healthy"},
+		{"healthy + warning degrades", "healthy", services.StorageThresholdWarning, services.DeepStatusDegraded},
+		{"healthy + critical degrades", "healthy", services.StorageThresholdCritical, services.DeepStatusDegraded},
+		{"degraded + warning stays degraded", services.DeepStatusDegraded, services.StorageThresholdWarning, services.DeepStatusDegraded},
+		{"unhealthy + warning stays unhealthy", services.DeepStatusUnhealthy, services.StorageThresholdWarning, services.DeepStatusUnhealthy},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, overallWithStorageThreshold(tc.deepStatus, tc.threshold))
+		})
+	}
+}
+
 func TestGetSystemStatus_UpdateCheckDisabledByDefault_NoOutboundCall(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "x.db")
 	db := dbtest.NewAt(t, dbPath)

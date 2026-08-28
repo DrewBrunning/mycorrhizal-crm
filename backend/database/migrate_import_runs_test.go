@@ -55,8 +55,10 @@ func TestMigrationsAddImportRuns(t *testing.T) {
 
 	require.NoError(t, sqlDB.Close())
 
-	// Down drops the table. 000042 is the migration tip, so one rollback.
-	require.NoError(t, MigrateDown(dbPath))
+	// Down drops the table. 000042 is no longer the migration tip — 000043
+	// sits on top — so roll that back first, then 000042's own down migration.
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000043_storage_samples
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000042_import_runs
 
 	sqlDB2, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)

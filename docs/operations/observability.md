@@ -275,6 +275,8 @@ Subjects follow `🔴 Backup failed` … `🟢 Backup recovered after 3 failures
 | `LOG_PRETTY` | off in `release` | human-readable console output instead of JSON (dev) |
 | `SYSTEM_EVENT_RETENTION_DAYS` | `30` | how long `system_events` rows survive |
 | `WEBHOOK_DELIVERY_RETENTION_DAYS` | `30` | how long `webhook_deliveries` rows survive |
+| `STORAGE_WARN_PERCENT` / `STORAGE_CRITICAL_PERCENT` | `75` / `90` | the `/admin/system-status` storage block's `ok`→`warning`→`critical` tiers, with -5% hysteresis; a warning/critical tier elevates `overall` to at least `degraded` (issue #652) |
+| `STORAGE_SAMPLE_RETENTION_DAYS` | `180` | how long the daily `storage_samples` rows (the storage-growth trend history) survive before the sampler prunes them |
 | `DB_INTEGRITY_CHECK_ENABLED` / `_INTERVAL_HOURS` | on / `24` | scheduled `PRAGMA integrity_check` |
 | `DB_RESTORE_DRILL_ENABLED` / `_INTERVAL_HOURS` | on / `168` | scheduled backup-restore drill |
 | `ALERTING_ENABLED` | on | master switch for the alert evaluator |

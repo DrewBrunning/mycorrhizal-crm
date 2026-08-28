@@ -386,6 +386,17 @@ func main() {
 	s.Every(cfg.AlertEvalIntervalMinutes).Minutes().Do(recoverJob(db, models.JobNameAlertEval, models.JobTriggerScheduled, alertEvalTask))
 	go safeGo(db, models.JobNameAlertEval, models.JobTriggerInitial, alertEvalTask)
 
+	// Daily storage-growth sampler (issue #652): write one storage_samples row
+	// measuring the on-disk footprint, prune rows past their retention window,
+	// and emit a system_events row. Job-lock guarded so a multi-instance
+	// deploy does not double-write.
+	storageSampleTask := func() error {
+		services.RecordStorageSampleScheduled(db, *cfg)
+		return nil
+	}
+	s.Every(24).Hours().Do(recoverJob(db, models.JobNameStorageSample, models.JobTriggerScheduled, storageSampleTask))
+	go safeGo(db, models.JobNameStorageSample, models.JobTriggerInitial, storageSampleTask)
+
 	go s.StartBlocking()
 
 	// gin.New() rather than gin.Default(): the app installs its own

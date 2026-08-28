@@ -112,7 +112,15 @@ type Config struct {
 	AlertJobStoppedEnabled      bool // Enable the job_stopped condition
 	HIBPCheckEnabled            bool // Check new/changed passwords against HIBP's k-anonymity range API (issue #376). Off by default: an outbound call on a self-hosted app is a deliberate opt-in, not a safe default — see docs/security/asvs-l2.md's P3.
 	UpdateCheckEnabled          bool // Compare the running build against the latest GitHub release (issue #650). Off by default: an outbound call on a self-hosted app is a deliberate opt-in, not a safe default — see docs/security/asvs-l2.md's P6.
-	OIDC                        OIDCConfig
+
+	// Storage-growth trend thresholds (issue #652). The /admin/system-status
+	// storage block folds usage_percent against these two tiers into
+	// ok | warning | critical (with -5% hysteresis), and the daily storage
+	// sampler retains StorageSampleRetentionDays of history.
+	StorageWarnPercent         int // usage% >= this turns the storage threshold warning (default 75)
+	StorageCriticalPercent     int // usage% >= this turns it critical (default 90)
+	StorageSampleRetentionDays int // days of storage_samples history kept (default 180)
+	OIDC                       OIDCConfig
 
 	// DataEncryptionKey is the base64-encoded 32-byte master key for
 	// field-level at-rest encryption (issue #380, ASVS V6.4/V8.3). When unset,
@@ -129,6 +137,21 @@ type Config struct {
 	// than none.
 	MetricsToken string
 }
+
+// Defaults for the storage-trend thresholds (issue #652). Exported so the
+// storage threshold computation can reuse them for a raw config.Config built
+// without LoadConfig (tests) — zero-value Config values resolve to these.
+const (
+	// DefaultStorageWarnPercent is the used-percent at which the storage
+	// threshold on /admin/system-status turns "warning" (default 75).
+	DefaultStorageWarnPercent = 75
+	// DefaultStorageCriticalPercent is the used-percent at which it turns
+	// "critical" (default 90).
+	DefaultStorageCriticalPercent = 90
+	// DefaultStorageSampleRetentionDays is how long storage_samples rows
+	// survive before the sampler prunes them (default 180).
+	DefaultStorageSampleRetentionDays = 180
+)
 
 // LoadConfig reads environment variables (with sensible defaults) into a
 // new Config.
@@ -208,6 +231,9 @@ func LoadConfig() *Config {
 		AlertJobStoppedEnabled:        getBoolEnv("ALERT_JOB_STOPPED_ENABLED", true),
 		HIBPCheckEnabled:              getBoolEnv("HIBP_CHECK_ENABLED", false),
 		UpdateCheckEnabled:            getBoolEnv("UPDATE_CHECK_ENABLED", false),
+		StorageWarnPercent:            getIntEnv("STORAGE_WARN_PERCENT", DefaultStorageWarnPercent),
+		StorageCriticalPercent:        getIntEnv("STORAGE_CRITICAL_PERCENT", DefaultStorageCriticalPercent),
+		StorageSampleRetentionDays:    getIntEnv("STORAGE_SAMPLE_RETENTION_DAYS", DefaultStorageSampleRetentionDays),
 		DataEncryptionKey:             getEnv("DATA_ENCRYPTION_KEY", ""),
 		DataEncryptionKeyFile:         getEnv("DATA_ENCRYPTION_KEY_FILE", ""),
 		MetricsToken:                  getEnv("METRICS_TOKEN", ""),
@@ -258,6 +284,23 @@ func LoadConfig() *Config {
 	}
 	if cfg.AlertBackupMaxAgeHours < 0 {
 		cfg.AlertBackupMaxAgeHours = 0
+	}
+
+	// Storage-trend thresholds (issue #652): warn must be a sane 1..99 and
+	// critical strictly above warn (otherwise the two tiers collapse and the
+	// threshold is meaningless). Same "clamp to a working value, don't refuse
+	// to boot" posture as the ALERT_* knobs above.
+	if cfg.StorageWarnPercent < 1 || cfg.StorageWarnPercent > 99 {
+		log.Println("WARN: STORAGE_WARN_PERCENT must be between 1 and 99, using 75")
+		cfg.StorageWarnPercent = DefaultStorageWarnPercent
+	}
+	if cfg.StorageCriticalPercent <= cfg.StorageWarnPercent || cfg.StorageCriticalPercent > 100 {
+		log.Println("WARN: STORAGE_CRITICAL_PERCENT must be above STORAGE_WARN_PERCENT and at most 100, using 90")
+		cfg.StorageCriticalPercent = DefaultStorageCriticalPercent
+	}
+	if cfg.StorageSampleRetentionDays < 7 {
+		log.Println("WARN: STORAGE_SAMPLE_RETENTION_DAYS must be at least 7, using 180")
+		cfg.StorageSampleRetentionDays = DefaultStorageSampleRetentionDays
 	}
 
 	// An email channel is enabled only when it is fully configured

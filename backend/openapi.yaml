@@ -10159,6 +10159,11 @@ components:
             wal_bytes: { type: integer, description: "Size of the -wal sidecar, 0 when absent" }
         storage:
           type: object
+          description: >
+            On-disk sizing (issue #388) plus the storage-growth trend and
+            tiered threshold (issue #652). Trend fields are null until the
+            storage_samples series has enough history (the daily sampler needs
+            ~2 days for the 7d delta, 14+ days for a projection).
           properties:
             database_bytes: { type: integer, description: "Main DB file + -wal + -shm" }
             filesystem:
@@ -10176,6 +10181,29 @@ components:
                   bytes: { type: integer }
                   file_count: { type: integer }
                   truncated: { type: boolean, description: "A hard cap (200000 entries or depth 8) stopped the walk early; bytes is a lower bound" }
+            growth_7d_bytes:
+              type: integer
+              description: "Latest database_bytes minus the oldest sample in the last 7 days; null when the window holds fewer than two samples"
+            growth_30d_bytes:
+              type: integer
+              description: "Same delta over the last 30 days"
+            growth_90d_bytes:
+              type: integer
+              description: "Same delta over the last 90 days"
+            projected_full_at:
+              type: string
+              format: date-time
+              description: "Linear fit of fs_used_bytes over the last 30 days extrapolated to fs_total_bytes; null when slope <= 0 or history < 14 days"
+            usage_percent:
+              type: integer
+              description: "Filesystem holding the DB, used as a percentage of total; null when it cannot be stat'ed"
+            threshold:
+              type: string
+              enum: [ok, warning, critical]
+              description: >
+                usage_percent folded against STORAGE_WARN_PERCENT (default 75)
+                / STORAGE_CRITICAL_PERCENT (default 90) with -5% hysteresis.
+                Warning or critical elevates `overall` to at least degraded.
         update:
           type: object
           description: >

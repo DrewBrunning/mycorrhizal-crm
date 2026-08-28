@@ -284,6 +284,31 @@ does not page you on every run. Webhooks go to all subscribers; email/ntfy/Gotif
 users. Full condition list and the `ALERT_*` env vars are in
 `docs/operations/observability.md` → "Alerting on state transitions".
 
+### Storage-growth trend & thresholds
+
+The admin System status page (`/admin/system-status`, issue #388) reports storage **right now**:
+database footprint, filesystem free/total, per-directory sizes. Since issue #652 it also reports
+storage *trend*, backed by a small time-series the app samples itself:
+
+- **The sampler.** A daily scheduled job (`storage_sample`) writes one row to the
+  `storage_samples` table: database size (main file + `-wal` + `-shm`), filesystem used/total, and
+  the profile-photo / attachment directory totals. It is job-lock guarded (one row per day even on
+  a multi-instance deploy), emits a `system_events` timeline entry per run, and prunes rows older
+  than `STORAGE_SAMPLE_RETENTION_DAYS` (default **180**) in the same run — the history is bounded
+  by construction. The table is operational bookkeeping, not user data; see
+  `docs/security/data-retention-lifecycle.md` §20.
+- **The trend block.** The endpoint derives `growth_7d_bytes` / `growth_30d_bytes` /
+  `growth_90d_bytes` (latest sample minus the oldest within each window, null until enough history)
+  and `projected_full_at` — a least-squares fit of filesystem-used over the last 30 days
+  extrapolated to the filesystem total. The projection is null while the slope is flat/shrinking or
+  there are fewer than 14 days of samples.
+- **The threshold.** `usage_percent` is folded against two tiers —
+  `STORAGE_WARN_PERCENT` (default **75**) and `STORAGE_CRITICAL_PERCENT` (default **90**) — into
+  `ok | warning | critical`, with the same -5% hysteresis `diskSpaceCondition` uses (once a tier is
+  entered, usage must drop 5 points below its threshold to clear). A warning/critical tier elevates
+  the endpoint's `overall` status to at least `degraded` — never `unhealthy`, which stays reserved
+  for a database read failure.
+
 ### Backup confidentiality & retention
 
 A backup is a **complete copy of the CRM's sensitive data** — not a sanitized extract — so the rules

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,13 +21,17 @@ import (
 // (issue #388): rolled-up deep-health status, the full deep-health breakdown,
 // build identity, process uptime, migration numbers, a live config-validation
 // read-back, the enabled feature-flag set, SQLite operational facts, storage
-// sizing, and the opt-in update-availability block (issue #650).
+// sizing plus the storage-growth trend and tiered threshold (issue #652), and
+// the opt-in update-availability block (issue #650).
 //
 // This is the counterpart to the unauthenticated GET /health surface, which
 // deliberately withholds build/version, migration numbers and storage facts,
 // and to GET /metrics, which is Prometheus-only behind METRICS_TOKEN. Like the
 // other /admin diagnostic endpoints it is instance-wide (not user-scoped),
-// read-only, and gated by AuthMiddleware + AdminMiddleware.
+// read-only, and gated by AuthMiddleware + AdminMiddleware. The one exception
+// to "no writes": the storage threshold computation persists its current tier
+// into the alert_states row keyed storage_threshold, so the -5% hysteresis band
+// survives restarts (the same state diskSpaceCondition keeps there).
 //
 // No secret (JWT secret, metrics token, SMTP host, OIDC client secret) appears
 // anywhere in the response: the feature block is booleans only, and
@@ -38,15 +43,23 @@ func GetSystemStatus(c *gin.Context) {
 
 	deep := services.DeepHealthSnapshot(db, cfg)
 
+	storage := systemStatusStorage(db, cfg)
+
+	// Fold the storage threshold into the overall status (issue #652 item 4):
+	// warning or critical elevates a healthy overall to degraded. Never to
+	// unhealthy — a full disk does not mean the DB read failed; that word is
+	// reserved for DeepHealthSnapshot's own roll-up.
+	overall := overallWithStorageThreshold(deep.Status, storage.Threshold)
+
 	resp := SystemStatusResponse{
-		Overall:   deep.Status,
+		Overall:   overall,
 		Health:    deep,
 		Version:   buildinfo.Get(),
 		Uptime:    systemStatusUptime(),
 		Migration: systemStatusMigration(db),
 		Config:    systemStatusConfig(cfg),
 		Database:  systemStatusDatabase(db, cfg),
-		Storage:   systemStatusStorage(cfg),
+		Storage:   storage,
 		Update:    services.BuildUpdateCheckStatus(c.Request.Context(), cfg),
 	}
 
@@ -123,13 +136,29 @@ type SystemStatusDatabase struct {
 }
 
 // SystemStatusStorage is on-disk sizing: the database footprint, the
-// filesystem holding it, and each configured storage directory.
+// filesystem holding it, each configured storage directory, and the derived
+// storage-growth trend (issue #652).
 type SystemStatusStorage struct {
 	DatabaseBytes int64                  `json:"database_bytes"`
 	Filesystem    SystemStatusFilesystem `json:"filesystem"`
 	// Directories is never nil — it marshals as [] when no storage directory
 	// is configured (frontend trap #8).
 	Directories []services.DirectoryUsage `json:"directories"`
+
+	// Storage-growth trend block (issue #652), derived from the persisted
+	// storage_samples series. Pointers so "not enough history" marshals as
+	// null — the frontend renders an em dash for those.
+	Growth7DBytes   *int64     `json:"growth_7d_bytes"`
+	Growth30DBytes  *int64     `json:"growth_30d_bytes"`
+	Growth90DBytes  *int64     `json:"growth_90d_bytes"`
+	ProjectedFullAt *time.Time `json:"projected_full_at"`
+
+	// UsagePercent is the filesystem holding the DB, used as a percentage of
+	// total; null when the filesystem cannot be stat'ed. Threshold folds it
+	// against STORAGE_WARN_PERCENT / STORAGE_CRITICAL_PERCENT (with -5%
+	// hysteresis) into ok | warning | critical.
+	UsagePercent *int   `json:"usage_percent"`
+	Threshold    string `json:"threshold"`
 }
 
 // SystemStatusFilesystem is free/total bytes of the filesystem holding the
@@ -137,6 +166,20 @@ type SystemStatusStorage struct {
 type SystemStatusFilesystem struct {
 	FreeBytes  int64 `json:"free_bytes"`
 	TotalBytes int64 `json:"total_bytes"`
+}
+
+// overallWithStorageThreshold folds the storage threshold into the overall
+// status (issue #652 item 4): warning or critical elevates a healthy overall
+// to degraded. Never to unhealthy — a full disk does not mean the DB read
+// failed; DeepStatusUnhealthy stays reserved for DeepHealthSnapshot's own
+// roll-up. Any other deep-health status passes through untouched.
+func overallWithStorageThreshold(deepStatus, threshold string) string {
+	if threshold == services.StorageThresholdWarning || threshold == services.StorageThresholdCritical {
+		if deepStatus == "healthy" {
+			return services.DeepStatusDegraded
+		}
+	}
+	return deepStatus
 }
 
 func systemStatusUptime() SystemStatusUptime {
@@ -203,7 +246,7 @@ func systemStatusDatabase(db *gorm.DB, cfg config.Config) SystemStatusDatabase {
 	return out
 }
 
-func systemStatusStorage(cfg config.Config) SystemStatusStorage {
+func systemStatusStorage(db *gorm.DB, cfg config.Config) SystemStatusStorage {
 	free, total, ok := metrics.FilesystemBytes(filepath.Dir(cfg.DBPath))
 	fs := SystemStatusFilesystem{}
 	if ok {
@@ -213,9 +256,29 @@ func systemStatusStorage(cfg config.Config) SystemStatusStorage {
 
 	dirs := services.StorageUsage([]string{cfg.ProfilePhotoDir, cfg.AttachmentsDir})
 
-	return SystemStatusStorage{
+	out := SystemStatusStorage{
 		DatabaseBytes: metrics.DatabaseBytes(cfg.DBPath),
 		Filesystem:    fs,
 		Directories:   dirs,
 	}
+
+	// Storage-growth trend from the persisted samples (issue #652). Best-effort
+	// reads: a diagnostic endpoint degrades to nulls, not a 500.
+	trend := services.ComputeStorageTrend(context.Background(), db, time.Now())
+	out.Growth7DBytes = trend.Growth7DBytes
+	out.Growth30DBytes = trend.Growth30DBytes
+	out.Growth90DBytes = trend.Growth90DBytes
+	out.ProjectedFullAt = trend.ProjectedFullAt
+
+	// Tiered threshold with -5% hysteresis. Only meaningful when the
+	// filesystem can be stat'ed; otherwise usage_percent stays null and the
+	// threshold is a plain ok.
+	if ok && total > 0 {
+		usedPct := int((total - free) / total * 100)
+		out.UsagePercent = &usedPct
+		out.Threshold = services.StorageThreshold(context.Background(), db, usedPct, cfg.StorageWarnPercent, cfg.StorageCriticalPercent)
+	} else {
+		out.Threshold = services.StorageThresholdOK
+	}
+	return out
 }

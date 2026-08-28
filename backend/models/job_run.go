@@ -109,6 +109,7 @@ var KnownJobNames = []string{
 	JobNameRestoreDrill,
 	JobNameAlertEval,
 	JobNameJobRunPurge,
+	JobNameStorageSample,
 }
 
 // maxJobRunFieldLen caps the persisted Error / Detail strings.
