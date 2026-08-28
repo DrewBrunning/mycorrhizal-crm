@@ -6,10 +6,12 @@ plugins {
 android {
     namespace = "com.mycorrhizal.crm.network"
 
-    // Issue #257: the checked-in contract fixtures at /testdata/contract-fixtures
+    // Issues #257 + #266: the contract fixtures at /testdata/contract-fixtures
     // (repo root) are the single canonical copy web's vitest suite reads via a
     // TS `import`; this adds them to :core:network's test classpath directly
-    // rather than duplicating the files into src/test/resources.
+    // rather than duplicating the files into src/test/resources. The files are
+    // GENERATED from backend/openapi.yaml's response examples by
+    // `go run ./cmd/gencontract` — never hand-edited.
     sourceSets {
         getByName("test") {
             resources.srcDir("../../../testdata/contract-fixtures")

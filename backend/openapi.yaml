@@ -817,6 +817,126 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DashboardResponse"
+              example:
+                birthdays: []
+                random_contacts:
+                  - ID: 11
+                    CreatedAt: "0001-01-01T00:00:00Z"
+                    UpdatedAt: "0001-01-01T00:00:00Z"
+                    DeletedAt: null
+                    firstname: "Fixture"
+                    lastname: "Primary"
+                    nickname: "Fix"
+                    gender: ""
+                    email: ""
+                    phone: ""
+                    birthday: "1990-06-15"
+                    photo: ""
+                    address: ""
+                    how_we_met: ""
+                    work_information: ""
+                    contact_information: ""
+                    circles: null
+                    emails: null
+                    phones: null
+                    addresses: null
+                    urls: null
+                    impps: null
+                    prefix: ""
+                    middle_name: ""
+                    suffix: ""
+                    organization: ""
+                    department: ""
+                    job_title: ""
+                    role: ""
+                    anniversary: ""
+                    archived: false
+                    is_favorite: false
+                    photo_thumbnail: ""
+                  - ID: 6
+                    CreatedAt: "0001-01-01T00:00:00Z"
+                    UpdatedAt: "0001-01-01T00:00:00Z"
+                    DeletedAt: null
+                    firstname: "Eve"
+                    lastname: "Davis"
+                    nickname: ""
+                    gender: ""
+                    email: ""
+                    phone: ""
+                    birthday: ""
+                    photo: ""
+                    address: ""
+                    how_we_met: ""
+                    work_information: ""
+                    contact_information: ""
+                    circles: null
+                    emails: null
+                    phones: null
+                    addresses: null
+                    urls: null
+                    impps: null
+                    prefix: ""
+                    middle_name: ""
+                    suffix: ""
+                    organization: ""
+                    department: ""
+                    job_title: ""
+                    role: ""
+                    anniversary: ""
+                    archived: false
+                    is_favorite: false
+                    photo_thumbnail: ""
+                upcoming_reminders:
+                  - ID: 2
+                    CreatedAt: "2026-08-21T00:08:44Z"
+                    UpdatedAt: "2026-08-21T00:08:44Z"
+                    DeletedAt: null
+                    message: "Fixture reminder"
+                    by_mail: false
+                    remind_at: "2026-08-22T00:00:00Z"
+                    recurrence: "once"
+                    reoccur_from_completion: false
+                    completed: false
+                    email_sent: false
+                    last_sent: null
+                    contact_id: 11
+                    contact:
+                      ID: 0
+                      CreatedAt: "0001-01-01T00:00:00Z"
+                      UpdatedAt: "0001-01-01T00:00:00Z"
+                      DeletedAt: null
+                      firstname: ""
+                      lastname: ""
+                      nickname: ""
+                      gender: ""
+                      email: ""
+                      phone: ""
+                      birthday: ""
+                      photo: ""
+                      address: ""
+                      how_we_met: ""
+                      work_information: ""
+                      contact_information: ""
+                      circles: null
+                      emails: null
+                      phones: null
+                      addresses: null
+                      urls: null
+                      impps: null
+                      prefix: ""
+                      middle_name: ""
+                      suffix: ""
+                      organization: ""
+                      department: ""
+                      job_title: ""
+                      role: ""
+                      anniversary: ""
+                      archived: false
+                      is_favorite: false
+                    contact_name: "Fix Primary"
+                overdue: []
+                favorites: []
+                reach_out_suggestions: []
 
   # --- Contacts ---
   /contacts:
@@ -995,6 +1115,53 @@ paths:
                       rows are hidden.
                   sync:
                     $ref: "#/components/schemas/SyncInfo"
+              example:
+                contacts:
+                  - id: 12
+                    uid: "0836c948-4c37-4ac8-bb27-358936e6b67c"
+                    firstname: "Fixture"
+                    lastname: "Other"
+                    nickname: ""
+                    fn: "Fixture Other"
+                    primary_email: ""
+                    primary_phone: ""
+                    birthday: ""
+                    org: ""
+                    photo: ""
+                    archived: false
+                    is_favorite: false
+                  - id: 11
+                    uid: "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f"
+                    firstname: "Fixture"
+                    lastname: "Primary"
+                    nickname: "Fix"
+                    fn: "Fixture Primary"
+                    primary_email: "fixture.primary@example.com"
+                    primary_phone: "+1 555-0100"
+                    birthday: "1990-06-15"
+                    org: ""
+                    photo: ""
+                    archived: false
+                    is_favorite: false
+                  - id: 6
+                    uid: "26861acc-8372-4be8-9113-84fb27995aaa"
+                    firstname: "Eve"
+                    lastname: "Davis"
+                    nickname: ""
+                    fn: "Eve Davis"
+                    primary_email: "eve@example.com"
+                    primary_phone: "+1 555-0105"
+                    birthday: ""
+                    org: ""
+                    photo: ""
+                    archived: false
+                    is_favorite: false
+                limit: 25
+                next_cursor: ""
+                sync:
+                  mode: incremental
+                  incremental: [contacts, notes, activities, life_events, preferences, cadence_policies, conversation_agenda, gifts]
+                  full_resync: [circles, households, tags, relationship_edges, field_definitions, external_identities, external_activities]
     post:
       summary: Create a contact
       operationId: createContact
@@ -1599,6 +1766,244 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ContactDetailResponse"
+              example:
+                contact:
+                  id: 11
+                  uid: "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f"
+                  etag: "e-11-1787270921"
+                  gender: ""
+                  card:
+                    name:
+                      components:
+                        - kind: given
+                          value: "Fixture"
+                        - kind: surname
+                          value: "Primary"
+                    nicknames:
+                      - name: "Fix"
+                    emails:
+                      - address: "fixture.primary@example.com"
+                        contexts: [home]
+                    phones:
+                      - number: "+1 555-0100"
+                        contexts: [mobile]
+                    addresses:
+                      - components:
+                          - kind: name
+                            value: "1 Fixture Way"
+                          - kind: locality
+                            value: "Fixtureville"
+                          - kind: region
+                            value: "CA"
+                          - kind: postcode
+                            value: "94000"
+                          - kind: country
+                            value: "US"
+                        contexts: [home]
+                    anniversaries:
+                      - kind: birth
+                        date:
+                          partial:
+                            year: 1990
+                            month: 6
+                            day: 15
+                    keywords: ["contract-fixture"]
+                    relatedTo:
+                      - target: "urn:uuid:0836c948-4c37-4ac8-bb27-358936e6b67c"
+                        relations: [friend]
+                  crm: {}
+                  passthrough: {}
+                  photo: ""
+                  archived: false
+                  is_favorite: false
+                user:
+                  enabled_contact_fields: null
+                notes:
+                  - ID: 2
+                    CreatedAt: "2026-08-21T00:08:42Z"
+                    UpdatedAt: "2026-08-21T00:08:42Z"
+                    DeletedAt: null
+                    content: "Contract fixture note"
+                    date: "2026-08-20T18:00:00Z"
+                    contact_id: 11
+                    contact:
+                      ID: 0
+                      CreatedAt: "0001-01-01T00:00:00Z"
+                      UpdatedAt: "0001-01-01T00:00:00Z"
+                      DeletedAt: null
+                      firstname: ""
+                      lastname: ""
+                      nickname: ""
+                      gender: ""
+                      email: ""
+                      phone: ""
+                      birthday: ""
+                      photo: ""
+                      address: ""
+                      how_we_met: ""
+                      work_information: ""
+                      contact_information: ""
+                      circles: null
+                      emails: null
+                      phones: null
+                      addresses: null
+                      urls: null
+                      impps: null
+                      prefix: ""
+                      middle_name: ""
+                      suffix: ""
+                      organization: ""
+                      department: ""
+                      job_title: ""
+                      role: ""
+                      anniversary: ""
+                      archived: false
+                      is_favorite: false
+                activities:
+                  - ID: 2
+                    CreatedAt: "2026-08-21T00:08:43Z"
+                    UpdatedAt: "2026-08-21T00:08:43Z"
+                    DeletedAt: null
+                    uuid: "56c3cf8a-2c2e-4e9d-a5c4-fa0081de1d32"
+                    title: "Fixture activity"
+                    description: ""
+                    location: ""
+                    date: "2026-08-20T18:00:00Z"
+                    contacts:
+                      - ID: 11
+                        CreatedAt: "0001-01-01T00:00:00Z"
+                        UpdatedAt: "0001-01-01T00:00:00Z"
+                        DeletedAt: null
+                        firstname: "Fixture"
+                        lastname: "Primary"
+                        nickname: ""
+                        gender: ""
+                        email: ""
+                        phone: ""
+                        birthday: ""
+                        photo: ""
+                        address: ""
+                        how_we_met: ""
+                        work_information: ""
+                        contact_information: ""
+                        circles: null
+                        emails: null
+                        phones: null
+                        addresses: null
+                        urls: null
+                        impps: null
+                        prefix: ""
+                        middle_name: ""
+                        suffix: ""
+                        organization: ""
+                        department: ""
+                        job_title: ""
+                        role: ""
+                        anniversary: ""
+                        archived: false
+                        is_favorite: false
+                completions: []
+                reminders:
+                  - ID: 2
+                    CreatedAt: "2026-08-21T00:08:44Z"
+                    UpdatedAt: "2026-08-21T00:08:44Z"
+                    DeletedAt: null
+                    message: "Fixture reminder"
+                    by_mail: false
+                    remind_at: "2026-08-22T00:00:00Z"
+                    recurrence: "once"
+                    reoccur_from_completion: false
+                    completed: false
+                    email_sent: false
+                    last_sent: null
+                    contact_id: 11
+                    contact:
+                      ID: 0
+                      CreatedAt: "0001-01-01T00:00:00Z"
+                      UpdatedAt: "0001-01-01T00:00:00Z"
+                      DeletedAt: null
+                      firstname: ""
+                      lastname: ""
+                      nickname: ""
+                      gender: ""
+                      email: ""
+                      phone: ""
+                      birthday: ""
+                      photo: ""
+                      address: ""
+                      how_we_met: ""
+                      work_information: ""
+                      contact_information: ""
+                      circles: null
+                      emails: null
+                      phones: null
+                      addresses: null
+                      urls: null
+                      impps: null
+                      prefix: ""
+                      middle_name: ""
+                      suffix: ""
+                      organization: ""
+                      department: ""
+                      job_title: ""
+                      role: ""
+                      anniversary: ""
+                      archived: false
+                      is_favorite: false
+                relationship_edges:
+                  - edge:
+                      id: "4535c2cb-34a1-4471-a195-ad18f7957a49"
+                      created_at: "2026-08-21T00:08:50Z"
+                      updated_at: "2026-08-21T00:08:50Z"
+                      source_id: "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f"
+                      target_id: "0836c948-4c37-4ac8-bb27-358936e6b67c"
+                      type: "friend_of"
+                      directional: false
+                      source: "user-confirmed"
+                      confidence: 1
+                      status: "confirmed"
+                      sensitivity: "normal"
+                    other_party_contact_id: 12
+                    other_party_name: "Fixture Other"
+                    other_party_uid: "0836c948-4c37-4ac8-bb27-358936e6b67c"
+                    display_token: "friend_of"
+                life_events:
+                  - id: "c06177b1-e498-43c7-9821-7a6669411a04"
+                    created_at: "2026-08-21T00:08:45Z"
+                    updated_at: "2026-08-21T00:08:45Z"
+                    entity_id: "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f"
+                    type: "graduated"
+                    category: "work_education"
+                    description: "Fixture life event"
+                    related_entity_names: {}
+                agenda: []
+                gifts:
+                  - id: "360a5cc2-ed2c-4bf0-b735-8c57e5df234a"
+                    created_at: "2026-08-21T00:08:46Z"
+                    updated_at: "2026-08-21T00:08:46Z"
+                    entity_id: "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f"
+                    status: "idea"
+                    description: "Fixture gift idea"
+                    date: "2026-08-20T18:00:00Z"
+                field_values:
+                  - id: 2
+                    created_at: "2026-08-21T00:08:49Z"
+                    updated_at: "2026-08-21T00:08:49Z"
+                    field_definition_id: "73d1d0f1-620f-4c45-ab09-6e821ddbaf60"
+                    entity_id: "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f"
+                    value: "fixture value"
+                external_identities: []
+                external_activities: []
+                circles:
+                  - id: "e7d59493-5f47-4fff-88e0-7d1ba44604df"
+                    created_at: "2026-08-21T00:08:47Z"
+                    updated_at: "2026-08-21T00:08:47Z"
+                    name: "contract-fixture-circle"
+                tags:
+                  - id: "99814236-a948-4083-b6a9-d9ae4deb335d"
+                    created_at: "2026-08-21T00:08:48Z"
+                    updated_at: "2026-08-21T00:08:48Z"
+                    name: "contract-fixture"
         "404":
           description: Contact not found.
           content:
@@ -8726,7 +9131,7 @@ components:
         full_resync:
           type: array
           items: { type: string }
-          description: "Collections that require a full re-pull: circles, households, tags, relationship_edges, field_definitions."
+          description: "Collections that require a full re-pull: circles, households, tags, relationship_edges, field_definitions, external_identities, external_activities."
     MessageResponse:
       type: object
       required: [message]
@@ -9168,6 +9573,8 @@ components:
         enabled_contact_fields:
           type: array
           items: { type: string }
+          nullable: true
+          description: Null when the user has never configured their visible fields (the client then applies its default set).
     ContactDetailLifeEvent:
       description: A LifeEvent enriched with its RelatedEntityIDs' display names, batch-resolved once per contact.
       allOf:
@@ -9324,7 +9731,10 @@ components:
         The raw serialization of models.Contact (legacy flat DTO) returned by
         the archive/unarchive, random, and profile-picture endpoints. Because
         Contact embeds gorm.Model (which has no JSON tags), identity/timestamp
-        keys serialize in PascalCase.
+        keys serialize in PascalCase. The collection fields (circles, emails,
+        phones, addresses, urls, impps) serialize as `null` when empty — a
+        nil Go slice has no omitempty — never as `[]`; a client must accept
+        null here (the neutral Card endpoints never emit this shape).
       properties:
         ID: { type: integer }
         CreatedAt: { type: string, format: date-time }
@@ -9345,21 +9755,27 @@ components:
         circles:
           type: array
           items: { type: string }
+          nullable: true
         emails:
           type: array
           items: { $ref: "#/components/schemas/ContactEmail" }
+          nullable: true
         phones:
           type: array
           items: { $ref: "#/components/schemas/ContactPhone" }
+          nullable: true
         addresses:
           type: array
           items: { $ref: "#/components/schemas/ContactAddress" }
+          nullable: true
         urls:
           type: array
           items: { $ref: "#/components/schemas/ContactURL" }
+          nullable: true
         impps:
           type: array
           items: { $ref: "#/components/schemas/ContactIMPP" }
+          nullable: true
         prefix: { type: string }
         middle_name: { type: string }
         suffix: { type: string }
@@ -11579,7 +11995,16 @@ components:
       properties:
         id: { type: string }
         address: { type: string, format: email }
-        contexts: { type: array, items: { type: string, enum: [private, work] } }
+        contexts:
+          type: array
+          items:
+            type: string
+            description: >
+              The canonical RFC 9553 vocabulary is private/work, but this is
+              NOT a closed enum on the wire: the flat model's free-text TYPE
+              (home, work, ...) is preserved verbatim here
+              (contactmodel/model.go — an unrecognized context is data, not
+              an error). A client should treat it as open.
         pref: { type: integer, nullable: true }
         label: { type: string }
     Phone:
@@ -11629,7 +12054,16 @@ components:
         countryCode: { type: string }
         coordinates: { type: string, description: "geo: URI" }
         timeZone: { type: string }
-        contexts: { type: array, items: { type: string, enum: [billing, delivery, private, work] } }
+        contexts:
+          type: array
+          items:
+            type: string
+            description: >
+              The canonical vocabulary is billing/delivery/private/work, but
+              this is NOT a closed enum on the wire: the flat model's
+              free-text TYPE (home, ...) is preserved verbatim here
+              (contactmodel/model.go — an unrecognized context is data, not
+              an error). A client should treat it as open.
         pref: { type: integer, nullable: true }
         full: { type: string }
         isOrdered: { type: boolean, nullable: true }

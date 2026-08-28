@@ -4,10 +4,12 @@ import { API_BASE_URL } from './global-setup';
 
 /**
  * Issue #257 — live counterpart to src/api/contractFixtures.test.ts. That
- * suite pins parsing against a fixture captured once; this spec hits the
- * running backend directly (API-only, no `page` -- same pattern as
- * contactSort.spec.ts/search.spec.ts's API specs) so a shape regression in
- * *today's* backend fails CI even before anyone re-captures the fixture.
+ * suite pins parsing against the spec-derived fixtures under
+ * /testdata/contract-fixtures/ (generated from backend/openapi.yaml, issue
+ * #266); this spec hits the running backend directly (API-only, no `page` --
+ * same pattern as contactSort.spec.ts/search.spec.ts's API specs) so a shape
+ * regression in *today's* backend fails CI even before the spec fixtures are
+ * regenerated.
  *
  * Deliberately shallow: this is a shape/status guard, not a content
  * assertion (the fixture suite already owns pinning specific values).

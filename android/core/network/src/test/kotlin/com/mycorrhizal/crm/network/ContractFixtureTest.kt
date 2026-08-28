@@ -14,11 +14,15 @@ import org.junit.Test
 import kotlinx.coroutines.runBlocking
 
 /**
- * Issue #257 — pins Android's real Moshi parsing against real captured
- * backend responses. Fixtures live in /testdata/contract-fixtures/ (repo
- * root; see its README) and are wired onto this module's test classpath by
- * the `resources.srcDirs` entry in build.gradle.kts, so this is the same
- * file web's contractFixtures.test.ts reads, not a copy.
+ * Issues #257 + #266 — pins Android's real Moshi parsing against the backend's
+ * documented response contract. Fixtures live in /testdata/contract-fixtures/
+ * (repo root; see its README) and are wired onto this module's test classpath
+ * by the `resources.srcDirs` entry in build.gradle.kts, so this is the same
+ * file web's contractFixtures.test.ts reads, not a copy. The fixtures are
+ * GENERATED from backend/openapi.yaml's response examples by
+ * `go run ./cmd/gencontract` (the drift test backend/contract_fixtures_test.go
+ * enforces regeneration when the spec changes), so these assertions pin the
+ * spec-derived contract rather than a hand-captured server response.
  *
  * Deliberately uses [MoshiProvider.get] -- the production singleton with
  * codegen adapters -- rather than a locally rebuilt `Moshi.Builder()` (the
@@ -55,7 +59,7 @@ class ContractFixtureTest {
     }
 
     @Test
-    fun `getDashboard parses a real composite response`() = runBlocking {
+    fun `getDashboard parses the spec-derived composite fixture`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(200).setBody(readFixture("dashboard.json")))
 
         val result = client.getDashboard()
@@ -63,11 +67,11 @@ class ContractFixtureTest {
         assertTrue("expected success, got $result", result.isSuccess)
         val dashboard = result.getOrThrow()
 
-        // The capture's one upcoming_reminders entry is the fixture contact's
+        // The fixture's one upcoming_reminders entry is the fixture contact's
         // reminder, with its contact_name enrichment embedded server-side.
         assertEquals(1, dashboard.upcomingReminders.size)
         assertEquals("Fix Primary", dashboard.upcomingReminders[0].contactName)
-        // Empty blocks in the capture must still parse to [], never null
+        // Empty blocks in the fixture must still parse to [], never null
         // (DashboardResponse's `= emptyList()` default only fires on an
         // *absent* key -- a real Moshi bug here would surface as this list
         // being null and the `List<...>` type crashing elsewhere).
@@ -76,8 +80,9 @@ class ContractFixtureTest {
     }
 
     @Test
-    fun `listContacts parses a real list response`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody(readFixture("contacts-list.json")))
+    fun `listContacts parses the spec-derived list fixture`() = runBlocking {
+        val raw = readFixture("contacts-list.json")
+        server.enqueue(MockResponse().setResponseCode(200).setBody(raw))
 
         val result = client.listContacts()
 
@@ -85,11 +90,19 @@ class ContractFixtureTest {
         val page = result.getOrThrow()
 
         assertTrue(page.contacts.isNotEmpty())
-        // archived/is_favorite are documented never-omitempty -- every row
-        // must have parsed them as real booleans, not fallen back to the
-        // data class default because the key was silently missing.
+        // archived/is_favorite are documented never-omitempty: every row must
+        // carry them as real booleans. A typed parse alone cannot prove this
+        // (an absent key silently falls back to the `= false` default), so
+        // pin presence on the RAW JSON -- the same trap-8 distinction web's
+        // contractFixtures.test.ts asserts.
+        val fixturePrimary = rawRoot(raw).let { root ->
+            (root["contacts"] as List<*>).first { (it as Map<*, *>)["uid"] == FIXTURE_PRIMARY_UID }
+        } as Map<*, *>
+        assertTrue("archived must be present on the wire", fixturePrimary.containsKey("archived"))
+        assertTrue("is_favorite must be present on the wire", fixturePrimary.containsKey("is_favorite"))
+
         val primary = page.contacts.find { it.firstname == "Fixture" && it.lastname == "Primary" }
-        assertNotNull("fixture contact should be in the capture", primary)
+        assertNotNull("fixture contact should be in the fixture", primary)
         assertEquals("1990-06-15", primary!!.birthday)
         assertEquals("fixture.primary@example.com", primary.primaryEmail)
         // The list query doesn't select `circles` -- absent on the wire, and
@@ -101,4 +114,16 @@ class ContractFixtureTest {
         checkNotNull(javaClass.classLoader?.getResourceAsStream(name)) {
             "missing test resource $name -- check build.gradle.kts's resources.srcDirs"
         }.bufferedReader().readText()
+
+    /**
+     * Parses a fixture's raw JSON into generic Map/List structures (not the
+     * typed data classes), so a test can distinguish an *absent* key from one
+     * whose value equals the typed default -- the trap-8 distinction.
+     */
+    private fun rawRoot(raw: String): Map<*, *> =
+        MoshiProvider.get().adapter(Any::class.java).fromJson(raw) as Map<*, *>
+
+    companion object {
+        private const val FIXTURE_PRIMARY_UID = "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f"
+    }
 }

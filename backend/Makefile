@@ -1,4 +1,4 @@
-.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backfill-at-rest rotate-at-rest-key audit-backfill audit-verify backup help
+.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backfill-at-rest rotate-at-rest-key audit-backfill audit-verify backup gen-contract-fixtures help
 
 # Database path. The migration CLI reads SQLITE_DB_PATH (the same variable the
 # server reads), so every target below EXPORTS this rather than just echoing
@@ -71,6 +71,9 @@ audit-backfill: ## Complete the tamper-evident audit hash chain (issue #381) for
 
 audit-verify: ## Verify the tamper-evident audit hash chain (issue #381); reports the first gap and exits non-zero on tampering.
 	@go run cmd/audit-verify/main.go
+
+gen-contract-fixtures: ## Regenerate the shared web+Android contract fixtures from backend/openapi.yaml's response examples (issue #266)
+	@go run cmd/gencontract/main.go
 
 backup: ## Create a consistent online snapshot of the SQLite database (VACUUM INTO; safe while the server runs)
 	@echo "Backing up $(DB_PATH)..."
