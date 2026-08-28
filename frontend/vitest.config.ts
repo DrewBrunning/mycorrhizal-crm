@@ -33,9 +33,10 @@ export default defineConfig({
     reporters: process.env.CI
       ? ['default', ['junit', { outputFile: './junit.xml' }], 'github-actions']
       : 'default',
-    // Issue #251: visibility only, no thresholds/gate — a separate ticket
-    // tracks enforcing coverage. `text` for the CI log, `html` for a
-    // browsable artifact, `lcov` for third-party tooling that wants it.
+    // Issue #251/#267: the project-wide number stays informational; the hard
+    // gate is the diff-based codecov/patch status, which reads this lcov
+    // output (target: 100% on changed lines). `text` for the CI log, `html`
+    // for a browsable artifact, `lcov` for Codecov.
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],

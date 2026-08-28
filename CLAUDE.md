@@ -86,6 +86,16 @@ same port) — see T51's landing note.
 - Close the corresponding GitHub issue when a ticket lands; the issue body plus the commit history is the
   status record.
 
+## Coverage gate
+
+The `codecov/patch` status is a **hard, diff-based gate** (issue #267): `target: 100%` on changed lines,
+so a PR that adds an executable line the coverage tooling records as uncovered goes red. It applies to all
+three areas (Go coverprofile / vitest lcov / JaCoCo). The project-wide `codecov/project` number is
+deliberately *not* gated. Overrides exist and are meant to be rare — write the test first, then
+`// pragma: no cover` for a structurally unhittable line, or (coarse) an `ignore:` entry in `codecov.yml`.
+Full rules: `docs/development/coverage.md`. The status only blocks merges once `codecov/patch` is a
+required check in branch protection.
+
 ## Backend traps
 
 These are real bugs that shipped, not hypotheticals.

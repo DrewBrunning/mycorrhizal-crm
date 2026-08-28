@@ -450,7 +450,9 @@ jobs:
           flags: backend
           fail_ci_if_error: false
 
-      # Issue #251: visibility only, no threshold/gate.
+      # Issue #251: the project-wide number stays informational. The hard
+      # gate is the diff-based codecov/patch status (issue #267) — new
+      # uncovered lines in the changed files fail the PR.
       - name: Coverage summary
         if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
         working-directory: backend
@@ -538,7 +540,8 @@ jobs:
         working-directory: frontend
         run: yarn lint
 
-      # Issue #251: visibility only, no threshold/gate.
+      # Issue #251: the project-wide number stays informational. The hard
+      # gate is the diff-based codecov/patch status (issue #267).
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
