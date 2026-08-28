@@ -10,6 +10,7 @@ import (
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/i18n"
 	"mycorrhizal/logger"
+	"mycorrhizal/metrics"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/routes"
@@ -48,6 +49,7 @@ func runJob(db *gorm.DB, name string, fn func()) {
 	defer func() {
 		durMS := time.Since(start).Milliseconds()
 		if r := recover(); r != nil {
+			metrics.JobRun(name, logger.ResultFailure, time.Since(start).Seconds())
 			logger.Ctx(ctx).Error().
 				Str(logger.FieldEvent, models.SysEventJobFailed).
 				Str(logger.FieldComponent, logger.ComponentScheduler).
@@ -67,6 +69,7 @@ func runJob(db *gorm.DB, name string, fn func()) {
 			})
 			return
 		}
+		metrics.JobRun(name, logger.ResultSuccess, time.Since(start).Seconds())
 		logger.Ctx(ctx).Info().
 			Str(logger.FieldEvent, models.SysEventJobCompleted).
 			Str(logger.FieldComponent, logger.ComponentScheduler).
@@ -340,6 +343,10 @@ func main() {
 
 	// Add logging middleware (after request ID)
 	r.Use(middleware.LoggingMiddleware())
+
+	// Record per-request Prometheus metrics (issue #389). Cheap and always on;
+	// the /metrics endpoint that exposes them is still opt-in via METRICS_TOKEN.
+	r.Use(middleware.MetricsMiddleware())
 
 	// Add error handling middleware
 	r.Use(apperrors.ErrorHandlerMiddleware())

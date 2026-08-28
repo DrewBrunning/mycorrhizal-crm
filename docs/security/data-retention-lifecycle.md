@@ -397,6 +397,23 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   restore-drill row-count comparison for the same reason as `system_events` /
   `operational_check_results` — the evaluator writes it in the snapshot-vs-live window.
 
+## 16. Prometheus metrics (`GET /metrics`, in-process) — not user data, not persisted
+
+- **Where / who**: process memory only. A hand-rolled registry (`backend/metrics/`) holds counters
+  and gauges that the middleware, the scheduled-job wrapper, and `models.RecordSystemEvent` update
+  on the hot path; the values are rendered on demand at `GET /metrics` (issue #389). The endpoint
+  is registered only when `METRICS_TOKEN` is set and every scrape is bearer-authenticated.
+- **What it contains**: aggregate operational numbers with **bounded-cardinality labels only** —
+  HTTP method / matched route *template* / status code, background-job name + result,
+  `system_events` type/component/result, DB connection-pool counts, Go-runtime stats, and storage
+  byte totals (SQLite file size, filesystem free/total). No `user_id`, no contact IDs, no raw
+  request paths, no free text, no credentials. The route label is `c.FullPath()` (the registered
+  template, never the concrete path), so an unbounded ID space cannot leak in.
+- **Retention / deletion**: none — the counters live only in RAM, start at zero on every process
+  start, and are never written to the database or any file. Account deletion neither touches nor
+  needs to touch them. Restarting the container is a full reset.
+- **Backups**: not applicable — nothing is persisted, so nothing is in a snapshot.
+
 ## Known gaps
 
 One item surfaced by walking every data type through the four questions above. It does not block this
@@ -423,3 +440,4 @@ per §1/§7/§8), but it is a genuine, named gap rather than a silently-accepted
 | Android mirror deletes tombstoned ids | `ContactRepositoryImpl` sync tests (`core/data/src/test/.../repository/`) |
 | No PII/credential in browser storage | `frontend/e2e/` (#419 Playwright regression) |
 | Backup restore actually restores | `frontend/e2e/backupRestore.spec.ts`, restore-drill job (#275) |
+| Metrics counters are RAM-only, bounded labels, token-gated | `backend/metrics/` (`registry_test.go`, `metrics_test.go`), `backend/controllers/metrics_controller_test.go`, `backend/routes/metrics_route_test.go` |

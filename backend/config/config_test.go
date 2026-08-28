@@ -43,6 +43,24 @@ func TestValidate_ValidConfigHasNoErrors(t *testing.T) {
 	assert.Empty(t, errs)
 }
 
+func TestValidate_MetricsToken(t *testing.T) {
+	t.Run("empty is fine (endpoint stays unregistered)", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.MetricsToken = ""
+		assert.False(t, hasFieldError(cfg.Validate(), "METRICS_TOKEN"))
+	})
+	t.Run("too short is rejected", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.MetricsToken = "short"
+		assert.True(t, hasFieldError(cfg.Validate(), "METRICS_TOKEN"))
+	})
+	t.Run("16+ chars accepted", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.MetricsToken = "0123456789abcdef"
+		assert.False(t, hasFieldError(cfg.Validate(), "METRICS_TOKEN"))
+	})
+}
+
 func TestValidate_FrontendURLWildcard(t *testing.T) {
 	tests := []struct {
 		name        string
