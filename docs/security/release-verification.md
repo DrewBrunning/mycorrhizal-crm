@@ -6,9 +6,12 @@ verify a downloaded binary/container actually came from this repository's CI, un
 supply-chain background is assumed.
 
 It documents what's already in place (issues #272, #328) — it introduces no new signing. See
-`docs/security/asvs-l2.md` (rows 1.14.2, 10.3.1, 14.2.5) for how this fits the ASVS checklist, and
-issue #355 for the open question of why OpenSSF Scorecard's `Signed-Releases` check doesn't yet
-recognize this pipeline.
+`docs/security/asvs-l2.md` (rows 1.14.2, 10.3.1, 14.2.5) for how this fits the ASVS checklist.
+OpenSSF Scorecard's `Signed-Releases` check (issue #355) is satisfied because the release carries
+the APK's cosign bundle as an asset (`mycorrhizal-apk.sigstore.json`). That check is purely
+filename-based: it scans release assets for signature extensions (`.asc`, `.sig`, `.minisig`,
+`.sigstore`, `.sigstore.json`, ...) and ignores everything else — the attestations API, the OCI
+registry, and workflow artifacts.
 
 ## What's attached to a release, and what it proves
 
@@ -20,13 +23,13 @@ recognize this pipeline.
 | Docker images | Standalone signed SBOM (SPDX + CycloneDX, cosign-signed) | Same dependency list, as a portable file + signature | **Yes — 30-day GitHub Actions artifact retention** |
 | Android release APK | Keystore signature (`SIGNING_*` secrets) | The APK is installable and matches every other release signed with the same key (Android's own trust mechanism) | No |
 | Android release APK | GitHub-native SLSA build provenance | Which commit/workflow run built this exact APK; shows a "Verified" badge on the Release page | No — permanent |
-| Android release APK | cosign keyless co-signature (additive, does not replace keystore signing) | Independent Sigstore-backed verifier on top of the GitHub attestation | **Yes — 30-day GitHub Actions artifact retention** |
+| Android release APK | cosign keyless co-signature (additive, does not replace keystore signing) | Independent Sigstore-backed verifier on top of the GitHub attestation; also what Scorecard's `Signed-Releases` check sees | No — attached to the Release as `mycorrhizal-apk.sigstore.json` (a copy is also kept as a 30-day workflow artifact) |
 
-The two "expires" rows are workflow *run* artifacts (`actions/upload-artifact`), not GitHub
-Release assets — they are only downloadable from the specific `docker-publish.yml` run's Actions
-page, and only for 30 days after that run. For a release older than that, skip those two checks
-and rely on the permanent ones (cosign image signature, both provenance forms, source↔release
-correspondence below) — they cover the same ground.
+The one "expires" row is a workflow *run* artifact (`actions/upload-artifact`), not a GitHub
+Release asset — it is only downloadable from the specific `docker-publish.yml` run's Actions
+page, and only for 30 days after that run. For a release older than that, skip that check and
+rely on the permanent ones (cosign image signature, both provenance forms, the APK's cosign
+bundle on the Release, source↔release correspondence below) — they cover the same ground.
 
 ## Prerequisites
 
@@ -106,10 +109,11 @@ gh attestation verify app-release.apk -R DrewBrunning/mycorrhizal-crm
 The Release page itself also shows a "Verified" badge next to the asset when this attestation is
 present.
 
-**2. cosign co-signature** (additional Sigstore-backed signal, **only within 30 days of the
-release build**): open the `docker-publish.yml` run for that tag under the repo's Actions tab,
-download the `apk-cosign-signature` artifact (contains `mycorrhizal-apk.sigstore.json`, cosign
-v3's standardized bundle — cert, signature, and transparency log entry in one file), then:
+**2. cosign co-signature** (additional Sigstore-backed signal): download
+`mycorrhizal-apk.sigstore.json` from the release's GitHub Release page (attached as a release
+asset; a copy is also kept as a 30-day `apk-cosign-signature` workflow artifact on the
+`docker-publish.yml` run). It is cosign v3's standardized bundle — cert, signature, and
+transparency log entry in one file — then:
 
 ```sh
 cosign verify-blob \
@@ -153,9 +157,10 @@ signed provenance — should agree.
 
 Both the per-release SBOMs (`docker-publish.yml`, one per image) and the continuous main-branch
 SBOM (`syft-sbom.yml`, one per merge to `main`) are uploaded as cosign-signed workflow artifacts —
-**30-day retention**, same caveat as the APK cosign signature above. From the relevant workflow
-run's Actions page, download the SBOM artifact bundle (`sbom-signatures[-backend|-frontend]` for a
-release, `sbom-signatures` for a main-branch SBOM) and verify:
+**30-day retention**, unlike the APK cosign bundle above, which is attached to the Release
+permanently. From the relevant workflow run's Actions page, download the SBOM artifact bundle
+(`sbom-signatures[-backend|-frontend]` for a release, `sbom-signatures` for a main-branch SBOM)
+and verify:
 
 ```sh
 cosign verify-blob \

@@ -215,11 +215,14 @@ jobs:
       # SLSA build provenance for the APK, as a GitHub-native attestation.
       # GitHub digest-matches the attested subject against the release asset
       # uploaded just above, which is what puts the "Verified" provenance badge
-      # on the Release page and what OSSF Scorecard's Signed-Releases check
-      # actually looks for -- that check inspects GitHub release assets, so
-      # cosign-signing the Docker images (which live in the registry, not the
-      # release) never touched it. Verifiable downstream with
+      # on the Release page. Verifiable downstream with
       # `gh attestation verify <apk> -R DrewBrunning/mycorrhizal-crm`.
+      #
+      # Note this attestation is NOT what satisfies OSSF Scorecard's
+      # Signed-Releases check: it lives in GitHub's attestations API, not as a
+      # release asset, and that check only inspects release asset filenames for
+      # signature extensions. The cosign bundle attached as a release asset
+      # below is what Scorecard sees.
       #
       # Deliberately after the upload: the release-asset association happens
       # when the attestation is created, by matching the subject digest against
@@ -265,6 +268,23 @@ jobs:
           cosign sign-blob --yes \
             --bundle "$RUNNER_TEMP/mycorrhizal-apk.sigstore.json" \
             android/app/build/outputs/apk/release/app-release.apk
+
+      # OSSF Scorecard's Signed-Releases check counts a release as "signed"
+      # only when it has a release ASSET whose filename carries a recognized
+      # signature extension (.asc, .sig, .minisig, .sigstore,
+      # .sigstore.json, ...). It does not look at the attestations API, the
+      # OCI registry, or workflow artifacts, and it never cryptographically
+      # verifies anything -- pure filename matching. So this bundle (already
+      # produced by the step above and also kept as a 30-day workflow artifact
+      # below) must additionally be a release asset, or every release scores
+      # as unsigned no matter what else we sign. .sigstore.json is a
+      # recognized suffix. Same pinned action + zizmor annotation as the APK
+      # attach above.
+      - name: Attach APK cosign signature to GitHub Release # zizmor: ignore[superfluous-actions]
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: ${{ runner.temp }}/mycorrhizal-apk.sigstore.json
 
       - name: Upload APK cosign signature + certificate
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
