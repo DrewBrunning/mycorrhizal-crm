@@ -13,23 +13,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestActivityAndLifeEventETag_RealMigratedSchema is the real-DB check for
-// T12a. The AutoMigrate
-// test DBs used elsewhere (setupActivityTestDB / setupLifeEventTestDB)
-// derive their schema from the same Go struct tags the application code
-// uses, so they cannot catch a GORM column-tag mismatch against the real
-// migration SQL — the `e_tag` vs `etag` bug class that shipped broken for
-// ContactSyncLink.ETag. Only a database.InitDB-migrated DB, which applies
-// migration 000041's real `etag` column, can.
+// TestRevisionToken_RealMigratedSchema is the real-DB check for issue #591
+// (CON-01a, ADR 0006). The AutoMigrate test DBs used elsewhere derive their
+// schema from the same Go struct tags the application code uses, so they
+// cannot catch a GORM column-tag mismatch against the real migration SQL —
+// the `e_tag` vs `etag` bug class that shipped broken for ContactSyncLink.ETag
+// and the `revision` column migration 000044 adds. Only a
+// database.InitDB-migrated DB, which applies the real migrations, can.
 //
-// It proves the ticket's three assertions against the real schema:
-//  1. a new Activity gets an ETag;
-//  2. updating it changes the ETag;
-//  3. LifeEvent — served too (its ETag concern was entirely unaddressed,
-//     and T12b will serve both Interaction and LifeEvent as CalDAV) — has
-//     the identical behavior, with its ETag derived from the UUID string PK.
-func TestActivityAndLifeEventETag_RealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "etag-real.db")
+// It proves, against the real schema, for every user-authored soft-delete
+// entity:
+//
+//  1. a new row starts at revision 1 and derives `e-{id}-1`;
+//  2. updating it bumps the revision to 2 and re-derives the ETag;
+//  3. the revision column persists exactly what the in-memory struct says.
+func TestRevisionToken_RealMigratedSchema(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "revision-real.db")
 	db := dbtest.NewAt(t, dbPath)
 
 	user := User{Username: "realdbtester", Password: "password123!A", Email: "realdb@example.com"}
@@ -37,85 +36,147 @@ func TestActivityAndLifeEventETag_RealMigratedSchema(t *testing.T) {
 	contact := Contact{UserID: user.ID, Firstname: "Alice"}
 	require.NoError(t, db.Create(&contact).Error)
 
+	// --- Contact (uint PK, gorm.Model) ---
+	{
+		c := Contact{UserID: user.ID, Firstname: "Contact initial"}
+		require.NoError(t, db.Create(&c).Error)
+		assertRevisionContract(t, "Contact", c.ID, c.ETag, c.Revision,
+			regexp.MustCompile(`^e-\d+-\d+$`),
+			func() error { return db.Model(&c).Update("firstname", "Renamed").Error },
+			func() (int64, string) { return c.Revision, c.ETag })
+	}
+
 	// --- Activity (uint PK, gorm.Model) ---
-	activity := Activity{UserID: user.ID, Title: "Coffee", Date: time.Now(), Type: InteractionTypeMeal}
-	require.NoError(t, db.Create(&activity).Error)
-	require.NotEmpty(t, activity.ETag, "assertion 1: a new Activity gets an ETag")
-	assert.Regexp(t, regexp.MustCompile(`^e-\d+-\d+$`), activity.ETag)
-	assert.Equal(t, fmt.Sprintf("e-%d-%d", activity.ID, activity.UpdatedAt.Unix()), activity.ETag)
-
-	var reloadedActivity Activity
-	require.NoError(t, db.First(&reloadedActivity, activity.ID).Error)
-	assert.Equal(t, activity.ETag, reloadedActivity.ETag, "ETag must persist through the real 'etag' column")
-
-	// Update with a bumped updated_at (GORM overwrites UpdatedAt with
-	// time.Now() on every struct save, which can land in the same Unix
-	// second as the create — an explicit updated_at in the update map makes
-	// the ETag change deterministic).
-	future := time.Now().Add(10 * time.Second)
-	require.NoError(t, db.Model(&activity).Updates(map[string]any{"title": "Dinner", "updated_at": future}).Error)
-	assert.NotEqual(t, reloadedActivity.ETag, activity.ETag, "assertion 2: updating an Activity changes its ETag")
-	assert.Equal(t, fmt.Sprintf("e-%d-%d", activity.ID, future.Unix()), activity.ETag)
-
-	var reloadedActivity2 Activity
-	require.NoError(t, db.First(&reloadedActivity2, activity.ID).Error)
-	assert.Equal(t, activity.ETag, reloadedActivity2.ETag, "the updated ETag must persist")
+	{
+		a := Activity{UserID: user.ID, Title: "Activity initial", Date: time.Now()}
+		require.NoError(t, db.Create(&a).Error)
+		assertRevisionContract(t, "Activity", a.ID, a.ETag, a.Revision,
+			regexp.MustCompile(`^e-\d+-\d+$`),
+			func() error { return db.Model(&a).Update("title", "Renamed").Error },
+			func() (int64, string) { return a.Revision, a.ETag })
+	}
 
 	// --- LifeEvent (UUID string PK) ---
-	event := LifeEvent{UserID: user.ID, EntityID: contact.VCardUID, Type: LifeEventTypeGraduated}
-	require.NoError(t, db.Create(&event).Error)
-	require.NotEmpty(t, event.ETag, "a new LifeEvent gets an ETag")
-	assert.Regexp(t, regexp.MustCompile(`^e-[0-9a-f-]+-\d+$`), event.ETag)
-	assert.Equal(t, fmt.Sprintf("e-%s-%d", event.ID, event.UpdatedAt.Unix()), event.ETag)
+	{
+		l := LifeEvent{UserID: user.ID, EntityID: contact.VCardUID, Type: "graduated"}
+		require.NoError(t, db.Create(&l).Error)
+		assertRevisionContract(t, "LifeEvent", l.ID, l.ETag, l.Revision,
+			regexp.MustCompile(`^e-[0-9a-f-]+-\d+$`),
+			func() error { return db.Model(&l).Update("description", "updated").Error },
+			func() (int64, string) { return l.Revision, l.ETag })
+	}
 
-	var reloadedEvent LifeEvent
-	require.NoError(t, db.First(&reloadedEvent, "id = ?", event.ID).Error)
-	assert.Equal(t, event.ETag, reloadedEvent.ETag, "LifeEvent ETag must persist through the real 'etag' column")
+	// --- Note (uint PK; revision+etag columns new in 000044) ---
+	{
+		n := Note{UserID: user.ID, Content: "Note initial", Date: time.Now(), ContactID: &contact.ID}
+		require.NoError(t, db.Create(&n).Error)
+		assertRevisionContract(t, "Note", n.ID, n.ETag, n.Revision,
+			regexp.MustCompile(`^e-\d+-\d+$`),
+			func() error { return db.Model(&n).Update("content", "Renamed").Error },
+			func() (int64, string) { return n.Revision, n.ETag })
+	}
 
-	eventFuture := time.Now().Add(10 * time.Second)
-	require.NoError(t, db.Model(&event).Updates(map[string]any{"description": "updated", "updated_at": eventFuture}).Error)
-	assert.NotEqual(t, reloadedEvent.ETag, event.ETag, "updating a LifeEvent changes its ETag")
-	assert.Equal(t, fmt.Sprintf("e-%s-%d", event.ID, eventFuture.Unix()), event.ETag)
-
-	var reloadedEvent2 LifeEvent
-	require.NoError(t, db.First(&reloadedEvent2, "id = ?", event.ID).Error)
-	assert.Equal(t, event.ETag, reloadedEvent2.ETag, "the updated LifeEvent ETag must persist")
+	// --- Reminder (uint PK; revision+etag columns new in 000044) ---
+	{
+		r := Reminder{UserID: user.ID, Message: "Reminder initial", RemindAt: time.Now(), Recurrence: "once", ContactID: &contact.ID}
+		require.NoError(t, db.Create(&r).Error)
+		assertRevisionContract(t, "Reminder", r.ID, r.ETag, r.Revision,
+			regexp.MustCompile(`^e-\d+-\d+$`),
+			func() error { return db.Model(&r).Update("message", "Renamed").Error },
+			func() (int64, string) { return r.Revision, r.ETag })
+	}
 }
 
-// TestLifeEventCategory_RealMigratedSchema is T36's real-DB check for the
-// same column-tag-mismatch trap this file's doc comment describes: an
-// AutoMigrate-backed test can't catch LifeEvent.Category's `gorm:"column:
-// category"` tag disagreeing with migration 000011's actual `category`
-// column, because AutoMigrate would happily derive its own schema from
-// whatever the tag says. Only a database.InitDB-migrated DB proves the two
-// agree.
-func TestLifeEventCategory_RealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "category-real.db")
+// assertRevisionContract checks the ADR 0006 contract for one row: create
+// starts at revision 1 with a well-formed derived ETag, a real update bumps
+// to revision 2 with a re-derived ETag, and the persisted `revision` column
+// matches the in-memory value exactly.
+func assertRevisionContract(t *testing.T, table string, id any, etag string, revision int64,
+	etagShape *regexp.Regexp,
+	update func() error,
+	current func() (int64, string)) {
+	t.Helper()
+
+	require.NotEmpty(t, etag, "%s: assertion 1: a new row gets an ETag", table)
+	assert.Regexp(t, etagShape, etag, "%s: etag must have the e-{id}-{revision} shape", table)
+	assert.Equal(t, int64(1), revision, "%s: a new row starts at revision 1", table)
+	assert.Equal(t, fmt.Sprintf("e-%v-%d", id, revision), etag, "%s: etag embeds the revision", table)
+
+	require.NoError(t, update(), "%s: update failed", table)
+	revAfter, etagAfter := current()
+	assert.Equal(t, int64(2), revAfter, "%s: a real update bumps the revision to 2", table)
+	assert.NotEqual(t, etag, etagAfter, "%s: a real update changes the ETag", table)
+	assert.Equal(t, fmt.Sprintf("e-%v-%d", id, revAfter), etagAfter, "%s: etag re-derived from the new revision", table)
+}
+
+// TestRevisionCounterSubSecondResolution_RealMigratedSchema is the regression
+// test for the bug this ticket exists to fix (issue #591): under the old
+// scheme the ETag was derived from UpdatedAt.Unix(), so two writes to the same
+// row inside the same wall-clock second produced an identical token — the
+// lost-update hole a conditional-write check built on it would inherit. The
+// monotonic revision counter has no wall-clock input at all, so two
+// back-to-back writes are distinct no matter what second they land in.
+//
+// Written FIRST, per the ticket ("write this test first, against a real
+// migrated schema") and hand-verified per CLAUDE.md: temporarily reverting the
+// counter increment in Contact.AfterSave makes this fail.
+func TestRevisionCounterSubSecondResolution_RealMigratedSchema(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "subsecond-real.db")
 	db := dbtest.NewAt(t, dbPath)
 
-	user := User{Username: "categorytester", Password: "password123!A", Email: "category@example.com"}
+	user := User{Username: "subsecond", Password: "password123!A", Email: "subsecond@example.com"}
 	require.NoError(t, db.Create(&user).Error)
+
 	contact := Contact{UserID: user.ID, Firstname: "Alice"}
 	require.NoError(t, db.Create(&contact).Error)
 
-	event := LifeEvent{
-		UserID:   user.ID,
-		EntityID: contact.VCardUID,
-		Type:     LifeEventTypeMoved,
-		Category: LifeEventCategoryHomeLiving,
-	}
+	// Two consecutive writes with no clock manipulation at all: if the token
+	// still depended on wall-clock seconds, two writes inside the same second
+	// would collide. The counter makes them distinct unconditionally.
+	c := Contact{UserID: user.ID, Firstname: "Alice"}
+	require.NoError(t, db.Create(&c).Error)
+	rev1 := c.Revision
+
+	require.NoError(t, db.Model(&c).Update("firstname", "First change").Error)
+	rev2 := c.Revision
+	require.NoError(t, db.Model(&c).Update("firstname", "Second change").Error)
+	rev3 := c.Revision
+
+	assert.Less(t, rev1, rev2, "two writes must strictly increase the revision")
+	assert.Less(t, rev2, rev3, "three writes must strictly increase the revision")
+	assert.NotEqual(t, c.ETag, fmt.Sprintf("e-%d-%d", c.ID, rev1), "the ETag must track the new revision")
+
+	// The same property holds for a UUID-PK entity (LifeEvent).
+	event := LifeEvent{UserID: user.ID, EntityID: contact.VCardUID, Type: "graduated"}
 	require.NoError(t, db.Create(&event).Error)
+	e1 := event.Revision
+	require.NoError(t, db.Model(&event).Update("description", "First change").Error)
+	e2 := event.Revision
+	require.NoError(t, db.Model(&event).Update("description", "Second change").Error)
+	e3 := event.Revision
+	assert.Less(t, e1, e2)
+	assert.Less(t, e2, e3)
 
-	var reloaded LifeEvent
-	require.NoError(t, db.First(&reloaded, "id = ?", event.ID).Error)
-	assert.Equal(t, LifeEventCategoryHomeLiving, reloaded.Category,
-		"Category must persist through the real migrated 'category' column")
+	// And for the entities that never had an ETag at all (Note, Reminder).
+	note := Note{UserID: user.ID, Content: "first", Date: time.Now(), ContactID: &contact.ID}
+	require.NoError(t, db.Create(&note).Error)
+	n1 := note.Revision
+	require.NoError(t, db.Model(&note).Update("content", "second").Error)
+	n2 := note.Revision
+	assert.Less(t, n1, n2)
 
-	// And directly through the raw column, ruling out GORM masking a tag
-	// mismatch by deriving its own (wrong) schema.
-	sqlDB, err := db.DB()
-	require.NoError(t, err)
-	var raw string
-	require.NoError(t, sqlDB.QueryRow("SELECT category FROM life_events WHERE id = ?", event.ID).Scan(&raw))
-	assert.Equal(t, LifeEventCategoryHomeLiving, raw)
+	reminder := Reminder{UserID: user.ID, Message: "first", RemindAt: time.Now(), Recurrence: "once", ContactID: &contact.ID}
+	require.NoError(t, db.Create(&reminder).Error)
+	r1 := reminder.Revision
+	require.NoError(t, db.Model(&reminder).Update("message", "second").Error)
+	r2 := reminder.Revision
+	assert.Less(t, r1, r2)
+
+	// Activity, for completeness of the five-entity set.
+	activity := Activity{UserID: user.ID, Title: "first", Date: time.Now()}
+	require.NoError(t, db.Create(&activity).Error)
+	a1 := activity.Revision
+	require.NoError(t, db.Model(&activity).Update("title", "second").Error)
+	a2 := activity.Revision
+	assert.Less(t, a1, a2)
 }

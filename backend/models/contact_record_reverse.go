@@ -78,6 +78,26 @@ func ApplyRecordToContact(c *Contact, r *contactmodel.Record, photoDir string) {
 	c.WorkInformation = env.WorkInformation
 	c.ContactInformation = env.ContactInformation
 
+	// Gender (issue #515): Record.Envelope.Gender -> Contact.Gender — the
+	// inverse of RecordFromContact's mapping, giving Gender a real
+	// neutral-model home at last (previously it had none and never entered
+	// Record at all, documented as a known gap in TestApplyRecordToContact_
+	// RoundTrip).
+	//
+	// The assignment is guarded (only when the envelope carries a non-empty
+	// value): ContactRecordInput keeps the legacy top-level sibling `gender`
+	// field on the wire, and CreateContact/UpdateContact assign it to
+	// Contact.Gender BEFORE calling this function. An envelope absent of
+	// gender (the legacy write shape) must therefore not blank out what the
+	// sibling just set — the same "flat/sibling field wins when the neutral
+	// side has nothing to say" fall-through convention buildEmails/
+	// buildPhones use for their legacy scalars. When the envelope DOES carry
+	// gender (the crm.gender shape this change introduces, and the shape the
+	// read path echoes back), it is authoritative and wins.
+	if env.Gender != "" {
+		c.Gender = env.Gender
+	}
+
 	// "uid" row, inverse direction: Card.UID -> VCardUID. Only overwrite when
 	// the incoming Card actually carries a UID (e.g. a client PUT that omits
 	// it, or a brand-new POST, should not blank out/clobber an existing
@@ -87,13 +107,11 @@ func ApplyRecordToContact(c *Contact, r *contactmodel.Record, photoDir string) {
 		c.VCardUID = card.UID
 	}
 
-	// Gender is deliberately left untouched: per RecordFromContact's own
-	// extensive doc comment, Record has no Gender data at all (it never
-	// mapped into Card/Envelope on the forward direction either), so there is
-	// nothing here to pull it from. Callers that need to set/update Gender
-	// (a legacy-only, non-standardized concept) do so directly on the
-	// Contact alongside calling this function — see CreateContact/
-	// UpdateContact in contact_controller.go.
+	// Gender is mapped from Envelope.Gender above (issue #515), keeping the
+	// CRM-only field inside the Record round trip. It remains deliberately
+	// absent from the standardized Card (it is not vCard GENDER or JSContact
+	// speakToAs — see RecordFromContact's doc comment), so there is nothing
+	// here to pull from card.
 
 	// VCardExtra is also deliberately left untouched here: it is being
 	// superseded by Passthrough in spirit (see RecordFromContact's

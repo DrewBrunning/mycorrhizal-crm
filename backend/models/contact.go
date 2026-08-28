@@ -134,7 +134,26 @@ type Contact struct {
 	// CardDAV fields
 	VCardUID   string `gorm:"column:vcard_uid;index" json:"-"` // Permanent RFC 6350 UID
 	VCardExtra string `gorm:"column:vcard_extra" json:"-"`     // JSON for unmapped vCard properties
-	ETag       string `gorm:"column:etag" json:"-"`            // Sync conflict detection
+
+	// ETag is the CardDAV sync-conflict token, derived from Revision (see
+	// ADR 0006): e-{id}-{revision}. Explicit gorm column tag is mandatory
+	// (CLAUDE.md backend trap 1 — GORM would derive `e_tag`).
+	ETag string `gorm:"column:etag" json:"-"`
+	// Revision is the monotonic per-row write counter (issue #591, CON-01a —
+	// docs/adrs/0006-revision-token-schema.md): starts at 1 on create,
+	// incremented on every persisted write, and the ETag is derived from it
+	// (immune to the old Unix()-resolution lost-update hole). json:"-" here:
+	// surfaced read-only on ContactRecordResponse/ContactSummary, never on
+	// the raw Contact JSON.
+	Revision int64 `gorm:"column:revision;not null;default:1" json:"-"`
+
+	// revisionStampedOnCreate is a transient, in-memory-only marker
+	// (unexported, so GORM ignores it entirely — no column, nothing to tag)
+	// set by AfterCreate and consumed by the AfterSave that GORM fires
+	// immediately after on a Create (GORM runs both hooks). Without it,
+	// AfterSave's unconditional revision bump would turn every create into
+	// revision 2; the marker tells it "the create already stamped revision 1".
+	revisionStampedOnCreate bool
 
 	Archived bool `gorm:"default:false" json:"archived"`
 
@@ -418,25 +437,34 @@ func (c *Contact) BeforeCreate(tx *gorm.DB) error {
 }
 
 func (c *Contact) AfterCreate(tx *gorm.DB) error {
-	// Now we have the ID, generate proper ETag
-	c.ETag = fmt.Sprintf("e-%d-%d", c.ID, c.UpdatedAt.Unix())
-	return tx.Model(c).UpdateColumn("etag", c.ETag).Error
+	// Now we have the ID, stamp the initial revision and derive the ETag from
+	// it (ADR 0006). UpdateColumn(s) bypasses GORM's update hooks, so this
+	// cannot recursively trigger AfterSave. The marker tells the AfterSave
+	// that follows on a Create not to bump (a create is revision 1, not 2).
+	c.Revision = 1
+	c.ETag = fmt.Sprintf("e-%d-%d", c.ID, c.Revision)
+	c.revisionStampedOnCreate = true
+	return tx.Model(c).Where("id = ?", c.ID).UpdateColumns(map[string]any{"revision": c.Revision, "etag": c.ETag}).Error
 }
 
 func (c *Contact) AfterSave(tx *gorm.DB) error {
 	if c.ID == 0 {
 		return nil
 	}
-	// T18 audit fires first: the ETag UpdateColumn below swaps in a fresh
+	// T18 audit fires first: the UpdateColumns below swaps in a fresh
 	// statement, which would otherwise wipe the audit's instance state
 	// (is_new / before) captured in BeforeSave.
 	auditAfterSave(tx, AuditEntityContact, c.VCardUID, c.UserID)
-	newETag := fmt.Sprintf("e-%d-%d", c.ID, c.UpdatedAt.Unix())
-	if newETag != c.ETag {
-		c.ETag = newETag
-		return tx.Model(c).UpdateColumn("etag", c.ETag).Error
+	if c.revisionStampedOnCreate {
+		c.revisionStampedOnCreate = false
+		return nil
 	}
-	return nil
+	// Every persisted write bumps the monotonic revision counter, and the
+	// ETag is re-derived from it (ADR 0006) — two writes inside the same
+	// second can no longer collide, unlike the old UpdatedAt.Unix() scheme.
+	c.Revision++
+	c.ETag = fmt.Sprintf("e-%d-%d", c.ID, c.Revision)
+	return tx.Model(c).Where("id = ?", c.ID).UpdateColumns(map[string]any{"revision": c.Revision, "etag": c.ETag}).Error
 }
 
 // AfterDelete advances updated_at on a soft delete so T17 change feeds see

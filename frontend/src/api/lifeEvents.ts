@@ -102,6 +102,8 @@ export interface LifeEvent {
   source?: string;
   related_entity_ids?: string[];
   remind?: boolean;
+  // Issue #591: monotonic per-row write counter, read-only (ADR 0006).
+  revision?: number;
 }
 
 export interface LifeEventCreateResponse {

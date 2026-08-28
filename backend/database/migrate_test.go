@@ -1631,9 +1631,14 @@ func firstCreateTable(t *testing.T, filename string) string {
 // system event — not just echo the SQL error.
 //
 // Setup: fully migrate a temp database, then drop and re-create the last
-// migration's table with a conflicting schema and roll schema_migrations back
-// one. golang-migrate then re-applies the last migration and fails — a failure
-// that lands after 000038, so system_events exists and the event row is real.
+// table-creating migration's table with a conflicting schema and roll
+// schema_migrations back one. golang-migrate then re-applies that migration
+// and fails — a failure that lands after 000038, so system_events exists and
+// the event row is real.
+//
+// The tail migration is deliberately NOT assumed to create a table: 000044
+// (revision tokens) only ALTERs, so the test walks back from the tip to the
+// last migration whose up.sql has a CREATE TABLE to sabotage.
 func TestMigrationFailureIdentifiesMigrationAndRecordsEvent(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "fail.db")
 	require.NoError(t, MigrateUp(dbPath))
@@ -1645,22 +1650,36 @@ func TestMigrationFailureIdentifiesMigrationAndRecordsEvent(t *testing.T) {
 	latest, err := LatestMigrationVersion()
 	require.NoError(t, err)
 	require.NotZero(t, latest, "need at least one migration")
-	name := migrationFileForVersion(latest)
-	require.NotEmpty(t, name, "last migration file must resolve by version")
+
+	// Walk back from the tip to the last migration that creates a table (a
+	// table to drop and re-create with a conflicting schema).
+	var target uint
+	for v := latest; v >= 1; v-- {
+		name := migrationFileForVersion(v)
+		if name == "" {
+			continue
+		}
+		if table := firstCreateTable(t, name); table != "" {
+			target = v
+			break
+		}
+	}
+	require.NotZero(t, target, "no migration in the chain creates a table to sabotage")
+	name := migrationFileForVersion(target)
 	table := firstCreateTable(t, name)
-	require.NotEmpty(t, table, "test assumes the last migration creates a table; update it if the tail migration changes shape")
+	require.NotEmpty(t, table)
 
 	_, err = sqlDB.Exec("DROP TABLE " + table)
 	require.NoError(t, err)
 	_, err = sqlDB.Exec("CREATE TABLE " + table + " (sabotage INTEGER)")
 	require.NoError(t, err)
-	_, err = sqlDB.Exec("UPDATE schema_migrations SET version = ?, dirty = 0", latest-1)
+	_, err = sqlDB.Exec("UPDATE schema_migrations SET version = ?, dirty = 0", target-1)
 	require.NoError(t, err)
 
 	buf := captureMigrationLogger(t)
 	err = RunMigrations(sqlDB)
-	require.Error(t, err, "sabotaged last migration must fail")
-	assert.Contains(t, err.Error(), strconv.FormatUint(uint64(latest), 10), "returned error must name the failing migration version")
+	require.Error(t, err, "sabotaged migration must fail")
+	assert.Contains(t, err.Error(), strconv.FormatUint(uint64(target), 10), "returned error must name the failing migration version")
 	assert.Contains(t, err.Error(), name, "returned error must name the failing migration file")
 
 	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
@@ -1668,7 +1687,7 @@ func TestMigrationFailureIdentifiesMigrationAndRecordsEvent(t *testing.T) {
 	var line map[string]any
 	require.NoError(t, json.Unmarshal([]byte(lines[len(lines)-1]), &line))
 	assert.Equal(t, "migration_failed", line["event"])
-	assert.Equal(t, strconv.FormatUint(uint64(latest), 10), fmt.Sprintf("%v", line["version"]))
+	assert.Equal(t, strconv.FormatUint(uint64(target), 10), fmt.Sprintf("%v", line["version"]))
 	assert.Equal(t, name, line["migration"])
 
 	var count int64

@@ -1130,6 +1130,7 @@ paths:
                     photo: ""
                     archived: false
                     is_favorite: false
+                    revision: 3
                   - id: 11
                     uid: "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f"
                     firstname: "Fixture"
@@ -1143,6 +1144,7 @@ paths:
                     photo: ""
                     archived: false
                     is_favorite: false
+                    revision: 7
                   - id: 6
                     uid: "26861acc-8372-4be8-9113-84fb27995aaa"
                     firstname: "Eve"
@@ -1156,6 +1158,7 @@ paths:
                     photo: ""
                     archived: false
                     is_favorite: false
+                    revision: 2
                 limit: 25
                 next_cursor: ""
                 sync:
@@ -1770,7 +1773,8 @@ paths:
                 contact:
                   id: 11
                   uid: "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f"
-                  etag: "e-11-1787270921"
+                  etag: "e-11-7"
+                  revision: 7
                   gender: ""
                   card:
                     name:
@@ -9406,6 +9410,13 @@ components:
             Issue #173: whether the caller marked this contact as a favorite.
             Always present (a false default is still on the wire so clients
             can treat it as required). CRM-local — never exported or synced.
+        revision:
+          type: integer
+          description: >
+            Issue #591 (CON-01a): monotonic per-row write counter, read-only,
+            always present (migration 000044 backfills every row). Two writes
+            inside the same second produce different revisions — the token a
+            client echoes back in a conditional write (ADR 0006).
         deleted:
           type: boolean
           description: >
@@ -9426,9 +9437,9 @@ components:
       type: object
       description: >
         Request body for POST /contacts and PUT /contacts/{id}. Gender rides
-        alongside card/crm since it has no neutral-model home (see
-        docs/adrs/0001-neutral-hub-and-spoke-contact-model.md's RecordFromContact
-        notes).
+        alongside card/crm for backward compat, and now ALSO inside
+        crm.gender (issue #515, its authoritative neutral-model home — the
+        read path echoes it there). When both are present, crm.gender wins.
       properties:
         gender:
           type: string
@@ -9446,6 +9457,13 @@ components:
         id: { type: integer }
         uid: { type: string }
         etag: { type: string }
+        revision:
+          type: integer
+          description: >
+            Issue #591 (CON-01a): monotonic per-row write counter, read-only,
+            always present. The etag above is derived from it
+            (e-{id}-{revision}); a client reads revision to build a
+            conditional write (ADR 0006).
         gender: { type: string }
         card:
           $ref: "#/components/schemas/Card"
@@ -9994,6 +10012,12 @@ components:
         contact_id: { type: integer, nullable: true }
         contact:
           $ref: "#/components/schemas/ContactFlat"
+        revision:
+          type: integer
+          description: >
+            Issue #591 (CON-01a): monotonic per-row write counter, read-only.
+            New in migration 000044 — notes never carried a sync token before.
+            A client reads it to build a conditional write (ADR 0006).
         deleted:
           type: boolean
           description: "Change-feed tombstone marker (T17): true only via ?since= for a soft-deleted note."
@@ -10026,6 +10050,12 @@ components:
           items: { $ref: "#/components/schemas/ContactFlat" }
         type: { type: string }
         external_ref: { type: string }
+        revision:
+          type: integer
+          description: >
+            Issue #591 (CON-01a): monotonic per-row write counter, read-only.
+            The CalDAV etag is derived from it. A client reads it to build a
+            conditional write (ADR 0006).
         deleted:
           type: boolean
           description: "Change-feed tombstone marker (T17): true only via ?since= for a soft-deleted activity."
@@ -10066,6 +10096,12 @@ components:
         life_event_id: { type: string }
         contact:
           $ref: "#/components/schemas/ContactFlat"
+        revision:
+          type: integer
+          description: >
+            Issue #591 (CON-01a): monotonic per-row write counter, read-only.
+            New in migration 000044 — reminders never carried a sync token
+            before. A client reads it to build a conditional write (ADR 0006).
     ReminderCompleteResponse:
       type: object
       description: "Recurring reminders return reminder + message; once reminders are soft-deleted and return only a message."
@@ -10995,6 +11031,12 @@ components:
           type: array
           items: { type: string, format: uuid }
         remind: { type: boolean }
+        revision:
+          type: integer
+          description: >
+            Issue #591 (CON-01a): monotonic per-row write counter, read-only.
+            The CalDAV etag is derived from it (e-{id}-{revision}). A client
+            reads it to build a conditional write (ADR 0006).
         deleted:
           type: boolean
           description: "Change-feed tombstone marker (T17): true only via ?since= for a soft-deleted life event."
@@ -11880,10 +11922,22 @@ components:
       type: object
       description: Mycorrhizal-specific data outside any contact-exchange standard.
       properties:
+        kind: { type: string }
         circles: { type: array, items: { type: string } }
         how_we_met: { type: string }
         work_information: { type: string }
         contact_information: { type: string }
+        gender:
+          type: string
+          description: >
+            Issue #515: the CRM's free-text gender field, given a real
+            neutral-model home here so it round-trips through the Record and
+            is served on the wire. Deliberately NOT vCard GENDER or JSContact
+            speakToAs (see docs/specs/rfc6350-baseline.md's closing note) —
+            never exported to a vCard/JSContact file. The legacy top-level
+            sibling `gender` field on the contact DTOs remains for backward
+            compat; when both are present, crm.gender wins (it is the
+            authoritative copy).
     Passthrough:
       type: object
       description: Unmapped data preserved verbatim (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md).

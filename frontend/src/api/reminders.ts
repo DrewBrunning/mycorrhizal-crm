@@ -15,6 +15,8 @@ export interface Reminder {
   CreatedAt?: string;
   UpdatedAt?: string;
   DeletedAt?: string | null;
+  // Issue #591: monotonic per-row write counter, read-only (ADR 0006).
+  revision?: number;
 }
 
 export interface ReminderFormData {

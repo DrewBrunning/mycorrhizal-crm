@@ -54,7 +54,7 @@ func ProfilePictureURL(id uint, photo, photoThumbnail string, preferThumbnail bo
 // updated_at / sort_name / deleted_at) off this base.
 var ContactSummaryColumns = []string{
 	"id", "vcard_uid", "firstname", "lastname", "nickname", "fn", "email", "phone", "birthday", "org",
-	"photo", "photo_thumbnail", "archived", "is_favorite",
+	"photo", "photo_thumbnail", "archived", "is_favorite", "revision",
 }
 
 // ContactSummary is the slim per-item shape for GET /api/v1/contacts (list).
@@ -112,6 +112,9 @@ type ContactSummary struct {
 	// absent is_favorite would read as undefined and break the star icon
 	// (CLAUDE.md frontend trap 8).
 	IsFavorite bool `json:"is_favorite"`
+	// Revision is the monotonic concurrency token (issue #591, ADR 0006),
+	// read-only, always present (migration 000044 backfills every row).
+	Revision int64 `json:"revision"`
 	// Deleted is the T17 change-feed tombstone marker, set only by the
 	// ?since= feed path (which reads rows with Unscoped()). A plain list
 	// request never sets it.
@@ -142,6 +145,7 @@ func NewContactSummary(c *Contact) ContactSummary {
 		PhotoThumbnail: ProfilePictureURL(c.ID, c.Photo, c.PhotoThumbnail, true),
 		Archived:       c.Archived,
 		IsFavorite:     c.IsFavorite,
+		Revision:       c.Revision,
 	}
 }
 
@@ -222,9 +226,14 @@ func (in *ContactRecordInput) ToRecord() *contactmodel.Record {
 // same way (UID/ETag surfaced as their own fields rather than the
 // Card.UID/etag columns).
 type ContactRecordResponse struct {
-	ID          uint                     `json:"id"`
-	UID         string                   `json:"uid"`
-	ETag        string                   `json:"etag"`
+	ID   uint   `json:"id"`
+	UID  string `json:"uid"`
+	ETag string `json:"etag"`
+	// Revision is the monotonic concurrency token (issue #591, ADR 0006) —
+	// read-only, always present, distinct from the CardDAV etag string that
+	// is derived from it. A client echoes this back in #456's conditional
+	// writes (If-Match against `revision`, not the etag).
+	Revision    int64                    `json:"revision"`
 	Gender      string                   `json:"gender"`
 	Card        contactmodel.Card        `json:"card"`
 	CRM         contactmodel.CRMEnvelope `json:"crm"`
@@ -267,6 +276,7 @@ func NewContactRecordResponse(c *Contact, photoDir string, db *gorm.DB) ContactR
 		ID:             c.ID,
 		UID:            record.UID,
 		ETag:           record.ETag,
+		Revision:       c.Revision,
 		Gender:         c.Gender,
 		Card:           record.Card,
 		CRM:            record.Envelope,

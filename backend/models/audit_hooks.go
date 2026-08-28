@@ -33,8 +33,25 @@ func (n *Note) BeforeSave(tx *gorm.DB) error {
 }
 
 func (n *Note) AfterSave(tx *gorm.DB) error {
+	// Guard: a zero-value ID means this hook fired on a bulk
+	// Model(&Note{}).Where(...).Update call, not on a real row — the
+	// receiver has no primary key, so the revision UpdateColumns below would
+	// widen to every row in the table.
+	if n.ID == 0 {
+		return nil
+	}
+	// T18 audit fires first: the UpdateColumns below swaps in a fresh
+	// statement, which would otherwise wipe the audit's instance state.
 	auditAfterSave(tx, AuditEntityNote, fmt.Sprintf("%d", n.ID), n.UserID)
-	return nil
+	if n.revisionStampedOnCreate {
+		n.revisionStampedOnCreate = false
+		return nil
+	}
+	// Every persisted write bumps the monotonic revision counter and
+	// re-derives the ETag from it (ADR 0006, issue #591).
+	n.Revision++
+	n.ETag = fmt.Sprintf("e-%d-%d", n.ID, n.Revision)
+	return tx.Model(n).Where("id = ?", n.ID).UpdateColumns(map[string]any{"revision": n.Revision, "etag": n.ETag}).Error
 }
 
 // --- Gift (BeforeSave/AfterSave are new; AfterDelete folds into gift.go)
@@ -108,8 +125,25 @@ func (r *Reminder) BeforeSave(tx *gorm.DB) error {
 }
 
 func (r *Reminder) AfterSave(tx *gorm.DB) error {
+	// Guard: a zero-value ID means this hook fired on a bulk
+	// Model(&Reminder{}).Where(...).Update call, not on a real row — the
+	// receiver has no primary key, so the revision UpdateColumns below would
+	// widen to every row in the table.
+	if r.ID == 0 {
+		return nil
+	}
+	// T18 audit fires first: the UpdateColumns below swaps in a fresh
+	// statement, which would otherwise wipe the audit's instance state.
 	auditAfterSave(tx, AuditEntityReminder, fmt.Sprintf("%d", r.ID), r.UserID)
-	return nil
+	if r.revisionStampedOnCreate {
+		r.revisionStampedOnCreate = false
+		return nil
+	}
+	// Every persisted write bumps the monotonic revision counter and
+	// re-derives the ETag from it (ADR 0006, issue #591).
+	r.Revision++
+	r.ETag = fmt.Sprintf("e-%d-%d", r.ID, r.Revision)
+	return tx.Model(r).Where("id = ?", r.ID).UpdateColumns(map[string]any{"revision": r.Revision, "etag": r.ETag}).Error
 }
 
 func (r *Reminder) AfterDelete(tx *gorm.DB) error {

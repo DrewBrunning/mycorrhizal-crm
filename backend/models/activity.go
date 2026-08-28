@@ -57,12 +57,24 @@ type Activity struct {
 	ExternalRef string `json:"external_ref,omitempty"`
 
 	// ETag is the CalDAV sync-conflict token for this Interaction (T12a),
-	// same role Contact.ETag plays for vCards. Explicit gorm column tag is
-	// mandatory: without it GORM derives `e_tag` while migration 000041 names
-	// the column `etag` — the exact silent mismatch that shipped broken for
-	// ContactSyncLink.ETag and killed CardDAV incremental sync. Generated in
-	// AfterCreate/AfterSave from ID + UpdatedAt (see below).
+	// derived from Revision (ADR 0006): e-{id}-{revision}. Explicit gorm
+	// column tag is mandatory: without it GORM derives `e_tag` while
+	// migration 000041 names the column `etag` — the exact silent mismatch
+	// that shipped broken for ContactSyncLink.ETag and killed CardDAV
+	// incremental sync.
 	ETag string `gorm:"column:etag" json:"-"`
+
+	// Revision is the monotonic per-row write counter (issue #591, CON-01a —
+	// docs/adrs/0006-revision-token-schema.md): starts at 1 on create,
+	// incremented on every persisted write, ETag derived from it. Exposed
+	// read-only on the wire as `revision` (the model is this entity's
+	// response DTO). Migration 000044 adds the column.
+	Revision int64 `gorm:"column:revision;not null;default:1" json:"revision"`
+
+	// revisionStampedOnCreate: transient marker set by AfterCreate, consumed
+	// by the AfterSave GORM fires right after on a Create (see
+	// Contact.revisionStampedOnCreate). Keeps a create at revision 1.
+	revisionStampedOnCreate bool
 
 	// Deleted is the T17 change-feed tombstone marker, set by the list
 	// handler when it reads a row with Unscoped() that has a non-null
@@ -92,37 +104,43 @@ func (a *Activity) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// AfterCreate assigns the initial ETag now that ID/UpdatedAt are persisted,
-// mirroring Contact.AfterCreate (contact.go). UpdateColumn bypasses GORM's
-// update hooks, so this cannot recursively trigger AfterSave.
+// AfterCreate assigns the initial ETag now that ID is persisted, mirroring
+// Contact.AfterCreate (contact.go): stamp revision 1 and derive the ETag from
+// it (ADR 0006). UpdateColumns bypasses GORM's update hooks, so this cannot
+// recursively trigger AfterSave.
 func (a *Activity) AfterCreate(tx *gorm.DB) error {
-	a.ETag = fmt.Sprintf("e-%d-%d", a.ID, a.UpdatedAt.Unix())
-	return tx.Model(a).UpdateColumn("etag", a.ETag).Error
+	a.Revision = 1
+	a.ETag = fmt.Sprintf("e-%d-%d", a.ID, a.Revision)
+	a.revisionStampedOnCreate = true
+	return tx.Model(a).Where("id = ?", a.ID).UpdateColumns(map[string]any{"revision": a.Revision, "etag": a.ETag}).Error
 }
 
-// AfterSave refreshes the ETag on a real change only, exactly like
-// Contact.AfterSave: recompute the would-be value from the persisted
-// ID/UpdatedAt, and only write it back via UpdateColumn (no hook loop) when
-// it actually differs from what's stored.
+// AfterSave refreshes the ETag on every real write, exactly like
+// Contact.AfterSave: bump the monotonic revision counter and re-derive the
+// ETag from it (ADR 0006), so two writes inside the same second can no longer
+// collide. The old scheme compared the recomputed would-be value against the
+// stored one and only rewrote on change — with a counter there is no
+// would-be value to compare against, every persisted write is a new revision.
 //
 // Guard: a zero-value ID means this hook fired on a bulk
 // Model(&Activity{}).Where(...).Update/Updates call, not on a real row — the
-// receiver has no primary key, so UpdateColumn would widen to every row in
-// the table. Never derive/write an ETag in that case (the caller is
-// responsible for load-then-save updates that should refresh ETags).
+// receiver has no primary key, so UpdateColumns would widen to every row in
+// the table. Never derive/write a revision in that case (the caller is
+// responsible for load-then-save updates that should bump revisions).
 func (a *Activity) AfterSave(tx *gorm.DB) error {
 	if a.ID == 0 {
 		return nil
 	}
-	// T18 audit fires first: the ETag UpdateColumn below swaps in a fresh
+	// T18 audit fires first: the UpdateColumns below swaps in a fresh
 	// statement, which would otherwise wipe the audit's instance state.
 	auditAfterSave(tx, AuditEntityActivity, a.UUID, a.UserID)
-	newETag := fmt.Sprintf("e-%d-%d", a.ID, a.UpdatedAt.Unix())
-	if newETag != a.ETag {
-		a.ETag = newETag
-		return tx.Model(a).UpdateColumn("etag", a.ETag).Error
+	if a.revisionStampedOnCreate {
+		a.revisionStampedOnCreate = false
+		return nil
 	}
-	return nil
+	a.Revision++
+	a.ETag = fmt.Sprintf("e-%d-%d", a.ID, a.Revision)
+	return tx.Model(a).Where("id = ?", a.ID).UpdateColumns(map[string]any{"revision": a.Revision, "etag": a.ETag}).Error
 }
 
 // nonQualifyingInteractionTypes are passive/social-media-like interaction
