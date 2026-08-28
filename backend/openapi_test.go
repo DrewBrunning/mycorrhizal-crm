@@ -108,6 +108,8 @@ func TestOpenAPISpecValidates(t *testing.T) {
 		"ContactDetailImmich",
 		// T66 merged contact timeline.
 		"TimelineItem", "TimelineResponse",
+		// Issue #388 admin system-status snapshot.
+		"SystemStatus",
 	}
 	for _, name := range wantSchemas {
 		if _, ok := doc.Components.Schemas[name]; !ok {
