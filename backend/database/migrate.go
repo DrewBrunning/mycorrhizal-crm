@@ -201,6 +201,29 @@ func RunMigrations(db *sql.DB) error {
 	// Run migrations
 	upErr := m.Up()
 	if upErr != nil && upErr != migrate.ErrNoChange {
+		// Milestone v0.6.2 gate (issue #532): a migration failure must
+		// identify WHICH migration failed, not just carry the SQL error.
+		// golang-migrate leaves the failed version dirty, so m.Version()
+		// names it; the filename comes from the embedded FS. The returned
+		// error, the structured log line, and the system_events row (when the
+		// table exists) all carry it.
+		version, _, verr := m.Version()
+		name := migrationFileForVersion(version)
+		elapsed := time.Since(start)
+
+		logger.Error().
+			Err(upErr).
+			Str(logger.FieldEvent, "migration_failed").
+			Str(logger.FieldComponent, "migration").
+			Uint("version", version).
+			Str("migration", name).
+			Int64(logger.FieldDurationMS, elapsed.Milliseconds()).
+			Msg("migration failed")
+		recordMigrationFailedEvent(db, startVersion, version, elapsed, upErr)
+
+		if verr == nil {
+			return fmt.Errorf("failed to apply migrations: version %d (%s): %w", version, name, upErr)
+		}
 		return fmt.Errorf("failed to apply migrations: %w", upErr)
 	}
 
@@ -254,6 +277,64 @@ func recordMigrationEvent(db *sql.DB, from, to uint, elapsed time.Duration) {
 	if err != nil {
 		logger.Debug().Err(err).Msg("could not record migration_completed system event (pre-000038 schema?)")
 	}
+}
+
+// recordMigrationFailedEvent inserts one migration_failed row, swallowing every
+// error: the table may not exist yet (a migration before 000038 failed) and a
+// diagnostic write must never be able to fail a boot. The error text is
+// sanitized and length-capped like every other persisted diagnostic field —
+// the raw golang-migrate error embeds the whole failing migration body, which
+// would otherwise bloat the row.
+func recordMigrationFailedEvent(db *sql.DB, from, version uint, elapsed time.Duration, upErr error) {
+	defer func() { _ = recover() }()
+	now := time.Now().UTC()
+	ms := elapsed.Milliseconds()
+	errText := logger.SanitizeLogField(upErr.Error())
+	if runes := []rune(errText); len(runes) > maxMigrationEventErrorLen {
+		errText = string(runes[:maxMigrationEventErrorLen])
+	}
+	_, err := db.Exec(
+		`INSERT INTO system_events (created_at, occurred_at, event_type, severity, component, operation, duration_ms, result, error, detail)
+		 VALUES (?, ?, 'migration_failed', 'error', 'migration', 'run_migrations', ?, 'failure', ?, ?)`,
+		now, now, ms, errText, fmt.Sprintf("from_version=%d to_version=%d", from, version),
+	)
+	if err != nil {
+		logger.Debug().Err(err).Msg("could not record migration_failed system event (pre-000038 schema?)")
+	}
+}
+
+// maxMigrationEventErrorLen caps the persisted migration_failed error text,
+// matching the 1024-rune discipline the models package applies to system_event
+// free-text fields.
+const maxMigrationEventErrorLen = 1024
+
+// migrationFileForVersion returns the NNNNNN_name.up.sql filename for the
+// given migration version from the embedded FS, or "" when no file matches.
+// Used by the migration-failure path (issue #532) so a failed boot names the
+// migration that failed rather than only echoing the SQL error.
+func migrationFileForVersion(version uint) string {
+	entries, err := fs.ReadDir(migrationsFS, "migrations")
+	if err != nil {
+		return ""
+	}
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, ".up.sql") {
+			continue
+		}
+		prefix, _, found := strings.Cut(name, "_")
+		if !found {
+			continue
+		}
+		v, err := strconv.ParseUint(prefix, 10, 32)
+		if err != nil {
+			continue
+		}
+		if uint(v) == version {
+			return name
+		}
+	}
+	return ""
 }
 
 // MigrateUp applies every pending migration to the database at dbPath. Thin

@@ -52,6 +52,41 @@ func registerJSContactRoute(router *gin.Engine, photoDir string) {
 	})
 }
 
+// assertExportFailureDetails pins the milestone v0.6.2 gate criterion "Import/
+// export failures identify the relevant operation and failure category"
+// (issue #532): an export error response must carry the export operation and
+// failure category in its details, whatever the message.
+func assertExportFailureDetails(t *testing.T, w *httptest.ResponseRecorder, wantOperation, wantCategory string) {
+	t.Helper()
+	var body struct {
+		Error struct {
+			Code    string                 `json:"code"`
+			Message string                 `json:"message"`
+			Details map[string]interface{} `json:"details"`
+		} `json:"error"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, "INTERNAL_ERROR", body.Error.Code)
+	assert.Equal(t, wantOperation, body.Error.Details["operation"], "error response must name the export operation")
+	assert.Equal(t, wantCategory, body.Error.Details["category"], "error response must name the failure category")
+}
+
+func TestExportData_DBError_IdentifiesOperationAndCategory(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/export", ExportData)
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	req, _ := http.NewRequest("GET", "/export", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assertExportFailureDetails(t, w, "export:csv", "database")
+}
+
 func TestExportData(t *testing.T) {
 	db, router := setupRouter()
 
@@ -459,6 +494,7 @@ func TestExportContactsAsVCF_DBError(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assertExportFailureDetails(t, w, "export:vcard4", "database")
 }
 
 func TestExportContactsAsVCF_MultipleContacts(t *testing.T) {
@@ -688,6 +724,7 @@ func TestExportContactsAsJSContact_DBError(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assertExportFailureDetails(t, w, "export:jscontact", "database")
 }
 
 func TestExportContactsAsJSContact_UserScoping(t *testing.T) {
