@@ -12,22 +12,13 @@ import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './cl
 // API preserves it).
 export type NotificationChannelName = 'email' | 'ntfy' | 'gotify' | 'push';
 
-export const NOTIFICATION_CHANNELS: NotificationChannelName[] = [
-  'email',
-  'ntfy',
-  'gotify',
-  'push',
-];
+export const NOTIFICATION_CHANNELS: NotificationChannelName[] = ['email', 'ntfy', 'gotify', 'push'];
 
 // unconfigured = nothing to deliver on; no_devices = push provisioned but no
 // browser subscription / mobile device can receive; healthy = configured and
 // the last terminal delivery succeeded; failing = configured and the last
 // terminal delivery failed.
-export type NotificationChannelStatus =
-  | 'unconfigured'
-  | 'no_devices'
-  | 'healthy'
-  | 'failing';
+export type NotificationChannelStatus = 'unconfigured' | 'no_devices' | 'healthy' | 'failing';
 
 export interface NotificationChannelHealth {
   channel: NotificationChannelName;
