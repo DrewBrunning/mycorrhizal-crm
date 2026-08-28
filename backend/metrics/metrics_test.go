@@ -121,3 +121,46 @@ func TestSetStorageGauges_MissingDBFileIsZero(t *testing.T) {
 	SetStorageGauges(filepath.Join(t.TempDir(), "does-not-exist.db"))
 	assert.Contains(t, dump(t), `mycorrhizal_storage_bytes{kind="database"} 0`+"\n")
 }
+
+// The three helpers below are exported so the admin system-status endpoint
+// (issue #388) reads uptime and storage from the exact same source the
+// /metrics gauges use. They were previously covered only transitively through
+// SetStorageGauges / SetRuntimeGauges; these pin them directly.
+
+func TestProcessStart_IsAStablePastInstant(t *testing.T) {
+	a := ProcessStart()
+	b := ProcessStart()
+	assert.Equal(t, a, b, "ProcessStart must be fixed for the process lifetime")
+	assert.False(t, a.IsZero(), "ProcessStart must be set")
+	assert.False(t, a.After(time.Now()), "ProcessStart must be in the past")
+}
+
+func TestDatabaseBytes_SumsSqliteSiblings(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "mycorrhizal.db")
+	require.NoError(t, os.WriteFile(dbPath, make([]byte, 1000), 0o600))
+	require.NoError(t, os.WriteFile(dbPath+"-wal", make([]byte, 200), 0o600))
+	require.NoError(t, os.WriteFile(dbPath+"-shm", make([]byte, 24), 0o600))
+
+	assert.Equal(t, int64(1224), DatabaseBytes(dbPath))
+}
+
+func TestDatabaseBytes_CountsOnlyExistingSiblings(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "mycorrhizal.db")
+	require.NoError(t, os.WriteFile(dbPath, make([]byte, 512), 0o600))
+
+	assert.Equal(t, int64(512), DatabaseBytes(dbPath), "no -wal/-shm siblings present")
+	assert.Equal(t, int64(0), DatabaseBytes(filepath.Join(dir, "absent.db")))
+}
+
+func TestFilesystemBytes_RealDirAndBogusPath(t *testing.T) {
+	free, total, ok := FilesystemBytes(t.TempDir())
+	require.True(t, ok)
+	assert.Greater(t, total, 0.0)
+	assert.GreaterOrEqual(t, free, 0.0)
+	assert.LessOrEqual(t, free, total, "free is clamped to total")
+
+	_, _, ok = FilesystemBytes(filepath.Join(t.TempDir(), "no", "such", "path"))
+	assert.False(t, ok, "Statfs on a missing path reports not-ok")
+}
