@@ -15,6 +15,12 @@ import (
 // from the very first scrape.
 var processStart = time.Now()
 
+// ProcessStart returns the instant this process began, fixed at first import
+// of this package. Exported so the admin system-status endpoint (issue #388)
+// can report uptime from the same source the /metrics gauges use, without a
+// second time origin that could disagree.
+func ProcessStart() time.Time { return processStart }
+
 var defaultRegistry = NewRegistry()
 
 // Default is the process-wide registry the /metrics endpoint renders.
@@ -139,24 +145,33 @@ func SetDBGauges(s sql.DBStats) {
 // deliberately not walked here — a recursive stat on every scrape is the line
 // this endpoint does not cross for a self-hosted single-process app.
 func SetStorageGauges(dbPath string) {
-	var dbBytes int64
-	for _, suffix := range []string{"", "-wal", "-shm"} {
-		if fi, err := os.Stat(dbPath + suffix); err == nil {
-			dbBytes += fi.Size()
-		}
-	}
-	storageBytes.With("database").Set(float64(dbBytes))
+	storageBytes.With("database").Set(float64(DatabaseBytes(dbPath)))
 
-	if free, size, ok := filesystemBytes(filepath.Dir(dbPath)); ok {
+	if free, size, ok := FilesystemBytes(filepath.Dir(dbPath)); ok {
 		fsFreeBytes.With().Set(free)
 		fsSizeBytes.With().Set(size)
 	}
 }
 
-// filesystemBytes returns (free, total) bytes for the filesystem holding path.
+// DatabaseBytes is the on-disk footprint of the SQLite database at dbPath: the
+// main file plus its -wal / -shm siblings, each counted only when it exists.
+// Shared by the /metrics storage gauge and the admin system-status endpoint
+// (issue #388) so the two never disagree on how the total is computed.
+func DatabaseBytes(dbPath string) int64 {
+	var total int64
+	for _, suffix := range []string{"", "-wal", "-shm"} {
+		if fi, err := os.Stat(dbPath + suffix); err == nil {
+			total += fi.Size()
+		}
+	}
+	return total
+}
+
+// FilesystemBytes returns (free, total) bytes for the filesystem holding path.
 // Same syscall.Statfs primitive as services/alerting_conditions.go; arithmetic
-// in float64 to keep gosec G115 satisfied without a suppression.
-func filesystemBytes(path string) (free, total float64, ok bool) {
+// in float64 to keep gosec G115 satisfied without a suppression. Exported for
+// the admin system-status endpoint (issue #388).
+func FilesystemBytes(path string) (free, total float64, ok bool) {
 	var st syscall.Statfs_t
 	if err := syscall.Statfs(path, &st); err != nil || st.Bsize <= 0 || st.Blocks == 0 {
 		return 0, 0, false
