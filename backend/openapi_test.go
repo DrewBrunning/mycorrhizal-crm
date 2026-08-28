@@ -110,6 +110,12 @@ func TestOpenAPISpecValidates(t *testing.T) {
 		"TimelineItem", "TimelineResponse",
 		// Issue #388 admin system-status snapshot.
 		"SystemStatus",
+		// Issue #391 background-job run history + rolled-up health.
+		"JobRun", "JobRunHealth",
+		// Issue #423 diagnostics ('doctor') sweep.
+		"DiagnosticsResponse", "DiagnosticCheck",
+		// Issue #422 per-channel notification delivery health.
+		"NotificationChannelHealth",
 	}
 	for _, name := range wantSchemas {
 		if _, ok := doc.Components.Schemas[name]; !ok {

@@ -2,7 +2,9 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
+import { runDiagnostics } from './api/diagnostics';
 import { getErrorAggregation } from './api/errorAggregation';
+import { getJobRunHealth, listJobRuns } from './api/jobRuns';
 import { getNotificationChannelHealth } from './api/notificationHealth';
 import { getSubsystemHealth } from './api/subsystemHealth';
 import { getSystemEvents, type SystemEvent } from './api/systemEvents';
@@ -32,6 +34,16 @@ vi.mock('./api/errorAggregation', async (importOriginal) => {
 vi.mock('./api/notificationHealth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/notificationHealth')>();
   return { ...actual, getNotificationChannelHealth: vi.fn() };
+});
+
+vi.mock('./api/jobRuns', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/jobRuns')>();
+  return { ...actual, getJobRunHealth: vi.fn(), listJobRuns: vi.fn() };
+});
+
+vi.mock('./api/diagnostics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/diagnostics')>();
+  return { ...actual, runDiagnostics: vi.fn() };
 });
 
 const getMock = vi.mocked(getSystemEvents);
@@ -64,6 +76,16 @@ beforeEach(() => {
   });
   vi.mocked(getNotificationChannelHealth).mockReset();
   vi.mocked(getNotificationChannelHealth).mockResolvedValue({ channels: [] });
+  vi.mocked(getJobRunHealth).mockReset();
+  vi.mocked(getJobRunHealth).mockResolvedValue({ jobs: [] });
+  vi.mocked(listJobRuns).mockReset();
+  vi.mocked(listJobRuns).mockResolvedValue({ job_runs: [], total: 0 });
+  vi.mocked(runDiagnostics).mockReset();
+  vi.mocked(runDiagnostics).mockResolvedValue({
+    timestamp: '2026-08-27T12:00:00Z',
+    summary: { status: 'ok', ok: 1, warnings: 0, errors: 0 },
+    checks: [{ name: 'database', status: 'ok', message: 'database reachable' }],
+  });
 });
 
 function renderPage() {
@@ -181,4 +203,19 @@ test('shows the empty state when the API returns nothing', async () => {
   await waitFor(() =>
     expect(screen.getByText('No system events recorded yet.')).toBeInTheDocument(),
   );
+});
+
+test('mounts the diagnostics and background-jobs panels wired to their APIs', async () => {
+  renderPage();
+  await waitFor(() => expect(getMock).toHaveBeenCalled());
+
+  // Diagnostics panel (#423): present, with its manual trigger. It must NOT
+  // fetch on mount — the sweep is a deliberate action.
+  expect(screen.getByRole('heading', { name: 'Diagnostics' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Run diagnostics' })).toBeInTheDocument();
+  expect(vi.mocked(runDiagnostics)).not.toHaveBeenCalled();
+
+  // Background-jobs panel (#391): present, and it loads its projection on mount.
+  expect(screen.getByRole('heading', { name: 'Background jobs' })).toBeInTheDocument();
+  await waitFor(() => expect(vi.mocked(getJobRunHealth)).toHaveBeenCalled());
 });
