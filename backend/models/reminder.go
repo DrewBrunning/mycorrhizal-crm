@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -20,6 +21,35 @@ type Reminder struct {
 	ContactID             *uint      `gorm:"not null" json:"contact_id" validate:"required"`
 	LifeEventID           *string    `gorm:"index" json:"life_event_id,omitempty"`
 	Contact               Contact    `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"contact,omitempty" validate:"-"`
+
+	// Revision is the monotonic per-row write counter (issue #591, CON-01a —
+	// docs/adrs/0006-revision-token-schema.md): starts at 1 on create,
+	// incremented on every persisted write. Migration 000044 adds the column.
+	// Exposed read-only on the wire as `revision`.
+	Revision int64 `gorm:"column:revision;not null;default:1" json:"revision"`
+
+	// ETag is the CardDAV/CalDAV-style sync-conflict token derived from
+	// Revision (ADR 0006): e-{id}-{revision}. Reminders have no DAV surface
+	// yet, but the token exists for the sync/merge surface that will need
+	// it. Explicit column tag guards the `etag` vs GORM-derived `e_tag`
+	// mismatch (CLAUDE.md backend trap 1). Migration 000044 adds the column.
+	ETag string `gorm:"column:etag" json:"-"`
+
+	// revisionStampedOnCreate: transient marker set by AfterCreate, consumed
+	// by the AfterSave GORM fires right after on a Create (see
+	// Contact.revisionStampedOnCreate). Keeps a create at revision 1.
+	revisionStampedOnCreate bool
+}
+
+// AfterCreate stamps the initial revision and derives the ETag from it (ADR
+// 0006), mirroring Contact.AfterCreate. UpdateColumns bypasses GORM's update
+// hooks, so this cannot recursively trigger AfterSave. The marker tells the
+// AfterSave that follows on a Create not to bump (a create is revision 1).
+func (r *Reminder) AfterCreate(tx *gorm.DB) error {
+	r.Revision = 1
+	r.ETag = fmt.Sprintf("e-%d-%d", r.ID, r.Revision)
+	r.revisionStampedOnCreate = true
+	return tx.Model(r).Where("id = ?", r.ID).UpdateColumns(map[string]any{"revision": r.Revision, "etag": r.ETag}).Error
 }
 
 type ReminderCompletion struct {

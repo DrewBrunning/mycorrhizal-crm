@@ -45,6 +45,7 @@ test('defaults the Kind selection to human', async () => {
     id: 1,
     uid: 'uid-1',
     etag: '',
+    revision: 1,
     card: {},
     crm: {},
   });
@@ -73,6 +74,7 @@ test('submits crm.kind = animal when Animal is selected (T27)', async () => {
     id: 3,
     uid: 'uid-3',
     etag: '',
+    revision: 1,
     card: {},
     crm: { kind: 'animal' },
   });
@@ -92,6 +94,7 @@ test('submits card.language when set', async () => {
     id: 4,
     uid: 'uid-4',
     etag: '',
+    revision: 1,
     card: {},
     crm: {},
   });
@@ -125,6 +128,7 @@ test('defaults the card language to the UI language when not touched', async () 
     id: 6,
     uid: 'uid-6',
     etag: '',
+    revision: 1,
     card: {},
     crm: {},
   });
@@ -210,6 +214,7 @@ test('submits with just first name', async () => {
     id: 7,
     uid: 'uid-7',
     etag: '',
+    revision: 1,
     card: {},
     crm: {},
   });

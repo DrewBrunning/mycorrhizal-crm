@@ -666,6 +666,7 @@ describe('favorites', () => {
       photo_thumbnail: '',
       archived: false,
       is_favorite: true,
+      revision: 1,
     });
     expect(contact.is_favorite).toBe(true);
 
@@ -684,6 +685,7 @@ describe('favorites', () => {
       photo_thumbnail: '',
       archived: false,
       is_favorite: false,
+      revision: 1,
     });
     expect(plain.is_favorite).toBe(false);
   });

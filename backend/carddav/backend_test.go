@@ -3,12 +3,17 @@ package carddav
 import (
 	"bytes"
 	"context"
-	"mycorrhizal/logger"
-	"mycorrhizal/models"
+	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/logger"
+	"mycorrhizal/models"
+
 	"github.com/emersion/go-vcard"
+	"github.com/emersion/go-webdav"
 	webdavcarddav "github.com/emersion/go-webdav/carddav"
 	"github.com/glebarez/sqlite"
 	"github.com/rs/zerolog"
@@ -463,4 +468,67 @@ func TestPutAddressObject_DiagnosticPaths(t *testing.T) {
 		"the import diagnostic loop must have logged the DERIVED drop")
 	require.Contains(t, out, "no Name.Full and no components to derive FN from",
 		"the export diagnostic loop must have logged the nameless contact")
+}
+
+// TestPutAddressObject_IfMatch_RealMigratedSchema is issue #591's CardDAV
+// regression pin: the one place conditional writes are already honored
+// (carddav/backend.go's If-Match check) must keep working now that the etag
+// is derived from the monotonic revision counter instead of UpdatedAt.Unix().
+//
+// It deliberately runs against a REAL migrated schema (dbtest.NewAt, CLAUDE.md
+// trap #1) so the check exercises the actual `etag` column name from migration
+// 000001 — not a GORM-derived `e_tag` that an AutoMigrate test would happily
+// mask. The `revision` column from 000044 is present too.
+func TestPutAddressObject_IfMatch_RealMigratedSchema(t *testing.T) {
+	db := dbtest.NewAt(t, filepath.Join(t.TempDir(), "carddav-ifmatch.db"))
+	backend := NewBackend(db, t.TempDir())
+	ctx := ContextWithUser(context.Background(), 1, "tester", db, backend.photoDir, "")
+
+	const uid = "ifmatch-real-schema"
+	urlPath := "/carddav/addressbooks/tester/contacts/" + uid + ".vcf"
+
+	// Initial PUT (no conditional header): creates the contact at revision 1.
+	obj, err := backend.PutAddressObject(ctx, urlPath, mustParseVCard(t, simpleVCard4(uid, "Alice")), nil)
+	require.NoError(t, err)
+	require.NotNil(t, obj)
+
+	var stored models.Contact
+	require.NoError(t, db.Where("user_id = ? AND vcard_uid = ?", uint(1), uid).First(&stored).Error)
+	require.Equal(t, int64(1), stored.Revision, "a fresh CardDAV-created contact starts at revision 1")
+	firstETag := stored.ETag
+	require.Equal(t, fmt.Sprintf("e-%d-%d", stored.ID, stored.Revision), stored.ETag,
+		"the etag is derived from the revision against the real etag column")
+
+	// A conditional PUT matching the current etag succeeds. The If-Match
+	// value is the wire form of an HTTP ETag: quoted (the raw column value is
+	// unquoted; MatchETag unquotes the header before comparing).
+	_, err = backend.PutAddressObject(ctx, urlPath, mustParseVCard(t, simpleVCard4(uid, "Alice A.")),
+		&webdavcarddav.PutAddressObjectOptions{IfMatch: webdav.ConditionalMatch(`"` + firstETag + `"`)})
+	require.NoError(t, err, "a matching If-Match must be accepted")
+
+	// The write bumped the revision; the first etag is now stale.
+	require.NoError(t, db.Where("user_id = ? AND vcard_uid = ?", uint(1), uid).First(&stored).Error)
+	require.Equal(t, int64(2), stored.Revision)
+	require.Equal(t, fmt.Sprintf("e-%d-%d", stored.ID, stored.Revision), stored.ETag)
+
+	// A conditional PUT with the stale etag is rejected — the
+	// optimistic-concurrency guarantee the ticket exists to preserve. (The
+	// exact status code, 412, is encoded in the go-webdav error's Code field
+	// — the readable contract here is that the If-Match check in backend.go
+	// fires and refuses the write; the 412 status is asserted at the HTTP
+	// layer in backend_discovery_test.go / the server handler tests.)
+	_, err = backend.PutAddressObject(ctx, urlPath, mustParseVCard(t, simpleVCard4(uid, "Alice B.")),
+		&webdavcarddav.PutAddressObjectOptions{IfMatch: webdav.ConditionalMatch(`"` + firstETag + `"`)})
+	require.Error(t, err, "a stale If-Match must be rejected")
+	require.Contains(t, err.Error(), "ETag mismatch", "the rejection must come from the If-Match check in backend.go")
+
+	// The stale conditional PUT must not have written anything (the contact
+	// is still at revision 2, unchanged).
+	require.NoError(t, db.Where("user_id = ? AND vcard_uid = ?", uint(1), uid).First(&stored).Error)
+	require.Equal(t, int64(2), stored.Revision, "a rejected conditional PUT must not bump the revision")
+
+	// A wildcard If-Match always passes.
+	_, err = backend.PutAddressObject(ctx, urlPath, mustParseVCard(t, simpleVCard4(uid, "Alice C.")),
+		&webdavcarddav.PutAddressObjectOptions{IfMatch: webdav.ConditionalMatch("*")})
+	require.NoError(t, err, "a wildcard If-Match must be accepted")
 }

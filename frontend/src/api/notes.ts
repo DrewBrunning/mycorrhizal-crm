@@ -8,6 +8,8 @@ export interface Note {
   contact_id?: number;
   CreatedAt: string;
   UpdatedAt: string;
+  // Issue #591: monotonic per-row write counter, read-only (ADR 0006).
+  revision?: number;
 }
 
 export interface NotesResponse {

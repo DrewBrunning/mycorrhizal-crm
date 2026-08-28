@@ -661,7 +661,13 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 	var buf bytes.Buffer
 	for _, contact := range contacts {
 		record := models.RecordForContactFiltered(&contact, photoDir, db, sel)
-		data, diags, err := exporter.Export(record)
+		// Issue #515: prepend the CRM-only envelope fields (Gender, Circles,
+		// HowWeMet, ...) as named warn diagnostics — they round-trip through
+		// the neutral Record but have no vCard home, and the drop must be
+		// reported, never silent (ADR-0002 degradation policy).
+		diags := models.EnvelopeExportLossDiagnostics(record)
+		data, exportDiags, err := exporter.Export(record)
+		diags = append(diags, exportDiags...)
 		if err != nil {
 			log.Error().Err(err).Uint("contact_id", contact.ID).Msg("Failed to encode contact as vCard")
 			// Continue with other contacts instead of failing completely
@@ -730,7 +736,12 @@ func ExportContactsAsJSContact(c *gin.Context) {
 	cards := make([]json.RawMessage, 0, len(contacts))
 	for _, contact := range contacts {
 		record := models.RecordForContactFiltered(&contact, photoDir, db, sel)
-		data, diags, err := adapter.Export(record)
+		// Issue #515: prepend the CRM-only envelope fields as named warn
+		// diagnostics, exactly as ExportContactsAsVCF does — a JSContact
+		// file has no home for Gender/Circles/HowWeMet/... either.
+		diags := models.EnvelopeExportLossDiagnostics(record)
+		data, exportDiags, err := adapter.Export(record)
+		diags = append(diags, exportDiags...)
 		if err != nil {
 			log.Error().Err(err).Uint("contact_id", contact.ID).Msg("Failed to encode contact as JSContact")
 			continue

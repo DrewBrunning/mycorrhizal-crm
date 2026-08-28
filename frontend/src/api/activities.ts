@@ -17,6 +17,8 @@ export interface Activity {
   CreatedAt: string;
   UpdatedAt: string;
   contacts?: ActivityContact[];
+  // Issue #591: monotonic per-row write counter, read-only (ADR 0006).
+  revision?: number;
 }
 
 export interface ActivitiesResponse {

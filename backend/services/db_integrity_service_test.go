@@ -43,6 +43,17 @@ import (
 // gentler "this page's content doesn't parse" case integrity_check is
 // built to report as findings, not the fatal "this page doesn't exist"
 // case. See PR #579 review.
+//
+// That is still not quite enough, because which *kind* of page the target
+// offset lands on is also a function of the exact page layout: a b-tree
+// interior page or the freelist corrupts "fatally" (integrity_check itself
+// aborts with SQLITE_CORRUPT) while a leaf data page corrupts gracefully
+// (integrity_check reports text findings). Schema changes that shift the
+// page layout — e.g. the 000044 revision/etag columns widening every notes
+// row — move the boundary. So the helper probes: it corrupts a candidate
+// page, runs integrity_check, and on a fatal result restores the original
+// bytes and tries the adjacent page, until it lands a graceful one. The
+// seeded 500-note file has plenty of leaf pages to find.
 func corruptDataPage(t *testing.T, path string) {
 	t.Helper()
 	const pageSize = 4096
@@ -53,19 +64,67 @@ func corruptDataPage(t *testing.T, path string) {
 
 	// The schema pages (sqlite_master, and the small users/webhooks/
 	// job_executions tables) sit at the front of the file; bulk notes data
-	// dominates everything after that. The middle of the file is
-	// comfortably inside that notes region without ever risking page 1
-	// (the file header) or the tables the webhook-delivery test depends on
-	// surviving untouched.
-	target := pageCount / 2
+	// dominates everything after that. Start at the middle of the file —
+	// comfortably inside that notes region without ever risking page 1 (the
+	// file header) or the tables the webhook-delivery test depends on
+	// surviving untouched — and walk outward on a fatal probe result.
+	mid := pageCount / 2
+	if probePageCorruptsGracefully(t, path, mid) {
+		return
+	}
+	for delta := int64(1); delta < pageCount/2; delta++ {
+		for _, candidate := range []int64{mid + delta, mid - delta} {
+			if candidate < 2 || candidate >= pageCount {
+				continue
+			}
+			if probePageCorruptsGracefully(t, path, candidate) {
+				return
+			}
+		}
+	}
+	t.Fatal("could not find a data page whose corruption integrity_check reports gracefully")
+}
 
-	f, err := os.OpenFile(path, os.O_RDWR, 0)
-	require.NoError(t, err)
-	defer func() { require.NoError(t, f.Close()) }()
+// probePageCorruptsGracefully corrupts page `target` (1-indexed), runs
+// integrity_check, and returns true only when the corruption produces text
+// findings rather than a fatal I/O error. On a fatal result the page's
+// original bytes are restored before returning false.
+func probePageCorruptsGracefully(t *testing.T, path string, target int64) bool {
+	t.Helper()
+	const pageSize = 4096
 
-	garbage := bytes.Repeat([]byte{0xFF}, pageSize)
-	_, err = f.WriteAt(garbage, (target-1)*pageSize)
-	require.NoError(t, err)
+	readOriginal := func() []byte {
+		f, err := os.Open(path)
+		require.NoError(t, err)
+		defer func() { require.NoError(t, f.Close()) }()
+		original := make([]byte, pageSize)
+		_, err = f.ReadAt(original, (target-1)*pageSize)
+		require.NoError(t, err)
+		return original
+	}
+	writePage := func(data []byte) {
+		f, err := os.OpenFile(path, os.O_RDWR, 0)
+		require.NoError(t, err)
+		_, err = f.WriteAt(data, (target-1)*pageSize)
+		require.NoError(t, err)
+		require.NoError(t, f.Close())
+	}
+
+	original := readOriginal()
+	writePage(bytes.Repeat([]byte{0xFF}, pageSize))
+
+	raw := openRaw(t, path)
+	_, _, err := checkDBIntegrity(raw)
+	if sqlDB, cerr := raw.DB(); cerr == nil {
+		sqlDB.Close()
+	}
+	if err != nil {
+		// Fatal corruption (SQLITE_CORRUPT from integrity_check itself):
+		// restore the page and let the caller try the next candidate.
+		writePage(original)
+		return false
+	}
+	return true
 }
 
 // seededLiveDB builds a real migrated database (CLAUDE.md trap #1 — never

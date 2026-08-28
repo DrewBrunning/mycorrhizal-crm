@@ -12,6 +12,7 @@ function baseRecord(overrides: Partial<ContactRecordResponse> = {}): ContactReco
     id: 1,
     uid: 'uid-1',
     etag: '',
+    revision: 1,
     card: { name: { components: [{ kind: 'given', value: 'Fluffy' }] } },
     crm: { kind: 'animal' },
     ...overrides,

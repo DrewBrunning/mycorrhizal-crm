@@ -68,7 +68,8 @@ import (
 //
 //   - CRMEnvelope.Kind is preserved unconditionally (no flat field, T27);
 //     the flat-owned envelope fields (Circles, HowWeMet, WorkInformation,
-//     ContactInformation) always come from fresh.
+//     ContactInformation, Gender) always come from fresh — Gender since
+//     issue #515 gave it a flat scalar (Contact.Gender) and an envelope home.
 //
 //   - Passthrough is preserved when fresh has none (VCardExtra empty — the
 //     common ApplyRecordToContact-created case, whose imported unknown
@@ -82,11 +83,17 @@ func mergeRecordFromFlat(loaded, fresh contactmodel.Record) contactmodel.Record 
 		Envelope: contactmodel.CRMEnvelope{
 			// Kind has no flat-field home — it lives only in the crm JSON
 			// column, set via ApplyRecordToContact (T27). Preserve it.
-			Kind:               loaded.Envelope.Kind,
+			Kind: loaded.Envelope.Kind,
+			// The flat-owned envelope fields always come from fresh:
+			// Circles/HowWeMet/WorkInformation/ContactInformation have flat
+			// scalars/columns, and Gender joined them in issue #515
+			// (Contact.Gender is its flat scalar). Flat fields are
+			// authoritative for what they can express.
 			Circles:            fresh.Envelope.Circles,
 			HowWeMet:           fresh.Envelope.HowWeMet,
 			WorkInformation:    fresh.Envelope.WorkInformation,
 			ContactInformation: fresh.Envelope.ContactInformation,
+			Gender:             fresh.Envelope.Gender,
 		},
 	}
 	if reflect.DeepEqual(fresh.Passthrough, contactmodel.Passthrough{}) {

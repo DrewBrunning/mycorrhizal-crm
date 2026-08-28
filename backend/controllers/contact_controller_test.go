@@ -3,6 +3,7 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
@@ -157,6 +158,11 @@ func TestGetContacts_SummaryHasNicknameNoCircles(t *testing.T) {
 
 	assert.Equal(t, "Countess", item["nickname"], "the list query must actually select the nickname column")
 	assert.NotContains(t, item, "circles", "circles must be gone from the DTO entirely, not present-and-empty")
+	// Issue #591: revision is a required list field, so the list query's
+	// contactSummaryColumns must actually select it (the same
+	// "test the query layer, not just NewContactSummary" lesson this test
+	// exists for) — a missing column would silently serialize it as 0.
+	assert.Equal(t, float64(1), item["revision"], "the list query must actually select the revision column")
 }
 
 // TestGetContacts_FiltersByVCardUID pins down
@@ -828,6 +834,12 @@ func TestCreateContactWithAllFields(t *testing.T) {
 	// ContactRecordResponse shape.
 	contact := responseBody["contact"].(map[string]any)
 	assert.Equal(t, "male", contact["gender"])
+	// Issue #591: a freshly-created contact starts at revision 1, served
+	// read-only on the detail response (a client reads it to build a
+	// conditional write for #456).
+	assert.Equal(t, float64(1), contact["revision"], "a new contact must be served at revision 1")
+	// The detail etag is derived from the revision (e-{id}-{revision}).
+	assert.Equal(t, fmt.Sprintf("e-%v-1", contact["id"]), contact["etag"])
 
 	crm := contact["crm"].(map[string]any)
 	assert.Equal(t, "Met at a tech conference in 2020", crm["how_we_met"])

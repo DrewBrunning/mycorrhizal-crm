@@ -155,13 +155,25 @@ type LifeEvent struct {
 	// events have nothing to anchor a yearly recurrence to.
 	Remind bool `gorm:"default:false" json:"remind,omitempty"`
 
-	// ETag is the CalDAV sync-conflict token for this LifeEvent (T12a), same
-	// role Contact.ETag plays for vCards. Explicit gorm column tag is
-	// mandatory: without it GORM derives `e_tag` while migration 000041 names
-	// the column `etag` — the exact silent mismatch that shipped broken for
-	// ContactSyncLink.ETag and killed CardDAV incremental sync. Generated in
-	// AfterCreate/AfterSave from the UUID string PK + UpdatedAt (see below).
+	// ETag is the CalDAV sync-conflict token for this LifeEvent (T12a),
+	// derived from Revision (ADR 0006): e-{id}-{revision}. Explicit gorm
+	// column tag is mandatory: without it GORM derives `e_tag` while
+	// migration 000041 names the column `etag` — the exact silent mismatch
+	// that shipped broken for ContactSyncLink.ETag and killed CardDAV
+	// incremental sync.
 	ETag string `gorm:"column:etag" json:"-"`
+
+	// Revision is the monotonic per-row write counter (issue #591, CON-01a —
+	// docs/adrs/0006-revision-token-schema.md): starts at 1 on create,
+	// incremented on every persisted write, ETag derived from it. Exposed
+	// read-only on the wire as `revision` (the model is this entity's
+	// response DTO). Migration 000044 adds the column.
+	Revision int64 `gorm:"column:revision;not null;default:1" json:"revision"`
+
+	// revisionStampedOnCreate: transient marker set by AfterCreate, consumed
+	// by the AfterSave GORM fires right after on a Create (see
+	// Contact.revisionStampedOnCreate). Keeps a create at revision 1.
+	revisionStampedOnCreate bool
 
 	// Deleted is the T17 change-feed tombstone marker, set by the list
 	// handler when it reads a row with Unscoped() that has a non-null
@@ -191,38 +203,41 @@ func (l *LifeEvent) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// AfterCreate assigns the initial ETag now that ID/UpdatedAt are persisted,
-// mirroring Contact.AfterCreate (contact.go). LifeEvent's PK is a UUID
-// string (not gorm.Model's uint), so the ETag is derived from that ID.
-// UpdateColumn bypasses GORM's update hooks, so this cannot recursively
-// trigger AfterSave.
+// AfterCreate assigns the initial ETag now that ID is persisted, mirroring
+// Contact.AfterCreate (contact.go). LifeEvent's PK is a UUID string (not
+// gorm.Model's uint), so the ETag is derived from that ID. Stamp revision 1
+// and derive the ETag from it (ADR 0006). UpdateColumns bypasses GORM's
+// update hooks, so this cannot recursively trigger AfterSave.
 func (l *LifeEvent) AfterCreate(tx *gorm.DB) error {
-	l.ETag = fmt.Sprintf("e-%s-%d", l.ID, l.UpdatedAt.Unix())
-	return tx.Model(l).UpdateColumn("etag", l.ETag).Error
+	l.Revision = 1
+	l.ETag = fmt.Sprintf("e-%s-%d", l.ID, l.Revision)
+	l.revisionStampedOnCreate = true
+	return tx.Model(l).Where("id = ?", l.ID).UpdateColumns(map[string]any{"revision": l.Revision, "etag": l.ETag}).Error
 }
 
-// AfterSave refreshes the ETag on a real change only, exactly like
-// Contact.AfterSave: recompute the would-be value from the persisted
-// ID/UpdatedAt, and only write it back via UpdateColumn (no hook loop) when
-// it actually differs from what's stored.
+// AfterSave refreshes the ETag on every real write, exactly like
+// Contact.AfterSave: bump the monotonic revision counter and re-derive the
+// ETag from it (ADR 0006), so two writes inside the same second can no longer
+// collide.
 //
 // Guard: a zero-value ID means this hook fired on a bulk
 // Model(&LifeEvent{}).Where(...).Update/Updates call, not on a real row —
 // e.g. contact merge's entity_id repoint (contact_merge_service.go). The
-// receiver has no primary key, so UpdateColumn would widen to every row in
-// the table. Never derive/write an ETag in that case (the caller is
-// responsible for load-then-save updates that should refresh ETags).
+// receiver has no primary key, so UpdateColumns would widen to every row in
+// the table. Never derive/write a revision in that case (the caller is
+// responsible for load-then-save updates that should bump revisions).
 func (l *LifeEvent) AfterSave(tx *gorm.DB) error {
 	if l.ID == "" {
 		return nil
 	}
-	// T18 audit fires first: the ETag UpdateColumn below swaps in a fresh
+	// T18 audit fires first: the UpdateColumns below swaps in a fresh
 	// statement, which would otherwise wipe the audit's instance state.
 	auditAfterSave(tx, AuditEntityLifeEvent, l.ID, l.UserID)
-	newETag := fmt.Sprintf("e-%s-%d", l.ID, l.UpdatedAt.Unix())
-	if newETag != l.ETag {
-		l.ETag = newETag
-		return tx.Model(l).UpdateColumn("etag", l.ETag).Error
+	if l.revisionStampedOnCreate {
+		l.revisionStampedOnCreate = false
+		return nil
 	}
-	return nil
+	l.Revision++
+	l.ETag = fmt.Sprintf("e-%s-%d", l.ID, l.Revision)
+	return tx.Model(l).Where("id = ?", l.ID).UpdateColumns(map[string]any{"revision": l.Revision, "etag": l.ETag}).Error
 }
