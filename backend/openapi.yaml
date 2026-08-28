@@ -8340,6 +8340,37 @@ paths:
         "403":
           description: Not an admin, or an API token was used on an admin path.
 
+  /admin/system-status:
+    get:
+      summary: Aggregated system status (admin)
+      operationId: adminGetSystemStatus
+      description: >
+        The authenticated, admin-scoped operational snapshot (issue #388): the
+        rolled-up deep-health status and its full per-facet breakdown (the same
+        value GET /health returns), build identity, process uptime, migration
+        numbers (applied / latest / pending / dirty), a live read-back of
+        cfg.Validate(), the enabled feature-flag set, SQLite operational facts
+        (version, journal mode, -wal size), and storage sizing (database
+        footprint, the filesystem holding it, and a recursive walk of each
+        configured storage directory). This is the counterpart to the
+        unauthenticated /health surface, which deliberately withholds
+        build/version, migration numbers and storage facts, and to /metrics,
+        which is Prometheus-only behind METRICS_TOKEN. Instance-wide,
+        admin-only, read-only. Carries no secret value — the feature block is
+        booleans only, and each config-validation entry is a field name plus a
+        remediation message, never the offending value.
+      responses:
+        "200":
+          description: The system-status snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemStatus"
+        "401":
+          description: Not authenticated (cookie or full-scope bearer token required).
+        "403":
+          description: Not an admin, or an API token was used on an admin path.
+
   /admin/users:
     get:
       summary: List all users (admin)
@@ -10016,6 +10047,109 @@ components:
           items:
             $ref: "#/components/schemas/ErrorBucket"
           description: "Most frequent first, then most recently seen"
+    SystemStatus:
+      type: object
+      description: >
+        The admin-scoped operational snapshot (issue #388). No field carries a
+        secret value: `config.features` is booleans only and each
+        `config.validation` entry is a field name plus a remediation message.
+      properties:
+        overall:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: "services.DeepHealthSnapshot(...).Status verbatim — the same roll-up GET /health returns"
+        health:
+          type: object
+          description: "The full deep-health breakdown (identical shape to HealthResponse.checks); reason strings are already sanitized for an unauthenticated caller"
+          properties:
+            status: { type: string, enum: [healthy, degraded, unhealthy] }
+            database: { $ref: "#/components/schemas/HealthCheckDetail" }
+            migrations: { $ref: "#/components/schemas/HealthCheckDetail" }
+            integrity_check: { $ref: "#/components/schemas/HealthCheckDetail" }
+            restore_drill: { $ref: "#/components/schemas/HealthCheckDetail" }
+            background_jobs:
+              type: object
+              properties:
+                status: { type: string, enum: [ok, degraded] }
+                reason: { type: string }
+                jobs:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name: { type: string }
+                      last_run_at: { type: string, format: date-time }
+                      locked: { type: boolean }
+                      stuck: { type: boolean }
+            integrations:
+              type: object
+              additionalProperties: { $ref: "#/components/schemas/HealthCheckDetail" }
+        version:
+          type: object
+          description: "buildinfo.Get() — identity of the running binary"
+          properties:
+            version: { type: string, example: "v0.6.2" }
+            commit: { type: string }
+            build_date: { type: string }
+        uptime:
+          type: object
+          properties:
+            started_at: { type: string, format: date-time, description: "Process start instant (RFC3339)" }
+            uptime_seconds: { type: integer }
+        migration:
+          type: object
+          properties:
+            applied: { type: integer, description: "Migration version the database is currently at (0 if none applied)" }
+            latest: { type: integer, description: "Highest migration bundled in the binary" }
+            pending: { type: integer, description: "latest - applied, floored at 0" }
+            dirty: { type: boolean, description: "The last migration left the version marker dirty" }
+        config:
+          type: object
+          properties:
+            validation:
+              type: array
+              description: "Live cfg.Validate() result — [] on a clean boot, never null"
+              items:
+                type: object
+                properties:
+                  field: { type: string }
+                  message: { type: string }
+            features:
+              type: object
+              description: "Which optional subsystems are enabled — booleans only"
+              properties:
+                carddav: { type: boolean }
+                caldav: { type: boolean }
+                oidc: { type: boolean }
+                email: { type: boolean }
+                metrics: { type: boolean }
+                db_integrity_check: { type: boolean }
+                db_restore_drill: { type: boolean }
+        database:
+          type: object
+          properties:
+            sqlite_version: { type: string }
+            journal_mode: { type: string, description: "PRAGMA journal_mode — normally wal" }
+            wal_bytes: { type: integer, description: "Size of the -wal sidecar, 0 when absent" }
+        storage:
+          type: object
+          properties:
+            database_bytes: { type: integer, description: "Main DB file + -wal + -shm" }
+            filesystem:
+              type: object
+              properties:
+                free_bytes: { type: integer }
+                total_bytes: { type: integer }
+            directories:
+              type: array
+              description: "One entry per configured storage directory (profile photos, attachments); [] when none, never null"
+              items:
+                type: object
+                properties:
+                  path: { type: string }
+                  bytes: { type: integer }
+                  file_count: { type: integer }
+                  truncated: { type: boolean, description: "A hard cap (200000 entries or depth 8) stopped the walk early; bytes is a lower bound" }
     AuditEvent:
       type: object
       description: One immutable create/update/delete or auth/admin lifecycle record in the audit log (T18, issue #381).
