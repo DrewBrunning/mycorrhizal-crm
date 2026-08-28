@@ -28,6 +28,18 @@ var vcard4FuzzSeedFiles = []string{
 	"title-role.v4.vcf",
 }
 
+// maxVCard4FuzzInput bounds what FuzzImportVCard4 will process. The
+// Import->Export->Import chain is linear in input size, which is fine for a
+// one-shot file import but means a large fuzzer-generated input can
+// legitimately take seconds — enough to stall the time-boxed CI fuzz smoke
+// ("context deadline exceeded" flake on 2-core runners when a big input lands
+// at the -fuzztime boundary, the FuzzImportJSContact failure that motivated
+// this cap). The target is a panic/crash tripwire, not a wall-clock
+// benchmark; parser bugs are shape-driven, not size-driven, so 1MiB covers
+// the meaningful space with a wide margin. Real uploads are separately
+// bounded by MaxVCFSize.
+const maxVCard4FuzzInput = 1 << 20 // 1 MiB
+
 // FuzzImportVCard4 is issue #265's primary target: malformed property
 // values are the classic crash vector at the sync boundary (CardDAV
 // incremental sync, file-upload import), and Adapter.Import is exactly that
@@ -47,6 +59,9 @@ func FuzzImportVCard4(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, data []byte) {
+		if len(data) > maxVCard4FuzzInput {
+			return
+		}
 		rec, _, err := Adapter{}.Import(data)
 		if err != nil || rec == nil {
 			return

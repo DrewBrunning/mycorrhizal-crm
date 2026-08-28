@@ -20,6 +20,18 @@ var jscontactFuzzSeedFiles = []string{
 	"email.jscontact.json",
 }
 
+// maxJSContactFuzzInput bounds what FuzzImportJSContact will process. The
+// Import->Export->Import chain is linear in input size (each step is a bounded
+// pass over the JSON; a 6MiB input takes ~1s on a dev machine), which is fine
+// for a one-shot file import — real uploads are separately bounded by
+// MaxVCFSize — but a large fuzzer-generated input can legitimately take
+// seconds, and that stalls the time-boxed CI fuzz smoke ("context deadline
+// exceeded" flake on 2-core runners when a big input lands at the -fuzztime
+// boundary). The target is a panic/crash tripwire, not a wall-clock benchmark;
+// parser bugs are shape-driven, not size-driven (pinned by the linear scaling),
+// so 1MiB covers the meaningful space with a wide margin.
+const maxJSContactFuzzInput = 1 << 20 // 1 MiB
+
 // FuzzImportJSContact mirrors vcard4's FuzzImportVCard4 (issue #376,
 // extending #265's coverage to the other hostile-input parsers).
 // Adapter.Import here parses raw JSON directly (no third-party decoder to
@@ -36,6 +48,9 @@ func FuzzImportJSContact(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, data []byte) {
+		if len(data) > maxJSContactFuzzInput {
+			return
+		}
 		rec, _, err := Adapter{}.Import(data)
 		if err != nil || rec == nil {
 			return
