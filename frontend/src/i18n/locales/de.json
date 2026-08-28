@@ -2222,5 +2222,31 @@
       "lastSeen": "Zuletzt gesehen",
       "actions": "Aktionen"
     }
+  },
+  "notificationHealth": {
+    "title": "Zustellung der Benachrichtigungen",
+    "description": "Ob jeder Erinnerungskanal funktioniert: eingerichtet oder nicht, wann zuletzt erfolgreich zugestellt und ob er gerade ausfällt.",
+    "refresh": "Aktualisieren",
+    "status": {
+      "unconfigured": "Nicht eingerichtet",
+      "no_devices": "Keine Geräte",
+      "healthy": "In Ordnung",
+      "failing": "Fehlerhaft"
+    },
+    "consecutiveFailures": "Fehler in Folge: {{n}}",
+    "noDevicesHint": "Push ist eingerichtet, aber es ist kein Browser-Abo oder mobiles Gerät registriert.",
+    "enabledUsers": "Aktivierte Benutzer",
+    "deliveredCount": "Zugestellt: {{delivered}} / {{attempted}}",
+    "deviceCount": "Geräte: {{n}}",
+    "fcmConfigured": "FCM eingerichtet",
+    "lastSuccess": "Letzte Zustellung",
+    "lastFailure": "Letzter Fehler",
+    "never": "nie",
+    "channels": {
+      "email": "E-Mail",
+      "ntfy": "ntfy",
+      "gotify": "Gotify",
+      "push": "Web-Push"
+    }
   }
 }

@@ -2222,5 +2222,31 @@
       "lastSeen": "Visto l'ultima volta",
       "actions": "Azioni"
     }
+  },
+  "notificationHealth": {
+    "title": "Salute della consegna delle notifiche",
+    "description": "Se ogni canale di promemoria funziona: configurato o meno, ultima consegna riuscita e se sta fallendo ora.",
+    "refresh": "Aggiorna",
+    "status": {
+      "unconfigured": "Non configurato",
+      "no_devices": "Nessun dispositivo",
+      "healthy": "Operativo",
+      "failing": "In errore"
+    },
+    "consecutiveFailures": "Errori consecutivi: {{n}}",
+    "noDevicesHint": "Push configurato, ma non è registrata alcuna sottoscrizione del browser né dispositivo mobile.",
+    "enabledUsers": "Utenti attivati",
+    "deliveredCount": "Consegnati: {{delivered}} / {{attempted}}",
+    "deviceCount": "Dispositivi: {{n}}",
+    "fcmConfigured": "FCM configurato",
+    "lastSuccess": "Ultimo successo",
+    "lastFailure": "Ultimo errore",
+    "never": "mai",
+    "channels": {
+      "email": "E-mail",
+      "ntfy": "ntfy",
+      "gotify": "Gotify",
+      "push": "Push web"
+    }
   }
 }

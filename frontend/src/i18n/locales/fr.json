@@ -2222,5 +2222,31 @@
       "lastSeen": "Vu la dernière fois",
       "actions": "Actions"
     }
+  },
+  "notificationHealth": {
+    "title": "État de la livraison des notifications",
+    "description": "Si chaque canal de rappel fonctionne : configuré ou non, dernière livraison réussie, et s'il échoue actuellement.",
+    "refresh": "Actualiser",
+    "status": {
+      "unconfigured": "Non configuré",
+      "no_devices": "Aucun appareil",
+      "healthy": "Opérationnel",
+      "failing": "En échec"
+    },
+    "consecutiveFailures": "Échecs consécutifs : {{n}}",
+    "noDevicesHint": "Push configuré, mais aucune souscription de navigateur ni appareil mobile n'est enregistrée.",
+    "enabledUsers": "Utilisateurs activés",
+    "deliveredCount": "Livrés : {{delivered}} / {{attempted}}",
+    "deviceCount": "Appareils : {{n}}",
+    "fcmConfigured": "FCM configuré",
+    "lastSuccess": "Dernier succès",
+    "lastFailure": "Dernier échec",
+    "never": "jamais",
+    "channels": {
+      "email": "E-mail",
+      "ntfy": "ntfy",
+      "gotify": "Gotify",
+      "push": "Push web"
+    }
   }
 }

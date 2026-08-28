@@ -2222,5 +2222,31 @@
       "lastSeen": "Visto por última vez",
       "actions": "Acciones"
     }
+  },
+  "notificationHealth": {
+    "title": "Salud del envío de notificaciones",
+    "description": "Si cada canal de recordatorios funciona: configurado o no, cuándo se entregó correctamente por última vez y si está fallando ahora.",
+    "refresh": "Actualizar",
+    "status": {
+      "unconfigured": "Sin configurar",
+      "no_devices": "Sin dispositivos",
+      "healthy": "Correcto",
+      "failing": "Con fallos"
+    },
+    "consecutiveFailures": "Fallos consecutivos: {{n}}",
+    "noDevicesHint": "Push está configurado, pero no hay ninguna suscripción de navegador ni dispositivo móvil registrado.",
+    "enabledUsers": "Usuarios activados",
+    "deliveredCount": "Entregados: {{delivered}} / {{attempted}}",
+    "deviceCount": "Dispositivos: {{n}}",
+    "fcmConfigured": "FCM configurado",
+    "lastSuccess": "Último envío correcto",
+    "lastFailure": "Último fallo",
+    "never": "nunca",
+    "channels": {
+      "email": "Correo",
+      "ntfy": "ntfy",
+      "gotify": "Gotify",
+      "push": "Push web"
+    }
   }
 }

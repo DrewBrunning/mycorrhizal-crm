@@ -36,6 +36,7 @@ import {
 import BackgroundJobsPanel from './components/BackgroundJobsPanel';
 import ErrorAggregationPanel from './components/ErrorAggregationPanel';
 import { ListSkeleton } from './components/LoadingSkeletons';
+import NotificationHealthPanel from './components/NotificationHealthPanel';
 import SubsystemHealthPanel from './components/SubsystemHealthPanel';
 import { useDebouncedValue } from './hooks/useDebounce';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
@@ -124,6 +125,8 @@ export default function SystemEventsPage() {
       <SubsystemHealthPanel onSelectComponent={(component) => patchFilters({ component })} />
 
       <BackgroundJobsPanel />
+
+      <NotificationHealthPanel />
 
       <ErrorAggregationPanel onViewEvents={showErrors} />
 

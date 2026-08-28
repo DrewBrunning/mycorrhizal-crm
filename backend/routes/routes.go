@@ -558,6 +558,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// (issue #426), derived on read from system_events — instance-wide
 			// diagnostics, admin-only.
 			admin.GET("/error-aggregation", controllers.GetErrorAggregation)
+
+			// Per-channel notification delivery health (issue #422) — derived
+			// on read from notification_deliveries + the per-user channel
+			// config, with the configured/failing/no-devices/unconfigured
+			// distinction the issue calls out. Instance-wide, admin-only.
+			admin.GET("/notification-health", controllers.GetNotificationChannelHealth)
 		}
 	}
 
