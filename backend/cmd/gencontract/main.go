@@ -48,13 +48,13 @@ func run() int {
 	}
 
 	dir := filepath.Join(root, contractfixtures.FixturesDir)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		fmt.Fprintln(os.Stderr, "gencontract:", err)
 		return 2
 	}
 	for _, pin := range contractfixtures.Pinned {
 		body := files[pin.Filename]
-		if err := os.WriteFile(filepath.Join(dir, pin.Filename), body, 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, pin.Filename), body, 0o600); err != nil {
 			fmt.Fprintln(os.Stderr, "gencontract:", err)
 			return 2
 		}
