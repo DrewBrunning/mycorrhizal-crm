@@ -470,6 +470,20 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   needs to touch them. Restarting the container is a full reset.
 - **Backups**: not applicable — nothing is persisted, so nothing is in a snapshot.
 
+## 19. Update-availability check (`UPDATE_CHECK_ENABLED`) — outbound call, sends nothing
+
+- **Where / who**: an opt-in, admin-triggered outbound `GET` to the GitHub releases API
+  (`https://api.github.com/repos/DrewBrunning/mycorrhizal-crm/releases/latest`, issue #650), made at
+  most once per 6h (memoized in process memory, `backend/services/update_check.go`) when the admin
+  system-status endpoint is read and `UPDATE_CHECK_ENABLED` is set. Off by default — see
+  `docs/security/asvs-l2.md`'s P6 for the position.
+- **What it contains**: nothing sent. The request carries no user data, no PII, no config — the body
+  is empty and only an `Accept`/`User-Agent` header goes out. The response's `tag_name` is compared
+  against the running build's version; the tag string is the only thing held in memory (cached 6h).
+- **Retention / deletion**: nothing to delete — the fetched tag lives in a process-memory cache and
+  vanishes on restart. No database rows, no files.
+- **Backups**: not applicable — nothing is persisted, so nothing is in a snapshot.
+
 ## Known gaps
 
 One item surfaced by walking every data type through the four questions above. It does not block this

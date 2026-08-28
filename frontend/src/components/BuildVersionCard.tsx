@@ -1,9 +1,20 @@
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { Box, Card, CardContent, Divider, IconButton, Tooltip, Typography } from '@mui/material';
+import {
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  Divider,
+  IconButton,
+  Tooltip,
+  Typography,
+} from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatBuildVersion, getHealth, type HealthResponse } from '../api/health';
+import { getSystemStatus } from '../api/systemStatus';
+import { isAdmin } from '../auth';
 import { useSnackbar } from '../context/SnackbarContext';
 
 /**
@@ -16,12 +27,19 @@ import { useSnackbar } from '../context/SnackbarContext';
  *
  * Self-contained (own fetch, own state) rather than more state on the already
  * 570-line SettingsPage — nothing else on that page needs this data.
+ *
+ * When the operator opted into the update-availability check
+ * (UPDATE_CHECK_ENABLED, issue #650) and the running build is behind the
+ * latest release, a small "Update available" chip is shown next to the
+ * version. The check is admin-only on the backend, so non-admins never fetch
+ * it and nobody sees the chip when the flag is off or the lookup failed.
  */
 export default function BuildVersionCard() {
   const { t } = useTranslation();
   const { showSuccess } = useSnackbar();
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [failed, setFailed] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,6 +51,26 @@ export default function BuildVersionCard() {
         // A failed version lookup must never take over the settings page —
         // it is informational. Render a dash instead.
         if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    // The system-status endpoint is admin-only; skip the (guaranteed 403)
+    // call for everyone else. Both the data and the chip are informational —
+    // any failure renders nothing, never an error.
+    if (!isAdmin()) return;
+    let cancelled = false;
+    getSystemStatus()
+      .then((data) => {
+        if (!cancelled && data.update?.update_available && data.update.latest) {
+          setUpdateAvailable(data.update.latest);
+        }
+      })
+      .catch(() => {
+        // informational — render nothing
       });
     return () => {
       cancelled = true;
@@ -72,6 +110,13 @@ export default function BuildVersionCard() {
           <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
             {versionText}
           </Typography>
+          {updateAvailable && (
+            <Chip
+              size="small"
+              color="primary"
+              label={t('settings.about.updateAvailable', { version: updateAvailable })}
+            />
+          )}
           {health && (
             <Tooltip title={t('settings.about.copy')}>
               <IconButton size="small" onClick={handleCopy} aria-label={t('settings.about.copy')}>

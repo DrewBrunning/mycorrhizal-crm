@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -9,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"mycorrhizal/buildinfo"
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
@@ -30,9 +33,11 @@ func systemStatusEnv(t *testing.T, db *gorm.DB, cfg config.Config, userID uint) 
 	gin.SetMode(gin.ReleaseMode)
 	services.ResetStorageUsageCache()
 	services.ResetDeepHealthCache()
+	services.ResetUpdateCheckCache()
 	t.Cleanup(func() {
 		services.ResetStorageUsageCache()
 		services.ResetDeepHealthCache()
+		services.ResetUpdateCheckCache()
 	})
 
 	router := gin.New()
@@ -261,4 +266,168 @@ func TestGetSystemStatus_SecondRequestServedFromCache(t *testing.T) {
 	}
 	assert.Equal(t, findPhoto(r1).Bytes, findPhoto(r2).Bytes,
 		"a second request inside the cache TTL must not re-walk the filesystem")
+}
+
+// recordingRoundTripper counts RoundTrip calls and always fails, so a test can
+// assert that a disabled update check never touches the network.
+type recordingRoundTripper struct {
+	calls int
+}
+
+func (r *recordingRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
+	r.calls++
+	return nil, errors.New("recordingRoundTripper: unexpected outbound call")
+}
+
+// setBuildVersionForTest overrides the link-time build identity for the
+// duration of a test (issue #650's version comparison feeds off it).
+func setBuildVersionForTest(t *testing.T, v string) {
+	t.Helper()
+	orig := buildinfo.Version
+	buildinfo.Version = v
+	t.Cleanup(func() { buildinfo.Version = orig })
+}
+
+// TestGetSystemStatus_UpdateCheckDisabledByDefault_NoOutboundCall pins the
+// default posture: UPDATE_CHECK_ENABLED unset means update.enabled == false
+// and the endpoint makes NO outbound request (asserted with an injected
+// transport that records calls).
+func TestGetSystemStatus_UpdateCheckDisabledByDefault_NoOutboundCall(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "x.db")
+	db := dbtest.NewAt(t, dbPath)
+	admin := seedAdmin(t, db)
+
+	rt := &recordingRoundTripper{}
+	restore := services.SetUpdateCheckForTest("http://example.invalid", &http.Client{Transport: rt})
+	defer restore()
+
+	cfg := validSystemStatusConfig(t, dbPath) // UpdateCheckEnabled zero-value: false
+	router := systemStatusEnv(t, db, cfg, admin.ID)
+
+	w, body := getSystemStatus(t, router)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var resp SystemStatusResponse
+	require.NoError(t, json.Unmarshal(body, &resp))
+	assert.False(t, resp.Update.Enabled)
+	assert.Empty(t, resp.Update.Current)
+	assert.Empty(t, resp.Update.Latest)
+	assert.False(t, resp.Update.UpdateAvailable)
+	assert.Nil(t, resp.Update.CheckedAt)
+	assert.Zero(t, rt.calls, "a disabled update check must not dial out")
+}
+
+// TestGetSystemStatus_UpdateCheckEnabled_ReportsUpdateAvailable pins the happy
+// path: flag on, GitHub API (stubbed) reports a newer tag -> update_available
+// true, latest set, checked_at populated.
+func TestGetSystemStatus_UpdateCheckEnabled_ReportsUpdateAvailable(t *testing.T) {
+	setBuildVersionForTest(t, "v0.6.2")
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `{"tag_name":"v9.9.9"}`)
+	}))
+	defer srv.Close()
+	restore := services.SetUpdateCheckForTest(srv.URL, srv.Client())
+	defer restore()
+
+	dbPath := filepath.Join(t.TempDir(), "x.db")
+	db := dbtest.NewAt(t, dbPath)
+	admin := seedAdmin(t, db)
+
+	cfg := validSystemStatusConfig(t, dbPath)
+	cfg.UpdateCheckEnabled = true
+	router := systemStatusEnv(t, db, cfg, admin.ID)
+
+	w, body := getSystemStatus(t, router)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var resp SystemStatusResponse
+	require.NoError(t, json.Unmarshal(body, &resp))
+	assert.True(t, resp.Update.Enabled)
+	assert.Equal(t, "v0.6.2", resp.Update.Current)
+	assert.Equal(t, "v9.9.9", resp.Update.Latest)
+	assert.True(t, resp.Update.UpdateAvailable)
+	require.NotNil(t, resp.Update.CheckedAt)
+}
+
+// TestGetSystemStatus_UpdateCheckEnabled_StubErrorIsUnknown pins the fail-soft
+// posture: a 500 from the releases API -> latest "unknown" (empty),
+// update_available false, and the endpoint still returns 200.
+func TestGetSystemStatus_UpdateCheckEnabled_StubErrorIsUnknown(t *testing.T) {
+	setBuildVersionForTest(t, "v0.6.2")
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+	restore := services.SetUpdateCheckForTest(srv.URL, srv.Client())
+	defer restore()
+
+	dbPath := filepath.Join(t.TempDir(), "x.db")
+	db := dbtest.NewAt(t, dbPath)
+	admin := seedAdmin(t, db)
+
+	cfg := validSystemStatusConfig(t, dbPath)
+	cfg.UpdateCheckEnabled = true
+	router := systemStatusEnv(t, db, cfg, admin.ID)
+
+	w, body := getSystemStatus(t, router)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var resp SystemStatusResponse
+	require.NoError(t, json.Unmarshal(body, &resp))
+	assert.True(t, resp.Update.Enabled)
+	assert.Equal(t, "v0.6.2", resp.Update.Current)
+	assert.Empty(t, resp.Update.Latest)
+	assert.False(t, resp.Update.UpdateAvailable)
+	assert.Nil(t, resp.Update.CheckedAt)
+}
+
+// TestGetSystemStatus_UpdateCheckEnabled_DevBuildNeverAvailable pins that a
+// non-release running version ("dev") is never "behind", even when the stub
+// reports a newer tag — latest is still reported.
+func TestGetSystemStatus_UpdateCheckEnabled_DevBuildNeverAvailable(t *testing.T) {
+	setBuildVersionForTest(t, "dev")
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `{"tag_name":"v9.9.9"}`)
+	}))
+	defer srv.Close()
+	restore := services.SetUpdateCheckForTest(srv.URL, srv.Client())
+	defer restore()
+
+	dbPath := filepath.Join(t.TempDir(), "x.db")
+	db := dbtest.NewAt(t, dbPath)
+	admin := seedAdmin(t, db)
+
+	cfg := validSystemStatusConfig(t, dbPath)
+	cfg.UpdateCheckEnabled = true
+	router := systemStatusEnv(t, db, cfg, admin.ID)
+
+	w, body := getSystemStatus(t, router)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var resp SystemStatusResponse
+	require.NoError(t, json.Unmarshal(body, &resp))
+	assert.True(t, resp.Update.Enabled)
+	assert.Equal(t, "dev", resp.Update.Current)
+	assert.Equal(t, "v9.9.9", resp.Update.Latest, "latest is still reported")
+	assert.False(t, resp.Update.UpdateAvailable)
+}
+
+// TestGetSystemStatus_UpdateCheckDisabled_BlockStillMarshals ensures the
+// update block is present on the wire (not omitted) even when disabled, so the
+// frontend's optional access stays well-defined.
+func TestGetSystemStatus_UpdateCheckDisabled_BlockStillMarshals(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "x.db")
+	db := dbtest.NewAt(t, dbPath)
+	admin := seedAdmin(t, db)
+
+	cfg := validSystemStatusConfig(t, dbPath)
+	router := systemStatusEnv(t, db, cfg, admin.ID)
+
+	_, body := getSystemStatus(t, router)
+
+	raw := string(body)
+	assert.Contains(t, raw, `"update":{"enabled":false}`)
 }

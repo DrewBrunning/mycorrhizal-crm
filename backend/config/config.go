@@ -111,6 +111,7 @@ type Config struct {
 	AlertDBIntegrityEnabled     bool // Enable the db_integrity condition
 	AlertJobStoppedEnabled      bool // Enable the job_stopped condition
 	HIBPCheckEnabled            bool // Check new/changed passwords against HIBP's k-anonymity range API (issue #376). Off by default: an outbound call on a self-hosted app is a deliberate opt-in, not a safe default — see docs/security/asvs-l2.md's P3.
+	UpdateCheckEnabled          bool // Compare the running build against the latest GitHub release (issue #650). Off by default: an outbound call on a self-hosted app is a deliberate opt-in, not a safe default — see docs/security/asvs-l2.md's P6.
 	OIDC                        OIDCConfig
 
 	// DataEncryptionKey is the base64-encoded 32-byte master key for
@@ -206,6 +207,7 @@ func LoadConfig() *Config {
 		AlertDBIntegrityEnabled:       getBoolEnv("ALERT_DB_INTEGRITY_ENABLED", true),
 		AlertJobStoppedEnabled:        getBoolEnv("ALERT_JOB_STOPPED_ENABLED", true),
 		HIBPCheckEnabled:              getBoolEnv("HIBP_CHECK_ENABLED", false),
+		UpdateCheckEnabled:            getBoolEnv("UPDATE_CHECK_ENABLED", false),
 		DataEncryptionKey:             getEnv("DATA_ENCRYPTION_KEY", ""),
 		DataEncryptionKeyFile:         getEnv("DATA_ENCRYPTION_KEY_FILE", ""),
 		MetricsToken:                  getEnv("METRICS_TOKEN", ""),

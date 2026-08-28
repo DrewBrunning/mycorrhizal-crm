@@ -167,6 +167,7 @@ function Snapshot({
       </Paper>
 
       <VersionUptimeCard status={status} />
+      <UpdateCard status={status} />
       <HealthChecksCard status={status} />
       <MigrationCard status={status} />
       <ConfigCard status={status} />
@@ -226,6 +227,41 @@ function VersionUptimeCard({ status }: { status: SystemStatusResponse }) {
           [t('systemStatus.version.uptime'), formatUptime(status.uptime?.uptime_seconds)],
         ]}
       />
+    </Section>
+  );
+}
+
+// UpdateCard renders the opt-in update-availability block (issue #650). It is
+// entirely absent when the flag is off or the latest release is unknown —
+// the same "informational, render nothing / a dash" rule BuildVersionCard
+// follows. Only when a real comparison exists does the card appear, with an
+// explicit "Update available" chip when one is found.
+function UpdateCard({ status }: { status: SystemStatusResponse }) {
+  const { t } = useTranslation();
+  const update = status.update;
+  if (!update?.enabled || !update.latest) return null;
+
+  return (
+    <Section title={t('systemStatus.update.title')}>
+      {update.update_available ? (
+        <Chip
+          color="primary"
+          label={t('systemStatus.update.available', { version: update.latest })}
+        />
+      ) : (
+        <Typography variant="body2" color="text.secondary">
+          {t('systemStatus.update.upToDate')}
+        </Typography>
+      )}
+      <Box sx={{ mt: 1 }}>
+        <DetailGrid
+          rows={[
+            [t('systemStatus.update.current'), dash(update.current)],
+            [t('systemStatus.update.latest'), dash(update.latest)],
+            [t('systemStatus.update.checkedAt'), formatDateTime(update.checked_at ?? undefined)],
+          ]}
+        />
+      </Box>
     </Section>
   );
 }

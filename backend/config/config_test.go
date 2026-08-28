@@ -401,6 +401,26 @@ func TestLoadConfig_Defaults(t *testing.T) {
 	// (12:00 in code and docs, 06:00 in both env samples).
 	assert.Equal(t, "06:00", cfg.ReminderTime)
 	assert.Equal(t, "UTC", cfg.ReminderTimezone)
+
+	// Opt-in outbound flags default off (issue #376 HIBP, issue #650 update
+	// check) — an outbound call on a self-hosted app is an operator decision.
+	assert.False(t, cfg.HIBPCheckEnabled)
+	assert.False(t, cfg.UpdateCheckEnabled)
+}
+
+func TestLoadConfig_UpdateCheckEnabledEnv(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+
+	// Default (unset) is off.
+	require.False(t, LoadConfig().UpdateCheckEnabled)
+
+	t.Setenv("UPDATE_CHECK_ENABLED", "true")
+	assert.True(t, LoadConfig().UpdateCheckEnabled)
+
+	t.Setenv("UPDATE_CHECK_ENABLED", "0")
+	assert.False(t, LoadConfig().UpdateCheckEnabled)
 }
 
 func TestLoadConfig_DeleteRetentionDays(t *testing.T) {

@@ -158,6 +158,27 @@ The operator runbook — where backups live, retention schedule, soft-deleted da
 `docs/deployment.md`'s "Backup confidentiality & retention" section; `data-retention-lifecycle.md`
 §10 is the per-data-type view.
 
+### P6 — Update-availability check: opt-in GitHub call, off by default (#650)
+
+Issue #650 asked for an "is a newer release available" signal on the admin System status page and
+`BuildVersionCard`. Shipped as **opt-in** (`UPDATE_CHECK_ENABLED`, default `false`,
+`config/config.go`), not a default-on control — the same position as P3's HIBP check:
+
+- **A self-hosted instance making an outbound call is the operator's decision.** When enabled, the
+  admin system-status endpoint issues one `GET` per 6h (memoized, `services/update_check.go`
+  `updateCheckCacheTTL`) to `https://api.github.com/repos/DrewBrunning/mycorrhizal-crm/releases/latest`
+  through the shared SSRF-guarded dialer (`httputil.SafeDialContext`, `services/update_check.go`
+  `newUpdateCheckClient`), and compares `tag_name` against `buildinfo.Get().Version` with a real
+  semver comparison (`golang.org/x/mod/semver`).
+- **Fails soft by design.** Any lookup error (network, non-200, unparseable body) leaves `latest`
+  "unknown" and `update_available` false — it renders a dash, never errors the surface it feeds. A
+  non-release running version (`dev`, empty, unparseable) is never reported as "behind", even when a
+  newer tag exists.
+- **No data leaves the instance.** Only the version comparison happens client-side; the request body
+  sent is empty. The outbound target is noted in `data-retention-lifecycle.md` §19.
+- **Decision:** stays opt-in through pre-1.0, non-goal to default it on or add any auto-update
+  behaviour.
+
 ---
 
 ## V1 — Architecture, Design and Threat Modeling
@@ -311,7 +332,7 @@ L3-only, out of scope: none in this chapter (5.4 is L2).
 | 5.2.3 | SMTP injection protection | satisfied | `To` is `required,email`-validated (`models/dtos.go:303-311`); `Subject` MIME-Q-encoded (`services/mailer.go:167`); body is fixed-template |
 | 5.2.4 | No eval/dynamic execution | satisfied | No `eval` in Go or frontend; `eslint-plugin-security` in CI |
 | 5.2.5 | Template injection | satisfied | Email templates are fixed strings from an embedded FS; no user input in template logic (`services/email_renderer.go`) |
-| 5.2.6 | SSRF protection | satisfied | Public-IP-only dialer with DNS-rebinding pinning (`backend/httputil/safedial.go:27-47`, `ipguard.go:30-59`); pre-flight URL checks (`httputil/fetch.go:17-58`); per-service opt-in flags (webhooks/Immich/CardDAV/Seafile, `config/config.go:65-83,136-147`); tests `httputil/fetch_test.go`, `services/webhook_ssrf_test.go`, `services/webhook_ssrf_integration_test.go` (live webhook job path), `services/notification_service_test.go` (push path); semgrep gate that no new outbound client bypasses the dialer (`.semgrep/mycorrhizal-traps.yaml` rule `mycorrhizal-unguarded-outbound-dialer`, fixture `.semgrep/tests/unguarded_outbound_dialer.go`, run by `sast.yml`). The admin diagnostics sweep's integration probes (#423) honor each integration's block-private-URLs flag through the same dialer, and the endpoint is admin-gated so the probe fan-out cannot be driven unauthenticated (`backend/services/diagnostics.go:447-478` `probeIntegration`) |
+| 5.2.6 | SSRF protection | satisfied | Public-IP-only dialer with DNS-rebinding pinning (`backend/httputil/safedial.go:27-47`, `ipguard.go:30-59`); pre-flight URL checks (`httputil/fetch.go:17-58`); per-service opt-in flags (webhooks/Immich/CardDAV/Seafile, `config/config.go:65-83,136-147`); tests `httputil/fetch_test.go`, `services/webhook_ssrf_test.go`, `services/webhook_ssrf_integration_test.go` (live webhook job path), `services/notification_service_test.go` (push path); semgrep gate that no new outbound client bypasses the dialer (`.semgrep/mycorrhizal-traps.yaml` rule `mycorrhizal-unguarded-outbound-dialer`, fixture `.semgrep/tests/unguarded_outbound_dialer.go`, run by `sast.yml`). The admin diagnostics sweep's integration probes (#423) honor each integration's block-private-URLs flag through the same dialer, and the endpoint is admin-gated so the probe fan-out cannot be driven unauthenticated (`backend/services/diagnostics.go:447-478` `probeIntegration`). The opt-in update-availability check (#650) routes its outbound GitHub call through the same dialer (`backend/services/update_check.go` `newUpdateCheckClient`), pinned by `services/update_check_test.go` `TestUpdateCheckClient_TransportIsSSRFGuarded` |
 | 5.2.7 | SVG scriptable content | satisfied | SVG rejected at photo upload/proxy (`photo_controller.go:361-369`) and by attachment markup-signature check (`attachment_controller.go:42-63`), sniffed from real bytes rather than trusting filename/declared Content-Type — E2E'd against mislabeled/polyglot uploads (issue #375, `controllers/attachment_real_db_test.go` `TestAttachmentPolyglotMislabeledContentSniffed`) |
 | 5.2.8 | Markdown/CSS/template content | not-applicable | No markdown/CSS/XSL/BBCode rendering of user content |
 | 5.3.1–5.3.3 | Output encoding / XSS | satisfied | React auto-escaping (no raw-HTML sinks); CSV cells neutralized (`export_controller.go:41-57`); JSON via `encoding/json`; CSV neutralization E2E'd through the real `/export` handler against real DB rows (issue #375, `controllers/hostile_input_e2e_test.go` `TestExportData_CSVFormulaInjectionNeutralized`), complementing the pure-function `TestCsvSafe*` coverage in `export_csv_injection_test.go` |

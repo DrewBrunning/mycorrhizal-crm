@@ -1144,7 +1144,8 @@
       "copy": "Build-Details kopieren",
       "copied": "Build-Details kopiert",
       "reportHint": "Bitte bei einer Fehlermeldung mit angeben.",
-      "viewSystemStatus": "Systemstatus anzeigen"
+      "viewSystemStatus": "Systemstatus anzeigen",
+      "updateAvailable": "Update verfügbar: {{version}}"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -2257,6 +2258,14 @@
     "feature": {
       "on": "Ein",
       "off": "Aus"
+    },
+    "update": {
+      "title": "Update-Prüfung",
+      "available": "Update verfügbar: {{version}}",
+      "upToDate": "Du führst die neueste veröffentlichte Version aus.",
+      "current": "Aktuelle Version",
+      "latest": "Neueste Veröffentlichung",
+      "checkedAt": "Geprüft am"
     },
     "error": "Systemstatus konnte nicht geladen werden."
   },

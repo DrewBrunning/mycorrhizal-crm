@@ -60,6 +60,9 @@ function fullStatus(overrides: Partial<SystemStatusResponse> = {}): SystemStatus
         { path: '/app/data/attachments', bytes: 2097152, file_count: 300, truncated: true },
       ],
     },
+    // Default: the update-availability flag is off (UPDATE_CHECK_ENABLED unset),
+    // so the block is exactly {enabled: false} and nothing is rendered.
+    update: { enabled: false },
     ...overrides,
   };
 }
@@ -183,4 +186,63 @@ test('a non-admin visiting the page is redirected away', async () => {
 
   await waitFor(() => expect(screen.getByText('DASHBOARD PAGE')).toBeInTheDocument());
   expect(screen.queryByText('Overall status')).not.toBeInTheDocument();
+});
+
+test('an update-available block renders the update card and chip', async () => {
+  getMock.mockResolvedValue(
+    fullStatus({
+      update: {
+        enabled: true,
+        current: 'v0.6.2',
+        latest: 'v9.9.9',
+        update_available: true,
+        checked_at: '2026-08-28T10:00:00Z',
+      },
+    }),
+  );
+
+  renderPage();
+
+  expect(await screen.findByText('Update check')).toBeInTheDocument();
+  expect(screen.getByText('Update available: v9.9.9')).toBeInTheDocument();
+  // "v0.6.2" also appears in the Version & uptime section, so match any.
+  expect(screen.getAllByText('v0.6.2').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('v9.9.9').length).toBeGreaterThan(0);
+  // checked_at renders through toLocaleString, so assert the card is present
+  // rather than a specific locale-dependent rendering.
+  expect(screen.getByText('Checked at')).toBeInTheDocument();
+});
+
+test('an enabled but up-to-date update block renders the release line, not a chip', async () => {
+  getMock.mockResolvedValue(
+    fullStatus({
+      update: { enabled: true, current: 'v0.6.2', latest: 'v0.6.2', update_available: false },
+    }),
+  );
+
+  renderPage();
+
+  expect(await screen.findByText('Update check')).toBeInTheDocument();
+  expect(screen.getByText('You are running the latest release.')).toBeInTheDocument();
+  expect(screen.queryByText(/Update available:/)).not.toBeInTheDocument();
+});
+
+test('a disabled update check renders no update section', async () => {
+  getMock.mockResolvedValue(fullStatus({ update: { enabled: false } }));
+
+  renderPage();
+
+  expect(await screen.findByText('System status')).toBeInTheDocument();
+  expect(screen.queryByText('Update check')).not.toBeInTheDocument();
+  expect(screen.queryByText(/Update available:/)).not.toBeInTheDocument();
+});
+
+test('an enabled update check with unknown latest renders no update section', async () => {
+  getMock.mockResolvedValue(fullStatus({ update: { enabled: true, current: 'v0.6.2' } }));
+
+  renderPage();
+
+  expect(await screen.findByText('System status')).toBeInTheDocument();
+  expect(screen.queryByText('Update check')).not.toBeInTheDocument();
+  expect(screen.queryByText(/Update available:/)).not.toBeInTheDocument();
 });

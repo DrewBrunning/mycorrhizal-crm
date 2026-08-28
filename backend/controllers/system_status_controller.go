@@ -19,8 +19,8 @@ import (
 // GetSystemStatus returns the authenticated, admin-scoped operational snapshot
 // (issue #388): rolled-up deep-health status, the full deep-health breakdown,
 // build identity, process uptime, migration numbers, a live config-validation
-// read-back, the enabled feature-flag set, SQLite operational facts, and
-// storage sizing.
+// read-back, the enabled feature-flag set, SQLite operational facts, storage
+// sizing, and the opt-in update-availability block (issue #650).
 //
 // This is the counterpart to the unauthenticated GET /health surface, which
 // deliberately withholds build/version, migration numbers and storage facts,
@@ -47,6 +47,7 @@ func GetSystemStatus(c *gin.Context) {
 		Config:    systemStatusConfig(cfg),
 		Database:  systemStatusDatabase(db, cfg),
 		Storage:   systemStatusStorage(cfg),
+		Update:    services.BuildUpdateCheckStatus(c.Request.Context(), cfg),
 	}
 
 	c.JSON(http.StatusOK, resp)
@@ -62,6 +63,11 @@ type SystemStatusResponse struct {
 	Config    SystemStatusConfig    `json:"config"`
 	Database  SystemStatusDatabase  `json:"database"`
 	Storage   SystemStatusStorage   `json:"storage"`
+	// Update is the opt-in update-availability block (issue #650): enabled is
+	// the config flag, and current/latest/update_available/checked_at are only
+	// populated when the flag is on and a lookup succeeded. When disabled the
+	// block is just {enabled: false} and no outbound call is made.
+	Update services.UpdateCheckStatus `json:"update"`
 }
 
 // SystemStatusUptime reports when the process started and how long ago.
