@@ -564,6 +564,13 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// config, with the configured/failing/no-devices/unconfigured
 			// distinction the issue calls out. Instance-wide, admin-only.
 			admin.GET("/notification-health", controllers.GetNotificationChannelHealth)
+
+			// Aggregated build/version, migration numbers, live
+			// config-validation read-back, enabled feature flags, SQLite
+			// operational facts and storage sizing (issue #388) — the
+			// authenticated counterpart to the unauthenticated /health
+			// surface. Instance-wide, admin-only, read-only.
+			admin.GET("/system-status", controllers.GetSystemStatus)
 		}
 	}
 
