@@ -396,10 +396,11 @@ func RecordFromContact(c *Contact, photoDir string) *contactmodel.Record {
 		HowWeMet:           c.HowWeMet,
 		WorkInformation:    c.WorkInformation,
 		ContactInformation: c.ContactInformation,
+		Gender:             c.Gender,
 	}
 
-	// Gender (c.Gender) is deliberately NOT mapped into Record. This is a
-	// flagged, deliberate gap, not an oversight:
+	// Gender (c.Gender) maps into Record.Envelope.Gender (issue #515),
+	// closing the round-trip hole this block used to document:
 	//
 	// vCard's legacy GENDER property (vCard 4.0 only, RFC 6350 §6.2.7) and
 	// JSContact's speakToAs/GRAMGENDER/PRONOUNS (RFC 9554 §3) are NOT the
@@ -408,32 +409,87 @@ func RecordFromContact(c *Contact, photoDir string) *contactmodel.Record {
 	// field ... is deliberately not the same concept as vCard GENDER or
 	// JSContact speakToAs. There is no correspondence row for it — it never
 	// round-trips through the standardized Card, by design."). So Gender has
-	// no home in Card, by design, and docs/adrs/0002-correspondence-table-locked-oracle.md has no row for it.
+	// no Card home and no docs/adrs/0002-correspondence-table-locked-oracle.md row,
+	// exactly like the other CRM-only envelope fields above.
 	//
-	// That same spec note describes Gender as living in CRMEnvelope, but
-	// contactmodel.CRMEnvelope (backend/contactmodel/envelope.go) has no
-	// Gender field today — adding one is a contactmodel change, and
-	// contactmodel is a P0-locked package outside this WP's file scope
-	// (backend/models/, backend/database/migrations/,
-	// backend/cmd/backfill-contact-records/ only).
+	// It now DOES have a CRMEnvelope home (contactmodel/envelope.go), so it
+	// survives the neutral Record round trip (Record -> Contact -> Record)
+	// and is served on the REST wire via crm.gender. It remains absent from
+	// any vCard/JSContact FILE export — the envelope is deliberately not
+	// serialized by the format adapters ("Format adapters MUST ignore it
+	// entirely") — and that loss is reported by name at export time via
+	// EnvelopeExportLossDiagnostics (issue #515: never a silent drop).
 	//
-	// Routing Gender through Record.Passthrough instead was considered and
-	// rejected: Passthrough (contactmodel/passthrough.go) is specifically for
+	// Routing Gender through Record.Passthrough was considered and rejected:
+	// Passthrough (contactmodel/passthrough.go) is specifically for
 	// spec-blessed vCard/JSContact escape hatches (RFC 9555 "vCardProps" /
 	// unknown-JSContact-property preservation) — Gender is neither, so
 	// stuffing it there would misrepresent free-text CRM data as
-	// standards-originated. Silently dropping it without saying so would
-	// also violate this WP's own losslessness goal.
-	//
-	// Net effect: Gender does not currently round-trip through Record at
-	// all. It remains fully intact on Contact.Gender (untouched, still
-	// populated exactly as before) — only the neutral Card/Envelope
-	// representation doesn't carry it yet. Revisit once contactmodel gains a
-	// CRMEnvelope.Gender field (a separate, contactmodel-scoped change).
+	// standards-originated. See the issue #515 audit appendix in
+	// docs/adrs/0002-correspondence-table-locked-oracle.md for the full
+	// per-field enumeration.
 
 	record.Passthrough = buildPassthrough(c)
 
 	return record
+}
+
+// EnvelopeExportLossDiagnostics returns warn Diagnostics naming every
+// populated CRMEnvelope field on the record that has no target-format home —
+// the issue #515 "never a silent drop" guarantee for vCard/JSContact file
+// export.
+//
+// The format adapters deliberately ignore the envelope entirely
+// (contactmodel.CRMEnvelope: "Format adapters MUST ignore it entirely"), so
+// Gender, Circles, HowWeMet, WorkInformation and ContactInformation — all of
+// which round-trip through the neutral Record (record -> contact -> record)
+// — are absent from every vCard 3.0/4.0 and JSContact file the moment it
+// leaves the server. That is by design (this is CRM data with no
+// correspondence-table row, docs/adrs/0002-correspondence-table-locked-oracle.md),
+// but it must not be *silent*: the degradation policy (ADR-0002) requires a
+// "neutral field with no target-format home" to yield a warn diagnostic.
+//
+// The caller (the vCard/JSContact export handlers in export_controller.go)
+// appends these to the adapter's own diagnostics before logging, so an
+// operator/QA pass sees exactly which CRM-only fields each exported file did
+// not carry. Nil-safe: a nil record or an empty envelope yields no
+// diagnostics.
+func EnvelopeExportLossDiagnostics(rec *contactmodel.Record) []contactmodel.Diagnostic {
+	if rec == nil {
+		return nil
+	}
+	env := rec.Envelope
+	type field struct {
+		name  string
+		value string
+	}
+	fields := []field{
+		{"crm.gender", env.Gender},
+		{"crm.how_we_met", env.HowWeMet},
+		{"crm.work_information", env.WorkInformation},
+		{"crm.contact_information", env.ContactInformation},
+	}
+	var diags []contactmodel.Diagnostic
+	for _, f := range fields {
+		if f.value == "" {
+			continue
+		}
+		diags = append(diags, contactmodel.Diagnostic{
+			Severity: "warn",
+			Concept:  f.name,
+			Message:  "CRM-only field has no home in this export format and is dropped from the file",
+		})
+	}
+	// Circles is the one envelope field that is meaningfully absent even
+	// when empty-string-free: a non-empty slice is the populated signal.
+	if len(env.Circles) > 0 {
+		diags = append(diags, contactmodel.Diagnostic{
+			Severity: "warn",
+			Concept:  "crm.circles",
+			Message:  "CRM-only field has no home in this export format and is dropped from the file",
+		})
+	}
+	return diags
 }
 
 // buildName maps Firstname/Lastname/MiddleName/Prefix/Suffix into

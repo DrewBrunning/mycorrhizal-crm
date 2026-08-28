@@ -234,6 +234,9 @@ func TestRecordFromContact_FullyPopulated(t *testing.T) {
 		env.WorkInformation != "Remote" || env.ContactInformation != "Prefers email" {
 		t.Errorf("Record.Envelope text fields = %+v, want the values set on the Contact", env)
 	}
+	if env.Gender != "female" {
+		t.Errorf("Record.Envelope.Gender = %q, want female (issue #515: Gender has a CRMEnvelope home)", env.Gender)
+	}
 	if len(env.Circles) != 2 || env.Circles[0] != "friends" || env.Circles[1] != "work" {
 		t.Errorf("Record.Envelope.Circles = %+v, want [friends work]", env.Circles)
 	}
@@ -372,6 +375,56 @@ func TestRecordForContact_FallsBackWhenCardIsZeroValue(t *testing.T) {
 
 	if len(record.Card.Emails) != 1 || record.Card.Emails[0].Address != "bob@example.com" {
 		t.Errorf("RecordForContact's Card.Emails = %+v, want a fallback-derived entry for bob@example.com (Card was zero-value, should behave like RecordFromContact)", record.Card.Emails)
+	}
+}
+
+// TestEnvelopeExportLossDiagnostics covers issue #515's "never a silent drop"
+// guarantee: the CRM-only envelope fields (Gender, Circles, HowWeMet, ...)
+// round-trip through the neutral Record but have no home in any vCard/JSContact
+// FILE export (the format adapters ignore the envelope entirely), so the
+// export path must name the drop as a warn Diagnostic rather than silently
+// omitting it.
+func TestEnvelopeExportLossDiagnostics(t *testing.T) {
+	// A nil record or an empty envelope must be silent.
+	if diags := EnvelopeExportLossDiagnostics(nil); len(diags) != 0 {
+		t.Errorf("EnvelopeExportLossDiagnostics(nil) = %+v, want none", diags)
+	}
+	if diags := EnvelopeExportLossDiagnostics(&contactmodel.Record{}); len(diags) != 0 {
+		t.Errorf("EnvelopeExportLossDiagnostics(empty) = %+v, want none", diags)
+	}
+
+	// A fully populated envelope must name every populated field.
+	rec := &contactmodel.Record{
+		Envelope: contactmodel.CRMEnvelope{
+			Gender:             "female",
+			Circles:            []string{"friends"},
+			HowWeMet:           "Conference",
+			WorkInformation:    "Remote",
+			ContactInformation: "Prefers email",
+		},
+	}
+	diags := EnvelopeExportLossDiagnostics(rec)
+	got := map[string]bool{}
+	for _, d := range diags {
+		if d.Severity != "warn" {
+			t.Errorf("diagnostic %q has severity %q, want warn", d.Concept, d.Severity)
+		}
+		got[d.Concept] = true
+	}
+	for _, want := range []string{"crm.gender", "crm.circles", "crm.how_we_met", "crm.work_information", "crm.contact_information"} {
+		if !got[want] {
+			t.Errorf("missing diagnostic for %s (a populated envelope field must be named, never silently dropped)", want)
+		}
+	}
+
+	// Kind (human/animal) and unset fields carry no diagnostic: Kind is a
+	// classifier the envelope always carries (it is not user data to
+	// recover), and empty fields have nothing to report.
+	kindOnly := &contactmodel.Record{
+		Envelope: contactmodel.CRMEnvelope{Kind: "human"},
+	}
+	if diags := EnvelopeExportLossDiagnostics(kindOnly); len(diags) != 0 {
+		t.Errorf("EnvelopeExportLossDiagnostics(Kind-only) = %+v, want none (Kind is not user data)", diags)
 	}
 }
 

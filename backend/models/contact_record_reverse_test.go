@@ -162,6 +162,13 @@ func TestApplyRecordToContact_RoundTrip(t *testing.T) {
 	if got.ContactInformation != original.ContactInformation {
 		t.Errorf("ContactInformation = %q, want %q", got.ContactInformation, original.ContactInformation)
 	}
+	// Gender (issue #515): it now has a CRMEnvelope home, so it participates
+	// in the Record round trip exactly like the other CRM-only fields above —
+	// this assertion used to be the "known accepted gap" block, removed when
+	// the hole was closed.
+	if got.Gender != original.Gender {
+		t.Errorf("Gender = %q, want %q (issue #515: CRMEnvelope.Gender round-trips)", got.Gender, original.Gender)
+	}
 	if !reflect.DeepEqual(got.Circles, original.Circles) {
 		t.Errorf("Circles = %+v, want %+v", got.Circles, original.Circles)
 	}
@@ -193,16 +200,6 @@ func TestApplyRecordToContact_RoundTrip(t *testing.T) {
 	}
 
 	// Known, documented, ACCEPTED gaps (not asserted equal):
-	//   - Gender: RecordFromContact never maps it into Record at all (no
-	//     neutral home exists for it yet — see that function's own doc
-	//     comment), so ApplyRecordToContact has nothing to restore it from.
-	//     A fresh Contact{} naturally comes out with Gender == "", not
-	//     original.Gender == "female". This is not a round-trip bug: Gender
-	//     simply doesn't participate in this round trip, by design, on both
-	//     sides.
-	if got.Gender != "" {
-		t.Errorf("got.Gender = %q, want \"\" (Gender has no neutral home; ApplyRecordToContact must not invent one)", got.Gender)
-	}
 	//   - VCardExtra: RecordFromContact's buildPassthrough is explicitly
 	//     best-effort/lossy converting VCardExtra -> Passthrough.VCard (see
 	//     that function's doc comment), and ApplyRecordToContact deliberately

@@ -9426,9 +9426,9 @@ components:
       type: object
       description: >
         Request body for POST /contacts and PUT /contacts/{id}. Gender rides
-        alongside card/crm since it has no neutral-model home (see
-        docs/adrs/0001-neutral-hub-and-spoke-contact-model.md's RecordFromContact
-        notes).
+        alongside card/crm for backward compat, and now ALSO inside
+        crm.gender (issue #515, its authoritative neutral-model home — the
+        read path echoes it there). When both are present, crm.gender wins.
       properties:
         gender:
           type: string
@@ -11880,10 +11880,22 @@ components:
       type: object
       description: Mycorrhizal-specific data outside any contact-exchange standard.
       properties:
+        kind: { type: string }
         circles: { type: array, items: { type: string } }
         how_we_met: { type: string }
         work_information: { type: string }
         contact_information: { type: string }
+        gender:
+          type: string
+          description: >
+            Issue #515: the CRM's free-text gender field, given a real
+            neutral-model home here so it round-trips through the Record and
+            is served on the wire. Deliberately NOT vCard GENDER or JSContact
+            speakToAs (see docs/specs/rfc6350-baseline.md's closing note) —
+            never exported to a vCard/JSContact file. The legacy top-level
+            sibling `gender` field on the contact DTOs remains for backward
+            compat; when both are present, crm.gender wins (it is the
+            authoritative copy).
     Passthrough:
       type: object
       description: Unmapped data preserved verbatim (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md).

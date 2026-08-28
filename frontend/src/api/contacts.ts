@@ -329,6 +329,10 @@ export interface CRMEnvelope {
   how_we_met?: string;
   work_information?: string;
   contact_information?: string;
+  // Issue #515: the CRM's free-text gender field moved into the neutral
+  // envelope (crm.gender) so it round-trips through the Record; the legacy
+  // top-level `gender` sibling on the wire DTO remains for backward compat.
+  gender?: string;
 }
 
 export interface ContactRecordInput {

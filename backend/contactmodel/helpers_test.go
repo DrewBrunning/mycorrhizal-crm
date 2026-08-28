@@ -306,6 +306,7 @@ func fullCRMEnvelope() CRMEnvelope {
 		HowWeMet:           "University",
 		WorkInformation:    "Mathematician",
 		ContactInformation: "Prefers email",
+		Gender:             "female",
 	}
 }
 
