@@ -178,6 +178,11 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// confirmed via the shared /contacts/import/vcf/confirm endpoint.
 			protected.POST("/contacts/import/records", middleware.ValidateJSONMiddleware(&models.ImportRecordsRequest{}), controllers.UploadImportRecords)
 
+			// Import run history (issue #651) — one immutable row per confirmed
+			// import (any format), newest first, user-scoped. Backs the history
+			// table on the Data settings page.
+			protected.GET("/contacts/import/history", controllers.GetImportHistory)
+
 			// P1 contact sharing
 			// — one-time filtered copy between two users on the same
 			// instance. Accept is preview-only (parses the stored payload

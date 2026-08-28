@@ -192,10 +192,11 @@ func UploadVCFForImport(c *gin.Context, cfg *config.Config) {
 // extension (.json) rather than a shared upload endpoint that inspects
 // Content-Type/body — kept as a separate route for simplicity, matching the
 // existing separate CSV/VCF upload endpoints. Confirmation reuses the
-// existing POST /contacts/import/vcf/confirm endpoint: the session is
-// created the same way CreateVCFSession does (format-agnostic once it's a
+// existing POST /contacts/import/vcf/confirm endpoint: CreateJSContactSession
+// builds a session shape-identical to a VCF one (format-agnostic once it's a
 // []VCFContactData), so ConfirmVCF's photo-processing pipeline handles
-// JSContact-imported contacts identically to VCF-imported ones.
+// JSContact-imported contacts identically to VCF-imported ones. Only the
+// persisted import_runs format token differs ("jscontact", issue #651).
 func UploadJSContactForImport(c *gin.Context) {
 	log := logger.FromContext(c)
 
@@ -243,7 +244,7 @@ func UploadJSContactForImport(c *gin.Context) {
 		return
 	}
 
-	sessionID := importSessions.CreateVCFSession(userID, contacts, previews)
+	sessionID := importSessions.CreateJSContactSession(userID, contacts, previews)
 
 	log.Info().
 		Str("session_id", sessionID).
@@ -411,4 +412,37 @@ func ConfirmVCFImport(c *gin.Context, cfg *config.Config) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+// importHistoryLimit caps how many past imports the history endpoint returns.
+// An import is a rare, human-initiated action, so 50 is many months of
+// history for any real operator.
+const importHistoryLimit = 50
+
+// GetImportHistory returns the caller's recent contact-import outcomes
+// (issue #651), newest first — one row per confirmed import, holding the
+// source format and the same counts the confirm response returned. Backs the
+// history table on the Data settings page.
+//
+// User-scoped (CLAUDE.md backend trap #5): the WHERE clause filters by
+// user_id, never the caller. The response is a bare JSON array and must
+// serialise as `[]`, not `null`, when empty (CLAUDE.md frontend trap #8).
+func GetImportHistory(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	runs := []models.ImportRun{}
+	if err := db.Where("user_id = ?", userID).
+		Order("created_at DESC").
+		Limit(importHistoryLimit).
+		Find(&runs).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to list import history").WithError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, runs)
 }

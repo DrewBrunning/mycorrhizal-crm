@@ -1261,7 +1261,24 @@
       "import": {
         "title": "Import Contacts",
         "description": "Bring in a full address book — a Google Takeout export, another contacts app's CSV or VCF export, or a JSContact JSON file. The same review flow as the Contacts page is used, with bulk controls for large files.",
-        "importButton": "Import Contacts"
+        "importButton": "Import Contacts",
+        "history": {
+          "title": "Import history",
+          "empty": "No imports yet.",
+          "loadError": "Could not load import history.",
+          "colWhen": "When",
+          "colFormat": "Format",
+          "colCreated": "Created",
+          "colUpdated": "Updated",
+          "colSkipped": "Skipped",
+          "colErrors": "Errors",
+          "format": {
+            "csv": "CSV",
+            "vcf": "vCard",
+            "jscontact": "JSContact",
+            "records": "Device"
+          }
+        }
       },
       "propose": {
         "title": "Propose data",

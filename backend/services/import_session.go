@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -32,9 +33,18 @@ const MaxImportSessionsPerUser = 5
 type importSessionData struct {
 	session     models.ImportSession
 	rows        [][]string       // CSV rows (nil for VCF imports)
-	importType  string           // "csv" or "vcf"
+	importType  string           // "csv", "vcf", or "records" — what Confirm/ConfirmVCF dispatch on
 	vcfContacts []VCFContactData // VCF parsed contacts (nil for CSV imports)
 	csvContacts []models.Contact // CSV contacts built during preview (nil for VCF imports)
+
+	// sourceFormat is the true origin of the data for the persisted
+	// import_runs history (issue #651): "csv" | "vcf" | "jscontact" |
+	// "records". Distinct from importType because the JSContact upload path
+	// produces an importType "vcf" session (it confirms through the same
+	// pipeline) yet its real source format is "jscontact". Set by each
+	// Create*Session; Confirm/ConfirmVCF fall back to importType if it is
+	// empty (a session mid-flight across a deploy).
+	sourceFormat string
 
 	// boundShareID, when non-empty, ties this session to the ContactShare
 	// (P1, P1) whose accept step
@@ -117,6 +127,28 @@ func (m *ImportSessionManager) rememberConfirmed(sessionID string, userID uint, 
 		result:    result,
 		expiresAt: time.Now().Add(sessionExpiry),
 	}
+}
+
+// persistImportRun writes one immutable import_runs history row (issue #651)
+// for a just-committed import. Best-effort by construction (models.RecordImportRun
+// logs and swallows any write error) — the import has already succeeded and its
+// history must not be able to un-succeed it. Called only on the first-commit
+// path of Confirm/ConfirmVCF, never on the idempotent replay (which returns
+// before reaching here), so it cannot double-count.
+func (m *ImportSessionManager) persistImportRun(db *gorm.DB, userID uint, sd *importSessionData, result models.ImportResult) {
+	format := sd.sourceFormat
+	if format == "" {
+		format = sd.importType // a session created before this field existed, mid-flight across a deploy
+	}
+	models.RecordImportRun(context.Background(), db, models.ImportRun{
+		UserID:         userID,
+		Format:         format,
+		TotalProcessed: result.TotalProcessed,
+		Created:        result.Created,
+		Updated:        result.Updated,
+		Skipped:        result.Skipped,
+		ErrorCount:     len(result.Errors),
+	})
 }
 
 // replayConfirmed returns the stored result of an already-consumed session if
@@ -209,8 +241,9 @@ func (m *ImportSessionManager) CreateCSVSession(userID uint, headers []string, r
 			CreatedAt: now,
 			ExpiresAt: now.Add(sessionExpiry),
 		},
-		rows:       rows,
-		importType: "csv",
+		rows:         rows,
+		importType:   "csv",
+		sourceFormat: models.ImportFormatCSV,
 	}
 	m.mu.Unlock()
 
@@ -220,7 +253,16 @@ func (m *ImportSessionManager) CreateCSVSession(userID uint, headers []string, r
 // CreateVCFSession stores a freshly parsed VCF upload (whose preview is computed at
 // upload time) and returns its session ID.
 func (m *ImportSessionManager) CreateVCFSession(userID uint, vcfContacts []VCFContactData, previews []models.ImportRowPreview) string {
-	return m.createVCFLikeSession(userID, vcfContacts, previews, "vcf")
+	return m.createVCFLikeSession(userID, vcfContacts, previews, "vcf", models.ImportFormatVCF)
+}
+
+// CreateJSContactSession stores a freshly parsed JSContact upload. The session
+// is shape-identical to a VCF session and confirms through the same
+// /contacts/import/vcf/confirm pipeline (importType "vcf"), so only the
+// persisted sourceFormat distinguishes it — "jscontact" for the import_runs
+// history (issue #651).
+func (m *ImportSessionManager) CreateJSContactSession(userID uint, vcfContacts []VCFContactData, previews []models.ImportRowPreview) string {
+	return m.createVCFLikeSession(userID, vcfContacts, previews, "vcf", models.ImportFormatJSContact)
 }
 
 // CreateRecordsSession is CreateVCFSession for a batch of neutral Card/CRM
@@ -231,12 +273,14 @@ func (m *ImportSessionManager) CreateVCFSession(userID uint, vcfContacts []VCFCo
 // importType is "records" so ConfirmVCF can label merge notes accurately and
 // log the real source.
 func (m *ImportSessionManager) CreateRecordsSession(userID uint, vcfContacts []VCFContactData, previews []models.ImportRowPreview) string {
-	return m.createVCFLikeSession(userID, vcfContacts, previews, "records")
+	return m.createVCFLikeSession(userID, vcfContacts, previews, "records", models.ImportFormatRecords)
 }
 
 // createVCFLikeSession is the shared implementation behind CreateVCFSession/
-// CreateRecordsSession; importType is what ConfirmVCF dispatches and labels on.
-func (m *ImportSessionManager) createVCFLikeSession(userID uint, vcfContacts []VCFContactData, previews []models.ImportRowPreview, importType string) string {
+// CreateJSContactSession/CreateRecordsSession; importType is what ConfirmVCF
+// dispatches and labels on, sourceFormat is what the import_runs history
+// records (issue #651).
+func (m *ImportSessionManager) createVCFLikeSession(userID uint, vcfContacts []VCFContactData, previews []models.ImportRowPreview, importType, sourceFormat string) string {
 	sessionID := generateSessionID()
 	now := time.Now()
 
@@ -250,8 +294,9 @@ func (m *ImportSessionManager) createVCFLikeSession(userID uint, vcfContacts []V
 			PreviewRows:   previews,
 			PreviewCached: true,
 		},
-		importType:  importType,
-		vcfContacts: vcfContacts,
+		importType:   importType,
+		sourceFormat: sourceFormat,
+		vcfContacts:  vcfContacts,
 	}
 	m.mu.Unlock()
 
@@ -457,6 +502,7 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 	sessionData.confirmed = &result
 	m.rememberConfirmed(req.SessionID, userID, result)
 	m.Delete(req.SessionID)
+	m.persistImportRun(db, userID, sessionData, result)
 
 	log.Info().
 		Str("session_id", req.SessionID).
@@ -663,6 +709,7 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 	sessionData.confirmed = &result
 	m.rememberConfirmed(req.SessionID, userID, result)
 	m.Delete(req.SessionID)
+	m.persistImportRun(db, userID, sessionData, result)
 
 	log.Info().
 		Str("session_id", req.SessionID).

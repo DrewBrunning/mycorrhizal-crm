@@ -1960,6 +1960,28 @@ paths:
         "400":
           description: A CSV-sourced session ID was sent here, no prior preview cached, or unknown/expired/foreign session.
 
+  /contacts/import/history:
+    get:
+      summary: Recent contact-import outcomes for the caller
+      operationId: getImportHistory
+      description: >
+        One immutable row per confirmed import (issue #651), newest first,
+        capped at 50 — the source format and the same counts the confirm
+        response returned (created / updated / skipped / total processed) plus
+        an error count. User-scoped: only the caller's own imports. Backs the
+        history table on the Data settings page.
+      responses:
+        "200":
+          description: The caller's import history, newest first (an empty array when nothing has been imported).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ImportRun"
+        "401":
+          description: Not authenticated.
+
   # --- Contact sharing (P1, P1) ---
   # One-time filtered copy between two users on the same instance -- not a
   # standing/live share (P1b, deferred). Accept is preview-only (parses the
@@ -11369,6 +11391,26 @@ components:
         updated: { type: integer }
         skipped: { type: integer }
         errors: { type: array, items: { type: string } }
+
+    ImportRun:
+      type: object
+      description: >
+        One persisted contact-import outcome (issue #651) — the same counts an
+        ImportResult carries (minus the error strings), plus the source format
+        and a timestamp. User-scoped, immutable, read-only.
+      properties:
+        id: { type: integer }
+        user_id: { type: integer }
+        format:
+          type: string
+          enum: [csv, vcf, jscontact, records]
+          description: "Source of the imported data. Mirrored by migration 000042's CHECK and frontend/src/api/import.ts."
+        total_processed: { type: integer }
+        created: { type: integer }
+        updated: { type: integer }
+        skipped: { type: integer }
+        error_count: { type: integer, description: "Number of rows that errored (len of ImportResult.errors)" }
+        created_at: { type: string, format: date-time }
 
     # --- Neutral RFC 9553 contact model (preserved ) ---
     CRMEnvelope:

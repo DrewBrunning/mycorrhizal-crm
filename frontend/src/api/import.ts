@@ -92,6 +92,20 @@ export interface ImportResult {
   errors: string[];
 }
 
+// One persisted import outcome (issue #651). Mirrors backend models.ImportRun
+// and migration 000042's `format` CHECK vocabulary — if a token is added
+// backend-side, add it here too (no dynamic type-list endpoint by design).
+export interface ImportRun {
+  id: number;
+  format: 'csv' | 'vcf' | 'jscontact' | 'records';
+  total_processed: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  error_count: number;
+  created_at: string;
+}
+
 // Contact fields that can be imported (mirrors backend models.ImportableContactFields)
 export const IMPORTABLE_CONTACT_FIELDS = [
   // Name
@@ -244,6 +258,20 @@ export async function uploadVCFForImport(file: File): Promise<ImportPreviewRespo
   const response = await apiFetch(`${API_BASE_URL}/contacts/import/vcf/upload`, {
     method: 'POST',
     body: formData,
+  });
+
+  if (!response.ok) {
+    throw await parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+
+// Recent import outcomes for the current user, newest first (issue #651).
+export async function getImportHistory(): Promise<ImportRun[]> {
+  const response = await apiFetch(`${API_BASE_URL}/contacts/import/history`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
   });
 
   if (!response.ok) {

@@ -4,6 +4,7 @@ import {
   type ColumnMapping,
   confirmImport,
   confirmVCFImport,
+  getImportHistory,
   getImportPreview,
   IMPORTABLE_CONTACT_FIELDS,
   REPEATABLE_VALUE_FIELDS,
@@ -206,6 +207,39 @@ describe('confirmVCFImport', () => {
       code: 'VALIDATION_ERROR',
       status: 400,
     });
+  });
+});
+
+describe('getImportHistory', () => {
+  test('GETs the history endpoint and returns the array', async () => {
+    const runs = [
+      {
+        id: 2,
+        format: 'vcf',
+        total_processed: 5,
+        created: 3,
+        updated: 1,
+        skipped: 1,
+        error_count: 0,
+        created_at: '2026-08-27T12:00:00Z',
+      },
+    ];
+    const fetchMock = vi.fn().mockResolvedValueOnce(okResponse(runs));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getImportHistory();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/contacts/import/history');
+    expect(init.method).toBe('GET');
+    expect(result).toEqual(runs);
+  });
+
+  test('throws an ApiError when the response is not ok', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
+
+    await expect(getImportHistory()).rejects.toMatchObject({ status: 400 });
   });
 });
 

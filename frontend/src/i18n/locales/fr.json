@@ -1234,7 +1234,24 @@
       "import": {
         "title": "Importer des contacts",
         "description": "Importez un carnet d'adresses complet — une exportation Google Takeout, une exportation CSV ou VCF d'une autre application de contacts, ou un fichier JSON JSContact. Le même flux de validation que sur la page Contacts est utilisé, avec des actions groupées pour les gros fichiers.",
-        "importButton": "Importer des contacts"
+        "importButton": "Importer des contacts",
+        "history": {
+          "title": "Historique des imports",
+          "empty": "Aucun import pour l'instant.",
+          "loadError": "Impossible de charger l'historique des imports.",
+          "colWhen": "Date",
+          "colFormat": "Format",
+          "colCreated": "Créés",
+          "colUpdated": "Mis à jour",
+          "colSkipped": "Ignorés",
+          "colErrors": "Erreurs",
+          "format": {
+            "csv": "CSV",
+            "vcf": "vCard",
+            "jscontact": "JSContact",
+            "records": "Appareil"
+          }
+        }
       },
       "propose": {
         "title": "Proposer des données",

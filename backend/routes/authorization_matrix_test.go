@@ -316,6 +316,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"POST /api/v1/contacts/import/vcf/confirm":      {class: classProtected},
 		"POST /api/v1/contacts/import/jscontact/upload": {class: classProtected},
 		"POST /api/v1/contacts/import/records":          {class: classProtected},
+		"GET /api/v1/contacts/import/history":           {class: classProtected},
 
 		// --- contact shares -------------------------------------------------
 		"POST /api/v1/contact-shares":             {class: classProtected},

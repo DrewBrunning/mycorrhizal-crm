@@ -1234,7 +1234,24 @@
       "import": {
         "title": "Kontakte importieren",
         "description": "Ein komplettes Adressbuch importieren — einen Google-Takeout-Export, einen CSV- oder VCF-Export einer anderen Kontakte-App oder eine JSContact-JSON-Datei. Es wird derselbe Prüfablauf wie auf der Kontakteseite verwendet, mit Sammelaktionen für große Dateien.",
-        "importButton": "Kontakte importieren"
+        "importButton": "Kontakte importieren",
+        "history": {
+          "title": "Importverlauf",
+          "empty": "Noch keine Importe.",
+          "loadError": "Importverlauf konnte nicht geladen werden.",
+          "colWhen": "Zeitpunkt",
+          "colFormat": "Format",
+          "colCreated": "Erstellt",
+          "colUpdated": "Aktualisiert",
+          "colSkipped": "Übersprungen",
+          "colErrors": "Fehler",
+          "format": {
+            "csv": "CSV",
+            "vcf": "vCard",
+            "jscontact": "JSContact",
+            "records": "Gerät"
+          }
+        }
       },
       "propose": {
         "title": "Daten vorschlagen",
