@@ -11,9 +11,14 @@ import {
   CircularProgress,
   Divider,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
   Typography,
 } from '@mui/material';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { suggestContactAddresses } from './api/dataSuggestions';
 import {
@@ -23,6 +28,7 @@ import {
   exportContactsAsVcf,
   exportDataAsCsv,
 } from './api/export';
+import { getImportHistory, type ImportRun } from './api/import';
 import { suggestRelationshipEdges } from './api/relationshipEdges';
 import CalendarSyncSettings from './components/CalendarSyncSettings';
 import ContactAddressSuggestions from './components/ContactAddressSuggestions';
@@ -52,6 +58,26 @@ export default function DataSettingsPage() {
   // bulk import entry point, reusing the exact same wizard the Contacts page
   // uses — one import flow, two doors.
   const [importOpen, setImportOpen] = useState(false);
+
+  // Issue #651: persisted import run history, refreshed on mount and whenever
+  // an import completes.
+  const [importHistory, setImportHistory] = useState<ImportRun[]>([]);
+  const [importHistoryError, setImportHistoryError] = useState('');
+
+  const loadImportHistory = useCallback(async () => {
+    try {
+      setImportHistory(await getImportHistory());
+      setImportHistoryError('');
+    } catch (error) {
+      setImportHistoryError(
+        error instanceof Error ? error.message : t('settings.data.import.history.loadError'),
+      );
+    }
+  }, [t]);
+
+  useEffect(() => {
+    void loadImportHistory();
+  }, [loadImportHistory]);
 
   // T104 + address suggestions: opt-in triggers for the inference engines,
   // plus the message state for the last run. Bumping the load keys reloads
@@ -260,6 +286,58 @@ export default function DataSettingsPage() {
                 {t('settings.data.import.importButton')}
               </Button>
             </Box>
+
+            <Divider />
+            <Typography variant="subtitle2" component="h3">
+              {t('settings.data.import.history.title')}
+            </Typography>
+            {importHistoryError && (
+              <Alert severity="error" sx={{ py: 0 }}>
+                {importHistoryError}
+              </Alert>
+            )}
+            {importHistory.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                {t('settings.data.import.history.empty')}
+              </Typography>
+            ) : (
+              <Box sx={{ overflowX: 'auto' }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>{t('settings.data.import.history.colWhen')}</TableCell>
+                      <TableCell>{t('settings.data.import.history.colFormat')}</TableCell>
+                      <TableCell align="right">
+                        {t('settings.data.import.history.colCreated')}
+                      </TableCell>
+                      <TableCell align="right">
+                        {t('settings.data.import.history.colUpdated')}
+                      </TableCell>
+                      <TableCell align="right">
+                        {t('settings.data.import.history.colSkipped')}
+                      </TableCell>
+                      <TableCell align="right">
+                        {t('settings.data.import.history.colErrors')}
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {importHistory.map((run) => (
+                      <TableRow key={run.id}>
+                        <TableCell>{new Date(run.created_at).toLocaleString()}</TableCell>
+                        <TableCell>
+                          {t(`settings.data.import.history.format.${run.format}`)}
+                        </TableCell>
+                        <TableCell align="right">{run.created}</TableCell>
+                        <TableCell align="right">{run.updated}</TableCell>
+                        <TableCell align="right">{run.skipped}</TableCell>
+                        <TableCell align="right">{run.error_count}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Box>
+            )}
           </Stack>
         </CardContent>
       </Card>
@@ -374,7 +452,10 @@ export default function DataSettingsPage() {
       <ImportContactsDialog
         open={importOpen}
         onClose={() => setImportOpen(false)}
-        onImportComplete={() => setImportOpen(false)}
+        onImportComplete={() => {
+          setImportOpen(false);
+          void loadImportHistory();
+        }}
       />
     </Box>
   );

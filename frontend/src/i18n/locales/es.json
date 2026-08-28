@@ -1232,7 +1232,24 @@
       "import": {
         "title": "Importar contactos",
         "description": "Trae una agenda completa: una exportación de Google Takeout, una exportación CSV o VCF de otra app de contactos, o un archivo JSON de JSContact. Se usa el mismo flujo de revisión que en la página de Contactos, con controles masivos para archivos grandes.",
-        "importButton": "Importar contactos"
+        "importButton": "Importar contactos",
+        "history": {
+          "title": "Historial de importaciones",
+          "empty": "Aún no hay importaciones.",
+          "loadError": "No se pudo cargar el historial de importaciones.",
+          "colWhen": "Fecha",
+          "colFormat": "Formato",
+          "colCreated": "Creados",
+          "colUpdated": "Actualizados",
+          "colSkipped": "Omitidos",
+          "colErrors": "Errores",
+          "format": {
+            "csv": "CSV",
+            "vcf": "vCard",
+            "jscontact": "JSContact",
+            "records": "Dispositivo"
+          }
+        }
       },
       "propose": {
         "title": "Proponer datos",

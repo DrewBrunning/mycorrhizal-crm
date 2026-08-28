@@ -7,7 +7,7 @@ each asset, not how long it survives.
 
 | | |
 |---|---|
-| **Last updated** | 2026-08-27 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420), [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622), [#391](https://github.com/DrewBrunning/mycorrhizal-crm/issues/391), [#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389)) |
+| **Last updated** | 2026-08-27 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420), [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622), [#391](https://github.com/DrewBrunning/mycorrhizal-crm/issues/391), [#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389), [#651](https://github.com/DrewBrunning/mycorrhizal-crm/issues/651)) |
 | **Scope** | Backend (Go/Gin + SQLite), CardDAV/CalDAV (server role), Android client, browser/frontend, operator backups. |
 | **Companion docs** | `docs/security/pii-inventory.md` (the *minimization* lens — should each store exist, and is it more/kept-longer than needed), `docs/security/asvs-l2.md` V8 (Data Protection), `docs/deployment.md` (Backups section — the authoritative backup/restore runbook), `docs/security/masvs-l1.md` (Android storage controls). |
 
@@ -425,7 +425,35 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   `backend/services/job_run_purge_service_test.go`, `backend/database/migrate_job_runs_test.go`,
   `backend/main_test.go` (`TestRunJob_RecordsOutcome`).
 
-## 17. Prometheus metrics (`GET /metrics`, in-process) — not user data, not persisted
+## 17. Import run history (`import_runs`) — user-scoped operational bookkeeping
+
+- **Where / who**: one row per **confirmed** contact import (issue #651), written by
+  `models.RecordImportRun` from `ImportSessionManager.Confirm` / `.ConfirmVCF` after the import
+  transaction commits, and read only by its owner via `GET /api/v1/contacts/import/history`
+  (newest 50). Unlike §14–§16, it **is** user-scoped: `import_runs.user_id` is the user who ran the
+  import. Distinct from §12 (the in-memory wizard staging that holds the *uploaded rows*) — this is
+  the durable *outcome summary* only.
+- **What it contains**: the source format token (`csv` / `vcf` / `jscontact` / `records`), the five
+  ImportResult counts (total processed / created / updated / skipped) and an error **count** — no
+  error strings, no contact names, no field values, **no PII**. It cannot answer "which contact"
+  or "what changed", only "how many, when, from what format".
+- **Retention**: no dedicated purge job. An import is a rare, human-initiated action, so the table's
+  growth is self-bounding (a handful of rows per user per year); the read endpoint caps its own
+  output at 50. Rows are immutable once written — no update path.
+- **Deletion / propagation**: hard-deleted with the rest of the account by `DeleteUser`
+  (`admin_user_controller.go`, `Unscoped().Where("user_id = ?", …).Delete(&models.ImportRun{})`) —
+  it is in the manual-cascade checklist and pinned by `controllers/delete_cascade_coverage_test.go`
+  (bucket `go-cascade-user`). Not in any CardDAV/CalDAV projection, not in the Android offline
+  mirror. Dropped wholesale by migration `000042`'s `down.sql`.
+- **Backups**: included in the DB snapshot like any other table; carries nothing sensitive, so it
+  needs no special handling in the backup-confidentiality boundary (§10).
+- **Verification**: `backend/database/migrate_import_runs_test.go`,
+  `backend/services/import_session_history_test.go`,
+  `backend/controllers/import_history_controller_test.go`,
+  `backend/controllers/delete_cascade_coverage_test.go` (`import_runs` seeded + swept in the
+  DeleteUser sweep).
+
+## 18. Prometheus metrics (`GET /metrics`, in-process) — not user data, not persisted
 
 - **Where / who**: process memory only. A hand-rolled registry (`backend/metrics/`) holds counters
   and gauges that the middleware, the scheduled-job wrapper, and `models.RecordSystemEvent` update
@@ -463,6 +491,7 @@ per §1/§7/§8), but it is a genuine, named gap rather than a silently-accepted
 | System-event retention window | `backend/services/system_event_purge_service_test.go` |
 | Webhook delivery purge window + payload trim | `backend/services/webhook_delivery_purge_service_test.go` (9 cases), `webhook_delivery_test.go` trim pins |
 | Job-run retention window | `backend/services/job_run_purge_service_test.go` |
+| Import-run history: one row per confirmed import, swept on account delete | `backend/services/import_session_history_test.go`, `backend/controllers/import_history_controller_test.go`, `backend/controllers/delete_cascade_coverage_test.go` |
 | Admin purge trigger + window | `backend/controllers/admin_user_controller_test.go` M1/M1b/M5 |
 | Sync-horizon 410 Gone matches purge window | `backend/controllers/cursor_feed_test.go` |
 | FTS index follows soft/hard delete | `backend/database/migrate_test.go`, FTS trigger coverage |

@@ -202,6 +202,23 @@ func TestOpenAPIResponseSpotCheck(t *testing.T) {
 	validateResponse(t, replayResp, "POST", "/contacts/import/vcf/confirm", nil)
 	require.JSONEq(t, confirmResp.Body.String(), replayResp.Body.String(), "the replayed result must be byte-identical to the original")
 
+	// 4b. Import run history (issue #651): the confirm above left exactly one
+	// import_runs row, so this validates the full ImportRun item schema — not
+	// just the empty-array wrapper — against a real response.
+	histReq := httptest.NewRequest("GET", "/api/v1/contacts/import/history", nil)
+	histReq.Header.Set("Cookie", cookie)
+	histResp := httptest.NewRecorder()
+	router.ServeHTTP(histResp, histReq)
+	require.Equal(t, 200, histResp.Code, histResp.Body.String())
+	validateResponse(t, histResp, "GET", "/contacts/import/history", nil)
+
+	var history []struct {
+		Format string `json:"format"`
+	}
+	require.NoError(t, json.Unmarshal(histResp.Body.Bytes(), &history))
+	require.Len(t, history, 1, "the records confirm above wrote one history row")
+	require.Equal(t, "records", history[0].Format)
+
 	// 5. The health surface (public, unversioned, path-level server override).
 	// Deep /health can be 200 healthy or degraded depending on scheduled-job
 	// state; both are spec-valid HealthResponse bodies.

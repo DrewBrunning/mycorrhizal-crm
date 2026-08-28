@@ -99,6 +99,7 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"field_definitions":      goCascadeUser,
 	"households":             goCascadeUser,
 	"immich_configs":         goCascadeUser,
+	"import_runs":            goCascadeUser,
 	"link_field_types":       goCascadeUser,
 	"notification_configs":   goCascadeUser,
 	"paperless_configs":      goCascadeUser,
@@ -427,6 +428,7 @@ func TestDeleteCascadeCoverage_DeleteUserSweepsEveryDeclaredUserTable(t *testing
 	require.NoError(t, db.Create(&models.DeviceRegistration{UserID: target.ID, Token: "tok", Client: "fcm"}).Error)
 	require.NoError(t, db.Create(&models.DismissedHouseholdSuggestion{UserID: target.ID, AddressHash: "ah", MemberHash: "mh"}).Error)
 	require.NoError(t, db.Create(&models.ImmichConfig{UserID: target.ID, BaseURL: "https://immich.example"}).Error)
+	require.NoError(t, db.Create(&models.ImportRun{UserID: target.ID, Format: models.ImportFormatCSV, TotalProcessed: 3, Created: 2, Skipped: 1}).Error)
 	require.NoError(t, db.Create(&models.LinkFieldType{UserID: target.ID, Name: "x", Protocol: "https://x/{value}", Category: "other"}).Error)
 	require.NoError(t, db.Create(&models.NotificationConfig{UserID: target.ID}).Error)
 	require.NoError(t, db.Create(&models.PaperlessConfig{UserID: target.ID, BaseURL: "https://paperless.example"}).Error)
@@ -468,6 +470,7 @@ func TestDeleteCascadeCoverage_DeleteUserSweepsEveryDeclaredUserTable(t *testing
 		scopedCount("household_members", &models.HouseholdMember{}, "user_id = ?", target.ID),
 		scopedCount("households", &models.Household{}, "user_id = ?", target.ID),
 		scopedCount("immich_configs", &models.ImmichConfig{}, "user_id = ?", target.ID),
+		scopedCount("import_runs", &models.ImportRun{}, "user_id = ?", target.ID),
 		scopedCount("life_events", &models.LifeEvent{}, "user_id = ?", target.ID),
 		scopedCount("link_field_types", &models.LinkFieldType{}, "user_id = ?", target.ID),
 		scopedCount("notes", &models.Note{}, "user_id = ?", target.ID),
