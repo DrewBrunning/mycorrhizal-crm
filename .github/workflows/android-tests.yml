@@ -114,11 +114,14 @@ jobs:
             echo "No flaky tests this run."
           fi
 
-      # Issue #251: visibility only, no threshold/gate. Runs the *aggregated*
-      # report (issue #342) — a single JaCoCo XML built from every module's
-      # exec data, rather than the per-module `jacocoTestReport` tasks. Codecov
-      # mis-merged the 22 per-module XMLs and reported most `feature/*` modules
-      # at 0% despite the local reports showing ~70%.
+      # Issue #251: the project-wide number stays informational. The hard
+      # gate is the diff-based codecov/patch status (issue #267) — new
+      # uncovered lines in the changed files fail the PR. Runs the
+      # *aggregated* report (issue #342) — a single JaCoCo XML built from
+      # every module's exec data, rather than the per-module
+      # `jacocoTestReport` tasks. Codecov mis-merged the 22 per-module XMLs
+      # and reported most `feature/*` modules at 0% despite the local reports
+      # showing ~70%.
       - name: Coverage report (JaCoCo, aggregated)
         working-directory: android
         run: ./gradlew jacocoTestReportAggregated

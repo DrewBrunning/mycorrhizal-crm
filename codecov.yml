@@ -1,7 +1,16 @@
-# Codecov config — issue #294. Visibility/tracking only: every status check
-# below is `informational: true` on purpose. The hard gate is a separate,
-# deliberately deferred decision (issue #267) — do not flip these to
-# non-informational without reading that issue first.
+# Codecov config — issue #294 (visibility) + issue #267 (the diff gate).
+#
+# Two statuses, deliberately asymmetric:
+#   - project: informational only. An absolute "must be at least N%" floor is
+#     the worst variant of a coverage gate (issue #267) and stays off.
+#   - patch: the hard gate. `target: 100%` fails a PR that adds any changed
+#     line the coverage tooling records as uncovered (Go coverprofile, vitest
+#     lcov, JaCoCo aggregated XML — all three upload via the flags below).
+#     `only_pulls: true` scopes it to PRs, where the author can act on it; a
+#     commit pushed straight to main has no PR diff to gate and passes. The
+#     override path is documented in docs/development/coverage.md: write the
+#     test, or `# pragma: no cover` a line that genuinely cannot be covered
+#     (rare, needs a reason), or add a file to `ignore:` below.
 codecov:
   require_ci_to_pass: false
 
@@ -12,7 +21,9 @@ coverage:
         informational: true
     patch:
       default:
-        informational: true
+        target: 100%
+        threshold: 0%
+        only_pulls: true
 
 # CI is path-gated (dorny/paths-filter — see unit-tests.yml / android-tests.yml
 # "Detect Changes"), so a PR touching only one area never uploads the other
