@@ -378,7 +378,7 @@ func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) (int, error) {
 				continue
 			}
 			payload := buildOverduePayload(p, health, contactID[key{p.UserID, p.EntityID}])
-			go TriggerWebhooks(ctx, db, cfg, p.UserID, "cadence.overdue", payload)
+			TriggerWebhooksAsync(ctx, db, cfg, p.UserID, "cadence.overdue", payload)
 			emitted++
 		}
 	}

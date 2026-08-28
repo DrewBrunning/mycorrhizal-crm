@@ -402,7 +402,7 @@ func createReachOutSuggestion(ctx context.Context, db *gorm.DB, cfg config.Confi
 		"new_value":         ch.NewValue,
 		"reminder_id":       reminderID,
 	}
-	go TriggerWebhooks(ctx, db, cfg, userID, "reach_out_suggested", payload)
+	TriggerWebhooksAsync(ctx, db, cfg, userID, "reach_out_suggested", payload)
 	return nil
 }
 

@@ -1,12 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import {
-  getJobRunHealth,
-  listJobRuns,
-  type JobRun,
-  type JobRunHealth,
-} from '../api/jobRuns';
+import { getJobRunHealth, type JobRun, type JobRunHealth, listJobRuns } from '../api/jobRuns';
 import BackgroundJobsPanel from './BackgroundJobsPanel';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -115,7 +110,9 @@ test('expanding a row loads and shows its run history', async () => {
 
   fireEvent.click(screen.getByTestId('job-run-daily_reminders'));
 
-  await waitFor(() => expect(listJobRuns).toHaveBeenCalledWith({ jobName: 'daily_reminders', limit: 25 }));
+  await waitFor(() =>
+    expect(listJobRuns).toHaveBeenCalledWith({ jobName: 'daily_reminders', limit: 25 }),
+  );
   expect(await screen.findByText('Resend rejected the request')).toBeInTheDocument();
   expect(screen.getByText('Skipped')).toBeInTheDocument();
 });

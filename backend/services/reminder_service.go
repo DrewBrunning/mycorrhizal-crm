@@ -358,13 +358,13 @@ func SendReminders(db *gorm.DB, config config.Config) (int, error) {
 
 		// Fire reminder.triggered webhooks regardless of channel config
 		for _, reminder := range userReminders {
-			go TriggerWebhooks(ctx, db, config, reminder.UserID, "reminder.triggered", reminder)
+			TriggerWebhooksAsync(ctx, db, config, reminder.UserID, "reminder.triggered", reminder)
 		}
 
 		// Fire birthday.occurred for each birthday that falls today regardless of channel config
 		for _, bday := range todayBirthdays {
 			bday := bday
-			go TriggerWebhooks(ctx, db, config, userID, "birthday.occurred", bday)
+			TriggerWebhooksAsync(ctx, db, config, userID, "birthday.occurred", bday)
 		}
 	}
 

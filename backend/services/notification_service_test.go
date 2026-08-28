@@ -47,6 +47,13 @@ func setupNotificationTestDB(t *testing.T) *gorm.DB {
 			sqlDB.Close()
 		}
 	})
+	// SendReminders / ProcessOverdueCadences fan webhooks out via
+	// TriggerWebhooksAsync — fire-and-forget goroutines that touch this DB.
+	// Registered last so it runs FIRST at teardown (t.Cleanup is LIFO): drain
+	// those goroutines while the DB file is still open, before the closes and
+	// t.TempDir()'s RemoveAll, so a leaked delivery cannot race the cleanup
+	// ("TempDir RemoveAll cleanup: directory not empty").
+	t.Cleanup(WaitForWebhookGoroutines)
 	return db
 }
 

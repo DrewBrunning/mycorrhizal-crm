@@ -16,6 +16,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,6 +24,29 @@ import (
 )
 
 const maxDeliveryAttempts = 3
+
+// webhookGoroutines tracks the fire-and-forget goroutines TriggerWebhooksAsync
+// launches and the per-delivery goroutines TriggerWebhooks spawns. Production
+// never waits on it — webhook fan-out stays asynchronous — but a test can call
+// WaitForWebhookGoroutines in cleanup so a leaked delivery goroutine's DB
+// access cannot race t.TempDir() teardown ("TempDir RemoveAll cleanup:
+// directory not empty").
+var webhookGoroutines sync.WaitGroup
+
+// WaitForWebhookGoroutines blocks until every in-flight TriggerWebhooks* call
+// and the deliveries it spawned have returned. Test-only.
+func WaitForWebhookGoroutines() { webhookGoroutines.Wait() }
+
+// TriggerWebhooksAsync runs TriggerWebhooks in a tracked goroutine — the
+// fire-and-forget entry point for job/handler code that must not block on
+// webhook fan-out.
+func TriggerWebhooksAsync(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, eventType string, data interface{}) {
+	webhookGoroutines.Add(1)
+	go func() {
+		defer webhookGoroutines.Done()
+		TriggerWebhooks(ctx, db, cfg, userID, eventType, data)
+	}()
+}
 
 // Sentinels surfaced by the SSRF-guarded dialer. They are returned as ordinary
 // dial errors and end up in the stored delivery record's Error field.
@@ -182,7 +206,9 @@ func TriggerWebhooks(ctx context.Context, db *gorm.DB, cfg config.Config, userID
 		}
 
 		wh := wh
+		webhookGoroutines.Add(1)
 		go func() {
+			defer webhookGoroutines.Done()
 			deliverySem <- struct{}{}
 			defer func() { <-deliverySem }()
 			deliverWebhook(deliveryCtx, db, cfg, wh, eventType, body, 1)

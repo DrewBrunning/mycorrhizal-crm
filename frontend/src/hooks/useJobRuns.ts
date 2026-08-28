@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   getJobRunHealth,
-  listJobRuns,
   type JobRun,
   type JobRunHealth,
   type ListJobRunsParams,
+  listJobRuns,
 } from '../api/jobRuns';
 import { handleFetchError } from '../utils/errorHandler';
 
