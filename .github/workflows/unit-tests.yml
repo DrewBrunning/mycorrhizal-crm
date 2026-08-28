@@ -271,7 +271,16 @@ jobs:
       # this leg's packages and suffixed so the three legs' artifacts don't
       # collide. -timeout 20m -> 25m (issue #630): a leg has the whole runner
       # now, but the inner ceiling stays explicit.
-      - name: Run tests with coverage (retry-on-failure)
+      #
+      # Issue #639: NO -coverprofile here. gotestsum's --rerun-fails re-invokes
+      # `go test` for just the failed test's package, and `go test`
+      # *truncates and rewrites* the coverprofile on that second invocation —
+      # so a single flaky test collapsed a whole leg's profile to just the
+      # reran test (controllers 72.4% -> 1.2%, dragging the merged Codecov
+      # number down ~10pt while the leg still reported green). Coverage is now
+      # a separate no-rerun pass below; this run is purely the gate + JUnit +
+      # flake signal.
+      - name: Run tests (retry-on-failure)
         working-directory: backend
         env:
           LEG: ${{ matrix.leg }}
@@ -282,7 +291,28 @@ jobs:
           --rerun-fails-report="rerun-fails-${LEG}.txt"
           --junitfile="junit-${LEG}.xml"
           --packages="$PKGS"
-          -- -race -timeout=25m -coverprofile="coverage-${LEG}.out" -covermode=atomic
+          -- -race -timeout=25m
+
+      # Issue #639: dedicated coverage pass — no --rerun-fails, so nothing
+      # rewrites the profile mid-run; no -race, which roughly halves the
+      # wall-clock of this second pass and leaves the coverage numbers
+      # identical (race instrumentation doesn't change which statements
+      # execute). `go test` writes a complete -coverprofile even when a test
+      # fails, so a flake here still produces an accurate profile;
+      # continue-on-error keeps a flake (or an OOM/timeout) from failing the
+      # leg, and the aggregator's guard drops the Codecov upload entirely if
+      # a leg's profile went missing (carryforward then holds the last known
+      # number) rather than uploading a partial.
+      - name: Collect coverage (no retry)
+        if: always()
+        continue-on-error: true
+        working-directory: backend
+        env:
+          LEG: ${{ matrix.leg }}
+          PKGS: ${{ steps.pkgs.outputs.list }}
+        run: |
+          read -ra pkgs <<< "$PKGS"
+          go test "${pkgs[@]}" -timeout=25m -coverprofile="coverage-${LEG}.out" -covermode=atomic
 
       # Issue #268: the flake signal for Go — visibility only, does not fail
       # the leg (the rerun exists precisely to keep the gate green).
@@ -367,45 +397,72 @@ jobs:
       # atomic-mode profiles concatenate into one valid profile (a single
       # `mode:` header, no overlapping block lines). This keeps the Codecov
       # number identical to the old single `--packages="./..."` run.
+      #
+      # Issue #639: require all three legs' profiles before uploading. Each
+      # leg's coverage now comes from a no-rerun `go test -coverprofile` pass
+      # that is `continue-on-error`, so a crashed/timed-out coverage pass
+      # leaves its `coverage-<leg>.out` missing rather than clobbered. Merging
+      # whatever happens to be present would silently upload a two-thirds
+      # profile and tank the number; instead, skip the upload for this commit
+      # and let Codecov's per-flag `carryforward` (codecov.yml) hold the last
+      # known coverage. `ok=false` gates every coverage step below; it never
+      # fails the required "Backend (Go)" check (coverage is informational).
       - name: Merge coverage profiles
+        id: merge
         if: needs.backend-tests.result == 'success'
         working-directory: backend
         run: |
+          missing=""
+          for leg in controllers services rest; do
+            f="coverage-${leg}.out"
+            if [ ! -s "$f" ] || [ "$(wc -l < "$f")" -lt 2 ]; then
+              missing="$missing $leg"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::warning::coverage profile missing for leg(s):$missing — skipping Codecov upload, carryforward holds last known coverage"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           header_done=0
-          for f in coverage-*.out; do
+          for f in coverage-controllers.out coverage-services.out coverage-rest.out; do
             if [ "$header_done" -eq 0 ]; then
               head -n1 "$f" > coverage.out
               header_done=1
             fi
             tail -n +2 "$f" >> coverage.out
           done
+          echo "ok=true" >> "$GITHUB_OUTPUT"
 
       # Issue #294: durable coverage tracking + per-PR diff comment.
       # Informational only (see codecov.yml) — a failed upload (app not
       # installed yet, Codecov outage) must not fail the build, hence
-      # fail_ci_if_error: false.
+      # fail_ci_if_error: false. disable_search so only the merged profile is
+      # sent, not the per-leg coverage-*.out parts sitting alongside it
+      # (issue #639).
       - name: Upload coverage to Codecov
-        if: needs.backend-tests.result == 'success'
+        if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
         uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: backend/coverage.out
+          disable_search: true
           flags: backend
           fail_ci_if_error: false
 
       # Issue #251: visibility only, no threshold/gate.
       - name: Coverage summary
-        if: needs.backend-tests.result == 'success'
+        if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
         working-directory: backend
         run: go tool cover -func=coverage.out
 
       - name: Render HTML coverage report
-        if: needs.backend-tests.result == 'success'
+        if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
         working-directory: backend
         run: go tool cover -html=coverage.out -o coverage.html
 
       - name: Upload coverage report
-        if: needs.backend-tests.result == 'success'
+        if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: backend-coverage

@@ -68,6 +68,7 @@ func TriggerPurge(c *gin.Context, cfg config.Config) {
 	start := time.Now()
 	services.PurgeSoftDeletedRows(db, cfg)
 	services.PurgeExpiredContactShares(db, cfg)
+	services.PurgeExpiredWebhookDeliveries(db, cfg)
 	recordManualJobRun(c.Request.Context(), db, models.JobNamePurgeDeleted, start, nil, nil)
 	c.JSON(http.StatusOK, gin.H{"message": "Purge completed"})
 }

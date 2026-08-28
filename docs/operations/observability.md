@@ -128,8 +128,9 @@ recovered panic; `integration_failed` once a delivery exhausts its retry budget)
 report `failing` / `unknown` and a rising `consecutive_failures`, but never `healthy`, and their
 incident cannot auto-close until a success-side event exists — webhook via
 [#422](https://github.com/DrewBrunning/mycorrhizal-crm/issues/422); the scheduler intentionally does
-not emit `job_completed` (a per-tick row would swamp the timeline). The token sets are lists, so a
-future `job_completed` / `backup_completed` producer needs no code change.
+not emit `job_completed` on the timeline (a per-tick row would swamp it) — the per-run record lives
+in `job_runs` instead (next section). The token sets are lists, so a future `job_completed` /
+`backup_completed` producer needs no code change.
 
 Consumers of this state: `/metrics`
 ([#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389)) exports the counters as gauges;
@@ -138,6 +139,39 @@ alerting on `Healthy`↔`Failing` transitions
 below) reads it directly. Error aggregation (next section) is a *sibling* fold over the same stream,
 not a consumer of this one. Rendered at `/system-events` (web) and Settings → System events
 (Android), above the event timeline.
+
+## Background job run history
+
+`GET /admin/job-runs` and `GET /admin/job-runs/health` (both admin-only) are the per-run record for
+the scheduled jobs (issue [#391](https://github.com/DrewBrunning/mycorrhizal-crm/issues/391)) that
+`system_events` deliberately omits. Every invocation of every scheduled job — `daily_reminders`,
+`calendar_sync`, `reach_out_detection`, `cadence_overdue`, the purge jobs, `alert_eval`, … — writes
+one `job_runs` row: `job_name`, `trigger` (`scheduled` cron tick / `initial` boot catch-up /
+`manual` `/admin/trigger-*`), `started_at` / `finished_at`, `duration_ms`, `result`
+(`success` / `failure` / `skipped`), the sanitized `error` on the failure path, an optional
+`items_processed` count (reminders sent, suggestions created), and the run's `correlation_id`.
+`skipped` means the run did not execute — the distributed job lock was held or it ran too recently —
+so a suppressed run is *recorded*, not silent.
+
+`GET /admin/job-runs` lists the history newest-first, filterable by `job_name` / `result` /
+`since` / `until` / `limit` (default 100, max 500). `GET /admin/job-runs/health` folds it per job:
+`status` (`healthy` / `failing` / `unknown`), `last_run_at` / `last_result`, `last_success_at` /
+`last_failure_at`, `consecutive_failures` + `incident_first_failure_at`, and an
+`avg_duration_ms` / `max_duration_ms` trend over the last 20 executed runs — so "this job normally
+takes 1 s but the last run took 40 s" is visible as a trend, not inferred from one row. `skipped`
+runs are transparent to `status` and the failure streak. Like the surfaces above it is **derived on
+read**; the only write path for `job_runs` is `RecordJobRun` from the job wrapper.
+
+A `daily_reminders` run whose notification send fails now records `result: failure` with the send
+error — the reminder job no longer reports success while a birthday reminder silently fails to send.
+
+**Retention**: `JOB_RUN_RETENTION_DAYS` (default `30`). A daily purge job (`job_run_purge`)
+hard-deletes rows whose `started_at` is older than the window; `<=0` disables it. Rendered as the
+**Background jobs** panel at `/system-events` (web) and on the System Events screen (Android).
+
+Consumers: `/metrics` ([#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389)) will
+export the per-job-outcome counters — those counters are `#389`'s scope, the outcome *records* are
+this one's.
 
 ## Operational error aggregation
 
@@ -212,6 +246,7 @@ Subjects follow `🔴 Backup failed` … `🟢 Backup recovered after 3 failures
 | `LOG_LEVEL` | `info` | `debug` \| `info` \| `warn` \| `error` |
 | `LOG_PRETTY` | off in `release` | human-readable console output instead of JSON (dev) |
 | `SYSTEM_EVENT_RETENTION_DAYS` | `30` | how long `system_events` rows survive |
+| `WEBHOOK_DELIVERY_RETENTION_DAYS` | `30` | how long `webhook_deliveries` rows survive |
 | `DB_INTEGRITY_CHECK_ENABLED` / `_INTERVAL_HOURS` | on / `24` | scheduled `PRAGMA integrity_check` |
 | `DB_RESTORE_DRILL_ENABLED` / `_INTERVAL_HOURS` | on / `168` | scheduled backup-restore drill |
 | `ALERTING_ENABLED` | on | master switch for the alert evaluator |

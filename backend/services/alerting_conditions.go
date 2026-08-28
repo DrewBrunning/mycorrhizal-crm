@@ -254,6 +254,7 @@ func trackedJobs(cfg config.Config) []jobStaleDef {
 		{models.JobNamePurgeDeleted, 24 * time.Hour},
 		{models.JobNameAuditPurge, 24 * time.Hour},
 		{models.JobNameSystemEventPurge, 24 * time.Hour},
+		{models.JobNameWebhookDeliveryPurge, 24 * time.Hour},
 		{models.JobNameCadenceOverdue, 24 * time.Hour},
 		{models.JobNameReachOutDetection, 24 * time.Hour},
 		{models.JobNameImmichSync, hours(cfg.ImmichSyncIntervalHours)},

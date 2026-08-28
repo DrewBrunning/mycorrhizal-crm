@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"io"
 	"mycorrhizal/config"
 	"mycorrhizal/models"
 	"net/http"
@@ -107,8 +108,10 @@ func TestProcessOverdueCadencesEmitsWebhookForOverduePolicy(t *testing.T) {
 	require.NoError(t, db.Create(&models.CadencePolicy{UserID: user.ID, EntityID: freshContact.VCardUID, TargetIntervalDays: 30}).Error)
 
 	var hits int32
+	var receivedBody []byte
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&hits, 1)
+		receivedBody, _ = io.ReadAll(r.Body)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -139,12 +142,23 @@ func TestProcessOverdueCadencesEmitsWebhookForOverduePolicy(t *testing.T) {
 			ContactID       uint   `json:"contact_id"`
 		} `json:"data"`
 	}
-	require.NoError(t, json.Unmarshal([]byte(deliveries[0].Payload), &envelope))
+	require.NoError(t, json.Unmarshal(receivedBody, &envelope))
 	assert.Equal(t, "cadence.overdue", envelope.Event)
 	assert.Equal(t, policy.ID, envelope.Data.CadencePolicyID)
 	assert.Equal(t, overdueContact.VCardUID, envelope.Data.EntityID)
 	assert.True(t, envelope.Data.OverdueBy > 0)
 	assert.Equal(t, overdueContact.ID, envelope.Data.ContactID)
+
+	// The delivered body above carries the full payload; the stored receipt
+	// is the trimmed envelope (issue #622: a successful delivery never needs
+	// the entity body it carried).
+	var storedEnvelope struct {
+		Event string          `json:"event"`
+		Data  json.RawMessage `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(deliveries[0].Payload), &storedEnvelope))
+	assert.Equal(t, "cadence.overdue", storedEnvelope.Event)
+	assert.Nil(t, storedEnvelope.Data, "the stored receipt must not retain the entity body")
 
 	// Lock lifecycle: acquired and released.
 	var job models.JobExecution

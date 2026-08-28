@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -187,8 +188,10 @@ func TestCheckDBIntegrityScheduledFiresWebhookOnCorruption(t *testing.T) {
 	// were empty at corruption time (all the bulk data went into notes), so
 	// they're expected to have survived the corruption intact.
 	var hits int32
+	var receivedBody []byte
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&hits, 1)
+		receivedBody, _ = io.ReadAll(r.Body)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -216,14 +219,25 @@ func TestCheckDBIntegrityScheduledFiresWebhookOnCorruption(t *testing.T) {
 	require.Len(t, deliveries, 1)
 	assert.Equal(t, EventDBIntegrityCheckFailed, deliveries[0].EventType)
 
+	// The wire body carries the full payload (the receiver still gets the
+	// diagnostic detail); the stored receipt is the trimmed envelope (issue
+	// #622: a successful delivery never needs the entity body it carried).
 	var envelope struct {
 		Event string `json:"event"`
 		Data  struct {
 			Detail string `json:"detail"`
 		} `json:"data"`
 	}
-	require.NoError(t, json.Unmarshal([]byte(deliveries[0].Payload), &envelope))
-	assert.NotEmpty(t, envelope.Data.Detail)
+	require.NoError(t, json.Unmarshal(receivedBody, &envelope))
+	assert.NotEmpty(t, envelope.Data.Detail, "the delivered HTTP body must still carry the diagnostic detail")
+
+	var storedEnvelope struct {
+		Event string          `json:"event"`
+		Data  json.RawMessage `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(deliveries[0].Payload), &storedEnvelope))
+	assert.Equal(t, EventDBIntegrityCheckFailed, storedEnvelope.Event)
+	assert.Nil(t, storedEnvelope.Data, "the stored receipt must not retain the entity body")
 
 	var job models.JobExecution
 	require.NoError(t, raw.Where("job_name = ?", models.JobNameDBIntegrityCheck).First(&job).Error)

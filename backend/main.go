@@ -321,6 +321,15 @@ func main() {
 	s.Every(24).Hours().Do(recoverJob(db, models.JobNameJobRunPurge, models.JobTriggerScheduled, jobRunPurgeTask))
 	go safeGo(db, models.JobNameJobRunPurge, models.JobTriggerInitial, jobRunPurgeTask)
 
+	// Purge expired webhook deliveries past their retention window (issue
+	// #622). Job-lock guarded so a multi-instance deploy does not double-purge.
+	webhookDeliveryPurgeTask := func() error {
+		services.PurgeExpiredWebhookDeliveriesScheduled(db, *cfg)
+		return nil
+	}
+	s.Every(24).Hours().Do(recoverJob(db, models.JobNameWebhookDeliveryPurge, models.JobTriggerScheduled, webhookDeliveryPurgeTask))
+	go safeGo(db, models.JobNameWebhookDeliveryPurge, models.JobTriggerInitial, webhookDeliveryPurgeTask)
+
 	// Emit overdue-cadence webhooks daily (T19). Job-lock guarded so a
 	// multi-instance deploy does not double-fire. Reports the number emitted.
 	cadenceOverdueTask := func() (int, error) { return services.ProcessOverdueCadences(db, *cfg) }

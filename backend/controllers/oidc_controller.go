@@ -96,7 +96,12 @@ func OIDCLoginHandler(provider *services.OIDCProvider, cfg *config.Config) gin.H
 		// by appending client=android to a callback URL they cannot otherwise
 		// authenticate.
 		if c.Query("client") == "android" {
-			c.SetCookie("oidc_client", "android", 600, "/api/v1/auth/oidc/callback", cfg.CookieDomain, true, true)
+			// Issue #605: this cookie must follow cfg.CookieSecure like its
+			// three siblings above. It hardcoded Secure=true, which makes a
+			// browser reject it entirely on the supported plain-HTTP
+			// deployment (COOKIE_SECURE=false), silently dropping the
+			// android client hint.
+			c.SetCookie("oidc_client", "android", 600, "/api/v1/auth/oidc/callback", cfg.CookieDomain, cfg.CookieSecure, true)
 		}
 
 		c.Redirect(http.StatusFound, provider.BuildAuthURL(state, nonce, pkceVerifier))
@@ -129,10 +134,10 @@ func OIDCCallbackHandler(provider *services.OIDCProvider, cfg *config.Config) gi
 		nonceCookie, nonceErr := c.Cookie("oidc_nonce")
 		pkceCookie, pkceErr := c.Cookie("oidc_pkce")
 		c.SetSameSite(http.SameSiteLaxMode)
-		c.SetCookie("oidc_state", "", -1, "/api/v1/auth/oidc/callback", cfg.CookieDomain, true, true)
-		c.SetCookie("oidc_nonce", "", -1, "/api/v1/auth/oidc/callback", cfg.CookieDomain, true, true)
-		c.SetCookie("oidc_pkce", "", -1, "/api/v1/auth/oidc/callback", cfg.CookieDomain, true, true)
-		c.SetCookie("oidc_client", "", -1, "/api/v1/auth/oidc/callback", cfg.CookieDomain, true, true)
+		c.SetCookie("oidc_state", "", -1, "/api/v1/auth/oidc/callback", cfg.CookieDomain, cfg.CookieSecure, true)
+		c.SetCookie("oidc_nonce", "", -1, "/api/v1/auth/oidc/callback", cfg.CookieDomain, cfg.CookieSecure, true)
+		c.SetCookie("oidc_pkce", "", -1, "/api/v1/auth/oidc/callback", cfg.CookieDomain, cfg.CookieSecure, true)
+		c.SetCookie("oidc_client", "", -1, "/api/v1/auth/oidc/callback", cfg.CookieDomain, cfg.CookieSecure, true)
 
 		if err != nil || stateCookie == "" {
 			log.Warn().Msg("OIDC callback: missing state cookie")
