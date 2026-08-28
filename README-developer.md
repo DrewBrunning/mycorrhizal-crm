@@ -59,6 +59,7 @@
 - Run tests: `cd frontend && npm run test:e2e` (or `test:e2e:ui` for interactive mode)
 - Stop and clean up: `docker compose -f docker-compose.test.yml down -v`
 - Tests run automatically in CI on push/PR to main via [.github/workflows/e2e-tests.yml](.github/workflows/e2e-tests.yml).
+- **Visual regression (issue #258):** `frontend/e2e/visual.spec.ts` snapshots the dashboard, contacts list, contact detail and the add-reminder dialog at desktop + phone widths and fails CI on any pixel diff. Baselines are committed under `frontend/e2e/visual.spec.ts-snapshots/`. Regenerate after an intentional visual change with `cd frontend && npx playwright test visual.spec.ts --update-snapshots`, then review the diff in the HTML report before committing. See the spec's header comment for why the shots are made deterministic (frozen clock, committed webfont, intercepted list/dashboard payloads).
 
 **Android E2E (instrumented, issue #238)**
 - The instrumented suite in [android/app/src/androidTest](android/app/src/androidTest) drives the *real* app (MainActivity + Hilt graph) against the *real* `docker-compose.test.yml` backend, on an emulator or a physical device — the Android counterpart to the web Playwright suite. It covers login → list → detail → edit → list refresh, the favorites flow (issue #212), and archive/delete + the audit-undo round-trip.

@@ -125,6 +125,11 @@ jobs:
 
       - name: Run Playwright tests
         working-directory: frontend
+        # Runs every spec, including visual.spec.ts's screenshot regression
+        # (issue #258): the committed baselines under e2e/visual.spec.ts-snapshots/
+        # are compared here — any pixel diff to a pinned view fails the job.
+        # Regenerate after an intentional visual change with
+        # `npx playwright test visual.spec.ts --update-snapshots`.
         run: npx playwright test
         env:
           CI: true
