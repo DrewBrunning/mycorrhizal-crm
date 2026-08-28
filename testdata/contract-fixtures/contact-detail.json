@@ -148,12 +148,13 @@
       ]
     },
     "crm": {},
-    "etag": "e-11-1787270921",
+    "etag": "e-11-7",
     "gender": "",
     "id": 11,
     "is_favorite": false,
     "passthrough": {},
     "photo": "",
+    "revision": 7,
     "uid": "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f"
   },
   "external_activities": [],

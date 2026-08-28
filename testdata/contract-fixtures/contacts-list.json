@@ -13,6 +13,7 @@
       "photo": "",
       "primary_email": "",
       "primary_phone": "",
+      "revision": 3,
       "uid": "0836c948-4c37-4ac8-bb27-358936e6b67c"
     },
     {
@@ -28,6 +29,7 @@
       "photo": "",
       "primary_email": "fixture.primary@example.com",
       "primary_phone": "+1 555-0100",
+      "revision": 7,
       "uid": "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f"
     },
     {
@@ -43,6 +45,7 @@
       "photo": "",
       "primary_email": "eve@example.com",
       "primary_phone": "+1 555-0105",
+      "revision": 2,
       "uid": "26861acc-8372-4be8-9113-84fb27995aaa"
     }
   ],

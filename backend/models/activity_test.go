@@ -27,16 +27,11 @@ func setupActivityTestDB(t *testing.T) *gorm.DB {
 }
 
 // setupActivityTestDBFrozenClock is setupActivityTestDB with GORM's NowFunc
-// pinned to a single instant, used only by TestActivityETagSaveDoesNotLoop --
-// not folded into setupActivityTestDB itself since several of this file's
-// other tests may care about real time elapsing between operations.
-// AfterSave computes the ETag from UpdatedAt.Unix(), and GORM bumps
-// UpdatedAt to "now" on every plain Save() regardless of whether any field
-// changed, so a test asserting two back-to-back Save() calls leave the ETag
-// unchanged is only deterministic if both calls are guaranteed to land in
-// the same wall-clock second -- confirmed flaky under CI load otherwise (the
-// same pattern failed once in TestLifeEventETagSaveDoesNotLoop with ETags a
-// second apart).
+// pinned to a single instant. It existed to make the old
+// UpdatedAt.Unix()-derived ETag deterministic across back-to-back Save()
+// calls; under ADR 0006 the token is a monotonic revision counter with no
+// wall-clock input, so the frozen clock is kept only for general
+// deterministic UpdatedAt values.
 func setupActivityTestDBFrozenClock(t *testing.T) *gorm.DB {
 	t.Helper()
 
@@ -95,13 +90,17 @@ func TestActivityETagGeneratedOnCreateAndPersists(t *testing.T) {
 	activity := Activity{UserID: user.ID, Title: "Coffee", Date: time.Now(), Type: InteractionTypeMeal}
 	require.NoError(t, db.Create(&activity).Error)
 
+	// ADR 0006: token = revision counter stamped at 1 on create, ETag derived
+	// from it (e-{id}-{revision}).
 	require.NotEmpty(t, activity.ETag)
 	assert.Regexp(t, regexp.MustCompile(`^e-\d+-\d+$`), activity.ETag)
-	assert.Equal(t, fmt.Sprintf("e-%d-%d", activity.ID, activity.UpdatedAt.Unix()), activity.ETag)
+	assert.Equal(t, int64(1), activity.Revision)
+	assert.Equal(t, fmt.Sprintf("e-%d-%d", activity.ID, activity.Revision), activity.ETag)
 
 	var reloaded Activity
 	require.NoError(t, db.First(&reloaded, activity.ID).Error)
 	assert.Equal(t, activity.ETag, reloaded.ETag, "ETag must be persisted, not just set in memory")
+	assert.Equal(t, int64(1), reloaded.Revision, "revision must be persisted, not just set in memory")
 }
 
 func TestActivityETagChangesOnUpdate(t *testing.T) {
@@ -113,35 +112,48 @@ func TestActivityETagChangesOnUpdate(t *testing.T) {
 	require.NoError(t, db.Create(&activity).Error)
 	firstETag := activity.ETag
 
-	future := time.Now().Add(10 * time.Second)
-	require.NoError(t, db.Model(&activity).Updates(map[string]any{"title": "Dinner", "updated_at": future}).Error)
+	// updated_at in the map no longer drives the token (ADR 0006) — the
+	// revision counter does.
+	require.NoError(t, db.Model(&activity).Updates(map[string]any{"title": "Dinner", "updated_at": time.Now().Add(10 * time.Second)}).Error)
 
 	assert.NotEqual(t, firstETag, activity.ETag, "updating an Activity must change its ETag")
-	assert.Equal(t, fmt.Sprintf("e-%d-%d", activity.ID, future.Unix()), activity.ETag)
+	assert.Equal(t, int64(2), activity.Revision, "an update bumps the revision to 2")
+	assert.Equal(t, fmt.Sprintf("e-%d-%d", activity.ID, activity.Revision), activity.ETag)
 }
 
-func TestActivityETagSaveDoesNotLoop(t *testing.T) {
+// TestActivityRevisionBumpsPerSaveNoLoop replaces the old
+// TestActivityETagSaveDoesNotLoop: under ADR 0006 every persisted write IS a
+// new revision, so back-to-back Save() calls bump revision exactly twice and
+// never loop (UpdateColumns bypasses hooks).
+func TestActivityRevisionBumpsPerSaveNoLoop(t *testing.T) {
 	db := setupActivityTestDBFrozenClock(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 
 	activity := Activity{UserID: user.ID, Title: "Coffee", Date: time.Now()}
 	require.NoError(t, db.Create(&activity).Error)
-	etag := activity.ETag
+	require.Equal(t, int64(1), activity.Revision)
 
-	// AfterSave must use UpdateColumn (which skips hooks), not a nested Save
+	// AfterSave must use UpdateColumns (which skips hooks), not a nested Save
 	// — otherwise these re-saves would recurse forever.
 	require.NoError(t, db.Save(&activity).Error)
 	require.NoError(t, db.Save(&activity).Error)
 
-	assert.Equal(t, etag, activity.ETag, "a save that does not change UpdatedAt must not rewrite the ETag")
+	assert.Equal(t, int64(3), activity.Revision, "each plain Save bumps the revision (1 create + 2 saves)")
+	assert.Equal(t, fmt.Sprintf("e-%d-%d", activity.ID, activity.Revision), activity.ETag)
+
+	var reloaded Activity
+	require.NoError(t, db.First(&reloaded, activity.ID).Error)
+	assert.Equal(t, int64(3), reloaded.Revision, "in-memory and persisted revisions must agree (no loop drift)")
+	assert.Equal(t, activity.ETag, reloaded.ETag)
 }
 
 // TestActivityETagBulkUpdateOnZeroValueReceiverDoesNotCorrupt pins the
 // zero-value-receiver guard in Activity.AfterSave: a bulk
 // Model(&Activity{}).Where(...).Update on a zero-value receiver fires the
-// hook with no primary key, and a naive hook would widen its UpdateColumn to
-// every row in the table (writing "e-0-..."). The ETag must be left alone.
+// hook with no primary key, and a naive hook would widen its UpdateColumns to
+// every row in the table (writing "e-0-..." and resetting every revision).
+// Both must be left alone.
 func TestActivityETagBulkUpdateOnZeroValueReceiverDoesNotCorrupt(t *testing.T) {
 	db := setupActivityTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
@@ -152,15 +164,8 @@ func TestActivityETagBulkUpdateOnZeroValueReceiverDoesNotCorrupt(t *testing.T) {
 	require.NoError(t, db.Create(&one).Error)
 	require.NoError(t, db.Create(&two).Error)
 
-	// Capture the ETags the create-time hook assigned, so the assertion below
-	// can compare against what was actually stored.
-	//
-	// Deliberately NOT re-derived from UpdatedAt after the update: the bulk
-	// Update legitimately bumps UpdatedAt while the hook (correctly) leaves the
-	// ETag alone, so `fmt.Sprintf("e-%d-%d", r.ID, r.UpdatedAt.Unix())` only
-	// matches when the create and the update land in the same wall-clock
-	// second. That made this test flaky under parallel package load — it failed
-	// whenever the two straddled a second boundary.
+	// Capture the ETags/revisions the create-time hook assigned, so the
+	// assertions below can compare against what was actually stored.
 	etagBefore := map[uint]string{}
 	var before []Activity
 	require.NoError(t, db.Order("id").Find(&before).Error)
@@ -180,7 +185,6 @@ func TestActivityETagBulkUpdateOnZeroValueReceiverDoesNotCorrupt(t *testing.T) {
 		require.NotEmpty(t, r.ETag)
 		assert.Regexp(t, regexp.MustCompile(`^e-\d+-\d+$`), r.ETag, "bulk update must not rewrite ETags from an empty ID")
 		assert.Equal(t, etagBefore[r.ID], r.ETag, "ETag must survive the bulk update unchanged")
-		assert.NotEqual(t, fmt.Sprintf("e-0-%d", r.UpdatedAt.Unix()), r.ETag,
-			"an ETag derived from a zero ID means the hook fired on the zero-value receiver")
+		assert.Equal(t, int64(1), r.Revision, "bulk update on a zero-value receiver must not bump revisions")
 	}
 }

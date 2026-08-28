@@ -345,6 +345,9 @@ export interface ContactRecordResponse {
   id: number;
   uid: string;
   etag: string;
+  // Issue #591: monotonic per-row write counter, read-only. Always present.
+  // The token a client echoes back in a conditional write (ADR 0006).
+  revision: number;
   gender?: string;
   card: Card;
   crm: CRMEnvelope;
@@ -385,6 +388,9 @@ export interface ContactSummaryDTO {
   // Issue #173: required (not optional) — the backend always serializes it
   // (no omitempty) so the star icon can treat it as present.
   is_favorite: boolean;
+  // Issue #591: monotonic per-row write counter, read-only, always present
+  // (migration 000044 backfills every row).
+  revision: number;
 }
 
 // ---------------------------------------------------------------------------

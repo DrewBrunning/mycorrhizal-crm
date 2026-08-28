@@ -529,22 +529,15 @@ func TestRoundTrip_ProjectionStable(t *testing.T) {
 }
 
 // setupContactETagTestDB creates an in-memory SQLite DB with the tables the
-// Contact ETag tests need. AutoMigrate derives the schema from the same Go
-// struct tags the application code uses, so these tests verify hook behavior
-// (generate, refresh, no-loop, zero-value guard) but cannot catch a GORM
+// Contact ETag/revision tests need. AutoMigrate derives the schema from the
+// same Go struct tags the application code uses, so these tests verify hook
+// behavior (stamp, bump, no-loop, zero-value guard) but cannot catch a GORM
 // column-tag mismatch against the real migration SQL — etag_real_db_test.go
 // covers that with a database.InitDB-migrated DB.
-// NowFunc is pinned to a single instant rather than left on GORM's default
-// (real time.Now()): AfterSave computes the ETag from UpdatedAt.Unix(), and
-// GORM bumps UpdatedAt to "now" on every plain Save() regardless of whether
-// any field actually changed. TestContactETagSaveDoesNotLoop does two
-// back-to-back Save() calls and asserts the ETag is unchanged -- with a real
-// clock that only holds if both calls land in the same wall-clock second, so
-// it was genuinely flaky under CI load (confirmed: failed once with ETags
-// one second apart). None of this helper's other consumers depend on real
-// time elapsing between calls -- TestContactETagChangesOnUpdate sets
-// updated_at explicitly via a map Update, bypassing NowFunc entirely -- so
-// freezing it here is safe for all of them.
+// NowFunc is pinned to a single instant: the token is now a monotonic
+// revision counter (ADR 0006) with no wall-clock input, but pinning the clock
+// keeps the tests' UpdatedAt assertions (and any future timestamp-dependent
+// behavior) deterministic under CI load.
 func setupContactETagTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
@@ -570,13 +563,17 @@ func TestContactETagGeneratedOnCreateAndPersists(t *testing.T) {
 	contact := Contact{UserID: user.ID, Firstname: "Alice", Email: "alice@example.com"}
 	require.NoError(t, db.Create(&contact).Error)
 
+	// ADR 0006: the token is the revision counter, stamped at 1 on create and
+	// derived into the ETag string (e-{id}-{revision}).
 	require.NotEmpty(t, contact.ETag)
 	assert.Regexp(t, regexp.MustCompile(`^e-\d+-\d+$`), contact.ETag)
-	assert.Equal(t, fmt.Sprintf("e-%d-%d", contact.ID, contact.UpdatedAt.Unix()), contact.ETag)
+	assert.Equal(t, int64(1), contact.Revision, "a new Contact starts at revision 1")
+	assert.Equal(t, fmt.Sprintf("e-%d-%d", contact.ID, contact.Revision), contact.ETag)
 
 	var reloaded Contact
 	require.NoError(t, db.First(&reloaded, contact.ID).Error)
 	assert.Equal(t, contact.ETag, reloaded.ETag, "ETag must be persisted, not just set in memory")
+	assert.Equal(t, int64(1), reloaded.Revision, "revision must be persisted, not just set in memory")
 }
 
 func TestContactETagChangesOnUpdate(t *testing.T) {
@@ -588,26 +585,44 @@ func TestContactETagChangesOnUpdate(t *testing.T) {
 	require.NoError(t, db.Create(&contact).Error)
 	firstETag := contact.ETag
 
-	future := time.Now().Add(10 * time.Second)
-	require.NoError(t, db.Model(&contact).Updates(map[string]any{"firstname": "Alicia", "updated_at": future}).Error)
+	// updated_at in the map is a red herring now: the token no longer depends
+	// on the clock at all, so this update bumps the revision regardless.
+	require.NoError(t, db.Model(&contact).Updates(map[string]any{"firstname": "Alicia", "updated_at": time.Now().Add(10 * time.Second)}).Error)
 
 	assert.NotEqual(t, firstETag, contact.ETag, "updating a Contact must change its ETag")
-	assert.Equal(t, fmt.Sprintf("e-%d-%d", contact.ID, future.Unix()), contact.ETag)
+	assert.Equal(t, int64(2), contact.Revision, "an update bumps the revision to 2")
+	assert.Equal(t, fmt.Sprintf("e-%d-%d", contact.ID, contact.Revision), contact.ETag)
+
+	var reloaded Contact
+	require.NoError(t, db.First(&reloaded, contact.ID).Error)
+	assert.Equal(t, int64(2), reloaded.Revision, "the bumped revision must persist")
+	assert.Equal(t, contact.ETag, reloaded.ETag, "the re-derived ETag must persist")
 }
 
-func TestContactETagSaveDoesNotLoop(t *testing.T) {
+// TestContactRevisionBumpsPerSaveNoLoop replaces the old
+// TestContactETagSaveDoesNotLoop: under ADR 0006 every persisted write IS a
+// new revision (that is the point — a no-op save is still a write), so two
+// back-to-back Save() calls must bump revision exactly twice and never loop
+// (UpdateColumns bypasses hooks).
+func TestContactRevisionBumpsPerSaveNoLoop(t *testing.T) {
 	db := setupContactETagTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 
 	contact := Contact{UserID: user.ID, Firstname: "Alice", Email: "alice@example.com"}
 	require.NoError(t, db.Create(&contact).Error)
-	etag := contact.ETag
+	require.Equal(t, int64(1), contact.Revision)
 
 	require.NoError(t, db.Save(&contact).Error)
 	require.NoError(t, db.Save(&contact).Error)
 
-	assert.Equal(t, etag, contact.ETag, "a save that does not change UpdatedAt must not rewrite the ETag")
+	assert.Equal(t, int64(3), contact.Revision, "each plain Save bumps the revision (1 create + 2 saves)")
+	assert.Equal(t, fmt.Sprintf("e-%d-%d", contact.ID, contact.Revision), contact.ETag)
+
+	var reloaded Contact
+	require.NoError(t, db.First(&reloaded, contact.ID).Error)
+	assert.Equal(t, int64(3), reloaded.Revision, "in-memory and persisted revisions must agree (no loop drift)")
+	assert.Equal(t, contact.ETag, reloaded.ETag)
 }
 
 func TestContactETagBulkUpdateOnZeroValueReceiverDoesNotCorrupt(t *testing.T) {
@@ -629,7 +644,8 @@ func TestContactETagBulkUpdateOnZeroValueReceiverDoesNotCorrupt(t *testing.T) {
 	for _, r := range rows {
 		require.NotEmpty(t, r.ETag)
 		assert.Regexp(t, regexp.MustCompile(`^e-\d+-\d+$`), r.ETag, "bulk update must not rewrite ETags from an empty ID")
-		assert.Equal(t, fmt.Sprintf("e-%d-%d", r.ID, r.UpdatedAt.Unix()), r.ETag, "ETag must survive the bulk update unchanged")
+		assert.Equal(t, int64(1), r.Revision, "bulk update on a zero-value receiver must not bump revisions")
+		assert.Equal(t, fmt.Sprintf("e-%d-%d", r.ID, r.Revision), r.ETag, "ETag must survive the bulk update unchanged")
 	}
 }
 

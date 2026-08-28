@@ -174,11 +174,13 @@ func TestLifeEventETagGeneratedOnCreateAndPersists(t *testing.T) {
 	// LifeEvent has a UUID string PK, so its ETag is derived from that, not
 	// a numeric ID.
 	assert.Regexp(t, regexp.MustCompile(`^e-[0-9a-f-]+-\d+$`), event.ETag)
-	assert.Equal(t, fmt.Sprintf("e-%s-%d", event.ID, event.UpdatedAt.Unix()), event.ETag)
+	assert.Equal(t, int64(1), event.Revision)
+	assert.Equal(t, fmt.Sprintf("e-%s-%d", event.ID, event.Revision), event.ETag)
 
 	var reloaded LifeEvent
 	require.NoError(t, db.First(&reloaded, "id = ?", event.ID).Error)
 	assert.Equal(t, event.ETag, reloaded.ETag, "ETag must be persisted, not just set in memory")
+	assert.Equal(t, int64(1), reloaded.Revision, "revision must be persisted, not just set in memory")
 }
 
 func TestLifeEventETagChangesOnUpdate(t *testing.T) {
@@ -192,14 +194,19 @@ func TestLifeEventETagChangesOnUpdate(t *testing.T) {
 	require.NoError(t, db.Create(&event).Error)
 	firstETag := event.ETag
 
-	future := time.Now().Add(10 * time.Second)
-	require.NoError(t, db.Model(&event).Updates(map[string]any{"description": "updated", "updated_at": future}).Error)
+	// updated_at in the map no longer drives the token (ADR 0006).
+	require.NoError(t, db.Model(&event).Updates(map[string]any{"description": "updated", "updated_at": time.Now().Add(10 * time.Second)}).Error)
 
 	assert.NotEqual(t, firstETag, event.ETag, "updating a LifeEvent must change its ETag")
-	assert.Equal(t, fmt.Sprintf("e-%s-%d", event.ID, future.Unix()), event.ETag)
+	assert.Equal(t, int64(2), event.Revision, "an update bumps the revision to 2")
+	assert.Equal(t, fmt.Sprintf("e-%s-%d", event.ID, event.Revision), event.ETag)
 }
 
-func TestLifeEventETagSaveDoesNotLoop(t *testing.T) {
+// TestLifeEventRevisionBumpsPerSaveNoLoop replaces the old
+// TestLifeEventETagSaveDoesNotLoop: under ADR 0006 every persisted write IS a
+// new revision, so back-to-back Save() calls bump revision exactly twice and
+// never loop (UpdateColumns bypasses hooks).
+func TestLifeEventRevisionBumpsPerSaveNoLoop(t *testing.T) {
 	db := setupLifeEventTestDBFrozenClock(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -208,22 +215,28 @@ func TestLifeEventETagSaveDoesNotLoop(t *testing.T) {
 
 	event := LifeEvent{UserID: user.ID, EntityID: contact.VCardUID, Type: LifeEventTypeGraduated}
 	require.NoError(t, db.Create(&event).Error)
-	etag := event.ETag
+	require.Equal(t, int64(1), event.Revision)
 
-	// AfterSave must use UpdateColumn (which skips hooks), not a nested Save
+	// AfterSave must use UpdateColumns (which skips hooks), not a nested Save
 	// — otherwise these re-saves would recurse forever.
 	require.NoError(t, db.Save(&event).Error)
 	require.NoError(t, db.Save(&event).Error)
 
-	assert.Equal(t, etag, event.ETag, "a save that does not change UpdatedAt must not rewrite the ETag")
+	assert.Equal(t, int64(3), event.Revision, "each plain Save bumps the revision (1 create + 2 saves)")
+	assert.Equal(t, fmt.Sprintf("e-%s-%d", event.ID, event.Revision), event.ETag)
+
+	var reloaded LifeEvent
+	require.NoError(t, db.First(&reloaded, "id = ?", event.ID).Error)
+	assert.Equal(t, int64(3), reloaded.Revision, "in-memory and persisted revisions must agree (no loop drift)")
+	assert.Equal(t, event.ETag, reloaded.ETag)
 }
 
 // TestLifeEventETagBulkRepointOnZeroValueReceiverDoesNotCorrupt pins the
 // zero-value-receiver guard in LifeEvent.AfterSave, mirroring contact merge's
 // bulk entity_id repoint (contact_merge_service.go): a bulk
 // Model(&LifeEvent{}).Where(...).Update fires the hook with no primary key,
-// and a naive hook would widen its UpdateColumn to every row in the table
-// (writing "e--<ts>"). The ETags must be left alone.
+// and a naive hook would widen its UpdateColumns to every row in the table
+// (writing "e--<ts>" and resetting every revision). Both must be left alone.
 func TestLifeEventETagBulkRepointOnZeroValueReceiverDoesNotCorrupt(t *testing.T) {
 	db := setupLifeEventTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
@@ -248,6 +261,7 @@ func TestLifeEventETagBulkRepointOnZeroValueReceiverDoesNotCorrupt(t *testing.T)
 	for _, r := range rows {
 		require.NotEmpty(t, r.ETag)
 		assert.Regexp(t, regexp.MustCompile(`^e-[0-9a-f-]+-\d+$`), r.ETag, "bulk repoint must not rewrite ETags from an empty ID")
+		assert.Equal(t, int64(1), r.Revision, "bulk repoint on a zero-value receiver must not bump revisions")
 	}
 	assert.Contains(t, []string{loserETag, otherETag}, rows[0].ETag, "ETags must survive the bulk repoint unchanged")
 	assert.Contains(t, []string{loserETag, otherETag}, rows[1].ETag, "ETags must survive the bulk repoint unchanged")

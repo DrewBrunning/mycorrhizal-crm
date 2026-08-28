@@ -11,3 +11,4 @@ ticket backlog moved to GitHub Issues.
 | [0003](0003-golden-fixtures-external-test-oracle.md) | Golden fixtures as the external test oracle | accepted |
 | [0004](0004-soft-vs-hard-delete-semantics.md) | Soft vs hard delete semantics | accepted |
 | [0005](0005-operational-event-model.md) | Operational-event model, separate from the audit trail | accepted |
+| [0006](0006-revision-token-schema.md) | Monotonic per-row revision tokens | accepted |
