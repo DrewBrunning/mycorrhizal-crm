@@ -5,6 +5,14 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # 2026-08-28: the nightly run is the full web suite (all specs + loadsmoke)
+  # that the PR path deliberately skips for pure backend/** changes — a
+  # backend-only change that breaks a shipped *user flow* is caught here, not
+  # on the PR (see docs/development/testing.md "Layers vs CI path gating").
+  # Same schedule-exemption pattern as unit-tests.yml: the suite jobs run
+  # unconditionally on the schedule event and are path-gated only on PR/push.
+  schedule:
+    - cron: '25 3 * * *' # 03:25 UTC nightly (consolidated nightly suite)
 
 permissions:
   contents: read
@@ -64,8 +72,10 @@ jobs:
     # The web Playwright suite exercises the frontend and the deployed
     # artifact (all-in-one image + compose + nginx), and the openapi contract
     # the frontend consumes. Pure backend/** changes are covered by the Go
-    # checks in unit-tests.yml and don't re-run the full e2e stack.
-    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
+    # checks in unit-tests.yml and don't re-run the full e2e stack — the
+    # scheduled nightly run is what re-runs the full suite with no diff to
+    # gate on (same exemption pattern as unit-tests.yml).
+    if: github.event_name == 'schedule' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository
@@ -190,8 +200,10 @@ jobs:
     needs: changes
     # Same path gating as the main e2e job: the web suite exercises the
     # frontend, the deployed artifact (all-in-one image + compose + nginx),
-    # and the openapi contract the frontend consumes.
-    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
+    # and the openapi contract the frontend consumes. Also runs nightly
+    # (schedule-exempt, like the main e2e job) so the production-default
+    # signal lands with the rest of the nightly full suite.
+    if: github.event_name == 'schedule' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository
