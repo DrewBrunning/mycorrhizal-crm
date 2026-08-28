@@ -43,16 +43,19 @@ const reachOutDetectionMinInterval = 23 * time.Hour
 // meaningful org/title/address changes, and creates a ReachOutSuggestion +
 // companion Reminder + reach_out_suggested webhook for each. Job-lock guarded
 // (T19's pattern) so a multi-instance deploy does not double-fire.
-func DetectReachOutSuggestions(db *gorm.DB, cfg config.Config) {
+//
+// Returns the number of suggestions created and, for the job-run record
+// (issue #391), ErrJobSkipped when the lock is held / it ran too recently.
+func DetectReachOutSuggestions(db *gorm.DB, cfg config.Config) (int, error) {
 	ctx := logger.JobContext(models.JobNameReachOutDetection)
 	acquired, err := acquireJobLock(db, models.JobNameReachOutDetection, reachOutDetectionMinInterval)
 	if err != nil {
 		logger.Error().Err(err).Msg("reach-out: failed to check job lock")
-		return
+		return 0, err
 	}
 	if !acquired {
 		logger.Info().Msg("reach-out: skipping detection job - rate limited")
-		return
+		return 0, ErrJobSkipped
 	}
 	defer func() {
 		if err := releaseJobLock(db, models.JobNameReachOutDetection, true); err != nil {
@@ -65,7 +68,7 @@ func DetectReachOutSuggestions(db *gorm.DB, cfg config.Config) {
 		Where("entity_type = ?", models.AuditEntityContact).
 		Distinct().Pluck("user_id", &userIDs).Error; err != nil {
 		logger.Error().Err(err).Msg("reach-out: failed to load users with contact audit events")
-		return
+		return 0, fmt.Errorf("loading users with contact audit events: %w", err)
 	}
 
 	created := 0
@@ -80,6 +83,7 @@ func DetectReachOutSuggestions(db *gorm.DB, cfg config.Config) {
 	if created > 0 {
 		logger.Info().Int("created", created).Msg("reach-out: created suggestions")
 	}
+	return created, nil
 }
 
 // detectReachOutSuggestionsForUser runs the detection algorithm for one user
@@ -398,7 +402,7 @@ func createReachOutSuggestion(ctx context.Context, db *gorm.DB, cfg config.Confi
 		"new_value":         ch.NewValue,
 		"reminder_id":       reminderID,
 	}
-	go TriggerWebhooks(ctx, db, cfg, userID, "reach_out_suggested", payload)
+	TriggerWebhooksAsync(ctx, db, cfg, userID, "reach_out_suggested", payload)
 	return nil
 }
 

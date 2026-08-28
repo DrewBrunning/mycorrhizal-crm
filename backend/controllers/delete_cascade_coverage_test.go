@@ -160,6 +160,7 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"alert_states":              exempt, // alerting state (issue #427/#428), no user FK
 	"data_encryption_keys":      exempt, // at-rest DEK envelope (issue #380), no user FK
 	"job_executions":            exempt, // scheduler bookkeeping, no user FK
+	"job_runs":                  exempt, // background-job run history (issue #391), admin-only, retention-purged
 	"operational_check_results": exempt, // DB-integrity diagnostics (issue #273), no user FK
 	"schema_migrations":         exempt, // migration bookkeeping
 	"server_settings":           exempt, // instance-wide settings, no user FK

@@ -2156,6 +2156,58 @@
       "webhook": "Webhooks"
     }
   },
+  "backgroundJobs": {
+    "title": "Background jobs",
+    "description": "Every scheduled job's most recent run: result, duration, and how many runs have failed in a row.",
+    "refresh": "Refresh",
+    "status": {
+      "healthy": "Healthy",
+      "failing": "Failing",
+      "unknown": "Unknown"
+    },
+    "result": {
+      "success": "Success",
+      "failure": "Failure",
+      "skipped": "Skipped"
+    },
+    "lastRun": "Last run",
+    "duration": "Duration",
+    "durationTrend": "avg {{avg}}, max {{max}} over {{n}} runs",
+    "consecutiveFailures": "Failed {{n}} times in a row",
+    "incidentSince": "since {{time}}",
+    "itemsProcessed": "{{n}} processed",
+    "never": "never",
+    "history": "Run history",
+    "noHistory": "No runs recorded for this job yet.",
+    "close": "Close",
+    "trigger": {
+      "scheduled": "scheduled",
+      "initial": "startup",
+      "manual": "manual"
+    },
+    "columns": {
+      "result": "Result",
+      "started": "Started",
+      "duration": "Duration",
+      "items": "Items",
+      "error": "Error"
+    },
+    "jobs": {
+      "daily_reminders": "Daily reminders",
+      "webhook_retries": "Webhook retries",
+      "calendar_sync": "Calendar sync",
+      "purge_deleted": "Purge deleted rows",
+      "audit_purge": "Audit log purge",
+      "system_event_purge": "System event purge",
+      "cadence_overdue": "Overdue cadence webhooks",
+      "reach_out_detection": "Reach-out detection",
+      "immich_sync": "Immich sync",
+      "db_integrity_check": "Database integrity check",
+      "restore_drill": "Backup restore drill",
+      "alert_eval": "Alert evaluation",
+      "job_run_purge": "Job history purge"
+    }
+  },
   "errorAggregation": {
     "title": "Errors by cause",
     "description": "Operational failures from the last {{hours}}h, grouped by cause. A cause that repeats is worth attention; a one-off usually isn't.",

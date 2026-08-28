@@ -2156,6 +2156,58 @@
       "webhook": "Webhooks"
     }
   },
+  "backgroundJobs": {
+    "title": "Tareas en segundo plano",
+    "description": "La última ejecución de cada tarea programada: resultado, duración y cuántas ejecuciones han fallado seguidas.",
+    "refresh": "Actualizar",
+    "status": {
+      "healthy": "Correcto",
+      "failing": "Con fallos",
+      "unknown": "Desconocido"
+    },
+    "result": {
+      "success": "Correcto",
+      "failure": "Fallo",
+      "skipped": "Omitida"
+    },
+    "lastRun": "Última ejecución",
+    "duration": "Duración",
+    "durationTrend": "media {{avg}}, máx. {{max}} en {{n}} ejecuciones",
+    "consecutiveFailures": "Ha fallado {{n}} veces seguidas",
+    "incidentSince": "desde {{time}}",
+    "itemsProcessed": "{{n}} procesados",
+    "never": "nunca",
+    "history": "Historial de ejecuciones",
+    "noHistory": "Todavía no hay ejecuciones registradas para esta tarea.",
+    "close": "Cerrar",
+    "trigger": {
+      "scheduled": "programada",
+      "initial": "inicio",
+      "manual": "manual"
+    },
+    "columns": {
+      "result": "Resultado",
+      "started": "Iniciada",
+      "duration": "Duración",
+      "items": "Elementos",
+      "error": "Error"
+    },
+    "jobs": {
+      "daily_reminders": "Recordatorios diarios",
+      "webhook_retries": "Reintentos de webhooks",
+      "calendar_sync": "Sincronización de calendario",
+      "purge_deleted": "Purgar filas eliminadas",
+      "audit_purge": "Purga del registro de auditoría",
+      "system_event_purge": "Purga de eventos del sistema",
+      "cadence_overdue": "Webhooks de cadencia vencida",
+      "reach_out_detection": "Detección de motivos de contacto",
+      "immich_sync": "Sincronización con Immich",
+      "db_integrity_check": "Comprobación de integridad de la base de datos",
+      "restore_drill": "Simulacro de restauración de copia de seguridad",
+      "alert_eval": "Evaluación de alertas",
+      "job_run_purge": "Purga del historial de ejecuciones"
+    }
+  },
   "errorAggregation": {
     "title": "Errores por causa",
     "description": "Fallos operativos de las últimas {{hours}} h, agrupados por causa. Una causa que se repite merece atención; un caso aislado normalmente no.",

@@ -7,7 +7,7 @@ each asset, not how long it survives.
 
 | | |
 |---|---|
-| **Last updated** | 2026-08-27 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420), [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622)) |
+| **Last updated** | 2026-08-27 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420), [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622), [#391](https://github.com/DrewBrunning/mycorrhizal-crm/issues/391), [#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389)) |
 | **Scope** | Backend (Go/Gin + SQLite), CardDAV/CalDAV (server role), Android client, browser/frontend, operator backups. |
 | **Companion docs** | `docs/security/pii-inventory.md` (the *minimization* lens — should each store exist, and is it more/kept-longer than needed), `docs/security/asvs-l2.md` V8 (Data Protection), `docs/deployment.md` (Backups section — the authoritative backup/restore runbook), `docs/security/masvs-l1.md` (Android storage controls). |
 
@@ -397,7 +397,35 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   restore-drill row-count comparison for the same reason as `system_events` /
   `operational_check_results` — the evaluator writes it in the snapshot-vs-live window.
 
-## 16. Prometheus metrics (`GET /metrics`, in-process) — not user data, not persisted
+## 16. Background job runs (`job_runs`) — not user data
+
+- **Where / who**: one row per scheduled-job invocation (`daily_reminders`, `calendar_sync`,
+  `reach_out_detection`, the purge jobs, …), written by `main.go`'s job wrapper and read only via
+  an admin API session (`GET /admin/job-runs`, `GET /admin/job-runs/health`, issue #391). No
+  `user_id` — server-global operational bookkeeping, like `job_executions` /
+  `operational_check_results` / `alert_states`. Not in any CardDAV/CalDAV projection, not in the
+  Android offline mirror.
+- **What it contains**: job name, trigger (`scheduled`/`initial`/`manual`), start/finish timestamps,
+  duration, result (`success`/`failure`/`skipped`), an optional items-processed count, a short
+  `detail` string, and the `correlation_id`. The free-text `error`/`detail` fields are sanitized +
+  length-capped by `models.RecordJobRun`; the model carries no high-cardinality fields (no contact
+  IDs, no raw URLs) by construction — same posture as `system_events`.
+- **Retention**: `JOB_RUN_RETENTION_DAYS` (default 30, `config/config.go`) — short by design, same
+  reasoning as `SYSTEM_EVENT_RETENTION_DAYS`: long enough to see a slow-creep duration trend, short
+  enough to bound growth on a single-file database.
+- **Deletion / propagation**: `PurgeExpiredJobRuns`
+  (`backend/services/job_run_purge_service.go`) hard-deletes rows whose `started_at` is older than
+  the window, daily via cron (`backend/main.go`) under the `job_run_purge` job lock.
+  `JOB_RUN_RETENTION_DAYS<=0` is treated as "disabled", never "delete everything". Not tied to any
+  user, so account deletion neither touches nor needs to touch it. Dropped wholesale by migration
+  `000041`'s `down.sql`.
+- **Backups**: included in the DB snapshot like any other table; carries nothing sensitive, so it
+  needs no special handling in the backup-confidentiality boundary (§10).
+- **Verification**: `backend/models/job_run_test.go`, `backend/services/job_run_health_test.go`,
+  `backend/services/job_run_purge_service_test.go`, `backend/database/migrate_job_runs_test.go`,
+  `backend/main_test.go` (`TestRunJob_RecordsOutcome`).
+
+## 17. Prometheus metrics (`GET /metrics`, in-process) — not user data, not persisted
 
 - **Where / who**: process memory only. A hand-rolled registry (`backend/metrics/`) holds counters
   and gauges that the middleware, the scheduled-job wrapper, and `models.RecordSystemEvent` update
@@ -432,7 +460,9 @@ per §1/§7/§8), but it is a genuine, named gap rather than a silently-accepted
 | Soft-deleted rows / purge window | `backend/services/purge_service_test.go` (8 cases) |
 | ContactShare snapshot purge window | `backend/services/contact_share_purge_service_test.go` (9 cases) |
 | Audit retention + re-link | `backend/services/audit_purge_service_test.go` (3 cases) |
+| System-event retention window | `backend/services/system_event_purge_service_test.go` |
 | Webhook delivery purge window + payload trim | `backend/services/webhook_delivery_purge_service_test.go` (9 cases), `webhook_delivery_test.go` trim pins |
+| Job-run retention window | `backend/services/job_run_purge_service_test.go` |
 | Admin purge trigger + window | `backend/controllers/admin_user_controller_test.go` M1/M1b/M5 |
 | Sync-horizon 410 Gone matches purge window | `backend/controllers/cursor_feed_test.go` |
 | FTS index follows soft/hard delete | `backend/database/migrate_test.go`, FTS trigger coverage |

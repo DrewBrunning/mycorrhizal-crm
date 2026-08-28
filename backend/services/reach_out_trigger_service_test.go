@@ -27,6 +27,10 @@ func setupReachOutTestDB(t *testing.T) *gorm.DB {
 	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() { models.RegisterAuditDB(nil) })
+	// DetectReachOutSuggestions fires reach_out_suggested webhooks via
+	// TriggerWebhooksAsync; drain those goroutines before this test's DB /
+	// t.TempDir() are torn down (registered last → runs first, LIFO).
+	t.Cleanup(WaitForWebhookGoroutines)
 	return db
 }
 

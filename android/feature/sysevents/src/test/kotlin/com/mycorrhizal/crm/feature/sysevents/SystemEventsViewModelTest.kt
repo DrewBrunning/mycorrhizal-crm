@@ -3,6 +3,8 @@ package com.mycorrhizal.crm.feature.sysevents
 import com.mycorrhizal.crm.domain.repository.SystemEventRepository
 import com.mycorrhizal.crm.model.network.ErrorAggregationResponse
 import com.mycorrhizal.crm.model.network.ErrorBucket
+import com.mycorrhizal.crm.model.network.JobRunHealth
+import com.mycorrhizal.crm.model.network.JobRunHealthResponse
 import com.mycorrhizal.crm.model.network.SubsystemHealth
 import com.mycorrhizal.crm.model.network.SubsystemHealthResponse
 import com.mycorrhizal.crm.model.network.SystemEvent
@@ -34,6 +36,7 @@ class SystemEventsViewModelTest {
     fun stubPanelsByDefault() {
         coEvery { repository.subsystemHealth() } returns Result.success(SubsystemHealthResponse())
         coEvery { repository.errorAggregation(any()) } returns Result.success(ErrorAggregationResponse())
+        coEvery { repository.jobRunHealth() } returns Result.success(JobRunHealthResponse())
     }
 
     private fun viewModel() = SystemEventsViewModel(repository)
@@ -211,6 +214,41 @@ class SystemEventsViewModelTest {
             advanceUntilIdle()
 
             assertTrue(vm.uiState.value.subsystemHealth.isEmpty())
+            assertNull(vm.uiState.value.error)
+            assertEquals(1, vm.uiState.value.events.size)
+        }
+
+    @Test
+    fun `job-run health is fetched on open and lands in state`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubList(SystemEventsResponse(systemEvents = emptyList()))
+            coEvery { repository.jobRunHealth() } returns Result.success(
+                JobRunHealthResponse(
+                    jobs = listOf(
+                        JobRunHealth(jobName = "daily_reminders", status = "failing", consecutiveFailures = 4),
+                        JobRunHealth(jobName = "calendar_sync", status = "healthy"),
+                    ),
+                ),
+            )
+
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            assertEquals(2, vm.uiState.value.jobRunHealth.size)
+            assertEquals("daily_reminders", vm.uiState.value.jobRunHealth.first().jobName)
+            assertEquals(4, vm.uiState.value.jobRunHealth.first().consecutiveFailures)
+        }
+
+    @Test
+    fun `a job-run-health failure is swallowed and leaves the list unaffected`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubList(SystemEventsResponse(systemEvents = listOf(event(1))))
+            coEvery { repository.jobRunHealth() } returns Result.failure(IOException("nope"))
+
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.jobRunHealth.isEmpty())
             assertNull(vm.uiState.value.error)
             assertEquals(1, vm.uiState.value.events.size)
         }

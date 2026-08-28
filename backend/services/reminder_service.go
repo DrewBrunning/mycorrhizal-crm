@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"mycorrhizal/config"
 	"mycorrhizal/i18n"
@@ -13,6 +14,13 @@ import (
 
 	"gorm.io/gorm"
 )
+
+// ErrJobSkipped is returned by a scheduled job's entry point when the run did
+// not execute — the distributed job lock was held by another instance, or the
+// job ran too recently. main.go's job wrapper records these as a `skipped`
+// job_runs row rather than a false `success` (issue #391; #526 "suppression is
+// recorded, not silent").
+var ErrJobSkipped = errors.New("scheduled job skipped: rate-limited or locked")
 
 var sendReminderEmailFn = sendReminderEmail
 
@@ -138,29 +146,34 @@ func releaseJobLock(db *gorm.DB, jobName string, success bool) error {
 	})
 }
 
-// SendRemindersWithRateLimit wraps SendReminders with distributed locking
-// to prevent duplicate sends during rapid restarts
-func SendRemindersWithRateLimit(db *gorm.DB, cfg config.Config) error {
+// SendRemindersWithRateLimit wraps SendReminders with distributed locking to
+// prevent duplicate sends during rapid restarts. It returns the number of
+// notification sends that succeeded and, for the job-run record (issue #391),
+// ErrJobSkipped when the lock is held / it ran too recently — and a non-nil
+// error when one or more notification sends failed (so a birthday reminder
+// that silently fails to send now marks the reminder job run as failed, not a
+// false success).
+func SendRemindersWithRateLimit(db *gorm.DB, cfg config.Config) (int, error) {
 	acquired, err := acquireJobLock(db, models.JobNameDailyReminders, ReminderMinInterval)
 	if err != nil {
 		logger.Error().Err(err).Msg("Error checking job lock")
-		return err
+		return 0, err
 	}
 
 	if !acquired {
 		logger.Info().Msg("Skipping reminder job - rate limited")
-		return nil
+		return 0, ErrJobSkipped
 	}
 
 	// Run the actual reminder logic
-	err = SendReminders(db, cfg)
+	sent, err := SendReminders(db, cfg)
 
 	// Release the lock, marking success if no error
 	if releaseErr := releaseJobLock(db, models.JobNameDailyReminders, err == nil); releaseErr != nil {
 		logger.Error().Err(releaseErr).Msg("Error releasing job lock")
 	}
 
-	return err
+	return sent, err
 }
 
 // notificationDeliveryKey identifies one (reminder, channel) pair in the
@@ -176,7 +189,13 @@ type notificationDeliveryKey struct {
 // leaves it due, so a failure in one channel never marks the reminder as sent
 // and never blocks another channel from dispatching. Email remains a per-user
 // digest (it also carries birthdays); the push-style channels send per reminder.
-func SendReminders(db *gorm.DB, config config.Config) error {
+//
+// Returns the number of per-user-per-channel notification sends that
+// succeeded, and a non-nil error when one or more sends failed — failure in
+// one channel is still logged and does not abort the others, but it no longer
+// vanishes: the aggregate error propagates so the reminder job run is recorded
+// as failed (issue #391).
+func SendReminders(db *gorm.DB, config config.Config) (int, error) {
 	ctx := logger.JobContext(models.JobNameDailyReminders)
 	logger.Info().Msg("Sending reminders...")
 	var reminders []models.Reminder
@@ -189,7 +208,7 @@ func SendReminders(db *gorm.DB, config config.Config) error {
 	// eligibility (ByMail for email, per-user toggles for the rest) is decided by
 	// each channel sender, keyed off the delivery records below.
 	if err := db.Where("remind_at <= ? AND completed = ?", endOfDay, false).Find(&reminders).Error; err != nil {
-		return fmt.Errorf("failed to fetch reminders: %w", err)
+		return 0, fmt.Errorf("failed to fetch reminders: %w", err)
 	}
 
 	// Build the set of (reminder, channel) pairs already marked sent for this
@@ -202,7 +221,7 @@ func SendReminders(db *gorm.DB, config config.Config) error {
 		}
 		var deliveries []models.NotificationDelivery
 		if err := db.Where("reminder_id IN ?", reminderIDs).Find(&deliveries).Error; err != nil {
-			return fmt.Errorf("failed to fetch notification deliveries: %w", err)
+			return 0, fmt.Errorf("failed to fetch notification deliveries: %w", err)
 		}
 		for _, d := range deliveries {
 			if d.Status == "sent" {
@@ -252,13 +271,13 @@ func SendReminders(db *gorm.DB, config config.Config) error {
 
 	if len(userIDs) == 0 {
 		logger.Info().Msg("No reminders or birthdays to send for today")
-		return nil
+		return 0, nil
 	}
 
 	// Fetch all users we need to reach
 	var users []models.User
 	if err := db.Where("id IN ?", userIDs).Find(&users).Error; err != nil {
-		return fmt.Errorf("failed to fetch users: %w", err)
+		return 0, fmt.Errorf("failed to fetch users: %w", err)
 	}
 
 	userByID := make(map[uint]models.User, len(users))
@@ -267,6 +286,9 @@ func SendReminders(db *gorm.DB, config config.Config) error {
 	}
 
 	sort.Slice(userIDs, func(i, j int) bool { return userIDs[i] < userIDs[j] })
+
+	// Per-run send tallies for the job-run record (issue #391).
+	var sendOK, sendFail int
 
 	for _, userID := range userIDs {
 		user, exists := userByID[userID]
@@ -327,23 +349,29 @@ func SendReminders(db *gorm.DB, config config.Config) error {
 			}
 
 			if err := sender.Send(ctx, db, config, user, eligible); err != nil {
+				sendFail++
 				logger.Error().Err(err).Uint("user_id", user.ID).Str("channel", string(channel)).Msg("Error sending notifications")
+			} else {
+				sendOK++
 			}
 		}
 
 		// Fire reminder.triggered webhooks regardless of channel config
 		for _, reminder := range userReminders {
-			go TriggerWebhooks(ctx, db, config, reminder.UserID, "reminder.triggered", reminder)
+			TriggerWebhooksAsync(ctx, db, config, reminder.UserID, "reminder.triggered", reminder)
 		}
 
 		// Fire birthday.occurred for each birthday that falls today regardless of channel config
 		for _, bday := range todayBirthdays {
 			bday := bday
-			go TriggerWebhooks(ctx, db, config, userID, "birthday.occurred", bday)
+			TriggerWebhooksAsync(ctx, db, config, userID, "birthday.occurred", bday)
 		}
 	}
 
-	return nil
+	if sendFail > 0 {
+		return sendOK, fmt.Errorf("%d notification send(s) failed", sendFail)
+	}
+	return sendOK, nil
 }
 
 // GetUpcomingReminders returns all of a user's incomplete reminders due

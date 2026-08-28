@@ -1214,6 +1214,29 @@
     <string name="subsystem_name_backup">Sauvegarde et restauration</string>
     <string name="subsystem_name_scheduler">Tâches en arrière-plan</string>
     <string name="subsystem_name_webhook">Webhooks</string>
+    <!-- Background jobs (issue #391) -->
+    <string name="jobruns_title">Tâches en arrière-plan</string>
+    <string name="jobruns_refresh">Actualiser</string>
+    <string name="jobruns_status_healthy">Sain</string>
+    <string name="jobruns_status_failing">En échec</string>
+    <string name="jobruns_status_unknown">Inconnu</string>
+    <string name="jobruns_consecutive_failures">En échec %1$d fois d\'affilée</string>
+    <string name="jobruns_last_run">Dernière exécution : %1$s</string>
+    <string name="jobruns_duration">Durée : %1$s</string>
+    <string name="jobruns_never">jamais</string>
+    <string name="jobruns_job_daily_reminders">Rappels quotidiens</string>
+    <string name="jobruns_job_webhook_retries">Nouvelles tentatives de webhooks</string>
+    <string name="jobruns_job_calendar_sync">Synchronisation du calendrier</string>
+    <string name="jobruns_job_purge_deleted">Purge des lignes supprimées</string>
+    <string name="jobruns_job_audit_purge">Purge du journal d\'audit</string>
+    <string name="jobruns_job_system_event_purge">Purge des événements système</string>
+    <string name="jobruns_job_cadence_overdue">Webhooks de cadence en retard</string>
+    <string name="jobruns_job_reach_out_detection">Détection des occasions de contact</string>
+    <string name="jobruns_job_immich_sync">Synchronisation Immich</string>
+    <string name="jobruns_job_db_integrity_check">Vérification de l\'intégrité de la base de données</string>
+    <string name="jobruns_job_restore_drill">Test de restauration de sauvegarde</string>
+    <string name="jobruns_job_alert_eval">Évaluation des alertes</string>
+    <string name="jobruns_job_job_run_purge">Purge de l\'historique des exécutions</string>
     <!-- Error aggregation (issue #426) -->
     <string name="sysevents_errors_banner">Affichage de %1$d événements d\'un même groupe d\'erreurs.</string>
     <string name="error_aggregation_title">Erreurs par cause</string>

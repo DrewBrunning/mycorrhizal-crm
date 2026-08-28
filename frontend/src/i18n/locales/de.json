@@ -2156,6 +2156,58 @@
       "webhook": "Webhooks"
     }
   },
+  "backgroundJobs": {
+    "title": "Hintergrundaufgaben",
+    "description": "Der letzte Lauf jeder geplanten Aufgabe: Ergebnis, Dauer und wie viele Läufe in Folge fehlgeschlagen sind.",
+    "refresh": "Aktualisieren",
+    "status": {
+      "healthy": "Fehlerfrei",
+      "failing": "Fehlerhaft",
+      "unknown": "Unbekannt"
+    },
+    "result": {
+      "success": "Erfolg",
+      "failure": "Fehler",
+      "skipped": "Übersprungen"
+    },
+    "lastRun": "Letzter Lauf",
+    "duration": "Dauer",
+    "durationTrend": "Ø {{avg}}, max. {{max}} über {{n}} Läufe",
+    "consecutiveFailures": "{{n}}-mal in Folge fehlgeschlagen",
+    "incidentSince": "seit {{time}}",
+    "itemsProcessed": "{{n}} verarbeitet",
+    "never": "nie",
+    "history": "Laufverlauf",
+    "noHistory": "Für diese Aufgabe wurden noch keine Läufe erfasst.",
+    "close": "Schließen",
+    "trigger": {
+      "scheduled": "geplant",
+      "initial": "Start",
+      "manual": "manuell"
+    },
+    "columns": {
+      "result": "Ergebnis",
+      "started": "Gestartet",
+      "duration": "Dauer",
+      "items": "Elemente",
+      "error": "Fehler"
+    },
+    "jobs": {
+      "daily_reminders": "Tägliche Erinnerungen",
+      "webhook_retries": "Webhook-Wiederholungen",
+      "calendar_sync": "Kalendersynchronisierung",
+      "purge_deleted": "Gelöschte Datensätze bereinigen",
+      "audit_purge": "Audit-Protokoll bereinigen",
+      "system_event_purge": "Systemereignisse bereinigen",
+      "cadence_overdue": "Webhooks für überfällige Kontaktrhythmen",
+      "reach_out_detection": "Erkennung von Kontaktanlässen",
+      "immich_sync": "Immich-Synchronisierung",
+      "db_integrity_check": "Datenbank-Integritätsprüfung",
+      "restore_drill": "Backup-Wiederherstellungstest",
+      "alert_eval": "Alarmauswertung",
+      "job_run_purge": "Laufverlauf bereinigen"
+    }
+  },
   "errorAggregation": {
     "title": "Fehler nach Ursache",
     "description": "Betriebsfehler der letzten {{hours}} Stunden, nach Ursache gruppiert. Eine wiederkehrende Ursache verdient Aufmerksamkeit, ein Einzelfall meist nicht.",

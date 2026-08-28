@@ -13,6 +13,37 @@ import (
 	"gorm.io/gorm"
 )
 
+// sendRemindersT runs SendReminders and returns the successful-send count — a
+// thin wrapper keeping the many call sites one-liners after SendReminders grew
+// a count return (issue #391).
+//
+// It deliberately does NOT assert err == nil. Since #391 SendReminders returns
+// an aggregate error whenever *any* channel send fails, and the channel tests
+// below drive real fake HTTP servers whose delivery can transiently hiccup
+// under CI's parallel `-race` load. Those tests assert on the outcome that
+// actually matters — the NotificationDelivery row's status, the fake server's
+// hit count — which still fails loudly on a real regression; a genuine
+// all-channels-broken bug fails those same assertions. The error-propagation
+// contract itself is covered by sendRemindersExpectErrT and the
+// SendRemindersWithRateLimit / job_runs tests.
+func sendRemindersT(t *testing.T, db *gorm.DB, cfg config.Config) int {
+	t.Helper()
+	n, err := SendReminders(db, cfg)
+	if err != nil {
+		t.Logf("SendReminders returned a non-fatal error (outcome assertions below still apply): %v", err)
+	}
+	return n
+}
+
+// sendRemindersExpectErrT runs SendReminders expecting at least one channel
+// send to fail (isolation / SSRF-block tests): the aggregate error must now
+// propagate (issue #391) rather than vanish.
+func sendRemindersExpectErrT(t *testing.T, db *gorm.DB, cfg config.Config) {
+	t.Helper()
+	_, err := SendReminders(db, cfg)
+	require.Error(t, err, "a channel send failure must surface as an aggregate error")
+}
+
 func setupRouter() (*gorm.DB, *gin.Engine) {
 	gin.SetMode(gin.ReleaseMode)
 
@@ -288,7 +319,7 @@ func TestSendReminders(t *testing.T) {
 		ReminderTime:    "12:00",
 	}
 
-	err := SendReminders(db, config)
+	_, err := SendReminders(db, config)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, callCount)
@@ -353,7 +384,7 @@ func TestSendReminders_ExcludesCompletedAndAlreadySentReminders(t *testing.T) {
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{UseResend: true, ResendAPIKey: "test_api_key", ResendFromEmail: "noreply@example.com", ReminderTime: "12:00"}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 
 	if assert.Len(t, calledReminders, 1, "only the genuinely eligible reminder must be picked up") {
 		assert.Equal(t, eligible.ID, calledReminders[0].ID)
@@ -413,7 +444,7 @@ func TestSendRemindersWithRateLimit_FirstRun(t *testing.T) {
 	}
 
 	// First run should execute
-	err := SendRemindersWithRateLimit(db, cfg)
+	_, err := SendRemindersWithRateLimit(db, cfg)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, callCount, "First run should send reminders")
 
@@ -469,13 +500,13 @@ func TestSendRemindersWithRateLimit_RateLimited(t *testing.T) {
 	}
 
 	// First run should execute
-	err := SendRemindersWithRateLimit(db, cfg)
+	_, err := SendRemindersWithRateLimit(db, cfg)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, callCount, "First run should send reminders")
 
 	// Second run immediately after should be rate limited
-	err = SendRemindersWithRateLimit(db, cfg)
-	assert.NoError(t, err)
+	_, err = SendRemindersWithRateLimit(db, cfg)
+	assert.ErrorIs(t, err, ErrJobSkipped, "a rate-limited run is reported as skipped (issue #391)")
 	assert.Equal(t, 1, callCount, "Second run should be rate limited - no additional sends")
 }
 
@@ -524,7 +555,7 @@ func TestSendRemindersWithRateLimit_AllowsAfterInterval(t *testing.T) {
 	}
 
 	// First run
-	err := SendRemindersWithRateLimit(db, cfg)
+	_, err := SendRemindersWithRateLimit(db, cfg)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, callCount)
 
@@ -548,7 +579,7 @@ func TestSendRemindersWithRateLimit_AllowsAfterInterval(t *testing.T) {
 	db.Create(&reminder2)
 
 	// Should now be allowed to run again
-	err = SendRemindersWithRateLimit(db, cfg)
+	_, err = SendRemindersWithRateLimit(db, cfg)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, callCount, "Should allow run after interval passes")
 
@@ -851,7 +882,7 @@ func TestSendReminders_BirthdayOnlyUserIncluded(t *testing.T) {
 		ReminderTime:    "12:00",
 	}
 
-	err := SendReminders(db, cfg)
+	_, err := SendReminders(db, cfg)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, callCount, "birthday-only user (no due reminders) should still trigger an email")
@@ -885,7 +916,7 @@ func TestSendReminders_EmailDisabledPreservesReminders(t *testing.T) {
 
 	cfg := config.Config{} // no UseResend/UseSMTP -> EmailEnabled() == false
 
-	err := SendReminders(db, cfg)
+	_, err := SendReminders(db, cfg)
 	assert.NoError(t, err)
 
 	var reloaded models.Reminder

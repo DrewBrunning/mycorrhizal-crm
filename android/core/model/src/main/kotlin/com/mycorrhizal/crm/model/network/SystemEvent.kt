@@ -179,3 +179,93 @@ data class ErrorAggregationResponse(
     @Json(name = "total_events") val totalEvents: Int = 0,
     val buckets: List<ErrorBucket> = emptyList(),
 )
+
+/**
+ * Background-job run result / trigger tokens (issue #391), mirroring
+ * `backend/models/job_run.go`, migration 000041's CHECK constraint,
+ * `backend/openapi.yaml`, and web's `frontend/src/api/jobRuns.ts` EXACTLY.
+ * Hand-maintained mirror — no dynamic list endpoint exists (frontend trap #4).
+ */
+object JobRunResults {
+    const val SUCCESS = "success"
+    const val FAILURE = "failure"
+    const val SKIPPED = "skipped"
+
+    val ALL: List<String> = listOf(SUCCESS, FAILURE, SKIPPED)
+}
+
+object JobRunTriggers {
+    const val SCHEDULED = "scheduled"
+    const val INITIAL = "initial"
+    const val MANUAL = "manual"
+
+    val ALL: List<String> = listOf(SCHEDULED, INITIAL, MANUAL)
+}
+
+/** Job-run health status tokens (`backend/services` JobRunStatus*). */
+object JobRunStatuses {
+    const val HEALTHY = "healthy"
+    const val FAILING = "failing"
+    const val UNKNOWN = "unknown"
+}
+
+/**
+ * One persisted background-job execution outcome from `GET /admin/job-runs`
+ * (issue #391). System-generated, read-only, admin-only. [trigger] is
+ * scheduled / initial / manual; [result] is success / failure / skipped
+ * (skipped = the run did not execute — job lock held / ran too recently).
+ */
+@JsonClass(generateAdapter = true)
+data class JobRun(
+    val id: Long = 0,
+    @Json(name = "created_at") val createdAt: String? = null,
+    @Json(name = "job_name") val jobName: String = "",
+    val trigger: String = "",
+    @Json(name = "started_at") val startedAt: String = "",
+    @Json(name = "finished_at") val finishedAt: String = "",
+    @Json(name = "duration_ms") val durationMs: Long = 0,
+    val result: String = "",
+    val error: String? = null,
+    @Json(name = "items_processed") val itemsProcessed: Long? = null,
+    val detail: String? = null,
+    @Json(name = "correlation_id") val correlationId: String = "",
+)
+
+/** GET /admin/job-runs response — `{ job_runs, total }`. */
+@JsonClass(generateAdapter = true)
+data class JobRunsResponse(
+    @Json(name = "job_runs") val jobRuns: List<JobRun> = emptyList(),
+    val total: Int = 0,
+)
+
+/**
+ * The folded run health of one background job from `GET /admin/job-runs/health`
+ * (issue #391), derived on the server from the job_runs history. [status] is
+ * healthy / failing / unknown; [incidentFirstFailureAt] is non-null exactly
+ * when [consecutiveFailures] > 0. [avgDurationMs] / [maxDurationMs] are the
+ * trend over the last [durationSampleSize] executed runs.
+ */
+@JsonClass(generateAdapter = true)
+data class JobRunHealth(
+    @Json(name = "job_name") val jobName: String = "",
+    val status: String = "",
+    @Json(name = "last_run_at") val lastRunAt: String? = null,
+    @Json(name = "last_result") val lastResult: String = "",
+    @Json(name = "last_trigger") val lastTrigger: String = "",
+    @Json(name = "last_duration_ms") val lastDurationMs: Long? = null,
+    @Json(name = "last_items_processed") val lastItemsProcessed: Long? = null,
+    @Json(name = "last_success_at") val lastSuccessAt: String? = null,
+    @Json(name = "last_failure_at") val lastFailureAt: String? = null,
+    @Json(name = "last_error") val lastError: String = "",
+    @Json(name = "incident_first_failure_at") val incidentFirstFailureAt: String? = null,
+    @Json(name = "consecutive_failures") val consecutiveFailures: Int = 0,
+    @Json(name = "duration_sample_size") val durationSampleSize: Int = 0,
+    @Json(name = "avg_duration_ms") val avgDurationMs: Long? = null,
+    @Json(name = "max_duration_ms") val maxDurationMs: Long? = null,
+)
+
+/** GET /admin/job-runs/health response — `{ jobs }`. */
+@JsonClass(generateAdapter = true)
+data class JobRunHealthResponse(
+    val jobs: List<JobRunHealth> = emptyList(),
+)

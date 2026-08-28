@@ -1214,6 +1214,29 @@
     <string name="subsystem_name_backup">Copia y restauración</string>
     <string name="subsystem_name_scheduler">Tareas en segundo plano</string>
     <string name="subsystem_name_webhook">Webhooks</string>
+    <!-- Background jobs (issue #391) -->
+    <string name="jobruns_title">Tareas en segundo plano</string>
+    <string name="jobruns_refresh">Actualizar</string>
+    <string name="jobruns_status_healthy">Correcto</string>
+    <string name="jobruns_status_failing">Con fallos</string>
+    <string name="jobruns_status_unknown">Desconocido</string>
+    <string name="jobruns_consecutive_failures">Ha fallado %1$d veces seguidas</string>
+    <string name="jobruns_last_run">Última ejecución: %1$s</string>
+    <string name="jobruns_duration">Duración: %1$s</string>
+    <string name="jobruns_never">nunca</string>
+    <string name="jobruns_job_daily_reminders">Recordatorios diarios</string>
+    <string name="jobruns_job_webhook_retries">Reintentos de webhooks</string>
+    <string name="jobruns_job_calendar_sync">Sincronización de calendario</string>
+    <string name="jobruns_job_purge_deleted">Purgar filas eliminadas</string>
+    <string name="jobruns_job_audit_purge">Purga del registro de auditoría</string>
+    <string name="jobruns_job_system_event_purge">Purga de eventos del sistema</string>
+    <string name="jobruns_job_cadence_overdue">Webhooks de cadencia vencida</string>
+    <string name="jobruns_job_reach_out_detection">Detección de motivos de contacto</string>
+    <string name="jobruns_job_immich_sync">Sincronización con Immich</string>
+    <string name="jobruns_job_db_integrity_check">Comprobación de integridad de la base de datos</string>
+    <string name="jobruns_job_restore_drill">Simulacro de restauración de copia de seguridad</string>
+    <string name="jobruns_job_alert_eval">Evaluación de alertas</string>
+    <string name="jobruns_job_job_run_purge">Purga del historial de ejecuciones</string>
     <!-- Error aggregation (issue #426) -->
     <string name="sysevents_errors_banner">Mostrando %1$d eventos de un grupo de errores.</string>
     <string name="error_aggregation_title">Errores por causa</string>

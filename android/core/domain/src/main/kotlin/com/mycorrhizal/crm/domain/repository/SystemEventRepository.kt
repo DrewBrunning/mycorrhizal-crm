@@ -1,6 +1,8 @@
 package com.mycorrhizal.crm.domain.repository
 
 import com.mycorrhizal.crm.model.network.ErrorAggregationResponse
+import com.mycorrhizal.crm.model.network.JobRunHealthResponse
+import com.mycorrhizal.crm.model.network.JobRunsResponse
 import com.mycorrhizal.crm.model.network.SubsystemHealthResponse
 import com.mycorrhizal.crm.model.network.SystemEventsResponse
 
@@ -40,4 +42,22 @@ interface SystemEventRepository {
      * operational-event stream. Uncached, admin-only.
      */
     suspend fun errorAggregation(windowHours: Int = 24): Result<ErrorAggregationResponse>
+
+    /**
+     * GET /admin/job-runs/health — the folded per-job background-job run health
+     * (issue #391), derived on the server from the job_runs history. No
+     * parameters, uncached, admin-only.
+     */
+    suspend fun jobRunHealth(): Result<JobRunHealthResponse>
+
+    /**
+     * GET /admin/job-runs — background-job run history (issue #391), newest
+     * first, with optional server-side [jobName] / [result] filters. [limit]
+     * defaults to 100, max 500. Uncached, admin-only.
+     */
+    suspend fun jobRuns(
+        jobName: String? = null,
+        result: String? = null,
+        limit: Int = 100,
+    ): Result<JobRunsResponse>
 }

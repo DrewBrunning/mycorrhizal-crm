@@ -2156,6 +2156,58 @@
       "webhook": "Webhook"
     }
   },
+  "backgroundJobs": {
+    "title": "Attività in background",
+    "description": "L'ultima esecuzione di ogni attività pianificata: esito, durata e quante esecuzioni sono fallite di fila.",
+    "refresh": "Aggiorna",
+    "status": {
+      "healthy": "Integro",
+      "failing": "In errore",
+      "unknown": "Sconosciuto"
+    },
+    "result": {
+      "success": "Riuscita",
+      "failure": "Fallita",
+      "skipped": "Saltata"
+    },
+    "lastRun": "Ultima esecuzione",
+    "duration": "Durata",
+    "durationTrend": "media {{avg}}, max {{max}} su {{n}} esecuzioni",
+    "consecutiveFailures": "Fallita {{n}} volte di fila",
+    "incidentSince": "da {{time}}",
+    "itemsProcessed": "{{n}} elaborati",
+    "never": "mai",
+    "history": "Cronologia esecuzioni",
+    "noHistory": "Nessuna esecuzione registrata per questa attività.",
+    "close": "Chiudi",
+    "trigger": {
+      "scheduled": "pianificata",
+      "initial": "avvio",
+      "manual": "manuale"
+    },
+    "columns": {
+      "result": "Esito",
+      "started": "Avviata",
+      "duration": "Durata",
+      "items": "Elementi",
+      "error": "Errore"
+    },
+    "jobs": {
+      "daily_reminders": "Promemoria giornalieri",
+      "webhook_retries": "Nuovi tentativi webhook",
+      "calendar_sync": "Sincronizzazione calendario",
+      "purge_deleted": "Pulizia righe eliminate",
+      "audit_purge": "Pulizia registro di controllo",
+      "system_event_purge": "Pulizia eventi di sistema",
+      "cadence_overdue": "Webhook di cadenza scaduta",
+      "reach_out_detection": "Rilevamento occasioni di contatto",
+      "immich_sync": "Sincronizzazione Immich",
+      "db_integrity_check": "Controllo integrità database",
+      "restore_drill": "Prova di ripristino del backup",
+      "alert_eval": "Valutazione degli avvisi",
+      "job_run_purge": "Pulizia cronologia esecuzioni"
+    }
+  },
   "errorAggregation": {
     "title": "Errori per causa",
     "description": "Guasti operativi delle ultime {{hours}} ore, raggruppati per causa. Una causa che si ripete merita attenzione; un caso isolato di solito no.",

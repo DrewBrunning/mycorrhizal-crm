@@ -8140,6 +8140,94 @@ paths:
         "403":
           description: Not an admin, or an API token was used on an admin path.
 
+  /admin/job-runs:
+    get:
+      summary: Background-job run history (admin)
+      operationId: adminListJobRuns
+      description: >
+        Per-run outcome history for the scheduled background jobs (issue #391),
+        newest-first: job name, trigger (scheduled / initial / manual),
+        start/finish, duration, result (success / failure / skipped), the error
+        on the failure path, and — for jobs that report it — the number of items
+        processed. Backs the per-job drill-down in the background-job monitor.
+        Instance-wide, admin-only, read-only.
+      parameters:
+        - name: job_name
+          in: query
+          required: false
+          description: Filter to one canonical job name (e.g. daily_reminders).
+          schema: { type: string }
+        - name: result
+          in: query
+          required: false
+          schema: { type: string, enum: [success, failure, skipped] }
+        - name: since
+          in: query
+          required: false
+          description: Only runs started at or after this RFC3339 timestamp.
+          schema: { type: string, format: date-time }
+        - name: until
+          in: query
+          required: false
+          description: Only runs started at or before this RFC3339 timestamp.
+          schema: { type: string, format: date-time }
+        - name: limit
+          in: query
+          required: false
+          description: Max rows to return.
+          schema: { type: integer, default: 100, minimum: 1, maximum: 500 }
+      responses:
+        "200":
+          description: Job-run history, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_runs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/JobRun"
+                  total: { type: integer }
+        "400":
+          description: Invalid since / until timestamp.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated (cookie or full-scope bearer token required).
+        "403":
+          description: Not an admin, or an API token was used on an admin path.
+
+  /admin/job-runs/health:
+    get:
+      summary: Per-job background-job run health (admin)
+      operationId: adminGetJobRunHealth
+      description: >
+        The folded run health of every known background job (issue #391),
+        derived on read from job_runs: current status, last run / success /
+        failure, the consecutive-failure run and its first-failure time, and an
+        average / maximum duration trend over recent executed runs (so "normally
+        1s, crept to 40s" is visible). Skipped runs are transparent to status
+        and the failure streak. Instance-wide, admin-only, read-only.
+      responses:
+        "200":
+          description: One entry per known background job, in scheduler-registration order.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/JobRunHealth"
+        "401":
+          description: Not authenticated (cookie or full-scope bearer token required).
+        "403":
+          description: Not an admin, or an API token was used on an admin path.
+
   /admin/error-aggregation:
     get:
       summary: Operational errors bucketed by cause (admin)
@@ -9733,6 +9821,61 @@ components:
           description: "First failure of the current unbroken run — non-null exactly when consecutive_failures > 0"
         consecutive_failures: { type: integer, description: "Failures in a row since the last success; a success resets it to 0" }
         last_error: { type: string, description: "Sanitized error of the most recent failure; empty unless status is failing" }
+    JobRun:
+      type: object
+      description: >
+        One persisted background-job execution outcome (issue #391).
+        System-generated, read-only, admin-only.
+      properties:
+        id: { type: integer }
+        created_at: { type: string, format: date-time }
+        job_name: { type: string, description: "Canonical job name (see JobExecution.job_name)" }
+        trigger:
+          type: string
+          enum: [scheduled, initial, manual]
+          description: "cron tick, boot-time catch-up run, or an operator-forced /admin/trigger-* run"
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time }
+        duration_ms: { type: integer }
+        result:
+          type: string
+          enum: [success, failure, skipped]
+          description: "skipped = the run did not execute (job lock held / ran too recently)"
+        error: { type: string, description: "Sanitized, length-capped; empty unless result is failure" }
+        items_processed:
+          type: integer
+          nullable: true
+          description: "Count of items the run acted on, when the job reports one; null otherwise"
+        detail: { type: string, description: "Bounded, low-cardinality extra context" }
+        correlation_id: { type: string, description: "Ties the run to its system_events chain — job:<name>:<uuid>" }
+    JobRunHealth:
+      type: object
+      description: >
+        The folded run health of one background job (issue #391), derived on
+        read from job_runs.
+      properties:
+        job_name: { type: string }
+        status:
+          type: string
+          enum: [healthy, failing, unknown]
+          description: "healthy = last executed run succeeded; failing = last executed run failed; unknown = no executed run on record"
+        last_run_at: { type: string, format: date-time, nullable: true, description: "Most recent run of any result, including skipped" }
+        last_result: { type: string, description: "Result of that most recent run" }
+        last_trigger: { type: string }
+        last_duration_ms: { type: integer, nullable: true }
+        last_items_processed: { type: integer, nullable: true }
+        last_success_at: { type: string, format: date-time, nullable: true }
+        last_failure_at: { type: string, format: date-time, nullable: true }
+        last_error: { type: string, description: "Sanitized error of the most recent failure; empty unless status is failing" }
+        incident_first_failure_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: "First failure of the current unbroken run — non-null exactly when consecutive_failures > 0"
+        consecutive_failures: { type: integer, description: "Failures in a row since the last success; skipped runs do not break the streak" }
+        duration_sample_size: { type: integer, description: "How many recent executed runs the avg/max were computed over" }
+        avg_duration_ms: { type: integer, nullable: true }
+        max_duration_ms: { type: integer, nullable: true }
     NotificationChannelHealth:
       type: object
       description: >

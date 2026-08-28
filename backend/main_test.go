@@ -1,29 +1,79 @@
 package main
 
 import (
+	"errors"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/metrics"
+	"mycorrhizal/models"
+	"mycorrhizal/services"
 
 	"github.com/go-co-op/gocron"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
+
+// newMainTestDB builds the real migrated schema (CLAUDE.md backend trap 1) for
+// the job-wrapper tests, then clears job_runs so each test controls its rows.
+func newMainTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db := dbtest.New(t)
+	require.NoError(t, db.Exec("DELETE FROM job_runs").Error)
+	return db
+}
 
 // TestRecoverJob_UnitRecoversPanic verifies recoverJob itself absorbs a
 // panic thrown by the wrapped function instead of letting it propagate to
 // the caller — the direct analogue of what safeGo already guarantees for
 // each job's initial run.
 func TestRecoverJob_UnitRecoversPanic(t *testing.T) {
-	wrapped := recoverJob(nil, "test-panic-job", func() {
+	wrapped := recoverJob(nil, "test-panic-job", models.JobTriggerScheduled, func() error {
 		panic("boom")
 	})
 
 	require.NotPanics(t, func() {
 		wrapped()
 	}, "recoverJob must absorb a panic from the wrapped function")
+}
+
+// TestRunJob_RecordsOutcome pins the job_runs recording (issue #391): a
+// successful run, a returned error, a services.ErrJobSkipped, and a panic each
+// land as one row with the right result — and the panic is still recovered.
+func TestRunJob_RecordsOutcome(t *testing.T) {
+	db := newMainTestDB(t)
+
+	runJob(db, models.JobNameAlertEval, models.JobTriggerScheduled, func() error { return nil })
+	runJob(db, models.JobNameAuditPurge, models.JobTriggerInitial, func() error { return errors.New("kaboom") })
+	runJob(db, models.JobNameImmichSync, models.JobTriggerScheduled, func() error { return services.ErrJobSkipped })
+	require.NotPanics(t, func() {
+		runJob(db, models.JobNameCalendarSync, models.JobTriggerScheduled, func() error { panic("explode") })
+	})
+	runJobReport(db, models.JobNameDailyReminders, models.JobTriggerManual, func() (int, error) { return 5, nil })
+
+	byJob := map[string]models.JobRun{}
+	var rows []models.JobRun
+	require.NoError(t, db.Find(&rows).Error)
+	for _, r := range rows {
+		byJob[r.JobName] = r
+	}
+
+	require.Equal(t, "success", byJob[models.JobNameAlertEval].Result)
+	require.Equal(t, "failure", byJob[models.JobNameAuditPurge].Result)
+	require.Equal(t, "kaboom", byJob[models.JobNameAuditPurge].Error)
+	require.Equal(t, models.JobTriggerInitial, byJob[models.JobNameAuditPurge].Trigger)
+	require.Equal(t, "skipped", byJob[models.JobNameImmichSync].Result)
+	require.Equal(t, "failure", byJob[models.JobNameCalendarSync].Result)
+	require.Contains(t, byJob[models.JobNameCalendarSync].Error, "panic: explode")
+
+	rem := byJob[models.JobNameDailyReminders]
+	require.Equal(t, "success", rem.Result)
+	require.Equal(t, models.JobTriggerManual, rem.Trigger)
+	require.NotNil(t, rem.ItemsProcessed)
+	require.Equal(t, 5, *rem.ItemsProcessed)
 }
 
 // TestRecoverJob_SchedulerSurvivesPanic reproduces the exact pattern main.go
@@ -44,7 +94,7 @@ func TestRecoverJob_SchedulerSurvivesPanic(t *testing.T) {
 
 	s := gocron.NewScheduler(time.UTC)
 
-	_, err := s.Every(1).Second().Do(recoverJob(nil, "panic-job", func() {
+	_, err := s.Every(1).Second().Do(recoverJob(nil, "panic-job", models.JobTriggerScheduled, func() error {
 		mu.Lock()
 		panicJobRuns++
 		mu.Unlock()
@@ -78,9 +128,9 @@ func TestRecoverJob_SchedulerSurvivesPanic(t *testing.T) {
 // job_runs_total / job_duration_seconds families on both the success and the
 // recovered-panic path (issue #389).
 func TestRunJob_RecordsJobMetrics(t *testing.T) {
-	runJob(nil, "metrics-unit-ok", func() {})
+	runJob(nil, "metrics-unit-ok", models.JobTriggerScheduled, func() error { return nil })
 	require.NotPanics(t, func() {
-		runJob(nil, "metrics-unit-boom", func() { panic("boom") })
+		runJob(nil, "metrics-unit-boom", models.JobTriggerScheduled, func() error { panic("boom") })
 	})
 
 	var sb strings.Builder
