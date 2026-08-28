@@ -2244,7 +2244,12 @@
       "path": "Pfad",
       "size": "Größe",
       "files": "Dateien",
-      "approx": "ca."
+      "approx": "ca.",
+      "growth30d": "Wachstum (30 Tage)",
+      "grew": "In den letzten 30 Tagen um {{bytes}} gewachsen",
+      "projectedFull": "Voraussichtlich voll",
+      "thresholdWarning": "Warnung: {{percent}} % des Speichers belegt",
+      "thresholdCritical": "Kritisch: {{percent}} % des Speichers belegt"
     },
     "features": {
       "carddav": "CardDAV",

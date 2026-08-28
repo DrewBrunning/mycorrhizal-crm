@@ -406,6 +406,34 @@ func TestLoadConfig_Defaults(t *testing.T) {
 	// check) — an outbound call on a self-hosted app is an operator decision.
 	assert.False(t, cfg.HIBPCheckEnabled)
 	assert.False(t, cfg.UpdateCheckEnabled)
+
+	// Storage-trend thresholds and sampler retention (issue #652).
+	assert.Equal(t, 75, cfg.StorageWarnPercent)
+	assert.Equal(t, 90, cfg.StorageCriticalPercent)
+	assert.Equal(t, 180, cfg.StorageSampleRetentionDays)
+}
+
+func TestLoadConfig_StorageThresholds(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+
+	t.Setenv("STORAGE_WARN_PERCENT", "80")
+	t.Setenv("STORAGE_CRITICAL_PERCENT", "95")
+	t.Setenv("STORAGE_SAMPLE_RETENTION_DAYS", "365")
+	cfg := LoadConfig()
+	assert.Equal(t, 80, cfg.StorageWarnPercent)
+	assert.Equal(t, 95, cfg.StorageCriticalPercent)
+	assert.Equal(t, 365, cfg.StorageSampleRetentionDays)
+
+	// A critical at or below warn is meaningless — clamp to the default.
+	t.Setenv("STORAGE_WARN_PERCENT", "85")
+	t.Setenv("STORAGE_CRITICAL_PERCENT", "85")
+	assert.Equal(t, 90, LoadConfig().StorageCriticalPercent)
+
+	// A retention window that can't hold even a week of samples is clamped.
+	t.Setenv("STORAGE_SAMPLE_RETENTION_DAYS", "3")
+	assert.Equal(t, 180, LoadConfig().StorageSampleRetentionDays)
 }
 
 func TestLoadConfig_UpdateCheckEnabledEnv(t *testing.T) {

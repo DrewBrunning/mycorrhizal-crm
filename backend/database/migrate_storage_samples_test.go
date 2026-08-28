@@ -1,0 +1,59 @@
+package database
+
+import (
+	"database/sql"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// TestMigrationsAddStorageSamples covers 000043: the storage_samples table is
+// created with its taken_at index, accepts a valid row, and the down migration
+// drops it cleanly on a populated database. storage_samples holds only
+// timestamps + byte counts for the daily storage sampler (issue #652), so
+// there is no existing-data-preservation concern — the table is new.
+func TestMigrationsAddStorageSamples(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "storage-samples.db")
+
+	db, err := InitDB(dbPath)
+	require.NoError(t, err, "full migration chain incl. 000043 must apply to an empty database")
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+
+	var tableCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='storage_samples'",
+	).Scan(&tableCount))
+	assert.Equal(t, int64(1), tableCount)
+
+	var idxCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_storage_samples_taken_at'",
+	).Scan(&idxCount))
+	assert.Equal(t, int64(1), idxCount, "the taken_at index must exist for the windowed trend query")
+
+	// A valid row inserts; defaults fill the per-directory byte columns.
+	_, err = sqlDB.Exec(`
+		INSERT INTO storage_samples (taken_at, database_bytes, fs_used_bytes, fs_total_bytes)
+		VALUES (datetime('now', '-1 day'), 1048576, 53687091200, 107374182400)`)
+	require.NoError(t, err)
+
+	var rowCount int64
+	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM storage_samples").Scan(&rowCount))
+	assert.Equal(t, int64(1), rowCount)
+
+	require.NoError(t, sqlDB.Close())
+
+	// Down drops the table. 000043 is the migration tip, so one rollback.
+	require.NoError(t, MigrateDown(dbPath))
+
+	sqlDB2, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB2.Close()
+	require.NoError(t, sqlDB2.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='storage_samples'",
+	).Scan(&tableCount))
+	assert.Equal(t, int64(0), tableCount, "the down migration must drop storage_samples")
+}

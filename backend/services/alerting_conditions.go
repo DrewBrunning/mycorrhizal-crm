@@ -258,6 +258,7 @@ func trackedJobs(cfg config.Config) []jobStaleDef {
 		{models.JobNameCadenceOverdue, 24 * time.Hour},
 		{models.JobNameReachOutDetection, 24 * time.Hour},
 		{models.JobNameImmichSync, hours(cfg.ImmichSyncIntervalHours)},
+		{models.JobNameStorageSample, 24 * time.Hour},
 	}
 	if cfg.DBIntegrityCheckEnabled {
 		defs = append(defs, jobStaleDef{models.JobNameDBIntegrityCheck, hours(cfg.DBIntegrityCheckIntervalHours)})

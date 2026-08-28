@@ -165,6 +165,7 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"operational_check_results": exempt, // DB-integrity diagnostics (issue #273), no user FK
 	"schema_migrations":         exempt, // migration bookkeeping
 	"server_settings":           exempt, // instance-wide settings, no user FK
+	"storage_samples":           exempt, // storage-growth history (issue #652), no user FK, retention-purged
 	"system_events":             exempt, // operational diagnostics (issue #424), admin-only, retention-purged
 }
 

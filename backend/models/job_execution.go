@@ -73,4 +73,9 @@ const (
 	// JobNameJobRunPurge is the job name for the periodic removal of job_runs
 	// rows past their retention window (issue #391).
 	JobNameJobRunPurge = "job_run_purge"
+
+	// JobNameStorageSample is the job name for the daily storage-growth
+	// sampler that writes one storage_samples row and prunes rows past their
+	// retention window (issue #652).
+	JobNameStorageSample = "storage_sample"
 )

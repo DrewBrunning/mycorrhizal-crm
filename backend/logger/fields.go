@@ -60,6 +60,7 @@ const (
 	ComponentNotify       = "notification"
 	ComponentWebhook      = "webhook"
 	ComponentBackup       = "backup"
+	ComponentStorage      = "storage"
 )
 
 // OpLog times a single operation and emits one standardized completion line

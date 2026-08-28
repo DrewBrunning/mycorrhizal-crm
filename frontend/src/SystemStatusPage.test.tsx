@@ -59,6 +59,12 @@ function fullStatus(overrides: Partial<SystemStatusResponse> = {}): SystemStatus
         { path: '/app/static/photos', bytes: 2048, file_count: 12, truncated: false },
         { path: '/app/data/attachments', bytes: 2097152, file_count: 300, truncated: true },
       ],
+      growth_7d_bytes: 104857,
+      growth_30d_bytes: 1048576,
+      growth_90d_bytes: null,
+      projected_full_at: null,
+      usage_percent: 36,
+      threshold: 'ok',
     },
     // Default: the update-availability flag is off (UPDATE_CHECK_ENABLED unset),
     // so the block is exactly {enabled: false} and nothing is rendered.
@@ -136,6 +142,15 @@ test('renders every section from a fully-populated payload', async () => {
   expect(screen.getByText('/app/data/attachments')).toBeInTheDocument();
   expect(screen.getByText('2.0 MB')).toBeInTheDocument();
   expect(screen.getByText('approx.')).toBeInTheDocument();
+
+  // Storage-growth trend (issue #652): the growth delta renders from the
+  // payload; the missing projection degrades to an em dash.
+  expect(screen.getByText('Growth (30 days)')).toBeInTheDocument();
+  expect(screen.getByText('Grew 1.0 MB in the last 30 days')).toBeInTheDocument();
+  expect(screen.getByText('Projected full')).toBeInTheDocument();
+  // A threshold of ok renders no banner.
+  expect(screen.queryByText(/Warning:/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Critical:/)).not.toBeInTheDocument();
 });
 
 test('omitted directories and an empty validation list render the pass state, not a crash', async () => {
@@ -245,4 +260,64 @@ test('an enabled update check with unknown latest renders no update section', as
   expect(await screen.findByText('System status')).toBeInTheDocument();
   expect(screen.queryByText('Update check')).not.toBeInTheDocument();
   expect(screen.queryByText(/Update available:/)).not.toBeInTheDocument();
+});
+
+test('a warning storage threshold renders the warning banner and colors the bar', async () => {
+  getMock.mockResolvedValue(
+    fullStatus({
+      storage: {
+        ...fullStatus().storage,
+        usage_percent: 78,
+        threshold: 'warning',
+        projected_full_at: '2027-03-15T00:00:00Z',
+      },
+    }),
+  );
+
+  renderPage();
+
+  expect(await screen.findByText('Warning: 78% of storage used')).toBeInTheDocument();
+  // The projection date renders through toLocaleString, so assert the label.
+  expect(screen.getByText('Projected full')).toBeInTheDocument();
+  expect(screen.queryByText(/Critical:/)).not.toBeInTheDocument();
+});
+
+test('a critical storage threshold renders the critical banner', async () => {
+  getMock.mockResolvedValue(
+    fullStatus({
+      storage: {
+        ...fullStatus().storage,
+        usage_percent: 93,
+        threshold: 'critical',
+      },
+    }),
+  );
+
+  renderPage();
+
+  expect(await screen.findByText('Critical: 93% of storage used')).toBeInTheDocument();
+  expect(screen.queryByText(/Warning:/)).not.toBeInTheDocument();
+});
+
+test('storage growth and projection degrade to dashes without history', async () => {
+  getMock.mockResolvedValue(
+    fullStatus({
+      storage: {
+        ...fullStatus().storage,
+        growth_7d_bytes: null,
+        growth_30d_bytes: null,
+        growth_90d_bytes: null,
+        projected_full_at: null,
+      },
+    }),
+  );
+
+  renderPage();
+
+  expect(await screen.findByText('System status')).toBeInTheDocument();
+  expect(screen.getByText('Growth (30 days)')).toBeInTheDocument();
+  expect(screen.getByText('Projected full')).toBeInTheDocument();
+  // No banner on an ok/unknown threshold, and the page survives.
+  expect(screen.queryByText(/Warning:/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Critical:/)).not.toBeInTheDocument();
 });

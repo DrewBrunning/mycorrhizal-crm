@@ -450,8 +450,31 @@ function StorageCard({ status }: { status: SystemStatusResponse }) {
   const usedPct = used != null && total != null && total > 0 ? (used / total) * 100 : null;
   const directories = storage?.directories ?? [];
 
+  // Storage-growth trend (issue #652): the threshold banner colour and the
+  // growth / projection line both render em dashes when there is no history.
+  const threshold = storage?.threshold ?? 'ok';
+  const thresholdColor =
+    threshold === 'critical' ? 'error' : threshold === 'warning' ? 'warning' : 'success';
+
+  const growth30 = storage?.growth_30d_bytes ?? null;
+  const projectedFull = storage?.projected_full_at ?? null;
+  const usage = storage?.usage_percent ?? null;
+
   return (
     <Section title={t('systemStatus.storage.title')}>
+      {threshold !== 'ok' && usage != null && (
+        <Chip
+          size="small"
+          color={thresholdColor}
+          label={
+            threshold === 'critical'
+              ? t('systemStatus.storage.thresholdCritical', { percent: usage })
+              : t('systemStatus.storage.thresholdWarning', { percent: usage })
+          }
+          sx={{ mb: 1 }}
+        />
+      )}
+
       <DetailGrid
         rows={[
           [t('systemStatus.storage.databaseSize'), formatBytes(storage?.database_bytes)],
@@ -464,6 +487,16 @@ function StorageCard({ status }: { status: SystemStatusResponse }) {
                 })
               : '—',
           ],
+          [
+            t('systemStatus.storage.growth30d'),
+            growth30 != null
+              ? t('systemStatus.storage.grew', { bytes: formatBytes(growth30) })
+              : '—',
+          ],
+          [
+            t('systemStatus.storage.projectedFull'),
+            projectedFull ? formatDateTime(projectedFull) : '—',
+          ],
         ]}
       />
 
@@ -472,6 +505,7 @@ function StorageCard({ status }: { status: SystemStatusResponse }) {
           <LinearProgress
             variant="determinate"
             value={Math.min(100, usedPct)}
+            color={thresholdColor}
             sx={{ borderRadius: 1, height: 8 }}
           />
         </Box>

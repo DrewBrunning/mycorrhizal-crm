@@ -484,6 +484,29 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   vanishes on restart. No database rows, no files.
 - **Backups**: not applicable — nothing is persisted, so nothing is in a snapshot.
 
+## 20. Storage-growth history (`storage_samples`) — not user data
+
+- **Where / who**: one row per daily sampling of the on-disk footprint (issue #652), written by the
+  `storage_sample` scheduled job (`services/storage_sample_service.go`) and read only via the admin
+  `/admin/system-status` surface. No `user_id` — instance-wide operational bookkeeping, the same
+  shape as `job_runs` / `system_events`. The `alert_states` row keyed `storage_threshold` (the
+  hysteresis state behind the tiered threshold) is §15's table, not this one.
+- **What it contains**: `taken_at` plus five byte counts — database (main file + `-wal` + `-shm`),
+  filesystem used/total, profile-photo directory, attachment directory. **No contact data, no
+  credentials, no PII.**
+- **Retention / deletion**: `STORAGE_SAMPLE_RETENTION_DAYS` (default 180, `config/config.go`) — the
+  sampler deletes rows older than the window in the same scheduled run that writes, so the table is
+  bounded by construction. `<= 0` is treated as "use the default", never "delete everything". Hard
+  delete (no `deleted_at`, CLAUDE.md backend trap #7). Not tied to any user, so account deletion
+  neither touches nor needs to touch it. Dropped wholesale by migration `000043`'s `down.sql`.
+- **Backups**: included in the DB snapshot like any other table; carries nothing sensitive, so it
+  needs no special handling in the backup-confidentiality boundary (§10). Excluded from the
+  restore-drill row-count comparison for the same reason as `system_events` / `job_runs` — the
+  sampler writes it in the snapshot-vs-live window.
+- **Verification**: `backend/database/migrate_storage_samples_test.go`,
+  `backend/services/storage_sample_service_test.go`,
+  `backend/controllers/system_status_controller_test.go` (`TestGetSystemStatus_StorageTrendBlock`).
+
 ## Known gaps
 
 One item surfaced by walking every data type through the four questions above. It does not block this
@@ -506,6 +529,7 @@ per §1/§7/§8), but it is a genuine, named gap rather than a silently-accepted
 | Webhook delivery purge window + payload trim | `backend/services/webhook_delivery_purge_service_test.go` (9 cases), `webhook_delivery_test.go` trim pins |
 | Job-run retention window | `backend/services/job_run_purge_service_test.go` |
 | Import-run history: one row per confirmed import, swept on account delete | `backend/services/import_session_history_test.go`, `backend/controllers/import_history_controller_test.go`, `backend/controllers/delete_cascade_coverage_test.go` |
+| Storage-growth history: one sample per run, pruned past retention | `backend/services/storage_sample_service_test.go`, `backend/database/migrate_storage_samples_test.go` |
 | Admin purge trigger + window | `backend/controllers/admin_user_controller_test.go` M1/M1b/M5 |
 | Sync-horizon 410 Gone matches purge window | `backend/controllers/cursor_feed_test.go` |
 | FTS index follows soft/hard delete | `backend/database/migrate_test.go`, FTS trigger coverage |

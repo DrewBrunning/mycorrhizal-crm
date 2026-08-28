@@ -105,11 +105,29 @@ export interface SystemStatusFilesystem {
   total_bytes: number;
 }
 
+// The storage-growth trend tier (issue #652): usage_percent folded against
+// STORAGE_WARN_PERCENT / STORAGE_CRITICAL_PERCENT (with -5% hysteresis). A
+// warning/critical tier elevates the overall status to at least degraded.
+export type StorageThreshold = 'ok' | 'warning' | 'critical';
+
 export interface SystemStatusStorage {
   database_bytes: number;
   filesystem: SystemStatusFilesystem;
   // Never null on the wire — marshals as [] when no directory is configured.
   directories: DirectoryUsage[];
+  // Growth deltas (latest sample minus the oldest within the window) over the
+  // persisted storage_samples series. Null until the window holds >= 2 samples.
+  growth_7d_bytes?: number | null;
+  growth_30d_bytes?: number | null;
+  growth_90d_bytes?: number | null;
+  // Linear fit of filesystem-used over the last 30 days extrapolated to
+  // capacity; null when slope <= 0 or history < 14 days.
+  projected_full_at?: string | null;
+  // Filesystem used as a percentage of total; null when it can't be stat'ed.
+  usage_percent?: number | null;
+  // Optional for defensive rendering: the page defaults a missing threshold to
+  // 'ok' (no banner), matching its dash-for-missing-fields posture.
+  threshold?: StorageThreshold;
 }
 
 // Opt-in update-availability block (issue #650). `enabled` mirrors

@@ -2244,7 +2244,12 @@
       "path": "Ruta",
       "size": "Tamaño",
       "files": "Archivos",
-      "approx": "aprox."
+      "approx": "aprox.",
+      "growth30d": "Crecimiento (30 días)",
+      "grew": "Creció {{bytes}} en los últimos 30 días",
+      "projectedFull": "Llenado previsto",
+      "thresholdWarning": "Aviso: {{percent}} % del almacenamiento usado",
+      "thresholdCritical": "Crítico: {{percent}} % del almacenamiento usado"
     },
     "features": {
       "carddav": "CardDAV",
