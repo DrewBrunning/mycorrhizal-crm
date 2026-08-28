@@ -21,6 +21,16 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 	router.GET("/health/live", controllers.LivenessCheck)
 	router.GET("/health/ready", controllers.ReadinessCheck)
 
+	// Prometheus metrics (issue #389). Opt-in and off by default: the route
+	// only exists when METRICS_TOKEN is configured, and then every scrape must
+	// carry `Authorization: Bearer <METRICS_TOKEN>`. Not user-scoped and not a
+	// REST/JSON operation, so it is deliberately outside the /api/v1 group,
+	// the six-persona authorization matrix, and openapi.yaml — same rationale
+	// as the CardDAV surface.
+	if cfg.MetricsToken != "" {
+		router.GET("/metrics", controllers.MetricsHandler(cfg, db))
+	}
+
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
