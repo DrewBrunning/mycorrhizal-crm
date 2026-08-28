@@ -1,15 +1,15 @@
 package services
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -21,8 +21,7 @@ import (
 // subscribed to the given event type gets a delivery; an inactive webhook
 // and a webhook subscribed to a different event do not.
 func TestTriggerWebhooksForAllUsers(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "broadcast.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
@@ -77,7 +76,7 @@ func TestTriggerWebhooksForAllUsers(t *testing.T) {
 	// affected.
 	require.NoError(t, db.Model(&inactiveWebhook).Update("is_active", false).Error)
 
-	triggerWebhooksForAllUsers(db, config.Config{}, eventType, map[string]interface{}{"detail": "corruption found"})
+	triggerWebhooksForAllUsers(context.Background(), db, config.Config{}, eventType, map[string]interface{}{"detail": "corruption found"})
 
 	require.Eventually(t, func() bool {
 		return atomic.LoadInt32(&subscribedHits) >= 1

@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
@@ -27,8 +26,7 @@ import (
 // row is detected as a duplicate by email) → confirm with the "update"
 // action.
 func TestConfirmImport_UpdateMergePreservesCardOnlyData(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "t75-import-ctrl.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "t75importc", Password: "password123!A", Email: "t75importc@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -107,8 +105,7 @@ func TestConfirmImport_UpdateMergePreservesCardOnlyData(t *testing.T) {
 // dirty-comparison rule would have rebuilt the whole array from flat and
 // destroyed them.
 func TestConfirmImport_UpdateMergeNewAddressPreservesExistingUnprojected(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "t75-import-addr-ctrl.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "t75importa", Password: "password123!A", Email: "t75importa@example.com"}
 	require.NoError(t, db.Create(&user).Error)

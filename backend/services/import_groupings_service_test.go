@@ -1,10 +1,9 @@
 package services
 
 import (
-	"path/filepath"
 	"testing"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -20,8 +19,7 @@ import (
 func newGroupingsDB(t *testing.T) (*gorm.DB, uint) {
 	t.Helper()
 
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "groupings.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "grouping-user", Email: "grouping@example.com", Password: "x"}
 	require.NoError(t, db.Create(&user).Error)

@@ -43,6 +43,24 @@ func TestValidate_ValidConfigHasNoErrors(t *testing.T) {
 	assert.Empty(t, errs)
 }
 
+func TestValidate_MetricsToken(t *testing.T) {
+	t.Run("empty is fine (endpoint stays unregistered)", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.MetricsToken = ""
+		assert.False(t, hasFieldError(cfg.Validate(), "METRICS_TOKEN"))
+	})
+	t.Run("too short is rejected", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.MetricsToken = "short"
+		assert.True(t, hasFieldError(cfg.Validate(), "METRICS_TOKEN"))
+	})
+	t.Run("16+ chars accepted", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.MetricsToken = "0123456789abcdef"
+		assert.False(t, hasFieldError(cfg.Validate(), "METRICS_TOKEN"))
+	})
+}
+
 func TestValidate_FrontendURLWildcard(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -375,6 +393,7 @@ func TestLoadConfig_Defaults(t *testing.T) {
 	assert.Equal(t, 30, cfg.DeleteRetentionDays)
 	assert.Equal(t, 90, cfg.AuditRetentionDays)
 	assert.Equal(t, 30, cfg.ContactShareRetentionDays)
+	assert.Equal(t, 30, cfg.WebhookDeliveryRetentionDays)
 
 	// Default reminder schedule. Pinned because this value is also stated in
 	// three places outside the code — .env.example, backend/.env.example and
@@ -404,6 +423,17 @@ func TestLoadConfig_ContactShareRetentionDays(t *testing.T) {
 
 	cfg := LoadConfig()
 	assert.Equal(t, 60, cfg.ContactShareRetentionDays)
+}
+
+func TestLoadConfig_WebhookDeliveryRetentionDays(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+	t.Setenv("WEBHOOK_DELIVERY_RETENTION_DAYS", "60")
+
+	cfg := LoadConfig()
+	assert.Equal(t, 60, cfg.WebhookDeliveryRetentionDays)
 }
 
 func TestLoadConfig_DBIntegrityCheckIntervalHoursClampedToMinimumOne(t *testing.T) {

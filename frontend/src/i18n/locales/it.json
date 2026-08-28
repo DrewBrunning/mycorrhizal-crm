@@ -38,6 +38,8 @@
     "data": "Dati",
     "shares": "Condivisioni",
     "audit": "Registro di controllo",
+    "systemEvents": "Eventi di sistema",
+    "systemStatus": "Stato del sistema",
     "mainLabel": "Navigazione principale",
     "skipToContent": "Vai al contenuto"
   },
@@ -1114,6 +1116,11 @@
       "syncNow": "Sincronizza ora",
       "disabled": "Disattivato",
       "syncFailed": "Sincronizzazione non riuscita",
+      "syncFailedCount": "Sincronizzazione non riuscita ×{{count}}",
+      "healthFailing": "In errore da {{since}} — {{count}} errori consecutivi",
+      "healthLastSuccess": "ultimo successo {{date}}",
+      "healthNeverSucceeded": "mai sincronizzato con successo",
+      "healthLastRun": "Ultima esecuzione: {{created}} creati, {{updated}} aggiornati, {{skipped}} invariati",
       "addTitle": "Aggiungi calendario",
       "editTitle": "Modifica calendario",
       "name": "Nome",
@@ -1136,7 +1143,8 @@
       "built": "Compilato il {{date}}",
       "copy": "Copia i dettagli della build",
       "copied": "Dettagli della build copiati",
-      "reportHint": "Includilo quando segnali un problema."
+      "reportHint": "Includilo quando segnali un problema.",
+      "viewSystemStatus": "Visualizza stato del sistema"
     },
     "webhooks": {
       "title": "Webhook",
@@ -1177,7 +1185,12 @@
         "activity.updated": "Attività aggiornata",
         "activity.deleted": "Attività eliminata",
         "reminder.triggered": "Promemoria attivato",
-        "birthday.occurred": "Compleanno"
+        "birthday.occurred": "Compleanno",
+        "reach_out_suggested": "Contatto suggerito",
+        "db.integrity_check_failed": "Controllo di integrità del database non riuscito",
+        "db.restore_drill_failed": "Test di ripristino non riuscito",
+        "alert.raised": "Avviso attivato",
+        "alert.cleared": "Avviso risolto"
       },
       "secretDialog": {
         "title": "Segreto Webhook"
@@ -1221,7 +1234,24 @@
       "import": {
         "title": "Importa contatti",
         "description": "Importa un'intera rubrica: un export di Google Takeout, un export CSV o VCF di un'altra app di contatti, o un file JSON JSContact. Viene usato lo stesso flusso di revisione della pagina Contatti, con controlli bulk per file di grandi dimensioni.",
-        "importButton": "Importa contatti"
+        "importButton": "Importa contatti",
+        "history": {
+          "title": "Cronologia importazioni",
+          "empty": "Nessuna importazione ancora.",
+          "loadError": "Impossibile caricare la cronologia delle importazioni.",
+          "colWhen": "Data",
+          "colFormat": "Formato",
+          "colCreated": "Creati",
+          "colUpdated": "Aggiornati",
+          "colSkipped": "Ignorati",
+          "colErrors": "Errori",
+          "format": {
+            "csv": "CSV",
+            "vcf": "vCard",
+            "jscontact": "JSContact",
+            "records": "Dispositivo"
+          }
+        }
       },
       "propose": {
         "title": "Proponi dati",
@@ -2057,6 +2087,302 @@
       "success": "Contatto ripristinato allo stato precedente",
       "retentionGone": "Questo evento è oltre la sua finestra di conservazione e non può più essere annullato",
       "partialNote": "I dettagli mai registrati in questa voce (pronomi, informazioni personali, dettagli dell'indirizzo) vengono conservati invariati."
+    }
+  },
+  "systemEvents": {
+    "title": "Eventi di sistema",
+    "description": "Un registro cronologico degli eventi operativi: attività pianificate, sincronizzazioni, backup, migrazioni. Il primo posto in cui guardare quando qualcosa non funziona.",
+    "filters": {
+      "component": "Componente",
+      "severity": "Gravità",
+      "eventType": "Tipo di evento",
+      "correlationId": "ID di correlazione",
+      "all": "Tutti",
+      "clear": "Cancella filtri"
+    },
+    "columns": {
+      "time": "Quando",
+      "severity": "Gravità",
+      "component": "Componente",
+      "event": "Evento",
+      "operation": "Operazione",
+      "result": "Esito",
+      "duration": "Durata",
+      "actions": "Azioni"
+    },
+    "severities": {
+      "info": "Info",
+      "warn": "Avviso",
+      "error": "Errore"
+    },
+    "results": {
+      "success": "Riuscito",
+      "failure": "Non riuscito",
+      "skipped": "Ignorato"
+    },
+    "eventTypes": {
+      "application_started": "Applicazione avviata",
+      "application_stopped": "Applicazione arrestata",
+      "migration_started": "Migrazione avviata",
+      "migration_completed": "Migrazione completata",
+      "migration_failed": "Migrazione non riuscita",
+      "job_started": "Attività avviata",
+      "job_completed": "Attività completata",
+      "job_failed": "Attività non riuscita",
+      "sync_started": "Sincronizzazione avviata",
+      "sync_completed": "Sincronizzazione completata",
+      "sync_failed": "Sincronizzazione non riuscita",
+      "notification_sent": "Notifica inviata",
+      "notification_failed": "Notifica non riuscita",
+      "backup_completed": "Backup completato",
+      "backup_failed": "Backup non riuscito",
+      "restore_test_completed": "Test di ripristino completato",
+      "integration_failed": "Integrazione non riuscita"
+    },
+    "details": {
+      "button": "Dettagli",
+      "title": "Dettagli dell'evento",
+      "correlationId": "ID di correlazione",
+      "detail": "Dettaglio",
+      "error": "Errore",
+      "viewRelated": "Mostra correlati"
+    },
+    "relatedBanner": "Visualizzazione di tutti gli eventi della catena {{id}}.",
+    "errorsBanner": "Visualizzazione di {{n}} eventi di un gruppo di errori.",
+    "empty": "Nessun evento di sistema corrisponde ai filtri.",
+    "emptyNoFilters": "Nessun evento di sistema registrato finora."
+  },
+  "subsystemHealth": {
+    "title": "Stato dei sottosistemi",
+    "description": "Ultimo stato valido noto per sottosistema: quando ciascuno ha avuto successo l'ultima volta, quante esecuzioni sono fallite di seguito e quando è iniziato l'incidente attuale.",
+    "refresh": "Aggiorna",
+    "status": {
+      "healthy": "Integro",
+      "failing": "In errore",
+      "unknown": "Sconosciuto"
+    },
+    "consecutiveFailures": "Errori consecutivi: {{n}}",
+    "incidentSince": "Incidente da {{time}}",
+    "lastSuccess": "Ultimo successo",
+    "lastFailure": "Ultimo errore",
+    "never": "mai",
+    "subsystems": {
+      "contact_sync": "Sincronizzazione CardDAV",
+      "calendar_sync": "Sincronizzazione CalDAV",
+      "notification": "Notifiche",
+      "backup": "Backup e ripristino",
+      "scheduler": "Processi in background",
+      "webhook": "Webhook"
+    }
+  },
+  "systemStatus": {
+    "title": "Stato del sistema",
+    "description": "Il quadro operativo completo di questa istanza: aspetti di salute profonda, identità della build, stato delle migrazioni, validazione della configurazione, dati SQLite e spazio di archiviazione.",
+    "overall": "Stato complessivo",
+    "refresh": "Aggiorna",
+    "status": {
+      "healthy": "Sano",
+      "degraded": "Degradato",
+      "unhealthy": "Non sano",
+      "ok": "OK",
+      "not_configured": "Non configurato"
+    },
+    "version": {
+      "title": "Versione e attività",
+      "version": "Versione",
+      "commit": "Commit",
+      "buildDate": "Data di compilazione",
+      "startedAt": "Avviato il",
+      "uptime": "Attività"
+    },
+    "health": {
+      "title": "Controlli di salute",
+      "description": "Stato di salute profondo per aspetto: lo stesso riepilogo restituito dall'endpoint /health senza autenticazione.",
+      "facet": "Controllo",
+      "status": "Stato",
+      "reason": "Motivo",
+      "facets": {
+        "database": "Database",
+        "migrations": "Migrazioni",
+        "integrity_check": "Controllo integrità DB",
+        "restore_drill": "Prova di ripristino",
+        "background_jobs": "Processi in background",
+        "integrations": "Integrazioni"
+      }
+    },
+    "migration": {
+      "title": "Migrazioni",
+      "applied": "Applicata",
+      "latest": "Più recente",
+      "pending": "In sospeso",
+      "dirty": "Sporca",
+      "dirtyYes": "Sì",
+      "dirtyNo": "No"
+    },
+    "config": {
+      "title": "Configurazione",
+      "validationTitle": "Validazione",
+      "validationPass": "Tutti i controlli di configurazione sono superati.",
+      "field": "Campo",
+      "message": "Messaggio",
+      "features": "Funzionalità abilitate"
+    },
+    "database": {
+      "title": "Database",
+      "sqliteVersion": "Versione di SQLite",
+      "journalMode": "Modalità journal",
+      "walBytes": "Dimensione del file WAL"
+    },
+    "storage": {
+      "title": "Archiviazione",
+      "databaseSize": "Dimensione del database",
+      "filesystem": "File system",
+      "usedOf": "{{used}} di {{total}} usati",
+      "free": "Libero",
+      "directories": "Directory di archiviazione",
+      "path": "Percorso",
+      "size": "Dimensione",
+      "files": "File",
+      "approx": "circa"
+    },
+    "features": {
+      "carddav": "CardDAV",
+      "caldav": "CalDAV",
+      "oidc": "OIDC",
+      "email": "E-mail",
+      "metrics": "Metriche",
+      "db_integrity_check": "Controllo integrità DB",
+      "db_restore_drill": "Prova di ripristino del DB"
+    },
+    "feature": {
+      "on": "Attivata",
+      "off": "Disattivata"
+    },
+    "error": "Impossibile caricare lo stato del sistema."
+  },
+  "backgroundJobs": {
+    "title": "Attività in background",
+    "description": "L'ultima esecuzione di ogni attività pianificata: esito, durata e quante esecuzioni sono fallite di fila.",
+    "refresh": "Aggiorna",
+    "status": {
+      "healthy": "Integro",
+      "failing": "In errore",
+      "unknown": "Sconosciuto"
+    },
+    "result": {
+      "success": "Riuscita",
+      "failure": "Fallita",
+      "skipped": "Saltata"
+    },
+    "lastRun": "Ultima esecuzione",
+    "duration": "Durata",
+    "durationTrend": "media {{avg}}, max {{max}} su {{n}} esecuzioni",
+    "consecutiveFailures": "Fallita {{n}} volte di fila",
+    "incidentSince": "da {{time}}",
+    "itemsProcessed": "{{n}} elaborati",
+    "never": "mai",
+    "history": "Cronologia esecuzioni",
+    "noHistory": "Nessuna esecuzione registrata per questa attività.",
+    "close": "Chiudi",
+    "trigger": {
+      "scheduled": "pianificata",
+      "initial": "avvio",
+      "manual": "manuale"
+    },
+    "columns": {
+      "result": "Esito",
+      "started": "Avviata",
+      "duration": "Durata",
+      "items": "Elementi",
+      "error": "Errore"
+    },
+    "jobs": {
+      "daily_reminders": "Promemoria giornalieri",
+      "webhook_retries": "Nuovi tentativi webhook",
+      "calendar_sync": "Sincronizzazione calendario",
+      "purge_deleted": "Pulizia righe eliminate",
+      "audit_purge": "Pulizia registro di controllo",
+      "system_event_purge": "Pulizia eventi di sistema",
+      "cadence_overdue": "Webhook di cadenza scaduta",
+      "reach_out_detection": "Rilevamento occasioni di contatto",
+      "immich_sync": "Sincronizzazione Immich",
+      "db_integrity_check": "Controllo integrità database",
+      "restore_drill": "Prova di ripristino del backup",
+      "alert_eval": "Valutazione degli avvisi",
+      "job_run_purge": "Pulizia cronologia esecuzioni"
+    }
+  },
+  "errorAggregation": {
+    "title": "Errori per causa",
+    "description": "Guasti operativi delle ultime {{hours}} ore, raggruppati per causa. Una causa che si ripete merita attenzione; un caso isolato di solito no.",
+    "refresh": "Aggiorna",
+    "empty": "Nessun errore ripetuto nelle ultime {{hours}} ore.",
+    "recurring": "Ricorrente",
+    "viewEvents": "Visualizza {{n}} eventi",
+    "columns": {
+      "count": "Conteggio",
+      "component": "Componente",
+      "error": "Errore",
+      "lastSeen": "Visto l'ultima volta",
+      "actions": "Azioni"
+    }
+  },
+  "notificationHealth": {
+    "title": "Salute della consegna delle notifiche",
+    "description": "Se ogni canale di promemoria funziona: configurato o meno, ultima consegna riuscita e se sta fallendo ora.",
+    "refresh": "Aggiorna",
+    "status": {
+      "unconfigured": "Non configurato",
+      "no_devices": "Nessun dispositivo",
+      "healthy": "Operativo",
+      "failing": "In errore"
+    },
+    "consecutiveFailures": "Errori consecutivi: {{n}}",
+    "noDevicesHint": "Push configurato, ma non è registrata alcuna sottoscrizione del browser né dispositivo mobile.",
+    "enabledUsers": "Utenti attivati",
+    "deliveredCount": "Consegnati: {{delivered}} / {{attempted}}",
+    "deviceCount": "Dispositivi: {{n}}",
+    "fcmConfigured": "FCM configurato",
+    "lastSuccess": "Ultimo successo",
+    "lastFailure": "Ultimo errore",
+    "never": "mai",
+    "channels": {
+      "email": "E-mail",
+      "ntfy": "ntfy",
+      "gotify": "Gotify",
+      "push": "Push web"
+    }
+  },
+  "diagnostics": {
+    "title": "Diagnostica",
+    "description": "Un controllo di salute completo di questa installazione: configurazione, database e migrazioni, archiviazione, backup, notifiche, integrazioni, spazio su disco e processi in background.",
+    "run": "Esegui diagnostica",
+    "running": "In esecuzione…",
+    "status": {
+      "ok": "OK",
+      "warning": "Avviso",
+      "error": "Errore"
+    },
+    "summary": "{{warnings}} avviso/i, {{errors}} errore/i",
+    "checks": {
+      "config": "Configurazione",
+      "database": "Database",
+      "migrations": "Migrazioni",
+      "filesystem": "File system",
+      "backup": "Backup",
+      "notification_email": "Notifiche e-mail",
+      "notification_ntfy": "Notifiche ntfy",
+      "notification_gotify": "Notifiche Gotify",
+      "notification_push": "Notifiche push web",
+      "integration_carddav": "CardDAV",
+      "integration_caldav": "CalDAV",
+      "integration_immich": "Immich",
+      "integration_paperless": "Paperless",
+      "integration_seafile": "Seafile",
+      "integration_nextcloud": "Nextcloud",
+      "disk_space": "Spazio su disco",
+      "background_jobs": "Processi in background",
+      "version": "Versione"
     }
   }
 }

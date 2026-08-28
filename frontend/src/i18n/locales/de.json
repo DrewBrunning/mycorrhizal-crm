@@ -38,6 +38,8 @@
     "data": "Daten",
     "shares": "Freigaben",
     "audit": "Audit-Protokoll",
+    "systemEvents": "Systemereignisse",
+    "systemStatus": "Systemstatus",
     "mainLabel": "Hauptnavigation",
     "skipToContent": "Zum Inhalt springen"
   },
@@ -1114,6 +1116,11 @@
       "syncNow": "Jetzt synchronisieren",
       "disabled": "Deaktiviert",
       "syncFailed": "Synchronisation fehlgeschlagen",
+      "syncFailedCount": "Synchronisation fehlgeschlagen ×{{count}}",
+      "healthFailing": "Fehlerhaft seit {{since}} — {{count}} Fehlversuche in Folge",
+      "healthLastSuccess": "letzter Erfolg {{date}}",
+      "healthNeverSucceeded": "noch nie erfolgreich synchronisiert",
+      "healthLastRun": "Letzter Lauf: {{created}} neu, {{updated}} aktualisiert, {{skipped}} unverändert",
       "addTitle": "Kalender hinzufügen",
       "editTitle": "Kalender bearbeiten",
       "name": "Name",
@@ -1136,7 +1143,8 @@
       "built": "Erstellt am {{date}}",
       "copy": "Build-Details kopieren",
       "copied": "Build-Details kopiert",
-      "reportHint": "Bitte bei einer Fehlermeldung mit angeben."
+      "reportHint": "Bitte bei einer Fehlermeldung mit angeben.",
+      "viewSystemStatus": "Systemstatus anzeigen"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -1177,7 +1185,12 @@
         "activity.updated": "Aktivität aktualisiert",
         "activity.deleted": "Aktivität gelöscht",
         "reminder.triggered": "Erinnerung ausgelöst",
-        "birthday.occurred": "Geburtstag"
+        "birthday.occurred": "Geburtstag",
+        "reach_out_suggested": "Kontaktaufnahme vorgeschlagen",
+        "db.integrity_check_failed": "Datenbank-Integritätsprüfung fehlgeschlagen",
+        "db.restore_drill_failed": "Wiederherstellungstest fehlgeschlagen",
+        "alert.raised": "Warnung ausgelöst",
+        "alert.cleared": "Warnung aufgehoben"
       },
       "secretDialog": {
         "title": "Webhook-Secret"
@@ -1221,7 +1234,24 @@
       "import": {
         "title": "Kontakte importieren",
         "description": "Ein komplettes Adressbuch importieren — einen Google-Takeout-Export, einen CSV- oder VCF-Export einer anderen Kontakte-App oder eine JSContact-JSON-Datei. Es wird derselbe Prüfablauf wie auf der Kontakteseite verwendet, mit Sammelaktionen für große Dateien.",
-        "importButton": "Kontakte importieren"
+        "importButton": "Kontakte importieren",
+        "history": {
+          "title": "Importverlauf",
+          "empty": "Noch keine Importe.",
+          "loadError": "Importverlauf konnte nicht geladen werden.",
+          "colWhen": "Zeitpunkt",
+          "colFormat": "Format",
+          "colCreated": "Erstellt",
+          "colUpdated": "Aktualisiert",
+          "colSkipped": "Übersprungen",
+          "colErrors": "Fehler",
+          "format": {
+            "csv": "CSV",
+            "vcf": "vCard",
+            "jscontact": "JSContact",
+            "records": "Gerät"
+          }
+        }
       },
       "propose": {
         "title": "Daten vorschlagen",
@@ -2057,6 +2087,302 @@
       "success": "Kontakt auf den vorherigen Stand zurückgesetzt",
       "retentionGone": "Dieses Ereignis liegt außerhalb des Aufbewahrungsfensters und kann nicht mehr rückgängig gemacht werden",
       "partialNote": "Details, die in diesem Eintrag nie erfasst wurden (Pronomen, persönliche Informationen, Adressdetails), bleiben unverändert."
+    }
+  },
+  "systemEvents": {
+    "title": "Systemereignisse",
+    "description": "Ein chronologisches Protokoll betrieblicher Ereignisse – geplante Aufgaben, Synchronisierungsläufe, Sicherungen, Migrationen. Die erste Anlaufstelle, wenn etwas nicht funktioniert.",
+    "filters": {
+      "component": "Komponente",
+      "severity": "Schweregrad",
+      "eventType": "Ereignistyp",
+      "correlationId": "Korrelations-ID",
+      "all": "Alle",
+      "clear": "Filter zurücksetzen"
+    },
+    "columns": {
+      "time": "Wann",
+      "severity": "Schweregrad",
+      "component": "Komponente",
+      "event": "Ereignis",
+      "operation": "Vorgang",
+      "result": "Ergebnis",
+      "duration": "Dauer",
+      "actions": "Aktionen"
+    },
+    "severities": {
+      "info": "Info",
+      "warn": "Warnung",
+      "error": "Fehler"
+    },
+    "results": {
+      "success": "Erfolg",
+      "failure": "Fehlgeschlagen",
+      "skipped": "Übersprungen"
+    },
+    "eventTypes": {
+      "application_started": "Anwendung gestartet",
+      "application_stopped": "Anwendung gestoppt",
+      "migration_started": "Migration gestartet",
+      "migration_completed": "Migration abgeschlossen",
+      "migration_failed": "Migration fehlgeschlagen",
+      "job_started": "Aufgabe gestartet",
+      "job_completed": "Aufgabe abgeschlossen",
+      "job_failed": "Aufgabe fehlgeschlagen",
+      "sync_started": "Synchronisierung gestartet",
+      "sync_completed": "Synchronisierung abgeschlossen",
+      "sync_failed": "Synchronisierung fehlgeschlagen",
+      "notification_sent": "Benachrichtigung gesendet",
+      "notification_failed": "Benachrichtigung fehlgeschlagen",
+      "backup_completed": "Sicherung abgeschlossen",
+      "backup_failed": "Sicherung fehlgeschlagen",
+      "restore_test_completed": "Wiederherstellungstest abgeschlossen",
+      "integration_failed": "Integration fehlgeschlagen"
+    },
+    "details": {
+      "button": "Details",
+      "title": "Ereignisdetails",
+      "correlationId": "Korrelations-ID",
+      "detail": "Detail",
+      "error": "Fehler",
+      "viewRelated": "Zugehörige anzeigen"
+    },
+    "relatedBanner": "Alle Ereignisse in Kette {{id}} werden angezeigt.",
+    "errorsBanner": "{{n}} Ereignisse aus einer Fehlergruppe werden angezeigt.",
+    "empty": "Keine Systemereignisse entsprechen Ihren Filtern.",
+    "emptyNoFilters": "Noch keine Systemereignisse aufgezeichnet."
+  },
+  "subsystemHealth": {
+    "title": "Subsystem-Zustand",
+    "description": "Letzter bekannter guter Zustand je Subsystem: wann jedes zuletzt erfolgreich war, wie viele Durchläufe hintereinander fehlgeschlagen sind und wann der aktuelle Vorfall begann.",
+    "refresh": "Aktualisieren",
+    "status": {
+      "healthy": "Fehlerfrei",
+      "failing": "Fehlerhaft",
+      "unknown": "Unbekannt"
+    },
+    "consecutiveFailures": "Aufeinanderfolgende Fehler: {{n}}",
+    "incidentSince": "Vorfall seit {{time}}",
+    "lastSuccess": "Letzter Erfolg",
+    "lastFailure": "Letzter Fehler",
+    "never": "nie",
+    "subsystems": {
+      "contact_sync": "CardDAV-Synchronisierung",
+      "calendar_sync": "CalDAV-Synchronisierung",
+      "notification": "Benachrichtigungen",
+      "backup": "Sicherung & Wiederherstellung",
+      "scheduler": "Hintergrundaufgaben",
+      "webhook": "Webhooks"
+    }
+  },
+  "systemStatus": {
+    "title": "Systemstatus",
+    "description": "Das zusammengesetzte Betriebsbild dieser Instanz – Deep-Health-Aspekte, Build-Identität, Migrationsstand, Konfigurationsprüfung, SQLite-Fakten und Speicher.",
+    "overall": "Gesamtstatus",
+    "refresh": "Aktualisieren",
+    "status": {
+      "healthy": "Gesund",
+      "degraded": "Beeinträchtigt",
+      "unhealthy": "Nicht gesund",
+      "ok": "OK",
+      "not_configured": "Nicht konfiguriert"
+    },
+    "version": {
+      "title": "Version & Laufzeit",
+      "version": "Version",
+      "commit": "Commit",
+      "buildDate": "Build-Datum",
+      "startedAt": "Gestartet um",
+      "uptime": "Laufzeit"
+    },
+    "health": {
+      "title": "Gesundheitsprüfungen",
+      "description": "Deep-Health-Status pro Aspekt – dieselbe Zusammenfassung, die der /health-Endpunkt ohne Authentifizierung meldet.",
+      "facet": "Prüfung",
+      "status": "Status",
+      "reason": "Grund",
+      "facets": {
+        "database": "Datenbank",
+        "migrations": "Migrationen",
+        "integrity_check": "DB-Integritätsprüfung",
+        "restore_drill": "Wiederherstellungstest",
+        "background_jobs": "Hintergrundaufträge",
+        "integrations": "Integrationen"
+      }
+    },
+    "migration": {
+      "title": "Migrationen",
+      "applied": "Angewendet",
+      "latest": "Neueste",
+      "pending": "Ausstehend",
+      "dirty": "Fehlerhaft",
+      "dirtyYes": "Ja",
+      "dirtyNo": "Nein"
+    },
+    "config": {
+      "title": "Konfiguration",
+      "validationTitle": "Validierung",
+      "validationPass": "Alle Konfigurationsprüfungen bestanden.",
+      "field": "Feld",
+      "message": "Meldung",
+      "features": "Aktivierte Funktionen"
+    },
+    "database": {
+      "title": "Datenbank",
+      "sqliteVersion": "SQLite-Version",
+      "journalMode": "Journal-Modus",
+      "walBytes": "Größe der WAL-Datei"
+    },
+    "storage": {
+      "title": "Speicher",
+      "databaseSize": "Datenbankgröße",
+      "filesystem": "Dateisystem",
+      "usedOf": "{{used}} von {{total}} verwendet",
+      "free": "Frei",
+      "directories": "Speicherverzeichnisse",
+      "path": "Pfad",
+      "size": "Größe",
+      "files": "Dateien",
+      "approx": "ca."
+    },
+    "features": {
+      "carddav": "CardDAV",
+      "caldav": "CalDAV",
+      "oidc": "OIDC",
+      "email": "E-Mail",
+      "metrics": "Metriken",
+      "db_integrity_check": "DB-Integritätsprüfung",
+      "db_restore_drill": "DB-Wiederherstellungstest"
+    },
+    "feature": {
+      "on": "Ein",
+      "off": "Aus"
+    },
+    "error": "Systemstatus konnte nicht geladen werden."
+  },
+  "backgroundJobs": {
+    "title": "Hintergrundaufgaben",
+    "description": "Der letzte Lauf jeder geplanten Aufgabe: Ergebnis, Dauer und wie viele Läufe in Folge fehlgeschlagen sind.",
+    "refresh": "Aktualisieren",
+    "status": {
+      "healthy": "Fehlerfrei",
+      "failing": "Fehlerhaft",
+      "unknown": "Unbekannt"
+    },
+    "result": {
+      "success": "Erfolg",
+      "failure": "Fehler",
+      "skipped": "Übersprungen"
+    },
+    "lastRun": "Letzter Lauf",
+    "duration": "Dauer",
+    "durationTrend": "Ø {{avg}}, max. {{max}} über {{n}} Läufe",
+    "consecutiveFailures": "{{n}}-mal in Folge fehlgeschlagen",
+    "incidentSince": "seit {{time}}",
+    "itemsProcessed": "{{n}} verarbeitet",
+    "never": "nie",
+    "history": "Laufverlauf",
+    "noHistory": "Für diese Aufgabe wurden noch keine Läufe erfasst.",
+    "close": "Schließen",
+    "trigger": {
+      "scheduled": "geplant",
+      "initial": "Start",
+      "manual": "manuell"
+    },
+    "columns": {
+      "result": "Ergebnis",
+      "started": "Gestartet",
+      "duration": "Dauer",
+      "items": "Elemente",
+      "error": "Fehler"
+    },
+    "jobs": {
+      "daily_reminders": "Tägliche Erinnerungen",
+      "webhook_retries": "Webhook-Wiederholungen",
+      "calendar_sync": "Kalendersynchronisierung",
+      "purge_deleted": "Gelöschte Datensätze bereinigen",
+      "audit_purge": "Audit-Protokoll bereinigen",
+      "system_event_purge": "Systemereignisse bereinigen",
+      "cadence_overdue": "Webhooks für überfällige Kontaktrhythmen",
+      "reach_out_detection": "Erkennung von Kontaktanlässen",
+      "immich_sync": "Immich-Synchronisierung",
+      "db_integrity_check": "Datenbank-Integritätsprüfung",
+      "restore_drill": "Backup-Wiederherstellungstest",
+      "alert_eval": "Alarmauswertung",
+      "job_run_purge": "Laufverlauf bereinigen"
+    }
+  },
+  "errorAggregation": {
+    "title": "Fehler nach Ursache",
+    "description": "Betriebsfehler der letzten {{hours}} Stunden, nach Ursache gruppiert. Eine wiederkehrende Ursache verdient Aufmerksamkeit, ein Einzelfall meist nicht.",
+    "refresh": "Aktualisieren",
+    "empty": "Keine wiederholten Fehler in den letzten {{hours}} Stunden.",
+    "recurring": "Wiederkehrend",
+    "viewEvents": "{{n}} Ereignisse anzeigen",
+    "columns": {
+      "count": "Anzahl",
+      "component": "Komponente",
+      "error": "Fehler",
+      "lastSeen": "Zuletzt gesehen",
+      "actions": "Aktionen"
+    }
+  },
+  "notificationHealth": {
+    "title": "Zustellung der Benachrichtigungen",
+    "description": "Ob jeder Erinnerungskanal funktioniert: eingerichtet oder nicht, wann zuletzt erfolgreich zugestellt und ob er gerade ausfällt.",
+    "refresh": "Aktualisieren",
+    "status": {
+      "unconfigured": "Nicht eingerichtet",
+      "no_devices": "Keine Geräte",
+      "healthy": "In Ordnung",
+      "failing": "Fehlerhaft"
+    },
+    "consecutiveFailures": "Fehler in Folge: {{n}}",
+    "noDevicesHint": "Push ist eingerichtet, aber es ist kein Browser-Abo oder mobiles Gerät registriert.",
+    "enabledUsers": "Aktivierte Benutzer",
+    "deliveredCount": "Zugestellt: {{delivered}} / {{attempted}}",
+    "deviceCount": "Geräte: {{n}}",
+    "fcmConfigured": "FCM eingerichtet",
+    "lastSuccess": "Letzte Zustellung",
+    "lastFailure": "Letzter Fehler",
+    "never": "nie",
+    "channels": {
+      "email": "E-Mail",
+      "ntfy": "ntfy",
+      "gotify": "Gotify",
+      "push": "Web-Push"
+    }
+  },
+  "diagnostics": {
+    "title": "Diagnose",
+    "description": "Ein umfassender Gesundheitscheck dieser Installation: Konfiguration, Datenbank und Migrationen, Speicher, Backups, Benachrichtigungen, Integrationen, Speicherplatz und Hintergrundjobs.",
+    "run": "Diagnose ausführen",
+    "running": "Wird ausgeführt…",
+    "status": {
+      "ok": "OK",
+      "warning": "Warnung",
+      "error": "Fehler"
+    },
+    "summary": "{{warnings}} Warnung(en), {{errors}} Fehler",
+    "checks": {
+      "config": "Konfiguration",
+      "database": "Datenbank",
+      "migrations": "Migrationen",
+      "filesystem": "Dateisystem",
+      "backup": "Backup",
+      "notification_email": "E-Mail-Benachrichtigungen",
+      "notification_ntfy": "ntfy-Benachrichtigungen",
+      "notification_gotify": "Gotify-Benachrichtigungen",
+      "notification_push": "Web-Push-Benachrichtigungen",
+      "integration_carddav": "CardDAV",
+      "integration_caldav": "CalDAV",
+      "integration_immich": "Immich",
+      "integration_paperless": "Paperless",
+      "integration_seafile": "Seafile",
+      "integration_nextcloud": "Nextcloud",
+      "disk_space": "Speicherplatz",
+      "background_jobs": "Hintergrundjobs",
+      "version": "Version"
     }
   }
 }

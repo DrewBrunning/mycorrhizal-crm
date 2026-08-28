@@ -2,11 +2,10 @@ package controllers
 
 import (
 	"encoding/json"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -19,8 +18,7 @@ import (
 // backend trap 1) with the list/dismiss endpoints for one authenticated user.
 func setupReachOutSuggestionRouter(t *testing.T) (*gorm.DB, *gin.Engine, models.User) {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "reach-out-ctrl.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "rosuser", Password: "password123!A", Email: "rosuser@example.com"}
 	require.NoError(t, db.Create(&user).Error)

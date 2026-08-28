@@ -7,7 +7,7 @@ import (
 	"image"
 	"image/jpeg"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -32,8 +32,7 @@ func photoURLTestRouter(t *testing.T) (*gorm.DB, *gin.Engine, *config.Config, mo
 	photoDir := t.TempDir()
 	cfg := &config.Config{ProfilePhotoDir: photoDir}
 
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "photo-url.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "photo-tester", Password: "password123!A", Email: "photo-tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)

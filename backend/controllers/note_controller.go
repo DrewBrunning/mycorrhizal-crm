@@ -61,7 +61,7 @@ func CreateNote(c *gin.Context) {
 		return
 	}
 
-	go services.TriggerWebhooks(db, currentConfig(c), userID, "note.created", note)
+	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "note.created", note)
 	c.JSON(http.StatusOK, gin.H{"message": "Note created successfully", "note": note})
 }
 
@@ -106,7 +106,7 @@ func CreateUnassignedNote(c *gin.Context) {
 		return
 	}
 
-	go services.TriggerWebhooks(db, currentConfig(c), userID, "note.created", note)
+	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "note.created", note)
 	c.JSON(http.StatusOK, gin.H{"message": "Note created successfully", "note": note})
 }
 
@@ -324,7 +324,7 @@ func UpdateNote(c *gin.Context) {
 		return
 	}
 
-	go services.TriggerWebhooks(db, currentConfig(c), userID, "note.updated", note)
+	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "note.updated", note)
 	c.JSON(http.StatusOK, gin.H{"message": "Note updated successfully", "note": note})
 }
 
@@ -356,7 +356,7 @@ func DeleteNote(c *gin.Context) {
 		return
 	}
 
-	go services.TriggerWebhooks(db, currentConfig(c), userID, "note.deleted", gin.H{"id": note.ID})
+	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "note.deleted", gin.H{"id": note.ID})
 	c.JSON(http.StatusOK, gin.H{"message": "Note deleted"})
 }
 

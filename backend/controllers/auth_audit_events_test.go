@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -35,8 +34,7 @@ func newAuthAuditRouter(t *testing.T) (*gorm.DB, *gin.Engine, models.User) {
 
 	cfg := config.Config{JWTSecretKey: testJWTSecret, JWTExpiryHours: 24}
 
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "auth-audit.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() {
 		models.AuditFlush()

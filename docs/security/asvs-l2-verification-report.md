@@ -237,7 +237,16 @@ multi-line calls, with the governing `SetSameSite` resolved per site), then read
 hardcode `Secure=true` instead of `cfg.CookieSecure`. That is *stricter* than configured, so it is
 not a confidentiality gap — but on the supported plain-HTTP deployment a browser rejects the cookie
 outright, so the Android client hint is never stored and the handshake cookies are never actively
-cleared. Functional inconsistency, fails closed; recorded in row 3.4.1.
+cleared. Functional inconsistency, fails closed; recorded in row 3.4.1. **Fixed in #605.**
+
+**Becomes a test (issue #610).** This audit is no longer a hand-read enumeration that has to be
+redone every verification pass: `controllers/cookie_flags_test.go` drives every flow that mints or
+clears a cookie (login, login+2FA, logout, password change, 2FA management, OIDC login start, OIDC
+callback) against a real migrated schema and enumerates the `Set-Cookie` surface from the responses,
+asserting `HttpOnly`, `Secure=cfg.CookieSecure`, and `SameSite` against a declared per-name policy
+table. The table is exhaustive in both directions — an observed cookie with no declared row fails, a
+declared row never observed fails — and the whole suite runs twice (once `CookieSecure=true`, once
+`false`). Rows 3.4.1–3.4.3 cite it instead of a list of call sites.
 
 ### C. Cryptography, and the absence of unauthenticated modes
 
@@ -251,8 +260,16 @@ cleared. Functional inconsistency, fails closed; recorded in row 3.4.1.
 | Symmetric encryption | AES-256-GCM only — authenticated as it encrypts — for TOTP/integration credentials (`services/credential_crypto.go:33-58`, key HKDF-SHA256-derived from `JWT_SECRET_KEY`) and the at-rest field envelope (`backend/atrest`, single wrapped DEK, see P4). No unauthenticated mode is reachable by a caller. |
 | Weak primitives | No MD5/DES/RC4/ECB/Blowfish anywhere. The tree's single `crypto/sha1` import is HIBP's own k-anonymity wire format, annotated at the import (`services/hibp_service.go:6`). SHA-256 is used only for non-reversible one-time token digests. |
 | Random | `crypto/rand` for TOTP secrets and recovery codes (`services/twofactor.go:4,107`); bcrypt supplies its own per-hash salt. No `math/rand` in a security path. |
-| Unauthenticated route surface | **13 registrations**, enumerated from `routes/routes.go`: `/health`; the two `.well-known` CardDAV/CalDAV redirects; `/auth/oidc/config` plus `login`/`callback` (registered only when OIDC is enabled); `register`; `login`; `login/2fa`; `logout`; `check-password-strength`; `password-reset/request`; `password-reset/confirm`. Every one that touches credentials carries `AuthRateLimitMiddleware`. Against 241 `protected.` + 9 `admin.` + 9 CardDAV/CalDAV Basic-auth routes. |
-| Any way to turn auth off | **None.** No `DISABLE_AUTH` / `SKIP_AUTH` / `INSECURE_*` switch exists in any non-test Go file; `AuthMiddleware` is applied at the group level, so a route is either inside `protected`/`admin` or is one of the 13 above. The authorization matrix's `unauth` persona asserts this for every route rather than trusting the grouping. |
+| Unauthenticated route surface | **15 registrations**, enumerated from `routes/routes.go`: `/health`, `/health/live`, `/health/ready` (the deep/liveness/readiness split, issue #421 — all secret-free, status + reason strings only); the two `.well-known` CardDAV/CalDAV redirects; `/auth/oidc/config` plus `login`/`callback` (registered only when OIDC is enabled); `register`; `login`; `login/2fa`; `logout`; `check-password-strength`; `password-reset/request`; `password-reset/confirm`. Every one that touches credentials carries `AuthRateLimitMiddleware`. Against 241 `protected.` + 9 `admin.` + 9 CardDAV/CalDAV Basic-auth routes. |
+| Any way to turn auth off | **None.** No `DISABLE_AUTH` / `SKIP_AUTH` / `INSECURE_*` switch exists in any non-test Go file; `AuthMiddleware` is applied at the group level, so a route is either inside `protected`/`admin` or is one of the 15 above. The authorization matrix's `unauth` persona asserts this for every route rather than trusting the grouping. |
+
+**Becomes a test (issue #612).** The "closed cryptographic surface" claim this audit read by hand is
+now pinned by `cmd/citecheck`'s crypto-surface gate: it enumerates every non-test Go file importing
+`crypto/*`, `golang.org/x/crypto/*` or a JWT/signing library and requires each to be cited by a V6
+row in `asvs-l2.md` or to carry a justified entry in `docs/security/crypto-surface.ignore`,
+failing in both directions (a new unaccounted call site, a declared one that stops importing
+crypto). It runs in the same `Security-doc citations` job as the rest of citecheck, so a new call
+site fails the build at the moment of introduction rather than at the next verification pass.
 
 ### D. Error paths do not leak internals
 
@@ -265,10 +282,10 @@ logs the panic value and stack server-side and returns a generic 500
 (`errors/middleware.go:27-44`). Both are pinned by tests (#366).
 
 **One exception found**, and it is the only site in the backend that bypasses the envelope: the
-self-service "test my notification channel" endpoint echoes the upstream error verbatim
-(`notification_controller.go:167`). That is defensible — the endpoint exists so a user can find out
-why *their own* ntfy/Gotify/push target rejected the message, and a generic message would make the
-feature useless.
+self-service "test my notification channel" endpoint reports a diagnostic string rather than an
+envelope error (`notification_controller.go:167-172`). That is defensible — the endpoint exists so a
+user can find out why *their own* ntfy/Gotify/push target rejected the message, and a generic message
+would make the feature useless.
 
 The outbound path was then traced to the end, because "unbounded error from an HTTP client" reads
 like an SSRF oracle and it is worth being exact about whether it is one. **It is not, on the default
@@ -284,11 +301,29 @@ the returned status; the error text grants no capability they lack.
 The genuine leak is the inverse, and only in the hardened configuration: with the flag **on**, the
 guarded dialer returns two distinct sentinels — `ErrWebhookUnreachable` and
 `ErrWebhookPrivateAddress` (`services/webhook_service.go:29-30`, `httputil/safedial.go:27-47`) — and
-both are echoed verbatim, so an operator who turned the flag on to declare internal targets
-off-limits gets an endpoint that reports which rule a target tripped. Thin (it confirms "the address
-you supplied is private", about an address the caller supplied) but the wrong direction. Accepted and
-now **documented** in row 7.4.1 rather than left as an unexplained outlier; bounding the string and
-collapsing the two sentinels is issue #606.
+both were echoed verbatim, so an operator who turned the flag on to declare internal targets
+off-limits got an endpoint that reports which rule a target tripped. Thin (it confirms "the address
+you supplied is private", about an address the caller supplied) but the wrong direction. **Fixed by
+issue #606**: the echoed string is now capped at 256 bytes and, with the flag on, all three guard
+sentinels collapse to one neutral "not reachable under this instance's outbound policy" message,
+while the full diagnostic still goes to the server log — so the endpoint stays useful on the default
+configuration and stops distinguishing rejection rules under the hardening flag (pinned by
+`notification_controller_test.go` `TestNotificationConfig_TestNtfy_ErrorTruncated`,
+`TestNotificationConfig_TestNtfy_PrivateAddressCollapsedWhenGuarded`,
+`TestNotificationConfig_TestNtfy_UnresolvableCollapsedWhenGuarded`).
+
+**Re-checked for issue #421** (the `/health` → `/health/live` + `/health/ready` + deep-`/health`
+split). All three are unauthenticated and build their own JSON rather than going through the error
+envelope, so each was walked for the same "raw `err.Error()` / unbounded string in the body"
+pattern. They pass by construction: every failing facet logs the underlying error / path / host /
+`operational_check_results.detail` server-side (`logger`) and returns a fixed category string —
+`"database read failed"`, `"unreachable"`, `"cannot read migration state"`, `"attachments directory
+is missing"`, `"the last run reported failed"`. Migration version *numbers* and scheduled-job
+*names* are returned deliberately (both are already public — `git` tags, open-source job registry —
+and are the point of the endpoint); table names, row counts, absolute paths, the operator's SMTP
+host and OIDC URL, and raw dial errors are not. Guarded by
+`controllers/health_endpoints_test.go`'s `TestDeepHealth_ResponseBodyLeaksNoInternals` and the
+path-free assertions in the readiness-filesystem tests.
 
 ---
 
@@ -325,12 +360,12 @@ What this pass actually did per chapter, beyond the automated citation checks th
 | **F-2** | **13 rows were `satisfied` with no citation whatsoever**, contradicting the checklist's own stated promise ("No row is left `satisfied` without a citation"). All 13 were negative controls — "no password expiry", "no KBA", "no CDN", "no plugin system" — where there is no `file:line` for a thing that does not exist, so they had been left as bare assertions. | Medium: unverifiable rows in a verification document | **Fixed on this branch.** Each now cites the artifact that proves the absence — the model/migration that has no such column, the Semgrep rule that fails a PR reintroducing it, the CSP that admits no external origin, the lockfiles. `citecheck` now fails a `satisfied` row that cites nothing. |
 | **F-3** | **`threat-model.md` §5 stated the session cookie is `SameSite=Lax`.** It has been `Strict` since issue #392. A factual error, not a stale line number. | Medium: the threat model understated an implemented control | **Fixed on this branch**, including the reason `Lax` is retained for the OIDC handshake cookies only. |
 | **F-4** | **OIDC handshake cookies hardcode `Secure=true`** on the `oidc_client` set and all four clears, while their siblings use `COOKIE_SECURE` (manual audit B). Stricter than configured, so not a confidentiality gap — but on the supported plain-HTTP deployment the browser rejects the cookie, so Android OIDC silently falls back to the web redirect and the handshake cookies are never actively cleared. | Low, fails closed | **Filed as issue #605** (v0.6.2). Recorded in row 3.4.1. |
-| **F-5** | **The test-notification endpoint echoes an unbounded upstream error** to the client (manual audit D) — the only backend site bypassing the error envelope. Defensible as a self-service diagnostic (the user needs to know why *their own* ntfy/Gotify target refused the message), but unbounded. Traced to the end during review: **not** an SSRF oracle on the default configuration, because `WEBHOOK_BLOCK_PRIVATE_URLS` defaults off and pointing a self-hosted app at your own LAN is the intended use (row 5.2.6's opt-in-per-service position) — the caller already chose the target and already learns its reachability from the status code. The real, thin leak runs the other way: with the flag *on*, the guarded dialer's two distinct sentinels are echoed verbatim, so the hardening flag makes this endpoint marginally more informative rather than less. | Low | **Filed as issue #606** (v0.6.2, `p3`). Accepted as a documented exception in row 7.4.1. |
+| **F-5** | **The test-notification endpoint echoes an unbounded upstream error** to the client (manual audit D) — the only backend site bypassing the error envelope. Defensible as a self-service diagnostic (the user needs to know why *their own* ntfy/Gotify target refused the message), but unbounded. Traced to the end during review: **not** an SSRF oracle on the default configuration, because `WEBHOOK_BLOCK_PRIVATE_URLS` defaults off and pointing a self-hosted app at your own LAN is the intended use (row 5.2.6's opt-in-per-service position) — the caller already chose the target and already learns its reachability from the status code. The real, thin leak runs the other way: with the flag *on*, the guarded dialer's two distinct sentinels are echoed verbatim, so the hardening flag makes this endpoint marginally more informative rather than less. | Low | **Fixed by issue #606** (v0.6.2). Echoed string capped at 256 bytes; with the flag on, the guard sentinels collapse to one neutral outbound-policy message client-side while the full diagnostic stays in the server log. Remains a documented exception in row 7.4.1 (bounded diagnostic, not the envelope) by design. |
 | **F-6** | **Row 3.2.4 overstated the JWT algorithm pin** as HS256-exact; the code pins the HMAC family. The security property (rejects `alg: none` and asymmetric confusion) is unchanged, but the row claimed more precision than the code has. | Low | **Fixed on this branch**: the row now states the family pin and why no downgrade is reachable. |
 
 No finding in this pass required flipping a control from `satisfied` to `fail`. F-1 through F-3 and
 F-6 were failures of the *documentation* to remain true; F-4 and F-5 are real code findings, both
-low-severity and both failing closed.
+low-severity and both failing closed. F-5 has since been fixed by issue #606 (§4 D, row 7.4.1).
 
 Three further issues came out of asking what keeps this report true rather than out of the audit
 itself, and are tracked in §9: **#608** (fold the gate and the re-verification obligation into the
@@ -481,9 +516,10 @@ Two things about that model are worth being honest about:
 |---|---|
 | A route | **Yes.** `routes/authorization_matrix_test.go` enumerates from the live router and fails when a new route has no declared authorization row. Self-maintaining. |
 | An outbound HTTP client | **No** — a client bypassing `SafeDialContext` is an unflagged SSRF regression. Issue **#609** (semgrep rule). |
-| A cookie | **No** — audit B was 18 call sites read by hand and would have to be redone every pass. Issue **#610** (pin it as a router-driven test). |
-| An entity or table | **No** — cascade completeness rests on a hand-written enumeration plus, for hard-deleted parents only, SQL `ON DELETE CASCADE`; nothing checks a new table is covered by either. Trap 6's own history is 14 tables already missed once. Issue **#611** (schema-driven coverage test). |
-| A crypto call site | **No** — gosec and CodeQL answer "is this primitive weak?", not "is this call site accounted for?". Rows 6.2.5 and 6.2.7 assert a *closed* cryptographic surface; audit C established that by hand and nothing keeps it closed. v0.6.1 added two call sites (`backend/atrest` #380, `models/audit_chain.go` #381). Issue **#612** (bidirectional inventory check in `citecheck`). |
+| A cookie | **Yes.** `controllers/cookie_flags_test.go` drives every flow that mints or clears a cookie against the real migrated schema and enumerates the `Set-Cookie` surface from the responses, asserting `HttpOnly`/`Secure=cfg.CookieSecure`/`SameSite` per name against a declared table that fails in both directions (an undeclared cookie observed, a declared one never observed) — run twice, once `CookieSecure=true` and once `false`. Built by issue **#610**. |
+| An entity or table | **Yes.** `controllers/delete_cascade_coverage_test.go` enumerates every table from the real migrated schema and requires a declared deletion bucket (`go-cascade-user`/`go-cascade-contact`/`fk-cascade-user`/`exempt`), failing on an unclassified table and on a stale declaration; it asserts `fk-cascade-user` tables really carry an `ON DELETE CASCADE` FK to `users`, rejects a contact-scoped table relying on a cascade from the soft-deleted `contacts` row (trap 6), and behaviorally verifies `DeleteUser`/`deleteContactAssociations` empty every declared table. Built by issue **#611**. |
+| A crypto call site | **Yes.** `cmd/citecheck`'s crypto-surface gate enumerates every non-test Go file importing `crypto/*`, `golang.org/x/crypto/*` or a JWT/signing library and requires each to be cited by a V6 row in `asvs-l2.md` or to carry a justified entry in `docs/security/crypto-surface.ignore` — failing in both directions (a new unaccounted call site, and a declared one that stops importing crypto). Lands in the existing `Security-doc citations` job, so it fails the build at the moment of introduction. Built by issue **#612**. |
+| A persistence target for instance data | **Partly.** `v0.6.2` added `system_events` (#424) — system-generated operational diagnostics, not user data, admin-only, hard-delete, `SYSTEM_EVENT_RETENTION_DAYS` purge. Recorded in `data-retention-lifecycle.md` §3 and [ADR 0005](../adrs/0005-operational-event-model.md); its free-text fields are sanitized (row 7.3.1). It is outside the cascade-coverage concern above (no user-data parent, nothing cascades into it). No mechanical check yet asserts a *new* diagnostic/telemetry table gets a retention-lifecycle row — folded into #611's schema-driven coverage scope. |
 
 The pattern worth generalising from the one row that *is* enforced: the authorization matrix is strong
 evidence because it derives its subject list from the running system and **fails on an undeclared
@@ -522,3 +558,6 @@ govulncheck).
 | Pass | Date | Commit | Claim | Findings |
 |---|---|---|---|---|
 | 1 | 2026-08-26 | `6a7cb7a2` | ASVS L2 with 31 documented exceptions; MASVS-L1 with 1 | 6 (F-1…F-6): 4 documentation defects fixed on the branch, 2 code findings filed as issues #605 and #606. No control flipped to `fail`. |
+| 1.1 | 2026-08-27 | (see PR) | ASVS L2 with **29** documented exceptions; MASVS-L1 with 1 | Not a full re-pass — a single-row delta. Issue #509 added `docs/security/incident-response.md` (operator incident-response + credential/key-rotation runbook, rotation procedures exercised against a real build). The stated gap for **1.6.1** and **1.6.3** was "no standalone rotation doc"; both move `partial → satisfied` in `asvs-l2.md`. §7's "Partial mechanism" group and the headline exception count are Pass-1 figures and reconcile fully at the next release re-pass; the running count is 29. |
+| 1.2 | 2026-08-27 | (see PR) | ASVS L2 with 31 documented exceptions; MASVS-L1 with 1 | Not a full re-pass — issue #606 (finding F-5) landed: the test-notification endpoint's echoed diagnostic is now capped at 256 bytes and, under `WEBHOOK_BLOCK_PRIVATE_URLS`, the SSRF guard's sentinels collapse to one neutral message client-side while the full error stays in the server log (§4 D, row 7.4.1). The row remains `satisfied` with the same documented exception (a bounded diagnostic instead of the envelope) — no count changes. |
+| 1.3 | 2026-08-27 | (see PR) | ASVS L2 with 31 documented exceptions; MASVS-L1 with 1 | Not a full re-pass — issue #389 added an opt-in Prometheus `GET /metrics` endpoint. It is a **new authenticated operational route**, not an unauthenticated one: registered only when `METRICS_TOKEN` is set, gated by a constant-time bearer check, exposing bounded-cardinality counters with no log lines or per-user data. §4 audit A's "**15 registrations**" unauthenticated-route count is **unchanged**. Row 1.7.2 notes the surface; `crypto/subtle` in the new handler is a written-down exception in `crypto-surface.ignore` (comparison helper, not a primitive choice). No control flipped. |

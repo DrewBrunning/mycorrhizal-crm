@@ -73,6 +73,8 @@ fun SettingsScreen(
     onData: () -> Unit = {},
     // Issue #348: admin user management.
     onManageUsers: () -> Unit = {},
+    // Issue #424: the operational-event timeline.
+    onSystemEvents: () -> Unit = {},
     onLocaleChanged: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -132,6 +134,7 @@ fun SettingsScreen(
             onCircleTagTriage = onCircleTagTriage,
             onData = onData,
             onManageUsers = onManageUsers,
+            onSystemEvents = onSystemEvents,
             onSuggestRelationships = viewModel::suggestRelationships,
             onLanguageChange = viewModel::updateLanguage,
             onDateFormatChange = viewModel::updateDateFormat,
@@ -157,6 +160,7 @@ fun SettingsContent(
     onCircleTagTriage: () -> Unit = {},
     onData: () -> Unit = {},
     onManageUsers: () -> Unit = {},
+    onSystemEvents: () -> Unit = {},
     onSuggestRelationships: () -> Unit = {},
     onLanguageChange: (String) -> Unit = {},
     onDateFormatChange: (String) -> Unit = {},
@@ -354,6 +358,7 @@ fun SettingsContent(
         // non-admins, so this gate is a navigation affordance, not a guard).
         if (state.session.isAdmin) {
             NavigationRow(stringResource(R.string.users_title), onClick = onManageUsers)
+            NavigationRow(stringResource(R.string.sysevents_title), onClick = onSystemEvents)
         }
 
         HorizontalDivider()

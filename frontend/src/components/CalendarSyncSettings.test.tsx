@@ -40,6 +40,13 @@ function calendar(overrides: Partial<CalendarSubscription> = {}): CalendarSubscr
     last_sync_status: '',
     last_sync_error: '',
     created_at: '2026-01-01T00:00:00Z',
+    last_attempt_at: null,
+    last_success_at: null,
+    last_failure_at: null,
+    consecutive_failures: 0,
+    incident_first_failure_at: null,
+    last_run_duration_ms: null,
+    last_run_stats: {},
     ...overrides,
   };
 }
@@ -171,6 +178,42 @@ test('a sync failure surfaces the error instead of throwing', async () => {
   fireEvent.click(screen.getByRole('button', { name: /sync now/i }));
 
   await waitFor(() => expect(screen.getByText('calendar unreachable')).toBeInTheDocument());
+});
+
+test('shows a standing-failure health line with the incident start and consecutive count', async () => {
+  vi.mocked(getCalendarSubscriptions).mockResolvedValue([
+    calendar({
+      name: 'Flaky',
+      last_sync_status: 'error',
+      last_sync_error: 'auth failed',
+      consecutive_failures: 9,
+      incident_first_failure_at: '2026-08-27T14:03:00Z',
+      last_success_at: '2026-08-26T17:04:00Z',
+    }),
+  ]);
+  render(<CalendarSyncSettings />);
+
+  await waitFor(() => expect(screen.getByText('Flaky')).toBeInTheDocument());
+  // Chip switches to the counted form past the first failure.
+  expect(screen.getByText('Sync failed ×9')).toBeInTheDocument();
+  expect(screen.getByText(/9 consecutive failures/)).toBeInTheDocument();
+  expect(screen.getByText(/last success/)).toBeInTheDocument();
+});
+
+test('shows the last run tallies for a healthy subscription', async () => {
+  vi.mocked(getCalendarSubscriptions).mockResolvedValue([
+    calendar({
+      name: 'Healthy',
+      last_sync_status: 'success',
+      last_synced_at: '2026-08-27T09:00:00Z',
+      last_run_stats: { created: 1, updated: 2, skipped: 3 },
+    }),
+  ]);
+  render(<CalendarSyncSettings />);
+
+  await waitFor(() => expect(screen.getByText('Healthy')).toBeInTheDocument());
+  expect(screen.getByText(/1 created, 2 updated, 3 unchanged/)).toBeInTheDocument();
+  expect(screen.queryByText(/consecutive failures/)).not.toBeInTheDocument();
 });
 
 test('warns when an http:// URL is paired with credentials', async () => {

@@ -246,6 +246,7 @@ type CalendarSubscriptionResponse struct {
 	LastSyncStatus string     `json:"last_sync_status"`
 	LastSyncError  string     `json:"last_sync_error"`
 	CreatedAt      time.Time  `json:"created_at"`
+	SyncHealthResponse
 }
 
 // ContactSubscriptionInput is the DTO for creating/updating a CardDAV
@@ -276,6 +277,11 @@ type ContactSubscriptionResponse struct {
 	LastSyncStatus string     `json:"last_sync_status"`
 	LastSyncError  string     `json:"last_sync_error"`
 	CreatedAt      time.Time  `json:"created_at"`
+	SyncHealthResponse
+	// PendingConflicts is the count of unreviewed local edits this
+	// subscription's syncs have overwritten (issue #395's ContactSyncConflict
+	// rows, status = pending). Calendars have no analog.
+	PendingConflicts int64 `json:"pending_conflicts"`
 }
 
 // NoteInput represents the DTO for creating/updating notes
@@ -530,11 +536,15 @@ type ApiTokenCreateResponse struct {
 type WebhookInput struct {
 	Name string `json:"name" validate:"required,min=1,max=200"`
 	URL  string `json:"url" validate:"required,http_url"`
-	// max=12 matches the number of oneof tokens below: the array-length bound
+	// max matches the number of oneof tokens below: the array-length bound
 	// (issue #415) exists because dive/oneof alone lets a client send
 	// thousands of *duplicate* valid tokens, turning one webhook into a
-	// thousands-wide fan-out target on every matching event.
-	Events   []string `json:"events" validate:"required,min=1,max=12,dive,oneof=contact.created contact.updated contact.deleted note.created note.updated note.deleted activity.created activity.updated activity.deleted reminder.triggered birthday.occurred"`
+	// thousands-wide fan-out target on every matching event. The list must
+	// stay in sync with frontend/src/components/WebhooksSettings.tsx's
+	// SUPPORTED_EVENTS (frontend trap 4). Operator events: reach_out_suggested
+	// (#177), db.integrity_check_failed / db.restore_drill_failed (#273/#275),
+	// alert.raised / alert.cleared (#428, condition in the payload).
+	Events   []string `json:"events" validate:"required,min=1,max=16,dive,oneof=contact.created contact.updated contact.deleted note.created note.updated note.deleted activity.created activity.updated activity.deleted reminder.triggered birthday.occurred reach_out_suggested db.integrity_check_failed db.restore_drill_failed alert.raised alert.cleared"`
 	IsActive bool     `json:"is_active"`
 }
 

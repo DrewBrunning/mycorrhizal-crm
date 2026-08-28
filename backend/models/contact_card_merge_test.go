@@ -2,11 +2,10 @@ package models
 
 import (
 	"encoding/json"
-	"path/filepath"
 	"testing"
 
 	"mycorrhizal/contactmodel"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -69,8 +68,7 @@ func richCardOnlyRecord() *contactmodel.Record {
 // models tests that use database.InitDB (etag_real_db_test.go).
 func newT75TestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "t75-merge-test.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	return db
 }
 

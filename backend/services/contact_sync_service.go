@@ -114,6 +114,12 @@ type contactRoundTripper struct {
 }
 
 func (t *contactRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Carry the caller's correlation ID onto the outbound request so the
+	// remote's access log (and ours, on the response) can be tied back to the
+	// UI action or scheduled run that triggered the sync (issue #425).
+	if id := logger.CorrelationID(req.Context()); id != "" {
+		req.Header.Set("X-Correlation-ID", id)
+	}
 	resp, err := t.base.RoundTrip(req)
 	if err != nil {
 		return nil, err
@@ -184,8 +190,14 @@ func (s *ContactSyncService) SyncSubscription(ctx context.Context, db *gorm.DB, 
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	start := time.Now()
 	stats, newToken, err := s.syncSubscription(ctx, db, cfg, sub)
+	runDuration := time.Since(start)
 	err = redactURLPassword(err, sub.URL)
+
+	recordSyncEvent(ctx, db, logger.ComponentContactSync, sub.UserID, start, err,
+		fmt.Sprintf("created=%d updated=%d archived=%d skipped=%d",
+			stats.Created, stats.Updated, stats.Archived, stats.Skipped))
 
 	now := time.Now().UTC()
 	sub.LastSyncedAt = &now
@@ -203,6 +215,12 @@ func (s *ContactSyncService) SyncSubscription(ctx context.Context, db *gorm.DB, 
 	}
 	updates["last_sync_status"] = sub.LastSyncStatus
 	updates["last_sync_error"] = sub.LastSyncError
+
+	// Sync-health last-known-good state (issue #390): fold this run into the
+	// consecutive-failure / incident / last-success bookkeeping.
+	for k, v := range sub.AdvanceForRun(now, runDuration, marshalSyncRunStats(stats), err) {
+		updates[k] = v
+	}
 
 	if saveErr := db.Model(&models.ContactSubscription{}).Where("id = ?", sub.ID).Updates(updates).Error; saveErr != nil {
 		logger.Error().Err(saveErr).Uint("subscription_id", sub.ID).Msg("Failed to update contact sync status")

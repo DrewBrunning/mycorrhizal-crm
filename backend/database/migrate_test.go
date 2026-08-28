@@ -1,6 +1,7 @@
 package database
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"path/filepath"
@@ -9,8 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/models"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
+	gormLogger "gorm.io/gorm/logger"
 )
 
 // columnExists reports whether table has the named column, via SQLite's
@@ -1008,6 +1013,63 @@ func TestOpenDSN_PragmasArePresent(t *testing.T) {
 		"openDSN must preserve the db path as the DSN prefix")
 }
 
+// TestGormLoggerDoesNotInterpolatePII pins issue #621: every connection opened
+// through this package must use a logger that never echoes literal query
+// values. GORM's default logger interpolates the WHERE/VALUES clause into
+// error/slow-query logs, so a missing row or a constraint failure used to
+// print `SELECT ... WHERE email = "<address>"` verbatim into an instance-wide
+// log with no redaction layer (surfaced by the #510 privacy review).
+// newGormLogger closes it two ways: ParameterizedQueries replaces values with
+// `?`, and IgnoreRecordNotFoundError stops the benign not-found SELECTs
+// entirely.
+func TestGormLoggerDoesNotInterpolatePII(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "gorm-logger.db")
+	db, err := InitDB(dbPath)
+	require.NoError(t, err)
+	defer func() {
+		sqlDB, err := db.DB()
+		require.NoError(t, err)
+		require.NoError(t, sqlDB.Close())
+	}()
+
+	// InitDB must wire the redacting logger onto its connection, not the bare
+	// GORM default (gorm.Open defaults Logger to logger.Default when nil —
+	// reverting the config to `&gorm.Config{}` makes this equal and fails).
+	assert.NotEqual(t, gormLogger.Default, db.Logger,
+		"InitDB must configure the parameterized/not-found-suppressing GORM logger")
+
+	// Re-point the app's own logger at a buffer so we can assert on exactly
+	// what it would emit for the real migrated schema.
+	var buf bytes.Buffer
+	db.Logger = newGormLogger(&buf)
+
+	const sentinel = "ghost.unknown.sentinel@example.test"
+
+	// A not-found lookup carrying PII: with IgnoreRecordNotFoundError it is
+	// not logged at all.
+	buf.Reset()
+	var ghost models.User
+	err = db.Where("email = ?", sentinel).First(&ghost).Error
+	require.ErrorIs(t, err, gorm.ErrRecordNotFound)
+	assert.Empty(t, buf.String(),
+		"a not-found lookup must not be logged at all (IgnoreRecordNotFoundError)")
+
+	// A constraint violation carrying PII: logged (Warn level reaches error
+	// traces) but with `?` placeholders, never the interpolated value.
+	buf.Reset()
+	first := models.User{Username: "alice", Password: "x", Email: sentinel}
+	require.NoError(t, db.Create(&first).Error)
+	err = db.Create(&models.User{Username: "alice2", Password: "x", Email: sentinel}).Error
+	require.Error(t, err, "the duplicate email must violate the unique index")
+
+	out := buf.String()
+	assert.NotEmpty(t, out, "the constraint failure must be logged at Warn level")
+	assert.Contains(t, out, "INSERT INTO `users`", "the failed INSERT is the statement the test is about")
+	assert.Contains(t, out, "?", "GORM must log `?` placeholders, not interpolated values")
+	assert.NotContains(t, out, sentinel, "the PII value must never reach the log")
+	assert.NotContains(t, out, `"`+sentinel+`"`, "the PII value must never reach the log")
+}
+
 // TestInitDBDoesNotLeakMigratorGoroutines pins a real leak found while
 // investigating a CI timeout: newMigrator's golang-migrate instance parks a
 // goroutine forever waiting to hand off the next migration until Close()
@@ -1440,4 +1502,82 @@ func TestAuditHashChainMigration(t *testing.T) {
 	assert.Zero(t, loginCount, "auth lifecycle rows are dropped on rollback (the restored CHECK cannot represent them)")
 	_, err = sqlDB.Exec(`UPDATE audit_events SET operation = 'delete' WHERE entity_id = 'vcard-1'`)
 	assert.Error(t, err, "the immutability trigger must be restored by the down migration")
+}
+
+// TestSyncHealthFieldsMigration pins migration 000039's shape (issue #390):
+// both subscription tables gain the last-known-good columns, existing rows get
+// their history backfilled from the single last_sync_status bit they already
+// carried, and a rollback drops the columns without destroying rows.
+func TestSyncHealthFieldsMigration(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "sync-health-migration.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	require.NoError(t, m.Steps(38)) // through 000038_system_events
+
+	_, err = sqlDB.Exec("INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 't390', 'x', 't390@example.com')")
+	require.NoError(t, err)
+
+	// One healthy and one failing subscription of each kind, on the pre-000039
+	// schema (last_synced_at + last_sync_status only).
+	for _, table := range []string{"contact_subscriptions", "calendar_subscriptions"} {
+		_, err = sqlDB.Exec(fmt.Sprintf(`
+			INSERT INTO %s (created_at, updated_at, user_id, name, url, sync_enabled, last_synced_at, last_sync_status)
+			VALUES (datetime('now'), datetime('now'), 1, 'ok', 'https://ok.example', 1, '2026-08-20 09:00:00', 'success')`, table))
+		require.NoError(t, err)
+		_, err = sqlDB.Exec(fmt.Sprintf(`
+			INSERT INTO %s (created_at, updated_at, user_id, name, url, sync_enabled, last_synced_at, last_sync_status)
+			VALUES (datetime('now'), datetime('now'), 1, 'bad', 'https://bad.example', 1, '2026-08-21 10:30:00', 'error')`, table))
+		require.NoError(t, err)
+	}
+
+	require.NoError(t, m.Steps(1)) // 000039
+
+	for _, table := range []string{"contact_subscriptions", "calendar_subscriptions"} {
+		var cols int64
+		require.NoError(t, sqlDB.QueryRow(fmt.Sprintf(
+			`SELECT COUNT(*) FROM pragma_table_info('%s') WHERE name IN
+			 ('last_attempt_at','last_success_at','last_failure_at','consecutive_failures','incident_first_failure_at','last_run_duration_ms','last_run_stats')`,
+			table)).Scan(&cols))
+		assert.EqualValues(t, 7, cols, "%s must gain all seven sync-health columns", table)
+
+		// Healthy row: last_success_at / last_attempt_at backfilled to equal
+		// the row's own last_synced_at, no incident.
+		var okSynced, okSuccess, okAttempt sql.NullString
+		var okConsec int64
+		var okIncident sql.NullString
+		require.NoError(t, sqlDB.QueryRow(fmt.Sprintf(
+			"SELECT last_synced_at, last_success_at, last_attempt_at, consecutive_failures, incident_first_failure_at FROM %s WHERE name = 'ok'", table)).
+			Scan(&okSynced, &okSuccess, &okAttempt, &okConsec, &okIncident))
+		assert.Equal(t, okSynced.String, okSuccess.String, "%s healthy row: last_success_at backfilled from last_synced_at", table)
+		assert.Equal(t, okSynced.String, okAttempt.String)
+		assert.Zero(t, okConsec)
+		assert.False(t, okIncident.Valid, "%s healthy row: no open incident", table)
+
+		// Failing row: one failure deep into an incident that started at last_synced_at.
+		var badSynced, badFailure, badIncident sql.NullString
+		var badConsec int64
+		var badSuccess sql.NullString
+		require.NoError(t, sqlDB.QueryRow(fmt.Sprintf(
+			"SELECT last_synced_at, last_failure_at, incident_first_failure_at, consecutive_failures, last_success_at FROM %s WHERE name = 'bad'", table)).
+			Scan(&badSynced, &badFailure, &badIncident, &badConsec, &badSuccess))
+		assert.Equal(t, badSynced.String, badFailure.String)
+		assert.Equal(t, badSynced.String, badIncident.String)
+		assert.EqualValues(t, 1, badConsec, "%s failing row: honest floor of one failure", table)
+		assert.False(t, badSuccess.Valid, "%s failing row: never succeeded", table)
+	}
+
+	// Down: columns gone, rows kept.
+	require.NoError(t, MigrateDown(dbPath))
+	for _, table := range []string{"contact_subscriptions", "calendar_subscriptions"} {
+		var cols, rows int64
+		require.NoError(t, sqlDB.QueryRow(fmt.Sprintf(
+			"SELECT COUNT(*) FROM pragma_table_info('%s') WHERE name = 'consecutive_failures'", table)).Scan(&cols))
+		assert.Zero(t, cols, "%s: the down migration must drop the sync-health columns", table)
+		require.NoError(t, sqlDB.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s", table)).Scan(&rows))
+		assert.EqualValues(t, 2, rows, "%s: a rollback must not destroy subscriptions", table)
+	}
 }

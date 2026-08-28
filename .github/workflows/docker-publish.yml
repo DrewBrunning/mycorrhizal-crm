@@ -241,6 +241,24 @@ jobs:
       # cosign verify-blob --bundle mycorrhizal-apk.sigstore.json <apk>.
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          # Pinned explicitly rather than trusting the action's own default --
+          # v4.1.2's baked-in default is v3.0.6, and that specific cosign
+          # release has a keyless-signing regression against a registry with
+          # no OCI 1.1 Referrers API support (GHCR is one): `cosign sign`
+          # prints "Generating ephemeral keys... Signing artifact..." and
+          # exits 0, but never prints "tlog entry created" / "Pushing
+          # signature to:" and no signature ever lands in the registry. Found
+          # via v0.6.1: three images published, none verifiable
+          # (`cosign verify` -> "no signatures found" on every one), while the
+          # prior release's identical step -- an older cosign-installer
+          # version with a different baked-in default -- signed cleanly.
+          # v3.1.x's changelog lists "Sign exclusively via sigstore-go" and
+          # "Require bundle output or registry upload", consistent with a
+          # registry-upload fix in the keyless path. Pin the version, not the
+          # installer's default, so a future installer bump can't silently
+          # swap this out from under the workflow again.
+          cosign-release: 'v3.1.3'
 
       - name: Cosign-sign the release APK (keyless, additive)
         run: |
@@ -271,6 +289,15 @@ jobs:
       attestations: write
 
     strategy:
+      # One leg's failure must not cancel the others. With the default
+      # (fail-fast: true), the backend leg failing on its last step killed the
+      # all-in-one and frontend legs *mid-push* -- both had uploaded their
+      # manifests but were cancelled before `Install cosign`, so v0.6.1 shipped
+      # two images with no signature and no provenance while
+      # docs/security/release-verification.md tells operators to cosign-verify
+      # all three. These legs are independent images; there is nothing to fail
+      # fast about.
+      fail-fast: false
       matrix:
         include:
           - context: ./backend
@@ -361,8 +388,26 @@ jobs:
             APP_VERSION=${{ steps.meta.outputs.version }}
             APP_COMMIT=${{ steps.stamp.outputs.commit }}
             APP_BUILD_DATE=${{ steps.stamp.outputs.date }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # scope is required, not cosmetic, once this step runs as a matrix:
+          # the GHA cache backend's default scope is shared across the whole
+          # workflow, so the three legs -- running concurrently -- read and
+          # write the same cache namespace. Docker's own docs call this out
+          # ("cache scopes need to be unique for each [matrix] entry, otherwise
+          # the cache will be overwritten"), and it is not hypothetical here:
+          # v0.6.1's libssl3/libcrypto3 fix (CVE-2026-14456) landed in the
+          # Dockerfile, built clean locally from a fresh no-cache clone of the
+          # exact merged commit, and then the re-dispatched release build still
+          # pushed the pre-fix layer -- `docker history` on the pushed image
+          # showed the *old* apk add command verbatim, even though the image's
+          # own OCI revision label named the commit with the fix. The
+          # instruction text differed, so BuildKit's own per-layer cache key
+          # should have missed; the shared, unscoped GHA namespace being
+          # written and read by all three concurrent legs is what let a stale
+          # layer come back as a hit anyway. Scoped per matrix leg so each
+          # image's cache is isolated from the other two and from itself
+          # across runs in the way the key is supposed to guarantee.
+          cache-from: type=gha,scope=docker-publish${{ matrix.suffix }}
+          cache-to: type=gha,mode=max,scope=docker-publish${{ matrix.suffix }}
           # SBOM + SLSA provenance attestations, pushed alongside the image
           # as referrers. Trivy scans more accurately with an SBOM present,
           # and provenance lets a user verify which commit actually produced
@@ -372,6 +417,24 @@ jobs:
 
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          # Pinned explicitly rather than trusting the action's own default --
+          # v4.1.2's baked-in default is v3.0.6, and that specific cosign
+          # release has a keyless-signing regression against a registry with
+          # no OCI 1.1 Referrers API support (GHCR is one): `cosign sign`
+          # prints "Generating ephemeral keys... Signing artifact..." and
+          # exits 0, but never prints "tlog entry created" / "Pushing
+          # signature to:" and no signature ever lands in the registry. Found
+          # via v0.6.1: three images published, none verifiable
+          # (`cosign verify` -> "no signatures found" on every one), while the
+          # prior release's identical step -- an older cosign-installer
+          # version with a different baked-in default -- signed cleanly.
+          # v3.1.x's changelog lists "Sign exclusively via sigstore-go" and
+          # "Require bundle output or registry upload", consistent with a
+          # registry-upload fix in the keyless path. Pin the version, not the
+          # installer's default, so a future installer bump can't silently
+          # swap this out from under the workflow again.
+          cosign-release: 'v3.1.3'
 
       # Keyless signing via cosign's ambient GitHub Actions OIDC detection --
       # no --certificate-identity/--certificate-oidc-issuer flags here, those
@@ -438,6 +501,15 @@ jobs:
           syft-version: 'v1.51.0'
           artifact-name: 'sbom-spdx${{ matrix.suffix }}'
           upload-artifact-retention: 30
+          # The action attaches SBOMs to the GitHub Release by default, which
+          # needs `contents: write`; this job is deliberately `contents: read`.
+          # That mismatch is what failed the backend leg on v0.6.1 -- image
+          # built, signed and attested, then `Resource not accessible by
+          # integration` on the release upload. Turned off rather than widening
+          # the token: release-verification.md already documents the standalone
+          # SBOMs as 30-day workflow artifacts, not Release assets, so this
+          # makes the workflow match what the doc promises.
+          upload-release-assets: false
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -451,6 +523,8 @@ jobs:
           syft-version: 'v1.51.0'
           artifact-name: 'sbom-cdx${{ matrix.suffix }}'
           upload-artifact-retention: 30
+          # Same reason as the SPDX step above.
+          upload-release-assets: false
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}

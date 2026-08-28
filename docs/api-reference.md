@@ -1,6 +1,6 @@
 ---
 title: API Reference
-nav_order: 9
+nav_order: 10
 has_children: false
 ---
 
@@ -237,6 +237,12 @@ Response includes `token` (the `mycorrhizal_…` plaintext value) only on creati
 
 ### Health
 
+All three are unauth, unversioned, and accessible directly (without prepending the base URL). See
+[deployment.md](deployment.md#health-liveness--readiness-endpoints) for which probe each consumer
+should use.
+
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/health` | Health check (no auth, no versioning). Accessible directly (without prepending base URL). |
+| `GET` | `/health/live` | Liveness — is the process running? Returns immediately, no I/O. For restart policies. |
+| `GET` | `/health/ready` | Readiness — can this instance serve? DB + migrations + filesystem. `503` when not. For traffic gating. |
+| `GET` | `/health` | Deep health — `healthy`/`degraded`/`unhealthy` with a per-facet breakdown; also reports the build version. Only `503`s on a DB read failure. |

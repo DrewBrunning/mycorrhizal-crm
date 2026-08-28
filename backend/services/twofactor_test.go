@@ -1,13 +1,12 @@
 package services
 
 import (
-	"path/filepath"
 	"regexp"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -61,8 +60,7 @@ func TestGenerateRecoveryCodes(t *testing.T) {
 }
 
 func TestRecoveryCodeStoreAndConsume(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "test.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "rc-user", Email: "rc-user@example.com", Password: "x"}
 	require.NoError(t, db.Create(&user).Error)

@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -23,9 +22,7 @@ import (
 // config save → delete → re-save round trip against a real
 // database.InitDB-migrated file.
 func TestSeafileConfig_RealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "seafile-config-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "seafile-cfg-realdb", Password: "password123!A", Email: "seafile-cfg-realdb@example.com"}
 	require.NoError(t, db.Create(&user).Error)

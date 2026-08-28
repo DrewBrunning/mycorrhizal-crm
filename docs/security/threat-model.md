@@ -4,7 +4,9 @@ The answer to "what happens if an attacker gets X?" for every asset this app hol
 every gating security decision this project has deliberately made rather than left implied. This doc is
 the ASVS V1.2 (threat modeling) and V1.14 (security architecture) artifact; `docs/security/asvs-l2.md`
 and `docs/security/masvs-l1.md` are the per-control checklists this doc's claims cite into — this doc
-does not re-derive `file:line` evidence that already lives there.
+does not re-derive `file:line` evidence that already lives there. `docs/security/pii-inventory.md`
+covers the orthogonal *minimization* question — not "is this asset protected?" but "should it
+exist, and is it more or kept longer than needed?".
 
 | | |
 |---|---|
@@ -66,7 +68,7 @@ browser → API → database → filesystem → integrations → Android local D
 
 | Hop | Enforced by |
 |---|---|
-| browser → API | TLS at the operator's reverse proxy (`docs/deployment.md:17`); CORS strict origin allowlist, `"*"` refused in release (`backend/main.go:245-263`, `backend/config/config.go:511-516`); CSP/HSTS/`nosniff`/frame-ancestors (`backend/middleware/security_headers.go`) |
+| browser → API | TLS at the operator's reverse proxy (`docs/deployment.md:17`); CORS strict origin allowlist, `"*"` refused in release (`backend/main.go:405-423`, `backend/config/config.go:575-583`); CSP/HSTS/`nosniff`/frame-ancestors (`backend/middleware/security_headers.go`) |
 | API → database | Every query AND-scoped by `user_id`/`VCardUID` (`asvs-l2.md` V4, API1); parameterized SQL only (V5.3.4) |
 | API → filesystem | UUID filenames, traversal guards, 0700/0750 perms (`asvs-l2.md` V12.3–V12.4) |
 | API → integrations | Public-IP-only SSRF dialer with DNS-rebinding pinning, per-service opt-in (`backend/httputil/safedial.go:27-47`, `asvs-l2.md` V5.2.6/API7) |

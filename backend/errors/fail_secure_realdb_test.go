@@ -2,10 +2,9 @@ package errors
 
 import (
 	"encoding/json"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -25,8 +24,7 @@ func TestErrorHandler_ForcedDBFailure_SurfacesTypedCodeNotDriverError(t *testing
 
 	newRouter := func(t *testing.T, handler gin.HandlerFunc) *gin.Engine {
 		t.Helper()
-		db, err := database.InitDB(filepath.Join(t.TempDir(), "fail.db"))
-		require.NoError(t, err)
+		db := dbtest.New(t)
 
 		// Force any subsequent read to fail by closing the connection pool.
 		sqlDB, err := db.DB()

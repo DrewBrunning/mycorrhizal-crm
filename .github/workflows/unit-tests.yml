@@ -107,20 +107,31 @@ jobs:
         working-directory: backend
         run: go run ./cmd/citecheck
 
-  backend:
+  # Issue #630: the backend test suite is split into three parallel legs
+  # (`backend-tests` matrix) so `controllers` and `services` — each ~20 min
+  # under -race + -covermode=atomic on GitHub's shared runners, the latter
+  # tripping `go test`'s per-package -timeout and dragging unrelated tests
+  # into the JUnit report as bystander "failures" — get their own runner and
+  # their own wall-clock instead of serializing inside one job. The non-test
+  # checks (fmt/vet, benchmarks, fuzz, govulncheck, golangci-lint) run once
+  # in `backend-checks`. The `backend` job below is kept as a thin gate +
+  # coverage/JUnit aggregator so the required status check keeps the name
+  # "Backend (Go)" (branch protection references it verbatim) and downstream
+  # (Codecov, test-report.yml) still sees one combined upload.
+  #
+  # Issue #251 history: -race + -covermode=atomic stack their per-access /
+  # per-block instrumentation, and every persistence test re-ran the full
+  # real-schema migration set (database.InitDB) — issue #632 replaced that
+  # with a per-package migrated-template copy (internal/dbtest), which is the
+  # other half of this speed-up. PR #285 first bumped this job 15 -> 30 min;
+  # the split plus the -timeout below (20 -> 25 min per leg) is the durable
+  # fix, each leg now owning a whole runner.
+  backend-checks:
     permissions:
       contents: read
-    name: Backend (Go)
+    name: Backend checks (fmt/vet/bench/fuzz/lint)
     runs-on: ubuntu-latest
-    # Issue #251: -race + -covermode=atomic stack their per-access/per-block
-    # instrumentation on top of each other, and the services package alone
-    # re-runs the full real-schema migration set (database.InitDB) across
-    # dozens of tests — on GitHub's shared runners that combination pushed
-    # one package past `go test`'s default 10m internal timeout even though
-    # nothing was actually hung (PR #285 CI run 32417613740). 15 -> 30 here,
-    # plus an explicit -timeout below, to give it headroom without going
-    # unbounded.
-    timeout-minutes: 30
+    timeout-minutes: 20
     needs: changes
     # Scheduled runs must always run the full suite (there is no diff to gate
     # on) — same exemption pattern as zizmor.yml/sast.yml.
@@ -148,46 +159,6 @@ jobs:
             exit 1
           fi
           go vet ./...
-
-      # Issue #268: run tests through gotestsum so (a) a failed test is
-      # retried once (`--rerun-fails=1`) instead of flaking the required
-      # check, (b) a JUnit XML report is produced for the dorny/test-reporter
-      # check run (test-report.yml), and (c) tests that only passed on retry
-      # are written to rerun-fails.txt so the flake is surfaced, not hidden.
-      # -timeout raised from the go test default (10m) — see the job's
-      # timeout-minutes comment above for why race+coverage need the room.
-      - name: Run tests with coverage (retry-on-failure)
-        working-directory: backend
-        run: go run gotest.tools/gotestsum@v1.13.0 --rerun-fails=1 --rerun-fails-max-failures=20 --rerun-fails-report=rerun-fails.txt --junitfile=junit.xml --packages="./..." -- -race -timeout=20m -coverprofile=coverage.out -covermode=atomic
-
-      # Issue #268: the flake signal for Go. gotestsum's rerun report lists
-      # every test that failed once and then passed on retry, with counts.
-      # Visibility only — a flaky test that passed on retry does not fail the
-      # job (the "rerun" exists precisely to keep the gate green), but it IS
-      # called out here and uploaded as an artifact for triage.
-      - name: Report flaky tests (failed once, passed on retry)
-        if: always()
-        working-directory: backend
-        run: |
-          if [ -s rerun-fails.txt ]; then
-            echo "::group::Flaky tests (passed only on retry)"
-            cat rerun-fails.txt
-            echo "::endgroup::"
-          else
-            echo "No tests required a rerun."
-          fi
-
-      # Issue #294: durable coverage tracking + per-PR diff comment on top of
-      # the artifact above. Informational only (see codecov.yml) — a failed
-      # upload (app not installed yet, Codecov outage) must not fail the
-      # build, hence fail_ci_if_error: false.
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: backend/coverage.out
-          flags: backend
-          fail_ci_if_error: false
 
       - name: Run benchmarks (issue #261)
         working-directory: backend
@@ -230,16 +201,6 @@ jobs:
           go test ./services/ -run '^$' -fuzz='^FuzzExtractICalEvents$' -fuzztime="$FUZZTIME"
           go test ./services/ -run '^$' -fuzz='^FuzzParseCSV$' -fuzztime="$FUZZTIME"
 
-      # Issue #251: visibility only, no threshold/gate — printed to the log
-      # and uploaded below for anyone who wants the per-func breakdown.
-      - name: Coverage summary
-        working-directory: backend
-        run: go tool cover -func=coverage.out
-
-      - name: Render HTML coverage report
-        working-directory: backend
-        run: go tool cover -html=coverage.out -o coverage.html
-
       - name: Vulnerability scan (govulncheck)
         working-directory: backend
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
@@ -257,8 +218,251 @@ jobs:
         working-directory: backend
         run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run ./...
 
-      - name: Upload coverage report
+  backend-tests:
+    permissions:
+      contents: read
+    name: Backend tests (${{ matrix.leg }})
+    runs-on: ubuntu-latest
+    # Each leg owns a whole runner now; 35 keeps a hard ceiling above the
+    # per-leg -timeout=25m below without going unbounded (issue #630).
+    timeout-minutes: 35
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
+    strategy:
+      # One slow/failing leg must not cancel the others — we want full signal
+      # from all three on every run.
+      fail-fast: false
+      matrix:
+        leg: [controllers, services, rest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # `rest` = everything except the two heavy packages. Anchored `$` so a
+      # future controllers/services subpackage would (harmlessly) land here
+      # rather than being silently dropped from both legs.
+      - name: Resolve packages for this leg
+        id: pkgs
+        working-directory: backend
+        env:
+          LEG: ${{ matrix.leg }}
+        run: |
+          case "$LEG" in
+            controllers) list="./controllers/..." ;;
+            services)    list="./services/..." ;;
+            rest)        list="$(go list ./... | grep -vE 'mycorrhizal/(controllers|services)$' | tr '\n' ' ')" ;;
+            *)           echo "unknown leg: $LEG" >&2; exit 1 ;;
+          esac
+          echo "list=$list" >> "$GITHUB_OUTPUT"
+
+      # Issue #268: the same gotestsum wrapper as before — a failed test is
+      # retried once (`--rerun-fails=1`) instead of flaking the check, a JUnit
+      # XML is produced for dorny/test-reporter (test-report.yml), and tests
+      # that only passed on retry land in the rerun report — but scoped to
+      # this leg's packages and suffixed so the three legs' artifacts don't
+      # collide. -timeout 20m -> 25m (issue #630): a leg has the whole runner
+      # now, but the inner ceiling stays explicit.
+      #
+      # Issue #639: NO -coverprofile here. gotestsum's --rerun-fails re-invokes
+      # `go test` for just the failed test's package, and `go test`
+      # *truncates and rewrites* the coverprofile on that second invocation —
+      # so a single flaky test collapsed a whole leg's profile to just the
+      # reran test (controllers 72.4% -> 1.2%, dragging the merged Codecov
+      # number down ~10pt while the leg still reported green). Coverage is now
+      # a separate no-rerun pass below; this run is purely the gate + JUnit +
+      # flake signal.
+      - name: Run tests (retry-on-failure)
+        working-directory: backend
+        env:
+          LEG: ${{ matrix.leg }}
+          PKGS: ${{ steps.pkgs.outputs.list }}
+        run: >
+          go run gotest.tools/gotestsum@v1.13.0
+          --rerun-fails=1 --rerun-fails-max-failures=20
+          --rerun-fails-report="rerun-fails-${LEG}.txt"
+          --junitfile="junit-${LEG}.xml"
+          --packages="$PKGS"
+          -- -race -timeout=25m
+
+      # Issue #639: dedicated coverage pass — no --rerun-fails, so nothing
+      # rewrites the profile mid-run; no -race, which roughly halves the
+      # wall-clock of this second pass and leaves the coverage numbers
+      # identical (race instrumentation doesn't change which statements
+      # execute). `go test` writes a complete -coverprofile even when a test
+      # fails, so a flake here still produces an accurate profile;
+      # continue-on-error keeps a flake (or an OOM/timeout) from failing the
+      # leg, and the aggregator's guard drops the Codecov upload entirely if
+      # a leg's profile went missing (carryforward then holds the last known
+      # number) rather than uploading a partial.
+      - name: Collect coverage (no retry)
         if: always()
+        continue-on-error: true
+        working-directory: backend
+        env:
+          LEG: ${{ matrix.leg }}
+          PKGS: ${{ steps.pkgs.outputs.list }}
+        run: |
+          read -ra pkgs <<< "$PKGS"
+          go test "${pkgs[@]}" -timeout=25m -coverprofile="coverage-${LEG}.out" -covermode=atomic
+
+      # Issue #268: the flake signal for Go — visibility only, does not fail
+      # the leg (the rerun exists precisely to keep the gate green).
+      - name: Report flaky tests (failed once, passed on retry)
+        if: always()
+        working-directory: backend
+        env:
+          LEG: ${{ matrix.leg }}
+        run: |
+          if [ -s "rerun-fails-${LEG}.txt" ]; then
+            echo "::group::Flaky tests (passed only on retry) — ${LEG}"
+            cat "rerun-fails-${LEG}.txt"
+            echo "::endgroup::"
+          else
+            echo "No tests required a rerun in ${LEG}."
+          fi
+
+      # Per-leg parts; the `backend` gate job merges them into the single
+      # backend-coverage / backend-junit-results artifacts the rest of CI
+      # expects.
+      - name: Upload test parts (coverage + JUnit + flake report)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: backend-test-parts-${{ matrix.leg }}
+          path: |
+            backend/coverage-${{ matrix.leg }}.out
+            backend/junit-${{ matrix.leg }}.xml
+            backend/rerun-fails-${{ matrix.leg }}.txt
+          retention-days: 7
+          if-no-files-found: ignore
+
+  backend:
+    permissions:
+      contents: read
+    name: Backend (Go)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [changes, backend-checks, backend-tests]
+    # Always run so this required status check still reports when the two
+    # upstream jobs are path-gated out — they come back "skipped", which the
+    # gate step treats as green (same net effect as the old single job's
+    # `if:` making a skipped job report Success, issue #264).
+    if: always()
+
+    steps:
+      - name: Gate on backend-checks and backend-tests
+        env:
+          CHECKS: ${{ needs.backend-checks.result }}
+          TESTS: ${{ needs.backend-tests.result }}
+        run: |
+          echo "backend-checks=$CHECKS  backend-tests=$TESTS"
+          for r in "$CHECKS" "$TESTS"; do
+            case "$r" in
+              success|skipped) ;;
+              *) echo "::error::backend gate failed (result=$r)"; exit 1 ;;
+            esac
+          done
+
+      - name: Checkout repository
+        if: needs.backend-tests.result == 'success'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        if: needs.backend-tests.result == 'success'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Download test parts from all legs
+        if: needs.backend-tests.result == 'success'
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: backend-test-parts-*
+          merge-multiple: true
+          path: backend
+
+      # Issue #630: the three legs cover disjoint packages, so their
+      # atomic-mode profiles concatenate into one valid profile (a single
+      # `mode:` header, no overlapping block lines). This keeps the Codecov
+      # number identical to the old single `--packages="./..."` run.
+      #
+      # Issue #639: require all three legs' profiles before uploading. Each
+      # leg's coverage now comes from a no-rerun `go test -coverprofile` pass
+      # that is `continue-on-error`, so a crashed/timed-out coverage pass
+      # leaves its `coverage-<leg>.out` missing rather than clobbered. Merging
+      # whatever happens to be present would silently upload a two-thirds
+      # profile and tank the number; instead, skip the upload for this commit
+      # and let Codecov's per-flag `carryforward` (codecov.yml) hold the last
+      # known coverage. `ok=false` gates every coverage step below; it never
+      # fails the required "Backend (Go)" check (coverage is informational).
+      - name: Merge coverage profiles
+        id: merge
+        if: needs.backend-tests.result == 'success'
+        working-directory: backend
+        run: |
+          missing=""
+          for leg in controllers services rest; do
+            f="coverage-${leg}.out"
+            if [ ! -s "$f" ] || [ "$(wc -l < "$f")" -lt 2 ]; then
+              missing="$missing $leg"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::warning::coverage profile missing for leg(s):$missing — skipping Codecov upload, carryforward holds last known coverage"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          header_done=0
+          for f in coverage-controllers.out coverage-services.out coverage-rest.out; do
+            if [ "$header_done" -eq 0 ]; then
+              head -n1 "$f" > coverage.out
+              header_done=1
+            fi
+            tail -n +2 "$f" >> coverage.out
+          done
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+
+      # Issue #294: durable coverage tracking + per-PR diff comment.
+      # Informational only (see codecov.yml) — a failed upload (app not
+      # installed yet, Codecov outage) must not fail the build, hence
+      # fail_ci_if_error: false. disable_search so only the merged profile is
+      # sent, not the per-leg coverage-*.out parts sitting alongside it
+      # (issue #639).
+      - name: Upload coverage to Codecov
+        if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: backend/coverage.out
+          disable_search: true
+          flags: backend
+          fail_ci_if_error: false
+
+      # Issue #251: visibility only, no threshold/gate.
+      - name: Coverage summary
+        if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
+        working-directory: backend
+        run: go tool cover -func=coverage.out
+
+      - name: Render HTML coverage report
+        if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
+        working-directory: backend
+        run: go tool cover -html=coverage.out -o coverage.html
+
+      - name: Upload coverage report
+        if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: backend-coverage
@@ -267,16 +471,18 @@ jobs:
             backend/coverage.html
           retention-days: 7
 
-      # Issue #268: JUnit XML + flake report consumed by test-report.yml
-      # (dorny/test-reporter) and by anyone triaging flakes.
+      # Issue #268: one combined JUnit + flake artifact (the per-leg
+      # junit-*.xml / rerun-fails-*.txt gathered above) so test-report.yml
+      # (dorny/test-reporter) needs no per-leg wiring — its `path` glob picks
+      # up all three.
       - name: Upload test results (JUnit + flake report)
-        if: always()
+        if: needs.backend-tests.result == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: backend-junit-results
           path: |
-            backend/junit.xml
-            backend/rerun-fails.txt
+            backend/junit-*.xml
+            backend/rerun-fails-*.txt
           retention-days: 7
 
   frontend:

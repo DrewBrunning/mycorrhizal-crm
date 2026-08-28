@@ -38,6 +38,8 @@
     "data": "Data",
     "shares": "Shares",
     "audit": "Audit log",
+    "systemEvents": "System events",
+    "systemStatus": "System status",
     "mainLabel": "Main navigation",
     "skipToContent": "Skip to content"
   },
@@ -1141,6 +1143,11 @@
       "syncNow": "Sync now",
       "disabled": "Disabled",
       "syncFailed": "Sync failed",
+      "syncFailedCount": "Sync failed ×{{count}}",
+      "healthFailing": "Failing since {{since}} — {{count}} consecutive failures",
+      "healthLastSuccess": "last success {{date}}",
+      "healthNeverSucceeded": "never synced successfully",
+      "healthLastRun": "Last run: {{created}} created, {{updated}} updated, {{skipped}} unchanged",
       "addTitle": "Add calendar",
       "editTitle": "Edit calendar",
       "name": "Name",
@@ -1163,7 +1170,8 @@
       "built": "Built {{date}}",
       "copy": "Copy build details",
       "copied": "Build details copied",
-      "reportHint": "Include this when reporting a problem."
+      "reportHint": "Include this when reporting a problem.",
+      "viewSystemStatus": "View system status"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -1204,7 +1212,12 @@
         "activity.updated": "Activity Updated",
         "activity.deleted": "Activity Deleted",
         "reminder.triggered": "Reminder Triggered",
-        "birthday.occurred": "Birthday"
+        "birthday.occurred": "Birthday",
+        "reach_out_suggested": "Reach-Out Suggested",
+        "db.integrity_check_failed": "Database Integrity Check Failed",
+        "db.restore_drill_failed": "Restore Drill Failed",
+        "alert.raised": "Alert Raised",
+        "alert.cleared": "Alert Cleared"
       },
       "secretDialog": {
         "title": "Webhook Secret"
@@ -1248,7 +1261,24 @@
       "import": {
         "title": "Import Contacts",
         "description": "Bring in a full address book — a Google Takeout export, another contacts app's CSV or VCF export, or a JSContact JSON file. The same review flow as the Contacts page is used, with bulk controls for large files.",
-        "importButton": "Import Contacts"
+        "importButton": "Import Contacts",
+        "history": {
+          "title": "Import history",
+          "empty": "No imports yet.",
+          "loadError": "Could not load import history.",
+          "colWhen": "When",
+          "colFormat": "Format",
+          "colCreated": "Created",
+          "colUpdated": "Updated",
+          "colSkipped": "Skipped",
+          "colErrors": "Errors",
+          "format": {
+            "csv": "CSV",
+            "vcf": "vCard",
+            "jscontact": "JSContact",
+            "records": "Device"
+          }
+        }
       },
       "propose": {
         "title": "Propose data",
@@ -2057,6 +2087,302 @@
       "success": "Contact restored to its previous state",
       "retentionGone": "This event is past its retention window and can no longer be undone",
       "partialNote": "Details that were never captured in this record (pronouns, personal information, address details) are preserved unchanged."
+    }
+  },
+  "systemEvents": {
+    "title": "System events",
+    "description": "A chronological record of operational events — scheduled jobs, synchronization runs, backups, migrations. The first place to look when something isn't working.",
+    "filters": {
+      "component": "Component",
+      "severity": "Severity",
+      "eventType": "Event type",
+      "correlationId": "Correlation ID",
+      "all": "All",
+      "clear": "Clear filters"
+    },
+    "columns": {
+      "time": "When",
+      "severity": "Severity",
+      "component": "Component",
+      "event": "Event",
+      "operation": "Operation",
+      "result": "Result",
+      "duration": "Duration",
+      "actions": "Actions"
+    },
+    "severities": {
+      "info": "Info",
+      "warn": "Warning",
+      "error": "Error"
+    },
+    "results": {
+      "success": "Success",
+      "failure": "Failure",
+      "skipped": "Skipped"
+    },
+    "eventTypes": {
+      "application_started": "Application started",
+      "application_stopped": "Application stopped",
+      "migration_started": "Migration started",
+      "migration_completed": "Migration completed",
+      "migration_failed": "Migration failed",
+      "job_started": "Job started",
+      "job_completed": "Job completed",
+      "job_failed": "Job failed",
+      "sync_started": "Sync started",
+      "sync_completed": "Sync completed",
+      "sync_failed": "Sync failed",
+      "notification_sent": "Notification sent",
+      "notification_failed": "Notification failed",
+      "backup_completed": "Backup completed",
+      "backup_failed": "Backup failed",
+      "restore_test_completed": "Restore test completed",
+      "integration_failed": "Integration failed"
+    },
+    "details": {
+      "button": "Details",
+      "title": "Event details",
+      "correlationId": "Correlation ID",
+      "detail": "Detail",
+      "error": "Error",
+      "viewRelated": "View related"
+    },
+    "relatedBanner": "Showing every event in chain {{id}}.",
+    "errorsBanner": "Showing {{n}} events from one error group.",
+    "empty": "No system events match your filters.",
+    "emptyNoFilters": "No system events recorded yet."
+  },
+  "subsystemHealth": {
+    "title": "Subsystem health",
+    "description": "Last-known-good state per subsystem: when each last succeeded, how many runs have failed in a row, and when the current incident began.",
+    "refresh": "Refresh",
+    "status": {
+      "healthy": "Healthy",
+      "failing": "Failing",
+      "unknown": "Unknown"
+    },
+    "consecutiveFailures": "Consecutive failures: {{n}}",
+    "incidentSince": "Incident since {{time}}",
+    "lastSuccess": "Last success",
+    "lastFailure": "Last failure",
+    "never": "never",
+    "subsystems": {
+      "contact_sync": "CardDAV sync",
+      "calendar_sync": "CalDAV sync",
+      "notification": "Notifications",
+      "backup": "Backup & restore",
+      "scheduler": "Background jobs",
+      "webhook": "Webhooks"
+    }
+  },
+  "systemStatus": {
+    "title": "System status",
+    "description": "The composite operational picture of this instance — deep-health facets, build identity, migration state, configuration validation, SQLite facts, and storage.",
+    "overall": "Overall status",
+    "refresh": "Refresh",
+    "status": {
+      "healthy": "Healthy",
+      "degraded": "Degraded",
+      "unhealthy": "Unhealthy",
+      "ok": "OK",
+      "not_configured": "Not configured"
+    },
+    "version": {
+      "title": "Version & uptime",
+      "version": "Version",
+      "commit": "Commit",
+      "buildDate": "Build date",
+      "startedAt": "Started at",
+      "uptime": "Uptime"
+    },
+    "health": {
+      "title": "Health checks",
+      "description": "Per-facet deep-health status — the same roll-up the unauthenticated /health endpoint reports.",
+      "facet": "Check",
+      "status": "Status",
+      "reason": "Reason",
+      "facets": {
+        "database": "Database",
+        "migrations": "Migrations",
+        "integrity_check": "DB integrity check",
+        "restore_drill": "Restore drill",
+        "background_jobs": "Background jobs",
+        "integrations": "Integrations"
+      }
+    },
+    "migration": {
+      "title": "Migrations",
+      "applied": "Applied",
+      "latest": "Latest",
+      "pending": "Pending",
+      "dirty": "Dirty",
+      "dirtyYes": "Yes",
+      "dirtyNo": "No"
+    },
+    "config": {
+      "title": "Configuration",
+      "validationTitle": "Validation",
+      "validationPass": "All configuration checks pass.",
+      "field": "Field",
+      "message": "Message",
+      "features": "Enabled features"
+    },
+    "database": {
+      "title": "Database",
+      "sqliteVersion": "SQLite version",
+      "journalMode": "Journal mode",
+      "walBytes": "WAL file size"
+    },
+    "storage": {
+      "title": "Storage",
+      "databaseSize": "Database size",
+      "filesystem": "Filesystem",
+      "usedOf": "{{used}} of {{total}} used",
+      "free": "Free",
+      "directories": "Storage directories",
+      "path": "Path",
+      "size": "Size",
+      "files": "Files",
+      "approx": "approx."
+    },
+    "features": {
+      "carddav": "CardDAV",
+      "caldav": "CalDAV",
+      "oidc": "OIDC",
+      "email": "Email",
+      "metrics": "Metrics",
+      "db_integrity_check": "DB integrity check",
+      "db_restore_drill": "DB restore drill"
+    },
+    "feature": {
+      "on": "On",
+      "off": "Off"
+    },
+    "error": "Could not load system status."
+  },
+  "backgroundJobs": {
+    "title": "Background jobs",
+    "description": "Every scheduled job's most recent run: result, duration, and how many runs have failed in a row.",
+    "refresh": "Refresh",
+    "status": {
+      "healthy": "Healthy",
+      "failing": "Failing",
+      "unknown": "Unknown"
+    },
+    "result": {
+      "success": "Success",
+      "failure": "Failure",
+      "skipped": "Skipped"
+    },
+    "lastRun": "Last run",
+    "duration": "Duration",
+    "durationTrend": "avg {{avg}}, max {{max}} over {{n}} runs",
+    "consecutiveFailures": "Failed {{n}} times in a row",
+    "incidentSince": "since {{time}}",
+    "itemsProcessed": "{{n}} processed",
+    "never": "never",
+    "history": "Run history",
+    "noHistory": "No runs recorded for this job yet.",
+    "close": "Close",
+    "trigger": {
+      "scheduled": "scheduled",
+      "initial": "startup",
+      "manual": "manual"
+    },
+    "columns": {
+      "result": "Result",
+      "started": "Started",
+      "duration": "Duration",
+      "items": "Items",
+      "error": "Error"
+    },
+    "jobs": {
+      "daily_reminders": "Daily reminders",
+      "webhook_retries": "Webhook retries",
+      "calendar_sync": "Calendar sync",
+      "purge_deleted": "Purge deleted rows",
+      "audit_purge": "Audit log purge",
+      "system_event_purge": "System event purge",
+      "cadence_overdue": "Overdue cadence webhooks",
+      "reach_out_detection": "Reach-out detection",
+      "immich_sync": "Immich sync",
+      "db_integrity_check": "Database integrity check",
+      "restore_drill": "Backup restore drill",
+      "alert_eval": "Alert evaluation",
+      "job_run_purge": "Job history purge"
+    }
+  },
+  "errorAggregation": {
+    "title": "Errors by cause",
+    "description": "Operational failures from the last {{hours}}h, grouped by cause. A cause that repeats is worth attention; a one-off usually isn't.",
+    "refresh": "Refresh",
+    "empty": "No repeated errors in the last {{hours}}h.",
+    "recurring": "Recurring",
+    "viewEvents": "View {{n}} events",
+    "columns": {
+      "count": "Count",
+      "component": "Component",
+      "error": "Error",
+      "lastSeen": "Last seen",
+      "actions": "Actions"
+    }
+  },
+  "notificationHealth": {
+    "title": "Notification delivery health",
+    "description": "Whether each reminder channel is working: configured or not, when it last succeeded, and whether it is currently failing.",
+    "refresh": "Refresh",
+    "status": {
+      "unconfigured": "Unconfigured",
+      "no_devices": "No devices",
+      "healthy": "Healthy",
+      "failing": "Failing"
+    },
+    "consecutiveFailures": "Consecutive failures: {{n}}",
+    "noDevicesHint": "Push is configured, but no browser subscription or mobile device is registered.",
+    "enabledUsers": "Enabled users",
+    "deliveredCount": "Delivered: {{delivered}} / {{attempted}}",
+    "deviceCount": "Devices: {{n}}",
+    "fcmConfigured": "FCM configured",
+    "lastSuccess": "Last success",
+    "lastFailure": "Last failure",
+    "never": "never",
+    "channels": {
+      "email": "Email",
+      "ntfy": "ntfy",
+      "gotify": "Gotify",
+      "push": "Web Push"
+    }
+  },
+  "diagnostics": {
+    "title": "Diagnostics",
+    "description": "A one-pass health sweep of this install: configuration, database and migrations, storage, backups, notifications, integrations, disk space, and background jobs.",
+    "run": "Run diagnostics",
+    "running": "Running…",
+    "status": {
+      "ok": "OK",
+      "warning": "Warning",
+      "error": "Error"
+    },
+    "summary": "{{warnings}} warning(s), {{errors}} error(s)",
+    "checks": {
+      "config": "Configuration",
+      "database": "Database",
+      "migrations": "Migrations",
+      "filesystem": "Filesystem",
+      "backup": "Backup",
+      "notification_email": "Email notifications",
+      "notification_ntfy": "ntfy notifications",
+      "notification_gotify": "Gotify notifications",
+      "notification_push": "Web Push notifications",
+      "integration_carddav": "CardDAV",
+      "integration_caldav": "CalDAV",
+      "integration_immich": "Immich",
+      "integration_paperless": "Paperless",
+      "integration_seafile": "Seafile",
+      "integration_nextcloud": "Nextcloud",
+      "disk_space": "Disk space",
+      "background_jobs": "Background jobs",
+      "version": "Version"
     }
   }
 }

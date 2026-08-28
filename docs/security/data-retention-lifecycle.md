@@ -7,9 +7,9 @@ each asset, not how long it survives.
 
 | | |
 |---|---|
-| **Last updated** | 2026-08-25 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420)) |
+| **Last updated** | 2026-08-27 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420), [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622), [#391](https://github.com/DrewBrunning/mycorrhizal-crm/issues/391), [#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389), [#651](https://github.com/DrewBrunning/mycorrhizal-crm/issues/651)) |
 | **Scope** | Backend (Go/Gin + SQLite), CardDAV/CalDAV (server role), Android client, browser/frontend, operator backups. |
-| **Companion docs** | `docs/security/asvs-l2.md` V8 (Data Protection), `docs/deployment.md` (Backups section — the authoritative backup/restore runbook), `docs/security/masvs-l1.md` (Android storage controls). |
+| **Companion docs** | `docs/security/pii-inventory.md` (the *minimization* lens — should each store exist, and is it more/kept-longer than needed), `docs/security/asvs-l2.md` V8 (Data Protection), `docs/deployment.md` (Backups section — the authoritative backup/restore runbook), `docs/security/masvs-l1.md` (Android storage controls). |
 
 Every row below answers the same four questions from the issue: **where** it's stored and who can reach
 it, **how long** it's retained, **how** deletion happens and whether it propagates to other copies, and
@@ -109,6 +109,64 @@ It sits outside the soft-delete model above precisely because it is a copy, not 
 - **Backups**: yes, and a restored backup's audit trail is only as fresh as the snapshot.
 - **Verification**: `backend/services/audit_purge_service_test.go` (`TestPurgeExpiredAuditEvents*`, 3
   cases including the re-link and a swallowed-recompute-failure case).
+
+### System events (`SystemEvent`, issue #424)
+
+`system_events` is the persisted operational-event timeline — application start/stop, scheduled job
+runs, sync runs, notification dispatch, backup/restore drills. System-generated diagnostics, **not
+user data**: no `user_id` scoping on the query (it records what happened to the *instance*), no
+external mirror, admin-only over the API (`GET /admin/system-events`).
+
+- **Where / who**: `system_events` table in `mycorrhizal.db`. Read only via an admin API session; no
+  CardDAV/CalDAV projection, not in the Android offline mirror.
+- **Retention**: `SYSTEM_EVENT_RETENTION_DAYS` (default 30, `config/config.go`) — short by design:
+  long enough to investigate a recent incident, short enough to bound growth on a single-file
+  database. Deliberately shorter than the 90-day audit window — operational noise is not an
+  investigation record.
+- **Deletion / propagation**: `PurgeExpiredSystemEvents`
+  (`backend/services/system_event_purge_service.go`) hard-deletes rows whose `occurred_at` is older
+  than the window, daily via cron (`backend/main.go`) under the `system_event_purge` job lock.
+  `SYSTEM_EVENT_RETENTION_DAYS<=0` is treated as "disabled", never "delete everything". No hash chain
+  (unlike audit) — this is diagnostics, not a tamper-evident record. The free-text `error`/`detail`
+  fields are sanitized + length-capped by `models.RecordSystemEvent`, and the model carries no
+  high-cardinality fields (no contact IDs, no raw URLs) by construction.
+- **Backups**: yes, and a restored backup's timeline is only as fresh as the snapshot.
+- **Verification**: `backend/models/system_event_test.go`,
+  `backend/services/system_event_purge_service_test.go`,
+  `backend/database/migrate_system_events_test.go`.
+
+### Webhook deliveries (`WebhookDelivery`, issue #622)
+
+`webhook_deliveries` is the per-attempt receipt log for outbound webhooks: event type, status code,
+error, retry state, and — before this ticket — a **full plaintext copy of the serialized entity that
+triggered the event**. A `contact.created` delivery carried the whole contact record (names, emails,
+phones, addresses). Surfaced by the #510 privacy/data-minimization review as the one high-volume table
+#414's per-table window pattern missed.
+
+- **Where / who**: `webhook_deliveries` table, reachable only via the owning webhook's owner session
+  and admin (`webhook_controller.go`'s delivery-list endpoint is scoped to the webhook the
+  authenticated user owns). The `payload` column is **never exposed by the API** — it exists only for
+  retry replay, so trimming it is invisible to the UI.
+- **Retention**: `WEBHOOK_DELIVERY_RETENTION_DAYS` (default 30, `config/config.go`), anchored on
+  `created_at` — the moment of the delivery attempt. A row older than the window is far past every
+  retry a webhook can take (max 3 attempts across a ~20-minute backoff), so the purge being the last
+  word is a retention decision, not a lost delivery.
+- **Payload minimization (the deliberate trim)**: a successful (2xx) delivery stores only the event
+  envelope (`id`/`event`/`timestamp`) — `trimSuccessfulDeliveryPayload`
+  (`backend/services/webhook_service.go`) drops the entity body because a 2xx row is never re-sent and
+  the full body would serve no purpose. Failed/retrying rows keep the full body because
+  `ProcessWebhookRetries` replays it verbatim. So the PII copy is now bounded *and* minimized: fresh
+  failures may hold the body for re-send, successful receipts never do.
+- **Deletion / propagation**: `PurgeExpiredWebhookDeliveries`
+  (`backend/services/webhook_delivery_purge_service.go`) hard-deletes rows past the window, daily via
+  cron (`backend/main.go`) under the `webhook_delivery_purge` job lock, and via the admin `TriggerPurge`
+  endpoint. `WEBHOOK_DELIVERY_RETENTION_DAYS<=0` is treated as "disabled", never "delete everything".
+  Account deletion and webhook deletion still cascade as before.
+- **Backups**: yes — a delivery (including any still-untrimmed failed row) sits in every snapshot
+  taken before the purge; restoring such a backup resurrects it.
+- **Verification**: `backend/services/webhook_delivery_purge_service_test.go`
+  (`TestPurgeExpiredWebhookDeliveries_*` — window-pinned, failed-row policy, disabled-when-zero,
+  idempotent, scheduled-lock) plus the trim pins in `backend/services/webhook_delivery_test.go`.
 
 ## 4. Sessions & short-lived secrets
 
@@ -305,6 +363,113 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
 - **Backups**: only the encrypted credential row; the external content is that service's own backup
   story.
 
+## 14. Operational self-check results (`operational_check_results`) — not user data
+
+- **Where / who**: one row per named self-check (`db_integrity_check`, `restore_drill`, and an
+  internal `_db_write_probe`), written by the scheduled jobs and read by the deep `GET /health`
+  endpoint (issue #421). No `user_id` — it is server-global operational bookkeeping, like
+  `job_executions`.
+- **What it contains**: a check name, an `ok`/`failed`/`error` status, a timestamp, and a short
+  detail string (an `integrity_check` problem line, or a restore-drill row-count mismatch such as
+  `contacts: live=10 restored=9`). **No contact data, no credentials, no PII.**
+- **Retention / deletion**: hard state, upserted in place — at most one row per check name, each
+  overwritten on the next run. Not tied to any user, so account deletion neither touches nor needs
+  to touch it. Dropped wholesale by migration `000038`'s `down.sql`.
+- **Backups**: included in the DB snapshot like any other table; carries nothing sensitive, so it
+  needs no special handling in the backup-confidentiality boundary (§10).
+
+## 15. Alert state (`alert_states`) — not user data
+
+- **Where / who**: one row per alert condition (`backup`, `disk_space`, `sync:contact_sync`, …),
+  written by the scheduled alert evaluator (`alert_eval`, issue #428) and read only by that same
+  job. No `user_id` — server-global operational bookkeeping, like `operational_check_results` and
+  `job_executions`.
+- **What it contains**: a condition key, an `ok`/`alerting` state, the timestamp it entered that
+  state, a consecutive-failure count, and a short sanitized detail string (e.g.
+  `disk usage 92% of /var/lib/mycorrhizal`, or a subsystem's last error as already sanitized into
+  `system_events`). **No contact data, no credentials, no PII.**
+- **Retention / deletion**: hard state, upserted in place — at most one row per condition, each
+  overwritten on the next evaluation. Not tied to any user, so account deletion neither touches nor
+  needs to touch it. Dropped wholesale by migration `000040`'s `down.sql`; the next evaluator run
+  rebuilds every row from current subsystem health.
+- **Backups**: included in the DB snapshot like any other table; carries nothing sensitive, so it
+  needs no special handling in the backup-confidentiality boundary (§10). Excluded from the
+  restore-drill row-count comparison for the same reason as `system_events` /
+  `operational_check_results` — the evaluator writes it in the snapshot-vs-live window.
+
+## 16. Background job runs (`job_runs`) — not user data
+
+- **Where / who**: one row per scheduled-job invocation (`daily_reminders`, `calendar_sync`,
+  `reach_out_detection`, the purge jobs, …), written by `main.go`'s job wrapper and read only via
+  an admin API session (`GET /admin/job-runs`, `GET /admin/job-runs/health`, issue #391). No
+  `user_id` — server-global operational bookkeeping, like `job_executions` /
+  `operational_check_results` / `alert_states`. Not in any CardDAV/CalDAV projection, not in the
+  Android offline mirror.
+- **What it contains**: job name, trigger (`scheduled`/`initial`/`manual`), start/finish timestamps,
+  duration, result (`success`/`failure`/`skipped`), an optional items-processed count, a short
+  `detail` string, and the `correlation_id`. The free-text `error`/`detail` fields are sanitized +
+  length-capped by `models.RecordJobRun`; the model carries no high-cardinality fields (no contact
+  IDs, no raw URLs) by construction — same posture as `system_events`.
+- **Retention**: `JOB_RUN_RETENTION_DAYS` (default 30, `config/config.go`) — short by design, same
+  reasoning as `SYSTEM_EVENT_RETENTION_DAYS`: long enough to see a slow-creep duration trend, short
+  enough to bound growth on a single-file database.
+- **Deletion / propagation**: `PurgeExpiredJobRuns`
+  (`backend/services/job_run_purge_service.go`) hard-deletes rows whose `started_at` is older than
+  the window, daily via cron (`backend/main.go`) under the `job_run_purge` job lock.
+  `JOB_RUN_RETENTION_DAYS<=0` is treated as "disabled", never "delete everything". Not tied to any
+  user, so account deletion neither touches nor needs to touch it. Dropped wholesale by migration
+  `000041`'s `down.sql`.
+- **Backups**: included in the DB snapshot like any other table; carries nothing sensitive, so it
+  needs no special handling in the backup-confidentiality boundary (§10).
+- **Verification**: `backend/models/job_run_test.go`, `backend/services/job_run_health_test.go`,
+  `backend/services/job_run_purge_service_test.go`, `backend/database/migrate_job_runs_test.go`,
+  `backend/main_test.go` (`TestRunJob_RecordsOutcome`).
+
+## 17. Import run history (`import_runs`) — user-scoped operational bookkeeping
+
+- **Where / who**: one row per **confirmed** contact import (issue #651), written by
+  `models.RecordImportRun` from `ImportSessionManager.Confirm` / `.ConfirmVCF` after the import
+  transaction commits, and read only by its owner via `GET /api/v1/contacts/import/history`
+  (newest 50). Unlike §14–§16, it **is** user-scoped: `import_runs.user_id` is the user who ran the
+  import. Distinct from §12 (the in-memory wizard staging that holds the *uploaded rows*) — this is
+  the durable *outcome summary* only.
+- **What it contains**: the source format token (`csv` / `vcf` / `jscontact` / `records`), the five
+  ImportResult counts (total processed / created / updated / skipped) and an error **count** — no
+  error strings, no contact names, no field values, **no PII**. It cannot answer "which contact"
+  or "what changed", only "how many, when, from what format".
+- **Retention**: no dedicated purge job. An import is a rare, human-initiated action, so the table's
+  growth is self-bounding (a handful of rows per user per year); the read endpoint caps its own
+  output at 50. Rows are immutable once written — no update path.
+- **Deletion / propagation**: hard-deleted with the rest of the account by `DeleteUser`
+  (`admin_user_controller.go`, `Unscoped().Where("user_id = ?", …).Delete(&models.ImportRun{})`) —
+  it is in the manual-cascade checklist and pinned by `controllers/delete_cascade_coverage_test.go`
+  (bucket `go-cascade-user`). Not in any CardDAV/CalDAV projection, not in the Android offline
+  mirror. Dropped wholesale by migration `000042`'s `down.sql`.
+- **Backups**: included in the DB snapshot like any other table; carries nothing sensitive, so it
+  needs no special handling in the backup-confidentiality boundary (§10).
+- **Verification**: `backend/database/migrate_import_runs_test.go`,
+  `backend/services/import_session_history_test.go`,
+  `backend/controllers/import_history_controller_test.go`,
+  `backend/controllers/delete_cascade_coverage_test.go` (`import_runs` seeded + swept in the
+  DeleteUser sweep).
+
+## 18. Prometheus metrics (`GET /metrics`, in-process) — not user data, not persisted
+
+- **Where / who**: process memory only. A hand-rolled registry (`backend/metrics/`) holds counters
+  and gauges that the middleware, the scheduled-job wrapper, and `models.RecordSystemEvent` update
+  on the hot path; the values are rendered on demand at `GET /metrics` (issue #389). The endpoint
+  is registered only when `METRICS_TOKEN` is set and every scrape is bearer-authenticated.
+- **What it contains**: aggregate operational numbers with **bounded-cardinality labels only** —
+  HTTP method / matched route *template* / status code, background-job name + result,
+  `system_events` type/component/result, DB connection-pool counts, Go-runtime stats, and storage
+  byte totals (SQLite file size, filesystem free/total). No `user_id`, no contact IDs, no raw
+  request paths, no free text, no credentials. The route label is `c.FullPath()` (the registered
+  template, never the concrete path), so an unbounded ID space cannot leak in.
+- **Retention / deletion**: none — the counters live only in RAM, start at zero on every process
+  start, and are never written to the database or any file. Account deletion neither touches nor
+  needs to touch them. Restarting the container is a full reset.
+- **Backups**: not applicable — nothing is persisted, so nothing is in a snapshot.
+
 ## Known gaps
 
 One item surfaced by walking every data type through the four questions above. It does not block this
@@ -323,6 +488,10 @@ per §1/§7/§8), but it is a genuine, named gap rather than a silently-accepted
 | Soft-deleted rows / purge window | `backend/services/purge_service_test.go` (8 cases) |
 | ContactShare snapshot purge window | `backend/services/contact_share_purge_service_test.go` (9 cases) |
 | Audit retention + re-link | `backend/services/audit_purge_service_test.go` (3 cases) |
+| System-event retention window | `backend/services/system_event_purge_service_test.go` |
+| Webhook delivery purge window + payload trim | `backend/services/webhook_delivery_purge_service_test.go` (9 cases), `webhook_delivery_test.go` trim pins |
+| Job-run retention window | `backend/services/job_run_purge_service_test.go` |
+| Import-run history: one row per confirmed import, swept on account delete | `backend/services/import_session_history_test.go`, `backend/controllers/import_history_controller_test.go`, `backend/controllers/delete_cascade_coverage_test.go` |
 | Admin purge trigger + window | `backend/controllers/admin_user_controller_test.go` M1/M1b/M5 |
 | Sync-horizon 410 Gone matches purge window | `backend/controllers/cursor_feed_test.go` |
 | FTS index follows soft/hard delete | `backend/database/migrate_test.go`, FTS trigger coverage |
@@ -330,3 +499,4 @@ per §1/§7/§8), but it is a genuine, named gap rather than a silently-accepted
 | Android mirror deletes tombstoned ids | `ContactRepositoryImpl` sync tests (`core/data/src/test/.../repository/`) |
 | No PII/credential in browser storage | `frontend/e2e/` (#419 Playwright regression) |
 | Backup restore actually restores | `frontend/e2e/backupRestore.spec.ts`, restore-drill job (#275) |
+| Metrics counters are RAM-only, bounded labels, token-gated | `backend/metrics/` (`registry_test.go`, `metrics_test.go`), `backend/controllers/metrics_controller_test.go`, `backend/routes/metrics_route_test.go` |

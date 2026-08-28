@@ -15,8 +15,21 @@ import (
 
 func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcProvider *services.OIDCProvider) {
 
-	// Health check endpoint (no versioning, standard practice)
+	// Health surface (no versioning, standard practice; all unauthenticated,
+	// see health_controller.go for the live/ready/deep split — issue #421).
 	router.GET("/health", controllers.HealthCheck)
+	router.GET("/health/live", controllers.LivenessCheck)
+	router.GET("/health/ready", controllers.ReadinessCheck)
+
+	// Prometheus metrics (issue #389). Opt-in and off by default: the route
+	// only exists when METRICS_TOKEN is configured, and then every scrape must
+	// carry `Authorization: Bearer <METRICS_TOKEN>`. Not user-scoped and not a
+	// REST/JSON operation, so it is deliberately outside the /api/v1 group,
+	// the six-persona authorization matrix, and openapi.yaml — same rationale
+	// as the CardDAV surface.
+	if cfg.MetricsToken != "" {
+		router.GET("/metrics", controllers.MetricsHandler(cfg, db))
+	}
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
@@ -164,6 +177,11 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// preview pipeline (duplicate detection + merge diff + within-batch),
 			// confirmed via the shared /contacts/import/vcf/confirm endpoint.
 			protected.POST("/contacts/import/records", middleware.ValidateJSONMiddleware(&models.ImportRecordsRequest{}), controllers.UploadImportRecords)
+
+			// Import run history (issue #651) — one immutable row per confirmed
+			// import (any format), newest first, user-scoped. Backs the history
+			// table on the Data settings page.
+			protected.GET("/contacts/import/history", controllers.GetImportHistory)
 
 			// P1 contact sharing
 			// — one-time filtered copy between two users on the same
@@ -526,6 +544,46 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// Rebuild the FTS search index (T11) — needed after bulk data
 			// changes that bypassed the FTS triggers
 			admin.POST("/search/rebuild", controllers.RebuildSearchIndexHandler)
+
+			// Operational-event timeline (issue #424) — instance-wide
+			// diagnostics, admin-only.
+			admin.GET("/system-events", controllers.ListSystemEvents)
+
+			// Per-subsystem last-known-good state (issue #427), derived on
+			// read from system_events — instance-wide diagnostics, admin-only.
+			admin.GET("/subsystem-health", controllers.GetSubsystemHealth)
+
+			// Background-job run history + folded per-job health (issue #391),
+			// derived on read from job_runs — instance-wide diagnostics,
+			// admin-only.
+			admin.GET("/job-runs", controllers.ListJobRuns)
+			admin.GET("/job-runs/health", controllers.GetJobRunHealth)
+
+			// Operational errors bucketed by cause over a rolling window
+			// (issue #426), derived on read from system_events — instance-wide
+			// diagnostics, admin-only.
+			admin.GET("/error-aggregation", controllers.GetErrorAggregation)
+
+			// Per-channel notification delivery health (issue #422) — derived
+			// on read from notification_deliveries + the per-user channel
+			// config, with the configured/failing/no-devices/unconfigured
+			// distinction the issue calls out. Instance-wide, admin-only.
+			admin.GET("/notification-health", controllers.GetNotificationChannelHealth)
+
+			// One-pass instance diagnostics (issue #423) — the admin-gated
+			// "is this install healthy?" sweep: config, database + migration
+			// state, filesystem writability, backup validity, notification
+			// channels, integration reachability, disk usage, background-job
+			// liveness, and version, folded into an ok/warning/error checklist
+			// with a summary. Read-only and secret-free.
+			admin.GET("/diagnostics", controllers.RunDiagnostics)
+
+			// Aggregated build/version, migration numbers, live
+			// config-validation read-back, enabled feature flags, SQLite
+			// operational facts and storage sizing (issue #388) — the
+			// authenticated counterpart to the unauthenticated /health
+			// surface. Instance-wide, admin-only, read-only.
+			admin.GET("/system-status", controllers.GetSystemStatus)
 		}
 	}
 

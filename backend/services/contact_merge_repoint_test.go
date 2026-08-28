@@ -1,11 +1,10 @@
 package services
 
 import (
-	"path/filepath"
 	"testing"
 	"time"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -28,8 +27,7 @@ import (
 func newMergeDB(t *testing.T) (*gorm.DB, uint) {
 	t.Helper()
 
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "merge.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "merge-user", Email: "merge@example.com", Password: "x"}
 	require.NoError(t, db.Create(&user).Error)

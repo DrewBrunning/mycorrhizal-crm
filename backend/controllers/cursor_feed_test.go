@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -770,9 +769,7 @@ func TestAfterDeleteSkipsBulkDelete(t *testing.T) {
 // paginated table in the real migrated schema (the cursor query degrades to a
 // scan without them). Uses database.InitDB, not AutoMigrate.
 func TestFeedIndexesExistInMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "feed-indexes.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	for _, table := range []string{
 		"contacts", "notes", "activities", "life_events", "preferences",

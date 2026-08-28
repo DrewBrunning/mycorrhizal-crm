@@ -137,15 +137,19 @@ func TestLoggingMiddlewareRedactsSensitiveQueryValues(t *testing.T) {
 			router.Use(LoggingMiddleware())
 			router.GET("/*any", func(c *gin.Context) { c.Status(http.StatusOK) })
 
-			req := httptest.NewRequest(http.MethodGet, "/?code=TOP-SECRET&state=ok", nil)
+			req := httptest.NewRequest(http.MethodGet, "/?code=TOP-SECRET&state=CSRF-NONCE&search=Ada+Lovelace&page=2", nil)
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
 			require.Equal(t, http.StatusOK, w.Code)
 			out := buf.String()
 			require.NotContains(t, out, "TOP-SECRET", "OIDC authorization code must not reach the log")
+			require.NotContains(t, out, "CSRF-NONCE", "OIDC state (CSRF token) must not reach the log")
+			require.NotContains(t, out, "Ada", "a free-text search term is personal data and must not reach the log")
 			require.Contains(t, out, "code=[REDACTED]", "sensitive value must be redacted")
-			require.Contains(t, out, "state=ok", "non-sensitive query params must be preserved")
+			require.Contains(t, out, "state=[REDACTED]")
+			require.Contains(t, out, "search=[REDACTED]")
+			require.Contains(t, out, "page=2", "allow-listed operational params are preserved")
 		})
 	}
 }

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/routes"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -28,8 +28,7 @@ func TestOpenAPIResponseSpotCheck(t *testing.T) {
 	cfg := openAPITestConfig()
 	cfg.DBPath = filepath.Join(t.TempDir(), "spot.db")
 
-	db, err := database.InitDB(cfg.DBPath)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, cfg.DBPath)
 
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
@@ -203,10 +202,42 @@ func TestOpenAPIResponseSpotCheck(t *testing.T) {
 	validateResponse(t, replayResp, "POST", "/contacts/import/vcf/confirm", nil)
 	require.JSONEq(t, confirmResp.Body.String(), replayResp.Body.String(), "the replayed result must be byte-identical to the original")
 
-	// 5. GET /health (public, unversioned, path-level server override).
-	healthReq := httptest.NewRequest("GET", "/health", nil)
-	healthResp := httptest.NewRecorder()
-	router.ServeHTTP(healthResp, healthReq)
-	require.Equal(t, 200, healthResp.Code, healthResp.Body.String())
-	validateResponse(t, healthResp, "GET", "/health", nil)
+	// 4b. Import run history (issue #651): the confirm above left exactly one
+	// import_runs row, so this validates the full ImportRun item schema — not
+	// just the empty-array wrapper — against a real response.
+	histReq := httptest.NewRequest("GET", "/api/v1/contacts/import/history", nil)
+	histReq.Header.Set("Cookie", cookie)
+	histResp := httptest.NewRecorder()
+	router.ServeHTTP(histResp, histReq)
+	require.Equal(t, 200, histResp.Code, histResp.Body.String())
+	validateResponse(t, histResp, "GET", "/contacts/import/history", nil)
+
+	var history []struct {
+		Format string `json:"format"`
+	}
+	require.NoError(t, json.Unmarshal(histResp.Body.Bytes(), &history))
+	require.Len(t, history, 1, "the records confirm above wrote one history row")
+	require.Equal(t, "records", history[0].Format)
+
+	// 5. The health surface (public, unversioned, path-level server override).
+	// Deep /health can be 200 healthy or degraded depending on scheduled-job
+	// state; both are spec-valid HealthResponse bodies.
+	for _, hp := range []string{"/health", "/health/live", "/health/ready"} {
+		hr := httptest.NewRecorder()
+		router.ServeHTTP(hr, httptest.NewRequest("GET", hp, nil))
+		require.Contains(t, []int{200, 503}, hr.Code, "%s -> %s", hp, hr.Body.String())
+		validateResponse(t, hr, "GET", hp, nil)
+	}
+
+	// 6. The admin diagnostics sweep (issue #423). The first registered user
+	// is an admin, so the session cookie admits the admin-gated route; the
+	// response body — a mixture of ok/warning/error checks, since the test
+	// config's storage dirs are not provisioned — must validate against the
+	// documented DiagnosticsResponse schema.
+	diagReq := httptest.NewRequest("GET", "/api/v1/admin/diagnostics", nil)
+	diagReq.Header.Set("Cookie", cookie)
+	diagResp := httptest.NewRecorder()
+	router.ServeHTTP(diagResp, diagReq)
+	require.Equal(t, 200, diagResp.Code, diagResp.Body.String())
+	validateResponse(t, diagResp, "GET", "/admin/diagnostics", nil)
 }

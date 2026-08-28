@@ -27,6 +27,7 @@ type CalendarSubscription struct {
 	LastSyncedAt      *time.Time `json:"last_synced_at"`
 	LastSyncStatus    string     `json:"last_sync_status"`
 	LastSyncError     string     `json:"last_sync_error"`
+	SyncHealthFields
 }
 
 // CalendarEventLink maps an imported iCalendar event (by UID) to the activity it

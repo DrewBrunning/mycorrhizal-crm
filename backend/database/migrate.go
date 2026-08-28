@@ -4,12 +4,21 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"io"
+	"io/fs"
+	"log"
+	"os"
+	"time"
+
 	"mycorrhizal/logger"
+	"strconv"
+	"strings"
 
 	"github.com/glebarez/sqlite"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"gorm.io/gorm"
+	gormLogger "gorm.io/gorm/logger"
 )
 
 //go:embed migrations/*.sql
@@ -57,6 +66,36 @@ func openDSN(dbPath string) string {
 	return dbPath + "?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_txlock=immediate"
 }
 
+// newGormLogger returns the GORM logger every connection opened through this
+// package uses.
+//
+// GORM's default logger (logger.Default) writes the full SQL statement with
+// literal values interpolated on every query that errors, is slow, or returns
+// ErrRecordNotFound, and it is not gated by LOG_LEVEL — it writes straight to
+// os.Stdout via its own log.New, independently of zerolog. Because this is an
+// instance-wide log with no redaction layer, a missing row or a constraint
+// failure echoed its WHERE/VALUES clause verbatim — a password-reset miss
+// logged `SELECT ... WHERE email = "<address>"` (issue #510, filed as #621).
+// Two flags close it:
+//   - ParameterizedQueries: log `?` placeholders instead of interpolated
+//     values, so the email/vcard_uid/column value never reaches the log.
+//   - IgnoreRecordNotFoundError: stop logging the common, benign not-found
+//     SELECTs entirely.
+//
+// The writer is injectable so a test can point it at a *bytes.Buffer and
+// assert on exactly what GORM would emit.
+func newGormLogger(w io.Writer) gormLogger.Interface {
+	return gormLogger.New(
+		log.New(w, "", log.LstdFlags),
+		gormLogger.Config{
+			SlowThreshold:             200 * time.Millisecond,
+			LogLevel:                  gormLogger.Warn,
+			IgnoreRecordNotFoundError: true,
+			ParameterizedQueries:      true,
+		},
+	)
+}
+
 // InitDB initializes the database connection and runs migrations
 func InitDB(dbPath string) (*gorm.DB, error) {
 	// Open database connection for migrations
@@ -71,11 +110,26 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 	}
 
 	// Open GORM connection
-	db, err := gorm.Open(sqlite.Open(openDSN(dbPath)), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(openDSN(dbPath)), &gorm.Config{Logger: newGormLogger(os.Stdout)})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect with GORM: %w", err)
 	}
 
+	return db, nil
+}
+
+// OpenMigratedFile opens dbPath with this app's standard connection pragmas
+// (journal_mode(WAL), foreign_keys(1), busy_timeout(5000), _txlock=immediate --
+// see openDSN) but WITHOUT running migrations. dbPath must already be at the
+// current schema: this is for callers that copied a pre-migrated database file
+// (internal/dbtest builds the migrated schema once per test binary and hands
+// each test a byte copy) or are reopening a database the same process already
+// migrated. Use InitDB for a fresh or possibly-stale database.
+func OpenMigratedFile(dbPath string) (*gorm.DB, error) {
+	db, err := gorm.Open(sqlite.Open(openDSN(dbPath)), &gorm.Config{Logger: newGormLogger(os.Stdout)})
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect with GORM: %w", err)
+	}
 	return db, nil
 }
 
@@ -141,9 +195,13 @@ func RunMigrations(db *sql.DB) error {
 		}
 	}
 
+	startVersion := version
+	start := time.Now()
+
 	// Run migrations
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("failed to apply migrations: %w", err)
+	upErr := m.Up()
+	if upErr != nil && upErr != migrate.ErrNoChange {
+		return fmt.Errorf("failed to apply migrations: %w", upErr)
 	}
 
 	// Get final version
@@ -152,13 +210,50 @@ func RunMigrations(db *sql.DB) error {
 		return fmt.Errorf("failed to get final version: %w", err)
 	}
 
-	if err == migrate.ErrNilVersion {
+	elapsed := time.Since(start)
+	schemaAdvanced := upErr != migrate.ErrNoChange && version != startVersion
+
+	switch {
+	case err == migrate.ErrNilVersion:
 		logger.Info().Msg("No migrations applied (database is empty)")
-	} else {
-		logger.Info().Uint("version", version).Msg("Migrations applied successfully")
+	case schemaAdvanced:
+		logger.Info().
+			Str(logger.FieldEvent, "migration_completed").
+			Str(logger.FieldComponent, "migration").
+			Uint("from_version", startVersion).
+			Int64(logger.FieldDurationMS, elapsed.Milliseconds()).
+			Uint("version", version).
+			Str(logger.FieldResult, logger.ResultSuccess).
+			Msg("Migrations applied successfully")
+	default:
+		logger.Info().Uint("version", version).Msg("No pending migrations")
+	}
+
+	// Best-effort operational event when migrations actually advanced the
+	// schema (issue #424). Written by raw SQL on the same *sql.DB — the
+	// system_events table exists once migration 000038 has run, and any
+	// earlier-schema path where it does not yet exist simply drops the row.
+	if schemaAdvanced {
+		recordMigrationEvent(db, startVersion, version, elapsed)
 	}
 
 	return nil
+}
+
+// recordMigrationEvent inserts one migration_completed row, swallowing every
+// error: a diagnostic write must never be able to fail a boot.
+func recordMigrationEvent(db *sql.DB, from, to uint, elapsed time.Duration) {
+	defer func() { _ = recover() }()
+	now := time.Now().UTC()
+	ms := elapsed.Milliseconds()
+	_, err := db.Exec(
+		`INSERT INTO system_events (created_at, occurred_at, event_type, severity, component, operation, duration_ms, result, detail)
+		 VALUES (?, ?, 'migration_completed', 'info', 'migration', 'run_migrations', ?, 'success', ?)`,
+		now, now, ms, fmt.Sprintf("from_version=%d to_version=%d", from, to),
+	)
+	if err != nil {
+		logger.Debug().Err(err).Msg("could not record migration_completed system event (pre-000038 schema?)")
+	}
 }
 
 // MigrateUp applies every pending migration to the database at dbPath. Thin
@@ -230,4 +325,64 @@ func MigrateDown(dbPath string) error {
 
 	logger.Info().Msg("Migration rolled back successfully")
 	return nil
+}
+
+// LatestMigrationVersion reports the highest migration version bundled in the
+// embedded migrations FS — i.e. the version a freshly-migrated database should
+// be at. It parses the numeric prefix of every `NNNNNN_*.up.sql` entry and
+// returns the maximum. Used by the readiness/deep-health checks (issue #421)
+// to detect a database that is behind the binary's schema without opening a
+// second connection or running a migration.
+func LatestMigrationVersion() (uint, error) {
+	entries, err := fs.ReadDir(migrationsFS, "migrations")
+	if err != nil {
+		return 0, fmt.Errorf("failed to read embedded migrations: %w", err)
+	}
+
+	var latest uint
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, ".up.sql") {
+			continue
+		}
+		prefix, _, found := strings.Cut(name, "_")
+		if !found {
+			continue
+		}
+		// bitSize 32 (not 64): migration prefixes are 6-digit NNNNNN, and
+		// parsing to a width no larger than uint's guaranteed minimum keeps the
+		// uint(v) conversion provably in range (CodeQL go/incorrect-integer-conversion).
+		v, err := strconv.ParseUint(prefix, 10, 32)
+		if err != nil {
+			continue
+		}
+		if uint(v) > latest {
+			latest = uint(v)
+		}
+	}
+
+	if latest == 0 {
+		return 0, fmt.Errorf("no migration files found in embedded FS")
+	}
+	return latest, nil
+}
+
+// AppliedMigrationVersion reads the currently-applied migration version and
+// dirty flag straight from the live database's schema_migrations table, using
+// the app's existing *gorm.DB (no second sql.Open, unlike MigrationVersion,
+// which the frequently-polled readiness probe should not pay per request).
+// ok is false when no migration has ever been applied (empty table).
+func AppliedMigrationVersion(db *gorm.DB) (version uint, dirty bool, ok bool, err error) {
+	var row struct {
+		Version uint
+		Dirty   bool
+	}
+	res := db.Raw("SELECT version, dirty FROM " + defaultMigrationsTable + " LIMIT 1").Scan(&row)
+	if res.Error != nil {
+		return 0, false, false, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return 0, false, false, nil
+	}
+	return row.Version, row.Dirty, true, nil
 }

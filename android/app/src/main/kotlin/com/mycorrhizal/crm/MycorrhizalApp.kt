@@ -88,6 +88,7 @@ import com.mycorrhizal.crm.feature.auth.LoginScreen
 import com.mycorrhizal.crm.feature.auth.RegisterScreen
 import com.mycorrhizal.crm.feature.auth.ForgotPasswordScreen
 import com.mycorrhizal.crm.feature.audit.AuditScreen
+import com.mycorrhizal.crm.feature.sysevents.SystemEventsScreen
 import com.mycorrhizal.crm.feature.cadence.CadenceScreen
 import com.mycorrhizal.crm.feature.circles.CircleDetailScreen
 import com.mycorrhizal.crm.feature.circles.CirclesScreen
@@ -1018,6 +1019,8 @@ private fun AppNavGraph(
                 onData = { navController.navigate("data") },
                 // Issue #348: admin user management.
                 onManageUsers = { navController.navigate("admin/users") },
+                // Issue #424: the operational-event timeline.
+                onSystemEvents = { navController.navigate("admin/system-events") },
                 onLocaleChanged = onLocaleChanged,
             )
         }
@@ -1025,6 +1028,14 @@ private fun AppNavGraph(
         // SessionState.isAdmin there). The route lives outside the drawer set.
         composable("admin/users") {
             UsersScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+        // Issue #424: the operational-event timeline (web's /system-events),
+        // reached from Settings (gated on SessionState.isAdmin there). Admin-only,
+        // instance-wide — the route lives outside the drawer set.
+        composable("admin/system-events") {
+            SystemEventsScreen(
                 onBack = { navController.popBackStack() },
             )
         }

@@ -31,6 +31,22 @@
 - Container defaults (`PORT`, `SQLITE_DB_PATH`, `PROFILE_PHOTO_DIR`) are set in the root [Dockerfile](Dockerfile); override via `.env` if needed. `PORT` is the backend's internal bind port (8081) — nginx listens on 8080, which is what's actually exposed from the container.
 - The frontend bundle is built with an empty `VITE_API_URL` so it calls the API on relative paths; nginx (see [docker/nginx.conf](docker/nginx.conf)) proxies `/api`, `/health`, and `/carddav` to the backend on `127.0.0.1:8081`.
 
+**Metrics (Prometheus, issue #389)**
+- `GET /metrics` exposes a Prometheus text exposition (0.0.4). It is **opt-in**: the route is registered only when `METRICS_TOKEN` is set (16+ chars), and every scrape must send `Authorization: Bearer <METRICS_TOKEN>`. No token → no route.
+- Implemented without a new dependency — a small hand-rolled registry in [backend/metrics](backend/metrics); the endpoint handler is [backend/controllers/metrics_controller.go](backend/controllers/metrics_controller.go).
+- Families: `http_requests_total` / `http_request_duration_seconds` / `http_requests_in_flight` (labelled by method + matched route *template* + status), `job_runs_total` / `job_duration_seconds`, `system_events_total` (sync / notification / backup / webhook / job outcomes, via `models.RecordSystemEvent`), `db_connections_*`, `go_*` / `process_*`, `mycorrhizal_build_info`, `mycorrhizal_storage_bytes` + `filesystem_{free,size}_bytes`. Labels are deliberately bounded — never a contact ID or a raw path.
+- Quick check: `curl -s -H "Authorization: Bearer $METRICS_TOKEN" localhost:8080/metrics`.
+- Example Prometheus scrape config:
+  ```yaml
+  scrape_configs:
+    - job_name: mycorrhizal
+      metrics_path: /metrics
+      authorization:
+        credentials: <METRICS_TOKEN>
+      static_configs:
+        - targets: ["mycorrhizal.example.com"]
+  ```
+
 **Testing**
 - Backend Go tests (`go test ./...` or `make test`) spin up in-memory SQLite in helpers like [backend/controllers/activity_controller_test.go](backend/controllers/activity_controller_test.go); mirror that pattern for new suites.
 - Validation and middleware behavior has dedicated coverage in [backend/middleware/validation_test.go](backend/middleware/validation_test.go) and related files—extend these before touching shared validators.
@@ -70,7 +86,7 @@
 - Dynamic application security testing: boots the real all-in-one image (`docker-compose.test.yml`), then runs OWASP ZAP against it — an authenticated API scan seeded from [backend/openapi.yaml](backend/openapi.yaml) (via a minted `full`-scope API token handed to ZAP as a bearer header) plus an active scan of the SPA and the CardDAV/CalDAV discovery surface.
 - The scan definition lives in [zap/zap-dast.yaml](zap/zap-dast.yaml); the pass/fail policy lives in [backend/cmd/zapgate](backend/cmd/zapgate) plus the ignore-list [zap/dast.ignore](zap/dast.ignore) (same "ignore-list with justification" shape as `android/.mobsf` and `docker/cis-hardening.ignore`).
 - A deliberately-vulnerable **canary** server ([backend/cmd/dastcanary](backend/cmd/dastcanary)) runs alongside the app on `:7301`; its planted reflected-XSS must appear in the ZAP report or the gate fails as "blind". It never ships and is never part of the app.
-- CI runs it on a weekly schedule (not per-PR — DAST is slow/flaky) via [.github/workflows/zap-dast.yml](.github/workflows/zap-dast.yml), and uploads SARIF to the Security tab. To run it locally:
+- CI runs it nightly (not per-PR — DAST is slow/flaky) via [.github/workflows/zap-dast.yml](.github/workflows/zap-dast.yml). The verdict is `zapgate`; the full ZAP `report.json` is kept as a 30-day run artifact. Results are not uploaded to code scanning — a DAST finding has no source line to anchor a SARIF result to (issue #615). To run it locally:
   ```bash
   docker compose -f docker-compose.test.yml up -d --build
   # canary

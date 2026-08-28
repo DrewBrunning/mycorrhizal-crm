@@ -62,6 +62,10 @@ All models include `UserID uint` for tenant isolation.
 
 Complex business logic lives in `services/`. Controllers call services; services own multi-step operations (e.g. sending emails). Services receive a `*gorm.DB` and any needed config, they do not access `*gin.Context`.
 
+## Structured logging
+
+`logger/` wraps zerolog. Operational code (scheduler jobs, sync services, notification/webhook dispatch, migrations, backup/restore) uses the standard field vocabulary in `logger/fields.go` — `event`, `component`, `operation`, `duration_ms`, `result`, `error` — instead of ad-hoc keys, and threads a `context.Context` so a `correlation_id` bound upstream rides along. `logger.Ctx(ctx)` returns the context-bound logger (falling back to the global); `logger.Op(ctx, "<event>")` times an operation and emits one standardized completion line. Significant state transitions also persist a `models.SystemEvent` row (issue #424) that surfaces on the admin `/system-events` timeline. Operator-facing detail is in `docs/operations/observability.md`; the design rationale is [ADR 0005](../adrs/0005-operational-event-model.md).
+
 ## Testing
 
 ```sh

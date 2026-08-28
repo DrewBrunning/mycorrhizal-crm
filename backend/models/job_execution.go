@@ -56,4 +56,21 @@ const (
 	// JobNameRestoreDrill is the job name for the scheduled backup-restore
 	// drill job (issue #275).
 	JobNameRestoreDrill = "restore_drill"
+
+	// JobNameSystemEventPurge is the job name for the periodic removal of
+	// system_events rows past their retention window (issue #424).
+	JobNameSystemEventPurge = "system_event_purge"
+
+	// JobNameWebhookDeliveryPurge is the job name for the periodic removal of
+	// webhook_deliveries rows past their retention window (issue #622).
+	JobNameWebhookDeliveryPurge = "webhook_delivery_purge"
+
+	// JobNameAlertEval is the job name for the scheduled alert evaluator that
+	// detects failure/recovery transitions on the tracked subsystems and
+	// notifies on them (issue #428).
+	JobNameAlertEval = "alert_eval"
+
+	// JobNameJobRunPurge is the job name for the periodic removal of job_runs
+	// rows past their retention window (issue #391).
+	JobNameJobRunPurge = "job_run_purge"
 )

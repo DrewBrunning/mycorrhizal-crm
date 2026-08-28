@@ -67,6 +67,7 @@ func TestOpenAPISpecValidates(t *testing.T) {
 		"ContactSubscriptionInput", "ContactSubscriptionResponse",
 		// T8: everything the drift test now covers.
 		"Error", "MessageResponse", "LogoutResponse", "HealthResponse",
+		"LivenessResponse", "ReadinessResponse", "HealthCheckDetail",
 		"UserRegistrationInput", "LoginInput", "PasswordResetRequestInput",
 		"PasswordResetConfirmInput", "ChangePasswordInput",
 		"UpdateLanguageInput", "UpdateDateFormatInput",
@@ -107,6 +108,14 @@ func TestOpenAPISpecValidates(t *testing.T) {
 		"ContactDetailImmich",
 		// T66 merged contact timeline.
 		"TimelineItem", "TimelineResponse",
+		// Issue #388 admin system-status snapshot.
+		"SystemStatus",
+		// Issue #391 background-job run history + rolled-up health.
+		"JobRun", "JobRunHealth",
+		// Issue #423 diagnostics ('doctor') sweep.
+		"DiagnosticsResponse", "DiagnosticCheck",
+		// Issue #422 per-channel notification delivery health.
+		"NotificationChannelHealth",
 	}
 	for _, name := range wantSchemas {
 		if _, ok := doc.Components.Schemas[name]; !ok {

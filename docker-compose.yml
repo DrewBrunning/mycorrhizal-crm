@@ -23,7 +23,9 @@ services:
     ports:
       - "${FRONTEND_PORT:-7300}:8080"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health"]
+      # Liveness only (issue #421): "is the process up", so a degraded-but-alive
+      # instance (an optional integration down) is never restarted by Compose.
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health/live"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
@@ -19,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/SherClockHolmes/webpush-go"
 	"github.com/golang-jwt/jwt/v4"
@@ -75,7 +77,7 @@ type NotificationSender interface {
 	// for one reminder must never prevent the others from being delivered, and
 	// must never mark any reminder as sent. Returns nil when every reminder was
 	// handled (sent or recorded failed).
-	Send(db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error
+	Send(ctx context.Context, db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error
 }
 
 // notificationSenders is the channel registry, in dispatch order.
@@ -90,7 +92,12 @@ var notificationSenders = []NotificationSender{
 // attempt. sent=false stores status 'failed' plus the error message; the
 // reminder stays "due" for that channel (no 'sent' row), so the next run
 // retries it.
-func recordNotificationDelivery(db *gorm.DB, reminderID uint, channel models.NotificationChannel, sent bool, errMsg string) {
+//
+// It also emits the operational notification_sent / notification_failed event
+// (issue #424) and a standardized log line (issue #425). `detail` carries the
+// channel name only — never a recipient address, ntfy topic, or push endpoint
+// (#424 non-goal).
+func recordNotificationDelivery(ctx context.Context, db *gorm.DB, reminderID uint, channel models.NotificationChannel, sent bool, errMsg string) {
 	var (
 		sentAt *time.Time
 		status = "failed"
@@ -113,7 +120,34 @@ func recordNotificationDelivery(db *gorm.DB, reminderID uint, channel models.Not
 		Error:      errPtr,
 	}
 	if err := db.Create(&d).Error; err != nil {
-		logger.Error().Err(err).Uint("reminder_id", reminderID).Str("channel", string(channel)).Msg("Failed to record notification delivery")
+		logger.Ctx(ctx).Error().Err(err).Uint("reminder_id", reminderID).Str("channel", string(channel)).Msg("Failed to record notification delivery")
+	}
+
+	if sent {
+		logger.Ctx(ctx).Info().
+			Str(logger.FieldEvent, models.SysEventNotificationSent).
+			Str(logger.FieldComponent, logger.ComponentNotify).
+			Str(logger.FieldResult, logger.ResultSuccess).
+			Str("channel", string(channel)).
+			Msg("notification sent")
+		models.RecordSystemEvent(ctx, db, models.SystemEvent{
+			EventType: models.SysEventNotificationSent, Component: logger.ComponentNotify,
+			Operation: string(channel), Result: models.SysResult(logger.ResultSuccess),
+			Detail: "channel=" + string(channel),
+		})
+	} else {
+		logger.Ctx(ctx).Warn().
+			Str(logger.FieldEvent, models.SysEventNotificationFailed).
+			Str(logger.FieldComponent, logger.ComponentNotify).
+			Str(logger.FieldResult, logger.ResultFailure).
+			Str("channel", string(channel)).
+			Str(logger.FieldError, logger.SanitizeLogField(errMsg)).
+			Msg("notification failed")
+		models.RecordSystemEvent(ctx, db, models.SystemEvent{
+			EventType: models.SysEventNotificationFailed, Component: logger.ComponentNotify,
+			Operation: string(channel), Result: models.SysResult(logger.ResultFailure),
+			Error: errMsg, Detail: "channel=" + string(channel),
+		})
 	}
 }
 
@@ -148,7 +182,7 @@ func (emailNotificationSender) Enabled(_ *gorm.DB, cfg config.Config, user model
 // reminder gets a 'sent' delivery row AND its legacy email_sent mirror flipped
 // (pre-N9 consumers still read it); on failure each gets a 'failed' row and
 // email_sent stays untouched so the next run retries.
-func (emailNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
+func (emailNotificationSender) Send(ctx context.Context, db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
 	eligible := make([]models.Reminder, 0, len(reminders))
 	for _, r := range reminders {
 		if r.ByMail != nil && *r.ByMail {
@@ -158,7 +192,7 @@ func (emailNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.
 
 	if err := sendReminderEmailFn(user, eligible, cfg, db); err != nil {
 		for _, r := range eligible {
-			recordNotificationDelivery(db, r.ID, models.ChannelEmail, false, err.Error())
+			recordNotificationDelivery(ctx, db, r.ID, models.ChannelEmail, false, err.Error())
 		}
 		return err
 	}
@@ -170,7 +204,7 @@ func (emailNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.
 		if err := db.Save(&r).Error; err != nil {
 			logger.Error().Err(err).Uint("reminder_id", r.ID).Msg("Failed to update reminder after sending email")
 		}
-		recordNotificationDelivery(db, r.ID, models.ChannelEmail, true, "")
+		recordNotificationDelivery(ctx, db, r.ID, models.ChannelEmail, true, "")
 	}
 	return nil
 }
@@ -205,7 +239,7 @@ func sendNtfyMessage(cfg config.Config, nc *models.NotificationConfig, title, me
 	return postNotificationJSON(cfg, target, payload, "", "")
 }
 
-func (ntfyNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
+func (ntfyNotificationSender) Send(ctx context.Context, db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
 	nc, err := GetNotificationConfigForUser(db, user.ID)
 	if err != nil {
 		return fmt.Errorf("failed to load notification config: %w", err)
@@ -222,13 +256,13 @@ func (ntfyNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.U
 	for _, r := range reminders {
 		body := notificationShortBody(r, contactMap)
 		if err := sendNtfyMessage(cfg, nc, title, body); err != nil {
-			recordNotificationDelivery(db, r.ID, models.ChannelNtfy, false, err.Error())
+			recordNotificationDelivery(ctx, db, r.ID, models.ChannelNtfy, false, err.Error())
 			if sendErr == nil {
 				sendErr = err
 			}
 			continue
 		}
-		recordNotificationDelivery(db, r.ID, models.ChannelNtfy, true, "")
+		recordNotificationDelivery(ctx, db, r.ID, models.ChannelNtfy, true, "")
 	}
 	return sendErr
 }
@@ -271,7 +305,7 @@ func sendGotifyMessage(cfg config.Config, nc *models.NotificationConfig, title, 
 	return postNotificationJSON(cfg, target, payload, "X-Gotify-Key", token)
 }
 
-func (gotifyNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
+func (gotifyNotificationSender) Send(ctx context.Context, db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
 	nc, err := GetNotificationConfigForUser(db, user.ID)
 	if err != nil {
 		return fmt.Errorf("failed to load notification config: %w", err)
@@ -288,13 +322,13 @@ func (gotifyNotificationSender) Send(db *gorm.DB, cfg config.Config, user models
 	for _, r := range reminders {
 		body := notificationShortBody(r, contactMap)
 		if err := sendGotifyMessage(cfg, nc, title, body); err != nil {
-			recordNotificationDelivery(db, r.ID, models.ChannelGotify, false, err.Error())
+			recordNotificationDelivery(ctx, db, r.ID, models.ChannelGotify, false, err.Error())
 			if sendErr == nil {
 				sendErr = err
 			}
 			continue
 		}
-		recordNotificationDelivery(db, r.ID, models.ChannelGotify, true, "")
+		recordNotificationDelivery(ctx, db, r.ID, models.ChannelGotify, true, "")
 	}
 	return sendErr
 }
@@ -458,7 +492,7 @@ func sendPushMessage(db *gorm.DB, cfg config.Config, user models.User, sub model
 	return false, fmt.Errorf("unexpected status %d from push service", resp.StatusCode)
 }
 
-func (pushNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
+func (pushNotificationSender) Send(ctx context.Context, db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
 	var subs []models.PushSubscription
 	if err := db.Where("user_id = ?", user.ID).Find(&subs).Error; err != nil {
 		return fmt.Errorf("failed to load push subscriptions: %w", err)
@@ -498,7 +532,7 @@ func (pushNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.U
 			body := notificationShortBody(r, contactMap)
 			stale, err := sendPushMessage(db, cfg, user, sub, vapidPublic, vapidPrivate, title, body)
 			if err != nil {
-				recordNotificationDelivery(db, r.ID, models.ChannelPush, false, err.Error())
+				recordNotificationDelivery(ctx, db, r.ID, models.ChannelPush, false, err.Error())
 				if sendErr == nil {
 					sendErr = err
 				}
@@ -512,7 +546,7 @@ func (pushNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.U
 				}
 				continue
 			}
-			recordNotificationDelivery(db, r.ID, models.ChannelPush, true, "")
+			recordNotificationDelivery(ctx, db, r.ID, models.ChannelPush, true, "")
 		}
 	}
 
@@ -534,7 +568,7 @@ func (pushNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.U
 			body := notificationShortBody(r, contactMap)
 			stale, err := sendFCMMessage(cfg, fcmAccount, device.Token, title, body, fcmReminderData(r))
 			if err != nil {
-				recordNotificationDelivery(db, r.ID, models.ChannelPush, false, err.Error())
+				recordNotificationDelivery(ctx, db, r.ID, models.ChannelPush, false, err.Error())
 				if sendErr == nil {
 					sendErr = err
 				}
@@ -548,7 +582,7 @@ func (pushNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.U
 				}
 				continue
 			}
-			recordNotificationDelivery(db, r.ID, models.ChannelPush, true, "")
+			recordNotificationDelivery(ctx, db, r.ID, models.ChannelPush, true, "")
 		}
 	}
 
@@ -1016,29 +1050,73 @@ func TestNotificationChannel(db *gorm.DB, cfg config.Config, user models.User, c
 		// Web Push subscriptions AND FCM mobile devices — mirroring
 		// pushNotificationSender.Send's dispatch (design decision 5: one
 		// "push" channel, tested as one unit).
-		var subs []models.PushSubscription
-		if err := db.Where("user_id = ?", user.ID).Find(&subs).Error; err != nil {
+		return deliverPushToUser(db, cfg, user, title, message)
+
+	default:
+		return fmt.Errorf("unsupported notification channel %q", channel)
+	}
+}
+
+// deliverPushToUser sends one arbitrary title/body to every push endpoint the
+// user has registered — browser Web Push subscriptions and FCM mobile devices —
+// deleting any that come back stale. It returns the first send error, a
+// "not configured" error when the user has no usable endpoint, and nil when at
+// least one endpoint accepted the message. Shared by the Settings "test" button
+// (TestNotificationChannel) and operational alerting (issue #428), so the two
+// dispatch the push channel identically.
+func deliverPushToUser(db *gorm.DB, cfg config.Config, user models.User, title, message string) error {
+	var subs []models.PushSubscription
+	if err := db.Where("user_id = ?", user.ID).Find(&subs).Error; err != nil {
+		return err
+	}
+	var devices []models.DeviceRegistration
+	if err := db.Where("user_id = ? AND client = ?", user.ID, string(models.PushClientFCM)).Find(&devices).Error; err != nil {
+		return err
+	}
+	if len(subs) == 0 && len(devices) == 0 {
+		return fmt.Errorf("no push devices registered — enable browser notifications or register a mobile device first")
+	}
+
+	var sendErr error
+	var attempted bool
+
+	if len(subs) > 0 {
+		vapidPublic, vapidPrivate, err := GetVAPIDKeys(db)
+		if err != nil {
 			return err
 		}
-		var devices []models.DeviceRegistration
-		if err := db.Where("user_id = ? AND client = ?", user.ID, string(models.PushClientFCM)).Find(&devices).Error; err != nil {
-			return err
-		}
-		if len(subs) == 0 && len(devices) == 0 {
-			return fmt.Errorf("no push devices registered — enable browser notifications or register a mobile device first")
-		}
-
-		var sendErr error
-		var attempted bool
-
-		if len(subs) > 0 {
-			vapidPublic, vapidPrivate, err := GetVAPIDKeys(db)
+		for _, sub := range subs {
+			attempted = true
+			stale, err := sendPushMessage(db, cfg, user, sub, vapidPublic, vapidPrivate, title, message)
 			if err != nil {
-				return err
+				if sendErr == nil {
+					sendErr = err
+				}
+				continue
 			}
-			for _, sub := range subs {
+			if stale {
+				if delErr := db.Delete(&sub).Error; delErr != nil {
+					logger.Warn().Err(delErr).Uint("subscription_id", sub.ID).Msg("Failed to delete stale push subscription")
+				}
+			}
+		}
+	}
+
+	if len(devices) > 0 {
+		fcmAccount, err := LoadFCMServiceAccount(cfg.FCMServiceAccountFile)
+		if err != nil || fcmAccount == nil {
+			if len(subs) == 0 {
+				// Nothing else was even attempted — a silent no-op would
+				// look like success. Surface the missing config instead.
+				return fmt.Errorf("mobile push delivery is not configured on this server (FCM_SERVICE_ACCOUNT_FILE unset)")
+			}
+			// A web subscription was already probed above; an
+			// unconfigured FCM device is inert-by-design (M2 design
+			// decision 4), not a failure of the channel as a whole.
+		} else {
+			for _, device := range devices {
 				attempted = true
-				stale, err := sendPushMessage(db, cfg, user, sub, vapidPublic, vapidPrivate, title, message)
+				stale, err := sendFCMMessage(cfg, fcmAccount, device.Token, title, message, nil)
 				if err != nil {
 					if sendErr == nil {
 						sendErr = err
@@ -1046,51 +1124,67 @@ func TestNotificationChannel(db *gorm.DB, cfg config.Config, user models.User, c
 					continue
 				}
 				if stale {
-					if delErr := db.Delete(&sub).Error; delErr != nil {
-						logger.Warn().Err(delErr).Uint("subscription_id", sub.ID).Msg("Failed to delete stale push subscription")
+					if delErr := db.Delete(&device).Error; delErr != nil {
+						logger.Warn().Err(delErr).Uint("device_id", device.ID).Msg("Failed to delete stale FCM device registration")
 					}
 				}
 			}
 		}
-
-		if len(devices) > 0 {
-			fcmAccount, err := LoadFCMServiceAccount(cfg.FCMServiceAccountFile)
-			if err != nil || fcmAccount == nil {
-				if len(subs) == 0 {
-					// Nothing else was even attempted — a silent no-op would
-					// look like success. Surface the missing config instead.
-					return fmt.Errorf("mobile push delivery is not configured on this server (FCM_SERVICE_ACCOUNT_FILE unset)")
-				}
-				// A web subscription was already probed above; an
-				// unconfigured FCM device is inert-by-design (M2 design
-				// decision 4), not a failure of the channel as a whole.
-			} else {
-				for _, device := range devices {
-					attempted = true
-					stale, err := sendFCMMessage(cfg, fcmAccount, device.Token, title, message, nil)
-					if err != nil {
-						if sendErr == nil {
-							sendErr = err
-						}
-						continue
-					}
-					if stale {
-						if delErr := db.Delete(&device).Error; delErr != nil {
-							logger.Warn().Err(delErr).Uint("device_id", device.ID).Msg("Failed to delete stale FCM device registration")
-						}
-					}
-				}
-			}
-		}
-
-		if !attempted {
-			return fmt.Errorf("no push devices registered — enable browser notifications or register a mobile device first")
-		}
-		return sendErr
-
-	default:
-		return fmt.Errorf("unsupported notification channel %q", channel)
 	}
+
+	if !attempted {
+		return fmt.Errorf("no push devices registered — enable browser notifications or register a mobile device first")
+	}
+	return sendErr
+}
+
+// maxTestNotificationErrorLen bounds the diagnostic echoed to the Settings
+// card by the test-notification endpoint (issue #606). The whole point of the
+// endpoint is to tell the user why their own ntfy/Gotify/push target rejected
+// the message, so the upstream reason is surfaced — but never reflected
+// wholesale from an arbitrary upstream response.
+const maxTestNotificationErrorLen = 256
+
+// NotificationOutboundPolicyMessage is the single client-visible reason for
+// every SSRF-guard rejection the test-notification endpoint reports while
+// WEBHOOK_BLOCK_PRIVATE_URLS is on. The guard's distinct sentinels
+// (ErrNotificationPrivateAddress, ErrWebhookUnreachable,
+// ErrWebhookPrivateAddress) each tell an operator something different —
+// "private address" vs "could not be resolved" — and that distinction stays in
+// the server-side log. Collapsing them client-side stops the opt-in hardening
+// flag from turning this endpoint into an address-reachability oracle (issue
+// #606): an operator who switches the flag on to declare internal targets
+// off-limits must not get an endpoint that reports *which* rule a target
+// tripped.
+const NotificationOutboundPolicyMessage = "the configured endpoint is not reachable under this instance's outbound policy"
+
+// NotificationTestErrorMessage maps a TestNotificationChannel failure to the
+// string the Settings card displays (issue #606). It bounds the echoed
+// diagnostic so an arbitrary upstream response cannot be reflected wholesale,
+// and — when WEBHOOK_BLOCK_PRIVATE_URLS is on — collapses the SSRF guard's
+// distinct sentinels into NotificationOutboundPolicyMessage so the hardening
+// flag cannot be used to distinguish a private-address target from an
+// unresolvable one. The caller always logs the raw error; only what reaches
+// the client is normalized.
+func NotificationTestErrorMessage(cfg config.Config, err error) string {
+	msg := err.Error()
+	if cfg.WebhookBlockPrivateURLs {
+		switch {
+		case errors.Is(err, ErrNotificationPrivateAddress),
+			errors.Is(err, ErrWebhookUnreachable),
+			errors.Is(err, ErrWebhookPrivateAddress):
+			msg = NotificationOutboundPolicyMessage
+		}
+	}
+	if len(msg) > maxTestNotificationErrorLen {
+		// Cut at a rune boundary so a multi-byte upstream message cannot
+		// produce invalid UTF-8 in the response body.
+		msg = msg[:maxTestNotificationErrorLen]
+		for !utf8.ValidString(msg) {
+			msg = msg[:len(msg)-1]
+		}
+	}
+	return msg
 }
 
 // ListPushSubscriptions returns the user's registered push devices.

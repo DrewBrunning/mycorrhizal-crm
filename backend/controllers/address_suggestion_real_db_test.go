@@ -3,11 +3,10 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -20,9 +19,7 @@ import (
 // database.InitDB-migrated real file database, including ownership scoping
 // and the server-side re-derivation contract.
 func TestContactAddressSuggestions_RealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "address-suggest-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "addruser", Password: "password123!A", Email: "addruser@example.com"}
 	require.NoError(t, db.Create(&user).Error)

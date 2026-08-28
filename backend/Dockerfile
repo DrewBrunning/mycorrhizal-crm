@@ -31,8 +31,15 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
 FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 
 # Install runtime dependencies (versions pinned per hadolint DL3018 against
-# the alpine:3.24 index)
-RUN apk add --no-cache ca-certificates=20260611-r0 tzdata=2026c-r0 shadow=4.18.0-r1 su-exec=0.3-r0 libc6-compat=1.1.0-r4
+# the alpine:3.24 index).
+#
+# libssl3/libcrypto3 pinned explicitly, above what the base image ships
+# (3.5.7-r0), to pull in the CVE-2026-14456 fix (3.5.8-r0) already present in
+# this same pinned index -- caught by Trivy gating v0.6.1's release scan
+# (exit-code: 1 on fixed CRITICAL/HIGH). No base-image digest bump needed;
+# `apk policy libssl3` against this exact digest already lists 3.5.8-r0 from
+# alpine/v3.24/main.
+RUN apk add --no-cache ca-certificates=20260611-r0 tzdata=2026c-r0 shadow=4.18.0-r1 su-exec=0.3-r0 libc6-compat=1.1.0-r4 libssl3=3.5.8-r0 libcrypto3=3.5.8-r0
 
 WORKDIR /app
 
@@ -64,9 +71,11 @@ EXPOSE 8080
 # Issue #578: the split backend image is a published artifact (docker-publish
 # matrix) and must carry a HEALTHCHECK like the all-in-one does — trivy's
 # DS-0026 flagged its absence once the misconfig gate hard-gated. The Go
-# server serves /health directly on 8080 (backend/routes/routes.go), no auth.
+# server serves the health surface directly on 8080 (backend/routes/routes.go),
+# no auth. Probe /health/live (liveness, issue #421): a restart policy wants
+# "is the process up", not the deep check or readiness.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health"]
+    CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health/live"]
 
 # Run as root initially; entrypoint drops to appuser after adjusting UID/GID
 ENTRYPOINT ["/app/entrypoint.sh"]

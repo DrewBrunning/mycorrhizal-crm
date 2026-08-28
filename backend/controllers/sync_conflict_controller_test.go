@@ -2,11 +2,10 @@ package controllers
 
 import (
 	"encoding/json"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -19,8 +18,7 @@ import (
 // 1) with the list/restore/dismiss endpoints for one authenticated user.
 func setupSyncConflictRouter(t *testing.T) (*gorm.DB, *gin.Engine, models.User) {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "sync-conflict-ctrl.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "sccuser", Password: "password123!A", Email: "sccuser@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -165,8 +163,7 @@ func TestDismissContactSyncConflict_UnknownIDIs404(t *testing.T) {
 // branch: without a userID in context every handler 401s before touching the
 // DB.
 func TestContactSyncConflicts_Unauthenticated(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "sync-conflict-noauth.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()

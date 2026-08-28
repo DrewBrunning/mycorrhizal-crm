@@ -21,8 +21,7 @@ import (
 // Makefile and the Dockerfile. This asserts the endpoint actually reports what
 // buildinfo carries, rather than a literal.
 func TestHealthCheck_ReportsBuildInfoNotAHardcodedVersion(t *testing.T) {
-	_, router := setupRouter()
-	router.GET("/health", HealthCheck)
+	_, _, router := migratedHealthRouter(t)
 
 	req, _ := http.NewRequest("GET", "/health", nil)
 	w := httptest.NewRecorder()
@@ -43,8 +42,7 @@ func TestHealthCheck_ReportsBuildInfoNotAHardcodedVersion(t *testing.T) {
 // this catches it even if buildinfo happens to hold the same value in a test
 // build.
 func TestHealthCheck_VersionIsNotTheOldLiteral(t *testing.T) {
-	_, router := setupRouter()
-	router.GET("/health", HealthCheck)
+	_, _, router := migratedHealthRouter(t)
 
 	req, _ := http.NewRequest("GET", "/health", nil)
 	w := httptest.NewRecorder()

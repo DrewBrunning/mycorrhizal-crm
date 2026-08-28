@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"mycorrhizal/contactmodel"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
@@ -213,9 +213,7 @@ func TestGetContacts_FiltersByVCardUID(t *testing.T) {
 // columns the new filter queries actually exist with those exact names in
 // the real migration SQL (this fork's own recurring bug class).
 func TestGetContacts_VCardUIDFilter_RealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "vcard-uid-filter-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "realdb-vuid", Password: "password123!A", Email: "realdb-vuid@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -1181,7 +1179,7 @@ func TestDeleteContactWithNoPhotos(t *testing.T) {
 }
 
 // M3/T26: re-import with same vcard_uid after soft-delete must succeed.
-// The partial unique index (migration 000039) only applies WHERE
+// The partial unique index idx_contacts_vcard_uid_user only applies WHERE
 // deleted_at IS NULL, so a soft-deleted contact no longer occupies the
 // vcard_uid slot.
 func TestRecreateContactAfterDeleteUsesSameVCardUID(t *testing.T) {

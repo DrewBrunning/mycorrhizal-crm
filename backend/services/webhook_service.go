@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/json"
@@ -15,6 +16,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,6 +24,29 @@ import (
 )
 
 const maxDeliveryAttempts = 3
+
+// webhookGoroutines tracks the fire-and-forget goroutines TriggerWebhooksAsync
+// launches and the per-delivery goroutines TriggerWebhooks spawns. Production
+// never waits on it — webhook fan-out stays asynchronous — but a test can call
+// WaitForWebhookGoroutines in cleanup so a leaked delivery goroutine's DB
+// access cannot race t.TempDir() teardown ("TempDir RemoveAll cleanup:
+// directory not empty").
+var webhookGoroutines sync.WaitGroup
+
+// WaitForWebhookGoroutines blocks until every in-flight TriggerWebhooks* call
+// and the deliveries it spawned have returned. Test-only.
+func WaitForWebhookGoroutines() { webhookGoroutines.Wait() }
+
+// TriggerWebhooksAsync runs TriggerWebhooks in a tracked goroutine — the
+// fire-and-forget entry point for job/handler code that must not block on
+// webhook fan-out.
+func TriggerWebhooksAsync(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, eventType string, data interface{}) {
+	webhookGoroutines.Add(1)
+	go func() {
+		defer webhookGoroutines.Done()
+		TriggerWebhooks(ctx, db, cfg, userID, eventType, data)
+	}()
+}
 
 // Sentinels surfaced by the SSRF-guarded dialer. They are returned as ordinary
 // dial errors and end up in the stored delivery record's Error field.
@@ -87,6 +112,39 @@ func buildPayloadBody(eventType string, data interface{}) ([]byte, error) {
 	return json.Marshal(payload)
 }
 
+// trimSuccessfulDeliveryPayload drops the entity body from a webhook delivery
+// record once the delivery has succeeded. This is the issue #622 decision: a
+// successful (2xx) delivery is never re-sent (NextRetryAt is nil), so the
+// stored receipt only needs the event envelope — id, event, timestamp — not
+// the full serialized entity that triggered it. Before this, a `contact.created`
+// delivery left a plaintext copy of the whole contact record in
+// webhook_deliveries.payload forever, and the table's only other bound was the
+// retention window added alongside this. Failed/retrying rows keep the full
+// body because ProcessWebhookRetries replays it verbatim.
+//
+// The webhook-deliveries API response (`toDeliveryResponse`) never exposes
+// payload, so trimming is invisible to the UI; the retry loop only reads
+// payload for rows that still have a retry scheduled, which successful rows
+// never do.
+//
+// Fails safe: if the payload is not the known envelope shape (missing `data`),
+// the full body is kept rather than risking a mangled receipt.
+func trimSuccessfulDeliveryPayload(body []byte) []byte {
+	var env map[string]json.RawMessage
+	if err := json.Unmarshal(body, &env); err != nil {
+		return body
+	}
+	if _, ok := env["data"]; !ok {
+		return body
+	}
+	delete(env, "data")
+	trimmed, err := json.Marshal(env)
+	if err != nil {
+		return body
+	}
+	return trimmed
+}
+
 // isPrivateURL reports whether rawURL resolves to any non-public address. It
 // is only a fast pre-flight so the stored delivery record carries a clear
 // error; the authoritative check is the pinning dialer on
@@ -112,8 +170,17 @@ func isPrivateURL(rawURL string) bool {
 }
 
 // TriggerWebhooks fires webhooks for all active subscriptions matching eventType for the user.
-// Runs each delivery in its own goroutine (non-blocking).
-func TriggerWebhooks(db *gorm.DB, cfg config.Config, userID uint, eventType string, data interface{}) {
+// Runs each delivery in its own goroutine (non-blocking). The correlation ID
+// on ctx (if any) rides along to the delivery so a webhook receiver's log can
+// be tied back to the action that fired it (issue #425); pass
+// context.Background() from a fire-and-forget path with no correlation ID.
+func TriggerWebhooks(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, eventType string, data interface{}) {
+	// The goroutines below outlive the caller (a handler returns as soon as
+	// this function does), so detach from ctx's cancellation/deadline while
+	// keeping its values — the correlation ID rides along, but the request
+	// ending does not abort an in-flight delivery.
+	deliveryCtx := context.WithoutCancel(ctx)
+
 	var webhooks []models.Webhook
 	if err := db.Where("user_id = ? AND is_active = ? AND deleted_at IS NULL", userID, true).Find(&webhooks).Error; err != nil {
 		logger.Error().Err(err).Uint("user_id", userID).Msg("Failed to load webhooks for triggering")
@@ -139,10 +206,12 @@ func TriggerWebhooks(db *gorm.DB, cfg config.Config, userID uint, eventType stri
 		}
 
 		wh := wh
+		webhookGoroutines.Add(1)
 		go func() {
+			defer webhookGoroutines.Done()
 			deliverySem <- struct{}{}
 			defer func() { <-deliverySem }()
-			deliverWebhook(db, cfg, wh, eventType, body, 1)
+			deliverWebhook(deliveryCtx, db, cfg, wh, eventType, body, 1)
 		}()
 	}
 }
@@ -159,29 +228,58 @@ func TestWebhookDelivery(db *gorm.DB, cfg config.Config, wh models.Webhook) mode
 		db.Create(&d)
 		return d
 	}
-	return deliverWebhook(db, cfg, wh, "test", body, 1)
+	return deliverWebhook(context.Background(), db, cfg, wh, "test", body, 1)
 }
 
-func deliverWebhook(db *gorm.DB, cfg config.Config, wh models.Webhook, eventType string, body []byte, attempt int) models.WebhookDelivery {
+func deliverWebhook(ctx context.Context, db *gorm.DB, cfg config.Config, wh models.Webhook, eventType string, body []byte, attempt int) models.WebhookDelivery {
+	start := time.Now()
+	finish := func(d models.WebhookDelivery, errMsg string) models.WebhookDelivery {
+		// integration_failed once a delivery has exhausted its retries and is
+		// still failing — the point at which an operator needs to know an
+		// external integration is down (issue #424). Detail carries the event
+		// type only, never the webhook URL (#424 non-goal).
+		if errMsg != "" && attempt >= maxDeliveryAttempts {
+			durMS := time.Since(start).Milliseconds()
+			logger.Ctx(ctx).Warn().
+				Str(logger.FieldEvent, models.SysEventIntegrationFailed).
+				Str(logger.FieldComponent, logger.ComponentWebhook).
+				Str(logger.FieldResult, logger.ResultFailure).
+				Int64(logger.FieldDurationMS, durMS).
+				Uint("webhook_id", wh.ID).
+				Str(logger.FieldError, logger.SanitizeLogField(errMsg)).
+				Msg("webhook delivery exhausted its retries")
+			models.RecordSystemEvent(ctx, db, models.SystemEvent{
+				EventType: models.SysEventIntegrationFailed, Component: logger.ComponentWebhook,
+				Operation: eventType, Result: models.SysResult(logger.ResultFailure),
+				DurationMS: &durMS, Error: errMsg,
+				Detail: fmt.Sprintf("event=%s attempts=%d", eventType, attempt),
+			})
+		}
+		return d
+	}
+
 	if cfg.WebhookBlockPrivateURLs && isPrivateURL(wh.URL) {
 		errStr := "webhook URL resolves to a private or loopback address"
-		return saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, nil)
+		return finish(saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, nil), errStr)
 	}
 
 	sig := computeSignature(wh.Secret, body)
 	req, err := http.NewRequest("POST", wh.URL, bytes.NewReader(body))
 	if err != nil {
 		errStr := err.Error()
-		return saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, retryAt(attempt))
+		return finish(saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, retryAt(attempt)), errStr)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Webhook-Signature", "sha256="+sig)
 	req.Header.Set("X-Mycorrhizal-Event", eventType)
+	if id := logger.CorrelationID(ctx); id != "" {
+		req.Header.Set("X-Correlation-ID", id)
+	}
 
 	resp, err := clientFor(cfg).Do(req)
 	if err != nil {
 		errStr := err.Error()
-		return saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, retryAt(attempt))
+		return finish(saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, retryAt(attempt)), errStr)
 	}
 	defer func() {
 		io.Copy(io.Discard, resp.Body) //nolint:errcheck
@@ -190,10 +288,15 @@ func deliverWebhook(db *gorm.DB, cfg config.Config, wh models.Webhook, eventType
 
 	statusCode := resp.StatusCode
 	if statusCode >= 200 && statusCode < 300 {
-		return saveDelivery(db, wh.ID, eventType, string(body), &statusCode, nil, attempt, nil)
+		// A successful delivery is never re-sent, so the stored receipt only
+		// needs the event envelope — not the full entity body that triggered
+		// it (issue #622). Failed/retrying rows keep the full body because
+		// ProcessWebhookRetries replays it.
+		trimmed := trimSuccessfulDeliveryPayload(body)
+		return saveDelivery(db, wh.ID, eventType, string(trimmed), &statusCode, nil, attempt, nil)
 	}
 	errStr := fmt.Sprintf("unexpected status %d", statusCode)
-	return saveDelivery(db, wh.ID, eventType, string(body), &statusCode, &errStr, attempt, retryAt(attempt))
+	return finish(saveDelivery(db, wh.ID, eventType, string(body), &statusCode, &errStr, attempt, retryAt(attempt)), errStr)
 }
 
 func computeSignature(secret string, body []byte) string {
@@ -230,6 +333,7 @@ func saveDelivery(db *gorm.DB, webhookID uint, eventType, payload string, status
 // Guarded by a job lock (matching reminders/calendar sync) so multiple
 // instances don't double-process the same retry window.
 func ProcessWebhookRetries(db *gorm.DB, cfg config.Config) {
+	ctx := logger.JobContext(models.JobNameWebhookRetries)
 	// Shorter than the 5-minute cron cadence (main.go) so the lock doesn't
 	// suppress every other tick, unlike reminders/calendar sync which run far
 	// less often.
@@ -275,7 +379,7 @@ func ProcessWebhookRetries(db *gorm.DB, cfg config.Config) {
 			deliverySem <- struct{}{}
 			defer func() { <-deliverySem }()
 			// Replay the original payload so retries share the same event ID and timestamp
-			deliverWebhook(db, cfg, wh, d.EventType, []byte(d.Payload), d.Attempts+1)
+			deliverWebhook(ctx, db, cfg, wh, d.EventType, []byte(d.Payload), d.Attempts+1)
 		}()
 	}
 }

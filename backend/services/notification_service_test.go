@@ -2,11 +2,13 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,10 +20,12 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
 	"mycorrhizal/i18n"
+	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
@@ -36,14 +40,20 @@ import (
 // the migration creates).
 func setupNotificationTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "n9.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	t.Cleanup(func() {
 		sqlDB, err := db.DB()
 		if err == nil {
 			sqlDB.Close()
 		}
 	})
+	// SendReminders / ProcessOverdueCadences fan webhooks out via
+	// TriggerWebhooksAsync — fire-and-forget goroutines that touch this DB.
+	// Registered last so it runs FIRST at teardown (t.Cleanup is LIFO): drain
+	// those goroutines while the DB file is still open, before the closes and
+	// t.TempDir()'s RemoveAll, so a leaked delivery cannot race the cleanup
+	// ("TempDir RemoveAll cleanup: directory not empty").
+	t.Cleanup(WaitForWebhookGoroutines)
 	return db
 }
 
@@ -193,7 +203,7 @@ func TestSendReminders_DispatchesToNtfy(t *testing.T) {
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{UseResend: true, ResendAPIKey: "k", ResendFromEmail: "noreply@example.com", ReminderTime: "12:00"}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 
 	require.Equal(t, 1, fake.count(), "the ntfy topic must receive exactly one POST")
 	assert.Equal(t, "/my-topic", fake.hits[0], "the POST must go to /{topic}")
@@ -207,7 +217,7 @@ func TestSendReminders_DispatchesToNtfy(t *testing.T) {
 	assert.Nil(t, deliveries[0].Error)
 
 	// Second run: the sent delivery makes the reminder not-due for ntfy.
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 	assert.Equal(t, 1, fake.count(), "the sent delivery must prevent a second ntfy POST")
 }
 
@@ -226,7 +236,7 @@ func TestSendReminders_ChannelFailureIsolation(t *testing.T) {
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{UseResend: true, ResendAPIKey: "k", ResendFromEmail: "noreply@example.com", ReminderTime: "12:00", JWTSecretKey: "test-jwt-secret-that-is-long-enough"}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersExpectErrT(t, db, cfg)
 
 	// ntfy succeeded, gotify failed — both delivered independently.
 	var ntfyHits, gotifyHits int
@@ -252,8 +262,8 @@ func TestSendReminders_ChannelFailureIsolation(t *testing.T) {
 	assert.Equal(t, "sent", statusByChannel["ntfy"])
 	assert.Equal(t, "failed", statusByChannel["gotify"])
 
-	// A second run retries only the failed gotify channel.
-	require.NoError(t, SendReminders(db, cfg))
+	// A second run retries only the failed gotify channel (still 500).
+	sendRemindersExpectErrT(t, db, cfg)
 
 	ntfyHits, gotifyHits = 0, 0
 	for _, p := range fake.hits {
@@ -286,7 +296,7 @@ func TestSendReminders_PrivateAddressPerPolicy(t *testing.T) {
 
 	// Guard on: the loopback fake server must never be reached.
 	cfg.WebhookBlockPrivateURLs = true
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersExpectErrT(t, db, cfg)
 	assert.Equal(t, 0, fake.count(), "the guarded dispatch must never reach a private-address target")
 
 	var deliveries []models.NotificationDelivery
@@ -296,9 +306,9 @@ func TestSendReminders_PrivateAddressPerPolicy(t *testing.T) {
 	require.NotNil(t, deliveries[0].Error)
 	assert.Contains(t, *deliveries[0].Error, "private or loopback", "the delivery record must carry the SSRF reason")
 
-	// Guard off (default): the same private target is reached.
+	// Guard off (default): the same private target is reached and succeeds.
 	cfg.WebhookBlockPrivateURLs = false
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 	require.Equal(t, 1, fake.count(), "the default (unfiltered) policy must reach a private ntfy server")
 }
 
@@ -328,7 +338,7 @@ func TestSendReminders_PushPrivateAddressBlocked(t *testing.T) {
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{ReminderTime: "12:00", WebhookBlockPrivateURLs: true}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersExpectErrT(t, db, cfg)
 
 	assert.Equal(t, 0, fake.count(), "the guarded push client must never reach a loopback endpoint")
 
@@ -365,7 +375,7 @@ func TestSendReminders_PushDeliversAndRecords(t *testing.T) {
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{ReminderTime: "12:00"}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 
 	require.Equal(t, 1, fake.count(), "the push service must receive one encrypted push")
 
@@ -404,7 +414,7 @@ func TestPushSender_RemovesStaleSubscription(t *testing.T) {
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{ReminderTime: "12:00"}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 
 	var remaining int64
 	require.NoError(t, db.Model(&models.PushSubscription{}).Where("id = ?", sub.ID).Count(&remaining).Error)
@@ -433,7 +443,7 @@ func TestSendReminders_EmailAndNtfyBothDispatch(t *testing.T) {
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{UseResend: true, ResendAPIKey: "k", ResendFromEmail: "noreply@example.com", ReminderTime: "12:00"}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 
 	assert.Equal(t, 1, emailCalls, "the email digest must dispatch")
 	assert.Equal(t, 1, fake.count(), "ntfy must dispatch")
@@ -687,8 +697,10 @@ func TestSendReminders_JobLockStillPreventsDoubleSend(t *testing.T) {
 	defer func() { ReminderMinInterval = originalInterval }()
 
 	cfg := config.Config{ReminderTime: "12:00"}
-	require.NoError(t, SendRemindersWithRateLimit(db, cfg))
-	require.NoError(t, SendRemindersWithRateLimit(db, cfg))
+	_, err := SendRemindersWithRateLimit(db, cfg)
+	require.NoError(t, err)
+	_, err = SendRemindersWithRateLimit(db, cfg)
+	require.ErrorIs(t, err, ErrJobSkipped, "a rate-limited run is reported as skipped (issue #391)")
 
 	assert.Equal(t, 1, fake.count(), "the job lock must prevent a second dispatch run")
 }
@@ -713,7 +725,7 @@ func TestRecordNotificationDeliveryFailureCarriesError(t *testing.T) {
 	first := newDueReminder(t, db, user, "first")
 	second := newDueReminder(t, db, user, "second")
 
-	recordNotificationDelivery(db, first.ID, models.ChannelNtfy, false, "boom")
+	recordNotificationDelivery(context.Background(), db, first.ID, models.ChannelNtfy, false, "boom")
 
 	var d models.NotificationDelivery
 	require.NoError(t, db.First(&d).Error)
@@ -722,11 +734,27 @@ func TestRecordNotificationDeliveryFailureCarriesError(t *testing.T) {
 	require.NotNil(t, d.Error)
 	assert.Equal(t, "boom", *d.Error)
 
-	recordNotificationDelivery(db, second.ID, models.ChannelGotify, true, "")
+	recordNotificationDelivery(context.Background(), db, second.ID, models.ChannelGotify, true, "")
 	var sent models.NotificationDelivery
 	require.NoError(t, db.Where("reminder_id = ?", second.ID).First(&sent).Error)
 	assert.Equal(t, "sent", sent.Status)
 	require.NotNil(t, sent.SentAt)
+
+	// Each attempt also emits an operational event (issue #424): the failed
+	// ntfy attempt -> notification_failed (severity error), the successful
+	// gotify one -> notification_sent. detail carries the channel name only.
+	var failedEv models.SystemEvent
+	require.NoError(t, db.Where("event_type = ?", models.SysEventNotificationFailed).First(&failedEv).Error)
+	assert.Equal(t, logger.ComponentNotify, failedEv.Component)
+	assert.Equal(t, logger.SeverityError, failedEv.Severity)
+	assert.Equal(t, "channel=ntfy", failedEv.Detail)
+	assert.Equal(t, "boom", failedEv.Error)
+
+	var sentEv models.SystemEvent
+	require.NoError(t, db.Where("event_type = ?", models.SysEventNotificationSent).First(&sentEv).Error)
+	assert.Equal(t, "channel=gotify", sentEv.Detail)
+	require.NotNil(t, sentEv.Result)
+	assert.Equal(t, logger.ResultSuccess, *sentEv.Result)
 	assert.Nil(t, sent.Error)
 }
 
@@ -755,8 +783,8 @@ func TestDeleteNotificationDeliveries(t *testing.T) {
 	first := newDueReminder(t, db, user, "first")
 	second := newDueReminder(t, db, user, "second")
 
-	recordNotificationDelivery(db, first.ID, models.ChannelNtfy, true, "")
-	recordNotificationDelivery(db, second.ID, models.ChannelGotify, true, "")
+	recordNotificationDelivery(context.Background(), db, first.ID, models.ChannelNtfy, true, "")
+	recordNotificationDelivery(context.Background(), db, second.ID, models.ChannelGotify, true, "")
 
 	require.NoError(t, DeleteNotificationDeliveries(db, []uint{first.ID}))
 
@@ -1037,7 +1065,7 @@ func TestSendReminders_FCMDelivers(t *testing.T) {
 	require.NoError(t, os.WriteFile(saPath, data, 0o600))
 
 	cfg := config.Config{ReminderTime: "12:00", FCMServiceAccountFile: saPath}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 
 	require.Equal(t, 1, fake.count(), "the FCM endpoint must receive one messages:send")
 	assert.Equal(t, "/projects/my-project/messages:send", fake.hits[0])
@@ -1102,7 +1130,7 @@ func TestSendReminders_FCMStaleRegistrationDropped(t *testing.T) {
 	require.NoError(t, os.WriteFile(saPath, data, 0o600))
 
 	cfg := config.Config{ReminderTime: "12:00", FCMServiceAccountFile: saPath}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 
 	var remaining int64
 	require.NoError(t, db.Model(&models.DeviceRegistration{}).Where("id = ?", device.ID).Count(&remaining).Error)
@@ -1129,7 +1157,7 @@ func TestSendReminders_APNSNeverMarkedSent(t *testing.T) {
 	defer func() { sendReminderEmailFn = originalSender }()
 
 	cfg := config.Config{ReminderTime: "12:00"}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 
 	var deliveries []models.NotificationDelivery
 	require.NoError(t, db.Find(&deliveries).Error)
@@ -1180,7 +1208,7 @@ func TestSendReminders_PushChannelDispatchToBoth(t *testing.T) {
 	require.NoError(t, os.WriteFile(saPath, data, 0o600))
 
 	cfg := config.Config{ReminderTime: "12:00", FCMServiceAccountFile: saPath}
-	require.NoError(t, SendReminders(db, cfg))
+	sendRemindersT(t, db, cfg)
 
 	// The web push POST goes to /push, the FCM send to /projects/...
 	webHits, fcmHits := 0, 0
@@ -1257,4 +1285,64 @@ func TestTestNotificationChannel_FCMDeviceWithoutServerConfig(t *testing.T) {
 	err = TestNotificationChannel(db, cfg, user, models.ChannelPush)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not configured")
+}
+
+// TestNotificationTestErrorMessage_TruncatesLongError pins issue #606's
+// bounding: an arbitrary upstream error must not be reflected wholesale into
+// the Settings card, no matter how long it is. The truncated message stays a
+// prefix of the raw error (it is a cut, not a substitute), cut at a rune
+// boundary.
+func TestNotificationTestErrorMessage_TruncatesLongError(t *testing.T) {
+	long := strings.Repeat("a", 500)
+	err := fmt.Errorf("upstream: %s", long)
+	got := NotificationTestErrorMessage(config.Config{}, err)
+
+	assert.LessOrEqual(t, len(got), maxTestNotificationErrorLen,
+		"the echoed diagnostic must be bounded to %d bytes", maxTestNotificationErrorLen)
+	assert.True(t, strings.HasPrefix(err.Error(), got),
+		"the truncated message must be a prefix of the raw error")
+}
+
+// TestNotificationTestErrorMessage_TruncatesAtRuneBoundary ensures a multi-byte
+// upstream message is cut without splitting a UTF-8 sequence, so the JSON
+// response body stays valid.
+func TestNotificationTestErrorMessage_TruncatesAtRuneBoundary(t *testing.T) {
+	long := strings.Repeat("\u00e9", 500) // é is 2 bytes
+	got := NotificationTestErrorMessage(config.Config{}, fmt.Errorf("%s", long))
+
+	assert.LessOrEqual(t, len(got), maxTestNotificationErrorLen)
+	assert.True(t, utf8.ValidString(got), "the truncated message must be valid UTF-8")
+}
+
+// TestNotificationTestErrorMessage_CollapsesGuardSentinels pins issue #606's
+// central fix: with WEBHOOK_BLOCK_PRIVATE_URLS on, the three distinct
+// SSRF-guard rejections (notification pre-flight + both guarded-dialer
+// sentinels) must yield the SAME client-visible message, so the hardening flag
+// cannot turn the test endpoint into an address-reachability oracle. The raw
+// errors remain distinguishable — that is what the server-side log carries.
+func TestNotificationTestErrorMessage_CollapsesGuardSentinels(t *testing.T) {
+	cfg := config.Config{WebhookBlockPrivateURLs: true}
+
+	sentinels := []error{ErrNotificationPrivateAddress, ErrWebhookUnreachable, ErrWebhookPrivateAddress}
+	for _, s := range sentinels {
+		got := NotificationTestErrorMessage(cfg, s)
+		assert.Equal(t, NotificationOutboundPolicyMessage, got,
+			"sentinel %q must collapse to the neutral outbound-policy message", s.Error())
+	}
+
+	// The sentinels are genuinely distinct — the collapse is what makes them
+	// indistinguishable to the client, not an accident of identical text.
+	assert.NotEqual(t, ErrWebhookUnreachable.Error(), ErrWebhookPrivateAddress.Error())
+	assert.NotEqual(t, ErrNotificationPrivateAddress.Error(), ErrWebhookUnreachable.Error())
+	assert.NotEqual(t, ErrNotificationPrivateAddress.Error(), ErrWebhookPrivateAddress.Error())
+}
+
+// TestNotificationTestErrorMessage_LeavesOtherErrorsAlone ensures the collapse
+// is narrowly scoped: with the flag on, a non-guard diagnostic still reaches
+// the client verbatim (bounded), because the whole point of the endpoint is to
+// tell the user why their own target rejected the message.
+func TestNotificationTestErrorMessage_LeavesOtherErrorsAlone(t *testing.T) {
+	cfg := config.Config{WebhookBlockPrivateURLs: true}
+	short := "ntfy is not configured — set a URL and topic and save first"
+	assert.Equal(t, short, NotificationTestErrorMessage(cfg, errors.New(short)))
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -14,7 +15,7 @@ import (
 
 	"mycorrhizal/atrest"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -36,8 +37,7 @@ func seedNotes(t *testing.T, db *gorm.DB, username string, n int) models.User {
 
 func TestRunRestoreDrillMatchingCounts(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "drill-live.db")
-	db, err := database.InitDB(path)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, path)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
@@ -59,8 +59,7 @@ func TestRunRestoreDrillMatchingCounts(t *testing.T) {
 // master key must pass the drill exactly like an unencrypted one.
 func TestRestoreDrillPassesWithEncryptedDatabase(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "drill-atrest-healthy.db")
-	db, err := database.InitDB(path)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, path)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
@@ -89,8 +88,7 @@ func TestRestoreDrillPassesWithEncryptedDatabase(t *testing.T) {
 // regardless of key).
 func TestRestoreDrillFailsWhenSnapshotNotDecryptable(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "drill-atrest-key-mismatch.db")
-	db, err := database.InitDB(path)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, path)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
@@ -109,15 +107,14 @@ func TestRestoreDrillFailsWhenSnapshotNotDecryptable(t *testing.T) {
 	t.Setenv("DATA_ENCRYPTION_KEY", base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{0x41}, 32)))
 
 	cfg := config.Config{DBPath: path}
-	_, _, err = runRestoreDrill(db, cfg)
+	_, _, err := runRestoreDrill(db, cfg)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not decryptable under the current master key")
 }
 
 func TestCompareTableCountsDetectsMismatch(t *testing.T) {
 	livePath := filepath.Join(t.TempDir(), "compare-live.db")
-	liveDB, err := database.InitDB(livePath)
-	require.NoError(t, err)
+	liveDB := dbtest.NewAt(t, livePath)
 	t.Cleanup(func() {
 		if sqlDB, err := liveDB.DB(); err == nil {
 			sqlDB.Close()
@@ -126,8 +123,7 @@ func TestCompareTableCountsDetectsMismatch(t *testing.T) {
 	seedNotes(t, liveDB, "livecompare", 10)
 
 	scratchPath := filepath.Join(t.TempDir(), "compare-scratch.db")
-	scratchDB, err := database.InitDB(scratchPath)
-	require.NoError(t, err)
+	scratchDB := dbtest.NewAt(t, scratchPath)
 	t.Cleanup(func() {
 		if sqlDB, err := scratchDB.DB(); err == nil {
 			sqlDB.Close()
@@ -156,8 +152,7 @@ func TestCompareTableCountsDetectsMismatch(t *testing.T) {
 
 func TestCompareTableCountsMatching(t *testing.T) {
 	livePath := filepath.Join(t.TempDir(), "compare-match-live.db")
-	liveDB, err := database.InitDB(livePath)
-	require.NoError(t, err)
+	liveDB := dbtest.NewAt(t, livePath)
 	t.Cleanup(func() {
 		if sqlDB, err := liveDB.DB(); err == nil {
 			sqlDB.Close()
@@ -166,8 +161,7 @@ func TestCompareTableCountsMatching(t *testing.T) {
 	seedNotes(t, liveDB, "matchlive", 7)
 
 	scratchPath := filepath.Join(t.TempDir(), "compare-match-scratch.db")
-	scratchDB, err := database.InitDB(scratchPath)
-	require.NoError(t, err)
+	scratchDB := dbtest.NewAt(t, scratchPath)
 	t.Cleanup(func() {
 		if sqlDB, err := scratchDB.DB(); err == nil {
 			sqlDB.Close()
@@ -195,8 +189,7 @@ func TestCompareTableCountsMatching(t *testing.T) {
 // at boot, so including it in the drift comparison produces false alarms
 // unrelated to actual restore fidelity.
 func TestLiveTablesExcludesJobExecutions(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "exclude-job-executions.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
@@ -212,8 +205,7 @@ func TestLiveTablesExcludesJobExecutions(t *testing.T) {
 // TestLiveTablesErrorsOnClosedConnection covers liveTables' own query-error
 // return, distinct from a healthy call that simply finds no tables.
 func TestLiveTablesErrorsOnClosedConnection(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "live-tables-closed.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	sqlDB, err := db.DB()
 	require.NoError(t, err)
 	require.NoError(t, sqlDB.Close())
@@ -227,15 +219,14 @@ func TestLiveTablesErrorsOnClosedConnection(t *testing.T) {
 // the table, not a silent zero count (which would masquerade as "0 rows",
 // indistinguishable from a genuinely empty table).
 func TestCountTableRowsErrorsOnUnknownTable(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "count-unknown-table.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
 		}
 	})
 
-	_, err = countTableRows(db, "does_not_exist")
+	_, err := countTableRows(db, "does_not_exist")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "does_not_exist")
 }
@@ -245,8 +236,7 @@ func TestCountTableRowsErrorsOnUnknownTable(t *testing.T) {
 // a real restore failure (not merely a count mismatch), which must surface
 // as an error rather than being silently skipped.
 func TestCompareTableCountsErrorsWhenScratchTableMissing(t *testing.T) {
-	scratchDB, err := database.InitDB(filepath.Join(t.TempDir(), "compare-missing-table.db"))
-	require.NoError(t, err)
+	scratchDB := dbtest.New(t)
 	t.Cleanup(func() {
 		if sqlDB, err := scratchDB.DB(); err == nil {
 			sqlDB.Close()
@@ -254,7 +244,7 @@ func TestCompareTableCountsErrorsWhenScratchTableMissing(t *testing.T) {
 	})
 
 	liveCounts := map[string]int64{"table_that_does_not_exist_in_scratch": 5}
-	_, _, err = compareTableCounts(liveCounts, scratchDB)
+	_, _, err := compareTableCounts(liveCounts, scratchDB)
 	require.Error(t, err)
 }
 
@@ -271,20 +261,27 @@ func TestRestoreDrillMinIntervalAboveMargin(t *testing.T) {
 	assert.Equal(t, 168*time.Hour-restoreDrillMinIntervalMargin, got)
 }
 
-// newTestWebhookServer spins up an httptest server recording hits, and
-// registers an active webhook for user subscribed to eventType. Shared by
-// the RunRestoreDrillScheduled full-path tests below.
-func newTestWebhookServer(t *testing.T, db *gorm.DB, userID uint, eventType string) *int32 {
+// newTestWebhookServer spins up an httptest server recording hits and the
+// raw request bodies, and registers an active webhook for user subscribed to
+// eventType. Both the hit counter and the captured body are returned — the
+// body because, since issue #622, the stored delivery receipt no longer keeps
+// the entity body, so the wire body is the only place the payload's data is
+// still observable. Shared by the RunRestoreDrillScheduled full-path tests
+// below.
+func newTestWebhookServer(t *testing.T, db *gorm.DB, userID uint, eventType string) (*int32, *[]byte) {
 	t.Helper()
 	var hits int32
+	var bodies []byte
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&hits, 1)
+		b, _ := io.ReadAll(r.Body)
+		bodies = append(bodies, b...)
 		w.WriteHeader(http.StatusOK)
 	}))
 	t.Cleanup(server.Close)
 	wh := models.Webhook{UserID: userID, Name: "alerts", URL: server.URL, Events: []string{eventType}, Secret: "s", IsActive: true}
 	require.NoError(t, db.Create(&wh).Error)
-	return &hits
+	return &hits, &bodies
 }
 
 // TestRunRestoreDrillScheduledFiresWebhookOnMismatch exercises
@@ -297,8 +294,7 @@ func newTestWebhookServer(t *testing.T, db *gorm.DB, userID uint, eventType stri
 // row, with no dependence on real-world timing.
 func TestRunRestoreDrillScheduledFiresWebhookOnMismatch(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "drill-mismatch-live.db")
-	db, err := database.InitDB(path)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, path)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
@@ -318,7 +314,7 @@ func TestRunRestoreDrillScheduledFiresWebhookOnMismatch(t *testing.T) {
 		require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "post-snapshot write", Date: time.Now()}).Error)
 	}))
 
-	hits := newTestWebhookServer(t, db, user.ID, EventRestoreDrillFailed)
+	hits, deliveredBody := newTestWebhookServer(t, db, user.ID, EventRestoreDrillFailed)
 
 	cfg := config.Config{DBPath: path, DBRestoreDrillEnabled: true, DBRestoreDrillIntervalHours: 168}
 	require.NotPanics(t, func() { RunRestoreDrillScheduled(db, cfg) })
@@ -337,14 +333,25 @@ func TestRunRestoreDrillScheduledFiresWebhookOnMismatch(t *testing.T) {
 	require.Len(t, deliveries, 1)
 	assert.Equal(t, EventRestoreDrillFailed, deliveries[0].EventType)
 
+	// The wire body carries the full payload; the stored receipt is the
+	// trimmed envelope (issue #622: a successful delivery never needs the
+	// entity body it carried).
 	var envelope struct {
 		Event string `json:"event"`
 		Data  struct {
 			Detail string `json:"detail"`
 		} `json:"data"`
 	}
-	require.NoError(t, json.Unmarshal([]byte(deliveries[0].Payload), &envelope))
+	require.NoError(t, json.Unmarshal(*deliveredBody, &envelope))
 	assert.Contains(t, envelope.Data.Detail, "notes")
+
+	var storedEnvelope struct {
+		Event string          `json:"event"`
+		Data  json.RawMessage `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(deliveries[0].Payload), &storedEnvelope))
+	assert.Equal(t, EventRestoreDrillFailed, storedEnvelope.Event)
+	assert.Nil(t, storedEnvelope.Data, "the stored receipt must not retain the entity body")
 
 	var job models.JobExecution
 	require.NoError(t, db.Where("job_name = ?", models.JobNameRestoreDrill).First(&job).Error)
@@ -358,8 +365,7 @@ func TestRunRestoreDrillScheduledFiresWebhookOnMismatch(t *testing.T) {
 // runRestoreDrill's error return.
 func TestRunRestoreDrillScheduledFiresWebhookOnError(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "drill-error-live.db")
-	db, err := database.InitDB(path)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, path)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
@@ -367,7 +373,7 @@ func TestRunRestoreDrillScheduledFiresWebhookOnError(t *testing.T) {
 	})
 	user := seedNotes(t, db, "drillerrortester", 3)
 
-	hits := newTestWebhookServer(t, db, user.ID, EventRestoreDrillFailed)
+	hits, deliveredBody := newTestWebhookServer(t, db, user.ID, EventRestoreDrillFailed)
 
 	cfg := config.Config{DBPath: filepath.Join(t.TempDir(), "does-not-exist.db"), DBRestoreDrillEnabled: true, DBRestoreDrillIntervalHours: 168}
 	require.NotPanics(t, func() { RunRestoreDrillScheduled(db, cfg) })
@@ -384,14 +390,24 @@ func TestRunRestoreDrillScheduledFiresWebhookOnError(t *testing.T) {
 	require.Len(t, deliveries, 1)
 	assert.Equal(t, EventRestoreDrillFailed, deliveries[0].EventType)
 
+	// The wire body carries the full payload; the stored receipt is the
+	// trimmed envelope (issue #622).
 	var envelope struct {
 		Event string `json:"event"`
 		Data  struct {
 			Error string `json:"error"`
 		} `json:"data"`
 	}
-	require.NoError(t, json.Unmarshal([]byte(deliveries[0].Payload), &envelope))
+	require.NoError(t, json.Unmarshal(*deliveredBody, &envelope))
 	assert.NotEmpty(t, envelope.Data.Error)
+
+	var storedEnvelope struct {
+		Event string          `json:"event"`
+		Data  json.RawMessage `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(deliveries[0].Payload), &storedEnvelope))
+	assert.Equal(t, EventRestoreDrillFailed, storedEnvelope.Event)
+	assert.Nil(t, storedEnvelope.Data, "the stored receipt must not retain the entity body")
 
 	var job models.JobExecution
 	require.NoError(t, db.Where("job_name = ?", models.JobNameRestoreDrill).First(&job).Error)
@@ -404,8 +420,7 @@ func TestRunRestoreDrillScheduledFiresWebhookOnError(t *testing.T) {
 // cycle cleanly and no failure webhook may fire.
 func TestRunRestoreDrillScheduledHealthyRun(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "drill-healthy.db")
-	db, err := database.InitDB(path)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, path)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
@@ -413,7 +428,7 @@ func TestRunRestoreDrillScheduledHealthyRun(t *testing.T) {
 	})
 	user := seedNotes(t, db, "drillhealthytester", 10)
 
-	hits := newTestWebhookServer(t, db, user.ID, EventRestoreDrillFailed)
+	hits, _ := newTestWebhookServer(t, db, user.ID, EventRestoreDrillFailed)
 
 	cfg := config.Config{DBPath: path, DBRestoreDrillEnabled: true, DBRestoreDrillIntervalHours: 168}
 	require.NotPanics(t, func() { RunRestoreDrillScheduled(db, cfg) })
@@ -431,8 +446,7 @@ func TestRunRestoreDrillScheduledHealthyRun(t *testing.T) {
 
 func TestRunRestoreDrillScheduledSkipsWhenLocked(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "drill-locked.db")
-	db, err := database.InitDB(path)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, path)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
@@ -455,8 +469,7 @@ func TestRunRestoreDrillScheduledSkipsWhenLocked(t *testing.T) {
 
 func TestRunRestoreDrillScheduledDisabledByConfig(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "drill-disabled.db")
-	db, err := database.InitDB(path)
-	require.NoError(t, err)
+	db := dbtest.NewAt(t, path)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()

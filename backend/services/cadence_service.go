@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"math"
 	"mycorrhizal/config"
 	"mycorrhizal/logger"
@@ -302,15 +303,19 @@ const cadenceOverdueMinInterval = 23 * time.Hour
 // single-user personal CRM this is harmless; in a multi-tenant instance it
 // would be an unbounded scan once per day. At that scale the loop should be
 // driven by iterating users rather than loading every policy at once.
-func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) {
+//
+// Returns the number of overdue webhooks emitted and, for the job-run record
+// (issue #391), ErrJobSkipped when the lock is held / it ran too recently.
+func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) (int, error) {
+	ctx := logger.JobContext(models.JobNameCadenceOverdue)
 	acquired, err := acquireJobLock(db, models.JobNameCadenceOverdue, cadenceOverdueMinInterval)
 	if err != nil {
 		logger.Error().Err(err).Msg("cadence: failed to check job lock")
-		return
+		return 0, err
 	}
 	if !acquired {
 		logger.Info().Msg("cadence: skipping overdue job - rate limited")
-		return
+		return 0, ErrJobSkipped
 	}
 	defer func() {
 		if err := releaseJobLock(db, models.JobNameCadenceOverdue, true); err != nil {
@@ -323,10 +328,10 @@ func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) {
 	var policies []models.CadencePolicy
 	if err := db.Find(&policies).Error; err != nil {
 		logger.Error().Err(err).Msg("cadence: failed to load policies for overdue webhooks")
-		return
+		return 0, fmt.Errorf("loading cadence policies: %w", err)
 	}
 	if len(policies) == 0 {
-		return
+		return 0, nil
 	}
 
 	// Group policies by UserID so the batch activity pre-fetch runs once
@@ -373,7 +378,7 @@ func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) {
 				continue
 			}
 			payload := buildOverduePayload(p, health, contactID[key{p.UserID, p.EntityID}])
-			go TriggerWebhooks(db, cfg, p.UserID, "cadence.overdue", payload)
+			TriggerWebhooksAsync(ctx, db, cfg, p.UserID, "cadence.overdue", payload)
 			emitted++
 		}
 	}
@@ -381,6 +386,7 @@ func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) {
 	if emitted > 0 {
 		logger.Info().Int("emitted", emitted).Msg("cadence: emitted overdue webhooks")
 	}
+	return emitted, nil
 }
 
 // buildOverduePayload constructs the `cadence.overdue` webhook payload from

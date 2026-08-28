@@ -42,6 +42,22 @@ RUN if [ -f yarn.lock ]; then yarn build; else npm run build; fi
 # Production stage - serve with unprivileged nginx
 FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:44e36330f74d4f3a1d4e222acca9e23b401fb87811a7597024502bb759c4dd49
 
+# The base image's own alpine 3.24.1 layer ships libssl3/libcrypto3 3.5.7-r0,
+# which CVE-2026-14456 fixes in 3.5.8-r0 -- already present in this same
+# pinned index (`apk policy libssl3` against this digest lists it from
+# alpine/v3.24/main), so no base-image digest bump is needed. Caught by Trivy
+# gating v0.6.1's release scan (exit-code: 1 on fixed CRITICAL/HIGH).
+#
+# `apk add` needs root; the base image's own final layer sets USER 101
+# (nginx), which every RUN here would otherwise inherit. Switch to root only
+# for the upgrade and back to 101 immediately after -- CMD must not run as
+# root, which is the entire point of the "-unprivileged" base image. Numeric
+# UIDs (not `root`/`nginx`) per hadolint DL3066 -- a named user may not
+# resolve the same way on every host.
+USER 0
+RUN apk add --no-cache libssl3=3.5.8-r0 libcrypto3=3.5.8-r0
+USER 101
+
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 

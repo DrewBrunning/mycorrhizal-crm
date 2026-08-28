@@ -1,11 +1,10 @@
 package controllers
 
 import (
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
-	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -28,9 +27,7 @@ import (
 // unarchive -> delete, each verified against the real
 // database.InitDB-migrated tables, not AutoMigrate's derived ones.
 func TestBulkContactOperation_RealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "bulk-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "bulk-realdb", Password: "password123!A", Email: "bulk-realdb@example.com"}
 	require.NoError(t, db.Create(&user).Error)

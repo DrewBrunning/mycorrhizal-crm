@@ -6,7 +6,11 @@ name: DAST (OWASP ZAP)
 # against it — an authenticated API scan seeded from backend/openapi.yaml plus
 # an active scan of the SPA and the CardDAV/CalDAV discovery surface — and
 # gates on High/Medium findings via backend/cmd/zapgate's ignore-list-with-
-# justification (zap/dast.ignore), uploading SARIF to the Security tab.
+# justification (zap/dast.ignore). The verdict is zapgate; the full ZAP
+# report.json is kept as a 30-day run artifact. Results are deliberately NOT
+# uploaded to code scanning: GitHub anchors every SARIF result to a source
+# line inside the checkout, and a DAST finding is a property of the running
+# system with no honest repo-relative path (issue #615).
 #
 # Scheduled (nightly) + manual dispatch only — deliberately NOT on push/PR:
 # DAST is slow and flaky (the issue calls this out), so it is a periodic
@@ -32,7 +36,6 @@ jobs:
     timeout-minutes: 120
     permissions:
       contents: read
-      security-events: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -65,7 +68,7 @@ jobs:
         run: |
           docker compose -f docker-compose.test.yml up -d
           echo "Waiting for the app to be ready..."
-          timeout 120 bash -c 'until curl -s http://localhost:7300/health > /dev/null 2>&1; do sleep 2; done'
+          timeout 120 bash -c 'until curl -s http://localhost:7300/health/live > /dev/null 2>&1; do sleep 2; done'
           echo "App is ready"
 
       # dastcanary is the deliberately-vulnerable sibling server whose planted
@@ -78,7 +81,7 @@ jobs:
           go build -o dastcanary ./cmd/dastcanary
           nohup ./dastcanary > /tmp/dastcanary.log 2>&1 </dev/null &
           echo "Waiting for the canary to be ready..."
-          timeout 30 bash -c 'until curl -s http://localhost:7301/health > /dev/null 2>&1; do sleep 1; done'
+          timeout 30 bash -c 'until curl -s http://localhost:7301/health/live > /dev/null 2>&1; do sleep 1; done'
           echo "Canary is ready"
 
       # The app's login only sets an httpOnly cookie, so ZAP cannot drive it
@@ -124,11 +127,11 @@ jobs:
 
       # ZAP runs headless via its automation framework (zap/zap-dast.yaml).
       # --network host lets the container reach both the app (:7300, exposed by
-      # compose) and the canary (:7301, a host process). The plan writes two
-      # reports into ./zap: report.json (for the gate) and dast.sarif.json
-      # (for the Security tab). -Xmx3g caps the JVM heap so the active scan
-      # fits the runner (zap.sh otherwise sizes 1/4 of host memory, which is
-      # both more than the scan needs and more than a standard runner has).
+      # compose) and the canary (:7301, a host process). The plan writes
+      # report.json into ./zap for the gate (and the run artifact). -Xmx3g caps
+      # the JVM heap so the active scan fits the runner (zap.sh otherwise sizes
+      # 1/4 of host memory, which is both more than the scan needs and more
+      # than a standard runner has).
       - name: Run ZAP scan
         env:
           ZAP_AUTH_HEADER: Authorization
@@ -204,6 +207,18 @@ jobs:
           sarif_file: zap/dast.sarif.json
           category: zap-dast
 
+      # DAST findings are not uploaded to code scanning. GitHub anchors every
+      # SARIF result to a source line inside the checkout; ZAP locates findings
+      # by the URL it scanned (http://localhost:7300/...), and the upload is
+      # rejected outright:
+      #
+      #   SARIF URI scheme "http" did not match the checkout URI scheme "file"
+      #
+      # A DAST finding is a property of the deployed system, not of a source
+      # line, so there is no honest repo-relative path to give it. The gate is
+      # backend/cmd/zapgate (ignore-list-with-justification, same shape as
+      # .trivyignore / .grype.yml); the full ZAP report.json is kept as the
+      # run artifact below. See issue #615 for the decision.
       - name: Upload ZAP JSON report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

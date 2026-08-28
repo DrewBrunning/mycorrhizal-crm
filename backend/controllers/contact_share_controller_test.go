@@ -372,6 +372,38 @@ func TestConfirmContactShare_AddCreatesContactWithSelectedFieldsOnly(t *testing.
 	assert.NotNil(t, reloaded.RespondedAt)
 }
 
+// TestConfirmContactShare_RecordsImportRunAsVCF pins issue #651's decision that
+// a contact-share accept — which funnels through ConfirmVCF like any VCF import
+// — leaves an import_runs history row for the *recipient*, labelled "vcf"
+// (CreateVCFSessionForShare inherits CreateVCFSession's source format).
+func TestConfirmContactShare_RecordsImportRunAsVCF(t *testing.T) {
+	db, cfg, sender, recipient, _ := newContactShareFixtures(t)
+	share := createPendingShareFixture(t, db, cfg, sender.ID, recipient.ID, "Alice", []string{models.SectionEmails}, false)
+
+	recipientRouter := contactShareRouterFor(db, cfg, recipient.ID)
+	w := doJSON(t, recipientRouter, "POST", "/contact-shares/"+share.ID+"/accept", nil)
+	require.Equal(t, http.StatusOK, w.Code)
+	var preview models.ImportPreviewResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &preview))
+
+	w = doJSON(t, recipientRouter, "POST", "/contact-shares/"+share.ID+"/confirm", models.ImportConfirmRequest{
+		SessionID: preview.SessionID,
+		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
+	})
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var runs []models.ImportRun
+	require.NoError(t, db.Where("user_id = ?", recipient.ID).Find(&runs).Error)
+	require.Len(t, runs, 1, "accepting a share records exactly one import_runs row for the recipient")
+	assert.Equal(t, models.ImportFormatVCF, runs[0].Format)
+	assert.Equal(t, 1, runs[0].Created)
+
+	// The sender's own history is untouched.
+	var senderRuns int64
+	require.NoError(t, db.Model(&models.ImportRun{}).Where("user_id = ?", sender.ID).Count(&senderRuns).Error)
+	assert.Zero(t, senderRuns)
+}
+
 func TestConfirmContactShare_UpdateMergesIntoExistingMatch(t *testing.T) {
 	db, cfg, sender, recipient, _ := newContactShareFixtures(t)
 	share := createPendingShareFixture(t, db, cfg, sender.ID, recipient.ID, "Alice", []string{models.SectionEmails}, false)

@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
 import { AppThemeProvider } from './AppThemeProvider';
@@ -14,7 +15,7 @@ import {
 import { changePassword } from './api/auth';
 import { type Contact, getContacts, getContactsByUid } from './api/contacts';
 import { updateSelfContact } from './api/users';
-import { fetchAndCacheUserInfo } from './auth';
+import { fetchAndCacheUserInfo, isAdmin } from './auth';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
 import SettingsPage from './SettingsPage';
@@ -60,7 +61,7 @@ vi.mock('./api/admin', async (importOriginal) => {
 });
 vi.mock('./auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./auth')>();
-  return { ...actual, fetchAndCacheUserInfo: vi.fn() };
+  return { ...actual, fetchAndCacheUserInfo: vi.fn(), isAdmin: vi.fn() };
 });
 
 // jsdom doesn't implement matchMedia; AppThemeProvider's system-theme
@@ -103,6 +104,8 @@ beforeEach(() => {
   vi.mocked(getContactsByUid).mockResolvedValue(new Map());
   vi.mocked(updateSelfContact).mockReset();
   vi.mocked(fetchAndCacheUserInfo).mockReset();
+  vi.mocked(isAdmin).mockReset();
+  vi.mocked(isAdmin).mockReturnValue(false);
 });
 
 function apiToken(overrides: Partial<ApiToken> = {}): ApiToken {
@@ -389,4 +392,31 @@ test('a failed self-contact save surfaces the error and keeps the old selection 
   );
   expect(screen.getByDisplayValue('Me Contact')).toBeInTheDocument();
   expect(fetchAndCacheUserInfo).not.toHaveBeenCalled();
+});
+
+// --- System-status cross-link (issue #649) --------------------------------
+
+test('admins see a link to the system-status page', async () => {
+  vi.mocked(isAdmin).mockReturnValue(true);
+
+  render(
+    <MemoryRouter>
+      <AppThemeProvider>
+        <DateFormatProvider>
+          <SnackbarProvider>
+            <SettingsPage />
+          </SnackbarProvider>
+        </DateFormatProvider>
+      </AppThemeProvider>
+    </MemoryRouter>,
+  );
+
+  expect(await screen.findByText('View system status')).toBeInTheDocument();
+});
+
+test('non-admins do not see the system-status link', async () => {
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('About')).toBeInTheDocument());
+  expect(screen.queryByText('View system status')).not.toBeInTheDocument();
 });

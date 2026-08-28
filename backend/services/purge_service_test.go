@@ -1,12 +1,11 @@
 package services
 
 import (
-	"path/filepath"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -27,8 +26,7 @@ import (
 func newPurgeDB(t *testing.T) (*gorm.DB, uint) {
 	t.Helper()
 
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "purge.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "purge-user", Email: "purge@example.com", Password: "x"}
 	require.NoError(t, db.Create(&user).Error)

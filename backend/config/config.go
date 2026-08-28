@@ -34,42 +34,45 @@ type OIDCConfig struct {
 // Config is the fully-loaded application configuration, populated once by
 // LoadConfig from environment variables at process start.
 type Config struct {
-	DBPath                    string
-	ReminderTime              string
-	ReminderTimezone          string
-	FrontendURL               string
-	Port                      string
-	TrustedProxies            []string
-	UseResend                 bool
-	ResendAPIKey              string
-	ResendFromEmail           string
-	ResendToEmail             string
-	UseSMTP                   bool
-	SMTPHost                  string
-	SMTPPort                  int
-	SMTPUsername              string
-	SMTPPassword              string
-	SMTPFromEmail             string
-	SMTPUseTLS                bool // implicit TLS (e.g. port 465); otherwise STARTTLS is used when available
-	JWTSecretKey              string
-	JWTExpiryHours            int
-	ReadTimeout               int    // HTTP server read timeout in seconds
-	WriteTimeout              int    // HTTP server write timeout in seconds
-	IdleTimeout               int    // HTTP server idle timeout in seconds
-	ProfilePhotoDir           string // Directory for storing profile photos (must be absolute path)
-	AttachmentsDir            string // Directory for storing contact attachments (N7; alongside the photo dir, must be absolute path)
-	CardDAVEnabled            bool   // Enable CardDAV server for contact sync
-	CalDAVEnabled             bool   // Enable CalDAV server for Interaction/LifeEvent sync (T12b)
-	CalDAVTwoWayEnabled       bool   // Allow calendar sync to push local edits back out (T13)
-	CookieSecure              bool   // Set Secure flag on auth cookie (requires HTTPS)
-	CookieDomain              string // Domain for auth cookie (empty = current domain only)
-	RegistrationDisabled      bool   // Disable new user registration
-	WebhookBlockPrivateURLs   bool   // Block webhook deliveries to private/loopback addresses (useful for cloud deployments)
-	CalDAVSyncIntervalHours   int    // Interval in hours for the scheduled calendar sync job
-	CalDAVBlockPrivateURLs    bool   // Block calendar sync requests to private/loopback addresses (useful for cloud deployments)
-	DeleteRetentionDays       int    // Days soft-deleted rows survive before the purge job hard-deletes them (T26)
-	AuditRetentionDays        int    // Days audit events survive before the retention purge removes them (T18, default 90)
-	ContactShareRetentionDays int    // Days a ContactShare snapshot survives before the purge job hard-deletes it (issue #574, default 30)
+	DBPath                       string
+	ReminderTime                 string
+	ReminderTimezone             string
+	FrontendURL                  string
+	Port                         string
+	TrustedProxies               []string
+	UseResend                    bool
+	ResendAPIKey                 string
+	ResendFromEmail              string
+	ResendToEmail                string
+	UseSMTP                      bool
+	SMTPHost                     string
+	SMTPPort                     int
+	SMTPUsername                 string
+	SMTPPassword                 string
+	SMTPFromEmail                string
+	SMTPUseTLS                   bool // implicit TLS (e.g. port 465); otherwise STARTTLS is used when available
+	JWTSecretKey                 string
+	JWTExpiryHours               int
+	ReadTimeout                  int    // HTTP server read timeout in seconds
+	WriteTimeout                 int    // HTTP server write timeout in seconds
+	IdleTimeout                  int    // HTTP server idle timeout in seconds
+	ProfilePhotoDir              string // Directory for storing profile photos (must be absolute path)
+	AttachmentsDir               string // Directory for storing contact attachments (N7; alongside the photo dir, must be absolute path)
+	CardDAVEnabled               bool   // Enable CardDAV server for contact sync
+	CalDAVEnabled                bool   // Enable CalDAV server for Interaction/LifeEvent sync (T12b)
+	CalDAVTwoWayEnabled          bool   // Allow calendar sync to push local edits back out (T13)
+	CookieSecure                 bool   // Set Secure flag on auth cookie (requires HTTPS)
+	CookieDomain                 string // Domain for auth cookie (empty = current domain only)
+	RegistrationDisabled         bool   // Disable new user registration
+	WebhookBlockPrivateURLs      bool   // Block webhook deliveries to private/loopback addresses (useful for cloud deployments)
+	CalDAVSyncIntervalHours      int    // Interval in hours for the scheduled calendar sync job
+	CalDAVBlockPrivateURLs       bool   // Block calendar sync requests to private/loopback addresses (useful for cloud deployments)
+	DeleteRetentionDays          int    // Days soft-deleted rows survive before the purge job hard-deletes them (T26)
+	AuditRetentionDays           int    // Days audit events survive before the retention purge removes them (T18, default 90)
+	ContactShareRetentionDays    int    // Days a ContactShare snapshot survives before the purge job hard-deletes it (issue #574, default 30)
+	SystemEventRetentionDays     int    // Days system_events rows survive before the retention purge removes them (issue #424, default 30)
+	WebhookDeliveryRetentionDays int    // Days webhook_deliveries rows survive before the purge job hard-deletes them (issue #622, default 30)
+	JobRunRetentionDays          int    // Days job_runs rows survive before the retention purge removes them (issue #391, default 30)
 
 	// General-API rate limiting, per client IP. Configurable because the
 	// hardcoded values had already been raised once to stop a full Playwright
@@ -89,8 +92,26 @@ type Config struct {
 	DBIntegrityCheckIntervalHours int           // Interval in hours for the scheduled DB integrity check
 	DBRestoreDrillEnabled         bool          // Enable the scheduled backup-restore drill job (issue #275)
 	DBRestoreDrillIntervalHours   int           // Interval in hours for the scheduled restore drill (default weekly)
-	HIBPCheckEnabled              bool          // Check new/changed passwords against HIBP's k-anonymity range API (issue #376). Off by default: an outbound call on a self-hosted app is a deliberate opt-in, not a safe default — see docs/security/asvs-l2.md's P3.
-	OIDC                          OIDCConfig
+
+	// Alerting on state transitions (issue #428). The scheduled evaluator
+	// (services.EvaluateAlerts) detects failure/recovery transitions on the
+	// tracked subsystems (#427) plus a few threshold checks, and dispatches one
+	// notification per transition through the existing webhook + notification
+	// channels. Personal channels (email/ntfy/Gotify/push) go to admin users
+	// only; webhooks broadcast as usual.
+	AlertingEnabled             bool // Master switch for the alert evaluator
+	AlertEvalIntervalMinutes    int  // How often the evaluator runs
+	AlertDiskUsagePercent       int  // Raise disk_space when used% >= this; 0 disables the condition
+	AlertSyncFailureThreshold   int  // Consecutive sync failures before sync:* fires
+	AlertNotifyFailureThreshold int  // Consecutive notification failures before the notifications condition fires
+	AlertBackupMaxAgeHours      int  // Raise backup_stale when the last backup success is older than this; 0 => 2 * DBRestoreDrillIntervalHours
+	AlertJobStaleMultiplier     int  // Raise job_stopped when a job's last successful run is older than interval * this
+	AlertIncidentQuietHours     int  // integrations recovers when no new integration_failed event lands within this window
+	AlertBackupEnabled          bool // Enable the backup / backup_stale conditions
+	AlertDBIntegrityEnabled     bool // Enable the db_integrity condition
+	AlertJobStoppedEnabled      bool // Enable the job_stopped condition
+	HIBPCheckEnabled            bool // Check new/changed passwords against HIBP's k-anonymity range API (issue #376). Off by default: an outbound call on a self-hosted app is a deliberate opt-in, not a safe default — see docs/security/asvs-l2.md's P3.
+	OIDC                        OIDCConfig
 
 	// DataEncryptionKey is the base64-encoded 32-byte master key for
 	// field-level at-rest encryption (issue #380, ASVS V6.4/V8.3). When unset,
@@ -99,6 +120,13 @@ type Config struct {
 	// with zero config. See backend/atrest/atrest.go.
 	DataEncryptionKey     string // base64, 32 bytes
 	DataEncryptionKeyFile string // path to a file whose trimmed contents are the base64 key
+
+	// MetricsToken gates the Prometheus GET /metrics endpoint (issue #389).
+	// Opt-in: when empty the route is not registered at all. When set, every
+	// scrape must carry `Authorization: Bearer <MetricsToken>`. Minimum 16
+	// characters (enforced in Validate) — a short scrape credential is worse
+	// than none.
+	MetricsToken string
 }
 
 // LoadConfig reads environment variables (with sensible defaults) into a
@@ -151,6 +179,9 @@ func LoadConfig() *Config {
 		DeleteRetentionDays:           getIntEnv("DELETED_RETENTION_DAYS", 30),
 		AuditRetentionDays:            getIntEnv("AUDIT_RETENTION_DAYS", 90),
 		ContactShareRetentionDays:     getIntEnv("CONTACT_SHARE_RETENTION_DAYS", 30),
+		SystemEventRetentionDays:      getIntEnv("SYSTEM_EVENT_RETENTION_DAYS", 30),
+		WebhookDeliveryRetentionDays:  getIntEnv("WEBHOOK_DELIVERY_RETENTION_DAYS", 30),
+		JobRunRetentionDays:           getIntEnv("JOB_RUN_RETENTION_DAYS", 30),
 		APIRateLimitInterval:          time.Duration(getIntEnv("API_RATE_LIMIT_INTERVAL_MS", 600)) * time.Millisecond,
 		APIRateLimitBurst:             getIntEnv("API_RATE_LIMIT_BURST", 1000),
 		ImmichSyncIntervalHours:       getIntEnv("IMMICH_SYNC_INTERVAL_HOURS", 6),
@@ -163,9 +194,21 @@ func LoadConfig() *Config {
 		DBIntegrityCheckIntervalHours: getIntEnv("DB_INTEGRITY_CHECK_INTERVAL_HOURS", 24),
 		DBRestoreDrillEnabled:         getBoolEnv("DB_RESTORE_DRILL_ENABLED", true),
 		DBRestoreDrillIntervalHours:   getIntEnv("DB_RESTORE_DRILL_INTERVAL_HOURS", 168),
+		AlertingEnabled:               getBoolEnv("ALERTING_ENABLED", true),
+		AlertEvalIntervalMinutes:      getIntEnv("ALERT_EVAL_INTERVAL_MINUTES", 15),
+		AlertDiskUsagePercent:         getIntEnv("ALERT_DISK_USAGE_PERCENT", 90),
+		AlertSyncFailureThreshold:     getIntEnv("ALERT_SYNC_FAILURE_THRESHOLD", 3),
+		AlertNotifyFailureThreshold:   getIntEnv("ALERT_NOTIFY_FAILURE_THRESHOLD", 3),
+		AlertBackupMaxAgeHours:        getIntEnv("ALERT_BACKUP_MAX_AGE_HOURS", 0),
+		AlertJobStaleMultiplier:       getIntEnv("ALERT_JOB_STALE_MULTIPLIER", 3),
+		AlertIncidentQuietHours:       getIntEnv("ALERT_INCIDENT_QUIET_HOURS", 6),
+		AlertBackupEnabled:            getBoolEnv("ALERT_BACKUP_ENABLED", true),
+		AlertDBIntegrityEnabled:       getBoolEnv("ALERT_DB_INTEGRITY_ENABLED", true),
+		AlertJobStoppedEnabled:        getBoolEnv("ALERT_JOB_STOPPED_ENABLED", true),
 		HIBPCheckEnabled:              getBoolEnv("HIBP_CHECK_ENABLED", false),
 		DataEncryptionKey:             getEnv("DATA_ENCRYPTION_KEY", ""),
 		DataEncryptionKeyFile:         getEnv("DATA_ENCRYPTION_KEY_FILE", ""),
+		MetricsToken:                  getEnv("METRICS_TOKEN", ""),
 	}
 
 	if cfg.CalDAVSyncIntervalHours < 1 {
@@ -186,6 +229,33 @@ func LoadConfig() *Config {
 	if cfg.DBRestoreDrillIntervalHours < 1 {
 		log.Println("WARN: DB_RESTORE_DRILL_INTERVAL_HOURS must be at least 1, using 1")
 		cfg.DBRestoreDrillIntervalHours = 1
+	}
+
+	if cfg.AlertEvalIntervalMinutes < 1 {
+		log.Println("WARN: ALERT_EVAL_INTERVAL_MINUTES must be at least 1, using 1")
+		cfg.AlertEvalIntervalMinutes = 1
+	}
+
+	if cfg.AlertDiskUsagePercent < 0 || cfg.AlertDiskUsagePercent > 99 {
+		log.Println("WARN: ALERT_DISK_USAGE_PERCENT must be between 0 and 99, using 90")
+		cfg.AlertDiskUsagePercent = 90
+	}
+
+	if cfg.AlertSyncFailureThreshold < 1 {
+		cfg.AlertSyncFailureThreshold = 1
+	}
+	if cfg.AlertNotifyFailureThreshold < 1 {
+		cfg.AlertNotifyFailureThreshold = 1
+	}
+	if cfg.AlertJobStaleMultiplier < 2 {
+		log.Println("WARN: ALERT_JOB_STALE_MULTIPLIER must be at least 2, using 2")
+		cfg.AlertJobStaleMultiplier = 2
+	}
+	if cfg.AlertIncidentQuietHours < 1 {
+		cfg.AlertIncidentQuietHours = 1
+	}
+	if cfg.AlertBackupMaxAgeHours < 0 {
+		cfg.AlertBackupMaxAgeHours = 0
 	}
 
 	// An email channel is enabled only when it is fully configured
@@ -556,6 +626,15 @@ func (c *Config) Validate() []ValidationError {
 		errors = append(errors, ValidationError{
 			Field:   "HTTP_IDLE_TIMEOUT",
 			Message: fmt.Sprintf("Invalid idle timeout '%d'. Must be between 1 and 300 seconds.", c.IdleTimeout),
+		})
+	}
+
+	// A configured metrics scrape token must be long enough to be worth
+	// having (issue #389). Empty is fine — it just leaves /metrics unregistered.
+	if c.MetricsToken != "" && len(c.MetricsToken) < 16 {
+		errors = append(errors, ValidationError{
+			Field:   "METRICS_TOKEN",
+			Message: "METRICS_TOKEN must be at least 16 characters when set.",
 		})
 	}
 

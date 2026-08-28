@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"io"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -221,9 +221,7 @@ func TestReconcileContactSyncOverwritesLocalEditsOnRemoteChange(t *testing.T) {
 // bug — only a database.InitDB-migrated DB, which applies the real
 // migration SQL, can.
 func TestContactSyncLinkETagSavesAgainstRealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "contact-sync-etag.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := createContactSyncTestUser(t, db)
 	cfg := contactSyncTestConfig()
@@ -449,6 +447,76 @@ func TestSyncSubscriptionRecordsErrorOnUnauthorized(t *testing.T) {
 	require.NoError(t, db.First(sub, sub.ID).Error)
 	assert.Equal(t, models.ContactSyncStatusError, sub.LastSyncStatus)
 	assert.NotEmpty(t, sub.LastSyncError)
+}
+
+// TestSyncSubscriptionTracksConsecutiveFailuresAndRecovery pins the issue
+// #390 last-known-good bookkeeping on the real SyncSubscription path: three
+// failed runs in a row accrue consecutive_failures and hold a single
+// incident_first_failure_at; the next success clears both and stamps
+// last_success_at.
+func TestSyncSubscriptionTracksConsecutiveFailuresAndRecovery(t *testing.T) {
+	var healthy atomic.Bool
+	const vcardText = "BEGIN:VCARD\r\nVERSION:4.0\r\nUID:ida-uid\r\nFN:Ida Tarbell\r\nN:Tarbell;Ida;;;\r\nEMAIL:ida@example.com\r\nEND:VCARD\r\n"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !healthy.Load() {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		if r.Method != "REPORT" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		body, _ := io.ReadAll(r.Body)
+		if strings.Contains(string(body), "sync-collection") {
+			w.WriteHeader(http.StatusNotImplemented)
+			return
+		}
+		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+		w.WriteHeader(http.StatusMultiStatus)
+		fmt.Fprint(w, addressMultistatusResponse(map[string]string{
+			"/addressbooks/test/ida.vcf": vcardText,
+		}))
+	}))
+	defer server.Close()
+
+	db := setupContactSyncTestDB(t)
+	cfg := contactSyncTestConfig()
+	user := createContactSyncTestUser(t, db)
+	sub := newContactTestSubscription(t, db, cfg, user.ID, server.URL+"/addressbooks/test/", "carduser", "cardsecret")
+	service := NewContactSyncService(false)
+
+	var incidentStart *time.Time
+	for i := 1; i <= 3; i++ {
+		_, err := service.SyncSubscription(context.Background(), db, cfg, sub)
+		require.Error(t, err)
+
+		var reloaded models.ContactSubscription
+		require.NoError(t, db.First(&reloaded, sub.ID).Error)
+		assert.Equal(t, i, reloaded.ConsecutiveFailures, "run %d should be the %dth consecutive failure", i, i)
+		require.NotNil(t, reloaded.IncidentFirstFailureAt)
+		require.NotNil(t, reloaded.LastFailureAt)
+		require.NotNil(t, reloaded.LastAttemptAt)
+		require.NotNil(t, reloaded.LastRunDurationMS)
+		assert.Nil(t, reloaded.LastSuccessAt, "no run has succeeded yet")
+		if incidentStart == nil {
+			incidentStart = reloaded.IncidentFirstFailureAt
+		} else {
+			assert.Equal(t, *incidentStart, *reloaded.IncidentFirstFailureAt,
+				"incident_first_failure_at must not move while the incident continues")
+		}
+	}
+
+	healthy.Store(true)
+	_, err := service.SyncSubscription(context.Background(), db, cfg, sub)
+	require.NoError(t, err)
+
+	var recovered models.ContactSubscription
+	require.NoError(t, db.First(&recovered, sub.ID).Error)
+	assert.Zero(t, recovered.ConsecutiveFailures, "a success resets the counter")
+	assert.Nil(t, recovered.IncidentFirstFailureAt, "a success closes the incident")
+	require.NotNil(t, recovered.LastSuccessAt)
+	assert.JSONEq(t, `{"created":1,"updated":0,"archived":0,"skipped":0}`, recovered.LastRunStats)
 }
 
 // --- contactPrivateBlockingDialContext ---

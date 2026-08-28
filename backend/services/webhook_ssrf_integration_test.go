@@ -1,16 +1,16 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -28,8 +28,7 @@ import (
 // of them and surface the reason on the stored delivery record — a
 // user-visible failure, never a silent reach into an internal address.
 func TestTriggerWebhooksSSRFBlockedOnLivePath(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "ssrf.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	t.Cleanup(func() {
 		sqlDB, err := db.DB()
 		if err == nil {
@@ -68,7 +67,7 @@ func TestTriggerWebhooksSSRFBlockedOnLivePath(t *testing.T) {
 	}
 
 	cfg := config.Config{WebhookBlockPrivateURLs: true}
-	TriggerWebhooks(db, cfg, user.ID, "contact.created", map[string]string{"name": "Ada"})
+	TriggerWebhooks(context.Background(), db, cfg, user.ID, "contact.created", map[string]string{"name": "Ada"})
 
 	// Deliveries are written asynchronously from per-webhook goroutines, so
 	// wait for all of them to land rather than racing the first one.

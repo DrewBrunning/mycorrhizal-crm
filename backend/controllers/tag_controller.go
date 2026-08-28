@@ -32,7 +32,7 @@ func CreateTag(c *gin.Context) {
 		return
 	}
 
-	go services.TriggerWebhooks(db, currentConfig(c), userID, "tag.created", tag)
+	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "tag.created", tag)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Tag created successfully", "tag": tag})
 }
@@ -166,7 +166,7 @@ func UpdateTag(c *gin.Context) {
 		return
 	}
 
-	go services.TriggerWebhooks(db, currentConfig(c), userID, "tag.updated", tag)
+	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "tag.updated", tag)
 
 	c.JSON(http.StatusOK, tag)
 }
@@ -196,7 +196,7 @@ func DeleteTag(c *gin.Context) {
 		return
 	}
 
-	go services.TriggerWebhooks(db, currentConfig(c), userID, "tag.deleted", gin.H{"id": tag.ID})
+	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "tag.deleted", gin.H{"id": tag.ID})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Tag deleted"})
 }

@@ -3,11 +3,10 @@ package controllers
 import (
 	"encoding/json"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"testing"
 
@@ -244,9 +243,7 @@ func TestGetContacts_NameSortComposesWithSearch(t *testing.T) {
 // where GORM's column derivation cannot silently disagree with the hand-written
 // migration SQL for `sort_name`.
 func TestGetContacts_NameSortRealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "t73-real-sort.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "realdb-sort", Password: "password123!A", Email: "realdb-sort@example.com"}
 	require.NoError(t, db.Create(&user).Error)

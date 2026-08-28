@@ -104,6 +104,13 @@ FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec4
 # privilege-escalation surface for no benefit, so disarm them in place with the
 # CIS-recommended remediation rather than hand-listing the seven names (which
 # would silently miss any setuid binary a future apk bump adds).
+#
+# libssl3/libcrypto3 pinned explicitly, above what the base image ships
+# (3.5.7-r0), to pull in the CVE-2026-14456 fix (3.5.8-r0) already present in
+# this same pinned index -- caught by Trivy gating v0.6.1's release scan
+# (exit-code: 1 on fixed CRITICAL/HIGH). No base-image digest bump needed;
+# `apk policy libssl3` against this exact digest already lists 3.5.8-r0 from
+# alpine/v3.24/main.
 RUN apk add --no-cache \
     ca-certificates=20260611-r0 \
     tzdata=2026c-r0 \
@@ -111,6 +118,8 @@ RUN apk add --no-cache \
     supervisor=4.3.0-r1 \
     shadow=4.18.0-r1 \
     libc6-compat=1.1.0-r4 \
+    libssl3=3.5.8-r0 \
+    libcrypto3=3.5.8-r0 \
     && find / -xdev -type f \( -perm -4000 -o -perm -2000 \) -exec chmod a-s {} +
 
 WORKDIR /app
@@ -151,11 +160,14 @@ ENV GIN_MODE=release
 # nginx listens on 8080 (no root needed to bind)
 EXPOSE 8080
 
-# Health check hits nginx, which proxies /health to the backend. JSON-array
-# form (hadolint DL3025): wget --spider already exits non-zero on failure, so
-# the shell form's `|| exit 1` was redundant.
+# Health check hits nginx, which proxies to the backend. It probes
+# /health/live (liveness, issue #421) — is the process up — NOT /health (deep
+# check) or /health/ready: a restart policy must not cycle the container just
+# because an optional integration is unreachable or migrations are mid-run.
+# JSON-array form (hadolint DL3025): wget --spider already exits non-zero on
+# failure, so the shell form's `|| exit 1` was redundant.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health"]
+    CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health/live"]
 
 # Entrypoint remaps PUID/PGID + chowns data dirs, then launches supervisord
 ENTRYPOINT ["/app/entrypoint.sh"]

@@ -3,11 +3,10 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -27,9 +26,7 @@ import (
 // thin-contact endpoint) -> list (both filters) -> update -> accept ->
 // delete, plus a GET /graph pass confirming only confirmed edges appear.
 func TestRelationshipEdgeAndGraph_RealMigratedSchema(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "relationship-edge-real.db")
-	db, err := database.InitDB(dbPath)
-	require.NoError(t, err)
+	db := dbtest.New(t)
 
 	user := models.User{Username: "realdbtester", Password: "password123!A", Email: "realdb@example.com"}
 	require.NoError(t, db.Create(&user).Error)

@@ -27,11 +27,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 
@@ -168,8 +167,7 @@ func TestProcessAndSavePhoto_DecompressionBombRefused(t *testing.T) {
 // against exactly that ambiguity. What this test adds is proof the guard is
 // actually reachable through the full request path end-to-end.
 func TestAddPhotoToContact_DecompressionBombRefused(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "photo-bomb-test.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	user := models.User{Username: "photobomb", Password: "password123!A", Email: "photobomb@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 	contact := models.Contact{UserID: user.ID, Firstname: "Ada"}
@@ -218,8 +216,7 @@ func TestAddPhotoToContact_DecompressionBombRefused(t *testing.T) {
 // definitions, which is where a hostile value actually originates -- CardDAV
 // sync or VCF/CSV import, not a test calling csvSafe directly).
 func TestExportData_CSVFormulaInjectionNeutralized(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "export-csv-test.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	user := models.User{Username: "csvexport", Password: "password123!A", Email: "csvexport@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 

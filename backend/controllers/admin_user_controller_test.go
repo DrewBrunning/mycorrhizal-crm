@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -673,8 +672,7 @@ func TestUpdateUser_PasswordReset_IncrementsTokenVersion(t *testing.T) {
 // plain update event and a dedicated role_change event, attributed to the
 // acting admin.
 func TestUpdateUser_RoleChange_RecordsAuditEvent(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "admin-role-audit.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() {
 		models.AuditFlush()
@@ -859,8 +857,7 @@ func TestResetUserTwoFactor_NonAdmin_Forbidden(t *testing.T) {
 // constraint were never widened, which is exactly the silent-failure trap
 // CLAUDE.md's backend trap #1 warns about.
 func TestResetUserTwoFactor_RecordsAuditEvent(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "admin-2fa-reset-audit.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() {
 		models.AuditFlush()
@@ -1254,6 +1251,33 @@ func TestTriggerPurge(t *testing.T) {
 	assert.Zero(t, count, "shares past the retention window must be purged by the admin trigger")
 	db.Model(&models.ContactShare{}).Where("id = ?", freshPending.ID).Count(&count)
 	assert.Equal(t, int64(1), count, "a pending share inside the window must survive the admin trigger")
+
+	// Issue #622: the endpoint must also reach the webhook-delivery purge. A
+	// delivery created 60 days ago is past the 30-day window; one created 5
+	// days ago must survive.
+	staleDeliveryWh := models.Webhook{
+		UserID: user.ID, Name: "trigger-hook", URL: "https://example.com/hook",
+		Events: []string{"contact.created"}, Secret: "s", IsActive: true,
+	}
+	require.NoError(t, db.Create(&staleDeliveryWh).Error)
+	staleDelivery := models.WebhookDelivery{WebhookID: staleDeliveryWh.ID, EventType: "contact.created", Payload: `{"data":{}}`}
+	require.NoError(t, db.Create(&staleDelivery).Error)
+	require.NoError(t, db.Model(&models.WebhookDelivery{}).Where("id = ?", staleDelivery.ID).
+		Update("created_at", old).Error)
+	freshDelivery := models.WebhookDelivery{WebhookID: staleDeliveryWh.ID, EventType: "contact.created", Payload: `{"data":{}}`}
+	require.NoError(t, db.Create(&freshDelivery).Error)
+
+	cfg.WebhookDeliveryRetentionDays = 30
+	req, _ = http.NewRequest("POST", "/trigger-purge", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var deliveryCount int64
+	db.Model(&models.WebhookDelivery{}).Where("id = ?", staleDelivery.ID).Count(&deliveryCount)
+	assert.Zero(t, deliveryCount, "a delivery past the retention window must be purged by the admin trigger")
+	db.Model(&models.WebhookDelivery{}).Where("id = ?", freshDelivery.ID).Count(&deliveryCount)
+	assert.Equal(t, int64(1), deliveryCount, "a delivery inside the window must survive the admin trigger")
 }
 
 // M1/T26: PurgeSoftDeletedRows hard-deletes rows past the retention window.

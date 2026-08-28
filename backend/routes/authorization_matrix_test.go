@@ -50,13 +50,12 @@ package routes
 import (
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
 	"mycorrhizal/config"
-	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -225,6 +224,8 @@ func buildTable(s seeded) map[string]authzRow {
 	return map[string]authzRow{
 		// --- public (no auth boundary) -------------------------------------
 		"GET /health":                          {class: classPublic},
+		"GET /health/live":                     {class: classPublic},
+		"GET /health/ready":                    {class: classPublic},
 		"GET /api/v1/auth/oidc/config":         {class: classPublic},
 		"POST /api/v1/register":                {class: classPublic},
 		"POST /api/v1/login":                   {class: classPublic},
@@ -244,6 +245,14 @@ func buildTable(s seeded) map[string]authzRow {
 		"POST /api/v1/admin/trigger-reminders":   {class: classAdmin},
 		"POST /api/v1/admin/trigger-purge":       {class: classAdmin},
 		"POST /api/v1/admin/search/rebuild":      {class: classAdmin},
+		"GET /api/v1/admin/system-events":        {class: classAdmin},
+		"GET /api/v1/admin/subsystem-health":     {class: classAdmin},
+		"GET /api/v1/admin/job-runs":             {class: classAdmin},
+		"GET /api/v1/admin/job-runs/health":      {class: classAdmin},
+		"GET /api/v1/admin/error-aggregation":    {class: classAdmin},
+		"GET /api/v1/admin/notification-health":  {class: classAdmin},
+		"GET /api/v1/admin/diagnostics":          {class: classAdmin},
+		"GET /api/v1/admin/system-status":        {class: classAdmin},
 
 		// --- user / dashboard ----------------------------------------------
 		"POST /api/v1/users/change-password":               {class: classProtected},
@@ -307,6 +316,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"POST /api/v1/contacts/import/vcf/confirm":      {class: classProtected},
 		"POST /api/v1/contacts/import/jscontact/upload": {class: classProtected},
 		"POST /api/v1/contacts/import/records":          {class: classProtected},
+		"GET /api/v1/contacts/import/history":           {class: classProtected},
 
 		// --- contact shares -------------------------------------------------
 		"POST /api/v1/contact-shares":             {class: classProtected},
@@ -585,8 +595,7 @@ func routeKey(method, path string) string {
 func TestAuthorizationMatrix(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "authz-matrix.db"))
-	require.NoError(t, err)
+	db := dbtest.New(t)
 	// The loose BOLA probes deliberately hit non-existent fabricated ids, so
 	// handlers log an expected "record not found" on every one. Silence GORM's
 	// logger to keep the test output to real failures.

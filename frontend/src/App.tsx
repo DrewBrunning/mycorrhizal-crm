@@ -42,10 +42,12 @@ import ContactsIcon from '@mui/icons-material/Contacts';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import GroupIcon from '@mui/icons-material/Group';
+import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 import HistoryIcon from '@mui/icons-material/History';
 import HomeWorkIcon from '@mui/icons-material/HomeWork';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
+import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import PeopleIcon from '@mui/icons-material/People';
 import SearchIcon from '@mui/icons-material/Search';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -106,6 +108,8 @@ import NotesPage from './NotesPage';
 import PrepViewPage from './PrepViewPage';
 import RegisterPage from './RegisterPage';
 import SettingsPage from './SettingsPage';
+import SystemEventsPage from './SystemEventsPage';
+import SystemStatusPage from './SystemStatusPage';
 import UsersPage from './UsersPage';
 import './App.css';
 
@@ -247,6 +251,16 @@ function AppContent({
     ];
     if (userIsAdmin) {
       items.push({ text: t('nav.users'), icon: <PeopleIcon />, path: '/users' });
+      items.push({
+        text: t('nav.systemEvents'),
+        icon: <MonitorHeartIcon />,
+        path: '/system-events',
+      });
+      items.push({
+        text: t('nav.systemStatus'),
+        icon: <HealthAndSafetyIcon />,
+        path: '/system-status',
+      });
     }
     return items;
   }, [t, userIsAdmin]);
@@ -711,6 +725,22 @@ function AppContent({
             element={
               <Suspense fallback={<RouteLoadingFallback />}>
                 <UsersPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/system-events"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <SystemEventsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/system-status"
+            element={
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <SystemStatusPage />
               </Suspense>
             }
           />

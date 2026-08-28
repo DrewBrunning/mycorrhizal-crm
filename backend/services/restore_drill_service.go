@@ -42,17 +42,26 @@ type countRow struct {
 }
 
 // excludedFromRestoreDrill are tables deliberately left out of the row-count
-// comparison. job_executions is operational bookkeeping, not user data, and
-// it is uniquely guaranteed to be under concurrent write pressure at exactly
-// the moment this job runs: every other scheduled job (including this one)
-// writes its own lock row there on every fire, and at boot they all fire
-// together (each registered with its own go safeGo(...) initial run in
-// main.go). Confirmed live: a local run reported "job_executions: live=9
-// restored=7" purely from other jobs' concurrent initial-run lock rows
-// landing in the gap between the snapshot and the live count read — a false
-// alarm on data nobody would call a backup failure over.
+// comparison: operational bookkeeping, not user data, and each is written
+// *by this job itself* (or by the other scheduled jobs firing alongside it)
+// in the window between the snapshot and the live count read, so a live-vs-
+// restored delta on them is a guaranteed false positive, not a backup failure.
+//   - job_executions: every scheduled job writes its lock row on every fire;
+//     at boot they all fire together (each `go safeGo(...)` initial run in
+//     main.go). Confirmed live: "job_executions: live=9 restored=7".
+//   - system_events (#424) / operational_check_results (#421/#620): the drill
+//     records its own restore_test_completed / backup_failed row and its own
+//     check-result row while it runs — the live count is always ahead of the
+//     snapshot by exactly those.
 var excludedFromRestoreDrill = map[string]bool{
-	"job_executions": true,
+	"job_executions":            true,
+	"system_events":             true,
+	"operational_check_results": true,
+	// alert_states (#428): the scheduled alert evaluator fires alongside this
+	// drill and upserts a row per condition in the snapshot-vs-live window, so
+	// a delta here is a guaranteed false positive — same reasoning as the rows
+	// above.
+	"alert_states": true,
 }
 
 // liveTables lists every real, non-internal, non-excluded table in the
@@ -192,9 +201,11 @@ func RunRestoreDrillScheduled(db *gorm.DB, cfg config.Config) {
 		return
 	}
 
+	ctx := logger.JobContext(models.JobNameRestoreDrill)
+
 	acquired, err := acquireJobLock(db, models.JobNameRestoreDrill, restoreDrillMinInterval(cfg))
 	if err != nil {
-		logger.Error().Err(err).Msg("restore drill: failed to check job lock")
+		logger.Ctx(ctx).Error().Err(err).Msg("restore drill: failed to check job lock")
 		return
 	}
 	if !acquired {
@@ -202,25 +213,64 @@ func RunRestoreDrillScheduled(db *gorm.DB, cfg config.Config) {
 	}
 	defer func() {
 		if err := releaseJobLock(db, models.JobNameRestoreDrill, true); err != nil {
-			logger.Error().Err(err).Msg("restore drill: failed to release job lock")
+			logger.Ctx(ctx).Error().Err(err).Msg("restore drill: failed to release job lock")
 		}
 	}()
 
+	start := time.Now()
 	ok, detail, err := runRestoreDrill(db, cfg)
+	durMS := time.Since(start).Milliseconds()
+
 	if err != nil {
-		logger.Error().Err(err).Msg("restore drill: failed to run")
-		triggerWebhooksForAllUsers(db, cfg, EventRestoreDrillFailed, map[string]interface{}{
+		logger.Ctx(ctx).Error().Err(err).
+			Str(logger.FieldEvent, models.SysEventBackupFailed).
+			Str(logger.FieldComponent, logger.ComponentBackup).
+			Str(logger.FieldResult, logger.ResultFailure).
+			Int64(logger.FieldDurationMS, durMS).
+			Msg("restore drill: failed to run")
+		// Last-known status per subsystem (#421/#620) and the operational-event
+		// timeline (#424) are complementary: the former is "what state is it in
+		// now", the latter is the dated history.
+		RecordOperationalCheckResult(db, models.JobNameRestoreDrill, models.OpCheckStatusError, err.Error())
+		models.RecordSystemEvent(ctx, db, models.SystemEvent{
+			EventType: models.SysEventBackupFailed, Component: logger.ComponentBackup,
+			Operation: models.JobNameRestoreDrill, Result: models.SysResult(logger.ResultFailure),
+			DurationMS: &durMS, Error: err.Error(), Detail: "restore drill could not run",
+		})
+		triggerWebhooksForAllUsers(ctx, db, cfg, EventRestoreDrillFailed, map[string]interface{}{
 			"error": err.Error(),
 		})
 		return
 	}
 	if !ok {
-		logger.Error().Str("detail", detail).Msg("restore drill: row-count mismatch")
-		triggerWebhooksForAllUsers(db, cfg, EventRestoreDrillFailed, map[string]interface{}{
+		logger.Ctx(ctx).Error().Str("detail", detail).
+			Str(logger.FieldEvent, models.SysEventBackupFailed).
+			Str(logger.FieldComponent, logger.ComponentBackup).
+			Str(logger.FieldResult, logger.ResultFailure).
+			Int64(logger.FieldDurationMS, durMS).
+			Msg("restore drill: row-count mismatch")
+		RecordOperationalCheckResult(db, models.JobNameRestoreDrill, models.OpCheckStatusFailed, detail)
+		models.RecordSystemEvent(ctx, db, models.SystemEvent{
+			EventType: models.SysEventBackupFailed, Component: logger.ComponentBackup,
+			Operation: models.JobNameRestoreDrill, Result: models.SysResult(logger.ResultFailure),
+			DurationMS: &durMS, Detail: detail,
+		})
+		triggerWebhooksForAllUsers(ctx, db, cfg, EventRestoreDrillFailed, map[string]interface{}{
 			"detail": detail,
 		})
 		return
 	}
 
-	logger.Info().Msg("restore drill: ok")
+	RecordOperationalCheckResult(db, models.JobNameRestoreDrill, models.OpCheckStatusOK, "")
+	logger.Ctx(ctx).Info().
+		Str(logger.FieldEvent, models.SysEventRestoreTestCompleted).
+		Str(logger.FieldComponent, logger.ComponentBackup).
+		Str(logger.FieldResult, logger.ResultSuccess).
+		Int64(logger.FieldDurationMS, durMS).
+		Msg("restore drill: ok")
+	models.RecordSystemEvent(ctx, db, models.SystemEvent{
+		EventType: models.SysEventRestoreTestCompleted, Component: logger.ComponentBackup,
+		Operation: models.JobNameRestoreDrill, Result: models.SysResult(logger.ResultSuccess),
+		DurationMS: &durMS,
+	})
 }

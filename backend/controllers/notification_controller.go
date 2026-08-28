@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -164,7 +165,11 @@ func TestNotificationChannel(c *gin.Context) {
 
 	cfg := currentConfig(c)
 	if err := services.TestNotificationChannel(db, cfg, user, models.NotificationChannel(input.Channel)); err != nil {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		// Issue #606: the full diagnostic goes to the server log — where an
+		// operator can still tell the SSRF guard's distinct sentinels apart —
+		// while only the bounded, normalized message reaches the client.
+		logger.FromContext(c).Warn().Err(err).Str("channel", input.Channel).Msg("Test notification channel failed")
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": services.NotificationTestErrorMessage(cfg, err)})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})

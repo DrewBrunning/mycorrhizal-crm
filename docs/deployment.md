@@ -1,6 +1,6 @@
 ---
 title: Deployment
-nav_order: 7
+nav_order: 8
 has_children: false
 ---
 
@@ -96,6 +96,59 @@ deploying a new release, or any time you want to confirm a downloaded binary/con
 came from this project's official build pipeline unmodified, see
 `docs/security/release-verification.md` for exact commands (`cosign`, `gh attestation verify`) —
 no supply-chain background required.
+
+## Health, liveness & readiness endpoints
+
+The server exposes three unauthenticated, secret-free health endpoints (issue #421). They answer
+different questions, and wiring the wrong one to the wrong consumer causes outages (e.g. a monitor
+restarting a healthy app because an optional integration is down).
+
+| Endpoint | Question | Cost | Who should hit it |
+|---|---|---|---|
+| `GET /health/live` | Is the process running? | Instant — touches nothing | Container / orchestrator **restart policy** (`HEALTHCHECK`, Kubernetes `livenessProbe`) |
+| `GET /health/ready` | Can this instance serve? | DB ping + migration state + filesystem write probe | **Load balancer / traffic gate** (Kubernetes `readinessProbe`) |
+| `GET /health` | Is the CRM actually operational? | Deep — persisted check outcomes, job locks, integration reachability (30 s cached) | **Humans and monitoring aggregators** (dashboards, alerting) |
+
+- `/health/live` returns `200 {"status":"live"}` and never does I/O. It must not fail because a
+  dependency is slow — that would make the orchestrator kill a working process.
+- `/health/ready` returns `200 {"status":"ready", ...}` or `503 {"status":"not_ready", ...}`. It is
+  `not_ready` while the database or a configured file directory is unreachable, or while migrations
+  are pending or dirty. Gate inbound traffic on this, not on `/health`.
+- `/health` returns `healthy`, `degraded`, or `unhealthy` with a per-facet `checks` breakdown
+  (database read/write, migration lag, last DB-integrity-check and restore-drill outcomes,
+  background-job locks, and reachability of server-scoped integrations — OIDC, email, FCM).
+  **`degraded` is still HTTP 200** — an unreachable optional integration or a stale scheduled job is
+  degraded-but-alive, not down. Only a database read failure returns `503`. This is the endpoint
+  that reports the running build's version/commit.
+
+The bundled Docker image's `HEALTHCHECK` and the CI boot-wait probes all use `/health/live`. The
+single-container nginx is not a load balancer, so `/health/ready` is not wired to anything by
+default — put it in front of your own proxy/LB if you run more than one instance.
+
+All three endpoints are unauthenticated (like the original `/health`) and deliberately carry no
+secrets. The deep endpoint's `reason`/`detail` strings are generic categories only — the underlying
+errors, absolute paths, the SMTP host/OIDC URL, and any table names or row counts from a failed
+integrity check / restore drill go to the **server log and the failure webhook**, never the
+response body. It does expose the build version/commit, the applied migration number, and
+scheduled-job names — same class of operational metadata the pre-split `/health` already returned.
+If you consider even that too much for an unauthenticated endpoint, put `/health` behind your proxy's
+auth and leave `/health/live` + `/health/ready` open. The all-in-one image's nginx serves all three
+with `X-Robots-Tag: noindex` so they are never crawled.
+
+## Diagnostics & logging
+
+When something is failing in production, `docs/operations/observability.md` is the map: the
+structured log field vocabulary, how a correlation ID threads one UI action through every background
+step and outbound call it triggers (and how to grep for it), and the admin **System events**
+timeline (`/system-events` on web, Settings → System events on Android) — a persisted, restart-
+surviving record of scheduled job runs, sync runs, backup/restore drills, and migrations.
+
+Quick reference: `LOG_LEVEL` (`info` default), `LOG_PRETTY` (JSON off in release), and
+`SYSTEM_EVENT_RETENTION_DAYS` (`30` default) for how long the timeline keeps rows. Webhook delivery
+receipts are bounded by `WEBHOOK_DELIVERY_RETENTION_DAYS` (`30` default, issue #622) — each row
+carries a copy of the entity that triggered the event, so the window is a data-retention decision,
+not just a log-size knob. For the live tail of what the running container is writing right now:
+`docker compose logs -f mycorrhizal`.
 
 ## Backups
 
@@ -222,6 +275,14 @@ than discovered during a real disaster:
 Either job logs and fires a webhook (`db.integrity_check_failed` / `db.restore_drill_failed`, see
 Settings → Webhooks) on failure, so "test restores regularly" above is now something the app does
 for you rather than a manual chore.
+
+Since issue #428 these failures also flow through **alerting on state transitions**: a scheduled
+evaluator watches the per-subsystem health, disk usage, and scheduled-job liveness, and dispatches
+one notification when a condition breaks (`alert.raised`) and one when it clears
+(`🟢 Backup recovered after 3 failures` — `alert.cleared`), de-duplicated so a persistent failure
+does not page you on every run. Webhooks go to all subscribers; email/ntfy/Gotify/push go to admin
+users. Full condition list and the `ALERT_*` env vars are in
+`docs/operations/observability.md` → "Alerting on state transitions".
 
 ### Backup confidentiality & retention
 
