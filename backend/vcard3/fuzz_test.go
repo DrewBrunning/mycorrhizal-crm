@@ -18,6 +18,17 @@ var vcard3FuzzSeedFiles = []string{
 	"rfc2426-baseline.v3.vcf",
 }
 
+// maxVCard3FuzzInput bounds what FuzzImportVCard3 will process. Same rationale
+// as vcard4's maxVCard4FuzzInput / jscontact's maxJSContactFuzzInput: the
+// Import->Export->Import chain is linear in input size, so a large
+// fuzzer-generated input can legitimately take seconds and stall the
+// time-boxed CI fuzz smoke ("context deadline exceeded" flake on 2-core
+// runners — the FuzzImportJSContact failure that motivated this cap). The
+// target is a panic/crash tripwire, not a wall-clock benchmark; parser bugs
+// are shape-driven, not size-driven. Real uploads are separately bounded by
+// MaxVCFSize.
+const maxVCard3FuzzInput = 1 << 20 // 1 MiB
+
 // FuzzImportVCard3 mirrors vcard4's FuzzImportVCard4 (issue #376, extending
 // #265's coverage to the other hostile-input parsers): Adapter.Import wraps
 // the same third-party github.com/emersion/go-vcard decoder vcard4 does, so
@@ -33,6 +44,9 @@ func FuzzImportVCard3(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, data []byte) {
+		if len(data) > maxVCard3FuzzInput {
+			return
+		}
 		rec, _, err := Adapter{}.Import(data)
 		if err != nil || rec == nil {
 			return
