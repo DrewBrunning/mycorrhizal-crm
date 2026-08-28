@@ -6,7 +6,11 @@ name: DAST (OWASP ZAP)
 # against it — an authenticated API scan seeded from backend/openapi.yaml plus
 # an active scan of the SPA and the CardDAV/CalDAV discovery surface — and
 # gates on High/Medium findings via backend/cmd/zapgate's ignore-list-with-
-# justification (zap/dast.ignore), uploading SARIF to the Security tab.
+# justification (zap/dast.ignore). The verdict is zapgate; the full ZAP
+# report.json is kept as a 30-day run artifact. Results are deliberately NOT
+# uploaded to code scanning: GitHub anchors every SARIF result to a source
+# line inside the checkout, and a DAST finding is a property of the running
+# system with no honest repo-relative path (issue #615).
 #
 # Scheduled (nightly) + manual dispatch only — deliberately NOT on push/PR:
 # DAST is slow and flaky (the issue calls this out), so it is a periodic
@@ -32,7 +36,6 @@ jobs:
     timeout-minutes: 120
     permissions:
       contents: read
-      security-events: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -124,11 +127,11 @@ jobs:
 
       # ZAP runs headless via its automation framework (zap/zap-dast.yaml).
       # --network host lets the container reach both the app (:7300, exposed by
-      # compose) and the canary (:7301, a host process). The plan writes two
-      # reports into ./zap: report.json (for the gate) and dast.sarif.json
-      # (for the Security tab). -Xmx3g caps the JVM heap so the active scan
-      # fits the runner (zap.sh otherwise sizes 1/4 of host memory, which is
-      # both more than the scan needs and more than a standard runner has).
+      # compose) and the canary (:7301, a host process). The plan writes
+      # report.json into ./zap for the gate (and the run artifact). -Xmx3g caps
+      # the JVM heap so the active scan fits the runner (zap.sh otherwise sizes
+      # 1/4 of host memory, which is both more than the scan needs and more
+      # than a standard runner has).
       - name: Run ZAP scan
         env:
           ZAP_AUTH_HEADER: Authorization
@@ -137,7 +140,7 @@ jobs:
         run: |
           # The zaproxy image runs as uid 1000 (`zap`); the checkout is owned
           # by the runner user, so the container could read the plan out of
-          # the bind mount but not create report.json / dast.sarif.json in it.
+          # the bind mount but not create report.json in it.
           # ZAP reported that only at the end -- "Job report failed to generate
           # report: AccessDeniedException /zap/wrk/report.json" -- after a full
           # six-minute active scan, so the scan ran, emitted nothing, and
@@ -184,26 +187,18 @@ jobs:
           ZAPGATE_REPORT: ../zap/report.json
           ZAPGATE_IGNORE: ../zap/dast.ignore
 
-      # Best-effort, and deliberately not a gate. Code scanning anchors every
-      # result to a path inside the checkout, while ZAP's SARIF locates
-      # findings by the URL it scanned, so the upload is rejected:
+      # DAST findings are not uploaded to code scanning. GitHub anchors every
+      # SARIF result to a source line inside the checkout; ZAP locates findings
+      # by the URL it scanned (http://localhost:7300/...), and the upload is
+      # rejected outright:
       #
       #   SARIF URI scheme "http" did not match the checkout URI scheme "file"
       #
-      # There is no honest repo-relative path for "the running app answered
-      # this way over HTTP", so this is a real model mismatch rather than a
-      # config slip -- mapping it needs a decision, tracked separately. The
-      # gate is zapgate plus the uploaded report.json artifact; those do not
-      # depend on this step, so a rejection must not turn the job red and hide
-      # the actual verdict.
-      - name: Upload SARIF to code scanning
-        if: always()
-        continue-on-error: true
-        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
-        with:
-          sarif_file: zap/dast.sarif.json
-          category: zap-dast
-
+      # A DAST finding is a property of the deployed system, not of a source
+      # line, so there is no honest repo-relative path to give it. The gate is
+      # backend/cmd/zapgate (ignore-list-with-justification, same shape as
+      # .trivyignore / .grype.yml); the full ZAP report.json is kept as the
+      # run artifact below. See issue #615 for the decision.
       - name: Upload ZAP JSON report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

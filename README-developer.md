@@ -86,7 +86,7 @@
 - Dynamic application security testing: boots the real all-in-one image (`docker-compose.test.yml`), then runs OWASP ZAP against it — an authenticated API scan seeded from [backend/openapi.yaml](backend/openapi.yaml) (via a minted `full`-scope API token handed to ZAP as a bearer header) plus an active scan of the SPA and the CardDAV/CalDAV discovery surface.
 - The scan definition lives in [zap/zap-dast.yaml](zap/zap-dast.yaml); the pass/fail policy lives in [backend/cmd/zapgate](backend/cmd/zapgate) plus the ignore-list [zap/dast.ignore](zap/dast.ignore) (same "ignore-list with justification" shape as `android/.mobsf` and `docker/cis-hardening.ignore`).
 - A deliberately-vulnerable **canary** server ([backend/cmd/dastcanary](backend/cmd/dastcanary)) runs alongside the app on `:7301`; its planted reflected-XSS must appear in the ZAP report or the gate fails as "blind". It never ships and is never part of the app.
-- CI runs it on a weekly schedule (not per-PR — DAST is slow/flaky) via [.github/workflows/zap-dast.yml](.github/workflows/zap-dast.yml), and uploads SARIF to the Security tab. To run it locally:
+- CI runs it nightly (not per-PR — DAST is slow/flaky) via [.github/workflows/zap-dast.yml](.github/workflows/zap-dast.yml). The verdict is `zapgate`; the full ZAP `report.json` is kept as a 30-day run artifact. Results are not uploaded to code scanning — a DAST finding has no source line to anchor a SARIF result to (issue #615). To run it locally:
   ```bash
   docker compose -f docker-compose.test.yml up -d --build
   # canary

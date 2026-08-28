@@ -32,8 +32,10 @@
 #     sibling server. Its planted reflected-XSS must appear in the report or
 #     the zapgate self-test fails the run (see backend/cmd/zapgate).
 #
-# Two reports are emitted: traditional-json (parsed by zapgate to enforce the
-# ignore-list + self-test) and sarif-json (uploaded to the Security tab).
+# One report is emitted: traditional-json, parsed by zapgate to enforce the
+# ignore-list + self-test and kept as the workflow's run artifact. No SARIF /
+# code-scanning report — a DAST finding has no source line to anchor to, so
+# the upload is rejected (issue #615); zapgate is the gate.
 
 env:
   contexts:
@@ -114,16 +116,6 @@ jobs:
       template: traditional-json
       reportDir: /zap/wrk
       reportFile: report.json
-      reportTitle: Mycorrhizal CRM DAST
-      reportDescription: OWASP ZAP DAST scan (issue #368)
-    risks: [high, medium, low, info]
-    confidences: [high, medium, low, falsepositive]
-
-  - type: report
-    parameters:
-      template: sarif-json
-      reportDir: /zap/wrk
-      reportFile: dast.sarif.json
       reportTitle: Mycorrhizal CRM DAST
       reportDescription: OWASP ZAP DAST scan (issue #368)
     risks: [high, medium, low, info]
