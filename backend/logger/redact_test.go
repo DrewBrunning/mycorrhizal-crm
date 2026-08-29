@@ -33,6 +33,7 @@ func TestRedactQueryValues(t *testing.T) {
 		{name: "value with equals", in: "search=a=b&page=2", want: "search=[REDACTED]&page=2"},
 		{name: "boolean filters kept", in: "archived=true&include_sensitive=false&favorites=1", want: "archived=true&include_sensitive=false&favorites=1"},
 		{name: "cursor and since kept", in: "cursor=eyJpZCI6MTB9&since=2026-01-01", want: "cursor=eyJpZCI6MTB9&since=2026-01-01"},
+		{name: "undecodable key still redacted", in: "s%zzarch=Bob&page=2", want: "s%zzarch=[REDACTED]&page=2"},
 	}
 
 	for _, tt := range tests {

@@ -184,6 +184,27 @@ func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
 	require.NoError(t, db.Unscoped().Model(&models.LinkFieldType{}).Where("user_id = ?", target.ID).Count(&unscopedLinkFieldTypeCount).Error)
 	assert.Zero(t, unscopedLinkFieldTypeCount, "LinkFieldType rows must be hard-deleted, not merely soft-deleted")
 
+	// The user-authored entities (Contact, Note, Activity, Reminder,
+	// LifeEvent, Preference, CadencePolicy, ConversationAgenda, Gift,
+	// Attachment, ImportRun) SOFT-delete in normal life — so their plain
+	// assertGone above passes whether DeleteUser hard-deleted them (its
+	// contract, T26: no sync client survives a deleted account, nothing to
+	// tombstone) or merely soft-deleted them. Pin the hard-delete for every
+	// one of them explicitly, exactly the assertGone-blind-spot CLAUDE.md's
+	// backend trap #6 warns about. This is the hand-verify step from the
+	// issue: restore a `tx.Delete` (non-Unscoped) for any of these and this
+	// assertion fails.
+	for _, model := range []any{
+		&models.Contact{}, &models.Note{}, &models.Activity{}, &models.Reminder{},
+		&models.LifeEvent{}, &models.Preference{}, &models.CadencePolicy{},
+		&models.ConversationAgenda{}, &models.Gift{}, &models.Attachment{},
+		&models.ImportRun{},
+	} {
+		var unscopedCount int64
+		require.NoError(t, db.Unscoped().Model(model).Where("user_id = ?", target.ID).Count(&unscopedCount).Error)
+		assert.Zero(t, unscopedCount, "user-authored rows must be hard-deleted by DeleteUser, not merely soft-deleted")
+	}
+
 	var remainingUser models.User
 	err := db.First(&remainingUser, target.ID).Error
 	assert.Error(t, err, "target user should be deleted")

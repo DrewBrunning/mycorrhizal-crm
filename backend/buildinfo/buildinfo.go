@@ -44,10 +44,18 @@ func Get() Info {
 	}
 
 	build, ok := debug.ReadBuildInfo()
-	if !ok {
+	if !ok { // # pragma: no cover — never false for go-built binaries (only non-module builds hit it)
 		return info
 	}
-	for _, setting := range build.Settings {
+	return applyVCSSettings(info, build.Settings)
+}
+
+// applyVCSSettings merges Go's embedded VCS stamp into an Info that was not
+// fully populated by ldflags. Extracted from Get so the stamp-merging rules
+// can be unit-tested against hand-built settings instead of depending on how
+// the current test/CI binary happened to be built.
+func applyVCSSettings(info Info, settings []debug.BuildSetting) Info {
+	for _, setting := range settings {
 		switch setting.Key {
 		case "vcs.revision":
 			if len(setting.Value) > 12 {
