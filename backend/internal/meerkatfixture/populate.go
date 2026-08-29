@@ -19,7 +19,7 @@ func Populate(path string, m *Manifest) error {
 	if _, err := os.Stat(path); err == nil {
 		return fmt.Errorf("meerkatfixture: refusing to overwrite existing file %s", path)
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { // # pragma: no cover — defensive
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil { // # pragma: no cover — defensive
 		return fmt.Errorf("meerkatfixture: creating fixture dir: %w", err)
 	}
 
