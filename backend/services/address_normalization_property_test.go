@@ -3,6 +3,8 @@ package services
 import (
 	"fmt"
 	"math/rand"
+	"os"
+	"strconv"
 	"testing"
 	"unicode"
 
@@ -18,7 +20,28 @@ import (
 // many random address pairs per run to check that invariant broadly rather
 // than against one hand-picked example.
 
-const addressPropertyIterations = 200
+// addressPropertyIterations is the per-property iteration count, env-driven
+// (ADDRESS_PROPERTY_ITERATIONS, default 200) so CI can run a deeper search on
+// the nightly schedule without changing code — the same tiered-by-trigger
+// pattern as TEST-07's RAPID_CHECKS (issue #435). The seeded loops extend
+// naturally: each iteration draws from a distinct seed, so more iterations
+// explore more of the space.
+var addressPropertyIterations = propertyIterationsFromEnv()
+
+// propertyIterationsFromEnv reads ADDRESS_PROPERTY_ITERATIONS, falling back to
+// 200 for anything unset/unparsable (a bad value must not silently zero out a
+// property test).
+func propertyIterationsFromEnv() int {
+	raw := os.Getenv("ADDRESS_PROPERTY_ITERATIONS")
+	if raw == "" {
+		return 200
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 1 {
+		return 200
+	}
+	return n
+}
 
 // randFullAddress builds a random ContactAddress with every component
 // (including the sub-street/Type fields AddressNormalizedKey deliberately

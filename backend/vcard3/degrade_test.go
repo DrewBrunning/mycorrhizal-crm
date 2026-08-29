@@ -506,3 +506,69 @@ func TestDegrade_PassthroughJSContact(t *testing.T) {
 		t.Errorf("diags = %+v, want a warn for concept pt.jscontact", diags)
 	}
 }
+
+// TestDegrade_NoteParamsOnEmptyNote pins the TEST-07 (#435) fix: an empty
+// note that carries only params (CREATED) must still warn that the params
+// have no vCard 3.0 home. The warn used to live after an early continue on
+// empty note text, so a param-carrying empty note dropped the params
+// silently — found by the round-trip property.
+func TestDegrade_NoteParamsOnEmptyNote(t *testing.T) {
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Notes: []contactmodel.Note{{
+			Note:    "",
+			Created: &contactmodel.Timestamp{UTC: "1900-01-01T00:00:00Z"},
+		}},
+	}}
+	_, diags, err := (Adapter{}).Export(rec)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	if !hasWarn(diags, "note") {
+		t.Errorf("diags = %+v, want a warn for concept note (params on an empty note still have no 3.0 home)", diags)
+	}
+}
+
+// TestDegrade_AnniversaryTimestampedBirth pins the TEST-07 (#435) fix: a
+// full-timestamp birthday is rendered date-only by vCard 3.0, dropping the
+// time-of-day, so it must warn rather than drop silently.
+func TestDegrade_AnniversaryTimestampedBirth(t *testing.T) {
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Anniversaries: []contactmodel.Anniversary{{
+			Kind: "birth",
+			Date: contactmodel.AnniversaryDate{Timestamp: strPtr("1900-01-01T00:00:00Z")},
+		}},
+	}}
+	out, diags, err := (Adapter{}).Export(rec)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	if !hasWarn(diags, "anniversary.birth") {
+		t.Errorf("diags = %+v, want a warn for concept anniversary.birth (time-of-day dropped)", diags)
+	}
+	if !hasProp(t, out, PropBday) {
+		t.Errorf("BDAY missing from output; the date itself must still be emitted")
+	}
+}
+
+// TestDegrade_AnniversaryTimestampedWedding pins the same TEST-07 fix for the
+// wedding anniversary redirect.
+func TestDegrade_AnniversaryTimestampedWedding(t *testing.T) {
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Anniversaries: []contactmodel.Anniversary{{
+			Kind: "wedding",
+			Date: contactmodel.AnniversaryDate{Timestamp: strPtr("1900-01-01T00:00:00Z")},
+		}},
+	}}
+	out, diags, err := (Adapter{}).Export(rec)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	if !hasWarn(diags, "anniversary.wedding") {
+		t.Errorf("diags = %+v, want a warn for concept anniversary.wedding (time-of-day dropped)", diags)
+	}
+	if !hasProp(t, out, PropXAnniversary) {
+		t.Errorf("X-ANNIVERSARY missing from output")
+	}
+}
+
+func strPtr(s string) *string { return &s }

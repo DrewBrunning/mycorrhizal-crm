@@ -61,6 +61,17 @@ list:
   edge-case dates (year-less leap-day birthday, far-future wedding, DST gift
   date), and deliberately duplicate/conflicting records (`hugo`/`ida` share
   email, phone, and a near-identical name — a real duplicate-detection pair).
+- **TEST-07 shrunk counterexamples** (`test07_*` contacts, issue #435): the
+  minimal failing records the round-trip *property* (generative testing, not
+  a hand-written fixture) found and that had to be fixed in the adapters —
+  an empty note carrying only a CREATED param (vCard 3.0 dropped it before
+  its warn fired), a timestamped birthday (vCard 3.0 truncated it to
+  date-only without a warn), a country-code-only address (vCard 3.0's CC warn
+  never fired for an empty ADR), two grammatical genders (JSContact's scalar
+  `speakToAs.grammaticalGender` collapsed them silently), and duplicate
+  keywords (JSContact's boolean-set `keywords` collapsed them silently). Each
+  is a load-bearing regression record: removing the fix that makes it round
+  trip fails the TEST-03 suite.
 
 ## Consuming it
 
