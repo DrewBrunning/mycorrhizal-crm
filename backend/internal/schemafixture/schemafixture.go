@@ -144,7 +144,7 @@ func readDump(release Release) ([]byte, error) {
 	if err != nil {
 		return nil, err // # pragma: no cover — findSchemaDir's own error path is unit-tested; Load runs inside the repo
 	}
-	return os.ReadFile(filepath.Join(dir, DumpFile(release)))
+	return os.ReadFile(filepath.Join(dir, DumpFile(release))) // #nosec G304 -- path is not request input: DumpFile derives the filename from the internal SupportedReleases registry, and findSchemaDir resolved the repo's own committed schemas directory. Only loaders running inside the repository call this.
 }
 
 // findSchemaDir locates backend/database/testdata/schemas by walking up from
