@@ -36,7 +36,14 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
 
   if (preferences.length === 0) {
     return (
-      <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: 'text.secondary',
+          py: 2,
+          textAlign: 'center',
+        }}
+      >
         {t('preference.empty')}
       </Typography>
     );
@@ -85,8 +92,11 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
           {pref.notes && (
             <Typography
               variant="body2"
-              color="text.secondary"
-              sx={{ overflowWrap: 'anywhere', mt: 0.25 }}
+              sx={{
+                color: 'text.secondary',
+                overflowWrap: 'anywhere',
+                mt: 0.25,
+              }}
             >
               {pref.notes}
             </Typography>
@@ -118,8 +128,11 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
       <Box>
         <Typography
           variant="overline"
-          color="text.secondary"
-          sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}
+          sx={{
+            color: 'text.secondary',
+            letterSpacing: 0.08,
+            fontSize: '0.72rem',
+          }}
         >
           {label}
         </Typography>

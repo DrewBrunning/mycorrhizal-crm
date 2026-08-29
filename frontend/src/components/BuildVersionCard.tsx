@@ -104,7 +104,12 @@ export default function BuildVersionCard() {
         <Divider sx={{ mb: 1.5 }} />
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {t('settings.about.version')}
           </Typography>
           <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
@@ -127,12 +132,26 @@ export default function BuildVersionCard() {
         </Box>
 
         {health?.build_date && (
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+              display: 'block',
+              mt: 0.5,
+            }}
+          >
             {t('settings.about.built', { date: health.build_date })}
           </Typography>
         )}
 
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: 'text.secondary',
+            display: 'block',
+            mt: 0.5,
+          }}
+        >
           {t('settings.about.reportHint')}
         </Typography>
       </CardContent>

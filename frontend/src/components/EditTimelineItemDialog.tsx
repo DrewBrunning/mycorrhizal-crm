@@ -174,7 +174,13 @@ export default function EditTimelineItemDialog({
           // Edit Note
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             {values.noteContactName ? (
-              <Box display="flex" alignItems="center" gap={1}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                }}
+              >
                 <Chip
                   label={`${t('notes.assignedTo')} ${values.noteContactName}`}
                   onDelete={() => {
@@ -209,16 +215,20 @@ export default function EditTimelineItemDialog({
                   {...params}
                   label={t('notes.assignContact')}
                   placeholder={t('notes.searchContacts')}
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <>
-                        {noteContactsLoading ? (
-                          <CircularProgress color="inherit" size={20} />
-                        ) : null}
-                        {params.InputProps.endAdornment}
-                      </>
-                    ),
+                  slotProps={{
+                    ...params.slotProps,
+
+                    input: {
+                      ...params.slotProps.input,
+                      endAdornment: (
+                        <>
+                          {noteContactsLoading ? (
+                            <CircularProgress color="inherit" size={20} />
+                          ) : null}
+                          {params.slotProps.input.endAdornment}
+                        </>
+                      ),
+                    },
                   }}
                 />
               )}
@@ -241,7 +251,9 @@ export default function EditTimelineItemDialog({
               value={values.noteDate || ''}
               onChange={(e) => onChange({ ...values, noteDate: e.target.value })}
               label={t('noteDialog.date')}
-              InputLabelProps={{ shrink: true }}
+              slotProps={{
+                inputLabel: { shrink: true },
+              }}
             />
           </Box>
         ) : (
@@ -274,7 +286,9 @@ export default function EditTimelineItemDialog({
               value={values.activityDate || ''}
               onChange={(e) => onChange({ ...values, activityDate: e.target.value })}
               label={t('activityDialog.date')}
-              InputLabelProps={{ shrink: true }}
+              slotProps={{
+                inputLabel: { shrink: true },
+              }}
             />
             <Autocomplete
               multiple
@@ -291,11 +305,11 @@ export default function EditTimelineItemDialog({
                   placeholder={t('activityDialog.selectContacts')}
                 />
               )}
-              renderTags={(value, getTagProps) =>
+              renderValue={(value, getItemProps) =>
                 value.map((contact, index) => (
                   <Chip
                     label={`${contact.firstname}${contact.nickname ? ` "${contact.nickname}"` : ''} ${contact.lastname}`}
-                    {...getTagProps({ index })}
+                    {...getItemProps({ index })}
                     size="small"
                     key={contact.ID}
                   />

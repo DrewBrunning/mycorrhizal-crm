@@ -103,14 +103,18 @@ function ContactAutocomplete({
           placeholder={t('household.memberSearch')}
           size="small"
           fullWidth
-          InputProps={{
-            ...params.InputProps,
-            endAdornment: (
-              <>
-                {loading ? <CircularProgress color="inherit" size={18} /> : null}
-                {params.InputProps.endAdornment}
-              </>
-            ),
+          slotProps={{
+            ...params.slotProps,
+
+            input: {
+              ...params.slotProps.input,
+              endAdornment: (
+                <>
+                  {loading ? <CircularProgress color="inherit" size={18} /> : null}
+                  {params.slotProps.input.endAdornment}
+                </>
+              ),
+            },
           }}
         />
       )}
@@ -163,7 +167,12 @@ export default function HouseholdList({
   if (households.length === 0) {
     return (
       <Paper sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="body1" color="text.secondary">
+        <Typography
+          variant="body1"
+          sx={{
+            color: 'text.secondary',
+          }}
+        >
           {t('household.empty')}
         </Typography>
       </Paper>
@@ -204,7 +213,13 @@ export default function HouseholdList({
                     variant="outlined"
                   />
                 </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: 'text.secondary',
+                    mt: 0.5,
+                  }}
+                >
                   {t('household.members', { count: householdMembers.length })}
                 </Typography>
               </Box>
@@ -252,7 +267,12 @@ export default function HouseholdList({
 
             <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
               {householdMembers.length === 0 && (
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: 'text.secondary',
+                  }}
+                >
                   {t('household.noMembers')}
                 </Typography>
               )}

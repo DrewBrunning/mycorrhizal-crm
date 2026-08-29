@@ -59,7 +59,12 @@ export default function ImportedResourcesSection({ card }: ImportedResourcesSect
       <Stack spacing={1}>
         {fields.map(({ field, labelKey }) => (
           <Box key={field}>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t(labelKey)}
             </Typography>
             <Stack>

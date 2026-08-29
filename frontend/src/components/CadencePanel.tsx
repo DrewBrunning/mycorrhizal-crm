@@ -33,7 +33,12 @@ export default function CadencePanel({
   if (loading) {
     return (
       <Paper sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+          }}
+        >
           {t('cadence.loading')}
         </Typography>
       </Paper>
@@ -43,7 +48,13 @@ export default function CadencePanel({
   if (!policy) {
     return (
       <Paper sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography
+          variant="body1"
+          sx={{
+            color: 'text.secondary',
+            mb: 2,
+          }}
+        >
           {t('cadence.noPolicy')}
         </Typography>
         <Button
@@ -67,9 +78,22 @@ export default function CadencePanel({
 
   return (
     <Paper sx={{ p: 2 }}>
-      <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+        }}
+      >
         <Box>
-          <Box display="flex" alignItems="center" gap={1} mb={1}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              mb: 1,
+            }}
+          >
             {/* #211: a field label next to the Chip value, not a section heading. */}
             <Typography variant="subtitle2" component="span">
               {t('cadence.interval')}
@@ -81,45 +105,94 @@ export default function CadencePanel({
           </Box>
 
           {hasInteraction ? (
-            <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                mb: 0.5,
+              }}
+            >
               {isOverdue ? (
                 <>
                   <WarningIcon fontSize="small" color="warning" />
-                  <Typography variant="body2" color="warning.main" fontWeight={500}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: 'warning.main',
+                      fontWeight: 500,
+                    }}
+                  >
                     {t('cadence.overdueBy', { days: health.overdue_by })}
                   </Typography>
                 </>
               ) : (
                 <>
                   <CheckCircleIcon fontSize="small" color="success" />
-                  <Typography variant="body2" color="success.main">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: 'success.main',
+                    }}
+                  >
                     {t('cadence.onTrack')}
                   </Typography>
                 </>
               )}
             </Box>
           ) : (
-            <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                mb: 0.5,
+              }}
+            >
               <ScheduleIcon fontSize="small" color="action" />
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                }}
+              >
                 {t('cadence.noInteractionsYet')}
               </Typography>
             </Box>
           )}
 
           {hasInteraction && health?.next_due && (
-            <Typography variant="caption" color="text.secondary" display="block">
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+                display: 'block',
+              }}
+            >
               {t('cadence.nextDue', { date: formatDate(health.next_due) })}
             </Typography>
           )}
           {hasInteraction && health?.last_interaction && (
-            <Typography variant="caption" color="text.secondary" display="block">
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+                display: 'block',
+              }}
+            >
               {t('cadence.lastInteraction', { date: formatDate(health.last_interaction) })}
             </Typography>
           )}
 
           {showTypes && (
-            <Box display="flex" flexWrap="wrap" gap={0.5} mt={1}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 0.5,
+                mt: 1,
+              }}
+            >
               {qualifyingTypes.map((type) => (
                 <Chip
                   key={type}
@@ -132,7 +205,12 @@ export default function CadencePanel({
           )}
         </Box>
 
-        <Box display="flex" gap={1}>
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 1,
+          }}
+        >
           <Button startIcon={<EditIcon />} size="small" onClick={() => onEdit(policy)}>
             {t('common.edit')}
           </Button>

@@ -52,7 +52,13 @@ export default function PreferredLanguagesEditor({
         {value.map((row, index) => (
           <Paper key={rowKeys.keyAt(index)} variant="outlined" sx={{ p: 1.5 }}>
             <Stack spacing={1}>
-              <Stack direction="row" spacing={1} alignItems="center">
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  alignItems: 'center',
+                }}
+              >
                 <TextField
                   label={t('contacts.preferredLanguages.language')}
                   size="small"

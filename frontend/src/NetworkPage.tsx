@@ -191,7 +191,14 @@ export default function NetworkPage() {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '60vh',
+        }}
+      >
         <CircularProgress />
       </Box>
     );
@@ -199,7 +206,11 @@ export default function NetworkPage() {
 
   if (error) {
     return (
-      <Box p={2}>
+      <Box
+        sx={{
+          p: 2,
+        }}
+      >
         <Alert severity="error">{error}</Alert>
       </Box>
     );
@@ -207,7 +218,11 @@ export default function NetworkPage() {
 
   if (!data || data.nodes.length === 0) {
     return (
-      <Box p={2}>
+      <Box
+        sx={{
+          p: 2,
+        }}
+      >
         <Alert severity="info">{t('network.noData')}</Alert>
       </Box>
     );

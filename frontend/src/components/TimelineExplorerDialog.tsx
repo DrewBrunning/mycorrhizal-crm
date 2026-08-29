@@ -123,7 +123,9 @@ export default function TimelineExplorerDialog({
                       size="small"
                       tabIndex={-1}
                       disableRipple
-                      inputProps={{ 'aria-hidden': true }}
+                      slotProps={{
+                        input: { 'aria-hidden': true },
+                      }}
                     />
                     <ListItemText primary={t(`timeline.types.${tt}`)} />
                   </MenuItem>
@@ -151,7 +153,12 @@ export default function TimelineExplorerDialog({
           </Box>
 
           {error && (
-            <Typography variant="body2" color="error.main">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'error.main',
+              }}
+            >
               {error}
             </Typography>
           )}

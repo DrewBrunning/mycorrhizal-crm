@@ -118,7 +118,12 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
       return (
         <Stack spacing={2}>
           <Alert severity="success">{message || t('passwordReset.success')}</Alert>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {t('passwordReset.doneDescription')}
           </Typography>
         </Stack>
@@ -129,7 +134,12 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
       return (
         <form onSubmit={handleConfirm}>
           <Stack spacing={2}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('passwordReset.checkEmail', { email })}
             </Typography>
             {message && <Alert severity="info">{message}</Alert>}
@@ -145,7 +155,9 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
               fullWidth
               required
               error={Boolean(error)}
-              inputProps={{ 'aria-describedby': error ? 'forgot-password-error' : undefined }}
+              slotProps={{
+                htmlInput: { 'aria-describedby': error ? 'forgot-password-error' : undefined },
+              }}
             />
             <TextField
               label={t('passwordReset.newPassword')}
@@ -155,7 +167,9 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
               fullWidth
               required
               error={Boolean(error)}
-              inputProps={{ 'aria-describedby': error ? 'forgot-password-error' : undefined }}
+              slotProps={{
+                htmlInput: { 'aria-describedby': error ? 'forgot-password-error' : undefined },
+              }}
             />
             <TextField
               label={t('passwordReset.confirmPassword')}
@@ -165,7 +179,9 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
               fullWidth
               required
               error={Boolean(error)}
-              inputProps={{ 'aria-describedby': error ? 'forgot-password-error' : undefined }}
+              slotProps={{
+                htmlInput: { 'aria-describedby': error ? 'forgot-password-error' : undefined },
+              }}
             />
             <Button type="submit" variant="contained" disabled={loading}>
               {loading ? t('passwordReset.confirming') : t('passwordReset.confirmButton')}
@@ -178,7 +194,12 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
     return (
       <form onSubmit={handleRequest}>
         <Stack spacing={2}>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {t('passwordReset.description')}
           </Typography>
           {error && (
@@ -194,7 +215,9 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
             fullWidth
             required
             error={Boolean(error)}
-            inputProps={{ 'aria-describedby': error ? 'forgot-password-error' : undefined }}
+            slotProps={{
+              htmlInput: { 'aria-describedby': error ? 'forgot-password-error' : undefined },
+            }}
           />
           <Button type="submit" variant="contained" disabled={loading}>
             {loading ? t('passwordReset.requesting') : t('passwordReset.requestButton')}

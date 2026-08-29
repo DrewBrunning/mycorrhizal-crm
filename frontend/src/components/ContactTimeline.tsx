@@ -71,7 +71,12 @@ export default function ContactTimeline({
 
   if (timelineItems.length === 0) {
     return (
-      <Typography variant="body2" color="text.secondary">
+      <Typography
+        variant="body2"
+        sx={{
+          color: 'text.secondary',
+        }}
+      >
         {emptyText ?? t('contactDetail.noActivity')}
       </Typography>
     );
@@ -87,7 +92,12 @@ export default function ContactTimeline({
           const event = item.data;
           return (
             <TimelineItem key={`life_event-${event.id}`}>
-              <TimelineOppositeContent color="text.secondary" sx={{ flex: 0.3 }}>
+              <TimelineOppositeContent
+                sx={{
+                  color: 'text.secondary',
+                  flex: 0.3,
+                }}
+              >
                 <Typography variant="caption">{partialDateDisplay(event.date)}</Typography>
               </TimelineOppositeContent>
               <TimelineSeparator>
@@ -116,7 +126,12 @@ export default function ContactTimeline({
           const gift = item.data;
           return (
             <TimelineItem key={`gift-${gift.id}`}>
-              <TimelineOppositeContent color="text.secondary" sx={{ flex: 0.3 }}>
+              <TimelineOppositeContent
+                sx={{
+                  color: 'text.secondary',
+                  flex: 0.3,
+                }}
+              >
                 <Typography variant="caption">
                   {isValidDate ? formatDate(item.date) : item.date || 'N/A'}
                 </Typography>
@@ -138,8 +153,11 @@ export default function ContactTimeline({
                   {gift.occasion && (
                     <Typography
                       variant="caption"
-                      color="text.secondary"
-                      sx={{ display: 'block', mt: 0.5 }}
+                      sx={{
+                        color: 'text.secondary',
+                        display: 'block',
+                        mt: 0.5,
+                      }}
                     >
                       {gift.occasion}
                     </Typography>
@@ -158,7 +176,12 @@ export default function ContactTimeline({
             event.source_system;
           return (
             <TimelineItem key={`external_activity-${event.id}`}>
-              <TimelineOppositeContent color="text.secondary" sx={{ flex: 0.3 }}>
+              <TimelineOppositeContent
+                sx={{
+                  color: 'text.secondary',
+                  flex: 0.3,
+                }}
+              >
                 <Typography variant="caption">
                   {isValidDate ? formatDate(item.date) : item.date || 'N/A'}
                 </Typography>
@@ -194,7 +217,12 @@ export default function ContactTimeline({
           <TimelineItem
             key={`${item.type}-${(item.data as Note | Activity | ReminderCompletion).ID}`}
           >
-            <TimelineOppositeContent color="text.secondary" sx={{ flex: 0.3 }}>
+            <TimelineOppositeContent
+              sx={{
+                color: 'text.secondary',
+                flex: 0.3,
+              }}
+            >
               <Typography variant="caption">
                 {isValidDate ? formatDate(item.date) : item.date || 'N/A'}
               </Typography>
@@ -253,8 +281,12 @@ export default function ContactTimeline({
                 {item.type === 'activity' && (item.data as Activity).location && (
                   <Typography
                     variant="caption"
-                    color="text.secondary"
-                    sx={{ mt: 1, display: 'block', overflowWrap: 'anywhere' }}
+                    sx={{
+                      color: 'text.secondary',
+                      mt: 1,
+                      display: 'block',
+                      overflowWrap: 'anywhere',
+                    }}
                   >
                     📍 {(item.data as Activity).location}
                   </Typography>
@@ -263,7 +295,13 @@ export default function ContactTimeline({
                   (item.data as Activity).contacts &&
                   (item.data as Activity).contacts!.length > 0 && (
                     <Box sx={{ mt: 1.5, display: 'flex', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: 'text.secondary',
+                          mr: 0.5,
+                        }}
+                      >
                         👥
                       </Typography>
                       {(item.data as Activity).contacts!.map((activityContact, idx) => (
@@ -286,7 +324,12 @@ export default function ContactTimeline({
                             {activityContact.lastname}
                           </Link>
                           {idx < (item.data as Activity).contacts!.length - 1 && (
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: 'text.secondary',
+                              }}
+                            >
                               ,&nbsp;
                             </Typography>
                           )}

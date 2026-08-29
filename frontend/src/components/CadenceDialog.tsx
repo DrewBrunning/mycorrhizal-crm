@@ -94,7 +94,6 @@ export default function CadenceDialog({
           <TextField
             label={t('cadence.intervalDays')}
             type="number"
-            inputProps={{ min: 1 }}
             value={intervalDays}
             onChange={(e) => {
               setIntervalDays(Number(e.target.value));
@@ -104,12 +103,21 @@ export default function CadenceDialog({
             required
             error={!!error && intervalDays < 1}
             helperText={t('cadence.intervalHint')}
+            slotProps={{
+              htmlInput: { min: 1 },
+            }}
           />
           <Box>
             <Typography variant="subtitle2" gutterBottom>
               {t('cadence.qualifyingTypes')}
             </Typography>
-            <Typography variant="caption" color="text.secondary" gutterBottom>
+            <Typography
+              variant="caption"
+              gutterBottom
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('cadence.qualifyingHint')}
             </Typography>
             <FormGroup>

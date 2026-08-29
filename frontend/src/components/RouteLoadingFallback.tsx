@@ -9,11 +9,13 @@ export default function RouteLoadingFallback() {
   const { t } = useTranslation();
   return (
     <Box
-      display="flex"
-      justifyContent="center"
-      mt={4}
       role="status"
       aria-label={t('common.loading')}
+      sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        mt: 4,
+      }}
     >
       <CircularProgress />
     </Box>

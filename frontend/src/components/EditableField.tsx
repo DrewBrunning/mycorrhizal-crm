@@ -87,8 +87,10 @@ export default function EditableField({
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography
               variant="caption"
-              color="text.secondary"
-              sx={{ fontFamily: '"IBM Plex Mono", monospace' }}
+              sx={{
+                color: 'text.secondary',
+                fontFamily: '"IBM Plex Mono", monospace',
+              }}
             >
               {label}
             </Typography>

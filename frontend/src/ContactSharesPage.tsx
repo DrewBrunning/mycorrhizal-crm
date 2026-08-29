@@ -81,7 +81,12 @@ export default function ContactSharesPage() {
         // T93/#192: keep the empty state OUT of the <List> — a <p> directly
         // inside a <ul> is invalid HTML that the axe `list` rule flags.
         (incoming.length === 0 && !loading ? (
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {t('contactShares.incoming.empty')}
           </Typography>
         ) : (
@@ -126,7 +131,12 @@ export default function ContactSharesPage() {
 
       {tab === 'outgoing' &&
         (outgoing.length === 0 && !loading ? (
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {t('contactShares.outgoing.empty')}
           </Typography>
         ) : (

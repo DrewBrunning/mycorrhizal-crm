@@ -80,7 +80,13 @@ function PairLine({
         <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>
           {contactName(c)}
         </Typography>
-        <Typography variant="caption" color="text.secondary" noWrap>
+        <Typography
+          variant="caption"
+          noWrap
+          sx={{
+            color: 'text.secondary',
+          }}
+        >
           {c.email || c.phone || (c.archived ? t('contacts.archived') : '')}
         </Typography>
         {c.archived && (
@@ -98,7 +104,13 @@ function PairLine({
     <Box sx={{ py: 1.5 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         {renderContact(pair.a)}
-        <Typography variant="body2" color="text.secondary" sx={{ px: 0.5 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+            px: 0.5,
+          }}
+        >
           {t('duplicates.vs')}
         </Typography>
         {renderContact(pair.b)}
@@ -177,7 +189,13 @@ export default function ReviewDuplicatesDialog({ open, onClose }: ReviewDuplicat
           <Alert severity="success">{t('duplicates.none')}</Alert>
         ) : (
           <>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+                mb: 1,
+              }}
+            >
               {t('duplicates.count', { count: total })}
             </Typography>
             {pairs.map((pair, index) => (

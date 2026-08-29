@@ -87,7 +87,13 @@ export default function AddressFields({ label, value, onChange }: AddressFieldsP
           return (
             <Paper key={rowKey} variant="outlined" sx={{ p: 1.5 }}>
               <Stack spacing={1}>
-                <Stack direction="row" spacing={1} alignItems="center">
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    alignItems: 'center',
+                  }}
+                >
                   {/* Free-solo: pick a standard type or type a custom label.
                       Custom labels export as vCard X-ABLabel and round-trip via CardDAV. */}
                   <Autocomplete

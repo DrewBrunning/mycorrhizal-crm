@@ -155,12 +155,25 @@ export default function AuditPage() {
       <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 1.5 }}>
         {t('audit.title')}
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: 'text.secondary',
+          mb: 2,
+        }}
+      >
         {t('audit.description')}
       </Typography>
 
       <Paper sx={{ p: 1.5, mb: 2 }}>
-        <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 2,
+            flexWrap: 'wrap',
+            alignItems: 'center',
+          }}
+        >
           <FormControl size="small" sx={{ minWidth: 180 }}>
             <InputLabel id="audit-entity-type-label">{t('audit.filters.entityType')}</InputLabel>
             <Select
@@ -219,7 +232,12 @@ export default function AuditPage() {
         <ListSkeleton count={8} />
       ) : events.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="body1" color="text.secondary">
+          <Typography
+            variant="body1"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {hasFilters ? t('audit.empty') : t('audit.emptyNoFilters')}
           </Typography>
         </Paper>
@@ -278,7 +296,13 @@ export default function AuditPage() {
       )}
 
       {canLoadMore && (
-        <Box display="flex" justifyContent="center" mt={3}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            mt: 3,
+          }}
+        >
           <Button variant="outlined" onClick={loadMore} disabled={loading}>
             {t('common.loadMore')}
           </Button>
@@ -295,7 +319,13 @@ export default function AuditPage() {
                 date: formatDateTime(pendingUndo.created_at),
               })}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+              mt: 1,
+            }}
+          >
             {t('audit.undo.partialNote')}
           </Typography>
         </DialogContent>

@@ -1,4 +1,4 @@
-import { createTestContact, deleteTestContact, expect, test } from './fixtures';
+import { createTestContact, deleteTestContact, expect, test, waitForLoading } from './fixtures';
 
 // T34 — tappable
 // contact fields (tel:/sms:/mailto:/geo:) + universal copy buttons.
@@ -81,6 +81,7 @@ test.describe('Contact field linking', () => {
 
     try {
       await page.goto(`/contacts/${contact.ID}`);
+      await waitForLoading(page);
       await expect(page.locator('a[href="geo:39.78,-89.65"]')).toBeVisible();
     } finally {
       await deleteTestContact(page.request, contact.ID);

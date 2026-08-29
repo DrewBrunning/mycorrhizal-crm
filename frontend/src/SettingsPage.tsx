@@ -388,7 +388,14 @@ export default function SettingsPage() {
             </Select>
           </FormControl>
 
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+              mt: 1,
+              display: 'block',
+            }}
+          >
             {t('settings.language.description')}
           </Typography>
         </CardContent>
@@ -424,7 +431,14 @@ export default function SettingsPage() {
             </Select>
           </FormControl>
 
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+              mt: 1,
+              display: 'block',
+            }}
+          >
             {t('settings.dateFormat.description')}
           </Typography>
         </CardContent>
@@ -454,7 +468,14 @@ export default function SettingsPage() {
             </Select>
           </FormControl>
 
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+              mt: 1,
+              display: 'block',
+            }}
+          >
             {t('settings.theme.description')}
           </Typography>
         </CardContent>
@@ -501,7 +522,14 @@ export default function SettingsPage() {
             </Button>
           )}
 
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+              mt: 1,
+              display: 'block',
+            }}
+          >
             {t('settings.selfContact.description')}
           </Typography>
         </CardContent>
@@ -519,7 +547,12 @@ export default function SettingsPage() {
 
           <form onSubmit={handlePasswordChange}>
             <Stack spacing={1.5}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                }}
+              >
                 {t('settings.password.description')}
               </Typography>
               {passwordError && (
@@ -652,7 +685,13 @@ export default function SettingsPage() {
                   {tokens.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} align="center">
-                        <Typography color="text.secondary">{t('apiTokens.noTokens')}</Typography>
+                        <Typography
+                          sx={{
+                            color: 'text.secondary',
+                          }}
+                        >
+                          {t('apiTokens.noTokens')}
+                        </Typography>
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -742,7 +781,9 @@ export default function SettingsPage() {
             }}
             fullWidth
             margin="normal"
-            inputProps={{ maxLength: 100 }}
+            slotProps={{
+              htmlInput: { maxLength: 100 },
+            }}
           />
           <TextField
             select
@@ -811,13 +852,21 @@ export default function SettingsPage() {
               ? t('apiTokens.rotatedDialog.warning')
               : t('apiTokens.createdDialog.warning')}
           </Alert>
-          <Stack direction="row" alignItems="center" spacing={1}>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: 'center',
+            }}
+          >
             <TextField
               value={createdToken?.token || ''}
-              InputProps={{ readOnly: true }}
               fullWidth
               size="small"
-              inputProps={{ style: { fontFamily: 'monospace', fontSize: '0.85rem' } }}
+              slotProps={{
+                input: { readOnly: true },
+                htmlInput: { style: { fontFamily: 'monospace', fontSize: '0.85rem' } },
+              }}
             />
             <Tooltip
               title={

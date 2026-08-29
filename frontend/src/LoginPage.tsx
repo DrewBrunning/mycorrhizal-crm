@@ -120,10 +120,22 @@ export default function LoginPage({ setToken }: LoginPageProps) {
         </Box>
         {step === 'twoFactor' ? (
           <>
-            <Typography variant="h5" component="h1" mb={1}>
+            <Typography
+              variant="h5"
+              component="h1"
+              sx={{
+                mb: 1,
+              }}
+            >
               {t('login.twoFactorTitle')}
             </Typography>
-            <Typography variant="body2" color="text.secondary" mb={2}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+                mb: 2,
+              }}
+            >
               {t('login.twoFactorDescription')}
             </Typography>
             <form onSubmit={handleCodeSubmit}>
@@ -137,7 +149,9 @@ export default function LoginPage({ setToken }: LoginPageProps) {
                   fullWidth
                   autoFocus
                   error={Boolean(error)}
-                  inputProps={{ 'aria-describedby': error ? 'login-error' : undefined }}
+                  slotProps={{
+                    htmlInput: { 'aria-describedby': error ? 'login-error' : undefined },
+                  }}
                 />
                 {error && (
                   <Alert severity="error" id="login-error" ref={errorRef} tabIndex={-1}>
@@ -163,7 +177,13 @@ export default function LoginPage({ setToken }: LoginPageProps) {
           </>
         ) : (
           <>
-            <Typography variant="h5" component="h1" mb={2}>
+            <Typography
+              variant="h5"
+              component="h1"
+              sx={{
+                mb: 2,
+              }}
+            >
               {t('login.title')}
             </Typography>
             <form onSubmit={handleSubmit}>
@@ -176,7 +196,9 @@ export default function LoginPage({ setToken }: LoginPageProps) {
                   required
                   fullWidth
                   error={Boolean(error)}
-                  inputProps={{ 'aria-describedby': error ? 'login-error' : undefined }}
+                  slotProps={{
+                    htmlInput: { 'aria-describedby': error ? 'login-error' : undefined },
+                  }}
                 />
                 <TextField
                   label={t('login.password')}
@@ -186,7 +208,9 @@ export default function LoginPage({ setToken }: LoginPageProps) {
                   required
                   fullWidth
                   error={Boolean(error)}
-                  inputProps={{ 'aria-describedby': error ? 'login-error' : undefined }}
+                  slotProps={{
+                    htmlInput: { 'aria-describedby': error ? 'login-error' : undefined },
+                  }}
                 />
                 {error && (
                   <Alert severity="error" id="login-error" ref={errorRef} tabIndex={-1}>

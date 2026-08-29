@@ -127,7 +127,14 @@ export default function ImmichPhotoPickerDialog({
           </Alert>
         )}
         {!loading && !error && assets.length === 0 && (
-          <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+              py: 2,
+              textAlign: 'center',
+            }}
+          >
             {t('immich.photoPicker.noPhotos')}
           </Typography>
         )}

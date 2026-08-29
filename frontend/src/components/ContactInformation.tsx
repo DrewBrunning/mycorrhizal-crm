@@ -9,7 +9,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HomeIcon from '@mui/icons-material/Home';
 import LanguageIcon from '@mui/icons-material/Language';
 import PeopleIcon from '@mui/icons-material/People';
-import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
 import PhoneIcon from '@mui/icons-material/Phone';
 import SmsOutlinedIcon from '@mui/icons-material/SmsOutlined';
 import StarIcon from '@mui/icons-material/Star';
@@ -116,8 +116,11 @@ const SectionHeading = ({ label }: { label: string }) => (
   <Box sx={{ pt: 1, gridColumn: { lg: '1 / -1' } }}>
     <Typography
       variant="overline"
-      color="text.secondary"
-      sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}
+      sx={{
+        color: 'text.secondary',
+        letterSpacing: 0.08,
+        fontSize: '0.72rem',
+      }}
     >
       {label}
     </Typography>
@@ -244,7 +247,12 @@ export default function ContactInformation({
   const renderPhoneList = (rows: ContactValue[] | undefined) => {
     if (!rows || rows.length === 0)
       return (
-        <Typography variant="body2" color="text.disabled">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.disabled',
+          }}
+        >
           —
         </Typography>
       );
@@ -326,7 +334,12 @@ export default function ContactInformation({
   const renderEmailList = (rows: ContactValue[] | undefined) => {
     if (!rows || rows.length === 0)
       return (
-        <Typography variant="body2" color="text.disabled">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.disabled',
+          }}
+        >
           —
         </Typography>
       );
@@ -370,7 +383,12 @@ export default function ContactInformation({
   const renderUriValueList = (rows: ContactValue[] | undefined, copyLabel: string) => {
     if (!rows || rows.length === 0)
       return (
-        <Typography variant="body2" color="text.disabled">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.disabled',
+          }}
+        >
           —
         </Typography>
       );
@@ -427,7 +445,12 @@ export default function ContactInformation({
   const renderAddressList = (rows: ContactAddress[] | undefined) => {
     if (!rows || rows.length === 0)
       return (
-        <Typography variant="body2" color="text.disabled">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.disabled',
+          }}
+        >
           —
         </Typography>
       );
@@ -491,7 +514,12 @@ export default function ContactInformation({
   const renderOnlineServices = (rows: CardOnlineService[] | undefined, copyLabel: string) => {
     if (!rows || rows.length === 0)
       return (
-        <Typography variant="body2" color="text.disabled">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.disabled',
+          }}
+        >
           —
         </Typography>
       );
@@ -561,7 +589,12 @@ export default function ContactInformation({
   const renderPersonalInfo = (rows: CardPersonalInfo[] | undefined) => {
     if (!rows || rows.length === 0)
       return (
-        <Typography variant="body2" color="text.disabled">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.disabled',
+          }}
+        >
           —
         </Typography>
       );
@@ -592,7 +625,12 @@ export default function ContactInformation({
   const renderKeywords = (rows: string[] | undefined) => {
     if (!rows || rows.length === 0)
       return (
-        <Typography variant="body2" color="text.disabled">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.disabled',
+          }}
+        >
           —
         </Typography>
       );
@@ -612,7 +650,12 @@ export default function ContactInformation({
   const renderCardNotes = (rows: CardNote[] | undefined) => {
     if (!rows || rows.length === 0)
       return (
-        <Typography variant="body2" color="text.disabled">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.disabled',
+          }}
+        >
           —
         </Typography>
       );
@@ -641,7 +684,12 @@ export default function ContactInformation({
   const renderPreferredLanguages = (rows: CardLanguagePref[] | undefined) => {
     if (!rows || rows.length === 0)
       return (
-        <Typography variant="body2" color="text.disabled">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.disabled',
+          }}
+        >
           —
         </Typography>
       );
@@ -673,7 +721,12 @@ export default function ContactInformation({
   const renderSpeakToAs = (s: CardSpeakToAs | undefined) => {
     if (!s || (!s.pronouns?.length && !s.grammaticalGenders?.length)) {
       return (
-        <Typography variant="body2" color="text.disabled">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.disabled',
+          }}
+        >
           —
         </Typography>
       );
@@ -703,7 +756,12 @@ export default function ContactInformation({
   const renderAnniversaries = (rows: CardAnniversary[] | undefined) => {
     if (!rows || rows.length === 0)
       return (
-        <Typography variant="body2" color="text.disabled">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.disabled',
+          }}
+        >
           —
         </Typography>
       );

@@ -69,12 +69,25 @@ export default function BackgroundJobsPanel() {
 
   return (
     <Paper sx={{ p: 1.5, mb: 2 }}>
-      <Box display="flex" alignItems="center" justifyContent="space-between" gap={1} sx={{ mb: 1 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+          mb: 1,
+        }}
+      >
         <Box>
           <Typography variant="subtitle1" component="h2">
             {t('backgroundJobs.title')}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {t('backgroundJobs.description')}
           </Typography>
         </Box>
@@ -173,7 +186,12 @@ function JobRow({ job }: { job: JobRunHealth }) {
           </Typography>
         )}
 
-        <Typography variant="caption" color="text.secondary">
+        <Typography
+          variant="caption"
+          sx={{
+            color: 'text.secondary',
+          }}
+        >
           {t('backgroundJobs.lastRun')}:{' '}
           {lastRunAbs
             ? lastRunRel
@@ -182,7 +200,12 @@ function JobRow({ job }: { job: JobRunHealth }) {
             : t('backgroundJobs.never')}
         </Typography>
 
-        <Typography variant="caption" color="text.secondary">
+        <Typography
+          variant="caption"
+          sx={{
+            color: 'text.secondary',
+          }}
+        >
           {t('backgroundJobs.duration')}: {formatDuration(job.last_duration_ms)}
           {job.duration_sample_size > 1 &&
             job.avg_duration_ms != null &&
@@ -209,7 +232,13 @@ function JobRow({ job }: { job: JobRunHealth }) {
 
       <Collapse in={open} unmountOnExit>
         <Box sx={{ px: 1.25, pb: 1.25 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+              fontWeight: 600,
+            }}
+          >
             {t('backgroundJobs.history')}
           </Typography>
           {history.loading && (
@@ -223,7 +252,13 @@ function JobRow({ job }: { job: JobRunHealth }) {
             </Typography>
           )}
           {!history.loading && !history.error && history.data.length === 0 && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+                display: 'block',
+              }}
+            >
               {t('backgroundJobs.noHistory')}
             </Typography>
           )}
@@ -248,7 +283,12 @@ function JobRow({ job }: { job: JobRunHealth }) {
                           color={RESULT_COLORS[run.result]}
                           label={t(`backgroundJobs.result.${run.result}`)}
                         />{' '}
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: 'text.secondary',
+                          }}
+                        >
                           {t(`backgroundJobs.trigger.${run.trigger}`, run.trigger)}
                         </Typography>
                       </TableCell>

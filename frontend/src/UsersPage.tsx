@@ -375,8 +375,10 @@ export default function UsersPage() {
                     </Typography>
                     <Typography
                       variant="body2"
-                      color="text.secondary"
-                      sx={{ overflowWrap: 'anywhere' }}
+                      sx={{
+                        color: 'text.secondary',
+                        overflowWrap: 'anywhere',
+                      }}
                     >
                       {user.email}
                     </Typography>
@@ -393,7 +395,12 @@ export default function UsersPage() {
                         label={user.is_admin ? t('users.roles.admin') : t('users.roles.user')}
                         size="small"
                       />
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: 'text.secondary',
+                        }}
+                      >
                         {t('users.columns.created')}: {formatDate(user.created_at)}
                       </Typography>
                     </Box>
@@ -429,7 +436,13 @@ export default function UsersPage() {
             ))}
           </Stack>
           {users.length === 0 && !loading && (
-            <Typography color="text.secondary" align="center" sx={{ mt: 2 }}>
+            <Typography
+              align="center"
+              sx={{
+                color: 'text.secondary',
+                mt: 2,
+              }}
+            >
               {t('users.noUsers')}
             </Typography>
           )}

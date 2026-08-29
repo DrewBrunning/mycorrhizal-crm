@@ -48,18 +48,22 @@ export default function LanguageField({
           {...params}
           label={t('contacts.language')}
           placeholder="de-AT"
-          InputProps={{
-            ...params.InputProps,
-            endAdornment: (
-              <>
-                {params.InputProps.endAdornment}
-                <Tooltip title={t('contacts.languageInfo')} placement="top">
-                  <InfoOutlinedIcon
-                    sx={{ fontSize: 18, color: 'text.secondary', cursor: 'help' }}
-                  />
-                </Tooltip>
-              </>
-            ),
+          slotProps={{
+            ...params.slotProps,
+
+            input: {
+              ...params.slotProps.input,
+              endAdornment: (
+                <>
+                  {params.slotProps.input.endAdornment}
+                  <Tooltip title={t('contacts.languageInfo')} placement="top">
+                    <InfoOutlinedIcon
+                      sx={{ fontSize: 18, color: 'text.secondary', cursor: 'help' }}
+                    />
+                  </Tooltip>
+                </>
+              ),
+            },
           }}
         />
       )}

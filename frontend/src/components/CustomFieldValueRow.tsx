@@ -81,7 +81,13 @@ export default function CustomFieldValueRow({
       {editing ? (
         <Stack spacing={1} sx={{ mt: 1 }}>
           <FieldValueEditor definition={definition} value={editorValue} onChange={setEditorValue} />
-          <Stack direction="row" spacing={1} justifyContent="flex-end">
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              justifyContent: 'flex-end',
+            }}
+          >
             <Button size="small" onClick={cancelEdit} disabled={saving}>
               {t('common.cancel')}
             </Button>

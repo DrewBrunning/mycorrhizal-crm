@@ -374,7 +374,12 @@ export default function NetworkGraph({
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
                 {hoveredNode.label}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.secondary',
+                }}
+              >
                 {hoveredNode.type === 'contact'
                   ? t('network.legend.contact')
                   : hoveredNode.type === 'activity'
@@ -387,7 +392,12 @@ export default function NetworkGraph({
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
                 {hoveredEdge.label}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.secondary',
+                }}
+              >
                 {getEdgeTypeLabel(hoveredEdge.type)}
               </Typography>
             </>

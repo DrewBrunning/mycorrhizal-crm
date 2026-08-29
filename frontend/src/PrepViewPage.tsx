@@ -125,7 +125,12 @@ export default function PrepViewPage() {
             >
               {briefing.name || t('prep.unknownContact')}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('prep.subtitle')}
             </Typography>
           </Box>
@@ -143,7 +148,13 @@ export default function PrepViewPage() {
           }}
         >
           <CardContent sx={{ py: 1.5 }}>
-            <Stack direction="row" alignItems="center" spacing={1}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: 'center',
+              }}
+            >
               <WarningIcon
                 fontSize="small"
                 color={briefing.cadence.health.overdue_by > 0 ? 'warning' : 'disabled'}
@@ -155,21 +166,42 @@ export default function PrepViewPage() {
             {briefing.cadence.health.has_qualifying_interaction ? (
               <Box sx={{ mt: 0.5 }}>
                 {briefing.cadence.health.overdue_by > 0 ? (
-                  <Typography variant="body2" color="warning.main">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: 'warning.main',
+                    }}
+                  >
                     {t('cadence.overdueBy', { days: briefing.cadence.health.overdue_by })}
                   </Typography>
                 ) : (
-                  <Typography variant="body2" color="success.main">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: 'success.main',
+                    }}
+                  >
                     {t('cadence.onTrack')}
                   </Typography>
                 )}
                 {briefing.cadence.health.next_due && (
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'text.secondary',
+                    }}
+                  >
                     {t('cadence.nextDue', { date: formatDate(briefing.cadence.health.next_due) })}
                   </Typography>
                 )}
                 {briefing.cadence.health.last_interaction && (
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'text.secondary',
+                      display: 'block',
+                    }}
+                  >
                     {t('cadence.lastInteraction', {
                       date: formatDate(briefing.cadence.health.last_interaction),
                     })}
@@ -177,7 +209,12 @@ export default function PrepViewPage() {
                 )}
               </Box>
             ) : (
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                }}
+              >
                 {t('cadence.noInteractionsYet')}
               </Typography>
             )}
@@ -189,7 +226,13 @@ export default function PrepViewPage() {
       {briefing.open_agenda_items.length > 0 && (
         <Card sx={{ mb: 2 }}>
           <CardContent sx={{ py: 1.5 }}>
-            <Stack direction="row" alignItems="center" spacing={1}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: 'center',
+              }}
+            >
               <ChatIcon fontSize="small" color="action" />
               <Typography variant="subtitle2" component="h2">
                 {t('prep.agenda.title')}
@@ -209,7 +252,13 @@ export default function PrepViewPage() {
       {/* Last interaction + recent notes — "what happened between us" */}
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5 }}>
-          <Stack direction="row" alignItems="center" spacing={1}>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: 'center',
+            }}
+          >
             <EventIcon fontSize="small" color="action" />
             <Typography variant="subtitle2" component="h2">
               {t('prep.lastInteraction.title')}
@@ -219,11 +268,22 @@ export default function PrepViewPage() {
             <Box sx={{ mt: 0.5 }}>
               {/* T98: activity titles are subtitle1 everywhere they appear.
                   #211: an item title, not a page heading. */}
-              <Typography variant="subtitle1" component="p" fontWeight={500}>
+              <Typography
+                variant="subtitle1"
+                component="p"
+                sx={{
+                  fontWeight: 500,
+                }}
+              >
                 {briefing.last_activity.title}
                 {briefing.last_activity.type ? ` (${briefing.last_activity.type})` : ''}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.secondary',
+                }}
+              >
                 {formatDate(briefing.last_activity.date)}
               </Typography>
               {briefing.last_activity.description && (
@@ -236,7 +296,12 @@ export default function PrepViewPage() {
               )}
             </Box>
           ) : (
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('prep.lastInteraction.none')}
             </Typography>
           )}
@@ -244,7 +309,13 @@ export default function PrepViewPage() {
           {briefing.recent_notes.length > 0 && (
             <>
               <Divider sx={{ my: 1 }} />
-              <Stack direction="row" alignItems="center" spacing={1}>
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  alignItems: 'center',
+                }}
+              >
                 <SvgIcon fontSize="small" color="action">
                   <path d={mdiNoteMultipleOutline} />
                 </SvgIcon>
@@ -272,7 +343,13 @@ export default function PrepViewPage() {
       {briefing.relationships.length > 0 && (
         <Card sx={{ mb: 2 }}>
           <CardContent sx={{ py: 1.5 }}>
-            <Stack direction="row" alignItems="center" spacing={1}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: 'center',
+              }}
+            >
               <FavoriteIcon fontSize="small" color="action" />
               <Typography variant="subtitle2" component="h2">
                 {t('prep.relationships.title')}
@@ -304,7 +381,13 @@ export default function PrepViewPage() {
       {briefing.life_events.length > 0 && (
         <Card sx={{ mb: 2 }}>
           <CardContent sx={{ py: 1.5 }}>
-            <Stack direction="row" alignItems="center" spacing={1}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: 'center',
+              }}
+            >
               <EventIcon fontSize="small" color="action" />
               <Typography variant="subtitle2" component="h2">
                 {t('prep.lifeEvents.title')}
@@ -326,7 +409,13 @@ export default function PrepViewPage() {
       {briefing.upcoming_reminders.length > 0 && (
         <Card sx={{ mb: 2 }}>
           <CardContent sx={{ py: 1.5 }}>
-            <Stack direction="row" alignItems="center" spacing={1}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: 'center',
+              }}
+            >
               <EventIcon fontSize="small" color="action" />
               <Typography variant="subtitle2" component="h2">
                 {t('prep.reminders.title')}
@@ -336,7 +425,13 @@ export default function PrepViewPage() {
               {briefing.upcoming_reminders.map((reminder) => (
                 <Typography key={reminder.ID} variant="body2">
                   • {reminder.message}{' '}
-                  <Typography component="span" variant="caption" color="text.secondary">
+                  <Typography
+                    component="span"
+                    variant="caption"
+                    sx={{
+                      color: 'text.secondary',
+                    }}
+                  >
                     ({formatDate(reminder.remind_at)})
                   </Typography>
                 </Typography>
@@ -350,7 +445,13 @@ export default function PrepViewPage() {
       {briefing.upcoming_dates.length > 0 && (
         <Card>
           <CardContent sx={{ py: 1.5 }}>
-            <Stack direction="row" alignItems="center" spacing={1}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: 'center',
+              }}
+            >
               <CakeIcon fontSize="small" color="action" />
               <Typography variant="subtitle2" component="h2">
                 {t('prep.upcomingDates.title')}

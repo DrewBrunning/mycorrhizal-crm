@@ -345,7 +345,12 @@ export default function LifeEventDialog({
             </>
           )}
 
-          <Box display="flex" gap={1}>
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 1,
+            }}
+          >
             <TextField
               label={t('lifeEvent.dateYear')}
               type="number"
@@ -397,22 +402,26 @@ export default function LifeEventDialog({
                 {...params}
                 label={t('lifeEvent.relatedEntities')}
                 placeholder={t('lifeEvent.searchContacts')}
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {contactsLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
+                slotProps={{
+                  ...params.slotProps,
+
+                  input: {
+                    ...params.slotProps.input,
+                    endAdornment: (
+                      <>
+                        {contactsLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.slotProps.input.endAdornment}
+                      </>
+                    ),
+                  },
                 }}
               />
             )}
-            renderTags={(value, getTagProps) =>
+            renderValue={(value, getItemProps) =>
               value.map((contact, index) => (
                 <Chip
                   label={contactLabel(contact)}
-                  {...getTagProps({ index })}
+                  {...getItemProps({ index })}
                   size="small"
                   key={contact.uid}
                 />

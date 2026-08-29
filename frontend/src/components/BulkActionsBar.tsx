@@ -83,7 +83,9 @@ export default function BulkActionsBar({
             indeterminate={selectedCount > 0 && !allSelected}
             disabled={busy || loadedCount === 0}
             onChange={onSelectAll}
-            inputProps={{ 'aria-label': t('bulk.selectAll') }}
+            slotProps={{
+              input: { 'aria-label': t('bulk.selectAll') },
+            }}
           />
         }
         label={t('bulk.selectAll')}

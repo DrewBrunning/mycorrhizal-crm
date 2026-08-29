@@ -376,13 +376,24 @@ export default function ImportContactsDialog({
             'Drag and drop a CSV or VCF file here, or click to select',
           )}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+          }}
+        >
           {t(
             'contacts.import.upload.supportedFormats',
             'Supported formats: CSV (spreadsheet), VCF (vCard)',
           )}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+            mt: 0.5,
+          }}
+        >
           {t('contacts.import.upload.maxSize', 'Maximum file size: 50MB (VCF) / 20MB (CSV)')}
         </Typography>
       </Box>
@@ -417,7 +428,13 @@ export default function ImportContactsDialog({
 
     return (
       <Box>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+            mb: 2,
+          }}
+        >
           {t(
             'contacts.import.mapping.description',
             "Match your CSV columns to contact fields. Columns marked 'Ignore' will not be imported.",
@@ -448,16 +465,23 @@ export default function ImportContactsDialog({
                   // biome-ignore lint/suspicious/noArrayIndexKey: import column mappings, no stable id
                   <TableRow key={index}>
                     <TableCell>
-                      <Typography variant="body2" fontWeight="medium">
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 'medium',
+                        }}
+                      >
                         {mapping.csv_column}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Typography
                         variant="body2"
-                        color="text.secondary"
                         noWrap
-                        sx={{ maxWidth: 150 }}
+                        sx={{
+                          color: 'text.secondary',
+                          maxWidth: 150,
+                        }}
                       >
                         {uploadResponse.sample_data[0]?.[index] || '-'}
                       </Typography>
@@ -582,7 +606,13 @@ export default function ImportContactsDialog({
             )}
           </Typography>
         ) : (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+              mb: 1,
+            }}
+          >
             {t(
               'contacts.import.preview.noConflicts',
               'No duplicate matches — everything below will be added as new.',
@@ -646,7 +676,11 @@ export default function ImportContactsDialog({
               count: importResult.updated,
             })}
           </Typography>
-          <Typography color="text.secondary">
+          <Typography
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {t('contacts.import.result.skipped', '{{count}} rows skipped', {
               count: importResult.skipped,
             })}
@@ -827,7 +861,13 @@ function ImportMergeDiffSummary({ diff }: { diff: ImportMergeDiff }) {
   const added = diff.added ?? [];
   if (updated.length === 0 && added.length === 0) {
     return (
-      <Typography variant="caption" color="text.secondary" display="block">
+      <Typography
+        variant="caption"
+        sx={{
+          color: 'text.secondary',
+          display: 'block',
+        }}
+      >
         {t('contacts.import.preview.noDiff', 'No changes — the records already match.')}
       </Typography>
     );
@@ -838,8 +878,15 @@ function ImportMergeDiffSummary({ diff }: { diff: ImportMergeDiff }) {
         {t('contacts.import.preview.diffTitle', 'Will merge:')}
       </Typography>
       {added.map((a, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: import diff rows, no stable id
-        <Typography key={`added-${i}`} variant="caption" display="block" color="text.secondary">
+        <Typography
+          // biome-ignore lint/suspicious/noArrayIndexKey: import diff rows, no stable id
+          key={`added-${i}`}
+          variant="caption"
+          sx={{
+            display: 'block',
+            color: 'text.secondary',
+          }}
+        >
           {t('contacts.import.preview.diffAdded', '+ new {{kind}}: {{value}}', {
             kind: t(
               `contacts.import.preview.kind.${a.kind}`,
@@ -850,8 +897,15 @@ function ImportMergeDiffSummary({ diff }: { diff: ImportMergeDiff }) {
         </Typography>
       ))}
       {updated.map((u, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: import diff rows, no stable id
-        <Typography key={`updated-${i}`} variant="caption" display="block" color="text.secondary">
+        <Typography
+          // biome-ignore lint/suspicious/noArrayIndexKey: import diff rows, no stable id
+          key={`updated-${i}`}
+          variant="caption"
+          sx={{
+            display: 'block',
+            color: 'text.secondary',
+          }}
+        >
           {t('contacts.import.preview.diffUpdated', '{{label}}: {{old}} → {{new}}', {
             label: u.label,
             old: u.old || '—',
@@ -918,7 +972,12 @@ function ImportRowCard({
             {name}
           </Typography>
           {sub && (
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {sub}
             </Typography>
           )}
@@ -926,14 +985,27 @@ function ImportRowCard({
           {hasErrors ? (
             <Box>
               {row.validation_errors.map((e, i) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: validation error strings, no stable id
-                <Typography key={i} variant="caption" color="error" display="block">
+                <Typography
+                  // biome-ignore lint/suspicious/noArrayIndexKey: validation error strings, no stable id
+                  key={i}
+                  variant="caption"
+                  color="error"
+                  sx={{
+                    display: 'block',
+                  }}
+                >
                   {e}
                 </Typography>
               ))}
             </Box>
           ) : row.duplicate_match ? (
-            <Typography variant="caption" sx={{ color: 'warning.main' }} display="block">
+            <Typography
+              variant="caption"
+              sx={{
+                display: 'block',
+                color: 'warning.main',
+              }}
+            >
               {t('contacts.import.preview.duplicateOf', 'Matches: {{name}} ({{reason}})', {
                 name: [
                   row.duplicate_match.existing_firstname,
@@ -946,7 +1018,13 @@ function ImportRowCard({
               })}
             </Typography>
           ) : row.batch_duplicate_of !== null ? (
-            <Typography variant="caption" sx={{ color: 'warning.main' }} display="block">
+            <Typography
+              variant="caption"
+              sx={{
+                display: 'block',
+                color: 'warning.main',
+              }}
+            >
               {t(
                 'contacts.import.preview.batchDuplicateOf',
                 'Duplicates row {{row}} of this import',
@@ -956,7 +1034,13 @@ function ImportRowCard({
               )}
             </Typography>
           ) : (
-            <Typography variant="caption" sx={{ color: 'success.main' }} display="block">
+            <Typography
+              variant="caption"
+              sx={{
+                display: 'block',
+                color: 'success.main',
+              }}
+            >
               {t('contacts.import.preview.newContact', 'New contact — no match found')}
             </Typography>
           )}

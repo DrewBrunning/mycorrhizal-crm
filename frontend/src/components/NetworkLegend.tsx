@@ -108,7 +108,12 @@ export default function NetworkLegend({
               }}
             />
           )}
-          <Typography variant="caption" color="text.secondary">
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {item.label}
           </Typography>
         </Box>

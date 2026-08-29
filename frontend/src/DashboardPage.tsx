@@ -306,7 +306,13 @@ function DashboardPage() {
         <Box>
           <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
             <StarIcon color="primary" fontSize="small" />
-            <Typography variant="subtitle1" component="h2" fontWeight={500}>
+            <Typography
+              variant="subtitle1"
+              component="h2"
+              sx={{
+                fontWeight: 500,
+              }}
+            >
               {t('dashboard.favorites')}
             </Typography>
             <IconButton
@@ -331,7 +337,12 @@ function DashboardPage() {
           {favoriteContacts.length === 0 ? (
             <Card>
               <CardContent sx={{ py: 2 }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: 'text.secondary',
+                  }}
+                >
                   {t('dashboard.noFavorites')}
                 </Typography>
               </CardContent>
@@ -361,7 +372,12 @@ function DashboardPage() {
                         {contact.firstname.charAt(0)}
                       </Avatar>
                       <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant="body2" fontWeight={500}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 500,
+                          }}
+                        >
                           {getContactName(contact)}
                         </Typography>
                         {(circleNamesByUid.get(contact.uid || '') || []).length > 0 && (
@@ -393,7 +409,13 @@ function DashboardPage() {
         <Box>
           <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
             <CakeIcon color="primary" fontSize="small" />
-            <Typography variant="subtitle1" component="h2" fontWeight={500}>
+            <Typography
+              variant="subtitle1"
+              component="h2"
+              sx={{
+                fontWeight: 500,
+              }}
+            >
               {t('dashboard.upcomingBirthdays')}
             </Typography>
             <IconButton
@@ -418,7 +440,12 @@ function DashboardPage() {
           {birthdays.length === 0 ? (
             <Card>
               <CardContent sx={{ py: 2 }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: 'text.secondary',
+                  }}
+                >
                   {t('dashboard.noBirthdays')}
                 </Typography>
               </CardContent>
@@ -454,10 +481,20 @@ function DashboardPage() {
                           {birthday.name.charAt(0)}
                         </Avatar>
                         <Box sx={{ flexGrow: 1 }}>
-                          <Typography variant="body2" fontWeight={500}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 500,
+                            }}
+                          >
                             {birthday.name}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: 'text.secondary',
+                            }}
+                          >
                             {formatBirthday(birthday.birthday)}
                           </Typography>
                         </Box>
@@ -474,7 +511,13 @@ function DashboardPage() {
         <Box>
           <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
             <NotificationsIcon color="primary" fontSize="small" />
-            <Typography variant="subtitle1" component="h2" fontWeight={500}>
+            <Typography
+              variant="subtitle1"
+              component="h2"
+              sx={{
+                fontWeight: 500,
+              }}
+            >
               {t('dashboard.upcomingReminders')}
             </Typography>
             <IconButton
@@ -499,7 +542,12 @@ function DashboardPage() {
           {upcomingReminders.length === 0 ? (
             <Card>
               <CardContent sx={{ py: 2 }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: 'text.secondary',
+                  }}
+                >
                   {t('dashboard.noReminders')}
                 </Typography>
               </CardContent>
@@ -531,7 +579,12 @@ function DashboardPage() {
                             {reminder.message}
                           </Typography>
                           {reminder.contact_name && (
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: 'text.secondary',
+                              }}
+                            >
                               {reminder.contact_name}
                             </Typography>
                           )}
@@ -626,7 +679,13 @@ function DashboardPage() {
         <Box>
           <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
             <ShuffleIcon color="primary" fontSize="small" />
-            <Typography variant="subtitle1" component="h2" fontWeight={500}>
+            <Typography
+              variant="subtitle1"
+              component="h2"
+              sx={{
+                fontWeight: 500,
+              }}
+            >
               {t('dashboard.randomContacts')}
             </Typography>
             <IconButton
@@ -651,7 +710,12 @@ function DashboardPage() {
           {randomContacts.length === 0 ? (
             <Card>
               <CardContent sx={{ py: 2 }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: 'text.secondary',
+                  }}
+                >
                   {t('dashboard.noContacts')}
                 </Typography>
               </CardContent>
@@ -681,7 +745,12 @@ function DashboardPage() {
                         {contact.firstname.charAt(0)}
                       </Avatar>
                       <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant="body2" fontWeight={500}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 500,
+                          }}
+                        >
                           {getContactName(contact)}
                         </Typography>
                         {(circleNamesByUid.get(contact.uid || '') || []).length > 0 && (

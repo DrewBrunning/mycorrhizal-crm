@@ -66,7 +66,13 @@ export default function SpeakToAsEditor({ value, onChange }: SpeakToAsEditorProp
         {pronouns.map((p, index) => (
           <Paper key={pronounKeys.keyAt(index)} variant="outlined" sx={{ p: 1.5 }}>
             <Stack spacing={1}>
-              <Stack direction="row" spacing={1} alignItems="center">
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  alignItems: 'center',
+                }}
+              >
                 <TextField
                   label={t('contacts.speakToAs.pronouns')}
                   size="small"
@@ -111,7 +117,13 @@ export default function SpeakToAsEditor({ value, onChange }: SpeakToAsEditorProp
       <Stack spacing={1} sx={{ mt: 0.5 }}>
         {genders.map((g, index) => (
           <Paper key={genderKeys.keyAt(index)} variant="outlined" sx={{ p: 1.5 }}>
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: 'center',
+              }}
+            >
               <TextField
                 select
                 label={t('contacts.speakToAs.grammaticalGender')}

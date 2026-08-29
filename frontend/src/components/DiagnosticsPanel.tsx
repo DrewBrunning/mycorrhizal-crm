@@ -46,12 +46,25 @@ export default function DiagnosticsPanel() {
 
   return (
     <Paper sx={{ p: 1.5, mb: 2 }}>
-      <Box display="flex" alignItems="center" justifyContent="space-between" gap={1} sx={{ mb: 1 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+          mb: 1,
+        }}
+      >
         <Box>
           <Typography variant="subtitle1" component="h2">
             {t('diagnostics.title')}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {t('diagnostics.description')}
           </Typography>
         </Box>
@@ -75,7 +88,14 @@ export default function DiagnosticsPanel() {
 
       {data && (
         <Box data-testid="diagnostics-result">
-          <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              mb: 1,
+            }}
+          >
             <Chip
               size="small"
               color={STATUS_COLORS[data.summary.status]}
@@ -133,7 +153,13 @@ function CheckRow({ check }: { check: DiagnosticCheck }) {
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
           {isKnown ? t(`diagnostics.checks.${check.name}`) : check.name}
         </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: 'text.secondary',
+            wordBreak: 'break-word',
+          }}
+        >
           {check.message}
         </Typography>
       </Box>

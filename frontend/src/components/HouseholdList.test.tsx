@@ -90,6 +90,33 @@ test('Add Member reveals the contact search autocomplete', () => {
   vi.unstubAllGlobals();
 });
 
+test('shows a loading spinner in the member search while contacts are being fetched', async () => {
+  let resolveFetch!: (r: Response) => void;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockReturnValue(
+      new Promise<Response>((resolve) => {
+        resolveFetch = resolve;
+      }),
+    ),
+  );
+
+  renderList();
+  fireEvent.click(screen.getByRole('button', { name: 'Add Member' }));
+
+  const searchBox = screen.getByPlaceholderText('Search contacts…');
+  fireEvent.change(searchBox, { target: { value: 'ali' } });
+
+  await screen.findByRole('progressbar');
+
+  resolveFetch({
+    ok: true,
+    json: async () => ({ contacts: [], total: 0, page: 1, limit: 40 }),
+  } as Response);
+
+  vi.unstubAllGlobals();
+});
+
 test('changing a member role calls onRoleChange', async () => {
   const onRoleChange = vi.fn();
   renderList({ onRoleChange });

@@ -35,12 +35,25 @@ export default function NotificationHealthPanel() {
 
   return (
     <Paper sx={{ p: 1.5, mb: 2 }}>
-      <Box display="flex" alignItems="center" justifyContent="space-between" gap={1} sx={{ mb: 1 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+          mb: 1,
+        }}
+      >
         <Box>
           <Typography variant="subtitle1" component="h2">
             {t('notificationHealth.title')}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {t('notificationHealth.description')}
           </Typography>
         </Box>
@@ -96,7 +109,14 @@ function ChannelCard({ health }: { health: NotificationChannelHealth }) {
         gap: 0.5,
       }}
     >
-      <Box display="flex" alignItems="center" justifyContent="space-between" gap={1}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+        }}
+      >
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
           {t(`notificationHealth.channels.${health.channel}`)}
         </Typography>
@@ -114,15 +134,30 @@ function ChannelCard({ health }: { health: NotificationChannelHealth }) {
       )}
 
       {health.status === 'no_devices' && (
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+          }}
+        >
           {t('notificationHealth.noDevicesHint')}
         </Typography>
       )}
 
-      <Typography variant="caption" color="text.secondary">
+      <Typography
+        variant="caption"
+        sx={{
+          color: 'text.secondary',
+        }}
+      >
         {t('notificationHealth.enabledUsers')}: {health.enabled_user_count}
       </Typography>
-      <Typography variant="caption" color="text.secondary">
+      <Typography
+        variant="caption"
+        sx={{
+          color: 'text.secondary',
+        }}
+      >
         {t('notificationHealth.deliveredCount', {
           delivered: health.delivered_count,
           attempted: health.attempted_count,
@@ -131,22 +166,42 @@ function ChannelCard({ health }: { health: NotificationChannelHealth }) {
 
       {health.channel === 'push' && (
         <>
-          <Typography variant="caption" color="text.secondary">
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {t('notificationHealth.deviceCount', { n: health.device_count })}
           </Typography>
           {health.fcm_configured && (
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('notificationHealth.fcmConfigured')}
             </Typography>
           )}
         </>
       )}
 
-      <Typography variant="caption" color="text.secondary">
+      <Typography
+        variant="caption"
+        sx={{
+          color: 'text.secondary',
+        }}
+      >
         {t('notificationHealth.lastSuccess')}:{' '}
         {formatDateTime(health.last_sent_at) ?? t('notificationHealth.never')}
       </Typography>
-      <Typography variant="caption" color="text.secondary">
+      <Typography
+        variant="caption"
+        sx={{
+          color: 'text.secondary',
+        }}
+      >
         {t('notificationHealth.lastFailure')}:{' '}
         {formatDateTime(health.last_failed_at) ?? t('notificationHealth.never')}
       </Typography>

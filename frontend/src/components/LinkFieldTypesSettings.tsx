@@ -156,7 +156,12 @@ export default function LinkFieldTypesSettings() {
           <Divider sx={{ mb: 1.5 }} />
 
           <Stack spacing={1.5}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('settings.linkFieldTypes.description')}
             </Typography>
 
@@ -167,11 +172,22 @@ export default function LinkFieldTypesSettings() {
             )}
 
             {loading ? (
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                }}
+              >
                 {t('settings.linkFieldTypes.loading')}
               </Typography>
             ) : linkFieldTypes.length === 0 ? (
-              <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                  fontStyle: 'italic',
+                }}
+              >
                 {t('settings.linkFieldTypes.empty')}
               </Typography>
             ) : (
@@ -230,8 +246,6 @@ export default function LinkFieldTypesSettings() {
                         <path d={resolveLinkFieldTypeIcon(lt.icon)} />
                       </SvgIcon>
                       <ListItemText
-                        primaryTypographyProps={{ component: 'div' }}
-                        secondaryTypographyProps={{ component: 'div' }}
                         primary={
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -247,10 +261,19 @@ export default function LinkFieldTypesSettings() {
                           </Box>
                         }
                         secondary={
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: 'text.secondary',
+                            }}
+                          >
                             {lt.protocol || t('settings.linkFieldTypes.noProtocol')}
                           </Typography>
                         }
+                        slotProps={{
+                          primary: { component: 'div' },
+                          secondary: { component: 'div' },
+                        }}
                       />
                     </ListItem>
                   ))}

@@ -284,8 +284,11 @@ export default function ContactHeader({
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
                   <Typography
                     variant="overline"
-                    color="text.secondary"
-                    sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}
+                    sx={{
+                      color: 'text.secondary',
+                      letterSpacing: 0.08,
+                      fontSize: '0.72rem',
+                    }}
                   >
                     {t('contactDetail.section.metadata')}
                   </Typography>
@@ -829,7 +832,13 @@ export default function ContactHeader({
                   </Box>
                 )}
                 {kind === 'animal' && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: 'text.secondary',
+                      mt: 0.25,
+                    }}
+                  >
                     {t(`contactDetail.${kind}`)}
                   </Typography>
                 )}
@@ -841,7 +850,12 @@ export default function ContactHeader({
             <Box sx={{ mt: 1, '&:hover .edit-icon, &:focus-within .edit-icon': { opacity: 1 } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                 <GroupIcon fontSize="small" color="action" />
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: 'text.secondary',
+                  }}
+                >
                   {t('contactDetail.circles')}
                 </Typography>
                 {/* T89: ml:1 + flexShrink:0, matching the Name field's pencil
@@ -869,7 +883,15 @@ export default function ContactHeader({
 
               {editingCircles ? (
                 <Box>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mb: 1 }}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                      flexWrap: 'wrap',
+                      gap: 1,
+                      mb: 1,
+                    }}
+                  >
                     {contactCircles.length > 0 ? (
                       contactCircles.map((c) => (
                         <Chip
@@ -881,12 +903,25 @@ export default function ContactHeader({
                         />
                       ))
                     ) : (
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: 'text.secondary',
+                        }}
+                      >
                         {t('contactDetail.noCircles')}
                       </Typography>
                     )}
                   </Stack>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mt: 1 }}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                      flexWrap: 'wrap',
+                      gap: 1,
+                      mt: 1,
+                    }}
+                  >
                     <Autocomplete
                       size="small"
                       options={allCircles.filter(
@@ -940,13 +975,25 @@ export default function ContactHeader({
                   </Stack>
                 </Box>
               ) : (
-                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    flexWrap: 'wrap',
+                    gap: 1,
+                  }}
+                >
                   {contactCircles.length > 0 ? (
                     contactCircles.map((c) => (
                       <Chip key={c.id} label={c.name} size="small" icon={<GroupIcon />} />
                     ))
                   ) : (
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: 'text.secondary',
+                      }}
+                    >
                       {t('contactDetail.noCircles')}
                     </Typography>
                   )}
@@ -959,7 +1006,12 @@ export default function ContactHeader({
             <Box sx={{ mt: 1.5, '&:hover .edit-icon, &:focus-within .edit-icon': { opacity: 1 } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                 <LocalOfferIcon fontSize="small" color="action" />
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: 'text.secondary',
+                  }}
+                >
                   {t('contactDetail.tags')}
                 </Typography>
                 {/* T89: see the circles pencil above. */}
@@ -984,7 +1036,15 @@ export default function ContactHeader({
 
               {editingTags ? (
                 <Box>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mb: 1 }}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                      flexWrap: 'wrap',
+                      gap: 1,
+                      mb: 1,
+                    }}
+                  >
                     {contactTags.length > 0 ? (
                       contactTags.map((t) => (
                         <Chip
@@ -996,12 +1056,25 @@ export default function ContactHeader({
                         />
                       ))
                     ) : (
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: 'text.secondary',
+                        }}
+                      >
                         {t('contactDetail.noTags')}
                       </Typography>
                     )}
                   </Stack>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mt: 1 }}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                      flexWrap: 'wrap',
+                      gap: 1,
+                      mt: 1,
+                    }}
+                  >
                     <Autocomplete
                       size="small"
                       options={allTags.filter((t) => !contactTags.find((ct) => ct.id === t.id))}
@@ -1053,13 +1126,25 @@ export default function ContactHeader({
                   </Stack>
                 </Box>
               ) : (
-                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    flexWrap: 'wrap',
+                    gap: 1,
+                  }}
+                >
                   {contactTags.length > 0 ? (
                     contactTags.map((t) => (
                       <Chip key={t.id} label={t.name} size="small" icon={<LocalOfferIcon />} />
                     ))
                   ) : (
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: 'text.secondary',
+                      }}
+                    >
                       {t('contactDetail.noTags')}
                     </Typography>
                   )}

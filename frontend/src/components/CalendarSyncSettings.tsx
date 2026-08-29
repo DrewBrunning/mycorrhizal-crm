@@ -228,7 +228,14 @@ export default function CalendarSyncSettings() {
           })
         : t('settings.calendarSync.healthNeverSucceeded');
       return (
-        <Typography variant="caption" color="error" component="span" display="block">
+        <Typography
+          variant="caption"
+          color="error"
+          component="span"
+          sx={{
+            display: 'block',
+          }}
+        >
           {t('settings.calendarSync.healthFailing', {
             since,
             count: cal.consecutive_failures,
@@ -239,7 +246,14 @@ export default function CalendarSyncSettings() {
     }
     if (cal.last_sync_status === 'success' && Object.keys(cal.last_run_stats).length > 0) {
       return (
-        <Typography variant="caption" color="text.secondary" component="span" display="block">
+        <Typography
+          variant="caption"
+          component="span"
+          sx={{
+            color: 'text.secondary',
+            display: 'block',
+          }}
+        >
           {t('settings.calendarSync.healthLastRun', {
             created: cal.last_run_stats.created ?? 0,
             updated: cal.last_run_stats.updated ?? 0,
@@ -277,7 +291,12 @@ export default function CalendarSyncSettings() {
           <Divider sx={{ mb: 1.5 }} />
 
           <Stack spacing={1.5}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('settings.calendarSync.description')}
             </Typography>
             {error && (
@@ -296,7 +315,13 @@ export default function CalendarSyncSettings() {
                 <CircularProgress size={24} />
               </Box>
             ) : calendars.length === 0 ? (
-              <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                  fontStyle: 'italic',
+                }}
+              >
                 {t('settings.calendarSync.empty')}
               </Typography>
             ) : (
@@ -342,7 +367,13 @@ export default function CalendarSyncSettings() {
                   >
                     <ListItemText
                       primary={
-                        <Stack direction="row" spacing={1} alignItems="center">
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          sx={{
+                            alignItems: 'center',
+                          }}
+                        >
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
                             {cal.name}
                           </Typography>
@@ -370,9 +401,11 @@ export default function CalendarSyncSettings() {
                         <>
                           <Typography
                             variant="caption"
-                            color="text.secondary"
                             component="span"
-                            display="block"
+                            sx={{
+                              color: 'text.secondary',
+                              display: 'block',
+                            }}
                           >
                             {cal.url} — {formatLastSync(cal)}
                           </Typography>
@@ -457,16 +490,20 @@ export default function CalendarSyncSettings() {
                 type="number"
                 value={form.past_days}
                 onChange={(e) => setForm((prev) => ({ ...prev, past_days: e.target.value }))}
-                inputProps={{ min: 0, max: 3650 }}
                 size="small"
+                slotProps={{
+                  htmlInput: { min: 0, max: 3650 },
+                }}
               />
               <TextField
                 label={t('settings.calendarSync.futureDays')}
                 type="number"
                 value={form.future_days}
                 onChange={(e) => setForm((prev) => ({ ...prev, future_days: e.target.value }))}
-                inputProps={{ min: 0, max: 3650 }}
                 size="small"
+                slotProps={{
+                  htmlInput: { min: 0, max: 3650 },
+                }}
               />
             </Box>
             <FormControlLabel

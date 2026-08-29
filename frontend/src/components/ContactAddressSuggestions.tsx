@@ -95,7 +95,14 @@ export default function ContactAddressSuggestions({ loadKey }: ContactAddressSug
   return (
     <Box sx={{ mt: 2 }}>
       <Divider sx={{ mb: 1.5 }} />
-      <Typography variant="subtitle2" component="h3" color="text.secondary" sx={{ mb: 1 }}>
+      <Typography
+        variant="subtitle2"
+        component="h3"
+        sx={{
+          color: 'text.secondary',
+          mb: 1,
+        }}
+      >
         {t('settings.data.propose.addressSuggestionsTitle')}
       </Typography>
       {success && !loading && (
@@ -134,7 +141,13 @@ export default function ContactAddressSuggestions({ loadKey }: ContactAddressSug
                   <Typography variant="body2" noWrap>
                     {suggestion.contact_name}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" noWrap>
+                  <Typography
+                    variant="body2"
+                    noWrap
+                    sx={{
+                      color: 'text.secondary',
+                    }}
+                  >
                     {formatSuggestionAddress(suggestion.address)}
                   </Typography>
                   <Chip

@@ -89,7 +89,14 @@ export default function ImmichPersonSearchDialog({
         {loading && <CircularProgress size={24} />}
         {!loading && error && <Alert severity="error">{error}</Alert>}
         {!loading && !error && filtered.length === 0 && (
-          <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+              py: 2,
+              textAlign: 'center',
+            }}
+          >
             {t('immich.search.noMatches')}
           </Typography>
         )}

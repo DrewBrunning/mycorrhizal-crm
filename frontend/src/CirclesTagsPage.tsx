@@ -66,7 +66,7 @@ export default function CirclesTagsPage() {
       <Typography variant="h5" component="h1" gutterBottom>
         {t('circlesTags.title')}
       </Typography>
-      <Typography variant="body2" color="text.secondary" paragraph>
+      <Typography variant="body2" sx={{ marginBottom: '16px', color: 'text.secondary' }}>
         {t('circlesTags.description')}
       </Typography>
 

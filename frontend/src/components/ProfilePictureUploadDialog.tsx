@@ -269,16 +269,31 @@ export default function ProfilePictureUploadDialog({
                 aria-label={t('profilePicture.selectImage')}
               />
               <CloudUploadIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
-              <Typography variant="h6" color="text.secondary">
+              <Typography
+                variant="h6"
+                sx={{
+                  color: 'text.secondary',
+                }}
+              >
                 {t('profilePicture.selectImage')}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                }}
+              >
                 {t('profilePicture.dragOrClick')}
               </Typography>
             </Box>
 
             <Divider sx={{ my: 3 }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                }}
+              >
                 {t('profilePicture.or')}
               </Typography>
             </Divider>
@@ -297,8 +312,10 @@ export default function ProfilePictureUploadDialog({
                     handleFetchFromUrl();
                   }
                 }}
-                InputProps={{
-                  startAdornment: <LinkIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                slotProps={{
+                  input: {
+                    startAdornment: <LinkIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                  },
                 }}
               />
               <Button
@@ -314,7 +331,12 @@ export default function ProfilePictureUploadDialog({
             {immich && (
               <>
                 <Divider sx={{ my: 3 }}>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: 'text.secondary',
+                    }}
+                  >
                     {t('profilePicture.or')}
                   </Typography>
                 </Divider>

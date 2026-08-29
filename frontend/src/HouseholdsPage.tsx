@@ -224,7 +224,7 @@ export default function HouseholdsPage() {
           </Button>
         </Stack>
       </Box>
-      <Typography variant="body2" color="text.secondary" paragraph>
+      <Typography variant="body2" sx={{ marginBottom: '16px', color: 'text.secondary' }}>
         {t('household.description')}
       </Typography>
 

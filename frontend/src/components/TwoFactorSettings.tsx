@@ -169,7 +169,12 @@ export default function TwoFactorSettings() {
           <CircularProgress size={24} />
         ) : enabled === false ? (
           <Stack spacing={1}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('settings.twoFactor.description')}
             </Typography>
             <Box>
@@ -197,7 +202,12 @@ export default function TwoFactorSettings() {
             <Alert severity="success" sx={{ py: 0 }}>
               {t('settings.twoFactor.enabledBadge')}
             </Alert>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('settings.twoFactor.enabledDescription')}
             </Typography>
             <Stack direction="row" spacing={1}>
@@ -227,7 +237,12 @@ export default function TwoFactorSettings() {
         <DialogTitle>{t('settings.twoFactor.setup.title')}</DialogTitle>
         <DialogContent>
           <Stack spacing={2}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('settings.twoFactor.setup.description')}
             </Typography>
             {setupUrl && (
@@ -238,10 +253,12 @@ export default function TwoFactorSettings() {
             <TextField
               label={t('settings.twoFactor.setup.manualKey')}
               value={setupSecret}
-              InputProps={{ readOnly: true }}
               size="small"
               fullWidth
-              inputProps={{ style: { fontFamily: 'monospace' } }}
+              slotProps={{
+                input: { readOnly: true },
+                htmlInput: { style: { fontFamily: 'monospace' } },
+              }}
             />
             <form onSubmit={handleConfirm}>
               <Stack spacing={1.5}>
@@ -297,7 +314,12 @@ export default function TwoFactorSettings() {
         <DialogContent>
           <form onSubmit={submitAction}>
             <Stack spacing={1.5}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                }}
+              >
                 {action === 'disable'
                   ? t('settings.twoFactor.disable.description')
                   : t('settings.twoFactor.regenerate.description')}
@@ -342,7 +364,13 @@ export default function TwoFactorSettings() {
           <Alert severity="warning" sx={{ mb: 2 }}>
             {t('settings.twoFactor.recovery.warning')}
           </Alert>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+              mb: 1,
+            }}
+          >
             {t('settings.twoFactor.recovery.description')}
           </Typography>
           <Box

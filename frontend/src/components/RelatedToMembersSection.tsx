@@ -30,7 +30,12 @@ export default function RelatedToMembersSection({ card }: RelatedToMembersSectio
       <Stack spacing={1}>
         {relatedTo.length > 0 && (
           <Box>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('contacts.relatedToMembers.relatedTo')}
             </Typography>
             {relatedTo.map((r, i) => (
@@ -48,7 +53,12 @@ export default function RelatedToMembersSection({ card }: RelatedToMembersSectio
         )}
         {members.length > 0 && (
           <Box>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('contacts.relatedToMembers.members')}
             </Typography>
             {members.map((m, i) => (

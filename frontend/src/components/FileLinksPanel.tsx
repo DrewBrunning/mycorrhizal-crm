@@ -116,8 +116,10 @@ export default function FileLinksPanel({
                 </Typography>
                 <Typography
                   variant="caption"
-                  color="text.secondary"
-                  sx={{ overflowWrap: 'anywhere' }}
+                  sx={{
+                    color: 'text.secondary',
+                    overflowWrap: 'anywhere',
+                  }}
                 >
                   {identitySubtitle(identity, t, formatDate)}
                 </Typography>
@@ -141,8 +143,11 @@ export default function FileLinksPanel({
                   // shown as text, never as an href (T41).
                   <Typography
                     variant="caption"
-                    color="text.secondary"
-                    sx={{ maxWidth: 180, overflowWrap: 'anywhere' }}
+                    sx={{
+                      color: 'text.secondary',
+                      maxWidth: 180,
+                      overflowWrap: 'anywhere',
+                    }}
                   >
                     {identity.url}
                   </Typography>

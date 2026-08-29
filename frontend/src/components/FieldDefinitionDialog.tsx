@@ -277,7 +277,9 @@ export default function FieldDefinitionDialog({
                     key={enumRowKeys.keyAt(index)}
                     direction="row"
                     spacing={1}
-                    alignItems="center"
+                    sx={{
+                      alignItems: 'center',
+                    }}
                   >
                     <TextField
                       size="small"

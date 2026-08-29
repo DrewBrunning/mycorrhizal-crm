@@ -77,7 +77,12 @@ export default function ContactFieldSettings() {
         <Divider sx={{ mb: 1.5 }} />
 
         <Stack spacing={1.5}>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {t('settings.contactFields.description')}
           </Typography>
 
@@ -88,7 +93,12 @@ export default function ContactFieldSettings() {
           )}
 
           {loading ? (
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('settings.contactFields.loading')}
             </Typography>
           ) : (
@@ -97,7 +107,12 @@ export default function ContactFieldSettings() {
               if (fields.length === 0) return null;
               return (
                 <Box key={group}>
-                  <Typography variant="overline" color="text.secondary">
+                  <Typography
+                    variant="overline"
+                    sx={{
+                      color: 'text.secondary',
+                    }}
+                  >
                     {t(`settings.contactFields.groups.${group}`)}
                   </Typography>
                   <Stack>

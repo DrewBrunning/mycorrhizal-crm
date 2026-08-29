@@ -37,7 +37,13 @@ export default function OverdueCadenceList({ overdue, loading, error }: OverdueC
     <Box>
       <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
         <WarningIcon color="warning" fontSize="small" />
-        <Typography variant="subtitle1" component="h2" fontWeight={500}>
+        <Typography
+          variant="subtitle1"
+          component="h2"
+          sx={{
+            fontWeight: 500,
+          }}
+        >
           {t('cadence.overdueTitle')}
         </Typography>
       </Box>
@@ -49,7 +55,12 @@ export default function OverdueCadenceList({ overdue, loading, error }: OverdueC
       ) : overdue.length === 0 ? (
         <Card>
           <CardContent sx={{ py: 2 }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('cadence.noOverdue')}
             </Typography>
           </CardContent>
@@ -81,11 +92,21 @@ export default function OverdueCadenceList({ overdue, loading, error }: OverdueC
                     {(item.contact_name || item.policy.entity_id).charAt(0).toUpperCase()}
                   </Avatar>
                   <Box sx={{ flexGrow: 1 }}>
-                    <Typography variant="body2" fontWeight={500}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 500,
+                      }}
+                    >
                       {item.contact_name || t('cadence.unknownContact')}
                     </Typography>
                     {item.health.next_due && (
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: 'text.secondary',
+                        }}
+                      >
                         {t('cadence.dueOn', { date: formatDate(item.health.next_due) })}
                       </Typography>
                     )}

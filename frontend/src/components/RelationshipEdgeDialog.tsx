@@ -258,7 +258,12 @@ export default function RelationshipEdgeDialog({
 
           {isEditing && (
             <Box>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                }}
+              >
                 {otherPartyContact ? (
                   <Link component={RouterLink} to={`/contacts/${otherPartyContact.ID}`}>
                     {otherPartyLabel}
@@ -267,7 +272,12 @@ export default function RelationshipEdgeDialog({
                   t('relationships.unknownContact')
                 )}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.secondary',
+                }}
+              >
                 {t('relationships.otherPartyReadOnlyHint')}
               </Typography>
             </Box>
@@ -290,14 +300,18 @@ export default function RelationshipEdgeDialog({
                   label={t('relationships.selectContact')}
                   placeholder={t('relationships.searchContacts')}
                   required
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <>
-                        {contactsLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                        {params.InputProps.endAdornment}
-                      </>
-                    ),
+                  slotProps={{
+                    ...params.slotProps,
+
+                    input: {
+                      ...params.slotProps.input,
+                      endAdornment: (
+                        <>
+                          {contactsLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.slotProps.input.endAdornment}
+                        </>
+                      ),
+                    },
                   }}
                 />
               )}

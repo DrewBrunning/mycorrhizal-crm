@@ -47,12 +47,25 @@ export default function SubsystemHealthPanel({
 
   return (
     <Paper sx={{ p: 1.5, mb: 2 }}>
-      <Box display="flex" alignItems="center" justifyContent="space-between" gap={1} sx={{ mb: 1 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+          mb: 1,
+        }}
+      >
         <Box>
           <Typography variant="subtitle1" component="h2">
             {t('subsystemHealth.title')}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {t('subsystemHealth.description')}
           </Typography>
         </Box>
@@ -128,7 +141,14 @@ function SubsystemCard({
         '&:hover': { bgcolor: 'action.hover' },
       }}
     >
-      <Box display="flex" alignItems="center" justifyContent="space-between" gap={1}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+        }}
+      >
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
           {t(`subsystemHealth.subsystems.${health.subsystem}`)}
         </Typography>
@@ -146,18 +166,33 @@ function SubsystemCard({
       )}
 
       {failing && incidentAbs && (
-        <Typography variant="caption" color="text.secondary">
+        <Typography
+          variant="caption"
+          sx={{
+            color: 'text.secondary',
+          }}
+        >
           {t('subsystemHealth.incidentSince', {
             time: incidentRel ? `${incidentAbs} (${incidentRel})` : incidentAbs,
           })}
         </Typography>
       )}
 
-      <Typography variant="caption" color="text.secondary">
+      <Typography
+        variant="caption"
+        sx={{
+          color: 'text.secondary',
+        }}
+      >
         {t('subsystemHealth.lastSuccess')}:{' '}
         {formatDateTime(health.last_success_at) ?? t('subsystemHealth.never')}
       </Typography>
-      <Typography variant="caption" color="text.secondary">
+      <Typography
+        variant="caption"
+        sx={{
+          color: 'text.secondary',
+        }}
+      >
         {t('subsystemHealth.lastFailure')}:{' '}
         {formatDateTime(health.last_failure_at) ?? t('subsystemHealth.never')}
       </Typography>
