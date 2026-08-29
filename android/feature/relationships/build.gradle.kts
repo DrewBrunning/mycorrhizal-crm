@@ -27,4 +27,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     testImplementation(libs.androidx.compose.ui.test.junit4)
+    // Issue #682: the a11y sweep helpers (core:testing), now that the module
+    // has a screen test.
+    testImplementation(project(":core:testing"))
 }

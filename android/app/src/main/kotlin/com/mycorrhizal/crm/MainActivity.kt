@@ -240,16 +240,51 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * Parses a notification deep link (`mycorrhizal://contacts/{id}`) into a NavHost
- * route (`contacts/{id}`). Null when the URI is not a route the app knows — a
- * malformed or foreign link should never drive navigation. Pure and internal so
- * it is unit-testable without an Activity.
+ * Parses a notification deep link (`mycorrhizal://…`) into a NavHost route.
+ * Returns null when the URI is not a route the app knows — a malformed or
+ * foreign link should never drive navigation (ADR-0002: degrade, don't crash).
+ *
+ * Supported today (issue #679), each mapping to a route that actually exists
+ * in the NavHost:
+ *  - `mycorrhizal://home`                            → `home`
+ *  - `mycorrhizal://contacts/{id}`                   → `contacts/{id}`
+ *  - `mycorrhizal://contacts/{id}/activities`        → `contacts/{id}/activities`
+ *  - `mycorrhizal://circles|tags|households/{id}`    → `circles|tags|households/{id}`
+ *
+ * Pure and internal so it is unit-testable without an Activity. The id rules
+ * follow each destination's nav-argument type: contacts/activities take a
+ * positive integer; circles/tags/households take a non-blank string id
+ * (VCardUID). OIDC's `mycorrhizal://oidc/callback` is deliberately not a
+ * navigable route (it is handled before navigation, in [MainActivity]).
  */
 internal fun deepLinkRoute(uri: Uri?): String? {
-    if (uri == null || uri.scheme != "mycorrhizal" || uri.host != "contacts") return null
-    val id = uri.path?.trimStart('/')?.toIntOrNull() ?: return null
+    if (uri == null || uri.scheme != "mycorrhizal") return null
+    val host = uri.host
+    val path = uri.path?.trimStart('/').orEmpty()
+    return when (host) {
+        "home" -> "home"
+        "contacts" -> contactsRoute(path)?.let { "contacts/$it" }
+        "circles", "tags", "households" ->
+            if (path.isNotBlank() && '/' !in path) "$host/$path" else null
+        else -> null
+    }
+}
+
+/**
+ * Deep-link path under `mycorrhizal://contacts/…`. Returns `id` or
+ * `id/activities`; null for a blank/malformed path or an unknown sub-route.
+ */
+private fun contactsRoute(path: String): String? {
+    if (path.isBlank()) return null
+    val segments = path.split('/')
+    if (segments.size > 2) return null
+    val id = segments[0].toIntOrNull() ?: return null
     if (id <= 0) return null
-    return "contacts/$id"
+    return when (segments.size) {
+        1 -> id.toString()
+        2 -> if (segments[1] == "activities") "$id/activities" else null
+        else -> null
+    }
 }
 
 /**

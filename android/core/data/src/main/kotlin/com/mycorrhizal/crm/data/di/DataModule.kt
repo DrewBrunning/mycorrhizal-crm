@@ -57,6 +57,7 @@ import com.mycorrhizal.crm.data.repository.WebhookRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ApiTokenRepositoryImpl
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.SessionDataCleaner
+import com.mycorrhizal.crm.data.session.SessionExpiryWiring
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SessionPrefsStorage
 import com.mycorrhizal.crm.data.session.TokenStorage
@@ -96,6 +97,7 @@ import com.mycorrhizal.crm.domain.repository.UserManagementRepository
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.NetworkFactory
+import com.mycorrhizal.crm.network.SessionExpiryNotifier
 import com.mycorrhizal.crm.network.TokenProvider
 import androidx.room.Room
 import com.squareup.moshi.Moshi
@@ -245,15 +247,25 @@ object DataModule {
 
     @Provides
     @Singleton
+    fun provideSessionExpiryNotifier(): SessionExpiryNotifier = SessionExpiryNotifier()
+
+    @Provides
+    @Singleton
     fun provideSessionManager(
         tokenStorage: TokenStorage,
         prefsStorage: SessionPrefsStorage,
         localDataCleaner: SessionDataCleaner,
+        sessionExpiryNotifier: SessionExpiryNotifier,
     ): DefaultSessionManager {
         val manager = DefaultSessionManager(tokenStorage, prefsStorage, localDataCleaner)
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        // Issue #678: a 401 on any API call must clear the session so the app
+        // lands on the auth flow rather than a stuck or half-rendered screen.
+        // The wiring is a plain class so the behavior is unit-tested.
+        SessionExpiryWiring(sessionExpiryNotifier, manager).start(scope)
         // Hydrate the stored JWT/server URL into memory asynchronously so a
         // returning user is already logged in on launch (H3 review fix).
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { manager.init() }
+        scope.launch { manager.init() }
         return manager
     }
 }

@@ -30,7 +30,6 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -61,6 +60,7 @@ import com.mycorrhizal.crm.model.network.RelationshipEdgeSensitivities
 import com.mycorrhizal.crm.model.network.RelationshipEdgeStatuses
 import com.mycorrhizal.crm.model.network.RelationshipEdgeTypes
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
@@ -91,7 +91,7 @@ fun RelationshipsScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    AccessibleIconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
@@ -314,7 +314,7 @@ private fun RelationshipEdgeRow(
                 enabled = !accepting,
                 label = { Text(stringResource(R.string.relationships_accept)) },
             )
-            IconButton(onClick = { onReject?.invoke() }) {
+            AccessibleIconButton(onClick = { onReject?.invoke() }) {
                 // #205: the row-action label carries the other party's name so
                 // TalkBack doesn't read a bare "Reject" on every row.
                 Icon(
@@ -323,7 +323,7 @@ private fun RelationshipEdgeRow(
                 )
             }
         } else {
-            IconButton(onClick = { onEdit?.invoke() }) {
+            AccessibleIconButton(onClick = { onEdit?.invoke() }) {
                 // #205: the row-action labels carry the other party's name so
                 // TalkBack doesn't read a bare "Edit"/"Delete" on every row.
                 Icon(
@@ -331,7 +331,7 @@ private fun RelationshipEdgeRow(
                     contentDescription = stringResource(R.string.relationships_edit_named, displayName),
                 )
             }
-            IconButton(onClick = { onDelete?.invoke() }) {
+            AccessibleIconButton(onClick = { onDelete?.invoke() }) {
                 Icon(
                     Icons.Outlined.Delete,
                     contentDescription = stringResource(R.string.relationships_delete_named, displayName),
