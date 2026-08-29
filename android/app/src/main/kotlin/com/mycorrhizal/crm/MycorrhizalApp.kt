@@ -171,6 +171,23 @@ private fun isSelected(currentRoute: String?, item: DrawerDestination): Boolean 
 }
 
 /**
+ * Navigation to a top-level destination or deep link: always collapse the
+ * back stack to the start destination with save/restore, single-top. This is
+ * the "natural stack position" contract for both the drawer/rail and for
+ * notification deep links — back from a pushed route returns to the dashboard,
+ * never to a stale intermediate screen or a blank stack (issue #679).
+ * Extracted so the back-stack behavior is unit-testable against a real
+ * [NavHostController].
+ */
+internal fun NavHostController.navigateToRoot(route: String) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
+
+/**
  * Issue #150: whether the route lives inside the contacts workflow — the one
  * section that becomes a two-pane list/detail on expanded widths. `merge` is
  * included because it is part of the contact workflow (reached from the detail
@@ -321,33 +338,7 @@ private fun MainScaffold(
     LaunchedEffect(deepLinks) {
         deepLinks.filterNotNull().collect { uri ->
             deepLinkRoute(uri)?.let { route ->
-                navController.navigate(route) {
-                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                    launchSingleTop = true
-                    restoreState = true
-                }
-            }
-            onDeepLinkHandled()
-        }
-    }
-
-    // M5 §5a (issue #152): registers/deletes this install's FCM device with the
-    // server as the session flips between logged-in and logged-out. Deliberately
-    // not stored: it only reacts to session transitions.
-    hiltViewModel<DeviceRegistrationViewModel>()
-
-    // M5 §6.6 (issue #152): consume notification deep links as they arrive and
-    // drive the NavHost. The session-flow guard means a tap that lands while the
-    // auth tree is up is deferred until a session exists (the link is retained
-    // by the flow until it is consumed).
-    LaunchedEffect(deepLinks) {
-        deepLinks.filterNotNull().collect { uri ->
-            deepLinkRoute(uri)?.let { route ->
-                navController.navigate(route) {
-                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                    launchSingleTop = true
-                    restoreState = true
-                }
+                navController.navigateToRoot(route)
             }
             onDeepLinkHandled()
         }
@@ -381,11 +372,7 @@ private fun MainScaffold(
     // callback serves both frames.
     val onDestinationClick = { route: String ->
         scope.launch { drawerState.close() }
-        navController.navigate(route) {
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
-        }
+        navController.navigateToRoot(route)
     }
     val onMenuClick: () -> Unit = { scope.launch { drawerState.open() } }
 
