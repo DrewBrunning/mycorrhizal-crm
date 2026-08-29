@@ -121,7 +121,13 @@ function GiftSection({
       sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}
     >
       {divider && <Divider />}
-      <Typography variant="subtitle2" component="h3" color="text.secondary">
+      <Typography
+        variant="subtitle2"
+        component="h3"
+        sx={{
+          color: 'text.secondary',
+        }}
+      >
         {title}
       </Typography>
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -143,25 +149,26 @@ function GiftSection({
           disabled={adding}
           slotProps={{
             htmlInput: { 'aria-label': placeholder },
-          }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <RedeemIcon fontSize="small" color="action" />
-              </InputAdornment>
-            ),
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton
-                  size="small"
-                  onClick={handleAdd}
-                  disabled={adding || !draft.trim()}
-                  aria-label={t('gifts.add')}
-                >
-                  <AddIcon />
-                </IconButton>
-              </InputAdornment>
-            ),
+
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <RedeemIcon fontSize="small" color="action" />
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    onClick={handleAdd}
+                    disabled={adding || !draft.trim()}
+                    aria-label={t('gifts.add')}
+                  >
+                    <AddIcon />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            },
           }}
         />
         <Button
@@ -289,8 +296,10 @@ export default function GiftList({
                   // biome-ignore lint/suspicious/noArrayIndexKey: metadata may repeat; composite key needed
                   key={`${m}-${i}`}
                   variant="caption"
-                  color="text.secondary"
-                  sx={{ mr: 0.5 }}
+                  sx={{
+                    color: 'text.secondary',
+                    mr: 0.5,
+                  }}
                 >
                   {m}
                 </Typography>
@@ -320,8 +329,12 @@ export default function GiftList({
             {notes && (
               <Typography
                 variant="body2"
-                color="text.secondary"
-                sx={{ mt: 0.5, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}
+                sx={{
+                  color: 'text.secondary',
+                  mt: 0.5,
+                  overflowWrap: 'anywhere',
+                  whiteSpace: 'pre-wrap',
+                }}
               >
                 {notes}
               </Typography>
@@ -338,7 +351,14 @@ export default function GiftList({
       {items.length === 0 && (
         // First-run hint, shown only while there are no gifts at all; once any
         // gift exists each section's own add row replaces it (T46).
-        <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+            py: 2,
+            textAlign: 'center',
+          }}
+        >
           {t('gifts.empty')}
         </Typography>
       )}

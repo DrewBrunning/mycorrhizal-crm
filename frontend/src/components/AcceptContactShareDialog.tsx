@@ -93,7 +93,12 @@ export default function AcceptContactShareDialog({
       <DialogTitle>{t('contactShares.acceptDialog.title')}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {t('contactShares.acceptDialog.description')}
           </Typography>
 

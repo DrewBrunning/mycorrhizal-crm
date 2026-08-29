@@ -69,7 +69,7 @@ export default function AddressHouseholdSuggestions({
         <Typography variant="h6" component="h2">
           {t('household.addressSuggestions')}
         </Typography>
-        <Typography variant="body2" color="text.secondary" paragraph>
+        <Typography variant="body2" sx={{ marginBottom: '16px', color: 'text.secondary' }}>
           {t('household.addressSuggestionDescription')}
         </Typography>
         <Alert severity="info">{t('household.noAddressSuggestions')}</Alert>
@@ -98,7 +98,7 @@ export default function AddressHouseholdSuggestions({
       <Typography variant="h6" component="h2">
         {t('household.addressSuggestions')}
       </Typography>
-      <Typography variant="body2" color="text.secondary" paragraph>
+      <Typography variant="body2" sx={{ marginBottom: '16px', color: 'text.secondary' }}>
         {t('household.addressSuggestionDescription')}
       </Typography>
       <Stack spacing={1}>
@@ -117,10 +117,20 @@ export default function AddressHouseholdSuggestions({
                   }}
                 >
                   <Box>
-                    <Typography variant="body1" fontWeight="medium">
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        fontWeight: 'medium',
+                      }}
+                    >
                       {suggestion.member_vcard_uids.map(nameFor).join(' · ')}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: 'text.secondary',
+                      }}
+                    >
                       {formatSuggestionAddress(suggestion.address)}
                     </Typography>
                   </Box>

@@ -1,4 +1,4 @@
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlined';
 import HomeIcon from '@mui/icons-material/Home';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { Alert, AlertTitle, Box, Button, Container, Paper, Typography } from '@mui/material';
@@ -149,7 +149,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
                 Oops! Something went wrong
               </Typography>
 
-              <Typography variant="body1" color="text.secondary" paragraph>
+              <Typography variant="body1" sx={{ marginBottom: '16px', color: 'text.secondary' }}>
                 {errorMessage ||
                   `We encountered an unexpected error${name ? ` in ${name}` : ''}. ` +
                     'Please try refreshing the page or return to the home page.'}

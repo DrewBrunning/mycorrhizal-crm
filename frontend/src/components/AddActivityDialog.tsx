@@ -173,8 +173,10 @@ export default function AddActivityDialog({
             onChange={(e) => setDate(e.target.value)}
             fullWidth
             required
-            InputLabelProps={{
-              shrink: true,
+            slotProps={{
+              inputLabel: {
+                shrink: true,
+              },
             }}
           />
 
@@ -194,22 +196,26 @@ export default function AddActivityDialog({
                 {...params}
                 label={t('activityDialog.contacts')}
                 placeholder={t('activityDialog.selectContacts')}
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {loading ? <CircularProgress color="inherit" size={20} /> : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
+                slotProps={{
+                  ...params.slotProps,
+
+                  input: {
+                    ...params.slotProps.input,
+                    endAdornment: (
+                      <>
+                        {loading ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.slotProps.input.endAdornment}
+                      </>
+                    ),
+                  },
                 }}
               />
             )}
-            renderTags={(value, getTagProps) =>
+            renderValue={(value, getItemProps) =>
               value.map((contact, index) => (
                 <Chip
                   label={getContactLabel(contact)}
-                  {...getTagProps({ index })}
+                  {...getItemProps({ index })}
                   key={contact.ID}
                 />
               ))

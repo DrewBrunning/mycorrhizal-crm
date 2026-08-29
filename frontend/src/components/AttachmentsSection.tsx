@@ -95,7 +95,12 @@ export default function AttachmentsSection({ contactId }: AttachmentsSectionProp
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+          }}
+        >
           {t('attachments.description', 'Documents, scans, and files attached to this contact.')}
         </Typography>
         <input
@@ -127,7 +132,12 @@ export default function AttachmentsSection({ contactId }: AttachmentsSectionProp
       {loading ? (
         <CircularProgress size={20} sx={{ display: 'block', mx: 'auto', my: 2 }} />
       ) : attachments.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+          }}
+        >
           {t('attachments.empty', 'No attachments yet.')}
         </Typography>
       ) : (

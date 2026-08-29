@@ -59,7 +59,13 @@ export default function AnniversariesEditor({ label, value, onChange }: Annivers
       <Stack spacing={1}>
         {value.map((row, index) => (
           <Paper key={rowKeys.keyAt(index)} variant="outlined" sx={{ p: 1.5 }}>
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: 'center',
+              }}
+            >
               <TextField
                 select
                 label={t('contacts.anniversaryFields.kindLabel')}
@@ -99,8 +105,11 @@ export default function AnniversariesEditor({ label, value, onChange }: Annivers
             {row.place && (row.place.components?.length || row.place.full) && (
               <Typography
                 variant="caption"
-                color="text.secondary"
-                sx={{ display: 'block', mt: 0.5 }}
+                sx={{
+                  color: 'text.secondary',
+                  display: 'block',
+                  mt: 0.5,
+                }}
               >
                 {row.place.full ||
                   (row.place.components || [])

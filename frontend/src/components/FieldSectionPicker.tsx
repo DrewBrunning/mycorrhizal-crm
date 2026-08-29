@@ -109,8 +109,12 @@ export default function FieldSectionPicker({
       ) : (
         <Typography
           variant="body2"
-          color="text.secondary"
-          sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+          sx={{
+            color: 'text.secondary',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+          }}
         >
           <SvgIcon fontSize="small" color="success">
             <path d={mdiLockOpenVariantOutline} />

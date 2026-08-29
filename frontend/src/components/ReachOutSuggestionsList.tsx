@@ -53,7 +53,13 @@ export default function ReachOutSuggestionsList({
     <Box>
       <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
         <BusinessIcon color="primary" fontSize="small" />
-        <Typography variant="subtitle1" component="h2" fontWeight={500}>
+        <Typography
+          variant="subtitle1"
+          component="h2"
+          sx={{
+            fontWeight: 500,
+          }}
+        >
           {t('reachOut.title')}
         </Typography>
       </Box>
@@ -65,7 +71,12 @@ export default function ReachOutSuggestionsList({
       ) : suggestions.length === 0 ? (
         <Card>
           <CardContent sx={{ py: 2 }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('reachOut.empty')}
             </Typography>
           </CardContent>
@@ -99,10 +110,20 @@ export default function ReachOutSuggestionsList({
                       {(s.contact_name || '?').charAt(0).toUpperCase()}
                     </Avatar>
                     <Box sx={{ flexGrow: 1 }}>
-                      <Typography variant="body2" fontWeight={500}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 500,
+                        }}
+                      >
                         {s.contact_name || t('cadence.unknownContact')}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: 'text.secondary',
+                        }}
+                      >
                         {s.old_value
                           ? t('reachOut.changedFromTo', { old: s.old_value, new: s.new_value })
                           : t('reachOut.changedTo', { new: s.new_value })}

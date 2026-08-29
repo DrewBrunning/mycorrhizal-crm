@@ -62,7 +62,14 @@ export default function RelationshipEdgeList({
 
   if (hasNoRelationships) {
     return (
-      <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: 'text.secondary',
+          py: 2,
+          textAlign: 'center',
+        }}
+      >
         {t('relationships.noRelationships')}
       </Typography>
     );
@@ -103,7 +110,12 @@ export default function RelationshipEdgeList({
                   </Typography>
                 )}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: 'text.secondary',
+                    }}
+                  >
                     {t(getDisplayLabel(edge, viewedContactUid))}
                   </Typography>
                   {edge.sensitivity !== 'normal' && (
@@ -146,7 +158,14 @@ export default function RelationshipEdgeList({
       {suggestedEdges.length > 0 && (
         <>
           {confirmedEdges.length > 0 && <Divider sx={{ my: 2 }} />}
-          <Typography variant="subtitle2" component="h3" color="text.secondary" sx={{ mb: 1 }}>
+          <Typography
+            variant="subtitle2"
+            component="h3"
+            sx={{
+              color: 'text.secondary',
+              mb: 1,
+            }}
+          >
             {t('relationships.suggestedRelationships')}
           </Typography>
           {suggestedEdges.map((edge) => {
@@ -177,7 +196,12 @@ export default function RelationshipEdgeList({
                       </Typography>
                     )}
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: 'text.secondary',
+                        }}
+                      >
                         {t(getDisplayLabel(edge, viewedContactUid))}
                       </Typography>
                       <Chip

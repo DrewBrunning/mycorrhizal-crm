@@ -72,8 +72,11 @@ export default function AddContactDialog({
     <Box>
       <Typography
         variant="overline"
-        color="text.secondary"
-        sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}
+        sx={{
+          color: 'text.secondary',
+          letterSpacing: 0.08,
+          fontSize: '0.72rem',
+        }}
       >
         {label}
       </Typography>

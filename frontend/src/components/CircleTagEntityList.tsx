@@ -118,7 +118,13 @@ export default function CircleTagEntityList({
       <Paper variant="outlined">
         {items.length === 0 && !loading ? (
           <Box sx={{ p: 3, textAlign: 'center' }}>
-            <Typography color="text.secondary">{emptyLabel}</Typography>
+            <Typography
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
+              {emptyLabel}
+            </Typography>
           </Box>
         ) : (
           <List disablePadding>
@@ -210,7 +216,15 @@ export default function CircleTagEntityList({
       </Paper>
       {/* T71 precedent: flexWrap + minWidth:0 keeps this add row usable at
           phone widths instead of overflowing. */}
-      <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mt: 2 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          flexWrap: 'wrap',
+          gap: 1,
+          mt: 2,
+        }}
+      >
         <TextField
           size="small"
           placeholder={newPlaceholder}

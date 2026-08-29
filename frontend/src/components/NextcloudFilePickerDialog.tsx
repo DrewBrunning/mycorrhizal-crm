@@ -105,7 +105,12 @@ export default function NextcloudFilePickerDialog({
             const target = `/${pathSegments.slice(0, idx + 1).join('/')}`;
             const isLast = idx === pathSegments.length - 1;
             return isLast ? (
-              <Typography key={target} color="text.primary">
+              <Typography
+                key={target}
+                sx={{
+                  color: 'text.primary',
+                }}
+              >
                 {segment}
               </Typography>
             ) : (
@@ -149,8 +154,11 @@ export default function NextcloudFilePickerDialog({
               {items.length === 0 && (
                 <Typography
                   variant="body2"
-                  color="text.secondary"
-                  sx={{ py: 2, textAlign: 'center' }}
+                  sx={{
+                    color: 'text.secondary',
+                    py: 2,
+                    textAlign: 'center',
+                  }}
                 >
                   {t('nextcloud.search.emptyFolder')}
                 </Typography>

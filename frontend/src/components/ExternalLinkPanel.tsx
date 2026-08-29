@@ -137,7 +137,13 @@ export default function ExternalLinkPanel({
               {t('immich.panel.linkButton')}
             </Button>
           </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+              mt: 1,
+            }}
+          >
             {t('immich.panel.notLinkedHint')}
           </Typography>
         </Paper>
@@ -187,18 +193,31 @@ export default function ExternalLinkPanel({
                     // turned into an href (T41).
                     <Typography
                       variant="caption"
-                      color="text.secondary"
-                      sx={{ overflowWrap: 'anywhere' }}
+                      sx={{
+                        color: 'text.secondary',
+                        overflowWrap: 'anywhere',
+                      }}
                     >
                       {immichIdentity.url}
                     </Typography>
                   ))}
               </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                  mt: 0.5,
+                }}
+              >
                 {t('immich.panel.photoCount', { count: immichSummary?.photo_count ?? 0 })}
               </Typography>
               {immichSummary?.latest_at && (
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: 'text.secondary',
+                  }}
+                >
                   {t('immich.panel.latestAppearance', {
                     date: formatDate(immichSummary.latest_at),
                   })}
@@ -251,7 +270,13 @@ export default function ExternalLinkPanel({
       {otherIdentities.length > 0 && (
         <>
           <Divider />
-          <Typography variant="subtitle2" component="h3" color="text.secondary">
+          <Typography
+            variant="subtitle2"
+            component="h3"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {t('externalLinks.otherLinks')}
           </Typography>
           {loading ? (
@@ -277,8 +302,10 @@ export default function ExternalLinkPanel({
                       </Typography>
                       <Typography
                         variant="caption"
-                        color="text.secondary"
-                        sx={{ overflowWrap: 'anywhere' }}
+                        sx={{
+                          color: 'text.secondary',
+                          overflowWrap: 'anywhere',
+                        }}
                       >
                         {identity.external_id}
                       </Typography>
@@ -294,8 +321,11 @@ export default function ExternalLinkPanel({
                       // or non-http URL is shown as text, not as an href.
                       <Typography
                         variant="caption"
-                        color="text.secondary"
-                        sx={{ overflowWrap: 'anywhere', maxWidth: 240 }}
+                        sx={{
+                          color: 'text.secondary',
+                          overflowWrap: 'anywhere',
+                          maxWidth: 240,
+                        }}
                       >
                         {identity.url}
                       </Typography>

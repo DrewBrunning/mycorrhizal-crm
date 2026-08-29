@@ -67,8 +67,11 @@ export default function ClothingSizesPanel({
     <Box>
       <Typography
         variant="overline"
-        color="text.secondary"
-        sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}
+        sx={{
+          color: 'text.secondary',
+          letterSpacing: 0.08,
+          fontSize: '0.72rem',
+        }}
       >
         {t('gifts.clothingSizes')}
       </Typography>
@@ -175,17 +178,19 @@ export default function ClothingSizesPanel({
             }}
             placeholder={t('gifts.clothingSizePlaceholder')}
             fullWidth
-            InputProps={{
-              endAdornment: (
-                <IconButton
-                  size="small"
-                  onClick={handleAdd}
-                  disabled={busy || !newValue.trim()}
-                  aria-label={t('gifts.add')}
-                >
-                  <AddIcon />
-                </IconButton>
-              ),
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <IconButton
+                    size="small"
+                    onClick={handleAdd}
+                    disabled={busy || !newValue.trim()}
+                    aria-label={t('gifts.add')}
+                  >
+                    <AddIcon />
+                  </IconButton>
+                ),
+              },
             }}
           />
         </Box>

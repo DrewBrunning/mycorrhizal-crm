@@ -116,7 +116,12 @@ export default function NextcloudSettings() {
           <CircularProgress size={24} />
         ) : (
           <Stack spacing={1.5}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('nextcloud.settings.description')}
             </Typography>
 

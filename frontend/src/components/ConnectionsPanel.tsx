@@ -134,7 +134,12 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
               >
                 {step.contact_name}
               </Link>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.secondary',
+                }}
+              >
                 ({t(`relationships.types.${step.relation}`, step.relation)})
               </Typography>
             </Box>
@@ -186,7 +191,14 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
       {loading ? (
         <CircularProgress size={24} />
       ) : !connections ? null : connections.chains.length === 0 ? (
-        <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+            py: 2,
+            textAlign: 'center',
+          }}
+        >
           {appliedRelation.trim()
             ? t('connections.noRelationMatches', { relation: appliedRelation.trim() })
             : t('connections.empty')}
@@ -198,7 +210,13 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
               <Divider />
               {/* #211: a count label, not a section title -- doesn't belong
                   in the heading outline. */}
-              <Typography variant="subtitle2" component="p" color="text.secondary">
+              <Typography
+                variant="subtitle2"
+                component="p"
+                sx={{
+                  color: 'text.secondary',
+                }}
+              >
                 {t('connections.results', { count: connections.chains.length })}
               </Typography>
             </>

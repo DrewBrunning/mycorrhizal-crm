@@ -24,7 +24,12 @@ export default function LifeEventList({
   if (events.length === 0) {
     return (
       <Paper sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="body1" color="text.secondary">
+        <Typography
+          variant="body1"
+          sx={{
+            color: 'text.secondary',
+          }}
+        >
           {t('lifeEvent.empty')}
         </Typography>
       </Paper>
@@ -35,9 +40,22 @@ export default function LifeEventList({
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       {events.map((event) => (
         <Paper key={event.id} sx={{ p: 2, '&:hover .life-event-actions': { opacity: 1 } }}>
-          <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+            }}
+          >
             <Box>
-              <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  mb: 0.5,
+                }}
+              >
                 <CakeIcon fontSize="small" color="action" />
                 {/* #211: a per-item title in a list, not a page heading. */}
                 <Typography variant="subtitle2" component="p">
@@ -59,14 +77,24 @@ export default function LifeEventList({
               {event.description && (
                 <Typography
                   variant="body2"
-                  color="text.secondary"
-                  sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', mb: 0.5 }}
+                  sx={{
+                    color: 'text.secondary',
+                    whiteSpace: 'pre-wrap',
+                    overflowWrap: 'anywhere',
+                    mb: 0.5,
+                  }}
                 >
                   {event.description}
                 </Typography>
               )}
               {event.related_entity_ids && event.related_entity_ids.length > 0 && (
-                <Box display="flex" flexWrap="wrap" gap={0.5}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 0.5,
+                  }}
+                >
                   {event.related_entity_ids.map((uid) => {
                     const c = contactsByUid.get(uid);
                     return (

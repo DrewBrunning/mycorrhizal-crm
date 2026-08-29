@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import App from './App';
 import { AppThemeProvider } from './AppThemeProvider';
@@ -84,4 +84,20 @@ test('an admin sees the System status nav entry', () => {
 
   expect(screen.getByText('System status')).toBeInTheDocument();
   expect(screen.getByText('System events')).toBeInTheDocument();
+});
+
+test('typing a search query shows the clear button, which resets the query', () => {
+  setLoggedInUser(false);
+  renderApp();
+
+  const searchBox = screen.getByPlaceholderText('Search Contacts');
+  fireEvent.change(searchBox, { target: { value: 'alice' } });
+
+  const clearButton = screen.getByRole('button', { name: 'Clear' });
+  expect(clearButton).toBeInTheDocument();
+
+  fireEvent.click(clearButton);
+
+  expect((searchBox as HTMLInputElement).value).toBe('');
+  expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument();
 });

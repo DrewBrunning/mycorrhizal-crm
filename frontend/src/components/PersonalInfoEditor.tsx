@@ -53,7 +53,13 @@ export default function PersonalInfoEditor({ label, value, onChange }: PersonalI
         {value.map((row, index) => (
           <Paper key={rowKeys.keyAt(index)} variant="outlined" sx={{ p: 1.5 }}>
             <Stack spacing={1}>
-              <Stack direction="row" spacing={1} alignItems="center">
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  alignItems: 'center',
+                }}
+              >
                 <FormControl size="small" sx={{ minWidth: 140 }}>
                   {/* The leaf key `.kind`, NOT the `.kindOptions` object node
                       the individual options live under — i18next has no string

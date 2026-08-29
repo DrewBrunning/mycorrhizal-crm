@@ -240,6 +240,17 @@ These are real bugs that shipped, not hypotheticals.
 - API modules live in `src/api/<entity>.ts`, hooks in `src/hooks/use<Entity>.ts`, and dialogs/lists in
   `src/components/`. `relationshipEdges.ts` + `useRelationshipEdges.ts` + `RelationshipEdgeDialog/List`
   are the most recent, most complete example of the full pattern — copy that shape.
+- **TypeScript is intentionally capped at 6.x** (`typescript ^6.0.3`). TypeScript 7 is the Go-native
+  rewrite (`tsgo`): its npm package ships no classic JS compiler API (`lib/typescript.js` gone, only
+  `./unstable/*` exports) and no `tsserver`, so `typescript-eslint`'s typed linting — which this repo's
+  whole `eslint.config.js` depends on — cannot load it. Latest `typescript-eslint@8.68.0` (stable and
+  canary) declares peer `typescript >=4.8.4 <6.1.0`; the cap is load-bearing, not advisory. Revisit when
+  the toolchain supports TS 7.
+- **`nanoid` is locked to `^3.3.18` in `resolutions`** (a security pin for GHSA-2v37-7h3g-55p8 /
+  CVE-2026-67213, which hit 3.3.17 *and* the whole 4.x–5.1.5 line). It cannot move to 4/5/6: vite →
+  postcss 8.5.26 requires `nanoid ^3.3.17`, and postcss loads it via CommonJS `require('nanoid/non-secure')`
+  while nanoid 4+ is ESM-only with zero `.cjs` files. 3.3.18 is the last CommonJS-capable *and* patched
+  line; nothing upstream (postcss or vite main) has changed this as of v8.2.2.
 
 ## Domain notes worth knowing
 

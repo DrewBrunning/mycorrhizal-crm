@@ -518,35 +518,39 @@ function AppContent({
                         opacity: 1,
                       },
                     }}
-                    InputProps={{
-                      ...params.InputProps,
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <IconButton
-                            size="small"
-                            onClick={handleSearchSubmit}
-                            aria-label={t('app.submitSearch')}
-                            sx={{ color: 'rgba(255, 255, 255, 0.7)', p: 0.5 }}
-                          >
-                            <SearchIcon />
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                      endAdornment: searchQuery ? (
-                        <InputAdornment position="end">
-                          <IconButton
-                            size="small"
-                            onClick={() => {
-                              setSearchQuery('');
-                              setSearchResults([]);
-                            }}
-                            aria-label={t('contacts.searchClear')}
-                            sx={{ color: 'rgba(255, 255, 255, 0.7)', p: 0.5 }}
-                          >
-                            <ClearIcon fontSize="small" />
-                          </IconButton>
-                        </InputAdornment>
-                      ) : null,
+                    slotProps={{
+                      ...params.slotProps,
+
+                      input: {
+                        ...params.slotProps.input,
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <IconButton
+                              size="small"
+                              onClick={handleSearchSubmit}
+                              aria-label={t('app.submitSearch')}
+                              sx={{ color: 'rgba(255, 255, 255, 0.7)', p: 0.5 }}
+                            >
+                              <SearchIcon />
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                        endAdornment: searchQuery ? (
+                          <InputAdornment position="end">
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                setSearchQuery('');
+                                setSearchResults([]);
+                              }}
+                              aria-label={t('contacts.searchClear')}
+                              sx={{ color: 'rgba(255, 255, 255, 0.7)', p: 0.5 }}
+                            >
+                              <ClearIcon fontSize="small" />
+                            </IconButton>
+                          </InputAdornment>
+                        ) : null,
+                      },
                     }}
                   />
                 )}
@@ -557,7 +561,12 @@ function AppContent({
                         {option.firstname} {option.lastname}
                       </Typography>
                       {option.email && (
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: 'text.secondary',
+                          }}
+                        >
                           {option.email}
                         </Typography>
                       )}

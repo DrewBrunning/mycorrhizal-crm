@@ -255,7 +255,13 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
       <DialogContent>
         {inPairMode && pair ? (
           <>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+                mb: 2,
+              }}
+            >
               {t('duplicates.mergeDescription')}
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -284,13 +290,26 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
                 </span>
               </Tooltip>
             </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+                display: 'block',
+                mb: 1,
+              }}
+            >
               {t('duplicates.mergeHint')}
             </Typography>
           </>
         ) : (
           <>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+                mb: 2,
+              }}
+            >
               {t('contactMerge.description', { name: currentContactName })}
             </Typography>
 
@@ -309,14 +328,18 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
                   {...params}
                   label={t('contactMerge.selectTarget')}
                   placeholder={t('contactMerge.searchContacts')}
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <>
-                        {contactsLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                        {params.InputProps.endAdornment}
-                      </>
-                    ),
+                  slotProps={{
+                    ...params.slotProps,
+
+                    input: {
+                      ...params.slotProps.input,
+                      endAdornment: (
+                        <>
+                          {contactsLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.slotProps.input.endAdornment}
+                        </>
+                      ),
+                    },
                   }}
                 />
               )}
@@ -328,8 +351,11 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
             {hiddenMatchCount > 0 && (
               <Typography
                 variant="caption"
-                color="text.secondary"
-                sx={{ display: 'block', mt: 0.5 }}
+                sx={{
+                  color: 'text.secondary',
+                  display: 'block',
+                  mt: 0.5,
+                }}
               >
                 {t('contactMerge.hiddenMatches', {
                   shown: filteredContacts.length,

@@ -111,7 +111,13 @@ export default function SystemStatusPage() {
       <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 1.5 }}>
         {t('systemStatus.title')}
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: 'text.secondary',
+          mb: 2,
+        }}
+      >
         {t('systemStatus.description')}
       </Typography>
 
@@ -143,8 +149,21 @@ function Snapshot({
   return (
     <>
       <Paper sx={{ p: 1.5, mb: 2 }}>
-        <Box display="flex" alignItems="center" justifyContent="space-between" gap={1}>
-          <Box display="flex" alignItems="center" gap={2}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1,
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+            }}
+          >
             <Typography variant="subtitle1" component="h2">
               {t('systemStatus.overall')}
             </Typography>
@@ -199,8 +218,11 @@ function DetailGrid({ rows }: { rows: [string, string][] }) {
           <Typography
             component="dt"
             variant="body2"
-            color="text.secondary"
-            sx={{ fontWeight: 600, pr: 2 }}
+            sx={{
+              color: 'text.secondary',
+              fontWeight: 600,
+              pr: 2,
+            }}
           >
             {label}
           </Typography>
@@ -249,7 +271,12 @@ function UpdateCard({ status }: { status: SystemStatusResponse }) {
           label={t('systemStatus.update.available', { version: update.latest })}
         />
       ) : (
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+          }}
+        >
           {t('systemStatus.update.upToDate')}
         </Typography>
       )}
@@ -297,7 +324,13 @@ function HealthChecksCard({ status }: { status: SystemStatusResponse }) {
 
   return (
     <Section title={t('systemStatus.health.title')}>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: 'text.secondary',
+          mb: 1,
+        }}
+      >
         {t('systemStatus.health.description')}
       </Typography>
       {facets.length === 0 ? (
@@ -369,7 +402,13 @@ function ConfigCard({ status }: { status: SystemStatusResponse }) {
 
   return (
     <Section title={t('systemStatus.config.title')}>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: 'text.secondary',
+          mb: 1,
+        }}
+      >
         {t('systemStatus.config.validationTitle')}
       </Typography>
 
@@ -400,11 +439,23 @@ function ConfigCard({ status }: { status: SystemStatusResponse }) {
         </TableContainer>
       )}
 
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: 'text.secondary',
+          mb: 0.5,
+        }}
+      >
         {t('systemStatus.config.features')}
       </Typography>
       {features ? (
-        <Box display="flex" gap={1} flexWrap="wrap">
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 1,
+            flexWrap: 'wrap',
+          }}
+        >
           {SYSTEM_STATUS_FEATURE_KEYS.map((key) => (
             <Chip
               key={key}
@@ -511,14 +562,25 @@ function StorageCard({ status }: { status: SystemStatusResponse }) {
         </Box>
       )}
       {free != null && (
-        <Typography variant="caption" color="text.secondary">
+        <Typography
+          variant="caption"
+          sx={{
+            color: 'text.secondary',
+          }}
+        >
           {t('systemStatus.storage.free')}: {formatBytes(free)}
         </Typography>
       )}
 
       {directories.length > 0 && (
         <Box sx={{ mt: 1.5 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+              mb: 0.5,
+            }}
+          >
             {t('systemStatus.storage.directories')}
           </Typography>
           <TableContainer component={Paper} variant="outlined">
@@ -535,14 +597,22 @@ function StorageCard({ status }: { status: SystemStatusResponse }) {
                   <TableRow key={dir.path}>
                     <TableCell sx={{ overflowWrap: 'anywhere' }}>{dir.path}</TableCell>
                     <TableCell align="right">
-                      <Box component="span" display="inline-flex" alignItems="center">
+                      <Box
+                        component="span"
+                        sx={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                        }}
+                      >
                         {formatBytes(dir.bytes)}
                         {dir.truncated && (
                           <Typography
                             component="span"
                             variant="caption"
-                            color="text.secondary"
-                            sx={{ ml: 0.5 }}
+                            sx={{
+                              color: 'text.secondary',
+                              ml: 0.5,
+                            }}
                           >
                             {t('systemStatus.storage.approx')}
                           </Typography>

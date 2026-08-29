@@ -555,7 +555,13 @@ export default function ContactsPage() {
             lost data — a user who imported 500 contacts and sees 340 must be
             able to tell that the 160 were hidden, not deleted. */}
         {!showAll && hiddenCount !== undefined && hiddenCount > 0 && (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+              mb: 1,
+            }}
+          >
             {t('contacts.hiddenContactable', { count: hiddenCount })}
           </Typography>
         )}
@@ -624,10 +630,12 @@ export default function ContactsPage() {
                     toggleSelect(contact.uid);
                   }}
                   disabled={bulkBusy}
-                  inputProps={{
-                    'aria-label': t('bulk.selectContact', {
-                      name: `${contact.firstname} ${contact.lastname}`.trim(),
-                    }),
+                  slotProps={{
+                    input: {
+                      'aria-label': t('bulk.selectContact', {
+                        name: `${contact.firstname} ${contact.lastname}`.trim(),
+                      }),
+                    },
                   }}
                 />
                 {/* Issue #173: per-row favorite toggle. stopPropagation so the
@@ -681,7 +689,15 @@ export default function ContactsPage() {
                       />
                     )}
                   </Box>
-                  <Stack direction="row" spacing={0.5} mt={0.5} flexWrap="wrap" gap={0.5}>
+                  <Stack
+                    direction="row"
+                    spacing={0.5}
+                    sx={{
+                      mt: 0.5,
+                      flexWrap: 'wrap',
+                      gap: 0.5,
+                    }}
+                  >
                     {(circleNamesByUid.get(contact.uid || '') || []).map((name: string) => (
                       <Chip
                         key={`${contact.ID}-${name}`}
@@ -703,7 +719,13 @@ export default function ContactsPage() {
             ))}
           </Stack>
           {showNoResults && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+                mt: 2,
+              }}
+            >
               {t('contacts.searchNoResults', { query: searchQuery })}
             </Typography>
           )}

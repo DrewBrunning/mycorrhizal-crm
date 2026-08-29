@@ -1,4 +1,4 @@
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { Alert, AlertTitle, Box, Button, Typography } from '@mui/material';
 import type React from 'react';
@@ -69,7 +69,13 @@ export const ErrorFallback: React.FC<ErrorFallbackProps> = ({
         {title}
       </Typography>
 
-      <Typography variant={bodyVariant} color="text.secondary" paragraph>
+      <Typography
+        variant={bodyVariant}
+        sx={{
+          marginBottom: '16px',
+          color: 'text.secondary',
+        }}
+      >
         {message}
       </Typography>
 

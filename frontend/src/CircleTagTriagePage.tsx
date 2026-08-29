@@ -245,7 +245,7 @@ export default function CircleTagTriagePage() {
       <Typography variant="h5" component="h1" gutterBottom>
         {t('triage.title')}
       </Typography>
-      <Typography variant="body2" color="text.secondary" paragraph>
+      <Typography variant="body2" sx={{ marginBottom: '16px', color: 'text.secondary' }}>
         {t('triage.description')}
       </Typography>
 
@@ -270,7 +270,13 @@ export default function CircleTagTriagePage() {
         !loading &&
         (items.length === 0 ? (
           <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography color="text.secondary">{t('triage.noLegacyCircles')}</Typography>
+            <Typography
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
+              {t('triage.noLegacyCircles')}
+            </Typography>
             <Button variant="outlined" sx={{ mt: 2 }} onClick={collect}>
               {t('triage.refresh')}
             </Button>
@@ -296,7 +302,9 @@ export default function CircleTagTriagePage() {
                           onChange={(e) => handleNameChange(index, e.target.value)}
                           fullWidth
                           variant="standard"
-                          inputProps={{ 'aria-label': t('triage.colCircleName') }}
+                          slotProps={{
+                            htmlInput: { 'aria-label': t('triage.colCircleName') },
+                          }}
                         />
                       </TableCell>
                       <TableCell>
@@ -322,7 +330,13 @@ export default function CircleTagTriagePage() {
                 </TableBody>
               </Table>
             </TableContainer>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+                mt: 2,
+              }}
+            >
               {t('triage.summary', {
                 total: items.length,
                 circles: circles.length,
@@ -330,7 +344,13 @@ export default function CircleTagTriagePage() {
                 skipped: skipped.length,
               })}
             </Typography>
-            <Box display="flex" justifyContent="flex-end" mt={2}>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                mt: 2,
+              }}
+            >
               <Button variant="contained" onClick={() => setActiveStep(1)}>
                 {t('triage.next')}
               </Button>
@@ -346,11 +366,22 @@ export default function CircleTagTriagePage() {
           </Typography>
 
           {circles.length > 0 && (
-            <Box mb={2}>
+            <Box
+              sx={{
+                mb: 2,
+              }}
+            >
               <Typography variant="subtitle1" component="h3">
                 {t('triage.circlesToCreate', { count: circles.length })}
               </Typography>
-              <Box display="flex" flexWrap="wrap" gap={0.5} mt={0.5}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 0.5,
+                  mt: 0.5,
+                }}
+              >
                 {circles.map((c) => (
                   <Chip key={c.name} label={`${c.name} (${c.contactCount})`} size="small" />
                 ))}
@@ -359,11 +390,22 @@ export default function CircleTagTriagePage() {
           )}
 
           {tags.length > 0 && (
-            <Box mb={2}>
+            <Box
+              sx={{
+                mb: 2,
+              }}
+            >
               <Typography variant="subtitle1" component="h3">
                 {t('triage.tagsToCreate', { count: tags.length })}
               </Typography>
-              <Box display="flex" flexWrap="wrap" gap={0.5} mt={0.5}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 0.5,
+                  mt: 0.5,
+                }}
+              >
                 {tags.map((t) => (
                   <Chip key={t.name} label={`${t.name} (${t.contactCount})`} size="small" />
                 ))}
@@ -372,11 +414,22 @@ export default function CircleTagTriagePage() {
           )}
 
           {skipped.length > 0 && (
-            <Box mb={2}>
+            <Box
+              sx={{
+                mb: 2,
+              }}
+            >
               <Typography variant="subtitle1" component="h3">
                 {t('triage.skipped', { count: skipped.length })}
               </Typography>
-              <Box display="flex" flexWrap="wrap" gap={0.5} mt={0.5}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 0.5,
+                  mt: 0.5,
+                }}
+              >
                 {skipped.map((s) => (
                   <Chip key={s.name} label={s.name} variant="outlined" size="small" />
                 ))}
@@ -384,7 +437,13 @@ export default function CircleTagTriagePage() {
             </Box>
           )}
 
-          <Box display="flex" justifyContent="space-between" mt={2}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              mt: 2,
+            }}
+          >
             <Button onClick={() => setActiveStep(0)}>{t('triage.back')}</Button>
             <Button
               variant="contained"
@@ -406,23 +465,44 @@ export default function CircleTagTriagePage() {
           </Typography>
 
           {applying && (
-            <Box mb={2}>
+            <Box
+              sx={{
+                mb: 2,
+              }}
+            >
               <LinearProgress
                 variant="determinate"
                 value={(applyProgress.current / Math.max(applyProgress.total, 1)) * 100}
               />
-              <Typography variant="body2" color="text.secondary" mt={0.5}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                  mt: 0.5,
+                }}
+              >
                 {applyProgress.current} / {applyProgress.total}
               </Typography>
             </Box>
           )}
 
           {!applying && applyResult.length === 0 && (
-            <Box textAlign="center" py={3}>
-              <Typography color="text.secondary" paragraph>
+            <Box
+              sx={{
+                textAlign: 'center',
+                py: 3,
+              }}
+            >
+              <Typography sx={{ marginBottom: '16px', color: 'text.secondary' }}>
                 {t('triage.applyDescription')}
               </Typography>
-              <Box display="flex" gap={2} justifyContent="center">
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 2,
+                  justifyContent: 'center',
+                }}
+              >
                 <Button variant="contained" onClick={handleApply}>
                   {t('triage.createEntities')}
                 </Button>

@@ -120,7 +120,14 @@ export default function RelationshipSuggestionsInbox({
   return (
     <Box sx={{ mt: 2 }}>
       <Divider sx={{ mb: 1.5 }} />
-      <Typography variant="subtitle2" component="h3" color="text.secondary" sx={{ mb: 1 }}>
+      <Typography
+        variant="subtitle2"
+        component="h3"
+        sx={{
+          color: 'text.secondary',
+          mb: 1,
+        }}
+      >
         {t('relationships.suggestedRelationships')}
       </Typography>
       {error && (

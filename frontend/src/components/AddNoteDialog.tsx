@@ -139,14 +139,18 @@ export default function AddNoteDialog({
                   {...params}
                   label={t('notes.assignContact')}
                   placeholder={t('notes.searchContacts')}
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <>
-                        {contactsLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                        {params.InputProps.endAdornment}
-                      </>
-                    ),
+                  slotProps={{
+                    ...params.slotProps,
+
+                    input: {
+                      ...params.slotProps.input,
+                      endAdornment: (
+                        <>
+                          {contactsLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.slotProps.input.endAdornment}
+                        </>
+                      ),
+                    },
                   }}
                 />
               )}
@@ -176,8 +180,10 @@ export default function AddNoteDialog({
             value={date}
             onChange={(e) => setDate(e.target.value)}
             fullWidth
-            InputLabelProps={{
-              shrink: true,
+            slotProps={{
+              inputLabel: {
+                shrink: true,
+              },
             }}
           />
         </Box>

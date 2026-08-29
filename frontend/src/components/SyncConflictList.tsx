@@ -70,7 +70,13 @@ export default function SyncConflictList({
     <Box>
       <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
         <SyncProblemIcon color="warning" fontSize="small" />
-        <Typography variant="subtitle1" component="h2" fontWeight={500}>
+        <Typography
+          variant="subtitle1"
+          component="h2"
+          sx={{
+            fontWeight: 500,
+          }}
+        >
           {t('syncConflicts.title')}
         </Typography>
       </Box>
@@ -82,7 +88,12 @@ export default function SyncConflictList({
       ) : conflicts.length === 0 ? (
         <Card>
           <CardContent sx={{ py: 2 }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('syncConflicts.empty')}
             </Typography>
           </CardContent>
@@ -114,10 +125,20 @@ export default function SyncConflictList({
                     {(conflict.contact_name || '?').charAt(0).toUpperCase()}
                   </Avatar>
                   <Box sx={{ flexGrow: 1 }}>
-                    <Typography variant="body2" fontWeight={500}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 500,
+                      }}
+                    >
                       {conflict.contact_name || t('cadence.unknownContact')}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: 'text.secondary',
+                      }}
+                    >
                       {t('syncConflicts.overwritten', {
                         field: t(`syncConflicts.field.${conflict.field}`),
                         local: valueToLabel(conflict.local_value),

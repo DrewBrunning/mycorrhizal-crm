@@ -53,12 +53,25 @@ export default function ErrorAggregationPanel({
 
   return (
     <Paper sx={{ p: 1.5, mb: 2 }}>
-      <Box display="flex" alignItems="center" justifyContent="space-between" gap={1} sx={{ mb: 1 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+          mb: 1,
+        }}
+      >
         <Box>
           <Typography variant="subtitle1" component="h2">
             {t('errorAggregation.title')}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {t('errorAggregation.description', { hours: WINDOW_HOURS })}
           </Typography>
         </Box>
@@ -80,7 +93,12 @@ export default function ErrorAggregationPanel({
       )}
 
       {buckets.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+          }}
+        >
           {t('errorAggregation.empty', { hours: WINDOW_HOURS })}
         </Typography>
       ) : (
@@ -131,7 +149,14 @@ function ErrorBucketRow({
   return (
     <TableRow hover>
       <TableCell align="right">
-        <Box display="flex" alignItems="center" justifyContent="flex-end" gap={0.75}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: 0.75,
+          }}
+        >
           <Typography
             variant="body2"
             component="span"
@@ -157,7 +182,12 @@ function ErrorBucketRow({
         </Typography>
       </TableCell>
       <TableCell sx={{ whiteSpace: 'nowrap' }}>
-        <Typography variant="caption" color="text.secondary">
+        <Typography
+          variant="caption"
+          sx={{
+            color: 'text.secondary',
+          }}
+        >
           {rel ? `${formatDateTime(bucket.last_seen)} (${rel})` : formatDateTime(bucket.last_seen)}
         </Typography>
       </TableCell>

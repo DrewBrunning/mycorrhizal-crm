@@ -172,25 +172,26 @@ export default function ConversationAgendaList({
         disabled={adding}
         slotProps={{
           htmlInput: { 'aria-label': t('conversationAgenda.placeholder') },
-        }}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <ForumIcon fontSize="small" color="action" />
-            </InputAdornment>
-          ),
-          endAdornment: (
-            <InputAdornment position="end">
-              <IconButton
-                size="small"
-                onClick={handleAdd}
-                disabled={adding || !draft.trim()}
-                aria-label={t('conversationAgenda.add')}
-              >
-                <AddIcon />
-              </IconButton>
-            </InputAdornment>
-          ),
+
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <ForumIcon fontSize="small" color="action" />
+              </InputAdornment>
+            ),
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  size="small"
+                  onClick={handleAdd}
+                  disabled={adding || !draft.trim()}
+                  aria-label={t('conversationAgenda.add')}
+                >
+                  <AddIcon />
+                </IconButton>
+              </InputAdornment>
+            ),
+          },
         }}
       />
       {addError && (
@@ -200,7 +201,14 @@ export default function ConversationAgendaList({
       )}
 
       {items.length === 0 && (
-        <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+            py: 2,
+            textAlign: 'center',
+          }}
+        >
           {t('conversationAgenda.empty')}
         </Typography>
       )}
@@ -215,7 +223,13 @@ export default function ConversationAgendaList({
       {discussedItems.length > 0 && (
         <>
           {openItems.length > 0 && <Divider />}
-          <Typography variant="subtitle2" component="h3" color="text.secondary">
+          <Typography
+            variant="subtitle2"
+            component="h3"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {t('conversationAgenda.discussedSection')}
           </Typography>
           {discussedItems.map((item) => renderItem(item, true))}

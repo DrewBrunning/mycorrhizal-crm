@@ -38,7 +38,13 @@ export default function CardNotesEditor({ label, value, onChange }: CardNotesEdi
         {value.map((row, index) => (
           <Paper key={rowKeys.keyAt(index)} variant="outlined" sx={{ p: 1.5 }}>
             <Stack spacing={1}>
-              <Stack direction="row" spacing={1} alignItems="flex-start">
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  alignItems: 'flex-start',
+                }}
+              >
                 <TextField
                   label={t('contacts.cardNotes.note')}
                   size="small"
@@ -58,7 +64,12 @@ export default function CardNotesEditor({ label, value, onChange }: CardNotesEdi
                 </IconButton>
               </Stack>
               {(row.author?.name || row.author?.uri || row.created?.utc) && (
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: 'text.secondary',
+                  }}
+                >
                   {row.author?.name && `${row.author.name} · `}
                   {row.author?.uri && `${row.author.uri} · `}
                   {row.created?.utc && t('contacts.cardNotes.createdOn', { date: row.created.utc })}

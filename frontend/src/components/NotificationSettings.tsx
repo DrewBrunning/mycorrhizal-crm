@@ -288,7 +288,12 @@ export default function NotificationSettings() {
           <CircularProgress size={24} />
         ) : (
           <Stack spacing={2}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('notifications.settings.description')}
             </Typography>
 
@@ -447,7 +452,13 @@ export default function NotificationSettings() {
                 }
                 label={t('notifications.settings.push.enable')}
               />
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                  mt: 0.5,
+                }}
+              >
                 {t('notifications.settings.push.description')}
               </Typography>
               <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
@@ -473,13 +484,24 @@ export default function NotificationSettings() {
                     mb: 0.5,
                   }}
                 >
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'text.secondary',
+                    }}
+                  >
                     {t('notifications.settings.push.devices')}
                   </Typography>
                   {subsLoading && <CircularProgress size={14} />}
                 </Box>
                 {subscriptions.length === 0 ? (
-                  <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'text.secondary',
+                      fontStyle: 'italic',
+                    }}
+                  >
                     {t('notifications.settings.push.noDevices')}
                   </Typography>
                 ) : (
@@ -503,9 +525,11 @@ export default function NotificationSettings() {
                       >
                         <ListItemText
                           primary={sub.device_label || 'Browser'}
-                          primaryTypographyProps={{ component: 'div', variant: 'body2' }}
                           secondary={new Date(sub.created_at).toLocaleString()}
-                          secondaryTypographyProps={{ component: 'div', variant: 'caption' }}
+                          slotProps={{
+                            primary: { component: 'div', variant: 'body2' },
+                            secondary: { component: 'div', variant: 'caption' },
+                          }}
                         />
                       </ListItem>
                     ))}
@@ -539,13 +563,24 @@ export default function NotificationSettings() {
                     mb: 0.5,
                   }}
                 >
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'text.secondary',
+                    }}
+                  >
                     {t('notifications.settings.push.mobileDevicesTitle')}
                   </Typography>
                   {devicesLoading && <CircularProgress size={14} />}
                 </Box>
                 {devices.length === 0 ? (
-                  <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'text.secondary',
+                      fontStyle: 'italic',
+                    }}
+                  >
                     {t('notifications.settings.push.noMobileDevices')}
                   </Typography>
                 ) : (
@@ -570,9 +605,11 @@ export default function NotificationSettings() {
                         <PhoneIphoneIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
                         <ListItemText
                           primary={device.device_label || device.client.toUpperCase()}
-                          primaryTypographyProps={{ component: 'div', variant: 'body2' }}
                           secondary={new Date(device.created_at).toLocaleString()}
-                          secondaryTypographyProps={{ component: 'div', variant: 'caption' }}
+                          slotProps={{
+                            primary: { component: 'div', variant: 'body2' },
+                            secondary: { component: 'div', variant: 'caption' },
+                          }}
                         />
                       </ListItem>
                     ))}

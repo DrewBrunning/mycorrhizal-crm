@@ -187,7 +187,14 @@ export default function FieldValueEditor({ definition, value, onChange }: FieldV
     <Box>
       <Stack spacing={1}>
         {(Array.isArray(value) ? value : []).map((row, index) => (
-          <Stack key={rowKeys.keyAt(index)} direction="row" spacing={1} alignItems="center">
+          <Stack
+            key={rowKeys.keyAt(index)}
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: 'center',
+            }}
+          >
             <Box sx={{ flexGrow: 1 }}>
               {renderScalar(row, (next) => updateRow(index, String(next)))}
             </Box>
@@ -207,7 +214,12 @@ export default function FieldValueEditor({ definition, value, onChange }: FieldV
           </Button>
         </Box>
       </Stack>
-      <Typography variant="caption" color="text.secondary">
+      <Typography
+        variant="caption"
+        sx={{
+          color: 'text.secondary',
+        }}
+      >
         {t('customFields.multiHint')}
       </Typography>
     </Box>

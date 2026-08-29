@@ -159,7 +159,13 @@ export default function OnlineServiceEditor({
                   />
                 )}
               />
-              <Stack direction="row" spacing={1} alignItems="center">
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  alignItems: 'center',
+                }}
+              >
                 <TextField
                   label={t('contacts.onlineServices.label')}
                   size="small"

@@ -202,7 +202,12 @@ export default function DataSettingsPage() {
           <Divider sx={{ mb: 1.5 }} />
 
           <Stack spacing={1.5}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('settings.data.propose.description')}
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
@@ -273,7 +278,12 @@ export default function DataSettingsPage() {
           <Divider sx={{ mb: 1.5 }} />
 
           <Stack spacing={1.5}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('settings.data.import.description')}
             </Typography>
             <Box>
@@ -297,7 +307,12 @@ export default function DataSettingsPage() {
               </Alert>
             )}
             {importHistory.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                }}
+              >
                 {t('settings.data.import.history.empty')}
               </Typography>
             ) : (
@@ -353,7 +368,12 @@ export default function DataSettingsPage() {
           <Divider sx={{ mb: 1.5 }} />
 
           <Stack spacing={1.5}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('settings.export.description')}
             </Typography>
             {exportError && (
@@ -392,7 +412,12 @@ export default function DataSettingsPage() {
           <Divider sx={{ mb: 1.5 }} />
 
           <Stack spacing={1.5}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               {t('settings.exportVcf.description')}
             </Typography>
             {exportVcfError && (

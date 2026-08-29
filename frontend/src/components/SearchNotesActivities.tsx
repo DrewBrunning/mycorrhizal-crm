@@ -80,7 +80,12 @@ export default function SearchNotesActivities({
               <Typography variant="subtitle2" component="h2">
                 {t('contacts.searchNotesHeader', { count: total })}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.secondary',
+                }}
+              >
                 {t('contacts.searchNotesHint')}
               </Typography>
             </Box>
@@ -93,8 +98,10 @@ export default function SearchNotesActivities({
                   <Typography
                     variant="subtitle2"
                     component="h3"
-                    color="text.secondary"
-                    sx={{ mb: 0.5 }}
+                    sx={{
+                      color: 'text.secondary',
+                      mb: 0.5,
+                    }}
                   >
                     {t('contacts.searchNotesGroup')}
                   </Typography>
@@ -122,7 +129,12 @@ export default function SearchNotesActivities({
                           ) : (
                             <Chip size="small" label={t('contacts.searchUnfiled')} />
                           )}
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: 'text.secondary',
+                            }}
+                          >
                             {formatDate(n.date)}
                           </Typography>
                         </Box>
@@ -136,8 +148,10 @@ export default function SearchNotesActivities({
                   <Typography
                     variant="subtitle2"
                     component="h3"
-                    color="text.secondary"
-                    sx={{ mb: 0.5 }}
+                    sx={{
+                      color: 'text.secondary',
+                      mb: 0.5,
+                    }}
                   >
                     {t('contacts.searchActivitiesGroup')}
                   </Typography>
@@ -145,7 +159,12 @@ export default function SearchNotesActivities({
                     {activities.map((a) => (
                       <Box key={a.id}>
                         <Typography variant="body1">{a.title}</Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: 'text.secondary',
+                          }}
+                        >
                           {formatDate(a.date)}
                         </Typography>
                       </Box>

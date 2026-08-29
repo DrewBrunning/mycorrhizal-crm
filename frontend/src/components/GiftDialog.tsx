@@ -249,15 +249,22 @@ export default function GiftDialog({
             slotProps={{ inputLabel: { shrink: true } }}
           />
 
-          <Box display="flex" gap={1}>
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 1,
+            }}
+          >
             <TextField
               label={t('gifts.amount')}
               type="number"
-              inputProps={{ min: 0, step: '0.01' }}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               fullWidth
-              slotProps={{ inputLabel: { shrink: true } }}
+              slotProps={{
+                inputLabel: { shrink: true },
+                htmlInput: { min: 0, step: '0.01' },
+              }}
             />
             <TextField
               label={t('gifts.currency')}

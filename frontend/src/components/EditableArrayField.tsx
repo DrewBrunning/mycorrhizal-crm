@@ -62,7 +62,13 @@ export default function EditableArrayField<T>({
   if (editing) {
     return (
       <Box>
-        <Stack direction="row" spacing={1} alignItems="flex-start">
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: 'flex-start',
+          }}
+        >
           <Box sx={{ pt: 0.5 }}>{icon}</Box>
           <Box sx={{ flexGrow: 1 }}>
             {renderEditor(draft, setDraft)}
@@ -97,8 +103,10 @@ export default function EditableArrayField<T>({
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Typography
             variant="caption"
-            color="text.secondary"
-            sx={{ fontFamily: '"IBM Plex Mono", monospace' }}
+            sx={{
+              color: 'text.secondary',
+              fontFamily: '"IBM Plex Mono", monospace',
+            }}
           >
             {label}
           </Typography>

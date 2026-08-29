@@ -74,7 +74,13 @@ export default function RegisterPage() {
     return (
       <Box sx={{ maxWidth: 400, mx: 'auto', mt: 8 }}>
         <Paper sx={{ p: 4 }}>
-          <Typography variant="h5" component="h1" mb={2}>
+          <Typography
+            variant="h5"
+            component="h1"
+            sx={{
+              mb: 2,
+            }}
+          >
             {t('register.title')}
           </Typography>
           <Alert severity="info">{t('register.registrationDisabled')}</Alert>
@@ -89,7 +95,13 @@ export default function RegisterPage() {
   return (
     <Box sx={{ maxWidth: 400, mx: 'auto', mt: 8 }}>
       <Paper sx={{ p: 4 }}>
-        <Typography variant="h5" component="h1" mb={2}>
+        <Typography
+          variant="h5"
+          component="h1"
+          sx={{
+            mb: 2,
+          }}
+        >
           {t('register.title')}
         </Typography>
         <form onSubmit={handleSubmit}>
@@ -101,7 +113,9 @@ export default function RegisterPage() {
               required
               fullWidth
               error={Boolean(error)}
-              inputProps={{ 'aria-describedby': error ? 'register-error' : undefined }}
+              slotProps={{
+                htmlInput: { 'aria-describedby': error ? 'register-error' : undefined },
+              }}
             />
             <TextField
               label={t('register.email')}
@@ -111,7 +125,9 @@ export default function RegisterPage() {
               required
               fullWidth
               error={Boolean(error)}
-              inputProps={{ 'aria-describedby': error ? 'register-error' : undefined }}
+              slotProps={{
+                htmlInput: { 'aria-describedby': error ? 'register-error' : undefined },
+              }}
             />
             <TextField
               label={t('register.password')}
@@ -121,7 +137,9 @@ export default function RegisterPage() {
               required
               fullWidth
               error={Boolean(error)}
-              inputProps={{ 'aria-describedby': error ? 'register-error' : undefined }}
+              slotProps={{
+                htmlInput: { 'aria-describedby': error ? 'register-error' : undefined },
+              }}
             />
             {error && (
               <Alert severity="error" id="register-error" ref={errorRef} tabIndex={-1}>

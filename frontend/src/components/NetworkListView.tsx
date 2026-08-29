@@ -85,7 +85,14 @@ export default function NetworkListView({ nodes, links, onContactClick }: Networ
                 <ListItemText primary={contact.label} />
               </ListItemButton>
               {descriptions.length > 0 && (
-                <Typography variant="body2" color="text.secondary" component="span" sx={{ ml: 1 }}>
+                <Typography
+                  variant="body2"
+                  component="span"
+                  sx={{
+                    color: 'text.secondary',
+                    ml: 1,
+                  }}
+                >
                   — {descriptions.join('; ')}
                 </Typography>
               )}

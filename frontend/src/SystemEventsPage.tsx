@@ -119,7 +119,13 @@ export default function SystemEventsPage() {
       <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 1.5 }}>
         {t('systemEvents.title')}
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: 'text.secondary',
+          mb: 2,
+        }}
+      >
         {t('systemEvents.description')}
       </Typography>
 
@@ -134,7 +140,14 @@ export default function SystemEventsPage() {
       <ErrorAggregationPanel onViewEvents={showErrors} />
 
       <Paper sx={{ p: 1.5, mb: 2 }}>
-        <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 2,
+            flexWrap: 'wrap',
+            alignItems: 'center',
+          }}
+        >
           <FormControl size="small" sx={{ minWidth: 170 }}>
             <InputLabel id="se-component-label">{t('systemEvents.filters.component')}</InputLabel>
             <Select
@@ -241,7 +254,12 @@ export default function SystemEventsPage() {
         <ListSkeleton count={8} />
       ) : events.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="body1" color="text.secondary">
+          <Typography
+            variant="body1"
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
             {hasFilters ? t('systemEvents.empty') : t('systemEvents.emptyNoFilters')}
           </Typography>
         </Paper>
@@ -302,7 +320,13 @@ export default function SystemEventsPage() {
       )}
 
       {canLoadMore && (
-        <Box display="flex" justifyContent="center" mt={3}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            mt: 3,
+          }}
+        >
           <Button variant="outlined" onClick={loadMore} disabled={loading}>
             {t('common.loadMore')}
           </Button>
@@ -384,7 +408,14 @@ export default function SystemEventsPage() {
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <>
-      <Typography component="dt" variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+      <Typography
+        component="dt"
+        variant="body2"
+        sx={{
+          color: 'text.secondary',
+          fontWeight: 600,
+        }}
+      >
         {label}
       </Typography>
       <Typography component="dd" variant="body2" sx={{ m: 0 }}>
