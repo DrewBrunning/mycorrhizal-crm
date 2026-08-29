@@ -66,6 +66,29 @@ func TestExport_GrammaticalGender_MultipleNoLanguageMatchUsesFirst(t *testing.T)
 	rfctest.AssertJSONPointer(t, out, "/speakToAs/grammaticalGender", "masculine")
 }
 
+// TestExport_GrammaticalGender_MultipleWarns pins the TEST-07 (#435) fix:
+// JSContact's speakToAs.grammaticalGender is a scalar, so collapsing more
+// than one neutral GrammaticalGenders entry is lossy and must emit a warn
+// diagnostic for the gramgender concept (ADR-0002) rather than drop
+// silently. The round-trip property found the silent drop.
+func TestExport_GrammaticalGender_MultipleWarns(t *testing.T) {
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		SpeakToAs: &contactmodel.SpeakToAs{
+			GrammaticalGenders: []contactmodel.GrammaticalGender{
+				{Value: "animate"},
+				{Value: "animate"},
+			},
+		},
+	}}
+	_, diags, err := Adapter{}.Export(rec)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	if !hasDiagWarn(diags, "gramgender") {
+		t.Errorf("diags = %+v, want a warn for concept gramgender (multi-value collapse)", diags)
+	}
+}
+
 func TestExport_Pronouns(t *testing.T) {
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "pronouns-example",

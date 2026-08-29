@@ -223,9 +223,13 @@ jobs:
       contents: read
     name: Backend tests (${{ matrix.leg }})
     runs-on: ubuntu-latest
-    # Each leg owns a whole runner now; 35 keeps a hard ceiling above the
-    # per-leg -timeout=25m below without going unbounded (issue #630).
-    timeout-minutes: 35
+    # Each leg owns a whole runner now. The ceiling is scaled by trigger: PRs
+    # and main merges stay at the tight 35 min (a hung job must not eat a
+    # runner), while the nightly schedule is allowed to run for hours — that
+    # is where the deep generative/property pass lives (see the RAPID_CHECKS
+    # notes on the test steps below), and it only needs to finish before the
+    # next night's run starts.
+    timeout-minutes: ${{ github.event_name == 'schedule' && 240 || 35 }}
     needs: changes
     if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
     strategy:
@@ -234,6 +238,18 @@ jobs:
       fail-fast: false
       matrix:
         leg: [controllers, services, rest]
+
+    env:
+      # TEST-07 (#435): the property-based tests' iteration budget, tiered by
+      # trigger. rapid reads RAPID_CHECKS natively. PRs get a bounded smoke
+      # (200) that trips the regression tripwire cheaply; a push to main
+      # (i.e. a merge) runs 5x deeper (1000); the nightly schedule is the
+      # deep search (8000) that surfaces the shape bugs the other suites
+      # cannot — and the only constraint on it is finishing before the next
+      # night's run. The companion GO_TEST_TIMEOUT scales the per-test ceiling
+      # so a deep nightly run is not killed by the PR-sized 25m timeout.
+      RAPID_CHECKS: ${{ github.event_name == 'pull_request' && '200' || (github.event_name == 'push' && '1000' || '8000') }}
+      GO_TEST_TIMEOUT: ${{ github.event_name == 'schedule' && '200m' || '25m' }}
 
     steps:
       - name: Checkout repository
@@ -279,7 +295,8 @@ jobs:
       # reran test (controllers 72.4% -> 1.2%, dragging the merged Codecov
       # number down ~10pt while the leg still reported green). Coverage is now
       # a separate no-rerun pass below; this run is purely the gate + JUnit +
-      # flake signal.
+      # flake signal. RAPID_CHECKS / GO_TEST_TIMEOUT come from the job-level
+      # env above (tiered by trigger — see the comment there).
       - name: Run tests (retry-on-failure)
         working-directory: backend
         env:
@@ -291,7 +308,7 @@ jobs:
           --rerun-fails-report="rerun-fails-${LEG}.txt"
           --junitfile="junit-${LEG}.xml"
           --packages="$PKGS"
-          -- -race -timeout=25m
+          -- -race -timeout="$GO_TEST_TIMEOUT"
 
       # Issue #639: dedicated coverage pass — no --rerun-fails, so nothing
       # rewrites the profile mid-run; no -race, which roughly halves the
@@ -310,9 +327,13 @@ jobs:
         env:
           LEG: ${{ matrix.leg }}
           PKGS: ${{ steps.pkgs.outputs.list }}
+          # Same TEST-07 iteration budget as the gate run above, so the
+          # coverage profile reflects the same property-test depth the PR
+          # gate sees (a shallower coverage pass could miss generator lines
+          # the gate run hit and tank the codecov/patch status).
         run: |
           read -ra pkgs <<< "$PKGS"
-          go test "${pkgs[@]}" -timeout=25m -coverprofile="coverage-${LEG}.out" -covermode=atomic
+          go test "${pkgs[@]}" -timeout="$GO_TEST_TIMEOUT" -coverprofile="coverage-${LEG}.out" -covermode=atomic
 
       # Issue #268: the flake signal for Go — visibility only, does not fail
       # the leg (the rerun exists precisely to keep the gate green).
