@@ -80,6 +80,17 @@ test('loads households and members on mount', async () => {
   expect(result.current.error).toBeNull();
 });
 
+test('defaults to empty lists when the response omits households or members', async () => {
+  vi.mocked(listHouseholds).mockResolvedValue({} as HouseholdListResponse);
+
+  const { result } = renderHook(() => useHouseholds());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  expect(result.current.households).toEqual([]);
+  expect(result.current.members).toEqual([]);
+  expect(result.current.error).toBeNull();
+});
+
 test('handleCreate creates, refreshes and returns the household', async () => {
   vi.mocked(listHouseholds).mockResolvedValue(listResponse([], []));
   vi.mocked(createHousehold).mockResolvedValue(household);
@@ -219,4 +230,85 @@ test('sets error when the fetch fails', async () => {
 
   expect(result.current.error).toBe('boom');
   expect(result.current.households).toEqual([]);
+});
+
+test('create errors notify through the notifier and rethrow', async () => {
+  vi.mocked(listHouseholds).mockResolvedValue(listResponse([], []));
+  vi.mocked(createHousehold).mockRejectedValue(new Error('create failed'));
+  const showError = vi.fn();
+
+  const { result } = renderHook(() => useHouseholds({ showError }));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  await expect(result.current.handleCreate({ name: 'x', type: 'family_unit' })).rejects.toThrow(
+    'create failed',
+  );
+  expect(showError).toHaveBeenCalledWith('create failed');
+  expect(listHouseholds).toHaveBeenCalledTimes(1);
+});
+
+test('delete errors notify through the notifier and rethrow', async () => {
+  vi.mocked(listHouseholds).mockResolvedValue(listResponse([household], []));
+  vi.mocked(deleteHousehold).mockRejectedValue(new Error('delete failed'));
+  const showError = vi.fn();
+
+  const { result } = renderHook(() => useHouseholds({ showError }));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  await expect(result.current.handleDelete('h-1')).rejects.toThrow('delete failed');
+  expect(showError).toHaveBeenCalledWith('delete failed');
+  expect(listHouseholds).toHaveBeenCalledTimes(1);
+});
+
+test('add-member errors notify through the notifier and rethrow', async () => {
+  vi.mocked(listHouseholds).mockResolvedValue(listResponse([household], []));
+  vi.mocked(addHouseholdMember).mockRejectedValue(new Error('add failed'));
+  const showError = vi.fn();
+
+  const { result } = renderHook(() => useHouseholds({ showError }));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  await expect(result.current.handleAddMember('h-1', 'uid-9')).rejects.toThrow('add failed');
+  expect(showError).toHaveBeenCalledWith('add failed');
+  expect(listHouseholds).toHaveBeenCalledTimes(1);
+});
+
+test('remove-member errors notify through the notifier and rethrow', async () => {
+  vi.mocked(listHouseholds).mockResolvedValue(listResponse([household], []));
+  vi.mocked(removeHouseholdMember).mockRejectedValue(new Error('remove failed'));
+  const showError = vi.fn();
+
+  const { result } = renderHook(() => useHouseholds({ showError }));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  await expect(result.current.handleRemoveMember('h-1', 'uid-1')).rejects.toThrow('remove failed');
+  expect(showError).toHaveBeenCalledWith('remove failed');
+  expect(listHouseholds).toHaveBeenCalledTimes(1);
+});
+
+test('update-member errors notify through the notifier and rethrow', async () => {
+  vi.mocked(listHouseholds).mockResolvedValue(listResponse([household], []));
+  vi.mocked(updateHouseholdMember).mockRejectedValue(new Error('update member failed'));
+  const showError = vi.fn();
+
+  const { result } = renderHook(() => useHouseholds({ showError }));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  await expect(result.current.handleUpdateMember('h-1', 'uid-1', 'adult')).rejects.toThrow(
+    'update member failed',
+  );
+  expect(showError).toHaveBeenCalledWith('update member failed');
+  expect(listHouseholds).toHaveBeenCalledTimes(1);
+});
+
+test('suggest-relationships errors notify through the notifier and rethrow', async () => {
+  vi.mocked(listHouseholds).mockResolvedValue(listResponse([household], []));
+  vi.mocked(suggestHouseholdRelationships).mockRejectedValue(new Error('suggest failed'));
+  const showError = vi.fn();
+
+  const { result } = renderHook(() => useHouseholds({ showError }));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  await expect(result.current.handleSuggestRelationships('h-1')).rejects.toThrow('suggest failed');
+  expect(showError).toHaveBeenCalledWith('suggest failed');
 });
