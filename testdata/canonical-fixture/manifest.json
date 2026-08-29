@@ -1,0 +1,901 @@
+{
+  "version": 1,
+  "description": "Canonical pathological contact dataset (TEST-02, issue #430). One reviewable manifest that every migration (MIG-*), import/export (DATA-*), round-trip (TEST-03), merge-golden (TEST-05) and performance (PERF-01) suite consumes instead of inventing its own thin fixture. Loader: backend/internal/canonicalfixture. See README.md.",
+  "user": {
+    "username": "fixture-user",
+    "email": "fixture@example.com"
+  },
+  "contacts": [
+    {
+      "name": "ada",
+      "comment": "trap #3: fields with no flat-column home (SpeakToAs, PersonalInfo, SocialProfiles, OtherOnlineServices, extra name components, Keywords, Notes, Localizations) must survive Record -> Contact -> Record via the neutral Card. RecordFromContact would silently drop all of it.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000001",
+        "kind": "individual",
+        "language": "en",
+        "created": { "utc": "2026-01-01T00:00:00Z" },
+        "name": {
+          "full": "Ada Lovelace",
+          "components": [
+            { "kind": "title", "value": "Countess" },
+            { "kind": "given", "value": "Ada" },
+            { "kind": "given2", "value": "Augusta" },
+            { "kind": "surname", "value": "Lovelace" },
+            { "kind": "credential", "value": "OL" }
+          ],
+          "sortAs": { "surname": "Lovelace" },
+          "isOrdered": true
+        },
+        "nicknames": [
+          { "name": "The Enchantress of Numbers" },
+          { "name": "Ada", "contexts": ["work"] }
+        ],
+        "organizations": [
+          { "name": "Analytical Engine Co.", "units": [{ "name": "Research" }] },
+          { "name": "Royal Society", "units": [{ "name": "Mathematics" }, { "name": "Computing" }] }
+        ],
+        "titles": [
+          { "name": "Mathematician", "kind": "title" },
+          { "name": "Author", "kind": "role" }
+        ],
+        "emails": [
+          { "address": "ada@lovelace.example", "label": "work", "contexts": ["work"], "pref": 1 },
+          { "address": "augusta@babbage.example", "label": "home" }
+        ],
+        "phones": [
+          { "number": "+44 20 7946 0958", "label": "cell", "features": ["cell", "voice"], "contexts": ["work"] },
+          { "number": "+44 20 7946 0000", "label": "home" }
+        ],
+        "imppAddresses": [
+          { "service": "matrix", "uri": "https://matrix.to/#/@ada:example.org" }
+        ],
+        "socialProfiles": [
+          { "service": "Mastodon", "user": "@ada@fosstodon.org", "uri": "https://fosstodon.org/@ada" }
+        ],
+        "otherOnlineServices": [
+          { "service": "Keybase", "uri": "https://keybase.io/ada" }
+        ],
+        "addresses": [
+          {
+            "components": [
+              { "kind": "name", "value": "1 St James Square" },
+              { "kind": "locality", "value": "London" },
+              { "kind": "region", "value": "Greater London" },
+              { "kind": "postcode", "value": "SW1Y 4JX" },
+              { "kind": "country", "value": "United Kingdom" }
+            ],
+            "contexts": ["work"],
+            "countryCode": "GB",
+            "timeZone": "Europe/London"
+          }
+        ],
+        "anniversaries": [
+          { "kind": "birth", "date": { "partial": { "year": 1815, "month": 12, "day": 10 } } },
+          { "kind": "wedding", "date": { "timestamp": "1835-07-08T00:00:00Z" } }
+        ],
+        "speakToAs": {
+          "grammaticalGenders": [{ "value": "feminine", "language": "en" }],
+          "pronouns": [{ "pronouns": "she/her", "contexts": ["work"] }]
+        },
+        "personalInfo": [
+          { "kind": "hobby", "value": "analytical machinery", "level": "high" },
+          { "kind": "interest", "value": "poetry" }
+        ],
+        "notes": [{ "note": "Pioneer of computing." }],
+        "keywords": ["mathematics", "computing", "vip"],
+        "relatedTo": [
+          { "target": "urn:uuid:10000000-0000-4000-8000-000000000002", "relations": ["friend"] }
+        ],
+        "members": ["urn:uuid:10000000-0000-4000-8000-000000000003"],
+        "localizations": {
+          "fr": { "name": { "full": "Ada Lovelace" } }
+        }
+      },
+      "crm": {
+        "kind": "human",
+        "circles": ["legacy-work"],
+        "how_we_met": "Through the Analytical Engine project.",
+        "work_information": "First programmer.",
+        "contact_information": "Prefers written correspondence.",
+        "gender": "non-binary"
+      },
+      "passthrough": {
+        "vCardProps": [
+          {
+            "name": "X-CUSTOM-ADA",
+            "params": { "type": ["custom"] },
+            "type": "text",
+            "value": "\"keep-me\""
+          }
+        ]
+      }
+    },
+    {
+      "name": "bob",
+      "comment": "many repeatable fields (multiple emails/phones/addresses/orgs/titles), a photo media entry, a very long how_we_met and gender (the #515 round-trip hole is on crm.gender).",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000002",
+        "kind": "individual",
+        "name": {
+          "full": "Bob Smith",
+          "components": [
+            { "kind": "given", "value": "Bob" },
+            { "kind": "surname", "value": "Smith" }
+          ]
+        },
+        "nicknames": [{ "name": "Bobby" }, { "name": "The Accountant", "contexts": ["work"] }],
+        "organizations": [
+          { "name": "Smith & Co", "units": [{ "name": "Accounting" }], "sortAs": "Smith & Co" },
+          { "name": "Second Job Ltd", "units": [{ "name": "Finance" }] }
+        ],
+        "titles": [
+          { "name": "Accountant", "kind": "title" },
+          { "name": "Treasurer", "kind": "role" }
+        ],
+        "emails": [
+          { "address": "bob.smith@example.com", "label": "work", "contexts": ["work"], "pref": 1 },
+          { "address": "bob@home.example", "label": "home" },
+          { "address": "robert.smith+tax@example.com", "label": "tax" }
+        ],
+        "phones": [
+          { "number": "+49 30 901820", "label": "work", "features": ["voice", "text"], "contexts": ["work"], "pref": 1 },
+          { "number": "+49 30 901821", "label": "home", "features": ["cell"] },
+          { "number": "+1 555 0100 42", "label": "mobile", "features": ["cell", "voice"] }
+        ],
+        "imppAddresses": [{ "service": "signal", "uri": "tel:+4930901821" }],
+        "addresses": [
+          {
+            "components": [
+              { "kind": "name", "value": "Musterstraße 1" },
+              { "kind": "apartment", "value": "Apt 4B" },
+              { "kind": "floor", "value": "3" },
+              { "kind": "postOfficeBox", "value": "PO Box 42" },
+              { "kind": "locality", "value": "Berlin" },
+              { "kind": "region", "value": "Berlin" },
+              { "kind": "postcode", "value": "10115" },
+              { "kind": "country", "value": "Germany" }
+            ],
+            "contexts": ["work"],
+            "countryCode": "DE"
+          },
+          {
+            "components": [
+              { "kind": "name", "value": "8 High Street" },
+              { "kind": "locality", "value": "Old Town" },
+              { "kind": "region", "value": "Sussex" },
+              { "kind": "postcode", "value": "BN1 1AA" },
+              { "kind": "country", "value": "United Kingdom" }
+            ],
+            "contexts": ["home"],
+            "countryCode": "GB"
+          }
+        ],
+        "anniversaries": [
+          { "kind": "birth", "date": { "partial": { "year": 1975, "month": 11, "day": 5 } } },
+          { "kind": "wedding", "date": { "partial": { "year": 2005, "month": 6, "day": 18 } } }
+        ],
+        "media": [
+          {
+            "kind": "photo",
+            "uri": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+            "mediaType": "image/png"
+          }
+        ]
+      },
+      "crm": {
+        "kind": "human",
+        "how_we_met": "Bob and I met at the accounting conference in 2003 — he was presenting the tax-policy talk and I was there for the CRM-data track, and we ended up sharing a table for lunch both days. We kept in touch through the annual meetups for a decade before he moved to Berlin and we started actually working together on the household budget work that eventually turned into a real project. The short version: conference lunch, two decades of birthdays, one shared spreadsheet. What follows is padding to get this column meaningfully long — close to the 1000-character ceiling the model validates — because long free-text fields are a separate failure class: a how_we_met that is fine at two hundred characters can silently truncate, mangle, or fail to round-trip at eight hundred, and this contact is the regression net for that. He answers every email within a day, keeps the shared files organised, and knows the exact date of everything.",
+        "work_information": "Chartered accountant, freelance.",
+        "contact_information": "Prefer evenings for calls.",
+        "gender": "male"
+      }
+    },
+    {
+      "name": "celine",
+      "comment": "Unicode / non-Latin data: Japanese name components with phonetic readings, emoji and mixed-script notes, a non-Latin address, and a multi-valued custom field value.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000003",
+        "kind": "individual",
+        "language": "fr",
+        "name": {
+          "full": "セリーヌ 田中",
+          "components": [
+            { "kind": "given", "value": "セリーヌ", "phonetic": "Serīnu" },
+            { "kind": "surname", "value": "田中", "phonetic": "Tanaka" }
+          ],
+          "phoneticSystem": "latn",
+          "sortAs": { "surname": "たなか" }
+        },
+        "nicknames": [{ "name": "Céline" }, { "name": "🌙" }],
+        "emails": [
+          { "address": "celine.tanaka@example.jp", "label": "work" },
+          { "address": "cel@example.com", "label": "home", "pref": 1 }
+        ],
+        "phones": [{ "number": "+81 3 1234 5678", "label": "cell", "features": ["cell"] }],
+        "addresses": [
+          {
+            "components": [
+              { "kind": "name", "value": "東京都渋谷区神南1-2-3" },
+              { "kind": "locality", "value": "渋谷区" },
+              { "kind": "region", "value": "東京都" },
+              { "kind": "postcode", "value": "150-0041" },
+              { "kind": "country", "value": "日本" }
+            ],
+            "contexts": ["home"],
+            "countryCode": "JP"
+          }
+        ],
+        "anniversaries": [
+          { "kind": "birth", "date": { "partial": { "year": 1988, "month": 4, "day": 1 } } }
+        ],
+        "speakToAs": {
+          "pronouns": [{ "pronouns": "elle/she", "contexts": ["work"] }]
+        },
+        "personalInfo": [
+          { "kind": "hobby", "value": "書道 (shodō)" },
+          { "kind": "hobby", "value": "ramen" }
+        ],
+        "notes": [
+          { "note": "セリーヌの好きなラーメン屋さんをメモしておく。🍜 她很喜歡書法，書道家を目指している。Résumé en français requis pour le dossier." }
+        ],
+        "keywords": ["ラーメン", "書道", "🇫🇷"]
+      },
+      "crm": {
+        "kind": "human",
+        "how_we_met": "Mutual friend in Tokyo.",
+        "contact_information": "Prefers Line over email.",
+        "gender": "女性"
+      }
+    },
+    {
+      "name": "dmitri",
+      "comment": "empty/null values: a contact whose card is only a given name and a uid — every optional field absent, not zero-filled. Exercises the 'absent stays absent' round-trip path.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000004",
+        "kind": "individual",
+        "name": {
+          "components": [{ "kind": "given", "value": "Dmitri" }]
+        }
+      },
+      "crm": {
+        "kind": "human"
+      }
+    },
+    {
+      "name": "eve",
+      "comment": "edge-case dates: year-less leap-day birthday, a far-future wedding anniversary, year-only life events, a month+day life event with remind, and a soft-deleted preference on a live contact.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000005",
+        "kind": "individual",
+        "name": {
+          "full": "Eve Lovelace",
+          "components": [
+            { "kind": "given", "value": "Eve" },
+            { "kind": "surname", "value": "Lovelace" }
+          ]
+        },
+        "nicknames": [{ "name": "Evie" }],
+        "emails": [{ "address": "eve@lovelace.example", "label": "home" }],
+        "phones": [{ "number": "+44 20 7946 0959", "label": "cell" }],
+        "anniversaries": [
+          { "kind": "birth", "date": { "partial": { "month": 2, "day": 29 } } },
+          { "kind": "wedding", "date": { "partial": { "year": 9999, "month": 12, "day": 31 } } }
+        ]
+      },
+      "crm": {
+        "kind": "human",
+        "gender": "agender"
+      }
+    },
+    {
+      "name": "frank",
+      "comment": "pets: a contact whose CRM envelope kind is 'animal'. Lives in the Smith Family household as a pet.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000006",
+        "kind": "individual",
+        "name": {
+          "full": "Frank",
+          "components": [{ "kind": "given", "value": "Frank" }]
+        },
+        "anniversaries": [
+          { "kind": "birth", "date": { "partial": { "year": 2021, "month": 5, "day": 1 } } }
+        ],
+        "notes": [{ "note": "Golden retriever. Barks at the postman, not at Ada." }]
+      },
+      "crm": {
+        "kind": "animal",
+        "how_we_met": "Adopted from the shelter in 2021."
+      }
+    },
+    {
+      "name": "gina",
+      "comment": "soft-deleted contact (trap #7): created with the full cascade surface — notes, life events, gifts, preferences, custom field values, external identity, attachment, activity, and edges/memberships/taggings — then tombstoned by the loader exactly the way DeleteContact does. Every dependent row is soft- or hard-deleted with her; the tombstone keeps her data recoverable. julie later re-uses her vcard_uid.",
+      "soft_deleted": true,
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000007",
+        "kind": "individual",
+        "name": {
+          "full": "Gina Torres",
+          "components": [
+            { "kind": "given", "value": "Gina" },
+            { "kind": "surname", "value": "Torres" }
+          ]
+        },
+        "nicknames": [{ "name": "G" }],
+        "emails": [{ "address": "gina.torres@example.com", "label": "home" }],
+        "phones": [{ "number": "+34 91 123 4567", "label": "cell" }]
+      },
+      "crm": {
+        "kind": "human",
+        "gender": "female"
+      }
+    },
+    {
+      "name": "hugo",
+      "comment": "deliberately duplicate / conflicting record: shares email + phone + near-identical name with ida (the duplicate-detection pair), is privately married to ida, keeps a soft-deleted note, and hosts a soft-deleted activity.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000008",
+        "kind": "individual",
+        "name": {
+          "full": "Hugo Smith",
+          "components": [
+            { "kind": "given", "value": "Hugo" },
+            { "kind": "surname", "value": "Smith" }
+          ]
+        },
+        "emails": [{ "address": "hugo.smith@example.com", "label": "home" }],
+        "phones": [{ "number": "+1 555 0100", "label": "cell" }],
+        "addresses": [
+          {
+            "components": [
+              { "kind": "name", "value": "14 Garden Lane" },
+              { "kind": "locality", "value": "Springfield" },
+              { "kind": "region", "value": "IL" },
+              { "kind": "postcode", "value": "62701" },
+              { "kind": "country", "value": "USA" }
+            ],
+            "contexts": ["home"],
+            "countryCode": "US"
+          }
+        ],
+        "anniversaries": [
+          { "kind": "birth", "date": { "partial": { "year": 1984, "month": 7, "day": 4 } } }
+        ]
+      },
+      "crm": {
+        "kind": "human",
+        "how_we_met": "Met at a friend's barbecue.",
+        "gender": "male"
+      }
+    },
+    {
+      "name": "ida",
+      "comment": "deliberately duplicate / conflicting record: the other half of the hugo/ida duplicate pair — same email, same phone, near-identical name.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000009",
+        "kind": "individual",
+        "name": {
+          "full": "Ida Smith",
+          "components": [
+            { "kind": "given", "value": "Ida" },
+            { "kind": "surname", "value": "Smith" }
+          ]
+        },
+        "emails": [{ "address": "hugo.smith@example.com", "label": "home" }],
+        "phones": [{ "number": "+1 555 0100", "label": "cell" }]
+      },
+      "crm": {
+        "kind": "human",
+        "gender": "female"
+      }
+    },
+    {
+      "name": "julie",
+      "comment": "unique-index behavior (trap #7): recreates gina's vcard_uid after gina was tombstoned. This succeeds only because idx_contacts_vcard_uid_user is partial (WHERE deleted_at IS NULL); a soft-deleted row must never block re-import. The loader copies gina's vcard_uid into both VCardUID and Card.UID.",
+      "recreates_vcard_uid_of": "gina",
+      "card": {
+        "kind": "individual",
+        "name": {
+          "components": [{ "kind": "given", "value": "Julie" }]
+        }
+      },
+      "crm": {
+        "kind": "human"
+      }
+    }
+  ],
+  "notes": [
+    {
+      "contact": "ada",
+      "content": "Ada prefers written correspondence. Always reply within a day.",
+      "date": "2026-01-10T09:30:00Z"
+    },
+    {
+      "contact": "bob",
+      "content": "Bob's file predates the CRM and arrived via the old CSV import, which means every field was flattened and then re-expanded — so this note carries the history of that migration: the original row had three employers, two addresses, and a phone number written five different ways across five years of exports, and the import merge reconciled them into the current record. The import tool wrote its audit trail here: it kept the first employer as primary because the second address stopped being valid after the 2018 move; it resolved the phone-number country-code discrepancy in favour of the +49 value over the 0049 spelling because the latter only ever appeared in the old export format; and it merged three email addresses by de-duplicating the two that differed only by a trailing dot. This note is deliberately long because long notes are a separate failure class: a text column that is fine at 200 characters can silently truncate, mangle, or fail to round-trip at 2000, and this contact is the regression net for exactly that. The length also exercises the FTS tokenizer against a single large field rather than many small ones, which is a different query plan. Past the two-thousand-character mark the content itself no longer matters; what matters is that every character — the umlauts, the em dashes, the digits, the trailing punctuation, and the repeated long words that a truncating implementation would cut in half — survives a save, a migration, an export, and a re-import byte for byte. A truncation would also be visible in the raw byte count, which is why the suite that consumes this fixture checks the length of this exact field rather than trusting the round trip alone.",
+      "date": "2026-02-01T12:00:00Z"
+    },
+    {
+      "contact": "celine",
+      "content": "セリーヌの好きなラーメン屋さんをメモしておく。🍜 她很喜歡書法。Спрашивала про рекомендации по визам.",
+      "date": "2026-03-05T18:45:00Z"
+    },
+    {
+      "contact": "eve",
+      "content": "Eve loves sailing, just like Ada.",
+      "date": "2026-04-01T08:00:00Z"
+    },
+    {
+      "contact": "hugo",
+      "content": "Old note: Hugo used to have a +1 555 0199 number. No longer valid.",
+      "date": "2025-01-01T10:00:00Z",
+      "soft_deleted": true
+    },
+    {
+      "contact": "gina",
+      "content": "Gina remembers everyone's birthdays. Ask her about the reunion.",
+      "date": "2024-06-15T14:20:00Z"
+    }
+  ],
+  "life_events": [
+    {
+      "contact": "ada",
+      "type": "had_child",
+      "category": "family_relationships",
+      "date": { "year": 2010, "month": 6, "day": 15 },
+      "description": "Eve was born.",
+      "related_entities": ["eve"]
+    },
+    {
+      "contact": "ada",
+      "type": "published_a_paper",
+      "category": "work_education",
+      "date": { "year": 1843 },
+      "description": "Sketch of the Analytical Engine."
+    },
+    {
+      "contact": "bob",
+      "type": "graduated",
+      "category": "work_education",
+      "date": { "year": 2005 },
+      "description": "BSc Computer Science."
+    },
+    {
+      "contact": "celine",
+      "type": "moved",
+      "category": "home_living",
+      "date": { "month": 12, "day": 25 },
+      "description": "Moved on Christmas Day.",
+      "remind": true
+    },
+    {
+      "contact": "eve",
+      "type": "started_school",
+      "category": "work_education",
+      "date": { "year": 2016, "month": 9, "day": 1 }
+    },
+    {
+      "contact": "eve",
+      "type": "broke_a_bone",
+      "category": "health_wellness",
+      "date": { "year": 2018 },
+      "description": "Wrist. Fell off the skateboard Ada bought her. She still uses the board."
+    },
+    {
+      "contact": "hugo",
+      "type": "bought_a_home",
+      "category": "home_living",
+      "date": { "year": 2024, "month": 3, "day": 31 },
+      "description": "14 Garden Lane, Springfield."
+    },
+    {
+      "contact": "ida",
+      "type": "got_engaged",
+      "category": "family_relationships",
+      "date": { "year": 2025, "month": 12, "day": 25 },
+      "description": "Proposed at Christmas dinner.",
+      "related_entities": ["hugo"]
+    },
+    {
+      "contact": "gina",
+      "type": "traveled",
+      "category": "travel_experiences",
+      "date": { "year": 2019, "month": 8, "day": 15 },
+      "description": "Japan trip."
+    }
+  ],
+  "gifts": [
+    {
+      "contact": "ada",
+      "status": "given",
+      "occasion": "birthday",
+      "description": "Hand-knitted scarf",
+      "date": "2025-12-10T00:00:00Z",
+      "value_cents": 3500,
+      "currency": "USD"
+    },
+    {
+      "contact": "celine",
+      "status": "idea",
+      "occasion": "housewarming",
+      "description": "Matcha set",
+      "notes": "She mentioned the good brand once. Check before buying."
+    },
+    {
+      "contact": "eve",
+      "status": "received",
+      "occasion": "holiday",
+      "description": "Borrowed book",
+      "date": "2026-03-29T01:30:00Z",
+      "soft_deleted": true
+    },
+    {
+      "contact": "hugo",
+      "status": "purchased",
+      "occasion": "anniversary",
+      "description": "Watch",
+      "url": "https://example.com/watch",
+      "date": "2026-02-14T00:00:00Z",
+      "value_cents": 25000,
+      "currency": "EUR"
+    },
+    {
+      "contact": "gina",
+      "status": "given",
+      "occasion": "farewell",
+      "description": "Herb bundle",
+      "date": "2020-01-01T00:00:00Z"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "ada",
+      "target": "bob",
+      "type": "coworker_of",
+      "status": "confirmed",
+      "sensitivity": "normal",
+      "provenance": "user-confirmed",
+      "confidence": 1.0
+    },
+    {
+      "source": "ada",
+      "target": "celine",
+      "type": "friend_of",
+      "comment": "omits status/sensitivity/provenance to exercise the loader's defaults (confirmed / normal / user-confirmed)"
+    },
+    {
+      "source": "bob",
+      "target": "celine",
+      "type": "friend_of",
+      "status": "confirmed",
+      "sensitivity": "normal",
+      "provenance": "user-confirmed",
+      "confidence": 1.0
+    },
+    {
+      "source": "ada",
+      "target": "eve",
+      "type": "parent_of",
+      "status": "confirmed",
+      "sensitivity": "normal",
+      "provenance": "user-confirmed",
+      "confidence": 1.0
+    },
+    {
+      "source": "ada",
+      "target": "frank",
+      "type": "owns",
+      "status": "confirmed",
+      "sensitivity": "normal",
+      "provenance": "user-confirmed",
+      "confidence": 1.0
+    },
+    {
+      "source": "hugo",
+      "target": "ida",
+      "type": "spouse_of",
+      "status": "confirmed",
+      "sensitivity": "private",
+      "provenance": "user-confirmed",
+      "confidence": 1.0
+    },
+    {
+      "source": "ada",
+      "target": "hugo",
+      "type": "mentor_of",
+      "status": "confirmed",
+      "sensitivity": "secret",
+      "provenance": "user-confirmed",
+      "confidence": 1.0
+    },
+    {
+      "source": "bob",
+      "target": "eve",
+      "type": "parent_of",
+      "status": "suggested",
+      "sensitivity": "normal",
+      "provenance": "household-inferred",
+      "confidence": 0.6
+    },
+    {
+      "source": "ida",
+      "target": "gina",
+      "type": "sibling_of",
+      "status": "confirmed",
+      "sensitivity": "normal",
+      "provenance": "user-confirmed",
+      "confidence": 1.0
+    },
+    {
+      "source": "gina",
+      "target": "hugo",
+      "type": "friend_of",
+      "status": "confirmed",
+      "sensitivity": "normal",
+      "provenance": "imported",
+      "confidence": 0.9
+    }
+  ],
+  "households": [
+    {
+      "name": "Smith Family",
+      "type": "family_unit",
+      "address": {
+        "components": [
+          { "kind": "name", "value": "8 High Street" },
+          { "kind": "locality", "value": "Old Town" },
+          { "kind": "postcode", "value": "BN1 1AA" },
+          { "kind": "country", "value": "United Kingdom" }
+        ],
+        "contexts": ["home"]
+      },
+      "members": [
+        { "contact": "ada", "role": "adult", "since": "2015-01-01" },
+        { "contact": "bob", "role": "adult" },
+        { "contact": "eve", "role": "child", "since": "2010-01-01" },
+        { "contact": "frank", "role": "pet", "since": "2021-05-01" }
+      ]
+    },
+    {
+      "name": "Garden Flat",
+      "type": "roommates",
+      "members": [
+        { "contact": "hugo", "role": "roommate", "since": "2024-01-15" },
+        { "contact": "ida", "role": "roommate" },
+        { "contact": "gina", "role": "roommate" }
+      ]
+    }
+  ],
+  "circles": [
+    {
+      "name": "work",
+      "members": ["ada", "bob"]
+    },
+    {
+      "name": "book-club",
+      "members": ["ada", "celine", "hugo", "ida", "gina"]
+    }
+  ],
+  "tags": [
+    {
+      "name": "vip",
+      "contacts": ["ada", "bob"]
+    },
+    {
+      "name": "volunteer",
+      "contacts": ["hugo", "ida", "celine", "gina"]
+    }
+  ],
+  "custom_fields": [
+    {
+      "key": "dietary_restrictions",
+      "label": "Dietary restrictions",
+      "type": "text",
+      "constraints": { "maxLength": 200 },
+      "projection": "internal-only",
+      "sensitivity": "normal",
+      "values": [
+        { "contact": "ada", "value": "vegetarian" },
+        { "contact": "hugo", "value": "vegan" }
+      ]
+    },
+    {
+      "key": "favorite_coffee",
+      "label": "Favorite coffee",
+      "type": "string",
+      "projection": "vcard:X-FAVORITE-COFFEE",
+      "sensitivity": "normal",
+      "values": [
+        { "contact": "ada", "value": "pour-over" }
+      ]
+    },
+    {
+      "key": "shoe_size",
+      "label": "Shoe size",
+      "type": "string",
+      "projection": "internal-only",
+      "sensitivity": "secret",
+      "values": [
+        { "contact": "bob", "value": "43" }
+      ]
+    },
+    {
+      "key": "private_nickname",
+      "label": "Private nickname",
+      "type": "string",
+      "projection": "vcard:X-PRIVATE-NICK",
+      "sensitivity": "secret",
+      "values": [
+        { "contact": "ada", "value": "stormy" }
+      ]
+    },
+    {
+      "key": "languages_spoken",
+      "label": "Languages spoken",
+      "type": "string",
+      "constraints": { "multi": true },
+      "projection": "internal-only",
+      "sensitivity": "normal",
+      "values": [
+        { "contact": "celine", "value": ["ja", "fr", "en"] }
+      ]
+    },
+    {
+      "key": "favorite_number",
+      "label": "Favorite number",
+      "type": "number",
+      "projection": "internal-only",
+      "sensitivity": "normal",
+      "values": [
+        { "contact": "eve", "value": 42 }
+      ]
+    },
+    {
+      "key": "family_nickname",
+      "label": "Family nickname",
+      "type": "string",
+      "projection": "internal-only",
+      "sensitivity": "normal",
+      "values": [
+        { "contact": "gina", "value": "La Torres" }
+      ]
+    }
+  ],
+  "preferences": [
+    {
+      "contact": "ada",
+      "category": "hobby",
+      "key": "favorite",
+      "value": "sailing",
+      "source": "user",
+      "sensitivity": "normal"
+    },
+    {
+      "contact": "bob",
+      "category": "hobby",
+      "key": "favorite",
+      "value": "chess",
+      "notes": "He said 'chess, obviously'. Mentioned once over lunch.",
+      "source": "conversation_note",
+      "sensitivity": "private"
+    },
+    {
+      "contact": "celine",
+      "category": "food",
+      "key": "favorite",
+      "value": "ramen",
+      "source": "user",
+      "confidence": 0.9,
+      "sensitivity": "normal"
+    },
+    {
+      "contact": "eve",
+      "category": "hobby",
+      "key": "favorite",
+      "value": "skydiving",
+      "source": "user",
+      "sensitivity": "normal",
+      "soft_deleted": true
+    },
+    {
+      "contact": "gina",
+      "category": "gift",
+      "key": "avoid",
+      "value": "no candles",
+      "notes": "Migraines.",
+      "source": "conversation_note",
+      "sensitivity": "normal"
+    }
+  ],
+  "external_identities": [
+    {
+      "contact": "ada",
+      "system": "immich",
+      "external_id": "person-ada-lovelace",
+      "url": "https://immich.example/person/person-ada-lovelace",
+      "sync_status": "synced",
+      "metadata": { "photo_count": 12, "name": "Ada" }
+    },
+    {
+      "contact": "bob",
+      "system": "paperless",
+      "external_id": "doc-2025-tax",
+      "sync_status": "idle"
+    },
+    {
+      "contact": "eve",
+      "system": "seafile",
+      "external_id": "folder-2026-travel",
+      "sync_status": "error"
+    },
+    {
+      "contact": "gina",
+      "system": "immich",
+      "external_id": "person-gina",
+      "sync_status": "synced",
+      "metadata": { "photo_count": 3 }
+    }
+  ],
+  "attachments": [
+    {
+      "contact": "bob",
+      "stored_name": "f1-2025-tax.pdf",
+      "original_name": "tax-forms-2025.pdf",
+      "content_type": "application/pdf",
+      "size_bytes": 245760
+    },
+    {
+      "contact": "celine",
+      "stored_name": "f2-scan.jpg",
+      "original_name": "scan-001.jpg",
+      "content_type": "image/jpeg",
+      "size_bytes": 512000
+    },
+    {
+      "contact": "ada",
+      "stored_name": "f3-welcome.pdf",
+      "original_name": "welcome-letter.pdf",
+      "content_type": "application/pdf",
+      "size_bytes": 8192,
+      "soft_deleted": true
+    },
+    {
+      "contact": "gina",
+      "stored_name": "f4-notes.txt",
+      "original_name": "notes.txt",
+      "content_type": "text/plain",
+      "size_bytes": 1024
+    }
+  ],
+  "activities": [
+    {
+      "title": "Coffee catch-up",
+      "description": "Quarterly review of the household budget work.",
+      "location": "Blue Bottle",
+      "date": "2026-05-10T09:00:00Z",
+      "type": "meal",
+      "contacts": ["ada", "bob"]
+    },
+    {
+      "title": "Call about the move",
+      "description": "Celine's Christmas Day move.",
+      "date": "2025-12-20T16:00:00Z",
+      "type": "call",
+      "contacts": ["celine", "eve"],
+      "external_ref": "caldav://example/events/move-call"
+    },
+    {
+      "title": "Birthday brunch",
+      "date": "2023-08-08T11:30:00Z",
+      "type": "meal",
+      "contacts": ["gina", "hugo", "ida"]
+    },
+    {
+      "title": "Disagreement about parking",
+      "date": "2026-01-02T18:00:00Z",
+      "type": "call",
+      "contacts": ["hugo", "ida"],
+      "soft_deleted": true
+    }
+  ]
+}
