@@ -12,7 +12,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// TestFullChainMigrationPreservesRealData is issue #254's regression test.
+// TestFullChainMigrationPreservesRealData is issue #254's regression test,
+// reworked for the supported-upgrade floor (issue #529).
 //
 // CLAUDE.md's orientation section is explicit: real production data exists
 // as of v0.2.0-alpha-candidate, and "migrations must preserve existing
@@ -25,15 +26,22 @@ import (
 // or retypes a column would pass every existing test here and still
 // silently destroy data in prod.
 //
-// This test: (1) applies exactly the migrations that existed at
-// v0.2.0-alpha-candidate (000001-000008 — verified identical in shape to the
-// tag itself; see the testdata fixture's own comment), (2) loads a seed
-// fixture of representative rows written directly against that schema, no
-// GORM involved, exactly like real rows that predate every migration since,
-// (3) runs database.InitDB — the same entry point the real server uses on
-// startup — to apply every migration from there to HEAD, and (4) asserts the
-// data survived: counts, key values, and that the soft-deleted contact is
-// still there (via Unscoped()), not resurrected and not hard-deleted.
+// Under the floor policy the v0.2.0-alpha-candidate snapshot is a SUB-FLOOR
+// database: the normal startup path must refuse to migrate it (asserted
+// first, naming v0.6.0 as the required intermediate), and the full chain runs
+// only through the documented one-time bridge override — exactly what the
+// maintainer's own v0.2.0-alpha-candidate deployment procedure
+// (docs/upgrade-compatibility.md) uses. This test therefore: (1) applies
+// exactly the migrations that existed at v0.2.0-alpha-candidate
+// (000001-000008 — verified identical in shape to the tag itself; see the
+// testdata fixture's own comment), (2) loads a seed fixture of
+// representative rows written directly against that schema, no GORM involved,
+// exactly like real rows that predate every migration since, (3) asserts the
+// startup refusal, (4) runs database.InitDB with the bridge override — the
+// same entry point the real server uses on startup — to apply every
+// migration from there to HEAD, and (5) asserts the data survived: counts,
+// key values, and that the soft-deleted contact is still there (via
+// Unscoped()), not resurrected and not hard-deleted.
 func TestFullChainMigrationPreservesRealData(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "full-chain.db")
 
@@ -56,9 +64,22 @@ func TestFullChainMigrationPreservesRealData(t *testing.T) {
 
 	require.NoError(t, sqlDB.Close())
 
-	// The production entry point: applies every migration from 000008 to
-	// HEAD (currently through 000031, reach_out_suggestions), then opens the
-	// GORM connection the rest of the app uses.
+	// Issue #529: a sub-floor database refuses to migrate on startup, naming
+	// v0.6.0 as the required intermediate — never a partial migration, never
+	// a best-effort single hop.
+	_, err = InitDB(dbPath)
+	require.Error(t, err, "a v0.2.0-alpha-candidate database must refuse to migrate")
+	var subFloor *ErrSubFloorMigration
+	require.ErrorAs(t, err, &subFloor)
+	assert.EqualValues(t, 8, subFloor.Version)
+	assert.Contains(t, err.Error(), "v0.6.0", "the refusal must name v0.6.0 as the required intermediate")
+
+	// The one-time bridge (docs/upgrade-compatibility.md): the documented
+	// override lets the full chain run in one binary when the v0.6.0
+	// intermediate cannot be produced. The production entry point applies
+	// every migration from 000008 to HEAD, then opens the GORM connection the
+	// rest of the app uses.
+	t.Setenv(subFloorMigrationEnvVar, "1")
 	db, err := InitDB(dbPath)
 	require.NoError(t, err)
 	t.Cleanup(func() {
