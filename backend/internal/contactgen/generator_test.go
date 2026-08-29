@@ -52,7 +52,7 @@ func isZero(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.String:
 		return v.String() == ""
-	case reflect.Slice, reflect.Map, reflect.Ptr, reflect.Interface:
+	case reflect.Slice, reflect.Map, reflect.Pointer, reflect.Interface:
 		return v.IsNil()
 	default:
 		return v.IsZero()
