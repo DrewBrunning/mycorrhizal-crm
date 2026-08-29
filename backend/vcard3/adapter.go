@@ -418,7 +418,7 @@ func exportName(card vcard.Card, name *contactmodel.Name, diags *[]contactmodel.
 				}
 			}
 		}
-		if name.PhoneticScript != "" {
+		if name.PhoneticScript != "" || name.PhoneticSystem != "" {
 			warn(diags, "name.phonetic", "N PHONETIC/SCRIPT/ALTID has no vCard 3.0 home (RFC 9554); dropped")
 		}
 	}
@@ -479,6 +479,12 @@ func exportAddresses(card vcard.Card, addresses []contactmodel.Address, diags *[
 		}
 		if a.TimeZone != "" {
 			card.Add(PropTz, &vcard.Field{Value: a.TimeZone})
+		}
+		if a.CountryCode != "" {
+			// RFC 2426 ADR has no CC parameter (RFC 9553 §2.8.1's countryCode
+			// is a 9553/9554-only field); per the degradation policy a neutral
+			// field with no 3.0 home warns rather than dropping silently.
+			warn(diags, "adr", "vCard 3.0 ADR has no CC parameter (RFC 2426); country code dropped")
 		}
 	}
 }
@@ -1040,6 +1046,14 @@ func parseDatePartial(v string) contactmodel.AnniversaryDate {
 		m, _ := strconv.Atoi(v[5:7])
 		d, _ := strconv.Atoi(v[8:10])
 		return contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{Year: &y, Month: &m, Day: &d}}
+	case len(v) == 7 && v[0] == '-' && v[1] == '-' && v[4] == '-':
+		// Extended dashed --MM-DD (the same form formatDatePartial emits and
+		// vcard4's parser accepts). This package's own round trips produce it
+		// for year-less birthdays (e.g. --02-29), so it must not fall through
+		// to the timestamp default or the partial date is mangled.
+		m, _ := strconv.Atoi(v[2:4])
+		d, _ := strconv.Atoi(v[5:7])
+		return contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{Month: &m, Day: &d}}
 	case len(v) == 8 && v[0] == '-' && v[1] == '-' && v[4] == '-':
 		m, _ := strconv.Atoi(v[2:4])
 		d, _ := strconv.Atoi(v[5:7])
@@ -1213,7 +1227,7 @@ func knownPropNames() map[string]bool {
 		PropBday, PropNote, PropCategories, PropPhoto, PropLogo, PropSound,
 		PropCaluri, PropFburl, PropCaladruri, PropKey, PropSource, PropURL,
 		PropAgent, PropXAnniversary, PropXSocialProfile, PropXServiceType,
-		propXABLabel,
+		PropXUsername, propXABLabel,
 	}
 	m := make(map[string]bool, len(names))
 	for _, n := range names {
