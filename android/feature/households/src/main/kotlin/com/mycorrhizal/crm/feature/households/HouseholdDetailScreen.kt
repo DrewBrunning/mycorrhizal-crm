@@ -26,7 +26,6 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -55,6 +54,7 @@ import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.HouseholdMember
 import com.mycorrhizal.crm.model.network.HouseholdRoles
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
@@ -88,7 +88,7 @@ fun HouseholdDetailScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    AccessibleIconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
@@ -99,7 +99,7 @@ fun HouseholdDetailScreen(
                     )
                 },
                 actions = {
-                    IconButton(
+                    AccessibleIconButton(
                         onClick = { context.startActivity(FieldActions.groupSmsIntent(textablePhones, context)) },
                         enabled = textablePhones.size >= 2,
                     ) {
@@ -108,7 +108,7 @@ fun HouseholdDetailScreen(
                             contentDescription = stringResource(R.string.households_text_everyone),
                         )
                     }
-                    IconButton(
+                    AccessibleIconButton(
                         onClick = { viewModel.suggestRelationships() },
                         enabled = state.members.size >= 2 && !state.isSuggestingRelationships,
                     ) {
@@ -267,7 +267,7 @@ private fun HouseholdMemberRow(
                 },
             )
         }
-        IconButton(onClick = onRemove, enabled = !removing) {
+        AccessibleIconButton(onClick = onRemove, enabled = !removing) {
             Icon(
                 imageVector = Icons.Outlined.Remove,
                 // #205: the remove action carries the member's identifier so

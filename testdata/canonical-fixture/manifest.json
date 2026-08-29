@@ -402,6 +402,61 @@
       "crm": {
         "kind": "human"
       }
+    },
+    {
+      "name": "test07_empty_note_with_params",
+      "comment": "TEST-07 (issue #435) shrunk counterexample, persisted: a note with empty text but a CREATED param. vCard 3.0 dropped the param without the required warn because the empty note was skipped before the warn fired; the round-trip property found it and the vcard3 adapter now warns.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000010",
+        "kind": "individual",
+        "name": { "components": [{ "kind": "given", "value": "Niamh" }] },
+        "notes": [{ "note": "", "created": { "utc": "1900-01-01T00:00:00Z" } }]
+      }
+    },
+    {
+      "name": "test07_timestamped_birthday",
+      "comment": "TEST-07 (issue #435) shrunk counterexample, persisted: a birthday with a full timestamp. vCard 3.0 renders BDAY date-only and dropped the time-of-day without a warn; the round-trip property found it and the vcard3 adapter now warns.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000011",
+        "kind": "individual",
+        "name": { "components": [{ "kind": "given", "value": "Owen" }] },
+        "anniversaries": [{ "kind": "birth", "date": { "timestamp": "1900-01-01T00:00:00Z" } }]
+      }
+    },
+    {
+      "name": "test07_country_code_only_address",
+      "comment": "TEST-07 (issue #435) shrunk counterexample, persisted: an address carrying only a country code. vCard 3.0 has no ADR CC parameter and the required warn never fired because the address was skipped as empty; the round-trip property found it and the vcard3 adapter now warns before the skip.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000012",
+        "kind": "individual",
+        "name": { "components": [{ "kind": "given", "value": "Pia" }] },
+        "addresses": [{ "countryCode": "US" }]
+      }
+    },
+    {
+      "name": "test07_multi_grammatical_gender",
+      "comment": "TEST-07 (issue #435) shrunk counterexample, persisted: two grammatical genders. JSContact's scalar speakToAs.grammaticalGender collapsed them without a warn; the round-trip property found it and the jscontact adapter now warns.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000013",
+        "kind": "individual",
+        "name": { "components": [{ "kind": "given", "value": "Quinn" }] },
+        "speakToAs": {
+          "grammaticalGenders": [
+            { "value": "animate" },
+            { "value": "animate" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "test07_duplicate_keywords",
+      "comment": "TEST-07 (issue #435) shrunk counterexample, persisted: duplicate keywords. JSContact's boolean-set keywords collapsed them without a warn; the round-trip property found it and the jscontact adapter now warns.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000014",
+        "kind": "individual",
+        "name": { "components": [{ "kind": "given", "value": "Ruth" }] },
+        "keywords": ["e\u0301tude", "e\u0301tude"]
+      }
     }
   ],
   "notes": [

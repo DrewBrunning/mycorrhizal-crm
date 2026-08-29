@@ -212,6 +212,13 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 			if val != "" {
 				card.SetValue(PropBday, val)
 			}
+			if ann.Date.Timestamp != nil {
+				// vCard 3.0 BDAY is a DATE-AND-OR-TIME text but this exporter
+				// renders date-only, dropping the time-of-day; a documented
+				// degradation, never a silent loss (ADR-0002). TEST-07's
+				// round-trip property found the silent truncation.
+				warn(&diags, "anniversary.birth", "vCard 3.0 BDAY is rendered date-only; time-of-day dropped")
+			}
 			if ann.Place != nil {
 				warn(&diags, "anniversary.place.birth", "BIRTHPLACE has no vCard 3.0 home (RFC 6474); dropped")
 			}
@@ -219,6 +226,9 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 			if val != "" {
 				card.Add(PropXAnniversary, &vcard.Field{Value: val})
 				warn(&diags, "anniversary.wedding", "vCard 3.0 has no ANNIVERSARY property; emitted as X-ANNIVERSARY instead")
+			}
+			if ann.Date.Timestamp != nil {
+				warn(&diags, "anniversary.wedding", "vCard 3.0 X-ANNIVERSARY is rendered date-only; time-of-day dropped")
 			}
 		case "death":
 			if val != "" {
@@ -254,13 +264,13 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 
 	// --- Notes ---
 	for _, n := range r.Card.Notes {
+		if n.Author != nil || n.Created != nil {
+			warn(&diags, "note", "NOTE AUTHOR/AUTHOR-NAME/CREATED params have no vCard 3.0 home (RFC 9554); dropped")
+		}
 		if n.Note == "" {
 			continue
 		}
 		card.Add(PropNote, &vcard.Field{Value: n.Note})
-		if n.Author != nil || n.Created != nil {
-			warn(&diags, "note", "NOTE AUTHOR/AUTHOR-NAME/CREATED params have no vCard 3.0 home (RFC 9554); dropped")
-		}
 	}
 
 	// --- Keywords ---
@@ -458,6 +468,15 @@ func exportAddresses(card vcard.Card, addresses []contactmodel.Address, diags *[
 				}
 			}
 		}
+		if a.CountryCode != "" {
+			// RFC 2426 ADR has no CC parameter (RFC 9553 §2.8.1's countryCode
+			// is a 9553/9554-only field); per the degradation policy a neutral
+			// field with no 3.0 home warns rather than dropping silently.
+			// Emitted BEFORE the empty-address skip below: an address that
+			// carries only a country code still loses it, so it must still
+			// warn. TEST-07's round-trip property found the silent drop.
+			warn(diags, "adr", "vCard 3.0 ADR has no CC parameter (RFC 2426); country code dropped")
+		}
 		if len(a.Components) == 0 && a.Full == "" && a.Coordinates == "" && a.TimeZone == "" {
 			continue
 		}
@@ -479,12 +498,6 @@ func exportAddresses(card vcard.Card, addresses []contactmodel.Address, diags *[
 		}
 		if a.TimeZone != "" {
 			card.Add(PropTz, &vcard.Field{Value: a.TimeZone})
-		}
-		if a.CountryCode != "" {
-			// RFC 2426 ADR has no CC parameter (RFC 9553 §2.8.1's countryCode
-			// is a 9553/9554-only field); per the degradation policy a neutral
-			// field with no 3.0 home warns rather than dropping silently.
-			warn(diags, "adr", "vCard 3.0 ADR has no CC parameter (RFC 2426); country code dropped")
 		}
 	}
 }

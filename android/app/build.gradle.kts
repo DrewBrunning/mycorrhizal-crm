@@ -117,6 +117,9 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     testImplementation(libs.androidx.compose.ui.test.junit4)
+    // Issue #679: back-stack / route-table assertions against a real
+    // TestNavHostController in Robolectric.
+    testImplementation(libs.androidx.navigation.testing)
 
     // Issue #238: instrumented E2E tests (app/src/androidTest) — Compose UI
     // test + the AndroidJUnitRunner against the real docker-compose.test.yml

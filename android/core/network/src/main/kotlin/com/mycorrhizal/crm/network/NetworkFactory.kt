@@ -24,6 +24,7 @@ object NetworkFactory {
         tokenProvider: TokenProvider,
         baseUrlProvider: BaseUrlProvider,
         debug: Boolean = false,
+        sessionExpiryInterceptor: SessionExpiryInterceptor? = null,
     ): OkHttpClient {
         val builder = OkHttpClient.Builder()
             .addInterceptor(BaseUrlInterceptor(baseUrlProvider))
@@ -31,6 +32,13 @@ object NetworkFactory {
             .addInterceptor(RetryInterceptor())
             .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+
+        // Issue #678: 401 detection is optional — callers that own the session
+        // (the app) pass it in; library/test callers that don't care about
+        // session expiry can omit it.
+        if (sessionExpiryInterceptor != null) {
+            builder.addInterceptor(sessionExpiryInterceptor)
+        }
 
         if (debug) {
             builder.addInterceptor(

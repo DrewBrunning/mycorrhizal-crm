@@ -3,6 +3,8 @@ package com.mycorrhizal.crm.di
 import com.mycorrhizal.crm.BuildConfig
 import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.NetworkFactory
+import com.mycorrhizal.crm.network.SessionExpiryInterceptor
+import com.mycorrhizal.crm.network.SessionExpiryNotifier
 import com.mycorrhizal.crm.network.TokenProvider
 import dagger.Module
 import dagger.Provides
@@ -18,6 +20,11 @@ import javax.inject.Singleton
  * check sees the rewritten URL. The token and base-URL providers come from the
  * SessionManager (wired in core:data). This exact ordering is load-bearing for
  * M5 §3.1 (Coil reuses this client for photo URLs).
+ *
+ * Issue #678: the SessionExpiryInterceptor (registered after Retry, before the
+ * debug logging interceptor) watches every response for a 401 and signals
+ * SessionExpiryNotifier; the session wiring clears the session on that signal
+ * so the app lands back on the auth flow.
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -27,9 +34,11 @@ object AppNetworkModule {
     fun provideOkHttpClient(
         tokenProvider: TokenProvider,
         baseUrlProvider: BaseUrlProvider,
+        sessionExpiryNotifier: SessionExpiryNotifier,
     ): OkHttpClient = NetworkFactory.okHttpClient(
         tokenProvider = tokenProvider,
         baseUrlProvider = baseUrlProvider,
         debug = BuildConfig.DEBUG,
+        sessionExpiryInterceptor = SessionExpiryInterceptor(sessionExpiryNotifier, baseUrlProvider),
     )
 }

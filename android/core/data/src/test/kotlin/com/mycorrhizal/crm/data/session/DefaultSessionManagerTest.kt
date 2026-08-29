@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.data.session
 
 import com.mycorrhizal.crm.domain.repository.SessionState
+import app.cash.turbine.test
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -141,5 +142,74 @@ class DefaultSessionManagerTest {
 
         assertTrue(hydrated)
         assertEquals("stored-jwt", manager.bearerToken())
+    }
+
+    // Issue #678: the session state machine must walk the full lifecycle —
+    // logged-out → authenticated → (401) → logged-out → re-authenticated —
+    // emitting the right SessionState at every step, so the auth-flow branch
+    // in the app is driven by real state and no stale authed UI survives a
+    // cleared session.
+    @Test
+    fun `session walks the full lifecycle state machine`() = runTest {
+        val (manager, _) = manager()
+
+        manager.observeSession().test {
+            // logged-out (initial)
+            assertEquals(SessionState(), awaitItem())
+
+            // authenticated
+            manager.setSession(
+                serverUrl = "https://crm.example.com",
+                token = "jwt-1",
+                state = SessionState(userId = 7, username = "alice"),
+            )
+            val authenticated = awaitItem()
+            assertTrue(authenticated.isLoggedIn)
+            assertEquals(7, authenticated.userId)
+            assertEquals("alice", authenticated.username)
+
+            // (401) → logged-out
+            manager.clearSession()
+            val loggedOut = awaitItem()
+            assertFalse(loggedOut.isLoggedIn)
+            assertNull(loggedOut.userId)
+            assertFalse("no stale username survives logout", loggedOut.username != null)
+
+            // re-authenticated
+            manager.setSession(
+                serverUrl = "https://crm.example.com",
+                token = "jwt-2",
+                state = SessionState(userId = 7, username = "alice"),
+            )
+            val reAuthenticated = awaitItem()
+            assertTrue(reAuthenticated.isLoggedIn)
+            assertEquals("jwt-2", manager.bearerToken())
+            assertEquals("alice", reAuthenticated.username)
+        }
+    }
+
+    // Issue #678: process-death restore — a fresh manager instance (a new
+    // process) must hydrate the persisted token and surface the same
+    // logged-in state the old instance held. Only the token + server URL are
+    // persisted; the profile fields (userId/username/admin) are refetched from
+    // the server after restore (AuthRepositoryImpl re-derives them on login).
+    @Test
+    fun `a fresh instance restores the session after process death`() = runTest {
+        val tokenStorage = FakeTokenStorage()
+        val prefsStorage = FakeSessionPrefsStorage()
+        val first = DefaultSessionManager(tokenStorage, prefsStorage)
+        first.setSession(
+            serverUrl = "https://crm.example.com",
+            token = "jwt-1",
+            state = SessionState(userId = 7, username = "alice"),
+        )
+
+        val restarted = DefaultSessionManager(tokenStorage, prefsStorage)
+        restarted.init()
+
+        assertEquals("jwt-1", restarted.bearerToken())
+        assertEquals("https://crm.example.com", restarted.baseUrl())
+        val state = restarted.observeSession().first()
+        assertTrue(state.isLoggedIn)
     }
 }

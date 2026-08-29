@@ -16,7 +16,6 @@ import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -41,6 +40,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.feature.contacts.FieldActions
 import com.mycorrhizal.crm.model.network.CircleMember
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
@@ -72,7 +72,7 @@ fun CircleDetailScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    AccessibleIconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
@@ -83,7 +83,7 @@ fun CircleDetailScreen(
                     )
                 },
                 actions = {
-                    IconButton(
+                    AccessibleIconButton(
                         onClick = { context.startActivity(FieldActions.groupSmsIntent(textablePhones, context)) },
                         enabled = textablePhones.size >= 2,
                     ) {
@@ -177,7 +177,7 @@ private fun MemberRow(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
         )
-        IconButton(onClick = onRemove, enabled = !removing) {
+        AccessibleIconButton(onClick = onRemove, enabled = !removing) {
             Icon(
                 imageVector = Icons.Outlined.Remove,
                 // #205: the remove action carries the member's identifier so
