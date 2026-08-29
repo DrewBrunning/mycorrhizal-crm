@@ -263,7 +263,7 @@ func Read() (*Manifest, error) {
 	if err != nil {
 		return nil, err // # pragma: no cover — a test CWD is always inside the repo, so FindManifest cannot fail here
 	}
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- path is not request input: FindManifest resolves the checked-in manifest by walking up from the test process's own working directory, and it just stat'ed this exact path.
 	if err != nil {
 		return nil, fmt.Errorf("canonicalfixture: opening %s: %w", path, err) // # pragma: no cover — a path FindManifest just stat'ed is openable
 	}
