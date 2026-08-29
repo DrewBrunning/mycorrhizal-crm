@@ -97,6 +97,7 @@ import com.mycorrhizal.crm.domain.repository.UserManagementRepository
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.NetworkFactory
+import com.mycorrhizal.crm.network.SessionExpiryNotifier
 import com.mycorrhizal.crm.network.TokenProvider
 import androidx.room.Room
 import com.squareup.moshi.Moshi
@@ -246,8 +247,7 @@ object DataModule {
 
     @Provides
     @Singleton
-    fun provideSessionExpiryNotifier(): com.mycorrhizal.crm.network.SessionExpiryNotifier =
-        com.mycorrhizal.crm.network.SessionExpiryNotifier()
+    fun provideSessionExpiryNotifier(): SessionExpiryNotifier = SessionExpiryNotifier()
 
     @Provides
     @Singleton
@@ -255,7 +255,7 @@ object DataModule {
         tokenStorage: TokenStorage,
         prefsStorage: SessionPrefsStorage,
         localDataCleaner: SessionDataCleaner,
-        sessionExpiryNotifier: com.mycorrhizal.crm.network.SessionExpiryNotifier,
+        sessionExpiryNotifier: SessionExpiryNotifier,
     ): DefaultSessionManager {
         val manager = DefaultSessionManager(tokenStorage, prefsStorage, localDataCleaner)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

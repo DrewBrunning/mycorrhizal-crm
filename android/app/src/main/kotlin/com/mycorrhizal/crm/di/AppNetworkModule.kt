@@ -21,9 +21,10 @@ import javax.inject.Singleton
  * SessionManager (wired in core:data). This exact ordering is load-bearing for
  * M5 §3.1 (Coil reuses this client for photo URLs).
  *
- * Issue #678: the SessionExpiryInterceptor (registered last) watches every
- * response for a 401 and signals SessionExpiryNotifier; the session wiring
- * clears the session on that signal so the app lands back on the auth flow.
+ * Issue #678: the SessionExpiryInterceptor (registered after Retry, before the
+ * debug logging interceptor) watches every response for a 401 and signals
+ * SessionExpiryNotifier; the session wiring clears the session on that signal
+ * so the app lands back on the auth flow.
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -38,6 +39,6 @@ object AppNetworkModule {
         tokenProvider = tokenProvider,
         baseUrlProvider = baseUrlProvider,
         debug = BuildConfig.DEBUG,
-        sessionExpiryInterceptor = SessionExpiryInterceptor(sessionExpiryNotifier),
+        sessionExpiryInterceptor = SessionExpiryInterceptor(sessionExpiryNotifier, baseUrlProvider),
     )
 }

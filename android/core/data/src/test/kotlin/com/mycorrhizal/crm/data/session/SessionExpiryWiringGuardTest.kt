@@ -52,8 +52,8 @@ class SessionExpiryWiringGuardTest {
     @Test
     fun `the app's OkHttp chain carries the session-expiry interceptor`() {
         assertTrue(
-            "AppNetworkModule must build a SessionExpiryInterceptor",
-            appNetworkModuleSource.contains("SessionExpiryInterceptor(sessionExpiryNotifier)"),
+            "AppNetworkModule must build a SessionExpiryInterceptor with the base-url host check",
+            appNetworkModuleSource.contains("SessionExpiryInterceptor(sessionExpiryNotifier, baseUrlProvider)"),
         )
         assertTrue(
             "AppNetworkModule must pass the interceptor into NetworkFactory",
