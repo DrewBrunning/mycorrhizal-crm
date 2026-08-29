@@ -1,14 +1,23 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import type { Contact } from '../api/contacts';
+import type { Contact, ContactsResponse } from '../api/contacts';
+import { getContacts } from '../api/contacts';
 import type { RelationshipEdge } from '../api/relationshipEdges';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import { DateFormatProvider } from '../DateFormatProvider';
 import RelationshipEdgeDialog from './RelationshipEdgeDialog';
 
-afterEach(cleanup);
+vi.mock('../api/contacts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/contacts')>();
+  return { ...actual, getContacts: vi.fn() };
+});
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 function renderDialog(props: Partial<React.ComponentProps<typeof RelationshipEdgeDialog>> = {}) {
   const defaults: React.ComponentProps<typeof RelationshipEdgeDialog> = {
@@ -80,9 +89,27 @@ test('edit mode submits source_id/target_id verbatim, never source_thin/target_t
 });
 
 test('create mode shows the entry-mode toggle and manual name field', () => {
+  vi.mocked(getContacts).mockResolvedValue({ contacts: [], next_cursor: '', limit: 100 });
   renderDialog();
 
   expect(screen.getByText('How would you like to add this relationship?')).toBeInTheDocument();
   // MUI appends " *" to a required field's accessible label text.
   expect(screen.getByLabelText('Name *')).toBeInTheDocument();
+});
+
+test('linked mode shows a loading spinner in the contact search while contacts are fetched', async () => {
+  let resolveFetch!: (r: ContactsResponse) => void;
+  vi.mocked(getContacts).mockReturnValue(
+    new Promise((resolve) => {
+      resolveFetch = resolve;
+    }),
+  );
+
+  renderDialog();
+  fireEvent.click(screen.getByLabelText('Link to existing contact'));
+
+  await screen.findByRole('progressbar');
+
+  resolveFetch({ contacts: [bobContact()], next_cursor: '', limit: 100 });
+  await vi.waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument());
 });
