@@ -174,6 +174,16 @@ func closeMigrator(m *migrate.Migrate) {
 	}
 }
 
+// SupportedUpgradeFloorVersion is the migration version of the oldest release
+// supported for in-place upgrade (issue #529): v0.6.0, whose schema is
+// migrations 000001-000031. Everything at or above it is covered by the
+// schema-fixture set (internal/schemafixture). The refusal that enforces this
+// floor lives in checkSupportedUpgradeFloor.
+const SupportedUpgradeFloorVersion uint = 31
+
+// SupportedUpgradeFloorTag is the release tag that defined the floor.
+const SupportedUpgradeFloorTag = "v0.6.0"
+
 // RunMigrations runs all pending database migrations
 func RunMigrations(db *sql.DB) error {
 	m, err := newMigrator(db)
@@ -350,6 +360,32 @@ func MigrateUp(dbPath string) error {
 	defer sqlDB.Close()
 
 	return RunMigrations(sqlDB)
+}
+
+// MigrateUpTo migrates the database at dbPath to exactly the given migration
+// version, not beyond. It is the primitive the release-schema dump generator
+// (cmd/genschema) and the upgrade-fixture loader build historical schemas
+// with: the migration chain is linear and append-only, so a release's schema
+// is fully determined by its highest applied version (issue #436). Same DSN
+// pragmas and embedded migration source as MigrateUp — a no-op (ErrNoChange)
+// when the database is already at version.
+func MigrateUpTo(dbPath string, version uint) error {
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	if err != nil {
+		return err
+	}
+	defer closeMigrator(m)
+
+	if err := m.Migrate(version); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("failed to migrate to version %d: %w", version, err)
+	}
+	return nil
 }
 
 // MigrationVersion reports the applied migration version and whether the
