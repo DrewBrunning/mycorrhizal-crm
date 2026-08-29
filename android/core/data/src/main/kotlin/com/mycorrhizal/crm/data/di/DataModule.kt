@@ -57,6 +57,7 @@ import com.mycorrhizal.crm.data.repository.WebhookRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ApiTokenRepositoryImpl
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.SessionDataCleaner
+import com.mycorrhizal.crm.data.session.SessionExpiryWiring
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SessionPrefsStorage
 import com.mycorrhizal.crm.data.session.TokenStorage
@@ -245,15 +246,26 @@ object DataModule {
 
     @Provides
     @Singleton
+    fun provideSessionExpiryNotifier(): com.mycorrhizal.crm.network.SessionExpiryNotifier =
+        com.mycorrhizal.crm.network.SessionExpiryNotifier()
+
+    @Provides
+    @Singleton
     fun provideSessionManager(
         tokenStorage: TokenStorage,
         prefsStorage: SessionPrefsStorage,
         localDataCleaner: SessionDataCleaner,
+        sessionExpiryNotifier: com.mycorrhizal.crm.network.SessionExpiryNotifier,
     ): DefaultSessionManager {
         val manager = DefaultSessionManager(tokenStorage, prefsStorage, localDataCleaner)
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        // Issue #678: a 401 on any API call must clear the session so the app
+        // lands on the auth flow rather than a stuck or half-rendered screen.
+        // The wiring is a plain class so the behavior is unit-tested.
+        SessionExpiryWiring(sessionExpiryNotifier, manager).start(scope)
         // Hydrate the stored JWT/server URL into memory asynchronously so a
         // returning user is already logged in on launch (H3 review fix).
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { manager.init() }
+        scope.launch { manager.init() }
         return manager
     }
 }

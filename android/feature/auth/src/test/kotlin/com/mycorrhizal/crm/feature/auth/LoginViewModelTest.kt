@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -152,5 +153,67 @@ class LoginViewModelTest {
             assertTrue(awaitItem() is LoginEvent.ServerUrlUpdated)
             assertTrue(awaitItem() is LoginEvent.LoggedIn)
         }
+    }
+
+    // Issue #678: the authenticating leg of the session state machine. While a
+    // login attempt is in flight the UI must show the loading state; it must
+    // not be possible to wedge it by submitting again mid-flight.
+    @Test
+    fun `an in-flight login shows loading until it resolves`() = runTest(mainDispatcherRule.testDispatcher) {
+        val h = harness()
+        val gate = kotlinx.coroutines.CompletableDeferred<Result<Unit>>()
+        coEvery { h.authRepository.login("alice", "secret") } coAnswers { gate.await() }
+
+        submit(h)
+        advanceUntilIdle()
+        assertTrue("authenticating state must be visible mid-flight", h.viewModel.uiState.value.isLoading)
+
+        gate.complete(Result.success(Unit))
+        advanceUntilIdle()
+        assertFalse(h.viewModel.uiState.value.isLoading)
+    }
+
+    @Test
+    fun `submitting again while a login is in flight is ignored`() = runTest(mainDispatcherRule.testDispatcher) {
+        val h = harness()
+        val gate = kotlinx.coroutines.CompletableDeferred<Result<Unit>>()
+        coEvery { h.authRepository.login("alice", "secret") } coAnswers { gate.await() }
+
+        submit(h)
+        advanceUntilIdle()
+        submit(h)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { h.authRepository.login("alice", "secret") }
+
+        gate.complete(Result.success(Unit))
+        advanceUntilIdle()
+    }
+
+    // Issue #678: the re-authenticating leg. A failed attempt leaves the
+    // session logged out (the 401 wiring clears it); a subsequent attempt must
+    // be able to reach authenticated again — the machine must not wedge on the
+    // failure.
+    @Test
+    fun `a failed login can be retried after the session is cleared`() = runTest(mainDispatcherRule.testDispatcher) {
+        val h = harness()
+        coEvery { h.authRepository.login("alice", any()) } returnsMany listOf(
+            Result.failure(Exception("Invalid credentials")),
+            Result.success(Unit),
+        )
+
+        submit(h, password = "first-try")
+        advanceUntilIdle()
+        assertEquals("Invalid credentials", h.viewModel.uiState.value.error)
+        assertFalse(h.viewModel.uiState.value.isLoading)
+
+        // Re-authentication: the machine must not wedge on the failure — a
+        // second attempt resolves to the authenticated (non-loading, no-error)
+        // state again.
+        submit(h, password = "second-try")
+        advanceUntilIdle()
+        assertFalse(h.viewModel.uiState.value.isLoading)
+        assertNull(h.viewModel.uiState.value.error)
+        coVerify(exactly = 2) { h.authRepository.login("alice", any()) }
     }
 }
