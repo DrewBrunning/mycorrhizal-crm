@@ -166,7 +166,7 @@
               { "kind": "postcode", "value": "BN1 1AA" },
               { "kind": "country", "value": "United Kingdom" }
             ],
-            "contexts": ["home"],
+            "contexts": ["private"],
             "countryCode": "GB"
           }
         ],
@@ -221,7 +221,7 @@
               { "kind": "postcode", "value": "150-0041" },
               { "kind": "country", "value": "日本" }
             ],
-            "contexts": ["home"],
+            "contexts": ["private"],
             "countryCode": "JP"
           }
         ],
@@ -354,7 +354,7 @@
               { "kind": "postcode", "value": "62701" },
               { "kind": "country", "value": "USA" }
             ],
-            "contexts": ["home"],
+            "contexts": ["private"],
             "countryCode": "US"
           }
         ],
@@ -647,7 +647,7 @@
           { "kind": "postcode", "value": "BN1 1AA" },
           { "kind": "country", "value": "United Kingdom" }
         ],
-        "contexts": ["home"]
+        "contexts": ["private"]
       },
       "members": [
         { "contact": "ada", "role": "adult", "since": "2015-01-01" },

@@ -431,6 +431,27 @@ func TestDegrade_NamePhonetic(t *testing.T) {
 	}
 }
 
+// TestDegrade_NamePhoneticSystem covers the PhoneticSystem-only case (a
+// phonetic system tag with no script, e.g. a Japanese card carrying
+// phoneticSystem "latn"): it too has no vCard 3.0 home and must warn rather
+// than drop silently — the same N PHONETIC/SCRIPT/ALTID degradation the row
+// declares (issue #431 round-trip surfaced this as a silent drop).
+func TestDegrade_NamePhoneticSystem(t *testing.T) {
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Name: &contactmodel.Name{Full: "x", PhoneticSystem: "latn"},
+	}}
+	out, diags, err := (Adapter{}).Export(rec)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	if !hasWarn(diags, "name.phonetic") {
+		t.Errorf("diags = %+v, want a warn for concept name.phonetic", diags)
+	}
+	if strings.Contains(string(out), "latn") {
+		t.Errorf("phonetic system value unexpectedly leaked into output:\n%s", out)
+	}
+}
+
 func TestDegrade_AdrExtraComponentKind(t *testing.T) {
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Addresses: []contactmodel.Address{{

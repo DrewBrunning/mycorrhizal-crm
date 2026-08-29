@@ -84,6 +84,13 @@ ds, err := canonicalfixture.Populate(db, m)  // loads it, returns the created Da
   `ds.FieldDefinitions`, `ds.Preferences`, `ds.ExternalIdentities`,
   `ds.Attachments`, `ds.Activities`.
 
+The TEST-03 round-trip consumer (`backend/roundtrip`, issue #431) is the other
+Go consumer today: it serializes each manifest contact's neutral `Record`
+through all three format adapters (vCard 3.0/4.0, JSContact) and back, then
+compares semantically via the shared oracle-driven comparison
+(`backend/internal/semanticequal`) rather than demanding byte equality — a
+mapped field that fails to land fails the suite.
+
 Extend it, don't fork it: a suite that needs a special case adds a row to the
 shared manifest (or a new section — contacts, notes, life_events, gifts,
 relationships, households, circles, tags, custom_fields, preferences,

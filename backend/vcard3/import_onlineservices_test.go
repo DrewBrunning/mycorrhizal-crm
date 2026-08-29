@@ -1,6 +1,9 @@
 package vcard3
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // Concepts covered: impp, social.
 func init() {
@@ -123,5 +126,14 @@ func TestImport_SocialWithUsername(t *testing.T) {
 	}
 	if os.User != "frank94" {
 		t.Errorf("User = %q, want %q", os.User, "frank94")
+	}
+	// X-USERNAME is a known companion of X-SOCIALPROFILE/X-SERVICE-TYPE (the
+	// vCard-3.0 emulation of RFC 9554 §4.9/4.10 USERNAME), so it must NOT be
+	// captured into Passthrough.VCard as an unknown property — otherwise the
+	// value is double-represented and a second export round-trips it twice.
+	for _, p := range rec.Passthrough.VCard {
+		if strings.EqualFold(p.Name, "x-username") {
+			t.Errorf("X-USERNAME leaked into Passthrough.VCard: %+v", p)
+		}
 	}
 }
