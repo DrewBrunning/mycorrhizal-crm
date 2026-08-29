@@ -14,6 +14,7 @@ func TestOp_Done_Success(t *testing.T) {
 	op := Op(context.Background(), "job_completed").
 		Component(ComponentScheduler).
 		Operation("purge_deleted").
+		Str("version", "v0.6.3").
 		Int("rows", 4)
 	op.Done(nil)
 
@@ -22,6 +23,7 @@ func TestOp_Done_Success(t *testing.T) {
 	require.Equal(t, ResultSuccess, line[FieldResult])
 	require.Equal(t, ComponentScheduler, line[FieldComponent])
 	require.Equal(t, "purge_deleted", line[FieldOperation])
+	require.Equal(t, "v0.6.3", line["version"])
 	require.Equal(t, float64(4), line["rows"])
 	require.Contains(t, line, FieldDurationMS)
 	require.Equal(t, "info", line["level"])

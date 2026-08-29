@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -145,4 +147,97 @@ type servicesContactAddressSuggestion struct {
 	SourceName      string `json:"source_name"`
 	RelationType    string `json:"relation_type"`
 	AddressKey      string `json:"address_key"`
+}
+
+// --- handler error branches the happy-path test above does not reach ---
+
+func TestSuggestContactAddresses_Unauthenticated(t *testing.T) {
+	db := dbtest.New(t)
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) { c.Set("db", db); c.Next() }) // no userID
+	router.POST("/suggest", SuggestContactAddresses)
+
+	req, _ := http.NewRequest(http.MethodPost, "/suggest", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+}
+
+func TestSuggestContactAddresses_ServiceError(t *testing.T) {
+	db := dbtest.New(t)
+	user := models.User{Username: "suggesterr", Password: "password123!A", Email: "suggesterr@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close()) // subsequent service queries fail
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) { c.Set("db", db); c.Set("userID", user.ID); c.Next() })
+	router.POST("/suggest", SuggestContactAddresses)
+
+	req, _ := http.NewRequest(http.MethodPost, "/suggest", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+}
+
+func TestApplyContactAddressSuggestion_InvalidInput(t *testing.T) {
+	db := dbtest.New(t)
+	user := models.User{Username: "applyinvalid", Password: "password123!A", Email: "applyinvalid@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) { c.Set("db", db); c.Set("userID", user.ID); c.Next() })
+	router.POST("/apply", middleware.ValidateJSONMiddleware(&models.ApplyContactAddressSuggestionInput{}), ApplyContactAddressSuggestion)
+
+	// Missing required fields fails validation before the handler's body.
+	req, _ := http.NewRequest(http.MethodPost, "/apply", strings.NewReader(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+}
+
+func TestApplyContactAddressSuggestion_Unauthenticated(t *testing.T) {
+	db := dbtest.New(t)
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) { c.Set("db", db); c.Next() }) // no userID
+	router.POST("/apply", withValidated(func() any { return &models.ApplyContactAddressSuggestionInput{} }), ApplyContactAddressSuggestion)
+
+	req, _ := http.NewRequest(http.MethodPost, "/apply", bytes.NewBufferString(`{"contact_vcard_uid":"x","source_kind":"relationship","source_id":"y","address_key":"k"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+}
+
+func TestApplyContactAddressSuggestion_ServiceDatabaseError(t *testing.T) {
+	db := dbtest.New(t)
+	user := models.User{Username: "applydberr", Password: "password123!A", Email: "applydberr@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close()) // service's first query fails
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) { c.Set("db", db); c.Set("userID", user.ID); c.Next() })
+	router.POST("/apply", withValidated(func() any { return &models.ApplyContactAddressSuggestionInput{} }), ApplyContactAddressSuggestion)
+
+	req, _ := http.NewRequest(http.MethodPost, "/apply", bytes.NewBufferString(`{"contact_vcard_uid":"x","source_kind":"relationship","source_id":"y","address_key":"k"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
 }

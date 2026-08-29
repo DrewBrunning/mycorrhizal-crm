@@ -44,3 +44,21 @@ func TestExport_Keywords(t *testing.T) {
 	rfctest.AssertJSONPointer(t, out, "/keywords/family", true)
 	rfctest.AssertJSONPointer(t, out, "/keywords/work", true)
 }
+
+// TestExport_Keywords_DuplicateWarns pins the TEST-07 (#435) fix:
+// JSContact's keywords is a boolean-set, so duplicate neutral keywords
+// collapse on export and must emit a warn diagnostic for the keywords
+// concept (ADR-0002) rather than drop silently. The round-trip property
+// found the silent dedupe.
+func TestExport_Keywords_DuplicateWarns(t *testing.T) {
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Keywords: []string{"e\u0301tude", "e\u0301tude"},
+	}}
+	_, diags, err := Adapter{}.Export(rec)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	if !hasDiagWarn(diags, "keywords") {
+		t.Errorf("diags = %+v, want a warn for concept keywords (duplicate collapse)", diags)
+	}
+}

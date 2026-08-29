@@ -42,7 +42,7 @@ func Save(data []byte, dir string) (string, error) {
 	}
 	storedName := uuid.New().String()
 	path, err := StoredPath(dir, storedName)
-	if err != nil {
+	if err != nil { // # pragma: no cover — unreachable: dir was just MkdirAll'd (non-empty) and storedName is a fresh bare UUID
 		return "", err
 	}
 	if err := os.WriteFile(path, data, 0o600); err != nil {

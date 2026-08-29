@@ -100,3 +100,21 @@ func TestChildContextInheritsCorrelationID(t *testing.T) {
 	require.Equal(t, "chain-1", line[FieldCorrelationID])
 	require.Equal(t, ComponentWebhook, line[FieldComponent])
 }
+
+// The nil-context branches of the correlation/component helpers must be
+// no-ops that never panic (callers in services/ and jobs/ pass contexts that
+// can be nil on error paths).
+func TestCorrelationHelpersNilContext(t *testing.T) {
+	ctx := WithCorrelationID(nil, "abc")
+	require.Equal(t, "abc", CorrelationID(ctx), "WithCorrelationID must lift a nil ctx to Background")
+
+	ctx = WithComponent(nil, ComponentContactSync)
+	require.NotNil(t, ctx)
+
+	require.Equal(t, "", CorrelationID(nil))
+}
+
+func TestCorrelationID_NonStringValue(t *testing.T) {
+	ctx := context.WithValue(context.Background(), correlationIDKey, 42)
+	require.Equal(t, "", CorrelationID(ctx), "a non-string correlation value must read as empty")
+}

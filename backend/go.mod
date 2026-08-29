@@ -28,6 +28,7 @@ require (
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/time v0.15.0
 	gorm.io/gorm v1.31.2
+	pgregory.net/rapid v1.3.0
 )
 
 require (

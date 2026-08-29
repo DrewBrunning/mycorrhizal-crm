@@ -2,9 +2,13 @@ package logger
 
 import (
 	"bytes"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
@@ -70,4 +74,116 @@ func TestFromContextSanitizesPath(t *testing.T) {
 		require.Truef(t, b >= 0x20 && b != 0x7f,
 			"control byte %#02x at position %d in log output %q", b, i, out)
 	}
+}
+
+// captureStdout redirects the process-wide os.Stdout to a pipe for the
+// duration of a test. InitLogger writes directly to os.Stdout (there is no
+// injected writer), so this is the only way to observe its startup line. The
+// returned closeWrite must be called once the test is done emitting logs so
+// the reader sees EOF.
+func captureStdout(t *testing.T) (r *os.File, closeWrite func()) {
+	t.Helper()
+	pr, pw, err := os.Pipe()
+	require.NoError(t, err)
+	old := os.Stdout
+	os.Stdout = pw
+	var once sync.Once
+	t.Cleanup(func() {
+		os.Stdout = old
+		once.Do(func() { _ = pw.Close() })
+		_ = pr.Close()
+	})
+	return pr, func() {
+		once.Do(func() { _ = pw.Close() })
+	}
+}
+
+func saveLoggerGlobals(t *testing.T) {
+	t.Helper()
+	oldLogger := Logger
+	oldLevel := zerolog.GlobalLevel()
+	oldTimeFormat := zerolog.TimeFieldFormat
+	oldDefaultCtx := zerolog.DefaultContextLogger
+	t.Cleanup(func() {
+		Logger = oldLogger
+		zerolog.SetGlobalLevel(oldLevel)
+		zerolog.TimeFieldFormat = oldTimeFormat
+		zerolog.DefaultContextLogger = oldDefaultCtx
+	})
+}
+
+// TestInitLoggerJSONWritesStartupLine covers the non-pretty branch of
+// InitLogger: plain JSON to stdout, default (RFC3339) time format, and the
+// documented "Logger initialized" line carrying the config that produced it.
+func TestInitLoggerJSONWritesStartupLine(t *testing.T) {
+	saveLoggerGlobals(t)
+	r, closeWrite := captureStdout(t)
+
+	InitLogger(Config{Level: "debug"})
+
+	closeWrite()
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+	require.Contains(t, string(out), "Logger initialized")
+	require.Contains(t, string(out), `"level":"debug"`)
+	require.NotContains(t, string(out), "\x1b[", "JSON mode must not emit ANSI colors")
+}
+
+// TestInitLoggerPrettyAndCustomTimeFormat covers the pretty console branch and
+// the explicit TimeFormat branch. Console output is human-oriented (ANSI
+// colors, non-JSON), so the assertion is that the startup line is still
+// emitted rather than the exact rendering.
+func TestInitLoggerPrettyAndCustomTimeFormat(t *testing.T) {
+	saveLoggerGlobals(t)
+	r, closeWrite := captureStdout(t)
+
+	InitLogger(Config{Level: "info", Pretty: true, TimeFormat: time.RFC3339Nano})
+
+	closeWrite()
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+	require.NotEmpty(t, out, "pretty console logger must still emit the startup line")
+}
+
+func TestParseLevel(t *testing.T) {
+	cases := []struct {
+		in   string
+		want zerolog.Level
+	}{
+		{in: "debug", want: zerolog.DebugLevel},
+		{in: "info", want: zerolog.InfoLevel},
+		{in: "warn", want: zerolog.WarnLevel},
+		{in: "error", want: zerolog.ErrorLevel},
+		{in: "fatal", want: zerolog.FatalLevel},
+		{in: "panic", want: zerolog.PanicLevel},
+		{in: "trace", want: zerolog.InfoLevel}, // unrecognized falls back to info
+		{in: "", want: zerolog.InfoLevel},      // empty is unrecognized
+		{in: "INFO", want: zerolog.InfoLevel},  // case-sensitive; uppercase is unrecognized
+	}
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			require.Equal(t, tc.want, parseLevel(tc.in))
+		})
+	}
+}
+
+// TestLevelWrappers exercises the package-level Info/Debug/Warn/Error/Fatal/
+// Panic helpers. They only build a *zerolog.Event; the fatal/panic ones only
+// terminate the process when .Msg is called, so constructing them is safe.
+func TestLevelWrappers(t *testing.T) {
+	buf := captureLogger(t)
+
+	// Note: no .Msg() on the Fatal/Panic events — that is what actually
+	// calls os.Exit/panic.
+	require.NotNil(t, Info())
+	require.NotNil(t, Debug())
+	require.NotNil(t, Warn())
+	require.NotNil(t, Error())
+	require.NotNil(t, Fatal())
+	require.NotNil(t, Panic())
+
+	// Emit one real line to prove the global logger is wired to the buffer.
+	Info().Str("k", "v").Msg("hello")
+	line := lastLine(t, buf)
+	require.Equal(t, "hello", line["message"])
 }

@@ -135,9 +135,9 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 	exportEmailsPhonesOnline(r, card)
 	exportAddresses(r, card)
 	exportAnniversaries(r, card)
-	exportSpeakToAs(r, card)
+	exportSpeakToAs(r, card, &diags)
 	exportPersonalInfo(r, card)
-	exportNotesKeywords(r, card)
+	exportNotesKeywords(r, card, &diags)
 	exportResources(r, card)
 	exportLangsRelatedMembers(r, card)
 	exportPassthroughVCard(r, card)
@@ -569,7 +569,7 @@ func importSpeakToAs(c *Card, r *contactmodel.Record) {
 	r.Card.SpeakToAs = s
 }
 
-func exportSpeakToAs(r *contactmodel.Record, c *Card) {
+func exportSpeakToAs(r *contactmodel.Record, c *Card, diags *[]contactmodel.Diagnostic) {
 	s := r.Card.SpeakToAs
 	if s == nil {
 		return
@@ -581,6 +581,20 @@ func exportSpeakToAs(r *contactmodel.Record, c *Card) {
 		})
 	}
 	c.SpeakToAs = js
+	if len(s.GrammaticalGenders) > 1 {
+		// RFC 9553 §2.2.4 speakToAs.grammaticalGender is scalar; RFC 9554
+		// GRAMGENDER is multi-valued per LANGUAGE. Collapsing more than one
+		// neutral entry into the single JSContact scalar is lossy (entries
+		// other than the language-selected/first one are dropped), so it is a
+		// documented degradation: warn, never drop silently (ADR-0002
+		// degradation policy). TEST-07's round-trip property found the silent
+		// drop on its first run.
+		*diags = append(*diags, contactmodel.Diagnostic{
+			Severity: "warn", Concept: "gramgender",
+			Message: fmt.Sprintf("JSContact speakToAs.grammaticalGender is scalar; dropped %d of %d grammatical genders",
+				len(s.GrammaticalGenders)-1, len(s.GrammaticalGenders)),
+		})
+	}
 }
 
 // selectGrammaticalGender implements the export-selection rule from
@@ -632,7 +646,7 @@ func importNotesKeywords(c *Card, r *contactmodel.Record) {
 	r.Card.Keywords = copyStrings(c.Keywords)
 }
 
-func exportNotesKeywords(r *contactmodel.Record, c *Card) {
+func exportNotesKeywords(r *contactmodel.Record, c *Card, diags *[]contactmodel.Diagnostic) {
 	for _, n := range r.Card.Notes {
 		jn := Note{ID: n.ID, Note: n.Note, Created: timestampFromNeutral(n.Created)}
 		if n.Author != nil {
@@ -641,6 +655,31 @@ func exportNotesKeywords(r *contactmodel.Record, c *Card) {
 		c.Notes = append(c.Notes, jn)
 	}
 	c.Keywords = copyStrings(r.Card.Keywords)
+	if len(c.Keywords) != len(uniqueStrings(c.Keywords)) {
+		// RFC 9553 §2.12.5 keywords is a boolean-set on the wire; the neutral
+		// model's Keywords is an ordered list that may hold duplicates (which
+		// vCard CSV round-trips). Collapsing duplicates into the set drops the
+		// cardinality, so it is a documented degradation: warn, never drop
+		// silently (ADR-0002). TEST-07's round-trip property found the silent
+		// dedupe on its first run.
+		*diags = append(*diags, contactmodel.Diagnostic{
+			Severity: "warn", Concept: "keywords",
+			Message: fmt.Sprintf("JSContact keywords is a boolean-set; %d duplicate keyword(s) collapsed",
+				len(c.Keywords)-len(uniqueStrings(c.Keywords))),
+		})
+	}
+}
+
+func uniqueStrings(in []string) []string {
+	seen := make(map[string]bool, len(in))
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // --- resources: media/calendars/schedulingAddresses/cryptoKeys/directories/links ---
