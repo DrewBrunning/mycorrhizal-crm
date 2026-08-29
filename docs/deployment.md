@@ -88,6 +88,12 @@ docker compose up -d
 
 Database migrations run automatically on startup.
 
+**Read `docs/upgrade-compatibility.md` before upgrading.** It is the canonical
+supported-upgrade statement: in-place upgrade is supported from `v0.6.0`
+(later), version-skipping within the range is supported, a database below the
+floor refuses to migrate with a two-step instruction, and downgrade is
+unsupported (rollback = previous version + pre-upgrade backup restore).
+
 ## Verifying release artifacts
 
 Every published Docker image is signed and carries SBOM + SLSA provenance attestations; the

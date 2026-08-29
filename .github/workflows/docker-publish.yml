@@ -294,8 +294,62 @@ jobs:
             ${{ runner.temp }}/mycorrhizal-apk.sigstore.json
           retention-days: 30
 
+  # Issue #436 / #529: the "new release without a schema fixture fails CI"
+  # gate. The upgrade test matrix (MIG-01 fixtures, internal/schemafixture) is
+  # bounded by the v0.6.0 floor and requires a committed per-release schema
+  # dump under backend/database/testdata/schemas/. A release tag that ships a
+  # mycorrhizal-supported-series schema (squashed baseline present, version at
+  # or above v0.6.0) but has no dump would publish an upgrade path that CI has
+  # never tested. That must fail the publish, not be noticed later.
+  schema-fixture-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          persist-credentials: false
+
+      # RELEASE_TAG arrives via env (not inline ${{ }}) -- same zizmor-safe
+      # pattern the rest of this workflow uses. The discriminator for "is this
+      # a mycorrhizal supported-series release" is the presence of the squashed
+      # migration baseline at that tag: the pre-fork upstream meerkat tags
+      # (v0.7.5..v0.9.x, v1.x) use a different migration numbering and never
+      # carry 000001_initial_schema.up.sql.
+      - name: Verify release has a schema fixture
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+        run: |
+          set -eu
+          if [ ! -f backend/database/migrations/000001_initial_schema.up.sql ]; then
+            echo "Not a mycorrhizal supported-series release ($RELEASE_TAG); fixture gate not applicable."
+            exit 0
+          fi
+          floor="v0.6.0"
+          oldest="$(printf '%s\n%s\n' "$floor" "$RELEASE_TAG" | sort -V | head -1)"
+          if [ "$oldest" != "$floor" ]; then
+            echo "Release $RELEASE_TAG is below the $floor floor; fixture gate not required (two-step upgrade applies)."
+            exit 0
+          fi
+          # A tag whose tree predates the fixture machinery (v0.6.0..v0.6.3,
+          # shipped before the schemas dir existed) is exempt -- it cannot
+          # retroactively carry a fixture, and its images are only rebuilt for
+          # recovery. Anything at or above the floor that DOES carry the
+          # schemas dir must have its own dump.
+          if [ ! -d backend/database/testdata/schemas ]; then
+            echo "Release $RELEASE_TAG predates the schema-fixture machinery; gate not applicable."
+            exit 0
+          fi
+          if [ ! -s "backend/database/testdata/schemas/${RELEASE_TAG}.sql" ]; then
+            echo "::error::Release $RELEASE_TAG is at or above the supported-upgrade floor but ships no committed schema fixture."
+            echo "::error::Run \`cd backend && go run ./cmd/genschema\` (or \`make gen-schema-fixtures\`) and commit the dump before tagging."
+            exit 1
+          fi
+          echo "Schema fixture present for $RELEASE_TAG."
+
   build-and-push:
     runs-on: ubuntu-latest
+    needs: schema-fixture-gate
     permissions:
       contents: read
       packages: write

@@ -177,12 +177,82 @@ func closeMigrator(m *migrate.Migrate) {
 // SupportedUpgradeFloorVersion is the migration version of the oldest release
 // supported for in-place upgrade (issue #529): v0.6.0, whose schema is
 // migrations 000001-000031. Everything at or above it is covered by the
-// schema-fixture set (internal/schemafixture). The refusal that enforces this
-// floor lives in checkSupportedUpgradeFloor.
+// schema-fixture set (internal/schemafixture). A database whose applied
+// version is below this refuses to migrate (see checkSupportedUpgradeFloor):
+// the policy is "upgrade to v0.6.0 first, then continue" as a documented
+// two-step, never a best-effort single hop.
 const SupportedUpgradeFloorVersion uint = 31
 
 // SupportedUpgradeFloorTag is the release tag that defined the floor.
 const SupportedUpgradeFloorTag = "v0.6.0"
+
+// ErrSubFloorMigration is the error RunMigrations returns when the database's
+// schema predates the supported-upgrade floor. It is deliberately a stable,
+// assertable sentinel carrying the required-intermediate message: the server
+// start path logs it via logger.Fatal (main.go's "Failed to initialize
+// database") and the migrate CLI prints it — both loud, both before any
+// migration runs.
+type ErrSubFloorMigration struct {
+	Version uint
+}
+
+func (e *ErrSubFloorMigration) Error() string {
+	return fmt.Sprintf(
+		"database schema version %d predates the supported upgrade floor (%s, migration %d). "+
+			"In-place upgrade is supported only from %s and later; this version refuses to migrate a pre-floor database. "+
+			"Upgrade this instance to %s first, then run this version again — see docs/upgrade-compatibility.md.",
+		e.Version, SupportedUpgradeFloorTag, SupportedUpgradeFloorVersion, SupportedUpgradeFloorTag, SupportedUpgradeFloorTag,
+	)
+}
+
+// subFloorMigrationEnvVar is the documented escape hatch for the one-time
+// sub-floor bridge (issue #529 action 5, docs/upgrade-compatibility.md). The
+// normal path is a two-step upgrade through a v0.6.0 release binary, which
+// never needs this; the bridge exists so the maintainer's own
+// v0.2.0-alpha-candidate deployment (and the chain-preservation regression
+// test that exercises it) can run the full chain in one binary when the
+// v0.6.0 intermediate cannot be produced. Setting it is a deliberate,
+// logged decision, never silent.
+const subFloorMigrationEnvVar = "MYCORRHIZAL_ALLOW_SUB_FLOOR_MIGRATION"
+
+// subFloorMigrationAllowed reports whether the one-time bridge override is
+// set. A true value is logged loudly at the call site, not swallowed.
+func subFloorMigrationAllowed() bool {
+	return os.Getenv(subFloorMigrationEnvVar) == "1"
+}
+
+// checkSupportedUpgradeFloor refuses to migrate a database whose schema
+// predates the v0.6.0 floor (issue #529 action 4). A fresh database (no
+// schema_migrations row, version 0) is not a sub-floor database and always
+// passes. A DIRTY sub-floor database is exempt: it is a migration run already
+// in progress (typically a crashed initial install, or a pre-floor database
+// whose interrupted upgrade had already passed the floor), and the dirty-force
+// recovery path must not be blocked by the floor guard — that is the defined
+// repair for torn state, and the data was never at a stable pre-floor state.
+// A CLEAN sub-floor database is a real pre-floor deployment and returns an
+// ErrSubFloorMigration that names v0.6.0 as the required intermediate — a
+// partial migration or a crash is the alternative the policy explicitly
+// rejects.
+func checkSupportedUpgradeFloor(version uint, dirty bool) error {
+	if version == 0 || version >= SupportedUpgradeFloorVersion {
+		return nil
+	}
+	if dirty {
+		logger.Warn().
+			Str(logger.FieldComponent, "migration").
+			Uint("version", version).
+			Msg("dirty sub-floor database: allowing dirty-force recovery of an interrupted migration run")
+		return nil
+	}
+	if subFloorMigrationAllowed() {
+		logger.Warn().
+			Str(logger.FieldComponent, "migration").
+			Uint("version", version).
+			Msg("ALLOW_SUB_FLOOR_MIGRATION is set: migrating a pre-v0.6.0 database. This is the documented one-time bridge (docs/upgrade-compatibility.md), not a supported upgrade path.")
+		return nil
+	}
+	return &ErrSubFloorMigration{Version: version}
+}
 
 // RunMigrations runs all pending database migrations
 func RunMigrations(db *sql.DB) error {
@@ -196,6 +266,17 @@ func RunMigrations(db *sql.DB) error {
 	version, dirty, err := m.Version()
 	if err != nil && err != migrate.ErrNilVersion {
 		return fmt.Errorf("failed to get migration version: %w", err)
+	}
+
+	// Issue #529: refuse to migrate a database whose schema predates the
+	// supported-upgrade floor. This must happen BEFORE the dirty-state force
+	// below and before m.Up(): a sub-floor database is a documented two-step
+	// (upgrade to v0.6.0 first), never a best-effort single hop, and neither
+	// a forced version nor a partial migration is acceptable for it. A fresh
+	// database (version 0) is not sub-floor and passes; a dirty sub-floor
+	// database is an interrupted run and is exempt (see the check).
+	if err := checkSupportedUpgradeFloor(version, dirty); err != nil {
+		return err
 	}
 
 	if dirty {
