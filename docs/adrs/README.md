@@ -12,3 +12,4 @@ ticket backlog moved to GitHub Issues.
 | [0004](0004-soft-vs-hard-delete-semantics.md) | Soft vs hard delete semantics | accepted |
 | [0005](0005-operational-event-model.md) | Operational-event model, separate from the audit trail | accepted |
 | [0006](0006-revision-token-schema.md) | Monotonic per-row revision tokens | accepted |
+| [0007](0007-source-import-mapping.md) | Source imports: Meerkat direct-DB + Monica snapshot over one shared mapping framework | accepted |

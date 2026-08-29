@@ -1,0 +1,159 @@
+{
+  "contacts": [
+    {
+      "id": 1,
+      "first_name": "Ada",
+      "last_name": "Lovelace",
+      "nickname": "Enchantress",
+      "gender": "Female",
+      "gender_type": "F",
+      "is_partial": false,
+      "is_dead": false,
+      "is_starred": true,
+      "description": "First computer programmer; detailed correspondent.",
+      "food_preferences": "Loves oysters and dark chocolate; allergic to shellfish.",
+      "information": {
+        "dates": { "birthdate": { "date": "1815-12-10T00:00:00Z", "is_age_based": false, "is_year_unknown": false }, "deceased_date": null },
+        "career": { "job": "First Programmer", "company": "Analytical Engine Co" },
+        "avatar": { "url": "https://monica.example.com/storage/photos/ada.jpg", "source": "photo" },
+        "how_you_met": { "general_information": "We met at a lecture on the analytical engine." }
+      },
+      "tags": [{ "name": "Family" }, { "name": "Book Club" }],
+      "addresses": [{ "name": "home", "street": "12 Byron St", "city": "London", "province": "England", "postal_code": "SW1A 1AA", "country": { "name": "United Kingdom" } }],
+      "contactFields": [
+        { "content": "ada@example.com", "contact_field_type": { "name": "Email", "protocol": "mailto:", "type": "email" } },
+        { "content": "+1-555-0100", "contact_field_type": { "name": "Phone", "protocol": "tel:", "type": "phone" } },
+        { "content": "https://ada.example.com", "contact_field_type": { "name": "Website", "protocol": null, "type": null } },
+        { "content": "@adalovelace", "contact_field_type": { "name": "Twitter", "protocol": null, "type": null } }
+      ]
+    },
+    {
+      "id": 2,
+      "first_name": "Ben",
+      "last_name": "Babbage",
+      "nickname": "",
+      "gender": "Male",
+      "gender_type": "M",
+      "is_partial": false,
+      "is_dead": false,
+      "is_starred": false,
+      "description": "",
+      "food_preferences": "",
+      "information": {
+        "dates": { "birthdate": { "date": "1791-04-20T00:00:00Z", "is_age_based": false, "is_year_unknown": true }, "deceased_date": null },
+        "career": { "job": null, "company": null },
+        "avatar": { "url": null, "source": "default" },
+        "how_you_met": { "general_information": null }
+      },
+      "tags": [{ "name": "Family" }],
+      "addresses": [],
+      "contactFields": [
+        { "content": "ben@example.com", "contact_field_type": { "name": "Email", "protocol": "mailto:", "type": "email" } }
+      ]
+    },
+    {
+      "id": 3,
+      "first_name": "Carol",
+      "last_name": "Lovelace",
+      "nickname": "Caro",
+      "gender": "Female",
+      "gender_type": "F",
+      "is_partial": false,
+      "is_dead": true,
+      "is_starred": false,
+      "description": "",
+      "food_preferences": "",
+      "information": {
+        "dates": { "birthdate": { "date": "1848-01-15T00:00:00Z", "is_age_based": false, "is_year_unknown": false }, "deceased_date": { "date": "1912-05-01T00:00:00Z", "is_age_based": false, "is_year_unknown": false } },
+        "career": { "job": null, "company": null },
+        "avatar": { "url": null, "source": "default" },
+        "how_you_met": { "general_information": null }
+      },
+      "tags": [],
+      "addresses": [],
+      "contactFields": []
+    },
+    {
+      "id": 4,
+      "first_name": "Grace",
+      "last_name": "Hopper",
+      "nickname": "Amazing Grace",
+      "gender": "Female",
+      "gender_type": "F",
+      "is_partial": false,
+      "is_dead": false,
+      "is_starred": false,
+      "description": "Rear Admiral; compiler pioneer.",
+      "food_preferences": "",
+      "information": {
+        "dates": { "birthdate": { "date": "1906-12-09T00:00:00Z", "is_age_based": false, "is_year_unknown": false }, "deceased_date": null },
+        "career": { "job": "Rear Admiral", "company": "US Navy" },
+        "avatar": { "url": "https://secure.gravatar.com/avatar/grace.png", "source": "gravatar" },
+        "how_you_met": { "general_information": "Introduced by a mutual friend at a conference." }
+      },
+      "tags": [{ "name": "Book Club" }],
+      "addresses": [],
+      "contactFields": [
+        { "content": "grace@navy.example", "contact_field_type": { "name": "Email", "protocol": "mailto:", "type": "email" } }
+      ]
+    },
+    {
+      "id": 5,
+      "first_name": "Zoe",
+      "last_name": "",
+      "nickname": "",
+      "gender": "",
+      "gender_type": "",
+      "is_partial": true,
+      "is_dead": false,
+      "is_starred": false,
+      "description": "",
+      "food_preferences": "",
+      "information": {
+        "dates": { "birthdate": { "date": null, "is_age_based": false, "is_year_unknown": false }, "deceased_date": null },
+        "career": { "job": null, "company": null },
+        "avatar": { "url": null, "source": "default" },
+        "how_you_met": { "general_information": null }
+      },
+      "tags": [],
+      "addresses": [],
+      "contactFields": []
+    }
+  ],
+  "relationships": {
+    "1": [
+      { "relationship_type": { "name": "Spouse" }, "contact_is": { "id": 1, "first_name": "Ada", "last_name": "Lovelace", "complete_name": "Ada Lovelace" }, "of_contact": { "id": 2, "first_name": "Ben", "last_name": "Babbage", "complete_name": "Ben Babbage" } },
+      { "relationship_type": { "name": "Daughter" }, "contact_is": { "id": 1, "first_name": "Ada", "last_name": "Lovelace", "complete_name": "Ada Lovelace" }, "of_contact": { "id": 3, "first_name": "Carol", "last_name": "Lovelace", "complete_name": "Carol Lovelace" } }
+    ],
+    "2": [
+      { "relationship_type": { "name": "Spouse" }, "contact_is": { "id": 2, "first_name": "Ben", "last_name": "Babbage", "complete_name": "Ben Babbage" }, "of_contact": { "id": 1, "first_name": "Ada", "last_name": "Lovelace", "complete_name": "Ada Lovelace" } }
+    ],
+    "4": [
+      { "relationship_type": { "name": "Colleague" }, "contact_is": { "id": 4, "first_name": "Grace", "last_name": "Hopper", "complete_name": "Grace Hopper" }, "of_contact": { "id": 1, "first_name": "Ada", "last_name": "Lovelace", "complete_name": "Ada Lovelace" } }
+    ]
+  },
+  "activities": [
+    { "id": 1, "summary": "Lecture at the Royal Institution", "description": "Ada and Ben attended together.", "happened_at": "2023-06-15", "activity_type": { "name": "Cultural" }, "attendees": { "contacts": [{ "id": 1, "first_name": "Ada", "last_name": "Lovelace", "complete_name": "Ada Lovelace" }, { "id": 2, "first_name": "Ben", "last_name": "Babbage", "complete_name": "Ben Babbage" }] } }
+  ],
+  "notes": [
+    { "id": 1, "body": "Met Ada at a lecture; we discussed the difference engine. Σωκράτης — unicode survives.", "is_favorited": false, "created_at": "2023-04-01T12:00:00Z", "contact": { "id": 1, "first_name": "Ada", "last_name": "Lovelace", "complete_name": "Ada Lovelace" } },
+    { "id": 2, "body": "Carol's birthday party — the children's analytical engine was a hit.", "is_favorited": false, "created_at": "2023-01-15T18:30:00Z", "contact": { "id": 3, "first_name": "Carol", "last_name": "Lovelace", "complete_name": "Carol Lovelace" } }
+  ],
+  "reminders": [
+    { "id": 1, "title": "Birthday", "description": "Ada's birthday", "frequency_type": "year", "frequency_number": 1, "initial_date": "1815-12-10", "next_expected_date": "2026-12-10", "contact": { "id": 1, "first_name": "Ada", "last_name": "Lovelace", "complete_name": "Ada Lovelace" } },
+    { "id": 2, "title": "Call Ben", "description": "Discuss the difference engine", "frequency_type": "one_time", "frequency_number": 1, "initial_date": "2023-03-01", "next_expected_date": "2023-03-01", "contact": { "id": 2, "first_name": "Ben", "last_name": "Babbage", "complete_name": "Ben Babbage" } }
+  ],
+  "calls": [
+    { "id": 1, "content": "Talked about the difference engine project.", "called_at": "2023-05-02T15:00:00Z", "contact": { "id": 1, "first_name": "Ada", "last_name": "Lovelace", "complete_name": "Ada Lovelace" } }
+  ],
+  "tasks": [
+    { "id": 1, "title": "Buy analytical engine parts", "description": "For the next demonstration", "completed": true, "completed_at": "2023-02-01T09:00:00Z", "created_at": "2023-01-01T09:00:00Z", "contact": { "id": 1, "first_name": "Ada", "last_name": "Lovelace", "complete_name": "Ada Lovelace" } }
+  ],
+  "gifts": [
+    { "id": 1, "name": "Folding analytical engine model", "comment": "She admired it in a shop window", "url": "https://shop.example.com/engine-model", "amount": "£34.50", "status": "idea", "date": null, "created_at": "2023-01-01T09:00:00Z", "contact": { "id": 1, "first_name": "Ada", "last_name": "Lovelace", "complete_name": "Ada Lovelace" } },
+    { "id": 2, "name": "Box of quills", "comment": "", "url": "", "amount": "", "status": "offered", "date": "2023-02-14", "created_at": "2023-02-10T09:00:00Z", "contact": { "id": 4, "first_name": "Grace", "last_name": "Hopper", "complete_name": "Grace Hopper" } }
+  ],
+  "debts": [
+    { "id": 1, "in_debt": "no", "status": "completed", "amount": 12.5, "amount_with_currency": "£12.50", "reason": "Dinner", "created_at": "2023-03-01T09:00:00Z", "contact": { "id": 1, "first_name": "Ada", "last_name": "Lovelace", "complete_name": "Ada Lovelace" } }
+  ]
+}

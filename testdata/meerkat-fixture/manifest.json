@@ -1,0 +1,222 @@
+{
+  "version": 1,
+  "description": "Representative Meerkat CRM database for the source import (issue #353). Exercises every mapped concept plus the pathological shapes from TEST-02 (issue #430) that a Meerkat deployment can express: multi-valued fields, custom fields, reciprocal and dangling relationships, Unicode, very long values, year-unknown birthdays, soft-deleted rows, and a second source user the importer must not silently mix in. The loader (backend/internal/meerkatfixture) builds a real Meerkat-schema SQLite file from this manifest; the meerkat.Open reader and MapMeerkatSnapshot consume it exactly like a production deployment's file.",
+  "user": {
+    "id": 1,
+    "username": "fixture",
+    "email": "fixture@example.com"
+  },
+  "contacts": [
+    {
+      "name": "ada",
+      "id": 1,
+      "firstname": "Ada",
+      "lastname": "Lovelace",
+      "nickname": "Żółć",
+      "gender": "female",
+      "email": "ada@example.com",
+      "phone": "+1-555-0100",
+      "birthday": "1815-12-10",
+      "anniversary": "1835-07-08",
+      "address": "12 Byron St, London",
+      "photo": "photos/ada.jpg",
+      "how_we_met": "We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. We first crossed paths at the analytical engine demonstration; the conversation that followed covered the difference engine, poetry, and the mathematics of weaving. ",
+      "food_preference": "Loves oysters and dark chocolate; allergic to shellfish.",
+      "work_information": "Analytical engine pioneer; first computer programmer.",
+      "contact_information": "Prefers written correspondence; sends detailed letters with diagrams.",
+      "circles": [
+        "Family",
+        "Book Club"
+      ],
+      "custom_fields": {
+        "Zodiac": "Pisces",
+        "Languages": "English, French, Italian"
+      },
+      "vcard_uid": "11111111-1111-1111-1111-111111111111",
+      "prefix": "Countess",
+      "middle_name": "Augusta",
+      "organization": "Analytical Engine Co",
+      "department": "Mathematics",
+      "job_title": "First Programmer",
+      "role": "Analyst",
+      "emails": [
+        {
+          "type": "home",
+          "value": "ada@example.com"
+        },
+        {
+          "type": "work",
+          "value": "ada.lovelace@analytical.example"
+        }
+      ],
+      "phones": [
+        {
+          "type": "cell",
+          "value": "+1-555-0100"
+        },
+        {
+          "type": "home",
+          "value": "+44-20-7946-0101"
+        }
+      ],
+      "urls": [
+        {
+          "type": "home",
+          "value": "https://ada.example.com"
+        }
+      ],
+      "impps": [
+        {
+          "type": "telegram",
+          "value": "@adalovelace"
+        }
+      ],
+      "addresses": [
+        {
+          "type": "home",
+          "street": "12 Byron St",
+          "city": "London",
+          "region": "England",
+          "postal": "SW1A 1AA",
+          "country": "United Kingdom"
+        }
+      ]
+    },
+    {
+      "name": "ben",
+      "id": 2,
+      "firstname": "Ben",
+      "lastname": "Babbage",
+      "gender": "male",
+      "email": "ben@example.com",
+      "phone": "+1-555-0200",
+      "birthday": "--04-20",
+      "circles": [
+        "Family"
+      ],
+      "vcard_uid": "22222222-2222-2222-2222-222222222222"
+    },
+    {
+      "name": "carol",
+      "id": 3,
+      "firstname": "Carol",
+      "lastname": "Lovelace",
+      "gender": "female",
+      "birthday": "1848-01-15",
+      "nickname": "Caro",
+      "vcard_uid": "33333333-3333-3333-3333-333333333333",
+      "archived": true
+    },
+    {
+      "name": "deleted-person",
+      "id": 4,
+      "firstname": "Removed",
+      "lastname": "Person",
+      "deleted": true,
+      "vcard_uid": "44444444-4444-4444-4444-444444444444"
+    },
+    {
+      "name": "other-user",
+      "id": 5,
+      "user_id": 2,
+      "firstname": "Zoe",
+      "lastname": "Other",
+      "email": "zoe@other.example"
+    }
+  ],
+  "relationships": [
+    {
+      "id": 1,
+      "contact": "ada",
+      "related_to": "ben",
+      "type": "Spouse",
+      "name": "Ben Babbage"
+    },
+    {
+      "id": 2,
+      "contact": "ben",
+      "related_to": "ada",
+      "type": "Spouse",
+      "name": "Ada Lovelace"
+    },
+    {
+      "id": 3,
+      "contact": "ada",
+      "related_to": "carol",
+      "type": "Daughter",
+      "name": "Carol Lovelace"
+    },
+    {
+      "id": 4,
+      "contact": "ada",
+      "related_to": "",
+      "type": "Friend",
+      "name": "Grace Hopper",
+      "dangling": true
+    },
+    {
+      "id": 5,
+      "contact": "carol",
+      "related_to": "ada",
+      "type": "Mentor",
+      "name": "Ada Lovelace"
+    },
+    {
+      "id": 6,
+      "contact": "ada",
+      "related_to": "ben",
+      "type": "Bff",
+      "name": "Ben Babbage"
+    }
+  ],
+  "notes": [
+    {
+      "id": 1,
+      "contact": "ada",
+      "content": "Met Ada at a lecture; we discussed the difference engine. Σωκράτης — unicode survives.",
+      "date": "2023-04-01 12:00:00"
+    },
+    {
+      "id": 2,
+      "contact": "carol",
+      "content": "Carol's birthday party — the children's analytical engine was a hit.",
+      "date": "2023-01-15 18:30:00"
+    },
+    {
+      "id": 3,
+      "contact": "ada",
+      "content": "This note was deleted in the source.",
+      "date": "2022-01-01 00:00:00",
+      "deleted": true
+    }
+  ],
+  "activities": [
+    {
+      "id": 1,
+      "title": "Lecture at the Royal Institution",
+      "description": "Ada and Ben attended together.",
+      "location": "London",
+      "date": "2023-06-15 19:00:00",
+      "contacts": [
+        "ada",
+        "ben"
+      ]
+    }
+  ],
+  "reminders": [
+    {
+      "id": 1,
+      "contact": "ada",
+      "message": "Ada's birthday",
+      "remind_at": "1815-12-10 00:00:00",
+      "recurrence": "yearly"
+    },
+    {
+      "id": 2,
+      "contact": "ben",
+      "message": "Call Ben about the difference engine",
+      "remind_at": "2023-03-01 09:00:00",
+      "recurrence": "once"
+    }
+  ]
+}
