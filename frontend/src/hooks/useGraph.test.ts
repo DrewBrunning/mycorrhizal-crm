@@ -76,3 +76,70 @@ test('sets error when the fetch fails', async () => {
   expect(result.current.error).toBe('boom');
   expect(result.current.data).toBeNull();
 });
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  let reject!: (e: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+test('ignores a stale success that settles after a newer fetch', async () => {
+  localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
+  const first = deferred<GraphResponse>();
+  const second = deferred<GraphResponse>();
+  vi.mocked(getGraph).mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+
+  const { result } = renderHook(() => useGraph());
+  await act(async () => {});
+
+  // Fire a refetch while the initial request is still in flight.
+  const refetchPromise = result.current.refetch();
+  await act(async () => {
+    second.resolve(graphResponse);
+    await refetchPromise;
+  });
+  expect(result.current.data).toEqual(graphResponse);
+
+  // The stale first request settling afterwards must not clobber it.
+  await act(async () => {
+    first.resolve({ nodes: [], edges: [] });
+  });
+  expect(result.current.data).toEqual(graphResponse);
+});
+
+test('ignores a stale failure that settles after a newer fetch', async () => {
+  localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
+  const first = deferred<GraphResponse>();
+  const second = deferred<GraphResponse>();
+  vi.mocked(getGraph).mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+
+  const { result } = renderHook(() => useGraph());
+  await act(async () => {});
+
+  const refetchPromise = result.current.refetch();
+  await act(async () => {
+    second.resolve(graphResponse);
+    await refetchPromise;
+  });
+  expect(result.current.error).toBeNull();
+
+  await act(async () => {
+    first.reject(new Error('stale failure'));
+  });
+  expect(result.current.error).toBeNull();
+  expect(result.current.data).toEqual(graphResponse);
+});
+
+test('defaults to empty arrays when the response omits nodes or edges', async () => {
+  localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
+  vi.mocked(getGraph).mockResolvedValue({} as GraphResponse);
+
+  const { result } = renderHook(() => useGraph());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  expect(result.current.data).toEqual({ nodes: [], edges: [] });
+});
