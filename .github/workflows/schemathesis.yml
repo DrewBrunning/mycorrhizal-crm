@@ -23,12 +23,22 @@ name: Schemathesis API fuzzing
 # Schemathesis itself exits non-zero on any failure, including the expected
 # anonymous-run 401/404s and occasional connection errors under concurrent
 # load, so the scan steps do not fail on its exit code — schemagate is the gate.
+#
+# TEST-07 tiering follow-up (issue #435): the per-operation example budget is
+# scaled by trigger like the rapid property suites. PRs keep the bounded smoke
+# (3 examples/operation — enough to trip the gate tripwire), a push to main
+# runs 10x deeper (30), and the nightly schedule goes deep
+# (SCHEMA_MAX_EXAMPLES=100) so the search actually explores — with the job
+# timeout raised accordingly, since a nightly run that takes a couple of hours
+# is fine as long as it finishes before the next night's run.
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '30 4 * * *' # 04:30 UTC nightly (deep run; trails the consolidated nightly suite)
 
 permissions:
   contents: read
@@ -77,12 +87,24 @@ jobs:
       contents: read
     name: Run Schemathesis fuzzing + BOLA sweep
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The 3-example PR smoke finishes in minutes; the deep nightly run
+    # (SCHEMA_MAX_EXAMPLES=100) is allowed hours, mirroring unit-tests.yml's
+    # tiered timeout.
+    timeout-minutes: ${{ github.event_name == 'schedule' && 180 || 30 }}
     needs: changes
     # Fires when the API contract, the handlers, or the deployed artifact
-    # change. The openapi.yaml lives outside backend/, so openapi is listed
-    # explicitly; infra covers the compose/image the scan boots.
-    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
+    # change, and unconditionally on the nightly schedule (there is no diff to
+    # gate on — the schedule is the deep pass). The openapi.yaml lives outside
+    # backend/, so openapi is listed explicitly; infra covers the compose/image
+    # the scan boots.
+    if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
+
+    env:
+      # Per-operation example budget, tiered by trigger (rapid's RAPID_CHECKS
+      # pattern, issue #435): 3 on PR/push (bounded smoke), 30 on a push to
+      # main (i.e. a merge), 100 on the nightly deep run. seed 1 + deterministic
+      # generation stays pinned on every tier so a finding is reproducible.
+      SCHEMA_MAX_EXAMPLES: ${{ github.event_name == 'pull_request' && '3' || (github.event_name == 'push' && '30' || '100') }}
 
     steps:
       - name: Checkout repository
@@ -178,7 +200,7 @@ jobs:
             --url http://localhost:7300/api/v1 \
             --checks not_a_server_error,ignored_auth \
             --report junit --report-dir /report --report-junit-path /report/anon.xml \
-            --max-examples 3 --seed 1 --generation-deterministic \
+            --max-examples "$SCHEMA_MAX_EXAMPLES" --seed 1 --generation-deterministic \
             --suppress-health-check all \
             --workers 4 || true
 
@@ -200,7 +222,7 @@ jobs:
             -H "Authorization: Bearer ${SCH_TOKEN}" \
             --checks not_a_server_error \
             --report junit --report-dir /report --report-junit-path /report/auth.xml \
-            --max-examples 3 --seed 1 --generation-deterministic \
+            --max-examples "$SCHEMA_MAX_EXAMPLES" --seed 1 --generation-deterministic \
             --suppress-health-check all \
             --workers 4 || true
 

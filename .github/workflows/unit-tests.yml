@@ -250,6 +250,10 @@ jobs:
       # so a deep nightly run is not killed by the PR-sized 25m timeout.
       RAPID_CHECKS: ${{ github.event_name == 'pull_request' && '200' || (github.event_name == 'push' && '1000' || '8000') }}
       GO_TEST_TIMEOUT: ${{ github.event_name == 'schedule' && '200m' || '25m' }}
+      # The pre-rapid seeded property tests (services/address_normalization
+      # _property_test.go) get the same tiered treatment: 200 iterations on
+      # PR, 2000 on a merge, 10000 on the nightly deep run.
+      ADDRESS_PROPERTY_ITERATIONS: ${{ github.event_name == 'pull_request' && '200' || (github.event_name == 'push' && '2000' || '10000') }}
 
     steps:
       - name: Checkout repository
