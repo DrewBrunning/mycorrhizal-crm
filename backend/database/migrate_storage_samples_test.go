@@ -47,8 +47,9 @@ func TestMigrationsAddStorageSamples(t *testing.T) {
 	require.NoError(t, sqlDB.Close())
 
 	// Down drops the table. 000043 is no longer the migration tip — 000044
-	// (revision tokens) sits on top — so roll that back first, then 000043's
-	// own down migration.
+	// (revision tokens) and 000045 (import source links) sit on top — so roll
+	// those back first, then 000043's own down migration.
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000045_import_source_links
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000044_revision_tokens
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000043_storage_samples
 

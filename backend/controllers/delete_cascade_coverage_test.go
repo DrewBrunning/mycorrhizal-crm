@@ -100,6 +100,7 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"households":             goCascadeUser,
 	"immich_configs":         goCascadeUser,
 	"import_runs":            goCascadeUser,
+	"import_source_links":    fkCascadeUser,
 	"link_field_types":       goCascadeUser,
 	"notification_configs":   goCascadeUser,
 	"paperless_configs":      goCascadeUser,
