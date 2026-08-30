@@ -196,6 +196,13 @@ database`); nothing is written to the database by any refusal.
 - **Full-stack upgrades (DEPLOY-02, issue #451):** the release-by-release
   Docker harness validates the whole install (database + photos + attachments)
   end to end against the same release set.
+- **Large datasets (issue #495):** the same chain-upgrade path is also tested
+  against databases populated at 134x the canonical manifest (2,010 contacts,
+  pathological records included) — every supported release migrates to the
+  current schema with row counts and integrity intact, and the measured
+  resource requirements (duration / peak memory / peak disk per path) are
+  recorded in `docs/development/scale-testing.md`. Disk exhaustion during a
+  large migration is asserted to fail closed in the chaos job.
 
 ## Document consistency
 

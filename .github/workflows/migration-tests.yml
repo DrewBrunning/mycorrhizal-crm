@@ -187,3 +187,76 @@ jobs:
       - name: Every migration ships its .down.sql
         working-directory: backend
         run: go test ./database/ -run '^TestEveryMigrationHasADownMigration$' -count=1 -v
+
+  # Issue #495 (large-dataset migration test): every supported release's
+  # database, populated at 134x the canonical pathological manifest (2,010
+  # contacts incl. the soft-delete + vcard-uid-recreate traps at scale),
+  # migrates to the current schema through database.InitDB with every table's
+  # row count surviving and integrity ok; plus the interrupted-migration
+  # fail-closed and backup-restore-at-scale properties.
+  #
+  # These tests are gated behind MYCORRHIZAL_LARGE_TESTS=1 and deliberately
+  # SKIPPED in the default Go suite: at 2,010 contacts each they take minutes
+  # under -race, which every PR would pay for. This named job runs them on a
+  # main merge and nightly with a generous timeout — the scale signal is worth
+  # waiting a day for, not worth blocking every PR on.
+  large-dataset:
+    permissions:
+      contents: read
+    name: Large-dataset migration (issue #495)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Upgrade every supported release at scale
+        working-directory: backend
+        env:
+          MYCORRHIZAL_LARGE_TESTS: "1"
+        run: |
+          set -eo pipefail
+          out="$(go test ./internal/schemafixture/ -run '^TestLargeDatasetUpgradeToCurrent$' -count=1 -v 2>&1)"
+          echo "$out"
+          # Fail-safe: the tests are env-gated, so a typo'd variable would
+          # silently skip them and the job would pass vacuously. Assert the
+          # longest-skip subtest actually ran and none were skipped.
+          if ! grep -q -- "--- PASS: TestLargeDatasetUpgradeToCurrent/v0.6.0 " <<<"$out"; then
+            echo "::error::expected large-dataset subtest v0.6.0 did not run (MYCORRHIZAL_LARGE_TESTS not honored?)"
+            exit 1
+          fi
+          if grep -q -- "--- SKIP: TestLargeDatasetUpgradeToCurrent" <<<"$out"; then
+            echo "::error::large-dataset tests skipped (MYCORRHIZAL_LARGE_TESTS not honored?)"
+            exit 1
+          fi
+
+      - name: Interrupted migration fails closed, backup restores at scale
+        working-directory: backend
+        env:
+          MYCORRHIZAL_LARGE_TESTS: "1"
+        run: >
+          go test ./internal/schemafixture/ -run
+          '^TestLargeDatasetInterruptedMigrationFailsClosed$|^TestLargeDatasetBackupRestoresAtScale$|^TestLargeDatasetUpgradeEmitsProgress$'
+          -count=1 -v
+
+      - name: Large-dataset generator unit tests
+        working-directory: backend
+        env:
+          MYCORRHIZAL_LARGE_TESTS: "1"
+        run: |
+          set -eo pipefail
+          out="$(go test ./internal/largedata/ -count=1 -v 2>&1)"
+          echo "$out"
+          if ! grep -q -- "--- PASS: TestScalePopulatesLargeDataset " <<<"$out"; then
+            echo "::error::expected populate-at-scale test did not run (MYCORRHIZAL_LARGE_TESTS not honored?)"
+            exit 1
+          fi

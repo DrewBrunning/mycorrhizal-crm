@@ -120,7 +120,7 @@ Which producers emit today:
 | Scheduler (`runJob`) | `job_failed` on a recovered panic; ordinary start/finish are log lines only (the scheduler ticks often — a per-tick row would swamp the timeline) |
 | Contact / calendar sync | `sync_completed` (with counts) / `sync_failed` (with the classified error) |
 | Restore drill (issue #275) | `restore_test_completed` on a healthy run; `backup_failed` (`severity=error`) on a failed or mismatched run |
-| Migration runner | `migration_completed` (with the from/to version) when the schema actually advanced |
+| Migration runner | `migration_completed` (with the from/to version) when the schema actually advanced. Every migration step also emits a log heartbeat — `event=migration_step_started` before a migration body runs and `event=migration_step_completed` (with `duration_ms`) after it commits and is marked clean — so a long migration is observable while it runs, not only when it finishes (issue #495) |
 | Notification dispatch | `notification_sent` / `notification_failed` per channel (`detail` = channel name only) |
 | Webhook delivery | `integration_failed` once a delivery exhausts its retry budget and is still failing; the outbound POST also carries `X-Correlation-ID` |
 | Process | `application_started` (with build version) / `application_stopped` |

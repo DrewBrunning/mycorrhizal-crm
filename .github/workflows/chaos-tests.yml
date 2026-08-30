@@ -280,3 +280,128 @@ jobs:
         if: always()
         run: |
           sudo umount /mnt/diskfull || true
+
+  # Issue #495 (large-dataset migration test), hand-verify item: "reduce the
+  # available disk below what the migration needs and confirm it fails closed
+  # rather than truncating." The migration is the one operation that touches
+  # every row and on SQLite competes with itself for disk — the exact spot a
+  # low-disk deployment corrupts. RLIMIT_FSIZE is NOT a valid in-process proxy
+  # (Linux ftruncate ignores it, and SQLite pre-extends files with ftruncate),
+  # so this is an external-fault job: a real 10k-contact floor database (~45 MB)
+  # on a tmpfs sized to hold the file plus only 1 MiB, migrated until the WAL
+  # growth the row-touching backfills need runs out of space.
+  #
+  # Defined outcome: `migrate up` fails non-zero, the database is left DIRTY at
+  # some migration with PRAGMA integrity_check ok — never truncated, never a
+  # healthy-looking half-migration — and the next startup run REFUSES on the
+  # dirty flag. The dirty/refusal dance is the same fail-closed path the
+  # migration-kill job proves with SIGKILL; this job proves it holds when the
+  # cause is disk exhaustion on a large database.
+  large-migration-disk-full:
+    permissions:
+      contents: read
+    name: ENOSPC during large migration fails closed
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Build the migratebench, migrate and dbinspect CLIs
+        working-directory: backend
+        run: |
+          go build -o "$RUNNER_TEMP/migratebench" ./cmd/migratebench
+          go build -o "$RUNNER_TEMP/migrate" ./cmd/migrate
+          go build -o "$RUNNER_TEMP/dbinspect" ./cmd/dbinspect
+
+      # A 10k-contact floor database needs ~16 MB of transient extra disk when
+      # its pending migrations run (WAL growth from the full-row backfills —
+      # sort-name, revision tokens, audit rebuild). That growth is what the
+      # constrained disk must exhaust.
+      - name: Build a large floor database
+        working-directory: backend
+        run: |
+          rm -f "$RUNNER_TEMP/src.db" "$RUNNER_TEMP/floor.db"
+          "$RUNNER_TEMP/migratebench" seed --contacts 10000 --db "$RUNNER_TEMP/src.db"
+          "$RUNNER_TEMP/migratebench" checkpoint --db "$RUNNER_TEMP/src.db" --version 31 --out "$RUNNER_TEMP/floor.db"
+          rm -f "$RUNNER_TEMP/src.db" "$RUNNER_TEMP/src.db-wal" "$RUNNER_TEMP/src.db-shm"
+          ls -la "$RUNNER_TEMP/floor.db"
+
+      # Sized at floor + 1 MiB: room for the database file itself, but not for
+      # the ~16 MB the migration needs. A real ENOSPC, not a mocked one.
+      - name: Mount a constrained filesystem
+        run: |
+          floor_bytes="$(stat -c %s "$RUNNER_TEMP/floor.db")"
+          size="$(( floor_bytes + 1048576 ))"
+          sudo mkdir -p /mnt/diskfull
+          sudo mount -t tmpfs -o "size=${size}" tmpfs /mnt/diskfull
+          echo "mounted tmpfs size=${size} (floor=${floor_bytes}) at /mnt/diskfull"
+
+      - name: Copy the large database onto the constrained filesystem
+        run: |
+          cp "$RUNNER_TEMP/floor.db" /mnt/diskfull/floor.db
+          ls -la /mnt/diskfull/
+
+      # Defined outcome: the migration fails (non-zero) — the disk genuinely
+      # cannot hold the migration's WAL growth.
+      - name: Migrate on the constrained disk must fail
+        working-directory: backend
+        run: |
+          set +e
+          SQLITE_DB_PATH="/mnt/diskfull/floor.db" "$RUNNER_TEMP/migrate" up > /tmp/migrate-full.log 2>&1
+          rc=$?
+          set -e
+          echo "migrate exit=$rc"
+          tail -3 /tmp/migrate-full.log
+          if [ "$rc" -eq 0 ]; then
+            echo "::error::migration succeeded against a disk too small for it"
+            exit 1
+          fi
+
+      # Fail-closed, not truncated: integrity ok, dirty at some migration, no
+      # partially-migrated healthy-looking schema.
+      - name: Assert the interrupted database is dirty, not truncated
+        run: |
+          state="$("$RUNNER_TEMP/dbinspect" /mnt/diskfull/floor.db)"
+          echo "post-enospc: $state"
+          case "$state" in
+            "integrity_check=ok version="*" dirty=true") ;;
+            *) echo "::error::unexpected post-ENOSPC state: $state"; exit 1 ;;
+          esac
+
+      # The next startup run must refuse on the dirty flag (MIG-04), naming the
+      # version + recovery, and must not touch the database.
+      - name: Restart must refuse the dirty migration state
+        working-directory: backend
+        run: |
+          set +e
+          SQLITE_DB_PATH="/mnt/diskfull/floor.db" "$RUNNER_TEMP/migrate" up > /tmp/migrate-refuse.log 2>&1
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            echo "::error::a dirty database booted (must refuse)"
+            exit 1
+          fi
+          grep -q 'dirty migration state' /tmp/migrate-refuse.log
+          state="$("$RUNNER_TEMP/dbinspect" /mnt/diskfull/floor.db)"
+          echo "post-refusal: $state"
+          case "$state" in
+            "integrity_check=ok version="*" dirty=true") ;;
+            *) echo "::error::the refusal modified the database: $state"; exit 1 ;;
+          esac
+
+      - name: Unmount the constrained filesystem
+        if: always()
+        run: |
+          sudo umount /mnt/diskfull || true
