@@ -379,7 +379,7 @@ func operationForMethod(pi *openapi3.PathItem, method string) *openapi3.Operatio
 // Read loads the committed baseline from the repo root.
 func Read(repoRoot string) (*Baseline, error) {
 	path := filepath.Join(repoRoot, "backend", "internal", "apibaseline", BaselineFile)
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is not request input: repoRoot comes from findRepoRoot (walking up from the process's own CWD) and BaselineFile is a fixed internal constant. Only loaders running inside the repository call this.
 	if err != nil {
 		return nil, fmt.Errorf("reading baseline %s: %w", path, err)
 	}
