@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	"mycorrhizal/database"
+	"mycorrhizal/internal/fireandforget"
 
 	"gorm.io/gorm"
 )
@@ -113,6 +114,16 @@ func NewAt(tb testing.TB, dbPath string) *gorm.DB {
 		tb.Fatalf("dbtest: opening copied database at %s: %v", dbPath, err)
 	}
 	tb.Cleanup(func() {
+		// Drain the fire-and-forget goroutines (webhook deliveries, audit
+		// writes) that hold this *gorm.DB before closing it. Handlers spawn
+		// them asynchronously and they can outlive the test body; if the
+		// database file is deleted by t.TempDir() while such a connection is
+		// still open, modernc/sqlite recreates a transient "001" temp
+		// directory and TempDir's cleanup fails with "directory not empty" —
+		// the TestDeleteContact_NullsSelfContactPointer flake (issue #703).
+		// DB.Close() alone does not wait for a connection a straggler has
+		// already checked out, so the drain must come first.
+		fireandforget.Wait()
 		if sqlDB, err := db.DB(); err == nil {
 			_ = sqlDB.Close()
 		}

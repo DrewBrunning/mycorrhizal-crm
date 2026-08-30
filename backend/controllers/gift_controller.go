@@ -290,7 +290,7 @@ func UpdateGift(c *gin.Context) {
 		return
 	}
 
-	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "gift.updated", gift)
+	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "gift.updated", gift)
 
 	c.JSON(http.StatusOK, gift)
 }

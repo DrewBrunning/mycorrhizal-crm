@@ -32,7 +32,7 @@ func CreateHousehold(c *gin.Context) {
 		return
 	}
 
-	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "household.created", household)
+	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "household.created", household)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Household created successfully", "household": household})
 }
@@ -167,7 +167,7 @@ func UpdateHousehold(c *gin.Context) {
 		return
 	}
 
-	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "household.updated", household)
+	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "household.updated", household)
 
 	c.JSON(http.StatusOK, household)
 }
@@ -197,7 +197,7 @@ func DeleteHousehold(c *gin.Context) {
 		return
 	}
 
-	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "household.deleted", gin.H{"id": household.ID})
+	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "household.deleted", gin.H{"id": household.ID})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Household deleted"})
 }

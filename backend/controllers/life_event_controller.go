@@ -195,7 +195,7 @@ func CreateLifeEvent(c *gin.Context) {
 		}
 	}
 
-	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "life_event.created", event)
+	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "life_event.created", event)
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Life event created successfully", "life_event": event})
 }
@@ -378,7 +378,7 @@ func UpdateLifeEvent(c *gin.Context) {
 		}
 	}
 
-	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "life_event.updated", event)
+	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "life_event.updated", event)
 
 	c.JSON(http.StatusOK, event)
 }
@@ -430,7 +430,7 @@ func DeleteLifeEvent(c *gin.Context) {
 		}
 	}
 
-	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "life_event.deleted", gin.H{"id": event.ID})
+	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "life_event.deleted", gin.H{"id": event.ID})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Life event deleted"})
 }
