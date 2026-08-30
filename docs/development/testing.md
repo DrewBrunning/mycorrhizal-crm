@@ -138,14 +138,17 @@ Detail and the hard-won traps for each layer follow.
     `v0.2.0-alpha-candidate` (deployed 2026-08-04), so a rename/drop/retype needs
     a backfill, not a silent clean removal (`migrate_datapreservation_test.go`);
   - interrupted-migration behavior and failure diagnostics (v0.6.4, #436/#437/#438).
-  - **Planned (MIG-01, #436, v0.6.4):** versioned historical-schema fixtures —
-    one schema-only dump per supported release (floor `v0.6.0`, issue #529),
-    populated at test time from the TEST-02 manifest, with `schema_migrations`
-    rows so each presents the correct, non-dirty version. A release without a
-    dump fails CI.
+  - **Historical migration paths (MIG-01 #436 + MIG-02 #437, v0.6.4):** one
+    schema-only dump per supported release (floor `v0.6.0`, issue #529),
+    populated at test time from the TEST-02 manifest; the CI migration-tests
+    workflow then matrixes one job per release through `database.InitDB`
+    (`v0.6.0 → current` as the longest skip), round-trips every migration
+    up → down → up against a populated fixture, and gates on every migration
+    shipping its `.down.sql`. A release without a dump fails CI.
 - **Must not be used for** current-schema application behavior (DB/integration)
   or deploy sequencing (release/install smoke).
-- **Runs via** `go test ./...` (the `database` package lands in the `rest` leg).
+- **Runs via** `go test ./...` (the `database` package lands in the `rest` leg)
+  plus the `migration-tests.yml` matrix job (gated on the `backend` filter).
 
 ## Frontend layer
 
