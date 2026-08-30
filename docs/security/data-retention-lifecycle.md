@@ -7,7 +7,7 @@ each asset, not how long it survives.
 
 | | |
 |---|---|
-| **Last updated** | 2026-08-27 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420), [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622), [#391](https://github.com/DrewBrunning/mycorrhizal-crm/issues/391), [#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389), [#651](https://github.com/DrewBrunning/mycorrhizal-crm/issues/651)) |
+| **Last updated** | 2026-08-30 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420), [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622), [#391](https://github.com/DrewBrunning/mycorrhizal-crm/issues/391), [#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389), [#651](https://github.com/DrewBrunning/mycorrhizal-crm/issues/651), [#351](https://github.com/DrewBrunning/mycorrhizal-crm/issues/351), [#353](https://github.com/DrewBrunning/mycorrhizal-crm/issues/353)) |
 | **Scope** | Backend (Go/Gin + SQLite), CardDAV/CalDAV (server role), Android client, browser/frontend, operator backups. |
 | **Companion docs** | `docs/security/pii-inventory.md` (the *minimization* lens — should each store exist, and is it more/kept-longer than needed), `docs/security/asvs-l2.md` V8 (Data Protection), `docs/deployment.md` (Backups section — the authoritative backup/restore runbook), `docs/security/masvs-l1.md` (Android storage controls). |
 
@@ -507,6 +507,42 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   `backend/services/storage_sample_service_test.go`,
   `backend/controllers/system_status_controller_test.go` (`TestGetSystemStatus_StorageTrendBlock`).
 
+## 21. Import source links (`import_source_links`) — user-scoped source-import ledger
+
+- **Where / who**: one row per entity produced by a *source* import — a Meerkat database or a Monica
+  snapshot (ADR 0007, issues #351/#353) — written by `services.ExecuteSourceImport`
+  (`backend/services/import_source.go`) inside the same transaction that creates the mapped rows, and
+  read back on the next run of the same import. Keyed by `(system, external_id, user_id)`, it is the
+  idempotency ledger for source imports (CON-04, issue #459): a row already present means "already
+  imported" and is skipped. `user_id` is the importing user; every read/write is owner-scoped
+  (CLAUDE.md trap #5). Distinct from §12 (the in-memory wizard staging that holds *uploaded rows*) and
+  §17 (`import_runs`, the durable *outcome summary* of file imports) — this is the per-entity *source
+  identity* ledger that makes re-runs non-duplicating.
+- **What it contains**: the source system token (`system`), the source row's own identity namespaced
+  per entity kind (`external_id`, e.g. `contact/7`), the local entity kind and identity (`entity_kind`
+  ∈ contact|relationship|household|circle|tag|gift|preference|activity|note|reminder; `entity_uid` — a
+  VCardUID for contacts, the UUID PK for UUID-PK entities, `id:<n>` for uint-PK rows), and the
+  importing `user_id`. **No contact field values, no free-text content** — it records *which* source
+  rows were mapped to *which* local rows, not what they said.
+- **Retention**: no dedicated purge job. A source import is a rare, human-initiated action, so the
+  table's growth is self-bounding (a handful of rows per imported source row, written once). Rows are
+  immutable once written — no update path; a re-run only *reads* them to skip. No CardDAV/CalDAV
+  projection and no Android offline mirror.
+- **Deletion / propagation**: hard-delete (no `deleted_at`, per ADR 0004's edge/join-row class and the
+  migration's own doc comment) — a link is a ledger fact, not user-authored content with an undo
+  button. Removed with the account by `DeleteUser` via the `ON DELETE CASCADE` FK to `users` (the
+  `fk-cascade-user` bucket in `controllers/delete_cascade_coverage_test.go`). Dropped wholesale by
+  migration `000045`'s `down.sql` (documented there as destroying re-import idempotency, not user data).
+- **Backups**: included in the DB snapshot like any other table; carries source identifiers and no
+  sensitive content, so it needs no special handling in the backup-confidentiality boundary (§10).
+- **Verification**: `backend/services/import_source_test.go`
+  (`TestExecuteSourceImport_IsIdempotent`, `TestExecuteSourceImport_ScopesByUser`,
+  `TestExecuteSourceImport_DuplicateSourceRefSkipsSecond`,
+  `TestExecuteSourceImport_AlreadyImportedGraphSkipped`), `backend/services/monica_import_test.go`
+  (`TestMonicaImport_ReRunIsIdempotent`), `backend/services/meerkat_import_test.go`
+  (`TestMeerkatImport_ReRunIsIdempotent`), `backend/controllers/delete_cascade_coverage_test.go`
+  (`import_source_links` seeded + swept in the DeleteUser sweep, bucket `fk-cascade-user`).
+
 ## Known gaps
 
 One item surfaced by walking every data type through the four questions above. It does not block this
@@ -529,6 +565,7 @@ per §1/§7/§8), but it is a genuine, named gap rather than a silently-accepted
 | Webhook delivery purge window + payload trim | `backend/services/webhook_delivery_purge_service_test.go` (9 cases), `webhook_delivery_test.go` trim pins |
 | Job-run retention window | `backend/services/job_run_purge_service_test.go` |
 | Import-run history: one row per confirmed import, swept on account delete | `backend/services/import_session_history_test.go`, `backend/controllers/import_history_controller_test.go`, `backend/controllers/delete_cascade_coverage_test.go` |
+| Import source links: one row per imported source entity, idempotency ledger, swept on account delete | `backend/services/import_source_test.go`, `backend/services/monica_import_test.go`, `backend/services/meerkat_import_test.go`, `backend/controllers/delete_cascade_coverage_test.go` |
 | Storage-growth history: one sample per run, pruned past retention | `backend/services/storage_sample_service_test.go`, `backend/database/migrate_storage_samples_test.go` |
 | Admin purge trigger + window | `backend/controllers/admin_user_controller_test.go` M1/M1b/M5 |
 | Sync-horizon 410 Gone matches purge window | `backend/controllers/cursor_feed_test.go` |
