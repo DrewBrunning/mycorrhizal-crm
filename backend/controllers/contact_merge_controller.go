@@ -237,8 +237,8 @@ func CommitContactMerge(c *gin.Context) {
 	// RepointContactAssociations), never deleted by a merge -- there is
 	// nothing left to remove from disk here.
 
-	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "contact.updated", keeper)
-	go services.TriggerWebhooks(c.Request.Context(), db, currentConfig(c), userID, "contact.deleted", gin.H{"id": loser.ID})
+	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "contact.updated", keeper)
+	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "contact.deleted", gin.H{"id": loser.ID})
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Contacts merged",
