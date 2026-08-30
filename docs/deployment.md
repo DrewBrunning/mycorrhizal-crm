@@ -94,6 +94,11 @@ supported-upgrade statement: in-place upgrade is supported from `v0.6.0`
 floor refuses to migrate with a two-step instruction, and downgrade is
 unsupported (rollback = previous version + pre-upgrade backup restore).
 
+**If the server refuses to start after an upgrade** — a dirty migration, a
+schema ahead of the binary, or a sub-floor schema — do not retry blindly; the
+recovery for each state, and the exact pre-upgrade backup file to restore, is
+`docs/operations/migration-recovery.md`.
+
 ## Verifying release artifacts
 
 Every published Docker image is signed and carries SBOM + SLSA provenance attestations; the

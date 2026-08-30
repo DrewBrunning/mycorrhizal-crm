@@ -1,0 +1,250 @@
+# Migration recovery runbook
+
+This is the migration-specific chapter of the incident-response runbook
+(`docs/security/incident-response.md`): what an operator does **after** the
+server refuses to start because of the database's migration state. It is written
+to be followed under stress, by one person, on their own instance — so it is
+commands and decisions, not background reading. The milestone bar is that
+recovery has been exercised by following the document, not from memory — the
+procedure for that is [The drill](#the-drill).
+
+| | |
+|---|---|
+| **Scope** | The three fail-closed migration states (MIG-04, issue [#439](https://github.com/DrewBrunning/mycorrhizal-crm/issues/439)): dirty schema, schema ahead of the binary, and schema below the supported floor — plus what `make migrate-down` is and is not for. |
+| **Companion docs** | `docs/deployment.md` (backup/restore/upgrade *procedures* — the three-piece backup), `docs/upgrade-compatibility.md` (the supported-upgrade range and the refusal states), `docs/security/incident-response.md` (containment/rotation for a security incident), `docs/security/data-retention-lifecycle.md` §10 (what a backup contains and how long backups survive). |
+| **Policy anchor** | Downgrade is unsupported; rollback is **restore-the-pre-upgrade-backup** (issue [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530)). The server takes the pre-migration backup automatically as part of that policy once it ships; until then the operator takes it manually — see [The pre-migration backup](#the-pre-migration-backup). |
+
+## Reading the state
+
+The server refuses to start by exiting with a `Failed to initialize database`
+fatal log line. The line **names the state and the remedy** — the three states
+never share a message, so you do not have to read source. Confirm which of the
+three you are in:
+
+| Boot log says… | State | Section |
+|---|---|---|
+| `database schema version N predates the supported upgrade floor (v0.6.0, migration 31)` | Below the floor | [Below the floor](#below-the-floor) |
+| `database is in a dirty migration state at version N: … Refusing to start (fail-closed). Restore the pre-migration backup and start again …` | Dirty schema | [Dirty schema](#dirty-schema) |
+| `database schema version N is ahead of this binary (latest known migration M): … Deploy a binary that knows migration N (or newer) and start again, or restore the backup taken before the newer release ran …` | Schema ahead of the binary | [Schema ahead of the binary](#schema-ahead-of-the-binary) |
+
+To read the version straight off disk (works even when the server will not
+start):
+
+```sh
+# from a checkout of the repo with a Go toolchain, pointed at the live DB
+make migrate-status                      # or: go run ./cmd/migrate/main.go version
+# → Current migration status for <db>:
+#   Current version on <db>: 45 (dirty: false)
+```
+
+If the state is not yet obvious, capture the evidence first (snapshot + logs)
+before changing anything — the same "preserve evidence before you touch" rule as
+`docs/security/incident-response.md`:
+
+```sh
+make backup                              # safe while the server is down or up
+docker compose logs --no-color --timestamps mycorrhizal > evidence-migration-<timestamp>.txt
+```
+
+## The pre-migration backup
+
+Every recovery in this document ends in "restore the pre-migration backup." A
+runbook that says that without saying **which file** is not a runbook — so here
+is exactly where it lives.
+
+- **Where.** A backup is three pieces: the SQLite snapshot, the profile-photo
+  directory (`PROFILE_PHOTO_DIR`), and the attachment directory
+  (`ATTACHMENTS_DIR`). Restoring only the `.db` silently loses photos and
+  attachments. See `docs/deployment.md` → Backups for the full inventory and
+  the offline (server-stopped) alternative.
+- **How the snapshot is named.** `make backup` (from `backend/`, with the same
+  environment the server uses) writes a timestamped snapshot **beside the live
+  database**: `<db-stem>-<YYYYMMDD-HHMMSS>.db`, e.g.
+  `/path/to/data/mycorrhizal-20260809-120000.db`. It refuses to overwrite an
+  existing file, and verifies the result with `PRAGMA integrity_check` before
+  reporting success. For an explicit, findable location:
+  ```sh
+  BACKUP_PATH=/backups/mycorrhizal-pre-v0.6.4-$(date +%F).db make backup
+  ```
+  No Makefile/Go? `sqlite3 <db> "PRAGMA wal_checkpoint(TRUNCATE); VACUUM INTO '/backups/mycorrhizal-<date>.db';"`
+  is the equivalent statement.
+- **How long it is kept.** Retention is entirely operator-owned — the app has
+  no backup rotation or auto-deletion (deliberately; see
+  `docs/deployment.md` → Backup confidentiality & retention). The **only**
+  retention rule that is a policy, not a preference, comes from issue #530:
+  **a scheduled purge must never delete the last rollback point.** Concretely,
+  before you run a purge cron such as
+  `find /backups -name 'mycorrhizal-*.db' -mtime +30 -delete`, make sure the
+  most recent pre-upgrade snapshot is not the oldest survivor — if it is, keep
+  it regardless of age until the next upgrade is verified, or move it off the
+  purged path. The safe habit: take the snapshot immediately before each
+  upgrade, name it with the version you are moving **from** (as above), and do
+  not let any automated cleanup remove it until the upgrade has been verified
+  and the next pre-upgrade snapshot exists.
+- **Encryption caveat.** A restore under a different at-rest master key
+  (`DATA_ENCRYPTION_KEY`, or the `JWT_SECRET_KEY` fallback) fails closed at
+  boot instead of serving garbage — a pre-upgrade snapshot must be restored
+  with the same key the upgrade ran under. See `docs/deployment.md` →
+  Restore.
+
+## Dirty schema
+
+**What it is.** A migration started and did not finish, leaving the migration
+version marked dirty — the schema may be the failed migration's, partially
+applied. The server refuses to start rather than migrating on top of it
+(MIG-04, issue #439; the old force-and-continue behavior was the bug in issue
+[#546](https://github.com/DrewBrunning/mycorrhizal-crm/issues/546)).
+
+**Primary recovery — restore the pre-migration backup.** The schema state is
+unknown by definition; the backup is the only state you can trust.
+
+1. **Do not retry in a loop.** Each retry of a migration that is going to fail
+   again costs another restore. If a migration genuinely failed (not just was
+   interrupted), a second attempt is likely to fail the same way.
+2. **Restore the pre-upgrade backup** — the snapshot taken before *this*
+   upgrade began (see [The pre-migration backup](#the-pre-migration-backup) for
+   which file, and `docs/deployment.md` → Restore for the exact commands:
+   stop the server, replace the three pieces, start it again).
+3. **Retry the upgrade** — the server runs pending migrations on startup, so
+   starting it *is* the retry.
+4. **If it fails again at the same migration: capture the migration logs and
+   stop.** Save the evidence (`docker compose logs --no-color --timestamps
+   mycorrhizal > migration-failure-<timestamp>.txt`) and file a bug with the
+   failing migration name and those logs.
+
+**Operator-only escape hatch: `make migrate-force`.** Each migration runs inside
+one transaction (SQLite DDL is transactional), so an interrupted migration's DDL
+rolls back cleanly rather than landing torn — the schema is either fully the
+previous version or fully the interrupted version, never somewhere between.
+That makes the dirty state recoverable in place *if* you verify which of those
+two the schema actually matches: `make migrate-force` (or
+`go run ./cmd/migrate/main.go force`) marks the **current dirty version**
+complete and re-runs pending migrations from there. It **prompts**
+(`Type 'yes' to continue:`) and refuses up front when the database is not dirty,
+so it cannot be triggered non-interactively by accident — and it is the **only**
+path that can clear the flag. The startup path has no equivalent: nothing the
+server does on boot ever force-clears a dirty database.
+
+## Schema ahead of the binary
+
+**What it is.** The database's applied migration version is higher than this
+binary's latest known migration — the database was migrated by a newer version
+and this (older) binary cannot read columns it does not know about. It usually
+means a binary was rolled back after an upgrade. Starting anyway is the same
+silent-corruption class as the dirty-force bug, so the server refuses (MIG-04).
+
+**Recovery** — two options; do the first if you have the newer version:
+
+1. **Reinstall the newer binary.** This is the trivial fix: the database is
+   fine, it is simply ahead of the binary you deployed. Reinstall the image/tag
+   that produced this schema (the one you upgraded to before the rollback) and
+   start. Verify with [After recovery](#after-recovery).
+2. **Restore the backup taken before the upgrade that produced this schema.**
+   Use this when you cannot or will not go back forward: restore the
+   pre-upgrade snapshot (see [The pre-migration backup](#the-pre-migration-backup)),
+   which puts the database back to a version this binary understands.
+
+## Below the floor
+
+**What it is.** The database's schema predates the supported upgrade floor
+(`v0.6.0`, migration `000031`). The server refuses to migrate it best-effort;
+the message names `v0.6.0` as the required intermediate.
+
+**Recovery** — the documented two-step (from `docs/upgrade-compatibility.md`):
+
+1. Back up the database and the two file directories.
+2. Deploy the `v0.6.0` release. Its startup migrations move the database to the
+   `v0.6.0` schema (`000031`).
+3. Verify it boots and serves.
+4. Deploy the current release. It now sees a database at or above the floor and
+   continues normally.
+
+There is exactly one known sub-floor instance (the maintainer's
+`v0.2.0-alpha-candidate`), which has a **one-time, documented bridge** — see
+`docs/upgrade-compatibility.md` → "The one-time `v0.2.0-alpha-candidate`
+bridge". It is not a standing support path; run it against a **copy** first.
+
+## After recovery
+
+Confirm the restored database is the state the app expects, before trusting it:
+
+```sh
+# From a checkout with the live DB path (works while the server is stopped):
+go run ./cmd/dbinspect/main.go "$SQLITE_DB_PATH"
+# → integrity_check=ok version=45 dirty=false
+# (any other line is a failure — a dirty flag, a version mismatch, or a
+# non-ok integrity check)
+```
+
+No Go toolchain? The underlying check is a plain SQLite statement:
+
+```sh
+sqlite3 "$SQLITE_DB_PATH" "PRAGMA integrity_check;"
+# → ok
+```
+
+Then start the server and check the two health endpoints that report migration
+state (`docs/deployment.md` → Health, liveness & readiness):
+
+- `GET /health/ready` → `200 {"status":"ready", …}` (it is `not_ready` while
+  migrations are pending or dirty).
+- `GET /health` → `healthy` with the applied migration version in the payload.
+
+Finally, let the automated restore drill (`DB_RESTORE_DRILL_ENABLED`, default
+on, weekly — issue #275) run once against the recovered instance, or trigger a
+manual round-trip on a throwaway copy: back up, restore, and compare row counts
+(`frontend/e2e/backupRestore.spec.ts` automates exactly that). A recovery you
+have not verified this way is a hypothesis.
+
+## What `make migrate-down` is (and is not) for
+
+`make migrate-down` runs **exactly one** migration's `.down.sql`, on the
+database at `SQLITE_DB_PATH`, after printing a destructive-change warning and
+requiring you to type `yes`. It is the same single-step primitive the
+up/down/up round-trip tests exercise.
+
+- **What it destroys.** Whatever that migration's `.up.sql` created: the
+  objects it added (tables, columns, indexes, triggers) and the data in them.
+  There is no undo, and `MigrateDown` deliberately rolls back one step — never
+  several, never "all the way down" (the CLI used to do that and it dropped the
+  whole schema; see the note in `database/migrate.go`). A few migrations are
+  deliberate no-ops on the way down (e.g. `000022` is a one-way data recovery;
+  its down file states why). The exact destruction is specified by the
+  migration's `.down.sql` and pinned in CI: every migration round-trips
+  up → down → up on a **populated** fixture and must restore the pre-up schema
+  exactly, with pre-up rows intact (`TestEveryMigrationRoundTripsUpDownUp` in
+  `backend/internal/schemafixture/`; a migration without a `.down.sql` fails CI
+  outright). Before you run it on a real database, read that migration's
+  `.down.sql` — a directory listing is not a specification.
+- **When it is the right tool.** Development (rebuild a schema leg) and the
+  operator-initiated reversal of a single **already-applied** migration — e.g.
+  you ran `make migrate-up` outside the server and need to back that one step
+  out. Note that it is **not** usable on a dirty database (golang-migrate
+  refuses to operate on one), so it is not the mid-upgrade failure tool — for
+  a failed/interrupted upgrade that is `make migrate-force` after verification,
+  or restore-from-backup (see [Dirty schema](#dirty-schema)).
+- **When it is the wrong tool.** As a **version rollback**. Downgrade is
+  unsupported; rolling back a deployed instance means restoring the
+  pre-upgrade backup, not stepping `.down.sql` across releases — a running
+  instance has new data a down migration will silently drop. Reach for
+  `make migrate-down` during an incident only when a recovery procedure in this
+  document says to. And never on a dirty database as a shortcut past the
+  failure — that is the dirty-state recovery, above.
+
+## The drill
+
+The milestone bar is "recovery procedures are documented and **have been
+exercised by following the documentation**." To re-verify this runbook, induce
+each of the three states on a throwaway database and recover, following only the
+sections above — not from memory:
+
+| State | Induce it by… | Recover by… | Passes when… |
+|---|---|---|---|
+| Dirty schema | Start a migration and kill the process mid-run (SIGKILL, or the TEST-06 fault-injection harness's `migration-kill` scenario), or set `UPDATE schema_migrations SET dirty = 1` | The [Dirty schema](#dirty-schema) restore | The restored database reports `integrity_check=ok`, the expected version, `dirty=false`, and `/health/ready` is `ready` |
+| Ahead of the binary | Point an older binary at a database migrated by a newer one (e.g. a schema dump from `backend/database/testdata/schemas/` at a higher version) | The [Schema ahead of the binary](#schema-ahead-of-the-binary) reinstall or restore | Same as above |
+| Below the floor | Point the current binary at a `v0.5.x`-schema database | The [Below the floor](#below-the-floor) two-step | The refusal message names `v0.6.0`, and the two-step lands at the current schema |
+
+A step that is missing or cannot be followed from this document is a bug in
+this runbook — fix it here. The round-trip leg of the drill (every migration
+up → down → up on populated data) runs in CI on every PR; it needs no manual
+re-run.
