@@ -92,12 +92,16 @@ func TestFreshDatabaseIsNotSubFloor(t *testing.T) {
 	assert.EqualValues(t, 45, version, "a fresh database must migrate to the latest version")
 }
 
-// TestDirtySubFloorDatabaseRecovers pins the dirty exemption: a DIRTY
-// sub-floor database is an interrupted migration run, not a stable pre-floor
-// deployment, so the dirty-force recovery path must proceed (a crashed initial
-// install would otherwise be bricked at a sub-floor version forever). Only a
-// CLEAN sub-floor database refuses with the two-step.
-func TestDirtySubFloorDatabaseRecovers(t *testing.T) {
+// TestDirtySubFloorDatabaseRefusesToMigrate pins the MIG-04 (issue #439 /
+// #546) posture for the sub-floor edge: a DIRTY database refuses to start
+// regardless of version. The old code exempted a dirty sub-floor database so
+// the dirty-force recovery could run; that exemption was the fail-open bug —
+// a dirty flag means the schema state is unknown, so the refusal comes first
+// and names the dirty version, and recovery is restore-from-backup or the
+// operator-only CLI force. A dirty sub-floor database is an interrupted
+// migration run, not a stable deployment, but the torn state still must not be
+// force-continued at boot.
+func TestDirtySubFloorDatabaseRefusesToMigrate(t *testing.T) {
 	dbPath := subFloorDB(t, 30)
 
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
@@ -106,17 +110,18 @@ func TestDirtySubFloorDatabaseRecovers(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, sqlDB.Close())
 
-	db, err := InitDB(dbPath)
-	require.NoError(t, err)
-	conn, err := db.DB()
-	require.NoError(t, err)
-	require.NoError(t, conn.Close())
+	_, err = InitDB(dbPath)
+	require.Error(t, err, "a dirty sub-floor database must refuse to migrate")
+
+	var dirtyErr *ErrDirtyMigration
+	require.ErrorAs(t, err, &dirtyErr, "the refusal must be a typed ErrDirtyMigration, not a generic failure")
+	assert.EqualValues(t, 30, dirtyErr.Version, "the refusal must name the dirty version")
 
 	version, dirty, ok, err := MigrationVersion(dbPath)
 	require.NoError(t, err)
 	require.True(t, ok)
-	assert.EqualValues(t, 45, version, "a dirty sub-floor database must recover to the latest version")
-	assert.False(t, dirty)
+	assert.EqualValues(t, 30, version, "a refused database must not have been partially migrated")
+	assert.True(t, dirty, "a refused database must still carry its dirty flag — a refusal must not alter it")
 }
 
 // TestBridgeOverrideMigratesSubFloor pins the one-time bridge escape hatch

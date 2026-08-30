@@ -52,14 +52,8 @@ migrate-status: ## Show current migration version
 	@echo "Current migration status for $(DB_PATH):"
 	@go run cmd/migrate/main.go version
 
-migrate-force: ## Force set migration version (usage: make migrate-force VERSION=1)
-	@if [ -z "$(VERSION)" ]; then \
-		echo "Error: VERSION is required. Usage: make migrate-force VERSION=1"; \
-		exit 1; \
-	fi
-	@echo "Forcing migration version to $(VERSION) on $(DB_PATH)..."
-	@migrate -path $(MIGRATIONS_DIR) -database "sqlite3://$(DB_PATH)" force $(VERSION)
-	@echo "Migration version forced to $(VERSION)!"
+migrate-force: ## Recover a dirty migration state (interrupted migration). Prompts first; forces only the CURRENT dirty version, never the startup path.
+	@go run cmd/migrate/main.go force
 
 migrate-version: ## Show available migration files
 	@echo "Available migration files:"

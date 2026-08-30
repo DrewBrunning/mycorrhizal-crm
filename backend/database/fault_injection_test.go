@@ -69,12 +69,16 @@ func tableExists(t *testing.T, dbPath, name string) bool {
 //     same mark);
 //   - PRAGMA integrity_check is ok both immediately after the fault and after
 //     recovery (no torn or partial state);
-//   - with the fault disarmed, the next run recovers deterministically to the
-//     latest schema, not dirty — the dirty-force + re-run recovery path.
+//   - with the fault disarmed, the next startup run REFUSES on the dirty flag
+//     (MIG-04, issue #439 / #546 fail-closed) with a typed ErrDirtyMigration —
+//     never a warning followed by a forced boot;
+//   - the operator-only recovery (`database.MigrateForce`, what the migrate
+//     CLI's prompted `force` command calls) recovers deterministically to the
+//     latest schema, not dirty.
 //
-// Hand-verify (CLAUDE.md): delete the dirty-state `m.Force(version)` branch in
-// RunMigrations and this test fails on the second MigrateUp ("database is
-// dirty"), then restores. The recovery path is what this test pins.
+// Hand-verify (CLAUDE.md): delete the dirty refusal in checkMigrationPreflight
+// and this test fails on the second MigrateUp (it would recover instead of
+// refusing), then restores. The fail-closed refusal is what this test pins.
 func TestInjectedMigrationFaultFailsClosedAndRecovers(t *testing.T) {
 	faults.Reset()
 	t.Cleanup(faults.Reset)
@@ -102,14 +106,26 @@ func TestInjectedMigrationFaultFailsClosedAndRecovers(t *testing.T) {
 	assert.True(t, tableExists(t, dbPath, "users"), "the post-commit fault leaves the migration's schema applied")
 	assert.Equal(t, "ok", integrityCheck(t, dbPath), "a failed migration must not corrupt the database")
 
-	// Recovery: with the fault disarmed the next run forces the dirty version
-	// and re-applies pending migrations deterministically (MIG-04/05's
-	// "deterministic recovery path").
+	// Fail-closed: with the fault disarmed the next startup run must REFUSE on
+	// the dirty flag and name the recovery — not force the version and boot.
+	// This is the MIG-04 (issue #439 / #546) posture the injection pins.
 	faults.Disarm(faultMigrationStatement)
+	err = MigrateUp(dbPath)
+	require.Error(t, err, "a dirty database must refuse to migrate on the next run")
+	var dirtyErr *ErrDirtyMigration
+	require.ErrorAs(t, err, &dirtyErr, "the refusal must be a typed ErrDirtyMigration, not a generic failure")
+	assert.EqualValues(t, 1, dirtyErr.Version, "the refusal must name the dirty version")
+	assert.Contains(t, err.Error(), "Restore the pre-migration backup", "the refusal must state the recovery path (restore-from-backup)")
+	version, dirty = dirtyState(t, dbPath)
+	assert.True(t, dirty, "the refused database must still be dirty — a refusal must not alter it")
+
+	// Operator-only recovery: MigrateForce is what the migrate CLI's prompted
+	// `force` command calls. It asserts the dirty version, clears the flag, and
+	// re-runs pending migrations deterministically.
+	require.NoError(t, MigrateForce(dbPath), "the operator-only force must recover the dirty database")
+
 	latest, err := LatestMigrationVersion()
 	require.NoError(t, err)
-	require.NoError(t, MigrateUp(dbPath), "the dirty database must recover on the next run")
-
 	version, dirty = dirtyState(t, dbPath)
 	assert.Equal(t, latest, version, "recovery must land on the latest schema")
 	assert.False(t, dirty, "recovery must clear the dirty flag")
@@ -119,8 +135,8 @@ func TestInjectedMigrationFaultFailsClosedAndRecovers(t *testing.T) {
 // TestInjectedMigrationFaultMidFlightRecordsEvent covers the same seam against
 // a database that is mostly migrated, so the injected failure lands on a late
 // migration (past 000038) where system_events exists — asserting the
-// migration_failed event row is persisted, and that a second injected failure
-// still recovers cleanly.
+// migration_failed event row is persisted, and that the fail-closed refusal
+// (dirty -> refuse) plus the operator-only force still recover cleanly.
 func TestInjectedMigrationFaultMidFlightRecordsEvent(t *testing.T) {
 	faults.Reset()
 	t.Cleanup(faults.Reset)
@@ -160,8 +176,16 @@ func TestInjectedMigrationFaultMidFlightRecordsEvent(t *testing.T) {
 	assert.Equal(t, 1, count, "an injected migration failure must be recorded as a system event")
 	assert.Equal(t, "ok", integrityCheck(t, dbPath))
 
+	// Fail-closed: the next startup run refuses on the dirty flag, and the
+	// operator-only force recovers deterministically.
 	faults.Disarm(faultMigrationStatement)
-	require.NoError(t, MigrateUp(dbPath))
+	err = MigrateUp(dbPath)
+	require.Error(t, err, "a dirty database must refuse to migrate on the next run")
+	var dirtyErr *ErrDirtyMigration
+	require.ErrorAs(t, err, &dirtyErr)
+	assert.EqualValues(t, latest, dirtyErr.Version)
+
+	require.NoError(t, MigrateForce(dbPath), "the operator-only force must recover the dirty database")
 	_, dirty = dirtyState(t, dbPath)
 	assert.False(t, dirty)
 	assert.Equal(t, "ok", integrityCheck(t, dbPath))

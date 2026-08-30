@@ -28,11 +28,13 @@ var defaultMigrationsTable = "schema_migrations"
 // it fires inside golang-migrate's Run AFTER the migration body has committed
 // but BEFORE golang-migrate marks the version clean — the crash signature a
 // SIGKILL between a migration's commit and its clean-mark leaves behind:
-// version dirty at N, migration N fully applied. The existing dirty-state
-// recovery (force version + re-run from N+1) is provably correct for exactly
-// this window, which is what the injection tests pin. The external-fault CI
-// job uses `MYCORRHIZAL_FAULTS=database.migration.statement:pause:<dur>` to
-// park a subprocess in this window and then SIGKILL it. See
+// version dirty at N, migration N fully applied. The fail-closed posture
+// (MIG-04, issue #439) refuses to start on that dirty flag and names
+// restore-from-backup as the primary recovery; the operator-only escape hatch
+// is the migrate CLI's force command, which is what the injection tests
+// exercise. The external-fault CI job uses
+// `MYCORRHIZAL_FAULTS=database.migration.statement:pause:<dur>` to park a
+// subprocess in this window and then SIGKILL it. See
 // docs/development/fault-injection.md.
 const faultMigrationStatement = "database.migration.statement"
 

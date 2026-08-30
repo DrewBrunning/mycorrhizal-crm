@@ -102,14 +102,75 @@ survived).
 
 ## Refusal states
 
-Two startup states are enforced today; the third is MIG-04's scope (issue
-#439), which will harden the dirty and ahead-of-binary cases further:
+Three startup states are enforced (MIG-04, issue #439), all **fail-closed**: the
+server refuses to start, logs at error level, and names the condition and its
+recovery. A message that names the condition but not the remedy sends the
+operator to the source; these all state both. In no case does any
+configuration setting turn a refusal into a warning — the one exception is the
+documented one-time `v0.2.0-alpha-candidate` bridge above, which is a policy
+exception for a single known sub-floor deployment, not a bypass knob.
 
-| State | Behavior (current) | Operator action |
+| State | Behavior | Operator action |
 |---|---|---|
 | Sub-floor schema (below `000031`) | **Refuse**, print the two-step message above, exit | Two-step through `v0.6.0`, or the documented bridge |
-| Dirty schema | Force the version and re-run from the next migration (the defined crash-recovery path, already exercised by the fault-injection suite) | Reboot; if it recurs, restore the pre-upgrade backup |
-| Schema ahead of the binary | Boot with no pending migrations (MIG-04 will turn this into a refusal) | Deploy the newer version or restore a matching backup |
+| Dirty schema | **Refuse** (`ErrDirtyMigration`): a migration started and did not finish, so the schema state is unknown | Restore the pre-migration backup and start again. Only after verifying the schema actually matches the named version, `make migrate-force` (prompted, operator-only) — never automatic |
+| Schema ahead of the binary | **Refuse** (`ErrSchemaAheadOfBinary`): the database knows migrations this binary does not, meaning a rollback is in progress | Deploy a binary that knows the newer migration, or restore the backup taken before the newer release ran |
+
+### Dirty schema — interrupted migration
+
+The `schema_migrations.dirty` flag is set when a migration **starts and does
+not finish**: the process was killed, the container was OOM-killed, the host
+lost power, or the SQL itself failed partway. The flag exists to say "the
+schema is in an unknown, partially-applied state; a human must look at it."
+
+Previously the server force-cleared the flag at every boot and migrated on top
+of the torn schema — presenting a half-applied database as healthy (issue
+#546). It does **not** do that anymore. On a dirty database the server refuses
+to start with a message naming the dirty version, what it means, and the
+recovery:
+
+```
+database is in a dirty migration state at version 43: a migration started and did not finish, so the schema may be only partially applied and does not match any known version. Refusing to start (fail-closed). Restore the pre-migration backup and start again — see docs/deployment.md (Backups → Restore). If you have verified the schema actually matches version 43, the operator-only escape hatch is `make migrate-force` (or `go run cmd/migrate force`), which prompts for explicit confirmation; it is never applied on the startup path.
+```
+
+**Primary recovery: restore the pre-migration backup.** The schema state is
+unknown by definition; the backup is the only state you can trust. Restore
+per `docs/deployment.md` → Restore, then start again — the restored snapshot
+is clean and migrations run normally.
+
+**Operator-only escape hatch: `make migrate-force`.** Each individual
+migration runs inside one transaction (SQLite DDL is transactional), so an
+interrupted migration's DDL rolls back cleanly rather than landing torn — the
+schema is either fully the previous version or fully the interrupted version,
+never somewhere between. The recovery is therefore: verify which of those two
+the schema actually matches, then clear the dirty flag at that version and let
+the pending migrations run. `migrate-force` does exactly this for the **current
+dirty version**, and it **prompts** (`Type 'yes' to continue:`) before doing
+anything — it cannot be triggered non-interactively by accident, and it is the
+only path that can clear the flag. The startup path has no equivalent.
+
+### Schema ahead of the binary — bad rollback in progress
+
+A database whose applied version is *higher* than this binary's newest
+migration means the database was migrated by a newer release and this binary
+has been rolled back. Downgrade is unsupported (see "The supported range"), so
+starting anyway would have the binary misread columns it does not know about —
+the same silent-corruption class as the dirty-force bug above. The server
+refuses to start with `ErrSchemaAheadOfBinary`, naming both versions and the
+recovery:
+
+```
+database schema version 45 is ahead of this binary (latest known migration 44): the database was migrated by a newer release and this binary has been rolled back. Downgrade is unsupported, so refusing to start. Deploy a binary that knows migration 45 (or newer) and start again, or restore the backup taken before the newer release ran — see docs/deployment.md (Backups → Restore).
+```
+
+### How each refusal is surfaced
+
+Each refusal is its own typed error (`ErrSubFloorMigration`,
+`ErrDirtyMigration`, `ErrSchemaAheadOfBinary`) so health/readiness and the
+diagnostics run can report *which* state an install is in rather than a
+generic boot failure, and so the migrate CLI prints the same message. The
+server start path logs it via `logger.Fatal` (`Failed to initialize
+database`); nothing is written to the database by any refusal.
 
 ## How upgrades are tested
 

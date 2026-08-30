@@ -233,6 +233,14 @@ func migrationLagCheck(db *gorm.DB) HealthCheckDetail {
 		logger.Error().Err(err).Msg("deep health: cannot resolve latest migration version")
 		return HealthCheckDetail{Status: DeepStatusDegraded, Reason: "cannot resolve latest migration version"}
 	}
+	if applied > latest {
+		// The database knows migrations this binary does not — a rollback in
+		// progress. The startup path refuses on this state (issue #439); the
+		// health check names it so an operator sees WHY the instance is not
+		// serving instead of a generic boot failure.
+		return HealthCheckDetail{Status: DeepStatusDegraded,
+			Reason: fmt.Sprintf("database schema is ahead of the binary (applied=%d, latest=%d) — this binary was rolled back", applied, latest)}
+	}
 	if applied < latest {
 		return HealthCheckDetail{Status: DeepStatusDegraded,
 			Reason: fmt.Sprintf("database schema is behind the binary (applied=%d, latest=%d)", applied, latest)}
