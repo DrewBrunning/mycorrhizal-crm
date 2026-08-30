@@ -102,6 +102,22 @@ func TestDeepHealthSnapshot_MigrationBehindIsDegraded(t *testing.T) {
 	assert.Equal(t, "degraded", h.Status)
 }
 
+func TestDeepHealthSnapshot_MigrationAheadIsDegraded(t *testing.T) {
+	ResetDeepHealthCache()
+	defer ResetDeepHealthCache()
+	db := freshDB(t, "deep-migration-ahead.db")
+	// The database knows a migration this binary does not — a rollback in
+	// progress, the same state the startup path refuses on (issue #439). The
+	// health check must name it, not silently report healthy.
+	require.NoError(t, db.Exec("UPDATE schema_migrations SET version = version + 1").Error)
+
+	h := DeepHealthSnapshot(db, config.Config{})
+	assert.Equal(t, DeepStatusDegraded, h.Migrations.Status)
+	assert.Contains(t, h.Migrations.Reason, "ahead of the binary")
+	assert.Contains(t, h.Migrations.Reason, "rolled back")
+	assert.Equal(t, "degraded", h.Status)
+}
+
 func TestDeepHealthSnapshot_DatabaseDownIsUnhealthy(t *testing.T) {
 	ResetDeepHealthCache()
 	defer ResetDeepHealthCache()

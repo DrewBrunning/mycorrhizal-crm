@@ -273,8 +273,9 @@ func TestRunReportsReadFailure(t *testing.T) {
 
 // TestRunReportsInjectedFault covers the failure-injection seam in Run: with
 // the fault armed, an otherwise-valid migration body fails so the caller's
-// dirty-state recovery path is exercised (the fault_injection_test.go coverage
-// does the full recovery dance; here it is pinned at the driver boundary).
+// dirty-state handling is exercised (the fault_injection_test.go coverage does
+// the full fail-closed + operator-force dance; here it is pinned at the driver
+// boundary).
 func TestRunReportsInjectedFault(t *testing.T) {
 	faults.Reset()
 	t.Cleanup(faults.Reset)

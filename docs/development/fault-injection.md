@@ -77,7 +77,7 @@ here is a gap to file, never something to silently absorb.
 
 | Fault (env name) | Seam | Simulates | Defined outcome | Pinned by |
 |---|---|---|---|---|
-| `database.migration.statement` | `database/sqlite_driver.go` `Run` | Process killed between a migration's commit and its clean-mark (crash leaves the version dirty, migration applied) | The run returns an error naming the failing version + file (issue #532 gate); the DB is left **dirty** at that version with the migration's schema applied; `PRAGMA integrity_check` is `ok`; the next run **recovers deterministically** to the latest schema (dirty-force + re-run from N+1), not dirty | in-process: `database/fault_injection_test.go` `TestInjectedMigrationFaultFailsClosedAndRecovers`, `...MidFlightRecordsEvent`, `...PauseBlocksThenCompletes`; external: chaos job `migration-kill` |
+| `database.migration.statement` | `database/sqlite_driver.go` `Run` | Process killed between a migration's commit and its clean-mark (crash leaves the version dirty, migration applied) | The run returns an error naming the failing version + file (issue #532 gate); the DB is left **dirty** at that version with the migration's schema applied; `PRAGMA integrity_check` is `ok`; the next startup run **refuses** on the dirty flag with a typed `ErrDirtyMigration` naming the recovery (MIG-04, issues #439/#546 — never a forced boot); the operator-only `MigrateForce` (the migrate CLI's prompted `force`) recovers deterministically to the latest schema, not dirty | in-process: `database/fault_injection_test.go` `TestInjectedMigrationFaultFailsClosedAndRecovers`, `...MidFlightRecordsEvent`, `...PauseBlocksThenCompletes`; `database/migrate_failclosed_test.go` `TestMigrateForce_*`; external: chaos job `migration-kill` |
 | `services.import.confirm` | `services/import_session.go` `Confirm` + `ConfirmVCF` transaction | DB error mid-import-confirm | The whole confirm **fails closed**: every contact row rolls back, the session stays unconsumed, a retry after the fault clears applies the same import cleanly — no silent partial state | in-process: `services/import_fault_injection_test.go` `TestConfirmInjectedDBErrorFailsClosed`, `TestConfirmVCFInjectedDBErrorFailsClosed`, `TestConfirmInjectedFaultDoesNotLeakToOtherSessions` |
 | `services.immich.request` | `services/immich_client.go` `doRequest` | Unreachable / auth-expired / resource-deleted-remotely / arbitrary upstream failure | The armed sentinel crosses the request boundary unchanged; callers hit their documented error path (T42 classification, service degrade-to-cache), never a swallow or a panic; the seam is inert once disarmed | in-process: `services/immich_fault_injection_test.go` `TestImmichInjectedRequestFaultCrossesBoundaryUnchanged`, `...DoesNotPersistBeyondArm`, `...ReachesServiceDiagnostics` |
 | Real `ENOSPC` during backup | `cmd/backup` → `database.BackupSnapshot` | Disk exhaustion while snapshotting | The CLI exits non-zero; the source database is untouched (`integrity_check` ok); no partial file appears at the output path (temp-then-link, fail-closed) | external: chaos job `disk-full-backup` |
@@ -103,11 +103,12 @@ the acceptance criteria, TEST-06 owns the technique:
 ## Hand-verification
 
 Per CLAUDE.md, an injection test must prove it pins its recovery path: remove
-the recovery branch and confirm the test fails, then restore. Done for the
-migration seam: deleting the dirty-state `m.Force(version)` branch in
-`database/migrate.go` `RunMigrations` fails
-`TestInjectedMigrationFaultFailsClosedAndRecovers` on its second `MigrateUp`
-("Dirty database version 1. Fix and force version."). The equivalent exercise
-for the import seam is removing the `txErr` check that returns
-`apperrors.ErrDatabase` — the injected error then surfaces as a success with
-zero rows, and the test's "must fail closed" assertions fail.
+the refusal and confirm the test fails, then restore. Done for the migration
+seam: deleting the dirty refusal in `database/migrate.go`
+`checkMigrationPreflight` fails `TestInjectedMigrationFaultFailsClosedAndRecovers`
+on its second `MigrateUp` (the dirty database recovers instead of refusing) and
+`TestDirtyDatabaseRefusesToStart` (the refusal is no longer a typed
+`ErrDirtyMigration`). The equivalent exercise for the import seam is removing
+the `txErr` check that returns `apperrors.ErrDatabase` — the injected error then
+surfaces as a success with zero rows, and the test's "must fail closed"
+assertions fail.

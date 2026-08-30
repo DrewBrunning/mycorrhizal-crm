@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -186,6 +187,56 @@ const SupportedUpgradeFloorVersion uint = 31
 // SupportedUpgradeFloorTag is the release tag that defined the floor.
 const SupportedUpgradeFloorTag = "v0.6.0"
 
+// ErrDirtyMigration is the error RunMigrations returns when the database is in
+// a dirty migration state (issue #439 state 1 / issue #546). golang-migrate
+// marks a migration dirty when it starts and does not finish — the process was
+// killed, the container was OOM-killed, the host lost power, or the SQL failed
+// partway — so the schema is in an unknown, partially-applied state. The old
+// behavior force-cleared the flag at boot and re-ran from the next migration,
+// presenting a half-applied schema as healthy; that is the fail-open bug #546
+// exists to close. This refusal names the dirty version, what it means, and the
+// recovery path (restore the pre-migration backup), so an operator is never
+// left guessing. It is a stable, assertable sentinel the server start path logs
+// via logger.Fatal and the migrate CLI prints.
+type ErrDirtyMigration struct {
+	Version uint
+}
+
+func (e *ErrDirtyMigration) Error() string {
+	return fmt.Sprintf(
+		"database is in a dirty migration state at version %d: a migration started and did not finish, "+
+			"so the schema may be only partially applied and does not match any known version. "+
+			"Refusing to start (fail-closed). Restore the pre-migration backup and start again — "+
+			"see docs/deployment.md (Backups → Restore). If you have verified the schema actually matches "+
+			"version %d, the operator-only escape hatch is `make migrate-force` (or `go run cmd/migrate force`), "+
+			"which prompts for explicit confirmation; it is never applied on the startup path.",
+		e.Version, e.Version,
+	)
+}
+
+// ErrSchemaAheadOfBinary is the error RunMigrations returns when the database's
+// schema is ahead of this binary (issue #439 state 2): the database carries
+// migrations this binary does not know about, meaning it was migrated by a
+// newer release and this binary has been rolled back. Downgrade is unsupported
+// (issue #530), so starting anyway would have the binary misread columns it
+// does not know about — the same silent-corruption class as the dirty-force
+// bug. The refusal names both versions and the recovery path so the operator
+// knows it is a bad rollback in progress, not a random boot failure.
+type ErrSchemaAheadOfBinary struct {
+	Version       uint
+	BinaryVersion uint
+}
+
+func (e *ErrSchemaAheadOfBinary) Error() string {
+	return fmt.Sprintf(
+		"database schema version %d is ahead of this binary (latest known migration %d): the database "+
+			"was migrated by a newer release and this binary has been rolled back. Downgrade is unsupported, "+
+			"so refusing to start. Deploy a binary that knows migration %d (or newer) and start again, or "+
+			"restore the backup taken before the newer release ran — see docs/deployment.md (Backups → Restore).",
+		e.Version, e.BinaryVersion, e.Version,
+	)
+}
+
 // ErrSubFloorMigration is the error RunMigrations returns when the database's
 // schema predates the supported-upgrade floor. It is deliberately a stable,
 // assertable sentinel carrying the required-intermediate message: the server
@@ -224,24 +275,14 @@ func subFloorMigrationAllowed() bool {
 // checkSupportedUpgradeFloor refuses to migrate a database whose schema
 // predates the v0.6.0 floor (issue #529 action 4). A fresh database (no
 // schema_migrations row, version 0) is not a sub-floor database and always
-// passes. A DIRTY sub-floor database is exempt: it is a migration run already
-// in progress (typically a crashed initial install, or a pre-floor database
-// whose interrupted upgrade had already passed the floor), and the dirty-force
-// recovery path must not be blocked by the floor guard — that is the defined
-// repair for torn state, and the data was never at a stable pre-floor state.
-// A CLEAN sub-floor database is a real pre-floor deployment and returns an
-// ErrSubFloorMigration that names v0.6.0 as the required intermediate — a
+// passes. A CLEAN sub-floor database is a real pre-floor deployment and returns
+// an ErrSubFloorMigration that names v0.6.0 as the required intermediate — a
 // partial migration or a crash is the alternative the policy explicitly
-// rejects.
-func checkSupportedUpgradeFloor(version uint, dirty bool) error {
+// rejects. A DIRTY sub-floor database never reaches this check: the dirty
+// refusal (checkMigrationPreflight) fires first, because a dirty flag means the
+// schema state is unknown regardless of the version (issue #546).
+func checkSupportedUpgradeFloor(version uint) error {
 	if version == 0 || version >= SupportedUpgradeFloorVersion {
-		return nil
-	}
-	if dirty {
-		logger.Warn().
-			Str(logger.FieldComponent, "migration").
-			Uint("version", version).
-			Msg("dirty sub-floor database: allowing dirty-force recovery of an interrupted migration run")
 		return nil
 	}
 	if subFloorMigrationAllowed() {
@@ -254,7 +295,39 @@ func checkSupportedUpgradeFloor(version uint, dirty bool) error {
 	return &ErrSubFloorMigration{Version: version}
 }
 
-// RunMigrations runs all pending database migrations
+// checkMigrationPreflight applies the fail-closed startup gates (MIG-04, issue
+// #439) in order, before ANY migration is applied:
+//
+//  1. a dirty database (state 1, issue #546) — a migration started and did not
+//     finish, so the schema is in an unknown, partially-applied state. Refuse.
+//  2. a database ahead of the binary (state 2) — the database knows migrations
+//     this binary does not, meaning a rollback is in progress. Refuse.
+//  3. a sub-floor database (state 3, issue #529) — predates the supported
+//     upgrade floor. Refuse, naming the v0.6.0 intermediate.
+//
+// Each returns its own typed error so health/readiness and the diagnostics run
+// can report WHICH state an install is in rather than a generic boot failure.
+// Each refusal leaves the database exactly as it was — nothing is written. A
+// fresh database (version 0, clean) passes all three.
+func checkMigrationPreflight(version uint, dirty bool, latest uint) error {
+	if dirty {
+		return &ErrDirtyMigration{Version: version}
+	}
+	if version > latest {
+		return &ErrSchemaAheadOfBinary{Version: version, BinaryVersion: latest}
+	}
+	return checkSupportedUpgradeFloor(version)
+}
+
+// RunMigrations runs all pending database migrations.
+//
+// It is fail-closed (MIG-04, issue #439): before applying anything it refuses
+// a dirty database (state 1 — issue #546), a database ahead of this binary
+// (state 2), and a sub-floor database (state 3 — issue #529), each with its
+// own typed error naming the state and its recovery. There is no "start anyway
+// and hope" path and no configuration setting turns any refusal into a
+// warning. The operator-only escape hatch for a dirty database lives in the
+// migrate CLI (`force`, which prompts), never on the startup path.
 func RunMigrations(db *sql.DB) error {
 	m, err := newMigrator(db)
 	if err != nil {
@@ -268,25 +341,32 @@ func RunMigrations(db *sql.DB) error {
 		return fmt.Errorf("failed to get migration version: %w", err)
 	}
 
-	// Issue #529: refuse to migrate a database whose schema predates the
-	// supported-upgrade floor. This must happen BEFORE the dirty-state force
-	// below and before m.Up(): a sub-floor database is a documented two-step
-	// (upgrade to v0.6.0 first), never a best-effort single hop, and neither
-	// a forced version nor a partial migration is acceptable for it. A fresh
-	// database (version 0) is not sub-floor and passes; a dirty sub-floor
-	// database is an interrupted run and is exempt (see the check).
-	if err := checkSupportedUpgradeFloor(version, dirty); err != nil {
+	// Fail-closed preflight (issue #439): dirty -> refuse; ahead of binary ->
+	// refuse; sub-floor -> refuse. Must run BEFORE m.Up() so no migration is
+	// ever applied to a state whose schema is unknown or not covered by the
+	// supported upgrade matrix.
+	latest, err := LatestMigrationVersion()
+	if err != nil { // # pragma: no cover -- the embedded migrations FS always has at least one migration
+		return fmt.Errorf("failed to resolve latest migration version: %w", err)
+	}
+	if err := checkMigrationPreflight(version, dirty, latest); err != nil {
 		return err
 	}
 
-	if dirty {
-		logger.Warn().Uint("version", version).Msg("Database is in dirty state, forcing version")
-		if err := m.Force(int(version)); err != nil {
-			return fmt.Errorf("failed to force version: %w", err)
-		}
-	}
+	return runPendingMigrations(m, db)
+}
 
-	startVersion := version
+// runPendingMigrations applies every pending migration from the database's
+// current version and reports the outcome (the issue #532 failure diagnostics
+// and the issue #424 operational event). Shared by RunMigrations and the
+// operator-only force path (MigrateForce): after the force clears the dirty
+// flag, both continue from the same place through the same code.
+func runPendingMigrations(m *migrate.Migrate, db *sql.DB) error {
+	startVersion, _, err := m.Version()
+	if err != nil && err != migrate.ErrNilVersion { // # pragma: no cover -- a migration driver the version read just succeeded on
+		return fmt.Errorf("failed to get migration version: %w", err)
+	}
+	version := startVersion
 	start := time.Now()
 
 	// Run migrations
@@ -315,12 +395,12 @@ func RunMigrations(db *sql.DB) error {
 		if verr == nil {
 			return fmt.Errorf("failed to apply migrations: version %d (%s): %w", version, name, upErr)
 		}
-		return fmt.Errorf("failed to apply migrations: %w", upErr)
+		return fmt.Errorf("failed to apply migrations: %w", upErr) // # pragma: no cover -- a version read that just succeeded cannot fail twice
 	}
 
 	// Get final version
 	version, _, err = m.Version()
-	if err != nil && err != migrate.ErrNilVersion {
+	if err != nil && err != migrate.ErrNilVersion { // # pragma: no cover -- a migration driver the version read just succeeded on
 		return fmt.Errorf("failed to get final version: %w", err)
 	}
 
@@ -328,7 +408,7 @@ func RunMigrations(db *sql.DB) error {
 	schemaAdvanced := upErr != migrate.ErrNoChange && version != startVersion
 
 	switch {
-	case err == migrate.ErrNilVersion:
+	case err == migrate.ErrNilVersion: // # pragma: no cover -- m.Up() always writes a version row
 		logger.Info().Msg("No migrations applied (database is empty)")
 	case schemaAdvanced:
 		logger.Info().
@@ -441,6 +521,66 @@ func MigrateUp(dbPath string) error {
 	defer sqlDB.Close()
 
 	return RunMigrations(sqlDB)
+}
+
+// MigrateForce is the operator-only recovery for a dirty database (MIG-04,
+// issue #439 state 1 / issue #546). It force-marks the CURRENT dirty version
+// clean and then re-runs pending migrations from the next one — the crash
+// recovery golang-migrate's dirty flag is for — but unlike the old startup
+// path it is never invoked automatically: the migrate CLI calls it only after
+// an explicit interactive confirmation, and the server's startup path
+// (RunMigrations) has no equivalent.
+//
+// It refuses when the database is NOT dirty (nothing to force), has no
+// migrations applied at all, or is dirty at a version AHEAD of this binary
+// (forcing an unknown version would "confirm" a schema the binary cannot
+// validate and has nothing to re-run — roll forward or restore instead). The
+// operator's explicit confirmation is the policy gate here, so the sub-floor
+// floor check (checkSupportedUpgradeFloor) does NOT re-apply: a dirty database
+// is by definition not a stable pre-floor deployment, and the crashed-initial-
+// install recovery (dirty at a low version) is exactly what force exists for.
+func MigrateForce(dbPath string) error {
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	if err != nil { // # pragma: no cover -- sql.Open is lazy; the driver does not fail until a query runs
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	if err != nil {
+		return err
+	}
+	defer closeMigrator(m)
+
+	version, dirty, err := m.Version()
+	if err == migrate.ErrNilVersion {
+		return errors.New("no migrations have been applied; there is no dirty state to force")
+	}
+	if err != nil { // # pragma: no cover -- a migrator the Ping of which just succeeded
+		return fmt.Errorf("failed to get migration version: %w", err)
+	}
+	if !dirty {
+		return fmt.Errorf("database is not dirty (version %d clean); force is only for an interrupted migration", version)
+	}
+
+	latest, err := LatestMigrationVersion()
+	if err != nil { // # pragma: no cover -- the embedded migrations FS always has at least one migration
+		return fmt.Errorf("failed to resolve latest migration version: %w", err)
+	}
+	if version > latest {
+		return &ErrSchemaAheadOfBinary{Version: version, BinaryVersion: latest}
+	}
+
+	logger.Warn().
+		Str(logger.FieldComponent, "migration").
+		Uint("version", version).
+		Msg("operator invoked migrate-force: marking dirty version clean and re-running pending migrations")
+
+	if err := m.Force(int(version)); err != nil { // # pragma: no cover -- a write the version row already withstood
+		return fmt.Errorf("failed to force version %d: %w", version, err)
+	}
+
+	return runPendingMigrations(m, sqlDB)
 }
 
 // MigrateUpTo migrates the database at dbPath to exactly the given migration

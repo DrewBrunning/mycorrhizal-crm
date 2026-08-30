@@ -1,8 +1,9 @@
 // Command migrate is a thin CLI over the database package's migration entry
 // points. It exists for the operator workflows the server process does not
-// cover — rolling a migration back, and inspecting the applied version. Normal
-// startup does not need it: database.InitDB runs every pending migration from
-// the embedded FS automatically.
+// cover — rolling a migration back, inspecting the applied version, and the
+// operator-only recovery for a dirty (interrupted) migration (`force`, which
+// prompts). Normal startup does not need it: database.InitDB runs every pending
+// migration from the embedded FS automatically.
 //
 // It deliberately owns no migration logic of its own. It used to, and both
 // halves were wrong:
@@ -17,14 +18,19 @@
 //     file than the one the server opened, while the Makefile echoed the path
 //     it was not using.
 //
-// Both are now delegated to database.MigrateUp/MigrateDown/MigrationVersion,
-// which read the embedded migrations and the same DSN pragmas the server uses.
+// Both are now delegated to database.MigrateUp/MigrateDown/MigrationVersion
+// (and MigrateForce for the prompted dirty-state recovery), which read the
+// embedded migrations and the same DSN pragmas the server uses.
 package main
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"strings"
 
 	"mycorrhizal/database"
 	"mycorrhizal/logger"
@@ -34,9 +40,13 @@ import (
 // and the server agree when the variable is unset.
 const defaultDBPath = "mycorrhizal.db"
 
+// stdin is the reader the force command's confirmation prompt reads from.
+// Split out so tests can drive the prompt without touching os.Stdin.
+var stdin io.Reader = os.Stdin
+
 func main() {
 	if len(os.Args) < 2 {
-		log.Fatal("Usage: go run cmd/migrate/main.go [up|down|version]")
+		log.Fatal("Usage: go run cmd/migrate/main.go [up|down|force|version]")
 	}
 
 	// run's own defers execute before main ever calls log.Fatal, unlike
@@ -97,8 +107,55 @@ func run(command string) error {
 		} else {
 			fmt.Printf("Current version on %s: %d (dirty: %v)\n", path, version, dirty)
 		}
+	case "force":
+		// Operator-only recovery for a dirty database (MIG-04, issue #439 /
+		// issue #546). Unlike the old startup path, which force-cleared a
+		// dirty flag automatically at every boot (fail-open), this is a
+		// deliberate, human-invoked command that prompts before doing anything
+		// and only acts on the CURRENT dirty version — never a version the
+		// operator has not been told about. The server's startup path has no
+		// equivalent.
+		if err := confirmForce(path, stdin); err != nil {
+			return err
+		}
+		if err := database.MigrateForce(path); err != nil {
+			return fmt.Errorf("failed to force migrations: %w", err)
+		}
+		fmt.Printf("Forced the dirty migration state and ran pending migrations on %s\n", path)
 	default:
-		return fmt.Errorf("unknown command: %s. Use 'up', 'down', or 'version'", command)
+		return fmt.Errorf("unknown command: %s. Use 'up', 'down', 'force', or 'version'", command)
+	}
+	return nil
+}
+
+// confirmForce shows the operator what a dirty database actually means and
+// requires an explicit "yes" before the force proceeds. It refuses up front
+// when there is nothing to force (not dirty, or never migrated), so the
+// command can never be triggered non-interactively by accident — the state it
+// is about to change is stated in full before the prompt.
+func confirmForce(path string, in io.Reader) error {
+	version, dirty, ok, err := database.MigrationVersion(path)
+	if err != nil {
+		return fmt.Errorf("failed to get migration version: %w", err)
+	}
+	if !ok {
+		return errors.New("no migrations have been applied; there is no dirty state to force")
+	}
+	if !dirty {
+		return fmt.Errorf("database is not dirty (version %d is clean); force is only for an interrupted migration", version)
+	}
+
+	fmt.Printf("Database %s is dirty at version %d: a migration started and did not finish, so the schema may be only partially applied.\n", path, version)
+	fmt.Printf("'force' marks version %d as complete and re-runs pending migrations from there.\n", version)
+	fmt.Println("Only do this after verifying the schema actually matches that version; the normal recovery is restore-from-backup (docs/deployment.md).")
+	fmt.Print("Type 'yes' to continue: ")
+
+	line, err := bufio.NewReader(in).ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("failed to read confirmation: %w", err)
+	}
+	if strings.TrimSpace(line) != "yes" {
+		return errors.New("aborted: force requires explicit confirmation")
 	}
 	return nil
 }

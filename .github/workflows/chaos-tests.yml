@@ -14,8 +14,10 @@ name: Chaos Tests (failure injection)
 # errored":
 #
 #   - SIGKILL mid-migration (cmd/migrate parked at the
-#     database.migration.statement pause fault) and deterministic recovery on
-#     restart (dirty-force + re-run from N+1), with PRAGMA integrity_check ok.
+#     database.migration.statement pause fault) and the MIG-04 (issue #439/#546)
+#     fail-closed outcome: the next startup run REFUSES on the dirty flag naming
+#     the version and the recovery, and the operator-only prompted `force`
+#     command recovers to the latest schema, with PRAGMA integrity_check ok.
 #   - real ENOSPC during backup (VACUUM INTO against a tiny tmpfs) — the CLI
 #     fails closed, no partial file at the output path, the source database
 #     intact.
@@ -74,7 +76,7 @@ jobs:
   migration-kill:
     permissions:
       contents: read
-    name: SIGKILL mid-migration, restart recovers
+    name: SIGKILL mid-migration, restart refuses, force recovers
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: changes
@@ -137,7 +139,7 @@ jobs:
 
       # The crash signature: version 1 applied and committed, clean-mark never
       # written, PRAGMA integrity_check ok. This is the state a restart must
-      # recover from.
+      # refuse on.
       - name: Assert the interrupted database is dirty at the first migration
         run: |
           state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/chaos.db")"
@@ -147,15 +149,40 @@ jobs:
             *) echo "::error::unexpected post-kill state: $state"; exit 1 ;;
           esac
 
-      # The defined outcome: restart without the fault reaches the latest
-      # schema, not dirty, integrity intact — MIG-04/05's "deterministic
-      # recovery path". The latest version is derived from the migration file
-      # count rather than hardcoded so the assertion does not rot as schema
-      # migrations are added.
-      - name: Restart without the fault and assert deterministic recovery
+      # Fail-closed (MIG-04, issue #439/#546): a restart WITHOUT the fault must
+      # refuse on the dirty flag and name the version + the recovery — never a
+      # warning followed by a forced boot. dbinspect confirms the database was
+      # not touched by the refusal.
+      - name: Restart without the fault and assert the fail-closed refusal
+        run: |
+          set +e
+          SQLITE_DB_PATH="$RUNNER_TEMP/chaos.db" "$RUNNER_TEMP/migrate" up > /tmp/migrate2.log 2>&1
+          rc=$?
+          set -e
+          echo "restart exit=$rc"
+          cat /tmp/migrate2.log
+          if [ "$rc" -eq 0 ]; then
+            echo "::error::a dirty database booted (must refuse)"
+            exit 1
+          fi
+          grep -q 'dirty migration state at version 1' /tmp/migrate2.log
+          grep -q 'Restore the pre-migration backup' /tmp/migrate2.log
+          state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/chaos.db")"
+          echo "post-refusal: $state"
+          case "$state" in
+            "integrity_check=ok version=1 dirty=true") ;;
+            *) echo "::error::the refusal modified the database: $state"; exit 1 ;;
+          esac
+
+      # The operator-only recovery: `migrate force` prompts for confirmation
+      # (pip 'yes'), marks version 1 clean, and re-runs pending migrations —
+      # landing on the latest schema, not dirty, integrity intact. The latest
+      # version is derived from the migration file count rather than hardcoded
+      # so the assertion does not rot as schema migrations are added.
+      - name: Operator-only force recovers the interrupted database
         working-directory: backend
         run: |
-          SQLITE_DB_PATH="$RUNNER_TEMP/chaos.db" "$RUNNER_TEMP/migrate" up
+          printf 'yes\n' | SQLITE_DB_PATH="$RUNNER_TEMP/chaos.db" "$RUNNER_TEMP/migrate" force
           latest="$(find database/migrations -maxdepth 1 -name '*.up.sql' | wc -l | tr -d ' ')"
           expected="integrity_check=ok version=${latest} dirty=false"
           state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/chaos.db")"

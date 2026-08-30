@@ -50,7 +50,15 @@ Migrations run automatically on startup. To apply or roll back manually:
 make migrate-up
 make migrate-down
 make migrate-status
+make migrate-force   # operator-only recovery for an interrupted (dirty) migration — prompts first
 ```
+
+The migration gates are **fail-closed** (issue #439): the server refuses to
+start on a dirty database, a database ahead of this binary's schema, or a
+sub-floor database, each with a typed error naming the state and its recovery
+(see `docs/upgrade-compatibility.md` → Refusal states). `migrate-force` is the
+only path that clears a dirty flag, and it requires explicit operator
+confirmation — never automatic.
 
 ## Models and DTOs
 

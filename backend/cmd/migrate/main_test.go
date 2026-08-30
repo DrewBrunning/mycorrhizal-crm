@@ -1,8 +1,11 @@
 package main
 
 import (
+	"database/sql"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"mycorrhizal/database"
@@ -100,4 +103,80 @@ func TestDbPath_EnvThenDefault(t *testing.T) {
 	})
 	os.Unsetenv("SQLITE_DB_PATH")
 	assert.Equal(t, defaultDBPath, dbPath())
+}
+
+// markDirty migrates dbPath fully, then marks the schema_migrations row dirty
+// at the latest version — the crash signature `force` exists to recover, set
+// at a version where the force can complete without re-applying DDL (the
+// re-run behavior itself is pinned at the database layer).
+func markDirty(t *testing.T, dbPath string) {
+	t.Helper()
+	require.NoError(t, database.MigrateUp(dbPath))
+	latest, err := database.LatestMigrationVersion()
+	require.NoError(t, err)
+	sqlDB, err := sql.Open("sqlite", dbPath)
+	require.NoError(t, err)
+	defer sqlDB.Close()
+	_, err = sqlDB.Exec("UPDATE schema_migrations SET version = ?, dirty = 1", latest)
+	require.NoError(t, err)
+}
+
+// runWithStdin runs the CLI with the given reader attached to the force
+// command's confirmation prompt.
+func runWithStdin(command string, in io.Reader) error {
+	old := stdin
+	stdin = in
+	defer func() { stdin = old }()
+	return run(command)
+}
+
+// TestRun_ForceRefusesWithoutExplicitConfirmation pins that the operator-only
+// escape hatch cannot be triggered non-interactively by accident: anything
+// other than "yes" aborts and leaves the dirty database untouched.
+func TestRun_ForceRefusesWithoutExplicitConfirmation(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "force-noconsent.db")
+	markDirty(t, path)
+	t.Setenv("SQLITE_DB_PATH", path)
+
+	require.Error(t, runWithStdin("force", strings.NewReader("nope\n")))
+	require.Error(t, runWithStdin("force", strings.NewReader("\n")))
+
+	latest, err := database.LatestMigrationVersion()
+	require.NoError(t, err)
+	version, dirty, ok, err := database.MigrationVersion(path)
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.EqualValues(t, latest, version, "an unconfirmed force must not touch the database")
+	assert.True(t, dirty)
+}
+
+// TestRun_ForceRecoversDirtyDatabaseAfterConfirmation pins the full operator
+// path: the prompt explains the state, an explicit "yes" runs the force, and
+// the database lands clean at the latest schema.
+func TestRun_ForceRecoversDirtyDatabaseAfterConfirmation(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "force-consent.db")
+	markDirty(t, path)
+	t.Setenv("SQLITE_DB_PATH", path)
+
+	require.NoError(t, runWithStdin("force", strings.NewReader("yes\n")))
+
+	latest, err := database.LatestMigrationVersion()
+	require.NoError(t, err)
+	version, dirty, ok, err := database.MigrationVersion(path)
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.EqualValues(t, latest, version, "a confirmed force must recover to the latest schema")
+	assert.False(t, dirty)
+}
+
+// TestRun_ForceOnCleanDatabaseErrors pins that force refuses up front when
+// there is nothing to force — a clean database is not a force candidate.
+func TestRun_ForceOnCleanDatabaseErrors(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "force-clean.db")
+	t.Setenv("SQLITE_DB_PATH", path)
+	require.NoError(t, run("up"))
+
+	err := runWithStdin("force", strings.NewReader("yes\n"))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not dirty")
 }
