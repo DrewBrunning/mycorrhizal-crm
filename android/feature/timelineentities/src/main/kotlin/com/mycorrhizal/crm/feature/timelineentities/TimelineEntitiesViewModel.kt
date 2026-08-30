@@ -46,7 +46,7 @@ import javax.inject.Inject
  */
 class ContactUidResolver(private val contactRepository: ContactRepository) {
     suspend fun resolve(contactId: Int): String? =
-        contactRepository.getContact(contactId).getOrNull()?.card?.uid
+        contactRepository.getContact(contactId).getOrNull()?.vcardUid
 }
 
 data class EntityItem(

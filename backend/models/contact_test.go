@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 
 	"mycorrhizal/contactmodel"
+	"mycorrhizal/internal/dbtest"
 
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
@@ -375,6 +377,68 @@ func TestRecordForContact_FallsBackWhenCardIsZeroValue(t *testing.T) {
 
 	if len(record.Card.Emails) != 1 || record.Card.Emails[0].Address != "bob@example.com" {
 		t.Errorf("RecordForContact's Card.Emails = %+v, want a fallback-derived entry for bob@example.com (Card was zero-value, should behave like RecordFromContact)", record.Card.Emails)
+	}
+}
+
+// TestRecordForContact_StampsCardUIDFromVCardUID is the regression test for
+// issue #693 ("Contact created by Android has no VCard UID"): a contact
+// created via the nested REST shape persists a Card without a UID (the client
+// doesn't know one yet — BeforeCreate mints the VCardUID, but the Card was
+// already assigned before that hook ran). The read path must stamp
+// Card.UID from the VCardUID column so every consumer of RecordForContact
+// (REST detail/write response, CardDAV GET, VCF/JSContact export) presents a
+// stable identity rather than a UID-less card — the Android app resolved the
+// contact's identity from card.uid and failed with that error. Pinned against
+// the real migrated schema (dbtest.NewAt) and through the same
+// ApplyRecordToContact -> Create -> RecordForContact flow the controller uses.
+func TestRecordForContact_StampsCardUIDFromVCardUID(t *testing.T) {
+	db := dbtest.NewAt(t, filepath.Join(t.TempDir(), "card-uid.db"))
+	user := User{Username: "uidrepro", Password: "password123!A", Email: "uidrepro@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	// Mimic CreateContact exactly: a nested input whose Card carries no UID.
+	input := ContactRecordInput{
+		Card: contactmodel.Card{
+			Name: &contactmodel.Name{Components: []contactmodel.NameComponent{
+				{Kind: "given", Value: "Alice"},
+				{Kind: "surname", Value: "Johnson"},
+			}},
+		},
+	}
+	contact := Contact{UserID: user.ID, Gender: input.Gender}
+	ApplyRecordToContact(&contact, input.ToRecord(), "")
+	require.NoError(t, db.Create(&contact).Error)
+
+	require.NotEmpty(t, contact.VCardUID, "BeforeCreate must have minted a VCardUID")
+	require.Empty(t, contact.Card.UID, "the persisted Card must still carry no UID (that is the shape this regression guards)")
+
+	record := RecordForContact(&contact, "", db)
+	if record.UID != contact.VCardUID {
+		t.Errorf("Record.UID = %q, want %q (the VCardUID column)", record.UID, contact.VCardUID)
+	}
+	if record.Card.UID != contact.VCardUID {
+		t.Errorf("Record.Card.UID = %q, want %q — Card.UID must mirror VCardUID so a client resolving identity via card.uid (Android, issue #693) works", record.Card.UID, contact.VCardUID)
+	}
+}
+
+// TestRecordForContact_PreservesImportedCardUID pins the "only stamp when
+// empty" half of the issue #693 fix: a Card that legitimately carries its own
+// imported UID (a vCard/JSContact import preserves the source UID on the
+// Card, and ApplyRecordToContact mirrors it into VCardUID) must NOT have it
+// clobbered by the stamping logic.
+func TestRecordForContact_PreservesImportedCardUID(t *testing.T) {
+	c := &Contact{
+		VCardUID: "imported-uid-1",
+		Card: contactmodel.Card{
+			UID:  "imported-uid-1",
+			Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Ada"}}},
+		},
+	}
+
+	record := RecordForContact(c, "", nil)
+
+	if record.Card.UID != "imported-uid-1" {
+		t.Errorf("Record.Card.UID = %q, want imported-uid-1 (a non-empty Card UID must survive untouched)", record.Card.UID)
 	}
 }
 
