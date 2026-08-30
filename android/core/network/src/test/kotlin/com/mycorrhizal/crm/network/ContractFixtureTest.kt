@@ -110,6 +110,49 @@ class ContractFixtureTest {
         assertNull(primary.circles)
     }
 
+    // MAINT-02 (issue #491): the Android client must tolerate unknown response
+    // fields. Adding a response field is the canonical additive (non-breaking)
+    // change, and a client that rejects unknown fields silently converts every
+    // additive change into a breaking one -- so this property is a client-side
+    // requirement, asserted here. Moshi's default is to ignore unknown fields
+    // (no `failOnUnknown`), and these tests pin that: a fixture with a
+    // not-yet-existent field injected at the top level and on a contact must
+    // still parse, and the known fields must survive. It deliberately uses
+    // [MoshiProvider.get], the same production singleton as the other tests in
+    // this file, because a locally rebuilt Moshi could silently differ in
+    // unknown-field handling (e.g. by setting failOnUnknown).
+    @Test
+    fun `listContacts tolerates unknown response fields`() = runBlocking {
+        val raw = readFixture("contacts-list.json")
+        val withUnknown = injectUnknownField(raw)
+        server.enqueue(MockResponse().setResponseCode(200).setBody(withUnknown))
+
+        val result = client.listContacts()
+
+        assertTrue("unknown fields must not fail parsing, got $result", result.isSuccess)
+        val page = result.getOrThrow()
+
+        assertTrue(page.contacts.isNotEmpty())
+        val primary = page.contacts.find { it.firstname == "Fixture" && it.lastname == "Primary" }
+        assertNotNull("known contact must survive unknown fields", primary)
+        assertEquals("1990-06-15", primary!!.birthday)
+        assertEquals("fixture.primary@example.com", primary.primaryEmail)
+    }
+
+    @Test
+    fun `getDashboard tolerates unknown response fields`() = runBlocking {
+        val raw = readFixture("dashboard.json")
+        server.enqueue(MockResponse().setResponseCode(200).setBody(injectUnknownField(raw)))
+
+        val result = client.getDashboard()
+
+        assertTrue("unknown fields must not fail parsing, got $result", result.isSuccess)
+        val dashboard = result.getOrThrow()
+        assertEquals(1, dashboard.upcomingReminders.size)
+        assertEquals("Fix Primary", dashboard.upcomingReminders[0].contactName)
+        assertTrue(dashboard.birthdays.isEmpty())
+    }
+
     private fun readFixture(name: String): String =
         checkNotNull(javaClass.classLoader?.getResourceAsStream(name)) {
             "missing test resource $name -- check build.gradle.kts's resources.srcDirs"
@@ -122,6 +165,27 @@ class ContractFixtureTest {
      */
     private fun rawRoot(raw: String): Map<*, *> =
         MoshiProvider.get().adapter(Any::class.java).fromJson(raw) as Map<*, *>
+
+    /**
+     * Injects a not-yet-existent field into a fixture's top-level object (and
+     * into every contact row) so the MAINT-02 unknown-field tolerance tests
+     * exercise a response shape that is *newer* than this client. Re-serializes
+     * through the same Moshi singleton so the injected payload is valid JSON.
+     */
+    private fun injectUnknownField(raw: String): String {
+        val root = rawRoot(raw).toMutableMap()
+        root["__maint02_unknown_field__"] = mapOf("nested" to listOf("a", 1, null))
+        (root["contacts"] as? List<*>)?.let { contacts ->
+            root["contacts"] = contacts.map { contact ->
+                (contact as Map<*, *>).toMutableMap().apply {
+                    this["__maint02_unknown_field__"] = listOf("x", "y")
+                }
+            }
+        }
+        @Suppress("UNCHECKED_CAST")
+        val json = MoshiProvider.get().adapter<Any>(Any::class.java).toJson(root as Any)
+        return json
+    }
 
     companion object {
         private const val FIXTURE_PRIMARY_UID = "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f"

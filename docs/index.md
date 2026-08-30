@@ -21,6 +21,8 @@ The name comes from mycorrhiza, the symbiotic network fungi form with plant root
 
 - [GitHub Repository](https://github.com/DrewBrunning/mycorrhizal-crm)
 - [Privacy & data minimization](privacy.md)
+- [Upgrade compatibility & supported-upgrade floor](upgrade-compatibility.md)
+- [Breaking-change policy (MAINT-02)](breaking-change-policy.md)
 - [PII inventory (store-by-store)](security/pii-inventory.md)
 - [Observability: logs, correlation IDs, and the system-event timeline](operations/observability.md)
 - [Security checklist (OWASP ASVS L2 + API Security Top 10)](security/asvs-l2.md)
