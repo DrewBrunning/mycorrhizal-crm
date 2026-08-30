@@ -304,7 +304,7 @@ class ContactRepositoryImpl @Inject constructor(
 
     private fun ContactRecordResponse.toCached(): CachedContact = CachedContact(
         id = id,
-        uid = uid ?: card?.uid,
+        uid = vcardUid,
         firstname = card?.name?.components?.firstOrNull { it.kind == "given" }?.value,
         lastname = card?.name?.components?.firstOrNull { it.kind == "surname" }?.value,
         nickname = card?.nicknames?.firstOrNull()?.name,

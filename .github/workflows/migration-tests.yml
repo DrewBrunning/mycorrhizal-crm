@@ -1,0 +1,189 @@
+name: Migration Tests
+
+# Issue #437 (MIG-02): every supported historical migration path runs in CI,
+# with each supported-release fixture as a NAMED matrix entry so a failure
+# names the release that broke. The supported set is v0.6.0 and later (issue
+# #529); the fixtures come from MIG-01 (issue #436, internal/schemafixture).
+#
+# Three shapes run here:
+#
+#   - upgrade-matrix: every supported-release fixture is migrated to the
+#     CURRENT schema through database.InitDB — the exact path the server boots
+#     through, not a reconstructed migration call — asserting the final version
+#     and that every table's row count survived (a migration that drops a table
+#     exits zero, so exit status alone proves nothing). The v0.6.0 entry IS the
+#     longest supported skip (v0.6.0 -> current), run through the whole chain
+#     at once. One job per release, one subtest per release.
+#   - adjacent-hops: v0.6.N -> v0.6.N+1, one migration or a few — catches a
+#     broken individual migration and names the exact release hop.
+#   - down-direction: every migration in the chain round-trips up -> down -> up
+#     against a POPULATED fixture (an empty-schema round trip proves nothing,
+#     issue #530), plus the "a new migration with no .down.sql fails CI" gate.
+#
+# Gate: the `backend` filter in .github/filters.yaml (the migration layer's
+# home, per docs/development/testing.md); make the migration-tests job set
+# required in branch protection — a migration change must not merge red.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Nightly re-run so a schema/chain change elsewhere still exercises the full
+  # migration matrix even on a PR that did not touch backend/.
+  schedule:
+    - cron: '35 3 * * *' # 03:35 UTC nightly
+
+permissions:
+  contents: read
+
+jobs:
+  # Issue #264 pattern: path-gated checks — see unit-tests.yml.
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Change detection on push needs the previous commit on main.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect changed areas
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+      # Boolean outputs only (the *_files outputs are the attacker-influenced
+      # ones on PRs, and we don't use them). Passed as env vars so zizmor's
+      # template-injection audit has nothing to flag.
+      - name: Report gating decision
+        run: |
+          echo "backend=$BACKEND_CHANGED"
+          echo "workflows=$WORKFLOWS_CHANGED"
+        env:
+          BACKEND_CHANGED: ${{ steps.filter.outputs.backend }}
+          WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
+
+  # One job per supported release. Each runs only that release's subtest of
+  # TestUpgradeFixtureToCurrent (issue #437 action 1: matrix over the fixtures
+  # rather than one test with a loop, so a failure names the release that
+  # broke).
+  upgrade-matrix:
+    permissions:
+      contents: read
+    name: Upgrade ${{ matrix.entry }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    strategy:
+      # One release's failure must not cancel the others — full signal from all
+      # four on every run.
+      fail-fast: false
+      matrix:
+        include:
+          - release: v0.6.0
+            entry: v0.6.0 → current (longest supported skip)
+          - release: v0.6.1
+            entry: v0.6.1 → current
+          - release: v0.6.2
+            entry: v0.6.2 → current
+          - release: v0.6.3
+            entry: v0.6.3 → current
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # `go test -run '<Test>/<release>'` exits 0 even when the release is not
+      # in SupportedReleases (no subtest matches, the parent vacuously passes),
+      # so the pass is asserted against the verbose output, not the exit code:
+      # a release that falls out of the registry fails this job rather than
+      # silently going green. The matrix release arrives via env, never inline
+      # ${{ }} (zizmor).
+      - name: Migrate ${{ matrix.release }} fixture to current
+        working-directory: backend
+        env:
+          RELEASE: ${{ matrix.release }}
+        run: |
+          set -eo pipefail
+          out="$(go test ./internal/schemafixture/ -run "TestUpgradeFixtureToCurrent/${RELEASE}" -count=1 -v 2>&1)"
+          echo "$out"
+          if ! grep -q -- "--- PASS: TestUpgradeFixtureToCurrent/${RELEASE} " <<<"$out"; then
+            echo "::error::expected subtest TestUpgradeFixtureToCurrent/${RELEASE} did not pass (release not in SupportedReleases?)"
+            exit 1
+          fi
+
+  # The adjacent-hop shape (issue #437 action 2): v0.6.N -> v0.6.N+1, one
+  # migration or a few. Also runs in the regular Go suite; this job is the
+  # named, required gate for the migration change class.
+  adjacent-hops:
+    permissions:
+      contents: read
+    name: Adjacent release hops
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Upgrade each adjacent hop
+        working-directory: backend
+        run: go test ./internal/schemafixture/ -run '^TestUpgradeEachAdjacentHop$' -count=1 -v
+
+  # The down direction (issue #437 action 6): every migration up -> down -> up
+  # against a populated fixture, and the "no .down.sql ships" gate.
+  down-direction:
+    permissions:
+      contents: read
+    name: Down round-trips
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Every migration up → down → up on populated fixtures
+        working-directory: backend
+        run: go test ./internal/schemafixture/ -run '^TestEveryMigrationRoundTripsUpDownUp$' -count=1 -v
+
+      - name: Every migration ships its .down.sql
+        working-directory: backend
+        run: go test ./database/ -run '^TestEveryMigrationHasADownMigration$' -count=1 -v

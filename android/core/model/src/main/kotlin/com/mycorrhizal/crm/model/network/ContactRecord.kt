@@ -27,7 +27,20 @@ data class ContactRecordResponse(
     val notes: List<Note>? = null,
     val activities: List<Activity>? = null,
     val reminders: List<Reminder>? = null,
-)
+) {
+    /**
+     * The contact's authoritative identity (VCardUID) — the value the graph
+     * and entity endpoints key on. The top-level `uid` is the canonical field
+     * and always present; `card.uid` is its neutral-model mirror, which the
+     * backend only fills on read (and can legitimately differ for imported
+     * cards). Prefer this over `card?.uid` — reading the mirror directly is
+     * what broke relationships/cadence/network/timeline for contacts created
+     * on Android, whose create response carried a card without a UID
+     * (issue #693).
+     */
+    val vcardUid: String?
+        get() = uid ?: card?.uid
+}
 
 /** Neutral superset of a contact's standardized data (RFC 9553 JSContact + vCard registry). */
 @JsonClass(generateAdapter = true)

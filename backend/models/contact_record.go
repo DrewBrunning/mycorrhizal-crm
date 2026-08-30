@@ -69,6 +69,21 @@ func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *Fie
 	includeSensitive := sel != nil && sel.IncludeSensitive
 	if c != nil && !reflect.DeepEqual(c.Card, contactmodel.Card{}) {
 		card := c.Card
+		// "uid" row (correspondence.tsv): Card.UID is the neutral identity
+		// home, and RecordFromContact maps it straight from VCardUID. But a
+		// contact created via the nested REST shape (or a CardDAV/import row
+		// whose card arrived without a UID) persists a Card whose UID is
+		// empty — the client didn't know one yet, and BeforeCreate minted the
+		// VCardUID too late for it to be mirrored back into the Card. Stamp it
+		// here so every read/export presents a stable identity instead of a
+		// UID-less card. This is what fixes the Android app's "Contact has no
+		// VCard UID" error (issue #693) for API-created contacts, and keeps
+		// VCF/JSContact export and CardDAV GET from emitting an identity-less
+		// address object. Only fills when empty: a Card that carries its own
+		// imported UID keeps it.
+		if card.UID == "" {
+			card.UID = c.VCardUID
+		}
 		card.RelatedTo = projectRelationshipEdges(db, c.VCardUID, card.RelatedTo, includeSensitive)
 		card.Keywords = projectTags(db, c.VCardUID, card.Keywords)
 		card.PersonalInfo = projectPreferences(db, c.VCardUID, card.PersonalInfo, includeSensitive)

@@ -840,6 +840,15 @@ func TestCreateContactWithAllFields(t *testing.T) {
 	assert.Equal(t, float64(1), contact["revision"], "a new contact must be served at revision 1")
 	// The detail etag is derived from the revision (e-{id}-{revision}).
 	assert.Equal(t, fmt.Sprintf("e-%v-1", contact["id"]), contact["etag"])
+	// Issue #693: the created contact must be served with its identity on
+	// BOTH the top-level uid and the card's uid mirror — the Android app
+	// resolves relationships/cadence/network from card.uid, and a card whose
+	// uid is empty there is the bug that ticket reported.
+	createdUID, _ := contact["uid"].(string)
+	assert.NotEmpty(t, createdUID, "the created contact must carry a top-level uid")
+	createdCard, _ := contact["card"].(map[string]any)
+	cardUID, _ := createdCard["uid"].(string)
+	assert.Equal(t, createdUID, cardUID, "card.uid must mirror the top-level uid on the create response")
 
 	crm := contact["crm"].(map[string]any)
 	assert.Equal(t, "Met at a tech conference in 2020", crm["how_we_met"])
