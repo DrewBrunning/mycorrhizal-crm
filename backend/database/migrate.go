@@ -155,7 +155,91 @@ func newMigrator(db *sql.DB) (*migrate.Migrate, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create migration instance: %w", err)
 	}
+	// Emit per-step progress (issue #495 action 6): without this, a migration
+	// batch that runs for twenty minutes logs nothing until it finishes — a
+	// long startup migration is indistinguishable from a hung one. See
+	// migrationProgressLogger.
+	m.Log = migrationProgressLogger{}
 	return m, nil
+}
+
+// migrationProgressLogger is the golang-migrate Logger attached to every
+// migrator (newMigrator). golang-migrate calls Printf at two per-step moments:
+//
+//   - "Read and execute <migration>" immediately BEFORE a migration body is
+//     sent to the driver — the "this migration has started, it is the long
+//     pole right now" signal a hung-looking upgrade needs;
+//   - "Finished <migration> (read X, ran Y)" right after the body committed
+//     AND its version row was marked clean — the step-done signal with a
+//     duration.
+//
+// The step events are named distinctly from the batch-level
+// migration_completed / migration_failed events so a log stream can tell a
+// per-step heartbeat from the whole-run outcome. Both step lines are INFO so
+// they are visible at the default log level, not buried behind verbose.
+type migrationProgressLogger struct{}
+
+// Verbose is true so golang-migrate emits the "Read and execute" (starting)
+// line; it is false by default, which would leave only the finish line.
+func (migrationProgressLogger) Verbose() bool { return true }
+
+func (migrationProgressLogger) Printf(format string, v ...interface{}) {
+	switch {
+	case strings.HasPrefix(format, "Read and execute"):
+		logger.Info().
+			Str(logger.FieldEvent, "migration_step_started").
+			Str(logger.FieldComponent, "migration").
+			Str("migration", migrationLogName(v)).
+			Msg("migration step started")
+	case strings.HasPrefix(format, "Finished "):
+		logger.Info().
+			Str(logger.FieldEvent, "migration_step_completed").
+			Str(logger.FieldComponent, "migration").
+			Str("migration", migrationLogName(v)).
+			Int64(logger.FieldDurationMS, migrationStepElapsed(v)).
+			Msg("migration step completed")
+	default:
+		// "Start buffering"/"Scheduled"/"Closing source and database" and the
+		// golang-migrate "error: ..." lines — noise for the operator heartbeat.
+		logger.Debug().
+			Str(logger.FieldComponent, "migration").
+			Msg(strings.TrimSpace(fmt.Sprintf(format, v...)))
+	}
+}
+
+// migrationLogName extracts the NNNNNN_name.up.sql filename from a
+// golang-migrate LogString ("32/u 000032_contact_sync_conflicts"), or "" when
+// it cannot be parsed. Reuses migrationFileForVersion so the per-step log
+// field matches the migration_failed event's field exactly.
+func migrationLogName(v []interface{}) string {
+	if len(v) == 0 {
+		return ""
+	}
+	s, ok := v[0].(string)
+	if !ok {
+		return ""
+	}
+	ver, _, found := strings.Cut(s, "/")
+	if !found {
+		return ""
+	}
+	n, err := strconv.ParseUint(ver, 10, 32)
+	if err != nil {
+		return ""
+	}
+	return migrationFileForVersion(uint(n))
+}
+
+// migrationStepElapsed sums the read+run durations golang-migrate reports on
+// its "Finished <migration> (read X, ran Y)" line.
+func migrationStepElapsed(v []interface{}) int64 {
+	var total time.Duration
+	for _, d := range v[1:] {
+		if dur, ok := d.(time.Duration); ok {
+			total += dur
+		}
+	}
+	return total.Milliseconds()
 }
 
 // closeMigrator releases the resources newMigrator opened. golang-migrate's
