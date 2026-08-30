@@ -23,7 +23,10 @@ re-derive it.
   directly must work, not only `v0.6.0 → v0.6.1 → …`. Self-hosted operators
   skip versions routinely.
 - **Post-`1.0`:** any `1.x` upgrade from any earlier `1.x`, and from the final
-  `0.9.x`. The floor moves only at a major version.
+  `0.9.x`. The floor moves only at a major version — which is itself a
+  breaking change under [MAINT-02](breaking-change-policy.md): raising a
+  supported-version minimum requires the major version and process that page
+  describes. The upgrade floor is a covered surface of that policy.
 - **Downgrade is unsupported.** Rolling back means installing the previous
   version and restoring the pre-upgrade backup (see below).
 
