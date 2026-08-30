@@ -4,12 +4,15 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
 
 	"mycorrhizal/database"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 // TestUpgradeFixtureToCurrent is MIG-02's headline upgrade test (issue #437,
@@ -91,7 +94,14 @@ func assertRowCountsPreserved(t *testing.T, step string, before, after map[strin
 //     reverse it AND leave the version v-1 rows intact;
 //   - the re-up must apply cleanly again on top of the restored rows.
 //
-// Row counts are asserted after every leg, in both directions.
+// Row counts are asserted after every leg, in both directions. The schema is
+// asserted byte-exact too (MIG-05, issue #440 action 4): the fingerprint after
+// a down must equal the fingerprint before its up, so "what `make migrate-down`
+// destroys" is specified by the migration itself and pinned by CI — exactly the
+// objects and columns its up created, and nothing pre-existing — rather than
+// discovered by an operator at 2am. The re-up leg independently guards this
+// (a leftover table/column/index breaks it), but only the fingerprint catches a
+// down that removes MORE than its up created.
 func TestEveryMigrationRoundTripsUpDownUp(t *testing.T) {
 	data := extractManifestData(t)
 
@@ -102,6 +112,7 @@ func TestEveryMigrationRoundTripsUpDownUp(t *testing.T) {
 		t.Run(fmt.Sprintf("%06d", v), func(t *testing.T) {
 			path := buildVersionFixturePath(t, data, v-1)
 			before := tableCountsAtPath(t, path)
+			beforeSchema := schemaFingerprintAtPath(t, path)
 
 			require.NoError(t, database.MigrateUpTo(path, v), "migration %06d up must apply", v)
 			assertFixtureVersion(t, path, v)
@@ -110,12 +121,88 @@ func TestEveryMigrationRoundTripsUpDownUp(t *testing.T) {
 			require.NoError(t, database.MigrateDown(path), "migration %06d down must apply", v)
 			assertFixtureVersion(t, path, v-1)
 			assertRowCountsPreserved(t, fmt.Sprintf("down %06d", v), before, tableCountsAtPath(t, path))
+			assert.Equal(t, beforeSchema, schemaFingerprintAtPath(t, path),
+				"down %06d must restore the pre-up schema exactly: a down migration destroys exactly what its up created, and nothing more", v)
 
 			require.NoError(t, database.MigrateUpTo(path, v), "migration %06d re-up must apply", v)
 			assertFixtureVersion(t, path, v)
 			assertRowCountsPreserved(t, fmt.Sprintf("re-up %06d", v), before, tableCountsAtPath(t, path))
 		})
 	}
+}
+
+// schemaFingerprintAtPath opens path, returns the canonical schema fingerprint
+// of the database at it, and closes the handle again — the same pattern as
+// tableCountsAtPath: a migration step must never run against a stale open
+// connection.
+func schemaFingerprintAtPath(t *testing.T, path string) string {
+	t.Helper()
+	db, err := database.OpenMigratedFile(path)
+	require.NoError(t, err)
+	defer func() {
+		if sqlDB, err := db.DB(); err == nil {
+			_ = sqlDB.Close()
+		}
+	}()
+	return schemaFingerprint(t, db)
+}
+
+// schemaFingerprint returns a canonical, sorted text encoding of the database's
+// schema: every non-internal sqlite_master object (tables, virtual tables,
+// indexes, triggers) with its CREATE statement, plus every table's full column
+// definition (PRAGMA table_info) — the latter because SQLite never rewrites the
+// original CREATE TABLE statement in sqlite_master on ALTER TABLE ADD/DROP
+// COLUMN, so a column-level destruction would be invisible to the sqlite_master
+// text alone. Two databases with identical fingerprints hold the same schema
+// objects with the same columns.
+func schemaFingerprint(t *testing.T, db *gorm.DB) string {
+	t.Helper()
+	var objects []struct {
+		Type    string
+		Name    string
+		SQL     string
+		TblName string
+	}
+	// schema_migrations is golang-migrate's own bookkeeping, not application
+	// schema: it is created lazily and left behind (empty) after the final
+	// down, so a version-0 fixture has it and an unmigrated file does not.
+	// Filtered by tbl_name so its version_unique index is excluded too.
+	require.NoError(t, db.Raw(`
+		SELECT type, name, COALESCE(sql, '') AS sql, tbl_name FROM sqlite_master
+		WHERE name NOT LIKE 'sqlite_%' AND tbl_name != 'schema_migrations'
+		ORDER BY type, name`).Scan(&objects).Error)
+
+	var b strings.Builder
+	for _, o := range objects {
+		// SQLite rewrites the CREATE statement's table name with double quotes
+		// when a table is recreated via ALTER TABLE ... RENAME (migration
+		// 000034's audit_events rebuild does this in both directions). The
+		// quotes are identifier quoting, never literal content in this DDL
+		// (CHECK/DEFAULT bodies use single quotes), so stripping them makes the
+		// fingerprint compare semantics rather than quoting cosmetics.
+		fmt.Fprintf(&b, "%s|%s|%s\n", o.Type, o.Name, strings.ReplaceAll(strings.TrimSpace(o.SQL), `"`, ""))
+		if o.Type != "table" {
+			continue
+		}
+		var cols []struct {
+			CID     int
+			Name    string
+			Type    string
+			NotNull int
+			Default *string
+			PK      int
+		}
+		require.NoError(t, db.Raw(`PRAGMA table_info("`+strings.ReplaceAll(o.Name, `"`, `""`)+`")`).Scan(&cols).Error)
+		sort.Slice(cols, func(i, j int) bool { return cols[i].CID < cols[j].CID })
+		for _, c := range cols {
+			dflt := ""
+			if c.Default != nil {
+				dflt = *c.Default
+			}
+			fmt.Fprintf(&b, "  col|%d|%s|%s|%d|%s|%d\n", c.CID, c.Name, c.Type, c.NotNull, dflt, c.PK)
+		}
+	}
+	return b.String()
 }
 
 // extractManifestData populates one current-schema scratch database from the

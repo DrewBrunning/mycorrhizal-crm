@@ -108,13 +108,16 @@ recovery. A message that names the condition but not the remedy sends the
 operator to the source; these all state both. In no case does any
 configuration setting turn a refusal into a warning — the one exception is the
 documented one-time `v0.2.0-alpha-candidate` bridge above, which is a policy
-exception for a single known sub-floor deployment, not a bypass knob.
+exception for a single known sub-floor deployment, not a bypass knob. The
+step-by-step recovery for all three states — including exactly which pre-upgrade
+backup file to restore and how long it must be kept — is
+`docs/operations/migration-recovery.md`.
 
 | State | Behavior | Operator action |
 |---|---|---|
-| Sub-floor schema (below `000031`) | **Refuse**, print the two-step message above, exit | Two-step through `v0.6.0`, or the documented bridge |
-| Dirty schema | **Refuse** (`ErrDirtyMigration`): a migration started and did not finish, so the schema state is unknown | Restore the pre-migration backup and start again. Only after verifying the schema actually matches the named version, `make migrate-force` (prompted, operator-only) — never automatic |
-| Schema ahead of the binary | **Refuse** (`ErrSchemaAheadOfBinary`): the database knows migrations this binary does not, meaning a rollback is in progress | Deploy a binary that knows the newer migration, or restore the backup taken before the newer release ran |
+| Sub-floor schema (below `000031`) | **Refuse**, print the two-step message above, exit | Two-step through `v0.6.0`, or the documented bridge — see the [below-the-floor section](../operations/migration-recovery.md#below-the-floor) |
+| Dirty schema | **Refuse** (`ErrDirtyMigration`): a migration started and did not finish, so the schema state is unknown | Restore the pre-migration backup and start again — see the [dirty-schema section](../operations/migration-recovery.md#dirty-schema). Only after verifying the schema actually matches the named version, `make migrate-force` (prompted, operator-only) — never automatic |
+| Schema ahead of the binary | **Refuse** (`ErrSchemaAheadOfBinary`): the database knows migrations this binary does not, meaning a rollback is in progress | Deploy a binary that knows the newer migration, or restore the backup taken before the newer release ran — see the [ahead-of-the-binary section](../operations/migration-recovery.md#schema-ahead-of-the-binary) |
 
 ### Dirty schema — interrupted migration
 
