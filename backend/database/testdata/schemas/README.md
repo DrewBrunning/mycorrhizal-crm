@@ -2,9 +2,11 @@
 
 One **schema-only** SQL dump per release at or above the supported-upgrade
 floor (`v0.6.0`, issue #529). These are the historical schemas the migration
-(MIG-02, #437), automated-upgrade (DEPLOY-02, #451) and cross-version-backup
-(BACKUP-01, #453) suites upgrade and read. The loader that consumes them is
-`backend/internal/schemafixture`; the generator is `backend/cmd/genschema`.
+(MIG-02, #437 — `migration-tests.yml` matrixes one CI job per release, from
+`v0.6.0 → current` as the longest skip), automated-upgrade (DEPLOY-02, #451)
+and cross-version-backup (BACKUP-01, #453) suites upgrade and read. The loader
+that consumes them is `backend/internal/schemafixture`; the generator is
+`backend/cmd/genschema`.
 
 | Release | Migration version |
 |---|---|

@@ -118,11 +118,17 @@ Two startup states are enforced today; the third is MIG-04's scope (issue
   `backend/database/testdata/schemas/` (see that directory's README). Each is
   generated from the embedded migration chain (frozen and append-only) and
   populated at test time from the canonical TEST-02 manifest.
-- **Chain upgrades:** `internal/schemafixture`'s upgrade tests run every
-  adjacent hop (`v0.6.0 → v0.6.1 → … → current`) and the longest supported
-  skip (`v0.6.0 → current`) against real migrated fixture databases, asserting
-  row counts and search consistency survive. A new release without a fixture
-  fails CI (the completeness test plus the docker-publish gate).
+- **Chain upgrades (MIG-02, issue #437):** `internal/schemafixture`'s upgrade
+  tests run every adjacent hop (`v0.6.0 → v0.6.1 → … → current`) and the
+  longest supported skip (`v0.6.0 → current`) against real migrated fixture
+  databases, asserting row counts and search consistency survive. The
+  migration-tests CI workflow matrixes one job per supported release
+  (`v0.6.0 → current`, `v0.6.1 → current`, …), each migrating its fixture
+  through `database.InitDB` (the path the server boots through) and asserting
+  the final version and row counts, plus a down-direction job that round-trips
+  every migration up → down → up against a populated fixture and gates on every
+  migration shipping its `.down.sql`. A new release without a fixture fails CI
+  (the completeness test plus the docker-publish gate).
 - **Full-stack upgrades (DEPLOY-02, issue #451):** the release-by-release
   Docker harness validates the whole install (database + photos + attachments)
   end to end against the same release set.
