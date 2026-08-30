@@ -1,4 +1,4 @@
-.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backfill-at-rest rotate-at-rest-key audit-backfill audit-verify backup gen-contract-fixtures gen-schema-fixtures help
+.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backfill-at-rest rotate-at-rest-key audit-backfill audit-verify backup gen-contract-fixtures gen-schema-fixtures gen-api-baseline help
 
 # Database path. The migration CLI reads SQLITE_DB_PATH (the same variable the
 # server reads), so every target below EXPORTS this rather than just echoing
@@ -71,6 +71,9 @@ gen-contract-fixtures: ## Regenerate the shared web+Android contract fixtures fr
 
 gen-schema-fixtures: ## Regenerate the per-release schema dumps backing the upgrade test matrix (MIG-01, issue #436). Deterministic; run when a new release ships a new migration, then review the diff (existing dumps must be byte-identical).
 	@go run cmd/genschema/main.go
+
+gen-api-baseline: ## Regenerate the frozen /api/v1 contract baseline (MAINT-02, issue #491). Deliberate act: a baseline diff that removes or narrows surface IS the declared breaking change.
+	@go run cmd/genapibaseline/main.go
 
 backup: ## Create a consistent online snapshot of the SQLite database (VACUUM INTO; safe while the server runs)
 	@echo "Backing up $(DB_PATH)..."

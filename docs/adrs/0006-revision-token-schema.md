@@ -70,7 +70,8 @@ rather than silently omitting" discipline from the ticket.
   model *is* the response DTO for those endpoints.
 
 The legacy top-level `etag` response field on `ContactRecordResponse` stays (CardDAV compatibility).
-Adding a response field is additive/non-breaking under MAINT-02's draft criteria (issue #491) — it
+Adding a response field is additive/non-breaking under MAINT-02's criteria
+([breaking-change-policy.md](../breaking-change-policy.md), issue #491) — it
 does not change or remove any existing field, so this ADR does not wait on that ticket.
 
 **Write-path enforcement is out of scope**: no conditional-check handling, no `409`/`412`, no

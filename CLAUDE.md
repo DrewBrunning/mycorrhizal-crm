@@ -64,6 +64,16 @@ regenerate, commit the fixture diff. The drift test `backend/contract_fixtures_t
 they're regenerated; the spec's own validator rejects an example that doesn't fit its schema, so the
 fixtures can't silently drift from the documented contract.
 
+**Breaking-change policy (MAINT-02, issue #491):** the `/api/v1` contract surface is pinned by a
+frozen baseline (`backend/internal/apibaseline/testdata/v1.json`) generated from `backend/openapi.yaml`
+by `cd backend && go run ./cmd/genapibaseline` (or `make gen-api-baseline`). The drift test
+(`backend/internal/apibaseline/drift_test.go`) fails if the spec **removes, renames, or narrows**
+anything the baseline records (endpoint, parameter, field, enum value), and a second test pins the
+baseline is current — so every contract change ships with a baseline diff, and a removal in that diff
+is the declared breaking change that the release notes and approval process must cover. Additive
+changes (new endpoints/fields/params/enum values) pass the drift check but still require regeneration.
+Policy: `docs/breaking-change-policy.md`.
+
 Android instrumented E2E (issue #238): the suite in `android/app/src/androidTest` drives the real app
 against the real `docker-compose.test.yml` backend on an emulator/device — login → list → detail →
 edit, favorites (issue #212), archive/delete + audit undo. Emulator: `cd android && ./gradlew

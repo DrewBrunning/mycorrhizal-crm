@@ -136,3 +136,78 @@ describe('contract fixtures: GET /dashboard', () => {
     }
   });
 });
+
+// MAINT-02 (issue #491): the web client must tolerate unknown response
+// fields. Adding a response field is the canonical additive (non-breaking)
+// change, and a client that rejects unknown fields silently converts every
+// additive change into a breaking one — so this property is a client-side
+// requirement, asserted here. Each fixture is parsed as-is AND with a
+// not-yet-existent field injected at the top level and on a nested contact;
+// parsing must succeed and every known field must survive.
+describe('MAINT-02: unknown response fields are ignored, never fatal', () => {
+  const injectUnknownFields = <T>(value: T): T => {
+    if (Array.isArray(value)) {
+      return value.map((item) => injectUnknownFields(item)) as T;
+    }
+    if (value && typeof value === 'object') {
+      const out: Record<string, unknown> = { ...(value as Record<string, unknown>) };
+      if (!('__maint02_unknown_field__' in out)) {
+        out['__maint02_unknown_field__'] = { nested: ['a', 1, null] };
+      }
+      for (const [k, v] of Object.entries(out)) {
+        if (k !== '__maint02_unknown_field__') {
+          out[k] = injectUnknownFields(v);
+        }
+      }
+      return out as T;
+    }
+    return value;
+  };
+
+  test('GET /contacts parses a response with an unknown top-level and nested field', async () => {
+    stubFetchOnce(injectUnknownFields(contactsListRaw));
+
+    const result = await getContacts({});
+
+    expect(result.contacts.length).toBe(contactsListRaw.contacts.length);
+    for (const contact of result.contacts) {
+      expect(typeof contact.archived).toBe('boolean');
+      expect(typeof contact.is_favorite).toBe('boolean');
+    }
+  });
+
+  test('GET /contacts/:id/detail parses a response with an unknown field', async () => {
+    stubFetchOnce(injectUnknownFields(contactDetailRaw));
+
+    const result = await getContactDetail(1);
+
+    const arrayFields = [
+      'notes',
+      'activities',
+      'completions',
+      'reminders',
+      'relationship_edges',
+      'life_events',
+      'agenda',
+      'gifts',
+      'field_values',
+      'external_identities',
+      'external_activities',
+      'circles',
+      'tags',
+    ] as const;
+    for (const key of arrayFields) {
+      expect(Array.isArray(result[key]), `${key} should still be an array`).toBe(true);
+    }
+  });
+
+  test('GET /dashboard parses a response with an unknown field', async () => {
+    stubFetchOnce(injectUnknownFields(dashboardRaw));
+
+    const result = await getDashboard();
+
+    expect(Array.isArray(result.birthdays)).toBe(true);
+    expect(Array.isArray(result.upcoming_reminders)).toBe(true);
+    expect(Array.isArray(result.favorites)).toBe(true);
+  });
+});
