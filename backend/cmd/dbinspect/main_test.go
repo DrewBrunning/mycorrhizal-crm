@@ -119,7 +119,7 @@ func TestRun_FailsOnCorruptFile(t *testing.T) {
 
 	_, err = run(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "open", "a corrupt database must be reported as a failed open")
+	assert.Contains(t, err.Error(), "integrity", "a corrupt database must be rejected at the integrity check")
 }
 
 func TestRun_FailsOnNeverMigrated(t *testing.T) {

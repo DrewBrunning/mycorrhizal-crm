@@ -283,9 +283,14 @@ own failure classes the 0.6.x milestones name, so they get explicit homes.
   and concurrent-write stability against the **deployed** artifact
   (`cmd/loadsmoke` in the e2e job — the deployed counterpart to
   `database/concurrent_write_test.go`).
-- **Planned (filed):** scale characterization and resource/capacity testing —
-  PERF-01, issue #468 (v0.6.9), which builds *scale* on top of the TEST-02
-  dataset rather than a separate fixture.
+- **Owns** scale characterization and the large-dataset migration test — the
+  PERF-01 basis (issue #468) and issue #495: `internal/largedata` scales the
+  TEST-02 manifest (same shapes, more rows, pathological records at scale),
+  `cmd/migratebench` measures migration duration / peak memory / peak disk per
+  supported path, and the recorded numbers live in
+  `docs/development/scale-testing.md`. The resource-exhaustion half is the
+  chaos job's `large-migration-disk-full` (ENOSPC during a large migration
+  fails closed) — see `docs/development/fault-injection.md`.
 
 ### Security/adversarial tooling
 

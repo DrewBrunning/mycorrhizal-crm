@@ -67,6 +67,7 @@ chaos:
   - 'backend/cmd/dbinspect/**'
   - 'backend/cmd/migrate/**'
   - 'backend/cmd/backup/**'
+  - 'backend/cmd/migratebench/**'
 
 workflows:
   - '.github/**'
