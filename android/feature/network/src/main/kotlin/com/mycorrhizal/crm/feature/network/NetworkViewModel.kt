@@ -127,7 +127,10 @@ class NetworkViewModel @Inject constructor(
      */
     private suspend fun resolveInitialContact(id: Int): FromContact? {
         val record = contactRepository.getContact(id).getOrNull()
-        val uid = record?.card?.uid
+        // vcardUid prefers the top-level uid (the canonical field); reading
+        // card.uid directly was the issue #693 bug — the create response of an
+        // Android-created contact carried a card without a UID.
+        val uid = record?.vcardUid
         if (uid.isNullOrBlank()) {
             _uiState.update {
                 it.copy(isLoading = false, errorRes = R.string.network_error_no_vcard_uid, error = null)

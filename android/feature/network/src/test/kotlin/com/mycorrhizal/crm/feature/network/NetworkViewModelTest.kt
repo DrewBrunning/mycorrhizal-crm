@@ -261,6 +261,28 @@ class NetworkViewModelTest {
         }
 
     @Test
+    fun `resolves an android-created contact from the top-level uid`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Regression for issue #693: a contact created on Android is
+            // served with the identity on the top-level `uid` while its card
+            // carries no UID. The traversal must still run off that top-level
+            // uid rather than erroring on a missing card.uid.
+            coEvery { contactRepository.getContact(1) } returns Result.success(
+                ContactRecordResponse(id = 1, uid = "uid-1", card = Card(name = Name(full = "Alice"))),
+            )
+            coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
+            stubConnections()
+
+            val vm = viewModel(contactId = 1)
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.isLoading)
+            assertNull(vm.uiState.value.errorRes)
+            assertEquals("uid-1", vm.uiState.value.fromVCardUid)
+            coVerify(exactly = 1) { graphRepository.getConnections(from = "uid-1", depth = any(), relation = any()) }
+        }
+
+    @Test
     fun `search results exclude the current from contact`() =
         runTest(mainDispatcherRule.testDispatcher) {
             stubFrom(uid = "uid-1", name = "Alice")

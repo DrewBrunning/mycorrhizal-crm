@@ -69,6 +69,28 @@ class RelationshipsViewModelTest {
     }
 
     @Test
+    fun `loads edges for a contact whose top-level uid is set but card uid is not`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Regression for issue #693: a contact created on Android is
+            // served with the identity on the top-level `uid` field while its
+            // card carries no UID (the client couldn't know one at create
+            // time). Resolving via card?.uid hit the no-vcard-uid error; the
+            // ViewModel must prefer the top-level field.
+            coEvery { contactRepository.getContact(5) } returns Result.success(
+                ContactRecordResponse(id = 5, uid = viewedUid, card = Card(name = Name(full = "Dana White"))),
+            )
+            coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
+            coEvery { edgeRepository.listForContact(viewedUid, null, null) } returns Result.success(emptyList())
+
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.isLoading)
+            assertEquals(viewedUid, vm.uiState.value.contactVCardUid)
+            assertNull(vm.uiState.value.errorRes)
+        }
+
+    @Test
     fun `missing contact id sets an error`() = runTest(mainDispatcherRule.testDispatcher) {
         val vm = viewModel(id = 0)
         advanceUntilIdle()

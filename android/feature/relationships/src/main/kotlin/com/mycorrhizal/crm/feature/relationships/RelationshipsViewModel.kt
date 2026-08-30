@@ -78,8 +78,9 @@ class RelationshipsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
             // The graph invariants use the contact's VCardUID, so resolve it
-            // from the record before listing edges.
-            val uid = contactRepository.getContact(contactId).getOrNull()?.card?.uid
+            // from the record before listing edges. vcardUid prefers the
+            // top-level uid (the canonical field; issue #693).
+            val uid = contactRepository.getContact(contactId).getOrNull()?.vcardUid
             if (uid.isNullOrBlank()) {
                 _uiState.update {
                     it.copy(isLoading = false, errorRes = R.string.relationships_error_no_vcard_uid, error = null)
