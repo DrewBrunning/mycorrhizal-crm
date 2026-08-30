@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -462,4 +463,95 @@ func TestSkippedMigrationFailureLeavesDirtyAndSchemaAtPreviousVersion(t *testing
 	require.True(t, ok)
 	assert.EqualValues(t, target, version, "the failed migration is left dirty at its own version")
 	assert.True(t, dirty, "a failed migration must be the fail-closed dirty signal")
+}
+
+// TestDirtyRefusalRecoversByRestoringPreMigrationBackup pins the issue #546
+// "How to verify" criterion that no other test covers end to end: after a
+// dirty database refuses to start, restoring the pre-migration backup (issue
+// #530's recovery point — BackupSnapshot / docs/deployment.md → Restore) and
+// restarting must succeed. It walks the operator's real sequence: a healthy
+// database at the upgrade floor (v0.6.0, the oldest version an in-place
+// upgrade may start from — see checkSupportedUpgradeFloor) with live data →
+// the pre-migration backup is taken → the upgrade to the next version is
+// interrupted (the commit-to-clean-mark crash signature, exactly what the
+// SIGKILL chaos job produces) → startup REFUSES naming the interrupted version
+// and leaves the database untouched → the pre-migration backup replaces the
+// refused database → restart succeeds, runs the pending migrations, and the
+// pre-migration data is back. This is what makes "restore the pre-migration
+// backup" a verified recovery rather than a documented one.
+func TestDirtyRefusalRecoversByRestoringPreMigrationBackup(t *testing.T) {
+	latest, err := LatestMigrationVersion()
+	require.NoError(t, err)
+	require.Greater(t, latest, SupportedUpgradeFloorVersion+1, "this test needs a migration beyond the interrupted pair")
+
+	at := SupportedUpgradeFloorVersion
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "live.db")
+
+	// Pre-migration state: a healthy database at the upgrade floor holding one
+	// user.
+	require.NoError(t, MigrateUpTo(dbPath, at))
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	_, err = sqlDB.Exec(
+		`INSERT INTO users (username, email, password, created_at, updated_at)
+		 VALUES ('restore-me', 'restore@example.com', 'x', datetime('now'), datetime('now'))`,
+	)
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	// The mandatory pre-migration backup (issue #530): the operator's recovery
+	// point, taken before the upgrade started.
+	backupPath := filepath.Join(dir, "pre-migration.db")
+	require.NoError(t, BackupSnapshot(dbPath, backupPath))
+
+	// The upgrade to at+1 is interrupted: migration at+1's DDL is fully applied
+	// but its clean-mark was never written — the crash signature a SIGKILL
+	// between a migration's commit and its clean-mark leaves behind.
+	require.NoError(t, os.Remove(dbPath))
+	interruptedDB(t, dbPath, at+1)
+
+	// Fail-closed: startup must refuse, naming the interrupted version, and
+	// must not touch the database.
+	_, err = InitDB(dbPath)
+	require.Error(t, err, "a dirty database must refuse to start")
+	var dirtyErr *ErrDirtyMigration
+	require.ErrorAs(t, err, &dirtyErr, "the refusal must be a typed ErrDirtyMigration")
+	assert.EqualValues(t, at+1, dirtyErr.Version, "the refusal must name the interrupted version")
+	version, dirty, ok, err := MigrationVersion(dbPath)
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.True(t, dirty, "the refused database must still be dirty — the refusal must not alter it")
+
+	// Operator recovery: replace the refused database with the pre-migration
+	// backup. The .db is overwritten in place — a restore that never happened
+	// leaves the dirty database sitting there and the next boot refuses again —
+	// and only stale WAL sidecars are cleared first (mirroring
+	// TestBackupSnapshotRestoreRoundTrip).
+	for _, suffix := range []string{"-wal", "-shm"} {
+		if err := os.Remove(dbPath + suffix); err != nil && !os.IsNotExist(err) {
+			require.NoError(t, err)
+		}
+	}
+	data, err := os.ReadFile(backupPath)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(dbPath, data, 0o644))
+
+	// Restart: the restored snapshot is clean at version `at`, so the pending
+	// chain runs and the server boots.
+	_, err = InitDB(dbPath)
+	require.NoError(t, err, "after restoring the pre-migration backup, the server must start")
+
+	version, dirty, ok, err = MigrationVersion(dbPath)
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.EqualValues(t, latest, version, "the restored database must migrate to the latest schema")
+	assert.False(t, dirty, "the restored database must be clean")
+
+	checkDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer checkDB.Close()
+	var n int
+	require.NoError(t, checkDB.QueryRow("SELECT COUNT(*) FROM users WHERE username = 'restore-me'").Scan(&n))
+	assert.Equal(t, 1, n, "the pre-migration data must survive the restore")
 }
