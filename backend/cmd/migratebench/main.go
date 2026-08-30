@@ -247,8 +247,8 @@ func runMeasure(args []string) error {
 	if !ok { // # pragma: no cover — a migration that just ran writes the version row
 		return fmt.Errorf("measure: no schema_migrations row after migration")
 	}
-	integrity, err := integrityAt(*dbPath)
-	if err != nil { // # pragma: no cover — a database the migration just verified always answers integrity_check
+	integrity, err := database.IntegrityCheck(*dbPath) // raw-sql: GORM's slow-SQL logger would pollute the report stream on a large DB
+	if err != nil {                                    // # pragma: no cover — a database the migration just verified always answers integrity_check
 		return err
 	}
 	finalSize := dbBytes(*dbPath)
@@ -371,20 +371,6 @@ func fileSize(path string) (int64, error) {
 func migrationState(path string) (version uint, dirty bool, ok bool) {
 	version, dirty, ok, _ = database.MigrationVersion(path)
 	return version, dirty, ok
-}
-
-// integrityAt runs PRAGMA integrity_check on a file via a fresh connection.
-func integrityAt(path string) (string, error) {
-	db, err := database.OpenMigratedFile(path)
-	if err != nil { // # pragma: no cover — the file was just migrated and reopened cleanly above
-		return "", err
-	}
-	defer sqlClose(db)
-	var result string
-	if err := db.Raw("PRAGMA integrity_check").Scan(&result).Error; err != nil { // # pragma: no cover — a database that just passed migration always answers integrity_check
-		return "", err
-	}
-	return result, nil
 }
 
 func sqlClose(db *gorm.DB) error {

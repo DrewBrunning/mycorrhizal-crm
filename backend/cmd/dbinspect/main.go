@@ -65,6 +65,13 @@ func runCLI() int {
 // integrity_check, or has no schema_migrations row (never migrated). A dirty
 // flag is reported, not failed: a dirty database is a recoverable state the
 // harness asserts on.
+//
+// The output is a single exact string — the chaos jobs `case` against it
+// verbatim — so both reads go through the database package's raw-sql helpers
+// (IntegrityCheck / MigrationVersion), never GORM: GORM's slow-SQL logger
+// writes to os.Stdout, and on a large database the integrity check is slow
+// enough to trip it, which would interleave a "SLOW SQL >= 200ms" line into
+// the parseable output.
 func run(dbPath string) (string, error) {
 	// Fail on a missing file rather than letting the driver create an empty
 	// database — a typo'd path must not silently materialize a fresh DB.
@@ -75,21 +82,14 @@ func run(dbPath string) (string, error) {
 		return "", fmt.Errorf("open %q: %w", dbPath, err)
 	}
 
-	gdb, err := database.OpenMigratedFile(dbPath)
+	result, err := database.IntegrityCheck(dbPath)
 	if err != nil {
-		return "", fmt.Errorf("open %q: %w", dbPath, err)
-	}
-
-	var result string
-	if err := gdb.Raw("PRAGMA integrity_check").Scan(&result).Error; err != nil {
-		// # pragma: no cover — the driver rejects a corrupt file at open, so a
-		// cleanly-opened database always answers this query; the branch is the
-		// defensive net for a corruption that only surfaces here.
-		return "", fmt.Errorf("integrity check on %q failed: %w", dbPath, err)
+		return "", fmt.Errorf("integrity check on %q: %w", dbPath, err)
 	}
 	if result != "ok" {
-		// # pragma: no cover — see the query-error branch above; SQLite also
-		// surfaces most corruptions as errors, not row results.
+		// # pragma: no cover — SQLite also surfaces most corruptions as errors,
+		// not row results; the integrity_check result is "ok" for every intact
+		// database the harness inspects.
 		return "", fmt.Errorf("integrity check on %q failed: %s", dbPath, result)
 	}
 
