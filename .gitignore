@@ -128,3 +128,10 @@ fly.test.toml
 # decision in issue #615 is that the SARIF is deliberately NOT uploaded to
 # code scanning, so it must never land in git either).
 /zap/
+
+# TEST-08 differential reference build artifacts (issue #680): the calcard
+# Rust CLI's target/ tree and the vobject reference script's Python bytecode
+# cache are generated, never committed (Cargo.lock IS committed — it pins the
+# reference's transitive dependency graph).
+backend/differential/reference/calcard/target/
+backend/differential/reference/vobject/__pycache__/

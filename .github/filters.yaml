@@ -69,6 +69,18 @@ chaos:
   - 'backend/cmd/backup/**'
   - 'backend/cmd/migratebench/**'
 
+# differential (issue #680): the reference-implementation differential suite
+# (backend/differential, the pinned reference CLIs it shells out to, and the
+# in-package iCalendar legs in caldav/services). The JSContact-calcard job
+# fires only on these paths (plus the nightly schedule/manual dispatch) —
+# building the Rust reference is too heavy for every backend change. The
+# vCard-vobject leg runs per-PR in unit-tests.yml (python3 + pip-installed
+# vobject), so it is NOT gated here.
+differential:
+  - 'backend/differential/**'
+  - 'backend/caldav/differential_ical_test.go'
+  - 'backend/services/differential_ical_test.go'
+
 # carddav (issue #496): the real-server (Radicale) CardDAV integration job's
 # gate. Deliberately much narrower than backend/** — it runs against a real
 # server in Docker and is slow by design, so on a PR it only fires when the

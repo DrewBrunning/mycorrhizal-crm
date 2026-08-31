@@ -1,0 +1,3217 @@
+[
+ {
+  "card": {
+   "kind": "location",
+   "created": {
+    "utc": "2088-05-05T15:01:44Z"
+   },
+   "name": {
+    "components": [
+     {
+      "kind": "given",
+      "value": "FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj FzXKj F",
+      "phonetic": "アダ"
+     }
+    ],
+    "sortAs": {
+     "full": "  \t\n  "
+    },
+    "isOrdered": true,
+    "defaultSeparator": ", "
+   },
+   "nicknames": [
+    {
+     "name": "",
+     "contexts": [
+      "private"
+     ]
+    },
+    {
+     "name": "étude",
+     "contexts": [
+      "private"
+     ]
+    },
+    {
+     "name": "étude",
+     "contexts": [
+      "billing"
+     ],
+     "pref": 5
+    }
+   ],
+   "organizations": [
+    {
+     "name": " ",
+     "units": [
+      {
+       "name": " gM! 30_JnVF!B!@!-!d76"
+      }
+     ],
+     "sortAs": "Acme"
+    },
+    {
+     "name": "hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe hhxe",
+     "units": [
+      {
+       "name": " ",
+       "sortAs": "South"
+      },
+      {
+       "name": "GgIN'1"
+      },
+      {
+       "name": "J"
+      }
+     ]
+    }
+   ],
+   "titles": [
+    {
+     "name": "INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQiAz INBGQ",
+     "kind": "role"
+    },
+    {
+     "name": "b",
+     "kind": "title"
+    }
+   ],
+   "emails": [
+    {
+     "address": "03%9n+oe++@p4ke9gk-0n7.bhaa",
+     "contexts": [
+      "private"
+     ]
+    },
+    {
+     "address": "1r@i0.sd",
+     "label": "personal"
+    }
+   ],
+   "imppAddresses": [
+    {
+     "uri": "tel:PQ-",
+     "contexts": [
+      "work"
+     ],
+     "pref": 4,
+     "label": "primary"
+    }
+   ],
+   "socialProfiles": [
+    {
+     "uri": "https:2H./8:7zr:e",
+     "contexts": [
+      "delivery"
+     ],
+     "label": "backup"
+    },
+    {
+     "uri": "urn:-za-T-3",
+     "user": "alice",
+     "pref": 16
+    }
+   ],
+   "otherOnlineServices": [
+    {
+     "service": "Matrix",
+     "uri": "http:IGY1d30",
+     "user": "bob"
+    }
+   ],
+   "addresses": [
+    {
+     "timeZone": "America/New_York"
+    },
+    {
+     "components": [
+      {
+       "kind": "country",
+       "value": "0-"
+      },
+      {
+       "kind": "building",
+       "value": "👩‍💻"
+      },
+      {
+       "kind": "region",
+       "value": "0,F."
+      },
+      {
+       "kind": "floor",
+       "value": "yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz yBz y"
+      }
+     ],
+     "pref": 1
+    }
+   ],
+   "anniversaries": [
+    {
+     "kind": "birth",
+     "date": {
+      "partial": {
+       "year": 56,
+       "month": 10,
+       "day": 1
+      }
+     }
+    }
+   ],
+   "notes": [
+    {
+     "note": "KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI KwCVI K",
+     "author": {},
+     "created": {
+      "utc": "1930-09-20T13:04:01Z"
+     }
+    },
+    {
+     "note": "!FR!",
+     "created": {
+      "utc": "1941-01-08T03:04:22Z"
+     }
+    },
+    {
+     "note": "  \t\n  ",
+     "author": {}
+    }
+   ],
+   "keywords": [
+    "b-2"
+   ],
+   "media": [
+    {
+     "kind": "photo",
+     "uri": "geo:/1Q"
+    }
+   ],
+   "freeBusyUrls": [
+    {
+     "uri": "mailto:-C-",
+     "contexts": [
+      "delivery"
+     ]
+    },
+    {
+     "uri": "tel:.1A",
+     "contexts": [
+      "work"
+     ],
+     "pref": 20,
+     "listAs": 32
+    }
+   ],
+   "schedulingAddresses": [
+    {
+     "uri": "mailto:/",
+     "mediaType": "image/png",
+     "label": "avatar",
+     "listAs": 2
+    },
+    {
+     "uri": "geo:40.62432gHk",
+     "listAs": 72
+    }
+   ],
+   "directories": [
+    {
+     "kind": "directory",
+     "uri": "urn:4A",
+     "listAs": 8
+    },
+    {
+     "kind": "entry",
+     "uri": "geo:hT",
+     "listAs": 4
+    }
+   ],
+   "contactUris": [
+    {
+     "uri": "https:7I94K.B0-k4Kj",
+     "mediaType": "image/jpeg",
+     "contexts": [
+      "work"
+     ],
+     "pref": 1
+    },
+    {
+     "uri": "http:3Xo3x",
+     "mediaType": "image/jpeg",
+     "label": "banner",
+     "listAs": 51
+    }
+   ],
+   "preferredLanguages": [
+    {
+     "language": "de-DE",
+     "contexts": [
+      "billing"
+     ]
+    }
+   ],
+   "relatedTo": [
+    {
+     "target": "geo:FA:0--."
+    },
+    {
+     "target": "mailto:sY8/R-j_nY:jw-",
+     "relations": [
+      "child"
+     ]
+    },
+    {
+     "target": "http:D/.1-L-gB/7",
+     "relations": [
+      "contact"
+     ]
+    }
+   ],
+   "localizations": {
+    "en": {
+     "kind": "person"
+    }
+   }
+  },
+  "crm": {
+   "kind": "animal",
+   "how_we_met": "你好世界",
+   "work_information": "tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYBAP tYB",
+   "contact_information": " V",
+   "gender": "he/him"
+  },
+  "passthrough": {}
+ },
+ {
+  "card": {
+   "kind": "org",
+   "updated": {
+    "utc": "1901-06-06T04:00:00Z"
+   },
+   "name": {
+    "components": [
+     {
+      "kind": "given2",
+      "value": "7gv",
+      "phonetic": "é"
+     },
+     {
+      "kind": "given",
+      "value": "A",
+      "phonetic": "é"
+     },
+     {
+      "kind": "generation",
+      "value": "à́ḅ"
+     },
+     {
+      "kind": "surname2",
+      "value": "BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH BbcH Bb"
+     },
+     {
+      "kind": "credential",
+      "value": "AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD AQiVD A",
+      "phonetic": "é"
+     }
+    ],
+    "full": "Ada Lovelace",
+    "sortAs": {
+     "full": " h8B 1!",
+     "surname": "  \t\n  "
+    },
+    "isOrdered": true,
+    "defaultSeparator": " "
+   },
+   "organizations": [
+    {
+     "name": "B-nK"
+    },
+    {
+     "sortAs": "Acme"
+    }
+   ],
+   "emails": [
+    {
+     "address": "h.@5v0j.cuj",
+     "label": "work inbox"
+    }
+   ],
+   "imppAddresses": [
+    {
+     "uri": "https:-4",
+     "pref": 48
+    }
+   ],
+   "otherOnlineServices": [
+    {
+     "service": "Matrix",
+     "uri": "https:2..",
+     "user": "bob",
+     "label": "backup"
+    },
+    {
+     "service": "LinkedIn",
+     "uri": "mailto:k-bTabg",
+     "pref": 59,
+     "label": "backup"
+    }
+   ],
+   "anniversaries": [
+    {
+     "kind": "birth",
+     "date": {
+      "timestamp": "2038-11-25T15:00:30Z"
+     }
+    }
+   ],
+   "personalInfo": [
+    {
+     "kind": "expertise",
+     "value": "F",
+     "listAs": 59,
+     "label": "personal"
+    }
+   ],
+   "notes": [
+    {
+     "note": " ",
+     "author": {
+      "name": "Ada"
+     },
+     "created": {
+      "utc": "1902-07-18T12:21:11Z"
+     }
+    },
+    {
+     "note": "",
+     "author": {
+      "name": "Ada",
+      "uri": "mailto:a@example.com"
+     }
+    }
+   ],
+   "media": [
+    {
+     "kind": "photo",
+     "uri": "http:LN"
+    },
+    {
+     "kind": "sound",
+     "uri": "urn:A-f.O7ypN/./uec6"
+    }
+   ],
+   "schedulingAddresses": [
+    {
+     "uri": "http:.u-k.",
+     "mediaType": "audio/ogg",
+     "label": "avatar",
+     "contexts": [
+      "work"
+     ],
+     "pref": 48
+    }
+   ],
+   "cryptoKeys": [
+    {
+     "uri": "mailto:.",
+     "contexts": [
+      "private"
+     ]
+    }
+   ],
+   "directories": [
+    {
+     "kind": "directory",
+     "uri": "http:z0Rq0:0u"
+    }
+   ],
+   "links": [
+    {
+     "uri": "tel:--.",
+     "mediaType": "application/pgp-keys",
+     "label": "avatar",
+     "pref": 44,
+     "listAs": 70
+    },
+    {
+     "uri": "urn:10fH--",
+     "mediaType": "image/png",
+     "label": "avatar",
+     "contexts": [
+      "delivery"
+     ],
+     "pref": 2,
+     "listAs": 8
+    }
+   ],
+   "contactUris": [
+    {
+     "uri": "geo:j.3A.X5",
+     "mediaType": "image/png",
+     "label": "banner",
+     "contexts": [
+      "delivery"
+     ],
+     "listAs": 25
+    },
+    {
+     "uri": "http:ctZ/h580",
+     "pref": 15,
+     "listAs": 10
+    }
+   ],
+   "preferredLanguages": [
+    {
+     "language": "cmn-Hant",
+     "pref": 78
+    },
+    {
+     "language": "it",
+     "contexts": [
+      "billing"
+     ]
+    },
+    {
+     "language": "en",
+     "contexts": [
+      "delivery"
+     ],
+     "pref": 18
+    }
+   ],
+   "relatedTo": [
+    {
+     "target": "urn:3m-~"
+    },
+    {
+     "target": "https:-./3/k.ri3",
+     "relations": [
+      "sibling"
+     ]
+    },
+    {
+     "target": "urn:.W~NG3-k6GxC"
+    }
+   ],
+   "localizations": {
+    "en": {
+     "kind": "person"
+    }
+   }
+  },
+  "crm": {
+   "kind": "human",
+   "circles": [
+    "work",
+    "family"
+   ],
+   "how_we_met": "A6A7Q03’0V1",
+   "work_information": "AjF48w'’B",
+   "contact_information": "  \t\n  "
+  },
+  "passthrough": {}
+ },
+ {
+  "card": {
+   "uid": "urn:uuid:30b32b01ec03-cb82",
+   "kind": "application",
+   "language": "ja",
+   "updated": {
+    "utc": "1982-08-30T20:59:17Z"
+   },
+   "name": {
+    "components": [
+     {
+      "kind": "surname",
+      "value": "ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh ONfh"
+     },
+     {
+      "kind": "credential",
+      "value": "日本語の名前",
+      "phonetic": "ㄌ一ㄣ"
+     }
+    ],
+    "full": "宮本 茂",
+    "sortAs": {
+     "full": "BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBBuF BZPBB",
+     "given": "Ω̈πα!"
+    },
+    "isOrdered": false,
+    "phoneticSystem": "piny",
+    "phoneticScript": "zh-Latn"
+   },
+   "organizations": [
+    {
+     "name": " ",
+     "units": [
+      {
+       "name": "-!z ,",
+       "sortAs": "North"
+      }
+     ],
+     "sortAs": "Company"
+    },
+    {
+     "name": " "
+    }
+   ],
+   "titles": [
+    {
+     "name": "z",
+     "kind": "title"
+    },
+    {
+     "name": "  \t\n  ",
+     "kind": "title"
+    },
+    {
+     "name": "/,",
+     "kind": "title"
+    }
+   ],
+   "phones": [
+    {
+     "number": "9503045328",
+     "contexts": [
+      "private"
+     ]
+    },
+    {
+     "number": "38310112",
+     "pref": 34,
+     "label": "mobile"
+    }
+   ],
+   "imppAddresses": [
+    {
+     "uri": "tel:3-n.-~.",
+     "user": "bob"
+    },
+    {
+     "service": "LinkedIn",
+     "uri": "http:yU-St4",
+     "contexts": [
+      "billing"
+     ],
+     "pref": 76
+    }
+   ],
+   "socialProfiles": [
+    {
+     "service": "Mastodon",
+     "uri": "http:ox",
+     "pref": 6
+    },
+    {
+     "service": "Mastodon",
+     "uri": "geo::",
+     "contexts": [
+      "work"
+     ],
+     "pref": 11
+    }
+   ],
+   "otherOnlineServices": [
+    {
+     "service": "LinkedIn",
+     "uri": "http:BZng2",
+     "user": "c-3po",
+     "contexts": [
+      "work"
+     ],
+     "label": "primary"
+    },
+    {
+     "uri": "http:4-B/P.",
+     "label": "primary"
+    }
+   ],
+   "addresses": [
+    {
+     "components": [
+      {
+       "kind": "postcode",
+       "value": "JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR JiR"
+      },
+      {
+       "kind": "block",
+       "value": "日本語の名前"
+      }
+     ],
+     "coordinates": "geo:35.6895,139.6917",
+     "timeZone": "UTC",
+     "contexts": [
+      "work"
+     ],
+     "pref": 1
+    },
+    {
+     "components": [
+      {
+       "kind": "direction",
+       "value": "B2i'-u21S0sqr0'7tryDX"
+      }
+     ],
+     "countryCode": "GB",
+     "contexts": [
+      "work"
+     ]
+    }
+   ],
+   "anniversaries": [
+    {
+     "kind": "wedding",
+     "date": {
+      "timestamp": "2081-12-01T17:00:07Z"
+     },
+     "place": {
+      "full": "Schlossstraße 7"
+     }
+    }
+   ],
+   "speakToAs": {
+    "grammaticalGenders": [
+     {
+      "value": "common",
+      "language": "pt-BR"
+     }
+    ],
+    "pronouns": [
+     {
+      "pronouns": "they/them",
+      "contexts": [
+       "private"
+      ],
+      "pref": 20
+     },
+     {
+      "pronouns": "ze/zir",
+      "contexts": [
+       "billing"
+      ]
+     }
+    ]
+   },
+   "personalInfo": [
+    {
+     "kind": "expertise",
+     "value": "F20'-IY0"
+    }
+   ],
+   "notes": [
+    {
+     "note": "!3 !z",
+     "author": {},
+     "created": {
+      "utc": "1909-04-30T02:03:19Z"
+     }
+    },
+    {
+     "note": "AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AHGZJ AH",
+     "author": {
+      "uri": "mailto:a@example.com"
+     },
+     "created": {
+      "utc": "1900-01-07T01:00:00Z"
+     }
+    },
+    {
+     "note": "  \t\n  "
+    }
+   ],
+   "keywords": [
+    "कुमार"
+   ],
+   "calendars": [
+    {
+     "uri": "urn:/U",
+     "mediaType": "image/png",
+     "label": "banner",
+     "pref": 2,
+     "listAs": 1
+    },
+    {
+     "uri": "urn:8G-080c-/",
+     "mediaType": "image/jpeg",
+     "label": "banner"
+    }
+   ],
+   "freeBusyUrls": [
+    {
+     "uri": "http:~nh",
+     "mediaType": "image/jpeg",
+     "contexts": [
+      "delivery"
+     ],
+     "pref": 4,
+     "listAs": 77
+    }
+   ],
+   "schedulingAddresses": [
+    {
+     "uri": "tel:-0/s2ru0y",
+     "mediaType": "image/jpeg",
+     "label": "avatar",
+     "pref": 23
+    }
+   ],
+   "cryptoKeys": [
+    {
+     "uri": "tel:-0-:GJ_R34X",
+     "pref": 15
+    }
+   ],
+   "directories": [
+    {
+     "kind": "entry",
+     "uri": "geo:lX",
+     "listAs": 16
+    },
+    {
+     "kind": "directory",
+     "uri": "https:v",
+     "listAs": 92
+    }
+   ],
+   "contactUris": [
+    {
+     "uri": "geo:.0",
+     "pref": 3,
+     "listAs": 17
+    },
+    {
+     "uri": "mailto:R~.3I4vsA",
+     "pref": 7
+    }
+   ],
+   "preferredLanguages": [
+    {
+     "language": "en",
+     "pref": 8
+    },
+    {
+     "language": "pt-BR",
+     "contexts": [
+      "work"
+     ],
+     "pref": 1
+    },
+    {
+     "language": "cmn-Hant",
+     "pref": 1
+    }
+   ],
+   "localizations": {
+    "en": {
+     "kind": "person"
+    }
+   }
+  },
+  "crm": {
+   "circles": [
+    "family"
+   ],
+   "how_we_met": " ",
+   "contact_information": "WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz WWAzz"
+  },
+  "passthrough": {
+   "vCardProps": [
+    {
+     "name": "X-TEST-GAMMA",
+     "params": {
+      "x-param": "two"
+     },
+     "type": "text",
+     "value": "D"
+    },
+    {
+     "name": "X-TEST-BETA",
+     "params": {
+      "x-param": "one"
+     },
+     "type": "text",
+     "value": "G0zU1"
+    }
+   ],
+   "jsContactProps": {
+    "/xGen0": {
+     "x": 0
+    },
+    "/xGen1": {
+     "x": 84
+    }
+   }
+  }
+ },
+ {
+  "card": {
+   "uid": "urn:uuid:f8321a56d151-153a",
+   "kind": "location",
+   "language": "de-DE",
+   "prodId": "-//Example//Generated//",
+   "created": {
+    "utc": "1991-05-02T12:25:26Z"
+   },
+   "name": {
+    "components": [
+     {
+      "kind": "surname2",
+      "value": "7E- 3zc mVM/e,HBt"
+     },
+     {
+      "kind": "given",
+      "value": "X-0W2",
+      "phonetic": "é"
+     },
+     {
+      "kind": "surname",
+      "value": "iz"
+     }
+    ],
+    "sortAs": {
+     "full": "f-3'Df28zPA"
+    },
+    "isOrdered": false,
+    "defaultSeparator": " ",
+    "phoneticSystem": "piny",
+    "phoneticScript": "jp"
+   },
+   "nicknames": [
+    {
+     "name": "",
+     "contexts": [
+      "work"
+     ],
+     "pref": 23
+    },
+    {
+     "name": "T",
+     "contexts": [
+      "work"
+     ]
+    },
+    {
+     "name": "étude",
+     "contexts": [
+      "private"
+     ]
+    }
+   ],
+   "organizations": [
+    {
+     "name": "3!2!",
+     "units": [
+      {
+       "name": "BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiBAd BNiB",
+       "sortAs": "South"
+      },
+      {
+       "name": " ",
+       "sortAs": "North"
+      },
+      {
+       "name": "  \t\n  ",
+       "sortAs": "South"
+      }
+     ]
+    }
+   ],
+   "phones": [
+    {
+     "number": "+455462572",
+     "label": "office"
+    },
+    {
+     "number": "009341781",
+     "contexts": [
+      "billing"
+     ]
+    },
+    {
+     "number": "+568871743",
+     "features": [
+      "cell"
+     ],
+     "contexts": [
+      "work"
+     ],
+     "pref": 53
+    },
+    {
+     "number": "+908243309",
+     "features": [
+      "main-number"
+     ],
+     "contexts": [
+      "work"
+     ],
+     "label": "home"
+    }
+   ],
+   "otherOnlineServices": [
+    {
+     "service": "Signal",
+     "uri": "https:.0",
+     "user": "bob",
+     "contexts": [
+      "billing"
+     ]
+    }
+   ],
+   "addresses": [
+    {
+     "components": [
+      {
+       "kind": "direction",
+       "value": "A2tq05C8"
+      }
+     ],
+     "coordinates": "geo:35.6895,139.6917",
+     "contexts": [
+      "work"
+     ]
+    },
+    {
+     "components": [
+      {
+       "kind": "subdistrict",
+       "value": "👩‍💻"
+      },
+      {
+       "kind": "region",
+       "value": "c1-6V3-TWw0"
+      },
+      {
+       "kind": "room",
+       "value": "CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwABB CABjwA"
+      },
+      {
+       "kind": "landmark",
+       "value": "Ω̈πα"
+      },
+      {
+       "kind": "block",
+       "value": "BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDBltp BDB"
+      },
+      {
+       "kind": "name",
+       "value": "AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AAJ AA"
+      }
+     ],
+     "contexts": [
+      "work"
+     ],
+     "pref": 1
+    }
+   ],
+   "anniversaries": [
+    {
+     "kind": "birth",
+     "date": {
+      "timestamp": "1908-03-06T21:28:15Z"
+     }
+    },
+    {
+     "kind": "wedding",
+     "date": {
+      "timestamp": "2035-05-02T01:01:03Z"
+     }
+    },
+    {
+     "kind": "death",
+     "date": {
+      "partial": {
+       "year": 1,
+       "month": 1,
+       "day": 1
+      }
+     },
+     "place": {
+      "full": "Schlossstraße 7"
+     }
+    }
+   ],
+   "personalInfo": [
+    {
+     "kind": "expertise",
+     "value": "Z1a2L",
+     "listAs": 93
+    },
+    {
+     "kind": "expertise",
+     "value": "!d",
+     "label": "work"
+    },
+    {
+     "kind": "hobby",
+     "value": " ",
+     "level": "low",
+     "label": "work"
+    }
+   ],
+   "notes": [
+    {
+     "note": "C",
+     "created": {
+      "utc": "1901-05-13T00:01:05Z"
+     }
+    }
+   ],
+   "keywords": [
+    "JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JAEDn JA",
+    "IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IPBpBOD IP"
+   ],
+   "media": [
+    {
+     "kind": "logo",
+     "uri": "http:.uO61"
+    },
+    {
+     "kind": "photo",
+     "uri": "urn:ztTs02.H/eb0/2cZp1OB1--BCM.~l08"
+    }
+   ],
+   "calendars": [
+    {
+     "uri": "tel:1Qg",
+     "mediaType": "image/png",
+     "label": "banner",
+     "contexts": [
+      "billing"
+     ],
+     "listAs": 97
+    }
+   ],
+   "freeBusyUrls": [
+    {
+     "uri": "tel:A429.0b",
+     "mediaType": "audio/ogg",
+     "label": "banner",
+     "pref": 46,
+     "listAs": 3
+    },
+    {
+     "uri": "tel:bKpP",
+     "pref": 84
+    }
+   ],
+   "schedulingAddresses": [
+    {
+     "uri": "geo:r5~pqL",
+     "mediaType": "image/jpeg",
+     "pref": 2,
+     "listAs": 28
+    },
+    {
+     "uri": "urn:nd7",
+     "mediaType": "image/jpeg",
+     "contexts": [
+      "work"
+     ]
+    }
+   ],
+   "cryptoKeys": [
+    {
+     "uri": "https:4",
+     "mediaType": "audio/ogg",
+     "contexts": [
+      "delivery"
+     ],
+     "pref": 1,
+     "listAs": 27
+    },
+    {
+     "uri": "https:/S.",
+     "pref": 7,
+     "listAs": 20
+    }
+   ],
+   "directories": [
+    {
+     "kind": "directory",
+     "uri": "urn:b-",
+     "listAs": 39
+    }
+   ],
+   "links": [
+    {
+     "uri": "http:0-.-7"
+    },
+    {
+     "uri": "http:dG-",
+     "mediaType": "audio/ogg",
+     "label": "banner",
+     "contexts": [
+      "private"
+     ],
+     "pref": 24
+    }
+   ],
+   "preferredLanguages": [
+    {
+     "language": "he",
+     "contexts": [
+      "work"
+     ]
+    },
+    {
+     "language": "he"
+    }
+   ],
+   "relatedTo": [
+    {
+     "target": "tel:63.a_F"
+    },
+    {
+     "target": "http:kd",
+     "relations": [
+      "acquaintance"
+     ]
+    }
+   ]
+  },
+  "crm": {
+   "kind": "human",
+   "circles": [
+    "friends"
+   ],
+   "work_information": " ",
+   "contact_information": " "
+  },
+  "passthrough": {
+   "jsContactProps": {
+    "/xGen0": {
+     "x": 3
+    },
+    "/xGen1": {
+     "x": 2
+    }
+   }
+  }
+ },
+ {
+  "card": {
+   "kind": "application",
+   "prodId": "-//Example//Generated//",
+   "created": {
+    "utc": "2039-05-20T09:58:03Z"
+   },
+   "nicknames": [
+    {
+     "name": "fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG fDG",
+     "pref": 2
+    },
+    {
+     "name": "zvA052aLt",
+     "pref": 2
+    },
+    {
+     "name": "MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF MRF M",
+     "contexts": [
+      "work"
+     ]
+    }
+   ],
+   "organizations": [
+    {
+     "name": " ",
+     "sortAs": "Zed"
+    },
+    {
+     "units": [
+      {
+       "name": "TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj TLBj T",
+       "sortAs": "North"
+      }
+     ],
+     "sortAs": "Zed"
+    }
+   ],
+   "titles": [
+    {
+     "name": "",
+     "kind": "title"
+    }
+   ],
+   "emails": [
+    {
+     "address": "qx-%637i@g-4-.nlua",
+     "pref": 62
+    },
+    {
+     "address": "-6@4d.dbtb",
+     "pref": 3,
+     "label": "work inbox"
+    },
+    {
+     "address": "_t@y6.bgokgr",
+     "contexts": [
+      "billing"
+     ],
+     "pref": 15
+    },
+    {
+     "address": "+@r.kpd",
+     "contexts": [
+      "private"
+     ],
+     "pref": 5,
+     "label": "personal"
+    }
+   ],
+   "phones": [
+    {
+     "number": "+793675022301",
+     "contexts": [
+      "delivery"
+     ],
+     "pref": 2,
+     "label": "office"
+    },
+    {
+     "number": "+247275500011",
+     "features": [
+      "video"
+     ],
+     "pref": 25
+    },
+    {
+     "number": "+8831362041",
+     "features": [
+      "main-number"
+     ],
+     "contexts": [
+      "delivery"
+     ],
+     "pref": 43
+    },
+    {
+     "number": "1892468",
+     "pref": 85,
+     "label": "mobile"
+    }
+   ],
+   "imppAddresses": [
+    {
+     "uri": "urn:-0",
+     "user": "alice",
+     "pref": 98
+    }
+   ],
+   "socialProfiles": [
+    {
+     "uri": "tel:0p--",
+     "user": "alice",
+     "label": "primary"
+    },
+    {
+     "service": "Mastodon",
+     "uri": "mailto:S",
+     "user": "bob",
+     "contexts": [
+      "work"
+     ],
+     "pref": 4,
+     "label": "primary"
+    }
+   ],
+   "otherOnlineServices": [
+    {
+     "uri": "mailto:e.",
+     "pref": 8,
+     "label": "backup"
+    },
+    {
+     "uri": "http:--.B:JP",
+     "contexts": [
+      "billing"
+     ],
+     "pref": 17
+    }
+   ],
+   "addresses": [
+    {
+     "components": [
+      {
+       "kind": "district",
+       "value": "B5"
+      },
+      {
+       "kind": "floor",
+       "value": "to"
+      },
+      {
+       "kind": "region",
+       "value": "à́ḅ"
+      }
+     ],
+     "countryCode": "US",
+     "coordinates": "geo:51.5074,-0.1278",
+     "timeZone": "Europe/Berlin"
+    }
+   ],
+   "personalInfo": [
+    {
+     "kind": "hobby",
+     "value": "שלום עולם",
+     "level": "high",
+     "listAs": 29
+    }
+   ],
+   "keywords": [
+    "日本語の名前",
+    "कुमार",
+    "👩‍💻"
+   ],
+   "media": [
+    {
+     "kind": "photo",
+     "uri": "tel:2QwKK-628Q3kIYkdi-"
+    }
+   ],
+   "calendars": [
+    {
+     "uri": "tel:2l7-.Ch--Z-jR1-_O",
+     "mediaType": "image/png",
+     "label": "avatar"
+    }
+   ],
+   "schedulingAddresses": [
+    {
+     "uri": "geo:TB0.",
+     "mediaType": "application/pgp-keys",
+     "label": "banner",
+     "listAs": 8
+    },
+    {
+     "uri": "urn:6H32E4Z-.0",
+     "label": "avatar",
+     "contexts": [
+      "private"
+     ]
+    }
+   ],
+   "cryptoKeys": [
+    {
+     "uri": "mailto:QS84d.i/",
+     "pref": 22,
+     "listAs": 11
+    }
+   ],
+   "directories": [
+    {
+     "kind": "entry",
+     "uri": "https:b"
+    }
+   ],
+   "contactUris": [
+    {
+     "uri": "mailto:dA",
+     "mediaType": "audio/ogg",
+     "label": "banner",
+     "contexts": [
+      "work"
+     ],
+     "pref": 4
+    },
+    {
+     "uri": "http:1_gEF-Nfzs",
+     "contexts": [
+      "private"
+     ],
+     "pref": 32
+    }
+   ],
+   "preferredLanguages": [
+    {
+     "language": "fr",
+     "pref": 17
+    },
+    {
+     "language": "fr",
+     "contexts": [
+      "private"
+     ],
+     "pref": 100
+    }
+   ]
+  },
+  "crm": {
+   "circles": [
+    "work",
+    "friends",
+    "work"
+   ],
+   "contact_information": "  \t\n  ",
+   "gender": "he/him"
+  },
+  "passthrough": {
+   "jsContactProps": {
+    "/xGen0": {
+     "x": 99
+    }
+   }
+  }
+ },
+ {
+  "card": {
+   "uid": "urn:uuid:6f71de0bf2a6-3210",
+   "kind": "device",
+   "prodId": "-////Generated//",
+   "created": {
+    "utc": "1901-09-15T08:29:17Z"
+   },
+   "updated": {
+    "utc": "2100-02-23T05:01:01Z"
+   },
+   "nicknames": [
+    {
+     "name": "HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HREJP HRE",
+     "contexts": [
+      "work"
+     ],
+     "pref": 8
+    }
+   ],
+   "organizations": [
+    {
+     "name": "!,vLpD",
+     "units": [
+      {
+       "name": ""
+      },
+      {
+       "name": "  \t\n  "
+      },
+      {
+       "name": "",
+       "sortAs": "North"
+      }
+     ],
+     "sortAs": "Zed"
+    },
+    {
+     "name": "fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABWC fwCABW",
+     "units": [
+      {
+       "name": "A"
+      }
+     ]
+    }
+   ],
+   "titles": [
+    {
+     "name": " ",
+     "kind": "role"
+    },
+    {
+     "name": "  \t\n  ",
+     "kind": "title"
+    },
+    {
+     "name": "",
+     "kind": "title"
+    }
+   ],
+   "emails": [
+    {
+     "address": "vw@2.fb",
+     "contexts": [
+      "delivery"
+     ],
+     "label": "work inbox"
+    }
+   ],
+   "phones": [
+    {
+     "number": "+67195151109093",
+     "features": [
+      "fax"
+     ],
+     "contexts": [
+      "work"
+     ],
+     "label": "home"
+    },
+    {
+     "number": "+8742072679880",
+     "features": [
+      "text"
+     ],
+     "contexts": [
+      "private"
+     ]
+    },
+    {
+     "number": "2418961",
+     "features": [
+      "main-number"
+     ],
+     "contexts": [
+      "private"
+     ],
+     "pref": 56
+    }
+   ],
+   "socialProfiles": [
+    {
+     "service": "LinkedIn",
+     "uri": "https:7"
+    }
+   ],
+   "otherOnlineServices": [
+    {
+     "service": "LinkedIn",
+     "uri": "tel:FL~LhH:FB.--1Bk2",
+     "pref": 41,
+     "label": "primary"
+    }
+   ],
+   "addresses": [
+    {
+     "components": [
+      {
+       "kind": "building",
+       "value": "Ω̈πα"
+      },
+      {
+       "kind": "name",
+       "value": "cjKT"
+      },
+      {
+       "kind": "postOfficeBox",
+       "value": "日本語の名前"
+      }
+     ],
+     "countryCode": "IN",
+     "coordinates": "geo:35.6895,139.6917",
+     "contexts": [
+      "private"
+     ],
+     "pref": 1
+    },
+    {
+     "components": [
+      {
+       "kind": "postcode",
+       "value": "U, Hj"
+      },
+      {
+       "kind": "number",
+       "value": "CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CABt CAB"
+      },
+      {
+       "kind": "block",
+       "value": "c50Gl"
+      }
+     ],
+     "countryCode": "IL",
+     "pref": 1
+    }
+   ],
+   "keywords": [
+    "👩‍💻",
+    "MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo MKo M",
+    "",
+    ""
+   ],
+   "media": [
+    {
+     "kind": "logo",
+     "uri": "http:.-.I"
+    }
+   ],
+   "freeBusyUrls": [
+    {
+     "uri": "tel:Y-J.-NO-",
+     "mediaType": "application/pgp-keys",
+     "label": "avatar",
+     "contexts": [
+      "billing"
+     ],
+     "pref": 6
+    },
+    {
+     "uri": "http:/-i6a6",
+     "mediaType": "image/png",
+     "pref": 98
+    }
+   ],
+   "cryptoKeys": [
+    {
+     "uri": "geo:R28.1M",
+     "mediaType": "audio/ogg",
+     "label": "avatar",
+     "contexts": [
+      "delivery"
+     ],
+     "pref": 5
+    },
+    {
+     "uri": "mailto:Xs_3k2ieNsY..E2K:..7pkB",
+     "mediaType": "application/pgp-keys",
+     "label": "banner"
+    }
+   ],
+   "directories": [
+    {
+     "kind": "directory",
+     "uri": "urn:.j~Eu-/D0B1V2PW43.~/",
+     "listAs": 15
+    }
+   ],
+   "links": [
+    {
+     "uri": "https:-RC.:054/0/mc8",
+     "mediaType": "application/pgp-keys",
+     "contexts": [
+      "delivery"
+     ],
+     "pref": 99,
+     "listAs": 31
+    }
+   ],
+   "contactUris": [
+    {
+     "uri": "mailto:-",
+     "mediaType": "image/jpeg",
+     "label": "avatar",
+     "contexts": [
+      "billing"
+     ],
+     "listAs": 16
+    },
+    {
+     "uri": "urn:-J",
+     "label": "avatar",
+     "contexts": [
+      "work"
+     ]
+    }
+   ],
+   "relatedTo": [
+    {
+     "target": "mailto:1H24.E3zx1/-"
+    },
+    {
+     "target": "https:835Wb-",
+     "relations": [
+      "acquaintance"
+     ]
+    }
+   ],
+   "localizations": {
+    "en": {
+     "kind": "person"
+    }
+   }
+  },
+  "crm": {
+   "circles": [
+    "work",
+    "family"
+   ],
+   "how_we_met": "  \t\n  ",
+   "contact_information": " "
+  },
+  "passthrough": {
+   "vCardProps": [
+    {
+     "name": "X-TEST-BETA",
+     "params": {
+      "x-param": "one"
+     },
+     "type": "text",
+     "value": "j7z0"
+    }
+   ],
+   "jsContactProps": {
+    "/xGen0": {
+     "x": 41
+    }
+   }
+  }
+ },
+ {
+  "card": {
+   "kind": "group",
+   "prodId": "-////Generated//",
+   "created": {
+    "utc": "1907-02-12T02:15:00Z"
+   },
+   "name": {
+    "components": [
+     {
+      "kind": "credential",
+      "value": "PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu PAu P",
+      "phonetic": "アダ"
+     },
+     {
+      "kind": "given",
+      "value": "日本語の名前",
+      "phonetic": "ㄌ一ㄣ"
+     },
+     {
+      "kind": "title",
+      "value": "tA",
+      "phonetic": "アダ"
+     }
+    ],
+    "sortAs": {
+     "surname": " "
+    }
+   },
+   "nicknames": [
+    {
+     "name": "",
+     "pref": 86
+    },
+    {
+     "name": "",
+     "contexts": [
+      "billing"
+     ]
+    },
+    {
+     "name": "日本語の名前",
+     "contexts": [
+      "billing"
+     ],
+     "pref": 76
+    }
+   ],
+   "organizations": [
+    {
+     "name": " "
+    },
+    {
+     "name": " ",
+     "units": [
+      {
+       "name": "你好世界"
+      }
+     ]
+    }
+   ],
+   "titles": [
+    {
+     "name": "NO3",
+     "kind": "title"
+    },
+    {
+     "name": " .T w!U!Xf0,NW/h8A",
+     "kind": "role"
+    },
+    {
+     "name": " ",
+     "kind": "role"
+    }
+   ],
+   "emails": [
+    {
+     "address": "v+-0._%3w+61+%c@6-90-m-0zzf0sw0g.cbpbpa",
+     "pref": 8,
+     "label": "personal"
+    },
+    {
+     "address": "4aw%@21ecvac230qp0bm.az",
+     "contexts": [
+      "work"
+     ],
+     "label": "work inbox"
+    },
+    {
+     "address": "jw6-u@-0qa51.bkrbbj",
+     "pref": 29,
+     "label": "work inbox"
+    },
+    {
+     "address": "zdz530_6.-.%@ra.hx",
+     "contexts": [
+      "delivery"
+     ]
+    }
+   ],
+   "phones": [
+    {
+     "number": "92355180",
+     "features": [
+      "cell"
+     ],
+     "contexts": [
+      "billing"
+     ],
+     "label": "office"
+    },
+    {
+     "number": "4543733",
+     "contexts": [
+      "billing"
+     ],
+     "pref": 63
+    }
+   ],
+   "addresses": [
+    {
+     "components": [
+      {
+       "kind": "block",
+       "value": "Alw-70tk--ClX"
+      }
+     ]
+    },
+    {
+     "components": [
+      {
+       "kind": "region",
+       "value": "日本語の名前"
+      },
+      {
+       "kind": "postcode",
+       "value": "awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY awQaY"
+      }
+     ],
+     "countryCode": "US"
+    }
+   ],
+   "speakToAs": {},
+   "personalInfo": [
+    {
+     "kind": "hobby",
+     "value": ""
+    },
+    {
+     "kind": "expertise",
+     "value": "  \t\n  "
+    }
+   ],
+   "notes": [
+    {
+     "note": "qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN qOBlN q",
+     "author": {
+      "uri": "mailto:a@example.com"
+     }
+    }
+   ],
+   "keywords": [
+    "étude",
+    "à́ḅ",
+    "z"
+   ],
+   "media": [
+    {
+     "kind": "sound",
+     "uri": "mailto:Q"
+    },
+    {
+     "kind": "logo",
+     "uri": "https:vMAY-0"
+    }
+   ],
+   "calendars": [
+    {
+     "uri": "geo:.c22-a",
+     "label": "avatar"
+    },
+    {
+     "uri": "urn:03",
+     "mediaType": "application/pgp-keys",
+     "label": "avatar"
+    }
+   ],
+   "freeBusyUrls": [
+    {
+     "uri": "https:..P08Y"
+    },
+    {
+     "uri": "urn:zv",
+     "mediaType": "image/png",
+     "label": "banner"
+    }
+   ],
+   "schedulingAddresses": [
+    {
+     "uri": "https:5/36A/1OM8rJ",
+     "mediaType": "application/pgp-keys",
+     "label": "avatar",
+     "pref": 32,
+     "listAs": 6
+    }
+   ],
+   "relatedTo": [
+    {
+     "target": "tel:4",
+     "relations": [
+      "acquaintance"
+     ]
+    },
+    {
+     "target": "https:0/L8"
+    }
+   ],
+   "members": [
+    "urn:uuid:c663d05065f1-c0c8",
+    "urn:uuid:26111615f0c3-a216",
+    "urn:uuid:9b76d2309a80-b180",
+    "urn:uuid:304ad0aa17a0-560a"
+   ],
+   "localizations": {
+    "en": {
+     "kind": "person"
+    }
+   }
+  },
+  "crm": {
+   "circles": [
+    "family",
+    "family"
+   ],
+   "how_we_met": "-",
+   "work_information": "FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FStAA FS",
+   "contact_information": "  \t\n  ",
+   "gender": "nonbinary"
+  },
+  "passthrough": {
+   "vCardProps": [
+    {
+     "name": "X-TEST-BETA",
+     "params": {
+      "x-param": "two"
+     },
+     "type": "text",
+     "value": "V4"
+    }
+   ]
+  }
+ },
+ {
+  "card": {
+   "kind": "device",
+   "updated": {
+    "utc": "1908-05-02T06:04:04Z"
+   },
+   "name": {
+    "components": [
+     {
+      "kind": "surname2",
+      "value": "1 "
+     },
+     {
+      "kind": "generation",
+      "value": "t,fyR",
+      "phonetic": "é"
+     },
+     {
+      "kind": "given",
+      "value": "D"
+     },
+     {
+      "kind": "surname",
+      "value": "AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AKP AK"
+     },
+     {
+      "kind": "title",
+      "value": "AAv02J2'lB'1-1gW-",
+      "phonetic": "é"
+     }
+    ],
+    "defaultSeparator": " ",
+    "phoneticSystem": "jyut",
+    "phoneticScript": "zh-Latn"
+   },
+   "organizations": [
+    {
+     "name": "  \t\n  ",
+     "units": [
+      {
+       "name": "v0",
+       "sortAs": "South"
+      },
+      {
+       "name": " ",
+       "sortAs": "R\u0026D"
+      },
+      {
+       "name": ""
+      }
+     ]
+    },
+    {
+     "name": "2! M,A1 U",
+     "units": [
+      {
+       "name": "zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM zWXDM z"
+      }
+     ]
+    }
+   ],
+   "emails": [
+    {
+     "address": "b%.wx@-40mg.ck",
+     "contexts": [
+      "billing"
+     ]
+    },
+    {
+     "address": "8@fz6hzml.fab",
+     "pref": 97
+    }
+   ],
+   "phones": [
+    {
+     "number": "114390047182",
+     "features": [
+      "video"
+     ],
+     "contexts": [
+      "billing"
+     ],
+     "pref": 1
+    },
+    {
+     "number": "2014803",
+     "contexts": [
+      "delivery"
+     ],
+     "pref": 2,
+     "label": "office"
+    }
+   ],
+   "imppAddresses": [
+    {
+     "uri": "geo:jO/",
+     "user": "bob",
+     "contexts": [
+      "work"
+     ],
+     "pref": 34,
+     "label": "primary"
+    }
+   ],
+   "socialProfiles": [
+    {
+     "service": "Matrix",
+     "uri": "mailto:.-",
+     "contexts": [
+      "delivery"
+     ]
+    },
+    {
+     "uri": "http:/-11P4",
+     "contexts": [
+      "work"
+     ],
+     "pref": 53,
+     "label": "backup"
+    }
+   ],
+   "otherOnlineServices": [
+    {
+     "uri": "mailto:-7fzP",
+     "contexts": [
+      "billing"
+     ]
+    }
+   ],
+   "anniversaries": [
+    {
+     "kind": "birth",
+     "date": {
+      "timestamp": "1900-02-28T07:37:01Z"
+     },
+     "place": {
+      "full": "Paris, France"
+     }
+    }
+   ],
+   "notes": [
+    {
+     "note": "  \t\n  ",
+     "author": {
+      "name": "Lin",
+      "uri": "mailto:a@example.com"
+     }
+    },
+    {
+     "note": "",
+     "author": {
+      "name": "Lin",
+      "uri": "mailto:a@example.com"
+     },
+     "created": {
+      "utc": "1993-07-13T23:48:02Z"
+     }
+    }
+   ],
+   "keywords": [
+    "O"
+   ],
+   "media": [
+    {
+     "kind": "sound",
+     "uri": "mailto:-t"
+    },
+    {
+     "kind": "photo",
+     "uri": "geo:.r0c~Cg-"
+    }
+   ],
+   "calendars": [
+    {
+     "uri": "urn:.0",
+     "label": "banner",
+     "listAs": 1
+    }
+   ],
+   "freeBusyUrls": [
+    {
+     "uri": "https:0qQG",
+     "contexts": [
+      "work"
+     ],
+     "pref": 67,
+     "listAs": 54
+    },
+    {
+     "uri": "http:G4pt",
+     "mediaType": "image/png",
+     "label": "banner",
+     "contexts": [
+      "delivery"
+     ],
+     "listAs": 2
+    }
+   ],
+   "schedulingAddresses": [
+    {
+     "uri": "https:_~-fPLcc",
+     "label": "avatar"
+    },
+    {
+     "uri": "http:1cU",
+     "label": "banner",
+     "listAs": 14
+    }
+   ],
+   "cryptoKeys": [
+    {
+     "uri": "https:-rB6",
+     "pref": 1
+    },
+    {
+     "uri": "http:V.0",
+     "mediaType": "image/png",
+     "label": "banner",
+     "pref": 16
+    }
+   ],
+   "directories": [
+    {
+     "kind": "entry",
+     "uri": "geo:./.A:PP6-31-R",
+     "listAs": 21
+    }
+   ],
+   "links": [
+    {
+     "uri": "http:-g-I",
+     "mediaType": "image/jpeg",
+     "contexts": [
+      "work"
+     ],
+     "listAs": 63
+    }
+   ],
+   "contactUris": [
+    {
+     "uri": "http:~.jGI/:/2.7bDV",
+     "label": "banner",
+     "contexts": [
+      "work"
+     ]
+    },
+    {
+     "uri": "http:B/X.",
+     "mediaType": "image/jpeg",
+     "label": "avatar",
+     "contexts": [
+      "private"
+     ],
+     "pref": 2
+    }
+   ],
+   "preferredLanguages": [
+    {
+     "language": "ar",
+     "contexts": [
+      "delivery"
+     ],
+     "pref": 2
+    },
+    {
+     "language": "en",
+     "pref": 15
+    }
+   ],
+   "relatedTo": [
+    {
+     "target": "https:71/IR-I-1",
+     "relations": [
+      "family"
+     ]
+    }
+   ],
+   "localizations": {
+    "en": {
+     "kind": "person"
+    }
+   }
+  },
+  "crm": {
+   "kind": "animal",
+   "circles": [
+    "friends"
+   ],
+   "how_we_met": "dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmGYJKH dpmG",
+   "work_information": " ",
+   "contact_information": "à́ḅ"
+  },
+  "passthrough": {}
+ },
+ {
+  "card": {
+   "kind": "location",
+   "language": "de-DE",
+   "prodId": "-////Generated//",
+   "updated": {
+    "utc": "2100-04-02T00:09:34Z"
+   },
+   "nicknames": [
+    {
+     "name": "日本語の名前",
+     "contexts": [
+      "work"
+     ]
+    },
+    {
+     "name": "",
+     "pref": 92
+    },
+    {
+     "name": "",
+     "pref": 13
+    }
+   ],
+   "organizations": [
+    {
+     "name": "  \t\n  ",
+     "units": [
+      {
+       "name": " ",
+       "sortAs": "North"
+      },
+      {
+       "name": "fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm fRm",
+       "sortAs": "North"
+      },
+      {
+       "name": "étude"
+      }
+     ]
+    }
+   ],
+   "titles": [
+    {
+     "name": "",
+     "kind": "title"
+    },
+    {
+     "name": "",
+     "kind": "role"
+    },
+    {
+     "name": "hA., ",
+     "kind": "role"
+    }
+   ],
+   "phones": [
+    {
+     "number": "00127966",
+     "pref": 36,
+     "label": "home"
+    }
+   ],
+   "imppAddresses": [
+    {
+     "service": "Signal",
+     "uri": "urn:/S9.y0~/f9Jo"
+    },
+    {
+     "uri": "http:J--oW",
+     "user": "bob",
+     "label": "backup"
+    }
+   ],
+   "otherOnlineServices": [
+    {
+     "uri": "geo:FR",
+     "user": "c-3po",
+     "pref": 56
+    }
+   ],
+   "addresses": [
+    {
+     "components": [
+      {
+       "kind": "locality",
+       "value": "BRPKO"
+      }
+     ],
+     "contexts": [
+      "work"
+     ]
+    },
+    {
+     "components": [
+      {
+       "kind": "room",
+       "value": "hL.3-5R "
+      },
+      {
+       "kind": "name",
+       "value": "👩‍💻"
+      },
+      {
+       "kind": "postcode",
+       "value": "jP 0q 6,,Lb/JML"
+      }
+     ],
+     "countryCode": "JP",
+     "pref": 1
+    },
+    {
+     "components": [
+      {
+       "kind": "subdistrict",
+       "value": "CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CCj CC"
+      },
+      {
+       "kind": "block",
+       "value": "u'u-'U5"
+      }
+     ],
+     "contexts": [
+      "private"
+     ],
+     "pref": 1
+    }
+   ],
+   "anniversaries": [
+    {
+     "kind": "birth",
+     "date": {
+      "partial": {
+       "year": 4710,
+       "month": 1,
+       "day": 1
+      }
+     },
+     "place": {
+      "full": "1 Main St\nSpringfield"
+     }
+    },
+    {
+     "kind": "death",
+     "date": {
+      "timestamp": "1901-03-11T01:09:58Z"
+     },
+     "place": {
+      "coordinates": "geo:35.6895,139.6917"
+     }
+    }
+   ],
+   "speakToAs": {
+    "pronouns": [
+     {
+      "pronouns": "ze/zir",
+      "contexts": [
+       "work"
+      ]
+     }
+    ]
+   },
+   "personalInfo": [
+    {
+     "kind": "interest",
+     "value": "A3J",
+     "listAs": 16
+    }
+   ],
+   "notes": [
+    {
+     "note": "",
+     "author": {
+      "name": "Ada",
+      "uri": "mailto:a@example.com"
+     }
+    }
+   ],
+   "freeBusyUrls": [
+    {
+     "uri": "http:NRlK-2"
+    },
+    {
+     "uri": "http:a~",
+     "mediaType": "image/png",
+     "listAs": 1
+    }
+   ],
+   "cryptoKeys": [
+    {
+     "uri": "urn:4LB23",
+     "contexts": [
+      "work"
+     ],
+     "pref": 31,
+     "listAs": 9
+    }
+   ],
+   "directories": [
+    {
+     "kind": "directory",
+     "uri": "http:--1i0A",
+     "listAs": 19
+    },
+    {
+     "kind": "directory",
+     "uri": "urn:3-SvIyWDty",
+     "listAs": 1
+    }
+   ],
+   "links": [
+    {
+     "uri": "https:U.G~..n-Q-._",
+     "mediaType": "application/pgp-keys"
+    }
+   ],
+   "contactUris": [
+    {
+     "uri": "mailto:H.PK34.-19-.-V-J3",
+     "mediaType": "audio/ogg",
+     "pref": 6
+    },
+    {
+     "uri": "tel:Np/2",
+     "mediaType": "application/pgp-keys",
+     "pref": 1,
+     "listAs": 3
+    }
+   ],
+   "preferredLanguages": [
+    {
+     "language": "he",
+     "contexts": [
+      "work"
+     ]
+    }
+   ],
+   "relatedTo": [
+    {
+     "target": "https:-",
+     "relations": [
+      "sibling"
+     ]
+    },
+    {
+     "target": "http:s~20",
+     "relations": [
+      "colleague"
+     ]
+    }
+   ],
+   "localizations": {
+    "en": {
+     "kind": "person"
+    }
+   }
+  },
+  "crm": {
+   "kind": "animal",
+   "gender": "nonbinary"
+  },
+  "passthrough": {
+   "jsContactProps": {
+    "/xGen0": {
+     "x": 58
+    }
+   }
+  }
+ },
+ {
+  "card": {
+   "uid": "urn:uuid:deba505100f6-cc8b",
+   "kind": "group",
+   "created": {
+    "utc": "1911-10-06T00:41:07Z"
+   },
+   "name": {
+    "components": [
+     {
+      "kind": "given",
+      "value": "GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD GSHOD",
+      "phonetic": "アダ"
+     },
+     {
+      "kind": "given2",
+      "value": "KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA KYCA K",
+      "phonetic": "ㄌ一ㄣ"
+     },
+     {
+      "kind": "credential",
+      "value": "日本語の名前"
+     },
+     {
+      "kind": "title",
+      "value": "étude",
+      "phonetic": "ㄌ一ㄣ"
+     }
+    ],
+    "sortAs": {
+     "given": " "
+    },
+    "isOrdered": true,
+    "defaultSeparator": ", ",
+    "phoneticSystem": "jyut",
+    "phoneticScript": "jp"
+   },
+   "nicknames": [
+    {
+     "name": "mnQ-F'0b'LR1’’CC'3Hp",
+     "contexts": [
+      "billing"
+     ],
+     "pref": 88
+    },
+    {
+     "name": "👩‍💻"
+    }
+   ],
+   "organizations": [
+    {
+     "name": "  \t\n  "
+    },
+    {
+     "name": "  \t\n  ",
+     "units": [
+      {
+       "name": "MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP MAP "
+      },
+      {
+       "name": "",
+       "sortAs": "South"
+      }
+     ],
+     "sortAs": "Company"
+    }
+   ],
+   "imppAddresses": [
+    {
+     "uri": "geo:3",
+     "contexts": [
+      "delivery"
+     ]
+    },
+    {
+     "service": "Mastodon",
+     "uri": "mailto:O",
+     "user": "c-3po",
+     "label": "primary"
+    }
+   ],
+   "socialProfiles": [
+    {
+     "service": "Mastodon",
+     "uri": "geo:Z-.",
+     "user": "alice"
+    },
+    {
+     "service": "Signal",
+     "uri": "mailto:RG4",
+     "contexts": [
+      "billing"
+     ]
+    }
+   ],
+   "addresses": [
+    {
+     "components": [
+      {
+       "kind": "subdistrict",
+       "value": "à́ḅ"
+      },
+      {
+       "kind": "region",
+       "value": "A’e21D"
+      },
+      {
+       "kind": "country",
+       "value": "EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKGGw EKG"
+      },
+      {
+       "kind": "floor",
+       "value": "Q-,j,Dk"
+      },
+      {
+       "kind": "landmark",
+       "value": "At"
+      }
+     ],
+     "countryCode": "IN",
+     "coordinates": "geo:51.5074,-0.1278",
+     "timeZone": "Asia/Tokyo"
+    },
+    {
+     "components": [
+      {
+       "kind": "apartment",
+       "value": "étude"
+      },
+      {
+       "kind": "block",
+       "value": "👩‍💻"
+      },
+      {
+       "kind": "landmark",
+       "value": "kI-"
+      },
+      {
+       "kind": "number",
+       "value": "OJ’1a’1a'w"
+      }
+     ],
+     "countryCode": "GB",
+     "contexts": [
+      "work"
+     ]
+    }
+   ],
+   "anniversaries": [
+    {
+     "kind": "death",
+     "date": {
+      "timestamp": "1982-02-08T01:46:39Z"
+     },
+     "place": {
+      "components": [
+       {
+        "kind": "name",
+        "value": "19,X2."
+       }
+      ]
+     }
+    },
+    {
+     "kind": "birth",
+     "date": {
+      "timestamp": "1900-01-29T04:07:30Z"
+     },
+     "place": {
+      "components": [
+       {
+        "kind": "district",
+        "value": "B"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "wedding",
+     "date": {
+      "partial": {
+       "year": 9999,
+       "month": 12,
+       "day": 31
+      }
+     },
+     "place": {
+      "components": [
+       {
+        "kind": "district",
+        "value": "IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa IDa I"
+       },
+       {
+        "kind": "postOfficeBox",
+        "value": "B"
+       },
+       {
+        "kind": "block",
+        "value": "cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBCFgUh cIBC"
+       },
+       {
+        "kind": "floor",
+        "value": "étude"
+       }
+      ]
+     }
+    }
+   ],
+   "speakToAs": {
+    "grammaticalGenders": [
+     {
+      "value": "neuter",
+      "language": "pt-BR"
+     },
+     {
+      "value": "masculine"
+     }
+    ]
+   },
+   "personalInfo": [
+    {
+     "kind": "expertise",
+     "value": "L7",
+     "listAs": 54
+    }
+   ],
+   "notes": [
+    {
+     "note": "BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA BoA Bo"
+    }
+   ],
+   "keywords": [
+    "HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi HDi H",
+    "B-BZG",
+    "kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz kpBz"
+   ],
+   "freeBusyUrls": [
+    {
+     "uri": "geo:mO__~"
+    }
+   ],
+   "schedulingAddresses": [
+    {
+     "uri": "mailto:g./19v.qLVM-6/-m._OJ-sB--.2.i42TwR-U4QH~YYf/0eKj/R/uH--",
+     "mediaType": "image/jpeg",
+     "contexts": [
+      "billing"
+     ],
+     "pref": 3,
+     "listAs": 1
+    }
+   ],
+   "contactUris": [
+    {
+     "uri": "http:.O",
+     "mediaType": "image/png",
+     "label": "banner",
+     "pref": 94
+    },
+    {
+     "uri": "mailto:5ej.MH0",
+     "mediaType": "image/jpeg",
+     "label": "avatar",
+     "pref": 46
+    }
+   ],
+   "preferredLanguages": [
+    {
+     "language": "de-DE",
+     "contexts": [
+      "private"
+     ],
+     "pref": 65
+    }
+   ],
+   "relatedTo": [
+    {
+     "target": "https:/hsm.e"
+    },
+    {
+     "target": "https:H4~:",
+     "relations": [
+      "sibling"
+     ]
+    },
+    {
+     "target": "http:/B.Ou"
+    }
+   ],
+   "localizations": {
+    "en": {
+     "kind": "person"
+    }
+   }
+  },
+  "crm": {
+   "kind": "human",
+   "circles": [
+    "friends",
+    "work",
+    "friends"
+   ],
+   "how_we_met": "  \t\n  ",
+   "work_information": "b5rfX",
+   "contact_information": " "
+  },
+  "passthrough": {}
+ },
+ {
+  "card": {
+   "uid": "urn:uuid:accb1c1278d2-a257",
+   "kind": "org",
+   "language": "cmn-Hant",
+   "updated": {
+    "utc": "1901-03-30T01:39:00Z"
+   },
+   "nicknames": [
+    {
+     "name": "HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG HDuG",
+     "contexts": [
+      "delivery"
+     ],
+     "pref": 30
+    }
+   ],
+   "titles": [
+    {
+     "name": "B",
+     "kind": "title"
+    },
+    {
+     "name": "",
+     "kind": "role"
+    },
+    {
+     "name": "myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG myG ",
+     "kind": "role"
+    }
+   ],
+   "emails": [
+    {
+     "address": "49+3lr%+r5+5%x+40-@1z2z0.iv",
+     "pref": 15
+    }
+   ],
+   "imppAddresses": [
+    {
+     "uri": "http:4Q~V0-E-",
+     "pref": 64
+    }
+   ],
+   "otherOnlineServices": [
+    {
+     "uri": "mailto:~-O6"
+    }
+   ],
+   "addresses": [
+    {
+     "components": [
+      {
+       "kind": "landmark",
+       "value": "XR75'"
+      },
+      {
+       "kind": "country",
+       "value": "JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH JpBABoH"
+      },
+      {
+       "kind": "floor",
+       "value": "NIF"
+      },
+      {
+       "kind": "building",
+       "value": "aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aBSlMsbf aB"
+      },
+      {
+       "kind": "postOfficeBox",
+       "value": "F3"
+      }
+     ],
+     "coordinates": "geo:51.5074,-0.1278",
+     "contexts": [
+      "work"
+     ]
+    }
+   ],
+   "personalInfo": [
+    {
+     "kind": "expertise",
+     "value": "BrF’'"
+    }
+   ],
+   "notes": [
+    {
+     "note": "  \t\n  ",
+     "author": {
+      "name": "Ada"
+     }
+    },
+    {
+     "note": ""
+    }
+   ],
+   "keywords": [
+    "",
+    "à́ḅ",
+    ""
+   ],
+   "calendars": [
+    {
+     "uri": "http:LUP8-",
+     "mediaType": "application/pgp-keys",
+     "contexts": [
+      "billing"
+     ],
+     "listAs": 9
+    }
+   ],
+   "freeBusyUrls": [
+    {
+     "uri": "tel:6P",
+     "mediaType": "image/jpeg",
+     "contexts": [
+      "delivery"
+     ]
+    }
+   ],
+   "schedulingAddresses": [
+    {
+     "uri": "urn:2LKgv.AS/9t",
+     "label": "avatar",
+     "pref": 9,
+     "listAs": 86
+    }
+   ],
+   "cryptoKeys": [
+    {
+     "uri": "geo:9h.4",
+     "contexts": [
+      "private"
+     ]
+    }
+   ],
+   "directories": [
+    {
+     "kind": "entry",
+     "uri": "mailto:qJc~IP-wr5K.",
+     "listAs": 17
+    }
+   ],
+   "contactUris": [
+    {
+     "uri": "mailto:t2",
+     "label": "banner",
+     "contexts": [
+      "work"
+     ],
+     "listAs": 4
+    },
+    {
+     "uri": "https:1.9LF",
+     "contexts": [
+      "delivery"
+     ],
+     "listAs": 1
+    }
+   ],
+   "preferredLanguages": [
+    {
+     "language": "cmn-Hant",
+     "pref": 35
+    }
+   ],
+   "relatedTo": [
+    {
+     "target": "geo:a",
+     "relations": [
+      "colleague"
+     ]
+    },
+    {
+     "target": "http:Yd"
+    },
+    {
+     "target": "tel:GCFF4"
+    }
+   ],
+   "localizations": {
+    "en": {
+     "kind": "person"
+    }
+   }
+  },
+  "crm": {
+   "circles": [
+    "work",
+    "family"
+   ],
+   "work_information": "IH",
+   "contact_information": " ",
+   "gender": "nonbinary"
+  },
+  "passthrough": {
+   "jsContactProps": {
+    "/xGen0": {
+     "x": 62
+    }
+   }
+  }
+ },
+ {
+  "card": {
+   "uid": "urn:uuid:1f525e308913-778e",
+   "kind": "individual",
+   "language": "en-US",
+   "created": {
+    "utc": "2012-05-03T21:25:27Z"
+   },
+   "updated": {
+    "utc": "1902-02-07T02:01:00Z"
+   },
+   "titles": [
+    {
+     "name": "  \t\n  ",
+     "kind": "title"
+    },
+    {
+     "name": "",
+     "kind": "role"
+    },
+    {
+     "name": " ",
+     "kind": "title"
+    }
+   ],
+   "emails": [
+    {
+     "address": "vtb1-@-5.ksit",
+     "contexts": [
+      "work"
+     ],
+     "pref": 39
+    }
+   ],
+   "phones": [
+    {
+     "number": "61518411",
+     "features": [
+      "cell"
+     ],
+     "label": "home"
+    },
+    {
+     "number": "01986116",
+     "features": [
+      "pager"
+     ],
+     "contexts": [
+      "billing"
+     ],
+     "pref": 79
+    },
+    {
+     "number": "9935087",
+     "features": [
+      "voice"
+     ],
+     "pref": 3,
+     "label": "mobile"
+    }
+   ],
+   "otherOnlineServices": [
+    {
+     "service": "Mastodon",
+     "uri": "https:9-.",
+     "user": "alice",
+     "contexts": [
+      "billing"
+     ],
+     "pref": 100,
+     "label": "backup"
+    },
+    {
+     "uri": "tel:Z",
+     "contexts": [
+      "work"
+     ],
+     "pref": 2
+    }
+   ],
+   "keywords": [
+    "BEp5Xey-3a-8-b'V3",
+    "",
+    ""
+   ],
+   "calendars": [
+    {
+     "uri": "geo:3",
+     "listAs": 24
+    }
+   ],
+   "schedulingAddresses": [
+    {
+     "uri": "https:gY",
+     "mediaType": "audio/ogg",
+     "pref": 27
+    }
+   ],
+   "links": [
+    {
+     "uri": "geo:4N0o.7",
+     "mediaType": "image/jpeg",
+     "contexts": [
+      "delivery"
+     ],
+     "pref": 2,
+     "listAs": 1
+    }
+   ],
+   "contactUris": [
+    {
+     "uri": "https:0Qn.wzE",
+     "label": "avatar"
+    },
+    {
+     "uri": "geo:Gm_G.WX/-oz",
+     "mediaType": "image/png",
+     "label": "banner",
+     "pref": 15
+    }
+   ],
+   "preferredLanguages": [
+    {
+     "language": "de",
+     "contexts": [
+      "delivery"
+     ]
+    }
+   ],
+   "relatedTo": [
+    {
+     "target": "http:-A3H2n-B.4"
+    }
+   ]
+  },
+  "crm": {
+   "circles": [
+    "work",
+    "friends",
+    "work"
+   ],
+   "how_we_met": "AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA AzA",
+   "work_information": " ",
+   "gender": "she/her"
+  },
+  "passthrough": {
+   "vCardProps": [
+    {
+     "name": "X-TEST-ALPHA",
+     "params": {
+      "x-param": "two"
+     },
+     "type": "text",
+     "value": "L2 "
+    }
+   ]
+  }
+ }
+]

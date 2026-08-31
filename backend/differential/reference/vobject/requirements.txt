@@ -1,0 +1,15 @@
+# Hash-pinned reference dependencies for the TEST-08 vCard-vobject
+# differential leg (issue #680). zizmor's `pipCommand not pinned by hash`
+# audit (score 9) requires a pip install to be reproducible, so CI installs
+# these with `--require-hashes` rather than letting pip resolve from PyPI at
+# run time. Every wheel here is pure-Python (py2.py3-none-any), so the hashes
+# are platform-independent.
+#
+# vobject 0.9.9's full dependency set (vobject requires python-dateutil and
+# pytz; python-dateutil requires six). Regenerate with:
+#   pip download --no-deps --dest wheels vobject==0.9.9 python-dateutil==2.9.0.post0 six==1.17.0 pytz==2026.3.post1
+#   sha256sum wheels/*.whl
+vobject==0.9.9 --hash=sha256:0fbdb982065cf4d1843a5d5950c88510041c6de026bda49c3502721de1c6ac3d
+python-dateutil==2.9.0.post0 --hash=sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427
+six==1.17.0 --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274
+pytz==2026.3.post1 --hash=sha256:dd95840dd199baea12d9cc096a1d452caa6596a1c1e4b5f3dbd1541855d5e815

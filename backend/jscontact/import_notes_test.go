@@ -22,7 +22,7 @@ func TestImport_NoteWithAuthor(t *testing.T) {
 			"N1": {
 				"@type": "Note", "note": "This is some note.",
 				"author": { "@type": "Author", "name": "John Doe", "uri": "mailto:john@example.com" },
-				"created": { "@type": "Timestamp", "utc": "2022-11-22T15:18:23Z" }
+				"created": "2022-11-22T15:18:23Z"
 			}
 		}
 	}`)

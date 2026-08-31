@@ -149,6 +149,7 @@ func (Adapter) Export(rec *contactmodel.Record) ([]byte, []contactmodel.Diagnost
 	for _, sp := range splices {
 		out = bytes.Replace(out, []byte(sp.find), []byte(sp.replace), 1)
 	}
+	out = fixCategoryListEscapes(out)
 	return out, diags, nil
 }
 
@@ -1579,7 +1580,54 @@ func exportKeywords(rec *contactmodel.Record, card vcard.Card) {
 	if len(nonEmpty) == 0 {
 		return
 	}
+	// CATEGORIES is a comma-separated TEXT LIST (RFC 6350 §6.7.1): the
+	// delimiter commas must be raw. go-vcard's encoder escapes every comma
+	// ("a,b" -> "a\,b"), which silently turns a two-category card into one
+	// category whose text contains a comma — a different contact to any
+	// spec-honoring reader (vobject reads it that way; our importer happened
+	// to split the unescaped value back on commas, so the bug was invisible
+	// to our own round trip until the TEST-08 differential, issue #680).
+	// The oracle's csv_join transform treats keywords as a plain comma-list
+	// (no per-element escaping), so a comma-bearing keyword is outside the
+	// representable domain; fixCategoryListEscapes restores the raw
+	// delimiters on the final bytes.
 	card.SetValue(PropCategories, strings.Join(nonEmpty, ","))
+}
+
+// fixCategoryListEscapes rewrites the CATEGORIES property's delimiter
+// commas back to raw form after go-vcard's blanket TEXT escaping. It is
+// line-aware (folded continuation lines included) so other properties'
+// legitimately escaped commas are untouched. See exportKeywords.
+func fixCategoryListEscapes(out []byte) []byte {
+	var sb bytes.Buffer
+	start := 0
+	inCategories := false
+	for i := 0; i < len(out); i++ {
+		if i+1 < len(out) && out[i] == '\r' && out[i+1] == '\n' {
+			line := out[start:i]
+			next := i + 2
+			if len(line) == 0 || line[0] != ' ' {
+				// A new (non-continuation) property: only CATEGORIES lines
+				// are rewritten.
+				inCategories = bytes.HasPrefix(bytes.ToUpper(line), []byte(PropCategories+":"))
+			}
+			if inCategories {
+				line = bytes.ReplaceAll(line, []byte("\\,"), []byte(","))
+			}
+			sb.Write(line)
+			sb.WriteString("\r\n")
+			start = next
+			i = next - 1
+		}
+	}
+	if start < len(out) {
+		line := out[start:]
+		if inCategories {
+			line = bytes.ReplaceAll(line, []byte("\\,"), []byte(","))
+		}
+		sb.Write(line)
+	}
+	return sb.Bytes()
 }
 
 // ---------------------------------------------------------------------------

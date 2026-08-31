@@ -1,0 +1,104 @@
+name: Differential E2E (calcard)
+
+# Issue #680 (TEST-08 — differential testing against reference
+# implementations): the JSContact-calcard leg of the differential suite. The
+# vCard-vobject leg runs per-PR in unit-tests.yml (pip-installed vobject is
+# cheap); this job is the JSContact leg, whose reference is a Rust binary
+# (stalwartlabs/calcard) that must be built — too heavy for every backend
+# change, so it is scheduled (nightly) + manual, and fires on PR/push only
+# when the differential harness or its references change.
+#
+# The reference is built inside a pinned rust image (digest-pinned for
+# supply-chain determinism) and the Go test runs on the host against the
+# freshly built binary, exactly the resolution order the harness documents
+# (MYCORRHIZAL_CALCARD_CMD > prebuilt binary > skip).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '45 3 * * *' # 03:45 UTC nightly (consolidated nightly suite)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Issue #264 pattern: path-gated checks — see unit-tests.yml.
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      differential: ${{ steps.filter.outputs.differential }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect changed areas
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+      - name: Report gating decision
+        run: |
+          echo "differential=$DIFFERENTIAL_CHANGED"
+          echo "workflows=$WORKFLOWS_CHANGED"
+        env:
+          DIFFERENTIAL_CHANGED: ${{ steps.filter.outputs.differential }}
+          WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
+
+  calcard:
+    permissions:
+      contents: read
+    name: JSContact differential vs calcard
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: changes
+    # Scheduled runs and manual dispatch always run (no diff to gate on);
+    # otherwise only when the differential harness or its references change.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.differential == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # The vCard-vobject differential leg runs in this job too (the nightly
+      # full-suite run), so install its reference alongside the calcard build.
+      # Hash-pinned via --require-hashes (zizmor audits pip installs).
+      - name: Install vobject reference (TEST-08 differential)
+        run: python3 -m pip install --quiet --break-system-packages --require-hashes -r backend/differential/reference/vobject/requirements.txt
+
+      # Build the pinned calcard reference CLI in a digest-pinned rust image.
+      # Cargo.lock pins the crate graph; this pins the toolchain. The built
+      # binary lands on the host (volume mount) where the Go test execs it.
+      - name: Build calcard reference CLI
+        working-directory: backend/differential/reference/calcard
+        run: >
+          docker run --rm
+          -v "$PWD:/build" -w /build
+          rust:1.93-slim@sha256:c0a38f5662afdb298898da1d70b909af4bda4e0acff2dc52aea6360a9b9c6956
+          cargo build --release --locked
+
+      - name: Run the JSContact differential leg
+        working-directory: backend
+        run: go test ./differential/ -run '^TestJSContactCalcardDifferential$' -count=1 -v
+        env:
+          MYCORRHIZAL_CALCARD_CMD: "${{ github.workspace }}/backend/differential/reference/calcard/target/release/calcard-ref"

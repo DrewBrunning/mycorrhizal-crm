@@ -196,6 +196,11 @@ func calendarObjectFromLifeEvent(username string, le *models.LifeEvent) *Calenda
 
 	event := ical.NewEvent()
 	event.Props.SetText(ical.PropUID, uid)
+	// RFC 5545 requires DTSTAMP on every VEVENT; the activities path sets it
+	// from UpdatedAt, and this path must too (the TEST-08 iCalendar
+	// differential against golang-ical surfaced the omission: a conformant
+	// client validates it).
+	event.Props.SetDateTime(ical.PropDateTimeStamp, le.UpdatedAt.UTC())
 	// Date-only DTSTART (VALUE=DATE) with a YEARLY recurrence, so clients
 	// render it as a recurring all-day event and never timezone-shift it.
 	// The anchor year is the event's own year when known, else the current

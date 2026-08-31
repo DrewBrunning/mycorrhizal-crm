@@ -121,6 +121,18 @@ Detail and the hard-won traps for each layer follow.
     format → canonical` must preserve *meaning*; repeated conversions must not
     progressively corrupt data. This is the milestone's
     "distinguish semantic equivalence from byte-for-byte representation."
+  - **Differential testing against independent reference implementations**
+    (TEST-08, issue #680): every corpus contact is also pushed through an
+    implementation that shares no code with ours — Python vobject (vCard
+    3.0/4.0), Rust calcard (JSContact), Go golang-ical (iCalendar) — and the
+    round trip must stay semantically equivalent per TEST-03's comparator.
+    This is the countermeasure to the round-trip suite's own blind spot
+    (code and tests sharing one wrong reading of the spec). Known
+    reference-side divergences are pinned per corpus entry with drift
+    detection; a confirmed *our*-side bug is fixed, never pinned (it caught
+    the CATEGORIES comma-list escaping bug and the RFC 9553 created/updated
+    wire-shape bug, both fixed). Details: the "Differential suite" section
+    below.
   - Lossy/unknown-field behavior, sensitivity filtering in the query, malformed
     input reject/ignore/preserve rules.
   - Hostile-input fuzzing seeded from the fixtures (issues #265/#376).
@@ -343,6 +355,61 @@ gap to file, never something to silently absorb.
 | Security vulnerabilities (BOLA, auth bypass, injection, SSRF) | Security/adversarial tooling | v0.6.12, v0.8.0 |
 | Adversarial/chaos scenarios | Failure injection (TEST-06, #434 — in-process seams + external chaos job) | v0.8.0 |
 
+## Differential suite (TEST-08, issue #680)
+
+The round-trip suite (TEST-03) and the golden fixtures (ADR-0003) both compare
+our output against oracles *we wrote*. The failure mode those cannot see is
+code and tests consistently, confidently wrong — a parser and an exporter
+sharing one (wrong) reading of the spec pass each other's round trips. The
+differential suite runs the same corpus through an **independent, pinned
+reference implementation** and requires semantic equivalence (TEST-03's
+comparator), so a disagreement is evidence one of us misreads the RFC, and the
+RFC is the tiebreaker.
+
+**The reference must share no code with our adapters.** That rules out
+`emersion/go-vcard` and `emersion/go-ical`, which our vcard3/vcard4 and caldav
+packages are built on. The pinned references are:
+
+| Format | Reference | Runs | Harness |
+|---|---|---|---|
+| vCard 3.0 / 4.0 | Python `vobject` 0.9.9 | per-PR (`unit-tests.yml`, pip-installed) + nightly | `backend/differential/reference/vobject/vcard_ref.py` |
+| JSContact | Rust `calcard` 0.3.13 | scheduled + path-gated (`differential-e2e.yml`, built in a digest-pinned rust image) | `backend/differential/reference/calcard/` |
+| iCalendar (CalDAV) | Go `github.com/arran4/golang-ical` (go.mod-pinned) | per-PR, no runtime deps | in-package tests in `caldav/` + `services/` |
+
+Each vCard/JSContact leg runs both directions over the shared corpus (TEST-02
+fixture + golden fixtures + pinned generated seeds): ours → reference (our
+export, reference parses) and reference → ours (reference emits, our import),
+asserting `semanticequal` equivalence per TEST-03. The iCalendar leg compares
+VEVENT object fields (uid/summary/description/location/dtstart/rrule) by name.
+
+**Divergence policy** (the #496 pattern): known reference-side divergences are
+pinned per corpus entry + direction + concept with a written reason, and the
+drift check fails when a pin stops reproducing (the reference got fixed) or an
+unpinned disagreement appears. A confirmed *our*-side bug is **fixed, never
+pinned** — the suite has already caught and fixed two:
+
+- the vCard CATEGORIES comma-list escaping bug (`CATEGORIES:a\,b` meant "one
+  category with a comma" to any spec-honoring reader, not two categories; our
+  importer happened to split the unescaped value back), fixed in `vcard3`/
+  `vcard4`; and
+- the JSContact `created`/`updated` wire shape (RFC 9553 defines them as
+  UTCDateTime **strings**; our adapter emitted a `@type`-discriminated
+  object), fixed in `jscontact`.
+
+**Supply-chain pins:** vobject is installed in CI from a hash-pinned
+requirements file (`backend/differential/reference/vobject/requirements.txt`,
+`--require-hashes` — zizmor audits pip installs for unpinned supply-chain
+refs); calcard is version-pinned in `reference/calcard/Cargo.toml` (`=0.3.13`)
+with a committed `Cargo.lock` for the transitive graph, and the build
+toolchain is a digest-pinned rust image; golang-ical is pinned in
+`backend/go.mod`.
+
+**Running locally:** the vCard leg needs `python3` with `vobject` importable
+(it skips with a message otherwise). The JSContact leg resolves
+`$MYCORRHIZAL_CALCARD_CMD` (CI sets it to the built binary), then a prebuilt
+`reference/calcard/target/{release,debug}/calcard-ref` (`cargo build --release
+--locked`), then skips. The iCalendar leg is pure Go.
+
 Where a row names a milestone but the concrete ticket lives elsewhere (e.g. the
 "test infrastructure supports historical fixtures" acceptance criterion → MIG-01
 #436, and "large/representative datasets" → TEST-02 #430), that ticket is the
@@ -462,6 +529,10 @@ description and gate #533):
   and interop layers will consume; MIG-01 (#436) — versioned migration fixtures.
 - TEST-03 (#431) — the semantic round-trip comparison (pulled forward into
   v0.6.3 so TEST-07 #435 can consume it).
+- TEST-08 (#680) — differential testing against independent, pinned reference
+  implementations (vobject / calcard / golang-ical); the format-layer
+  counterpart of #496's reference server. Divergence pins live in
+  `backend/differential/pins_*.go`.
 - DATA-03 (#443) — repeated-conversion / idempotence-after-first-conversion
   testing: each format's conversion run N times over the TEST-02 fixture
   (serialized form byte-identical from pass 2 onward, successive-pass diffs

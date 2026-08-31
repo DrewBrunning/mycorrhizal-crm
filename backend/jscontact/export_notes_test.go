@@ -29,7 +29,7 @@ func TestExport_NoteWithAuthor(t *testing.T) {
 	}
 	rfctest.AssertJSONPointer(t, out, "/notes/N1/note", "This is some note.")
 	rfctest.AssertJSONPointer(t, out, "/notes/N1/author/name", "John Doe")
-	rfctest.AssertJSONPointer(t, out, "/notes/N1/created/utc", "2022-11-22T15:18:23Z")
+	rfctest.AssertJSONPointer(t, out, "/notes/N1/created", "2022-11-22T15:18:23Z")
 }
 
 func TestExport_Keywords(t *testing.T) {

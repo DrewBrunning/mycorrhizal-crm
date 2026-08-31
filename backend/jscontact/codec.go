@@ -295,14 +295,14 @@ func knownJSONKeys[T any]() map[string]bool {
 // sets are map[string]bool. codec.go converts to/from Card's ergonomic
 // ordered-slice shape (types.go).
 type cardWire struct {
-	Type     string     `json:"@type"`
-	Version  string     `json:"version"`
-	UID      string     `json:"uid,omitempty"`
-	Kind     string     `json:"kind,omitempty"`
-	Language string     `json:"language,omitempty"`
-	ProdID   string     `json:"prodId,omitempty"`
-	Created  *Timestamp `json:"created,omitempty"`
-	Updated  *Timestamp `json:"updated,omitempty"`
+	Type     string  `json:"@type"`
+	Version  string  `json:"version"`
+	UID      string  `json:"uid,omitempty"`
+	Kind     string  `json:"kind,omitempty"`
+	Language string  `json:"language,omitempty"`
+	ProdID   string  `json:"prodId,omitempty"`
+	Created  *string `json:"created,omitempty"` // UTCDateTime string (RFC 9553 §2.1.3)
+	Updated  *string `json:"updated,omitempty"` // UTCDateTime string (RFC 9553 §2.1.10)
 
 	Name *Name `json:"name,omitempty"`
 

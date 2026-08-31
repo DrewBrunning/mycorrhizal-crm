@@ -41,7 +41,9 @@ func TestExport_ProdID(t *testing.T) {
 
 // TestExport_Created is the export-direction counterpart of
 // TestImport_Created (import_identity_test.go): Record.Card.Created maps to
-// the wire Card's top-level "created" property, exactly like Updated.
+// the wire Card's top-level "created" UTCDateTime string (RFC 9553 §2.1.3),
+// exactly like Updated. The @type-discriminated Timestamp object form is
+// reserved for the anniversary date union.
 func TestExport_Created(t *testing.T) {
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:     "created-example",
@@ -51,7 +53,7 @@ func TestExport_Created(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Export: %v", err)
 	}
-	rfctest.AssertJSONPointer(t, out, "/created/utc", "2021-08-24T18:30:00Z")
+	rfctest.AssertJSONPointer(t, out, "/created", "2021-08-24T18:30:00Z")
 }
 
 func TestExport_Updated(t *testing.T) {
@@ -63,7 +65,7 @@ func TestExport_Updated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Export: %v", err)
 	}
-	rfctest.AssertJSONPointer(t, out, "/updated/utc", "2021-08-24T18:30:00Z")
+	rfctest.AssertJSONPointer(t, out, "/updated", "2021-08-24T18:30:00Z")
 }
 
 func TestExport_Language(t *testing.T) {
