@@ -1,0 +1,136 @@
+name: Reference-Client E2E (vdirsyncer against our server)
+
+# Issue #681 (TEST-09, direction 1): the reference-client interoperability
+# matrix. Our CardDAV server is consumed by a REAL third-party client
+# (vdirsyncer — a mature CardDAV/CalDAV sync client with its own protocol
+# implementation and its own vCard parser, vobject). The client's parser is a
+# better oracle for "can other software use this" than any assertion we write
+# about our own endpoints; this job proves provision/discover, GET/query,
+# PUT-create/update/delete and ETag-driven incremental sync all work for a
+# client that does not share our assumptions.
+#
+# The matrix itself (Apple Contacts, Thunderbird, Android native, DAVx5) is
+# documented in docs/development/reference-client-matrix.md: vdirsyncer is
+# the automated leg, the GUI/mobile clients are documented manual checklists
+# with last-run dates.
+#
+# Gating: scheduled (nightly) + manual dispatch always run; on PR/push only
+# when the `reference-clients` filter in .github/filters.yaml matches.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '45 3 * * *' # 03:45 UTC nightly (consolidated nightly suite)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      reference-clients: ${{ steps.filter.outputs.reference-clients }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect changed areas
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+      - name: Report gating decision
+        run: |
+          echo "reference-clients=$REFERENCE_CLIENTS_CHANGED"
+          echo "workflows=$WORKFLOWS_CHANGED"
+        env:
+          REFERENCE_CLIENTS_CHANGED: ${{ steps.filter.outputs.reference-clients }}
+          WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
+
+  vdirsyncer:
+    permissions:
+      contents: read
+    name: Real vdirsyncer client against our server
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.reference-clients == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # The hash-pinned reference client on a pinned Python so the wheel
+      # hashes in vdirsyncer-requirements.txt resolve (see its header).
+      - name: Set up Python
+        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
+        with:
+          python-version: '3.12'
+      - name: Install vdirsyncer (hash-pinned)
+        run: python3 -m pip install --require-hashes -r .github/scripts/carddav-reference/vdirsyncer-requirements.txt
+
+      # Our real server, the way a self-host operator runs it: build the
+      # backend and start it with CardDAV + CalDAV enabled. The e2e suite
+      # registers its own throwaway user.
+      - name: Build backend
+        working-directory: backend
+        run: go build -o /tmp/mycorrhizal-backend .
+      - name: Start our server
+        env:
+          PORT: 7300
+          SQLITE_DB_PATH: /tmp/e2e/test.db
+          JWT_SECRET_KEY: test-secret-key-for-e2e-testing-minimum-32-chars
+          PROFILE_PHOTO_DIR: /tmp/e2e/photos
+          ATTACHMENTS_DIR: /tmp/e2e/attachments
+          FRONTEND_URL: http://localhost:7300
+          CARDDAV_ENABLED: "true"
+          CALDAV_ENABLED: "true"
+          DISABLE_REGISTRATION: "false"
+          API_RATE_LIMIT_INTERVAL_MS: "1"
+          API_RATE_LIMIT_BURST: "100000"
+        run: |
+          mkdir -p /tmp/e2e/photos /tmp/e2e/attachments
+          /tmp/mycorrhizal-backend > /tmp/e2e/server.log 2>&1 &
+          for _ in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:7300/health/live 2>/dev/null || true)
+            if [ "$code" = "200" ]; then echo "our server up"; break; fi
+            sleep 1
+          done
+
+      - name: Run the real-client round-trip suite
+        working-directory: backend
+        run: go test ./services/ -run '^TestCardDAVVdirsyncer_ClientRoundTrip$' -count=1 -v
+        env:
+          MYCORRHIZAL_OUR_CARDDAV_URL: http://127.0.0.1:7300
+          MYCORRHIZAL_VDIRSYNCER_CMD: vdirsyncer
+
+      - name: Show server logs on failure
+        if: failure()
+        run: |
+          echo "=== our server logs ==="
+          tail -50 /tmp/e2e/server.log || true
+
+      - name: Stop our server
+        if: always()
+        run: pkill -f mycorrhizal-backend || true

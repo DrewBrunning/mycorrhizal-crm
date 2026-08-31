@@ -1,0 +1,50 @@
+# Hash-pinned vdirsyncer (the TEST-09 real reference client) plus its
+# transitive dependencies, for the reference-clients-e2e.yml job.
+#
+# Generated against CPython 3.12 / manylinux x86_64 (the setup-python version
+# the workflow pins). The C-extension wheels (aiohttp, multidict, yarl,
+# frozenlist, propcache, charset-normalizer) are platform-specific; if
+# setup-python is bumped, regenerate with:
+#
+#   pip download --python-version 3.12 --only-binary=:all: \
+#     --platform manylinux2014_x86_64 --platform manylinux_2_17_x86_64 \
+#     -d /tmp/vd vdirsyncer==0.20.0
+#   # then emit --hash=sha256:<hash> per downloaded wheel
+#
+# Supply-chain posture matches backend/differential/reference/vobject/requirements.txt.
+aiohappyeyeballs==2.7.1 \
+    --hash=sha256:9243213661e29250eb41368e5daa826fc017156c3b8a11440826b2e3ed376472
+aiohttp==3.14.3 \
+    --hash=sha256:543906c127fb1d929b95076db19b83fa2d46751006ff1e23b093aa5ac4d8db42
+aiosignal==1.4.0 \
+    --hash=sha256:053243f8b92b990551949e63930a839ff0cf0b0ebbe0597b0f3fb19e1a0fe82e
+aiostream==0.7.1 \
+    --hash=sha256:ea8739e9158ee6a606b3feedf3762721c3507344e540d09a10984c5e88a13b37
+attrs==26.1.0 \
+    --hash=sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309
+certifi==2026.7.22 \
+    --hash=sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775
+charset-normalizer==3.5.1 \
+    --hash=sha256:b9af956078716df40d985fb0dfeb2c2120c5ca92ba4ff4b388acfd01cdc14d08
+click==8.5.0 \
+    --hash=sha256:255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360
+click-log==0.4.0 \
+    --hash=sha256:a43e394b528d52112af599f2fc9e4b7cf3c15f94e53581f74fa6867e68c91756
+frozenlist==1.8.0 \
+    --hash=sha256:494a5952b1c597ba44e0e78113a7266e656b9794eec897b19ead706bd7074383
+idna==3.19 \
+    --hash=sha256:815e7be7a7806d54abb586dc943addc79e8b2ee16915059658cbeff4b1b43bf4
+multidict==6.7.1 \
+    --hash=sha256:bfde23ef6ed9db7eaee6c37dcec08524cb43903c60b285b172b6c094711b3961
+propcache==0.5.2 \
+    --hash=sha256:6f328175a2cde1f0ff2c4ed8ce968b9dcfb55f3a7153f39e2957ed994da13476
+requests==2.34.2 \
+    --hash=sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0
+typing-extensions==4.16.0 \
+    --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8
+urllib3==2.7.0 \
+    --hash=sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897
+vdirsyncer==0.20.0 \
+    --hash=sha256:8c7cc702a5617973c79070f9c4900f4ea6bf844e7eaf5e5b029cbfb04e3e92bf
+yarl==1.24.5 \
+    --hash=sha256:f08c7513ecef5aad65687bfdf6bc601ae9fccd04a42904501f8f7141abad9eb9

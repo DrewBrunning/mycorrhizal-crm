@@ -415,6 +415,109 @@ Where a row names a milestone but the concrete ticket lives elsewhere (e.g. the
 #436, and "large/representative datasets" → TEST-02 #430), that ticket is the
 implementer of the layer's capability, not a different layer.
 
+## Real-server + real-client interoperability (TEST-09, issue #681)
+
+TEST-08 (above) proves our *serialization* against reference parsers. TEST-09
+proves our *servers* against real third-party implementations — the missing
+half of the "code and tests consistently, confidently wrong" shape that #496
+warned about. Two directions:
+
+1. **Reference servers → our client** (the #496 breadth). The full sync
+   lifecycle + TEST-02 fixture round trip runs against **real CardDAV servers
+   in Docker**, selected by `MYCORRHIZAL_CARDDAV_SERVER_ID`:
+
+   | Server | Container | Layout | Divergence register |
+   |---|---|---|---|
+   | Radicale | `tomsquest/docker-radicale` (digest-pinned) | `/<user>/contacts/` | vobject: `celine` rejected (multi-N ALTID), `bob` photo/ADR mangled |
+   | Baikal | `ckulka/baikal` | `/dav.php/addressbooks/<user>/contacts/` | Sabre VObject serves vCard 3.0: the 4.0-only concepts land in passthrough (per-contact pinned) |
+   | Nextcloud | `nextcloud:stable` | `/remote.php/dav/addressbooks/users/<user>/contacts/` | same as Baikal, plus `eve` rejected (BDAY re-validated as iCalendar datetime) |
+   | DAViCal | — | — | not run: the only image (`janlo/davical`) is a legacy Debian-stretch build whose provisioning (SCRAM-incompatible libpq, no headless user/collection creation) is unpinnable. Covered structurally by the Sabre-family analysis via Baikal/Nextcloud. |
+
+   The suite is `TestCardDAVReferenceServer_RoundTrip` in
+   `backend/services/carddav_radicale_integration_test.go`, gated by
+   `MYCORRHIZAL_CARDDAV_SERVER_URL` (skips otherwise). The workflow
+   `carddav-e2e.yml` is a three-way matrix; each server is provisioned
+   headlessly by `.github/scripts/carddav-reference/provision-{baikal,nextcloud}.sh`
+   (Baikal has no headless setup story — the script drives its two-step web
+   wizard over HTTP, normalizes the case-sensitive `dav_auth_type` YAML value,
+   and seeds the DAV user/principal/address book directly in the SQLite DB).
+   The divergence registers pin exactly what each server does to the fixture;
+   anything else is a failure that names the server + concept.
+
+2. **Reference client → our server** (the core deliverable). A **real
+   vdirsyncer** (a mature CardDAV/CalDAV client with its own protocol
+   implementation and its own vCard parser) consumes OUR server end-to-end:
+   provision/discover, pull (asserting the client's stored bytes are
+   semantically equal to the staged fixture — the pathological fixture
+   round-trips through it), ETag-driven quiescence, and PUT-create/update/
+   delete pushed by the client. `TestCardDAVVdirsyncer_ClientRoundTrip` in
+   `backend/services/carddav_vdirsyncer_integration_test.go`, gated by
+   `MYCORRHIZAL_OUR_CARDDAV_URL` (skips otherwise). The workflow
+   `reference-clients-e2e.yml` builds our backend, starts it with CardDAV
+   enabled, pip-installs vdirsyncer from a hash-pinned requirements file
+   (`.github/scripts/carddav-reference/vdirsyncer-requirements.txt`, cp312
+   wheels — regenerate per its header if setup-python moves), and runs the
+   test, which registers its own throwaway user.
+
+**Running locally:** start our server (see the launch.json note in CLAUDE.md),
+then
+
+```bash
+cd backend
+MYCORRHIZAL_OUR_CARDDAV_URL=http://127.0.0.1:8090 \
+MYCORRHIZAL_VDIRSYNCER_CMD=/path/to/vdirsyncer \
+  go test ./services/ -run '^TestCardDAVVdirsyncer_ClientRoundTrip$' -count=1 -v
+```
+
+For the server matrix, start one of the containers (the workflow scripts are
+reusable: `provision-baikal.sh` / `provision-nextcloud.sh`), then
+
+```bash
+MYCORRHIZAL_CARDDAV_SERVER_ID=baikal \
+MYCORRHIZAL_CARDDAV_SERVER_URL=http://127.0.0.1:5233 \
+MYCORRHIZAL_CARDDAV_USER=syncuser MYCORRHIZAL_CARDDAV_PASSWORD=syncsecret \
+  go test ./services/ -run '^TestCardDAVReferenceServer_RoundTrip$' -count=1 -v
+```
+
+**What the matrix has already caught and fixed** (all three were invisible to
+the fake suite):
+
+- **Filter-less `addressbook-query` returned an empty collection.** A query
+  with no `<card:filter>` (RFC 6352 §8.6 — how Thunderbird, Apple Contacts,
+  DAVx5 and vdirsyncer enumerate) was routed through go-webdav's `Filter`,
+  whose empty `FilterAnyOf` matches nothing. Our own client's full-refetch
+  fallback is a filter-less query, so our server used to answer our client
+  with "no contacts". Fixed in `backend/carddav/backend.go` with a red
+  handler-level test.
+- **MKCOL for an unsupported second address book returned 500**, which clients
+  read as "server broken" instead of the interop-correct "single address book
+  by design" (403). Fixed with a red test.
+- **GET/DELETE of a missing card returned 500** instead of 404 — vdirsyncer's
+  delete round-trip surfaced it. Fixed with a red test.
+
+**Known limitation (documented, not yet fixed):** our go-webdav client cannot
+negotiate an `address-data` version (go-webdav v0.7.0 `AddressDataRequest` has
+no version field), so against SabreDAV-based servers (Baikal/Nextcloud) the
+full-refetch fallback would receive vCard 3.0 re-serializations; the pinned
+divergence registers encode exactly that. Requesting vCard 4.0 from those
+servers would collapse most of the register. Tracked as a follow-up.
+
+**ETag hand-verification (per CLAUDE.md):** the matrix's quiescence and update
+assertions ARE the automated ETag-correctness proof — vdirsyncer detects an
+update only if our server's ETag changes on PUT, and the "unchanged server
+makes no second pass" assertion fails if our server returns unstable ETags.
+To hand-verify the reverse (reintroduce the historical `etag`-column mapping
+bug — remove the `gorm:"column:etag"` tag on `ContactSyncLink.ETag` so GORM
+writes `e_tag`): run `TestCardDAVReferenceServer_RoundTrip` against a real
+server — the real migrated schema has no `e_tag` column, so the sync fails
+loudly ("table contact_sync_links has no column named e_tag") instead of
+silently carrying an empty `etag` column that would break incremental sync.
+Restore the tag after confirming.
+
+The **manual client matrix** (Apple Contacts macOS/iOS, Thunderbird,
+Android native, DAVx5) — the clients that cannot be scripted — is a documented
+checklist with last-run dates in `docs/development/reference-client-matrix.md`.
+
 ## Layers vs CI path gating
 
 Each layer maps onto an existing area of `.github/filters.yaml` (issue #264) —

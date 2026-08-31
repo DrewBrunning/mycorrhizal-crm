@@ -1,15 +1,22 @@
-name: CardDAV Real-Server E2E (Radicale)
+name: CardDAV Real-Server E2E (reference-server matrix)
 
-# Issue #496 (DATA — CardDAV round-trip integration tests): the real-server
-# complement to the fake-based CardDAV suite. The fake
+# Issues #496 + #681 (DATA — CardDAV round-trip integration tests / TEST-09):
+# the real-server complement to the fake-based CardDAV suite. The fake
 # (backend/services/fake_carddav_server_test.go) encodes OUR understanding of
 # the protocol, so a fake-only suite reproduces exactly the failure ADR-0002
 # warns about — code and tests consistently, confidently wrong, and green. A
 # real server is the only thing that can contradict us. This job runs the
-# same full sync lifecycle + TEST-02 fixture round trip against a REAL
-# Radicale (in a throwaway container) and asserts semantic equality via TEST-03
-# (#431), pinning the two documented divergences (celine's multi-N rejection,
-# bob's vobject photo/ADR mangling) in the test itself.
+# same full sync lifecycle + TEST-02 fixture round trip against REAL reference
+# servers (Radicale, Baikal, Nextcloud) and asserts semantic equality via
+# TEST-03 (#431), pinning each server's documented divergences in the test
+# itself (Radicale's vobject divergences, Baikal/Nextcloud's Sabre VObject
+# vCard 4.0 -> 3.0 re-serialization).
+#
+# DAViCal is deliberately absent: the only docker image (janlo/davical) is a
+# legacy Debian-stretch build whose nonstandard provisioning (SCRAM-incompatible
+# libpq, no headless user/collection creation) made it unpinnable; documented
+# in docs/development/testing.md. Radicale + Baikal + Nextcloud already exceed
+# #496's single-server baseline.
 #
 # Gating: scheduled (nightly) and manual dispatch always run; on PR/push the
 # job fires only when the `carddav` filter in .github/filters.yaml matches
@@ -61,16 +68,35 @@ jobs:
           CARDDAV_CHANGED: ${{ steps.filter.outputs.carddav }}
           WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
 
-  radicale:
+  reference-servers:
     permissions:
       contents: read
-    name: CardDAV round trip against real Radicale
+    name: CardDAV round trip against real ${{ matrix.server }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     needs: changes
     # Scheduled runs and manual dispatch always run (no diff to gate on);
     # otherwise only when the CardDAV machinery or the harness changes.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.carddav == 'true' || needs.changes.outputs.workflows == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - server: Radicale
+            id: radicale
+            port: 5232
+            user: syncuser
+            password: syncsecret
+          - server: Baikal
+            id: baikal
+            port: 5233
+            user: syncuser
+            password: syncsecret
+          - server: Nextcloud
+            id: nextcloud
+            port: 5234
+            user: syncuser
+            password: SynCsecret-8f9a
 
     steps:
       - name: Checkout repository
@@ -84,10 +110,11 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
-      # A throwaway Radicale with basic auth (htpasswd, plain) and the
-      # owner_only rights model — the same shape the real-server test drives.
-      # Pinned by digest so the supply chain is deterministic.
+      # Radicale: a throwaway container with basic auth (htpasswd, plain) and
+      # the owner_only rights model. Pinned by digest so the supply chain is
+      # deterministic.
       - name: Start Radicale
+        if: matrix.server == 'Radicale'
         run: |
           mkdir -p /tmp/radicale/config /tmp/radicale/data
           cat > /tmp/radicale/config/config <<'EOF'
@@ -112,20 +139,34 @@ jobs:
           timeout 60 bash -c 'until curl -s -o /dev/null -w "" http://127.0.0.1:5232/; do sleep 1; done'
           echo "Radicale is up"
 
+      # Baikal: headless provisioning (install wizard + direct DB seeding) —
+      # stdlib-only, no pip installs (zizmor audits pip) — see
+      # .github/scripts/carddav-reference/provision-baikal.sh.
+      - name: Start Baikal
+        if: matrix.server == 'Baikal'
+        run: .github/scripts/carddav-reference/provision-baikal.sh baikal 5233 /tmp/baikal-data
+
+      # Nextcloud: occ-based provisioning — see
+      # .github/scripts/carddav-reference/provision-nextcloud.sh.
+      - name: Start Nextcloud
+        if: matrix.server == 'Nextcloud'
+        run: .github/scripts/carddav-reference/provision-nextcloud.sh nextcloud 5234
+
       - name: Run the real-server CardDAV round-trip suite
         working-directory: backend
-        run: go test ./services/ -run '^TestCardDAVRadicale_RoundTrip$' -count=1 -v
+        run: go test ./services/ -run '^TestCardDAVReferenceServer_RoundTrip$' -count=1 -v
         env:
-          MYCORRHIZAL_RADICALE_URL: http://127.0.0.1:5232
-          MYCORRHIZAL_RADICALE_USER: syncuser
-          MYCORRHIZAL_RADICALE_PASSWORD: syncsecret
+          MYCORRHIZAL_CARDDAV_SERVER_ID: ${{ matrix.id }}
+          MYCORRHIZAL_CARDDAV_SERVER_URL: http://127.0.0.1:${{ matrix.port }}
+          MYCORRHIZAL_CARDDAV_USER: ${{ matrix.user }}
+          MYCORRHIZAL_CARDDAV_PASSWORD: ${{ matrix.password }}
 
-      - name: Show Radicale logs on failure
+      - name: Show server logs on failure
         if: failure()
         run: |
-          echo "=== Radicale logs ==="
-          docker logs radicale
+          echo "=== server logs ==="
+          docker logs ${{ matrix.id }} || true
 
-      - name: Stop Radicale
+      - name: Stop server
         if: always()
-        run: docker rm -f radicale || true
+        run: docker rm -f ${{ matrix.id }} || true
