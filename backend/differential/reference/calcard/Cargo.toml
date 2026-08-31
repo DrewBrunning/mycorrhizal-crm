@@ -1,0 +1,16 @@
+[package]
+name = "calcard-ref"
+version = "0.1.0"
+edition = "2021"
+
+# Pinned reference CLI for the TEST-08 differential suite (issue #680). The
+# calcard dependency version is pinned here so the reference behavior is
+# reproducible; Cargo.lock additionally pins the whole transitive graph. See
+# docs/development/testing.md for the supply-chain note.
+[dependencies]
+# serde feature enables JSContactId for String (the display/serialize impls the
+# reference CLI relies on); jmap is default. serde_json serializes the JSContact
+# Value directly (calcard's own Display for JSContact requires trait bounds that
+# are awkward to satisfy from a downstream crate).
+calcard = { version = "=0.3.13", features = ["serde"] }
+serde_json = "1"
