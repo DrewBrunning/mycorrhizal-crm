@@ -335,6 +335,17 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   is already credential-redacted at write time (`auditDenyList`, `models/audit.go`) but is **not**
   filtered by contact-field sensitivity the way the other four exports are, so it is gated behind its own
   explicit opt-in rather than reusing `include_sensitive`.
+- **Auditability (issue #444)**: a *sensitive* export (`?include_sensitive=true`) is **not**
+  individually recorded in the audit log — a documented decision, not an oversight. The export handlers
+  are strictly read-only: they never write to any audited entity, so an export leaves no audit row today,
+  and the `include_sensitive` opt-in is not logged anywhere. Rationale, deliberately narrow: the audit
+  log exists for entity-CRUD and auth-lifecycle events, exports are the caller's own data leaving to the
+  caller's own device, and every export (sensitive or not) is already visible to the operator via the
+  structured request log. The day an export is made to *move data to another party* (contact shares do
+  exactly this via the same `IncludeSensitive` flag), the cross-user path is treated as the higher bar —
+  see `pii-inventory.md` and ASVS 1.5.1's share coverage — and a future re-evaluation would add an
+  audit op token (requiring a migration, the audit `CHECK` constraint, `openapi.yaml`, the API baseline,
+  and the frontend mirror) rather than an unconstrained row.
 - **Backups**: not applicable.
 
 ## 12. Import wizard staging
