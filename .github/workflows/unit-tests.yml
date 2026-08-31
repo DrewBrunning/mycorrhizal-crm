@@ -131,7 +131,12 @@ jobs:
       contents: read
     name: Backend checks (fmt/vet/bench/fuzz/lint)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Issue #712: the nightly fuzz step is 8 targets at -fuzztime=2m (~16m),
+    # and the golang/go#75804 hardening retries a deadline-boundary flake
+    # once (up to +2m per target), so the schedule ceiling gets real headroom
+    # — same trigger-scaled pattern as backend-tests below. PRs stay at the
+    # tight 20m.
+    timeout-minutes: ${{ github.event_name == 'schedule' && 40 || 20 }}
     needs: changes
     # Scheduled runs must always run the full suite (there is no diff to gate
     # on) — same exemption pattern as zizmor.yml/sast.yml.
@@ -184,22 +189,26 @@ jobs:
       # deliberately short (a few seconds each) to keep CI cost low — see
       # each Fuzz function's own doc comment for the longer local run this
       # is not a substitute for.
-      - name: Run fuzz targets (issues #265, #376)
+      # Issue #712: the fuzz loop lives in a committed, tested script
+      # (.github/scripts/run-fuzz-targets.sh) rather than inline, because it
+      # is hardened against the golang/go#75804 deadline-boundary race — a
+      # clean -fuzztime run can intermittently be reported as "context
+      # deadline exceeded" when the budget expires mid-execution (fixed
+      # upstream in go1.27 CL 804900; not backported to the 1.26 toolchain
+      # this repo runs). The script retries a deadline-only failure once and
+      # soft-fails only if it repeats; a real crash ("Failing input written
+      # to", or a seed replay of a previously-found crash) still fails the
+      # step. Its behaviour is pinned by
+      # .github/scripts/tests/run-fuzz-targets.test.sh (run in
+      # actionlint.yml).
+      - name: Run fuzz targets (issues #265, #376, #712)
         working-directory: backend
         # Issue #578, B4: the PR/push path is the short smoke (15s — the
         # regression tripwire); the nightly schedule event runs the same
         # targets at 2m each. -fuzztime comes in via env, never inline.
         env:
           FUZZTIME: ${{ github.event_name == 'schedule' && '2m' || '15s' }}
-        run: |
-          go test ./vcard4/ -run '^$' -fuzz='^FuzzImportVCard4$' -fuzztime="$FUZZTIME"
-          go test ./vcard4/ -run '^$' -fuzz='^FuzzExportVCard4$' -fuzztime="$FUZZTIME"
-          go test ./vcard3/ -run '^$' -fuzz='^FuzzImportVCard3$' -fuzztime="$FUZZTIME"
-          go test ./vcard3/ -run '^$' -fuzz='^FuzzExportVCard3$' -fuzztime="$FUZZTIME"
-          go test ./jscontact/ -run '^$' -fuzz='^FuzzImportJSContact$' -fuzztime="$FUZZTIME"
-          go test ./jscontact/ -run '^$' -fuzz='^FuzzExportJSContact$' -fuzztime="$FUZZTIME"
-          go test ./services/ -run '^$' -fuzz='^FuzzExtractICalEvents$' -fuzztime="$FUZZTIME"
-          go test ./services/ -run '^$' -fuzz='^FuzzParseCSV$' -fuzztime="$FUZZTIME"
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/run-fuzz-targets.sh"
 
       - name: Vulnerability scan (govulncheck)
         working-directory: backend
