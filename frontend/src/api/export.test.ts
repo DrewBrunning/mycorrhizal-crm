@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   EXPORT_FIELD_SECTIONS,
-  PREFLIGHT_FORMAT,
+  type ExportLossPreflightResponse,
   exportContact,
   exportContacts,
   exportContactsAsVcf,
   exportDataAsCsv,
   exportLossPreflight,
+  PREFLIGHT_FORMAT,
   parseExportLossHeader,
-  type ExportLossPreflightResponse,
 } from './export';
 
 afterEach(() => {
@@ -312,7 +312,7 @@ describe('exportLossPreflight', () => {
 
     await exportLossPreflight('vcf4', { sections: ['emails'], includeSensitive: false }, 'uid-1');
 
-    const [url] = (vi.mocked(fetch).mock.calls[0] as [string]) as [string];
+    const [url] = vi.mocked(fetch).mock.calls[0] as [string] as [string];
     expect(url).toContain('vcard_uid=uid-1');
   });
 
