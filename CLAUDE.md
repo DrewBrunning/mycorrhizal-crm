@@ -64,6 +64,15 @@ regenerate, commit the fixture diff. The drift test `backend/contract_fixtures_t
 they're regenerated; the spec's own validator rejects an example that doesn't fit its schema, so the
 fixtures can't silently drift from the documented contract.
 
+Field compatibility matrix (DATA-01, issue #441): `docs/data-01-field-compatibility-matrix.md` is
+**generated** from the correspondence oracle + the issue #515 audit by
+`cd backend && go run ./cmd/gencompatmatrix` (or `make gen-compat-matrix`) — never hand-authored (a
+hand-written matrix is a second source of mapping truth, which ADR-0002 forbids). A correspondence
+table change that alters the classification shows up as a reviewable diff because the drift test
+`backend/correspondence/matrix_test.go` fails until it's regenerated. The `LossReports()` API is the
+DATA-02 (issue #442) input, so an unsupported/lossy classification change must land with its loss
+report.
+
 **Breaking-change policy (MAINT-02, issue #491):** the `/api/v1` contract surface is pinned by a
 frozen baseline (`backend/internal/apibaseline/testdata/v1.json`) generated from `backend/openapi.yaml`
 by `cd backend && go run ./cmd/genapibaseline` (or `make gen-api-baseline`). The drift test
