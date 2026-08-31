@@ -1,10 +1,14 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   EXPORT_FIELD_SECTIONS,
+  type ExportLossPreflightResponse,
   exportContact,
   exportContacts,
   exportContactsAsVcf,
   exportDataAsCsv,
+  exportLossPreflight,
+  PREFLIGHT_FORMAT,
+  parseExportLossHeader,
 } from './export';
 
 afterEach(() => {
@@ -245,5 +249,123 @@ describe('exportContactsAsVcf', () => {
       code: 'VALIDATION_ERROR',
       status: 400,
     });
+  });
+});
+
+describe('PREFLIGHT_FORMAT', () => {
+  test('maps the frontend format enum to the backend wire tokens', () => {
+    expect(PREFLIGHT_FORMAT).toEqual({
+      vcf4: 'vcard4',
+      vcf3: 'vcard3',
+      jscontact: 'jscontact',
+    });
+  });
+});
+
+describe('exportLossPreflight', () => {
+  test('requests /export/preflight with format, sections and include_sensitive', async () => {
+    const payload: ExportLossPreflightResponse = {
+      format: 'vcard4',
+      contact_count: 1,
+      diagnostics: [
+        {
+          format: 'vcard4',
+          contact_id: 1,
+          contact_name: 'Ada Lovelace',
+          vcard_uid: 'urn:uuid:ada',
+          severity: 'warn',
+          concept: 'crm.gender',
+          bucket: 'unsupported',
+          reason: 'free-text CRM concept, deliberately not vCard GENDER',
+          message: 'CRM-only field has no home in this export format and is dropped from the file',
+        },
+      ],
+    };
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => payload,
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const got = await exportLossPreflight('vcf4', {
+      sections: ['emails', 'related_to'],
+      includeSensitive: true,
+    });
+
+    expect(got).toEqual(payload);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/api/v1/export/preflight?');
+    expect(url).toContain('format=vcard4');
+    expect(url).toContain('sections=emails%2Crelated_to');
+    expect(url).toContain('include_sensitive=true');
+    expect(init.method).toBe('GET');
+  });
+
+  test('adds vcard_uid when scoping to a single contact', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ format: 'vcard4', contact_count: 1, diagnostics: [] }),
+      }),
+    );
+
+    await exportLossPreflight('vcf4', { sections: ['emails'], includeSensitive: false }, 'uid-1');
+
+    const [url] = vi.mocked(fetch).mock.calls[0] as [string] as [string];
+    expect(url).toContain('vcard_uid=uid-1');
+  });
+
+  test('throws an ApiError when the response is not ok', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
+
+    await expect(
+      exportLossPreflight('vcf4', { sections: ['emails'], includeSensitive: false }),
+    ).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
+  });
+});
+
+describe('parseExportLossHeader', () => {
+  test('decodes the URL-encoded loss-report header on a file download', () => {
+    const payload = {
+      format: 'vcard4',
+      count: 1,
+      truncated: false,
+      diagnostics: [
+        {
+          format: 'vcard4',
+          contact_id: 1,
+          contact_name: 'Ada Lovelace',
+          vcard_uid: 'urn:uuid:ada',
+          severity: 'warn',
+          concept: 'crm.gender',
+          bucket: 'unsupported',
+          reason: 'free-text CRM concept',
+          message: 'CRM-only field has no home',
+        },
+      ],
+    };
+    const response = {
+      headers: new Headers({
+        'X-Mycorrhizal-Export-Loss-Report': encodeURIComponent(JSON.stringify(payload)),
+      }),
+    } as Response;
+
+    expect(parseExportLossHeader(response)).toEqual(payload);
+  });
+
+  test('returns null when the header is absent', () => {
+    const response = { headers: new Headers() } as Response;
+    expect(parseExportLossHeader(response)).toBeNull();
+  });
+
+  test('returns null when the header is not valid JSON', () => {
+    const response = {
+      headers: new Headers({ 'X-Mycorrhizal-Export-Loss-Report': 'not-json' }),
+    } as Response;
+    expect(parseExportLossHeader(response)).toBeNull();
   });
 });

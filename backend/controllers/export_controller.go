@@ -5,13 +5,9 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"mycorrhizal/contactmodel"
 	apperrors "mycorrhizal/errors"
-	"mycorrhizal/jscontact"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
-	"mycorrhizal/vcard3"
-	"mycorrhizal/vcard4"
 	"net/http"
 	"strconv"
 	"strings"
@@ -137,6 +133,9 @@ const (
 	exportOpVCard4    = "export:vcard4"
 	exportOpJSContact = "export:jscontact"
 	exportOpAudit     = "export:audit"
+	// exportOpPreflight is the operation token for GET /export/preflight
+	// (issue #442) — the same operation/category contract as the exports.
+	exportOpPreflight = "export:preflight"
 )
 
 const (
@@ -650,32 +649,27 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 	}
 
 	version := "4"
-	var exporter contactmodel.Exporter = vcard4.Adapter{}
+	format := exportFormatVCard4
 	if v := strings.TrimPrefix(c.Query("version"), "v"); v == "3" || v == "3.0" {
 		version = "3"
-		exporter = vcard3.Adapter{}
+		format = exportFormatVCard3
 	}
 
 	// Generate VCF content: one full vCard block per contact, concatenated
-	// (the standard shape for a multi-contact .vcf file).
+	// (the standard shape for a multi-contact .vcf file). renderContactExport
+	// is the shared computation the preflight endpoint also runs, so the
+	// loss-report header on this file always agrees with a preflight for the
+	// same data (issue #442).
 	var buf bytes.Buffer
+	var reports []models.LossReport
 	for _, contact := range contacts {
-		record := models.RecordForContactFiltered(&contact, photoDir, db, sel)
-		// Issue #515: prepend the CRM-only envelope fields (Gender, Circles,
-		// HowWeMet, ...) as named warn diagnostics — they round-trip through
-		// the neutral Record but have no vCard home, and the drop must be
-		// reported, never silent (ADR-0002 degradation policy).
-		diags := models.EnvelopeExportLossDiagnostics(record)
-		data, exportDiags, err := exporter.Export(record)
-		diags = append(diags, exportDiags...)
+		data, diags, err := renderContactExport(&contact, photoDir, format, db, sel, log)
 		if err != nil {
 			log.Error().Err(err).Uint("contact_id", contact.ID).Msg("Failed to encode contact as vCard")
 			// Continue with other contacts instead of failing completely
 			continue
 		}
-		for _, d := range diags {
-			log.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Uint("contact_id", contact.ID).Msg(logger.SanitizeLogField(d.Message))
-		}
+		reports = append(reports, contactLossReports(format, &contact, diags)...)
 		buf.Write(data)
 	}
 
@@ -687,6 +681,7 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Header("Content-Type", "text/vcard; charset=utf-8")
 	c.Header("Content-Length", fmt.Sprintf("%d", buf.Len()))
+	setExportLossReportHeader(c, format, reports)
 
 	c.Data(http.StatusOK, "text/vcard; charset=utf-8", buf.Bytes())
 
@@ -732,23 +727,18 @@ func ExportContactsAsJSContact(c *gin.Context) {
 		return
 	}
 
-	adapter := jscontact.Adapter{}
 	cards := make([]json.RawMessage, 0, len(contacts))
+	var reports []models.LossReport
 	for _, contact := range contacts {
-		record := models.RecordForContactFiltered(&contact, photoDir, db, sel)
-		// Issue #515: prepend the CRM-only envelope fields as named warn
-		// diagnostics, exactly as ExportContactsAsVCF does — a JSContact
-		// file has no home for Gender/Circles/HowWeMet/... either.
-		diags := models.EnvelopeExportLossDiagnostics(record)
-		data, exportDiags, err := adapter.Export(record)
-		diags = append(diags, exportDiags...)
+		// Same shared computation as the preflight endpoint (issue #442): the
+		// loss-report header on this file agrees with a preflight for the
+		// same data.
+		data, diags, err := renderContactExport(&contact, photoDir, exportFormatJSContact, db, sel, log)
 		if err != nil {
 			log.Error().Err(err).Uint("contact_id", contact.ID).Msg("Failed to encode contact as JSContact")
 			continue
 		}
-		for _, d := range diags {
-			log.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Uint("contact_id", contact.ID).Msg(logger.SanitizeLogField(d.Message))
-		}
+		reports = append(reports, contactLossReports(exportFormatJSContact, &contact, diags)...)
 		cards = append(cards, json.RawMessage(data))
 	}
 
@@ -764,6 +754,7 @@ func ExportContactsAsJSContact(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Header("Content-Type", "application/jscontact+json; charset=utf-8")
 	c.Header("Content-Length", fmt.Sprintf("%d", len(payload)))
+	setExportLossReportHeader(c, exportFormatJSContact, reports)
 
 	c.Data(http.StatusOK, "application/jscontact+json; charset=utf-8", payload)
 

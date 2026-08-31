@@ -65,6 +65,8 @@ func TestOpenAPISpecValidates(t *testing.T) {
 		"DuplicateMatch", "ImportRowPreview", "ImportPreviewResponse",
 		"RowImportAction", "ImportConfirmRequest", "ImportResult",
 		"ContactSubscriptionInput", "ContactSubscriptionResponse",
+		// DATA-02 (issue #442) export-loss reporting.
+		"Diagnostic", "LossReport", "ExportLossPreflightResponse",
 		// T8: everything the drift test now covers.
 		"Error", "MessageResponse", "LogoutResponse", "HealthResponse",
 		"LivenessResponse", "ReadinessResponse", "HealthCheckDetail",

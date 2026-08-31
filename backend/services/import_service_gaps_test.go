@@ -365,22 +365,32 @@ func TestCreateMergeNote_MultiValuedFieldsReportOnlyGenuinelyNewEntries(t *testi
 	assert.NotContains(t, notes[0].Content, "Phones")
 }
 
-// --- diagnosticsToStrings (branch closure) --------------------------------
+// --- structured preview diagnostics (DATA-02, issue #442) ---------------
 
-func TestDiagnosticsToStrings_Empty(t *testing.T) {
-	assert.Nil(t, diagnosticsToStrings(nil))
-	assert.Nil(t, diagnosticsToStrings([]contactmodel.Diagnostic{}))
+func TestBuildImportRowPreview_PreservesStructuredDiagnostics(t *testing.T) {
+	db, _ := setupRouter()
+	var user models.User
+	db.First(&user)
+
+	contact := &models.Contact{Firstname: "Ada", Lastname: "Lovelace"}
+	stats := &ImportStats{}
+	diags := []contactmodel.Diagnostic{
+		{Severity: "warn", Concept: "lang", Message: "LANG has no vCard 3.0 home; dropped"},
+		{Severity: "info", Concept: "", Message: "Removed invalid characters from firstname"},
+	}
+	preview := BuildImportRowPreview(db, user.ID, contact, 0, nil, diags, stats)
+
+	require.Len(t, preview.Diagnostics, 2, "the structured diagnostics must pass through to the preview unchanged")
+	assert.Equal(t, contactmodel.Diagnostic{Severity: "warn", Concept: "lang", Message: "LANG has no vCard 3.0 home; dropped"}, preview.Diagnostics[0])
+	assert.Equal(t, contactmodel.Diagnostic{Severity: "info", Concept: "", Message: "Removed invalid characters from firstname"}, preview.Diagnostics[1])
 }
 
-func TestDiagnosticsToStrings_WithAndWithoutConcept(t *testing.T) {
-	diags := []contactmodel.Diagnostic{
-		{Severity: "warn", Concept: "EMAIL", Message: "dropped a field"},
-		{Severity: "info", Concept: "", Message: "no concept on this one"},
-	}
-	out := diagnosticsToStrings(diags)
-	require.Len(t, out, 2)
-	assert.Equal(t, "[warn] EMAIL: dropped a field", out[0])
-	assert.Equal(t, "[info] no concept on this one", out[1])
+func TestSanitizeImportedContact_StructuredDiagnostics(t *testing.T) {
+	contact := &models.Contact{Firstname: "Ada\x00", Lastname: "Lovelace"}
+	diags := SanitizeImportedContact(contact)
+	require.Len(t, diags, 1)
+	assert.Equal(t, "info", diags[0].Severity)
+	assert.Equal(t, "Removed invalid characters from firstname", diags[0].Message)
 }
 
 // --- extractPhotoFromRecord (branch closure) ------------------------------

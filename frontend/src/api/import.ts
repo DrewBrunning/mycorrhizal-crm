@@ -53,6 +53,15 @@ export interface ImportMergeDiff {
   added: ImportAddedValue[];
 }
 
+// One degradation-policy event from a format adapter, in the same structured
+// severity/concept/message shape the export loss reports use (DATA-02, issue
+// #442). Mirrors backend contactmodel.Diagnostic.
+export interface ImportDiagnostic {
+  severity: 'warn' | 'info';
+  concept?: string;
+  message: string;
+}
+
 // Preview row with parsed contact and status
 export interface ImportRowPreview {
   row_index: number;
@@ -68,6 +77,10 @@ export interface ImportRowPreview {
   // Issue #514: the unknown X-* vCard/JSContact properties discovered on this
   // row that can be promoted to custom fields. Absent when the row carried none.
   custom_field_candidates?: DiscoveredCustomProperty[];
+  // DATA-02 (issue #442): adapter degradation diagnostics for this row
+  // (empty/absent for CSV/records-import rows, which don't go through an
+  // adapter).
+  diagnostics?: ImportDiagnostic[];
 }
 
 // One unknown X-* property found on an imported contact that can be promoted

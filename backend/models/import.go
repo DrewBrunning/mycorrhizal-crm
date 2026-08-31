@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"mycorrhizal/contactmodel"
+)
 
 // ImportableContactFields defines the valid target fields for import
 var ImportableContactFields = []string{
@@ -110,10 +114,11 @@ type ImportRowPreview struct {
 	// Diagnostics surfaces contactmodel.Diagnostic events  from
 	// the vcard4/vcard3/jscontact adapter that parsed this row — e.g. a
 	// gracefully-dropped, no-target-home field (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
-	// degradation policy). Empty for CSV-import rows (which don't go
-	// through an adapter at all). Additive: existing preview consumers that
-	// don't know about this field are unaffected.
-	Diagnostics []string `json:"diagnostics,omitempty"`
+	// degradation policy). Structured, carrying the same severity/concept/message
+	// shape the export loss reports use (DATA-02, issue #442) — never a
+	// flattened string copy. Empty for CSV-import rows (which don't go
+	// through an adapter at all).
+	Diagnostics []contactmodel.Diagnostic `json:"diagnostics,omitempty"`
 
 	// CustomFieldCandidates lists the unknown X-* vCard/JSContact properties
 	// discovered in this row's passthrough that the import wizard can promote

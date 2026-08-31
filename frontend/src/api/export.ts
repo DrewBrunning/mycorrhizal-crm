@@ -56,6 +56,89 @@ export async function exportDataAsCsv(): Promise<void> {
 
 export type ExportFormat = 'vcf4' | 'vcf3' | 'jscontact';
 
+// The wire format tokens the backend preflight endpoint accepts (DATA-02,
+// issue #442). Maps onto ExportFormat.
+export const PREFLIGHT_FORMAT: Record<ExportFormat, string> = {
+  vcf4: 'vcard4',
+  vcf3: 'vcard3',
+  jscontact: 'jscontact',
+};
+
+// One fidelity-loss event on one export (DATA-02, issue #442): which contact
+// lost which field to which format, and why (the DATA-01 matrix bucket +
+// reason). Mirrors backend models.LossReport.
+export interface ExportLossReport {
+  format: 'vcard4' | 'vcard3' | 'jscontact';
+  contact_id: number;
+  contact_name: string;
+  vcard_uid: string;
+  severity: 'warn';
+  concept: string;
+  bucket: 'unsupported' | 'lossy';
+  reason: string;
+  message: string;
+}
+
+// The X-Mycorrhizal-Export-Loss-Report header payload on a file-download
+// export (DATA-02, issue #442). Mirrors controllers.exportLossHeader.
+export interface ExportLossHeader {
+  format: string;
+  count: number;
+  truncated: boolean;
+  diagnostics: ExportLossReport[];
+}
+
+// The response of GET /export/preflight (DATA-02, issue #442): what an export
+// with the given params would lose, computed without producing the file.
+export interface ExportLossPreflightResponse {
+  format: string;
+  contact_count: number;
+  diagnostics: ExportLossReport[];
+}
+
+// Decode the X-Mycorrhizal-Export-Loss-Report response header on a file
+// download. Returns null when the header is absent (no loss report attached).
+export function parseExportLossHeader(response: Response): ExportLossHeader | null {
+  const raw = response.headers.get('X-Mycorrhizal-Export-Loss-Report');
+  if (!raw) return null;
+  try {
+    return JSON.parse(decodeURIComponent(raw)) as ExportLossHeader;
+  } catch {
+    return null;
+  }
+}
+
+// Preflight an export: ask the backend "if I export these contacts to this
+// format with this selection, what will be lost?" without producing the file
+// (DATA-02, issue #442).
+export async function exportLossPreflight(
+  format: ExportFormat,
+  selection: ExportSelection,
+  vcardUID?: string,
+): Promise<ExportLossPreflightResponse> {
+  const params = new URLSearchParams();
+  params.set('format', PREFLIGHT_FORMAT[format]);
+  params.set('sections', selection.sections.join(','));
+  if (selection.includeSensitive) {
+    params.set('include_sensitive', 'true');
+  }
+  if (vcardUID) {
+    params.set('vcard_uid', vcardUID);
+  }
+
+  const response = await apiFetch(`${API_BASE_URL}/export/preflight?${params.toString()}`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    const error = await parseErrorResponse(response);
+    throw error;
+  }
+
+  return response.json();
+}
+
 export interface ExportFieldSection {
   token: string;
   sensitive: boolean;
