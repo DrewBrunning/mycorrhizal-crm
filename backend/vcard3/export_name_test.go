@@ -62,3 +62,33 @@ func TestExport_NameFull_DerivedWhenEmpty(t *testing.T) {
 	}
 	rfctest.AssertVCardLine(t, out, PropFN, nil, "John Public")
 }
+
+// TestExport_NameSkipsAllEmptyComponents pins the DATA-03 (issue #443) fix: a
+// name whose components are all extra kinds (surname2/generation have no
+// vCard 3.0 N slot) would serialize to a degenerate "N:;;;;" line that
+// importName reads back with no components — churning the serialized form
+// across a repeated conversion. The N line must not be emitted; the per-kind
+// warn documents the loss.
+func TestExport_NameSkipsAllEmptyComponents(t *testing.T) {
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Name: &contactmodel.Name{
+			Components: []contactmodel.NameComponent{{Kind: "surname2", Value: "von Trapp"}},
+		},
+	}}
+	out, diags, err := (Adapter{}).Export(rec)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	if hasProp(t, out, PropN) {
+		t.Errorf("surname2-only name emitted an N line, want none:\n%s", out)
+	}
+	var warned bool
+	for _, d := range diags {
+		if d.Concept == "name.surname2" && d.Severity == "warn" {
+			warned = true
+		}
+	}
+	if !warned {
+		t.Errorf("no warn Diagnostic for the dropped surname2 component; diags = %+v", diags)
+	}
+}

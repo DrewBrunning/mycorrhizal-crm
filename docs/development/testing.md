@@ -325,7 +325,7 @@ gap to file, never something to silently absorb.
 | Route↔spec drift, binding-shape drift, dropped response keys | API contract | v0.6.3 (#266) |
 | Client/server contract mismatch | API contract + E2E web/Android | v0.6.10 |
 | vCard/JSContact/CSV/iCal format correctness, lossy conversions, unknown fields, malformed input, sensitivity filtering | Import/export interop | v0.6.5 |
-| Round-trip fidelity, repeated-conversion stability | Import/export interop | v0.6.3 (TEST-03 #431, pulled forward from v0.6.5) |
+| Round-trip fidelity, repeated-conversion stability | Import/export interop | v0.6.3 (TEST-03 #431, pulled forward from v0.6.5); v0.6.5 (DATA-03 #443 — idempotence-after-first-conversion) |
 | Migration data loss, semantic drift across schema versions, dirty/version mishandling | Migration | v0.6.4 |
 | Interrupted migration, migration rollback/recovery, first-boot migration on empty DB | Migration + release/install smoke | v0.6.4, v0.6.6, #438/#452 |
 | Monica/Meerkat import mapping errors | Import/export interop (fixtures per DATA-*) | v0.6.4 (#351/#353) |
@@ -457,6 +457,14 @@ description and gate #533):
   and interop layers will consume; MIG-01 (#436) — versioned migration fixtures.
 - TEST-03 (#431) — the semantic round-trip comparison (pulled forward into
   v0.6.3 so TEST-07 #435 can consume it).
+- DATA-03 (#443) — repeated-conversion / idempotence-after-first-conversion
+  testing: each format's conversion run N times over the TEST-02 fixture
+  (serialized form byte-identical from pass 2 onward, successive-pass diffs
+  empty, passthrough byte-stable and never growing, diagnostics not
+  accumulating), cross-format chains (vCard 4 → vCard 3 → vCard 4) converging
+  rather than degrading, and the same property wired into the TEST-07
+  generative suite. The single round trip proves one conversion is faithful;
+  this proves conversions compose (the property CardDAV sync runs on).
 - DEPLOY-01 (#450) — the release/install smoke layer; TEST-06 (#434) — failure
   injection; PERF-01 (#468) — performance at scale.
 - Issue #257 — contract fixtures; #266 — the spec-derived contract fixture.

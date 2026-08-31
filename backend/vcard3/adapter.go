@@ -78,7 +78,7 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 		if nn.Name == "" {
 			continue
 		}
-		tokens := ctxToType(nn.Contexts)
+		tokens := contextTypeTokens(nn.Contexts, &diags, "nickname")
 		if isPreferred(nn.Pref) {
 			tokens = append(tokens, "PREF")
 		}
@@ -87,12 +87,25 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 
 	// --- Organizations ---
 	for _, org := range r.Card.Organizations {
-		if org.Name == "" && len(org.Units) == 0 {
-			continue
-		}
 		parts := []string{org.Name}
 		for _, u := range org.Units {
-			parts = append(parts, u.Name)
+			if u.Name != "" {
+				parts = append(parts, u.Name)
+			}
+		}
+		hasContent := false
+		for _, p := range parts {
+			if p != "" {
+				hasContent = true
+				break
+			}
+		}
+		// An organization with no name and no non-empty unit has no semantic
+		// content (the comparison ignores it) and importOrganizations would
+		// not reconstruct it, so emitting an "ORG:;" line would churn the
+		// serialized form across a repeated conversion (DATA-03, issue #443).
+		if !hasContent {
+			continue
 		}
 		card.Add(PropOrg, &vcard.Field{Value: joinComponents(parts)})
 	}
@@ -116,7 +129,7 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 			continue
 		}
 		tokens := []string{"INTERNET"}
-		tokens = append(tokens, ctxToType(e.Contexts)...)
+		tokens = append(tokens, contextTypeTokens(e.Contexts, &diags, "email")...)
 		if isPreferred(e.Pref) {
 			tokens = append(tokens, "PREF")
 		}
@@ -132,7 +145,7 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 		for _, f := range p.Features {
 			tokens = append(tokens, featToType(f))
 		}
-		tokens = append(tokens, ctxToType(p.Contexts)...)
+		tokens = append(tokens, contextTypeTokens(p.Contexts, &diags, "phone")...)
 		if isPreferred(p.Pref) {
 			tokens = append(tokens, "PREF")
 		}
@@ -147,7 +160,7 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 		if os.URI == "" {
 			continue
 		}
-		tokens := ctxToType(os.Contexts)
+		tokens := contextTypeTokens(os.Contexts, &diags, "impp")
 		if isPreferred(os.Pref) {
 			tokens = append(tokens, "PREF")
 		}
@@ -176,7 +189,7 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 		if os.URI == "" {
 			continue
 		}
-		tokens := ctxToType(os.Contexts)
+		tokens := contextTypeTokens(os.Contexts, &diags, "social")
 		if isPreferred(os.Pref) {
 			tokens = append(tokens, "PREF")
 		}
@@ -274,8 +287,19 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 	}
 
 	// --- Keywords ---
-	if len(r.Card.Keywords) > 0 {
-		card.SetValue(PropCategories, strings.Join(r.Card.Keywords, ","))
+	// Empty keyword entries are dropped by importKeywords and ignored by the
+	// semantic comparison, so emitting them would produce a degenerate
+	// "CATEGORIES:" line that never survives a re-import — churning the
+	// serialized form across a repeated conversion (DATA-03, issue #443).
+	// Filter to match what the read side accepts.
+	var nonEmptyKeywords []string
+	for _, k := range r.Card.Keywords {
+		if k != "" {
+			nonEmptyKeywords = append(nonEmptyKeywords, k)
+		}
+	}
+	if len(nonEmptyKeywords) > 0 {
+		card.SetValue(PropCategories, strings.Join(nonEmptyKeywords, ","))
 	}
 
 	// --- Media (photo/logo/sound) ---
@@ -344,7 +368,7 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 		if l.URI == "" {
 			continue
 		}
-		tokens := ctxToType(l.Contexts)
+		tokens := contextTypeTokens(l.Contexts, &diags, "link")
 		if isPreferred(l.Pref) {
 			tokens = append(tokens, "PREF")
 		}
@@ -436,7 +460,13 @@ func exportName(card vcard.Card, name *contactmodel.Name, diags *[]contactmodel.
 		full = deriveFN(comps)
 	}
 	card.SetValue(PropFN, full)
-	if name != nil && len(name.Components) > 0 {
+	// Only emit N when at least one of the five vCard 3.0 components landed:
+	// a name whose components are all extra kinds (surname2/generation) would
+	// serialize to a degenerate "N:;;;;" line that importName reads back with
+	// no components — churning the serialized form across a repeated
+	// conversion (DATA-03, issue #443). The per-kind warn above still
+	// documents the loss.
+	if name != nil && (comps.Family != "" || comps.Given != "" || comps.Additional != "" || comps.Prefix != "" || comps.Suffix != "") {
 		card.SetValue(PropN, assembleN(comps))
 	}
 }
@@ -448,20 +478,27 @@ func exportAddresses(card vcard.Card, addresses []contactmodel.Address, diags *[
 	for _, a := range addresses {
 		var comps AdrComponents
 		extraKind := false
+		mapped := false
 		for _, c := range a.Components {
 			switch c.Kind {
 			case "postOfficeBox":
 				comps.POBox = c.Value
+				mapped = true
 			case "name":
 				comps.Street = c.Value
+				mapped = true
 			case "locality":
 				comps.Locality = c.Value
+				mapped = true
 			case "region":
 				comps.Region = c.Value
+				mapped = true
 			case "postcode":
 				comps.Postal = c.Value
+				mapped = true
 			case "country":
 				comps.Country = c.Value
+				mapped = true
 			default:
 				if c.Value != "" {
 					extraKind = true
@@ -477,10 +514,20 @@ func exportAddresses(card vcard.Card, addresses []contactmodel.Address, diags *[
 			// warn. TEST-07's round-trip property found the silent drop.
 			warn(diags, "adr", "vCard 3.0 ADR has no CC parameter (RFC 2426); country code dropped")
 		}
-		if len(a.Components) == 0 && a.Full == "" && a.Coordinates == "" && a.TimeZone == "" {
+		// Skip an address that would serialize to nothing but empty ADR slots:
+		// an address whose components are all extra kinds (no vCard 3.0 ADR
+		// position) with no Full/Coordinates/TimeZone to carry would emit a
+		// degenerate "ADR:;;;;;;" line that importAddresses reads back as an
+		// empty address — churning the serialized form across a repeated
+		// conversion (DATA-03, issue #443). The extraKind warn must still fire
+		// so the drop is documented, never silent.
+		if !mapped && a.Full == "" && a.Coordinates == "" && a.TimeZone == "" {
+			if extraKind {
+				warn(diags, "adr", "extra RFC 9553/9554 address component kind(s) have no vCard 3.0 ADR position; dropped")
+			}
 			continue
 		}
-		tokens := ctxToType(a.Contexts)
+		tokens := contextTypeTokens(a.Contexts, diags, "adr")
 		if isPreferred(a.Pref) {
 			tokens = append(tokens, "PREF")
 		}
@@ -553,11 +600,20 @@ func (Adapter) Import(raw []byte) (*contactmodel.Record, []contactmodel.Diagnost
 
 	// Unknown properties -> passthrough (0.5).
 	known := knownPropNames()
-	for name, fields := range card {
-		if known[name] {
-			continue
+	var unknownNames []string
+	for name := range card {
+		if !known[name] {
+			unknownNames = append(unknownNames, name)
 		}
-		for _, f := range fields {
+	}
+	// Sort for determinism: card is a map, and an unsorted iteration would
+	// put Passthrough.VCard in a different order on every import, which would
+	// churn the serialized form across a repeated conversion (DATA-03, issue
+	// #443) and make the passthrough payload non-byte-stable. vcard4 sorts
+	// the same way.
+	sort.Strings(unknownNames)
+	for _, name := range unknownNames {
+		for _, f := range card[name] {
 			rec.Passthrough.VCard = append(rec.Passthrough.VCard, fieldToJCardProp(name, f))
 		}
 	}
@@ -863,9 +919,14 @@ func warn(diags *[]contactmodel.Diagnostic, concept, msg string) {
 	*diags = append(*diags, contactmodel.Diagnostic{Severity: "warn", Concept: concept, Message: msg})
 }
 
-// ctxToType implements the `ctx2type` transform: private->home,
-// work->work, rendered as vCard 3.0 TYPE tokens.
-func ctxToType(contexts []string) []string {
+// contextTypeTokens implements the `ctx2type` transform for vCard 3.0 export:
+// private->HOME, work->WORK, rendered as RFC 2426 TYPE tokens. A context with
+// no 3.0 token (billing/delivery — RFC 9554-only — or any unrecognized value)
+// is reported as a warn diagnostic instead of being emitted as a TYPE token
+// that contextsAndPrefFromTokens would silently drop on import: emitting it
+// would both lose the context without a trace and churn the serialized form
+// across a repeated conversion (DATA-03, issue #443).
+func contextTypeTokens(contexts []string, diags *[]contactmodel.Diagnostic, concept string) []string {
 	var out []string
 	for _, c := range contexts {
 		switch c {
@@ -875,7 +936,7 @@ func ctxToType(contexts []string) []string {
 			out = append(out, "WORK")
 		default:
 			if c != "" {
-				out = append(out, strings.ToUpper(c))
+				warn(diags, concept, fmt.Sprintf("vCard 3.0 has no TYPE token for context %q (RFC 2426 defines HOME/WORK only); context dropped", c))
 			}
 		}
 	}

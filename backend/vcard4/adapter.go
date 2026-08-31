@@ -652,6 +652,15 @@ func importNicknames(card vcard.Card, rec *contactmodel.Record) {
 
 func exportNicknames(rec *contactmodel.Record, card vcard.Card) {
 	for i, n := range rec.Card.Nicknames {
+		if n.Name == "" {
+			// Empty nickname entries are dropped by importNicknames (which
+			// filters out empty values) and ignored by the semantic
+			// comparison, so emitting them would produce a degenerate
+			// "NICKNAME:" line that never survives a re-import — the
+			// serialized form would churn across a repeated conversion
+			// (DATA-03, issue #443).
+			continue
+		}
 		f := &vcard.Field{Value: n.Name}
 		addTypeTokens(f, contextsToTypeTokens(n.Contexts)...)
 		setPref(f, n.Pref)
@@ -706,14 +715,6 @@ func importTitles(card vcard.Card, rec *contactmodel.Record, groupToOrgID map[st
 	}
 }
 
-func unitNames(units []contactmodel.OrgUnit) []string {
-	out := make([]string, len(units))
-	for i, u := range units {
-		out[i] = u.Name
-	}
-	return out
-}
-
 // exportOrganizations returns a map from Organization.ID to the synthetic
 // GROUP token assigned to it, for every organization referenced by at least
 // one Title.OrganizationID ("emit a shared groupN. prefix on the
@@ -730,6 +731,28 @@ func exportOrganizations(rec *contactmodel.Record, card vcard.Card) map[string]s
 	groupN := 0
 	for i, o := range rec.Card.Organizations {
 		id := idOrSynthetic(o.ID, "org", i)
+		// Empty unit names are dropped by importOrganizations and ignored by
+		// the semantic comparison, so an all-empty organization would
+		// serialize to a degenerate "ORG:;" line that never survives a
+		// re-import — churning the serialized form across a repeated
+		// conversion (DATA-03, issue #443). Filter them and skip the org when
+		// nothing would land in the ORG value.
+		parts := []string{o.Name}
+		for _, u := range o.Units {
+			if u.Name != "" {
+				parts = append(parts, u.Name)
+			}
+		}
+		hasContent := false
+		for _, p := range parts {
+			if p != "" {
+				hasContent = true
+				break
+			}
+		}
+		if !hasContent {
+			continue
+		}
 		group := ""
 		if referenced[o.ID] || referenced[id] {
 			groupN++
@@ -737,7 +760,6 @@ func exportOrganizations(rec *contactmodel.Record, card vcard.Card) map[string]s
 			orgIDToGroup[o.ID] = group
 			orgIDToGroup[id] = group
 		}
-		parts := append([]string{o.Name}, unitNames(o.Units)...)
 		f := &vcard.Field{Value: joinComponents(parts), Group: group}
 		setPropID(f, id)
 		card.Add(PropOrg, f)
@@ -1542,10 +1564,22 @@ func importKeywords(card vcard.Card, rec *contactmodel.Record) {
 }
 
 func exportKeywords(rec *contactmodel.Record, card vcard.Card) {
-	if len(rec.Card.Keywords) == 0 {
+	// Empty keyword entries are dropped by every importer (importKeywords
+	// filters k == "") and ignored by the semantic comparison, so emitting
+	// them would produce a degenerate "CATEGORIES:" line that never survives
+	// a re-import — the serialized form would churn between passes of a
+	// repeated conversion (DATA-03, issue #443). Filter them to match what
+	// the read side accepts.
+	var nonEmpty []string
+	for _, k := range rec.Card.Keywords {
+		if k != "" {
+			nonEmpty = append(nonEmpty, k)
+		}
+	}
+	if len(nonEmpty) == 0 {
 		return
 	}
-	card.SetValue(PropCategories, strings.Join(rec.Card.Keywords, ","))
+	card.SetValue(PropCategories, strings.Join(nonEmpty, ","))
 }
 
 // ---------------------------------------------------------------------------
