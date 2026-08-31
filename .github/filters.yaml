@@ -78,7 +78,6 @@ chaos:
 # vobject), so it is NOT gated here.
 differential:
   - 'backend/differential/**'
-  - 'backend/reference/**'
   - 'backend/caldav/differential_ical_test.go'
   - 'backend/services/differential_ical_test.go'
 
