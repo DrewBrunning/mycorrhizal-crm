@@ -415,10 +415,14 @@ implementer of the layer's capability, not a different layer.
 ## Layers vs CI path gating
 
 Each layer maps onto an existing area of `.github/filters.yaml` (issue #264) —
-the single source of truth for path gating. **No new filter is required**; every
-layer has a home, and a layer's tests are gated exactly when its filter fires.
-The `changes` job's named outputs gate the suite jobs; skipped suites report
-success, so all checks can be required in branch protection.
+the single source of truth for path gating. **No new filter is required** — every
+layer has a home, and a layer's tests are gated exactly when its filter fires —
+with one deliberate exception: the `carddav` filter (issue #496), the
+real-server (Radicale) complement to the fake-based CardDAV suite, which is too
+slow and too flake-prone to run on every backend diff (same rationale as the
+`chaos` filter, #434). The `changes` job's named outputs gate the suite jobs;
+skipped suites report success, so all checks can be required in branch
+protection.
 
 | Layer | Filter area(s) in `.github/filters.yaml` |
 |---|---|
@@ -426,6 +430,7 @@ success, so all checks can be required in branch protection.
 | DB/integration | `backend` |
 | API contract | `openapi` (drift tests ride `backend`; fixture consumers ride `frontend`/`android`; spec fuzz + `cmd/schemagate` ride `openapi`) |
 | Import/export interop | `backend` |
+| CardDAV real-server interop | `carddav` (the fake-based CardDAV suite rides `backend` on every PR; the real-server Radicale job runs on the schedule + manual dispatch, and on a PR only when the `carddav` filter fires — issue #496) |
 | Migration | `backend` |
 | Frontend unit | `frontend` |
 | Android unit/Robolectric | `android` |

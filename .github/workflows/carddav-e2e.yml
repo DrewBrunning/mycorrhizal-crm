@@ -1,0 +1,131 @@
+name: CardDAV Real-Server E2E (Radicale)
+
+# Issue #496 (DATA — CardDAV round-trip integration tests): the real-server
+# complement to the fake-based CardDAV suite. The fake
+# (backend/services/fake_carddav_server_test.go) encodes OUR understanding of
+# the protocol, so a fake-only suite reproduces exactly the failure ADR-0002
+# warns about — code and tests consistently, confidently wrong, and green. A
+# real server is the only thing that can contradict us. This job runs the
+# same full sync lifecycle + TEST-02 fixture round trip against a REAL
+# Radicale (in a throwaway container) and asserts semantic equality via TEST-03
+# (#431), pinning the two documented divergences (celine's multi-N rejection,
+# bob's vobject photo/ADR mangling) in the test itself.
+#
+# Gating: scheduled (nightly) and manual dispatch always run; on PR/push the
+# job fires only when the `carddav` filter in .github/filters.yaml matches
+# (the sync/CardDAV machinery or the harness itself) — NOT on every backend
+# change. The fast deterministic fake suite stays the every-PR gate.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '45 3 * * *' # 03:45 UTC nightly (consolidated nightly suite)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Issue #264 pattern: path-gated checks — see unit-tests.yml / chaos-tests.yml.
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      carddav: ${{ steps.filter.outputs.carddav }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect changed areas
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+      # Boolean outputs only, so this is safe to interpolate (see unit-tests.yml).
+      - name: Report gating decision
+        run: |
+          echo "carddav=$CARDDAV_CHANGED"
+          echo "workflows=$WORKFLOWS_CHANGED"
+        env:
+          CARDDAV_CHANGED: ${{ steps.filter.outputs.carddav }}
+          WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
+
+  radicale:
+    permissions:
+      contents: read
+    name: CardDAV round trip against real Radicale
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: changes
+    # Scheduled runs and manual dispatch always run (no diff to gate on);
+    # otherwise only when the CardDAV machinery or the harness changes.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.carddav == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # A throwaway Radicale with basic auth (htpasswd, plain) and the
+      # owner_only rights model — the same shape the real-server test drives.
+      # Pinned by digest so the supply chain is deterministic.
+      - name: Start Radicale
+        run: |
+          mkdir -p /tmp/radicale/config /tmp/radicale/data
+          cat > /tmp/radicale/config/config <<'EOF'
+          [server]
+          hosts = 0.0.0.0:5232
+          [auth]
+          type = htpasswd
+          htpasswd_filename = /config/users
+          htpasswd_encryption = plain
+          [rights]
+          type = owner_only
+          [storage]
+          filesystem_folder = /data/collections
+          EOF
+          printf 'syncuser:syncsecret\n' > /tmp/radicale/config/users
+          docker run -d --name radicale \
+            -p 5232:5232 \
+            -v /tmp/radicale/config:/config \
+            -v /tmp/radicale/data:/data \
+            tomsquest/docker-radicale@sha256:89fa44d02b134f0ac37cad809883327af8424499d913eec74f95085c458a93b7
+          echo "Waiting for Radicale to listen..."
+          timeout 60 bash -c 'until curl -s -o /dev/null -w "" http://127.0.0.1:5232/; do sleep 1; done'
+          echo "Radicale is up"
+
+      - name: Run the real-server CardDAV round-trip suite
+        working-directory: backend
+        run: go test ./services/ -run '^TestCardDAVRadicale_RoundTrip$' -count=1 -v
+        env:
+          MYCORRHIZAL_RADICALE_URL: http://127.0.0.1:5232
+          MYCORRHIZAL_RADICALE_USER: syncuser
+          MYCORRHIZAL_RADICALE_PASSWORD: syncsecret
+
+      - name: Show Radicale logs on failure
+        if: failure()
+        run: |
+          echo "=== Radicale logs ==="
+          docker logs radicale
+
+      - name: Stop Radicale
+        if: always()
+        run: docker rm -f radicale || true

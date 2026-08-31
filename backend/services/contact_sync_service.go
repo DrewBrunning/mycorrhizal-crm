@@ -309,6 +309,28 @@ func (s *ContactSyncService) fetchChanges(ctx context.Context, client *carddav.C
 		SyncToken:   syncToken,
 	})
 	if syncErr == nil {
+		// RFC 6578 §3.2 requires every sync-collection response to carry a
+		// sync-token. A server that answers the REPORT but omits it (or
+		// returns an empty element) would otherwise silently poison the next
+		// run: SyncSubscription stores the empty token, the following run
+		// sends it back, and the server treats it as "first sync" — a full
+		// refetch of the whole book on every run, forever, with no visible
+		// error (issue #496 item 2, "silent full resync"). Degrade to a
+		// defined behavior instead: process the book as a full refetch for
+		// this run (reconcileContactSync diffs membership to find deletions)
+		// and keep the previous token, so a healthy token-receiving server
+		// never regresses into the full-resync loop.
+		if resp.SyncToken == "" {
+			logger.Warn().Str("url", addrBookURL.Redacted()).
+				Msg("CardDAV sync-collection response carried no sync-token (RFC 6578 violation); degrading to a full refetch and keeping the previous token")
+			full, qErr := client.QueryAddressBook(ctx, addrBookURL.Path, &carddav.AddressBookQuery{
+				DataRequest: carddav.AddressDataRequest{AllProp: true},
+			})
+			if qErr != nil {
+				return nil, nil, "", false, classifyContactSyncError(qErr)
+			}
+			return full, nil, syncToken, true, nil
+		}
 		if len(resp.Updated) == 0 {
 			return nil, resp.Deleted, resp.SyncToken, false, nil
 		}

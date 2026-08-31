@@ -81,5 +81,24 @@ differential:
   - 'backend/caldav/differential_ical_test.go'
   - 'backend/services/differential_ical_test.go'
 
+# carddav (issue #496): the real-server (Radicale) CardDAV integration job's
+# gate. Deliberately much narrower than backend/** — it runs against a real
+# server in Docker and is slow by design, so on a PR it only fires when the
+# CardDAV machinery itself (or the harness) changes; the nightly schedule and
+# manual dispatch always run it. The fast deterministic fake-based suite
+# (backend/services/fake_carddav_server_test.go + carddav_roundtrip_test.go)
+# runs on every backend change via the backend filter — this gate is only for
+# the real-server complement.
+carddav:
+  - '.github/workflows/carddav-e2e.yml'
+  - 'backend/carddav/**'
+  - 'backend/services/contact_sync_service.go'
+  - 'backend/services/contact_sync_service_test.go'
+  - 'backend/services/sync_conflict_service.go'
+  - 'backend/services/sync_conflict_service_test.go'
+  - 'backend/services/fake_carddav_server_test.go'
+  - 'backend/services/carddav_roundtrip_test.go'
+  - 'backend/services/carddav_radicale_integration_test.go'
+
 workflows:
   - '.github/**'
