@@ -1,0 +1,9 @@
+BEGIN:VCARD
+VERSION:4.0
+UID:inj-csv-formula-note
+FN:=1+1
+N:+SUM(A1);Ada;-1;;@HYPERLINK("http://x")
+NOTE:=cmd|'/c calc'!A1
+NICKNAME:@EVALUATE(1)
+ORG:-Acme Corp
+END:VCARD

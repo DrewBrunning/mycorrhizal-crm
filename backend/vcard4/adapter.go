@@ -63,8 +63,12 @@ func mappedV4PropNames() map[string]bool {
 // Import parses raw vCard 4.0 bytes into the neutral model. Per 0.5, it
 // returns an error only when raw is not validly framed vCard at all (no
 // BEGIN/END, malformed structure); every other gap (unmappable/unknown data)
-// is preserved via passthrough and reported as a Diagnostic.
+// is preserved via passthrough and reported as a Diagnostic. A leading UTF-8
+// BOM (which some Windows exporters emit and go-vcard refuses with "no
+// BEGIN field found") is stripped first — an ignorable encoding artifact,
+// not a reason to reject the card (TEST-04 str-bom fixture, issue #432).
 func (Adapter) Import(raw []byte) (*contactmodel.Record, []contactmodel.Diagnostic, error) {
+	raw = bytes.TrimPrefix(raw, []byte("\xef\xbb\xbf"))
 	dec := vcard.NewDecoder(bytes.NewReader(raw))
 	card, err := dec.Decode()
 	if err != nil {

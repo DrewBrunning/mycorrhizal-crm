@@ -1,0 +1,19 @@
+BEGIN:VCARD
+VERSION:4.0
+UID:multi-trunc-good-one
+FN:Good One
+N:;Good One;;;
+EMAIL:good1@example.com
+END:VCARD
+BEGIN:VCARD
+VERSION:4.0
+UID:multi-trunc-bad
+FN:Truncated Middle
+N:;Truncated Middle;;;
+BEGIN:VCARD
+VERSION:4.0
+UID:multi-trunc-good-two
+FN:Good Two
+N:;Good Two;;;
+EMAIL:good2@example.com
+END:VCARD

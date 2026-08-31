@@ -1,0 +1,6 @@
+begin:vcard
+version:4.0
+uid:str-mismatched-begin
+fn:Ada Lovelace
+n:Lovelace;Ada;;;
+end:vcard

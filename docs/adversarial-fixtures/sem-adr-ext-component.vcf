@@ -1,0 +1,7 @@
+BEGIN:VCARD
+VERSION:4.0
+UID:sem-adr-ext-component
+FN:Ada Lovelace
+N:Lovelace;Ada;;;
+ADR;TYPE=home:;Suite 100;1 Main St;Springfield;IL;12345;USA
+END:VCARD

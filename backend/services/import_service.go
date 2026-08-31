@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -77,26 +78,90 @@ func ParseCSV(reader io.Reader) (headers []string, rows [][]string, err error) {
 	return headers, rows, nil
 }
 
-// vcardBlockRE splits a multi-contact .vcf file into individual
-// "BEGIN:VCARD ... END:VCARD" blocks, each fed independently to the
-// vcard4/vcard3 adapters below: those adapters' Import
-// functions each parse exactly one card (see vcard4/vcard3's own Import doc
-// comments), so a file containing several concatenated vCards — the normal
-// shape of a .vcf export — has to be split before each block is handed to
-// Import. (?is) makes it case-insensitive (vCard's BEGIN/END/VERSION tokens
-// are case-insensitive per RFC 6350/2426) and lets "." match newlines so a
-// block's interior properties aren't excluded.
-var vcardBlockRE = regexp.MustCompile(`(?is)BEGIN:VCARD.*?END:VCARD\s*`)
+// splitVCardBlocks splits raw multi-contact VCF bytes into individual
+// per-card blocks (each including its own BEGIN:VCARD/END:VCARD framing).
+// It is a line-based walker rather than the old
+// `BEGIN:VCARD.*?END:VCARD` regex for two adversarial-input reasons
+// (TEST-04, issue #432), both real silent data-loss bugs the regex shipped:
+//
+//   - A property *value* can contain the literal text "END:VCARD" or
+//     "BEGIN:VCARD" on the same physical line (real notes do this). An
+//     unanchored `.*?END:VCARD` split truncates the value at the first
+//     in-value occurrence. Only a line that IS the delimiter (case
+//     -insensitive, per RFC 6350/2426) is treated as a boundary.
+//   - A truncated card (missing END) must not lazily swallow the next
+//     card's lines up to the next END, merging two cards into one
+//     malformed block. The walker closes a card at a second BEGIN:VCARD,
+//     so the truncated card is emitted on its own — it then fails to
+//     parse and is *reported* as a per-row error instead of silently
+//     deleting its neighbor (the multi-malformed-middle fixture's bound).
+//
+// Interstitial garbage between cards is dropped, as the regex did; naming
+// that garbage for the user is DATA-02's reporting job (issue #442), not
+// the splitter's.
+func splitVCardBlocks(data []byte) [][]byte {
+	lines := strings.Split(string(normalizeVCardLineEndings(data)), "\n")
+
+	var blocks [][]byte
+	var current []string
+	inCard := false
+	flush := func() {
+		if inCard {
+			blocks = append(blocks, []byte(strings.Join(current, "\r\n")+"\r\n"))
+			current = nil
+			inCard = false
+		}
+	}
+	for _, line := range lines {
+		// Trailing whitespace only — leading whitespace marks a folded
+		// continuation line, which must never be read as a delimiter.
+		token := strings.ToUpper(strings.TrimRight(line, " \t"))
+		if token == "BEGIN:VCARD" {
+			flush() // a second BEGIN before an END: previous card was truncated
+			current = []string{line}
+			inCard = true
+			continue
+		}
+		if inCard && token == "END:VCARD" {
+			current = append(current, line)
+			flush()
+			continue
+		}
+		if inCard {
+			current = append(current, line)
+		}
+	}
+	flush()
+	return blocks
+}
+
+// utf8BOM is the UTF-8 byte order mark some Windows exporters prepend to a
+// .vcf/.json upload. Stripped from the raw bytes before block splitting /
+// JSON decoding: neither go-vcard (which fails "no BEGIN field found") nor
+// encoding/json accepts it, and it carries no information — refusing the
+// whole file over three ignorable bytes would violate ADR-0002's
+// "preserve, don't reject" policy for a trivially-removable encoding
+// artifact (TEST-04 str-bom fixture). The adapters strip it too, so direct
+// consumers (CardDAV reconcile) are equally tolerant.
+var utf8BOM = []byte("\xef\xbb\xbf")
+
+// stripUTF8BOM removes a single leading UTF-8 BOM, if present.
+func stripUTF8BOM(data []byte) []byte {
+	return bytes.TrimPrefix(data, utf8BOM)
+}
+
+// normalizeVCardLineEndings converts CRLF and CR-only line endings to LF so
+// downstream line-oriented parsing (the splitter, go-vcard, vCard 2.1
+// reconstruction) never has to special-case a legacy exporter's choice.
+func normalizeVCardLineEndings(data []byte) []byte {
+	s := strings.ReplaceAll(string(data), "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r", "\n")
+	return []byte(s)
+}
 
 // vcardVersionRE sniffs the VERSION property within one block, per this
 // WP's explicit ask ("sniffing VERSION (4.0 vs 3.0)").
 var vcardVersionRE = regexp.MustCompile(`(?im)^VERSION:\s*([0-9.]+)\s*$`)
-
-// splitVCardBlocks splits raw multi-contact VCF bytes into individual
-// per-card blocks (each including its own BEGIN:VCARD/END:VCARD framing).
-func splitVCardBlocks(data []byte) [][]byte {
-	return vcardBlockRE.FindAll(data, -1)
-}
 
 // sniffVCardVersion returns "2.1" if the block's VERSION property starts
 // with "2", "3.0" if it starts with "3", otherwise "4.0" (the default for a
@@ -163,6 +228,43 @@ func extractPhotoFromRecord(rec *contactmodel.Record) (data []byte, mediaType st
 	return photostore.DecodePhotoURI(photo.URI, photo.MediaType)
 }
 
+// ImportVCardBlock parses a single BEGIN..END vCard block into the neutral
+// model, applying the same VERSION sniffing + vCard 2.1 normalization +
+// adapter dispatch that ParseVCF applies to every block of a multi-card
+// file. It is ParseVCF's per-block routing extracted so single-card
+// consumers (the adversarial corpus tier harness, internal/adversarial)
+// exercise exactly the production routing instead of re-implementing it.
+func ImportVCardBlock(block []byte) (*contactmodel.Record, []contactmodel.Diagnostic, error) {
+	// Normalize line endings up front so a CR-only block (legacy Outlook
+	// exports, TEST-04 ven-cr-only) parses identically to a CRLF one:
+	// go-vcard's decoder splits physical lines on '\n' only, so raw CR-only
+	// bytes would arrive as one giant line and fail "invalid BEGIN value".
+	// ParseVCF's splitter already normalizes before it reaches this point,
+	// so this is idempotent there and load-bearing for direct callers
+	// (CardDAV reconcile, the adversarial harness).
+	block = normalizeVCardLineEndings(block)
+	var adapter contactmodel.Importer = vcard4.Adapter{}
+	var normDiags []contactmodel.Diagnostic
+	switch sniffVCardVersion(block) {
+	case "2.1":
+		// vCard 2.1's legacy bare-token parameter grammar and
+		// QUOTED-PRINTABLE encoding are both opaque to go-vcard's
+		// decoder (T50) -- normalize the raw bytes first. vcard3, not
+		// vcard4, is the target adapter: its importMediaURI already
+		// tolerates 2.1-style ENCODING=BASE64 (vcard4 only understands
+		// native data: URIs), and 2.1's TYPE-token grammar is a subset
+		// of 3.0's, not 4.0's.
+		block, normDiags = normalizeVCard21(block)
+		adapter = vcard3.Adapter{}
+	case "3.0":
+		adapter = vcard3.Adapter{}
+	}
+
+	record, diags, importErr := adapter.Import(block)
+	diags = append(normDiags, diags...)
+	return record, diags, importErr
+}
+
 // ParseVCF reads and parses a VCF file, returning contact data and previews.
 //
 // Per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md, this now
@@ -180,7 +282,7 @@ func ParseVCF(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFContact
 		return nil, nil, stats, fmt.Errorf("failed to read VCF file: %w", readErr)
 	}
 
-	blocks := splitVCardBlocks(data)
+	blocks := splitVCardBlocks(stripUTF8BOM(data))
 	if len(blocks) == 0 {
 		return nil, nil, stats, fmt.Errorf("VCF file contains no valid vCards")
 	}
@@ -193,25 +295,7 @@ func ParseVCF(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFContact
 			return nil, nil, stats, fmt.Errorf("too many contacts: maximum is %d contacts", MaxVCFContacts)
 		}
 
-		var adapter contactmodel.Importer = vcard4.Adapter{}
-		var normDiags []contactmodel.Diagnostic
-		switch sniffVCardVersion(block) {
-		case "2.1":
-			// vCard 2.1's legacy bare-token parameter grammar and
-			// QUOTED-PRINTABLE encoding are both opaque to go-vcard's
-			// decoder (T50) -- normalize the raw bytes first. vcard3, not
-			// vcard4, is the target adapter: its importMediaURI already
-			// tolerates 2.1-style ENCODING=BASE64 (vcard4 only understands
-			// native data: URIs), and 2.1's TYPE-token grammar is a subset
-			// of 3.0's, not 4.0's.
-			block, normDiags = normalizeVCard21(block)
-			adapter = vcard3.Adapter{}
-		case "3.0":
-			adapter = vcard3.Adapter{}
-		}
-
-		record, diags, importErr := adapter.Import(block)
-		diags = append(normDiags, diags...)
+		record, diags, importErr := ImportVCardBlock(block)
 		if importErr != nil {
 			// Skip malformed vCards but continue parsing
 			previews = append(previews, models.ImportRowPreview{
@@ -276,6 +360,7 @@ func ParseJSContact(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFC
 		return nil, nil, stats, fmt.Errorf("failed to read JSContact file: %w", readErr)
 	}
 
+	data = stripUTF8BOM(data)
 	var rawCards []json.RawMessage
 	if jsonErr := json.Unmarshal(data, &rawCards); jsonErr != nil {
 		rawCards = []json.RawMessage{json.RawMessage(data)}

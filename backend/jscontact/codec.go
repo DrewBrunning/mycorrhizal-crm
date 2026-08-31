@@ -1,6 +1,7 @@
 package jscontact
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -28,7 +29,19 @@ func Marshal(c *Card) ([]byte, error) {
 // inverse of Marshal's conversions. @type is validated if present and
 // defaulted if absent (codec rule 1); any Card.version value is accepted
 // (codec rule 2).
+//
+// Two input shapes are rejected before the typed decode even though
+// encoding/json would happily swallow them into a zero Card: a leading
+// UTF-8 BOM (stripped — an ignorable Windows-exporter artifact, TEST-04
+// js-bom fixture) and a top-level JSON `null` (not a Card instance at all,
+// TEST-04 js-null-card fixture). Both otherwise decode into a silently
+// empty Card, which per ADR-0002 is exactly the "silent drop" an error is
+// for.
 func Unmarshal(data []byte) (*Card, error) {
+	data = bytes.TrimPrefix(data, []byte("\xef\xbb\xbf"))
+	if trimmed := bytes.TrimSpace(data); len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return nil, fmt.Errorf("jscontact: not a JSContact Card (empty or top-level null)")
+	}
 	var c Card
 	if err := json.Unmarshal(data, &c); err != nil {
 		return nil, err

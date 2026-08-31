@@ -509,8 +509,12 @@ func exportAddresses(card vcard.Card, addresses []contactmodel.Address, diags *[
 // Import parses raw as a single vCard 3.0 card into the neutral model. It
 // returns an error only when raw is not a syntactically valid vCard at all
 // (0.5) — unmappable/unrecognized properties are preserved in
-// Record.Passthrough.VCard and never cause a hard failure.
+// Record.Passthrough.VCard and never cause a hard failure. A leading UTF-8
+// BOM (which some Windows exporters emit and go-vcard refuses with "no
+// BEGIN field found") is stripped first — an ignorable encoding artifact,
+// not a reason to reject the card (TEST-04 str-bom fixture, issue #432).
 func (Adapter) Import(raw []byte) (*contactmodel.Record, []contactmodel.Diagnostic, error) {
+	raw = bytes.TrimPrefix(raw, []byte("\xef\xbb\xbf"))
 	dec := vcard.NewDecoder(bytes.NewReader(raw))
 	card, err := dec.Decode()
 	if err != nil {
