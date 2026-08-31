@@ -39,14 +39,14 @@ import (
 
 // Card is the root JSContact object (RFC 9553 §2).
 type Card struct {
-	Type     string     `json:"@type"`
-	Version  string     `json:"version"`
-	UID      string     `json:"uid,omitempty"`
-	Kind     string     `json:"kind,omitempty"`
-	Language string     `json:"language,omitempty"`
-	ProdID   string     `json:"prodId,omitempty"`
-	Created  *Timestamp `json:"created,omitempty"`
-	Updated  *Timestamp `json:"updated,omitempty"`
+	Type     string  `json:"@type"`
+	Version  string  `json:"version"`
+	UID      string  `json:"uid,omitempty"`
+	Kind     string  `json:"kind,omitempty"`
+	Language string  `json:"language,omitempty"`
+	ProdID   string  `json:"prodId,omitempty"`
+	Created  *string `json:"created,omitempty"` // UTCDateTime string (RFC 9553 §2.1.3)
+	Updated  *string `json:"updated,omitempty"` // UTCDateTime string (RFC 9553 §2.1.10)
 
 	Name *Name `json:"name,omitempty"`
 
@@ -371,11 +371,11 @@ type PersonalInfo struct {
 
 // Note's field shape follows backend/contactmodel.Note (RFC 9554 AUTHOR/AUTHOR-NAME/CREATED params).
 type Note struct {
-	Type    string     `json:"@type"`
-	ID      string     `json:"-"`
-	Note    string     `json:"note"`
-	Author  *Author    `json:"author,omitempty"`
-	Created *Timestamp `json:"created,omitempty"`
+	Type    string  `json:"@type"`
+	ID      string  `json:"-"`
+	Note    string  `json:"note"`
+	Author  *Author `json:"author,omitempty"`
+	Created *string `json:"created,omitempty"` // UTCDateTime string (RFC 9553 §2.8.3)
 	extra   map[string]json.RawMessage
 }
 

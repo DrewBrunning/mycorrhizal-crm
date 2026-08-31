@@ -201,12 +201,12 @@ func importIdentity(c *Card, r *contactmodel.Record) {
 	r.Card.Kind = c.Kind
 	r.Card.ProdID = c.ProdID
 	r.Card.Language = c.Language
-	if c.Created != nil {
-		r.Card.Created = &contactmodel.Timestamp{UTC: c.Created.UTC}
-	}
-	if c.Updated != nil {
-		r.Card.Updated = &contactmodel.Timestamp{UTC: c.Updated.UTC}
-	}
+	// RFC 9553 §2.1.3/§2.1.10: Card created/updated are UTCDateTime strings
+	// on the wire (the @type-discriminated Timestamp OBJECT form is reserved
+	// for the anniversary date union). The differential found this adapter
+	// emitting the object form; both directions now use the conformant string.
+	r.Card.Created = utcDateTimeToNeutral(c.Created)
+	r.Card.Updated = utcDateTimeToNeutral(c.Updated)
 }
 
 func exportIdentity(r *contactmodel.Record, c *Card) {
@@ -214,12 +214,8 @@ func exportIdentity(r *contactmodel.Record, c *Card) {
 	c.Kind = r.Card.Kind
 	c.ProdID = r.Card.ProdID
 	c.Language = r.Card.Language
-	if r.Card.Created != nil {
-		c.Created = &Timestamp{UTC: r.Card.Created.UTC}
-	}
-	if r.Card.Updated != nil {
-		c.Updated = &Timestamp{UTC: r.Card.Updated.UTC}
-	}
+	c.Created = utcDateTimeFromNeutral(r.Card.Created)
+	c.Updated = utcDateTimeFromNeutral(r.Card.Updated)
 }
 
 // --- name --------------------------------------------------------------
@@ -475,6 +471,9 @@ func exportAddresses(r *contactmodel.Record, c *Card) {
 
 // --- anniversaries -----------------------------------------------------
 
+// timestampToNeutral converts a JSContact wire Timestamp object (anniversary
+// dates; the `@type`-discriminated object form RFC 9553/9555 require for the
+// date-and-or-time union) into the neutral model.
 func timestampToNeutral(t *Timestamp) *contactmodel.Timestamp {
 	if t == nil {
 		return nil
@@ -487,6 +486,23 @@ func timestampFromNeutral(t *contactmodel.Timestamp) *Timestamp {
 		return nil
 	}
 	return &Timestamp{UTC: t.UTC}
+}
+
+// utcDateTimeToNeutral converts a JSContact wire UTCDateTime string (Card
+// created/updated, Note created — RFC 9553 §2.1.3/§2.1.10/§2.8.3) into the
+// neutral model.
+func utcDateTimeToNeutral(s *string) *contactmodel.Timestamp {
+	if s == nil {
+		return nil
+	}
+	return &contactmodel.Timestamp{UTC: *s}
+}
+
+func utcDateTimeFromNeutral(t *contactmodel.Timestamp) *string {
+	if t == nil {
+		return nil
+	}
+	return &t.UTC
 }
 
 func anniversaryDateToNeutral(d AnniversaryDate) contactmodel.AnniversaryDate {
@@ -643,7 +659,7 @@ func exportPersonalInfo(r *contactmodel.Record, c *Card) {
 
 func importNotesKeywords(c *Card, r *contactmodel.Record) {
 	for _, n := range c.Notes {
-		nn := contactmodel.Note{ID: n.ID, Note: n.Note, Created: timestampToNeutral(n.Created)}
+		nn := contactmodel.Note{ID: n.ID, Note: n.Note, Created: utcDateTimeToNeutral(n.Created)}
 		if n.Author != nil {
 			nn.Author = &contactmodel.Author{Name: n.Author.Name, URI: n.Author.URI}
 		}
@@ -654,7 +670,7 @@ func importNotesKeywords(c *Card, r *contactmodel.Record) {
 
 func exportNotesKeywords(r *contactmodel.Record, c *Card, diags *[]contactmodel.Diagnostic) {
 	for _, n := range r.Card.Notes {
-		jn := Note{ID: n.ID, Note: n.Note, Created: timestampFromNeutral(n.Created)}
+		jn := Note{ID: n.ID, Note: n.Note, Created: utcDateTimeFromNeutral(n.Created)}
 		if n.Author != nil {
 			jn.Author = &Author{Name: n.Author.Name, URI: n.Author.URI}
 		}

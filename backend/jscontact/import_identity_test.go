@@ -57,7 +57,7 @@ func TestImport_ProdID(t *testing.T) {
 }
 
 func TestImport_Updated(t *testing.T) {
-	raw := []byte(`{"@type":"Card","version":"1.0","uid":"updated-example","updated":{"@type":"Timestamp","utc":"2021-08-24T18:30:00Z"}}`)
+	raw := []byte(`{"@type":"Card","version":"1.0","uid":"updated-example","updated":"2021-08-24T18:30:00Z"}`)
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -81,12 +81,15 @@ func TestImport_Language(t *testing.T) {
 // TestImport_Created exercises the "created" row (js_ptr "/created",
 // corrected from a wrongly-recorded "-"): a top-level "created" property in a
 // JSContact document maps to Record.Card.Created, exactly like "updated"
-// maps to Record.Card.Updated (TestImport_Updated, above). It must NOT be
-// captured into Passthrough.JSContact — it now has a real neutral home, so
-// treating it as an unmapped top-level key would be a (mapped-property)
-// regression, not a degradation-policy concern.
+// maps to Record.Card.Updated (TestImport_Updated, above). RFC 9553 §2.1.3
+// defines created as a UTCDateTime STRING — the @type-discriminated Timestamp
+// object form is reserved for the anniversary date union — so the wire input
+// here is the conformant string form. It must NOT be captured into
+// Passthrough.JSContact — it now has a real neutral home, so treating it as
+// an unmapped top-level key would be a (mapped-property) regression, not a
+// degradation-policy concern.
 func TestImport_Created(t *testing.T) {
-	raw := []byte(`{"@type":"Card","version":"1.0","uid":"created-example","created":{"@type":"Timestamp","utc":"2021-08-24T18:30:00Z"}}`)
+	raw := []byte(`{"@type":"Card","version":"1.0","uid":"created-example","created":"2021-08-24T18:30:00Z"}`)
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
 		t.Fatalf("Import: %v", err)
