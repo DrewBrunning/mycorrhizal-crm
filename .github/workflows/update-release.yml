@@ -45,14 +45,19 @@ on:
         required: true
         type: string
 
+# Top level is read-only per StepSecurity's "Restrict permissions for
+# GITHUB_TOKEN"; the write scopes the job needs (push branch+tag, open the PR)
+# are granted only to the single job that uses them.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   prepare:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
