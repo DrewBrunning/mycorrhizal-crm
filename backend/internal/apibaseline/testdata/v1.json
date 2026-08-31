@@ -9931,6 +9931,31 @@
       ]
     },
     {
+      "name": "DiscoveredProperty",
+      "properties": [
+        {
+          "name": "matched_definition_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "matched_definition_label",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
       "name": "DismissHouseholdSuggestionInput",
       "properties": [
         {
@@ -11331,9 +11356,61 @@
           "required": true
         },
         {
+          "name": "field_mappings",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
           "name": "session_id",
           "type": "string",
           "required": true
+        }
+      ]
+    },
+    {
+      "name": "ImportFieldMapping",
+      "properties": [
+        {
+          "name": "action",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "ignore",
+            "map",
+            "create"
+          ]
+        },
+        {
+          "name": "field_definition_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "property_name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "string",
+            "text",
+            "number",
+            "boolean",
+            "date",
+            "datetime",
+            "uri",
+            "email",
+            "phone",
+            "enum"
+          ]
         }
       ]
     },
@@ -11448,6 +11525,11 @@
         {
           "name": "batch_duplicate_of",
           "type": "integer",
+          "required": false
+        },
+        {
+          "name": "custom_field_candidates",
+          "type": "array\u003cobject\u003e",
           "required": false
         },
         {

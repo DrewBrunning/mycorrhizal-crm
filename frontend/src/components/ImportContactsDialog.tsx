@@ -30,17 +30,21 @@ import {
   TableHead,
   TablePagination,
   TableRow,
+  TextField,
   Typography,
 } from '@mui/material';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FIELD_TYPES } from '../api/fieldDefinitions';
 import {
   CONTACT_FIELD_LABELS,
   type ColumnMapping,
   confirmImport,
   confirmVCFImport,
+  type DiscoveredCustomProperty,
   getImportPreview,
   IMPORTABLE_CONTACT_FIELDS,
+  type ImportFieldMapping,
   type ImportMergeDiff,
   type ImportPreviewResponse,
   type ImportResult,
@@ -52,6 +56,7 @@ import {
   uploadVCFForImport,
 } from '../api/import';
 import { useSnackbar } from '../context/SnackbarContext';
+import { useFieldDefinitions } from '../hooks/useFieldDefinitions';
 import { getErrorMessage } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
@@ -61,11 +66,14 @@ interface ImportContactsDialogProps {
   onImportComplete: () => void;
 }
 
-type ImportStep = 'upload' | 'mapping' | 'preview' | 'result';
+type ImportStep = 'upload' | 'mapping' | 'customFields' | 'preview' | 'result';
 type ImportType = 'csv' | 'vcf';
 
 const CSV_STEP_KEYS = ['upload', 'mapColumns', 'review', 'done'] as const;
 const VCF_STEP_KEYS = ['upload', 'review', 'done'] as const;
+// Issue #514: when a VCF file carries unknown X-* properties, the wizard
+// inserts a "Custom fields" promotion step between upload and review.
+const VCF_WITH_CUSTOM_FIELDS_STEP_KEYS = ['upload', 'customFields', 'review', 'done'] as const;
 
 // T56: the preview table is paginated client-side so a full address-book
 // import (hundreds of rows) stays usable instead of mounting one Select per
@@ -79,6 +87,7 @@ export default function ImportContactsDialog({
 }: ImportContactsDialogProps) {
   const { t } = useTranslation();
   const { showSuccess } = useSnackbar();
+  const { definitions: fieldDefinitions, refresh: refreshFieldDefinitions } = useFieldDefinitions();
 
   // Step state
   const [activeStep, setActiveStep] = useState(0);
@@ -88,6 +97,15 @@ export default function ImportContactsDialog({
   // Upload state
   const [uploadResponse, setUploadResponse] = useState<ImportUploadResponse | null>(null);
   const [mappings, setMappings] = useState<ColumnMapping[]>([]);
+
+  // Issue #514: the discovered X-* properties this VCF import can promote to
+  // custom fields (union across rows), and the per-property promotion
+  // decisions sent back on confirm. Empty for CSV imports (no adapter
+  // passthrough) and for VCF files that carried no X-* properties.
+  const [customFieldCandidates, setCustomFieldCandidates] = useState<DiscoveredCustomProperty[]>(
+    [],
+  );
+  const [fieldMappings, setFieldMappings] = useState<ImportFieldMapping[]>([]);
 
   // Preview state
   const [previewResponse, setPreviewResponse] = useState<ImportPreviewResponse | null>(null);
@@ -109,6 +127,8 @@ export default function ImportContactsDialog({
     setImportType('csv');
     setUploadResponse(null);
     setMappings([]);
+    setCustomFieldCandidates([]);
+    setFieldMappings([]);
     setPreviewResponse(null);
     setRowActions(new Map());
     setPreviewPage(0);
@@ -152,11 +172,16 @@ export default function ImportContactsDialog({
 
     try {
       if (isVCF) {
-        // VCF import - goes directly to preview (no mapping needed)
+        // VCF import - goes to a custom-fields promotion step when the file
+        // carries unknown X-* properties, otherwise directly to preview.
         setImportType('vcf');
         const response = await uploadVCFForImport(file);
         setPreviewResponse(response);
         setPreviewPage(0);
+
+        const candidates = collectCustomFieldCandidates(response.rows);
+        setCustomFieldCandidates(candidates);
+        setFieldMappings(initFieldMappings(candidates));
 
         // Initialize row actions based on suggested actions
         const initialActions = new Map<number, string>();
@@ -165,8 +190,17 @@ export default function ImportContactsDialog({
         });
         setRowActions(initialActions);
 
-        setStep('preview');
-        setActiveStep(1); // VCF skips mapping, so preview is step 1
+        if (candidates.length > 0) {
+          // Issue #514: let the user map discovered X-* properties to custom
+          // fields before reviewing the rows. Load the user's existing
+          // definitions for the "map to existing field" dropdown.
+          void refreshFieldDefinitions();
+          setStep('customFields');
+          setActiveStep(1);
+        } else {
+          setStep('preview');
+          setActiveStep(1);
+        }
       } else {
         // CSV import - needs column mapping
         setImportType('csv');
@@ -300,7 +334,7 @@ export default function ImportContactsDialog({
       // Use appropriate confirm endpoint based on import type
       const result =
         importType === 'vcf'
-          ? await confirmVCFImport(previewResponse.session_id, actions)
+          ? await confirmVCFImport(previewResponse.session_id, actions, fieldMappings)
           : await confirmImport(previewResponse.session_id, actions);
 
       setImportResult(result);
@@ -519,6 +553,168 @@ export default function ImportContactsDialog({
     );
   };
 
+  // Render the issue #514 custom-fields promotion step: for each discovered
+  // X-* property, the user picks whether to keep it as opaque passthrough
+  // (default), map it into an existing custom-field definition, or promote it
+  // to a newly-created one (label + type; the key and vCard projection are
+  // derived server-side from the property name).
+  const renderCustomFieldsStep = () => {
+    if (customFieldCandidates.length === 0) return null;
+
+    const updateMapping = (propertyName: string, patch: Partial<ImportFieldMapping>) => {
+      setFieldMappings((prev) =>
+        prev.map((m) => (m.property_name === propertyName ? { ...m, ...patch } : m)),
+      );
+    };
+
+    return (
+      <Box>
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+            mb: 2,
+          }}
+        >
+          {t(
+            'contacts.import.customFields.description',
+            "This file contains custom X- properties your app doesn't know yet. Promote them to searchable custom fields, or keep them as passthrough data. Anything left as passthrough is preserved but not searchable or editable.",
+          )}
+        </Typography>
+        <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+          <Table stickyHeader size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>{t('contacts.import.customFields.property', 'Property')}</TableCell>
+                <TableCell>
+                  {t('contacts.import.customFields.sampleValue', 'Sample Value')}
+                </TableCell>
+                <TableCell>{t('contacts.import.customFields.promoteTo', 'Promote To')}</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {customFieldCandidates.map((candidate) => {
+                const mapping = fieldMappings.find((m) => m.property_name === candidate.name);
+                const action = mapping?.action ?? 'ignore';
+                return (
+                  <TableRow key={candidate.name}>
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 'medium',
+                        }}
+                      >
+                        {candidate.name}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        noWrap
+                        sx={{
+                          color: 'text.secondary',
+                          maxWidth: 160,
+                        }}
+                      >
+                        {candidate.value || '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        <FormControl size="small" sx={{ minWidth: 180 }}>
+                          <Select
+                            value={action}
+                            slotProps={{ input: { 'aria-label': `${candidate.name} action` } }}
+                            onChange={(e) =>
+                              updateMapping(candidate.name, {
+                                action: e.target.value as ImportFieldMapping['action'],
+                              })
+                            }
+                          >
+                            <MenuItem value="ignore">
+                              {t(
+                                'contacts.import.customFields.keepAsPassthrough',
+                                'Keep as passthrough',
+                              )}
+                            </MenuItem>
+                            <MenuItem value="map">
+                              {t(
+                                'contacts.import.customFields.mapToExisting',
+                                'Map to existing field',
+                              )}
+                            </MenuItem>
+                            <MenuItem value="create">
+                              {t('contacts.import.customFields.createNew', 'Create new field')}
+                            </MenuItem>
+                          </Select>
+                        </FormControl>
+                        {action === 'map' && (
+                          <FormControl size="small" sx={{ minWidth: 220 }}>
+                            <Select
+                              value={mapping?.field_definition_id ?? ''}
+                              displayEmpty
+                              slotProps={{ input: { 'aria-label': `${candidate.name} field` } }}
+                              onChange={(e) =>
+                                updateMapping(candidate.name, {
+                                  field_definition_id: e.target.value as string,
+                                })
+                              }
+                            >
+                              <MenuItem value="" disabled>
+                                <em>
+                                  {t('contacts.import.customFields.selectField', 'Select a field…')}
+                                </em>
+                              </MenuItem>
+                              {fieldDefinitions.map((def) => (
+                                <MenuItem key={def.id} value={def.id}>
+                                  {def.label}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        )}
+                        {action === 'create' && (
+                          <>
+                            <TextField
+                              size="small"
+                              label={t('contacts.import.customFields.label', 'Label')}
+                              value={mapping?.label ?? ''}
+                              onChange={(e) =>
+                                updateMapping(candidate.name, { label: e.target.value })
+                              }
+                              sx={{ minWidth: 180 }}
+                              slotProps={{ input: { 'aria-label': `${candidate.name} label` } }}
+                            />
+                            <FormControl size="small" sx={{ minWidth: 130 }}>
+                              <Select
+                                value={mapping?.type ?? 'text'}
+                                slotProps={{ input: { 'aria-label': `${candidate.name} type` } }}
+                                onChange={(e) =>
+                                  updateMapping(candidate.name, { type: e.target.value as string })
+                                }
+                              >
+                                {FIELD_TYPES.map((type) => (
+                                  <MenuItem key={type} value={type}>
+                                    {t(`customFields.types.${type}`)}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          </>
+                        )}
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+    );
+  };
+
   // Render preview step
   const renderPreviewStep = () => {
     if (!previewResponse) return null;
@@ -711,6 +907,8 @@ export default function ImportContactsDialog({
         return renderUploadStep();
       case 'mapping':
         return renderMappingStep();
+      case 'customFields':
+        return renderCustomFieldsStep();
       case 'preview':
         return renderPreviewStep();
       case 'result':
@@ -741,18 +939,48 @@ export default function ImportContactsDialog({
             </Button>
           </>
         );
+      case 'customFields':
+        return (
+          <>
+            <Button
+              onClick={() => {
+                setStep('upload');
+                setActiveStep(0);
+                setPreviewResponse(null);
+                setRowActions(new Map());
+                setPreviewPage(0);
+              }}
+            >
+              {t('common.back', 'Back')}
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => {
+                setStep('preview');
+                setActiveStep(2);
+              }}
+              disabled={loading}
+            >
+              {t('common.continue', 'Continue')}
+            </Button>
+          </>
+        );
       case 'preview':
         return (
           <>
             <Button
               onClick={() => {
                 if (importType === 'vcf') {
-                  // VCF goes back to upload (no mapping step)
-                  setStep('upload');
-                  setActiveStep(0);
-                  setPreviewResponse(null);
-                  setRowActions(new Map());
-                  setPreviewPage(0);
+                  if (customFieldCandidates.length > 0) {
+                    // VCF with discovered X-* properties goes back to the
+                    // custom-fields promotion step.
+                    setStep('customFields');
+                    setActiveStep(1);
+                  } else {
+                    // VCF without candidates goes back to upload.
+                    setStep('upload');
+                    setActiveStep(0);
+                  }
                 } else {
                   // CSV goes back to mapping
                   setStep('mapping');
@@ -805,9 +1033,15 @@ export default function ImportContactsDialog({
       </DialogTitle>
 
       <DialogContent dividers>
-        {/* Stepper - different steps for CSV vs VCF */}
+        {/* Stepper - different steps for CSV vs VCF; VCF gains a custom-fields
+            step only when the file carried X-* properties (issue #514). */}
         <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
-          {(importType === 'vcf' ? VCF_STEP_KEYS : CSV_STEP_KEYS).map((key) => (
+          {(importType === 'vcf'
+            ? customFieldCandidates.length > 0
+              ? VCF_WITH_CUSTOM_FIELDS_STEP_KEYS
+              : VCF_STEP_KEYS
+            : CSV_STEP_KEYS
+          ).map((key) => (
             <Step key={key}>
               <StepLabel>{t(`contacts.import.steps.${key}`)}</StepLabel>
             </Step>
@@ -840,6 +1074,46 @@ export default function ImportContactsDialog({
 // import (batch_duplicate_of).
 function isConflictRow(row: ImportRowPreview): boolean {
   return !!row.duplicate_match || row.batch_duplicate_of !== null;
+}
+
+// --- issue #514 custom-fields promotion step helpers -------------
+
+// collectCustomFieldCandidates flattens the per-row custom_field_candidates
+// into a deduplicated list (one entry per property name, first value seen),
+// the union that drives the promotion step.
+function collectCustomFieldCandidates(rows: ImportRowPreview[]): DiscoveredCustomProperty[] {
+  const seen = new Map<string, DiscoveredCustomProperty>();
+  rows.forEach((row) => {
+    (row.custom_field_candidates ?? []).forEach((candidate) => {
+      if (!seen.has(candidate.name)) seen.set(candidate.name, candidate);
+    });
+  });
+  return Array.from(seen.values());
+}
+
+// titleCaseFromProperty derives a default definition label from a vCard X-
+// property name (x-favorite-color -> "Favorite Color"), matching the
+// server-side derivation in createOrReuseImportedFieldDefinition.
+function titleCaseFromProperty(name: string): string {
+  return name
+    .replace(/^x-/i, '')
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+// initFieldMappings seeds the promotion decisions: a property whose projection
+// already matches an existing definition defaults to "map" (the export
+// round-trip, pre-selected); everything else defaults to "keep as passthrough".
+function initFieldMappings(candidates: DiscoveredCustomProperty[]): ImportFieldMapping[] {
+  return candidates.map((candidate) => ({
+    property_name: candidate.name,
+    action: candidate.matched_definition_id ? 'map' : 'ignore',
+    field_definition_id: candidate.matched_definition_id ?? '',
+    label: candidate.matched_definition_label ?? titleCaseFromProperty(candidate.name),
+    type: 'text',
+  }));
 }
 
 const IMPORT_DIFF_KIND_LABELS: Record<string, string> = {

@@ -294,8 +294,20 @@
       "steps": {
         "upload": "Carica",
         "mapColumns": "Mappa Colonne",
+        "customFields": "Campi personalizzati",
         "review": "Rivedi",
         "done": "Fatto"
+      },
+      "customFields": {
+        "description": "Questo file contiene proprietà X- personalizzate che la tua app non conosce ancora. Promuovile a campi personalizzati ricercabili oppure conservale come dati di passaggio. Ciò che resta come passaggio viene preservato, ma non è ricercabile né modificabile.",
+        "property": "Proprietà",
+        "sampleValue": "Valore di esempio",
+        "promoteTo": "Promuovi a",
+        "keepAsPassthrough": "Mantieni come passaggio",
+        "mapToExisting": "Mappa su campo esistente",
+        "createNew": "Crea nuovo campo",
+        "selectField": "Seleziona un campo…",
+        "label": "Etichetta"
       },
       "preview": {
         "title": "Rivedi Importazione",

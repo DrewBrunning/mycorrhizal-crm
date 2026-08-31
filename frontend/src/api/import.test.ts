@@ -196,8 +196,32 @@ describe('confirmVCFImport', () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toContain('/contacts/import/vcf/confirm');
     expect(init.method).toBe('POST');
-    expect(JSON.parse(init.body)).toEqual({ session_id: 'sess-1', actions });
+    expect(JSON.parse(init.body)).toEqual({ session_id: 'sess-1', actions, field_mappings: [] });
     expect(result).toEqual(importResult);
+  });
+
+  test('sends the issue #514 field mappings when provided', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(okResponse(importResult));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await confirmVCFImport(
+      'sess-1',
+      [],
+      [
+        { property_name: 'x-hometown', action: 'create' },
+        { property_name: 'x-favorite-color', action: 'ignore' },
+      ],
+    );
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(init.body)).toEqual({
+      session_id: 'sess-1',
+      actions: [],
+      field_mappings: [
+        { property_name: 'x-hometown', action: 'create' },
+        { property_name: 'x-favorite-color', action: 'ignore' },
+      ],
+    });
   });
 
   test('throws an ApiError when the response is not ok', async () => {
