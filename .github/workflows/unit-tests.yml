@@ -269,11 +269,11 @@ jobs:
 
       # Issue #680 (TEST-08): the vCard-vobject differential leg
       # (backend/differential) runs per-PR in the `rest` leg, so the pinned
-      # reference (vobject 0.9.9 — see docs/development/testing.md) must be
-      # present on the runner. Exact-version pin, matching the local
-      # reference requirements file.
+      # reference (vobject 0.9.9) must be present on the runner. Installed
+      # with --require-hashes from the committed requirements file (zizmor
+      # audits pip installs for unpinned supply-chain refs).
       - name: Install vobject reference (TEST-08 differential)
-        run: python3 -m pip install --quiet --break-system-packages vobject==0.9.9
+        run: python3 -m pip install --quiet --break-system-packages --require-hashes -r backend/differential/reference/vobject/requirements.txt
 
       # `rest` = everything except the two heavy packages. Anchored `$` so a
       # future controllers/services subpackage would (harmlessly) land here

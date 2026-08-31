@@ -82,8 +82,9 @@ jobs:
 
       # The vCard-vobject differential leg runs in this job too (the nightly
       # full-suite run), so install its reference alongside the calcard build.
+      # Hash-pinned via --require-hashes (zizmor audits pip installs).
       - name: Install vobject reference (TEST-08 differential)
-        run: python3 -m pip install --quiet --break-system-packages vobject==0.9.9
+        run: python3 -m pip install --quiet --break-system-packages --require-hashes -r backend/differential/reference/vobject/requirements.txt
 
       # Build the pinned calcard reference CLI in a digest-pinned rust image.
       # Cargo.lock pins the crate graph; this pins the toolchain. The built

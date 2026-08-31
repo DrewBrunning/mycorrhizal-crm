@@ -396,10 +396,13 @@ pinned** — the suite has already caught and fixed two:
   UTCDateTime **strings**; our adapter emitted a `@type`-discriminated
   object), fixed in `jscontact`.
 
-**Supply-chain pins:** vobject is pip-pinned (`vobject==0.9.9`) in CI;
-calcard is version-pinned in `reference/calcard/Cargo.toml` (`=0.3.13`) with a
-committed `Cargo.lock` for the transitive graph, and the build toolchain is a
-digest-pinned rust image; golang-ical is pinned in `backend/go.mod`.
+**Supply-chain pins:** vobject is installed in CI from a hash-pinned
+requirements file (`backend/differential/reference/vobject/requirements.txt`,
+`--require-hashes` — zizmor audits pip installs for unpinned supply-chain
+refs); calcard is version-pinned in `reference/calcard/Cargo.toml` (`=0.3.13`)
+with a committed `Cargo.lock` for the transitive graph, and the build
+toolchain is a digest-pinned rust image; golang-ical is pinned in
+`backend/go.mod`.
 
 **Running locally:** the vCard leg needs `python3` with `vobject` importable
 (it skips with a message otherwise). The JSContact leg resolves
