@@ -294,8 +294,20 @@
       "steps": {
         "upload": "Subir",
         "mapColumns": "Mapear Columnas",
+        "customFields": "Campos personalizados",
         "review": "Revisar",
         "done": "Listo"
+      },
+      "customFields": {
+        "description": "Este archivo contiene propiedades X- personalizadas que tu aplicación aún no conoce. Promuévelas a campos personalizados con búsqueda, o consérvalas como datos de passthrough. Lo que quede como passthrough se conserva, pero no se puede buscar ni editar.",
+        "property": "Propiedad",
+        "sampleValue": "Valor de muestra",
+        "promoteTo": "Promover a",
+        "keepAsPassthrough": "Conservar como passthrough",
+        "mapToExisting": "Mapear a campo existente",
+        "createNew": "Crear campo nuevo",
+        "selectField": "Selecciona un campo…",
+        "label": "Etiqueta"
       },
       "preview": {
         "title": "Revisar Importación",

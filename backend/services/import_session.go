@@ -4,12 +4,14 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/faults"
 	"mycorrhizal/models"
 	"mycorrhizal/photostore"
+	"strings"
 	"sync"
 	"time"
 
@@ -589,6 +591,16 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 			return err
 		}
 
+		// Issue #514: resolve the wizard's custom-field promotion decisions
+		// (and auto-match projected definitions) once, inside the transaction
+		// so any created FieldDefinitions roll back with the import. An
+		// invalid decision (e.g. "map" to a definition the user doesn't own)
+		// fails the whole confirm closed with a 400 rather than half-applying.
+		fieldPlan, planErr := buildImportFieldPlan(tx, userID, req.FieldMappings)
+		if planErr != nil {
+			return planErr
+		}
+
 		for _, preview := range sessionData.session.PreviewRows {
 			action := actionMap[preview.RowIndex]
 			if action == "" {
@@ -605,6 +617,14 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 			case "add":
 				contact := *vcfData.Contact
 				contact.UserID = userID
+
+				// Issue #514: promote the X-* passthrough properties this
+				// contact carries into FieldValues, and strip the promoted
+				// entries from the contact's own passthrough so the value is
+				// not double-emitted on export.
+				promoted, notes := promoteImportedCustomFields(tx, userID, &contact, contact.Passthrough.VCard, fieldPlan)
+				stripPromotedProps(&contact, promoted)
+				logImportedFieldPromotionNotes(log, notes)
 
 				if err := tx.Create(&contact).Error; err != nil {
 					result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to create contact: %v", preview.RowIndex+1, err))
@@ -648,6 +668,13 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 
 				MergeImportedContact(&existing, vcfData.Contact)
 
+				// Issue #514: promote the incoming row's X-* passthrough
+				// properties into FieldValues on the matched existing contact.
+				// The incoming props never enter existing.Passthrough (the
+				// merge is flat-field-only), so nothing needs stripping here.
+				_, notes := promoteImportedCustomFields(tx, userID, &existing, vcfData.Contact.Passthrough.VCard, fieldPlan)
+				logImportedFieldPromotionNotes(log, notes)
+
 				if err := tx.Save(&existing).Error; err != nil {
 					result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to update contact: %v", preview.RowIndex+1, err))
 					result.Skipped++
@@ -673,6 +700,9 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 	})
 
 	if txErr != nil {
+		if errors.Is(txErr, errInvalidImportFieldMapping) {
+			return nil, apperrors.ErrInvalidInput("field_mappings", strings.TrimPrefix(txErr.Error(), errInvalidImportFieldMapping.Error()+": "))
+		}
 		return nil, apperrors.ErrDatabase("Import failed").WithError(txErr)
 	}
 
@@ -755,4 +785,15 @@ func buildActionMap(actions []models.RowImportAction) map[int]string {
 		actionMap[action.RowIndex] = action.Action
 	}
 	return actionMap
+}
+
+// logImportedFieldPromotionNotes surfaces the issue #514 promotion warnings
+// (a value that failed validation against the chosen definition) at warn
+// level. They are deliberately NOT pushed into result.Errors: that array
+// means "row skipped", and a skipped custom-field value must not look like a
+// skipped contact.
+func logImportedFieldPromotionNotes(log *zerolog.Logger, notes []string) {
+	for _, n := range notes {
+		log.Warn().Msgf("Import custom-field promotion: %s", n)
+	}
 }

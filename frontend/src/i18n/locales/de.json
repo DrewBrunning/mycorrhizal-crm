@@ -294,8 +294,20 @@
       "steps": {
         "upload": "Hochladen",
         "mapColumns": "Spalten zuordnen",
+        "customFields": "Benutzerdefinierte Felder",
         "review": "Überprüfen",
         "done": "Fertig"
+      },
+      "customFields": {
+        "description": "Diese Datei enthält benutzerdefinierte X-Eigenschaften, die deine App noch nicht kennt. Fördere sie zu durchsuchbaren benutzerdefinierten Feldern auf oder behalte sie als Passthrough-Daten. Alles, was als Passthrough bleibt, wird erhalten, ist aber nicht durchsuchbar oder bearbeitbar.",
+        "property": "Eigenschaft",
+        "sampleValue": "Beispielwert",
+        "promoteTo": "Fördern zu",
+        "keepAsPassthrough": "Als Passthrough behalten",
+        "mapToExisting": "Auf vorhandenes Feld abbilden",
+        "createNew": "Neues Feld erstellen",
+        "selectField": "Feld auswählen…",
+        "label": "Bezeichnung"
       },
       "preview": {
         "title": "Import überprüfen",

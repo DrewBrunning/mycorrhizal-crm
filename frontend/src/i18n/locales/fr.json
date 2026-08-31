@@ -294,8 +294,20 @@
       "steps": {
         "upload": "Télécharger",
         "mapColumns": "Mapper les colonnes",
+        "customFields": "Champs personnalisés",
         "review": "Vérifier",
         "done": "Terminé"
+      },
+      "customFields": {
+        "description": "Ce fichier contient des propriétés X- personnalisées que votre application ne connaît pas encore. Promouvez-les en champs personnalisés recherchables, ou conservez-les comme données de passage. Ce qui reste en passage est préservé, mais ni recherchable ni modifiable.",
+        "property": "Propriété",
+        "sampleValue": "Exemple de valeur",
+        "promoteTo": "Promouvoir en",
+        "keepAsPassthrough": "Conserver en passage",
+        "mapToExisting": "Mapper vers un champ existant",
+        "createNew": "Créer un nouveau champ",
+        "selectField": "Sélectionner un champ…",
+        "label": "Libellé"
       },
       "preview": {
         "title": "Vérifier l'importation",

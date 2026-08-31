@@ -294,8 +294,20 @@
       "steps": {
         "upload": "Upload",
         "mapColumns": "Map Columns",
+        "customFields": "Custom Fields",
         "review": "Review",
         "done": "Done"
+      },
+      "customFields": {
+        "description": "This file contains custom X- properties your app doesn't know yet. Promote them to searchable custom fields, or keep them as passthrough data. Anything left as passthrough is preserved but not searchable or editable.",
+        "property": "Property",
+        "sampleValue": "Sample Value",
+        "promoteTo": "Promote To",
+        "keepAsPassthrough": "Keep as passthrough",
+        "mapToExisting": "Map to existing field",
+        "createNew": "Create new field",
+        "selectField": "Select a field…",
+        "label": "Label"
       },
       "preview": {
         "title": "Review Import",

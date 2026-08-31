@@ -65,6 +65,24 @@ export interface ImportRowPreview {
   // T96: when present, the row_index of an earlier row in the SAME import that
   // this row duplicates. Such rows default to "skip".
   batch_duplicate_of: number | null;
+  // Issue #514: the unknown X-* vCard/JSContact properties discovered on this
+  // row that can be promoted to custom fields. Absent when the row carried none.
+  custom_field_candidates?: DiscoveredCustomProperty[];
+}
+
+// One unknown X-* property found on an imported contact that can be promoted
+// to a custom field (issue #514). Mirrors backend models.DiscoveredProperty.
+export interface DiscoveredCustomProperty {
+  // The vCard property name as stored in passthrough (lowercase, e.g.
+  // "x-favorite-color").
+  name: string;
+  // Human-readable rendering of the property's value.
+  value: string;
+  // When present, an existing FieldDefinition whose vcard:X-<NAME> projection
+  // matches this property. The wizard pre-selects "map to this definition"
+  // and the confirm path auto-promotes absent an override.
+  matched_definition_id?: string;
+  matched_definition_label?: string;
 }
 
 // Response from preview request
@@ -81,6 +99,23 @@ export interface ImportPreviewResponse {
 export interface RowImportAction {
   row_index: number;
   action: 'skip' | 'add' | 'update';
+}
+
+// One decision from the issue #514 "Custom fields" wizard step: promote a
+// discovered X-* property into an existing ("map") or newly-created ("create")
+// custom-field definition, or keep it in passthrough ("ignore", the default).
+// Mirrors backend models.ImportFieldMapping.
+export interface ImportFieldMapping {
+  property_name: string;
+  action: 'ignore' | 'map' | 'create';
+  // Required when action === 'map'.
+  field_definition_id?: string;
+  // Used when action === 'create': the new definition's label. Defaults to a
+  // title-cased derivation of the property name server-side.
+  label?: string;
+  // Used when action === 'create': the new definition's type. Defaults to
+  // 'text' server-side.
+  type?: string;
 }
 
 // Final import result
@@ -285,6 +320,7 @@ export async function getImportHistory(): Promise<ImportRun[]> {
 export async function confirmVCFImport(
   sessionId: string,
   actions: RowImportAction[],
+  fieldMappings: ImportFieldMapping[] = [],
 ): Promise<ImportResult> {
   const response = await apiFetch(`${API_BASE_URL}/contacts/import/vcf/confirm`, {
     method: 'POST',
@@ -292,6 +328,7 @@ export async function confirmVCFImport(
     body: JSON.stringify({
       session_id: sessionId,
       actions,
+      field_mappings: fieldMappings,
     }),
   });
 

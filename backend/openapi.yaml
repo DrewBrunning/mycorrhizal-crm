@@ -11826,6 +11826,38 @@ components:
             Degradation-policy diagnostics from the vcard4/vcard3/jscontact
             adapter that parsed this row (empty for CSV/records-import rows,
             which don't go through an adapter).
+        custom_field_candidates:
+          type: array
+          items: { $ref: "#/components/schemas/DiscoveredProperty" }
+          description: >
+            The unknown X-* vCard/JSContact properties discovered in this
+            row's passthrough that the import wizard can promote to first-class
+            custom fields (issue #514). Absent for CSV/records-import rows and
+            for adapter rows that carried no X-* properties.
+    DiscoveredProperty:
+      type: object
+      description: >
+        One unknown X-* vCard/JSContact property found on an imported contact
+        that can be promoted to a custom field (issue #514). The wizard renders
+        this per row and the mapping decision is sent back as an
+        ImportFieldMapping on the confirm request.
+      properties:
+        name:
+          type: string
+          description: >
+            The vCard property name as stored in passthrough (lowercase, e.g.
+            "x-favorite-color").
+        value: { type: string, description: "Human-readable rendering of the property's value." }
+        matched_definition_id:
+          type: string
+          description: >
+            When present, an existing FieldDefinition whose vcard:X-<NAME>
+            projection matches this property name. The wizard pre-selects
+            "map to this definition" and the confirm path auto-promotes absent
+            an override (the export round-trip guarantee).
+        matched_definition_label:
+          type: string
+          description: Display label of the matched definition.
     ImportMergeDiff:
       type: object
       description: >
@@ -11887,6 +11919,36 @@ components:
         actions:
           type: array
           items: { $ref: "#/components/schemas/RowImportAction" }
+        field_mappings:
+          type: array
+          items: { $ref: "#/components/schemas/ImportFieldMapping" }
+          description: >
+            Issue #514 custom-field promotion decisions — one per discovered
+            X-* property. Absent/empty keeps every discovered property in
+            passthrough except those matching an existing definition's vcard
+            projection, which auto-promote. Only VCF/JSContact/records
+            (VCF-like) sessions consume these.
+    ImportFieldMapping:
+      type: object
+      required: [property_name, action]
+      description: >
+        One decision from the issue #514 import-wizard step: promote a
+        discovered X-* property into an existing ("map") or newly-created
+        ("create") custom field definition, or keep it in passthrough
+        ("ignore", the default).
+      properties:
+        property_name: { type: string, description: "The discovered X-* property this decision applies to (case-insensitive)." }
+        action: { type: string, enum: [ignore, map, create] }
+        field_definition_id:
+          type: string
+          description: "Required when action == map: the existing definition (owned by the current user) to promote values into."
+        label:
+          type: string
+          description: "Used when action == create: the new definition's display label. Defaults to a title-cased derivation of the property name."
+        type:
+          type: string
+          enum: [string, text, number, boolean, date, datetime, uri, email, phone, enum]
+          description: "Used when action == create: the new definition's field type. Defaults to text."
     ImportResult:
       type: object
       description: Returned by POST /contacts/import/confirm and /contacts/import/vcf/confirm.

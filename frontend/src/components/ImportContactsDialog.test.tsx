@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import { getFieldDefinitions } from '../api/fieldDefinitions';
 import {
   confirmImport,
   confirmVCFImport,
@@ -28,12 +29,27 @@ vi.mock('../api/import', async (importOriginal) => {
   };
 });
 
+vi.mock('../api/fieldDefinitions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/fieldDefinitions')>();
+  return {
+    ...actual,
+    getFieldDefinitions: vi.fn(),
+  };
+});
+
 beforeEach(() => {
   vi.mocked(uploadCSVForImport).mockReset();
   vi.mocked(uploadVCFForImport).mockReset();
   vi.mocked(getImportPreview).mockReset();
   vi.mocked(confirmImport).mockReset();
   vi.mocked(confirmVCFImport).mockReset();
+  vi.mocked(getFieldDefinitions).mockReset();
+  vi.mocked(getFieldDefinitions).mockResolvedValue({
+    field_definitions: [],
+    total: 0,
+    next_cursor: '',
+    limit: 100,
+  });
 });
 
 function renderDialog(props: Partial<React.ComponentProps<typeof ImportContactsDialog>> = {}) {
@@ -213,6 +229,143 @@ test('VCF upload skips the mapping step and goes straight to preview', async () 
   await waitFor(() => expect(screen.getByText('1 to create')).toBeInTheDocument());
   expect(uploadVCFForImport).toHaveBeenCalledTimes(1);
   expect(getImportPreview).not.toHaveBeenCalled();
+});
+
+// --- issue #514: custom-fields promotion step ------------------------------------
+
+// Renders a VCF preview whose first row carries the given X-* candidates.
+async function loadVcfWithCandidates(
+  candidates: ImportRowPreview['custom_field_candidates'],
+  fieldDefinitions: { id: string; label: string }[] = [],
+) {
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-cf',
+    rows: [
+      row({
+        parsed_contact: { firstname: 'Grace', lastname: 'Hopper', email: 'grace@example.com' },
+        custom_field_candidates: candidates,
+      }),
+    ],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+  });
+  vi.mocked(getFieldDefinitions).mockResolvedValue({
+    field_definitions: fieldDefinitions as never,
+    total: fieldDefinitions.length,
+    next_cursor: '',
+    limit: 100,
+  });
+  renderDialog();
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  await waitFor(() => expect(screen.getByText('x-hometown')).toBeInTheDocument());
+}
+
+test('VCF with X- properties shows the promotion step before preview', async () => {
+  await loadVcfWithCandidates([{ name: 'x-hometown', value: 'Springfield' }]);
+
+  // The discovered property, its sample value, and the default
+  // keep-as-passthrough decision render (MUI Select only mounts the selected
+  // option while closed).
+  expect(screen.getByText('Springfield')).toBeInTheDocument();
+  expect(screen.getByText('Keep as passthrough')).toBeInTheDocument();
+
+  // The other promotion options are offered.
+  fireEvent.mouseDown(screen.getByLabelText('x-hometown action'));
+  expect(await screen.findByRole('option', { name: 'Map to existing field' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'Create new field' })).toBeInTheDocument();
+  // Close the menu (selecting the current value) so the actions row is usable.
+  fireEvent.click(screen.getByRole('option', { name: 'Keep as passthrough' }));
+
+  // Advancing lands on the preview/review step.
+  fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+  await waitFor(() => expect(screen.getByText('1 to create')).toBeInTheDocument());
+});
+
+test('a projection-matched property pre-selects "map to existing field"', async () => {
+  await loadVcfWithCandidates(
+    [
+      {
+        name: 'x-hometown',
+        value: 'Springfield',
+        matched_definition_id: 'def-1',
+        matched_definition_label: 'Hometown',
+      },
+    ],
+    [{ id: 'def-1', label: 'Hometown' }],
+  );
+
+  // The map-to-existing dropdown is shown with the matched definition loaded.
+  await waitFor(() => expect(screen.getByText('Hometown')).toBeInTheDocument());
+});
+
+test('confirm sends the promotion decisions as field_mappings', async () => {
+  vi.mocked(confirmVCFImport).mockResolvedValue({
+    total_processed: 1,
+    created: 1,
+    updated: 0,
+    skipped: 0,
+    errors: [],
+  });
+  await loadVcfWithCandidates([{ name: 'x-hometown', value: 'Springfield' }]);
+
+  // Promote the discovered property to a new "Birthplace" text field.
+  fireEvent.mouseDown(screen.getByLabelText('x-hometown action'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Create new field' }));
+  fireEvent.change(screen.getByLabelText('x-hometown label'), { target: { value: 'Birthplace' } });
+  fireEvent.mouseDown(screen.getByLabelText('x-hometown type'));
+  fireEvent.click(await screen.findByRole('option', { name: 'String' }));
+
+  fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+  await waitFor(() => expect(screen.getByText('1 to create')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: /apply decisions/i }));
+  await waitFor(() => expect(confirmVCFImport).toHaveBeenCalled());
+
+  expect(confirmVCFImport).toHaveBeenCalledWith(
+    'sess-cf',
+    [{ row_index: 0, action: 'add' }],
+    [
+      {
+        property_name: 'x-hometown',
+        action: 'create',
+        field_definition_id: '',
+        label: 'Birthplace',
+        type: 'string',
+      },
+    ],
+  );
+});
+
+test('unmatched properties default to keep-as-passthrough on confirm', async () => {
+  vi.mocked(confirmVCFImport).mockResolvedValue({
+    total_processed: 1,
+    created: 1,
+    updated: 0,
+    skipped: 0,
+    errors: [],
+  });
+  await loadVcfWithCandidates([{ name: 'x-hometown', value: 'Springfield' }]);
+
+  fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+  await waitFor(() => expect(screen.getByText('1 to create')).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: /apply decisions/i }));
+
+  await waitFor(() => expect(confirmVCFImport).toHaveBeenCalled());
+  expect(confirmVCFImport).toHaveBeenCalledWith(
+    'sess-cf',
+    [{ row_index: 0, action: 'add' }],
+    [
+      {
+        property_name: 'x-hometown',
+        action: 'ignore',
+        field_definition_id: '',
+        label: 'Hometown',
+        type: 'text',
+      },
+    ],
+  );
 });
 
 // T96: a row that matches an existing record shows the match, defaults to

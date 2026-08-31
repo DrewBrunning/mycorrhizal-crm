@@ -114,6 +114,38 @@ type ImportRowPreview struct {
 	// through an adapter at all). Additive: existing preview consumers that
 	// don't know about this field are unaffected.
 	Diagnostics []string `json:"diagnostics,omitempty"`
+
+	// CustomFieldCandidates lists the unknown X-* vCard/JSContact properties
+	// discovered in this row's passthrough that the import wizard can promote
+	// to first-class custom fields (issue #514) — the "promotion" step that
+	// turns opaque passthrough data into editable/searchable/merge-safe
+	// FieldValues. Absent (nil) for CSV/records-import rows (no adapter
+	// passthrough) and for adapter rows that carried no X-* properties.
+	// Matches the Diagnostics field's omitempty convention: an absent key
+	// means "no candidates".
+	CustomFieldCandidates []DiscoveredProperty `json:"custom_field_candidates,omitempty"`
+}
+
+// DiscoveredProperty is one unknown X-* vCard/JSContact property found on an
+// imported contact that can be promoted to a custom field (issue #514).
+// Surfaced on ImportRowPreview (per row) so the import wizard can offer the
+// mapping step; the mapping decision itself is sent back as an
+// ImportFieldMapping on the confirm request.
+type DiscoveredProperty struct {
+	// Name is the vCard property name as stored in Passthrough (lowercase per
+	// the vcard3/vcard4 adapters' fieldToJCardProp, e.g. "x-favorite-color").
+	Name string `json:"name"`
+	// Value is a human-readable rendering of the property's value (the first
+	// value when the property repeats).
+	Value string `json:"value"`
+	// MatchedDefinitionID, when non-empty, is an existing FieldDefinition
+	// whose vcard:X-<NAME> projection matches this property name
+	// (case-insensitively). The wizard pre-selects "map to this definition",
+	// and absent a wizard override the confirm path auto-promotes
+	// (the round-trip guarantee for exported custom fields).
+	MatchedDefinitionID string `json:"matched_definition_id,omitempty"`
+	// MatchedDefinitionLabel is the display label of that definition.
+	MatchedDefinitionLabel string `json:"matched_definition_label,omitempty"`
 }
 
 // ImportRecordsRequest is the request body for POST /contacts/import/records
@@ -146,6 +178,44 @@ type RowImportAction struct {
 type ImportConfirmRequest struct {
 	SessionID string            `json:"session_id" validate:"required"`
 	Actions   []RowImportAction `json:"actions" validate:"required,dive"`
+
+	// FieldMappings carries the issue #514 custom-field promotion decisions for
+	// this confirm — one entry per discovered X-* property, telling the
+	// confirm path to promote it into an existing or newly-created
+	// FieldDefinition ("map"/"create") or leave it in passthrough ("ignore").
+	// Absent/empty means every discovered X-* property keeps its passthrough
+	// default except those whose name matches an existing definition's vcard
+	// projection, which auto-promote (the export round-trip guarantee). Only
+	// VCF/JSContact/records (VCF-like) sessions consume these — CSV sessions
+	// have no discovered properties and send nothing.
+	FieldMappings []ImportFieldMapping `json:"field_mappings,omitempty"`
+}
+
+// ImportFieldMapping is one decision from the issue #514 wizard step: what to
+// do with a discovered X-* vCard/JSContact property during confirm. It
+// mirrors the CSV column-mapping wizard's ColumnMapping in spirit — a
+// per-property decision that either routes data into a first-class field or
+// leaves it untouched — except the target is a FieldDefinition rather than a
+// flat contact field, and the default ("ignore") preserves passthrough
+// fidelity rather than discarding data.
+type ImportFieldMapping struct {
+	// PropertyName is the discovered X-* property this decision applies to
+	// (matches DiscoveredProperty.Name case-insensitively).
+	PropertyName string `json:"property_name" validate:"required"`
+	// Action is "ignore" (keep in passthrough, the default), "map" (promote
+	// into the FieldDefinition named by FieldDefinitionID), or "create"
+	// (promote into a newly-created definition with Label/Type; the key and
+	// vcard projection are derived from the property name).
+	Action string `json:"action" validate:"required,oneof=ignore map create"`
+	// FieldDefinitionID is required when Action == "map": the existing
+	// definition (owned by the current user) to promote values into.
+	FieldDefinitionID string `json:"field_definition_id"`
+	// Label is used when Action == "create": the new definition's display
+	// label. Defaults to a title-cased derivation of the property name.
+	Label string `json:"label"`
+	// Type is used when Action == "create": the new definition's field type.
+	// Defaults to "text" (accepts any vCard value).
+	Type string `json:"type" validate:"omitempty,oneof=string text number boolean date datetime uri email phone enum"`
 }
 
 // ImportResult summarizes what happened during import

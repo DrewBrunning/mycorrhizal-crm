@@ -1443,11 +1443,12 @@ func BuildImportRowPreview(
 	diags = append(diags, SanitizeImportedContact(contact)...)
 
 	preview := models.ImportRowPreview{
-		RowIndex:         rowIdx,
-		ParsedContact:    ContactToPreviewMap(contact),
-		ValidationErrors: ValidateImportedContact(contact),
-		Diagnostics:      diags,
-		SuggestedAction:  "add",
+		RowIndex:              rowIdx,
+		ParsedContact:         ContactToPreviewMap(contact),
+		ValidationErrors:      ValidateImportedContact(contact),
+		Diagnostics:           diags,
+		SuggestedAction:       "add",
+		CustomFieldCandidates: DiscoverCustomFieldCandidates(db, userID, contact),
 	}
 
 	if len(preview.ValidationErrors) > 0 {
