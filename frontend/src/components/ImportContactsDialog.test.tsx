@@ -272,7 +272,7 @@ test('VCF with X- properties shows the promotion step before preview', async () 
   expect(screen.getByText('Keep as passthrough')).toBeInTheDocument();
 
   // The other promotion options are offered.
-  fireEvent.mouseDown(screen.getByLabelText('x-hometown action'));
+  fireEvent.mouseDown(await screen.findByLabelText('x-hometown action'));
   expect(await screen.findByRole('option', { name: 'Map to existing field' })).toBeInTheDocument();
   expect(screen.getByRole('option', { name: 'Create new field' })).toBeInTheDocument();
   // Close the menu (selecting the current value) so the actions row is usable.
@@ -311,10 +311,11 @@ test('confirm sends the promotion decisions as field_mappings', async () => {
   await loadVcfWithCandidates([{ name: 'x-hometown', value: 'Springfield' }]);
 
   // Promote the discovered property to a new "Birthplace" text field.
-  fireEvent.mouseDown(screen.getByLabelText('x-hometown action'));
+  fireEvent.mouseDown(await screen.findByLabelText('x-hometown action'));
   fireEvent.click(await screen.findByRole('option', { name: 'Create new field' }));
-  fireEvent.change(screen.getByLabelText('x-hometown label'), { target: { value: 'Birthplace' } });
-  fireEvent.mouseDown(screen.getByLabelText('x-hometown type'));
+  const labelInput = await screen.findByLabelText('x-hometown label');
+  fireEvent.change(labelInput, { target: { value: 'Birthplace' } });
+  fireEvent.mouseDown(await screen.findByLabelText('x-hometown type'));
   fireEvent.click(await screen.findByRole('option', { name: 'String' }));
 
   fireEvent.click(screen.getByRole('button', { name: /continue/i }));

@@ -625,9 +625,7 @@ export default function ImportContactsDialog({
                         <FormControl size="small" sx={{ minWidth: 180 }}>
                           <Select
                             value={action}
-                            inputProps={{
-                              'aria-label': `${candidate.name} action`,
-                            }}
+                            slotProps={{ input: { 'aria-label': `${candidate.name} action` } }}
                             onChange={(e) =>
                               updateMapping(candidate.name, {
                                 action: e.target.value as ImportFieldMapping['action'],
@@ -656,7 +654,7 @@ export default function ImportContactsDialog({
                             <Select
                               value={mapping?.field_definition_id ?? ''}
                               displayEmpty
-                              inputProps={{ 'aria-label': `${candidate.name} field` }}
+                              slotProps={{ input: { 'aria-label': `${candidate.name} field` } }}
                               onChange={(e) =>
                                 updateMapping(candidate.name, {
                                   field_definition_id: e.target.value as string,
@@ -686,12 +684,12 @@ export default function ImportContactsDialog({
                                 updateMapping(candidate.name, { label: e.target.value })
                               }
                               sx={{ minWidth: 180 }}
-                              inputProps={{ 'aria-label': `${candidate.name} label` }}
+                              slotProps={{ input: { 'aria-label': `${candidate.name} label` } }}
                             />
                             <FormControl size="small" sx={{ minWidth: 130 }}>
                               <Select
                                 value={mapping?.type ?? 'text'}
-                                inputProps={{ 'aria-label': `${candidate.name} type` }}
+                                slotProps={{ input: { 'aria-label': `${candidate.name} type` } }}
                                 onChange={(e) =>
                                   updateMapping(candidate.name, { type: e.target.value as string })
                                 }
