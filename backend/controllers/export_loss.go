@@ -59,7 +59,7 @@ func adapterForFormat(format string) contactmodel.Exporter {
 	case exportFormatJSContact:
 		return jscontact.Adapter{}
 	}
-	return nil // # pragma: no cover — the switch is total over validExportFormats, so no caller can pass an unknown token
+	return nil
 }
 
 // renderContactExport runs one contact through one format adapter and returns
@@ -120,8 +120,8 @@ func setExportLossReportHeader(c *gin.Context, format string, reports []models.L
 	payload := header
 	for {
 		raw, err := json.Marshal(payload)
-		if err != nil {
-			return // # pragma: no cover — LossReport has no unmarshalable field; a marshal failure here is impossible
+		if err != nil { // # pragma: no cover — LossReport has no unmarshalable field; a marshal failure here is impossible
+			return
 		}
 		encoded := url.QueryEscape(string(raw))
 		if len(encoded) <= maxExportLossHeaderBytes || len(payload.Diagnostics) == 0 {
