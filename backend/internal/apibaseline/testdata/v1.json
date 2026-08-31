@@ -2956,6 +2956,46 @@
     },
     {
       "method": "GET",
+      "path": "/export/preflight",
+      "parameters": [
+        {
+          "name": "format",
+          "in": "query",
+          "required": true
+        },
+        {
+          "name": "include_sensitive",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "sections",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "vcard_uid",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:ExportLossPreflightResponse"
+        },
+        {
+          "status": "400",
+          "schema": ""
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/export/vcf",
       "parameters": [
         {
@@ -9886,6 +9926,30 @@
       ]
     },
     {
+      "name": "Diagnostic",
+      "properties": [
+        {
+          "name": "concept",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "severity",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "warn",
+            "info"
+          ]
+        }
+      ]
+    },
+    {
       "name": "DiagnosticCheck",
       "properties": [
         {
@@ -10212,6 +10276,31 @@
           "name": "sample_error",
           "type": "string",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "ExportLossPreflightResponse",
+      "properties": [
+        {
+          "name": "contact_count",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "diagnostics",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "format",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "vcard4",
+            "vcard3",
+            "jscontact"
+          ]
         }
       ]
     },
@@ -11534,7 +11623,7 @@
         },
         {
           "name": "diagnostics",
-          "type": "array\u003cstring\u003e",
+          "type": "array\u003cobject\u003e",
           "required": false
         },
         {
@@ -12197,6 +12286,68 @@
         },
         {
           "name": "redirect_url",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "LossReport",
+      "properties": [
+        {
+          "name": "bucket",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "unsupported",
+            "lossy"
+          ]
+        },
+        {
+          "name": "concept",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "contact_id",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "contact_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "format",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "vcard4",
+            "vcard3",
+            "jscontact"
+          ]
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "severity",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "warn"
+          ]
+        },
+        {
+          "name": "vcard_uid",
           "type": "string",
           "required": false
         }

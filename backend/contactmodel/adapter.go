@@ -1,10 +1,14 @@
 package contactmodel
 
-// Diagnostic is a non-fatal data-handling event (see degradation policy).
+// Diagnostic is a non-fatal data-handling event (see degradation policy). It
+// is the shared loss-reporting type (DATA-02, issue #442): both the export
+// loss reports and the import preview diagnostics carry its JSON shape
+// verbatim — the wire tags keep the two surfaces on one shape rather than a
+// parallel one.
 type Diagnostic struct {
-	Severity string // "warn" | "info"
-	Concept  string // correspondence concept_id, or ""
-	Message  string
+	Severity string `json:"severity"`          // "warn" | "info"
+	Concept  string `json:"concept,omitempty"` // correspondence concept_id, or ""
+	Message  string `json:"message"`
 }
 
 // Importer parses one serialized format into the neutral model.

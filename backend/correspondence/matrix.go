@@ -419,6 +419,30 @@ func LossReports() []LossReport {
 	return out
 }
 
+// lossReportIndex indexes LossReports() by "concept|format" so a DATA-02
+// runtime diagnostic can be classified in O(1) instead of re-deriving the
+// matrix per event. It is derived from LossReports() alone, so the
+// reportable-set correspondence (matrix_test.go) is the single source of truth
+// for both the registry and this index.
+var lossReportIndex = func() map[string]LossReport {
+	m := make(map[string]LossReport, len(LossReports()))
+	for _, lr := range LossReports() {
+		m[lr.Concept+"|"+string(lr.Format)] = lr
+	}
+	return m
+}()
+
+// ClassificationFor returns the DATA-01 classification for a (concept, format)
+// pair, ok=false when the pair is not a reportable unsupported/lossy cell.
+// This is the runtime half of the DATA-02 correspondence: a loss report is
+// only emitted when its concept resolves to a matrix entry here, so the set of
+// reports the runtime can produce is exactly the matrix's unsupported/lossy
+// set.
+func ClassificationFor(concept string, format Format) (LossReport, bool) {
+	lr, ok := lossReportIndex[concept+"|"+string(format)]
+	return lr, ok
+}
+
 // orderedFormats is the render order for the format columns.
 var orderedFormats = []Format{FormatVCard4, FormatVCard3, FormatJSContact, FormatCardDAV}
 

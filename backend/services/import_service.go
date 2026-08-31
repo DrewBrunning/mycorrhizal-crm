@@ -186,23 +186,6 @@ func sniffVCardVersion(block []byte) string {
 	}
 }
 
-// diagnosticsToStrings renders adapter Diagnostics (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md's degradation policy) as human-readable strings for
-// models.ImportRowPreview.Diagnostics.
-func diagnosticsToStrings(diags []contactmodel.Diagnostic) []string {
-	if len(diags) == 0 {
-		return nil
-	}
-	out := make([]string, 0, len(diags))
-	for _, d := range diags {
-		if d.Concept != "" {
-			out = append(out, fmt.Sprintf("[%s] %s: %s", d.Severity, d.Concept, d.Message))
-		} else {
-			out = append(out, fmt.Sprintf("[%s] %s", d.Severity, d.Message))
-		}
-	}
-	return out
-}
-
 // extractPhotoFromRecord extracts binary/URL photo data from the first
 // Card.Media entry with Kind=="photo", to preserve the existing VCF-import
 // photo-processing UX (ConfirmVCF in import_session.go) now that parsing
@@ -332,7 +315,7 @@ func ParseVCF(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFContact
 		// T96: shared preview wiring (validation, DB duplicate detection +
 		// merge diff, within-batch detection). batchContacts is appended AFTER
 		// the call so a row is never compared against itself.
-		preview := BuildImportRowPreview(db, userID, contact, rowIdx, batchContacts, diagnosticsToStrings(diags), &stats)
+		preview := BuildImportRowPreview(db, userID, contact, rowIdx, batchContacts, diags, &stats)
 		batchContacts = append(batchContacts, contact)
 
 		previews = append(previews, preview)
@@ -410,7 +393,7 @@ func ParseJSContact(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFC
 
 		// T96: shared preview wiring (validation, DB duplicate detection +
 		// merge diff, within-batch detection).
-		preview := BuildImportRowPreview(db, userID, contact, rowIdx, batchContacts, diagnosticsToStrings(diags), &stats)
+		preview := BuildImportRowPreview(db, userID, contact, rowIdx, batchContacts, diags, &stats)
 		batchContacts = append(batchContacts, contact)
 
 		previews = append(previews, preview)
@@ -691,22 +674,28 @@ func sanitizeImportedText(s string) (string, bool) {
 
 // SanitizeImportedContact applies sanitizeImportedText to every free-text
 // field an import path can populate, mutating contact in place, and returns
-// one short diagnostic note per field actually changed (nil when nothing
+// one short info Diagnostic per field actually changed (nil when nothing
 // changed). Called from BuildImportRowPreview -- the single choke point
 // shared by CSV, VCF, JSContact, and the Android "records" import paths --
 // before ValidateImportedContact runs, so format validators never have to
 // deal with control characters or invalid UTF-8 in the first place.
-func SanitizeImportedContact(contact *models.Contact) []string {
-	var notes []string
+func SanitizeImportedContact(contact *models.Contact) []contactmodel.Diagnostic {
+	var notes []contactmodel.Diagnostic
 	fieldNames := []string{"firstname", "lastname", "nickname", "gender", "address", "how_we_met", "work_information", "contact_information"}
 	for i, field := range sanitizedContactTextFields(contact) {
 		if cleaned, changed := sanitizeImportedText(*field); changed {
 			*field = cleaned
-			notes = append(notes, fmt.Sprintf("Removed invalid characters from %s", fieldNames[i]))
+			notes = append(notes, contactmodel.Diagnostic{
+				Severity: "info",
+				Message:  fmt.Sprintf("Removed invalid characters from %s", fieldNames[i]),
+			})
 		}
 	}
 	if sanitizeCardName(contact) {
-		notes = append(notes, "Removed invalid characters from name")
+		notes = append(notes, contactmodel.Diagnostic{
+			Severity: "info",
+			Message:  "Removed invalid characters from name",
+		})
 	}
 	return notes
 }
@@ -1519,7 +1508,7 @@ func BuildImportRowPreview(
 	contact *models.Contact,
 	rowIdx int,
 	batch []*models.Contact,
-	diags []string,
+	diags []contactmodel.Diagnostic,
 	stats *ImportStats,
 ) models.ImportRowPreview {
 	// Issue #416: fix up invalid UTF-8/control characters before the

@@ -108,7 +108,7 @@ func TestParseVCF_VCard21_QuotedPrintable(t *testing.T) {
 
 	// A successful decode should not itself surface as a diagnostic.
 	for _, d := range previews[0].Diagnostics {
-		assert.NotContains(t, d, "QUOTED-PRINTABLE", "a successful QP decode should not warn: %q", d)
+		assert.NotContains(t, d.Message, "QUOTED-PRINTABLE", "a successful QP decode should not warn: %q", d.Message)
 	}
 }
 
@@ -139,7 +139,7 @@ func TestParseVCF_VCard21_MalformedQuotedPrintable_Diagnostic(t *testing.T) {
 
 	found := false
 	for _, d := range previews[0].Diagnostics {
-		if strings.Contains(d, "QUOTED-PRINTABLE") {
+		if strings.Contains(d.Message, "QUOTED-PRINTABLE") {
 			found = true
 		}
 	}

@@ -459,6 +459,9 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/export":           {class: classProtected},
 		"GET /api/v1/export/vcf":       {class: classProtected},
 		"GET /api/v1/export/jscontact": {class: classProtected},
+		// Issue #442 (DATA-02): loss-report preflight, user-scoped exactly
+		// like the exports it mirrors.
+		"GET /api/v1/export/preflight": {class: classProtected},
 
 		// --- graph / search -------------------------------------------------
 		"GET /api/v1/graph":             {class: classProtected},

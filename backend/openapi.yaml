@@ -5994,6 +5994,18 @@ paths:
       responses:
         "200":
           description: A .vcf file (one or more concatenated vCard blocks).
+          headers:
+            X-Mycorrhizal-Export-Loss-Report:
+              description: >
+                DATA-02 (issue #442): URL-encoded JSON carrying the loss
+                reports for the file actually returned — which contact lost
+                which field to this format, and why (the DATA-01 matrix
+                bucket + reason). Decode with url.QueryUnescape then JSON.parse.
+                The object is {"format","count","truncated","diagnostics"}; the
+                diagnostics list is bounded to a documented header-size cap, and
+                when count exceeds what the header carries, truncated is true and
+                GET /export/preflight (same params) returns the complete list.
+              schema: { type: string }
           content:
             text/vcard:
               schema: { type: string, format: binary }
@@ -6028,6 +6040,18 @@ paths:
       responses:
         "200":
           description: A JSON array of JSContact Card documents.
+          headers:
+            X-Mycorrhizal-Export-Loss-Report:
+              description: >
+                DATA-02 (issue #442): URL-encoded JSON carrying the loss
+                reports for the file actually returned — which contact lost
+                which field to this format, and why (the DATA-01 matrix
+                bucket + reason). Decode with url.QueryUnescape then JSON.parse.
+                The object is {"format","count","truncated","diagnostics"}; the
+                diagnostics list is bounded to a documented header-size cap, and
+                when count exceeds what the header carries, truncated is true and
+                GET /export/preflight (same params) returns the complete list.
+              schema: { type: string }
           content:
             application/jscontact+json:
               schema:
@@ -6037,6 +6061,63 @@ paths:
                   description: An RFC 9553 JSContact Card document.
         "400":
           description: An unknown sections token was supplied.
+  /export/preflight:
+    get:
+      summary: Compute what an export would lose, without producing the file
+      operationId: exportLossPreflight
+      description: >
+        DATA-02 (issue #442). Answers "if I export these contacts to this
+        format with this field selection, what will be lost?" before anything
+        is written. Runs the exact same shared per-contact computation as the
+        export handlers (GET /export/vcf and /export/jscontact) and returns the
+        loss reports only — which contact lost which field to which format, and
+        why (the DATA-01 matrix bucket + reason). For unchanged data, the
+        reports here are identical to the X-Mycorrhizal-Export-Loss-Report
+        header on the actual export.
+      parameters:
+        - name: format
+          in: query
+          required: true
+          description: The serialized format to preflight.
+          schema: { type: string, enum: [vcard4, vcard3, jscontact] }
+        - name: sections
+          in: query
+          description: >
+            Comma-separated field sections to include (T9 selective
+            export), mirroring the export endpoints. One of: emails, phones,
+            addresses, organizations, anniversaries, media, online_services,
+            links, notes, keywords, related_to, personal_info, speak_to_as,
+            members, languages, custom_fields. Absent means all sections.
+          schema:
+            type: string
+            example: "emails,phones,addresses"
+        - name: include_sensitive
+          in: query
+          description: >
+            Explicit opt-in override : when true, private/secret items in the
+            selected sensitivity-bearing sections are included in this one
+            export. Defaults to false. Sensitivity exclusions are a policy
+            decision, not a fidelity loss — they never appear in the report.
+          schema: { type: boolean, default: false }
+        - name: vcard_uid
+          in: query
+          description: Restrict the preflight to a single contact.
+          schema: { type: string }
+      responses:
+        "200":
+          description: The loss reports an export with these params would produce.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportLossPreflightResponse"
+        "400":
+          description: An unknown format or sections token was supplied.
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   # --- Graph ---
   /graph:
@@ -11821,11 +11902,13 @@ components:
             rows default to "skip". Absent rows emit null.
         diagnostics:
           type: array
-          items: { type: string }
+          items: { $ref: "#/components/schemas/Diagnostic" }
           description: >
             Degradation-policy diagnostics from the vcard4/vcard3/jscontact
-            adapter that parsed this row (empty for CSV/records-import rows,
-            which don't go through an adapter).
+            adapter that parsed this row, in the same structured
+            severity/concept/message shape the export loss reports use
+            (DATA-02, issue #442). Empty for CSV/records-import rows, which
+            don't go through an adapter.
         custom_field_candidates:
           type: array
           items: { $ref: "#/components/schemas/DiscoveredProperty" }
@@ -11858,6 +11941,79 @@ components:
         matched_definition_label:
           type: string
           description: Display label of the matched definition.
+    Diagnostic:
+      type: object
+      description: >
+        One non-fatal data-handling event from a format adapter (the shared
+        loss-reporting type, DATA-02 issue #442): severity warn/info, the
+        correspondence concept the event names, and a human message. Both the
+        import preview diagnostics and the export loss reports carry this
+        shape.
+      properties:
+        severity:
+          type: string
+          enum: [warn, info]
+          description: warn = a fidelity-loss event; info = informational.
+        concept:
+          type: string
+          description: Correspondence concept_id the event names, or "" for adapter-local events.
+        message:
+          type: string
+    LossReport:
+      type: object
+      description: >
+        One fidelity-loss event on one export (DATA-02, issue #442): which
+        contact lost which field to which format, and why. The why (bucket +
+        reason) comes from the DATA-01 field compatibility matrix, so every
+        report corresponds to a matrix entry.
+      properties:
+        format:
+          type: string
+          enum: [vcard4, vcard3, jscontact]
+          description: The serialized format that could not represent the field.
+        contact_id:
+          type: integer
+          description: The contact that lost the field.
+        contact_name:
+          type: string
+          description: The contact's display name ("First Last").
+        vcard_uid:
+          type: string
+          description: The contact's stable RFC 6350 UID.
+        severity:
+          type: string
+          enum: [warn]
+          description: Loss reports are warn-severity events.
+        concept:
+          type: string
+          description: The correspondence concept_id of the lost field.
+        bucket:
+          type: string
+          enum: [unsupported, lossy]
+          description: The DATA-01 matrix classification — unsupported (no home) or lossy (reduced fidelity).
+        reason:
+          type: string
+          description: The DATA-01 matrix reason for the classification.
+        message:
+          type: string
+          description: The adapter's own message describing the drop.
+    ExportLossPreflightResponse:
+      type: object
+      description: >
+        The response of GET /export/preflight (DATA-02, issue #442): what an
+        export with the given format/selection/scope would lose, computed
+        without producing the file. Always carries diagnostics as an array
+        ([] when nothing would be lost, never null).
+      properties:
+        format:
+          type: string
+          enum: [vcard4, vcard3, jscontact]
+        contact_count:
+          type: integer
+          description: How many contacts the preflight considered.
+        diagnostics:
+          type: array
+          items: { $ref: "#/components/schemas/LossReport" }
     ImportMergeDiff:
       type: object
       description: >

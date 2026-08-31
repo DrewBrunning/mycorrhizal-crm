@@ -374,6 +374,10 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 				controllers.ExportContactsAsVCF(c, cfg.ProfilePhotoDir)
 			})
 			protected.GET("/export/jscontact", controllers.ExportContactsAsJSContact)
+			// Issue #442 (DATA-02): compute what an export would lose without
+			// producing the file — same shared computation as the export
+			// handlers, loss-report-only response.
+			protected.GET("/export/preflight", controllers.ExportPreflight)
 
 			// Graph/Network visualization route
 			protected.GET("/graph", controllers.GetGraph)

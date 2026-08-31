@@ -291,6 +291,49 @@ func TestPolicyExclusionsProduceNoLossReport(t *testing.T) {
 	}
 }
 
+// TestClassificationForCorrespondence pins the runtime half of the DATA-02
+// correspondence (issue #442): ClassificationFor — the lookup a runtime loss
+// report uses — is exactly LossReports() in both directions. Every reportable
+// (concept, format) resolves to the same bucket/reason as the registry, and
+// nothing that is not in the registry resolves. This is what makes "every
+// report must correspond to a matrix entry" enforceable at runtime, not just
+// on the generated doc.
+func TestClassificationForCorrespondence(t *testing.T) {
+	// Matrix -> lookup: every registry entry resolves identically.
+	for _, lr := range LossReports() {
+		got, ok := ClassificationFor(lr.Concept, lr.Format)
+		if !ok {
+			t.Errorf("ClassificationFor(%s, %s) failed to resolve a registry entry", lr.Concept, lr.Format)
+			continue
+		}
+		if got.Concept != lr.Concept || got.Format != lr.Format || got.Bucket != lr.Bucket || got.Reason != lr.Reason {
+			t.Errorf("ClassificationFor(%s, %s) = %+v, registry says %+v", lr.Concept, lr.Format, got, lr)
+		}
+	}
+
+	// Lookup -> matrix: nothing outside the registry resolves. Scan the full
+	// matrix so a concept that is present-but-not-reportable (exact/transformed/
+	// extended, or a policy-excluded no-home field) also does not resolve.
+	for _, e := range Build() {
+		for _, f := range serializedFormats {
+			_, ok := ClassificationFor(e.ConceptID, f)
+			want := e.Cells[f].Bucket == BucketUnsupported || e.Cells[f].Bucket == BucketLossy
+			if e.NoHome != nil && !e.NoHome.LossReport {
+				want = false
+			}
+			if ok != want {
+				t.Errorf("ClassificationFor(%s, %s) ok=%v, matrix bucket %s (want %v)",
+					e.ConceptID, f, ok, e.Cells[f].Bucket, want)
+			}
+		}
+	}
+
+	// A foreign concept never resolves.
+	if _, ok := ClassificationFor("not.a.concept", FormatVCard4); ok {
+		t.Errorf("ClassificationFor resolved a foreign concept")
+	}
+}
+
 // --- (6) special cases trace to the table / adapters --------------------------
 
 // TestSpecialCasesAreTableGrounded verifies every override key resolves to a
