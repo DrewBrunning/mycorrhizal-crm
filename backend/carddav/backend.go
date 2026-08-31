@@ -222,12 +222,12 @@ func (b *Backend) GetAddressBook(ctx context.Context, urlPath string) (*carddav.
 
 // CreateAddressBook creates a new address book (not supported - single address book per user)
 func (b *Backend) CreateAddressBook(ctx context.Context, addressBook *carddav.AddressBook) error {
-	return fmt.Errorf("creating address books is not supported")
+	return webdav.NewHTTPError(http.StatusForbidden, fmt.Errorf("creating address books is not supported"))
 }
 
 // DeleteAddressBook deletes an address book (not supported)
 func (b *Backend) DeleteAddressBook(ctx context.Context, urlPath string) error {
-	return fmt.Errorf("deleting address books is not supported")
+	return webdav.NewHTTPError(http.StatusForbidden, fmt.Errorf("deleting address books is not supported"))
 }
 
 // GetAddressObject returns a single address object (contact)
@@ -240,7 +240,7 @@ func (b *Backend) GetAddressObject(ctx context.Context, urlPath string, req *car
 	// Extract UID from path (e.g., /carddav/addressbooks/user/contacts/uid.vcf)
 	uid := extractUIDFromPath(urlPath)
 	if uid == "" {
-		return nil, fmt.Errorf("invalid path")
+		return nil, webdav.NewHTTPError(http.StatusBadRequest, fmt.Errorf("invalid path"))
 	}
 
 	db := b.getDB(ctx)
@@ -256,7 +256,11 @@ func (b *Backend) GetAddressObject(ctx context.Context, urlPath string, req *car
 		}
 	}
 	if err != nil {
-		return nil, fmt.Errorf("contact not found")
+		// TEST-09 interop find: a plain error became a 500, which real
+		// clients (vdirsyncer's delete round-trip caught it) read as "server
+		// broken" instead of the interop-correct "card is gone". 404 is what
+		// DAVx5/Apple/Thunderbird expect for a missing card.
+		return nil, webdav.NewHTTPError(http.StatusNotFound, fmt.Errorf("contact not found"))
 	}
 
 	return b.contactToAddressObject(ctx, &contact), nil
@@ -285,6 +289,20 @@ func (b *Backend) ListAddressObjects(ctx context.Context, urlPath string, req *c
 
 // QueryAddressObjects handles REPORT queries
 func (b *Backend) QueryAddressObjects(ctx context.Context, urlPath string, query *carddav.AddressBookQuery) ([]carddav.AddressObject, error) {
+	// A filter-less addressbook-query (no <card:filter> element, RFC 6352
+	// §8.6) means "return the whole collection" — that is how real clients
+	// (Thunderbird, Apple Contacts, DAVx5, vdirsyncer) enumerate an address
+	// book. go-webdav's Match() treats an empty FilterAnyOf as "match
+	// nothing", so routing a filter-less query through Filter returns an
+	// empty multistatus and the client sees an empty address book — the
+	// TEST-09 interop find (our own client's full-refetch fallback is a
+	// filter-less query too, so our server used to answer our client with
+	// "no contacts"). Only a real Filter (which needs to match a subset)
+	// goes through the library.
+	if query == nil || (query.FilterTest == "" && len(query.PropFilters) == 0) {
+		return b.ListAddressObjects(ctx, urlPath, &carddav.AddressDataRequest{AllProp: true})
+	}
+
 	// Get all objects and filter using the library's Filter function
 	objects, err := b.ListAddressObjects(ctx, urlPath, &query.DataRequest)
 	if err != nil {
@@ -391,7 +409,7 @@ func (b *Backend) DeleteAddressObject(ctx context.Context, urlPath string) error
 
 	uid := extractUIDFromPath(urlPath)
 	if uid == "" {
-		return fmt.Errorf("invalid path")
+		return webdav.NewHTTPError(http.StatusBadRequest, fmt.Errorf("invalid path"))
 	}
 
 	db := b.getDB(ctx)
@@ -406,7 +424,8 @@ func (b *Backend) DeleteAddressObject(ctx context.Context, urlPath string) error
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("contact not found")
+		// 404 for a missing card, mirroring GetAddressObject (see its comment).
+		return webdav.NewHTTPError(http.StatusNotFound, fmt.Errorf("contact not found"))
 	}
 
 	// Soft delete

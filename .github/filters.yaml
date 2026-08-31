@@ -91,6 +91,7 @@ differential:
 # the real-server complement.
 carddav:
   - '.github/workflows/carddav-e2e.yml'
+  - '.github/scripts/carddav-reference/**'
   - 'backend/carddav/**'
   - 'backend/services/contact_sync_service.go'
   - 'backend/services/contact_sync_service_test.go'
@@ -99,6 +100,15 @@ carddav:
   - 'backend/services/fake_carddav_server_test.go'
   - 'backend/services/carddav_roundtrip_test.go'
   - 'backend/services/carddav_radicale_integration_test.go'
+
+# reference-clients (issue #681, TEST-09 direction 1): the scheduled job that
+# drives a REAL third-party client (vdirsyncer) against OUR server. Same
+# philosophy as carddav: narrow gate, slow by design, always on at night.
+reference-clients:
+  - '.github/workflows/reference-clients-e2e.yml'
+  - '.github/scripts/carddav-reference/**'
+  - 'backend/carddav/**'
+  - 'backend/services/carddav_vdirsyncer_integration_test.go'
 
 workflows:
   - '.github/**'

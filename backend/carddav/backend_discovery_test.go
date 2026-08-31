@@ -158,3 +158,34 @@ func TestQueryAddressObjects_Unauthenticated(t *testing.T) {
 	_, err := backend.QueryAddressObjects(context.Background(), "/carddav/addressbooks/alice/contacts/", &webdavcarddav.AddressBookQuery{})
 	require.Error(t, err)
 }
+
+// TestQueryAddressObjects_FilterLessReturnsEverything pins TEST-09's first
+// real-client find: a filter-less addressbook-query (RFC 6352 §8.6 — the
+// way Thunderbird, Apple Contacts, DAVx5 and vdirsyncer enumerate a
+// collection) returned an EMPTY multistatus. The library's Match() treats an
+// empty FilterAnyOf as "match nothing", so a client asking "give me the whole
+// collection" got nothing — and our own client's full-refetch fallback
+// (contact_sync_service.go, an addressbook-query with no Filter) would have
+// seen our own server as empty. A filter-less query is the query.
+func TestQueryAddressObjects_FilterLessReturnsEverything(t *testing.T) {
+	backend, db := newDiscoveryBackend(t)
+	ctx := ContextWithUser(context.Background(), 1, "alice", db, backend.photoDir, "")
+
+	for _, c := range []struct{ uid, fn string }{
+		{"q-uid-3", "Query Three"},
+		{"q-uid-4", "Query Four"},
+	} {
+		_, err := backend.PutAddressObject(ctx, "/carddav/addressbooks/alice/contacts/"+c.uid+".vcf",
+			mustParseVCard(t, simpleVCard4(c.uid, c.fn)), nil)
+		require.NoError(t, err)
+	}
+
+	// The exact shape go-webdav's server-side REPORT handler produces for a
+	// request with no <card:filter> element: FilterTest is "" (zero value)
+	// and there are no prop filters.
+	all, err := backend.QueryAddressObjects(ctx, "/carddav/addressbooks/alice/contacts/", &webdavcarddav.AddressBookQuery{
+		DataRequest: webdavcarddav.AddressDataRequest{AllProp: true},
+	})
+	require.NoError(t, err)
+	require.Len(t, all, 2, "a filter-less addressbook-query must return the whole collection (RFC 6352 §8.6)")
+}
