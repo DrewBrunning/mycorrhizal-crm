@@ -1,0 +1,5 @@
+BEGIN:VCARD
+UID:str-missing-version
+FN:Ada Lovelace
+N:Lovelace;Ada;;;
+END:VCARD

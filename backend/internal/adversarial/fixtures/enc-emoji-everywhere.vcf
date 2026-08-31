@@ -1,0 +1,9 @@
+BEGIN:VCARD
+VERSION:4.0
+UID:enc-emoji-everywhere
+FN:Ada 😀 Lovelace 🚀
+N:Lovelace;Ada 😀;;;
+EMAIL:ada😀@example.com
+TEL:+1😀5551234567
+NOTE:🎉 emoji in the note too
+END:VCARD

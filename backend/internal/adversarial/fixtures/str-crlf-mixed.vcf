@@ -1,0 +1,6 @@
+BEGIN:VCARD
+VERSION:4.0
+UID:str-crlf-mixed
+FN:Ada Lovelace
+N:Lovelace;Ada;;;
+END:VCARD

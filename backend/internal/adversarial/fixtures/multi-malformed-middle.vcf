@@ -1,0 +1,21 @@
+BEGIN:VCARD
+VERSION:4.0
+UID:multi-good-one
+FN:Good One
+N:;Good One;;;
+EMAIL:good1@example.com
+END:VCARD
+BEGIN:VCARD
+VERSION:4.0
+UID:multi-bad
+FN:Bad Middle
+N:;Bad Middle;;;
+END:FOO
+END:VCARD
+BEGIN:VCARD
+VERSION:4.0
+UID:multi-good-two
+FN:Good Two
+N:;Good Two;;;
+EMAIL:good2@example.com
+END:VCARD

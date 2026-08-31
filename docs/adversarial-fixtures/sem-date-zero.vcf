@@ -1,0 +1,8 @@
+BEGIN:VCARD
+VERSION:4.0
+UID:sem-date-zero
+FN:Ada Lovelace
+N:Lovelace;Ada;;;
+BDAY:0000-00-00
+ANNIVERSARY:0000-00-00
+END:VCARD

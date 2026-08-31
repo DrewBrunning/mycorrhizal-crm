@@ -14,6 +14,7 @@
 package jscontact
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -84,6 +85,11 @@ var knownCardTopLevelKeys = map[string]bool{
 // returns an error for unmappable/unknown data (0.5) — only when raw is not
 // valid JSContact JSON at all (Unmarshal itself fails).
 func (Adapter) Import(raw []byte) (*contactmodel.Record, []contactmodel.Diagnostic, error) {
+	// A leading UTF-8 BOM (some Windows exporters emit one) is stripped
+	// here as well as in Unmarshal: importUnknownTopLevel below re-parses
+	// `raw` directly, so the strip has to happen once up front to keep
+	// every consumer of the original bytes consistent (TEST-04 js-bom).
+	raw = bytes.TrimPrefix(raw, []byte("\xef\xbb\xbf"))
 	card, err := Unmarshal(raw)
 	if err != nil {
 		return nil, nil, fmt.Errorf("jscontact: import: %w", err)
