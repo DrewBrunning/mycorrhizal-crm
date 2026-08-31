@@ -1,0 +1,8 @@
+BEGIN:VCARD
+VERSION:4.0
+UID:sem-self-related
+FN:Ada Lovelace
+N:Lovelace;Ada;;;
+RELATED;TYPE=friend:sem-self-related
+RELATED;TYPE=child:urn:uuid:other-contact
+END:VCARD

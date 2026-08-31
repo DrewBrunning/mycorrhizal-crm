@@ -1,4 +1,4 @@
-.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backfill-at-rest rotate-at-rest-key audit-backfill audit-verify backup gen-contract-fixtures gen-schema-fixtures gen-api-baseline help
+.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backfill-at-rest rotate-at-rest-key audit-backfill audit-verify backup gen-contract-fixtures gen-schema-fixtures gen-api-baseline gen-compat-matrix help
 
 # Database path. The migration CLI reads SQLITE_DB_PATH (the same variable the
 # server reads), so every target below EXPORTS this rather than just echoing
@@ -74,6 +74,9 @@ gen-schema-fixtures: ## Regenerate the per-release schema dumps backing the upgr
 
 gen-api-baseline: ## Regenerate the frozen /api/v1 contract baseline (MAINT-02, issue #491). Deliberate act: a baseline diff that removes or narrows surface IS the declared breaking change.
 	@go run cmd/genapibaseline/main.go
+
+gen-compat-matrix: ## Regenerate the DATA-01 field compatibility matrix from the correspondence oracle + issue #515 audit (issue #441). Run when correspondence.tsv changes; the drift test fails until the docs diff is committed.
+	@go run cmd/gencompatmatrix/main.go
 
 backup: ## Create a consistent online snapshot of the SQLite database (VACUUM INTO; safe while the server runs)
 	@echo "Backing up $(DB_PATH)..."

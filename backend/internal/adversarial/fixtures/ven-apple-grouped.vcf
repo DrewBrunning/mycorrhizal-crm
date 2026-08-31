@@ -1,0 +1,12 @@
+BEGIN:VCARD
+VERSION:3.0
+UID:ven-apple-grouped
+FN:Ada Lovelace
+N:Lovelace;Ada;;;
+item1.EMAIL;type=INTERNET;type=pref:ada@example.com
+item1.X-ABLabel:Work
+item2.TEL;type=CELL;type=voice:555-123-4567
+item2.X-ABLabel:Main
+item3.X-SOCIALPROFILE;type=twitter:https://twitter.com/ada
+item3.X-ABLabel:Twitter
+END:VCARD

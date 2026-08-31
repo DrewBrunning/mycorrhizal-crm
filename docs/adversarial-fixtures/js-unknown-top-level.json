@@ -1,0 +1,9 @@
+{
+  "@type": "Card",
+  "version": "1.0",
+  "uid": "js-unknown-top-level",
+  "name": { "full": "Ada Lovelace", "components": [{"kind": "given", "value": "Ada"}, {"kind": "surname", "value": "Lovelace"}] },
+  "emails": { "k1": { "address": "ada@example.com" } },
+  "xCustomThing": { "nested": { "value": 42 } },
+  "extensions": { "vendor": "acme" }
+}

@@ -1,0 +1,6 @@
+BEGIN:VCARD
+VERSION:4.0
+UID:enc-invalid-utf8
+FN:Ada ÿ Lovelace
+N:Lovelace;Adaÿ;;;
+END:VCARD
