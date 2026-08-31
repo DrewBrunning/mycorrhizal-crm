@@ -299,6 +299,16 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 		}
 	}
 	if len(nonEmptyKeywords) > 0 {
+		// CATEGORIES is a comma-separated TEXT LIST: the delimiter commas
+		// must be raw. go-vcard's encoder escapes every comma, turning a
+		// multi-category card into one category whose text contains a comma
+		// — a different contact to any spec-honoring reader (our importer
+		// happened to split the unescaped value back on commas, so the bug
+		// was invisible to our own round trip until the TEST-08 differential,
+		// issue #680). The oracle's csv_join transform treats keywords as a
+		// plain comma-list (no per-element escaping), so a comma-bearing
+		// keyword is outside the representable domain; fixCategoryListEscapes
+		// restores the raw delimiters on the final bytes.
 		card.SetValue(PropCategories, strings.Join(nonEmptyKeywords, ","))
 	}
 
@@ -420,7 +430,42 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 	if err := vcard.NewEncoder(&buf).Encode(card); err != nil {
 		return nil, diags, err
 	}
-	return buf.Bytes(), diags, nil
+	out := fixCategoryListEscapes(buf.Bytes())
+	return out, diags, nil
+}
+
+// fixCategoryListEscapes rewrites the CATEGORIES property's delimiter commas
+// back to raw form after go-vcard's blanket TEXT escaping. Line-aware (folded
+// continuation lines included) so other properties' escaped commas are
+// untouched. See exportKeywords above.
+func fixCategoryListEscapes(out []byte) []byte {
+	var sb bytes.Buffer
+	start := 0
+	inCategories := false
+	for i := 0; i < len(out); i++ {
+		if i+1 < len(out) && out[i] == '\r' && out[i+1] == '\n' {
+			line := out[start:i]
+			next := i + 2
+			if len(line) == 0 || line[0] != ' ' {
+				inCategories = bytes.HasPrefix(bytes.ToUpper(line), []byte(PropCategories+":"))
+			}
+			if inCategories {
+				line = bytes.ReplaceAll(line, []byte("\\,"), []byte(","))
+			}
+			sb.Write(line)
+			sb.WriteString("\r\n")
+			start = next
+			i = next - 1
+		}
+	}
+	if start < len(out) {
+		line := out[start:]
+		if inCategories {
+			line = bytes.ReplaceAll(line, []byte("\\,"), []byte(","))
+		}
+		sb.Write(line)
+	}
+	return sb.Bytes()
 }
 
 // exportName handles the Card.Name -> FN/N mapping, including the
