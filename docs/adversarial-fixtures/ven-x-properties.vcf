@@ -1,0 +1,9 @@
+BEGIN:VCARD
+VERSION:4.0
+UID:ven-x-properties
+FN:Ada Lovelace
+N:Lovelace;Ada;;;
+X-VENDOR-NOTE:hello world
+X-FOO;PARAM1=a;PARAM2=b:value with, comma and ; semicolon
+X-GOOGLE-CUSTOM;LABEL=Birthday;TYPE=celebrated:2020-01-01
+END:VCARD

@@ -1,0 +1,7 @@
+BEGIN:VCARD
+VERSION:4.0
+UID:str-note-ends-marker
+FN:Ada Lovelace
+N:Lovelace;Ada;;;
+NOTE:see END:VCARD inside this note value
+END:VCARD

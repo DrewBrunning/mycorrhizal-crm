@@ -1,0 +1,11 @@
+BEGIN:VCARD
+VERSION:4.0
+UID:sem-negative-absurd
+FN:Ada Lovelace
+N:Lovelace;Ada;;;
+EXPERTISE;INDEX=-7;LEVEL=beginner:-5 years of chemistry
+HOBBY;INDEX=999999999;LEVEL=high:reading
+INTEREST;LEVEL=medium:quantum teleportation
+NICKNAME;PREF=-3:Zero
+ORG:-Acme Corp;;;
+END:VCARD
