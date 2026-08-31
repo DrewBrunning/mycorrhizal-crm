@@ -71,3 +71,46 @@ func TestExport_AdrCountryCodeWarns(t *testing.T) {
 		t.Error("the ADR property itself must still be emitted")
 	}
 }
+
+// TestExport_AdrSkipsDegenerateExtraKinds pins the DATA-03 (issue #443) fix:
+// an address whose components are all extra kinds (no vCard 3.0 ADR position,
+// e.g. "room") with no Full/Coordinates/TimeZone to carry would serialize to
+// a degenerate "ADR:;;;;;;" line that importAddresses reads back as an empty
+// address — churning the serialized form across a repeated conversion. The
+// line must not be emitted, but the extra-kind warn must still fire so the
+// drop is documented, never silent.
+func TestExport_AdrSkipsDegenerateExtraKinds(t *testing.T) {
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Addresses: []contactmodel.Address{{
+			Components: []contactmodel.AddressComponent{{Kind: "room", Value: "A"}},
+		}},
+	}}
+	out, diags, err := (Adapter{}).Export(rec)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	if hasProp(t, out, PropAdr) {
+		t.Errorf("extra-kind-only address emitted an ADR line, want none:\n%s", out)
+	}
+	if !hasWarn(diags, "adr") {
+		t.Errorf("diags = %+v, want a warn for concept adr (extra component kinds dropped)", diags)
+	}
+}
+
+// TestExport_AdrPostOfficeBox covers the postOfficeBox ADR slot (the only
+// vCard 3.0 ADR component kind the round-trip property does not generate).
+func TestExport_AdrPostOfficeBox(t *testing.T) {
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Addresses: []contactmodel.Address{{
+			Components: []contactmodel.AddressComponent{
+				{Kind: "postOfficeBox", Value: "P.O. Box 123"},
+				{Kind: "locality", Value: "Springfield"},
+			},
+		}},
+	}}
+	out, _, err := (Adapter{}).Export(rec)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	rfctest.AssertVCardLine(t, out, PropAdr, nil, "P.O. Box 123;;;Springfield;;;")
+}
