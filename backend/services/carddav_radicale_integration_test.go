@@ -23,53 +23,194 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Real-server CardDAV integration suite (issue #496 item 3): the same full
+// Real-server CardDAV integration suite (issues #496 + #681): the same full
 // sync lifecycle + TEST-02 fixture round trip the fake suite drives, but
-// against a REAL CardDAV server (Radicale in Docker). A fake encodes our own
+// against a REAL CardDAV server in Docker. A fake encodes our own
 // understanding of the protocol — this suite exists because only a real
 // server can contradict us.
 //
-// Gating: the test SKIPS unless MYCORRHIZAL_RADICALE_URL is set, so it never
-// runs as part of the normal Go suite. The carddav-e2e.yml workflow starts
-// Radicale, sets the env, and runs `go test -run TestCardDAVRadicale`. It is
-// scheduled (nightly) and path-gated via .github/filters.yaml (carddav
-// filter), not run per-PR — the fake suite stays the fast deterministic gate
-// (see the workflow's comments for the rationale).
+// The server is selectable via MYCORRHIZAL_CARDDAV_SERVER_ID (issue #681,
+// TEST-09 direction 2): "radicale" (default, the original #496 choice),
+// "baikal", "nextcloud" or "davical". The differences that matter between
+// them are captured in referenceServerLayout (collection URL + card href
+// shape) and the per-server divergence register below. SabreDAV-based
+// servers (baikal/nextcloud) are served through Sabre VObject which
+// re-serializes vCard 4.0 as vCard 3.0 (our go-webdav client cannot
+// negotiate an address-data version), and the register documents exactly
+// what that re-serialization changes; anything else that diverges is a real
+// failure.
+//
+// Gating: the test SKIPS unless MYCORRHIZAL_CARDDAV_SERVER_URL is set, so it
+// never runs as part of the normal Go suite. The carddav-e2e.yml workflow
+// starts the server, sets the env, and runs `go test -run
+// TestCardDAVReferenceServer`. It is scheduled (nightly) and path-gated via
+// .github/filters.yaml (carddav filter), not run per-PR — the fake suite
+// stays the fast deterministic gate.
 // ---------------------------------------------------------------------------
 
-// radicaleEnv reads the Radicale connection info from the environment.
-func radicaleEnv(t *testing.T) (baseURL, user, password string) {
+// referenceServerEnv reads the real-server connection info from the
+// environment. MYCORRHIZAL_RADICALE_* are accepted as fallbacks so an
+// existing setup keeps working unchanged.
+func referenceServerEnv(t *testing.T) (serverID, baseURL, user, password string) {
 	t.Helper()
-	baseURL = strings.TrimRight(os.Getenv("MYCORRHIZAL_RADICALE_URL"), "/")
-	if baseURL == "" {
-		t.Skip("MYCORRHIZAL_RADICALE_URL not set — this suite runs against a real Radicale via .github/workflows/carddav-e2e.yml")
+	serverID = os.Getenv("MYCORRHIZAL_CARDDAV_SERVER_ID")
+	if serverID == "" {
+		serverID = "radicale"
 	}
-	user = os.Getenv("MYCORRHIZAL_RADICALE_USER")
+	baseURL = strings.TrimRight(os.Getenv("MYCORRHIZAL_CARDDAV_SERVER_URL"), "/")
+	if baseURL == "" {
+		baseURL = strings.TrimRight(os.Getenv("MYCORRHIZAL_RADICALE_URL"), "/")
+	}
+	if baseURL == "" {
+		t.Skip("MYCORRHIZAL_CARDDAV_SERVER_URL not set — this suite runs against a real CardDAV server via .github/workflows/carddav-e2e.yml")
+	}
+	user = os.Getenv("MYCORRHIZAL_CARDDAV_USER")
+	if user == "" {
+		user = os.Getenv("MYCORRHIZAL_RADICALE_USER")
+	}
 	if user == "" {
 		user = "syncuser"
 	}
-	password = os.Getenv("MYCORRHIZAL_RADICALE_PASSWORD")
+	password = os.Getenv("MYCORRHIZAL_CARDDAV_PASSWORD")
+	if password == "" {
+		password = os.Getenv("MYCORRHIZAL_RADICALE_PASSWORD")
+	}
 	if password == "" {
 		password = "syncsecret"
 	}
-	return baseURL, user, password
+	return serverID, baseURL, user, password
 }
 
-// radicaleCollectionURL is the address book path for the sync user.
-func radicaleCollectionURL(baseURL, user string) string {
-	return baseURL + "/" + url.PathEscape(user) + "/contacts/"
+// referenceServerLayout captures the server-specific differences the suite
+// must adapt to. Everything else (PROPFIND listing, PUT, DELETE, sync-
+// collection, multiget) is driven the same way against every server.
+type referenceServerLayout struct {
+	id string
+	// collectionPath is the full URL of the sync user's address book.
+	collectionPath func(baseURL, user string) string
+	// cardHref is the href the server reports in its multistatus responses
+	// (absolute URL path, not full URL) — the value ContactSyncLink.Href
+	// stores, which is why the suite must know the exact shape.
+	cardHref func(user, uid string) string
+	// mkcol is true for servers where the address book collection must be
+	// created explicitly (Radicale starts empty); SabreDAV-based servers
+	// have the collection pre-provisioned.
+	mkcol bool
 }
 
-// radicaleCardPath is the href Radicale reports for a card in its multistatus
-// responses (absolute URL paths, not full URLs) — the value the sync service
-// stores as ContactSyncLink.Href.
-func radicaleCardPath(user, uid string) string {
-	return "/" + url.PathEscape(user) + "/contacts/" + uid + ".vcf"
+var referenceServerLayouts = map[string]referenceServerLayout{
+	"radicale": {
+		id: "radicale",
+		collectionPath: func(baseURL, user string) string {
+			return baseURL + "/" + url.PathEscape(user) + "/contacts/"
+		},
+		cardHref: func(user, uid string) string {
+			return "/" + url.PathEscape(user) + "/contacts/" + uid + ".vcf"
+		},
+		mkcol: true,
+	},
+	"baikal": {
+		id: "baikal",
+		collectionPath: func(baseURL, user string) string {
+			return baseURL + "/dav.php/addressbooks/" + url.PathEscape(user) + "/contacts/"
+		},
+		cardHref: func(user, uid string) string {
+			return "/dav.php/addressbooks/" + url.PathEscape(user) + "/contacts/" + uid + ".vcf"
+		},
+	},
+	"nextcloud": {
+		id: "nextcloud",
+		collectionPath: func(baseURL, user string) string {
+			return baseURL + "/remote.php/dav/addressbooks/users/" + url.PathEscape(user) + "/contacts/"
+		},
+		cardHref: func(user, uid string) string {
+			return "/remote.php/dav/addressbooks/users/" + url.PathEscape(user) + "/contacts/" + uid + ".vcf"
+		},
+	},
+	"davical": {
+		id: "davical",
+		collectionPath: func(baseURL, user string) string {
+			return baseURL + "/caldav.php/" + url.PathEscape(user) + "/contacts/"
+		},
+		cardHref: func(user, uid string) string {
+			return "/caldav.php/" + url.PathEscape(user) + "/contacts/" + uid + ".vcf"
+		},
+	},
 }
 
-// radicaleRequest does an authenticated HTTP request against Radicale,
-// returning the response (caller closes the body). rawURL is a full URL.
-func radicaleRequest(t *testing.T, user, password, method, rawURL, body string) *http.Response {
+// serverDivergence is one fixture contact a real server does not round-trip
+// faithfully, and why. concepts is the ";"-joined expected divergent concept
+// ids; "" means the server REJECTED the card at PUT.
+type serverDivergence struct {
+	name     string
+	concepts string
+	reason   string
+}
+
+// referenceServerDivergences returns the divergence register for a server.
+// radicale's register is the original #496 find; the SabreDAV-based servers
+// (baikal/nextcloud) re-serialize vCard 4.0 as vCard 3.0 on output (Sabre
+// VObject) because our go-webdav client cannot negotiate an address-data
+// version (go-webdav v0.7.0 AddressDataRequest has no version field — a
+// documented client limitation, see docs/development/testing.md). The 3.0
+// downgrade moves the 4.0-only concepts into the passthrough and derives
+// name.full from FN; the register pins exactly which concepts each fixture
+// contact is affected in. Anything OUTSIDE this set is a real failure.
+func referenceServerDivergences(serverID string) []serverDivergence {
+	switch serverID {
+	case "radicale":
+		return []serverDivergence{
+			{name: "celine", reason: "rejected by Radicale: exported card carries two N properties (RFC 9554 §3.3 alternative-name ALTID); vobject refuses >1 N"},
+			{name: "bob", concepts: "adr;photo", reason: "vobject re-serializes on output: inline data: PHOTO truncated at the first ';' and ADR components beyond the seven RFC 6350 slots (apartment, floor) dropped"},
+		}
+	case "baikal", "nextcloud":
+		// The accepted-card divergences are byte-identical between Baikal and
+		// Nextcloud (both serve through Sabre VObject, which re-serializes
+		// vCard 4.0 as vCard 3.0 because our go-webdav client cannot negotiate
+		// an address-data version — a documented client limitation, see
+		// docs/development/testing.md). Nextcloud additionally REJECTS eve at
+		// PUT (its VObject re-validates BDAY as an iCalendar datetime and
+		// rejects eve's historical year-1000 birthday), so the registers differ
+		// only in eve.
+		common := []serverDivergence{
+			{name: "celine", reason: "rejected: exported card carries two N properties (RFC 9554 §3.3 alternative-name ALTID); Sabre VObject rejects >1 N"},
+			{name: "ada", concepts: "adr;adr.tz;created;gramgender;hobby;impp;interest;kind;language;member;prodid;pronouns;pt.vcard;related;social", reason: "Sabre VObject re-serializes the vCard 4.0 export as vCard 3.0: 4.0-only concepts (kind, created, language, social, gramgender, pronouns, hobby, interest, related, member, adr CC/TZ, impp scheme) land in passthrough, prodid added"},
+			{name: "bob", concepts: "adr;impp;kind;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: adr/photo structure and impp land in passthrough"},
+			{name: "dmitri", concepts: "kind;name.full;prodid", reason: "Sabre VObject 3.0 downgrade; the vcard3 importer derives name.full from FN where the neutral record stores only components"},
+			{name: "frank", concepts: "kind;prodid", reason: "Sabre VObject 3.0 downgrade"},
+			{name: "hugo", concepts: "adr;kind;prodid", reason: "Sabre VObject 3.0 downgrade: adr CC/TZ params dropped"},
+			{name: "ida", concepts: "kind;prodid", reason: "Sabre VObject 3.0 downgrade"},
+			{name: "julie", concepts: "kind;name.full;prodid", reason: "Sabre VObject 3.0 downgrade; the vcard3 importer derives name.full from FN where the neutral record stores only components"},
+			{name: "test07_country_code_only_address", concepts: "adr;kind;name.full;prodid", reason: "Sabre VObject 3.0 downgrade: the country-only ADR loses its country code"},
+			{name: "test07_duplicate_keywords", concepts: "kind;name.full;prodid", reason: "Sabre VObject 3.0 downgrade; name.full derived from FN"},
+			{name: "test07_empty_note_with_params", concepts: "kind;name.full;note;prodid", reason: "Sabre VObject 3.0 downgrade: an empty NOTE carrying parameters is dropped by VObject"},
+			{name: "test07_multi_grammatical_gender", concepts: "gramgender;kind;name.full;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: GRAMGENDER survives only as passthrough"},
+			{name: "test07_timestamped_birthday", concepts: "kind;name.full;prodid", reason: "Sabre VObject 3.0 downgrade; name.full derived from FN"},
+		}
+		if serverID == "baikal" {
+			// eve is ACCEPTED by Baikal but its BDAY (no value-type) survives
+			// only as passthrough under the 3.0 downgrade.
+			common = append(common, serverDivergence{
+				name: "eve", concepts: "anniversary.birth;kind;prodid;pt.vcard",
+				reason: "Sabre VObject 3.0 downgrade: BDAY without a value-type survives only as passthrough",
+			})
+		} else {
+			// ... and REJECTED outright by Nextcloud.
+			common = append(common, serverDivergence{
+				name:   "eve",
+				reason: "additionally REJECTED by Nextcloud at PUT: its VObject re-validates BDAY as an iCalendar datetime and rejects eve's historical year-1000 birthday ('The supplied iCalendar datetime value is incorrect')",
+			})
+		}
+		return common
+	default:
+		return nil
+	}
+}
+
+// referenceRequest does an authenticated HTTP request against the reference
+// server, returning the response (caller closes the body). rawURL is a full
+// URL.
+func referenceRequest(t *testing.T, user, password, method, rawURL, body string) *http.Response {
 	t.Helper()
 	req, err := http.NewRequest(method, rawURL, strings.NewReader(body))
 	require.NoError(t, err)
@@ -85,12 +226,12 @@ func radicaleRequest(t *testing.T, user, password, method, rawURL, body string) 
 	return resp
 }
 
-// radicalePut stages one vCard on Radicale and returns the server's ETag
-// (unquoted), so the test can assert it landed in the real etag column.
-// fullURL is the complete resource URL.
-func radicalePut(t *testing.T, user, password, fullURL, raw string) string {
+// referencePut stages one vCard on the reference server and returns the
+// server's ETag (unquoted), so the test can assert it landed in the real
+// etag column. fullURL is the complete resource URL.
+func referencePut(t *testing.T, user, password, fullURL, raw string) string {
 	t.Helper()
-	resp := radicaleRequest(t, user, password, http.MethodPut, fullURL, raw)
+	resp := referenceRequest(t, user, password, http.MethodPut, fullURL, raw)
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
 	require.Contains(t, []int{http.StatusCreated, http.StatusNoContent}, resp.StatusCode,
@@ -98,31 +239,35 @@ func radicalePut(t *testing.T, user, password, fullURL, raw string) string {
 	return strings.Trim(resp.Header.Get("ETag"), `"`)
 }
 
-// radicaleEnsureCollection idempotently creates the address book collection
-// (a fresh Radicale container has neither, and Radicale does not discover it
-// for us). The user's principal is created implicitly by Radicale on first
+// referenceEnsureCollection idempotently creates the address book collection
+// for servers that need it (Radicale starts with no collections and does not
+// discover them for us). SabreDAV-based servers are pre-provisioned, so this
+// is a no-op for them. The user's principal is created implicitly on first
 // access and is deliberately NOT mkcol'd — the principal resource itself is
 // protected (403), which is correct.
-func radicaleEnsureCollection(t *testing.T, user, password, collectionPath string) {
+func referenceEnsureCollection(t *testing.T, serverID, user, password, collectionPath string) {
 	t.Helper()
+	if serverID != "radicale" {
+		return
+	}
 	mkcol := `<?xml version="1.0" encoding="utf-8" ?>
 <D:mkcol xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">
   <D:set><D:prop>
     <D:resourcetype><D:collection/><C:addressbook/></D:resourcetype>
   </D:prop></D:set>
 </D:mkcol>`
-	resp := radicaleRequest(t, user, password, "MKCOL", collectionPath, mkcol)
+	resp := referenceRequest(t, user, password, "MKCOL", collectionPath, mkcol)
 	body, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	require.Contains(t, []int{http.StatusCreated, http.StatusMethodNotAllowed, http.StatusConflict}, resp.StatusCode,
 		"MKCOL %s failed: %s (%s)", collectionPath, resp.Status, body)
 }
 
-// radicaleDeleteAll empties the collection so each run starts clean regardless
-// of what a previous (possibly failed) run left behind. It lists via PROPFIND
-// (ReadDir) rather than addressbook-query, which Radicale rejects for
-// filter-less queries.
-func radicaleDeleteAll(t *testing.T, baseURL, collectionPath, user, password string) {
+// referenceDeleteAll empties the collection so each run starts clean
+// regardless of what a previous (possibly failed) run left behind. It lists
+// via PROPFIND (ReadDir) rather than addressbook-query, which some servers
+// reject for filter-less queries.
+func referenceDeleteAll(t *testing.T, baseURL, collectionPath, user, password string) {
 	t.Helper()
 	parsed, err := url.Parse(collectionPath)
 	require.NoError(t, err)
@@ -130,7 +275,7 @@ func radicaleDeleteAll(t *testing.T, baseURL, collectionPath, user, password str
 	require.NoError(t, err)
 	infos, err := client.ReadDir(context.Background(), parsed.Path, false)
 	if err != nil {
-		t.Logf("radicale: initial listing of an empty/fresh collection (expected to error): %v", err)
+		t.Logf("reference: initial listing of an empty/fresh collection (expected to error): %v", err)
 		return
 	}
 	for _, info := range infos {
@@ -139,18 +284,18 @@ func radicaleDeleteAll(t *testing.T, baseURL, collectionPath, user, password str
 		if info.Path == parsed.Path || info.IsDir {
 			continue
 		}
-		resp := radicaleRequest(t, user, password, http.MethodDelete, baseURL+info.Path, "")
+		resp := referenceRequest(t, user, password, http.MethodDelete, baseURL+info.Path, "")
 		resp.Body.Close()
 		assert.Contains(t, []int{http.StatusOK, http.StatusNoContent, http.StatusNotFound}, resp.StatusCode,
 			"DELETE %s failed: %s", info.Path, resp.Status)
 	}
 }
 
-// radicaleRejectsVCard reports whether Radicale refused to store raw at fullURL
-// and, if so, returns the HTTP status and response body.
-func radicaleRejectsVCard(t *testing.T, user, password, fullURL, raw string) (bool, int, string) {
+// referenceRejectsVCard reports whether the server refused to store raw at
+// fullURL and, if so, returns the HTTP status and response body.
+func referenceRejectsVCard(t *testing.T, user, password, fullURL, raw string) (bool, int, string) {
 	t.Helper()
-	resp := radicaleRequest(t, user, password, http.MethodPut, fullURL, raw)
+	resp := referenceRequest(t, user, password, http.MethodPut, fullURL, raw)
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusNoContent {
@@ -170,45 +315,28 @@ func sortedDifferenceConcepts(report semanticequal.Report) []string {
 	return out
 }
 
-// TestCardDAVRadicale_RoundTrip is the load-bearing real-server test: the
-// TEST-02 fixture round-trips through a REAL CardDAV server and is compared
-// semantically (issue #496 items 3 + 5), and the incremental lifecycle
-// (unchanged = no re-fetch, remote update refetches, remote delete archives)
-// is asserted against the server's real ETags and sync-tokens.
-func TestCardDAVRadicale_RoundTrip(t *testing.T) {
-	baseURL, user, password := radicaleEnv(t)
-	collectionPath := radicaleCollectionURL(baseURL, user)
-	radicaleEnsureCollection(t, user, password, collectionPath)
-	radicaleDeleteAll(t, baseURL, collectionPath, user, password)
+// TestCardDAVReferenceServer_RoundTrip is the load-bearing real-server test:
+// the TEST-02 fixture round-trips through a REAL CardDAV server (selectable
+// per issue #681) and is compared semantically (issues #496 items 3 + 5), and
+// the incremental lifecycle (unchanged = no re-fetch, remote update refetches,
+// remote delete archives) is asserted against the server's real ETags and
+// sync-tokens.
+func TestCardDAVReferenceServer_RoundTrip(t *testing.T) {
+	serverID, baseURL, user, password := referenceServerEnv(t)
+	layout, ok := referenceServerLayouts[serverID]
+	require.True(t, ok, "unknown reference server %q — known: radicale, baikal, nextcloud, davical", serverID)
+	collectionPath := layout.collectionPath(baseURL, user)
+	referenceEnsureCollection(t, serverID, user, password, collectionPath)
+	referenceDeleteAll(t, baseURL, collectionPath, user, password)
 
 	db, cfg, syncUser := setupCardDAVLifecycle(t)
 
-	// The divergence register (issue #496 item 5): fixture contacts a REAL
-	// Radicale server does not round-trip faithfully, and why. The suite
+	// The divergence register (issues #496 item 5 + #681): fixture contacts a
+	// REAL CardDAV server does not round-trip faithfully, and why. The suite
 	// asserts reality matches this register exactly, so a change on either
-	// side — our exporter or Radicale — flips a pin into a failure that names
-	// the change instead of silently carrying a stale expectation:
-	//
-	//   - celine is REJECTED at PUT: its exported vCard carries two N
-	//     properties (RFC 9554 §3.3 alternative-name ALTID — legal, and our
-	//     exporter emits it), and Radicale's vobject refuses >1 N.
-	//   - bob is ACCEPTED but comes back silently altered: vobject
-	//     re-serializes the card on output, truncating the inline data: PHOTO
-	//     at the first ';' and dropping the ADR components beyond the seven
-	//     RFC 6350 slots (apartment, floor).
-	//
-	// These are exactly the "a real implementation's escaping and folding will
-	// disagree with ours" divergences the issue exists to surface — the fake
-	// (byte-verbatim) suite cannot see them.
-	type radicaleDivergence struct {
-		name     string
-		concepts string // ";"-joined expected divergent concepts; "" = rejected at PUT
-		reason   string
-	}
-	divergenceRegister := []radicaleDivergence{
-		{name: "celine", reason: "rejected by Radicale: exported card carries two N properties (RFC 9554 §3.3 alternative-name ALTID); vobject refuses >1 N"},
-		{name: "bob", concepts: "adr;photo", reason: "vobject re-serializes on output: inline data: PHOTO truncated at the first ';' and ADR components beyond the seven RFC 6350 slots (apartment, floor) dropped"},
-	}
+	// side — our exporter or the server — flips a pin into a failure that
+	// names the change instead of silently carrying a stale expectation.
+	divergenceRegister := referenceServerDivergences(serverID)
 
 	// --- stage the TEST-02 fixture on the real server ------------------------
 	m, err := canonicalfixture.Read()
@@ -237,13 +365,13 @@ func TestCardDAVRadicale_RoundTrip(t *testing.T) {
 		require.NoError(t, exportErr, "export %s", entry.Name)
 
 		href := collectionPath + rec.Card.UID + ".vcf"
-		if refused, status, body := radicaleRejectsVCard(t, user, password, href, string(raw)); refused {
-			t.Logf("radicale refused to store %s (%d: %s)", entry.Name, status, body)
+		if refused, status, body := referenceRejectsVCard(t, user, password, href, string(raw)); refused {
+			t.Logf("%s refused to store %s (%d: %s)", serverID, entry.Name, status, body)
 			rejected = append(rejected, entry.Name)
 			continue
 		}
-		etag := radicalePut(t, user, password, href, string(raw))
-		require.NotEmpty(t, etag, "Radicale must return an ETag on PUT")
+		etag := referencePut(t, user, password, href, string(raw))
+		require.NotEmpty(t, etag, "%s must return an ETag on PUT", serverID)
 		entries = append(entries, fixtureEntry{name: entry.Name, rec: rec, uid: rec.Card.UID})
 	}
 	require.NotEmpty(t, entries, "fixture must yield live contacts")
@@ -256,21 +384,21 @@ func TestCardDAVRadicale_RoundTrip(t *testing.T) {
 		}
 	}
 	assert.Equal(t, expectedRejected, rejected,
-		"the set of fixture cards a real CardDAV server refuses to store changed — investigate and update the divergence register")
+		"the set of fixture cards a real CardDAV server (%s) refuses to store changed — investigate and update the divergence register", serverID)
 
 	// --- initial pull ---------------------------------------------------------
 	sub := newContactTestSubscription(t, db, cfg, syncUser.ID, collectionPath, user, password)
 	service := NewContactSyncService(false)
 	stats, err := service.SyncSubscription(context.Background(), db, cfg, sub)
-	require.NoError(t, err, "initial pull from Radicale")
+	require.NoError(t, err, "initial pull from %s", serverID)
 	require.Equal(t, len(entries), stats.Created,
-		"every staged fixture contact must be pulled from the real server (created=%d)", stats.Created)
+		"every staged fixture contact must be pulled from the real server (%s) (created=%d)", serverID, stats.Created)
 
 	// Every card pulled in must be semantically equal to what was staged —
 	// the re-serialize/re-parse cycle through a real implementation must not
 	// lose anything (issue #496 item 5) — EXCEPT the documented divergences,
 	// which are pinned to be exactly what the register says they are.
-	registerByContact := make(map[string]radicaleDivergence, len(divergenceRegister))
+	registerByContact := make(map[string]serverDivergence, len(divergenceRegister))
 	for _, d := range divergenceRegister {
 		registerByContact[d.name] = d
 	}
@@ -278,7 +406,7 @@ func TestCardDAVRadicale_RoundTrip(t *testing.T) {
 		entry := entry
 		t.Run(entry.name, func(t *testing.T) {
 			var link models.ContactSyncLink
-			require.NoError(t, db.Where("subscription_id = ? AND href = ?", sub.ID, radicaleCardPath(user, entry.uid)).First(&link).Error)
+			require.NoError(t, db.Where("subscription_id = ? AND href = ?", sub.ID, layout.cardHref(user, entry.uid)).First(&link).Error)
 			var contact models.Contact
 			require.NoError(t, db.First(&contact, link.ContactID).Error)
 
@@ -290,14 +418,14 @@ func TestCardDAVRadicale_RoundTrip(t *testing.T) {
 			switch {
 			case documented:
 				require.NotEmpty(t, divergent,
-					"fixture contact %q is in the divergence register (%s) but now round-trips CLEANLY — the divergence is fixed; update the register",
-					entry.name, reg.reason)
+					"fixture contact %q is in the divergence register (%s) but now round-trips CLEANLY on %s — the divergence is fixed; update the register",
+					entry.name, reg.reason, serverID)
 				assert.ElementsMatch(t, strings.Split(reg.concepts, ";"), divergent,
-					"fixture contact %q diverges in different concepts than the register documents (%s):\n%s",
-					entry.name, reg.reason, report.DiffText())
+					"fixture contact %q diverges on %s in different concepts than the register documents (%s):\n%s",
+					entry.name, serverID, reg.reason, report.DiffText())
 			case len(divergent) > 0:
-				t.Errorf("fixture contact %q did not survive the round trip through a REAL CardDAV server (not in the divergence register):\n%s",
-					entry.name, report.DiffText())
+				t.Errorf("fixture contact %q did not survive the round trip through %s (not in the divergence register):\n%s",
+					entry.name, serverID, report.DiffText())
 			}
 
 			require.NotEmpty(t, link.ETag, "the link must carry the server's real ETag")
@@ -312,11 +440,11 @@ func TestCardDAVRadicale_RoundTrip(t *testing.T) {
 	// --- remote update refetches and updates ----------------------------------
 	target := entries[0]
 	newEmail := "updated." + target.uid + "@example.com"
-	newETag := radicalePut(t, user, password, collectionPath+target.uid+".vcf",
+	newETag := referencePut(t, user, password, collectionPath+target.uid+".vcf",
 		fmt.Sprintf(carddavTestVCard, target.uid, "Updated", "Person", "Person", "Updated", newEmail))
 
 	stats, err = service.SyncSubscription(context.Background(), db, cfg, sub)
-	require.NoError(t, err, "incremental update pull from Radicale")
+	require.NoError(t, err, "incremental update pull from %s", serverID)
 	assert.Equal(t, ContactSyncStats{Updated: 1}, stats,
 		"the remote update must be reconciled exactly once (created=%d updated=%d archived=%d skipped=%d)",
 		stats.Created, stats.Updated, stats.Archived, stats.Skipped)
@@ -326,17 +454,17 @@ func TestCardDAVRadicale_RoundTrip(t *testing.T) {
 	assert.Equal(t, newEmail, updated.Email, "the remote edit must land")
 
 	var updatedLink models.ContactSyncLink
-	require.NoError(t, db.Where("subscription_id = ? AND href = ?", sub.ID, radicaleCardPath(user, target.uid)).First(&updatedLink).Error)
-	assert.Equal(t, newETag, updatedLink.ETag, "the etag column must track Radicale's new ETag")
+	require.NoError(t, db.Where("subscription_id = ? AND href = ?", sub.ID, layout.cardHref(user, target.uid)).First(&updatedLink).Error)
+	assert.Equal(t, newETag, updatedLink.ETag, "the etag column must track %s's new ETag", serverID)
 
 	// --- remote delete archives ------------------------------------------------
 	deleted := entries[1]
-	resp := radicaleRequest(t, user, password, http.MethodDelete, collectionPath+deleted.uid+".vcf", "")
+	resp := referenceRequest(t, user, password, http.MethodDelete, collectionPath+deleted.uid+".vcf", "")
 	resp.Body.Close()
 	assert.Contains(t, []int{http.StatusOK, http.StatusNoContent}, resp.StatusCode, "DELETE %s failed", deleted.uid)
 
 	stats, err = service.SyncSubscription(context.Background(), db, cfg, sub)
-	require.NoError(t, err, "incremental delete pull from Radicale")
+	require.NoError(t, err, "incremental delete pull from %s", serverID)
 	assert.Equal(t, ContactSyncStats{Archived: 1}, stats,
 		"the remote delete must archive exactly one contact (created=%d updated=%d archived=%d skipped=%d)",
 		stats.Created, stats.Updated, stats.Archived, stats.Skipped)
@@ -348,10 +476,17 @@ func TestCardDAVRadicale_RoundTrip(t *testing.T) {
 	// --- subscription bookkeeping ----------------------------------------------
 	require.NoError(t, db.First(sub, sub.ID).Error)
 	assert.Equal(t, models.ContactSyncStatusSuccess, sub.LastSyncStatus)
-	assert.NotEmpty(t, sub.SyncToken, "the subscription must carry Radicale's sync-token")
+	assert.NotEmpty(t, sub.SyncToken, "the subscription must carry the server's sync-token")
 
 	// Nothing left behind: the idempotent second run must stay clean.
 	stats, err = service.SyncSubscription(context.Background(), db, cfg, sub)
 	require.NoError(t, err)
 	assert.Equal(t, ContactSyncStats{}, stats, "a quiescent real server must stay quiescent")
+}
+
+// TestCardDAVRadicale_RoundTrip keeps the historical name so the pre-#681
+// command line (`go test -run TestCardDAVRadicale`) keeps working; it is the
+// same server-generic test with the Radicale default layout.
+func TestCardDAVRadicale_RoundTrip(t *testing.T) {
+	TestCardDAVReferenceServer_RoundTrip(t)
 }
