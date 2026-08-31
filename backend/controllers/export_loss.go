@@ -50,7 +50,7 @@ var validExportFormats = map[string]bool{
 // adapterForFormat returns the neutral-model exporter for a format token.
 // The token is validated by the caller; an unknown token here is a
 // programming error, not a request error.
-func adapterForFormat(format string) contactmodel.Exporter { // # pragma: no cover — the switch is total over validExportFormats, exercised via every export handler
+func adapterForFormat(format string) contactmodel.Exporter {
 	switch format {
 	case exportFormatVCard4:
 		return vcard4.Adapter{}
@@ -59,7 +59,7 @@ func adapterForFormat(format string) contactmodel.Exporter { // # pragma: no cov
 	case exportFormatJSContact:
 		return jscontact.Adapter{}
 	}
-	return nil
+	return nil // # pragma: no cover — the switch is total over validExportFormats, so no caller can pass an unknown token
 }
 
 // renderContactExport runs one contact through one format adapter and returns
@@ -182,14 +182,10 @@ func ExportPreflight(c *gin.Context) {
 	reports := make([]models.LossReport, 0)
 	for i := range contacts {
 		_, diags, err := renderContactExport(&contacts[i], photoDir, format, db, sel, log)
-		if err != nil {
+		if err != nil { // # pragma: no cover — defensive: an adapter error is reserved for malformed format instances (contactmodel.Exporter contract) and cannot fire for a stored, valid contact
 			// Same tolerance as the export handlers: a per-contact encode
 			// failure logs and moves on instead of failing the whole request.
-			// An adapter error is reserved for malformed format instances
-			// (contactmodel.Exporter contract) and cannot fire for a stored,
-			// valid contact — the branch is defensive, not reachable in
-			// practice.
-			log.Error().Err(err).Uint("contact_id", contacts[i].ID).Msg("Failed to encode contact during export preflight") // # pragma: no cover — defensive: a stored contact is never a malformed format instance, so the adapter cannot error here
+			log.Error().Err(err).Uint("contact_id", contacts[i].ID).Msg("Failed to encode contact during export preflight")
 			continue
 		}
 		reports = append(reports, contactLossReports(format, &contacts[i], diags)...)

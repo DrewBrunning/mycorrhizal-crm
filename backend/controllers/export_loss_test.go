@@ -53,6 +53,16 @@ func preflightReports(t *testing.T, router *gin.Engine, query string) models.Exp
 	return resp
 }
 
+// TestAdapterForFormat pins the format-token -> adapter mapping and the
+// unknown-token default (nil), covering the total switch that every export
+// handler and the preflight endpoint route through.
+func TestAdapterForFormat(t *testing.T) {
+	require.NotNil(t, adapterForFormat(exportFormatVCard4))
+	require.NotNil(t, adapterForFormat(exportFormatVCard3))
+	require.NotNil(t, adapterForFormat(exportFormatJSContact))
+	assert.Nil(t, adapterForFormat("bogus"), "an unknown token must not panic or route to a real adapter")
+}
+
 // TestExportPreflight_ReportsEnvelopeLoss pins the milestone criterion: a
 // contact with a field that has no home in the target format produces a report
 // naming the contact, the field, the format, and the reason — without producing
@@ -234,6 +244,27 @@ func TestExportPreflight_UserScoping(t *testing.T) {
 	for _, d := range resp.Diagnostics {
 		assert.NotEqual(t, "Theirs Two", d.ContactName, "another user's contact must not appear in the preflight")
 	}
+}
+
+// TestExportPreflight_SingleContactScope pins the ?vcard_uid= narrowing: a
+// preflight restricted to one contact reports only that contact's losses,
+// mirroring the export handlers' own scoping.
+func TestExportPreflight_SingleContactScope(t *testing.T) {
+	db, router := setupRouter()
+	registerPreflightRoute(router)
+
+	var user models.User
+	db.First(&user)
+	lossy := models.Contact{UserID: user.ID, Firstname: "Lossy", Lastname: "One", Gender: "x"}
+	clean := models.Contact{UserID: user.ID, Firstname: "Clean", Lastname: "Two"}
+	db.Create(&lossy)
+	db.Create(&clean)
+
+	resp := preflightReports(t, router, "?format=vcard4&vcard_uid="+lossy.VCardUID)
+	assert.Equal(t, 1, resp.ContactCount)
+	require.Len(t, resp.Diagnostics, 1)
+	assert.Equal(t, "Lossy One", resp.Diagnostics[0].ContactName, "only the scoped contact's loss is reported")
+	assert.Equal(t, "crm.gender", resp.Diagnostics[0].Concept)
 }
 
 // TestExportPreflight_NoLossesEmptyArray pins the frontend trap #8 shape: an
