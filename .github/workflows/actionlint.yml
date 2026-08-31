@@ -88,3 +88,19 @@ jobs:
       # baseline is clean, so that is the gate.
       - name: Run actionlint (with shellcheck)
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -color
+
+      # The fuzz runner is a committed script that unit-tests.yml calls, so
+      # actionlint's shellcheck of `run:` blocks cannot see it — shellcheck
+      # the scripts here explicitly, where shellcheck is already installed.
+      - name: Shellcheck repo scripts
+        run: shellcheck .github/scripts/run-fuzz-targets.sh .github/scripts/tests/run-fuzz-targets.test.sh
+
+      # Issue #712: exercise the fuzz runner's hardening against a stubbed
+      # `go` binary (pass / deadline-race / crash / seed-replay), asserting
+      # exit codes, the number of `go` invocations (retries are visible as
+      # extra invocations), and the expected markers. The golang/go#75804
+      # race is intermittent, so the stub is what makes the retry trip
+      # deterministically — the "hand-verify the retry actually trips"
+      # check the issue asks for.
+      - name: Test workflow shell scripts
+        run: bash .github/scripts/tests/run-fuzz-targets.test.sh
