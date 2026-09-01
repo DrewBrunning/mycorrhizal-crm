@@ -93,6 +93,13 @@ type Config struct {
 	DBIntegrityCheckIntervalHours int           // Interval in hours for the scheduled DB integrity check
 	DBRestoreDrillEnabled         bool          // Enable the scheduled backup-restore drill job (issue #275)
 	DBRestoreDrillIntervalHours   int           // Interval in hours for the scheduled restore drill (default weekly)
+	// DBRestoreDrillMaxDurationSeconds is the operator's RTO budget for the
+	// database piece of a restore (issue #506). When > 0, a restore-drill run
+	// whose measured wall-clock exceeds it still passes but logs a WARN and
+	// annotates the restore_test_completed timeline row — restore-time drift
+	// visible before an incident, not during one. 0 (default) = no budget; the
+	// drill's duration_ms is recorded on every run regardless.
+	DBRestoreDrillMaxDurationSeconds int
 
 	// Alerting on state transitions (issue #428). The scheduled evaluator
 	// (services.EvaluateAlerts) detects failure/recovery transitions on the
@@ -143,6 +150,14 @@ type Config struct {
 // storage threshold computation can reuse them for a raw config.Config built
 // without LoadConfig (tests) — zero-value Config values resolve to these.
 const (
+	// DefaultDBRestoreDrillIntervalHours is the shipped cadence of the
+	// scheduled restore drill: weekly. The backup-freshness ceiling stated in
+	// docs/deployment.md's "Recovery objectives (RPO and RTO)" section is
+	// derived from it (2 x this = the default ALERT_BACKUP_MAX_AGE_HOURS), and
+	// TestRecoveryObjectivesDocMatchesShippedDefaults pins that the documented
+	// number still follows from this constant (issue #506).
+	DefaultDBRestoreDrillIntervalHours = 168
+
 	// DefaultStorageWarnPercent is the used-percent at which the storage
 	// threshold on /admin/system-status turns "warning" (default 75).
 	DefaultStorageWarnPercent = 75
@@ -219,7 +234,7 @@ func LoadConfig() *Config {
 		DBIntegrityCheckEnabled:       getBoolEnv("DB_INTEGRITY_CHECK_ENABLED", true),
 		DBIntegrityCheckIntervalHours: getIntEnv("DB_INTEGRITY_CHECK_INTERVAL_HOURS", 24),
 		DBRestoreDrillEnabled:         getBoolEnv("DB_RESTORE_DRILL_ENABLED", true),
-		DBRestoreDrillIntervalHours:   getIntEnv("DB_RESTORE_DRILL_INTERVAL_HOURS", 168),
+		DBRestoreDrillIntervalHours:   getIntEnv("DB_RESTORE_DRILL_INTERVAL_HOURS", DefaultDBRestoreDrillIntervalHours),
 		AlertingEnabled:               getBoolEnv("ALERTING_ENABLED", true),
 		AlertEvalIntervalMinutes:      getIntEnv("ALERT_EVAL_INTERVAL_MINUTES", 15),
 		AlertDiskUsagePercent:         getIntEnv("ALERT_DISK_USAGE_PERCENT", 90),
@@ -241,6 +256,10 @@ func LoadConfig() *Config {
 		MetricsToken:                  getEnv("METRICS_TOKEN", ""),
 	}
 
+	// Assigned outside the aligned literal above so a longer key name does not
+	// reflow every line in it. Opt-in RTO budget for the restore drill (#506).
+	cfg.DBRestoreDrillMaxDurationSeconds = getIntEnv("DB_RESTORE_DRILL_MAX_DURATION_SECONDS", 0)
+
 	if cfg.CalDAVSyncIntervalHours < 1 {
 		log.Println("WARN: CALDAV_SYNC_INTERVAL_HOURS must be at least 1, using 1")
 		cfg.CalDAVSyncIntervalHours = 1
@@ -259,6 +278,11 @@ func LoadConfig() *Config {
 	if cfg.DBRestoreDrillIntervalHours < 1 {
 		log.Println("WARN: DB_RESTORE_DRILL_INTERVAL_HOURS must be at least 1, using 1")
 		cfg.DBRestoreDrillIntervalHours = 1
+	}
+
+	if cfg.DBRestoreDrillMaxDurationSeconds < 0 {
+		log.Println("WARN: DB_RESTORE_DRILL_MAX_DURATION_SECONDS cannot be negative, using 0 (no budget)")
+		cfg.DBRestoreDrillMaxDurationSeconds = 0
 	}
 
 	if cfg.AlertEvalIntervalMinutes < 1 {
