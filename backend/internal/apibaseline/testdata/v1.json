@@ -107,6 +107,11 @@
       "path": "/activities/{id}",
       "parameters": [
         {
+          "name": "If-Match",
+          "in": "header",
+          "required": false
+        },
+        {
           "name": "id",
           "in": "path",
           "required": true
@@ -125,6 +130,10 @@
         {
           "status": "404",
           "schema": "ref:Error"
+        },
+        {
+          "status": "412",
+          "schema": "ref:Error"
         }
       ]
     },
@@ -132,6 +141,11 @@
       "method": "DELETE",
       "path": "/activities/{id}",
       "parameters": [
+        {
+          "name": "If-Match",
+          "in": "header",
+          "required": false
+        },
         {
           "name": "id",
           "in": "path",
@@ -145,6 +159,10 @@
         },
         {
           "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "412",
           "schema": "ref:Error"
         }
       ]
@@ -2430,6 +2448,11 @@
       "path": "/contacts/{id}",
       "parameters": [
         {
+          "name": "If-Match",
+          "in": "header",
+          "required": false
+        },
+        {
           "name": "id",
           "in": "path",
           "required": true
@@ -2448,6 +2471,10 @@
         {
           "status": "404",
           "schema": "ref:Error"
+        },
+        {
+          "status": "412",
+          "schema": "ref:Error"
         }
       ]
     },
@@ -2455,6 +2482,11 @@
       "method": "DELETE",
       "path": "/contacts/{id}",
       "parameters": [
+        {
+          "name": "If-Match",
+          "in": "header",
+          "required": false
+        },
         {
           "name": "id",
           "in": "path",
@@ -2468,6 +2500,10 @@
         },
         {
           "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "412",
           "schema": "ref:Error"
         }
       ]
@@ -4524,6 +4560,11 @@
       "path": "/life-events/{id}",
       "parameters": [
         {
+          "name": "If-Match",
+          "in": "header",
+          "required": false
+        },
+        {
           "name": "id",
           "in": "path",
           "required": true
@@ -4542,6 +4583,10 @@
         {
           "status": "404",
           "schema": "ref:Error"
+        },
+        {
+          "status": "412",
+          "schema": "ref:Error"
         }
       ]
     },
@@ -4549,6 +4594,11 @@
       "method": "DELETE",
       "path": "/life-events/{id}",
       "parameters": [
+        {
+          "name": "If-Match",
+          "in": "header",
+          "required": false
+        },
         {
           "name": "id",
           "in": "path",
@@ -4562,6 +4612,10 @@
         },
         {
           "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "412",
           "schema": "ref:Error"
         }
       ]
@@ -4979,6 +5033,11 @@
       "path": "/notes/{id}",
       "parameters": [
         {
+          "name": "If-Match",
+          "in": "header",
+          "required": false
+        },
+        {
           "name": "id",
           "in": "path",
           "required": true
@@ -4997,6 +5056,10 @@
         {
           "status": "404",
           "schema": "ref:Error"
+        },
+        {
+          "status": "412",
+          "schema": "ref:Error"
         }
       ]
     },
@@ -5004,6 +5067,11 @@
       "method": "DELETE",
       "path": "/notes/{id}",
       "parameters": [
+        {
+          "name": "If-Match",
+          "in": "header",
+          "required": false
+        },
         {
           "name": "id",
           "in": "path",
@@ -5017,6 +5085,10 @@
         },
         {
           "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "412",
           "schema": "ref:Error"
         }
       ]
@@ -5827,6 +5899,11 @@
       "path": "/reminders/{id}",
       "parameters": [
         {
+          "name": "If-Match",
+          "in": "header",
+          "required": false
+        },
+        {
           "name": "id",
           "in": "path",
           "required": true
@@ -5845,6 +5922,10 @@
         {
           "status": "404",
           "schema": "ref:Error"
+        },
+        {
+          "status": "412",
+          "schema": "ref:Error"
         }
       ]
     },
@@ -5852,6 +5933,11 @@
       "method": "DELETE",
       "path": "/reminders/{id}",
       "parameters": [
+        {
+          "name": "If-Match",
+          "in": "header",
+          "required": false
+        },
         {
           "name": "id",
           "in": "path",
@@ -5865,6 +5951,10 @@
         },
         {
           "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "412",
           "schema": "ref:Error"
         }
       ]

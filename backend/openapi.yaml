@@ -1662,6 +1662,8 @@ paths:
       summary: Update a contact
       operationId: updateContact
       description: Same request/response shape as POST /contacts (symmetric read/write contract).
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
       requestBody:
         required: true
         content:
@@ -1687,10 +1689,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision — the contact was modified since the client last read it; the row was not changed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     delete:
       summary: Delete a contact
       operationId: deleteContact
       description: Soft-deletes the contact and cascade-deletes all its associations (notes, activities links, reminders, edges, memberships, life events, field values, sync links).
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
       responses:
         "200":
           description: Deleted.
@@ -1700,6 +1710,12 @@ paths:
                 $ref: "#/components/schemas/MessageResponse"
         "404":
           description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision — the contact was modified since the client last read it; nothing was deleted.
           content:
             application/json:
               schema:
@@ -3528,6 +3544,8 @@ paths:
       summary: Update a note
       operationId: updateNote
       description: Setting contact_id to null clears the assignment.
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
       requestBody:
         required: true
         content:
@@ -3557,9 +3575,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision — the note was modified since the client last read it; the row was not changed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     delete:
       summary: Delete a note (soft delete)
       operationId: deleteNote
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
       responses:
         "200":
           description: Deleted.
@@ -3569,6 +3595,12 @@ paths:
                 $ref: "#/components/schemas/MessageResponse"
         "404":
           description: Note not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision — the note was modified since the client last read it; nothing was deleted.
           content:
             application/json:
               schema:
@@ -3764,6 +3796,8 @@ paths:
     put:
       summary: Update an activity
       operationId: updateActivity
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
       requestBody:
         required: true
         content:
@@ -3789,9 +3823,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision — the activity was modified since the client last read it; the row was not changed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     delete:
       summary: Delete an activity (soft delete)
       operationId: deleteActivity
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
       responses:
         "200":
           description: Deleted.
@@ -3801,6 +3843,12 @@ paths:
                 $ref: "#/components/schemas/MessageResponse"
         "404":
           description: Activity not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision — the activity was modified since the client last read it; nothing was deleted.
           content:
             application/json:
               schema:
@@ -5019,6 +5067,8 @@ paths:
     put:
       summary: Update a life event (full replace)
       operationId: updateLifeEvent
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
       requestBody:
         required: true
         content:
@@ -5044,9 +5094,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision — the life event was modified since the client last read it; the row was not changed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     delete:
       summary: Delete a life event (soft delete; its materialized reminder hard-deletes)
       operationId: deleteLifeEvent
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
       responses:
         "200":
           description: Deleted.
@@ -5056,6 +5114,12 @@ paths:
                 $ref: "#/components/schemas/MessageResponse"
         "404":
           description: Life event not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision — the life event was modified since the client last read it; nothing was deleted.
           content:
             application/json:
               schema:
@@ -6023,6 +6087,8 @@ paths:
       summary: Update a reminder
       operationId: updateReminder
       description: The Reminder model doubles as the request body — required fields (message, remind_at, recurrence, contact_id) must be re-sent.
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
       requestBody:
         required: true
         content:
@@ -6052,9 +6118,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision — the reminder was modified since the client last read it; the row was not changed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     delete:
       summary: Delete a reminder (soft delete)
       operationId: deleteReminder
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
       responses:
         "200":
           description: Deleted.
@@ -6064,6 +6138,12 @@ paths:
                 $ref: "#/components/schemas/MessageResponse"
         "404":
           description: Reminder not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision — the reminder was modified since the client last read it; nothing was deleted.
           content:
             application/json:
               schema:
@@ -9453,6 +9533,25 @@ components:
         A JWT or a `mycorrhizal_…` API token. On the general REST path a
         carddav-scoped token is rejected with 403 (only `full`-scope tokens
         work); API tokens are rejected on every /admin path entirely.
+  parameters:
+    IfMatchRevision:
+      name: If-Match
+      in: header
+      required: false
+      description: >
+        CON-01 optimistic-concurrency precondition (issue #456, ADR 0008).
+        Optional: when present, the write proceeds only if the target row's
+        current `revision` (issue #591, ADR 0006) matches; a mismatch is
+        rejected with 412 Precondition Failed and the row is left untouched.
+        When absent, the write is unconditional (last-writer-wins), unchanged
+        from before this feature. The value is the decimal `revision` integer
+        the client last read — quotes optional, an optional weak `W/` prefix is
+        tolerated, `*` matches any existing row, and a comma-separated list
+        matches if any member matches. This is the bare `revision` integer, not
+        the CardDAV `etag` string derived from it.
+      schema:
+        type: string
+        example: '"7"'
   schemas:
     # --- Common ---
     Error:

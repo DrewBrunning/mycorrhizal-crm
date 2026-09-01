@@ -55,6 +55,11 @@ const (
 	ErrCodeNotFound      = "NOT_FOUND"
 	ErrCodeAlreadyExists = "ALREADY_EXISTS"
 	ErrCodeConflict      = "CONFLICT"
+	// ErrCodePreconditionFailed signals that a conditional write's If-Match
+	// precondition did not hold — the caller's revision token is stale
+	// because the row was modified since they read it (CON-01, issue #456,
+	// ADR 0008). RFC 9110's 412 Precondition Failed.
+	ErrCodePreconditionFailed = "PRECONDITION_FAILED"
 	// ErrCodeGone signals that a requested resource (e.g. a change-feed cursor
 	// older than the purge retention window) no longer exists and the client
 	// must recover differently (full resync) — RFC 9110's 410 Gone.
@@ -158,6 +163,18 @@ func ErrGone(message string) *AppError {
 		message = "Resource no longer available — full resync required"
 	}
 	return NewError(ErrCodeGone, message, http.StatusGone)
+}
+
+// ErrPreconditionFailed returns a 412 Precondition Failed error for a stale
+// conditional write (CON-01, issue #456, ADR 0008): the client sent an
+// If-Match revision token that no longer matches the row's current revision,
+// so the row has been modified since they read it and the write is rejected
+// without touching the row. The message should tell the client to re-fetch.
+func ErrPreconditionFailed(message string) *AppError {
+	if message == "" {
+		message = "Precondition failed — the resource was modified since you last read it; re-fetch and retry"
+	}
+	return NewError(ErrCodePreconditionFailed, message, http.StatusPreconditionFailed)
 }
 
 // --- Validation Errors ---

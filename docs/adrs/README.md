@@ -13,3 +13,4 @@ ticket backlog moved to GitHub Issues.
 | [0005](0005-operational-event-model.md) | Operational-event model, separate from the audit trail | accepted |
 | [0006](0006-revision-token-schema.md) | Monotonic per-row revision tokens | accepted |
 | [0007](0007-source-import-mapping.md) | Source imports: Meerkat direct-DB + Monica snapshot over one shared mapping framework | accepted |
+| [0008](0008-conditional-write-enforcement.md) | REST conditional-write enforcement (If-Match / optimistic concurrency) | accepted |

@@ -295,6 +295,12 @@ func UpdateNote(c *gin.Context) {
 		return
 	}
 
+	// CON-01 (issue #456, ADR 0008): reject a stale conditional write before
+	// touching the row. No-op when the client sent no If-Match header.
+	if !checkIfMatch(c, note.Revision) {
+		return
+	}
+
 	// Get validated input from validation middleware
 	updatedNote, err := middleware.GetValidated[models.NoteInput](c)
 	if err != nil {
@@ -348,6 +354,12 @@ func DeleteNote(c *gin.Context) {
 		} else {
 			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve note").WithError(err))
 		}
+		return
+	}
+
+	// CON-01 (issue #456, ADR 0008): a conditional DELETE with a stale
+	// If-Match revision is rejected before the row is touched.
+	if !checkIfMatch(c, note.Revision) {
 		return
 	}
 
