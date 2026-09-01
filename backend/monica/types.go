@@ -1,14 +1,14 @@
-// Package monica is a read-only model of the Monica CRM REST API
-// (https://www.monicahq.com/api) for the Monica source import (issue #351).
+// Package monica is a read-only client and data model for the Monica CRM REST
+// API (https://www.monicahq.com/api), used by the Monica source import
+// (mapping: issue #351; assistant: issue #549).
 //
-// This package is deliberately just the data model plus snapshot loading —
-// the wire shapes a mapping consumes — not a live API client. The upstream
-// Meerkat assistant connects to a running Monica instance; this repo's
-// assistant tickets (#549) will add the transport, rate limiting, and SSRF
-// guards. The backend mapping (services/monica_import.go) operates on a
-// Snapshot, which is exactly what the live fetch would produce and what the
-// checked-in fixture (testdata/monica-fixture/snapshot.json) already is, so
-// the mapping is provable without a live instance.
+// types.go is the wire model plus snapshot loading — the shapes the mapping
+// (services/monica_import.go) consumes. client.go (issue #549) adds the live
+// transport: a rate-limited, SSRF-guarded, paginating client that produces a
+// Snapshot from a running Monica instance. The backend mapping operates on a
+// Snapshot regardless of origin, so the checked-in fixture
+// (testdata/monica-fixture/snapshot.json) still proves the mapping without a
+// live instance.
 //
 // Wire structs only declare the fields the mapping consumes and keep
 // everything optional/tolerant, since payloads vary slightly across Monica
@@ -207,6 +207,26 @@ type Relationship struct {
 	} `json:"relationship_type"`
 	ContactIs *ContactRef `json:"contact_is"`
 	OfContact *ContactRef `json:"of_contact"`
+}
+
+// EntityCounts holds the per-entity totals Monica reports (meta.total on each
+// list endpoint), used for the pre-fetch summary the assistant shows and for
+// the fetch-duration estimate.
+type EntityCounts struct {
+	Contacts   int `json:"contacts"`
+	Activities int `json:"activities"`
+	Notes      int `json:"notes"`
+	Reminders  int `json:"reminders"`
+	Calls      int `json:"calls"`
+	Tasks      int `json:"tasks"`
+	Gifts      int `json:"gifts"`
+	Debts      int `json:"debts"`
+}
+
+// Total is the number of records a full fetch would hold in memory.
+func (c EntityCounts) Total() int {
+	return c.Contacts + c.Activities + c.Notes + c.Reminders +
+		c.Calls + c.Tasks + c.Gifts + c.Debts
 }
 
 // Snapshot is the complete in-memory copy of a Monica account's importable

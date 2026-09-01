@@ -1612,16 +1612,23 @@ func captureMigrationLogger(t *testing.T) *bytes.Buffer {
 // firstCreateTable extracts the table name of the first CREATE TABLE (or
 // CREATE VIRTUAL TABLE) statement in an embedded migration file. Used to
 // sabotage the last migration's table so a re-run fails in a controlled way.
+//
+// Transient rebuild scratch tables (a "<name>_new" that a CHECK-constraint
+// migration creates, copies into, and renames away — e.g. 000046) are
+// skipped: they do not exist after the migration completes, so there is
+// nothing to drop-and-recreate, and the real persisted table is what the
+// test means to sabotage.
 func firstCreateTable(t *testing.T, filename string) string {
 	t.Helper()
 	raw, err := fs.ReadFile(migrationsFS, filepath.Join("migrations", filename))
 	require.NoError(t, err)
 	re := regexp.MustCompile(`(?i)CREATE\s+(?:VIRTUAL\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([\w_]+)`)
-	m := re.FindStringSubmatch(string(raw))
-	if m == nil {
-		return ""
+	for _, m := range re.FindAllStringSubmatch(string(raw), -1) {
+		if !strings.HasSuffix(m[1], "_new") {
+			return m[1]
+		}
 	}
-	return m[1]
+	return ""
 }
 
 // TestMigrationFailureIdentifiesMigrationAndRecordsEvent pins the milestone

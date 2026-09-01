@@ -43,13 +43,16 @@ type ImportRun struct {
 	CreatedAt time.Time `gorm:"column:created_at;not null" json:"created_at"`
 }
 
-// ImportRun format tokens. Mirrored by migration 000042's CHECK constraint,
-// frontend/src/api/import.ts, and backend/openapi.yaml.
+// ImportRun format tokens. Mirrored by migration 000042's CHECK constraint
+// (widened by 000046 for the source formats), frontend/src/api/import.ts, and
+// backend/openapi.yaml.
 const (
 	ImportFormatCSV       = "csv"
 	ImportFormatVCF       = "vcf"
 	ImportFormatJSContact = "jscontact"
 	ImportFormatRecords   = "records"
+	ImportFormatMonica    = "monica"  // Monica import assistant (issue #549)
+	ImportFormatMeerkat   = "meerkat" // Meerkat import assistant (issue #550)
 )
 
 // ImportFormats is the full format vocabulary, for validation and tests.
@@ -58,6 +61,8 @@ var ImportFormats = []string{
 	ImportFormatVCF,
 	ImportFormatJSContact,
 	ImportFormatRecords,
+	ImportFormatMonica,
+	ImportFormatMeerkat,
 }
 
 // RecordImportRun persists one import outcome, best-effort: it fills CreatedAt

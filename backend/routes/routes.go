@@ -183,6 +183,35 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// table on the Data settings page.
 			protected.GET("/contacts/import/history", controllers.GetImportHistory)
 
+			// Monica import assistant (issue #549) — connect to a live Monica
+			// instance, pull a snapshot in the background with progress, review
+			// (with the loss report) then confirm through the shared
+			// source-import engine. The API token lives only in the in-memory
+			// session; SSRF egress is guarded per MONICA_BLOCK_PRIVATE_URLS.
+			protected.POST("/contacts/import/monica/connect", middleware.ValidateJSONMiddleware(&models.MonicaConnectRequest{}), func(c *gin.Context) {
+				controllers.ConnectMonicaImport(c, cfg)
+			})
+			protected.POST("/contacts/import/monica/fetch", middleware.ValidateJSONMiddleware(&models.MonicaFetchRequest{}), controllers.StartMonicaFetch)
+			protected.GET("/contacts/import/monica/status", controllers.GetMonicaImportStatus)
+			protected.GET("/contacts/import/monica/preview", controllers.GetMonicaImportPreview)
+			protected.POST("/contacts/import/monica/confirm", middleware.ValidateJSONMiddleware(&models.MonicaConfirmRequest{}), func(c *gin.Context) {
+				controllers.ConfirmMonicaImport(c, cfg)
+			})
+			protected.POST("/contacts/import/monica/cancel", controllers.CancelMonicaImport)
+
+			// Meerkat import assistant (issue #550) — upload a Meerkat CRM
+			// SQLite file, pick a source user, review (with the loss report)
+			// then confirm through the shared source-import engine. The
+			// uploaded file is held only as a 0600 temp file for the session's
+			// lifetime. The upload route carries its own body-size limit
+			// (MaxMeerkatDBSize), same override pattern as the CSV/VCF uploads.
+			protected.POST("/contacts/import/meerkat/upload", middleware.BodySizeLimitMiddleware(services.MaxMeerkatDBSize), controllers.UploadMeerkatDatabase)
+			protected.POST("/contacts/import/meerkat/fetch", middleware.ValidateJSONMiddleware(&models.MeerkatFetchRequest{}), controllers.StartMeerkatFetch)
+			protected.GET("/contacts/import/meerkat/status", controllers.GetMeerkatImportStatus)
+			protected.GET("/contacts/import/meerkat/preview", controllers.GetMeerkatImportPreview)
+			protected.POST("/contacts/import/meerkat/confirm", middleware.ValidateJSONMiddleware(&models.SourceImportConfirmRequest{}), controllers.ConfirmMeerkatImport)
+			protected.POST("/contacts/import/meerkat/cancel", controllers.CancelMeerkatImport)
+
 			// P1 contact sharing
 			// — one-time filtered copy between two users on the same
 			// instance. Accept is preview-only (parses the stored payload

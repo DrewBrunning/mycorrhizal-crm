@@ -1262,9 +1262,13 @@
             "csv": "CSV",
             "vcf": "vCard",
             "jscontact": "JSContact",
-            "records": "Dispositivo"
+            "records": "Dispositivo",
+            "monica": "Monica",
+            "meerkat": "Meerkat"
           }
-        }
+        },
+        "monicaButton": "Importar desde Monica",
+        "meerkatButton": "Importar desde Meerkat"
       },
       "propose": {
         "title": "Proponer datos",
@@ -1358,6 +1362,115 @@
       "deleteDialog": {
         "title": "Eliminar tipo de enlace",
         "message": "¿Eliminar «{{name}}»? Los campos de contacto que coincidan dejarán de ser pulsables."
+      }
+    },
+    "sourceImport": {
+      "steps": {
+        "connect": "Conectar",
+        "fetching": "Descargar",
+        "review": "Revisar",
+        "importing": "Importar",
+        "result": "Listo"
+      },
+      "phase": {
+        "connecting": "Conectando con {{source}}…",
+        "fetching_contacts": "Descargando contactos…",
+        "fetching_activities": "Descargando actividades…",
+        "fetching_notes": "Descargando notas…",
+        "fetching_reminders": "Descargando recordatorios…",
+        "fetching_extras": "Descargando llamadas, tareas y regalos…",
+        "fetching_relationships": "Descargando relaciones…",
+        "building_preview": "Preparando la revisión…",
+        "ready": "Listo para revisar",
+        "importing": "Importando…",
+        "importing_photos": "Descargando fotos de perfil…",
+        "done": "Importación completada",
+        "failed": "La importación falló",
+        "parsing_database": "Leyendo la base de datos…",
+        "mapping": "Asignando registros…",
+        "cancelled": "Importación cancelada"
+      },
+      "progress": {
+        "count": "{{done}} de {{total}}",
+        "keepsRunning": "Esto sigue ejecutándose en el servidor. Puedes cerrar esta ventana y volver desde la página de Ajustes de datos."
+      },
+      "action": {
+        "add": "Añadir",
+        "skip": "Omitir",
+        "update": "Combinar"
+      },
+      "brings": {
+        "relationships": "{{count}} relaciones",
+        "notes": "{{count}} notas",
+        "activities": "{{count}} actividades",
+        "reminders": "{{count}} recordatorios",
+        "gifts": "{{count}} regalos"
+      },
+      "review": {
+        "summary": "{{total}} contactos · {{duplicates}} posibles duplicados · {{errors}} con problemas",
+        "applyAll": "Aplicar a todos:",
+        "colName": "Contacto",
+        "colStatus": "Estado",
+        "colBrings": "También trae",
+        "colAction": "Acción",
+        "matches": "Coincide con {{name}}",
+        "existingContact": "un contacto existente",
+        "new": "Nuevo",
+        "photo": "foto",
+        "totals": "También creará {{relationships}} relaciones, {{notes}} notas, {{activities}} actividades y {{reminders}} recordatorios"
+      },
+      "lossReport": {
+        "title": "Lo que no se trasladará exactamente",
+        "description": "Revisa lo que la importación no puede conservar antes de continuar: una importación no es algo que quieras repetir.",
+        "none": "Todo en esta cuenta se asigna correctamente: no se perderá nada."
+      },
+      "lossCategory": {
+        "unsupported": "No importado",
+        "invalid": "Rechazado",
+        "lossy": "Importado con pérdida de detalle",
+        "transformed": "Importado con un cambio",
+        "skipped": "Omitido deliberadamente"
+      },
+      "done": "Listo",
+      "closeKeepRunning": "Cerrar (sigue en curso)",
+      "confirmImport": "Importar",
+      "result": {
+        "title": "Importación completada",
+        "contacts": "{{created}} añadidos, {{updated}} combinados, {{skipped}} omitidos",
+        "partialFailures": "No se pudieron importar {{count}} registros",
+        "photosPending": "Descargando {{total}} fotos de perfil…",
+        "photosDone": "{{saved}} fotos guardadas, {{failed}} fallidas"
+      },
+      "cancelImport": "Cancelar importación"
+    },
+    "monicaImport": {
+      "title": "Importar desde Monica",
+      "connect": {
+        "description": "Conéctate a tu cuenta de Monica y se descargarán tus contactos y su historial directamente, sin archivo de exportación.",
+        "urlLabel": "Dirección de Monica",
+        "urlHelp": "La dirección web con la que abres Monica, p. ej. https://app.monicahq.com",
+        "tokenLabel": "Token de API",
+        "tokenHelp": "Crea uno en Monica en Ajustes → API. Se usa una vez y solo se conserva para esta importación.",
+        "includeRelationships": "Incluir relaciones entre contactos",
+        "includeExtras": "Incluir llamadas, tareas, regalos y deudas",
+        "connect": "Conectar",
+        "connecting": "Conectando…",
+        "found": "Se encontraron {{contacts}} contactos, {{activities}} actividades y {{notes}} notas.",
+        "estimate": "Descargarlo todo tarda unos {{minutes}} min.",
+        "start": "Iniciar importación"
+      }
+    },
+    "meerkatImport": {
+      "title": "Importar desde Meerkat",
+      "connect": {
+        "description": "¿Migras desde una instalación de Meerkat CRM? Sube su archivo de base de datos y se traerán tus contactos y su historial directamente.",
+        "chooseFile": "Elegir archivo de base de datos",
+        "uploading": "Subiendo…",
+        "fileHelp": "El archivo SQLite de Meerkat, normalmente meerkat.db. No se conserva nada tras la importación.",
+        "found": "{{contacts}} contactos, {{relationships}} relaciones, {{notes}} notas.",
+        "pickUser": "Esta base de datos tiene más de un usuario: elige de quién importar los contactos:",
+        "userOption": "{{name}} — {{count}} contactos",
+        "start": "Iniciar importación"
       }
     }
   },

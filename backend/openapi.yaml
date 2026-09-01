@@ -2391,6 +2391,279 @@ paths:
         "401":
           description: Not authenticated.
 
+  # --- Monica import assistant (issue #549) ---
+  # A five-step wizard over an in-memory session: connect (URL + API token) →
+  # fetch (background snapshot pull, polled via /status) → preview (review with
+  # the loss report) → confirm → result. The confirm delegates to the shared
+  # source-import engine; avatars download after the transaction and are
+  # reported through /status. The API token lives only in the session and is
+  # never logged or persisted.
+  /contacts/import/monica/connect:
+    post:
+      summary: Validate a live Monica URL + API token and open an import session
+      operationId: connectMonicaImport
+      description: >
+        Probes the Monica API (nine serialized requests), enforces the
+        account-size caps, and returns a session ID plus the account's entity
+        counts and a fetch-duration estimate. The base URL is subject to the
+        SSRF egress guard (MONICA_BLOCK_PRIVATE_URLS).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MonicaConnectRequest"
+      responses:
+        "200":
+          description: Session opened; account entity counts returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonicaConnectResponse"
+        "400":
+          description: Invalid URL, rejected token, private-address block, or an account larger than the import supports.
+        "429":
+          description: Too many concurrent Monica import sessions for this user.
+  /contacts/import/monica/fetch:
+    post:
+      summary: Start the background snapshot fetch for a session
+      operationId: startMonicaFetch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MonicaFetchRequest"
+      responses:
+        "202":
+          description: Fetch started; poll GET /contacts/import/monica/status.
+        "400":
+          description: Unknown/expired/foreign session.
+        "409":
+          description: A fetch is already running or finished for this session.
+  /contacts/import/monica/status:
+    get:
+      summary: Poll fetch/import progress for a session
+      operationId: getMonicaImportStatus
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Current phase and progress; the result is present from phase "importing_photos" onwards.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonicaImportStatus"
+        "400":
+          description: Missing session_id.
+        "404":
+          description: Unknown or expired session.
+  /contacts/import/monica/preview:
+    get:
+      summary: Get the review rows and loss report for a fetched snapshot
+      operationId: getMonicaImportPreview
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Per-contact review rows, related-entity totals, and the full loss report.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonicaPreviewResponse"
+        "400":
+          description: Missing session_id, or the snapshot is not fetched yet.
+        "404":
+          description: Unknown or expired session.
+  /contacts/import/monica/confirm:
+    post:
+      summary: Start the Monica import with the review step's per-contact actions
+      operationId: confirmMonicaImport
+      description: >
+        Starts the import in the background and returns 202 immediately. The
+        client polls GET /status: phase advances importing → importing_photos →
+        done (or → cancelled / failed), and Status.result carries the summary
+        from importing_photos on. Runs through the shared source-import engine
+        in one transaction bound to a session context, so POST /cancel during
+        "importing" rolls the whole import back. Records an import_runs history
+        row (format "monica"); a re-run skips contacts already imported (the
+        import_source_links ledger).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MonicaConfirmRequest"
+      responses:
+        "202":
+          description: Import started; poll GET /contacts/import/monica/status.
+        "400":
+          description: Unknown/expired/foreign session, or the snapshot is not fetched yet.
+  /contacts/import/monica/cancel:
+    post:
+      summary: Cancel an in-flight Monica import, or drop the session
+      operationId: cancelMonicaImport
+      description: >
+        During "importing"/"importing_photos" this cancels the transaction
+        context — the whole import rolls back, phase becomes "cancelled", and
+        the session is kept so the user can retry from review. In any other
+        phase it drops the session and its API token.
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: In-flight import cancelled (rolled back), or the session was dropped.
+        "400":
+          description: Missing session_id.
+        "404":
+          description: Unknown or expired session.
+
+  # --- Meerkat import assistant (issue #550) ---
+  # Direct-DB (ADR-0007): the user uploads their Meerkat CRM SQLite file, the
+  # server opens it read-only, and the mapped plan is reviewed and confirmed
+  # through the shared source-import engine. The uploaded file is held only as
+  # a 0600 temp file for the session's lifetime.
+  /contacts/import/meerkat/upload:
+    post:
+      summary: Upload a Meerkat SQLite database and open an import session
+      operationId: uploadMeerkatDatabase
+      description: >
+        Validates the file (SQLite magic header, size cap, .db/.sqlite/.sqlite3
+        extension), stages it as a temp file, parses it, and returns a session
+        ID plus the per-source-user picker (a Meerkat deployment can hold
+        several users; the import never silently mixes accounts) and the
+        whole-file totals.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Database staged; source-user picker + totals returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeerkatUploadResponse"
+        "400":
+          description: Not a Meerkat database, too large, wrong extension, or over the account-size cap.
+        "429":
+          description: Too many concurrent Meerkat import sessions for this user.
+  /contacts/import/meerkat/fetch:
+    post:
+      summary: Start the background map + preview build for a chosen source user
+      operationId: startMeerkatFetch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeerkatFetchRequest"
+      responses:
+        "202":
+          description: Preparation started; poll GET /contacts/import/meerkat/status.
+        "400":
+          description: Unknown/expired/foreign session.
+        "409":
+          description: The session is already being prepared.
+  /contacts/import/meerkat/status:
+    get:
+      summary: Poll map/import progress for a session
+      operationId: getMeerkatImportStatus
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Current phase and progress; the result is set from phase "importing" on.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonicaImportStatus"
+        "400":
+          description: Missing session_id.
+        "404":
+          description: Unknown or expired session.
+  /contacts/import/meerkat/preview:
+    get:
+      summary: Get the review rows and loss report for a prepared database
+      operationId: getMeerkatImportPreview
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Per-contact review rows, related-entity totals, and the loss report.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonicaPreviewResponse"
+        "400":
+          description: Missing session_id, or the database is not prepared yet.
+        "404":
+          description: Unknown or expired session.
+  /contacts/import/meerkat/confirm:
+    post:
+      summary: Start the Meerkat import with the review step's per-contact actions
+      operationId: confirmMeerkatImport
+      description: >
+        Starts the import in the background and returns 202. The client polls
+        GET /status: phase advances importing → done (or → cancelled / failed).
+        Runs through the shared engine in one transaction bound to a session
+        context, so POST /cancel during "importing" rolls the whole import
+        back. Records an import_runs history row (format "meerkat"); a re-run
+        skips contacts already imported.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MonicaConfirmRequest"
+      responses:
+        "202":
+          description: Import started; poll GET /contacts/import/meerkat/status.
+        "400":
+          description: Unknown/expired/foreign session, or the database is not prepared yet.
+  /contacts/import/meerkat/cancel:
+    post:
+      summary: Cancel an in-flight Meerkat import, or drop the session
+      operationId: cancelMeerkatImport
+      description: >
+        During "importing" this cancels the transaction context — the whole
+        import rolls back, phase becomes "cancelled", the session is kept for a
+        retry. In any other phase it drops the session and deletes its
+        uploaded-file temp directory.
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: In-flight import cancelled (rolled back), or the session was dropped.
+        "400":
+          description: Missing session_id.
+        "404":
+          description: Unknown or expired session.
+
   # --- Contact sharing (P1, P1) ---
   # One-time filtered copy between two users on the same instance -- not a
   # standing/live share (P1b, deferred). Accept is preview-only (parses the
@@ -12126,14 +12399,185 @@ components:
         user_id: { type: integer }
         format:
           type: string
-          enum: [csv, vcf, jscontact, records]
-          description: "Source of the imported data. Mirrored by migration 000042's CHECK and frontend/src/api/import.ts."
+          enum: [csv, vcf, jscontact, records, monica, meerkat]
+          description: "Source of the imported data. Mirrored by migration 000042's CHECK (widened by 000046 for the source-import formats) and frontend/src/api/import.ts."
         total_processed: { type: integer }
         created: { type: integer }
         updated: { type: integer }
         skipped: { type: integer }
         error_count: { type: integer, description: "Number of rows that errored (len of ImportResult.errors)" }
         created_at: { type: string, format: date-time }
+
+    # --- Monica import assistant (issue #549) ---
+    MonicaConnectRequest:
+      type: object
+      required: [base_url, api_token]
+      description: >
+        Instance URL and API token for a live Monica account. The token is
+        third-party credential material — held only in the in-memory import
+        session, never logged or persisted. The base URL is subject to the
+        SSRF egress guard (MONICA_BLOCK_PRIVATE_URLS).
+      properties:
+        base_url: { type: string, maxLength: 500 }
+        api_token: { type: string, maxLength: 4000 }
+    MonicaEntityCounts:
+      type: object
+      properties:
+        contacts: { type: integer }
+        activities: { type: integer }
+        notes: { type: integer }
+        reminders: { type: integer }
+        calls: { type: integer }
+        tasks: { type: integer }
+        gifts: { type: integer }
+        debts: { type: integer }
+    MonicaConnectResponse:
+      type: object
+      properties:
+        session_id: { type: string }
+        totals: { $ref: "#/components/schemas/MonicaEntityCounts" }
+        estimated_fetch_seconds: { type: integer, description: "Rough fetch duration at ~1 request/second." }
+    MonicaFetchRequest:
+      type: object
+      required: [session_id]
+      description: >
+        Starts the background snapshot fetch. The reciprocal half of each
+        bidirectional Monica relationship is always collapsed by the mapper
+        (ADR-0007) — no toggle.
+      properties:
+        session_id: { type: string }
+        include_relationships: { type: boolean, description: "Also pull each contact's relationships (one request per contact)." }
+        include_extras: { type: boolean, description: "Also pull calls, tasks, gifts and debts." }
+    MonicaImportIssue:
+      type: object
+      description: One entry of the pre-confirm loss report (the #442 record/field/category shape).
+      properties:
+        record: { type: string }
+        field: { type: string }
+        category: { type: string, enum: [unsupported, lossy, transformed, invalid, skipped] }
+        message: { type: string }
+    MonicaRowRelatedCounts:
+      type: object
+      description: >
+        Per-contact tally of graph entities the import will create. Notes
+        already includes Monica tasks and debts; Activities already includes
+        logged calls.
+      properties:
+        activities: { type: integer }
+        notes: { type: integer }
+        reminders: { type: integer }
+        relationships: { type: integer }
+        gifts: { type: integer }
+    MonicaImportRowPreview:
+      type: object
+      description: One contact row of the review step — the shared ImportRowPreview plus Monica context.
+      allOf:
+        - $ref: "#/components/schemas/ImportRowPreview"
+        - type: object
+          properties:
+            related: { $ref: "#/components/schemas/MonicaRowRelatedCounts" }
+            has_photo: { type: boolean }
+    MonicaImportStatus:
+      type: object
+      description: Poll payload for the fetch/import progress bar.
+      properties:
+        session_id: { type: string }
+        phase:
+          type: string
+          enum: [connecting, fetching_contacts, fetching_activities, fetching_notes, fetching_reminders, fetching_extras, fetching_relationships, building_preview, ready, importing, importing_photos, done, failed, cancelled]
+        phase_done: { type: integer }
+        phase_total: { type: integer }
+        error: { type: string }
+        result: { $ref: "#/components/schemas/MonicaImportResult" }
+    MonicaPreviewResponse:
+      type: object
+      properties:
+        session_id: { type: string }
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/MonicaImportRowPreview" }
+        total_rows: { type: integer }
+        valid_rows: { type: integer }
+        duplicate_count: { type: integer }
+        error_count: { type: integer }
+        totals: { $ref: "#/components/schemas/MonicaRowRelatedCounts" }
+        loss_report:
+          type: array
+          description: Every mapping issue, shown before the user commits (issue #442). Serialised as [] when nothing is lost.
+          items: { $ref: "#/components/schemas/MonicaImportIssue" }
+    MonicaConfirmRequest:
+      type: object
+      required: [session_id, actions]
+      description: >
+        Executes the import with the review step's per-contact decisions.
+        "update" merges the mapped contact into the row's detected duplicate
+        via the shared MergeImportedContact policy.
+      properties:
+        session_id: { type: string }
+        actions:
+          type: array
+          items: { $ref: "#/components/schemas/RowImportAction" }
+    MonicaImportResult:
+      type: object
+      description: Outcome summary. Embeds ImportResult and adds graph-entity + photo counts.
+      allOf:
+        - $ref: "#/components/schemas/ImportResult"
+        - type: object
+          properties:
+            relationships_created: { type: integer }
+            notes_created: { type: integer }
+            activities_created: { type: integer }
+            reminders_created: { type: integer }
+            gifts_created: { type: integer }
+            custom_fields_created: { type: integer }
+            photos_queued: { type: integer }
+            photos_saved: { type: integer }
+            photos_failed: { type: integer }
+
+    # --- Meerkat import assistant (issue #550) ---
+    MeerkatSourceUser:
+      type: object
+      description: One user of the uploaded Meerkat database, for the source-user picker.
+      properties:
+        id: { type: integer, format: int64 }
+        username: { type: string }
+        email: { type: string }
+        name: { type: string }
+        contacts: { type: integer, description: "How many contacts belong to this source user." }
+    MeerkatEntityCounts:
+      type: object
+      description: Whole-file totals across all source users, shown after upload.
+      properties:
+        contacts: { type: integer }
+        relationships: { type: integer }
+        notes: { type: integer }
+        activities: { type: integer }
+        reminders: { type: integer }
+    MeerkatUploadResponse:
+      type: object
+      properties:
+        session_id: { type: string }
+        source_users:
+          type: array
+          items: { $ref: "#/components/schemas/MeerkatSourceUser" }
+        default_source_user_id:
+          type: integer
+          format: int64
+          description: The first source user; pre-selected in the picker. Absent when the database has no user scoping.
+        totals: { $ref: "#/components/schemas/MeerkatEntityCounts" }
+    MeerkatFetchRequest:
+      type: object
+      required: [session_id]
+      description: >
+        Starts the background map + preview build, scoped to source_user_id
+        (defaults to the first source user). ADR-0007: the importer never
+        silently mixes accounts.
+      properties:
+        session_id: { type: string }
+        source_user_id:
+          type: integer
+          format: int64
+          description: Which source user's data to import; omit to use the default.
 
     # --- Neutral RFC 9553 contact model (preserved ) ---
     CRMEnvelope:

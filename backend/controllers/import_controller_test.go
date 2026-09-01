@@ -41,6 +41,8 @@ func registerImportRoutes(router *gin.Engine, cfg *config.Config) {
 	// behind by an earlier test would trip a later test's cap. Reset to a
 	// fresh manager per test so each starts clean.
 	importSessions = services.NewImportSessionManager()
+	monicaImportSessions = services.NewMonicaImportManager()
+	meerkatImportSessions = services.NewMeerkatImportManager()
 
 	router.POST("/contacts/import/upload", UploadCSVForImport)
 	router.POST("/contacts/import/preview", middleware.ValidateJSONMiddleware(&models.ImportPreviewRequest{}), PreviewImport)
@@ -53,6 +55,24 @@ func registerImportRoutes(router *gin.Engine, cfg *config.Config) {
 	})
 	router.POST("/contacts/import/jscontact/upload", UploadJSContactForImport)
 	router.POST("/contacts/import/records", middleware.ValidateJSONMiddleware(&models.ImportRecordsRequest{}), UploadImportRecords)
+
+	router.POST("/contacts/import/monica/connect", middleware.ValidateJSONMiddleware(&models.MonicaConnectRequest{}), func(c *gin.Context) {
+		ConnectMonicaImport(c, cfg)
+	})
+	router.POST("/contacts/import/monica/fetch", middleware.ValidateJSONMiddleware(&models.MonicaFetchRequest{}), StartMonicaFetch)
+	router.GET("/contacts/import/monica/status", GetMonicaImportStatus)
+	router.GET("/contacts/import/monica/preview", GetMonicaImportPreview)
+	router.POST("/contacts/import/monica/confirm", middleware.ValidateJSONMiddleware(&models.MonicaConfirmRequest{}), func(c *gin.Context) {
+		ConfirmMonicaImport(c, cfg)
+	})
+	router.POST("/contacts/import/monica/cancel", CancelMonicaImport)
+
+	router.POST("/contacts/import/meerkat/upload", UploadMeerkatDatabase)
+	router.POST("/contacts/import/meerkat/fetch", middleware.ValidateJSONMiddleware(&models.MeerkatFetchRequest{}), StartMeerkatFetch)
+	router.GET("/contacts/import/meerkat/status", GetMeerkatImportStatus)
+	router.GET("/contacts/import/meerkat/preview", GetMeerkatImportPreview)
+	router.POST("/contacts/import/meerkat/confirm", middleware.ValidateJSONMiddleware(&models.SourceImportConfirmRequest{}), ConfirmMeerkatImport)
+	router.POST("/contacts/import/meerkat/cancel", CancelMeerkatImport)
 }
 
 // newFileUploadRequest builds a multipart/form-data POST with a single "file"

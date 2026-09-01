@@ -41,8 +41,9 @@ func TestMigrationsAddImportRuns(t *testing.T) {
 		VALUES (1, 'csv', 3, 2, 0, 1, 0, datetime('now'))`)
 	require.NoError(t, err)
 
-	// Each documented format token is accepted.
-	for _, f := range []string{"vcf", "jscontact", "records"} {
+	// Each documented format token is accepted, including the source-import
+	// formats added by 000046 (issues #549/#550).
+	for _, f := range []string{"vcf", "jscontact", "records", "monica", "meerkat"} {
 		_, err = sqlDB.Exec(
 			`INSERT INTO import_runs (user_id, format, created_at) VALUES (1, ?, datetime('now'))`, f)
 		require.NoErrorf(t, err, "format %q must satisfy the CHECK constraint", f)
@@ -58,6 +59,7 @@ func TestMigrationsAddImportRuns(t *testing.T) {
 	// Down drops the table. 000042 is no longer the migration tip — 000043,
 	// 000044 and 000045 sit on top — so roll those back first, then 000042's
 	// own down migration.
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000046_import_runs_add_source_formats
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000045_import_source_links
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000044_revision_tokens
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000043_storage_samples

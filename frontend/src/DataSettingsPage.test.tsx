@@ -19,6 +19,8 @@ vi.mock('./components/ContactFieldSettings', () => ({ default: () => null }));
 vi.mock('./components/CustomFieldsSettings', () => ({ default: () => null }));
 vi.mock('./components/ExportFieldPickerDialog', () => ({ default: () => null }));
 vi.mock('./components/ImportContactsDialog', () => ({ default: () => null }));
+vi.mock('./components/MonicaImportDialog', () => ({ default: () => null }));
+vi.mock('./components/MeerkatImportDialog', () => ({ default: () => null }));
 vi.mock('./components/RelationshipSuggestionsInbox', () => ({ default: () => null }));
 
 vi.mock('./api/import', async (importOriginal) => {
@@ -78,4 +80,12 @@ test('surfaces a load error', async () => {
   renderPage();
 
   await waitFor(() => expect(screen.getByText('boom')).toBeInTheDocument());
+});
+
+test('offers the Monica import assistant alongside the file import (issue #549)', async () => {
+  historyMock.mockResolvedValue([]);
+  renderPage();
+
+  expect(await screen.findByRole('button', { name: 'Import from Monica' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Import from Meerkat' })).toBeInTheDocument();
 });

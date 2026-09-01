@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -236,8 +237,10 @@ type ImportSourcePlan struct {
 // ImportReport is the per-record outcome: created/skipped/failed counts per
 // entity kind plus the named issue list (record, field, category).
 type ImportReport struct {
-	ContactsCreated      int
-	ContactsSkipped      int
+	ContactsCreated int
+	ContactsUpdated int // merged into an existing local contact (assistant "update" action)
+	ContactsSkipped int
+
 	RelationshipsCreated int
 	NotesCreated         int
 	ActivitiesCreated    int
@@ -264,32 +267,94 @@ func (r *ImportReport) appendIssue(issue ImportIssue) {
 	r.Issues = append(r.Issues, issue)
 }
 
+// SourceContactAction is a per-contact decision from an import assistant's
+// review step (issues #549/#550), keyed in the actions map by the plan
+// contact's SourceRef.ExternalID. The zero value (Action == "") means "add",
+// so a plan with no actions map imports every contact — the behaviour
+// ExecuteSourceImport keeps.
+type SourceContactAction struct {
+	// Action is "" / SourceActionAdd (create), SourceActionSkip (exclude, and
+	// drop its dependent graph entities with a named issue), or
+	// SourceActionMerge (merge the mapped record into an existing local
+	// contact identified by MergeTargetUID).
+	Action string
+	// MergeTargetUID is the local Contact.VCardUID to merge into; required
+	// when Action == SourceActionMerge, ignored otherwise.
+	MergeTargetUID string
+}
+
+const (
+	SourceActionAdd   = "add"
+	SourceActionSkip  = "skip"
+	SourceActionMerge = "merge"
+)
+
 // ExecuteSourceImport applies a mapped plan into a real migrated schema
 // (database.InitDB — CLAUDE.md backend trap #1) in one transaction. It
 // returns a report with per-record outcomes; a record that fails is named
 // with its field and category and leaves nothing behind, and re-running the
-// same plan never duplicates (#459).
+// same plan never duplicates (#459). Every contact in the plan is created;
+// callers that need per-contact skip/merge decisions use
+// ExecuteSourceImportWithActions.
 func ExecuteSourceImport(db *gorm.DB, userID uint, plan *ImportSourcePlan) (*ImportReport, error) {
+	report, _, err := ExecuteSourceImportWithActions(context.Background(), db, userID, plan, nil, nil)
+	return report, err
+}
+
+// ExecuteSourceImportWithActions is ExecuteSourceImport plus a per-contact
+// action map (SourceRef.ExternalID → SourceContactAction) from an assistant's
+// review step. It also returns externalID → local contact ID for every
+// contact created or merged, so the caller can attach deferred work (avatar
+// downloads) to the right rows. A nil or empty actions map is identical to
+// ExecuteSourceImport.
+//
+// ctx cancels the whole import: the run happens in one transaction bound to
+// ctx, so cancelling it fails the next statement and rolls everything back —
+// the assistants use this for an in-flight "Cancel import" with no partial
+// result. progress, when non-nil, is called as the run advances (once per
+// contact in pass 1, once per graph entity-kind in pass 2) with a running
+// (done, total) so the UI can show a bar.
+func ExecuteSourceImportWithActions(ctx context.Context, db *gorm.DB, userID uint, plan *ImportSourcePlan, actions map[string]SourceContactAction, progress func(done, total int)) (*ImportReport, map[string]uint, error) {
 	if plan == nil || plan.System == "" {
-		return &ImportReport{}, nil
+		return &ImportReport{}, map[string]uint{}, nil
 	}
 	// Seed the outcome with the mapping's issues so a mapper's named losses
 	// (dangling relationships, skipped deleted rows, unmappable photos) are
 	// part of the returned report — the execution pass appends to the same
 	// list, and appendIssue deduplicates.
 	report := &ImportReport{Issues: append([]ImportIssue(nil), plan.Report.Issues...)}
+	refToID := make(map[string]uint, len(plan.Contacts))
 
-	err := db.Transaction(func(tx *gorm.DB) error {
-		return executeSourceImport(tx, userID, plan, report)
-	})
-	if err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return nil, err
+	// total = one tick per contact + one per pass-2 entity kind (importGraphKinds).
+	total := len(plan.Contacts) + importGraphKinds
+	done := 0
+	tick := func() {
+		done++
+		if progress != nil {
+			progress(done, total)
+		}
 	}
-	plan.Report = *report
-	return report, nil
+
+	err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return executeSourceImport(ctx, tx, userID, plan, actions, report, refToID, tick)
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	// The merged outcome is the return value only — we deliberately do not
+	// write it back onto the caller's plan. The async assistants keep running
+	// this on a *ImportSourcePlan that a still-finishing fetch goroutine (and
+	// a late Preview) may still be reading; mutating it here is a data race
+	// (caught by -race in TestMonicaImport_FullControllerFlow). plan.Report
+	// stays exactly what the mapper produced.
+	return report, refToID, nil
 }
 
-func executeSourceImport(tx *gorm.DB, userID uint, plan *ImportSourcePlan, report *ImportReport) error {
+// importGraphKinds is the number of pass-2 entity-kind import calls in
+// executeSourceImport — used only to size the progress bar's total.
+const importGraphKinds = 10
+
+func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *ImportSourcePlan, actions map[string]SourceContactAction, report *ImportReport, refToID map[string]uint, tick func()) error {
 	imported := loadSourceLinks(tx, userID, plan.System)
 
 	// Pass 1: contacts. refToUID maps each plan contact's SourceRef to the
@@ -297,8 +362,11 @@ func executeSourceImport(tx *gorm.DB, userID uint, plan *ImportSourcePlan, repor
 	// refToID carries the flat contact ID for the entities that key on it
 	// (notes, reminders).
 	refToUID := make(map[string]string, len(plan.Contacts))
-	refToID := make(map[string]uint, len(plan.Contacts))
 	for i := range plan.Contacts {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		tick()
 		mc := &plan.Contacts[i]
 		if imported[mc.Ref.ExternalID] {
 			report.ContactsSkipped++
@@ -307,6 +375,18 @@ func executeSourceImport(tx *gorm.DB, userID uint, plan *ImportSourcePlan, repor
 				Field:    "contact",
 				Category: ImportIssueCategorySkipped,
 				Message:  "already imported in an earlier run",
+			})
+			continue
+		}
+
+		action := actions[mc.Ref.ExternalID]
+		if action.Action == SourceActionSkip {
+			report.ContactsSkipped++
+			report.appendIssue(ImportIssue{
+				Record:   mc.Ref.String(),
+				Field:    "contact",
+				Category: ImportIssueCategorySkipped,
+				Message:  "excluded in the import review step",
 			})
 			continue
 		}
@@ -326,6 +406,20 @@ func executeSourceImport(tx *gorm.DB, userID uint, plan *ImportSourcePlan, repor
 				Category: ImportIssueCategoryInvalid,
 				Message:  strings.Join(issues, "; "),
 			})
+			continue
+		}
+
+		if action.Action == SourceActionMerge {
+			uid, localID, err := mergeSourceContact(tx, userID, plan.System, mc, contact, action.MergeTargetUID, report)
+			if err != nil {
+				return err
+			}
+			if uid == "" {
+				continue // merge target missing/invalid — named on the report
+			}
+			refToUID[mc.Ref.ExternalID] = uid
+			refToID[mc.Ref.ExternalID] = localID
+			imported[mc.Ref.ExternalID] = true
 			continue
 		}
 
@@ -384,36 +478,29 @@ func executeSourceImport(tx *gorm.DB, userID uint, plan *ImportSourcePlan, repor
 		return false
 	}
 
-	var err error
-	if err = importRelationships(tx, userID, plan, imported, uidOf, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
+	// Pass 2: graph entity kinds, one per importGraphKinds. Each advances the
+	// progress bar; ctx is re-checked between kinds so a cancel rolls back
+	// promptly on a large graph.
+	graphKinds := []func() error{
+		func() error { return importRelationships(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importHouseholds(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importCircles(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importTags(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importGifts(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importPreferences(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importNotes(tx, userID, plan, imported, refToID, skipImported, report) },
+		func() error { return importActivities(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importReminders(tx, userID, plan, imported, refToID, skipImported, report) },
+		func() error { return importCustomFields(tx, userID, plan, imported, refToUID, skipImported, report) },
 	}
-	if err = importHouseholds(tx, userID, plan, imported, uidOf, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
-	}
-	if err = importCircles(tx, userID, plan, imported, uidOf, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
-	}
-	if err = importTags(tx, userID, plan, imported, uidOf, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
-	}
-	if err = importGifts(tx, userID, plan, imported, uidOf, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
-	}
-	if err = importPreferences(tx, userID, plan, imported, uidOf, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
-	}
-	if err = importNotes(tx, userID, plan, imported, refToID, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
-	}
-	if err = importActivities(tx, userID, plan, imported, uidOf, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
-	}
-	if err = importReminders(tx, userID, plan, imported, refToID, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
-	}
-	if err = importCustomFields(tx, userID, plan, imported, refToUID, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
+	for _, importKind := range graphKinds {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := importKind(); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
+			return err
+		}
+		tick()
 	}
 
 	return nil
@@ -429,6 +516,83 @@ func validateMappedContact(contact *models.Contact) []string {
 		return []string{"contact has no usable name"}
 	}
 	return ValidateImportedContact(contact)
+}
+
+// mergeSourceContact applies a mapped source contact onto an existing local
+// contact (the assistant's "update" action). It reuses the same flat merge
+// machinery every file-based import "update" runs (MergeImportedContact +
+// CreateMergeNote, see import_session.go), so a source import merges the way
+// the rest of the app does. Neutral-only content on the mapped record
+// (SpeakToAs, PersonalInfo) has no flat home and is not carried onto the
+// existing contact — the same limitation the CSV/VCF merge path has; it is
+// named on the report when present rather than dropped silently.
+//
+// Returns the existing contact's VCardUID and local ID on success so pass 2
+// resolves graph entities onto it; returns "" (with a named issue, no error)
+// when the merge target cannot be found or saved, so the row is skipped and
+// the transaction continues.
+func mergeSourceContact(tx *gorm.DB, userID uint, system string, mc *MappedContact, incoming *models.Contact, targetUID string, report *ImportReport) (string, uint, error) {
+	targetUID = strings.TrimSpace(targetUID)
+	if targetUID == "" {
+		report.appendIssue(ImportIssue{
+			Record:   mc.Ref.String(),
+			Field:    "contact",
+			Category: ImportIssueCategoryInvalid,
+			Message:  "update requested but no existing contact was identified",
+		})
+		return "", 0, nil
+	}
+
+	var existing models.Contact
+	if err := tx.Where("user_id = ? AND vcard_uid = ?", userID, targetUID).First(&existing).Error; err != nil {
+		report.appendIssue(ImportIssue{
+			Record:   mc.Ref.String(),
+			Field:    "contact",
+			Category: ImportIssueCategoryInvalid,
+			Message:  "update target contact was not found",
+		})
+		return "", 0, nil
+	}
+
+	if mc.Record != nil && (mc.Record.Card.SpeakToAs != nil || len(mc.Record.Card.PersonalInfo) > 0) {
+		report.appendIssue(ImportIssue{
+			Record:   mc.Ref.String(),
+			Field:    "contact",
+			Category: ImportIssueCategoryLossy,
+			Message:  "merged into an existing contact — pronouns and personal-info entries were not carried over",
+		})
+	}
+
+	label := system
+	if len(label) > 0 {
+		label = strings.ToUpper(label[:1]) + label[1:]
+	}
+	if err := CreateMergeNote(tx, userID, existing.ID, &existing, incoming, label); err != nil { // # pragma: no cover — defensive: a healthy notes table does not fail this insert
+		report.appendIssue(ImportIssue{
+			Record:   mc.Ref.String(),
+			Field:    "contact",
+			Category: ImportIssueCategoryLossy,
+			Message:  "merge note could not be recorded: " + err.Error(),
+		})
+	}
+
+	MergeImportedContact(&existing, incoming)
+	if err := tx.Save(&existing).Error; err != nil { // # pragma: no cover — defensive: the row was just loaded from a healthy migrated schema
+		report.appendIssue(ImportIssue{
+			Record:   mc.Ref.String(),
+			Field:    "contact",
+			Category: ImportIssueCategoryInvalid,
+			Message:  "failed to save merged contact: " + err.Error(),
+		})
+		return "", 0, nil
+	}
+
+	if err := recordSourceLink(tx, userID, system, mc.Ref.ExternalID,
+		models.ImportSourceLinkKindContact, existing.VCardUID); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
+		return "", 0, err
+	}
+	report.ContactsUpdated++
+	return existing.VCardUID, existing.ID, nil
 }
 
 // loadSourceLinks returns the set of already-imported external IDs for a
