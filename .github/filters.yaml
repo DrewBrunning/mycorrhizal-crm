@@ -76,6 +76,11 @@ chaos:
   - 'backend/cmd/migrate/**'
   - 'backend/cmd/backup/**'
   - 'backend/cmd/migratebench/**'
+  # DEPLOY-03 (issue #452): the startup-interruption-kill-points job drives the
+  # real server binary and probes /health/ready in its "after migrations,
+  # before ready" kill point.
+  - 'backend/main.go'
+  - 'backend/controllers/health_controller.go'
 
 # differential (issue #680): the reference-implementation differential suite
 # (backend/differential, the pinned reference CLIs it shells out to, and the

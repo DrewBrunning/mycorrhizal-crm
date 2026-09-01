@@ -11,6 +11,7 @@ import (
 	"os"
 	"time"
 
+	"mycorrhizal/internal/faults"
 	"mycorrhizal/logger"
 	"strconv"
 	"strings"
@@ -268,6 +269,22 @@ const SupportedUpgradeFloorVersion uint = 31
 // SupportedUpgradeFloorTag is the release tag that defined the floor.
 const SupportedUpgradeFloorTag = "v0.6.0"
 
+// faultMigrationBeforeBatch is the failure-injection seam for the "before any
+// migration begins" window (DEPLOY-03, issue #452). It fires in
+// runPendingMigrations immediately before m.Up(), AFTER the fail-closed
+// preflight has passed and AFTER the mandatory pre-migration backup (issue
+// #530) has been taken, but BEFORE the first migration statement runs — the
+// crash signature of a process killed in exactly that gap: the schema is
+// completely untouched, no dirty flag, and a restart migrates normally.
+//
+// It complements faultMigrationStatement (sqlite_driver.go), which fires AFTER
+// the first migration body commits and leaves the database dirty. The
+// external-fault CI job parks a subprocess here with
+// `MYCORRHIZAL_FAULTS=database.migration.before_batch:pause:<dur>` and then
+// SIGKILLs it. Unarmed, faults.Hook is a nil-returning map lookup. See
+// docs/development/fault-injection.md.
+const faultMigrationBeforeBatch = "database.migration.before_batch"
+
 // ErrDirtyMigration is the error RunMigrations returns when the database is in
 // a dirty migration state (issue #439 state 1 / issue #546). golang-migrate
 // marks a migration dirty when it starts and does not finish — the process was
@@ -454,6 +471,19 @@ func runPendingMigrations(m *migrate.Migrate, db *sql.DB) error {
 		return fmt.Errorf("failed to get migration version: %w", err)
 	}
 	version := startVersion
+
+	// DEPLOY-03 (issue #452) failure-injection seam: the "before any migration
+	// begins" window. The preflight has passed and the mandatory pre-migration
+	// backup (issue #530) is already taken; nothing in the schema has changed
+	// yet. An armed error fault aborts here with the database completely
+	// untouched — the crash signature of a process killed in this gap, whose
+	// defined outcome is "a restart just migrates normally". A pause fault
+	// parks a subprocess here for the external-fault CI job to SIGKILL.
+	// Unarmed, this is a nil-returning map lookup. See faultMigrationBeforeBatch.
+	if err := faults.Hook(faultMigrationBeforeBatch); err != nil {
+		return fmt.Errorf("migration aborted before applying any migration: %w", err)
+	}
+
 	start := time.Now()
 
 	// Run migrations

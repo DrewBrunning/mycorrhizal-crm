@@ -25,6 +25,15 @@ name: Chaos Tests (failure injection)
 #     the database (the backup is mandatory); with a roomy backup target, the
 #     migration itself exhausts the disk and lands dirty, and the restart then
 #     refuses on the dirty flag (MIG-04).
+#   - DEPLOY-03 (issue #452): the startup-interruption-kill-points job SIGKILLs
+#     a real upgrade at every point that matters — before any migration begins
+#     (database.migration.before_batch pause fault), during a migration, between
+#     two migrations (a clean intermediate checkpoint), and after migrations but
+#     before the server is ready (the real server binary, killed between its
+#     "Migrations applied" and "Server is ready" log lines). Each kill point has
+#     a declared expected outcome asserted via dbinspect's exact-string contract;
+#     repeated kill/restart cycles must converge on that same state, never a
+#     worse one; the #530 pre-migration backup must survive the interruption.
 #
 # Gating (chaos filter in .github/filters.yaml): the suite is slow by design
 # and does NOT run on every push — only when the injection harness itself
@@ -177,6 +186,31 @@ jobs:
             "integrity_check=ok version=1 dirty=true") ;;
             *) echo "::error::the refusal modified the database: $state"; exit 1 ;;
           esac
+
+      # DEPLOY-03 (issue #452) action 3: an orchestrator that keeps restarting a
+      # crashed container must not compound the damage. Restart the refused
+      # database several more times and assert the state is byte-identical every
+      # time — the refusal is not a write, so N restarts converge on the same
+      # state as one.
+      - name: Repeated restarts of the dirty database converge (crash loop)
+        run: |
+          for i in 1 2 3 4 5; do
+            set +e
+            SQLITE_DB_PATH="$RUNNER_TEMP/chaos.db" "$RUNNER_TEMP/migrate" up > "/tmp/migrate-loop-$i.log" 2>&1
+            rc=$?
+            set -e
+            if [ "$rc" -eq 0 ]; then
+              echo "::error::restart $i booted a dirty database (must refuse every time)"
+              exit 1
+            fi
+            grep -q 'dirty migration state at version 1' "/tmp/migrate-loop-$i.log"
+            state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/chaos.db")"
+            if [ "$state" != "integrity_check=ok version=1 dirty=true" ]; then
+              echo "::error::restart $i changed the state: $state"
+              exit 1
+            fi
+          done
+          echo "5 restarts, same defined state"
 
       # The operator-only recovery: `migrate force` prompts for confirmation
       # (pip 'yes'), marks version 1 clean, and re-runs pending migrations —
@@ -454,3 +488,218 @@ jobs:
         if: always()
         run: |
           sudo umount /mnt/diskfull || true
+
+  # DEPLOY-03 (issue #452): SIGKILL a real upgrade at every point that matters
+  # and assert a DEFINED outcome at each — either the instance comes up correct
+  # and complete, or it refuses naming the state and the recovery. Nothing in
+  # between. Repeated kill/restart cycles must converge on the same state, never
+  # a worse one, and the #530 pre-migration backup must survive the kill.
+  #
+  # Kill points:
+  #   before_migrations  — parked at the database.migration.before_batch pause
+  #     fault (after the pre-migration backup, before the first statement).
+  #     Defined outcome: the schema is completely untouched; a restart migrates
+  #     normally. (The "during a migration" kill point is the migration-kill job
+  #     above; not duplicated here.)
+  #   between_migrations — a clean checkpoint at latest-1 (the state a kill
+  #     between two migrations' clean-marks leaves). Defined outcome: a restart
+  #     RESUMES to latest with no force.
+  #   after_migrations   — the real server binary, SIGKILLed between its
+  #     "Migrations applied" / "No pending migrations" and "Server is ready" log
+  #     lines. Defined outcome: DB clean at latest; a restart reaches
+  #     /health/ready == 200.
+  startup-interruption-kill-points:
+    permissions:
+      contents: read
+    name: SIGKILL at every startup kill point, restart converges
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Build the migrate, dbinspect, migratebench CLIs and the server
+        working-directory: backend
+        run: |
+          go build -o "$RUNNER_TEMP/migrate" ./cmd/migrate
+          go build -o "$RUNNER_TEMP/dbinspect" ./cmd/dbinspect
+          go build -o "$RUNNER_TEMP/migratebench" ./cmd/migratebench
+          go build -o "$RUNNER_TEMP/server" .
+
+      # A small populated database at the v0.6.0 upgrade floor (migration 31) —
+      # the state a real instance is in the moment before an in-place upgrade.
+      - name: Build a populated floor database
+        working-directory: backend
+        run: |
+          latest="$(find database/migrations -maxdepth 1 -name '*.up.sql' | wc -l | tr -d ' ')"
+          echo "LATEST=$latest" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/migratebench" seed --contacts 50 --db "$RUNNER_TEMP/src.db"
+          "$RUNNER_TEMP/migratebench" checkpoint --db "$RUNNER_TEMP/src.db" --version 31 --out "$RUNNER_TEMP/floor.db"
+          contacts="$(sqlite3 "$RUNNER_TEMP/floor.db" 'SELECT count(*) FROM contacts')"
+          echo "CONTACTS=$contacts" >> "$GITHUB_ENV"
+          state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/floor.db")"
+          echo "floor: $state ($contacts contacts)"
+          case "$state" in
+            "integrity_check=ok version=31 dirty=false") ;;
+            *) echo "::error::floor database is not a clean v0.6.0 schema: $state"; exit 1 ;;
+          esac
+
+      # --- Kill point 1: before any migration begins -------------------------
+      # Park at the before_batch seam and SIGKILL, three times. Every kill must
+      # leave the floor schema byte-for-byte untouched (no dirty flag, no
+      # partial DDL) — an interruption in this window is a no-op.
+      - name: SIGKILL before any migration begins — crash loop
+        working-directory: backend
+        run: |
+          cp "$RUNNER_TEMP/floor.db" "$RUNNER_TEMP/before.db"
+          want="integrity_check=ok version=31 dirty=false"
+          for i in 1 2 3; do
+            rm -f "$RUNNER_TEMP/before.db-wal" "$RUNNER_TEMP/before.db-shm"
+            MYCORRHIZAL_FAULTS='database.migration.before_batch:pause:300s' \
+              MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR="$RUNNER_TEMP/premig" \
+              SQLITE_DB_PATH="$RUNNER_TEMP/before.db" "$RUNNER_TEMP/migrate" up > "/tmp/before-$i.log" 2>&1 &
+            pid=$!
+            reached=0
+            for _ in $(seq 1 60); do
+              if grep -q 'injected fault pause' "/tmp/before-$i.log"; then reached=1; break; fi
+              if ! kill -0 "$pid" 2>/dev/null; then
+                echo "::error::migrate exited before reaching the before_batch seam (iteration $i)"
+                cat "/tmp/before-$i.log"; exit 1
+              fi
+              sleep 1
+            done
+            if [ "$reached" -ne 1 ]; then
+              echo "::error::iteration $i never reached the before_batch pause fault (fault silently skipped?)"
+              cat "/tmp/before-$i.log"; exit 1
+            fi
+            kill -9 "$pid"; wait "$pid" 2>/dev/null || true
+            state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/before.db")"
+            if [ "$state" != "$want" ]; then
+              echo "::error::kill $i moved the database: $state (want $want)"; exit 1
+            fi
+          done
+          echo "3 kills before the first migration, schema untouched every time"
+
+      # The #530 pre-migration backup is taken BEFORE the before_batch seam, so
+      # it exists after the kill — a valid rollback point at the pre-upgrade
+      # schema — and the crash loop reused it rather than rewriting it.
+      - name: The pre-migration backup survived the kill and was reused
+        run: |
+          snap="$(find "$RUNNER_TEMP/premig" -maxdepth 1 -name 'before-pre-migration-31-to-*.db' | head -n1)"
+          if [ -z "$snap" ]; then
+            echo "::error::no pre-migration snapshot after the interrupted upgrade"
+            ls -la "$RUNNER_TEMP/premig" || true
+            exit 1
+          fi
+          test "$(find "$RUNNER_TEMP/premig" -maxdepth 1 -name 'before-pre-migration-31-to-*.db' | wc -l | tr -d ' ')" = "1" \
+            || { echo "::error::a crash loop piled up pre-migration snapshots"; exit 1; }
+          state="$("$RUNNER_TEMP/dbinspect" "$snap")"
+          echo "snapshot: $state"
+          case "$state" in
+            "integrity_check=ok version=31 dirty=false") ;;
+            *) echo "::error::the pre-migration snapshot is not a clean pre-upgrade schema: $state"; exit 1 ;;
+          esac
+
+      - name: Disarmed restart migrates the before-kill database normally
+        run: |
+          SQLITE_DB_PATH="$RUNNER_TEMP/before.db" "$RUNNER_TEMP/migrate" up
+          state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/before.db")"
+          echo "post-restart: $state"
+          case "$state" in
+            "integrity_check=ok version=${LATEST} dirty=false") ;;
+            *) echo "::error::restart did not reach a clean latest schema: $state"; exit 1 ;;
+          esac
+          got="$(sqlite3 "$RUNNER_TEMP/before.db" 'SELECT count(*) FROM contacts')"
+          [ "$got" = "$CONTACTS" ] || { echo "::error::contact count changed: $got != $CONTACTS"; exit 1; }
+
+      # --- Kill point 2: between two migrations -----------------------------
+      # A clean checkpoint at latest-1 is exactly what a process killed between
+      # two migrations' clean-marks leaves: no dirty flag. A restart must RESUME.
+      - name: Killed between two migrations — restart resumes, no force
+        run: |
+          "$RUNNER_TEMP/migratebench" checkpoint --db "$RUNNER_TEMP/src.db" --version "$((LATEST - 1))" --out "$RUNNER_TEMP/between.db"
+          state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/between.db")"
+          echo "intermediate: $state"
+          case "$state" in
+            "integrity_check=ok version=$((LATEST - 1)) dirty=false") ;;
+            *) echo "::error::checkpoint is not a clean intermediate schema: $state"; exit 1 ;;
+          esac
+          SQLITE_DB_PATH="$RUNNER_TEMP/between.db" "$RUNNER_TEMP/migrate" up
+          state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/between.db")"
+          case "$state" in
+            "integrity_check=ok version=${LATEST} dirty=false") ;;
+            *) echo "::error::restart did not resume to latest: $state"; exit 1 ;;
+          esac
+          # A second restart of the now-healthy database is a clean no-op
+          # (restart-loop convergence for the clean case).
+          SQLITE_DB_PATH="$RUNNER_TEMP/between.db" "$RUNNER_TEMP/migrate" up
+          state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/between.db")"
+          case "$state" in
+            "integrity_check=ok version=${LATEST} dirty=false") ;;
+            *) echo "::error::a second restart changed the state: $state"; exit 1 ;;
+          esac
+
+      # --- Kill point 3: after migrations, before the server is ready --------
+      # The real server binary: SIGKILL it in the window between "migrations are
+      # done" and "listening". At the database level this is a completed
+      # upgrade, so every kill must leave it clean at latest, and a final
+      # restart must actually reach /health/ready.
+      - name: SIGKILL the server after migrations, before ready — crash loop
+        run: |
+          "$RUNNER_TEMP/migratebench" checkpoint --db "$RUNNER_TEMP/src.db" --version 31 --out "$RUNNER_TEMP/server.db"
+          JWT_SECRET_KEY="$(openssl rand -base64 32)"
+          export JWT_SECRET_KEY
+          export PROFILE_PHOTO_DIR="$RUNNER_TEMP/photos"
+          export ATTACHMENTS_DIR="$RUNNER_TEMP/attachments"
+          mkdir -p "$PROFILE_PHOTO_DIR" "$ATTACHMENTS_DIR"
+          export SQLITE_DB_PATH="$RUNNER_TEMP/server.db"
+          export PORT=7399
+          export FRONTEND_URL='*'
+          want="integrity_check=ok version=${LATEST} dirty=false"
+          for i in 1 2 3; do
+            rm -f "$RUNNER_TEMP/server.db-wal" "$RUNNER_TEMP/server.db-shm"
+            "$RUNNER_TEMP/server" > "/tmp/server-$i.log" 2>&1 &
+            pid=$!
+            for _ in $(seq 1 120); do
+              grep -qE 'Migrations applied successfully|No pending migrations|Server is ready to handle requests' "/tmp/server-$i.log" && break
+              kill -0 "$pid" 2>/dev/null || break
+              sleep 0.5
+            done
+            kill -9 "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+            state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/server.db")"
+            if [ "$state" != "$want" ]; then
+              echo "::error::server kill $i left the database in $state (want $want)"
+              cat "/tmp/server-$i.log"; exit 1
+            fi
+          done
+          # Final restart: it must actually become ready.
+          rm -f "$RUNNER_TEMP/server.db-wal" "$RUNNER_TEMP/server.db-shm"
+          "$RUNNER_TEMP/server" > /tmp/server-final.log 2>&1 &
+          pid=$!
+          code=000
+          for _ in $(seq 1 120); do
+            code="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7399/health/ready || true)"
+            [ "$code" = "200" ] && break
+            sleep 0.5
+          done
+          kill "$pid" 2>/dev/null || true
+          wait "$pid" 2>/dev/null || true
+          if [ "$code" != "200" ]; then
+            echo "::error::server never became ready after the kill loop (last /health/ready=$code)"
+            cat /tmp/server-final.log; exit 1
+          fi
+          got="$(sqlite3 "$RUNNER_TEMP/server.db" 'SELECT count(*) FROM contacts')"
+          [ "$got" = "$CONTACTS" ] || { echo "::error::contact count changed: $got != $CONTACTS"; exit 1; }
+          echo "server reached /health/ready after 3 post-migration kills, data intact"

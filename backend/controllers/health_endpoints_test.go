@@ -94,6 +94,56 @@ func TestReadiness_PendingMigration(t *testing.T) {
 	require.Contains(t, facet["reason"], "pending migrations")
 }
 
+// TestReadiness_SchemaAheadOfBinary is DEPLOY-03 (issue #452) action 4: a
+// database whose applied version is HIGHER than this binary's latest migration
+// (a rolled-back binary — issue #439 state 2) must gate traffic off, not fall
+// through to "ok". The startup path refuses to boot on this state; readiness is
+// the runtime backstop and must agree with services/deep_health.go.
+func TestReadiness_SchemaAheadOfBinary(t *testing.T) {
+	db, _, r := migratedHealthRouter(t)
+	require.NoError(t, db.Exec("UPDATE schema_migrations SET version = version + 5").Error)
+
+	code, body := getJSON(t, r, "/health/ready")
+	require.Equal(t, http.StatusServiceUnavailable, code)
+	require.Equal(t, "not_ready", body["status"])
+	checks, _ := body["checks"].(map[string]any)
+	facet, _ := checks["migrations"].(map[string]any)
+	require.Equal(t, "failed", facet["status"])
+	require.Contains(t, facet["reason"], "ahead of the binary")
+}
+
+// TestReadiness_NotReadyThroughEveryInterruptedMigrationState is DEPLOY-03
+// action 4: through every interrupted-migration state an operator can hit —
+// dirty, behind the binary, ahead of the binary — /health/ready is 503
+// not_ready with the migrations facet failed, while /health/live stays 200
+// (a stuck or half-done migration must never fail liveness, or the orchestrator
+// kills a container that just needs to finish migrating).
+func TestReadiness_NotReadyThroughEveryInterruptedMigrationState(t *testing.T) {
+	states := map[string]string{
+		"dirty":  "UPDATE schema_migrations SET dirty = 1",
+		"behind": "UPDATE schema_migrations SET version = version - 1",
+		"ahead":  "UPDATE schema_migrations SET version = version + 3",
+	}
+	for name, stmt := range states {
+		t.Run(name, func(t *testing.T) {
+			db, _, r := migratedHealthRouter(t)
+			require.NoError(t, db.Exec(stmt).Error)
+
+			code, body := getJSON(t, r, "/health/ready")
+			require.Equal(t, http.StatusServiceUnavailable, code, "%s must not be ready", name)
+			require.Equal(t, "not_ready", body["status"])
+			checks, _ := body["checks"].(map[string]any)
+			facet, _ := checks["migrations"].(map[string]any)
+			require.Equal(t, "failed", facet["status"], "%s migrations facet", name)
+			require.NotEmpty(t, facet["reason"])
+
+			liveCode, liveBody := getJSON(t, r, "/health/live")
+			require.Equal(t, http.StatusOK, liveCode, "%s must stay live", name)
+			require.Equal(t, "live", liveBody["status"])
+		})
+	}
+}
+
 func TestReadiness_FilesystemUnavailable(t *testing.T) {
 	_, cfg, r := migratedHealthRouter(t)
 	cfg.ProfilePhotoDir = filepath.Join(t.TempDir(), "nonexistent")
