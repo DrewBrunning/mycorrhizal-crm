@@ -44,57 +44,66 @@ silently-broken backup before you need it.
 the single-instance reality above — no replica, no failover — and stated per
 mechanism, because the mechanisms genuinely differ.
 
+The **derivation** — the numbers traced back to the shipped defaults, the levers
+that move each one, the measured restore-time figures, and the one freshness
+alarm the app enforces itself (`backup_stale`) — lives in `docs/deployment.md` →
+"Recovery objectives (RPO and RTO)" (issue [#506](https://github.com/DrewBrunning/mycorrhizal-crm/issues/506)),
+and `TestRecoveryObjectivesDocMatchesShippedDefaults` pins it to the code. This
+section is the per-scenario consolidation: which objective applies to each
+recovery path below, and where it bites.
+
 | Recovery case | RPO (data loss) | RTO (time to recover) |
 |---|---|---|
-| **Planned rollback of a bad release** (issue [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530)) | **≈ 0.** The server writes a verified snapshot immediately before it applies any migration and refuses to migrate if it cannot. The rollback point is the instant before the upgrade ran — you lose only what was written while the bad release was up, and you lose it *visibly, by choice*. | Minutes. Deploy the previous image, restore the `pre-migration/` snapshot (a file copy), restore the photo/attachment directories from the routine backup, start. See `docs/operations/migration-recovery.md` → Rolling back a bad release. |
-| **Database corruption, host loss, a backup that must be restored** | **= the age of your most recent good backup.** The application ships **no backup scheduler** — routine backups are a cron *you* add (`docs/deployment.md` → Backups). Your backup interval *is* your RPO. A nightly cron means up to ~24 h of loss; an hourly cron means up to ~1 h. There is no default number to quote because there is no default schedule. | See below. |
-| **Accidental deletion by the user** | **= the age of your most recent backup that predates the deletion.** There is no self-service "undelete" — the supported recovery is a point-in-time restore. The soft-delete window keeps the *content* in the database (and in new backups) for `DELETED_RETENTION_DAYS` (default 30), but the delete also hard-deletes join rows and removes attachment/photo files from disk immediately. See [Accidental deletion by the user](#scenario-accidental-deletion-by-the-user). | As below. A single accidental *edit* to a contact is different: `POST /api/v1/audit/:id/undo` reverts it in one call, no downtime. |
+| **Planned rollback of a bad release** (issue [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530)) | **0.** The server writes a verified snapshot immediately before it applies any migration and refuses to migrate if it cannot. The rollback point is the instant before the upgrade ran — you lose only what was written while the bad release was up, and you lose it *visibly, by choice*. | Minutes. Deploy the previous image, restore the `pre-migration/` snapshot (a file copy), restore the photo/attachment directories from the routine backup, start. See `docs/operations/migration-recovery.md` → Rolling back a bad release. |
+| **Database corruption, host loss, a lost photo/attachment directory** | **= your backup interval.** The application ships **no backup scheduler** — routine backups are a cron *you* add (`docs/deployment.md` → Backups). Your backup interval *is* your RPO. The recommended daily cron means up to ~24 h of loss; an hourly cron means ~1 h. There is no default number to quote because there is no default schedule. | Under 30 minutes at MVP scale (100k contacts / ~450 MB) for a prepared operator with the backup set already on the host — the derivation and its per-step table are in `docs/deployment.md`. Add off-host fetch time on top. |
+| **Accidental deletion by the user** | **= your backup interval** (same as host loss). There is no self-service "undelete" — the supported recovery is a point-in-time restore. The soft-delete window keeps the row for `DELETED_RETENTION_DAYS` (default 30) as a sync tombstone, but the delete also hard-deletes join rows and removes attachment/photo files from disk immediately. See [Accidental deletion by the user](#scenario-accidental-deletion-by-the-user). | As above. A single accidental *edit* to a contact is different: `POST /api/v1/audit/:id/undo` reverts it in one call, no downtime. |
 
-### The RTO breakdown for a full restore
+### What dominates the restore clock
 
-A restore has four costs. Only the third is the application's; the rest are set
-by your hardware and your backup location.
+For anything that is a full restore (the middle and bottom rows above), the time
+is almost entirely **outside** the application:
 
 1. **Obtain the backup media** — pull from off-host storage. Bounded by your
-   network and where you keep backups; this is usually the largest term and the
-   application cannot make it smaller. If backups live only on the lost host,
+   network and where you keep backups; usually the largest term, and the
+   application cannot make it smaller. If backups lived only on the lost host,
    this term is *infinite* — see [Loss of the host entirely](#scenario-loss-of-the-host-entirely).
 2. **Copy the three pieces into place** — `cp` the `.db`, `rsync` the photo and
-   attachment directories. Bounded by disk throughput and by the size of the
-   photo/attachment directories, which dominate at scale (they are files, not
-   rows, and are not compressed by the backup).
-3. **Startup migration** — if the snapshot predates the running binary, the
-   server migrates it forward on boot. Measured: **seconds to low single-digit
-   minutes** even for large databases (`docs/development/scale-testing.md`:
-   `v0.6.0 → current` at ~100k contacts is ~6.5 s of migration; the longest
-   supported skip at 2,010 contacts is ~0.15 s).
-4. **Verify** — [Verifying a recovered instance](#verifying-a-recovered-instance):
-   `PRAGMA integrity_check`, the application-invariant checker, one end-to-end
-   workflow. Minutes.
+   attachment directories. The file directories dominate at scale (they are
+   files, not rows, and are not compressed by the backup).
+3. **Startup migration**, if the snapshot predates the running binary — measured
+   at seconds even for large databases (`docs/development/scale-testing.md`:
+   `v0.6.0 → current` at ~100k contacts is ~6.5 s; the longest supported skip at
+   2,010 contacts is ~0.15 s).
+4. **Verify** — [Verifying a recovered instance](#verifying-a-recovered-instance).
+   Minutes.
 
-**Stated RTO: tens of minutes**, dominated by term 1 (fetching the backup) and
-term 2 (copying the file directories) — *not* by anything the application does.
 There is no sub-minute RTO, because there is no failover: every recovery includes
 a cold start.
 
 ### The gaps, stated rather than rounded away
 
-- **Nightly backups mean up to 24 hours of loss.** This is the honest RPO for the
-  common case and it is a property of the operator's schedule, not a defect. To
-  shorten it: run `make backup` more often (it is cheap — a `VACUUM INTO` of a
-  10 MB database is milliseconds), and configure an off-host copy
-  (`docs/deployment.md` → Backup immutability & ransomware resistance) so the
-  copy survives host loss.
-- **The upgrade case is already at RPO ≈ 0** and needs nothing from you — the
+- **The recommended daily backup means up to 24 hours of loss.** This is the
+  honest RPO for the host-loss case and it is a property of the operator's
+  schedule, not a defect. To shorten it: run `make backup` more often (it is
+  cheap — a `VACUUM INTO` of a 10 MB database is milliseconds), and configure an
+  off-host copy (`docs/deployment.md` → Backup immutability & ransomware
+  resistance) so the copy survives host loss.
+- **The app enforces only a loose freshness floor, not your RPO.** The
+  `backup_stale` alert fires when no successful backup or restore-drill run has
+  been seen for `ALERT_BACKUP_MAX_AGE_HOURS` (default `2 ×
+  DB_RESTORE_DRILL_INTERVAL_HOURS` = **336 h** / 14 days) — a "something is badly
+  wrong" alarm, deliberately far looser than a daily cron. Set it to roughly
+  twice your actual backup interval to have the app hold you to a tighter number.
+- **The upgrade case is already at RPO 0** and needs nothing from you — the
   pre-migration snapshot is mandatory and automatic. The gap is entirely in the
   *routine* backup cadence, which is why that is the lever worth pulling.
-- **RTO is not yet a tracked observation.** The numbers above are derived from
-  the scale-testing measurements and the restore drill's restore step. Issue
-  [#506](https://github.com/DrewBrunning/mycorrhizal-crm/issues/506) tracks
-  making the scheduled restore drill record its own duration, so RTO becomes a
-  measured value that drifts visibly *before* an incident rather than an estimate
-  that ages. Until then, re-measure against `docs/development/scale-testing.md`'s
-  methodology before quoting a number in a release note.
+- **RTO drift is tracked, not estimated once.** The weekly restore drill records
+  its wall-clock as `duration_ms` on each `restore_test_completed` row in the
+  System-events timeline; set `DB_RESTORE_DRILL_MAX_DURATION_SECONDS` to a budget
+  to get a `WARN` (and a note on that row) when a run runs long — restore-time
+  drift visible *before* an incident. Re-measure against
+  `docs/development/scale-testing.md`'s methodology before quoting a fresh number
+  in a release note.
 
 ## The recovery inputs
 
@@ -107,7 +116,7 @@ one is before you need it.
 | **Routine backup — files** | Plain-directory copies of `PROFILE_PHOTO_DIR` and `ATTACHMENTS_DIR`. `make backup` does **not** touch these (BACKUP-02, issue [#454](https://github.com/DrewBrunning/mycorrhizal-crm/issues/454)); a file copy is already the right tool. | Wherever your `rsync`/`cp` puts them. | **You.** |
 | **Pre-migration snapshot** | A verified database-only `VACUUM INTO` taken automatically before the server (or `make migrate-up`) applies any pending migration. The server **refuses to migrate if it cannot write one** (`ErrPreMigrationBackupFailed`, issue [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530)). | A `pre-migration/` subdirectory beside `SQLITE_DB_PATH`, named `<db-stem>-pre-migration-<from>-to-<to>-<timestamp>.db`. `MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` moves it. | **The application** writes it; **you** must keep a rotation cron away from the `pre-migration/` directory (issue [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530): a purge must never delete the last rollback point). |
 | **Scheduled integrity check** | `PRAGMA integrity_check` against the live database, on a cadence; logs and fires the `db.integrity_check_failed` webhook on failure. | `DB_INTEGRITY_CHECK_ENABLED` (default on), `DB_INTEGRITY_CHECK_INTERVAL_HOURS` (default 24). | The application. |
-| **Scheduled restore drill** | Takes a fresh snapshot, restores it into a scratch database, compares every table's row count with live, reconciles attachment/photo rows against the live directories, and verifies the wrapped encryption key still unwraps. Fires `db.restore_drill_failed` on any mismatch. | `DB_RESTORE_DRILL_ENABLED` (default on), `DB_RESTORE_DRILL_INTERVAL_HOURS` (default 168, i.e. weekly). | The application. |
+| **Scheduled restore drill** | Takes a fresh snapshot, restores it into a scratch database, compares every table's row count with live, reconciles attachment/photo rows against the live directories, and verifies the wrapped encryption key still unwraps. Fires `db.restore_drill_failed` on any mismatch, and records `duration_ms` on the `restore_test_completed` timeline row (the RTO drift signal — see [RPO and RTO](#rpo-and-rto)). | `DB_RESTORE_DRILL_ENABLED` (default on), `DB_RESTORE_DRILL_INTERVAL_HOURS` (default 168, i.e. weekly), `DB_RESTORE_DRILL_MAX_DURATION_SECONDS` (optional RTO budget). | The application. |
 | **The secrets** | `JWT_SECRET_KEY`, and `DATA_ENCRYPTION_KEY` / `DATA_ENCRYPTION_KEY_FILE` if set. **Never in any backup** — they live only in your environment. | Your `.env` / orchestrator secret store. | **You**, stored separately from the data backup. See [A lost secret](#scenario-a-lost-jwt_secret_key-or-other-secret). |
 
 ## Scenarios
@@ -172,8 +181,8 @@ This scenario is owned in full by **`docs/operations/migration-recovery.md` →
 [Dirty schema](migration-recovery.md#dirty-schema)**. In summary:
 
 **Recoverable:** everything, from the automatic pre-migration snapshot taken
-before this upgrade began. **Lost:** nothing beyond that snapshot's point (RPO
-≈ 0 for the upgrade case). **Procedure:** restore the `pre-migration/` snapshot,
+before this upgrade began. **Lost:** nothing beyond that snapshot's point (RPO 0
+for the upgrade case). **Procedure:** restore the `pre-migration/` snapshot,
 start again — starting the server *is* the retry. Do not retry in a loop; if it
 fails again at the same migration, capture the logs and file a bug. An
 operator-only escape hatch (`make migrate-force`, prompted) exists for the case
@@ -403,7 +412,7 @@ or by physics, and the mitigations are all *before* the fact.
 
 - **Data written after your last backup**, bounded by your backup interval (RPO).
   For the upgrade case only, the automatic pre-migration snapshot brings this to
-  ≈ 0; everywhere else it is whatever your cron cadence is.
+  0; everywhere else it is whatever your cron cadence is.
 - **A `DATA_ENCRYPTION_KEY` lost with no copy** — and, if you never decoupled it,
   a `JWT_SECRET_KEY` lost with no copy. The `encv1:` columns are gone. No escrow.
 - **Soft-deleted data past the purge window** (`DELETED_RETENTION_DAYS`, default
