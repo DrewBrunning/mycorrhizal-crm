@@ -208,9 +208,22 @@ database by any refusal.
   every migration up → down → up against a populated fixture and gates on every
   migration shipping its `.down.sql`. A new release without a fixture fails CI
   (the completeness test plus the docker-publish gate).
-- **Full-stack upgrades (DEPLOY-02, issue #451):** the release-by-release
-  Docker harness validates the whole install (database + photos + attachments)
-  end to end against the same release set.
+- **Full-stack upgrades (DEPLOY-02, issue #451):**
+  `internal/schemafixture`'s `deploy02_test.go` upgrades a real three-piece
+  install — the database file beside real `PROFILE_PHOTO_DIR` /
+  `ATTACHMENTS_DIR` directories, the shape a Docker volume actually holds —
+  IN PLACE through `database.InitDB` for every supported release (the v0.6.0
+  case is the longest skip), and validates the whole install rather than the
+  database alone: row counts and the MIG-03 semantic content survive, every
+  live attachment/photo row still resolves to a real file after the in-place
+  migrate, and the mandatory pre-migration backup (#530) is confirmed to have
+  actually been written during the upgrade and to be a valid, restorable
+  snapshot at the PRE-upgrade schema. The migrated instance is then driven
+  through the real HTTP stack (`routes.RegisterRoutes`, exactly as the server
+  wires it up): logging in with the PRE-EXISTING account (the bcrypt hash must
+  still validate after the upgrade), an FTS search for a pre-upgrade contact,
+  reading and editing a contact, and exporting. Sub-floor and dirty databases
+  are refused on this same full-install path (issues #529/#439/#546).
 - **Large datasets (issue #495):** the same chain-upgrade path is also tested
   against databases populated at 134x the canonical manifest (2,010 contacts,
   pathological records included) — every supported release migrates to the

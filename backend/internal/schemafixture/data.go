@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -246,6 +247,15 @@ func quoteIdents(ss []string) string {
 // literal renders a scanned value as a SQL literal for the INSERT. Values
 // come from database/sql: nil -> NULL, int64/float64 -> bare number, []byte
 // -> blob literal, string -> quoted text, time.Time -> RFC3339Nano text.
+//
+// The time.Time case is load-bearing, not cosmetic: the SQLite driver returns
+// a time.Time for a DATETIME column, and Go's default %v rendering
+// ("2026-09-01 10:22:45.81 -0500 -0500") is a format GORM's driver cannot scan
+// back into a time.Time field ("unsupported Scan ... string into *time.Time").
+// Every migration-written row in production stores RFC3339Nano UTC, so a
+// fixture that matches it can be driven through the real GORM models and HTTP
+// stack after an upgrade (DEPLOY-02, issue #451) rather than only through raw
+// SQL.
 func literal(v any) string {
 	switch x := v.(type) {
 	case nil:
@@ -261,6 +271,8 @@ func literal(v any) string {
 		return "0"
 	case []byte:
 		return "X'" + fmt.Sprintf("%x", x) + "'"
+	case time.Time:
+		return "'" + x.UTC().Format(time.RFC3339Nano) + "'"
 	case string:
 		return "'" + strings.ReplaceAll(x, "'", "''") + "'"
 	default:

@@ -19,6 +19,15 @@ name: Migration Tests
 #   - down-direction: every migration in the chain round-trips up -> down -> up
 #     against a POPULATED fixture (an empty-schema round trip proves nothing,
 #     issue #530), plus the "a new migration with no .down.sql fails CI" gate.
+#   - full-install-upgrade (DEPLOY-02, issue #451): the full-stack analogue —
+#     a real three-piece install (database + PROFILE_PHOTO_DIR +
+#     ATTACHMENTS_DIR) upgraded IN PLACE through database.InitDB, with row
+#     counts + MIG-03 semantic content preserved, every attachment/photo row
+#     still resolving to a real file, the #530 pre-migration backup proven to
+#     exist and be restorable, and the migrated instance driven through the
+#     real HTTP stack (login with a pre-existing account, FTS search, contact
+#     read/edit, export). Plus the sub-floor/dirty refusals on this same
+#     full-install path.
 #
 # Gate: the `backend` filter in .github/filters.yaml (the migration layer's
 # home, per docs/development/testing.md); make the migration-tests job set
@@ -187,6 +196,34 @@ jobs:
       - name: Every migration ships its .down.sql
         working-directory: backend
         run: go test ./database/ -run '^TestEveryMigrationHasADownMigration$' -count=1 -v
+
+  # DEPLOY-02 (issue #451): the full-stack analogue of upgrade-matrix — not
+  # just the database, the whole three-piece install (database +
+  # PROFILE_PHOTO_DIR + ATTACHMENTS_DIR), upgraded in place and driven through
+  # the real HTTP stack.
+  full-install-upgrade:
+    permissions:
+      contents: read
+    name: Full-install upgrade (DEPLOY-02)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Three-piece install upgraded in place, backed up, and exercised
+        working-directory: backend
+        run: go test ./internal/schemafixture/ -run '^TestFullInstallUpgrade' -count=1 -v
 
   # Issue #495 (large-dataset migration test): every supported release's
   # database, populated at 134x the canonical pathological manifest (2,010
