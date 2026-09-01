@@ -147,13 +147,19 @@ The disk-exhaustion case is exercised as an **external-fault CI job**
 (`large-migration-disk-full` in `.github/workflows/chaos-tests.yml`): a real
 10,000-contact floor database on a tmpfs sized to hold the file plus only 1 MiB
 — enough for the file, not for the ~16 MB of WAL growth the migration needs —
-migrated until it runs out of space. The defined outcome, asserted by the job:
+migrated until it runs out of space. Two defined outcomes, asserted by the job:
 
-1. `migrate up` fails non-zero (real ENOSPC, not a mock);
-2. the database is left **dirty at some migration with `PRAGMA integrity_check`
-   ok** — never truncated, never a healthy-looking half-migration;
-3. the next startup run **refuses** on the dirty flag (MIG-04, issue #439),
-   naming the version and the restore-from-backup recovery.
+1. **Backup target on the same full disk** (the default `pre-migration/`
+   sibling): the mandatory pre-migration backup (issue #530) cannot be written,
+   so `migrate up` fails non-zero and **refuses before touching the database** —
+   it stays clean at the floor version. Fail-closed, nothing dirtied.
+2. **Backup target with room** (`MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` elsewhere
+   — the realistic prod layout): the snapshot is written, then the migration
+   itself hits ENOSPC. `migrate up` fails non-zero; the database is left
+   **dirty at some migration with `PRAGMA integrity_check` ok** — never
+   truncated, never a healthy-looking half-migration — and the next startup run
+   **refuses** on the dirty flag (MIG-04, issue #439), naming the version and
+   the restore-from-backup recovery.
 
 Note that `RLIMIT_FSIZE` is deliberately NOT used as an in-process proxy for
 this: Linux's `ftruncate` ignores the limit (a documented kernel quirk) and
