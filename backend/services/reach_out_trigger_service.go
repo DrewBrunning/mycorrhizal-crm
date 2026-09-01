@@ -36,7 +36,7 @@ import (
 // reachOutDetectionMinInterval mirrors cadenceOverdueMinInterval's reasoning:
 // slightly less than the daily cron cadence so natural clock-skew doesn't
 // skip a run.
-const reachOutDetectionMinInterval = 23 * time.Hour
+var reachOutDetectionMinInterval = JobCatchupWindow(24 * time.Hour)
 
 // DetectReachOutSuggestions is the scheduled job that scans every user's new
 // contact AuditEvent rows since their ReachOutCursor watermark, detects

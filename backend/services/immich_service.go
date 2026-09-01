@@ -19,9 +19,15 @@ import (
 const (
 	ExternalSystemImmich  = "immich"
 	ImmichActivityType    = "photo-appearance"
-	immichSyncMinInterval = 30 * time.Minute
 	immichSyncLimitAssets = 25
 )
+
+// immichSyncMinInterval is the de-dup window for the Immich enrichment sync,
+// derived from its configured cadence via the shared JobCatchupWindow (issue
+// #526, ADR 0011) — previously a flat 30m regardless of IMMICH_SYNC_INTERVAL_HOURS.
+func immichSyncMinInterval(cfg config.Config) time.Duration {
+	return JobCatchupWindow(time.Duration(cfg.ImmichSyncIntervalHours) * time.Hour)
+}
 
 // ImmichConfigResponse is the API-visible shape of an ImmichConfig: the
 // encrypted API key is never exposed, only whether one is stored.
@@ -514,7 +520,7 @@ func recordImmichSyncResult(db *gorm.DB, userID uint, ok bool, syncErr error) {
 // minInterval) rather than a bare cron, so rapid restarts or multiple
 // instances never double-sync. Iterates every user with an enabled config.
 func SyncImmichWithRateLimit(db *gorm.DB, cfg config.Config) {
-	acquired, err := acquireJobLock(db, models.JobNameImmichSync, immichSyncMinInterval)
+	acquired, err := acquireJobLock(db, models.JobNameImmichSync, immichSyncMinInterval(cfg))
 	if err != nil {
 		logger.Error().Err(err).Msg("Immich sync: failed to check job lock")
 		return

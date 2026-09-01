@@ -286,7 +286,7 @@ func sortOverdueByMostOverdue(overdue []OverdueCadence) {
 // cadenceOverdueMinInterval is slightly less than the daily cron cadence so a
 // natural clock-skew or overlap doesn't cause a skipped run — the same
 // margin purge_service uses.
-const cadenceOverdueMinInterval = 23 * time.Hour
+var cadenceOverdueMinInterval = JobCatchupWindow(24 * time.Hour)
 
 // ProcessOverdueCadences is the scheduled job that emits a `cadence.overdue`
 // webhook per currently-overdue cadence policy, so an external task manager

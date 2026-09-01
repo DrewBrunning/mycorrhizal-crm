@@ -21,17 +21,11 @@ import (
 // restored snapshot's row counts don't match the live database.
 const EventRestoreDrillFailed = "db.restore_drill_failed"
 
-// restoreDrillMinIntervalMargin mirrors dbIntegrityCheckMinIntervalMargin —
-// same reasoning, kept as a separate constant because the two jobs are
-// independently configurable and there is no shared meaning between them.
-const restoreDrillMinIntervalMargin = 30 * time.Minute
-
+// restoreDrillMinInterval is the de-dup window for this configurable-cadence
+// job: the shared JobCatchupWindow of the configured period (issue #526, ADR
+// 0011 — one margin for the whole fleet).
 func restoreDrillMinInterval(cfg config.Config) time.Duration {
-	minInterval := time.Duration(cfg.DBRestoreDrillIntervalHours)*time.Hour - restoreDrillMinIntervalMargin
-	if minInterval < restoreDrillMinIntervalMargin {
-		minInterval = restoreDrillMinIntervalMargin
-	}
-	return minInterval
+	return JobCatchupWindow(time.Duration(cfg.DBRestoreDrillIntervalHours) * time.Hour)
 }
 
 type tableNameRow struct {

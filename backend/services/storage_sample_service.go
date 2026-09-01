@@ -23,12 +23,11 @@ import (
 // tiered ok | warning | critical threshold with -5% hysteresis (StorageThreshold)
 // that folds into the endpoint's overall status.
 
-const (
-	// storageSampleMinInterval is slightly less than the 24h cron cadence so a
-	// natural clock-skew or overlap doesn't cause a skipped run (mirrors the
-	// other daily jobs).
-	storageSampleMinInterval = 23 * time.Hour
+// storageSampleMinInterval is the daily sampler's de-dup window, derived from
+// its 24h scheduled period via JobCatchupWindow (issue #526, ADR 0011).
+var storageSampleMinInterval = JobCatchupWindow(24 * time.Hour)
 
+const (
 	// Trend windows (issue #652). Deltas are "latest sample minus the oldest
 	// sample within the window".
 	storageTrendWindow7D  = 7 * 24 * time.Hour

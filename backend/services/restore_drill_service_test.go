@@ -254,12 +254,12 @@ func TestCompareTableCountsErrorsWhenScratchTableMissing(t *testing.T) {
 // below the margin must floor at the margin rather than going zero/negative.
 func TestRestoreDrillMinIntervalClampsToMargin(t *testing.T) {
 	got := restoreDrillMinInterval(config.Config{DBRestoreDrillIntervalHours: 0})
-	assert.Equal(t, restoreDrillMinIntervalMargin, got)
+	assert.Equal(t, JobCatchupMargin, got)
 }
 
 func TestRestoreDrillMinIntervalAboveMargin(t *testing.T) {
 	got := restoreDrillMinInterval(config.Config{DBRestoreDrillIntervalHours: 168})
-	assert.Equal(t, 168*time.Hour-restoreDrillMinIntervalMargin, got)
+	assert.Equal(t, 168*time.Hour-JobCatchupMargin, got)
 }
 
 // newTestWebhookServer spins up an httptest server recording hits and the

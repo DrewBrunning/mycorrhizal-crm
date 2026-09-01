@@ -26,14 +26,10 @@ import (
 // notification_service senders. The only new persistence is alert_states, one
 // row per condition, holding the current state so a transition can be detected.
 
-// alertEvalMinInterval floors the job-lock interval so a rapid restart doesn't
-// re-run the evaluator back to back, mirroring the other scheduled jobs.
+// alertEvalMinInterval is the de-dup window for this configurable-cadence job:
+// the shared JobCatchupWindow of the configured period (issue #526, ADR 0011).
 func alertEvalMinInterval(cfg config.Config) time.Duration {
-	d := time.Duration(cfg.AlertEvalIntervalMinutes)*time.Minute - time.Minute
-	if d < time.Minute {
-		d = time.Minute
-	}
-	return d
+	return JobCatchupWindow(time.Duration(cfg.AlertEvalIntervalMinutes) * time.Minute)
 }
 
 // EvaluateAlerts is the scheduled entry point. Job-lock guarded like every
