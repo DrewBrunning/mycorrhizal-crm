@@ -192,7 +192,7 @@ with generated notes. See `docs/security/release-verification.md` → "How a rel
 One-time setup (already done for this repo; re-do only if the App is rotated):
 
 - A GitHub App with **Contents: write**, installed on the repo.
-- Repo variable `RELEASE_APP_ID` + repo secret `RELEASE_APP_PRIVATE_KEY` (the App's private-key PEM).
+- Repo secrets `RELEASE_APP_ID` (the App's numeric App ID) and `RELEASE_APP_PRIVATE_KEY` (its private-key PEM).
 - The App added to `main`'s ruleset **bypass list** (`main-protection`) so `release.yml` can push
   the fixture commit and the tag directly. A tag pushed by the App is a real `push` event, which is
   what lets it trigger `docker-publish.yml` — `GITHUB_TOKEN` pushes cannot.

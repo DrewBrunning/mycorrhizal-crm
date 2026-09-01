@@ -26,7 +26,7 @@ process. It:
 
 The tag push triggers `docker-publish.yml`, which builds and signs everything listed below and
 creates the GitHub Release. That hand-off works only because the push uses a **GitHub App token**
-(repo variable `RELEASE_APP_ID` + secret `RELEASE_APP_PRIVATE_KEY`, App on `main`'s
+(repo secrets `RELEASE_APP_ID` + `RELEASE_APP_PRIVATE_KEY`, App on `main`'s
 branch-protection bypass list) — a tag pushed with the default `GITHUB_TOKEN` cannot trigger
 another workflow. The App token is scoped to `contents: write` and is used by this one
 `workflow_dispatch`-only workflow; there is no PR-triggered path to it.

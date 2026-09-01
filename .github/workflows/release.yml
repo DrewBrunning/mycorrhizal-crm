@@ -32,7 +32,8 @@ name: Release
 # One-time setup (see docs/security/release-verification.md, "How a release is
 # cut"):
 #   - a GitHub App with Contents: write, installed on this repo;
-#   - repo variable RELEASE_APP_ID + repo secret RELEASE_APP_PRIVATE_KEY;
+#   - repo secrets RELEASE_APP_ID (the App's numeric App ID) and
+#     RELEASE_APP_PRIVATE_KEY (its private-key PEM);
 #   - the App added to main's branch-protection / ruleset bypass list (and to
 #     any v* tag ruleset's bypass list), so it can push the commit and the tag.
 #
@@ -73,7 +74,10 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
-          app-id: ${{ vars.RELEASE_APP_ID }}
+          # `app-id` is the numeric App ID. The action deprecates it in favour
+          # of `client-id` (a different value, `Iv23…`); `app-id` still works,
+          # so keep it until a toolchain bump forces the switch.
+          app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           # Least privilege: the minted token can push the fixture commit and
           # the tag, nothing else — even if the App is granted more.
