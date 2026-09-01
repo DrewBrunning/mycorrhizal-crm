@@ -44,6 +44,9 @@ type mockMonicaOptions struct {
 	includeExtras  bool
 	includeRelated bool
 	failEverything bool
+	// breakOneAvatar gives both contacts an avatar but points Ada's at a URL
+	// the mock 404s, so processAvatars runs a mixed success/failure batch.
+	breakOneAvatar bool
 }
 
 // mockMonica serves the slice of the Monica list API the assistant fetches.
@@ -65,6 +68,10 @@ func mockMonica(t *testing.T, opt mockMonicaOptions) *httptest.Server {
 		}}
 		if opt.includeAvatar {
 			ada["information"] = map[string]any{"avatar": map[string]any{"url": srvURL + "/storage/avatar.png", "source": "photo"}}
+		}
+		if opt.breakOneAvatar {
+			ada["information"] = map[string]any{"avatar": map[string]any{"url": srvURL + "/storage/missing.png", "source": "photo"}}
+			grace["information"] = map[string]any{"avatar": map[string]any{"url": srvURL + "/storage/avatar.png", "source": "photo"}}
 		}
 		contacts = []map[string]any{ada, grace}
 		notes = []map[string]any{
@@ -307,6 +314,47 @@ func TestMonicaImportSession_AvatarDownloadedAfterImport(t *testing.T) {
 	var withPhoto int64
 	db.Model(&models.Contact{}).Where("user_id = ? AND photo <> ''", user.ID).Count(&withPhoto)
 	assert.Equal(t, int64(1), withPhoto)
+}
+
+// TestMonicaImportSession_AvatarFailurePathCounted covers processAvatars when
+// one avatar fetch 404s mid-batch (issue #725): the failure is counted, the
+// other avatar still saves, the import still reaches "done", and a nil photo
+// body from the failed fetch never reaches the save/decode path.
+func TestMonicaImportSession_AvatarFailurePathCounted(t *testing.T) {
+	monica.DisableRateLimitForTesting()
+	srv := mockMonica(t, mockMonicaOptions{breakOneAvatar: true})
+	defer srv.Close()
+
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+	var logBuf bytes.Buffer
+	log := monicaTestLogger(&logBuf)
+	mgr := NewMonicaImportManager()
+
+	resp, appErr := mgr.Connect(context.Background(), user.ID,
+		models.MonicaConnectRequest{BaseURL: srv.URL, APIToken: monicaTestToken}, false)
+	require.Nil(t, appErr)
+	require.Nil(t, mgr.StartFetch(db, user.ID, models.MonicaFetchRequest{SessionID: resp.SessionID}, log))
+	waitForPhase(t, mgr, user.ID, resp.SessionID, models.MonicaPhaseReady)
+	preview, appErr := mgr.Preview(user.ID, resp.SessionID)
+	require.Nil(t, appErr)
+	actions := make([]models.RowImportAction, len(preview.Rows))
+	for i, row := range preview.Rows {
+		actions[i] = models.RowImportAction{RowIndex: row.RowIndex, Action: "add"}
+	}
+
+	status := confirmAndWait(t, mgr, db, user.ID, resp.SessionID, actions,
+		&config.Config{ProfilePhotoDir: t.TempDir()}, log, models.MonicaPhaseDone)
+	require.NotNil(t, status.Result)
+	assert.Equal(t, 2, status.Result.PhotosQueued, "both contacts carry an avatar URL")
+	assert.Equal(t, 1, status.Result.PhotosSaved, "the reachable avatar still saves")
+	assert.Equal(t, 1, status.Result.PhotosFailed, "the 404 avatar is counted, not fatal")
+	assert.Contains(t, logBuf.String(), "Failed to fetch Monica avatar", "the per-photo failure is logged")
+
+	var withPhoto int64
+	db.Model(&models.Contact{}).Where("user_id = ? AND photo <> ''", user.ID).Count(&withPhoto)
+	assert.Equal(t, int64(1), withPhoto, "only the contact whose avatar fetched has a photo")
+	assert.NotContains(t, logBuf.String(), monicaTestToken)
 }
 
 func TestMonicaImportSession_ExtrasAndRelationshipsFetched(t *testing.T) {
