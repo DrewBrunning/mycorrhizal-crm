@@ -13,6 +13,31 @@ filename-based: it scans release assets for signature extensions (`.asc`, `.sig`
 `.sigstore`, `.sigstore.json`, ...) and ignores everything else — the attestations API, the OCI
 registry, and workflow artifacts.
 
+## How a release is cut
+
+`release.yml` (`workflow_dispatch`, one input: the version, e.g. `v0.6.6`) is the whole release
+process. It:
+
+1. registers the release in `backend/internal/schemafixture/releases.go` and regenerates its
+   committed schema dump (`cmd/genschema`), failing if any *other* dump changes — the frozen,
+   append-only migration chain must reproduce byte-identical;
+2. runs the schemafixture + genschema + releaselist test gates;
+3. commits those two files to `main` and pushes a **lightweight** tag at that commit.
+
+The tag push triggers `docker-publish.yml`, which builds and signs everything listed below and
+creates the GitHub Release. That hand-off works only because the push uses a **GitHub App token**
+(repo variable `RELEASE_APP_ID` + secret `RELEASE_APP_PRIVATE_KEY`, App on `main`'s
+branch-protection bypass list) — a tag pushed with the default `GITHUB_TOKEN` cannot trigger
+another workflow. The App token is scoped to `contents: write` and is used by this one
+`workflow_dispatch`-only workflow; there is no PR-triggered path to it.
+
+Because the tag points at a real commit on `main` (the one carrying the dump), the
+`schema-fixture-gate` in `docker-publish.yml` passes and source↔release correspondence (below)
+is exact — there is no post-review "move the tag" step.
+
+If `docker-publish.yml` fails after the tag is pushed, re-run it from its own **Run workflow**
+button with the `tag` input; do not re-dispatch `release.yml` (it refuses an existing tag).
+
 ## What's attached to a release, and what it proves
 
 | Artifact | Signal | Proves | Expires? |
@@ -150,8 +175,9 @@ Compare the `commit` field (a 12-character prefix) against the tag's actual comm
 git ls-remote https://github.com/DrewBrunning/mycorrhizal-crm.git refs/tags/<TAG>
 ```
 
-(or `refs/tags/<TAG>^{}` if the tag is annotated — that resolves to the underlying commit rather
-than the tag object). The two should share the same prefix. This same commit also appears in the
+(Release tags are lightweight and point directly at a commit on `main` — the one `release.yml`
+pushed, carrying that release's schema dump. `refs/tags/<TAG>^{}` still works and resolves to the
+same commit.) The two should share the same prefix. This same commit also appears in the
 provenance JSON pulled in step 4 above, so all three — the running binary, the git tag, and the
 signed provenance — should agree.
 

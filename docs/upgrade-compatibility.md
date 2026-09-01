@@ -203,12 +203,15 @@ database by any refusal.
   longest supported skip (`v0.6.0 → current`) against real migrated fixture
   databases, asserting row counts and search consistency survive. The
   migration-tests CI workflow matrixes one job per supported release
-  (`v0.6.0 → current`, `v0.6.1 → current`, …), each migrating its fixture
-  through `database.InitDB` (the path the server boots through) and asserting
-  the final version and row counts, plus a down-direction job that round-trips
-  every migration up → down → up against a populated fixture and gates on every
-  migration shipping its `.down.sql`. A new release without a fixture fails CI
-  (the completeness test plus the docker-publish gate).
+  (`v0.6.0 → current`, `v0.6.1 → current`, …) — the legs are derived from
+  `schemafixture.SupportedReleases` (`cmd/releaselist`), not hand-listed, so a
+  release added by `release.yml` is covered without a workflow edit. Each
+  migrates its fixture through `database.InitDB` (the path the server boots
+  through) and asserts the final version and row counts, plus a down-direction
+  job that round-trips every migration up → down → up against a populated
+  fixture and gates on every migration shipping its `.down.sql`. A new release
+  without a fixture fails CI (the completeness test plus the docker-publish
+  gate).
 - **Full-stack upgrades (DEPLOY-02, issue #451):**
   `internal/schemafixture`'s `deploy02_test.go` upgrades a real three-piece
   install — the database file beside real `PROFILE_PHOTO_DIR` /

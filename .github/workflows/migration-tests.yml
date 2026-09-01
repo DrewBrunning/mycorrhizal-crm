@@ -82,6 +82,45 @@ jobs:
           BACKEND_CHANGED: ${{ steps.filter.outputs.backend }}
           WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
 
+  # The upgrade-matrix legs, one per supported release, derived from
+  # internal/schemafixture.SupportedReleases (the registry) rather than a
+  # hand-maintained list — a list that had already drifted (v0.6.4/v0.6.5 were
+  # registered but missing here). cmd/releaselist emits the matrix JSON; a
+  # release added by release.yml is covered on its first CI run with no edit
+  # to this file.
+  release-matrix:
+    permissions:
+      contents: read
+    name: Enumerate supported releases
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    outputs:
+      matrix: ${{ steps.list.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # Output is a bare JSON array [{release, entry}, ...] built from the Go
+      # registry — not attacker-influenced, safe to fromJSON into the matrix.
+      - name: List SupportedReleases as matrix JSON
+        id: list
+        working-directory: backend
+        run: |
+          set -eu
+          matrix="$(go run ./cmd/releaselist)"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "$matrix"
+
   # One job per supported release. Each runs only that release's subtest of
   # TestUpgradeFixtureToCurrent (issue #437 action 1: matrix over the fixtures
   # rather than one test with a loop, so a failure names the release that
@@ -92,22 +131,14 @@ jobs:
     name: Upgrade ${{ matrix.entry }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: changes
+    needs: [changes, release-matrix]
     if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
     strategy:
-      # One release's failure must not cancel the others — full signal from all
-      # four on every run.
+      # One release's failure must not cancel the others — full signal from
+      # every release on every run.
       fail-fast: false
       matrix:
-        include:
-          - release: v0.6.0
-            entry: v0.6.0 → current (longest supported skip)
-          - release: v0.6.1
-            entry: v0.6.1 → current
-          - release: v0.6.2
-            entry: v0.6.2 → current
-          - release: v0.6.3
-            entry: v0.6.3 → current
+        include: ${{ fromJSON(needs.release-matrix.outputs.matrix) }}
 
     steps:
       - name: Checkout repository
