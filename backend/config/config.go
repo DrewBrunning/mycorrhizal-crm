@@ -73,6 +73,7 @@ type Config struct {
 	SystemEventRetentionDays     int    // Days system_events rows survive before the retention purge removes them (issue #424, default 30)
 	WebhookDeliveryRetentionDays int    // Days webhook_deliveries rows survive before the purge job hard-deletes them (issue #622, default 30)
 	JobRunRetentionDays          int    // Days job_runs rows survive before the retention purge removes them (issue #391, default 30)
+	IdempotencyKeyRetentionHours int    // Hours idempotency_keys rows survive before the TTL purge removes them (issue #459, CON-04, default 24; <=0 disables)
 
 	// General-API rate limiting, per client IP. Configurable because the
 	// hardcoded values had already been raised once to stop a full Playwright
@@ -222,6 +223,7 @@ func LoadConfig() *Config {
 		SystemEventRetentionDays:      getIntEnv("SYSTEM_EVENT_RETENTION_DAYS", 30),
 		WebhookDeliveryRetentionDays:  getIntEnv("WEBHOOK_DELIVERY_RETENTION_DAYS", 30),
 		JobRunRetentionDays:           getIntEnv("JOB_RUN_RETENTION_DAYS", 30),
+		IdempotencyKeyRetentionHours:  getIntEnv("IDEMPOTENCY_KEY_RETENTION_HOURS", 24),
 		APIRateLimitInterval:          time.Duration(getIntEnv("API_RATE_LIMIT_INTERVAL_MS", 600)) * time.Millisecond,
 		APIRateLimitBurst:             getIntEnv("API_RATE_LIMIT_BURST", 1000),
 		ImmichSyncIntervalHours:       getIntEnv("IMMICH_SYNC_INTERVAL_HOURS", 6),

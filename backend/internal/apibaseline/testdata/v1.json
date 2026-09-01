@@ -64,7 +64,13 @@
     {
       "method": "POST",
       "path": "/activities",
-      "parameters": null,
+      "parameters": [
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": false
+        }
+      ],
       "request_body": "ref:ActivityInput",
       "responses": [
         {
@@ -77,6 +83,14 @@
         },
         {
           "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
           "schema": "ref:Error"
         }
       ]
@@ -1820,7 +1834,13 @@
     {
       "method": "POST",
       "path": "/contacts",
-      "parameters": null,
+      "parameters": [
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": false
+        }
+      ],
       "request_body": "ref:ContactRecordInput",
       "responses": [
         {
@@ -1829,6 +1849,14 @@
         },
         {
           "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
           "schema": "ref:Error"
         }
       ]
@@ -2927,6 +2955,11 @@
       "path": "/contacts/{id}/reminders",
       "parameters": [
         {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": false
+        },
+        {
           "name": "id",
           "in": "path",
           "required": true
@@ -2944,6 +2977,14 @@
         },
         {
           "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
           "schema": "ref:Error"
         }
       ]
@@ -3755,7 +3796,13 @@
     {
       "method": "POST",
       "path": "/gifts",
-      "parameters": null,
+      "parameters": [
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": false
+        }
+      ],
       "request_body": "ref:GiftInput",
       "responses": [
         {
@@ -3768,6 +3815,14 @@
         },
         {
           "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
           "schema": "ref:Error"
         }
       ]
@@ -4517,7 +4572,13 @@
     {
       "method": "POST",
       "path": "/life-events",
-      "parameters": null,
+      "parameters": [
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": false
+        }
+      ],
       "request_body": "ref:LifeEventInput",
       "responses": [
         {
@@ -4530,6 +4591,14 @@
         },
         {
           "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
           "schema": "ref:Error"
         }
       ]
@@ -4990,7 +5059,13 @@
     {
       "method": "POST",
       "path": "/notes",
-      "parameters": null,
+      "parameters": [
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": false
+        }
+      ],
       "request_body": "ref:NoteInput",
       "responses": [
         {
@@ -5003,6 +5078,14 @@
         },
         {
           "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
           "schema": "ref:Error"
         }
       ]
@@ -5697,7 +5780,13 @@
     {
       "method": "POST",
       "path": "/relationship-edges",
-      "parameters": null,
+      "parameters": [
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": false
+        }
+      ],
       "request_body": "ref:RelationshipEdgeInput",
       "responses": [
         {
@@ -5710,6 +5799,14 @@
         },
         {
           "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
           "schema": "ref:Error"
         }
       ]

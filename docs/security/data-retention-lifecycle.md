@@ -614,6 +614,42 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   (`TestMeerkatImport_ReRunIsIdempotent`), `backend/controllers/delete_cascade_coverage_test.go`
   (`import_source_links` seeded + swept in the DeleteUser sweep, bucket `fk-cascade-user`).
 
+## 22. Idempotency keys (`idempotency_keys`) — user-scoped retry-replay bookkeeping
+
+- **Where / who**: one row per `(user_id, idempotency_key)`, claimed by
+  `middleware.IdempotencyMiddleware` on the first authenticated `POST` that carries an
+  `Idempotency-Key` header (CON-04, issue #459, ADR 0010). `user_id` is the calling user; the middleware
+  reads/writes only that user's own rows. Distinct from §21 (`import_source_links`, the per-source-entity
+  import ledger) — this is the general inbound-mutation retry guard for the REST API.
+- **What it contains**: the opaque client key, the request `method` + route template `path`, a
+  SHA-256 `request_fingerprint` over method+path+body (to reject a key reused for a *different*
+  request), a `state` (`pending` → `completed`), and — on a 2xx — the stored `response_status` and
+  `response_body` that later retries replay verbatim. `response_body` is a copy of the handler's
+  response, so for a create it holds the serialized new entity (the same class of copy as a
+  `webhook_deliveries` payload, §18). No credentials; nothing the caller did not already send or
+  receive.
+- **Retention**: `IDEMPOTENCY_KEY_RETENTION_HOURS` (default **24**, `config/config.go`), anchored on
+  `created_at` (when the key was claimed). `PurgeExpiredIdempotencyKeys` hard-deletes older rows on a
+  6-hour job-locked cron (`services/idempotency_purge_service.go`), the same shape as the
+  webhook-delivery purge (§18). The window is short by design: a key protects one client operation
+  across its retries, which happen within seconds to minutes. `IDEMPOTENCY_KEY_RETENTION_HOURS <= 0`
+  is treated as "disabled", never "delete everything". No CardDAV/CalDAV projection, no Android
+  offline mirror.
+- **Deletion / propagation**: hard-delete (no `deleted_at` — transient bookkeeping, ADR 0004's
+  operational-row class). Removed with the account by `DeleteUser`'s explicit enumeration
+  (`go-cascade-user` bucket in `controllers/delete_cascade_coverage_test.go`). Dropped wholesale by
+  migration `000047`'s `down.sql` (documented there as losing only the dedup window, not user data).
+- **Backups**: included in the DB snapshot like any other table; the `response_body` copy inherits the
+  field-level at-rest encryption applied to the entities it echoes and is bounded by the 24h window,
+  so it needs no special handling in the backup-confidentiality boundary (§10).
+- **Verification**: `backend/services/idempotency_purge_service_test.go`
+  (`TestPurgeExpiredIdempotencyKeys_RemovesOnlyExpired`,
+  `TestPurgeExpiredIdempotencyKeys_NonPositiveRetentionDisables`,
+  `TestPurgeExpiredIdempotencyKeysScheduled_JobLockGuards`),
+  `backend/middleware/idempotency_test.go` (claim/replay/422/concurrent),
+  `backend/controllers/delete_cascade_coverage_test.go` (`idempotency_keys` seeded + swept in the
+  DeleteUser sweep, bucket `go-cascade-user`).
+
 ## Known gaps
 
 One item surfaced by walking every data type through the four questions above. It does not block this
@@ -635,6 +671,7 @@ per §1/§7/§8), but it is a genuine, named gap rather than a silently-accepted
 | System-event retention window | `backend/services/system_event_purge_service_test.go` |
 | Webhook delivery purge window + payload trim | `backend/services/webhook_delivery_purge_service_test.go` (9 cases), `webhook_delivery_test.go` trim pins |
 | Job-run retention window | `backend/services/job_run_purge_service_test.go` |
+| Idempotency-key TTL window + job lock; swept on account delete | `backend/services/idempotency_purge_service_test.go` (3 cases), `backend/controllers/delete_cascade_coverage_test.go` |
 | Import-run history: one row per confirmed import, swept on account delete | `backend/services/import_session_history_test.go`, `backend/controllers/import_history_controller_test.go`, `backend/controllers/delete_cascade_coverage_test.go` |
 | Import source links: one row per imported source entity, idempotency ledger, swept on account delete | `backend/services/import_source_test.go`, `backend/services/monica_import_test.go`, `backend/services/meerkat_import_test.go`, `backend/controllers/delete_cascade_coverage_test.go` |
 | Storage-growth history: one sample per run, pruned past retention | `backend/services/storage_sample_service_test.go`, `backend/database/migrate_storage_samples_test.go` |

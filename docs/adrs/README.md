@@ -15,3 +15,4 @@ ticket backlog moved to GitHub Issues.
 | [0007](0007-source-import-mapping.md) | Source imports: Meerkat direct-DB + Monica snapshot over one shared mapping framework | accepted |
 | [0008](0008-conditional-write-enforcement.md) | REST conditional-write enforcement (If-Match / optimistic concurrency) | accepted |
 | [0009](0009-rest-conflict-policy.md) | REST write-conflict policy (reject-and-return, per entity shape) | accepted |
+| [0010](0010-idempotency-keys.md) | One idempotency mechanism — a client-supplied `Idempotency-Key` | accepted |

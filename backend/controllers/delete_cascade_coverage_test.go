@@ -98,6 +98,7 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"device_registrations":   goCascadeUser,
 	"field_definitions":      goCascadeUser,
 	"households":             goCascadeUser,
+	"idempotency_keys":       goCascadeUser,
 	"immich_configs":         goCascadeUser,
 	"import_runs":            goCascadeUser,
 	"import_source_links":    fkCascadeUser,
@@ -429,6 +430,7 @@ func TestDeleteCascadeCoverage_DeleteUserSweepsEveryDeclaredUserTable(t *testing
 	require.NoError(t, db.Create(&models.CardDAVSync{UserID: target.ID, SyncToken: "tok", LastModified: time.Now()}).Error)
 	require.NoError(t, db.Create(&models.DeviceRegistration{UserID: target.ID, Token: "tok", Client: "fcm"}).Error)
 	require.NoError(t, db.Create(&models.DismissedHouseholdSuggestion{UserID: target.ID, AddressHash: "ah", MemberHash: "mh"}).Error)
+	require.NoError(t, db.Create(&models.IdempotencyKey{UserID: target.ID, Key: "sweep-key", Method: "POST", Path: "/api/v1/contacts", RequestFingerprint: "fp", State: models.IdempotencyStateCompleted, ResponseStatus: 201, CreatedAt: time.Now(), UpdatedAt: time.Now()}).Error)
 	require.NoError(t, db.Create(&models.ImmichConfig{UserID: target.ID, BaseURL: "https://immich.example"}).Error)
 	require.NoError(t, db.Create(&models.ImportRun{UserID: target.ID, Format: models.ImportFormatCSV, TotalProcessed: 3, Created: 2, Skipped: 1}).Error)
 	require.NoError(t, db.Create(&models.LinkFieldType{UserID: target.ID, Name: "x", Protocol: "https://x/{value}", Category: "other"}).Error)
@@ -471,6 +473,7 @@ func TestDeleteCascadeCoverage_DeleteUserSweepsEveryDeclaredUserTable(t *testing
 		scopedCount("gifts", &models.Gift{}, "user_id = ?", target.ID),
 		scopedCount("household_members", &models.HouseholdMember{}, "user_id = ?", target.ID),
 		scopedCount("households", &models.Household{}, "user_id = ?", target.ID),
+		scopedCount("idempotency_keys", &models.IdempotencyKey{}, "user_id = ?", target.ID),
 		scopedCount("immich_configs", &models.ImmichConfig{}, "user_id = ?", target.ID),
 		scopedCount("import_runs", &models.ImportRun{}, "user_id = ?", target.ID),
 		scopedCount("life_events", &models.LifeEvent{}, "user_id = ?", target.ID),

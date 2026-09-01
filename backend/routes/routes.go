@@ -67,6 +67,11 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 		protected := v1.Group("/")
 		protected.Use(middleware.APIRateLimitMiddleware())
 		protected.Use(middleware.AuthMiddleware(cfg))
+		// CON-04 (issue #459, ADR 0010): one idempotency mechanism for the
+		// whole authenticated surface. Inert unless a request is a POST
+		// carrying an Idempotency-Key header, so every mutation is covered by
+		// default and a new keyed POST needs no wiring.
+		protected.Use(middleware.IdempotencyMiddleware())
 		{
 			protected.POST("/users/change-password", middleware.ValidateJSONMiddleware(&models.ChangePasswordInput{}), func(c *gin.Context) {
 				controllers.ChangePassword(c, cfg)

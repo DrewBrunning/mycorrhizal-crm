@@ -25,3 +25,4 @@ backend/services/seafile_client.go          # crypto/tls for the outbound Seafil
 backend/services/webdav_client.go           # crypto/tls for the outbound Nextcloud/WebDAV transport (TLS config, not a primitive choice)
 backend/controllers/oidc_controller.go      # crypto/subtle constant-time comparison of OIDC state/nonce cookies — a comparison helper, not a primitive selection; 6.2.8 (constant-time) is out-of-scope L3
 backend/controllers/metrics_controller.go   # crypto/subtle constant-time comparison of the METRICS_TOKEN scrape credential (issue #389) — a comparison helper, not a primitive selection; 6.2.8 (constant-time) is out-of-scope L3
+backend/middleware/idempotency.go            # crypto/sha256 over method+path+body as a request fingerprint for CON-04 idempotency-key replay (issue #459) — detects a key reused for a different request, a change-detection hash, not a cryptographic decision (same class as contact_sync_service.go)
