@@ -146,6 +146,28 @@ The bundled Docker image's `HEALTHCHECK` and the CI boot-wait probes all use `/h
 single-container nginx is not a load balancer, so `/health/ready` is not wired to anything by
 default — put it in front of your own proxy/LB if you run more than one instance.
 
+### Startup, migration, and probe grace periods
+
+Startup runs every pending migration **before** the process binds its listener (`database.InitDB`
+in `main.go`, ahead of route registration and `ListenAndServe`). Two consequences that matter to
+whoever wires up probes (DEPLOY-03, issue #452):
+
+- **A probe can never see a false `ready` mid-migration.** While migrations run there is no HTTP
+  server at all — `/health/live` and `/health/ready` are connection-refused, which every
+  orchestrator reads as "not ready". Once serving, `/health/ready` still returns `503` for a
+  dirty schema or a schema that is behind *or* ahead of the binary. There is no window in which
+  traffic is routed at a half-migrated instance.
+- **A probe grace period shorter than the longest migration is an outage.** If a
+  `livenessProbe` (or Docker `HEALTHCHECK` feeding a restart policy) starts failing during a long
+  startup migration, the orchestrator kills the container mid-migration — which then recovers via
+  the [dirty-schema path](operations/migration-recovery.md#dirty-schema), or crash-loops if the
+  probe keeps firing. Size the grace period from the measured migration durations in
+  [Scale testing → Recorded resource requirements](development/scale-testing.md#recorded-resource-requirements):
+  Kubernetes `startupProbe` (`failureThreshold × periodSeconds` ≥ the longest supported upgrade on
+  your data size), or Docker `HEALTHCHECK --start-period`. The default image's `--start-period=10s`
+  suits a small database; raise it for a large one, or gate startup on `startupProbe` and keep
+  `livenessProbe` for steady state only.
+
 All three endpoints are unauthenticated (like the original `/health`) and deliberately carry no
 secrets. The deep endpoint's `reason`/`detail` strings are generic categories only — the underlying
 errors, absolute paths, the SMTP host/OIDC URL, and any table names or row counts from a failed
