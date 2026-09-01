@@ -2527,6 +2527,143 @@ paths:
         "404":
           description: Unknown or expired session.
 
+  # --- Meerkat import assistant (issue #550) ---
+  # Direct-DB (ADR-0007): the user uploads their Meerkat CRM SQLite file, the
+  # server opens it read-only, and the mapped plan is reviewed and confirmed
+  # through the shared source-import engine. The uploaded file is held only as
+  # a 0600 temp file for the session's lifetime.
+  /contacts/import/meerkat/upload:
+    post:
+      summary: Upload a Meerkat SQLite database and open an import session
+      operationId: uploadMeerkatDatabase
+      description: >
+        Validates the file (SQLite magic header, size cap, .db/.sqlite/.sqlite3
+        extension), stages it as a temp file, parses it, and returns a session
+        ID plus the per-source-user picker (a Meerkat deployment can hold
+        several users; the import never silently mixes accounts) and the
+        whole-file totals.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Database staged; source-user picker + totals returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeerkatUploadResponse"
+        "400":
+          description: Not a Meerkat database, too large, wrong extension, or over the account-size cap.
+        "429":
+          description: Too many concurrent Meerkat import sessions for this user.
+  /contacts/import/meerkat/fetch:
+    post:
+      summary: Start the background map + preview build for a chosen source user
+      operationId: startMeerkatFetch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeerkatFetchRequest"
+      responses:
+        "202":
+          description: Preparation started; poll GET /contacts/import/meerkat/status.
+        "400":
+          description: Unknown/expired/foreign session.
+        "409":
+          description: The session is already being prepared.
+  /contacts/import/meerkat/status:
+    get:
+      summary: Poll map/import progress for a session
+      operationId: getMeerkatImportStatus
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Current phase and progress; the result is set from phase "importing" on.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonicaImportStatus"
+        "400":
+          description: Missing session_id.
+        "404":
+          description: Unknown or expired session.
+  /contacts/import/meerkat/preview:
+    get:
+      summary: Get the review rows and loss report for a prepared database
+      operationId: getMeerkatImportPreview
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Per-contact review rows, related-entity totals, and the loss report.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonicaPreviewResponse"
+        "400":
+          description: Missing session_id, or the database is not prepared yet.
+        "404":
+          description: Unknown or expired session.
+  /contacts/import/meerkat/confirm:
+    post:
+      summary: Start the Meerkat import with the review step's per-contact actions
+      operationId: confirmMeerkatImport
+      description: >
+        Starts the import in the background and returns 202. The client polls
+        GET /status: phase advances importing → done (or → cancelled / failed).
+        Runs through the shared engine in one transaction bound to a session
+        context, so POST /cancel during "importing" rolls the whole import
+        back. Records an import_runs history row (format "meerkat"); a re-run
+        skips contacts already imported.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MonicaConfirmRequest"
+      responses:
+        "202":
+          description: Import started; poll GET /contacts/import/meerkat/status.
+        "400":
+          description: Unknown/expired/foreign session, or the database is not prepared yet.
+  /contacts/import/meerkat/cancel:
+    post:
+      summary: Cancel an in-flight Meerkat import, or drop the session
+      operationId: cancelMeerkatImport
+      description: >
+        During "importing" this cancels the transaction context — the whole
+        import rolls back, phase becomes "cancelled", the session is kept for a
+        retry. In any other phase it drops the session and deletes its
+        uploaded-file temp directory.
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: In-flight import cancelled (rolled back), or the session was dropped.
+        "400":
+          description: Missing session_id.
+        "404":
+          description: Unknown or expired session.
+
   # --- Contact sharing (P1, P1) ---
   # One-time filtered copy between two users on the same instance -- not a
   # standing/live share (P1b, deferred). Accept is preview-only (parses the
@@ -12396,6 +12533,51 @@ components:
             photos_queued: { type: integer }
             photos_saved: { type: integer }
             photos_failed: { type: integer }
+
+    # --- Meerkat import assistant (issue #550) ---
+    MeerkatSourceUser:
+      type: object
+      description: One user of the uploaded Meerkat database, for the source-user picker.
+      properties:
+        id: { type: integer, format: int64 }
+        username: { type: string }
+        email: { type: string }
+        name: { type: string }
+        contacts: { type: integer, description: "How many contacts belong to this source user." }
+    MeerkatEntityCounts:
+      type: object
+      description: Whole-file totals across all source users, shown after upload.
+      properties:
+        contacts: { type: integer }
+        relationships: { type: integer }
+        notes: { type: integer }
+        activities: { type: integer }
+        reminders: { type: integer }
+    MeerkatUploadResponse:
+      type: object
+      properties:
+        session_id: { type: string }
+        source_users:
+          type: array
+          items: { $ref: "#/components/schemas/MeerkatSourceUser" }
+        default_source_user_id:
+          type: integer
+          format: int64
+          description: The first source user; pre-selected in the picker. Absent when the database has no user scoping.
+        totals: { $ref: "#/components/schemas/MeerkatEntityCounts" }
+    MeerkatFetchRequest:
+      type: object
+      required: [session_id]
+      description: >
+        Starts the background map + preview build, scoped to source_user_id
+        (defaults to the first source user). ADR-0007: the importer never
+        silently mixes accounts.
+      properties:
+        session_id: { type: string }
+        source_user_id:
+          type: integer
+          format: int64
+          description: Which source user's data to import; omit to use the default.
 
     # --- Neutral RFC 9553 contact model (preserved ) ---
     CRMEnvelope:

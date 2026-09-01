@@ -32,6 +32,7 @@ var largeBodyRoutePaths = map[string]bool{
 	"/api/v1/contacts/import/upload":           true,
 	"/api/v1/contacts/import/vcf/upload":       true,
 	"/api/v1/contacts/import/jscontact/upload": true,
+	"/api/v1/contacts/import/meerkat/upload":   true, // Meerkat SQLite file (issue #550, MaxMeerkatDBSize)
 }
 
 // BodySizeLimitMiddleware limits the size of request bodies. For requests

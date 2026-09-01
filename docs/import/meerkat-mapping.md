@@ -4,6 +4,13 @@ The import reads a Meerkat CRM SQLite database file directly (ADR 0007 — the o
 Meerkat's relationship, circle, and custom-field structure). `backend/meerkat` opens it read-only
 and tolerates any Meerkat schema version; `backend/services/meerkat_import.go` maps it.
 
+The **web assistant** landed with issue #550: the user uploads the `.db` file from the Data
+settings page, picks which source user to import (a Meerkat deployment can hold several; the
+importer never silently mixes accounts), sees the loss report before committing, and confirms —
+the import runs in the background so the flow survives navigating away. Endpoints:
+`/api/v1/contacts/import/meerkat/*`; orchestration in `services.MeerkatImportManager`. The
+uploaded file is held only as a `0600` temp file for the session's lifetime.
+
 ## Path
 
 ```

@@ -377,6 +377,24 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   the token itself is not stored alongside them.
 - **Backups**: never — nothing is persisted.
 
+### 12b. Meerkat import assistant session (issue #550)
+
+- **Where / who**: `MeerkatImportManager` (`backend/services/meerkat_import_session.go`) — an
+  in-memory session **plus the uploaded Meerkat SQLite file on disk**: `os.MkdirTemp` +
+  `meerkat.sqlite` written `0600` under the OS temp dir, one directory per session. The file is a
+  copy of the user's own Meerkat CRM database; the reader (`backend/meerkat/reader.go`) opens it
+  `mode=ro`, validates the SQLite magic header first, and never writes/migrates/executes anything
+  from it (hostile-input handling; coordinates with #432/#415). The parsed snapshot and mapped
+  review plan are held in memory.
+- **Retention**: sliding `meerkatSessionExpiry = 60m`, hard-capped at
+  `meerkatSessionMaxLifetime = 6h`; the expiry slides on every status/preview poll.
+- **Deletion / propagation**: the temp directory is `os.RemoveAll`'d on `cancel`, on expiry
+  (`CleanupExpired`), and whenever the session is dropped; a process restart loses the in-memory
+  session and the OS reclaims the temp dir. Nothing about the upload is written to the application
+  database. Imported contacts follow §1's lifecycle once the import commits.
+- **Backups**: never — the temp file lives outside any backed-up path and is deleted with the
+  session.
+
 ## 13. External integration credentials (WebDAV / Paperless / Immich / Seafile)
 
 - **Where / who**: one config row per user per integration, app-password/API-key encrypted at rest

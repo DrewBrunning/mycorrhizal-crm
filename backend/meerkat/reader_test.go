@@ -212,3 +212,49 @@ func TestOpen_ReadsEveryContactColumn(t *testing.T) {
 	assert.Equal(t, `["F"]`, *c.CirclesJSON)
 	assert.Equal(t, `{"K":"V"}`, *c.CustomFields)
 }
+
+func TestOpen_ReadsUsersForThePicker(t *testing.T) {
+	db, path := newTestDB(t)
+	_, err := db.Exec(`
+		CREATE TABLE contacts (id INTEGER PRIMARY KEY, firstname TEXT);
+		CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, email TEXT, name TEXT);
+		INSERT INTO users (id, username, email, name) VALUES
+			(1, 'alice', 'alice@example.com', 'Alice A'),
+			(2, 'bob', 'bob@example.com', NULL);
+	`)
+	require.NoError(t, err)
+
+	snap, err := Open(path)
+	require.NoError(t, err)
+	require.Len(t, snap.Users, 2)
+	assert.Equal(t, int64(1), snap.Users[0].ID)
+	assert.Equal(t, "alice", *snap.Users[0].Username)
+	assert.Equal(t, "Alice A", *snap.Users[0].Name)
+	assert.Nil(t, snap.Users[1].Name)
+}
+
+func TestOpen_UsersFallBackToFirstLastName(t *testing.T) {
+	db, path := newTestDB(t)
+	_, err := db.Exec(`
+		CREATE TABLE contacts (id INTEGER PRIMARY KEY);
+		CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, first_name TEXT, last_name TEXT);
+		INSERT INTO users (id, username, first_name, last_name) VALUES (5, 'carol', 'Carol', 'C');
+	`)
+	require.NoError(t, err)
+
+	snap, err := Open(path)
+	require.NoError(t, err)
+	require.Len(t, snap.Users, 1)
+	require.NotNil(t, snap.Users[0].Name)
+	assert.Equal(t, "Carol C", *snap.Users[0].Name)
+}
+
+func TestOpen_NoUsersTable(t *testing.T) {
+	db, path := newTestDB(t)
+	_, err := db.Exec(`CREATE TABLE contacts (id INTEGER PRIMARY KEY);`)
+	require.NoError(t, err)
+
+	snap, err := Open(path)
+	require.NoError(t, err)
+	assert.Empty(t, snap.Users)
+}

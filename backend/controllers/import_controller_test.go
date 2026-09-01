@@ -42,6 +42,7 @@ func registerImportRoutes(router *gin.Engine, cfg *config.Config) {
 	// fresh manager per test so each starts clean.
 	importSessions = services.NewImportSessionManager()
 	monicaImportSessions = services.NewMonicaImportManager()
+	meerkatImportSessions = services.NewMeerkatImportManager()
 
 	router.POST("/contacts/import/upload", UploadCSVForImport)
 	router.POST("/contacts/import/preview", middleware.ValidateJSONMiddleware(&models.ImportPreviewRequest{}), PreviewImport)
@@ -65,6 +66,13 @@ func registerImportRoutes(router *gin.Engine, cfg *config.Config) {
 		ConfirmMonicaImport(c, cfg)
 	})
 	router.POST("/contacts/import/monica/cancel", CancelMonicaImport)
+
+	router.POST("/contacts/import/meerkat/upload", UploadMeerkatDatabase)
+	router.POST("/contacts/import/meerkat/fetch", middleware.ValidateJSONMiddleware(&models.MeerkatFetchRequest{}), StartMeerkatFetch)
+	router.GET("/contacts/import/meerkat/status", GetMeerkatImportStatus)
+	router.GET("/contacts/import/meerkat/preview", GetMeerkatImportPreview)
+	router.POST("/contacts/import/meerkat/confirm", middleware.ValidateJSONMiddleware(&models.SourceImportConfirmRequest{}), ConfirmMeerkatImport)
+	router.POST("/contacts/import/meerkat/cancel", CancelMeerkatImport)
 }
 
 // newFileUploadRequest builds a multipart/form-data POST with a single "file"

@@ -422,7 +422,7 @@ func (m *MonicaImportManager) runFetch(ctx context.Context, db *gorm.DB, s *moni
 
 	s.setPhase(models.MonicaPhaseBuildingPreview, 0, len(snapshot.Contacts))
 	plan := MapMonicaSnapshot(snapshot, time.Now())
-	previews := m.buildPreview(db, s, plan)
+	previews := buildSourceImportPreview(db, s.userID, plan)
 
 	s.mu.Lock()
 	s.plan = plan
@@ -440,57 +440,6 @@ func (m *MonicaImportManager) runFetch(ctx context.Context, db *gorm.DB, s *moni
 		Int("activities", len(plan.Activities)).
 		Int("issues", len(plan.Report.Issues)).
 		Msg("Monica snapshot fetched and mapped")
-}
-
-// buildPreview turns the mapped plan into review rows: parsed fields,
-// validation, duplicate detection + merge diff (the same BuildImportRowPreview
-// every file import uses), plus the per-contact graph-entity tally.
-func (m *MonicaImportManager) buildPreview(db *gorm.DB, s *monicaImportSession, plan *ImportSourcePlan) []models.MonicaImportRowPreview {
-	refIndex := make(map[string]int, len(plan.Contacts))
-	for i := range plan.Contacts {
-		refIndex[plan.Contacts[i].Ref.ExternalID] = i
-	}
-
-	related := make([]models.MonicaRowRelatedCounts, len(plan.Contacts))
-	bump := func(r SourceRef, f func(*models.MonicaRowRelatedCounts)) {
-		if i, ok := refIndex[r.ExternalID]; ok {
-			f(&related[i])
-		}
-	}
-	for _, n := range plan.Notes {
-		bump(n.Contact, func(c *models.MonicaRowRelatedCounts) { c.Notes++ })
-	}
-	for _, a := range plan.Activities {
-		for _, cr := range a.Contacts {
-			bump(cr, func(c *models.MonicaRowRelatedCounts) { c.Activities++ })
-		}
-	}
-	for _, r := range plan.Reminders {
-		bump(r.Contact, func(c *models.MonicaRowRelatedCounts) { c.Reminders++ })
-	}
-	for _, g := range plan.Gifts {
-		bump(g.Contact, func(c *models.MonicaRowRelatedCounts) { c.Gifts++ })
-	}
-	for _, rel := range plan.Relationships {
-		bump(rel.Source, func(c *models.MonicaRowRelatedCounts) { c.Relationships++ })
-		bump(rel.Target, func(c *models.MonicaRowRelatedCounts) { c.Relationships++ })
-	}
-
-	previews := make([]models.MonicaImportRowPreview, 0, len(plan.Contacts))
-	var batch []*models.Contact
-	var stats ImportStats
-	for i := range plan.Contacts {
-		contact := &models.Contact{}
-		models.ApplyRecordToContact(contact, plan.Contacts[i].Record, "")
-		row := BuildImportRowPreview(db, s.userID, contact, i, batch, nil, &stats)
-		batch = append(batch, contact)
-		previews = append(previews, models.MonicaImportRowPreview{
-			ImportRowPreview: row,
-			Related:          related[i],
-			HasPhoto:         plan.Contacts[i].PhotoURL != "",
-		})
-	}
-	return previews
 }
 
 // Status returns the current phase and progress for polling.
@@ -527,41 +476,17 @@ func (m *MonicaImportManager) Preview(userID uint, sessionID string) (*models.Mo
 		return nil, apperrors.ErrInvalidInput("session", "The Monica data is not fetched yet")
 	}
 
-	resp := &models.MonicaPreviewResponse{
-		SessionID:  sessionID,
-		Rows:       s.previews,
-		TotalRows:  len(s.previews),
-		LossReport: mapMonicaIssues(s.plan.Report.Issues),
-	}
-	for _, row := range s.previews {
-		if len(row.ValidationErrors) > 0 {
-			resp.ErrorCount++
-		} else {
-			resp.ValidRows++
-		}
-		if row.DuplicateMatch != nil {
-			resp.DuplicateCount++
-		}
-		resp.Totals.Activities += row.Related.Activities
-		resp.Totals.Notes += row.Related.Notes
-		resp.Totals.Reminders += row.Related.Reminders
-		resp.Totals.Gifts += row.Related.Gifts
-	}
-	resp.Totals.Relationships = len(s.plan.Relationships)
-	return resp, nil
-}
-
-func mapMonicaIssues(issues []ImportIssue) []models.MonicaImportIssue {
-	out := make([]models.MonicaImportIssue, 0, len(issues))
-	for _, iss := range issues {
-		out = append(out, models.MonicaImportIssue{
-			Record:   iss.Record,
-			Field:    iss.Field,
-			Category: iss.Category,
-			Message:  iss.Message,
-		})
-	}
-	return out
+	validRows, dupCount, errCount, totals := previewTotals(s.previews, len(s.plan.Relationships))
+	return &models.MonicaPreviewResponse{
+		SessionID:      sessionID,
+		Rows:           s.previews,
+		TotalRows:      len(s.previews),
+		ValidRows:      validRows,
+		DuplicateCount: dupCount,
+		ErrorCount:     errCount,
+		Totals:         totals,
+		LossReport:     mapSourceImportIssues(s.plan.Report.Issues),
+	}, nil
 }
 
 // avatarTask defers one contact-photo download until after the import commits.
@@ -590,7 +515,7 @@ func (m *MonicaImportManager) Confirm(db *gorm.DB, userID uint, req models.Monic
 	previews := s.previews
 	s.mu.Unlock()
 
-	actions, appErr := m.resolveActions(db, userID, plan, previews, req.Actions)
+	actions, appErr := resolveSourceContactActions(db, userID, plan, previews, req.Actions)
 	if appErr != nil {
 		return appErr
 	}
@@ -625,7 +550,7 @@ func (m *MonicaImportManager) runImport(ctx context.Context, db *gorm.DB, s *mon
 		return
 	}
 
-	result := monicaResultFromReport(report, len(previews))
+	result := sourceImportResultFromReport(report, len(previews))
 
 	var tasks []avatarTask
 	for i := range plan.Contacts {
@@ -677,87 +602,6 @@ func (m *MonicaImportManager) runImport(ctx context.Context, db *gorm.DB, s *mon
 
 	if len(tasks) > 0 {
 		go m.processAvatars(db, s, tasks, cfg, log)
-	}
-}
-
-// resolveActions turns the review step's RowImportActions into the engine's
-// per-contact action map, keyed by SourceRef.ExternalID. A row with no action
-// defaults to skip (never import what the user did not tick). "update" needs
-// the local contact's VCardUID, resolved from the row's DuplicateMatch.
-func (m *MonicaImportManager) resolveActions(db *gorm.DB, userID uint, plan *ImportSourcePlan, previews []models.MonicaImportRowPreview, rows []models.RowImportAction) (map[string]SourceContactAction, *apperrors.AppError) {
-	byRow := make(map[int]string, len(rows))
-	for _, r := range rows {
-		byRow[r.RowIndex] = r.Action
-	}
-
-	// Preload the VCardUID of every "update" target in one query.
-	var targetIDs []uint
-	for i := range previews {
-		if byRow[previews[i].RowIndex] == "update" && previews[i].DuplicateMatch != nil {
-			targetIDs = append(targetIDs, previews[i].DuplicateMatch.ExistingContactID)
-		}
-	}
-	uidByID := map[uint]string{}
-	if len(targetIDs) > 0 {
-		var existing []models.Contact
-		if err := db.Where("user_id = ? AND id IN ?", userID, targetIDs).
-			Select("id", "vcard_uid").Find(&existing).Error; err != nil {
-			return nil, apperrors.ErrDatabase("Failed to load merge targets").WithError(err)
-		}
-		for _, c := range existing {
-			uidByID[c.ID] = c.VCardUID
-		}
-	}
-
-	actions := make(map[string]SourceContactAction, len(plan.Contacts))
-	for i := range plan.Contacts {
-		extID := plan.Contacts[i].Ref.ExternalID
-		switch byRow[i] {
-		case "add":
-			actions[extID] = SourceContactAction{Action: SourceActionAdd}
-		case "update":
-			var uid string
-			if i < len(previews) && previews[i].DuplicateMatch != nil {
-				uid = uidByID[previews[i].DuplicateMatch.ExistingContactID]
-			}
-			if uid == "" {
-				// No resolvable target — fall back to a plain add rather than
-				// silently skipping the contact.
-				actions[extID] = SourceContactAction{Action: SourceActionAdd}
-			} else {
-				actions[extID] = SourceContactAction{Action: SourceActionMerge, MergeTargetUID: uid}
-			}
-		default:
-			actions[extID] = SourceContactAction{Action: SourceActionSkip}
-		}
-	}
-	return actions, nil
-}
-
-// monicaResultFromReport projects the shared engine report onto the wizard's
-// result DTO. Only category "invalid" issues are surfaced as errors (named
-// failures); the rest belong to the loss report shown before confirm.
-func monicaResultFromReport(report *ImportReport, totalRows int) models.MonicaImportResult {
-	errs := []string{}
-	for _, iss := range report.Issues {
-		if iss.Category == ImportIssueCategoryInvalid {
-			errs = append(errs, fmt.Sprintf("%s (%s): %s", iss.Record, iss.Field, iss.Message))
-		}
-	}
-	return models.MonicaImportResult{
-		ImportResult: models.ImportResult{
-			TotalProcessed: totalRows,
-			Created:        report.ContactsCreated,
-			Updated:        report.ContactsUpdated,
-			Skipped:        report.ContactsSkipped,
-			Errors:         errs,
-		},
-		RelationshipsCreated: report.RelationshipsCreated,
-		NotesCreated:         report.NotesCreated,
-		ActivitiesCreated:    report.ActivitiesCreated,
-		RemindersCreated:     report.RemindersCreated,
-		GiftsCreated:         report.GiftsCreated,
-		CustomFieldsCreated:  report.CustomFieldsCreated,
 	}
 }
 

@@ -2012,6 +2012,136 @@
     },
     {
       "method": "POST",
+      "path": "/contacts/import/meerkat/cancel",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "query",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": ""
+        },
+        {
+          "status": "400",
+          "schema": ""
+        },
+        {
+          "status": "404",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/contacts/import/meerkat/confirm",
+      "parameters": null,
+      "request_body": "ref:MonicaConfirmRequest",
+      "responses": [
+        {
+          "status": "202",
+          "schema": ""
+        },
+        {
+          "status": "400",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/contacts/import/meerkat/fetch",
+      "parameters": null,
+      "request_body": "ref:MeerkatFetchRequest",
+      "responses": [
+        {
+          "status": "202",
+          "schema": ""
+        },
+        {
+          "status": "400",
+          "schema": ""
+        },
+        {
+          "status": "409",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/contacts/import/meerkat/preview",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "query",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MonicaPreviewResponse"
+        },
+        {
+          "status": "400",
+          "schema": ""
+        },
+        {
+          "status": "404",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/contacts/import/meerkat/status",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "query",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MonicaImportStatus"
+        },
+        {
+          "status": "400",
+          "schema": ""
+        },
+        {
+          "status": "404",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/contacts/import/meerkat/upload",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MeerkatUploadResponse"
+        },
+        {
+          "status": "400",
+          "schema": ""
+        },
+        {
+          "status": "429",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/contacts/import/monica/cancel",
       "parameters": [
         {
@@ -12482,6 +12612,106 @@
         {
           "name": "vcard_uid",
           "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "MeerkatEntityCounts",
+      "properties": [
+        {
+          "name": "activities",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "contacts",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "notes",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "relationships",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "reminders",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "MeerkatFetchRequest",
+      "properties": [
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "source_user_id",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "MeerkatSourceUser",
+      "properties": [
+        {
+          "name": "contacts",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "id",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "username",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "MeerkatUploadResponse",
+      "properties": [
+        {
+          "name": "default_source_user_id",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "source_users",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "totals",
+          "type": "ref:MeerkatEntityCounts",
           "required": false
         }
       ]

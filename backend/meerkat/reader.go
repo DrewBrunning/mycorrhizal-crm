@@ -36,10 +36,21 @@ type Snapshot struct {
 	Activities        []Activity
 	ActivityContacts  []ActivityContact
 	Reminders         []Reminder
+	Users             []User // rows of the users table (id + display fields); empty when the DB has no users table
 	SourceUserID      *int64 // the single source user (first user seen); nil when the DB has no users table
 	SourceUserCount   int
 	MissingTables     []string
 	UnreadableColumns []string
+}
+
+// User is the slice of a Meerkat users row the assistant shows in the
+// source-user picker (issue #550): a Meerkat database can hold several users
+// and the importer never silently mixes accounts.
+type User struct {
+	ID       int64
+	Username *string
+	Email    *string
+	Name     *string
 }
 
 // Contact is one row of Meerkat's contacts table. Every field is a pointer so
@@ -209,8 +220,47 @@ func readAll(db *sql.DB, snap *Snapshot) error {
 	if err := readReminders(db, snap); err != nil { // # pragma: no cover — I/O error path against a readable SQLite file
 		return err
 	}
+	readUsers(db, snap)
 	readSourceUser(db, snap)
 	return nil
+}
+
+// readUsers reads the users table's display fields for the source-user picker.
+// Absent table or absent columns degrade to "no users" / a partial row — the
+// same schema-drift tolerance as every other reader here.
+func readUsers(db *sql.DB, snap *Snapshot) {
+	if !tableExists(db, "users") {
+		return
+	}
+	var skipped []string
+	_ = readSimpleTable(db, "users", []string{"id", "username", "email", "name", "first_name", "last_name"}, &skipped,
+		func(_ []string, get func(string) *string) error {
+			u := User{}
+			if s := get("id"); s != nil {
+				if v, err := strconv.ParseInt(*s, 10, 64); err == nil {
+					u.ID = v
+				}
+			}
+			u.Username = get("username")
+			u.Email = get("email")
+			if n := get("name"); n != nil {
+				u.Name = n
+			} else if fn, ln := get("first_name"), get("last_name"); fn != nil || ln != nil {
+				full := strings.TrimSpace(strings.TrimSpace(deref(fn)) + " " + strings.TrimSpace(deref(ln)))
+				if full != "" {
+					u.Name = &full
+				}
+			}
+			snap.Users = append(snap.Users, u)
+			return nil
+		})
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 // presentColumns returns the columns that actually exist on table, or nil

@@ -199,6 +199,19 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			})
 			protected.POST("/contacts/import/monica/cancel", controllers.CancelMonicaImport)
 
+			// Meerkat import assistant (issue #550) — upload a Meerkat CRM
+			// SQLite file, pick a source user, review (with the loss report)
+			// then confirm through the shared source-import engine. The
+			// uploaded file is held only as a 0600 temp file for the session's
+			// lifetime. The upload route carries its own body-size limit
+			// (MaxMeerkatDBSize), same override pattern as the CSV/VCF uploads.
+			protected.POST("/contacts/import/meerkat/upload", middleware.BodySizeLimitMiddleware(services.MaxMeerkatDBSize), controllers.UploadMeerkatDatabase)
+			protected.POST("/contacts/import/meerkat/fetch", middleware.ValidateJSONMiddleware(&models.MeerkatFetchRequest{}), controllers.StartMeerkatFetch)
+			protected.GET("/contacts/import/meerkat/status", controllers.GetMeerkatImportStatus)
+			protected.GET("/contacts/import/meerkat/preview", controllers.GetMeerkatImportPreview)
+			protected.POST("/contacts/import/meerkat/confirm", middleware.ValidateJSONMiddleware(&models.SourceImportConfirmRequest{}), controllers.ConfirmMeerkatImport)
+			protected.POST("/contacts/import/meerkat/cancel", controllers.CancelMeerkatImport)
+
 			// P1 contact sharing
 			// — one-time filtered copy between two users on the same
 			// instance. Accept is preview-only (parses the stored payload
