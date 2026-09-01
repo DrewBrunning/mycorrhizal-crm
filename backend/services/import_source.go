@@ -341,7 +341,12 @@ func ExecuteSourceImportWithActions(ctx context.Context, db *gorm.DB, userID uin
 	if err != nil {
 		return nil, nil, err
 	}
-	plan.Report = *report
+	// The merged outcome is the return value only — we deliberately do not
+	// write it back onto the caller's plan. The async assistants keep running
+	// this on a *ImportSourcePlan that a still-finishing fetch goroutine (and
+	// a late Preview) may still be reading; mutating it here is a data race
+	// (caught by -race in TestMonicaImport_FullControllerFlow). plan.Report
+	// stays exactly what the mapper produced.
 	return report, refToID, nil
 }
 

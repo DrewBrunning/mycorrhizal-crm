@@ -239,6 +239,7 @@ func (m *MeerkatImportManager) Upload(userID uint, header *multipart.FileHeader)
 		return nil, apperrors.ErrInternal("Could not stage the upload")
 	}
 	dbPath := filepath.Join(tempDir, "meerkat.sqlite")
+	// #nosec G304 -- dbPath is a server-generated name under a freshly created os.MkdirTemp dir, never request input
 	dst, err := os.OpenFile(dbPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil { // # pragma: no cover — defensive: the temp dir was just created
 		_ = os.RemoveAll(tempDir)

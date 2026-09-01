@@ -601,6 +601,9 @@ func (m *MonicaImportManager) runImport(ctx context.Context, db *gorm.DB, s *mon
 		Msg("Monica import completed")
 
 	if len(tasks) > 0 {
+		// #nosec G118 -- avatar downloads deliberately outlive runImport's ctx: the
+		// import has already committed, and the "cancel import" context must not
+		// abort the photo tail. processAvatars runs on its own timeout context.
 		go m.processAvatars(db, s, tasks, cfg, log)
 	}
 }
