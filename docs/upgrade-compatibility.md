@@ -218,6 +218,20 @@ database by any refusal.
   resource requirements (duration / peak memory / peak disk per path) are
   recorded in `docs/development/scale-testing.md`. Disk exhaustion during a
   large migration is asserted to fail closed in the chaos job.
+- **Cross-version restore (BACKUP-01, issue #453):**
+  `internal/schemafixture`'s `cross_version_restore_test.go` takes a real
+  `VACUUM INTO` snapshot of each supported-release fixture and restores the
+  three pieces (database + `PROFILE_PHOTO_DIR` + `ATTACHMENTS_DIR`) under the
+  matrix of restoring-release outcomes: `M == N` serves the snapshot with no
+  migration; `M > N` migrates it forward on startup and the restored data is
+  compared semantically (MIG-03, issue #438), with every attachment/photo row
+  asserted to resolve to a real file; `M < N` (a newer snapshot under an older
+  binary) is refused with `ErrSchemaAheadOfBinary`, which names the recovery
+  path. A companion test takes snapshots under concurrent write load and
+  asserts each is a transactionally consistent cut (`integrity_check = ok`, no
+  foreign-key violations, no torn writes). This is the automated backing for
+  the roll-back-a-bad-release procedure in
+  `docs/operations/migration-recovery.md`.
 
 ## Document consistency
 
