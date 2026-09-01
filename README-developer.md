@@ -169,9 +169,39 @@
 	3. After upgrades, run `yarn build` for production bundles
 
 **Releases (only relevant for maintainers)**
-- Ensure all changes are committed and pushed to `main`
-- Create a tag using semantic versioning: `git tag v1.5.3`
-- Push the tag to GitHub: `git push origin v1.5.3`
-- This triggers a GitHub Actions workflow that automatically builds and publishes Docker images to GHCR
-- Users can then deploy the new version by setting `IMAGE_TAG=v1.5.3` (or by just using `:latest`) in their `.env` and running `docker compose up -d`
-- Each published image carries an SBOM and SLSA provenance attestation and is keylessly signed with `cosign`; the release APK carries GitHub-native SLSA build provenance plus an additive cosign co-signature. Full operator-facing verification steps (exact commands, what expires and when): `docs/security/release-verification.md`.
+
+Cutting a release is **one action**: the *Release* workflow
+([.github/workflows/release.yml](.github/workflows/release.yml)) → *Run workflow* → enter the
+version (e.g. `v0.6.6`). It registers the release's schema fixture
+(`internal/schemafixture.SupportedReleases` + a `cmd/genschema` dump) on `main`, commits it, and
+pushes a lightweight tag at that commit. The tag push triggers
+[docker-publish.yml](.github/workflows/docker-publish.yml), which builds and signs the three
+Docker images and the release APK, mints SBOMs + SLSA provenance, and creates the GitHub Release
+with generated notes. See `docs/security/release-verification.md` → "How a release is cut".
+
+- **Version**: `vMAJOR.MINOR.PATCH`, and a tag that does not exist yet. A patch release that ships
+  no new migration is fine — it shares its predecessor's schema (the fixture dump is byte-identical
+  under a new name); `Version:` in `releases.go` is the *migration* version, not a release counter.
+- **After dispatch**: watch `docker-publish.yml`. If it fails *after* the tag was pushed, re-run
+  **it** from its own *Run workflow* button with the `tag` input (its recovery path) — do **not**
+  re-dispatch *Release*, which refuses an existing tag.
+- **Do not `git tag` / `git push` a release tag by hand.** A tag pushed with the default
+  `GITHUB_TOKEN` (or a plain local push that never runs CI's App-token path) can leave
+  `docker-publish.yml` untriggered.
+
+One-time setup (already done for this repo; re-do only if the App is rotated):
+
+- A GitHub App with **Contents: write**, installed on the repo.
+- Repo variable `RELEASE_APP_ID` + repo secret `RELEASE_APP_PRIVATE_KEY` (the App's private-key PEM).
+- The App added to `main`'s ruleset **bypass list** (`main-protection`) so `release.yml` can push
+  the fixture commit and the tag directly. A tag pushed by the App is a real `push` event, which is
+  what lets it trigger `docker-publish.yml` — `GITHUB_TOKEN` pushes cannot.
+
+Downstream:
+
+- Users deploy a new version by setting `IMAGE_TAG=v1.5.3` (or just `:latest`) in their `.env` and
+  running `docker compose up -d`.
+- Each published image carries an SBOM and SLSA provenance attestation and is keylessly signed with
+  `cosign`; the release APK carries GitHub-native SLSA build provenance plus an additive cosign
+  co-signature. Full operator-facing verification steps (exact commands, what expires and when):
+  `docs/security/release-verification.md`.

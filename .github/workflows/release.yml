@@ -1,0 +1,225 @@
+name: Release
+
+# One-dispatch release. This is the single human action in cutting a release:
+# say "cut <version> here". Everything downstream is automatic.
+#
+# Dispatch with a version (e.g. v0.6.6). It:
+#
+#   1. validates the version, that no such tag exists, and that it is not
+#      already registered in SupportedReleases;
+#   2. appends {Tag: <version>, Version: <highest migration in the tree>} to
+#      backend/internal/schemafixture/releases.go. Version is the MIGRATION
+#      version — a patch release that ships no migration keeps its
+#      predecessor's value, and two tags may legitimately share one (see
+#      cmd/genschema and releases.go);
+#   3. regenerates the schema dumps (`go run ./cmd/genschema`) and FAILS if
+#      anything other than <version>.sql appears — the frozen, append-only
+#      migration chain must regenerate every existing dump byte-identical;
+#   4. runs the schemafixture + genschema + releaselist test gates;
+#   5. commits releases.go + the new dump directly to main;
+#   6. tags <version> at that commit and pushes main + the tag.
+#
+# The tag push is what triggers docker-publish.yml (build + sign the three
+# images and the release APK, mint SBOMs + provenance, create the GitHub
+# Release with generated notes). That works — and needs NO change to
+# docker-publish.yml — only because the push here uses a GitHub App token, not
+# GITHUB_TOKEN: a tag pushed with GITHUB_TOKEN cannot trigger another workflow.
+# The tag also points at a real commit on main (the one carrying the dump), so
+# docker-publish's schema-fixture-gate passes and source<->release
+# correspondence is exact — no "move the tag after review" step (the v0.6.4
+# trap the old update-release.yml carried).
+#
+# One-time setup (see docs/security/release-verification.md, "How a release is
+# cut"):
+#   - a GitHub App with Contents: write, installed on this repo;
+#   - repo variable RELEASE_APP_ID + repo secret RELEASE_APP_PRIVATE_KEY;
+#   - the App added to main's branch-protection / ruleset bypass list (and to
+#     any v* tag ruleset's bypass list), so it can push the commit and the tag.
+#
+# Failure modes:
+#   - steps 1-4 fail  -> nothing was pushed; fix and re-dispatch.
+#   - main pushed, tag push fails -> re-push just the tag, or dispatch
+#     docker-publish.yml with its `tag` input.
+#   - tag pushed, docker-publish.yml fails -> the commit + tag are on main;
+#     recover the images via docker-publish.yml -> Run workflow -> `tag` input
+#     (its existing recovery path). Do NOT re-dispatch this workflow — it
+#     refuses because the tag already exists.
+#
+# This is the interim REL-06 (issue #499) release action; fold it into the
+# unified release workflow when that lands, and delete this file.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version to cut, e.g. v0.6.6'
+        required: true
+        type: string
+
+# Read-only by default (StepSecurity "Restrict permissions for GITHUB_TOKEN").
+# The job pushes with the App token, not GITHUB_TOKEN, so it needs no write
+# scope of its own.
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Mint GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          # Least privilege: the minted token can push the fixture commit and
+          # the tag, nothing else — even if the App is granted more.
+          permission-contents: write
+
+      - name: Checkout main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Cut from the true main tip; fetch-depth 0 so the "tag exists" check
+          # sees the full ref set. persist-credentials: false per repo
+          # convention — the push step scopes its own credential (the App
+          # token) via an ephemeral helper.
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Validate version input
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -eu
+          if ! printf '%s' "$VERSION" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Version must look like vMAJOR.MINOR.PATCH (e.g. v0.6.6); got '$VERSION'."
+            exit 1
+          fi
+          if git rev-parse "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "::error::Tag $VERSION already exists; pick a version that has not shipped."
+            exit 1
+          fi
+          if grep -qF "{Tag: \"$VERSION\"," backend/internal/schemafixture/releases.go; then
+            echo "::error::$VERSION is already registered in SupportedReleases."
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Derive the migration version from the tree
+        run: |
+          set -eu
+          migver=""
+          for f in backend/database/migrations/[0-9]*_*.up.sql; do
+            [ -f "$f" ] || continue
+            n="${f##*/}"; n="${n%%_*}"
+            n=$((10#$n))
+            if [ -z "$migver" ] || [ "$n" -gt "$migver" ]; then migver="$n"; fi
+          done
+          if [ -z "$migver" ]; then
+            echo "::error::No migration files found under backend/database/migrations/."
+            exit 1
+          fi
+          echo "MIGRATION_VERSION=$migver" >> "$GITHUB_ENV"
+          echo "Derived migration version $migver (highest 000NNN_*.up.sql in the tree)."
+
+      - name: Register the release
+        env:
+          VERSION: ${{ env.VERSION }}
+          MIGRATION_VERSION: ${{ env.MIGRATION_VERSION }}
+        run: |
+          set -eu
+          # Append {Tag: "$VERSION", Version: $MIGRATION_VERSION} after the last
+          # existing SupportedReleases entry, preserving release order.
+          python3 - "$VERSION" "$MIGRATION_VERSION" <<'PYEOF'
+          import sys
+          version, migver = sys.argv[1], sys.argv[2]
+          path = "backend/internal/schemafixture/releases.go"
+          lines = open(path).read().splitlines(keepends=True)
+          idx = max(i for i, line in enumerate(lines) if line.lstrip().startswith("{Tag:"))
+          lines.insert(idx + 1, f'\t{{Tag: "{version}", Version: {migver}}},\n')
+          open(path, "w").writelines(lines)
+          PYEOF
+          gofmt -w backend/internal/schemafixture/releases.go
+          git diff -- backend/internal/schemafixture/releases.go
+
+      - name: Regenerate schema dumps
+        working-directory: backend
+        run: go run ./cmd/genschema
+
+      # The frozen-chain check: genschema rewrites every dump in place, so this
+      # asserts exactly one new (untracked) file and zero modifications. A
+      # modified pre-existing dump means an old migration was edited — fail
+      # loudly rather than ship a rewritten history.
+      - name: Assert only the new dump changed
+        env:
+          VERSION: ${{ env.VERSION }}
+        run: |
+          set -eu
+          expected="?? backend/database/testdata/schemas/${VERSION}.sql"
+          actual="$(git status --porcelain -- backend/database/testdata/schemas/)"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::Schema dumps did not regenerate as expected."
+            echo "::error::Expected exactly: ${expected}"
+            echo "$actual"
+            exit 1
+          fi
+          echo "Frozen chain holds: existing dumps byte-identical; ${VERSION}.sql is the only new file."
+
+      - name: Verify test gates
+        working-directory: backend
+        run: go test ./internal/schemafixture/... ./cmd/genschema/... ./cmd/releaselist/...
+
+      - name: Commit to main
+        env:
+          VERSION: ${{ env.VERSION }}
+        run: |
+          set -eu
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/internal/schemafixture/releases.go backend/database/testdata/schemas/"$VERSION".sql
+          git commit -m "release: register $VERSION schema fixture (issue #529, #499)"
+
+      - name: Tag and push
+        env:
+          VERSION: ${{ env.VERSION }}
+          GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -eu
+          # The tag must point at THIS commit (the one carrying the dump): the
+          # docker-publish schema-fixture-gate checks the tagged tree, and the
+          # tag push is what triggers that workflow.
+          git tag "$VERSION"
+          # Ephemeral credential helper for the push only. ${GH_APP_TOKEN} must
+          # expand at git-helper runtime, not when this script is parsed —
+          # early expansion would embed the token in the script text.
+          # shellcheck disable=SC2016
+          helper='!f() { echo "username=x-access-token"; echo "password=${GH_APP_TOKEN}"; }; f'
+          git -c credential.helper="$helper" push origin "HEAD:refs/heads/main"
+          git -c credential.helper="$helper" push origin "refs/tags/${VERSION}"
+
+      - name: Summary
+        env:
+          VERSION: ${{ env.VERSION }}
+          MIGRATION_VERSION: ${{ env.MIGRATION_VERSION }}
+        run: |
+          set -eu
+          {
+            echo "### Release ${VERSION} cut"
+            echo
+            echo "- \`{Tag: \"${VERSION}\", Version: ${MIGRATION_VERSION}}\` registered in \`backend/internal/schemafixture/releases.go\`"
+            echo "- \`backend/database/testdata/schemas/${VERSION}.sql\` committed to \`main\` ($(git rev-parse --short HEAD))"
+            echo "- tag \`${VERSION}\` pushed to that commit"
+            echo
+            echo "\`docker-publish.yml\` is now building + signing the images and APK and creating the GitHub Release:"
+            echo "<https://github.com/${GITHUB_REPOSITORY}/actions/workflows/docker-publish.yml>"
+          } >> "$GITHUB_STEP_SUMMARY"

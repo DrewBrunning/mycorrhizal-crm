@@ -42,9 +42,13 @@ migration chain). A database below the floor **refuses to migrate** on startup w
 naming `v0.6.0` — never a best-effort single hop. The single known sub-floor instance
 (`v0.2.0-alpha-candidate`, the maintainer's) gets a one-time documented bridge
 (`MYCORRHIZAL_ALLOW_SUB_FLOOR_MIGRATION=1`, `docs/upgrade-compatibility.md`); do not add a second
-exception without changing the policy. When a new release ships with a new migration: add it to
-`internal/schemafixture.SupportedReleases`, run `go run ./cmd/genschema`, and commit the new dump — the
-completeness test and the docker-publish release gate fail until you do.
+exception without changing the policy. Cutting a release does the registration for you: dispatch
+`.github/workflows/release.yml` with the version and it appends `internal/schemafixture.SupportedReleases`,
+runs `go run ./cmd/genschema`, commits the dump to `main`, and tags — the tag then drives
+`docker-publish.yml`. Doing it by hand (add to `SupportedReleases`, `go run ./cmd/genschema`, commit the
+dump) is still the fallback; the completeness test and the docker-publish release gate fail until the dump
+exists. `migration-tests.yml`'s upgrade-matrix derives its per-release legs from `SupportedReleases` via
+`cmd/releaselist`, so a new release is covered with no workflow edit.
 
 ## Commands
 
