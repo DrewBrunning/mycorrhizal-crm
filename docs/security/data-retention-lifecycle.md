@@ -7,7 +7,7 @@ each asset, not how long it survives.
 
 | | |
 |---|---|
-| **Last updated** | 2026-08-31 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420), [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622), [#391](https://github.com/DrewBrunning/mycorrhizal-crm/issues/391), [#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389), [#651](https://github.com/DrewBrunning/mycorrhizal-crm/issues/651), [#351](https://github.com/DrewBrunning/mycorrhizal-crm/issues/351), [#353](https://github.com/DrewBrunning/mycorrhizal-crm/issues/353), [#549](https://github.com/DrewBrunning/mycorrhizal-crm/issues/549)) |
+| **Last updated** | 2026-08-31 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420), [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622), [#391](https://github.com/DrewBrunning/mycorrhizal-crm/issues/391), [#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389), [#651](https://github.com/DrewBrunning/mycorrhizal-crm/issues/651), [#351](https://github.com/DrewBrunning/mycorrhizal-crm/issues/351), [#353](https://github.com/DrewBrunning/mycorrhizal-crm/issues/353), [#549](https://github.com/DrewBrunning/mycorrhizal-crm/issues/549), [#505](https://github.com/DrewBrunning/mycorrhizal-crm/issues/505)) |
 | **Scope** | Backend (Go/Gin + SQLite), CardDAV/CalDAV (server role), Android client, browser/frontend, operator backups. |
 | **Companion docs** | `docs/security/pii-inventory.md` (the *minimization* lens — should each store exist, and is it more/kept-longer than needed), `docs/security/asvs-l2.md` V8 (Data Protection), `docs/deployment.md` (Backups section — the authoritative backup/restore runbook), `docs/security/masvs-l1.md` (Android storage controls). |
 
@@ -306,7 +306,18 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   auto-deletion of old backup files, and deliberately won't (an app that can expire backups gives an
   attacker running as the app the same power — issue #505). A cron-scheduled `make backup` will
   accumulate snapshots forever unless the operator adds their own retention (e.g. a
-  `find -mtime +N -delete` outside this app).
+  `find -maxdepth 1 -mtime +N -delete` outside this app — non-recursive so it never reaches the
+  `pre-migration/` rollback points).
+- **Immutability** (issue #505): the app's backup-write surface (`database.BackupSnapshot`, behind
+  `make backup` and the automatic pre-migration snapshot) is **write-new-only** — it refuses to
+  overwrite, removes only the temp it reserved, and no code path anywhere deletes, truncates,
+  re-encrypts, or rotates an existing backup or pre-migration snapshot. On-host that is a barrier
+  against the app's *own bugs* only; the app's uid can still `rm` its own files. Immutability against
+  a **compromised host** (ransomware, code-exec as the app) is achieved by the operator putting
+  backups where the app holds no credential to reach them — a pull-based off-host copy (the
+  documented default) or object-locked remote storage — so a compromise of the app host cannot reach
+  what is already off it. Runbook + verify-by-trying: `docs/deployment.md` → "Backup immutability &
+  ransomware resistance".
 - **Deletion / propagation**: **does not happen automatically, ever** — deleting/purging live data has no
   effect on already-taken backup files. This is the one place in the whole lifecycle where "deletion
   propagates" is false by design, and `docs/deployment.md`'s Restore section already documents the
@@ -327,7 +338,10 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   `backend/services/restore_drill_service.go` + issue #275 (scheduled restore-drill job that proves a
   backup actually restores, not just that the file exists); `atrest.VerifyBackupDecryptable` +
   `restore_drill_service_test.go` (`TestRestoreDrillFailsWhenSnapshotNotDecryptable`,
-  `TestRestoreDrillPassesWithEncryptedDatabase`, issue #420).
+  `TestRestoreDrillPassesWithEncryptedDatabase`, issue #420); `backend/database/backup_immutability_test.go`
+  (issue #505 — write-new-only proven by trying overwrite/in-place-modify/neighbour-delete through the
+  app's own primitive; a source walk fails on any in-app backup expiry/rotation function; the #530
+  pre-migration rollback point survives a non-recursive routine rotation sweep).
 
 ## 11. Exports (CSV / vCard3 / vCard4 / jSContact / audit log)
 
