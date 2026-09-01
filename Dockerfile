@@ -73,9 +73,10 @@ RUN wget -q https://registry.npmjs.org/yarn/-/yarn-1.22.22.tgz -O /tmp/yarn.tgz 
 COPY frontend/package.json frontend/yarn.lock ./
 
 # Install dependencies. The repo is yarn-only (yarn.lock is committed, no
-# package-lock.json), so this is always the frozen-lockfile path. The previous
-# `npm ci` / `npm install` fallbacks were dead code, and OSSF Scorecard flagged
-# the `npm install` branch as an unpinned npm command.
+# package-lock.json), so both the install and the build below are
+# unconditional yarn. The previous `if [ -f yarn.lock ] ... else npm ...`
+# fallbacks were dead code (yarn.lock is always in context), and OSSF
+# Scorecard flagged the `npm install` branch as an unpinned npm command (#331).
 RUN yarn install --frozen-lockfile
 
 # Copy frontend source code
@@ -85,7 +86,7 @@ COPY frontend/ .
 # Must stay empty so the bundle uses relative URLs
 ENV VITE_API_URL=""
 
-RUN if [ -f yarn.lock ]; then yarn build; else npm run build; fi
+RUN yarn build
 
 # =============================================================================
 # Stage 3: Runtime - nginx + Go backend under supervisord

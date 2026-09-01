@@ -20,9 +20,8 @@ backend/*.db
 backend/*.sqlite*
 backend/**/*_test.go
 
-# Local data (do not bake into the image). backend/static/photos and
-# backend/static/mycorrhizal.db stay in the context: the production Dockerfile
-# never copies them, and demo/Dockerfile bakes them into the demo image.
+# Local runtime data (do not bake into the image). The production Dockerfile
+# creates its own data dirs inside the container and never copies these in.
 data
 photos
 
