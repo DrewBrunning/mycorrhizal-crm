@@ -81,14 +81,17 @@ beforeEach(() => {
 test('polls the fetch to ready, then loads the preview and moves to review', async () => {
   vi.useFakeTimers();
   statusMock
-    .mockResolvedValueOnce({ session_id: 's1', phase: 'fetching_contacts', phase_done: 1, phase_total: 3 })
+    .mockResolvedValueOnce({
+      session_id: 's1',
+      phase: 'fetching_contacts',
+      phase_done: 1,
+      phase_total: 3,
+    })
     .mockResolvedValue({ session_id: 's1', phase: 'ready', phase_done: 3, phase_total: 3 });
   previewMock.mockResolvedValue(preview);
   const startFetch = vi.fn().mockResolvedValue(undefined);
 
-  const { result } = renderHook(() =>
-    useSourceImportWizard({ basePath: '/x', startFetch }),
-  );
+  const { result } = renderHook(() => useSourceImportWizard({ basePath: '/x', startFetch }));
 
   await act(async () => {
     await result.current.beginFetch('s1');
@@ -127,49 +130,146 @@ test('setAllActions("update") only assigns update where a duplicate exists', asy
   expect(result.current.rowActions.get(1)).toBe('update'); // duplicate -> update
 });
 
-test('confirm sends the resolved actions and finishes without a photo tail', async () => {
-  vi.useFakeTimers();
-  statusMock.mockResolvedValue({ session_id: 's1', phase: 'ready', phase_done: 3, phase_total: 3 });
-  previewMock.mockResolvedValue(preview);
-  confirmMock.mockResolvedValue({
-    total_processed: 2,
-    created: 1,
-    updated: 1,
-    skipped: 0,
-    errors: [],
-    relationships_created: 0,
-    notes_created: 1,
-    activities_created: 0,
-    reminders_created: 0,
-    gifts_created: 0,
-    custom_fields_created: 0,
-    photos_queued: 0,
-    photos_saved: 0,
-    photos_failed: 0,
-  });
+const doneResult = {
+  total_processed: 2,
+  created: 1,
+  updated: 1,
+  skipped: 0,
+  errors: [] as string[],
+  relationships_created: 0,
+  notes_created: 1,
+  activities_created: 0,
+  reminders_created: 0,
+  gifts_created: 0,
+  custom_fields_created: 0,
+  photos_queued: 0,
+  photos_saved: 0,
+  photos_failed: 0,
+};
 
-  const { result } = renderHook(() =>
-    useSourceImportWizard({ basePath: '/x', startFetch: vi.fn().mockResolvedValue(undefined) }),
-  );
+// Drives beginFetch + poll to the review step. Leaves fake timers on.
+async function toReview(result: { current: ReturnType<typeof useSourceImportWizard> }) {
   await act(async () => {
     await result.current.beginFetch('s1');
     await vi.advanceTimersByTimeAsync(1500);
     await vi.advanceTimersByTimeAsync(0);
   });
-  expect(result.current.step).toBe('review');
+}
+
+test('confirm returns 202, moves to importing, then polls the background import to done', async () => {
+  vi.useFakeTimers();
+  statusMock
+    .mockResolvedValueOnce({ session_id: 's1', phase: 'ready', phase_done: 3, phase_total: 3 })
+    // during confirm: one "importing" tick then "done" with the result
+    .mockResolvedValueOnce({ session_id: 's1', phase: 'importing', phase_done: 1, phase_total: 12 })
+    .mockResolvedValue({
+      session_id: 's1',
+      phase: 'done',
+      phase_done: 12,
+      phase_total: 12,
+      result: doneResult,
+    });
+  previewMock.mockResolvedValue(preview);
+  confirmMock.mockResolvedValue(undefined);
+
+  const { result } = renderHook(() =>
+    useSourceImportWizard({ basePath: '/x', startFetch: vi.fn().mockResolvedValue(undefined) }),
+  );
+  await toReview({ current: result.current });
 
   await act(async () => {
     await result.current.confirm();
   });
-
   const [, sid, actions] = confirmMock.mock.calls[0];
   expect(sid).toBe('s1');
   expect(actions).toEqual([
     { row_index: 0, action: 'add' },
     { row_index: 1, action: 'update' },
   ]);
+  expect(result.current.step).toBe('importing');
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1500);
+    await vi.advanceTimersByTimeAsync(0);
+  });
   expect(result.current.step).toBe('result');
   expect(result.current.result?.updated).toBe(1);
+});
+
+test('a cancelled in-flight import returns the wizard to the review step', async () => {
+  vi.useFakeTimers();
+  statusMock
+    .mockResolvedValueOnce({ session_id: 's1', phase: 'ready', phase_done: 3, phase_total: 3 })
+    .mockResolvedValue({ session_id: 's1', phase: 'cancelled', phase_done: 0, phase_total: 12 });
+  previewMock.mockResolvedValue(preview);
+  confirmMock.mockResolvedValue(undefined);
+
+  const { result } = renderHook(() =>
+    useSourceImportWizard({ basePath: '/x', startFetch: vi.fn().mockResolvedValue(undefined) }),
+  );
+  await toReview({ current: result.current });
+  await act(async () => {
+    await result.current.confirm();
+  });
+  await act(async () => {
+    await result.current.cancelImport();
+    await vi.advanceTimersByTimeAsync(1500);
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(result.current.step).toBe('review');
+  expect(result.current.error).toBeNull();
+});
+
+test('a failed background import surfaces the error', async () => {
+  vi.useFakeTimers();
+  statusMock
+    .mockResolvedValueOnce({ session_id: 's1', phase: 'ready', phase_done: 3, phase_total: 3 })
+    .mockResolvedValue({
+      session_id: 's1',
+      phase: 'failed',
+      phase_done: 0,
+      phase_total: 0,
+      error: 'disk full',
+    });
+  previewMock.mockResolvedValue(preview);
+  confirmMock.mockResolvedValue(undefined);
+
+  const { result } = renderHook(() =>
+    useSourceImportWizard({ basePath: '/x', startFetch: vi.fn().mockResolvedValue(undefined) }),
+  );
+  await toReview({ current: result.current });
+  await act(async () => {
+    await result.current.confirm();
+    await vi.advanceTimersByTimeAsync(1500);
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(result.current.error).toBe('disk full');
+});
+
+test('reset clears every field back to the connect step', async () => {
+  vi.useFakeTimers();
+  statusMock.mockResolvedValue({ session_id: 's1', phase: 'ready', phase_done: 3, phase_total: 3 });
+  previewMock.mockResolvedValue(preview);
+
+  const { result } = renderHook(() =>
+    useSourceImportWizard({ basePath: '/x', startFetch: vi.fn().mockResolvedValue(undefined) }),
+  );
+  await toReview({ current: result.current });
+  act(() => result.current.setRowAction(0, 'skip'));
+  act(() => result.current.reset());
+  expect(result.current.step).toBe('connect');
+  expect(result.current.preview).toBeNull();
+  expect(result.current.rowActions.size).toBe(0);
+});
+
+test('a fetch failure during beginFetch surfaces the error', async () => {
+  const startFetch = vi.fn().mockRejectedValue(new Error('cannot start'));
+  const { result } = renderHook(() => useSourceImportWizard({ basePath: '/x', startFetch }));
+  await act(async () => {
+    await result.current.beginFetch('s1');
+  });
+  expect(result.current.error).toBe('cannot start');
+  expect(result.current.step).toBe('connect');
 });
 
 test('resolveRowAction prefers an explicit choice, then the suggestion, then add', () => {

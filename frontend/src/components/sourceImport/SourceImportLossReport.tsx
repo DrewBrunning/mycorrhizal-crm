@@ -1,3 +1,4 @@
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined';
 import {
   Accordion,
@@ -11,7 +12,6 @@ import {
   ListItemText,
   Typography,
 } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { SourceImportIssue, SourceImportIssueCategory } from '../../api/sourceImport';
@@ -80,13 +80,15 @@ export default function SourceImportLossReport({ issues }: Props) {
           </AccordionSummary>
           <AccordionDetails sx={{ pt: 0 }}>
             <List dense disablePadding>
-              {items.map((issue, i) => (
-                <ListItem key={`${issue.record}-${issue.field}-${i}`} disableGutters sx={{ py: 0.25 }}>
+              {items.map((issue) => (
+                <ListItem
+                  key={`${issue.record}|${issue.field}|${issue.message}`}
+                  disableGutters
+                  sx={{ py: 0.25 }}
+                >
                   <ListItemText
                     primary={issue.message}
-                    secondary={
-                      issue.field ? `${issue.record} · ${issue.field}` : issue.record
-                    }
+                    secondary={issue.field ? `${issue.record} · ${issue.field}` : issue.record}
                     slotProps={{
                       primary: { variant: 'body2' },
                       secondary: { variant: 'caption' },

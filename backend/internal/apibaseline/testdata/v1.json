@@ -2042,8 +2042,8 @@
       "request_body": "ref:MonicaConfirmRequest",
       "responses": [
         {
-          "status": "200",
-          "schema": "ref:MonicaImportResult"
+          "status": "202",
+          "schema": ""
         },
         {
           "status": "400",
@@ -12808,7 +12808,8 @@
             "importing",
             "importing_photos",
             "done",
-            "failed"
+            "failed",
+            "cancelled"
           ]
         },
         {

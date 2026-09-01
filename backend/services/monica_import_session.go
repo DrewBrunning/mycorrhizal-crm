@@ -179,8 +179,8 @@ func (m *MonicaImportManager) get(sessionID string, userID uint) (*monicaImportS
 	return s, nil
 }
 
-// Delete removes a session and cancels any running fetch, dropping the API
-// token from memory.
+// Delete removes a session and cancels any running fetch/import, dropping the
+// API token from memory.
 func (m *MonicaImportManager) Delete(sessionID string) {
 	m.mu.Lock()
 	s, exists := m.sessions[sessionID]
@@ -189,6 +189,35 @@ func (m *MonicaImportManager) Delete(sessionID string) {
 	if exists && s.cancel != nil {
 		s.cancel()
 	}
+}
+
+// Cancel is the /cancel endpoint's behaviour. During an in-flight import
+// (phase importing/importing_photos) it cancels the transaction context — the
+// whole import rolls back, phase becomes "cancelled" — and keeps the session
+// so the user can retry from the review step. In any other phase it drops the
+// session entirely (the "close the wizard" case). Ownership is enforced by
+// get.
+func (m *MonicaImportManager) Cancel(userID uint, sessionID string) *apperrors.AppError {
+	s, appErr := m.get(sessionID, userID)
+	if appErr != nil {
+		return appErr
+	}
+	s.mu.Lock()
+	inFlight := s.phase == models.MonicaPhaseImporting || s.phase == models.MonicaPhaseImportingPhotos
+	cancel := s.cancel
+	if inFlight {
+		s.phase = models.MonicaPhaseCancelled
+	}
+	s.mu.Unlock()
+
+	if inFlight {
+		if cancel != nil {
+			cancel()
+		}
+		return nil
+	}
+	m.Delete(sessionID)
+	return nil
 }
 
 // userSafeMonicaError converts a client error into a message that never
@@ -541,42 +570,63 @@ type avatarTask struct {
 	avatarURL string
 }
 
-// Confirm executes the import through the shared engine with the review
-// step's per-contact actions, then queues avatar downloads. It runs
-// synchronously; the caller polls Status until phase "done" for the photo
-// tail.
-func (m *MonicaImportManager) Confirm(db *gorm.DB, userID uint, req models.MonicaConfirmRequest, cfg *config.Config, log *zerolog.Logger) (*models.MonicaImportResult, *apperrors.AppError) {
+// Confirm starts the import in the background and returns immediately (the
+// controller replies 202). The transaction is bound to a session-scoped
+// context so an in-flight "Cancel import" (see Cancel) rolls it back whole.
+// The caller polls Status: phase advances importing → importing_photos → done
+// (or → cancelled / failed), and Status.Result is set from importing_photos on.
+func (m *MonicaImportManager) Confirm(db *gorm.DB, userID uint, req models.MonicaConfirmRequest, cfg *config.Config, log *zerolog.Logger) *apperrors.AppError {
 	s, appErr := m.get(req.SessionID, userID)
 	if appErr != nil {
-		return nil, appErr
+		return appErr
 	}
 
 	s.mu.Lock()
 	if s.phase != models.MonicaPhaseReady || s.plan == nil {
 		s.mu.Unlock()
-		return nil, apperrors.ErrInvalidInput("session", "The Monica data is not fetched yet")
+		return apperrors.ErrInvalidInput("session", "The Monica data is not fetched yet")
 	}
-	s.phase = models.MonicaPhaseImporting
 	plan := s.plan
 	previews := s.previews
 	s.mu.Unlock()
 
 	actions, appErr := m.resolveActions(db, userID, plan, previews, req.Actions)
 	if appErr != nil {
-		s.setPhase(models.MonicaPhaseReady, len(previews), len(previews))
-		return nil, appErr
+		return appErr
 	}
 
-	report, refToID, err := ExecuteSourceImportWithActions(db, userID, plan, actions)
+	ctx, cancel := context.WithCancel(context.Background())
+	s.mu.Lock()
+	s.phase = models.MonicaPhaseImporting
+	s.phaseDone = 0
+	s.phaseTotal = len(previews) + importGraphKinds
+	s.errMsg = ""
+	s.cancel = cancel
+	s.mu.Unlock()
+
+	go m.runImport(ctx, db, s, plan, previews, actions, cfg, log)
+	return nil
+}
+
+// runImport applies the plan in one cancellable transaction, then queues
+// avatar downloads.
+func (m *MonicaImportManager) runImport(ctx context.Context, db *gorm.DB, s *monicaImportSession, plan *ImportSourcePlan, previews []models.MonicaImportRowPreview, actions map[string]SourceContactAction, cfg *config.Config, log *zerolog.Logger) {
+	report, refToID, err := ExecuteSourceImportWithActions(ctx, db, s.userID, plan, actions, s.setProgress)
 	if err != nil {
-		s.setPhase(models.MonicaPhaseReady, len(previews), len(previews))
-		return nil, apperrors.ErrDatabase("Monica import failed").WithError(err)
+		if ctx.Err() != nil {
+			s.mu.Lock()
+			s.phase = models.MonicaPhaseCancelled
+			s.mu.Unlock()
+			log.Info().Str("session_id", s.id).Msg("Monica import cancelled")
+			return
+		}
+		log.Error().Err(err).Str("session_id", s.id).Msg("Monica import failed")
+		s.fail("The import could not be applied")
+		return
 	}
 
 	result := monicaResultFromReport(report, len(previews))
 
-	// Deferred avatar downloads, one task per contact that landed and carried
-	// a Monica avatar URL.
 	var tasks []avatarTask
 	for i := range plan.Contacts {
 		mc := &plan.Contacts[i]
@@ -590,7 +640,7 @@ func (m *MonicaImportManager) Confirm(db *gorm.DB, userID uint, req models.Monic
 	result.PhotosQueued = len(tasks)
 
 	models.RecordImportRun(context.Background(), db, models.ImportRun{
-		UserID:         userID,
+		UserID:         s.userID,
 		Format:         models.ImportFormatMonica,
 		TotalProcessed: result.TotalProcessed,
 		Created:        result.Created,
@@ -602,7 +652,7 @@ func (m *MonicaImportManager) Confirm(db *gorm.DB, userID uint, req models.Monic
 	s.mu.Lock()
 	resultCopy := result
 	s.result = &resultCopy
-	s.plan = nil // free the snapshot; only photo work remains
+	s.plan = nil // import committed; free the snapshot
 	s.previews = nil
 	if len(tasks) == 0 {
 		s.phase = models.MonicaPhaseDone
@@ -614,7 +664,7 @@ func (m *MonicaImportManager) Confirm(db *gorm.DB, userID uint, req models.Monic
 	s.mu.Unlock()
 
 	log.Info().
-		Str("session_id", req.SessionID).
+		Str("session_id", s.id).
 		Int("created", result.Created).
 		Int("updated", result.Updated).
 		Int("skipped", result.Skipped).
@@ -628,8 +678,6 @@ func (m *MonicaImportManager) Confirm(db *gorm.DB, userID uint, req models.Monic
 	if len(tasks) > 0 {
 		go m.processAvatars(db, s, tasks, cfg, log)
 	}
-
-	return &result, nil
 }
 
 // resolveActions turns the review step's RowImportActions into the engine's

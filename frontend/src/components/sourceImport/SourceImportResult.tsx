@@ -30,11 +30,18 @@ export default function SourceImportResult({ result, photosPending }: Props) {
       skipped: result.skipped,
     }),
   ];
-  if (result.relationships_created) lines.push(t('settings.sourceImport.brings.relationships', { count: result.relationships_created }));
-  if (result.notes_created) lines.push(t('settings.sourceImport.brings.notes', { count: result.notes_created }));
-  if (result.activities_created) lines.push(t('settings.sourceImport.brings.activities', { count: result.activities_created }));
-  if (result.reminders_created) lines.push(t('settings.sourceImport.brings.reminders', { count: result.reminders_created }));
-  if (result.gifts_created) lines.push(t('settings.sourceImport.brings.gifts', { count: result.gifts_created }));
+  if (result.relationships_created)
+    lines.push(
+      t('settings.sourceImport.brings.relationships', { count: result.relationships_created }),
+    );
+  if (result.notes_created)
+    lines.push(t('settings.sourceImport.brings.notes', { count: result.notes_created }));
+  if (result.activities_created)
+    lines.push(t('settings.sourceImport.brings.activities', { count: result.activities_created }));
+  if (result.reminders_created)
+    lines.push(t('settings.sourceImport.brings.reminders', { count: result.reminders_created }));
+  if (result.gifts_created)
+    lines.push(t('settings.sourceImport.brings.gifts', { count: result.gifts_created }));
 
   return (
     <Box sx={{ py: 1 }}>
@@ -70,8 +77,8 @@ export default function SourceImportResult({ result, photosPending }: Props) {
             {t('settings.sourceImport.result.partialFailures', { count: result.errors.length })}
           </AlertTitle>
           <List dense disablePadding>
-            {result.errors.map((err, i) => (
-              <ListItem key={`${i}-${err}`} disableGutters sx={{ py: 0.25 }}>
+            {result.errors.map((err) => (
+              <ListItem key={err} disableGutters sx={{ py: 0.25 }}>
                 <ListItemText primary={err} slotProps={{ primary: { variant: 'caption' } }} />
               </ListItem>
             ))}

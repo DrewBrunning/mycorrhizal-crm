@@ -1384,7 +1384,10 @@
         "importing": "Import en cours…",
         "importing_photos": "Téléchargement des photos de profil…",
         "done": "Import terminé",
-        "failed": "L'import a échoué"
+        "failed": "L'import a échoué",
+        "parsing_database": "Lecture de la base de données…",
+        "mapping": "Correspondance des enregistrements…",
+        "cancelled": "Import annulé"
       },
       "progress": {
         "count": "{{done}} sur {{total}}",
@@ -1436,7 +1439,8 @@
         "partialFailures": "{{count}} enregistrements n'ont pas pu être importés",
         "photosPending": "Téléchargement de {{total}} photos de profil…",
         "photosDone": "{{saved}} photos enregistrées, {{failed}} en échec"
-      }
+      },
+      "cancelImport": "Annuler l’import"
     },
     "monicaImport": {
       "title": "Importer depuis Monica",

@@ -299,11 +299,7 @@ export default function DataSettingsPage() {
               >
                 {t('settings.data.import.importButton')}
               </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => setMonicaImportOpen(true)}
-              >
+              <Button variant="outlined" size="small" onClick={() => setMonicaImportOpen(true)}>
                 {t('settings.data.import.monicaButton')}
               </Button>
             </Stack>

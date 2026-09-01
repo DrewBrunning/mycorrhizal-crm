@@ -20,9 +20,7 @@ const connectMock = vi.mocked(connectMonica);
 afterEach(() => connectMock.mockReset());
 
 function renderOpen() {
-  return render(
-    <MonicaImportDialog open onClose={() => {}} onImportComplete={() => {}} />,
-  );
+  return render(<MonicaImportDialog open onClose={() => {}} onImportComplete={() => {}} />);
 }
 
 test('connects with the entered URL + token and then shows the account summary', async () => {

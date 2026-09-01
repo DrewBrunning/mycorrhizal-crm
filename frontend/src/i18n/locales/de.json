@@ -1384,7 +1384,10 @@
         "importing": "Import läuft…",
         "importing_photos": "Profilfotos werden heruntergeladen…",
         "done": "Import abgeschlossen",
-        "failed": "Der Import ist fehlgeschlagen"
+        "failed": "Der Import ist fehlgeschlagen",
+        "parsing_database": "Datenbank wird gelesen…",
+        "mapping": "Datensätze werden zugeordnet…",
+        "cancelled": "Import abgebrochen"
       },
       "progress": {
         "count": "{{done}} von {{total}}",
@@ -1436,7 +1439,8 @@
         "partialFailures": "{{count}} Datensätze konnten nicht importiert werden",
         "photosPending": "{{total}} Profilfotos werden heruntergeladen…",
         "photosDone": "{{saved}} Fotos gespeichert, {{failed}} fehlgeschlagen"
-      }
+      },
+      "cancelImport": "Import abbrechen"
     },
     "monicaImport": {
       "title": "Aus Monica importieren",

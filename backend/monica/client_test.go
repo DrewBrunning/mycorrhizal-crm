@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/time/rate"
@@ -300,4 +303,74 @@ func TestFetchAllStopsAtMaxPages(t *testing.T) {
 	rels, err := c.FetchContactRelationships(context.Background(), 7)
 	assert.NoError(t, err)
 	assert.Len(t, rels, maxPages*pageSize)
+}
+
+// TestFetchAllEntities exercises every FetchAll* wrapper (they only differ by
+// path) plus the progress callback.
+func TestFetchAllEntities(t *testing.T) {
+	var seenPaths []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seenPaths = append(seenPaths, r.URL.Path)
+		_, _ = w.Write(pagedJSON([]map[string]any{{"id": 1}}, 1, 1, 1))
+	}))
+	defer server.Close()
+	c := newTestClient(t, server.URL)
+	ctx := context.Background()
+
+	if got, err := c.FetchAllActivities(ctx, nil); assert.NoError(t, err) {
+		assert.Len(t, got, 1)
+	}
+	_, _ = c.FetchAllNotes(ctx, nil)
+	_, _ = c.FetchAllReminders(ctx, nil)
+	_, _ = c.FetchAllCalls(ctx, nil)
+	_, _ = c.FetchAllTasks(ctx, nil)
+	_, _ = c.FetchAllGifts(ctx, nil)
+	_, _ = c.FetchAllDebts(ctx, nil)
+
+	assert.Contains(t, seenPaths, "/api/activities")
+	assert.Contains(t, seenPaths, "/api/debts")
+}
+
+func TestRetryDelayHonoursRetryAfterSeconds(t *testing.T) {
+	// A numeric Retry-After is used verbatim (capped at maxRetryAfter).
+	respHdr := func(v string) *http.Response {
+		h := http.Header{}
+		if v != "" {
+			h.Set("Retry-After", v)
+		}
+		return &http.Response{Header: h}
+	}
+	assert.Equal(t, 3*time.Second, retryDelay(respHdr("3")))
+	assert.Equal(t, maxRetryAfter, retryDelay(respHdr("100000")))
+	assert.Equal(t, 2*time.Second, retryDelay(respHdr("")), "default when absent")
+	assert.Equal(t, 2*time.Second, retryDelay(respHdr("not-a-number")))
+}
+
+func TestHandleResponseClassifiesStatuses(t *testing.T) {
+	mk := func(code int) (bool, error) {
+		c := &Client{}
+		body := io.NopCloser(strings.NewReader(`{}`))
+		return c.handleResponse(&http.Response{StatusCode: code, Body: body}, &map[string]any{})
+	}
+	_, err := mk(http.StatusForbidden)
+	assert.ErrorIs(t, err, ErrUnauthorized)
+	retry, err := mk(http.StatusBadGateway)
+	assert.True(t, retry)
+	assert.ErrorIs(t, err, ErrUnreachable)
+	_, err = mk(http.StatusTeapot)
+	assert.ErrorIs(t, err, ErrInvalidData)
+}
+
+func TestFetchAvatarErrors(t *testing.T) {
+	c := newTestClient(t, "http://example.invalid")
+	_, _, err := c.FetchAvatar(context.Background(), "://bad")
+	assert.ErrorIs(t, err, ErrInvalidURL)
+
+	notFound := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer notFound.Close()
+	c2 := newTestClient(t, notFound.URL)
+	_, _, err = c2.FetchAvatar(context.Background(), notFound.URL+"/x.png")
+	assert.ErrorIs(t, err, ErrUnreachable)
 }

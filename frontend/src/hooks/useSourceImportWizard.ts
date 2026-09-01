@@ -39,6 +39,9 @@ export interface SourceImportWizard {
   setRowAction: (rowIndex: number, action: RowSourceAction) => void;
   setAllActions: (action: RowSourceAction) => void;
   confirm: () => Promise<void>;
+  // cancelImport aborts an in-flight import (importing step); the poll loop
+  // then returns to the review step once the backend has rolled back.
+  cancelImport: () => Promise<void>;
   cancel: () => Promise<void>;
   reset: () => void;
 }
@@ -111,6 +114,14 @@ export function useSourceImportWizard({
         return;
       }
 
+      if (forStep === 'importing' && st.phase === 'cancelled') {
+        // The in-flight import was rolled back; the session is retryable.
+        stopPolling();
+        setError(null);
+        setStep('review');
+        return;
+      }
+
       if (forStep === 'importing' && st.phase === 'done') {
         stopPolling();
         if (st.result) setResult(st.result);
@@ -175,6 +186,8 @@ export function useSourceImportWizard({
     [preview],
   );
 
+  // confirm starts the background import (the endpoint returns 202) and moves
+  // to the importing step; the poll loop takes it to result / review / error.
   const confirm = useCallback(async () => {
     if (!sessionId || !preview) return;
     setError(null);
@@ -184,20 +197,27 @@ export function useSourceImportWizard({
       action: resolveRowAction(rowActions, row),
     }));
     try {
-      const res = await confirmSourceImport(basePath, sessionId, actions);
-      setResult(res);
-      if (res.photos_queued > 0) {
-        setStep('importing');
-        startPolling(sessionId, 'importing');
-      } else {
-        setStep('result');
-      }
+      await confirmSourceImport(basePath, sessionId, actions);
+      setStep('importing');
+      startPolling(sessionId, 'importing');
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
       setBusy(false);
     }
   }, [basePath, preview, rowActions, sessionId, startPolling]);
+
+  // cancelImport aborts an in-flight import: the backend rolls the transaction
+  // back and the poll loop returns the wizard to the review step.
+  const cancelImport = useCallback(async () => {
+    if (!sessionId) return;
+    setBusy(true);
+    try {
+      await cancelSourceImport(basePath, sessionId);
+    } finally {
+      setBusy(false);
+    }
+  }, [basePath, sessionId]);
 
   const cancel = useCallback(async () => {
     stopPolling();
@@ -229,6 +249,7 @@ export function useSourceImportWizard({
     setRowAction,
     setAllActions,
     confirm,
+    cancelImport,
     cancel,
     reset,
   };

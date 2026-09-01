@@ -32,12 +32,7 @@ function displayName(parsed: Record<string, string>): string {
 // The review step: one row per source contact with its add/skip/update
 // decision, bulk "apply to all" controls, a totals line, and the loss report
 // — shown here, before the user commits (issue #442 recommendation 3).
-export default function SourceImportReview({
-  preview,
-  rowActions,
-  onRowAction,
-  onSetAll,
-}: Props) {
+export default function SourceImportReview({ preview, rowActions, onRowAction, onSetAll }: Props) {
   const { t } = useTranslation();
   const { totals } = preview;
 
@@ -81,18 +76,31 @@ export default function SourceImportReview({
               const invalid = row.validation_errors.length > 0;
               const rel = row.related;
               const brings: string[] = [];
-              if (rel.relationships) brings.push(t('settings.sourceImport.brings.relationships', { count: rel.relationships }));
-              if (rel.notes) brings.push(t('settings.sourceImport.brings.notes', { count: rel.notes }));
-              if (rel.activities) brings.push(t('settings.sourceImport.brings.activities', { count: rel.activities }));
-              if (rel.reminders) brings.push(t('settings.sourceImport.brings.reminders', { count: rel.reminders }));
-              if (rel.gifts) brings.push(t('settings.sourceImport.brings.gifts', { count: rel.gifts }));
+              if (rel.relationships)
+                brings.push(
+                  t('settings.sourceImport.brings.relationships', { count: rel.relationships }),
+                );
+              if (rel.notes)
+                brings.push(t('settings.sourceImport.brings.notes', { count: rel.notes }));
+              if (rel.activities)
+                brings.push(
+                  t('settings.sourceImport.brings.activities', { count: rel.activities }),
+                );
+              if (rel.reminders)
+                brings.push(t('settings.sourceImport.brings.reminders', { count: rel.reminders }));
+              if (rel.gifts)
+                brings.push(t('settings.sourceImport.brings.gifts', { count: rel.gifts }));
               return (
                 <TableRow key={row.row_index}>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       {displayName(row.parsed_contact)}
                       {row.has_photo && (
-                        <Chip size="small" variant="outlined" label={t('settings.sourceImport.review.photo')} />
+                        <Chip
+                          size="small"
+                          variant="outlined"
+                          label={t('settings.sourceImport.review.photo')}
+                        />
                       )}
                     </Box>
                   </TableCell>
@@ -105,13 +113,21 @@ export default function SourceImportReview({
                         color="warning"
                         label={t('settings.sourceImport.review.matches', {
                           name:
-                            [row.duplicate_match.existing_firstname, row.duplicate_match.existing_lastname]
+                            [
+                              row.duplicate_match.existing_firstname,
+                              row.duplicate_match.existing_lastname,
+                            ]
                               .filter(Boolean)
                               .join(' ') || t('settings.sourceImport.review.existingContact'),
                         })}
                       />
                     ) : (
-                      <Chip size="small" color="success" variant="outlined" label={t('settings.sourceImport.review.new')} />
+                      <Chip
+                        size="small"
+                        color="success"
+                        variant="outlined"
+                        label={t('settings.sourceImport.review.new')}
+                      />
                     )}
                   </TableCell>
                   <TableCell>
@@ -124,7 +140,9 @@ export default function SourceImportReview({
                       select
                       size="small"
                       value={action}
-                      onChange={(e) => onRowAction(row.row_index, e.target.value as RowSourceAction)}
+                      onChange={(e) =>
+                        onRowAction(row.row_index, e.target.value as RowSourceAction)
+                      }
                       sx={{ minWidth: 120 }}
                     >
                       <MenuItem value="add" disabled={invalid}>

@@ -2483,14 +2483,17 @@ paths:
           description: Unknown or expired session.
   /contacts/import/monica/confirm:
     post:
-      summary: Execute the Monica import with the review step's per-contact actions
+      summary: Start the Monica import with the review step's per-contact actions
       operationId: confirmMonicaImport
       description: >
-        Runs the mapped plan through the shared source-import engine in one
-        transaction with the per-contact add/skip/update decisions, records an
-        import_runs history row (format "monica"), then downloads avatars in
-        the background (progress via /status). Re-running the same import
-        skips contacts already imported (the import_source_links ledger).
+        Starts the import in the background and returns 202 immediately. The
+        client polls GET /status: phase advances importing → importing_photos →
+        done (or → cancelled / failed), and Status.result carries the summary
+        from importing_photos on. Runs through the shared source-import engine
+        in one transaction bound to a session context, so POST /cancel during
+        "importing" rolls the whole import back. Records an import_runs history
+        row (format "monica"); a re-run skips contacts already imported (the
+        import_source_links ledger).
       requestBody:
         required: true
         content:
@@ -2498,18 +2501,19 @@ paths:
             schema:
               $ref: "#/components/schemas/MonicaConfirmRequest"
       responses:
-        "200":
-          description: Import result summary (photo counts finalise once /status reaches "done").
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/MonicaImportResult"
+        "202":
+          description: Import started; poll GET /contacts/import/monica/status.
         "400":
           description: Unknown/expired/foreign session, or the snapshot is not fetched yet.
   /contacts/import/monica/cancel:
     post:
-      summary: Abort a Monica import session and drop its API token
+      summary: Cancel an in-flight Monica import, or drop the session
       operationId: cancelMonicaImport
+      description: >
+        During "importing"/"importing_photos" this cancels the transaction
+        context — the whole import rolls back, phase becomes "cancelled", and
+        the session is kept so the user can retry from review. In any other
+        phase it drops the session and its API token.
       parameters:
         - name: session_id
           in: query
@@ -2517,7 +2521,7 @@ paths:
           schema: { type: string }
       responses:
         "200":
-          description: Session cancelled; any running fetch is stopped and the token is wiped.
+          description: In-flight import cancelled (rolled back), or the session was dropped.
         "400":
           description: Missing session_id.
         "404":
@@ -12343,7 +12347,7 @@ components:
         session_id: { type: string }
         phase:
           type: string
-          enum: [connecting, fetching_contacts, fetching_activities, fetching_notes, fetching_reminders, fetching_extras, fetching_relationships, building_preview, ready, importing, importing_photos, done, failed]
+          enum: [connecting, fetching_contacts, fetching_activities, fetching_notes, fetching_reminders, fetching_extras, fetching_relationships, building_preview, ready, importing, importing_photos, done, failed, cancelled]
         phase_done: { type: integer }
         phase_total: { type: integer }
         error: { type: string }

@@ -73,6 +73,7 @@ const (
 	MonicaPhaseImportingPhotos       = "importing_photos"
 	MonicaPhaseDone                  = "done"
 	MonicaPhaseFailed                = "failed"
+	MonicaPhaseCancelled             = "cancelled" // an in-flight import was cancelled; the transaction rolled back
 )
 
 // MonicaImportStatus is the poll payload for the fetch/import progress bar.

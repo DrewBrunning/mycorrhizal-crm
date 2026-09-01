@@ -10,7 +10,6 @@ import {
   getSourceImportStatus,
   type RowSourceActionInput,
   type SourceImportPreviewResponse,
-  type SourceImportResult,
   type SourceImportStatus,
 } from './sourceImport';
 
@@ -53,10 +52,7 @@ export async function connectMonica(
   return response.json();
 }
 
-export async function startMonicaFetch(
-  sessionId: string,
-  opts: MonicaFetchOptions,
-): Promise<void> {
+export async function startMonicaFetch(sessionId: string, opts: MonicaFetchOptions): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}${MONICA_IMPORT_BASE}/fetch`, {
     method: 'POST',
     headers: getAuthHeaders(),
@@ -74,7 +70,7 @@ export const getMonicaImportPreview = (sessionId: string): Promise<SourceImportP
 export const confirmMonicaImport = (
   sessionId: string,
   actions: RowSourceActionInput[],
-): Promise<SourceImportResult> => confirmSourceImport(MONICA_IMPORT_BASE, sessionId, actions);
+): Promise<void> => confirmSourceImport(MONICA_IMPORT_BASE, sessionId, actions);
 
 export const cancelMonicaImport = (sessionId: string): Promise<void> =>
   cancelSourceImport(MONICA_IMPORT_BASE, sessionId);

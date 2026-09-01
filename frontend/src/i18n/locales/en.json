@@ -1411,7 +1411,10 @@
         "importing": "Importing…",
         "importing_photos": "Downloading profile photos…",
         "done": "Import complete",
-        "failed": "The import failed"
+        "failed": "The import failed",
+        "parsing_database": "Reading the database…",
+        "mapping": "Mapping records…",
+        "cancelled": "Import cancelled"
       },
       "progress": {
         "count": "{{done}} of {{total}}",
@@ -1463,7 +1466,8 @@
         "partialFailures": "{{count}} records could not be imported",
         "photosPending": "Downloading {{total}} profile photos…",
         "photosDone": "{{saved}} photos saved, {{failed}} failed"
-      }
+      },
+      "cancelImport": "Cancel import"
     },
     "monicaImport": {
       "title": "Import from Monica",

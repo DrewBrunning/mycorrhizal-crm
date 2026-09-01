@@ -13,6 +13,8 @@ import type { ImportRowPreview } from './import';
 
 export type SourceImportPhase =
   | 'connecting'
+  | 'parsing_database'
+  | 'mapping'
   | 'fetching_contacts'
   | 'fetching_activities'
   | 'fetching_notes'
@@ -24,7 +26,8 @@ export type SourceImportPhase =
   | 'importing'
   | 'importing_photos'
   | 'done'
-  | 'failed';
+  | 'failed'
+  | 'cancelled';
 
 // The review step's per-contact decision. Mirrors backend RowImportAction's
 // `oneof=skip add update`.
@@ -122,30 +125,26 @@ export function getSourceImportPreview(
   return getJSON(`${basePath}/preview?session_id=${encodeURIComponent(sessionId)}`);
 }
 
+// confirmSourceImport starts the import in the background — the endpoint
+// replies 202 with no result body. The caller polls getSourceImportStatus
+// until phase "done" and reads the summary from status.result.
 export async function confirmSourceImport(
   basePath: string,
   sessionId: string,
   actions: RowSourceActionInput[],
-): Promise<SourceImportResult> {
+): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}${basePath}/confirm`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ session_id: sessionId, actions }),
   });
   if (!response.ok) throw await parseErrorResponse(response);
-  return response.json();
 }
 
 export async function cancelSourceImport(basePath: string, sessionId: string): Promise<void> {
   // Best-effort: a failed cancel just leaves the session to expire on its own.
-  await apiFetch(
-    `${API_BASE_URL}${basePath}/cancel?session_id=${encodeURIComponent(sessionId)}`,
-    { method: 'POST', headers: getAuthHeaders() },
-  ).catch(() => undefined);
-}
-
-// A phase is terminal for polling once the fetch has produced a preview
-// (`ready`), failed, or the whole import has finished (`done`).
-export function isFetchTerminal(phase: SourceImportPhase): boolean {
-  return phase === 'ready' || phase === 'failed' || phase === 'done';
+  await apiFetch(`${API_BASE_URL}${basePath}/cancel?session_id=${encodeURIComponent(sessionId)}`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  }).catch(() => undefined);
 }

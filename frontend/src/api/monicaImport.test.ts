@@ -1,7 +1,9 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import {
+  cancelMonicaImport,
   confirmMonicaImport,
   connectMonica,
+  getMonicaImportPreview,
   getMonicaImportStatus,
   startMonicaFetch,
 } from './monicaImport';
@@ -38,7 +40,10 @@ test('connectMonica POSTs base_url + api_token and returns the session', async (
   const [url, init] = fetchMock.mock.calls[0];
   expect(url).toContain('/contacts/import/monica/connect');
   expect(init.method).toBe('POST');
-  expect(JSON.parse(init.body)).toEqual({ base_url: 'https://monica.example', api_token: 'tok-123' });
+  expect(JSON.parse(init.body)).toEqual({
+    base_url: 'https://monica.example',
+    api_token: 'tok-123',
+  });
   expect(resp.session_id).toBe('s1');
 });
 
@@ -65,7 +70,9 @@ test('startMonicaFetch sends the session id and the include flags', async () => 
 test('getMonicaImportStatus is a GET to the shared status endpoint', async () => {
   const fetchMock = vi
     .fn()
-    .mockResolvedValueOnce(okResponse({ session_id: 's1', phase: 'ready', phase_done: 3, phase_total: 3 }));
+    .mockResolvedValueOnce(
+      okResponse({ session_id: 's1', phase: 'ready', phase_done: 3, phase_total: 3 }),
+    );
   vi.stubGlobal('fetch', fetchMock);
 
   const st = await getMonicaImportStatus('s1');
@@ -76,23 +83,17 @@ test('getMonicaImportStatus is a GET to the shared status endpoint', async () =>
   expect(st.phase).toBe('ready');
 });
 
-test('confirmMonicaImport POSTs the per-row actions', async () => {
-  const fetchMock = vi.fn().mockResolvedValueOnce(
-    okResponse({
-      total_processed: 2,
-      created: 1,
-      updated: 1,
-      skipped: 0,
-      errors: [],
-      photos_queued: 0,
-    }),
-  );
+test('confirmMonicaImport POSTs the per-row actions and resolves void on 202', async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, status: 202, json: async () => ({ session_id: 's1' }) });
   vi.stubGlobal('fetch', fetchMock);
 
   const res = await confirmMonicaImport('s1', [
     { row_index: 0, action: 'add' },
     { row_index: 1, action: 'update' },
   ]);
+  expect(res).toBeUndefined();
 
   const [url, init] = fetchMock.mock.calls[0];
   expect(url).toContain('/contacts/import/monica/confirm');
@@ -103,5 +104,24 @@ test('confirmMonicaImport POSTs the per-row actions', async () => {
       { row_index: 1, action: 'update' },
     ],
   });
-  expect(res.updated).toBe(1);
+});
+
+test('getMonicaImportPreview GETs the shared preview endpoint', async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(
+      okResponse({ session_id: 's1', rows: [], total_rows: 0, loss_report: [] }),
+    );
+  vi.stubGlobal('fetch', fetchMock);
+
+  const p = await getMonicaImportPreview('s1');
+  expect(fetchMock.mock.calls[0][0]).toContain('/contacts/import/monica/preview?session_id=s1');
+  expect(p.loss_report).toEqual([]);
+});
+
+test('cancelMonicaImport POSTs cancel and never throws', async () => {
+  const fetchMock = vi.fn().mockRejectedValueOnce(new Error('network'));
+  vi.stubGlobal('fetch', fetchMock);
+  await expect(cancelMonicaImport('s1')).resolves.toBeUndefined();
+  expect(fetchMock.mock.calls[0][0]).toContain('/contacts/import/monica/cancel?session_id=s1');
 });

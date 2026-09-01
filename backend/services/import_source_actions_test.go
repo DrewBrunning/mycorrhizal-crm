@@ -1,9 +1,11 @@
 package services
 
 import (
+	"context"
 	"strings"
 	"testing"
 
+	"mycorrhizal/contactmodel"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -32,7 +34,7 @@ func TestExecuteSourceImportWithActions_SkipExcludesContactAndItsGraph(t *testin
 	actions := map[string]SourceContactAction{
 		"contact/1": {Action: SourceActionSkip},
 	}
-	report, ids, err := ExecuteSourceImportWithActions(db, user.ID, plan, actions)
+	report, ids, err := ExecuteSourceImportWithActions(context.Background(), db, user.ID, plan, actions, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, report.ContactsCreated)
@@ -81,7 +83,7 @@ func TestExecuteSourceImportWithActions_MergeIntoExistingContact(t *testing.T) {
 	actions := map[string]SourceContactAction{
 		"contact/1": {Action: SourceActionMerge, MergeTargetUID: existing.VCardUID},
 	}
-	report, ids, err := ExecuteSourceImportWithActions(db, user.ID, plan, actions)
+	report, ids, err := ExecuteSourceImportWithActions(context.Background(), db, user.ID, plan, actions, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, 0, report.ContactsCreated)
@@ -120,25 +122,29 @@ func TestExecuteSourceImportWithActions_MergeTargetNotFound(t *testing.T) {
 	plan.Contacts = []MappedContact{
 		{Ref: ref("contact/1"), Record: minimalRecord("Ada", "Lovelace")},
 	}
-	actions := map[string]SourceContactAction{
-		"contact/1": {Action: SourceActionMerge, MergeTargetUID: "does-not-exist"},
-	}
-	report, _, err := ExecuteSourceImportWithActions(db, user.ID, plan, actions)
-	require.NoError(t, err)
-
-	assert.Equal(t, 0, report.ContactsCreated)
-	assert.Equal(t, 0, report.ContactsUpdated)
-	var count int64
-	db.Model(&models.Contact{}).Where("user_id = ?", user.ID).Count(&count)
-	assert.Equal(t, int64(0), count)
-
-	var named bool
-	for _, iss := range report.Issues {
-		if iss.Category == ImportIssueCategoryInvalid && strings.Contains(iss.Record, "contact/1") {
-			named = true
+	// Both an unresolvable UID and an empty UID are named failures, not crashes.
+	for _, target := range []string{"does-not-exist", ""} {
+		actions := map[string]SourceContactAction{
+			"contact/1": {Action: SourceActionMerge, MergeTargetUID: target},
 		}
+		report, _, err := ExecuteSourceImportWithActions(context.Background(), db, user.ID, plan, actions, nil)
+		require.NoError(t, err)
+
+		assert.Equal(t, 0, report.ContactsCreated)
+		assert.Equal(t, 0, report.ContactsUpdated)
+
+		var count int64
+		db.Model(&models.Contact{}).Where("user_id = ?", user.ID).Count(&count)
+		assert.Equal(t, int64(0), count)
+
+		var named bool
+		for _, iss := range report.Issues {
+			if iss.Category == ImportIssueCategoryInvalid && strings.Contains(iss.Record, "contact/1") {
+				named = true
+			}
+		}
+		assert.True(t, named, "target %q must be a named failure", target)
 	}
-	assert.True(t, named, "a missing merge target is a named failure, not a crash")
 }
 
 func TestExecuteSourceImportWithActions_NilActionsCreatesEveryContact(t *testing.T) {
@@ -150,8 +156,100 @@ func TestExecuteSourceImportWithActions_NilActionsCreatesEveryContact(t *testing
 		{Ref: ref("contact/1"), Record: minimalRecord("Ada", "Lovelace")},
 		{Ref: ref("contact/2"), Record: minimalRecord("Ben", "Babbage")},
 	}
-	report, ids, err := ExecuteSourceImportWithActions(db, user.ID, plan, nil)
+	report, ids, err := ExecuteSourceImportWithActions(context.Background(), db, user.ID, plan, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 2, report.ContactsCreated)
 	assert.Len(t, ids, 2)
+}
+
+func TestExecuteSourceImportWithActions_ProgressAndCancel(t *testing.T) {
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+
+	plan := &ImportSourcePlan{System: "monica"}
+	for i := 0; i < 5; i++ {
+		plan.Contacts = append(plan.Contacts, MappedContact{
+			Ref:    ref("contact/" + string(rune('a'+i))),
+			Record: minimalRecord("Given"+string(rune('a'+i)), "Surname"),
+		})
+	}
+
+	// Progress advances.
+	var lastDone, lastTotal int
+	report, _, err := ExecuteSourceImportWithActions(context.Background(), db, user.ID, plan, nil,
+		func(done, total int) { lastDone, lastTotal = done, total })
+	require.NoError(t, err)
+	assert.Equal(t, 5, report.ContactsCreated)
+	assert.Equal(t, lastTotal, lastDone, "progress ends at total")
+	assert.Equal(t, len(plan.Contacts)+importGraphKinds, lastTotal)
+}
+
+func TestExecuteSourceImportWithActions_CancelledContextPersistsNothing(t *testing.T) {
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+
+	plan := &ImportSourcePlan{System: "monica"}
+	plan.Contacts = []MappedContact{
+		{Ref: ref("contact/1"), Record: minimalRecord("Ada", "Lovelace")},
+		{Ref: ref("contact/2"), Record: minimalRecord("Ben", "Babbage")},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // already cancelled before the run starts
+
+	_, _, err := ExecuteSourceImportWithActions(ctx, db, user.ID, plan, nil, nil)
+	require.Error(t, err)
+
+	var count int64
+	db.Model(&models.Contact{}).Where("user_id = ?", user.ID).Count(&count)
+	assert.Equal(t, int64(0), count, "a cancelled import leaves no partial rows")
+	var links int64
+	db.Model(&models.ImportSourceLink{}).Where("user_id = ?", user.ID).Count(&links)
+	assert.Equal(t, int64(0), links)
+}
+
+// TestImportGraphKindsMatchesPass2 pins importGraphKinds against the real
+// number of pass-2 entity-kind calls, so the progress bar's total stays right
+// if a kind is added.
+func TestImportGraphKindsMatchesPass2(t *testing.T) {
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+	plan := &ImportSourcePlan{System: "monica", Contacts: []MappedContact{
+		{Ref: ref("contact/1"), Record: minimalRecord("Ada", "Lovelace")},
+	}}
+	var maxTotal int
+	_, _, err := ExecuteSourceImportWithActions(context.Background(), db, user.ID, plan, nil,
+		func(done, total int) { maxTotal = total })
+	require.NoError(t, err)
+	assert.Equal(t, 1+importGraphKinds, maxTotal)
+}
+
+func TestMergeSourceContact_NeutralOnlyContentIsNamedLossy(t *testing.T) {
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+
+	existing := models.Contact{UserID: user.ID, Firstname: "Ada", Lastname: "L"}
+	require.NoError(t, db.Create(&existing).Error)
+
+	rec := minimalRecord("Ada", "Lovelace")
+	rec.Card.SpeakToAs = &contactmodel.SpeakToAs{
+		Pronouns: []contactmodel.Pronouns{{Pronouns: "she/her"}},
+	}
+	plan := &ImportSourcePlan{System: "monica", Contacts: []MappedContact{
+		{Ref: ref("contact/1"), Record: rec},
+	}}
+	actions := map[string]SourceContactAction{
+		"contact/1": {Action: SourceActionMerge, MergeTargetUID: existing.VCardUID},
+	}
+	report, _, err := ExecuteSourceImportWithActions(context.Background(), db, user.ID, plan, actions, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 1, report.ContactsUpdated)
+
+	var lossy bool
+	for _, iss := range report.Issues {
+		if iss.Category == ImportIssueCategoryLossy && strings.Contains(iss.Message, "pronouns") {
+			lossy = true
+		}
+	}
+	assert.True(t, lossy, "merging a record with neutral-only content names the loss: %+v", report.Issues)
 }

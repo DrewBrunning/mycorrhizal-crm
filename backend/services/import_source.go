@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -296,7 +297,7 @@ const (
 // callers that need per-contact skip/merge decisions use
 // ExecuteSourceImportWithActions.
 func ExecuteSourceImport(db *gorm.DB, userID uint, plan *ImportSourcePlan) (*ImportReport, error) {
-	report, _, err := ExecuteSourceImportWithActions(db, userID, plan, nil)
+	report, _, err := ExecuteSourceImportWithActions(context.Background(), db, userID, plan, nil, nil)
 	return report, err
 }
 
@@ -306,7 +307,14 @@ func ExecuteSourceImport(db *gorm.DB, userID uint, plan *ImportSourcePlan) (*Imp
 // contact created or merged, so the caller can attach deferred work (avatar
 // downloads) to the right rows. A nil or empty actions map is identical to
 // ExecuteSourceImport.
-func ExecuteSourceImportWithActions(db *gorm.DB, userID uint, plan *ImportSourcePlan, actions map[string]SourceContactAction) (*ImportReport, map[string]uint, error) {
+//
+// ctx cancels the whole import: the run happens in one transaction bound to
+// ctx, so cancelling it fails the next statement and rolls everything back —
+// the assistants use this for an in-flight "Cancel import" with no partial
+// result. progress, when non-nil, is called as the run advances (once per
+// contact in pass 1, once per graph entity-kind in pass 2) with a running
+// (done, total) so the UI can show a bar.
+func ExecuteSourceImportWithActions(ctx context.Context, db *gorm.DB, userID uint, plan *ImportSourcePlan, actions map[string]SourceContactAction, progress func(done, total int)) (*ImportReport, map[string]uint, error) {
 	if plan == nil || plan.System == "" {
 		return &ImportReport{}, map[string]uint{}, nil
 	}
@@ -317,17 +325,31 @@ func ExecuteSourceImportWithActions(db *gorm.DB, userID uint, plan *ImportSource
 	report := &ImportReport{Issues: append([]ImportIssue(nil), plan.Report.Issues...)}
 	refToID := make(map[string]uint, len(plan.Contacts))
 
-	err := db.Transaction(func(tx *gorm.DB) error {
-		return executeSourceImport(tx, userID, plan, actions, report, refToID)
+	// total = one tick per contact + one per pass-2 entity kind (importGraphKinds).
+	total := len(plan.Contacts) + importGraphKinds
+	done := 0
+	tick := func() {
+		done++
+		if progress != nil {
+			progress(done, total)
+		}
+	}
+
+	err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return executeSourceImport(ctx, tx, userID, plan, actions, report, refToID, tick)
 	})
-	if err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
+	if err != nil {
 		return nil, nil, err
 	}
 	plan.Report = *report
 	return report, refToID, nil
 }
 
-func executeSourceImport(tx *gorm.DB, userID uint, plan *ImportSourcePlan, actions map[string]SourceContactAction, report *ImportReport, refToID map[string]uint) error {
+// importGraphKinds is the number of pass-2 entity-kind import calls in
+// executeSourceImport — used only to size the progress bar's total.
+const importGraphKinds = 10
+
+func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *ImportSourcePlan, actions map[string]SourceContactAction, report *ImportReport, refToID map[string]uint, tick func()) error {
 	imported := loadSourceLinks(tx, userID, plan.System)
 
 	// Pass 1: contacts. refToUID maps each plan contact's SourceRef to the
@@ -336,6 +358,10 @@ func executeSourceImport(tx *gorm.DB, userID uint, plan *ImportSourcePlan, actio
 	// (notes, reminders).
 	refToUID := make(map[string]string, len(plan.Contacts))
 	for i := range plan.Contacts {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		tick()
 		mc := &plan.Contacts[i]
 		if imported[mc.Ref.ExternalID] {
 			report.ContactsSkipped++
@@ -447,36 +473,29 @@ func executeSourceImport(tx *gorm.DB, userID uint, plan *ImportSourcePlan, actio
 		return false
 	}
 
-	var err error
-	if err = importRelationships(tx, userID, plan, imported, uidOf, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
+	// Pass 2: graph entity kinds, one per importGraphKinds. Each advances the
+	// progress bar; ctx is re-checked between kinds so a cancel rolls back
+	// promptly on a large graph.
+	graphKinds := []func() error{
+		func() error { return importRelationships(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importHouseholds(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importCircles(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importTags(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importGifts(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importPreferences(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importNotes(tx, userID, plan, imported, refToID, skipImported, report) },
+		func() error { return importActivities(tx, userID, plan, imported, uidOf, skipImported, report) },
+		func() error { return importReminders(tx, userID, plan, imported, refToID, skipImported, report) },
+		func() error { return importCustomFields(tx, userID, plan, imported, refToUID, skipImported, report) },
 	}
-	if err = importHouseholds(tx, userID, plan, imported, uidOf, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
-	}
-	if err = importCircles(tx, userID, plan, imported, uidOf, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
-	}
-	if err = importTags(tx, userID, plan, imported, uidOf, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
-	}
-	if err = importGifts(tx, userID, plan, imported, uidOf, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
-	}
-	if err = importPreferences(tx, userID, plan, imported, uidOf, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
-	}
-	if err = importNotes(tx, userID, plan, imported, refToID, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
-	}
-	if err = importActivities(tx, userID, plan, imported, uidOf, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
-	}
-	if err = importReminders(tx, userID, plan, imported, refToID, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
-	}
-	if err = importCustomFields(tx, userID, plan, imported, refToUID, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-		return err
+	for _, importKind := range graphKinds {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := importKind(); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
+			return err
+		}
+		tick()
 	}
 
 	return nil
@@ -543,7 +562,7 @@ func mergeSourceContact(tx *gorm.DB, userID uint, system string, mc *MappedConta
 	if len(label) > 0 {
 		label = strings.ToUpper(label[:1]) + label[1:]
 	}
-	if err := CreateMergeNote(tx, userID, existing.ID, &existing, incoming, label); err != nil {
+	if err := CreateMergeNote(tx, userID, existing.ID, &existing, incoming, label); err != nil { // # pragma: no cover — defensive: a healthy notes table does not fail this insert
 		report.appendIssue(ImportIssue{
 			Record:   mc.Ref.String(),
 			Field:    "contact",
@@ -553,7 +572,7 @@ func mergeSourceContact(tx *gorm.DB, userID uint, system string, mc *MappedConta
 	}
 
 	MergeImportedContact(&existing, incoming)
-	if err := tx.Save(&existing).Error; err != nil {
+	if err := tx.Save(&existing).Error; err != nil { // # pragma: no cover — defensive: the row was just loaded from a healthy migrated schema
 		report.appendIssue(ImportIssue{
 			Record:   mc.Ref.String(),
 			Field:    "contact",

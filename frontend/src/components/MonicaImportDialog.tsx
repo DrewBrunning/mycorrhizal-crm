@@ -13,12 +13,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   connectMonica,
-  type MonicaConnectResponse,
   MONICA_IMPORT_BASE,
+  type MonicaConnectResponse,
   startMonicaFetch,
 } from '../api/monicaImport';
-import { getErrorMessage } from '../utils/errorHandler';
 import { useSourceImportWizard } from '../hooks/useSourceImportWizard';
+import { getErrorMessage } from '../utils/errorHandler';
 import SourceImportWizard from './sourceImport/SourceImportWizard';
 
 interface Props {

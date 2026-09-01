@@ -11,7 +11,10 @@ import {
 } from '@mui/material';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { SourceImportStep, SourceImportWizard as Wizard } from '../../hooks/useSourceImportWizard';
+import type {
+  SourceImportStep,
+  SourceImportWizard as Wizard,
+} from '../../hooks/useSourceImportWizard';
 import SourceImportProgress from './SourceImportProgress';
 import SourceImportResult from './SourceImportResult';
 import SourceImportReview from './SourceImportReview';
@@ -105,7 +108,12 @@ export default function SourceImportWizard({
             {t('settings.sourceImport.done')}
           </Button>
         ) : step === 'importing' ? (
-          <Button onClick={onClose}>{t('settings.sourceImport.closeKeepRunning')}</Button>
+          <>
+            <Button color="error" onClick={() => void wizard.cancelImport()} disabled={wizard.busy}>
+              {t('settings.sourceImport.cancelImport')}
+            </Button>
+            <Button onClick={onClose}>{t('settings.sourceImport.closeKeepRunning')}</Button>
+          </>
         ) : (
           <>
             <Button onClick={handleCancel}>{t('common.cancel')}</Button>

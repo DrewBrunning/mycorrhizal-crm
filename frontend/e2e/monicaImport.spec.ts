@@ -17,10 +17,15 @@ test.describe('Monica import assistant', () => {
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
-    // The five shared source-import steps.
-    for (const label of ['Connect', 'Fetch', 'Review', 'Import', 'Done']) {
-      await expect(dialog.getByText(label, { exact: true })).toBeVisible();
-    }
+    // The five shared source-import steps, scoped to the stepper so the
+    // "Connect" label does not collide with the Connect button.
+    await expect(dialog.locator('.MuiStepLabel-label')).toHaveText([
+      'Connect',
+      'Fetch',
+      'Review',
+      'Import',
+      'Done',
+    ]);
     // Credentials are entered in the UI (no manual export step).
     await expect(dialog.getByLabel('Monica address')).toBeVisible();
     await expect(dialog.getByLabel('API token')).toBeVisible();

@@ -143,7 +143,8 @@ func GetMonicaImportPreview(c *gin.Context) {
 	c.JSON(http.StatusOK, preview)
 }
 
-// ConfirmMonicaImport executes the import with the per-contact review actions.
+// ConfirmMonicaImport starts the import in the background (202); the client
+// polls GET /status for progress and the result.
 func ConfirmMonicaImport(c *gin.Context, cfg *config.Config) {
 	log := logger.FromContext(c)
 	db := c.MustGet("db").(*gorm.DB)
@@ -159,17 +160,16 @@ func ConfirmMonicaImport(c *gin.Context, cfg *config.Config) {
 		return
 	}
 
-	result, appErr := monicaImportSessions.Confirm(db, userID, *req, cfg, log)
-	if appErr != nil {
+	if appErr := monicaImportSessions.Confirm(db, userID, *req, cfg, log); appErr != nil {
 		apperrors.AbortWithError(c, appErr)
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusAccepted, gin.H{"session_id": req.SessionID})
 }
 
-// CancelMonicaImport aborts a session, cancelling any running fetch and
-// dropping the API token from memory.
+// CancelMonicaImport cancels an in-flight import (rolls it back, phase
+// "cancelled") or, in any other phase, drops the session and its API token.
 func CancelMonicaImport(c *gin.Context) {
 	userID, ok := currentUserID(c)
 	if !ok {
@@ -182,12 +182,10 @@ func CancelMonicaImport(c *gin.Context) {
 		return
 	}
 
-	// Validate ownership before deleting.
-	if _, appErr := monicaImportSessions.Status(userID, sessionID); appErr != nil {
+	if appErr := monicaImportSessions.Cancel(userID, sessionID); appErr != nil {
 		apperrors.AbortWithError(c, appErr)
 		return
 	}
-	monicaImportSessions.Delete(sessionID)
 
 	c.JSON(http.StatusOK, gin.H{"status": "cancelled"})
 }
