@@ -99,14 +99,11 @@ func newGormLogger(w io.Writer) gormLogger.Interface {
 
 // InitDB initializes the database connection and runs migrations
 func InitDB(dbPath string) (*gorm.DB, error) {
-	// Open database connection for migrations
-	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-
-	// Run migrations
-	if err := RunMigrations(sqlDB); err != nil {
+	// Take the mandatory pre-migration backup (issue #530), then run every
+	// pending migration. migrateFileWithPreBackup is fail-closed: if the
+	// backup cannot be written it returns ErrPreMigrationBackupFailed and
+	// nothing is migrated.
+	if err := migrateFileWithPreBackup(dbPath); err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
@@ -412,6 +409,12 @@ func checkMigrationPreflight(version uint, dirty bool, latest uint) error {
 // and hope" path and no configuration setting turns any refusal into a
 // warning. The operator-only escape hatch for a dirty database lives in the
 // migrate CLI (`force`, which prompts), never on the startup path.
+//
+// This is the no-backup primitive: it takes a *sql.DB and has no path, so it
+// cannot snapshot. The mandatory pre-migration backup (issue #530) is taken by
+// migrateFileWithPreBackup, the path-taking wrapper behind InitDB and
+// MigrateUp. Callers that hold only a handle (tests, the schema-fixture
+// tooling) use this directly and are responsible for their own backup policy.
 func RunMigrations(db *sql.DB) error {
 	m, err := newMigrator(db)
 	if err != nil {
@@ -592,19 +595,76 @@ func migrationFileForVersion(version uint) string {
 	return ""
 }
 
-// MigrateUp applies every pending migration to the database at dbPath. Thin
-// path-taking wrapper over RunMigrations so cmd/migrate does not have to
-// duplicate the DSN pragmas — the CLI reaching for its own sql.Open and its own
-// migration source is exactly how it drifted out of sync with the app before
-// (see MigrateDown's note below).
+// MigrateUp applies every pending migration to the database at dbPath, after
+// taking the mandatory pre-migration backup (issue #530). It is the operator's
+// manual `make migrate-up` path and is fail-closed on the backup exactly like
+// the server's startup path (InitDB): both go through migrateFileWithPreBackup.
+// Thin path-taking wrapper so cmd/migrate does not duplicate the DSN pragmas —
+// the CLI reaching for its own sql.Open and its own migration source is exactly
+// how it drifted out of sync with the app before (see MigrateDown's note below).
 func MigrateUp(dbPath string) error {
-	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	return migrateFileWithPreBackup(dbPath)
+}
+
+// migrateFileWithPreBackup is the shared file-level upgrade path behind InitDB
+// (server startup) and MigrateUp (`make migrate-up`): take the mandatory
+// pre-migration backup (issue #530), then apply every pending migration.
+//
+// The backup is the load-bearing half of the rollback policy — downgrade is
+// unsupported, so a snapshot taken before the upgrade is the only way back to
+// the previous version. It is fail-closed: a backup that cannot be written
+// returns ErrPreMigrationBackupFailed and NOTHING is migrated. There is no
+// configuration that disables it (the env var only moves the target).
+//
+// It is taken only when there is real data to lose AND migrations to run:
+//   - a fresh database (no schema_migrations row) is a clean install — skip;
+//   - a database already at the latest version has nothing pending — skip;
+//   - a dirty database, a database ahead of this binary, and a sub-floor
+//     database without the one-time bridge are all states RunMigrations
+//     refuses anyway — skip the backup and let it produce the typed refusal.
+//
+// RunMigrations then re-runs the same fail-closed preflight before applying
+// anything; the version read here is only to decide whether to snapshot.
+func migrateFileWithPreBackup(dbPath string) error {
+	version, dirty, ok, err := MigrationVersion(dbPath)
 	if err != nil {
+		return err
+	}
+	latest, err := LatestMigrationVersion()
+	if err != nil { // # pragma: no cover -- the embedded migrations FS always has at least one migration
+		return err
+	}
+
+	if shouldTakePreMigrationBackup(version, dirty, ok, latest) {
+		if _, err := takePreMigrationBackup(dbPath, version, latest); err != nil {
+			return err
+		}
+	}
+
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	if err != nil { // # pragma: no cover -- sql.Open is lazy; a file DSN does not fail here
 		return fmt.Errorf("failed to open database: %w", err)
 	}
-	defer sqlDB.Close()
-
+	// RunMigrations closes sqlDB through the migrator's database half
+	// (closeMigrator); no defer close here, matching the pre-#530 InitDB.
 	return RunMigrations(sqlDB)
+}
+
+// shouldTakePreMigrationBackup decides whether migrateFileWithPreBackup
+// snapshots before migrating. It returns true only for a clean, non-empty
+// database that is behind the latest schema and either at/above the upgrade
+// floor or carrying the one-time sub-floor bridge override — i.e. a real
+// pending upgrade of real data. Every other state is either nothing-to-back-up
+// (fresh, already current) or a state RunMigrations will refuse (dirty, ahead
+// of the binary, sub-floor without the bridge).
+func shouldTakePreMigrationBackup(version uint, dirty, ok bool, latest uint) bool {
+	if !ok || dirty || version >= latest {
+		return false
+	}
+	if version < SupportedUpgradeFloorVersion && !subFloorMigrationAllowed() {
+		return false
+	}
+	return true
 }
 
 // MigrateForce is the operator-only recovery for a dirty database (MIG-04,

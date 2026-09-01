@@ -188,8 +188,8 @@ memory cap; the assertion to hold is the same: non-zero exit, then
 
 `TestLargeDatasetBackupRestoresAtScale` (issue #495's "a backup strategy that
 works on a 10 MB database and not a 10 GB one has not been tested"): a
-`database.BackupSnapshot` (VACUUM INTO, the documented pre-upgrade backup
-primitive that DEPLOY-02 / issue #530 will make mandatory) of the large floor
+`database.BackupSnapshot` (VACUUM INTO, the pre-upgrade backup primitive that
+issue #530 makes mandatory on the startup migration path) of the large floor
 database must
 
 - produce a single self-contained file that passes `PRAGMA integrity_check` at

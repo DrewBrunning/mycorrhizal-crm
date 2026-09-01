@@ -33,16 +33,22 @@ re-derive it.
 ### Upgrading
 
 ```sh
-# 1. Back up (the server does NOT take a pre-migration backup for you yet —
-#    see docs/deployment.md → Backups; the automatic mandatory backup ships
-#    with DEPLOY-02/issue #530).
 docker compose pull
 docker compose up -d
 ```
 
-Database migrations run automatically on startup. Upgrading is unattended; that
-is exactly why the supported range is bounded and why the refusal cases below
-fail loudly instead of best-effort.
+Database migrations run automatically on startup. **Before applying any pending
+migration the server takes a verified SQLite snapshot** into a `pre-migration/`
+directory beside the database (`MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` moves it)
+and **refuses to migrate if it cannot write one** (issue #530). That snapshot is
+the rollback point — downgrade is unsupported, so getting back to the previous
+version means installing it and restoring this snapshot. It covers the database
+only; photos and attachments are unchanged by migrations, so a full rollback
+still restores those from the routine three-piece backup
+(`docs/deployment.md` → Backups).
+
+Upgrading is unattended; that is exactly why the supported range is bounded and
+why the refusal cases below fail loudly instead of best-effort.
 
 ## What happens below the floor
 
@@ -105,22 +111,27 @@ survived).
 
 ## Refusal states
 
-Three startup states are enforced (MIG-04, issue #439), all **fail-closed**: the
-server refuses to start, logs at error level, and names the condition and its
-recovery. A message that names the condition but not the remedy sends the
-operator to the source; these all state both. In no case does any
-configuration setting turn a refusal into a warning — the one exception is the
-documented one-time `v0.2.0-alpha-candidate` bridge above, which is a policy
-exception for a single known sub-floor deployment, not a bypass knob. The
-step-by-step recovery for all three states — including exactly which pre-upgrade
-backup file to restore and how long it must be kept — is
-`docs/operations/migration-recovery.md`.
+Four startup states are enforced, all **fail-closed**: the server refuses to
+start, logs at error level, and names the condition and its recovery. A message
+that names the condition but not the remedy sends the operator to the source;
+these all state both. In no case does any configuration setting turn a refusal
+into a warning — the one exception is the documented one-time
+`v0.2.0-alpha-candidate` bridge above, which is a policy exception for a single
+known sub-floor deployment, not a bypass knob. The step-by-step recovery for
+each state — including exactly which pre-upgrade backup file to restore and how
+long it must be kept — is `docs/operations/migration-recovery.md`.
+
+The first three are the migration-state gates (MIG-04, issue #439). The fourth
+is the mandatory pre-migration backup (issue #530): a snapshot the server must
+be able to write before it will migrate, because downgrade is unsupported and
+that snapshot is the only rollback point.
 
 | State | Behavior | Operator action |
 |---|---|---|
 | Sub-floor schema (below `000031`) | **Refuse**, print the two-step message above, exit | Two-step through `v0.6.0`, or the documented bridge — see the [below-the-floor section](../operations/migration-recovery.md#below-the-floor) |
 | Dirty schema | **Refuse** (`ErrDirtyMigration`): a migration started and did not finish, so the schema state is unknown | Restore the pre-migration backup and start again — see the [dirty-schema section](../operations/migration-recovery.md#dirty-schema). Only after verifying the schema actually matches the named version, `make migrate-force` (prompted, operator-only) — never automatic |
 | Schema ahead of the binary | **Refuse** (`ErrSchemaAheadOfBinary`): the database knows migrations this binary does not, meaning a rollback is in progress | Deploy a binary that knows the newer migration, or restore the backup taken before the newer release ran — see the [ahead-of-the-binary section](../operations/migration-recovery.md#schema-ahead-of-the-binary) |
+| Pre-migration backup target unwritable | **Refuse** (`ErrPreMigrationBackupFailed`): pending migrations exist but the mandatory snapshot could not be written; the database is untouched | Make the backup directory writable, or set `MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` to a writable path, then start again — see [The pre-migration backup](../operations/migration-recovery.md#the-pre-migration-backup) |
 
 ### Dirty schema — interrupted migration
 
@@ -172,11 +183,12 @@ database schema version 45 is ahead of this binary (latest known migration 44): 
 ### How each refusal is surfaced
 
 Each refusal is its own typed error (`ErrSubFloorMigration`,
-`ErrDirtyMigration`, `ErrSchemaAheadOfBinary`) so health/readiness and the
-diagnostics run can report *which* state an install is in rather than a
-generic boot failure, and so the migrate CLI prints the same message. The
-server start path logs it via `logger.Fatal` (`Failed to initialize
-database`); nothing is written to the database by any refusal.
+`ErrDirtyMigration`, `ErrSchemaAheadOfBinary`, and `ErrPreMigrationBackupFailed`
+for the pre-migration backup gate) so health/readiness and the diagnostics run
+can report *which* state an install is in rather than a generic boot failure,
+and so the migrate CLI prints the same message. The server start path logs it
+via `logger.Fatal` (`Failed to initialize database`); nothing is written to the
+database by any refusal.
 
 ## How upgrades are tested
 

@@ -94,8 +94,9 @@ the acceptance criteria, TEST-06 owns the technique:
 - **DEPLOY-03 (#452)** — interrupted startup before/during/after migration.
 - **CON-04 (#459)** and **#526** — retry paths and ambiguous failures (the
   write succeeded but the response was lost), injected in-process.
-- **#498** — constrained resources; **#530** — pre-migration backup, whose
-  failure path the backup seam must exercise.
+- **#498** — constrained resources; **#530** — the mandatory pre-migration
+  backup, whose failure path fails the upgrade closed
+  (`ErrPreMigrationBackupFailed`); the backup seam exercises it.
 - The remaining integration clients (Paperless, Seafile, WebDAV, CardDAV/CalDAV,
   webhooks, notification channels) take the same seam shape as
   `services.immich.request`; their sentinel handling is already pinned by the

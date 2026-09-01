@@ -10,9 +10,9 @@ procedure for that is [The drill](#the-drill).
 
 | | |
 |---|---|
-| **Scope** | The three fail-closed migration states (MIG-04, issue [#439](https://github.com/DrewBrunning/mycorrhizal-crm/issues/439)): dirty schema, schema ahead of the binary, and schema below the supported floor — plus what `make migrate-down` is and is not for. |
+| **Scope** | The three fail-closed migration states (MIG-04, issue [#439](https://github.com/DrewBrunning/mycorrhizal-crm/issues/439)): dirty schema, schema ahead of the binary, and schema below the supported floor — plus the mandatory pre-migration backup, [rolling back a bad release](#rolling-back-a-bad-release-n1--n), and what `make migrate-down` is and is not for. |
 | **Companion docs** | `docs/deployment.md` (backup/restore/upgrade *procedures* — the three-piece backup), `docs/upgrade-compatibility.md` (the supported-upgrade range and the refusal states), `docs/security/incident-response.md` (containment/rotation for a security incident), `docs/security/data-retention-lifecycle.md` §10 (what a backup contains and how long backups survive). |
-| **Policy anchor** | Downgrade is unsupported; rollback is **restore-the-pre-upgrade-backup** (issue [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530)). The server takes the pre-migration backup automatically as part of that policy once it ships; until then the operator takes it manually — see [The pre-migration backup](#the-pre-migration-backup). |
+| **Policy anchor** | Downgrade is unsupported; rollback is **restore-the-pre-upgrade-backup** (issue [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530)). The server (and `make migrate-up`) takes the pre-migration backup **automatically and fail-closed** — it refuses to migrate if it cannot write one — see [The pre-migration backup](#the-pre-migration-backup). |
 
 ## Reading the state
 
@@ -52,17 +52,31 @@ Every recovery in this document ends in "restore the pre-migration backup." A
 runbook that says that without saying **which file** is not a runbook — so here
 is exactly where it lives.
 
-- **Where.** A backup is three pieces: the SQLite snapshot, the profile-photo
-  directory (`PROFILE_PHOTO_DIR`), and the attachment directory
-  (`ATTACHMENTS_DIR`). Restoring only the `.db` silently loses photos and
-  attachments. See `docs/deployment.md` → Backups for the full inventory and
-  the offline (server-stopped) alternative.
-- **How the snapshot is named.** `make backup` (from `backend/`, with the same
-  environment the server uses) writes a timestamped snapshot **beside the live
-  database**: `<db-stem>-<YYYYMMDD-HHMMSS>.db`, e.g.
-  `/path/to/data/mycorrhizal-20260809-120000.db`. It refuses to overwrite an
-  existing file, and verifies the result with `PRAGMA integrity_check` before
-  reporting success. For an explicit, findable location:
+- **The server takes it for you, automatically.** Before applying any pending
+  migration, `database.InitDB` (server startup) and `make migrate-up` write a
+  verified `VACUUM INTO` snapshot of the database and **refuse to migrate if
+  they cannot** (`ErrPreMigrationBackupFailed` — issue #530). It lands in a
+  `pre-migration/` subdirectory beside `SQLITE_DB_PATH`, named
+  `<db-stem>-pre-migration-<from-version>-to-<to-version>-<YYYYMMDD-HHMMSS>.db`
+  (e.g. `mycorrhizal-pre-migration-31-to-44-20260901-120000.db`).
+  `MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` moves the directory; nothing disables
+  the backup. The snapshot is skipped only when there is nothing to protect: a
+  fresh install (no schema yet) or a database already at the current schema.
+- **It is the database only.** Migrations never touch `PROFILE_PHOTO_DIR` or
+  `ATTACHMENTS_DIR`, so the automatic snapshot does not copy them. A *full*
+  rollback still restores those two directories from the routine three-piece
+  backup — see the next bullet and `docs/deployment.md` → Backups.
+- **Where the file directories come from.** A complete backup is three pieces:
+  the SQLite snapshot (above), the profile-photo directory (`PROFILE_PHOTO_DIR`),
+  and the attachment directory (`ATTACHMENTS_DIR`). Restoring only the `.db`
+  silently loses photos and attachments. See `docs/deployment.md` → Backups for
+  the full inventory and the offline (server-stopped) alternative.
+- **Taking one by hand** (a pre-floor two-step, or any time you want an
+  explicit copy). `make backup` (from `backend/`, with the same environment the
+  server uses) writes a timestamped snapshot **beside the live database**:
+  `<db-stem>-<YYYYMMDD-HHMMSS>.db`. It refuses to overwrite an existing file,
+  and verifies the result with `PRAGMA integrity_check` before reporting
+  success. For an explicit, findable location:
   ```sh
   BACKUP_PATH=/backups/mycorrhizal-pre-v0.6.4-$(date +%F).db make backup
   ```
@@ -72,20 +86,60 @@ is exactly where it lives.
   no backup rotation or auto-deletion (deliberately; see
   `docs/deployment.md` → Backup confidentiality & retention). The **only**
   retention rule that is a policy, not a preference, comes from issue #530:
-  **a scheduled purge must never delete the last rollback point.** Concretely,
-  before you run a purge cron such as
-  `find /backups -name 'mycorrhizal-*.db' -mtime +30 -delete`, make sure the
-  most recent pre-upgrade snapshot is not the oldest survivor — if it is, keep
-  it regardless of age until the next upgrade is verified, or move it off the
-  purged path. The safe habit: take the snapshot immediately before each
-  upgrade, name it with the version you are moving **from** (as above), and do
-  not let any automated cleanup remove it until the upgrade has been verified
-  and the next pre-upgrade snapshot exists.
+  **a scheduled purge must never delete the last rollback point.** The
+  automatic snapshots land in their own `pre-migration/` directory precisely so
+  a rotation cron pointed at the routine backup directory cannot reach them —
+  keep that directory off any purge path, or prune it by *keeping the newest
+  N*, never by age alone. If you also take pre-upgrade snapshots by hand into
+  the routine directory, name each with the version you are moving **from** and
+  do not let a purge such as
+  `find /backups -name 'mycorrhizal-*.db' -mtime +30 -delete` remove the most
+  recent one until the upgrade has been verified and the next pre-upgrade
+  snapshot exists.
 - **Encryption caveat.** A restore under a different at-rest master key
   (`DATA_ENCRYPTION_KEY`, or the `JWT_SECRET_KEY` fallback) fails closed at
   boot instead of serving garbage — a pre-upgrade snapshot must be restored
   with the same key the upgrade ran under. See `docs/deployment.md` →
   Restore.
+
+## Rolling back a bad release (N+1 → N)
+
+**The situation.** You deployed release N+1, it booted, migrations ran — and
+now N+1 is misbehaving. You want to get back to N.
+
+**Downgrade is not a thing.** There is no `.down.sql` sweep across releases and
+no "start N against the N+1 database." A down migration that drops a column N+1
+added would silently discard whatever was written into it while N+1 ran — data
+loss wearing a safety-feature costume. The supported path is: **install N,
+restore the snapshot taken before the N→N+1 upgrade.** You lose the data
+written while N+1 was up — visibly, at a known-good point, by your choice — not
+silently.
+
+**Procedure.**
+
+1. **Stop N+1.** `docker compose down` (or stop the service).
+2. **Deploy the N binary/image.** The tag/image you were on before the upgrade.
+   Do **not** skip this step (see the caveat below).
+3. **Restore the database** from the `pre-migration/` snapshot written just
+   before the N→N+1 upgrade — the one named `…-pre-migration-<N-version>-to-<N+1-version>-….db`
+   (see [The pre-migration backup](#the-pre-migration-backup) for the location).
+   Restore it exactly as `docs/deployment.md` → Restore describes: stop the
+   server, replace the `.db` in place, clear stale `-wal`/`-shm` sidecars.
+4. **Restore the file directories** (`PROFILE_PHOTO_DIR`, `ATTACHMENTS_DIR`)
+   from the routine three-piece backup taken around the same time — the
+   automatic snapshot is the database only.
+5. **Start N** and confirm with [After recovery](#after-recovery): the applied
+   migration version is N's, `integrity_check=ok`, `/health/ready` is `ready`.
+
+**Caveat — restoring the snapshot alone is not a rollback.** If you restore the
+N-era snapshot but leave the N+1 binary running, N+1 sees a database behind its
+schema and **migrates it forward again** — that is the upgrade path repeating,
+not a rollback. The binary cannot tell "the operator wants N" from "a normal
+pending upgrade," so it does the safe, ordinary thing. You must deploy the N
+binary (step 2) for the restore to mean rollback. The mirror case — an N+1
+database opened by an N binary — *is* detected and refused
+([Schema ahead of the binary](#schema-ahead-of-the-binary),
+`ErrSchemaAheadOfBinary`).
 
 ## Dirty schema
 

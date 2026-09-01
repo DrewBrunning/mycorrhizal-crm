@@ -86,7 +86,16 @@ docker compose pull
 docker compose up -d
 ```
 
-Database migrations run automatically on startup.
+Database migrations run automatically on startup. **Before applying any pending
+migration the server writes a verified pre-migration snapshot** of the database
+into a `pre-migration/` directory beside `SQLITE_DB_PATH` (issue #530), and
+**refuses to migrate if it cannot** (`ErrPreMigrationBackupFailed`).
+`MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` moves the target; nothing disables the
+backup. It is the database only — photos and attachments are unchanged by
+migrations — and it does not replace the routine three-piece `make backup`
+below. It is retained under your control: the app never deletes it. Keep the
+`pre-migration/` directory off any backup-rotation purge path, since it holds
+your rollback points.
 
 **Read `docs/upgrade-compatibility.md` before upgrading.** It is the canonical
 supported-upgrade statement: in-place upgrade is supported from `v0.6.0`
@@ -95,9 +104,10 @@ floor refuses to migrate with a two-step instruction, and downgrade is
 unsupported (rollback = previous version + pre-upgrade backup restore).
 
 **If the server refuses to start after an upgrade** — a dirty migration, a
-schema ahead of the binary, or a sub-floor schema — do not retry blindly; the
-recovery for each state, and the exact pre-upgrade backup file to restore, is
-`docs/operations/migration-recovery.md`.
+schema ahead of the binary, a sub-floor schema, or an unwritable pre-migration
+backup target — do not retry blindly; the recovery for each state, the exact
+pre-upgrade backup file to restore, and the full **roll-back-a-bad-release**
+procedure are in `docs/operations/migration-recovery.md`.
 
 ## Verifying release artifacts
 
@@ -174,6 +184,13 @@ backup:
 
 Photos and attachments live **outside** the SQLite file, so backing up only the `.db` silently loses
 them. They are plain directories; a file-level copy (`rsync`/`cp`) is exactly right for them.
+
+**The automatic pre-migration snapshot is separate from this.** Before every schema migration the
+server writes a verified database snapshot into a `pre-migration/` directory beside `SQLITE_DB_PATH`
+(`MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` moves it) and refuses to migrate if it cannot — it is the
+rollback point for a bad release (issue #530, `docs/operations/migration-recovery.md`). It covers
+the database only, so it is not a substitute for this three-piece backup; and the app never deletes
+it, so a rotation cron must leave the `pre-migration/` directory alone.
 
 ### Why you cannot just copy the `.db` file while the server runs
 
