@@ -9,9 +9,8 @@ name: Chaos Tests (failure injection)
 #   interface, inject it in-process. If it requires the process or the
 #   filesystem to actually misbehave, it belongs in the external-fault CI job."
 #
-# Two high-value interruptions run here, each asserting a *defined outcome*
-# (recovered, or failed closed with the data intact) — not merely "it
-# errored":
+# The interruptions run here each assert a *defined outcome* (recovered, or
+# failed closed with the data intact) — not merely "it errored":
 #
 #   - SIGKILL mid-migration (cmd/migrate parked at the
 #     database.migration.statement pause fault) and the MIG-04 (issue #439/#546)
@@ -21,6 +20,11 @@ name: Chaos Tests (failure injection)
 #   - real ENOSPC during backup (VACUUM INTO against a tiny tmpfs) — the CLI
 #     fails closed, no partial file at the output path, the source database
 #     intact.
+#   - real ENOSPC during a large upgrade (issue #530): with the pre-migration
+#     backup target on the same full disk, `migrate up` REFUSES before touching
+#     the database (the backup is mandatory); with a roomy backup target, the
+#     migration itself exhausts the disk and lands dirty, and the restart then
+#     refuses on the dirty flag (MIG-04).
 #
 # Gating (chaos filter in .github/filters.yaml): the suite is slow by design
 # and does NOT run on every push — only when the injection harness itself
@@ -353,10 +357,48 @@ jobs:
           cp "$RUNNER_TEMP/floor.db" /mnt/diskfull/floor.db
           ls -la /mnt/diskfull/
 
-      # Defined outcome: the migration fails (non-zero) — the disk genuinely
-      # cannot hold the migration's WAL growth.
-      - name: Migrate on the constrained disk must fail
+      # Scenario A — the pre-migration backup target is on the same full disk
+      # (the default: a `pre-migration/` sibling of the database). The mandatory
+      # pre-migration backup (issue #530) is fail-closed, so `migrate up`
+      # refuses BEFORE any migration runs, naming the remedy, and the database
+      # is left exactly as it was — never dirtied, never partly migrated.
+      - name: Migrate must refuse when the pre-migration backup cannot be written
         working-directory: backend
+        run: |
+          set +e
+          SQLITE_DB_PATH="/mnt/diskfull/floor.db" "$RUNNER_TEMP/migrate" up > /tmp/migrate-nobackup.log 2>&1
+          rc=$?
+          set -e
+          echo "migrate exit=$rc"
+          tail -5 /tmp/migrate-nobackup.log
+          if [ "$rc" -eq 0 ]; then
+            echo "::error::migration proceeded without a pre-migration backup"
+            exit 1
+          fi
+          grep -q 'pre-migration backup' /tmp/migrate-nobackup.log
+          grep -q 'Refusing to migrate' /tmp/migrate-nobackup.log
+
+      - name: The refused database is untouched (still at the floor, clean)
+        run: |
+          state="$("$RUNNER_TEMP/dbinspect" /mnt/diskfull/floor.db)"
+          echo "post-refusal: $state"
+          case "$state" in
+            "integrity_check=ok version=31 dirty=false") ;;
+            *) echo "::error::the pre-migration-backup refusal modified the database: $state"; exit 1 ;;
+          esac
+          # Clear the empty pre-migration/ dir and any WAL sidecars the refused
+          # attempt's read-only version check left, so scenario B keeps its
+          # full ~1 MiB of headroom.
+          rm -rf /mnt/diskfull/pre-migration /mnt/diskfull/floor.db-wal /mnt/diskfull/floor.db-shm
+
+      # Scenario B — the pre-migration backup succeeds (a roomy, separate
+      # target, the realistic prod layout: DB volume tight, backup volume
+      # large), and the migration ITSELF then exhausts the constrained disk
+      # with its WAL growth. This is the ENOSPC-mid-migration path.
+      - name: With a roomy backup target the migration itself hits ENOSPC
+        working-directory: backend
+        env:
+          MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR: ${{ runner.temp }}/premig-backups
         run: |
           set +e
           SQLITE_DB_PATH="/mnt/diskfull/floor.db" "$RUNNER_TEMP/migrate" up > /tmp/migrate-full.log 2>&1
@@ -364,10 +406,13 @@ jobs:
           set -e
           echo "migrate exit=$rc"
           tail -3 /tmp/migrate-full.log
+          ls -la "$RUNNER_TEMP/premig-backups/" || true
           if [ "$rc" -eq 0 ]; then
             echo "::error::migration succeeded against a disk too small for it"
             exit 1
           fi
+          # The pre-migration snapshot was taken before the migration failed.
+          ls "$RUNNER_TEMP"/premig-backups/floor-pre-migration-31-to-*.db >/dev/null
 
       # Fail-closed, not truncated: integrity ok, dirty at some migration, no
       # partially-migrated healthy-looking schema.
@@ -381,9 +426,13 @@ jobs:
           esac
 
       # The next startup run must refuse on the dirty flag (MIG-04), naming the
-      # version + recovery, and must not touch the database.
+      # version + recovery, and must not touch the database. A dirty database is
+      # not eligible for a pre-migration backup — it is refused first — so the
+      # roomy backup target here is set but unused.
       - name: Restart must refuse the dirty migration state
         working-directory: backend
+        env:
+          MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR: ${{ runner.temp }}/premig-backups
         run: |
           set +e
           SQLITE_DB_PATH="/mnt/diskfull/floor.db" "$RUNNER_TEMP/migrate" up > /tmp/migrate-refuse.log 2>&1

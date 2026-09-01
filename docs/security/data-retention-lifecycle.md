@@ -280,6 +280,17 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   whoever can read the filesystem/backup store the snapshot lands in can read it, and the app itself
   never re-reads a backup file (the restore drill only ever creates its own fresh snapshot, in a
   scratch directory it deletes afterwards).
+- **Automatic pre-migration snapshots (issue #530)**: separately from operator-run `make backup`,
+  `database.InitDB` (server startup) and `make migrate-up` take a `VACUUM INTO` snapshot of the
+  SQLite file *before* every schema migration and refuse to migrate if they cannot write one
+  (`backend/database/premigration_backup.go`). They land in a `pre-migration/` directory beside
+  `SQLITE_DB_PATH` (`MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` moves it), named
+  `<db-stem>-pre-migration-<from>-to-<to>-<timestamp>.db`. Same content, sensitivity, and at-rest
+  encryption inheritance as an operator backup (below) — but **database only**, no photos or
+  attachments, since migrations don't touch those. Retention is operator-owned exactly like the
+  rest of §10: the app writes these and never deletes them, so a rotation cron must exclude the
+  `pre-migration/` directory (it holds the rollback points a bad-release recovery depends on —
+  `docs/operations/migration-recovery.md`).
 - **Confidentiality / encryption**: a snapshot is a **complete copy of sensitive data at full
   sensitivity** (issue #420) — `private`/`secret` fields, email addresses, password/API-token
   hashes, TOTP recovery-code hashes, the audit trail, and still-in-window soft-deleted rows. It
@@ -298,8 +309,8 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   `find -mtime +N -delete` outside this app).
 - **Deletion / propagation**: **does not happen automatically, ever** — deleting/purging live data has no
   effect on already-taken backup files. This is the one place in the whole lifecycle where "deletion
-  propagates" is false by design, and `docs/deployment.md:165-167` already documents the direct
-  consequence: restoring a backup **resurrects** anything that was soft-deleted (but not yet purged) as
+  propagates" is false by design, and `docs/deployment.md`'s Restore section already documents the
+  direct consequence: restoring a backup **resurrects** anything that was soft-deleted (but not yet purged) as
   of that snapshot, since a file-level restore has no concept of "these rows were mid-undo-window".
   Soft-deleted data ages out of backups in two steps: it stops appearing in *new* snapshots once the
   purge window (default 30 days, `DELETE_RETENTION_DAYS`) passes, but it survives in every snapshot

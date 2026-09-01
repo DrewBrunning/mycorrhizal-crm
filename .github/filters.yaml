@@ -64,6 +64,8 @@ chaos:
   - 'backend/internal/faults/**'
   - 'backend/database/sqlite_driver.go'
   - 'backend/database/backup.go'
+  - 'backend/database/premigration_backup.go'
+  - 'backend/database/migrate.go'
   - 'backend/cmd/dbinspect/**'
   - 'backend/cmd/migrate/**'
   - 'backend/cmd/backup/**'

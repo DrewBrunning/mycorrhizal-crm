@@ -235,9 +235,19 @@ func runMeasure(args []string) error {
 		return fmt.Errorf("measure: %s has no schema_migrations row (build one with seed + checkpoint first)", *dbPath)
 	}
 
+	latest, err := database.LatestMigrationVersion()
+	if err != nil { // # pragma: no cover — the embedded migrations FS always has at least one migration
+		return fmt.Errorf("resolve latest migration version: %w", err)
+	}
+
 	start := time.Now()
 	sampler := startSampler(*dbPath)
-	err := database.MigrateUp(*dbPath)
+	// MigrateUpTo, not MigrateUp: this harness measures the migration's own
+	// peak RSS/disk, and MigrateUp now takes the mandatory pre-migration
+	// backup (issue #530) — a full VACUUM INTO in the sampled window would
+	// distort the figure and, on a re-run, collide. The set of migrations
+	// applied to reach `latest` is identical.
+	err = database.MigrateUpTo(*dbPath, latest)
 	s := sampler()
 	if err != nil { // # pragma: no cover — a migration failure is the fail-closed vocabulary the chaos job and schemafixture tests exercise, not a CLI branch
 		return fmt.Errorf("migration failed: %w", err)
