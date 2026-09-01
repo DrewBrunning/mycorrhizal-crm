@@ -226,12 +226,12 @@ func TestCheckDBIntegrityErrorsOnClosedConnection(t *testing.T) {
 // otherwise let the job re-run on every cron tick.
 func TestDBIntegrityCheckMinIntervalClampsToMargin(t *testing.T) {
 	got := dbIntegrityCheckMinInterval(config.Config{DBIntegrityCheckIntervalHours: 0})
-	assert.Equal(t, dbIntegrityCheckMinIntervalMargin, got)
+	assert.Equal(t, JobCatchupMargin, got)
 }
 
 func TestDBIntegrityCheckMinIntervalAboveMargin(t *testing.T) {
 	got := dbIntegrityCheckMinInterval(config.Config{DBIntegrityCheckIntervalHours: 24})
-	assert.Equal(t, 24*time.Hour-dbIntegrityCheckMinIntervalMargin, got)
+	assert.Equal(t, 24*time.Hour-JobCatchupMargin, got)
 }
 
 func TestCheckDBIntegrityScheduledFiresWebhookOnCorruption(t *testing.T) {

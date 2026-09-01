@@ -15,19 +15,11 @@ import (
 // generic webhook receiver instead of only relying on log scraping.
 const EventDBIntegrityCheckFailed = "db.integrity_check_failed"
 
-// dbIntegrityCheckMinIntervalMargin mirrors calendar_sync_service.go's
-// pattern for a configurable-interval job: the job-lock minimum interval is
-// the configured cadence minus a margin, so ordinary clock skew between cron
-// firings never causes a run to be skipped as "too recent". Floored the same
-// way calendar sync floors its own margin.
-const dbIntegrityCheckMinIntervalMargin = 30 * time.Minute
-
+// dbIntegrityCheckMinInterval is the de-dup window for this configurable-cadence
+// job: the shared JobCatchupWindow of the configured period (issue #526, ADR
+// 0011 — one margin for the whole fleet, no per-job constant).
 func dbIntegrityCheckMinInterval(cfg config.Config) time.Duration {
-	minInterval := time.Duration(cfg.DBIntegrityCheckIntervalHours)*time.Hour - dbIntegrityCheckMinIntervalMargin
-	if minInterval < dbIntegrityCheckMinIntervalMargin {
-		minInterval = dbIntegrityCheckMinIntervalMargin
-	}
-	return minInterval
+	return JobCatchupWindow(time.Duration(cfg.DBIntegrityCheckIntervalHours) * time.Hour)
 }
 
 // integrityCheckRow is the shape of one row PRAGMA integrity_check returns.

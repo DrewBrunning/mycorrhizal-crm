@@ -7,17 +7,34 @@ import (
 )
 
 // JobExecution tracks the execution of scheduled jobs to prevent duplicates
-// during rapid restarts or crash loops.
+// during rapid restarts or crash loops (the distributed job lock), and records
+// the last run's outcome so a caught-up run can be told from a suppressed one
+// (issue #526, ADR 0011).
 type JobExecution struct {
-	ID        uint           `gorm:"primarykey" json:"id"`
-	JobName   string         `gorm:"uniqueIndex;not null" json:"job_name"`
-	LastRunAt time.Time      `gorm:"not null" json:"last_run_at"`
-	LockedAt  *time.Time     `json:"locked_at"`
-	LockedBy  string         `json:"locked_by"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
+	ID        uint      `gorm:"primarykey" json:"id"`
+	JobName   string    `gorm:"uniqueIndex;not null" json:"job_name"`
+	LastRunAt time.Time `gorm:"not null" json:"last_run_at"`
+	// LastOutcome is the outcome of the most recent acquire/release cycle
+	// (issue #526 rule 4): "ran" (normal), "deduped" (suppressed inside the
+	// de-dup window), "caught_up" (ran after the process was down long enough
+	// to miss an occurrence), "failed", or transiently "running" while a run
+	// holds the lock. Empty on a row that predates migration 000048.
+	LastOutcome string         `gorm:"column:last_outcome;not null;default:''" json:"last_outcome"`
+	LockedAt    *time.Time     `json:"locked_at"`
+	LockedBy    string         `json:"locked_by"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at"`
 }
+
+// JobExecution.LastOutcome values (issue #526, ADR 0011).
+const (
+	JobOutcomeRan      = "ran"
+	JobOutcomeDeduped  = "deduped"
+	JobOutcomeCaughtUp = "caught_up"
+	JobOutcomeFailed   = "failed"
+	JobOutcomeRunning  = "running"
+)
 
 const (
 	// JobNameDailyReminders is the job name for the daily reminder email job

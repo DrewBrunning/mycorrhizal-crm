@@ -12,7 +12,7 @@ import (
 // auditPurgeMinInterval is slightly less than the 24h cron cadence so a
 // natural clock-skew or overlap doesn't cause a skipped run (mirrors the T26
 // purge job's own constant).
-const auditPurgeMinInterval = 23 * time.Hour
+var auditPurgeMinInterval = JobCatchupWindow(24 * time.Hour)
 
 // PurgeExpiredAuditEvents hard-deletes audit events older than the retention
 // window (AUDIT_RETENTION_DAYS, default 90 — the ticket's locked decision:

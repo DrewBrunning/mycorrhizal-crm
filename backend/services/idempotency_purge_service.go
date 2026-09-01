@@ -13,7 +13,7 @@ import (
 // idempotencyKeyPurgeMinInterval is slightly less than the cron cadence so a
 // natural clock-skew or overlap doesn't cause a skipped run (mirrors the other
 // purge jobs' constants).
-const idempotencyKeyPurgeMinInterval = 55 * time.Minute
+var idempotencyKeyPurgeMinInterval = JobCatchupWindow(6 * time.Hour)
 
 // PurgeExpiredIdempotencyKeys hard-deletes idempotency_keys rows older than the
 // retention window (IDEMPOTENCY_KEY_RETENTION_HOURS, default 24 — issue #459,

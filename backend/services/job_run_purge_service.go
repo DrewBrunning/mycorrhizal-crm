@@ -14,7 +14,7 @@ import (
 // jobRunPurgeMinInterval is slightly less than the 24h cron cadence so a
 // natural clock-skew or overlap doesn't cause a skipped run (mirrors the
 // system-event / audit purge jobs' own constant).
-const jobRunPurgeMinInterval = 23 * time.Hour
+var jobRunPurgeMinInterval = JobCatchupWindow(24 * time.Hour)
 
 // PurgeExpiredJobRuns hard-deletes job_runs rows older than the retention
 // window (JOB_RUN_RETENTION_DAYS, default 30 — operational diagnostics,

@@ -11,7 +11,7 @@ import (
 
 // purgeMinInterval is slightly less than the 24h cron cadence so a natural
 // clock-skew or overlap doesn't cause a skipped run.
-const purgeMinInterval = 23 * time.Hour
+var purgeMinInterval = JobCatchupWindow(24 * time.Hour)
 
 // PurgeSoftDeletedRows hard-deletes soft-deleted rows older than the
 // retention window. Called by both the scheduled cron job and the admin

@@ -1,0 +1,17 @@
+-- Record each scheduled job's last-run outcome on the lock row (issue #526,
+-- ADR 0011 rule 4: "suppression is recorded, not silent").
+--
+-- Before this, job_executions held only last_run_at + the lock fields, so a
+-- run that fired, a run suppressed as a duplicate, and an occurrence missed
+-- while the process was down all looked identical. last_outcome makes them
+-- distinguishable without log-scraping:
+--   'ran'       normal execution
+--   'deduped'   suppressed because the last run was inside the de-dup window
+--   'caught_up' ran after the row sat idle long enough to have missed an occurrence
+--   'failed'    the run errored
+--   'running'   transient, while a run holds the lock
+--
+-- Derived state, not user data — every existing row's outcome is simply
+-- unknown until its job next runs, so the column defaults to '' and the down
+-- migration drops it losslessly.
+ALTER TABLE job_executions ADD COLUMN last_outcome TEXT NOT NULL DEFAULT '';

@@ -15,7 +15,7 @@ import (
 // systemEventPurgeMinInterval is slightly less than the 24h cron cadence so a
 // natural clock-skew or overlap doesn't cause a skipped run (mirrors the
 // audit purge job's own constant).
-const systemEventPurgeMinInterval = 23 * time.Hour
+var systemEventPurgeMinInterval = JobCatchupWindow(24 * time.Hour)
 
 // PurgeExpiredSystemEvents hard-deletes system_events rows older than the
 // retention window (SYSTEM_EVENT_RETENTION_DAYS, default 30 — operational

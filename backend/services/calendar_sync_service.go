@@ -1092,10 +1092,8 @@ func SyncAllCalendars(db *gorm.DB, cfg config.Config) {
 // SyncCalendarsWithRateLimit wraps SyncAllCalendars with the shared job lock so
 // rapid restarts or multiple instances don't sync repeatedly.
 func SyncCalendarsWithRateLimit(db *gorm.DB, cfg config.Config) {
-	minInterval := time.Duration(cfg.CalDAVSyncIntervalHours)*time.Hour - 30*time.Minute
-	if minInterval < 30*time.Minute {
-		minInterval = 30 * time.Minute
-	}
+	// De-dup window derived from the configured cadence (issue #526, ADR 0011).
+	minInterval := JobCatchupWindow(time.Duration(cfg.CalDAVSyncIntervalHours) * time.Hour)
 
 	acquired, err := acquireJobLock(db, models.JobNameCalendarSync, minInterval)
 	if err != nil {
