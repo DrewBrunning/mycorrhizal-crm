@@ -50,6 +50,31 @@ jobs:
         with:
           persist-credentials: false
 
+      # Resolve the exact image references the build-and-push job publishes,
+      # rather than re-deriving them differently here. Two ways the raw inputs
+      # diverge from what is actually pushed (both already handled in the scan
+      # job -- keep them in lockstep):
+      #
+      # 1. The build tags with type=semver,pattern={{version}}, whose
+      #    {{version}} output drops the leading 'v' (RELEASE_TAG=v0.6.5 -> tag
+      #    0.6.5). The v-prefixed tag is never pushed, so release notes quoting
+      #    ghcr.io/...:v0.6.5 advertised a manifest that 404s.
+      # 2. Docker references must be lowercase, but github.repository preserves
+      #    the account case (DrewBrunning). metadata-action lowercases the image
+      #    on the push side, so the published image is ghcr.io/drewbrunning/...
+      - name: Resolve published image references
+        id: images
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+        run: |
+          repo="${GITHUB_REPOSITORY,,}"
+          tag="${RELEASE_TAG#v}"
+          {
+            echo "all_in_one=ghcr.io/${repo}:${tag}"
+            echo "backend=ghcr.io/${repo}-backend:${tag}"
+            echo "frontend=ghcr.io/${repo}-frontend:${tag}"
+          } >> "$GITHUB_OUTPUT"
+
       # action-gh-release's append_body semantics (append to an existing
       # release on a manual recovery run) have no gh-CLI equivalent; replacing
       # it would change release behavior.
@@ -65,13 +90,13 @@ jobs:
 
             All-in-one image (frontend + backend in one container):
             ```
-            ghcr.io/${{ github.repository }}:${{ env.RELEASE_TAG }}
+            ${{ steps.images.outputs.all_in_one }}
             ```
 
             Separate images:
             ```
-            ghcr.io/${{ github.repository }}-backend:${{ env.RELEASE_TAG }}
-            ghcr.io/${{ github.repository }}-frontend:${{ env.RELEASE_TAG }}
+            ${{ steps.images.outputs.backend }}
+            ${{ steps.images.outputs.frontend }}
             ```
 
   # Builds the same signed release APK android-apk-build.yml's manual "release"

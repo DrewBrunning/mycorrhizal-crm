@@ -186,3 +186,85 @@ jobs:
         with:
           sarif_file: 'trivy-secret-results.sarif'
           category: 'trivy-secret'
+
+  # Issue #349: the .dockerignore files must keep editor/OS cruft out of the
+  # shipped images. `**/.DS_Store` (and `.idea`, `.vscode`) matters because a
+  # bare `.DS_Store` only matches the context root — an untracked
+  # frontend/public/.DS_Store would otherwise be copied into the web root by
+  # the all-in-one's `COPY frontend/ .` and served publicly at /.DS_Store.
+  # This plants that cruft in the build context and asserts neither shipped
+  # image carries it. The images are inspected with `docker export | tar -t`
+  # rather than `docker run find` so the check does not depend on what tools
+  # the runtime image happens to contain.
+  dockerignore-cruft:
+    name: Build context excludes editor & OS cruft
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Plant editor/OS cruft in the build context
+        run: |
+          set -eu
+          mkdir -p frontend/public/.idea frontend/public/.vscode backend/internal/.idea
+          printf 'cruft\n' | tee \
+            .DS_Store \
+            frontend/public/.DS_Store \
+            frontend/public/.idea/workspace.xml \
+            frontend/public/.vscode/settings.json \
+            backend/.DS_Store \
+            backend/internal/.idea/x.xml >/dev/null
+
+      # cache-from only (no cache-to): the planted files are .dockerignore'd, so
+      # the context hash is unchanged and the shared scopes still hit. Nothing
+      # is written back, so this job can't poison the caches e2e-tests.yml and
+      # docker-build-check.yml read.
+      - name: Build all-in-one image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          push: false
+          load: true
+          tags: mycorrhizal-dockerignore-test:latest
+          cache-from: type=gha,scope=combined
+
+      - name: Build split frontend image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: false
+          load: true
+          tags: mycorrhizal-frontend-dockerignore-test:latest
+          cache-from: type=gha,scope=./frontend/Dockerfile
+
+      - name: Assert neither image carries editor/OS cruft
+        run: |
+          set -eu
+          fail=0
+          for image in mycorrhizal-dockerignore-test:latest mycorrhizal-frontend-dockerignore-test:latest; do
+            cid=$(docker create "$image")
+            # tar entries look like `usr/share/nginx/html/.DS_Store` or
+            # `.../.idea/`; match the basename in either position.
+            leaked=$(docker export "$cid" | tar -t | grep -E '(^|/)\.(DS_Store|idea|vscode)(/|$)' || true)
+            docker rm "$cid" >/dev/null
+            if [ -n "$leaked" ]; then
+              echo "::error::$image contains editor/OS cruft that .dockerignore should have excluded:"
+              echo "$leaked"
+              fail=1
+            else
+              echo "OK: $image is free of .DS_Store / .idea / .vscode"
+            fi
+          done
+          exit "$fail"

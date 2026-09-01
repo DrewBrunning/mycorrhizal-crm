@@ -75,8 +75,9 @@ Upgrade this instance to v0.6.0 first, then run this version again — see docs/
 1. Back up the database and the file directories (`docs/deployment.md` →
    Backups — the three-piece backup: database, `PROFILE_PHOTO_DIR`,
    `ATTACHMENTS_DIR`).
-2. Deploy the `v0.6.0` release (image `ghcr.io/<org>/mycorrhizal-crm:v0.6.0` or
-   equivalent). Its startup migrations move the database to the `v0.6.0` schema
+2. Deploy the `v0.6.0` release (image `ghcr.io/<org>/mycorrhizal-crm:0.6.0` —
+   the published tag drops the leading `v` — or equivalent). Its startup
+   migrations move the database to the `v0.6.0` schema
    (`000031`).
 3. Verify it boots and serves.
 4. Deploy the current release. It now sees a database at or above the floor and

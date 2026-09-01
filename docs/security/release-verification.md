@@ -52,7 +52,9 @@ a row.
 
 ## Verifying a Docker image
 
-Replace `<TAG>` with the release you're deploying, e.g. `v0.6.1`.
+Replace `<TAG>` with the release you're deploying, e.g. `0.6.1`. The published
+image tag drops the leading `v` from the git tag (`v0.6.1` → `0.6.1`), so
+`docker pull …:v0.6.1` would 404.
 
 **1. Pull the image and pin the digest** (a tag is mutable; the digest is what's actually signed):
 
