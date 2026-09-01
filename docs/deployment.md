@@ -190,8 +190,9 @@ photo/attachment directories.** `make backup` / `database.BackupSnapshot` delibe
 verify the database piece only — a plain file copy is already the right tool for two ordinary
 directories, and the all-in-one Docker image mounts them as separate volumes anyway. What the tool
 *does* own is checking that an assembled set is consistent, regardless of who assembled it: see
-"Verifying a backup set is complete" below. (BACKUP-03, issue #455, is the fuller
-disaster-recovery-boundaries document; this paragraph is the citable decision it references.)
+"Verifying a backup set is complete" below. (`docs/operations/disaster-recovery.md` — BACKUP-03,
+issue #455 — is the fuller disaster-recovery-boundaries document, covering every recovery scenario
+and its RPO/RTO; this paragraph is the citable decision it references.)
 
 **The automatic pre-migration snapshot is separate from this.** Before every schema migration the
 server writes a verified database snapshot into a `pre-migration/` directory beside `SQLITE_DB_PATH`
