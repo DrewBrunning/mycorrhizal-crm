@@ -133,6 +133,14 @@ func readinessMigrations(c *gin.Context) ReadinessCheckDetail {
 	if applied < latest {
 		return ReadinessCheckDetail{Status: "failed", Reason: "pending migrations (schema is behind the binary)"}
 	}
+	if applied > latest {
+		// The database knows migrations this binary does not — a rollback in
+		// progress (issue #439 state 2). The startup path refuses to boot on
+		// this state; if it is somehow reached at runtime, readiness must gate
+		// traffic off, matching services/deep_health.go migrationLagCheck
+		// rather than silently reporting ready.
+		return ReadinessCheckDetail{Status: "failed", Reason: "schema is ahead of the binary (this binary was rolled back)"}
+	}
 	return ReadinessCheckDetail{Status: "ok"}
 }
 

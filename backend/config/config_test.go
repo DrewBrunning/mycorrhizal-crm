@@ -411,6 +411,29 @@ func TestLoadConfig_Defaults(t *testing.T) {
 	assert.Equal(t, 75, cfg.StorageWarnPercent)
 	assert.Equal(t, 90, cfg.StorageCriticalPercent)
 	assert.Equal(t, 180, cfg.StorageSampleRetentionDays)
+
+	// Restore-drill cadence and RTO budget (issue #506). The cadence is pinned
+	// to the exported constant because docs/deployment.md's "Recovery objectives
+	// (RPO and RTO)" section derives the 336 h backup-freshness ceiling from it;
+	// the budget is opt-in, so it defaults to 0 (no budget).
+	assert.Equal(t, 168, cfg.DBRestoreDrillIntervalHours)
+	assert.Equal(t, DefaultDBRestoreDrillIntervalHours, cfg.DBRestoreDrillIntervalHours)
+	assert.Equal(t, 0, cfg.DBRestoreDrillMaxDurationSeconds)
+}
+
+func TestLoadConfig_RestoreDrillMaxDurationSeconds(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+
+	t.Setenv("DB_RESTORE_DRILL_MAX_DURATION_SECONDS", "900")
+	assert.Equal(t, 900, LoadConfig().DBRestoreDrillMaxDurationSeconds)
+
+	// Negative is clamped to 0 (no budget) rather than refusing to boot — same
+	// posture as the ALERT_* knobs.
+	t.Setenv("DB_RESTORE_DRILL_MAX_DURATION_SECONDS", "-5")
+	assert.Equal(t, 0, LoadConfig().DBRestoreDrillMaxDurationSeconds)
 }
 
 func TestLoadConfig_StorageThresholds(t *testing.T) {

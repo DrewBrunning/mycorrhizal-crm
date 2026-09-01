@@ -77,7 +77,8 @@ here is a gap to file, never something to silently absorb.
 
 | Fault (env name) | Seam | Simulates | Defined outcome | Pinned by |
 |---|---|---|---|---|
-| `database.migration.statement` | `database/sqlite_driver.go` `Run` | Process killed between a migration's commit and its clean-mark (crash leaves the version dirty, migration applied) | The run returns an error naming the failing version + file (issue #532 gate); the DB is left **dirty** at that version with the migration's schema applied; `PRAGMA integrity_check` is `ok`; the next startup run **refuses** on the dirty flag with a typed `ErrDirtyMigration` naming the recovery (MIG-04, issues #439/#546 — never a forced boot); the operator-only `MigrateForce` (the migrate CLI's prompted `force`) recovers deterministically to the latest schema, not dirty | in-process: `database/fault_injection_test.go` `TestInjectedMigrationFaultFailsClosedAndRecovers`, `...MidFlightRecordsEvent`, `...PauseBlocksThenCompletes`; `database/migrate_failclosed_test.go` `TestMigrateForce_*`; external: chaos job `migration-kill` |
+| `database.migration.statement` | `database/sqlite_driver.go` `Run` | Process killed between a migration's commit and its clean-mark (crash leaves the version dirty, migration applied) | The run returns an error naming the failing version + file (issue #532 gate); the DB is left **dirty** at that version with the migration's schema applied; `PRAGMA integrity_check` is `ok`; the next startup run **refuses** on the dirty flag with a typed `ErrDirtyMigration` naming the recovery (MIG-04, issues #439/#546 — never a forced boot); the operator-only `MigrateForce` (the migrate CLI's prompted `force`) recovers deterministically to the latest schema, not dirty | in-process: `database/fault_injection_test.go` `TestInjectedMigrationFaultFailsClosedAndRecovers`, `...MidFlightRecordsEvent`, `...PauseBlocksThenCompletes`; `database/migrate_failclosed_test.go` `TestMigrateForce_*`; `database/interrupted_startup_test.go` `TestInterruptedStartupKillPoints/during_migration`, `TestInterruptedStartupCrashLoopConverges`; external: chaos job `migration-kill` |
+| `database.migration.before_batch` | `database/migrate.go` `runPendingMigrations` (before `m.Up()`) | Process killed AFTER the mandatory pre-migration backup (issue #530) but BEFORE the first migration statement — the "before any migration begins" window (DEPLOY-03, issue #452) | The run returns an error; the schema is **completely untouched** — no version bump, no dirty flag, no partial DDL; `PRAGMA integrity_check` is `ok`; the pre-migration backup was already written and is a valid rollback point; a restart just **migrates normally**; repeated kill/restart cycles converge (the backup is reused, never rewritten) | in-process: `database/interrupted_startup_test.go` `TestInterruptedStartupKillPoints/before_migrations`, `TestMigrationBeforeBatchFaultLeavesSchemaUntouched`; external: chaos job `startup-interruption-kill-points` |
 | `services.import.confirm` | `services/import_session.go` `Confirm` + `ConfirmVCF` transaction | DB error mid-import-confirm | The whole confirm **fails closed**: every contact row rolls back, the session stays unconsumed, a retry after the fault clears applies the same import cleanly — no silent partial state | in-process: `services/import_fault_injection_test.go` `TestConfirmInjectedDBErrorFailsClosed`, `TestConfirmVCFInjectedDBErrorFailsClosed`, `TestConfirmInjectedFaultDoesNotLeakToOtherSessions` |
 | `services.immich.request` | `services/immich_client.go` `doRequest` | Unreachable / auth-expired / resource-deleted-remotely / arbitrary upstream failure | The armed sentinel crosses the request boundary unchanged; callers hit their documented error path (T42 classification, service degrade-to-cache), never a swallow or a panic; the seam is inert once disarmed | in-process: `services/immich_fault_injection_test.go` `TestImmichInjectedRequestFaultCrossesBoundaryUnchanged`, `...DoesNotPersistBeyondArm`, `...ReachesServiceDiagnostics` |
 | Real `ENOSPC` during backup | `cmd/backup` → `database.BackupSnapshot` | Disk exhaustion while snapshotting | The CLI exits non-zero; the source database is untouched (`integrity_check` ok); no partial file appears at the output path (temp-then-link, fail-closed) | external: chaos job `disk-full-backup` |
@@ -91,7 +92,6 @@ the acceptance criteria, TEST-06 owns the technique:
 - **MIG-04 / MIG-05 (#439/#440)** — fail-closed + rollback/recovery procedures
   for migrations, exercising `database.migration.statement` including the
   pause/SIGKILL window.
-- **DEPLOY-03 (#452)** — interrupted startup before/during/after migration.
 - **CON-04 (#459)** and **#526** — retry paths and ambiguous failures (the
   write succeeded but the response was lost), injected in-process.
 - **#498** — constrained resources; **#530** — the mandatory pre-migration
@@ -114,3 +114,13 @@ on its second `MigrateUp` (the dirty database recovers instead of refusing) and
 the `txErr` check that returns `apperrors.ErrDatabase` — the injected error then
 surfaces as a success with zero rows, and the test's "must fail closed"
 assertions fail.
+
+Done for the `database.migration.before_batch` seam (DEPLOY-03): deleting the
+`faults.Hook(faultMigrationBeforeBatch)` call in `runPendingMigrations` fails
+`TestInterruptedStartupKillPoints/before_migrations` and
+`TestMigrationBeforeBatchFaultLeavesSchemaUntouched` — the armed fault no longer
+aborts the run, so the database migrates instead of staying untouched. Restore
+it. The readiness backstop added alongside (schema-ahead-of-binary is
+`not_ready`, not `ok`) is pinned by `controllers/health_endpoints_test.go`
+`TestReadiness_SchemaAheadOfBinary`; reverting the `applied > latest` branch in
+`readinessMigrations` fails it.

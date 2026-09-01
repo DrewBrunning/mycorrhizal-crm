@@ -11,7 +11,7 @@ procedure for that is [The drill](#the-drill).
 | | |
 |---|---|
 | **Scope** | The three fail-closed migration states (MIG-04, issue [#439](https://github.com/DrewBrunning/mycorrhizal-crm/issues/439)): dirty schema, schema ahead of the binary, and schema below the supported floor — plus the mandatory pre-migration backup, [rolling back a bad release](#rolling-back-a-bad-release-n1--n), and what `make migrate-down` is and is not for. |
-| **Companion docs** | `docs/operations/disaster-recovery.md` (BACKUP-03, issue [#455](https://github.com/DrewBrunning/mycorrhizal-crm/issues/455) — the map: every recovery scenario, its RPO/RTO, and what is simply not recoverable; this runbook is the migration-specific route it points at), `docs/deployment.md` (backup/restore/upgrade *procedures* — the three-piece backup), `docs/upgrade-compatibility.md` (the supported-upgrade range and the refusal states), `docs/security/incident-response.md` (containment/rotation for a security incident), `docs/security/data-retention-lifecycle.md` §10 (what a backup contains and how long backups survive). |
+| **Companion docs** | `docs/operations/disaster-recovery.md` (BACKUP-03, issue [#455](https://github.com/DrewBrunning/mycorrhizal-crm/issues/455) — the map: every recovery scenario, its RPO/RTO, and what is simply not recoverable; this runbook is the migration-specific route it points at), `docs/deployment.md` (backup/restore/upgrade *procedures* — the three-piece backup, and "Recovery objectives (RPO and RTO)" for how much a rollback loses and how long it takes), `docs/upgrade-compatibility.md` (the supported-upgrade range and the refusal states), `docs/security/incident-response.md` (containment/rotation for a security incident), `docs/security/data-retention-lifecycle.md` §10 (what a backup contains and how long backups survive). |
 | **Policy anchor** | Downgrade is unsupported; rollback is **restore-the-pre-upgrade-backup** (issue [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530)). The server (and `make migrate-up`) takes the pre-migration backup **automatically and fail-closed** — it refuses to migrate if it cannot write one — see [The pre-migration backup](#the-pre-migration-backup). |
 
 ## Reading the state
@@ -256,6 +256,33 @@ manual round-trip on a throwaway copy: back up, restore, and compare row counts
 (`frontend/e2e/backupRestore.spec.ts` automates exactly that). A recovery you
 have not verified this way is a hypothesis.
 
+## Interrupted startup
+
+Server startup runs every pending migration before it binds its HTTP listener,
+so an interruption during startup is an interruption of a schema change. DEPLOY-03
+(issue [#452](https://github.com/DrewBrunning/mycorrhizal-crm/issues/452))
+tested a real `SIGKILL` at each point that matters; the outcome is always one of
+the states above, never something in between. What to expect, by *when* the
+process died:
+
+| Killed… | State on restart | What to do |
+|---|---|---|
+| **Before any migration ran** (after the pre-migration backup, before the first statement) | Schema untouched — same version, `dirty=false` | Nothing. Just start again; it migrates normally. |
+| **During a migration** (mid-statement) | [Dirty schema](#dirty-schema) at that version | Follow [Dirty schema](#dirty-schema): restore the pre-migration backup, or `make migrate-force` after verifying. |
+| **Between two migrations** (one finished, the next not started) | Clean at an intermediate version, `dirty=false` | Nothing. Start again; it resumes from the next migration. No force needed. |
+| **After all migrations, before the server was ready** | Clean at the latest version | Nothing. Start again; migrations are a no-op and it comes up. |
+
+An orchestrator that keeps restarting a crashed container **cannot make this
+worse**: every restart of a dirty database refuses identically (the refusal is
+not a write), and every restart of a clean-but-incomplete database resumes — N
+restarts converge on the same state as one. The pre-migration backup is taken
+once and **reused**, not rewritten, on each restart, so a crash loop does not
+churn it.
+
+Confirm the outcome with [After recovery](#after-recovery) (`dbinspect` →
+`integrity_check=ok`, the expected version, `dirty=false`), then the health
+endpoints.
+
 ## What `make migrate-down` is (and is not) for
 
 `make migrate-down` runs **exactly one** migration's `.down.sql`, on the
@@ -295,14 +322,15 @@ up/down/up round-trip tests exercise.
 
 The milestone bar is "recovery procedures are documented and **have been
 exercised by following the documentation**." To re-verify this runbook, induce
-each of the three states on a throwaway database and recover, following only the
-sections above — not from memory:
+each state on a throwaway database and recover, following only the sections
+above — not from memory:
 
 | State | Induce it by… | Recover by… | Passes when… |
 |---|---|---|---|
 | Dirty schema | Start a migration and kill the process mid-run (SIGKILL, or the TEST-06 fault-injection harness's `migration-kill` scenario), or set `UPDATE schema_migrations SET dirty = 1` | The [Dirty schema](#dirty-schema) restore | The restored database reports `integrity_check=ok`, the expected version, `dirty=false`, and `/health/ready` is `ready` |
 | Ahead of the binary | Point an older binary at a database migrated by a newer one (e.g. a schema dump from `backend/database/testdata/schemas/` at a higher version) | The [Schema ahead of the binary](#schema-ahead-of-the-binary) reinstall or restore | Same as above |
 | Below the floor | Point the current binary at a `v0.5.x`-schema database | The [Below the floor](#below-the-floor) two-step | The refusal message names `v0.6.0`, and the two-step lands at the current schema |
+| Interrupted startup | Park `make migrate-up` at a fault seam and SIGKILL it (`MYCORRHIZAL_FAULTS=database.migration.before_batch:pause:120s` for "before any migration"; `database.migration.statement:pause:120s` for "during"), or stop the container mid-`docker compose up` | The matching row in [Interrupted startup](#interrupted-startup) | `dbinspect` shows the state that section predicts for the kill point, and a plain restart (or the named recovery for the dirty case) lands clean at the latest version with `/health/ready` `ready` |
 
 A step that is missing or cannot be followed from this document is a bug in
 this runbook — fix it here. The round-trip leg of the drill (every migration
