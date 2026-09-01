@@ -878,6 +878,12 @@ func DeleteUser(c *gin.Context) {
 			return err
 		}
 
+		// Delete idempotency-key replay records (issue #459, CON-04 — hard,
+		// user-scoped, transient dedup bookkeeping).
+		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.IdempotencyKey{}).Error; err != nil {
+			return err
+		}
+
 		// Delete contacts (hard)
 		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Contact{}).Error; err != nil {
 			return err

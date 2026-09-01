@@ -68,6 +68,8 @@ func TestHTTPStatusCodes(t *testing.T) {
 		{"PreconditionFailed", ErrPreconditionFailed("stale"), http.StatusPreconditionFailed},
 		{"PreconditionFailedDefault", ErrPreconditionFailed(""), http.StatusPreconditionFailed},
 		{"Gone", ErrGone(""), http.StatusGone},
+		{"IdempotencyKeyReused", ErrIdempotencyKeyReused(), http.StatusUnprocessableEntity},
+		{"IdempotencyInProgress", ErrIdempotencyInProgress(), http.StatusConflict},
 		{"Validation", ErrValidation("bad"), http.StatusBadRequest},
 		{"InvalidInput", ErrInvalidInput("email", "invalid"), http.StatusBadRequest},
 		{"MissingField", ErrMissingField("name"), http.StatusBadRequest},

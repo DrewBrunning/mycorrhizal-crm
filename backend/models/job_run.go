@@ -102,6 +102,7 @@ var KnownJobNames = []string{
 	JobNameAuditPurge,
 	JobNameSystemEventPurge,
 	JobNameWebhookDeliveryPurge,
+	JobNameIdempotencyKeyPurge,
 	JobNameCadenceOverdue,
 	JobNameReachOutDetection,
 	JobNameImmichSync,

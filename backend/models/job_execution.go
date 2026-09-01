@@ -65,6 +65,10 @@ const (
 	// webhook_deliveries rows past their retention window (issue #622).
 	JobNameWebhookDeliveryPurge = "webhook_delivery_purge"
 
+	// JobNameIdempotencyKeyPurge is the job name for the periodic removal of
+	// idempotency_keys rows past their (short) TTL window (issue #459, CON-04).
+	JobNameIdempotencyKeyPurge = "idempotency_key_purge"
+
 	// JobNameAlertEval is the job name for the scheduled alert evaluator that
 	// detects failure/recovery transitions on the tracked subsystems and
 	// notifies on them (issue #428).

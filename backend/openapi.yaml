@@ -1172,6 +1172,8 @@ paths:
         Accepts the full neutral Card/CRM shape (ContactRecordInput), not the
         legacy flat DTO. At least one name component (kind=given) or
         card.name.full is required.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -1195,6 +1197,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The Idempotency-Key was already used for a different request body (CON-04, ADR 0010).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /contacts/circles:
     get:
       summary: List the user's circle names
@@ -2939,6 +2954,8 @@ paths:
         `relationship_edge` key** (unlike the update/accept endpoints, which
         return the raw object — a real asymmetry that has burned a frontend
         once).
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -2967,6 +2984,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The Idempotency-Key was already used for a different request body (CON-04, ADR 0010).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /relationship-edges/suggest:
     post:
       summary: Suggest relationships from relationships
@@ -3489,6 +3519,8 @@ paths:
       summary: Create an unassigned note
       operationId: createUnassignedNote
       description: A body contact_id is honored here (unlike the contact-nested route).
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -3518,6 +3550,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The Idempotency-Key was already used for a different request body (CON-04, ADR 0010).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /notes/{id}:
     parameters:
       - name: id
@@ -3742,6 +3787,8 @@ paths:
       summary: Create an activity
       operationId: createActivity
       description: All contact_ids must belong to the caller (else 404).
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -3771,6 +3818,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The Idempotency-Key was already used for a different request body (CON-04, ADR 0010).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /activities/{id}:
     parameters:
       - name: id
@@ -5013,6 +5073,8 @@ paths:
       summary: Create a life event
       operationId: createLifeEvent
       description: When remind is true and the date has a month/day, a yearly reminder is materialized.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -5042,6 +5104,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The Idempotency-Key was already used for a different request body (CON-04, ADR 0010).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /life-events/{id}:
     parameters:
       - name: id
@@ -5395,6 +5470,8 @@ paths:
         offered/given gift with its date, and a received gift. Any value must
         carry an explicit ISO 4217 currency. Optionally links the LifeEvent or
         Activity it relates to.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -5424,6 +5501,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The Idempotency-Key was already used for a different request body (CON-04, ADR 0010).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /gifts/{id}:
     parameters:
       - name: id
@@ -6213,6 +6303,8 @@ paths:
         The contact_id from the URL overrides any body contact_id, but the
         field is still required in the body by validation (the Reminder model
         is the request schema). remind_at's time-of-day is zeroed server-side.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -6242,6 +6334,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The Idempotency-Key was already used for a different request body (CON-04, ADR 0010).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /contacts/{id}/reminder-completions:
     parameters:
       - name: id
@@ -9552,6 +9657,29 @@ components:
       schema:
         type: string
         example: '"7"'
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: >
+        CON-04 retry-safety key (issue #459, ADR 0010). Optional, and honoured
+        on **every authenticated POST** (the middleware is installed once on the
+        whole group). When a client that cannot tolerate an ambiguous failure
+        — the write committed but the response was lost — sends an opaque key,
+        the first request runs the handler and its outcome is stored; every
+        later request with the same key and the same body replays that stored
+        response verbatim (with an `Idempotency-Replayed: true` response
+        header) without re-running the handler, so exactly one row and one side
+        effect (webhook, push) result no matter how many retries. Reusing a key
+        with a *different* request body is `422 IDEMPOTENCY_KEY_REUSED`; a
+        retry that arrives while the first call is still in flight is
+        `409 IDEMPOTENCY_IN_PROGRESS` (retry shortly). Keys are retained for
+        `IDEMPOTENCY_KEY_RETENTION_HOURS` (default 24). `PUT`/`DELETE` are
+        already idempotent and ignore this header.
+      schema:
+        type: string
+        maxLength: 255
+        example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
   schemas:
     # --- Common ---
     Error:

@@ -60,6 +60,16 @@ const (
 	// because the row was modified since they read it (CON-01, issue #456,
 	// ADR 0008). RFC 9110's 412 Precondition Failed.
 	ErrCodePreconditionFailed = "PRECONDITION_FAILED"
+	// ErrCodeIdempotencyKeyReused signals that an Idempotency-Key was
+	// replayed with a different request (method/path/body) than the one it
+	// first identified (CON-04, issue #459, ADR 0010) — a client bug, since
+	// the key no longer names a single operation. 422.
+	ErrCodeIdempotencyKeyReused = "IDEMPOTENCY_KEY_REUSED"
+	// ErrCodeIdempotencyInProgress signals that a request with this
+	// Idempotency-Key is still being processed by an earlier call, so this
+	// retry cannot be served yet (CON-04, issue #459). 409 — the client
+	// retries after a short delay.
+	ErrCodeIdempotencyInProgress = "IDEMPOTENCY_IN_PROGRESS"
 	// ErrCodeGone signals that a requested resource (e.g. a change-feed cursor
 	// older than the purge retention window) no longer exists and the client
 	// must recover differently (full resync) — RFC 9110's 410 Gone.
@@ -175,6 +185,26 @@ func ErrPreconditionFailed(message string) *AppError {
 		message = "Precondition failed — the resource was modified since you last read it; re-fetch and retry"
 	}
 	return NewError(ErrCodePreconditionFailed, message, http.StatusPreconditionFailed)
+}
+
+// ErrIdempotencyKeyReused returns a 422 for an Idempotency-Key replayed with a
+// different request than the one it first identified (CON-04, issue #459,
+// ADR 0010). The stored response is deliberately NOT replayed — it would be
+// the wrong answer for this request.
+func ErrIdempotencyKeyReused() *AppError {
+	return NewError(ErrCodeIdempotencyKeyReused,
+		"Idempotency-Key was already used for a different request; use a fresh key",
+		http.StatusUnprocessableEntity)
+}
+
+// ErrIdempotencyInProgress returns a 409 when a request with the same
+// Idempotency-Key is still being processed (CON-04, issue #459). The client
+// should retry after a short delay, at which point the first request's stored
+// response will be replayed.
+func ErrIdempotencyInProgress() *AppError {
+	return NewError(ErrCodeIdempotencyInProgress,
+		"a request with this Idempotency-Key is still being processed; retry shortly",
+		http.StatusConflict)
 }
 
 // --- Validation Errors ---

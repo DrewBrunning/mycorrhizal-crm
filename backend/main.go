@@ -336,6 +336,17 @@ func main() {
 	s.Every(24).Hours().Do(recoverJob(db, models.JobNameWebhookDeliveryPurge, models.JobTriggerScheduled, webhookDeliveryPurgeTask))
 	go safeGo(db, models.JobNameWebhookDeliveryPurge, models.JobTriggerInitial, webhookDeliveryPurgeTask)
 
+	// Purge expired idempotency keys past their (short) TTL window (issue
+	// #459, CON-04). Runs more often than the daily purges because the window
+	// itself is hours, not days. Job-lock guarded against multi-instance
+	// double-purge.
+	idempotencyKeyPurgeTask := func() error {
+		services.PurgeExpiredIdempotencyKeysScheduled(db, *cfg)
+		return nil
+	}
+	s.Every(6).Hours().Do(recoverJob(db, models.JobNameIdempotencyKeyPurge, models.JobTriggerScheduled, idempotencyKeyPurgeTask))
+	go safeGo(db, models.JobNameIdempotencyKeyPurge, models.JobTriggerInitial, idempotencyKeyPurgeTask)
+
 	// Emit overdue-cadence webhooks daily (T19). Job-lock guarded so a
 	// multi-instance deploy does not double-fire. Reports the number emitted.
 	cadenceOverdueTask := func() (int, error) { return services.ProcessOverdueCadences(db, *cfg) }
