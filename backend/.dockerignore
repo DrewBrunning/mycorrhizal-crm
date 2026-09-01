@@ -10,8 +10,10 @@ static/photos/*
 my_environment.env
 *.test.go
 *_test.go
-.DS_Store
-.idea
-.vscode
+# Editor / OS cruft. The `**/` prefix matters: a bare `.DS_Store` only matches
+# the one at the context root, not one nested in a subpackage.
+**/.DS_Store
+**/.idea
+**/.vscode
 tmp/
 vendor/

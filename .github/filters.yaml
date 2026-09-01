@@ -52,6 +52,14 @@ infra:
   - 'Dockerfile'
   - 'docker-compose*.yml'
   - 'docker/**'
+  # The build context filters (issue #349). The root .dockerignore governs
+  # `COPY frontend/ .` in the all-in-one image; the split images have their
+  # own. A change to any of them can change what lands in the shipped
+  # artifact, so it re-runs the image builds + the container-hardening scan
+  # (which now asserts editor/OS cruft is excluded).
+  - '.dockerignore'
+  - 'frontend/.dockerignore'
+  - 'backend/.dockerignore'
   # DEPLOY-01 (issue #450): the clean-install smoke test follows the
   # documented env template and drives the running artifact, so a change to
   # either re-runs deploy-smoke.yml.

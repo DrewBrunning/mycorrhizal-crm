@@ -9,7 +9,11 @@ build
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.DS_Store
+# Editor / OS cruft. The `**/` prefix matters: a bare `.DS_Store` only matches
+# the one at the context root, so public/.DS_Store (or an editor dir nested
+# anywhere) used to be copied into the image by `COPY . .` and served publicly
+# at /.DS_Store.
+**/.DS_Store
 coverage
-.idea
-.vscode
+**/.idea
+**/.vscode
