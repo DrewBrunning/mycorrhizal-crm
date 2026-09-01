@@ -305,6 +305,48 @@ test.describe('Full backup/restore (N6)', () => {
       copyTree(srv.photosDir, backupPhotos);
       copyTree(srv.attachmentsDir, backupAttachments);
 
+      // --- Verify the assembled set is complete (BACKUP-02, issue #454) -----
+      // `make backup` verifies only the database it writes; cmd/backupverify
+      // (`make backup-verify`) is the completeness check that reconciles the
+      // whole three-piece set. Confirm it passes on the set just assembled,
+      // then hand-verify the failure path per the issue's own "how to
+      // verify": delete one attachment file from the backup set and confirm
+      // the check fails naming it.
+      const runBackupVerify = (photosDir: string, attachmentsDir: string) =>
+        execSync('go run ./cmd/backupverify', {
+          cwd: BACKEND_DIR,
+          env: {
+            ...process.env,
+            SQLITE_DB_PATH: backupDb,
+            PROFILE_PHOTO_DIR: photosDir,
+            ATTACHMENTS_DIR: attachmentsDir,
+          },
+          stdio: 'pipe',
+          timeout: 120_000,
+        }).toString();
+
+      expect(runBackupVerify(backupPhotos, backupAttachments)).toContain('backup set is complete');
+
+      const missingAttachmentName = attachmentsBefore[0];
+      const missingAttachmentPath = path.join(backupAttachments, missingAttachmentName);
+      fs.rmSync(missingAttachmentPath);
+      let verifyDetectedTheHole = false;
+      try {
+        runBackupVerify(backupPhotos, backupAttachments);
+      } catch (err) {
+        verifyDetectedTheHole = true;
+        const output = (err as { stdout?: Buffer }).stdout?.toString() ?? '';
+        expect(output).toContain(missingAttachmentName);
+        expect(output).toContain('INCOMPLETE');
+      }
+      expect(
+        verifyDetectedTheHole,
+        'cmd/backupverify must fail (non-zero exit) on a backup set missing an attachment file',
+      ).toBeTruthy();
+      // Restore it from the still-intact live directory before proceeding —
+      // only the completeness check's failure path needed the hole.
+      fs.copyFileSync(path.join(srv.attachmentsDir, missingAttachmentName), missingAttachmentPath);
+
       // --- Destroy the instance ---------------------------------------------
       await stopServer(srv);
       for (const suffix of ['', '-wal', '-shm']) {

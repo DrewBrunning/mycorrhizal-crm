@@ -1,4 +1,4 @@
-.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backfill-at-rest rotate-at-rest-key audit-backfill audit-verify backup gen-contract-fixtures gen-schema-fixtures gen-api-baseline gen-compat-matrix help
+.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backfill-at-rest rotate-at-rest-key audit-backfill audit-verify backup backup-verify gen-contract-fixtures gen-schema-fixtures gen-api-baseline gen-compat-matrix help
 
 # Database path. The migration CLI reads SQLITE_DB_PATH (the same variable the
 # server reads), so every target below EXPORTS this rather than just echoing
@@ -81,6 +81,9 @@ gen-compat-matrix: ## Regenerate the DATA-01 field compatibility matrix from the
 backup: ## Create a consistent online snapshot of the SQLite database (VACUUM INTO; safe while the server runs)
 	@echo "Backing up $(DB_PATH)..."
 	@go run cmd/backup/main.go
+
+backup-verify: ## Reconcile an assembled backup set (DB + PROFILE_PHOTO_DIR + ATTACHMENTS_DIR) — every attachment/photo row must resolve to a file (BACKUP-02, issue #454). Non-zero exit if a file is missing.
+	@go run cmd/backupverify/main.go
 
 # Version stamping. /health serves these so a bug report can be tied to the
 # binary that produced it. Override APP_VERSION on a release build; the commit
