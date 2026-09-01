@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Contacts
+import androidx.compose.material.icons.outlined.Dataset
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.EventNote
 import androidx.compose.material.icons.outlined.FileUpload
@@ -160,6 +161,10 @@ private val secondaryDestinations = listOf(
     DrawerDestination("tags", R.string.nav_tags, Icons.Outlined.Label),
     DrawerDestination("households", R.string.nav_households, Icons.Outlined.HomeWork),
     DrawerDestination("audit", R.string.nav_audit, Icons.Outlined.History),
+    // Web exposes the address/relationship-suggestion review as top-level nav;
+    // on Android it was reachable only from deep inside Settings. Promoted here
+    // (the Settings shortcut stays as a secondary entry point).
+    DrawerDestination("data", R.string.settings_data_review, Icons.Outlined.Dataset),
     DrawerDestination("import", R.string.import_title, Icons.Outlined.FileUpload),
     DrawerDestination("settings", R.string.nav_settings, Icons.Outlined.Settings),
 )
