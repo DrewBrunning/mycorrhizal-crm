@@ -604,6 +604,9 @@ private fun ContactListFilterRow(
             // labeled-switch pattern, applied to the favorites lens.
             Row(
                 verticalAlignment = Alignment.CenterVertically,
+                // Gap between the switch thumb and its label — without it the
+                // text butts straight against the toggle.
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 // #214: a bare Switch has no text/contentDescription of its own — the
                 // adjacent "Show archived" Text was a separate, unassociated node, so
                 // TalkBack announced the switch with no name at all. Modifier.toggleable
@@ -627,6 +630,7 @@ private fun ContactListFilterRow(
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier
                     .heightIn(min = 48.dp)
                     .toggleable(
