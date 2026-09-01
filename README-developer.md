@@ -28,6 +28,7 @@
 - Copy `.env.example` to `.env` and configure `JWT_SECRET_KEY`, `FRONTEND_URL`, and optionally `DATA_PATH`/`PHOTOS_PATH` for volume locations.
 - Deploy using the pre-built image from GHCR: `docker compose up -d`. Set `IMAGE_TAG` in `.env` to pin a specific version (default: `latest`).
 - Build and run locally instead: uncomment the `build: .` line in [docker-compose.yml](docker-compose.yml), then `docker compose up -d --build` (or plain `docker build -t mycorrhizal-crm .`).
+- The frontend build stage is **yarn-only**: `frontend/yarn.lock` must be present in the build context (it is committed and not `.dockerignore`d). There is no `npm` fallback — `yarn install --frozen-lockfile` and `yarn build` run unconditionally — so a trimmed build context that omits the lockfile will fail at the install step. Same for the split [frontend/Dockerfile](frontend/Dockerfile).
 - Container defaults (`PORT`, `SQLITE_DB_PATH`, `PROFILE_PHOTO_DIR`) are set in the root [Dockerfile](Dockerfile); override via `.env` if needed. `PORT` is the backend's internal bind port (8081) — nginx listens on 8080, which is what's actually exposed from the container.
 - The frontend bundle is built with an empty `VITE_API_URL` so it calls the API on relative paths; nginx (see [docker/nginx.conf](docker/nginx.conf)) proxies `/api`, `/health`, and `/carddav` to the backend on `127.0.0.1:8081`.
 

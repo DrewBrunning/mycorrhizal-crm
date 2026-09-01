@@ -25,9 +25,10 @@ RUN wget -q https://registry.npmjs.org/yarn/-/yarn-1.22.22.tgz -O /tmp/yarn.tgz 
 COPY package.json yarn.lock ./
 
 # Install dependencies. The repo is yarn-only (yarn.lock is committed, no
-# package-lock.json), so this is always the frozen-lockfile path. The previous
-# `npm ci` / `npm install` fallbacks were dead code, and OSSF Scorecard flagged
-# the `npm install` branch as an unpinned npm command.
+# package-lock.json), so both the install and the build below are
+# unconditional yarn. The previous `if [ -f yarn.lock ] ... else npm ...`
+# fallbacks were dead code (yarn.lock is always in context), and OSSF
+# Scorecard flagged the `npm install` branch as an unpinned npm command (#331).
 RUN yarn install --frozen-lockfile
 
 # Copy source code
@@ -37,7 +38,7 @@ COPY . .
 ARG VITE_API_URL
 ENV VITE_API_URL=${VITE_API_URL}
 
-RUN if [ -f yarn.lock ]; then yarn build; else npm run build; fi
+RUN yarn build
 
 # Production stage - serve with unprivileged nginx
 FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:44e36330f74d4f3a1d4e222acca9e23b401fb87811a7597024502bb759c4dd49
