@@ -11,8 +11,8 @@ import (
 // TestLiteralCoversEverySQLValueType pins the value-serialization switch used
 // to build the data-copy INSERTs. Every database/sql value class must render
 // to a valid SQL literal — NULL, INTEGER, REAL, bool (defensive; SQLite has no
-// bool), BLOB, TEXT, and anything unexpected (time.Time is the realistic
-// "default" case a driver can return).
+// bool), BLOB, TEXT, time.Time (the type a DATETIME column scans as), and
+// anything unexpected.
 func TestLiteralCoversEverySQLValueType(t *testing.T) {
 	cases := []struct {
 		in   any
@@ -33,10 +33,14 @@ func TestLiteralCoversEverySQLValueType(t *testing.T) {
 		assert.Equal(t, c.want, literal(c.in), "literal(%v)", c.in)
 	}
 
-	// The default case (anything that is not one of the above) stringifies;
-	// time.Time is the realistic driver-returned type to land there.
+	// time.Time (a DATETIME column's scanned type) renders as RFC3339Nano
+	// UTC — the format production migration-written rows use, and one GORM's
+	// SQLite driver can scan back into a time.Time field. A non-UTC input is
+	// normalised to UTC.
 	when := time.Date(2026, 8, 4, 12, 0, 0, 0, time.UTC)
-	assert.Equal(t, "'2026-08-04 12:00:00 +0000 UTC'", literal(when))
+	assert.Equal(t, "'2026-08-04T12:00:00Z'", literal(when))
+	loc := time.FixedZone("CDT", -5*3600)
+	assert.Equal(t, "'2026-08-04T17:30:00Z'", literal(time.Date(2026, 8, 4, 12, 30, 0, 0, loc)))
 }
 
 // TestQuoteIdentRoundTrips tests the identifier quoting used on internal
