@@ -8,7 +8,7 @@ time — so it is commands and decisions, not background reading.
 |---|---|
 | **Last updated** | 2026-08-27 (issue [#509](https://github.com/DrewBrunning/mycorrhizal-crm/issues/509)) |
 | **Scope** | A self-hosted single instance (the shipped all-in-one image). Contain, assess, rotate, recover, notify — plus a per-credential rotation reference. |
-| **Companion docs** | `docs/deployment.md` (backup/restore/upgrade *procedures*), `docs/operations/migration-recovery.md` (the migration-specific recovery chapter — issue #440), `docs/security/threat-model.md` (assets/actors), `docs/security/deployment-baseline.md` (operator boundary), `docs/security/data-retention-lifecycle.md` (what lives where, for how long). Disaster-recovery boundaries are [#455](https://github.com/DrewBrunning/mycorrhizal-crm/issues/455). |
+| **Companion docs** | `docs/deployment.md` (backup/restore/upgrade *procedures*), `docs/operations/migration-recovery.md` (the migration-specific recovery chapter — issue #440), `docs/security/threat-model.md` (assets/actors), `docs/security/deployment-baseline.md` (operator boundary), `docs/security/data-retention-lifecycle.md` (what lives where, for how long). Disaster-recovery boundaries — every recovery scenario, its RPO/RTO, and what is not recoverable — are `docs/operations/disaster-recovery.md` (BACKUP-03, issue [#455](https://github.com/DrewBrunning/mycorrhizal-crm/issues/455)). |
 | **Verified** | The rotation procedures below were exercised against a real build on 2026-08-27 — see [What this was verified against](#what-this-was-verified-against). |
 
 ## Using this under stress

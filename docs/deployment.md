@@ -212,8 +212,9 @@ photo/attachment directories.** `make backup` / `database.BackupSnapshot` delibe
 verify the database piece only — a plain file copy is already the right tool for two ordinary
 directories, and the all-in-one Docker image mounts them as separate volumes anyway. What the tool
 *does* own is checking that an assembled set is consistent, regardless of who assembled it: see
-"Verifying a backup set is complete" below. (BACKUP-03, issue #455, is the fuller
-disaster-recovery-boundaries document; this paragraph is the citable decision it references.)
+"Verifying a backup set is complete" below. (`docs/operations/disaster-recovery.md` — BACKUP-03,
+issue #455 — is the fuller disaster-recovery-boundaries document, covering every recovery scenario
+and its RPO/RTO; this paragraph is the citable decision it references.)
 
 **The automatic pre-migration snapshot is separate from this.** Before every schema migration the
 server writes a verified database snapshot into a `pre-migration/` directory beside `SQLITE_DB_PATH`
@@ -408,7 +409,7 @@ this section is the citable derivation it references.
 |---|---|---|
 | **Planned upgrade rollback** (a bad release) | **0** | The pre-migration snapshot is taken automatically, verified, and fail-closed immediately before the first migration runs (issue #530) — nothing is committed between the snapshot and the upgrade. Rolling back is *deploy the previous binary + restore that snapshot* (`docs/operations/migration-recovery.md` → "Rolling back a bad release"). Non-disableable: `MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` relocates it, nothing turns it off. |
 | **Host loss / database corruption / a lost photo or attachment directory** | **= your backup interval** | The app ships **no scheduled routine backup** — `make backup` plus the directory `rsync` are an operator cron (BACKUP-02, issue #454). A restore replaces the instance with the last set you captured, so everything written since is lost. With the recommended **daily** cron, RPO ≈ **24 h**. |
-| **Accidental deletion by the user** | **0**, within the undo window | Soft delete keeps the row for `DELETED_RETENTION_DAYS` (default **30**); recovery is the in-app undo / audit restore, not a backup restore. Past the window it collapses into the host-loss row. |
+| **Accidental deletion by the user** | **= your backup interval** (as host loss) | Soft delete keeps the row for `DELETED_RETENTION_DAYS` (default **30**) as a sync tombstone, **but there is no undelete**: `POST /api/v1/audit/:id/undo` reverts an accidental *edit* only (update events; it rejects deletes), and `DeleteContact` hard-deletes the contact's join rows and removes its attachment/photo files from disk immediately. Recovering a deleted contact is a point-in-time restore from a backup predating the deletion — see BACKUP-03. (*Archiving* a contact, by contrast, is reversible via `/unarchive`.) |
 
 The one freshness number the app enforces itself: the **`backup_stale` alert** fires when no
 successful backup or restore-drill run has been observed for `ALERT_BACKUP_MAX_AGE_HOURS` — default
