@@ -1267,7 +1267,8 @@
             "meerkat": "Meerkat"
           }
         },
-        "monicaButton": "Importa da Monica"
+        "monicaButton": "Importa da Monica",
+        "meerkatButton": "Importa da Meerkat"
       },
       "propose": {
         "title": "Proponi dati",
@@ -1456,6 +1457,19 @@
         "connecting": "Connessione…",
         "found": "Trovati {{contacts}} contatti, {{activities}} attività e {{notes}} note.",
         "estimate": "Recuperare tutto richiede circa {{minutes}} min.",
+        "start": "Avvia importazione"
+      }
+    },
+    "meerkatImport": {
+      "title": "Importa da Meerkat",
+      "connect": {
+        "description": "Stai migrando da un'installazione di Meerkat CRM? Carica il file del database e i contatti e la loro cronologia verranno trasferiti direttamente.",
+        "chooseFile": "Scegli il file del database",
+        "uploading": "Caricamento…",
+        "fileHelp": "Il file SQLite di Meerkat, di solito meerkat.db. Nulla viene conservato dopo l'importazione.",
+        "found": "{{contacts}} contatti, {{relationships}} relazioni, {{notes}} note.",
+        "pickUser": "Questo database ha più di un utente: scegli di chi importare i contatti:",
+        "userOption": "{{name}} — {{count}} contatti",
         "start": "Avvia importazione"
       }
     }

@@ -1267,7 +1267,8 @@
             "meerkat": "Meerkat"
           }
         },
-        "monicaButton": "Importar desde Monica"
+        "monicaButton": "Importar desde Monica",
+        "meerkatButton": "Importar desde Meerkat"
       },
       "propose": {
         "title": "Proponer datos",
@@ -1456,6 +1457,19 @@
         "connecting": "Conectando…",
         "found": "Se encontraron {{contacts}} contactos, {{activities}} actividades y {{notes}} notas.",
         "estimate": "Descargarlo todo tarda unos {{minutes}} min.",
+        "start": "Iniciar importación"
+      }
+    },
+    "meerkatImport": {
+      "title": "Importar desde Meerkat",
+      "connect": {
+        "description": "¿Migras desde una instalación de Meerkat CRM? Sube su archivo de base de datos y se traerán tus contactos y su historial directamente.",
+        "chooseFile": "Elegir archivo de base de datos",
+        "uploading": "Subiendo…",
+        "fileHelp": "El archivo SQLite de Meerkat, normalmente meerkat.db. No se conserva nada tras la importación.",
+        "found": "{{contacts}} contactos, {{relationships}} relaciones, {{notes}} notas.",
+        "pickUser": "Esta base de datos tiene más de un usuario: elige de quién importar los contactos:",
+        "userOption": "{{name}} — {{count}} contactos",
         "start": "Iniciar importación"
       }
     }

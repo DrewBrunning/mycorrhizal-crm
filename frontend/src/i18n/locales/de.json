@@ -1267,7 +1267,8 @@
             "meerkat": "Meerkat"
           }
         },
-        "monicaButton": "Aus Monica importieren"
+        "monicaButton": "Aus Monica importieren",
+        "meerkatButton": "Aus Meerkat importieren"
       },
       "propose": {
         "title": "Daten vorschlagen",
@@ -1456,6 +1457,19 @@
         "connecting": "Verbinde…",
         "found": "{{contacts}} Kontakte, {{activities}} Aktivitäten und {{notes}} Notizen gefunden.",
         "estimate": "Das vollständige Abrufen dauert etwa {{minutes}} Min.",
+        "start": "Import starten"
+      }
+    },
+    "meerkatImport": {
+      "title": "Aus Meerkat importieren",
+      "connect": {
+        "description": "Du wechselst von einer Meerkat-CRM-Installation? Lade ihre Datenbankdatei hoch — Kontakte und ihr Verlauf werden direkt übernommen.",
+        "chooseFile": "Datenbankdatei auswählen",
+        "uploading": "Wird hochgeladen…",
+        "fileHelp": "Die Meerkat-SQLite-Datei — meist meerkat.db. Nach dem Import wird nichts aufbewahrt.",
+        "found": "{{contacts}} Kontakte, {{relationships}} Beziehungen, {{notes}} Notizen.",
+        "pickUser": "Diese Datenbank hat mehrere Benutzer — wähle, wessen Kontakte importiert werden:",
+        "userOption": "{{name}} — {{count}} Kontakte",
         "start": "Import starten"
       }
     }
