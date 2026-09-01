@@ -352,7 +352,11 @@ than discovered during a real disaster:
   `PROFILE_PHOTO_DIR` / `ATTACHMENTS_DIR` — a live directory that lost a file fails the drill by
   name; an orphan is logged but does not fail it
   (`DB_RESTORE_DRILL_ENABLED`, default on; `DB_RESTORE_DRILL_INTERVAL_HOURS`, default `168`, i.e.
-  weekly).
+  weekly). Every run records its wall-clock as `duration_ms` on the
+  `restore_test_completed` System events row; set `DB_RESTORE_DRILL_MAX_DURATION_SECONDS` to a
+  budget to get a `WARN` (and a note on that row) when a run exceeds it — see
+  [Recovery objectives (RPO and RTO)](#recovery-objectives-rpo-and-rto) for how that feeds the RTO
+  number.
 
 Either job logs and fires a webhook (`db.integrity_check_failed` / `db.restore_drill_failed`, see
 Settings → Webhooks) on failure, so "test restores regularly" above is now something the app does
@@ -365,6 +369,74 @@ one notification when a condition breaks (`alert.raised`) and one when it clears
 does not page you on every run. Webhooks go to all subscribers; email/ntfy/Gotify/push go to admin
 users. Full condition list and the `ALERT_*` env vars are in
 `docs/operations/observability.md` → "Alerting on state transitions".
+
+### Recovery objectives (RPO and RTO)
+
+**RPO** (recovery point objective) is how much data a recovery may lose; **RTO** (recovery time
+objective) is how long recovery takes. Both are scoped to a **single-instance, self-hosted**
+deployment: there is no replica and no failover, so every recovery is a restore, and these numbers
+describe that restore. They are derived from the mechanisms above and from the measured figures in
+`docs/development/scale-testing.md` (issue #495), not asserted. BACKUP-03 (issue #455) consolidates
+them, per scenario, into the disaster-recovery-boundaries document alongside the full procedures;
+this section is the citable derivation it references.
+
+#### RPO — how much data a recovery can lose
+
+| Scenario | RPO | Why |
+|---|---|---|
+| **Planned upgrade rollback** (a bad release) | **0** | The pre-migration snapshot is taken automatically, verified, and fail-closed immediately before the first migration runs (issue #530) — nothing is committed between the snapshot and the upgrade. Rolling back is *deploy the previous binary + restore that snapshot* (`docs/operations/migration-recovery.md` → "Rolling back a bad release"). Non-disableable: `MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` relocates it, nothing turns it off. |
+| **Host loss / database corruption / a lost photo or attachment directory** | **= your backup interval** | The app ships **no scheduled routine backup** — `make backup` plus the directory `rsync` are an operator cron (BACKUP-02, issue #454). A restore replaces the instance with the last set you captured, so everything written since is lost. With the recommended **daily** cron, RPO ≈ **24 h**. |
+| **Accidental deletion by the user** | **0**, within the undo window | Soft delete keeps the row for `DELETED_RETENTION_DAYS` (default **30**); recovery is the in-app undo / audit restore, not a backup restore. Past the window it collapses into the host-loss row. |
+
+The one freshness number the app enforces itself: the **`backup_stale` alert** fires when no
+successful backup or restore-drill run has been observed for `ALERT_BACKUP_MAX_AGE_HOURS` — default
+`2 × DB_RESTORE_DRILL_INTERVAL_HOURS` = **336 h** (14 days). That is a "something is badly wrong"
+alarm, deliberately far looser than the recommended daily cron so one missed nightly run does not
+page anyone; it is **not** an RPO SLA. To have the app hold you to a tighter number, set
+`ALERT_BACKUP_MAX_AGE_HOURS` to roughly twice your actual cron interval.
+
+**The gap, stated rather than rounded away:** the only automatic, app-guaranteed RPO is the **0**
+for the planned-upgrade case. For host loss the app recommends daily backups (≈ 24 h) but neither
+schedules nor enforces them — closing that gap is an operator action: a backup cron at your target
+frequency, and, for host loss specifically, an **off-host copy** of the backup set (issue #505),
+since a backup on the same disk as the database does not survive that disk.
+
+#### RTO — how long recovery takes
+
+Derived at MVP scale from `docs/development/scale-testing.md` — **100,000 contacts, ~450 MB
+database** — for a prepared operator following the [Restore](#restore) procedure with the backup
+set already on the host:
+
+| Step | Time at MVP scale | Source |
+|---|---|---|
+| Copy the `.db` snapshot into place | seconds (~450 MB file copy) | file size |
+| `rsync` the photo + attachment directories | minutes, set by directory size — the file directories can dwarf the `.db` at scale (BACKUP-02) | operator storage |
+| Startup migration after restore | **~6.5 s** (v0.6.0 → current, 100k contacts) | `scale-testing.md` → "Recorded resource requirements" |
+| `PRAGMA integrity_check` + `/health/ready` verification | seconds | `TestLargeDatasetBackupRestoresAtScale` |
+
+**Stated RTO: under 30 minutes** at MVP scale. The dominant terms are the human steps (stop, swap
+files, start, verify) and the directory `rsync` — the database snapshot restores and migrates in
+seconds. RTO grows with database and directory size and shrinks with faster storage. It does **not**
+include time to *fetch* an off-host backup (network transfer from wherever issue #505's copy lives);
+that is deployment-specific and additive.
+
+**Keeping the number honest:** the weekly restore drill records `duration_ms` on every
+`restore_test_completed` row in the System events timeline (`/system-events`) — the snapshot →
+restore → row-count → completeness cycle for the database piece. Compare successive rows to watch
+restore time drift as data grows. Set `DB_RESTORE_DRILL_MAX_DURATION_SECONDS` to your
+database-piece budget to get a `WARN` log line and a note on that timeline row when a run exceeds it
+— drift visible before an incident, not during one. The drill still passes: a slow disk one week is
+not a backup failure.
+
+#### The levers
+
+| To change… | Lever | Tradeoff |
+|---|---|---|
+| RPO (host loss) | Backup cron frequency | More frequent = less data lost, more IO and storage churn |
+| RPO (host loss survives the host) | Off-host copy of the backup set (issue #505) | Adds transfer time to RTO; the copy is a full sensitive-data replica — see "Backup confidentiality & retention" |
+| RPO (upgrade) | — | Already 0 and non-disableable |
+| RTO | Database + directory size; storage speed; keeping a backup set on the host | A local set restores fastest; an off-host-only set trades RTO for host-loss durability |
+| RTO alarm sensitivity | `DB_RESTORE_DRILL_MAX_DURATION_SECONDS` | Too low = noise; unset = drift only visible by reading the timeline |
 
 ### Storage-growth trend & thresholds
 

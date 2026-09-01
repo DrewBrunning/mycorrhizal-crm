@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"mycorrhizal/atrest"
 	"mycorrhizal/config"
@@ -309,6 +310,13 @@ func RunRestoreDrillScheduled(db *gorm.DB, cfg config.Config) {
 		return
 	}
 
+	// RTO-budget check (issue #506). The drill has proven the backup restores;
+	// this is a separate, non-fatal observation about *how long* the database
+	// piece took, so an over-budget run annotates the timeline and logs a WARN
+	// rather than failing the drill (which would page an operator for a backup
+	// that is, in fact, fine). duration_ms is recorded either way.
+	rtoDetail := evaluateRestoreDrillRTOBudget(ctx, cfg, durMS)
+
 	RecordOperationalCheckResult(db, models.JobNameRestoreDrill, models.OpCheckStatusOK, "")
 	logger.Ctx(ctx).Info().
 		Str(logger.FieldEvent, models.SysEventRestoreTestCompleted).
@@ -319,6 +327,32 @@ func RunRestoreDrillScheduled(db *gorm.DB, cfg config.Config) {
 	models.RecordSystemEvent(ctx, db, models.SystemEvent{
 		EventType: models.SysEventRestoreTestCompleted, Component: logger.ComponentBackup,
 		Operation: models.JobNameRestoreDrill, Result: models.SysResult(logger.ResultSuccess),
-		DurationMS: &durMS,
+		DurationMS: &durMS, Detail: rtoDetail,
 	})
+}
+
+// evaluateRestoreDrillRTOBudget compares a completed drill's wall-clock against
+// the operator's RTO budget (DB_RESTORE_DRILL_MAX_DURATION_SECONDS). When a
+// budget is set (> 0) and the run exceeded it, it logs one WARN and returns the
+// note to stamp on the restore_test_completed timeline row. No budget, or a run
+// within budget, returns "" and logs nothing — the Info "restore drill: ok"
+// line and the recorded duration_ms still happen in the caller regardless.
+func evaluateRestoreDrillRTOBudget(ctx context.Context, cfg config.Config, durMS int64) string {
+	if cfg.DBRestoreDrillMaxDurationSeconds <= 0 {
+		return ""
+	}
+	budgetMS := int64(cfg.DBRestoreDrillMaxDurationSeconds) * 1000
+	if durMS <= budgetMS {
+		return ""
+	}
+	logger.Ctx(ctx).Warn().
+		Str(logger.FieldEvent, models.SysEventRestoreTestCompleted).
+		Str(logger.FieldComponent, logger.ComponentBackup).
+		Int64(logger.FieldDurationMS, durMS).
+		Int("budget_seconds", cfg.DBRestoreDrillMaxDurationSeconds).
+		Msg("restore drill: over RTO budget")
+	return fmt.Sprintf(
+		"restore drill took %dms, over the %ds RTO budget (DB_RESTORE_DRILL_MAX_DURATION_SECONDS)",
+		durMS, cfg.DBRestoreDrillMaxDurationSeconds,
+	)
 }

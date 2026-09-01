@@ -35,6 +35,9 @@ func TestRestoreDrillScheduled_EmitsRestoreTestCompleted(t *testing.T) {
 	require.NotNil(t, ev.Result)
 	assert.Equal(t, logger.ResultSuccess, *ev.Result)
 	require.NotNil(t, ev.DurationMS)
+	// No DB_RESTORE_DRILL_MAX_DURATION_SECONDS budget configured, so the row
+	// carries the recorded duration but no RTO-budget annotation (issue #506).
+	assert.Empty(t, ev.Detail)
 }
 
 // TestRestoreDrillScheduled_EmitsBackupFailed covers the failure path: the
