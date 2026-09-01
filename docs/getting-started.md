@@ -16,6 +16,11 @@ Clone the repository, copy the [sample docker compose file](https://github.com/D
 After adjusting the environment variables as needed you can run:
 ```docker compose up -d --build```
 
+These steps are exercised on every infra change (and nightly) by the
+`deploy-smoke` CI job, which follows this page from an empty state and then runs
+a full register → create contact → attach → search → export workflow against the
+fresh instance (issue #450).
+
 ### Environment variables
 
 | Variable | Description |

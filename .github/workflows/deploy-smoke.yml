@@ -1,0 +1,205 @@
+name: Clean-install Smoke Test
+
+# DEPLOY-01 (issue #450). docker-build-check.yml proves the image builds and
+# e2e-tests.yml proves the pre-seeded e2e stack runs — neither proves a
+# stranger's *first* boot is usable: empty database, no reused volumes, config
+# set only from what docs/getting-started.md tells a new operator.
+#
+# This job starts from nothing, follows the documented install path verbatim
+# (cp .env.example .env, inject a real JWT_SECRET_KEY, `docker compose up -d
+# --build`), then asserts the workflow rather than the boot: register the
+# first user, log in, create a contact with several field types, relate it to
+# a second contact, attach a file, upload a profile photo, search, export, and
+# read every field back (backend/cmd/deploysmoke). It also asserts startup
+# ordering (config validated -> migrations on the empty DB -> serving) and the
+# three misconfiguration failures a real operator hits.
+#
+# Path-gated on `infra` (the deployed artifact: Dockerfile, docker-compose*,
+# docker/, .env.example, and the smoke harness) using the issue #264 pattern;
+# the nightly schedule runs it unconditionally so it stays exercised even with
+# no infra changes.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '40 3 * * *' # 03:40 UTC nightly
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      infra: ${{ steps.filter.outputs.infra }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect changed areas
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+      - name: Report gating decision
+        run: |
+          echo "infra=$INFRA_CHANGED"
+          echo "workflows=$WORKFLOWS_CHANGED"
+        env:
+          INFRA_CHANGED: ${{ steps.filter.outputs.infra }}
+          WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
+
+  smoke:
+    permissions:
+      contents: read
+    name: Clean-install smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+
+      # --- Clean-install setup: exactly what docs/getting-started.md tells a
+      # new operator to do. No reused volumes (fresh checkout), no config
+      # beyond the two values the docs call out.
+      - name: Prepare a fresh .env from the documented template
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+          # The shipped placeholder secret is deliberately rejected by the
+          # server; the docs tell the operator to generate a real one.
+          secret="$(openssl rand -base64 32)"
+          sed -i "s|^JWT_SECRET_KEY=.*|JWT_SECRET_KEY=${secret}|" .env
+          # FRONTEND_URL is already http://localhost:7300 in .env.example and
+          # matches docker-compose.yml's default port mapping — left as-is.
+          echo "Prepared .env (JWT_SECRET_KEY randomized, FRONTEND_URL unchanged)."
+
+      - name: Bring up the stack via the documented path
+        run: |
+          set -euo pipefail
+          # `docker compose up -d --build` is the command in the docs. --wait
+          # blocks on the image HEALTHCHECK (/health/live), which the server
+          # only answers after InitDB's migrations and route registration
+          # complete (backend/main.go) — so a healthy container already
+          # implies migrations ran on the empty database.
+          docker compose up -d --build --wait --wait-timeout 240
+
+      - name: Assert startup ordering (config + empty-DB migrations precede serving)
+        run: |
+          set -euo pipefail
+          docker compose logs --no-color --timestamps mycorrhizal > /tmp/boot.log
+          echo "----- captured boot log -----"
+          cat /tmp/boot.log
+          echo "----------------------------"
+
+          # zerolog and the stdlib logger write to separate streams that
+          # supervisord merges, so line order between two sub-second-apart
+          # events is not reliable. What IS reliable — and what issue #450
+          # cares about — is that the HTTP listener comes up only *after*
+          # config validation and the migration run, with a real gap.
+          line_for() { grep -n -m1 -F "$1" /tmp/boot.log | cut -d: -f1; }
+          validated="$(line_for 'Configuration validated successfully' || true)"
+          first_migration="$(line_for '000001_initial_schema.up.sql' || true)"
+          serving="$(line_for 'Server is ready to handle requests' || true)"
+          migrations_done="$(grep -c 'migration_step_completed' /tmp/boot.log || true)"
+
+          echo "validated@${validated:-<none>} first_migration@${first_migration:-<none>} serving@${serving:-<none>} steps=${migrations_done}"
+          if [ -z "$validated" ] || [ -z "$first_migration" ] || [ -z "$serving" ]; then
+            echo "::error::boot log missing an ordering marker (validated/first_migration/serving)"
+            exit 1
+          fi
+          if [ "$validated" -ge "$serving" ] || [ "$first_migration" -ge "$serving" ]; then
+            echo "::error::listener came up before config validation and/or migrations"
+            exit 1
+          fi
+          if [ "${migrations_done:-0}" -lt 1 ]; then
+            echo "::error::no migration steps ran — the empty-DB migration path did not execute on first boot"
+            exit 1
+          fi
+          echo "Startup order OK: ${migrations_done} migrations applied on the empty DB, listener up afterwards."
+
+          # The data directory / database file did not exist before this boot
+          # (fresh checkout, no volumes) — it must exist now.
+          docker compose exec -T mycorrhizal ls -la /app/data
+
+          # The first readiness probe must already report migrations applied
+          # on the empty DB (issue #421 — this is the only run of the
+          # empty-database migration path).
+          ready="$(curl -fsS http://localhost:7300/health/ready)"
+          echo "readiness: $ready"
+          echo "$ready" | grep -q '"migrations":{"status":"ok"}'
+          echo "$ready" | grep -q '"filesystem":{"status":"ok"}'
+
+      - name: Run the end-to-end workflow against the fresh install
+        run: |
+          set -euo pipefail
+          cd backend
+          go run ./cmd/deploysmoke
+        env:
+          DEPLOYSMOKE_BASE_URL: http://localhost:7300
+
+      - name: Assert a non-matching Origin is not granted CORS
+        run: |
+          set -euo pipefail
+          # FRONTEND_URL is http://localhost:7300; a request claiming a
+          # different origin must not get it echoed back as allowed.
+          hdrs="$(curl -sS -o /dev/null -D - \
+            -H 'Origin: http://evil.example' \
+            -H 'Access-Control-Request-Method: POST' \
+            -X OPTIONS http://localhost:7300/api/v1/contacts)"
+          echo "$hdrs"
+          if echo "$hdrs" | grep -i 'access-control-allow-origin: http://evil.example'; then
+            echo "::error::server granted CORS to an origin that is not FRONTEND_URL"
+            exit 1
+          fi
+          echo "CORS correctly withheld from the non-matching origin."
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker compose logs --no-color mycorrhizal
+
+      - name: Tear down the healthy stack
+        if: always()
+        run: docker compose down -v
+
+      # --- Misconfiguration cases: the failures a real operator hits. Each
+      # rewrites .env, brings the stack up, and asserts the app never becomes
+      # usable and the log names the offending variable. config.Validate() is
+      # unit-tested per field (backend/config) and at the real-binary boundary
+      # (backend/config/startup_smoke_test.go); these two prove the failure
+      # also surfaces through the shipped container's startup. Only vars the
+      # container's entrypoint does not pre-empt are checked here — a relative
+      # PROFILE_PHOTO_DIR/ATTACHMENTS_DIR fails in entrypoint.sh's chown before
+      # the Go binary runs, so its config-validator message is asserted only
+      # at the binary boundary.
+      - name: Misconfig — blank JWT_SECRET_KEY fails naming the variable
+        run: .github/scripts/deploy-smoke-misconfig.sh JWT_SECRET_KEY 'JWT_SECRET_KEY=' JWT_SECRET_KEY
+
+      - name: Misconfig — empty FRONTEND_URL fails naming the variable
+        run: .github/scripts/deploy-smoke-misconfig.sh FRONTEND_URL 'FRONTEND_URL=' FRONTEND_URL
+
+      - name: Final teardown
+        if: always()
+        run: docker compose down -v || true
