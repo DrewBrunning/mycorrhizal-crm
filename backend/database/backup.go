@@ -30,6 +30,21 @@ import (
 //     the temp this call made);
 //   - an existing output is never overwritten: the pre-check below and the
 //     final no-overwrite link both refuse instead.
+//
+// Immutability / write-new-only (issue #505). This is the whole of the
+// application's backup-write surface, and it is deliberately write-a-new-file
+// and nothing else: there is no code path anywhere in the app that deletes,
+// overwrites, truncates, re-encrypts, rotates, or expires an existing backup
+// (or an existing pre-migration snapshot — issue #530). Backup retention is
+// entirely operator-owned, because an in-app expirer is the same capability a
+// host attacker running as the application inherits. On-host that is only a
+// bug barrier, not an attacker barrier — the app's own uid can still rm its
+// own files; genuine immutability against a compromised host comes from the
+// operator putting backups somewhere the application holds no credential to
+// reach (a pull-based off-host copy is the documented default; object-locked
+// remote storage is the alternative). See docs/deployment.md → "Backup
+// immutability & ransomware resistance" and docs/security/asvs-l2.md P5. The
+// write-new-only half is pinned by backup_immutability_test.go.
 func BackupSnapshot(srcPath, outPath string) error {
 	if _, err := os.Stat(srcPath); err != nil {
 		if os.IsNotExist(err) {

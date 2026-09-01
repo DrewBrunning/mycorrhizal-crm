@@ -90,12 +90,18 @@ is exactly where it lives.
   automatic snapshots land in their own `pre-migration/` directory precisely so
   a rotation cron pointed at the routine backup directory cannot reach them —
   keep that directory off any purge path, or prune it by *keeping the newest
-  N*, never by age alone. If you also take pre-upgrade snapshots by hand into
+  N*, never by age alone. A pre-migration filename (`…-pre-migration-<from>-to-<to>-….db`)
+  still matches the routine glob `mycorrhizal-*.db`, so a **recursive**
+  `find … -mtime +N -delete` rooted at a parent of `pre-migration/` would delete
+  it once it aged. Keep the sweep non-recursive
+  (`find /backups -maxdepth 1 -name 'mycorrhizal-*.db' -mtime +30 -delete`), or
+  add `-not -path '*/pre-migration/*'`. This is pinned by
+  `backend/database/backup_immutability_test.go`'s
+  `TestBackupImmutability_PreMigrationRollbackPointSurvivesRoutineRotation`
+  (issue #505 action 4). If you also take pre-upgrade snapshots by hand into
   the routine directory, name each with the version you are moving **from** and
-  do not let a purge such as
-  `find /backups -name 'mycorrhizal-*.db' -mtime +30 -delete` remove the most
-  recent one until the upgrade has been verified and the next pre-upgrade
-  snapshot exists.
+  do not let such a purge remove the most recent one until the upgrade has been
+  verified and the next pre-upgrade snapshot exists.
 - **Encryption caveat.** A restore under a different at-rest master key
   (`DATA_ENCRYPTION_KEY`, or the `JWT_SECRET_KEY` fallback) fails closed at
   boot instead of serving garbage — a pre-upgrade snapshot must be restored

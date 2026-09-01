@@ -434,8 +434,18 @@ attacker running as the app the same power (issue #505). A cron-scheduled `make 
 snapshots until the operator imposes a lifecycle, e.g.:
 
 ```sh
-find /backups -name 'mycorrhizal-*.db' -mtime +30 -delete   # keep 30 days of daily snapshots
+# keep 30 days of daily snapshots. -maxdepth 1 is load-bearing: it keeps the
+# sweep out of the pre-migration/ subdirectory, whose rollback points must
+# never be aged out by routine rotation (issue #530; see below).
+find /backups -maxdepth 1 -name 'mycorrhizal-*.db' -mtime +30 -delete
 ```
+
+If your routine snapshots land in the same directory as the live database (the default `make backup`
+location — a sibling of `SQLITE_DB_PATH`), that directory *also* contains the automatic `pre-migration/`
+subdirectory. A recursive `find … -delete` there would match the pre-migration snapshots too (their
+names fit `mycorrhizal-*.db`) and silently delete your last rollback point once it aged past the
+window. Keep the sweep non-recursive (`-maxdepth 1`), or point it at a directory that holds nothing
+else, or add `-not -path '*/pre-migration/*'`.
 
 **Deleting live data never deletes backups.** Purging contacts, notes, or any other data has no
 effect on already-taken backup files. A restore is a point-in-time rollback: anything soft-deleted
@@ -455,3 +465,92 @@ photo and an attachment (or run the `frontend/e2e/backupRestore.spec.ts` round t
 copy first). Restoring into an environment whose master key differs from the snapshot's fails closed
 at boot — that is the intended signal to check keys before touching the live instance. The audit
 trail in a restored database is only as fresh as the snapshot.
+
+### Backup immutability & ransomware resistance
+
+Every recovery guarantee above assumes the backups still exist and are intact when you need them.
+Against a **compromised host** — ransomware, or an attacker who got code execution as the application
+— that assumption fails for any backup the application itself can reach: it runs as a uid that can
+read and write the local backup directory, so anything it can write, it (or something running as it)
+can also encrypt or delete. This section is issue #505's statement of what the application does about
+that, and what it deliberately leaves to you.
+
+**What the application guarantees: write-new-only.** `database.BackupSnapshot` (behind `make backup`
+and the automatic pre-migration snapshot) is the *entire* backup-write surface, and it only ever
+creates a new file. It refuses to overwrite an existing output, the only file it ever removes is the
+uniquely-named temp it just created, and there is no code path anywhere in the app — no rotation, no
+expiry, no "clean up old backups" job — that deletes, truncates, re-encrypts, or modifies an existing
+backup or pre-migration snapshot. This is enforced and tested by trying it
+(`backend/database/backup_immutability_test.go`). Retention is left entirely to you for the same
+reason: an in-app expirer is a delete-backups capability, and a compromised app would inherit it.
+
+**What the application cannot do for you.** On the host, write-new-only is only a barrier against the
+app's *own bugs*. It is not a barrier against an attacker with the app's uid — that uid can `chmod`
+and `rm` its own files regardless of what the app's code does. Real immutability against a compromised
+host means putting the backups somewhere the application holds **no credential to reach**. Pick one,
+in rough order of strength for a single-instance self-hosted deployment:
+
+1. **Pull-based off-host copy (recommended default).** A separate backup host reaches *in* over SSH on
+   a schedule and copies the snapshot + the photo/attachment directories out; the Mycorrhizal host
+   holds no key, token, or mount that can reach the backup store. A compromise of the Mycorrhizal
+   host cannot touch what is already off it, and cannot stop a future pull it does not know about.
+   This is the cheapest to reason about: the trust flows one way, from the backup host to the app
+   host, and never back.
+
+   ```sh
+   # On the BACKUP host, in its own cron — NOT on the Mycorrhizal host.
+   # The Mycorrhizal host's SSH user is unprivileged and read-only.
+   rsync -e 'ssh -i ~/.ssh/mycorrhizal-pull' -a --link-dest=../latest \
+     mycorrhizal-pull@app-host:/srv/mycorrhizal/data/     "/backups/$(date +%F)/data/"
+   rsync -e 'ssh -i ~/.ssh/mycorrhizal-pull' -a --link-dest=../latest \
+     mycorrhizal-pull@app-host:/srv/mycorrhizal/photos/   "/backups/$(date +%F)/photos/"
+   rsync -e 'ssh -i ~/.ssh/mycorrhizal-pull' -a --link-dest=../latest \
+     mycorrhizal-pull@app-host:/srv/mycorrhizal/attachments/ "/backups/$(date +%F)/attachments/"
+   ln -sfn "$(date +%F)" /backups/latest
+   ```
+
+   Run `make backup` on the app host first (cron) so the pull always finds a fresh, integrity-checked
+   `.db` snapshot rather than copying a live WAL database. Retention (how many dated directories to
+   keep) is the backup host's cron, never the app's.
+
+2. **Object-locked remote storage.** An S3-compatible bucket with Object Lock in compliance mode (or
+   a provider equivalent), and credentials scoped to `PutObject` only — no `DeleteObject`, no
+   `PutBucketLifecycle`, no version overwrite. The app can add a backup and can never remove or alter
+   one; expiry is the bucket's lifecycle policy, configured out-of-band by an identity the app does
+   not have. Encrypt before upload (see "Backup confidentiality & retention" above) so moving
+   off-host is not a confidentiality regression. This app ships no uploader — drive it from cron with
+   `rclone`/`aws s3` and a write-only key.
+
+3. **Filesystem snapshots (btrfs/ZFS) as a complement, not a substitute.** Read-only `.snapshot`
+   subvolumes on the app host defend against accidental deletion and give near-instant local
+   rollback, and a non-root retention policy an app compromise cannot rewrite. They do **not** survive
+   loss of the host, and a root-level compromise can still `btrfs subvolume delete` them — so pair
+   them with 1 or 2, do not rely on them alone.
+
+**The invariant, and how to check it holds.** Whatever you choose, the property to verify is: *the
+Mycorrhizal application's own credentials cannot delete or modify an existing backup.* Test it by
+trying, from the app host:
+
+- With the app's uid, attempt to `rm`, `truncate -s0`, overwrite, and `gpg`-encrypt-in-place a file
+  in the off-host store (or a locked object). For options 1 and 2 every attempt must fail with a
+  permission/authorization error — the app host has no path or key to that store. For a pull-based
+  setup, confirm there is **no** SSH key, rsync module, or mount on the app host that reaches the
+  backup host.
+- After that simulated compromise, restore from an untouched off-host backup and confirm it produces
+  a working instance (the `frontend/e2e/backupRestore.spec.ts` round trip, or `make backup-verify` +
+  the Restore steps above).
+- Confirm retention expiry cannot be triggered from the app host: the lifecycle policy / pruning cron
+  lives on the backup host or in the bucket config, under an identity the app does not hold.
+- Confirm a routine rotation cycle leaves the last **pre-migration** rollback point
+  (`pre-migration/…-pre-migration-<from>-to-<to>-….db`, issue #530) in place — it is in its own
+  subdirectory precisely so a non-recursive sweep cannot reach it (see "Retention & deletion" above).
+
+Per CLAUDE.md's hand-verify rule: to prove the immutability check has teeth, grant the app host's
+credentials delete permission on the backup target (add `DeleteObject` to the key, or give the app's
+SSH user write access to the backup host), re-run the deletion attempt above, confirm it now
+succeeds — then revoke it.
+
+**Where this is written down as a decision:** `docs/security/asvs-l2.md` P5 (the control-level
+statement), `docs/security/threat-model.md` (Assets → Backups), and
+`docs/security/deployment-baseline.md` (the operator baseline row). This section is the runbook those
+three cite.

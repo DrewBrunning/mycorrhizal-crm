@@ -125,7 +125,7 @@ The at-rest layer (`backend/atrest`) is the issue #380 implementation. Three wri
    deliberately no escrow. Losing `DATA_ENCRYPTION_KEY` makes every encrypted column undecryptable.
    Rotation (`cmd/rotate-at-rest-key`) rewraps the DEK under a new master key.
 
-### P5 — Backup confidentiality & retention: operator-owned boundary (#420)
+### P5 — Backup confidentiality, retention & immutability: operator-owned boundary (#420, #505)
 
 Backups are a **complete copy of the CRM's sensitive data** (the DB snapshot at full sensitivity plus
 the photos/attachments directories), so the confidentiality bar for a backup is the same as for the
@@ -147,6 +147,22 @@ database itself. Issue #420's statement of where that bar sits:
   this app — an app-side expirer is the same capability an attacker running as the app would
   inherit, so expiry belongs to the destination's lifecycle policy or the pull-side host (issue
   #505, same position). Retention guidance is operator-facing: `docs/deployment.md`.
+- **Immutability is write-new-only in the app, off-host by architecture against a compromised host
+  (issue #505).** `database.BackupSnapshot` — the whole backup-write surface, behind `make backup`
+  and the automatic pre-migration snapshot — only ever creates a new file: it refuses to overwrite,
+  removes only the temp it reserved, and no code path anywhere deletes/truncates/re-encrypts/rotates
+  an existing backup or pre-migration snapshot. Pinned *by trying it*:
+  `backend/database/backup_immutability_test.go` attempts overwrite/in-place modification and
+  neighbour deletion through the app's own primitive and asserts every existing backup is
+  byte-identical after, `TestBackupImmutability_NoBackupExpiryOrRotationCodeInTheApp` walks the
+  backend source and fails on any `func …(prune|rotate|expire|…)…(backup|snapshot)…`, and
+  `TestBackupImmutability_PreMigrationRollbackPointSurvivesRoutineRotation` proves a non-recursive
+  routine sweep cannot reach the issue #530 rollback point in its `pre-migration/` subdirectory.
+  On-host that is only a bug barrier — the app's uid can still `rm` its own files — so genuine
+  immutability against a compromised host is the operator putting backups where the app holds no
+  credential to reach: a pull-based off-host copy (documented default) or object-locked remote
+  storage. Operator runbook + the verify-by-trying procedure: `docs/deployment.md` → "Backup
+  immutability & ransomware resistance".
 - **Restore security is verified, not assumed.** The restore drill (issue #275) restores a fresh
   snapshot into a scratch DB and compares every table's row count against live — and since #420 also
   verifies the snapshot's wrapped DEK unwraps under the current master key
@@ -155,8 +171,9 @@ database itself. Issue #420's statement of where that bar sits:
   resurrects soft-deleted rows (`docs/security/data-retention-lifecycle.md` §10).
 
 The operator runbook — where backups live, retention schedule, soft-deleted data and age-out — is
-`docs/deployment.md`'s "Backup confidentiality & retention" section; `data-retention-lifecycle.md`
-§10 is the per-data-type view.
+`docs/deployment.md`'s "Backup confidentiality & retention" section, and "Backup immutability &
+ransomware resistance" immediately after it for the off-host/immutability choice and its
+verify-by-trying procedure; `data-retention-lifecycle.md` §10 is the per-data-type view.
 
 ### P6 — Update-availability check: opt-in GitHub call, off by default (#650)
 
@@ -407,7 +424,7 @@ L3-only, out of scope: 8.1.5, 8.1.6.
 | 8.3.5 | Sensitive-data access audited | partial | Mutations of all major entities audited with redacted before-snapshots (`backend/models/audit.go:105-175`); **reads** are not audited. Gap: read-auditing would be a deliberate privacy/performance choice. |
 | 8.3.6 | Memory zeroization | not-applicable | Go runtime; no explicit zeroization (accepted; see P2's scope note) |
 | 8.3.7 | Encryption with confidentiality+integrity | satisfied | AES-256-GCM for at-rest secrets (`credential_crypto.go:33-54`) and for field-level PII (`atrest`, issue #380); TLS for transport |
-| 8.3.8 | Retention classification, auto-delete | satisfied | T26 purge jobs (feed/audit/ContactShare/webhook-delivery retention, `backend/services/purge_service.go`, `audit_purge_service.go`, `contact_share_purge_service.go`, `webhook_delivery_purge_service.go`); 410 Gone past purge window (`controllers/helpers.go:348-360`); soft-delete is the retention buffer for user content. Every data type's retention/deletion statement (including attachments, FTS index, backups, exports, CardDAV/CalDAV, Android mirror) is now documented in `docs/security/data-retention-lifecycle.md` (issue #414); the `ContactShare`-has-no-purge-window gap surfaced there was closed by issue #574 (`CONTACT_SHARE_RETENTION_DAYS`, default 30, pinned by `services/contact_share_purge_service_test.go`); the `WebhookDelivery`-has-no-window gap from the #510 review was closed by issue #622 (`WEBHOOK_DELIVERY_RETENTION_DAYS`, default 30, plus a payload trim on successful deliveries — pinned by `services/webhook_delivery_purge_service_test.go` and the trim tests in `services/webhook_delivery_test.go`). Backup confidentiality/retention/restore-security (operator-owned boundary: inherited field-level encryption, master key never in the backup, operator-owned retention, restore-drill decryptability check) documented in `docs/deployment.md`'s "Backup confidentiality & retention" + **P5** (issue #420). |
+| 8.3.8 | Retention classification, auto-delete | satisfied | T26 purge jobs (feed/audit/ContactShare/webhook-delivery retention, `backend/services/purge_service.go`, `audit_purge_service.go`, `contact_share_purge_service.go`, `webhook_delivery_purge_service.go`); 410 Gone past purge window (`controllers/helpers.go:348-360`); soft-delete is the retention buffer for user content. Every data type's retention/deletion statement (including attachments, FTS index, backups, exports, CardDAV/CalDAV, Android mirror) is now documented in `docs/security/data-retention-lifecycle.md` (issue #414); the `ContactShare`-has-no-purge-window gap surfaced there was closed by issue #574 (`CONTACT_SHARE_RETENTION_DAYS`, default 30, pinned by `services/contact_share_purge_service_test.go`); the `WebhookDelivery`-has-no-window gap from the #510 review was closed by issue #622 (`WEBHOOK_DELIVERY_RETENTION_DAYS`, default 30, plus a payload trim on successful deliveries — pinned by `services/webhook_delivery_purge_service_test.go` and the trim tests in `services/webhook_delivery_test.go`). Backup confidentiality/retention/restore-security (operator-owned boundary: inherited field-level encryption, master key never in the backup, operator-owned retention, restore-drill decryptability check) documented in `docs/deployment.md`'s "Backup confidentiality & retention" + **P5** (issue #420). Backup *immutability* is the same operator-owned boundary (issue #505): the app's backup-write surface is write-new-only with no delete/rotate/expire path anywhere (`backend/database/backup_immutability_test.go`), and immutability against a compromised host is achieved off-host (pull-based copy or object-locked storage), documented in `docs/deployment.md`'s "Backup immutability & ransomware resistance" + **P5**. |
 
 ## V9 — Communication
 
