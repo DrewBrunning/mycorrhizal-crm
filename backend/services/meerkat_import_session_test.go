@@ -148,6 +148,65 @@ func TestMeerkatImportSession_FullFlow_SourceUserPickerAndImport(t *testing.T) {
 	assert.Equal(t, 0, st2.Result.Created, "a re-run creates nothing")
 }
 
+// TestMeerkatImportSession_ConfirmWithMergeAction pins #550's premise that the
+// Meerkat assistant reuses the shared merge path: confirming a duplicate row
+// with the "update" action resolves to SourceActionMerge and folds the mapped
+// record into the existing local contact via MergeImportedContact +
+// CreateMergeNote — the same path Monica's FullFlow_AddAndMerge exercises —
+// rather than creating a second contact.
+func TestMeerkatImportSession_ConfirmWithMergeAction(t *testing.T) {
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+	mgr := NewMeerkatImportManager()
+	log := meerkatTestLogger()
+
+	// A local contact the fixture's "Ada Lovelace" (source user 1) duplicates,
+	// seeded without an email so the merge has something to carry over.
+	localAda := models.Contact{UserID: user.ID, Firstname: "Ada", Lastname: "Lovelace"}
+	require.NoError(t, db.Create(&localAda).Error)
+
+	upload, appErr := mgr.Upload(user.ID, fileHeaderFrom(t, "meerkat.db", meerkatFixtureBytes(t)))
+	require.Nil(t, appErr)
+	require.Nil(t, mgr.StartFetch(db, user.ID,
+		models.MeerkatFetchRequest{SessionID: upload.SessionID, SourceUserID: upload.DefaultSourceUserID}, log))
+	waitMeerkatPhase(t, mgr, user.ID, upload.SessionID, models.SourceImportPhaseReady)
+
+	preview, appErr := mgr.Preview(user.ID, upload.SessionID)
+	require.Nil(t, appErr)
+
+	adaRowIdx := -1
+	actions := make([]models.RowImportAction, 0, len(preview.Rows))
+	for _, row := range preview.Rows {
+		if row.ParsedContact["firstname"] == "Ada" {
+			adaRowIdx = row.RowIndex
+			require.NotNil(t, row.DuplicateMatch, "the seeded local Ada is detected as a duplicate")
+			require.Equal(t, localAda.ID, row.DuplicateMatch.ExistingContactID)
+			actions = append(actions, models.RowImportAction{RowIndex: row.RowIndex, Action: "update"})
+			continue
+		}
+		actions = append(actions, models.RowImportAction{RowIndex: row.RowIndex, Action: "add"})
+	}
+	require.NotEqual(t, -1, adaRowIdx, "the fixture carries an Ada Lovelace row")
+
+	st := confirmMeerkatAndWait(t, mgr, db, user.ID, upload.SessionID, actions, models.SourceImportPhaseDone)
+	require.NotNil(t, st.Result)
+	assert.Equal(t, 1, st.Result.Updated, "the Ada row merged into the existing contact")
+
+	// Ada was merged, not duplicated.
+	var adaCount int64
+	db.Model(&models.Contact{}).Where("user_id = ? AND firstname = ? AND lastname = ?", user.ID, "Ada", "Lovelace").Count(&adaCount)
+	assert.Equal(t, int64(1), adaCount)
+
+	var mergedAda models.Contact
+	require.NoError(t, db.First(&mergedAda, localAda.ID).Error)
+	assert.Equal(t, "ada@example.com", mergedAda.Email, "the Meerkat email was merged in")
+
+	// CreateMergeNote wrote an audit note on the existing contact.
+	var mergeNotes int64
+	db.Model(&models.Note{}).Where("contact_id = ? AND content LIKE ?", localAda.ID, "Meerkat Import updated this contact.%").Count(&mergeNotes)
+	assert.Equal(t, int64(1), mergeNotes, "a merge note records what the update changed")
+}
+
 func TestMeerkatImportSession_RejectsNonSQLite(t *testing.T) {
 	mgr := NewMeerkatImportManager()
 	_, appErr := mgr.Upload(1, fileHeaderFrom(t, "notes.db", []byte("this is not a sqlite database at all")))
