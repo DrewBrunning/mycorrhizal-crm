@@ -185,6 +185,14 @@ backup:
 Photos and attachments live **outside** the SQLite file, so backing up only the `.db` silently loses
 them. They are plain directories; a file-level copy (`rsync`/`cp`) is exactly right for them.
 
+**Boundary (BACKUP-02, issue #454): the tool owns the database snapshot; the operator owns the
+photo/attachment directories.** `make backup` / `database.BackupSnapshot` deliberately produce and
+verify the database piece only — a plain file copy is already the right tool for two ordinary
+directories, and the all-in-one Docker image mounts them as separate volumes anyway. What the tool
+*does* own is checking that an assembled set is consistent, regardless of who assembled it: see
+"Verifying a backup set is complete" below. (BACKUP-03, issue #455, is the fuller
+disaster-recovery-boundaries document; this paragraph is the citable decision it references.)
+
 **The automatic pre-migration snapshot is separate from this.** Before every schema migration the
 server writes a verified database snapshot into a `pre-migration/` directory beside `SQLITE_DB_PATH`
 (`MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` moves it) and refuses to migrate if it cannot — it is the
@@ -254,6 +262,30 @@ backups up the same file the container writes.
    ```
 3. Start the server again: `docker compose start`.
 
+### Verifying a backup set is complete
+
+`make backup` verifies the database it writes (`PRAGMA integrity_check`); it says nothing about
+whether the photo and attachment directories you copied alongside it still line up with that
+database. A database that restores perfectly can still hold an attachment row whose file was never
+copied — the failure is silent until someone opens that attachment. `make backup-verify`
+(`backend/cmd/backupverify`) closes that gap: point it at an assembled set and it reconciles every
+attachment and profile-photo row against the files present, regardless of who copied them.
+
+```sh
+SQLITE_DB_PATH=/backups/mycorrhizal.db PROFILE_PHOTO_DIR=/backups/photos \
+  ATTACHMENTS_DIR=/backups/attachments make backup-verify
+```
+
+- A **missing** file — a live row with no backing file in the set — is a real defect: the command
+  names it (e.g. `missing attachment: 3f2c…-file (owner attachment#42)`) and exits non-zero.
+- An **orphan** file — present with no owning row — is reported but does not fail the command; it
+  distinguishes a stale directory from a lost one (feeds DB-01, issue #460's orphan detection).
+- Soft-deleted rows are excluded on purpose: `DeleteContact` removes the on-disk file at delete
+  time, so a soft-deleted row with no file is the expected steady state, not a hole.
+
+Run it against every backup set you take, not just at restore time — a hole found the moment the
+backup is made is far cheaper than one found during a disaster.
+
 ### Restore
 
 A restore is a deliberate **point-in-time rollback**: it replaces the whole instance with the
@@ -285,6 +317,25 @@ backup does not change which key the server uses. If you rotated `JWT_SECRET_KEY
 restore, any session tokens issued under the old key are unrecognized, so users simply have to log
 in again. That is harmless.
 
+### What is NOT in any backup — keep these separately
+
+The database and directory backups above cover every user-authored row and file. They do **not**
+cover the secrets that unlock or authenticate the instance — these live only in your environment
+(`.env` / your orchestrator's secret store) and a lost one is not something a restore can fix:
+
+- **`JWT_SECRET_KEY`** — see above: harmless to lose (a rotation just logs everyone out), but it is
+  not *in* the backup either way.
+- **`DATA_ENCRYPTION_KEY`** / **`DATA_ENCRYPTION_KEY_FILE`** — the master key for at-rest field
+  encryption (issue #380). Unlike the JWT key, losing this is **not recoverable**: the restore drill
+  (below) verifies every week that the live master key still unwraps the database's encrypted
+  columns specifically because there is no fallback if it doesn't. Back this up wherever you keep
+  the rest of your secrets, separately from the database/photo/attachment set — see "Backup
+  confidentiality & retention" below for the full key-management story.
+
+What **is** covered, for clarity: TOTP seeds and recovery-code hashes live in the database (the
+`users` table), so they travel with the database snapshot like any other row — no separate secret to
+track for 2FA.
+
 ### Automated integrity & restore checks
 
 Two scheduled background jobs automate the two checks above so a silent failure is caught rather
@@ -296,7 +347,10 @@ than discovered during a real disaster:
 - **Restore drill** (issue #275) — takes a fresh backup snapshot, restores it into a scratch
   database, compares every table's row count against the live database, and — since issue #420 —
   verifies the snapshot's wrapped DEK unwraps under the current master key, so a rotated/lost
-  at-rest key is caught here rather than at the moment of need
+  at-rest key is caught here rather than at the moment of need. Since issue #454 it also runs the
+  same reconciliation as `make backup-verify` above, against the snapshot's rows and the *live*
+  `PROFILE_PHOTO_DIR` / `ATTACHMENTS_DIR` — a live directory that lost a file fails the drill by
+  name; an orphan is logged but does not fail it
   (`DB_RESTORE_DRILL_ENABLED`, default on; `DB_RESTORE_DRILL_INTERVAL_HOURS`, default `168`, i.e.
   weekly).
 

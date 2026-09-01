@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -482,4 +483,144 @@ func TestRunRestoreDrillScheduledDisabledByConfig(t *testing.T) {
 	var count int64
 	require.NoError(t, db.Model(&models.JobExecution{}).Where("job_name = ?", models.JobNameRestoreDrill).Count(&count).Error)
 	assert.Zero(t, count, "a disabled job must never touch the job_executions table")
+}
+
+// --- BACKUP-02 (issue #454): the drill also reconciles the backup set -------
+
+// TestRunRestoreDrillPassesWithCompleteBackupSet pins that adding the
+// completeness check does not false-positive on a healthy instance: every
+// live attachment/photo row's file present in the (live, in this test)
+// directories must still pass.
+func TestRunRestoreDrillPassesWithCompleteBackupSet(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "drill-set-complete.db")
+	db := dbtest.NewAt(t, path)
+	t.Cleanup(func() {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+	})
+	user := seedNotes(t, db, "drillsetok", 1)
+
+	photoDir := t.TempDir()
+	attachmentsDir := t.TempDir()
+	require.NoError(t, db.Exec(
+		`INSERT INTO contacts (id, firstname, user_id, vcard_uid, photo) VALUES (100, 'C', ?, 'uid-set-ok', 'ok_photo.jpg')`,
+		user.ID).Error)
+	require.NoError(t, os.WriteFile(filepath.Join(photoDir, "ok_photo.jpg"), []byte("x"), 0o600))
+	require.NoError(t, db.Exec(
+		`INSERT INTO attachments (user_id, contact_vcard_uid, stored_name, original_name, content_type, size_bytes)
+		 VALUES (?, 'uid-set-ok', 'ok-file', 'd.pdf', 'application/pdf', 1)`, user.ID).Error)
+	require.NoError(t, os.WriteFile(filepath.Join(attachmentsDir, "ok-file"), []byte("x"), 0o600))
+
+	cfg := config.Config{DBPath: path, ProfilePhotoDir: photoDir, AttachmentsDir: attachmentsDir}
+	ok, detail, err := runRestoreDrill(db, cfg)
+	require.NoError(t, err)
+	assert.True(t, ok, "detail: %s", detail)
+}
+
+// TestRunRestoreDrillFailsOnMissingAttachmentFile is the hand-verified
+// opposite: a live attachment row whose file is absent from the (live)
+// attachments directory — exactly what an operator's backup would miss if the
+// directory copy was skipped or partial — must fail the drill and name the
+// file, through the same channel a row-count mismatch uses.
+func TestRunRestoreDrillFailsOnMissingAttachmentFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "drill-set-missing.db")
+	db := dbtest.NewAt(t, path)
+	t.Cleanup(func() {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+	})
+	user := seedNotes(t, db, "drillsetmiss", 1)
+
+	photoDir := t.TempDir()
+	attachmentsDir := t.TempDir()
+	require.NoError(t, db.Exec(
+		`INSERT INTO attachments (user_id, contact_vcard_uid, stored_name, original_name, content_type, size_bytes)
+		 VALUES (?, 'uid-x', 'missing-file', 'd.pdf', 'application/pdf', 1)`, user.ID).Error)
+	// deliberately no file written for "missing-file"
+
+	cfg := config.Config{DBPath: path, ProfilePhotoDir: photoDir, AttachmentsDir: attachmentsDir}
+	ok, detail, err := runRestoreDrill(db, cfg)
+	require.NoError(t, err)
+	assert.False(t, ok)
+	assert.Contains(t, detail, "backup set incomplete")
+	assert.Contains(t, detail, "missing-file")
+}
+
+// TestRunRestoreDrillFailsOnMissingPhotoFile is the photo-side twin of
+// TestRunRestoreDrillFailsOnMissingAttachmentFile — a missing profile-photo
+// file must also fail the drill and be named, not just a missing attachment.
+func TestRunRestoreDrillFailsOnMissingPhotoFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "drill-set-missing-photo.db")
+	db := dbtest.NewAt(t, path)
+	t.Cleanup(func() {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+	})
+	user := seedNotes(t, db, "drillsetmissphoto", 1)
+
+	photoDir := t.TempDir()
+	attachmentsDir := t.TempDir()
+	require.NoError(t, db.Exec(
+		`INSERT INTO contacts (id, firstname, user_id, vcard_uid, photo) VALUES (200, 'C', ?, 'uid-photo-gone', 'gone_photo.jpg')`,
+		user.ID).Error)
+	// deliberately no file written for "gone_photo.jpg"
+
+	cfg := config.Config{DBPath: path, ProfilePhotoDir: photoDir, AttachmentsDir: attachmentsDir}
+	ok, detail, err := runRestoreDrill(db, cfg)
+	require.NoError(t, err)
+	assert.False(t, ok)
+	assert.Contains(t, detail, "backup set incomplete")
+	assert.Contains(t, detail, "gone_photo.jpg")
+}
+
+// TestRunRestoreDrillPassesWithOrphanBackupFile pins that an orphan file — no
+// owning row — is informational and never fails the drill: a file whose row
+// hasn't landed in the snapshot yet is a routine race against a live
+// directory, not a backup defect.
+func TestRunRestoreDrillPassesWithOrphanBackupFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "drill-set-orphan.db")
+	db := dbtest.NewAt(t, path)
+	t.Cleanup(func() {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+	})
+	seedNotes(t, db, "drillsetorphan", 1)
+
+	photoDir := t.TempDir()
+	attachmentsDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(attachmentsDir, "orphan-file"), []byte("x"), 0o600))
+
+	cfg := config.Config{DBPath: path, ProfilePhotoDir: photoDir, AttachmentsDir: attachmentsDir}
+	ok, detail, err := runRestoreDrill(db, cfg)
+	require.NoError(t, err)
+	assert.True(t, ok, "detail: %s", detail)
+}
+
+// TestCheckBackupSetCompletenessSkippedWhenDirsUnset pins the guard that
+// keeps every dirs-unset test above (config.Config{DBPath: path}) green: with
+// no photo/attachment directories configured there is nothing to reconcile,
+// so the check passes without even touching the database path.
+func TestCheckBackupSetCompletenessSkippedWhenDirsUnset(t *testing.T) {
+	ok, detail, err := checkBackupSetCompleteness("/does/not/exist.db", config.Config{})
+	require.NoError(t, err)
+	assert.True(t, ok)
+	assert.Empty(t, detail)
+}
+
+// TestCheckBackupSetCompletenessPropagatesVerifyError pins that a failure in
+// database.VerifyBackupSet itself (not a missing file it found, but the check
+// being unable to run at all) surfaces as a hard error from the drill, the
+// same way runRestoreDrill's other pre-flight checks do — never silently
+// treated as "complete".
+func TestCheckBackupSetCompletenessPropagatesVerifyError(t *testing.T) {
+	_, _, err := checkBackupSetCompleteness(filepath.Join(t.TempDir(), "no-such-snapshot.db"), config.Config{
+		ProfilePhotoDir: t.TempDir(),
+		AttachmentsDir:  t.TempDir(),
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "verify backup set completeness")
 }

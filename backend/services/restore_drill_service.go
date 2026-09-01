@@ -168,7 +168,55 @@ func runRestoreDrill(db *gorm.DB, cfg config.Config) (ok bool, detail string, er
 		return false, "", fmt.Errorf("restored snapshot is not decryptable under the current master key: %w", err)
 	}
 
-	return compareTableCounts(liveCounts, scratchDB)
+	ok, detail, err = compareTableCounts(liveCounts, scratchDB)
+	if err != nil || !ok {
+		return ok, detail, err
+	}
+
+	// A backup is three pieces, not one (BACKUP-02, issue #454): the database
+	// snapshot plus the profile-photo and attachment directories. Row counts
+	// prove the snapshot restores; they say nothing about whether every
+	// attachment and photo row still resolves to a file on disk. Reconcile the
+	// fresh snapshot against the *live* directories — what a real backup would
+	// copy — so a lost or un-backed-up photo/attachment directory is caught
+	// weekly rather than at the moment of need.
+	return checkBackupSetCompleteness(scratchPath, cfg)
+}
+
+// checkBackupSetCompleteness runs database.VerifyBackupSet for the restore
+// drill: a missing file fails the drill (same channel as a row-count
+// mismatch); orphan files — a file whose owning row is newer than the
+// snapshot — are a routine race against a live directory and only logged.
+//
+// When the photo/attachment directories are not configured (as in most unit
+// tests) there is nothing to reconcile and the drill passes on the row-count
+// result alone.
+func checkBackupSetCompleteness(snapshotPath string, cfg config.Config) (ok bool, detail string, err error) {
+	if cfg.ProfilePhotoDir == "" || cfg.AttachmentsDir == "" {
+		return true, "", nil
+	}
+
+	report, err := database.VerifyBackupSet(snapshotPath, cfg.ProfilePhotoDir, cfg.AttachmentsDir)
+	if err != nil {
+		return false, "", fmt.Errorf("verify backup set completeness: %w", err)
+	}
+
+	if n := report.TotalOrphans(); n > 0 {
+		logger.Info().Int("orphan_files", n).
+			Msg("restore drill: files present with no owning row (informational; not a drill failure)")
+	}
+
+	if !report.Complete() {
+		refs := make([]string, 0, report.TotalMissing())
+		for _, m := range report.MissingAttachments {
+			refs = append(refs, m.String())
+		}
+		for _, m := range report.MissingPhotos {
+			refs = append(refs, m.String())
+		}
+		return false, "backup set incomplete: " + strings.Join(refs, "; "), nil
+	}
+	return true, "", nil
 }
 
 // compareTableCounts checks liveCounts (table name -> row count, gathered
