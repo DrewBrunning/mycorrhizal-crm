@@ -14,3 +14,4 @@ ticket backlog moved to GitHub Issues.
 | [0006](0006-revision-token-schema.md) | Monotonic per-row revision tokens | accepted |
 | [0007](0007-source-import-mapping.md) | Source imports: Meerkat direct-DB + Monica snapshot over one shared mapping framework | accepted |
 | [0008](0008-conditional-write-enforcement.md) | REST conditional-write enforcement (If-Match / optimistic concurrency) | accepted |
+| [0009](0009-rest-conflict-policy.md) | REST write-conflict policy (reject-and-return, per entity shape) | accepted |

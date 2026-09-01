@@ -123,6 +123,62 @@ func TestReconcileContactSyncRecordsConflictOnLocalEditOverwrite(t *testing.T) {
 	require.Equal(t, ContactSyncStats{Skipped: 1}, stats)
 }
 
+// TestReconcileContactSync_CrossClientRevisionAdvances is the CON-02 (issue
+// #457) cross-client integrity check: a CardDAV sync that overwrites a local
+// edit (the documented full-replace policy) advances the contact's monotonic
+// revision token, so a REST client still holding the pre-sync revision is
+// correctly stale on its next conditional write (CON-01, ADR 0008) — the two
+// mechanisms agree instead of the CardDAV overwrite being invisible to REST
+// optimistic concurrency. The discarded local value is still preserved in a
+// contact_sync_conflicts row for the user to restore.
+func TestReconcileContactSync_CrossClientRevisionAdvances(t *testing.T) {
+	db := setupContactSyncTestDB(t)
+	cfg := contactSyncTestConfig()
+	user := createContactSyncTestUser(t, db)
+	sub := newContactTestSubscription(t, db, cfg, user.ID, "https://example.com/addressbooks/test/", "", "")
+
+	href := "/addressbooks/test/dana.vcf"
+	first := carddav.AddressObject{Path: href, ETag: "\"etag-1\"", Card: testCard(t, "dana-uid", "Dana", "Scully", "dana@example.com")}
+	_, err := reconcileContactSync(db, sub, []carddav.AddressObject{first}, nil, false, "")
+	require.NoError(t, err)
+
+	var link models.ContactSyncLink
+	require.NoError(t, db.Where("subscription_id = ? AND href = ?", sub.ID, href).First(&link).Error)
+
+	var contact models.Contact
+	require.NoError(t, db.First(&contact, link.ContactID).Error)
+	revAfterImport := contact.Revision
+
+	// A REST client reads the contact here, at revAfterImport.
+	contact.JobTitle = "Local Edit Only REST Knows"
+	require.NoError(t, db.Save(&contact).Error)
+	require.Greater(t, contact.Revision, revAfterImport, "the local REST-shaped edit bumps the revision")
+	revAfterLocalEdit := contact.Revision
+
+	// The CardDAV sync overwrites that local edit (full-replace policy).
+	second := carddav.AddressObject{Path: href, ETag: "\"etag-2\"", Card: testCard(t, "dana-uid", "Dana", "Scully", "dana.new@example.com")}
+	stats, err := reconcileContactSync(db, sub, []carddav.AddressObject{second}, nil, false, "")
+	require.NoError(t, err)
+	require.Equal(t, ContactSyncStats{Updated: 1}, stats)
+
+	var afterSync models.Contact
+	require.NoError(t, db.First(&afterSync, link.ContactID).Error)
+
+	// The CardDAV overwrite advanced the revision past what the REST client
+	// last saw — so its next `If-Match: revAfterLocalEdit` write is stale and
+	// checkIfMatch would 412 it (proven at the HTTP layer in
+	// controllers/conditional_write*_test.go).
+	require.Greater(t, afterSync.Revision, revAfterLocalEdit,
+		"a CardDAV full-replace must advance the revision so REST optimistic concurrency sees it")
+	assert.Empty(t, afterSync.JobTitle,
+		"documented full-replace policy: the local edit is discarded from the contact itself")
+
+	// The discarded local value is recoverable.
+	var conflict models.ContactSyncConflict
+	require.NoError(t, db.Where("contact_id = ? AND field = ?", link.ContactID, models.SyncConflictFieldJobTitle).First(&conflict).Error)
+	assert.Equal(t, "Local Edit Only REST Knows", conflict.LocalValue)
+}
+
 // TestReconcileContactSyncNoConflictOnPlainRemoteChange pins that a sync
 // touching only fields the user never edited surfaces no conflict.
 func TestReconcileContactSyncNoConflictOnPlainRemoteChange(t *testing.T) {
@@ -235,6 +291,51 @@ func seedSyncConflict(t *testing.T, db *gorm.DB, userID, contactID, subID uint, 
 	}
 	require.NoError(t, db.Create(&conflict).Error)
 	return conflict
+}
+
+// TestConflictPolicy_CardDAVDetectSurfaceRestore_EndToEnd is the CON-03 (issue
+// #458) pin for the CardDAV side of docs/adrs/0009-rest-conflict-policy.md: the
+// full-replace path stays a *detect-and-surface* policy — the overwritten local
+// value is recorded in a contact_sync_conflicts row that ListContactSyncConflicts
+// surfaces and RestoreContactSyncConflict can put back. This is deliberately the
+// opposite of the REST reject-and-return policy, and must not regress.
+func TestConflictPolicy_CardDAVDetectSurfaceRestore_EndToEnd(t *testing.T) {
+	db := setupContactSyncTestDB(t)
+	cfg := contactSyncTestConfig()
+	user := createContactSyncTestUser(t, db)
+	sub := newContactTestSubscription(t, db, cfg, user.ID, "https://example.com/addressbooks/test/", "", "")
+
+	href := "/addressbooks/test/erin.vcf"
+	first := carddav.AddressObject{Path: href, ETag: "\"etag-1\"", Card: testCard(t, "erin-uid", "Erin", "Gray", "erin@example.com")}
+	_, err := reconcileContactSync(db, sub, []carddav.AddressObject{first}, nil, false, "")
+	require.NoError(t, err)
+
+	var link models.ContactSyncLink
+	require.NoError(t, db.Where("subscription_id = ? AND href = ?", sub.ID, href).First(&link).Error)
+
+	// Local edit to a scalar field the remote never carries.
+	var contact models.Contact
+	require.NoError(t, db.First(&contact, link.ContactID).Error)
+	contact.JobTitle = "Chief Widget Officer"
+	require.NoError(t, db.Save(&contact).Error)
+
+	// Remote change triggers the full-replace, discarding the local job title.
+	second := carddav.AddressObject{Path: href, ETag: "\"etag-2\"", Card: testCard(t, "erin-uid", "Erin", "Gray", "erin.new@example.com")}
+	_, err = reconcileContactSync(db, sub, []carddav.AddressObject{second}, nil, false, "")
+	require.NoError(t, err)
+
+	// Detect + surface: the discarded value is on a conflict row the list API returns.
+	surfaced, err := ListContactSyncConflicts(db, user.ID)
+	require.NoError(t, err)
+	require.Len(t, surfaced, 1)
+	assert.Equal(t, models.SyncConflictFieldJobTitle, surfaced[0].Field)
+	assert.Equal(t, "Chief Widget Officer", surfaced[0].LocalValue)
+
+	// Restore puts it back.
+	require.NoError(t, RestoreContactSyncConflict(db, user.ID, surfaced[0].ID))
+	var restored models.Contact
+	require.NoError(t, db.First(&restored, link.ContactID).Error)
+	assert.Equal(t, "Chief Widget Officer", restored.JobTitle)
 }
 
 func TestListContactSyncConflicts_EnrichesAndFilters(t *testing.T) {
