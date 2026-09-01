@@ -111,6 +111,12 @@ func UpdateReminder(c *gin.Context) {
 		return
 	}
 
+	// CON-01 (issue #456, ADR 0008): reject a stale conditional write before
+	// touching the row. No-op when the client sent no If-Match header.
+	if !checkIfMatch(c, reminder.Revision) {
+		return
+	}
+
 	// Get the validated reminder from context (already bound by ValidateJSONMiddleware)
 	updatedReminder, err := middleware.GetValidated[models.Reminder](c)
 	if err != nil {
@@ -172,6 +178,12 @@ func DeleteReminder(c *gin.Context) {
 		} else {
 			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve reminder").WithError(err))
 		}
+		return
+	}
+
+	// CON-01 (issue #456, ADR 0008): a conditional DELETE with a stale
+	// If-Match revision is rejected before the row is touched.
+	if !checkIfMatch(c, reminder.Revision) {
 		return
 	}
 

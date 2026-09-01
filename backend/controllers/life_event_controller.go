@@ -327,6 +327,12 @@ func UpdateLifeEvent(c *gin.Context) {
 		}
 		return
 	}
+
+	// CON-01 (issue #456, ADR 0008): reject a stale conditional write before
+	// touching the row. No-op when the client sent no If-Match header.
+	if !checkIfMatch(c, event.Revision) {
+		return
+	}
 	wasMarried := event.Type == models.LifeEventTypeMarried
 
 	input, err := middleware.GetValidated[models.LifeEventInput](c)
@@ -401,6 +407,12 @@ func DeleteLifeEvent(c *gin.Context) {
 		} else {
 			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve life event").WithError(err))
 		}
+		return
+	}
+
+	// CON-01 (issue #456, ADR 0008): a conditional DELETE with a stale
+	// If-Match revision is rejected before the row is touched.
+	if !checkIfMatch(c, event.Revision) {
 		return
 	}
 

@@ -72,6 +72,59 @@ func currentConfig(c *gin.Context) config.Config {
 	return config.Config{}
 }
 
+// checkIfMatch enforces an optional RFC 9110 If-Match precondition for the
+// REST conditional-write scheme (CON-01, issue #456, ADR 0008).
+//
+// Enforcement is opt-in: a request with no If-Match header writes
+// unconditionally, exactly as before this ticket (last-writer-wins) — so
+// existing clients and MAINT-02 (#491) are unaffected. When If-Match IS
+// present it is matched against the row's current monotonic revision token
+// (issue #591, ADR 0006), which the caller must have just loaded:
+//
+//   - `If-Match: *`            matches any existing row (the caller already
+//     proved the row exists by loading it, so this always passes here)
+//   - `If-Match: "42"`         matches only revision 42 — quotes optional,
+//     an optional weak `W/` prefix is tolerated, and a comma-separated list
+//     matches if ANY member matches
+//
+// On a mismatch (including a malformed or unparseable value) the request is
+// aborted with 412 Precondition Failed and the caller MUST return without
+// touching the row. Returns true when the caller may proceed.
+//
+// CardDAV keeps its own separate If-Match path (carddav/backend.go), which
+// compares against the `etag` string column — this helper is REST-only.
+func checkIfMatch(c *gin.Context, currentRevision int64) bool {
+	if ifMatchSatisfied(c.GetHeader("If-Match"), currentRevision) {
+		return true
+	}
+	apperrors.AbortWithError(c, apperrors.ErrPreconditionFailed("").
+		WithDetails("expected_revision", currentRevision).
+		WithDetails("if_match", c.GetHeader("If-Match")))
+	return false
+}
+
+// ifMatchSatisfied is the pure predicate behind checkIfMatch: it reports
+// whether the raw If-Match header value permits a write against a row
+// currently at currentRevision. An empty header is "no precondition" and
+// always permits the write; "*" permits it (the row exists); otherwise at
+// least one list member must equal the decimal revision.
+func ifMatchSatisfied(header string, currentRevision int64) bool {
+	header = strings.TrimSpace(header)
+	if header == "" {
+		return true
+	}
+	want := strconv.FormatInt(currentRevision, 10)
+	for _, tok := range strings.Split(header, ",") {
+		tok = strings.TrimSpace(tok)
+		tok = strings.TrimPrefix(tok, "W/")
+		tok = strings.Trim(tok, `"`)
+		if tok == "*" || tok == want {
+			return true
+		}
+	}
+	return false
+}
+
 // GetPaginationParams extracts pagination query params using shared defaults and bounds.
 func GetPaginationParams(c *gin.Context) PaginationParams {
 	page := parsePositiveOrDefault(c.DefaultQuery("page", "1"), defaultPage)
