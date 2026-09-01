@@ -19,7 +19,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -148,7 +147,9 @@ fun DataScreen(
                 }
                 item(key = "addr-button") {
                     val loadingLabel = stringResource(R.string.a11y_state_loading)
-                    OutlinedButton(
+                    // Filled Button, matching the sibling "Suggest relationships"
+                    // primary action above — the two scans are peer affordances.
+                    Button(
                         onClick = viewModel::scanAddressSuggestions,
                         enabled = !state.suggestionsLoading,
                         modifier = Modifier
