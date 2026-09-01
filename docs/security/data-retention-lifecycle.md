@@ -7,7 +7,7 @@ each asset, not how long it survives.
 
 | | |
 |---|---|
-| **Last updated** | 2026-08-30 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420), [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622), [#391](https://github.com/DrewBrunning/mycorrhizal-crm/issues/391), [#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389), [#651](https://github.com/DrewBrunning/mycorrhizal-crm/issues/651), [#351](https://github.com/DrewBrunning/mycorrhizal-crm/issues/351), [#353](https://github.com/DrewBrunning/mycorrhizal-crm/issues/353)) |
+| **Last updated** | 2026-08-31 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420), [#424](https://github.com/DrewBrunning/mycorrhizal-crm/issues/424), [#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622), [#391](https://github.com/DrewBrunning/mycorrhizal-crm/issues/391), [#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389), [#651](https://github.com/DrewBrunning/mycorrhizal-crm/issues/651), [#351](https://github.com/DrewBrunning/mycorrhizal-crm/issues/351), [#353](https://github.com/DrewBrunning/mycorrhizal-crm/issues/353), [#549](https://github.com/DrewBrunning/mycorrhizal-crm/issues/549)) |
 | **Scope** | Backend (Go/Gin + SQLite), CardDAV/CalDAV (server role), Android client, browser/frontend, operator backups. |
 | **Companion docs** | `docs/security/pii-inventory.md` (the *minimization* lens — should each store exist, and is it more/kept-longer than needed), `docs/security/asvs-l2.md` V8 (Data Protection), `docs/deployment.md` (Backups section — the authoritative backup/restore runbook), `docs/security/masvs-l1.md` (Android storage controls). |
 
@@ -359,6 +359,23 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   by design — an import mid-flight during a restart must be redone, which is an acceptable trade for
   never writing uploaded-but-unconfirmed contact data to disk).
 - **Backups**: never — can't be backed up if it was never persisted.
+
+### 12a. Monica import assistant session (issue #549)
+
+- **Where / who**: `MonicaImportManager` (`backend/services/monica_import_session.go`) — **in-memory
+  only**, one session per active Monica import wizard. Unlike §12 it holds a *third-party credential*:
+  the user's Monica **API token**, kept on the `*monica.Client` for the session's lifetime so the
+  background fetch can page the Monica API. Also holds the fetched account snapshot and the mapped
+  review plan.
+- **Retention**: sliding `monicaSessionExpiry = 60m` (longer than §12 because the rate-limited fetch
+  alone can take minutes), hard-capped at `monicaSessionMaxLifetime = 6h`. Expiry slides on every
+  status/preview poll; a forgotten browser tab still ages the session — and the token — out.
+- **Deletion / propagation**: dropped on `cancel`, on expiry, and on process restart. The token is
+  **never logged** (a test asserts it never appears in the structured log) and **never persisted** —
+  there is no config row, no DB column, no file. Avatars fetched with it during `processAvatars`
+  become ordinary contact photos (covered by the contact-photo lifecycle, §1) once the import commits;
+  the token itself is not stored alongside them.
+- **Backups**: never — nothing is persisted.
 
 ## 13. External integration credentials (WebDAV / Paperless / Immich / Seafile)
 

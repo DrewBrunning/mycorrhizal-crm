@@ -2012,6 +2012,137 @@
     },
     {
       "method": "POST",
+      "path": "/contacts/import/monica/cancel",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "query",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": ""
+        },
+        {
+          "status": "400",
+          "schema": ""
+        },
+        {
+          "status": "404",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/contacts/import/monica/confirm",
+      "parameters": null,
+      "request_body": "ref:MonicaConfirmRequest",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MonicaImportResult"
+        },
+        {
+          "status": "400",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/contacts/import/monica/connect",
+      "parameters": null,
+      "request_body": "ref:MonicaConnectRequest",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MonicaConnectResponse"
+        },
+        {
+          "status": "400",
+          "schema": ""
+        },
+        {
+          "status": "429",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/contacts/import/monica/fetch",
+      "parameters": null,
+      "request_body": "ref:MonicaFetchRequest",
+      "responses": [
+        {
+          "status": "202",
+          "schema": ""
+        },
+        {
+          "status": "400",
+          "schema": ""
+        },
+        {
+          "status": "409",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/contacts/import/monica/preview",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "query",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MonicaPreviewResponse"
+        },
+        {
+          "status": "400",
+          "schema": ""
+        },
+        {
+          "status": "404",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/contacts/import/monica/status",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "query",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MonicaImportStatus"
+        },
+        {
+          "status": "400",
+          "schema": ""
+        },
+        {
+          "status": "404",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/contacts/import/preview",
       "parameters": null,
       "request_body": "ref:ImportPreviewRequest",
@@ -11689,7 +11820,9 @@
             "csv",
             "vcf",
             "jscontact",
-            "records"
+            "records",
+            "monica",
+            "meerkat"
           ]
         },
         {
@@ -12360,6 +12493,418 @@
           "name": "message",
           "type": "string",
           "required": true
+        }
+      ]
+    },
+    {
+      "name": "MonicaConfirmRequest",
+      "properties": [
+        {
+          "name": "actions",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "MonicaConnectRequest",
+      "properties": [
+        {
+          "name": "api_token",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "base_url",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "MonicaConnectResponse",
+      "properties": [
+        {
+          "name": "estimated_fetch_seconds",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "totals",
+          "type": "ref:MonicaEntityCounts",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "MonicaEntityCounts",
+      "properties": [
+        {
+          "name": "activities",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "calls",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "contacts",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "debts",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "gifts",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "notes",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "reminders",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "tasks",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "MonicaFetchRequest",
+      "properties": [
+        {
+          "name": "include_extras",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "include_relationships",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "MonicaImportIssue",
+      "properties": [
+        {
+          "name": "category",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "unsupported",
+            "lossy",
+            "transformed",
+            "invalid",
+            "skipped"
+          ]
+        },
+        {
+          "name": "field",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "record",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "MonicaImportResult",
+      "properties": [
+        {
+          "name": "activities_created",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "created",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "custom_fields_created",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "errors",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
+          "name": "gifts_created",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "notes_created",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "photos_failed",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "photos_queued",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "photos_saved",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "relationships_created",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "reminders_created",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "skipped",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "total_processed",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "updated",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "MonicaImportRowPreview",
+      "properties": [
+        {
+          "name": "batch_duplicate_of",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "custom_field_candidates",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "diagnostics",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "duplicate_match",
+          "type": "composed[object]",
+          "required": false
+        },
+        {
+          "name": "has_photo",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "merge_diff",
+          "type": "composed[object]",
+          "required": false
+        },
+        {
+          "name": "parsed_contact",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "related",
+          "type": "ref:MonicaRowRelatedCounts",
+          "required": false
+        },
+        {
+          "name": "row_index",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "suggested_action",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "add",
+            "skip",
+            "update"
+          ]
+        },
+        {
+          "name": "validation_errors",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "MonicaImportStatus",
+      "properties": [
+        {
+          "name": "error",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "phase",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "connecting",
+            "fetching_contacts",
+            "fetching_activities",
+            "fetching_notes",
+            "fetching_reminders",
+            "fetching_extras",
+            "fetching_relationships",
+            "building_preview",
+            "ready",
+            "importing",
+            "importing_photos",
+            "done",
+            "failed"
+          ]
+        },
+        {
+          "name": "phase_done",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "phase_total",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "result",
+          "type": "ref:MonicaImportResult",
+          "required": false
+        },
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "MonicaPreviewResponse",
+      "properties": [
+        {
+          "name": "duplicate_count",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "error_count",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "loss_report",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "rows",
+          "type": "array\u003ccomposed[object,object]\u003e",
+          "required": false
+        },
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "total_rows",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "totals",
+          "type": "ref:MonicaRowRelatedCounts",
+          "required": false
+        },
+        {
+          "name": "valid_rows",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "MonicaRowRelatedCounts",
+      "properties": [
+        {
+          "name": "activities",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "gifts",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "notes",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "relationships",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "reminders",
+          "type": "integer",
+          "required": false
         }
       ]
     },

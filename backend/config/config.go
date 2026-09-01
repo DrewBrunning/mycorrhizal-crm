@@ -87,6 +87,7 @@ type Config struct {
 	PaperlessBlockPrivateURLs     bool          // Block Paperless-ngx fetches to private/loopback addresses (useful for cloud deployments)
 	SeafileBlockPrivateURLs       bool          // Block Seafile fetches to private/loopback addresses (useful for cloud deployments)
 	WebDAVBlockPrivateURLs        bool          // Block Nextcloud/ownCloud WebDAV fetches to private/loopback addresses (useful for cloud deployments)
+	MonicaBlockPrivateURLs        bool          // Block Monica import-assistant fetches to private/loopback addresses (useful for cloud deployments; issue #549)
 	FCMServiceAccountFile         string        // Path to the Firebase service-account JSON for FCM mobile push delivery (M2)
 	DBIntegrityCheckEnabled       bool          // Enable the scheduled live-DB PRAGMA integrity_check job (issue #273)
 	DBIntegrityCheckIntervalHours int           // Interval in hours for the scheduled DB integrity check
@@ -213,6 +214,7 @@ func LoadConfig() *Config {
 		PaperlessBlockPrivateURLs:     getBoolEnv("PAPERLESS_BLOCK_PRIVATE_URLS", false),
 		SeafileBlockPrivateURLs:       getBoolEnv("SEAFILE_BLOCK_PRIVATE_URLS", false),
 		WebDAVBlockPrivateURLs:        getBoolEnv("WEBDAV_BLOCK_PRIVATE_URLS", false),
+		MonicaBlockPrivateURLs:        getBoolEnv("MONICA_BLOCK_PRIVATE_URLS", false),
 		FCMServiceAccountFile:         getEnv("FCM_SERVICE_ACCOUNT_FILE", ""),
 		DBIntegrityCheckEnabled:       getBoolEnv("DB_INTEGRITY_CHECK_ENABLED", true),
 		DBIntegrityCheckIntervalHours: getIntEnv("DB_INTEGRITY_CHECK_INTERVAL_HOURS", 24),

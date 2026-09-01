@@ -4,8 +4,11 @@ The import maps a `monica.Snapshot` — the complete in-memory copy of a Monica 
 shape the live API fetch produces. `backend/monica` defines the wire types and the JSON loader;
 `backend/services/monica_import.go` is the mapping (a deliberate port of the upstream Meerkat
 assistant's proven mappers, meerkat-crm#211/#216/#218, re-targeted onto the neutral model and real
-graph entities). The live client — pagination, rate limiting, SSRF-guarded transport, the
-assistant UI — is the deferred #549 ticket.
+graph entities). The live client — `backend/monica/client.go`: pagination, ~1 req/s rate
+limiting, SSRF-guarded transport (`httputil.SafeDialContext` under `MONICA_BLOCK_PRIVATE_URLS`),
+per-contact relationship fetch, and avatar download — plus the wizard UI and the
+`/api/v1/contacts/import/monica/*` endpoints landed with issue #549. The mapping still operates on
+a `Snapshot` regardless of origin, so the checked-in fixture proves it without a live instance.
 
 ## Path
 
@@ -67,8 +70,11 @@ walks the date forward a week each year.
 
 ## Known limitations
 
-- **Avatars** are carried on the plan and downloaded by the assistant (#549); the backend mapping
-  never makes network calls (reported `transformed`, never silent).
+- **Avatars** are carried on the plan; the backend mapping never makes network calls (reported
+  `transformed`, never silent). The assistant (#549) downloads them after the import transaction
+  commits (`MonicaImportManager.processAvatars` → `monica.Client.FetchAvatar` →
+  `photostore.SaveContactPhoto`), sending the bearer token only when the avatar host is the Monica
+  instance itself, and reports per-photo progress through the session status.
 - **Tasks and debts** have no entity home and become dated notes; the mapping makes that explicit.
 - **Gift amounts** arrive as free text (`"£34.50"`) and are preserved as text in the gift's notes
   rather than guessed at as `ValueCents`/`Currency` (the local pair must be set together and
