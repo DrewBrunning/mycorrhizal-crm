@@ -37,7 +37,7 @@ orthogonal mechanism; this page is about *which layer a test belongs to*, not
 | Android unit/Robolectric | View models, editors, screens, network parsing, offline/local-DB logic | Emulator/device flows, real backend | `android/**/src/test/` | `./gradlew testDebugUnitTest` | `test` job / `android` |
 | E2E web | Complete user flows through the **shipped** artifact (image + compose + nginx + backend) | Anything reachable in a lower layer | `frontend/e2e/` | `npx playwright test` | `e2e` job / `frontend`+`openapi`+`infra` |
 | E2E Android | Real app on emulator against the real backend; the Playwright analog | JVM-testable logic | `android/app/src/androidTest/` | `:app:connectedDebugAndroidTest` (see README-developer.md) | `android-e2e` job / `android`+`openapi`+`infra` |
-| Release/install smoke | Clean install from nothing; misconfiguration diagnostics; startup ordering | Anything presupposing a working install | *not built yet* — DEPLOY-01, issue #450 (v0.6.6) | planned | planned / `infra` |
+| Release/install smoke | Clean install from nothing; misconfiguration diagnostics; startup ordering | Anything presupposing a working install | `backend/cmd/deploysmoke/`, `backend/config/startup_smoke_test.go`, `.github/workflows/deploy-smoke.yml` | `go test ./cmd/deploysmoke/... ./config/...`; `go run ./cmd/deploysmoke` against a fresh `docker compose up` | `deploy-smoke` job / `infra` |
 | Performance/load | N+1/query-count regressions, benchmark bodies, concurrent-write smoke vs the deployed artifact, scale (planned) | Correctness (that's the pyramid) | `backend/**/benchmark` tests, `backend/cmd/loadsmoke` | `go test -bench . -benchtime=1x`, `go run ./cmd/loadsmoke` | `backend-checks` + e2e `loadsmoke` step |
 | Security/adversarial | BOLA/IDOR, spec fuzzing, DAST, static analysis — the vulnerability classes no pyramid layer is shaped to catch | — | their own workflows | per-workflow | `schemathesis.yml`, `zap-dast.yml`, `codeql.yml`, `sast.yml`, … |
 
@@ -266,22 +266,37 @@ with fixed payloads (the dashboard's "Stay in Touch" column is server-random).
 Only add a view here that you are willing to regenerate when the design
 changes.
 
-## Release/install smoke (planned — DEPLOY-01, issue #450)
+## Release/install smoke (DEPLOY-01, issue #450)
 
-- **Responsible for** (once built, v0.6.6) a clean install that proves the
-  **workflow**, not the boot: start from nothing (no volumes, no DB, only
-  documented operator config), then register the first user, log in, create a
-  contact with several field types, add a relationship, attach a file, upload a
-  profile photo, search, export, and read it back — each step touching a different
-  subsystem a fresh install gets wrong (FTS index creation, attachment/photo
-  directory permissions, JWT signing).
-- Also owns startup ordering (health/readiness distinguish *migrating* from
-  *ready* on first boot) and the misconfiguration cases real operators hit
-  (missing `JWT_SECRET_KEY`, relative `ATTACHMENTS_DIR`, mismatched
-  `FRONTEND_URL` — each must fail naming the variable).
-- **Gates under `infra`** using the same compose artifact the e2e suites use.
+- **Responsible for** a clean install that proves the **workflow**, not the boot.
+  `.github/workflows/deploy-smoke.yml` starts from nothing (fresh checkout, no
+  volumes, no DB, only the config `docs/getting-started.md` tells a new operator
+  to set), brings the stack up via the documented `docker compose up -d --build`,
+  then runs `backend/cmd/deploysmoke` against it: register the first user, log in,
+  create a contact with several field types, relate it to a second contact,
+  attach a file, upload a profile photo, search, export, and read every field
+  back — each step touching a different subsystem a fresh install gets wrong
+  (empty-DB migration, FTS index + triggers, attachment/photo directory
+  permissions, JWT signing).
+- Also owns **startup ordering** — the job asserts from the boot log that config
+  validation and the empty-DB migration run both precede the HTTP listener, and
+  that the first `/health/ready` already reports `migrations: ok` (issue #421) —
+  and the **misconfiguration cases** real operators hit: missing `JWT_SECRET_KEY`,
+  relative `ATTACHMENTS_DIR`/`PROFILE_PHOTO_DIR`, empty/`*` `FRONTEND_URL`. Those
+  are unit-tested per field in `backend/config`; asserted at the real-binary
+  boundary in `backend/config/startup_smoke_test.go` (builds `mycorrhizal`, runs
+  it with a broken env, expects a non-zero exit whose output names the variable);
+  and asserted again through the shipped container in the workflow for the vars
+  the container entrypoint does not pre-empt (`JWT_SECRET_KEY`, `FRONTEND_URL` —
+  a relative photo/attachment dir fails in `entrypoint.sh`'s chown first, so its
+  validator message is a binary-boundary assertion only). A non-matching CORS
+  `Origin` is also checked against the configured `FRONTEND_URL`.
+- **Gates under `infra`** (Dockerfile, `docker-compose*`, `docker/`,
+  `.env.example`, `backend/cmd/deploysmoke/**`) and runs nightly.
+- `backend/config/startup_smoke_test.go` builds and runs the server binary, so it
+  is skipped under `go test -short`.
 - This is the layer that v0.6.6 (install/upgrade/backup/recovery) and its sibling
-  DEPLOY-02 (#451, upgrade) / DEPLOY-03 (#452, interrupted startup) assume exists.
+  DEPLOY-02 (#451, upgrade) / DEPLOY-03 (#452, interrupted startup) build on.
 
 ## Cross-cutting: performance/load and security
 
@@ -341,7 +356,7 @@ gap to file, never something to silently absorb.
 | Migration data loss, semantic drift across schema versions, dirty/version mishandling | Migration | v0.6.4 |
 | Interrupted migration, migration rollback/recovery, first-boot migration on empty DB | Migration + release/install smoke | v0.6.4, v0.6.6, #438/#452 |
 | Monica/Meerkat import mapping errors | Import/export interop (fixtures per DATA-*) | v0.6.4 (#351/#353) |
-| Clean-install failure (env vars, CORS, permissions, empty-DB migration) | Release/install smoke (planned) | v0.6.6 (#450) |
+| Clean-install failure (env vars, CORS, permissions, empty-DB migration) | Release/install smoke (`deploy-smoke.yml` + `cmd/deploysmoke` + `config/startup_smoke_test.go`) | v0.6.6 (#450) |
 | Backup/restore/cross-version restore failure | DB/integration (`backup_test.go`, restore tests) + release/install smoke | v0.6.6 |
 | Component/hook state bugs, i18n key/placeholder drift, format-provider bugs | Frontend unit | v0.6.11 |
 | Android view-model/editor/offline/local-migration bugs | Android unit/Robolectric | v0.6.7, v0.6.10 |
@@ -542,7 +557,7 @@ protection.
 | Android unit/Robolectric | `android` |
 | E2E web | `frontend` + `openapi` + `infra` (builds/runs the deployed artifact) + nightly full-suite run (schedule, 2026-08-28) |
 | E2E Android | `android` + `openapi` + `infra` (push:main + nightly + manual only, #578) |
-| Release/install smoke | `infra` (planned, #450) |
+| Release/install smoke | `infra` (`deploy-smoke.yml` — clean-install workflow + startup ordering + misconfig cases; also nightly, #450) |
 | Performance/load | `backend` (benchmarks) + `infra` (loadsmoke in the e2e job) |
 | Security/adversarial | not a filter area — each workflow has its own triggers |
 

@@ -20,6 +20,13 @@ cert.pem
 backend/static/photos/
 static/photos/
 
+# docker-compose.yml bind-mount defaults when `docker compose up` is run from
+# the repo root (DATA_PATH/PHOTOS_PATH/ATTACHMENTS_PATH: ./data ./photos
+# ./attachments) — created root/uid-1001-owned by the container, never committed.
+/data/
+/photos/
+/attachments/
+
 # Build artifacts
 backend/mycorrhizal
 backend/main
@@ -32,6 +39,7 @@ backend/cmd/*/backfill-search-index
 backend/cmd/*/loadsmoke
 backend/cmd/*/bolacheck
 backend/cmd/*/schemagate
+backend/cmd/*/deploysmoke
 
 # Go specific
 *.test
