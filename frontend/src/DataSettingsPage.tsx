@@ -36,6 +36,7 @@ import ContactFieldSettings from './components/ContactFieldSettings';
 import CustomFieldsSettings from './components/CustomFieldsSettings';
 import ExportFieldPickerDialog from './components/ExportFieldPickerDialog';
 import ImportContactsDialog from './components/ImportContactsDialog';
+import MonicaImportDialog from './components/MonicaImportDialog';
 import RelationshipSuggestionsInbox from './components/RelationshipSuggestionsInbox';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { handleFetchError } from './utils/errorHandler';
@@ -58,6 +59,9 @@ export default function DataSettingsPage() {
   // bulk import entry point, reusing the exact same wizard the Contacts page
   // uses — one import flow, two doors.
   const [importOpen, setImportOpen] = useState(false);
+  // Monica import assistant (issue #549) — a separate door into the same
+  // preview→confirm contract, for users migrating from a live Monica account.
+  const [monicaImportOpen, setMonicaImportOpen] = useState(false);
 
   // Issue #651: persisted import run history, refreshed on mount and whenever
   // an import completes.
@@ -286,7 +290,7 @@ export default function DataSettingsPage() {
             >
               {t('settings.data.import.description')}
             </Typography>
-            <Box>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
               <Button
                 variant="contained"
                 size="small"
@@ -295,7 +299,14 @@ export default function DataSettingsPage() {
               >
                 {t('settings.data.import.importButton')}
               </Button>
-            </Box>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => setMonicaImportOpen(true)}
+              >
+                {t('settings.data.import.monicaButton')}
+              </Button>
+            </Stack>
 
             <Divider />
             <Typography variant="subtitle2" component="h3">
@@ -479,6 +490,15 @@ export default function DataSettingsPage() {
         onClose={() => setImportOpen(false)}
         onImportComplete={() => {
           setImportOpen(false);
+          void loadImportHistory();
+        }}
+      />
+
+      <MonicaImportDialog
+        open={monicaImportOpen}
+        onClose={() => setMonicaImportOpen(false)}
+        onImportComplete={() => {
+          setMonicaImportOpen(false);
           void loadImportHistory();
         }}
       />

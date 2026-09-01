@@ -1289,9 +1289,12 @@
             "csv": "CSV",
             "vcf": "vCard",
             "jscontact": "JSContact",
-            "records": "Device"
+            "records": "Device",
+            "monica": "Monica",
+            "meerkat": "Meerkat"
           }
-        }
+        },
+        "monicaButton": "Import from Monica"
       },
       "propose": {
         "title": "Propose data",
@@ -1385,6 +1388,98 @@
       "deleteDialog": {
         "title": "Delete Link Type",
         "message": "Delete \"{{name}}\"? Any contact fields matching it will no longer be tappable."
+      }
+    },
+    "sourceImport": {
+      "steps": {
+        "connect": "Connect",
+        "fetching": "Fetch",
+        "review": "Review",
+        "importing": "Import",
+        "result": "Done"
+      },
+      "phase": {
+        "connecting": "Connecting to {{source}}…",
+        "fetching_contacts": "Fetching contacts…",
+        "fetching_activities": "Fetching activities…",
+        "fetching_notes": "Fetching notes…",
+        "fetching_reminders": "Fetching reminders…",
+        "fetching_extras": "Fetching calls, tasks and gifts…",
+        "fetching_relationships": "Fetching relationships…",
+        "building_preview": "Preparing the review…",
+        "ready": "Ready to review",
+        "importing": "Importing…",
+        "importing_photos": "Downloading profile photos…",
+        "done": "Import complete",
+        "failed": "The import failed"
+      },
+      "progress": {
+        "count": "{{done}} of {{total}}",
+        "keepsRunning": "This keeps running on the server. You can close this window and come back to it from the Data settings page."
+      },
+      "action": {
+        "add": "Add",
+        "skip": "Skip",
+        "update": "Merge"
+      },
+      "brings": {
+        "relationships": "{{count}} relationships",
+        "notes": "{{count}} notes",
+        "activities": "{{count}} activities",
+        "reminders": "{{count}} reminders",
+        "gifts": "{{count}} gifts"
+      },
+      "review": {
+        "summary": "{{total}} contacts · {{duplicates}} possible duplicates · {{errors}} with problems",
+        "applyAll": "Apply to all:",
+        "colName": "Contact",
+        "colStatus": "Status",
+        "colBrings": "Also brings",
+        "colAction": "Action",
+        "matches": "Matches {{name}}",
+        "existingContact": "an existing contact",
+        "new": "New",
+        "photo": "photo",
+        "totals": "Will also create {{relationships}} relationships, {{notes}} notes, {{activities}} activities and {{reminders}} reminders"
+      },
+      "lossReport": {
+        "title": "What won’t come across exactly",
+        "description": "Review what the import can't carry before you continue — an import isn't something you'll want to redo.",
+        "none": "Everything in this account maps cleanly — nothing will be lost."
+      },
+      "lossCategory": {
+        "unsupported": "Not imported",
+        "invalid": "Rejected",
+        "lossy": "Imported with some detail lost",
+        "transformed": "Imported with a change",
+        "skipped": "Deliberately skipped"
+      },
+      "done": "Done",
+      "closeKeepRunning": "Close (keeps running)",
+      "confirmImport": "Import",
+      "result": {
+        "title": "Import complete",
+        "contacts": "{{created}} added, {{updated}} merged, {{skipped}} skipped",
+        "partialFailures": "{{count}} records could not be imported",
+        "photosPending": "Downloading {{total}} profile photos…",
+        "photosDone": "{{saved}} photos saved, {{failed}} failed"
+      }
+    },
+    "monicaImport": {
+      "title": "Import from Monica",
+      "connect": {
+        "description": "Connect to your Monica account and this will fetch your contacts and their history directly — no export file needed.",
+        "urlLabel": "Monica address",
+        "urlHelp": "The web address you use to open Monica, e.g. https://app.monicahq.com",
+        "tokenLabel": "API token",
+        "tokenHelp": "Create one in Monica under Settings → API. It is used once and kept only for this import.",
+        "includeRelationships": "Include relationships between contacts",
+        "includeExtras": "Include calls, tasks, gifts and debts",
+        "connect": "Connect",
+        "connecting": "Connecting…",
+        "found": "Found {{contacts}} contacts, {{activities}} activities and {{notes}} notes.",
+        "estimate": "Fetching everything takes about {{minutes}} min.",
+        "start": "Start import"
       }
     }
   },
