@@ -33,6 +33,7 @@ func diffFor(a, b *contactmodel.Record, concept string) *Difference {
 }
 
 func TestEqual_EmptyRecords(t *testing.T) {
+	t.Parallel()
 	if !equal(rec(contactmodel.Card{}), rec(contactmodel.Card{})) {
 		t.Error("two empty records must be semantically equal")
 	}
@@ -45,6 +46,7 @@ func TestEqual_EmptyRecords(t *testing.T) {
 }
 
 func TestEqual_OrderInsensitive_RepeatableProperties(t *testing.T) {
+	t.Parallel()
 	// Reordering emails, phones, nicknames, keywords, components must not
 	// change the semantic result — the comparison is a multiset per the
 	// correspondence table's repeatable rows.
@@ -98,6 +100,7 @@ func TestEqual_OrderInsensitive_RepeatableProperties(t *testing.T) {
 }
 
 func TestEqual_ReorderedAddressComponents(t *testing.T) {
+	t.Parallel()
 	// The adr row compares the whole Address element; component order is not
 	// semantic, so reordering components must not fail.
 	addr := func(comps []contactmodel.AddressComponent) *contactmodel.Record {
@@ -119,6 +122,7 @@ func TestEqual_ReorderedAddressComponents(t *testing.T) {
 }
 
 func TestEqual_TimestampNormalization(t *testing.T) {
+	t.Parallel()
 	// ts_rfc3339 transform: both sides normalize to the UTC instant, so a
 	// different-but-equal instant representation must not fail the comparison.
 	a := rec(contactmodel.Card{Created: ts("2026-01-01T00:00:00Z"), Updated: ts("2026-01-01T00:00:00Z")})
@@ -138,6 +142,7 @@ func TestEqual_TimestampNormalization(t *testing.T) {
 }
 
 func TestEqual_PartialDateForms(t *testing.T) {
+	t.Parallel()
 	// date_partial: --MM-DD and the timestamp-vs-partial split are distinct
 	// representational cases, but the same partial date compares equal.
 	mk := func(y, m, d *int) *contactmodel.Record {
@@ -168,6 +173,7 @@ func TestEqual_PartialDateForms(t *testing.T) {
 func ptrStr(s string) *string { return &s }
 
 func TestEqual_GramGenderCaseInsensitive(t *testing.T) {
+	t.Parallel()
 	// enum_lower transform: grammatical gender values compare case-insensitively.
 	a := rec(contactmodel.Card{SpeakToAs: &contactmodel.SpeakToAs{
 		GrammaticalGenders: []contactmodel.GrammaticalGender{{Value: "Feminine"}},
@@ -181,6 +187,7 @@ func TestEqual_GramGenderCaseInsensitive(t *testing.T) {
 }
 
 func TestEqual_NamePhoneticPair(t *testing.T) {
+	t.Parallel()
 	// name.phonetic compares PhoneticScript + PhoneticSystem as one key.
 	a := rec(contactmodel.Card{Name: &contactmodel.Name{PhoneticScript: "latin", PhoneticSystem: "latn"}})
 	b := rec(contactmodel.Card{Name: &contactmodel.Name{PhoneticScript: "latin", PhoneticSystem: "latn"}})
@@ -199,6 +206,7 @@ func TestEqual_NamePhoneticPair(t *testing.T) {
 }
 
 func TestEqual_OrgElementAndUnits(t *testing.T) {
+	t.Parallel()
 	// org compares name + sorted units; org.unit compares the unit-name multiset.
 	a := rec(contactmodel.Card{Organizations: []contactmodel.Organization{{
 		Name: "Royal Society", Units: []contactmodel.OrgUnit{{Name: "Mathematics"}, {Name: "Computing"}},
@@ -218,6 +226,7 @@ func TestEqual_OrgElementAndUnits(t *testing.T) {
 }
 
 func TestEqual_OnlineServiceElement(t *testing.T) {
+	t.Parallel()
 	// impp/social compare service + user + uri as one element key.
 	a := rec(contactmodel.Card{SocialProfiles: []contactmodel.OnlineService{{
 		Service: "Mastodon", User: "@ada@fosstodon.org", URI: "https://fosstodon.org/@ada",
@@ -244,6 +253,7 @@ func TestEqual_OnlineServiceElement(t *testing.T) {
 }
 
 func TestEqual_AddressElementGranularity(t *testing.T) {
+	t.Parallel()
 	a := rec(contactmodel.Card{Addresses: []contactmodel.Address{{
 		Components:  []contactmodel.AddressComponent{{Kind: "locality", Value: "London"}},
 		CountryCode: "GB",
@@ -275,6 +285,7 @@ func TestEqual_AddressElementGranularity(t *testing.T) {
 }
 
 func TestEqual_AnniversaryKindAndPlace(t *testing.T) {
+	t.Parallel()
 	a := rec(contactmodel.Card{Anniversaries: []contactmodel.Anniversary{{
 		Kind: "birth", Date: contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{Year: ptrInt(1815)}},
 		Place: &contactmodel.Address{Full: "London, UK"},
@@ -295,6 +306,7 @@ func TestEqual_AnniversaryKindAndPlace(t *testing.T) {
 }
 
 func TestEqual_PersonalInfoElement(t *testing.T) {
+	t.Parallel()
 	a := rec(contactmodel.Card{PersonalInfo: []contactmodel.PersonalInfo{{Kind: "expertise", Value: "Go", Level: "high", ListAs: ptrInt(2)}}})
 	b := rec(contactmodel.Card{PersonalInfo: []contactmodel.PersonalInfo{{Kind: "expertise", Value: "Go", Level: "high", ListAs: ptrInt(2)}}})
 	if !equal(a, b) {
@@ -309,6 +321,7 @@ func TestEqual_PersonalInfoElement(t *testing.T) {
 }
 
 func TestEqual_NoteParams(t *testing.T) {
+	t.Parallel()
 	a := rec(contactmodel.Card{Notes: []contactmodel.Note{{
 		Note: "hi", Author: &contactmodel.Author{Name: "Bob", URI: "mailto:bob@example.com"}, Created: ts("2026-01-01T00:00:00Z"),
 	}}})
@@ -324,6 +337,7 @@ func TestEqual_NoteParams(t *testing.T) {
 }
 
 func TestEqual_RelatedAndMembers(t *testing.T) {
+	t.Parallel()
 	a := rec(contactmodel.Card{
 		RelatedTo: []contactmodel.Relation{{Target: "urn:uuid:1", Relations: []string{"friend", "acquaintance"}}},
 		Members:   []string{"urn:uuid:2"},
@@ -337,6 +351,7 @@ func TestEqual_RelatedAndMembers(t *testing.T) {
 }
 
 func TestEqual_MediaAndResourcesByKind(t *testing.T) {
+	t.Parallel()
 	a := rec(contactmodel.Card{
 		Media:        []contactmodel.Resource{{Kind: "photo", URI: "data:image/png;base64,AAA"}, {Kind: "logo", URI: "https://example.com/logo"}},
 		Calendars:    []contactmodel.Resource{{URI: "https://cal.example.com/1"}},
@@ -368,6 +383,7 @@ func TestEqual_MediaAndResourcesByKind(t *testing.T) {
 }
 
 func TestEqual_PassthroughVCard(t *testing.T) {
+	t.Parallel()
 	// pt.vcard compares the vCardProps array; param-value spelling differences
 	// (single string vs single-element slice) do not fail the comparison.
 	a := &contactmodel.Record{Passthrough: contactmodel.Passthrough{VCard: []contactmodel.JCardProp{{
@@ -394,6 +410,7 @@ func TestEqual_PassthroughVCard(t *testing.T) {
 func jsonRaw(s string) json.RawMessage { return json.RawMessage(s) }
 
 func TestEqual_PassthroughJSContact(t *testing.T) {
+	t.Parallel()
 	a := &contactmodel.Record{Passthrough: contactmodel.Passthrough{JSContact: map[string]json.RawMessage{
 		"/x-vendor": jsonRaw(`{"a": 1}`),
 	}}}
@@ -409,6 +426,7 @@ func TestEqual_PassthroughJSContact(t *testing.T) {
 }
 
 func TestDiffClassified_BySide(t *testing.T) {
+	t.Parallel()
 	a := rec(contactmodel.Card{Emails: []contactmodel.Email{{Address: "a@example.com"}}})
 	empty := rec(contactmodel.Card{})
 
@@ -430,6 +448,7 @@ func TestDiffClassified_BySide(t *testing.T) {
 }
 
 func TestDiffText_EmptyWhenEqual(t *testing.T) {
+	t.Parallel()
 	if got := Compare(rec(contactmodel.Card{}), rec(contactmodel.Card{})).DiffText(); got != "" {
 		t.Errorf("DiffText of equal records must be empty, got %q", got)
 	}
@@ -440,6 +459,7 @@ func TestDiffText_EmptyWhenEqual(t *testing.T) {
 }
 
 func TestDiffString_RendersEachKind(t *testing.T) {
+	t.Parallel()
 	rich := rec(contactmodel.Card{Emails: []contactmodel.Email{{Address: "a@example.com"}}})
 
 	// loss: present only in the original record
@@ -472,6 +492,7 @@ func TestDiffString_RendersEachKind(t *testing.T) {
 }
 
 func TestEqual_PreferredLanguages(t *testing.T) {
+	t.Parallel()
 	// the lang row compares PreferredLanguages[].Language.
 	a := rec(contactmodel.Card{PreferredLanguages: []contactmodel.LanguagePref{{Language: "en"}, {Language: "de"}}})
 	b := rec(contactmodel.Card{PreferredLanguages: []contactmodel.LanguagePref{{Language: "de"}, {Language: "en"}}})
@@ -484,6 +505,7 @@ func TestEqual_PreferredLanguages(t *testing.T) {
 }
 
 func TestEqual_AddressContextsAndFull(t *testing.T) {
+	t.Parallel()
 	// addressKey includes the contexts, pref, isOrdered and full (LABEL)
 	// fields of the whole Address element.
 	a := rec(contactmodel.Card{Addresses: []contactmodel.Address{{
@@ -524,6 +546,7 @@ func TestEqual_AddressContextsAndFull(t *testing.T) {
 }
 
 func TestEqual_EmptyAnniversaryDate(t *testing.T) {
+	t.Parallel()
 	// An anniversary carrying no date at all (e.g. a place-only entry)
 	// contributes nothing to the comparison on either side.
 	a := rec(contactmodel.Card{Anniversaries: []contactmodel.Anniversary{{Kind: "birth", Date: contactmodel.AnniversaryDate{}}}})
@@ -533,6 +556,7 @@ func TestEqual_EmptyAnniversaryDate(t *testing.T) {
 }
 
 func TestEqual_PassthroughParamVariants(t *testing.T) {
+	t.Parallel()
 	// paramValueKey: []any values, []any with non-string items, and a
 	// non-string scalar (int) all canonicalize.
 	a := &contactmodel.Record{Passthrough: contactmodel.Passthrough{VCard: []contactmodel.JCardProp{{
@@ -562,6 +586,7 @@ func TestEqual_PassthroughParamVariants(t *testing.T) {
 // on drift, so this test passing is the "no silent concept" guarantee — it
 // also doubles as the compile-time check that the table is still loadable.
 func TestCompareCoversEveryCorrespondenceRow(t *testing.T) {
+	t.Parallel()
 	rows := correspondence.Load()
 	if len(rows) == 0 {
 		t.Fatal("correspondence table must load")
@@ -579,6 +604,7 @@ func TestCompareCoversEveryCorrespondenceRow(t *testing.T) {
 // TestCompare_NilSafety guards the comparison against nil records in either
 // slot (extractors must read through nil pointers defensively).
 func TestCompare_NilSafety(t *testing.T) {
+	t.Parallel()
 	rich := rec(contactmodel.Card{
 		Emails:        []contactmodel.Email{{Address: "a@example.com"}},
 		Name:          &contactmodel.Name{Full: "Ada", Components: []contactmodel.NameComponent{{Kind: "given", Value: "Ada"}}},
