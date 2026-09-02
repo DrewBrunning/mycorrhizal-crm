@@ -12,6 +12,7 @@ import (
 	"io"
 	"mycorrhizal/config"
 	"mycorrhizal/i18n"
+	"mycorrhizal/internal/faults"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 	"net/http"
@@ -456,6 +457,14 @@ func pushRecordSize(payloadLen int) uint32 {
 // (404/410) — the caller should drop it. Reuses clientFor so the webhook SSRF
 // policy governs the push endpoint too.
 func sendPushMessage(db *gorm.DB, cfg config.Config, user models.User, sub models.PushSubscription, vapidPublic, vapidPrivate, title, message string) (stale bool, err error) {
+	// Issue #434 failure-injection seam for the Web Push path (webpush-go does
+	// not route through postNotificationJSON). An armed fault surfaces as a
+	// non-stale send failure — a failed NotificationDelivery row, subscription
+	// kept, reminder retried next run.
+	if ferr := faults.Hook(faultNotificationDelivery); ferr != nil {
+		return false, ferr
+	}
+
 	payload, err := json.Marshal(map[string]string{"title": title, "body": message})
 	if err != nil {
 		return false, err
@@ -867,6 +876,13 @@ func DeleteDeviceRegistration(db *gorm.DB, userID uint, id uint) error {
 // WEBHOOK_BLOCK_PRIVATE_URLS is on, a private-address target is rejected with
 // ErrNotificationPrivateAddress before any network call.
 func postNotificationJSON(cfg config.Config, rawURL string, body []byte, headerKey, headerValue string) error {
+	// Issue #434 failure-injection seam for the ntfy / Gotify POST path. An
+	// armed fault surfaces to the sender, which records a failed
+	// NotificationDelivery row and leaves the reminder due for the next run.
+	if err := faults.Hook(faultNotificationDelivery); err != nil {
+		return err
+	}
+
 	if cfg.WebhookBlockPrivateURLs && isPrivateURL(rawURL) {
 		return ErrNotificationPrivateAddress
 	}

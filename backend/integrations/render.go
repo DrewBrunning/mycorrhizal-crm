@@ -118,12 +118,16 @@ func writeSSRFSection(b *strings.Builder) {
 				ids = append(ids, "`"+in.ID+"`")
 			}
 		}
+		if len(ids) == 0 {
+			continue // a posture with no integrations is not a row worth printing
+		}
 		b.WriteString(fmt.Sprintf("| `%s` | %s | %s |\n", p, ssrfMeaning(p), strings.Join(ids, ", ")))
 	}
 	b.WriteString("\n")
-	b.WriteString("`unguarded` and the SMTP `fixed-endpoint` note are recorded, not hidden: they are\n")
-	b.WriteString("known gaps with a named fix, so the next reader sees them instead of assuming\n")
-	b.WriteString("every outbound call is dial-guarded.\n\n")
+	b.WriteString("`fixed-endpoint` rows (Resend, SMTP, HIBP) are recorded rather than omitted: they\n")
+	b.WriteString("carry no user-supplied URL, so there is no dialer to guard — the next reader sees\n")
+	b.WriteString("*why*, instead of assuming every outbound call is dial-guarded. An `unguarded` row\n")
+	b.WriteString("would be a known gap with a named fix; there are none today.\n\n")
 }
 
 func writePerIntegration(b *strings.Builder) {

@@ -436,8 +436,8 @@ func emailResendIntegration() Integration {
 		FailureImpact:     ImpactBlockedWorkflow,
 		FailureImpactNote: "A user cannot complete a password reset or accept an invite until email works or the operator uses an alternate path.",
 
-		Timeout:     0,
-		TimeoutNote: "No timeout is wired on our side; the call inherits resend-go's default http.Client, which sets Timeout: 1m (resend.go). So it is bounded, but at 60s and not by a value this project chose. Passing an explicit client via resend.NewCustomClient is INT-02 (#465) work — recorded so the bound is a deliberate number, not a library default.",
+		Timeout:     30 * time.Second,
+		TimeoutNote: "services.resendRequestTimeout on an explicit http.Client passed via resend.NewCustomClient (services.newResendClient). Before INT-02 this inherited the SDK's 60s default, which was not a value this project chose.",
 
 		RetryBudget: "No retry. Best-effort: SendEmail tries every configured channel (Resend and/or SMTP) and returns success if at least one succeeds, a combined error only if all fail. The caller decides what a total failure means (password reset surfaces it; a reminder digest logs it).",
 
@@ -446,7 +446,7 @@ func emailResendIntegration() Integration {
 
 		Behavior: map[FailureMode]string{
 			FailureUnreachableHost:       "SDK returns an error; logged as 'Failed to send email via Resend'; if SMTP is also configured it is tried; if not, SendEmail returns the combined error to the caller.",
-			FailureTimeout:               "Bounded by resend-go's default 60s client timeout (see the timeout note). On error, same fallback-to-SMTP-or-combined-error path.",
+			FailureTimeout:               "Bounded by services.resendRequestTimeout (30s) on the explicit client. On error, same fallback-to-SMTP-or-combined-error path.",
 			FailureAuthExpiry:            "401 (API key revoked) → error surfaced to the caller / logged; a persistent 401 is an operator problem — the fix is a new key in config, there is no runtime re-auth.",
 			FailureAuthzRevoked:          "403 (domain not verified, sending disabled) handled as 401: surfaced/logged, operator must fix the Resend account.",
 			FailureMalformedResponse:     "Handled by the SDK; a decode error becomes a send error and the fallback/reporting path runs.",
@@ -479,8 +479,8 @@ func emailSMTPIntegration() Integration {
 		FailureImpact:     ImpactBlockedWorkflow,
 		FailureImpactNote: "Same as Resend — password reset / invite delivery is blocked until it works.",
 
-		Timeout:     0,
-		TimeoutNote: "GAP: net/smtp and tls.Dial are used with no deadline set, so a hung SMTP server is bounded only by the OS TCP stack. This runs off the request path (reminder job / async), but a bounded dial+send is INT-02 (#465) work. Recorded as a known gap.",
+		Timeout:     15 * time.Second,
+		TimeoutNote: "services.smtpDialTimeout (15s) bounds the TCP/TLS connect via net.DialTimeout / tls.DialWithDialer; services.smtpDeadline (30s) is set on the connection for the whole SMTP conversation. Before INT-02 the path used smtp.SendMail / tls.Dial with no deadline.",
 
 		RetryBudget: "No retry. Part of the same best-effort multi-channel SendEmail: SMTP failure alone is tolerated if Resend succeeded; if SMTP is the only channel, the caller gets the error.",
 
@@ -489,7 +489,7 @@ func emailSMTPIntegration() Integration {
 
 		Behavior: map[FailureMode]string{
 			FailureUnreachableHost:       "Dial error → logged 'Failed to send email via SMTP'; combined-error path if SMTP is the only channel.",
-			FailureTimeout:               "No explicit deadline (see the gap); an OS-level connection failure surfaces as a dial error and takes the same path.",
+			FailureTimeout:               "smtpDialTimeout bounds the connect; smtpDeadline bounds a server that connects then stalls mid-dialogue. Either way the send returns an error and takes the combined-error path — it never hangs the delivery goroutine.",
 			FailureAuthExpiry:            "SMTP auth failure (535) → send error, surfaced/logged; operator must fix credentials in config.",
 			FailureAuthzRevoked:          "Relay-denied / not-permitted (550/554) → send error, surfaced/logged; operator/relay configuration problem.",
 			FailureMalformedResponse:     "An unexpected SMTP reply code aborts that step with a wrapped error ('smtp mail from', 'smtp data', …); nothing partial is considered sent.",
@@ -523,17 +523,17 @@ func oidcIntegration() Integration {
 		FailureImpact:     ImpactBlockedWorkflow,
 		FailureImpactNote: "The user reaches the login callback and cannot get a session. Immediate and obvious (unlike the sync cases), so no silent-staleness risk.",
 
-		Timeout:     0,
-		TimeoutNote: "No dedicated client timeout: go-oidc / golang.org/x/oauth2 use their default transports. The calls are bounded by the login request's context deadline. A per-call timeout via oidc.ClientContext is INT-02 (#465) work.",
+		Timeout:     15 * time.Second,
+		TimeoutNote: "services.oidcRequestTimeout on services.newOIDCHTTPClient, threaded through discovery, token exchange, JWKS and UserInfo via oidc.ClientContext. Before INT-02 these ran on the go-oidc / x/oauth2 default transports with no timeout.",
 
 		RetryBudget: "No retry. A failed exchange fails the login; the user retries by starting the flow again. Discovery is not re-fetched after startup, so a provider that changes its endpoints needs a restart.",
 
-		SSRF:     SSRFUnguarded,
-		SSRFNote: "GAP: the provider URL is operator configuration, and discovery/JWKS/UserInfo/token calls run on library default transports — NOT httputil.SafeDialContext. Lower risk than the per-user-URL integrations (the value is set once by the operator, not per request), but a redirect from the provider host to an internal address is not blocked. Recorded as a known gap; a guarded oidc.ClientContext is the fix.",
+		SSRF:     SSRFGuardedWhenEnabled,
+		SSRFNote: "newOIDCHTTPClient wires httputil.SafeDialContext onto the transport (used for discovery/token/JWKS/UserInfo) only when OIDC_BLOCK_PRIVATE_URLS is set. Default off: a LAN identity provider (Authentik/Keycloak on the same Docker network) is a common self-hosted setup. Same opt-in shape as the other *_BLOCK_PRIVATE_URLS integrations.",
 
 		Behavior: map[FailureMode]string{
-			FailureUnreachableHost:       "Startup: InitOIDCProvider returns an error and OIDC is not enabled (login falls back to whatever else is configured). Runtime: the token/UserInfo call fails, the callback returns a login error, no partial session is created.",
-			FailureTimeout:               "Bounded by the request context; on deadline the callback fails with a login error. No session, no partial user row.",
+			FailureUnreachableHost:       "Startup: InitOIDCProvider returns an error and OIDC is not enabled (login falls back to whatever else is configured). Runtime: the token/UserInfo call fails, the callback returns a login error, no partial session is created. With OIDC_BLOCK_PRIVATE_URLS on, a provider host that resolves to a private address is refused at dial time (ErrOIDCPrivateAddress).",
+			FailureTimeout:               "Bounded by oidcRequestTimeout (15s) on the client, in addition to the request context deadline; on timeout the callback fails with a login error. No session, no partial user row.",
 			FailureAuthExpiry:            "Not applicable to a client credential (the client secret is operator config, a 401 there is a setup error surfaced at the callback). For the end user, an expired provider session just means they re-authenticate at the provider.",
 			FailureAuthzRevoked:          "Provider returns access_denied / the user's account is disabled provider-side → the callback surfaces 'sign-in was refused by the provider'; no local account is created or unlocked.",
 			FailureMalformedResponse:     "ID-token signature/claims verification failure, UserInfo sub mismatch (OIDC Core 5.3.2), or an unparseable discovery doc → the flow aborts with a specific error; a claim is never trusted from a body that failed verification.",
