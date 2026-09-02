@@ -99,4 +99,12 @@ const (
 	// sampler that writes one storage_samples row and prunes rows past their
 	// retention window (issue #652).
 	JobNameStorageSample = "storage_sample"
+
+	// JobNameSearchIndexRebuild is the job name for the FTS5 full-text search
+	// index rebuild (SEARCH-01, issue #461). Unlike every other JobName* this
+	// is not a scheduled job — it is operator-triggered (POST
+	// /admin/search/rebuild) and auto-run after a restore. It still produces
+	// job_runs rows so the rebuild's duration and outcome are visible on the
+	// admin job-run timeline (issue #391) rather than only on a terminal.
+	JobNameSearchIndexRebuild = "search_index_rebuild"
 )

@@ -31,5 +31,6 @@ The name comes from mycorrhiza, the symbiotic network fungi form with plant root
 - [Incident response & credential rotation runbook](security/incident-response.md)
 - [Disaster recovery boundaries (what recovery guarantees exist, and where they stop)](operations/disaster-recovery.md)
 - [Migration recovery runbook](operations/migration-recovery.md)
+- [Rebuilding the full-text search index](operations/search-index.md)
 - [Verifying release artifacts](security/release-verification.md)
 

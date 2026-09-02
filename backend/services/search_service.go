@@ -2,8 +2,11 @@ package services
 
 import (
 	"fmt"
+	"mycorrhizal/logger"
 	"mycorrhizal/models"
 	"strings"
+	"sync"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -320,34 +323,136 @@ func Search(db *gorm.DB, userID uint, term string, limit int, householdID *strin
 	return result, nil
 }
 
-// RebuildSearchIndex truncates the three FTS virtual tables and re-inserts
-// every live row from the base tables, including the address text in
-// contacts.addresses_flat and the normalized phone tokens in
-// contacts.phones_normalized. Idempotent and re-runnable — call it after any
-// bulk data change that bypassed the triggers (raw SQL migrations,
-// backfills), and to make pre-existing contacts' addresses/phones searchable
-// after migrations 000010/000020. Runs in one transaction so a failure cannot
-// leave a half-built index.
+// SearchIndexRebuildStats reports how many live rows were written to each FTS
+// virtual table by a rebuild — one number per index (SEARCH-01, issue #461
+// recommended actions 3 and 6). All three indexes are always rebuilt
+// together, so a zero here means "no live rows of that kind", never "this
+// index was skipped".
+type SearchIndexRebuildStats struct {
+	Contacts   int64 `json:"contacts"`
+	Notes      int64 `json:"notes"`
+	Activities int64 `json:"activities"`
+}
+
+// Total is the row count across all three indexes — the single number the
+// job-run record uses for items_processed.
+func (s SearchIndexRebuildStats) Total() int64 {
+	return s.Contacts + s.Notes + s.Activities
+}
+
+// searchIndexRebuildMu serialises RebuildSearchIndexExclusive within a single
+// process (issue #461 recommended action 4). SQLite already serialises the
+// rebuild transaction against every other writer — a second instance's
+// rebuild included — via _txlock=immediate, so concurrent rebuilds cannot
+// corrupt the index; this mutex only spares the wasted work and lock
+// contention of a second full rebuild racing the first in the same process
+// (an operator double-submitting POST /admin/search/rebuild, or a
+// post-restore rebuild overlapping a manual one). acquireJobLock (the
+// scheduled-job primitive) is deliberately not used: this operation has no
+// schedule and therefore no catch-up window, and its "ran too recently" /
+// "caught_up" semantics would mislabel a deliberate back-to-back re-run.
+var searchIndexRebuildMu sync.Mutex
+
+// RebuildSearchIndex rebuilds the three FTS5 virtual tables from the live base
+// tables. It is the low-level primitive kept for existing callers; prefer
+// RebuildSearchIndexReport when you want the per-index row counts, or
+// RebuildSearchIndexExclusive from an operator-facing entry point (it adds
+// the in-process concurrency guard).
 func RebuildSearchIndex(db *gorm.DB) error {
-	return db.Transaction(func(tx *gorm.DB) error {
+	_, err := RebuildSearchIndexReport(db)
+	return err
+}
+
+// RebuildSearchIndexReport truncates the three FTS virtual tables and
+// re-inserts every live (deleted_at IS NULL) row from contacts, notes, and
+// activities — including the denormalized contacts.addresses_flat address
+// text and contacts.phones_normalized phone tokens — returning the number of
+// rows written to each index.
+//
+// Idempotent and re-runnable: the index is derived data, so a rebuild always
+// converges on exactly what the maintenance triggers (migrations
+// 000007/000010/000020) would have produced. Run it after any write that
+// bypassed those triggers — a bulk import, a hand-written raw-SQL migration
+// that touched a base table, a restore from backup — or to make pre-existing
+// contacts' addresses/phones searchable after migrations 000010/000020.
+//
+// Interruption safety (issue #461 recommended action 2): the whole rebuild —
+// all three DELETEs and all three INSERTs — runs in ONE transaction. A crash,
+// a cancelled request, or a SQL error rolls it back, leaving the
+// previously-good index in place untouched; on COMMIT, WAL switches every
+// reader to the new index atomically. There is no window in which search sees
+// a half-populated index, and search is never blocked by a rebuild (readers
+// keep using the pre-rebuild snapshot until COMMIT). The cost is that the
+// rebuild holds SQLite's single write lock for its whole duration, so
+// ordinary writes queue behind it — acceptable at the MVP scale this project
+// targets (docs/operations/search-index.md).
+func RebuildSearchIndexReport(db *gorm.DB) (SearchIndexRebuildStats, error) {
+	var stats SearchIndexRebuildStats
+	start := time.Now()
+
+	err := db.Transaction(func(tx *gorm.DB) error {
 		for _, stmt := range []string{
 			"DELETE FROM contacts_fts",
 			"DELETE FROM notes_fts",
 			"DELETE FROM activities_fts",
-			`INSERT INTO contacts_fts(rowid, user_id, firstname, lastname, nickname, email, phone, org, addresses_flat, phones_normalized)
-			 SELECT id, user_id, firstname, lastname, nickname, email, phone, org, addresses_flat, phones_normalized
-			 FROM contacts WHERE deleted_at IS NULL`,
-			`INSERT INTO notes_fts(rowid, user_id, content)
-			 SELECT id, user_id, content
-			 FROM notes WHERE deleted_at IS NULL`,
-			`INSERT INTO activities_fts(rowid, user_id, title, description, location)
-			 SELECT id, user_id, title, description, location
-			 FROM activities WHERE deleted_at IS NULL`,
 		} {
 			if err := tx.Exec(stmt).Error; err != nil {
-				return fmt.Errorf("rebuild search index: %w", err)
+				return fmt.Errorf("rebuild search index (clear): %w", err)
 			}
+		}
+
+		steps := []struct {
+			index string
+			count *int64
+			stmt  string
+		}{
+			{"contacts_fts", &stats.Contacts, `INSERT INTO contacts_fts(rowid, user_id, firstname, lastname, nickname, email, phone, org, addresses_flat, phones_normalized)
+			 SELECT id, user_id, firstname, lastname, nickname, email, phone, org, addresses_flat, phones_normalized
+			 FROM contacts WHERE deleted_at IS NULL`},
+			{"notes_fts", &stats.Notes, `INSERT INTO notes_fts(rowid, user_id, content)
+			 SELECT id, user_id, content
+			 FROM notes WHERE deleted_at IS NULL`},
+			{"activities_fts", &stats.Activities, `INSERT INTO activities_fts(rowid, user_id, title, description, location)
+			 SELECT id, user_id, title, description, location
+			 FROM activities WHERE deleted_at IS NULL`},
+		}
+		for _, s := range steps {
+			res := tx.Exec(s.stmt)
+			if res.Error != nil {
+				return fmt.Errorf("rebuild search index (%s): %w", s.index, res.Error)
+			}
+			*s.count = res.RowsAffected
+			// Per-index progress (issue #461 recommended action 3): a rebuild
+			// over a large corpus should not be a silent long write.
+			logger.Info().
+				Str("index", s.index).
+				Int64("rows", res.RowsAffected).
+				Msg("search index table rebuilt")
 		}
 		return nil
 	})
+	if err != nil {
+		return SearchIndexRebuildStats{}, err
+	}
+
+	logger.Info().
+		Int64("contacts", stats.Contacts).
+		Int64("notes", stats.Notes).
+		Int64("activities", stats.Activities).
+		Int64("duration_ms", time.Since(start).Milliseconds()).
+		Msg("search index rebuilt")
+	return stats, nil
+}
+
+// RebuildSearchIndexExclusive is RebuildSearchIndexReport behind the
+// in-process concurrency guard (searchIndexRebuildMu). It returns
+// ErrJobSkipped without touching the index when another rebuild is already
+// running in this process, so an operator-facing caller reports "already in
+// progress" instead of queueing a redundant full rebuild.
+func RebuildSearchIndexExclusive(db *gorm.DB) (SearchIndexRebuildStats, error) {
+	if !searchIndexRebuildMu.TryLock() {
+		return SearchIndexRebuildStats{}, ErrJobSkipped
+	}
+	defer searchIndexRebuildMu.Unlock()
+	return RebuildSearchIndexReport(db)
 }

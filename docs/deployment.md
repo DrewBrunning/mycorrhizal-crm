@@ -329,11 +329,23 @@ expected meaning of restoring a file-level backup; there is no partial/merge res
    `rsync --delete` matters: it removes files that were added to the photo/attachment directories
    after the backup, so the directories match the snapshot instead of blending old and new.
 3. Start the server: `docker compose start`. Migrations run automatically on startup.
-4. **Verify** — a restore that has never been tested is a hypothesis. Log in and check that a known
-   contact, a recent note, and a reminder are present; for the photo/attachment directories, open a
-   contact's photo and download an attachment. The automated check behind this page's procedure is
-   `frontend/e2e/backupRestore.spec.ts`, which backs up a populated instance, destroys the database
-   and both directories, restores, and asserts every entity type survived.
+4. **Rebuild the full-text search index.** A `VACUUM INTO` snapshot carries the FTS index, so a
+   same-version restore usually needs nothing here — but a cross-version restore runs startup
+   migrations, and a hand-written migration that touches a base table bypasses the FTS triggers.
+   Rebuilding is cheap, idempotent, and removes the doubt:
+   ```sh
+   curl -fsS -X POST https://<host>/api/v1/admin/search/rebuild \
+     -H "Authorization: Bearer <admin token>"
+   # → {"message":"Search index rebuilt","indexed":{"contacts":…,"notes":…,"activities":…}}
+   ```
+   See [Rebuilding the full-text search index](operations/search-index.md) for the no-HTTP path and
+   the guarantees.
+5. **Verify** — a restore that has never been tested is a hypothesis. Log in and check that a known
+   contact, a recent note, and a reminder are present; run a search for a contact you know exists;
+   for the photo/attachment directories, open a contact's photo and download an attachment. The
+   automated check behind this page's procedure is `frontend/e2e/backupRestore.spec.ts`, which backs
+   up a populated instance, destroys the database and both directories, restores, and asserts every
+   entity type survived.
 
 The JWT secret key lives in your environment (`.env`), not in the database — restoring a
 backup does not change which key the server uses. If you rotated `JWT_SECRET_KEY` between backup and
