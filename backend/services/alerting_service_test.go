@@ -236,6 +236,28 @@ func TestEvaluateAlerts(t *testing.T) {
 		assert.False(t, rec.alerts[0].firing)
 	})
 
+	t.Run("data_integrity failure feeds the same DB-integrity alert", func(t *testing.T) {
+		reset(t)
+		baseline(t)
+
+		// Storage pass clean, data pass failed (issue #460) — one alert, and
+		// its detail says which pass.
+		RecordOperationalCheckResult(db, models.JobNameDBIntegrityCheck, models.OpCheckStatusOK, "")
+		RecordOperationalCheckResult(db, models.CheckNameDataIntegrity, models.OpCheckStatusFailed, "circle_member.orphaned_contact x2")
+		RunAlertEvaluation(ctx, db, cfg)
+		require.Len(t, rec.alerts, 1)
+		assert.Equal(t, alertConditionKeyDBIntegrity, rec.alerts[0].conditionKey)
+		assert.True(t, rec.alerts[0].firing)
+		assert.Contains(t, rec.alerts[0].detail, "data")
+
+		// Data pass recovers -> alert clears.
+		rec.reset()
+		RecordOperationalCheckResult(db, models.CheckNameDataIntegrity, models.OpCheckStatusOK, "")
+		RunAlertEvaluation(ctx, db, cfg)
+		require.Len(t, rec.alerts, 1)
+		assert.False(t, rec.alerts[0].firing)
+	})
+
 	t.Run("ALERTING_ENABLED=false is a no-op", func(t *testing.T) {
 		reset(t)
 		off := cfg

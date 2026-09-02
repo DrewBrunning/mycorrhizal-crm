@@ -616,6 +616,15 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// with a summary. Read-only and secret-free.
 			admin.GET("/diagnostics", controllers.RunDiagnostics)
 
+			// On-demand data-integrity sweep (DB-01, issue #460) — the two
+			// SQLite structural pragmas plus the per-invariant data checks
+			// (ADR 0012: relationships pointing at deleted contacts, orphaned
+			// join rows, dangling external references, malformed canonical
+			// records, derived-index divergence), folded into one report.
+			// Read-only, secret-free, detection-only (repair is the `doctor`
+			// CLI). Instance-wide, admin-only.
+			admin.GET("/integrity-check", controllers.RunIntegrityCheck)
+
 			// Aggregated build/version, migration numbers, live
 			// config-validation read-back, enabled feature flags, SQLite
 			// operational facts and storage sizing (issue #388) — the

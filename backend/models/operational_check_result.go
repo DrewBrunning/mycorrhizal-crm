@@ -15,6 +15,19 @@ const (
 	OpCheckStatusError = "error"
 )
 
+// Operational self-check names that are not themselves scheduled jobs. Job-
+// backed checks reuse their JobName* constant as the CheckName; these do not.
+const (
+	// CheckNameDataIntegrity is the application-invariant pass (DB-01, issue
+	// #460): relationships referencing missing/soft-deleted contacts, orphaned
+	// join rows, dangling external references, malformed canonical records,
+	// derived-index divergence. It runs alongside the storage-level
+	// JobNameDBIntegrityCheck (PRAGMA) pass, on the same schedule and config
+	// gate, but records its outcome under this distinct name so an operator
+	// can tell "the disk is failing" from "the data has a logical hole".
+	CheckNameDataIntegrity = "data_integrity_check"
+)
+
 // OperationalCheckResult holds the most recent outcome of one named
 // operational self-check (issue #421). One row per CheckName, upserted by
 // services.RecordOperationalCheckResult after every scheduled run of the

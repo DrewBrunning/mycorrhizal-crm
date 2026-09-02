@@ -231,6 +231,25 @@
     },
     {
       "method": "GET",
+      "path": "/admin/integrity-check",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:IntegrityCheckResponse"
+        },
+        {
+          "status": "401",
+          "schema": ""
+        },
+        {
+          "status": "403",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/admin/job-runs",
       "parameters": [
         {
@@ -10316,6 +10335,26 @@
       ]
     },
     {
+      "name": "DataIntegrityReport",
+      "properties": [
+        {
+          "name": "findings",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "ok",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "timestamp",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "DeviceRegistrationInput",
       "properties": [
         {
@@ -12220,6 +12259,75 @@
         {
           "name": "suggested_mappings",
           "type": "array\u003cobject\u003e",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "IntegrityCheckResponse",
+      "properties": [
+        {
+          "name": "data",
+          "type": "ref:DataIntegrityReport",
+          "required": true
+        },
+        {
+          "name": "ok",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "storage",
+          "type": "ref:StorageIntegrityReport",
+          "required": true
+        },
+        {
+          "name": "timestamp",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "IntegrityFinding",
+      "properties": [
+        {
+          "name": "check",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "count",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "detail",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "invariant",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "repairable",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "severity",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "violation",
+            "info"
+          ]
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
           "required": false
         }
       ]
@@ -15071,6 +15179,26 @@
           "name": "pronouns",
           "type": "array\u003cobject\u003e",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "StorageIntegrityReport",
+      "properties": [
+        {
+          "name": "foreign_key_check",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "integrity_check",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ok",
+          "type": "boolean",
+          "required": true
         }
       ]
     },

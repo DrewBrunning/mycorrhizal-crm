@@ -68,10 +68,12 @@ func TestRunDiagnosticsHealthyInstall(t *testing.T) {
 	assert.Equal(t, "ok", d.Summary.Status)
 	assert.Zero(t, d.Summary.Errors)
 	assert.Zero(t, d.Summary.Warnings)
-	// 5 config/db/migrations/filesystem/backup + 4 notifications + 6
-	// integrations + 3 disk/background-jobs/version = 18 rows, all ok.
-	assert.Equal(t, 18, d.Summary.OK)
-	assert.Len(t, d.Checks, 18)
+	// 5 config/db/migrations/filesystem/backup + 1 data_integrity + 4
+	// notifications + 6 integrations + 3 disk/background-jobs/version = 19
+	// rows, all ok.
+	assert.Equal(t, 19, d.Summary.OK)
+	assert.Len(t, d.Checks, 19)
+	assert.Equal(t, DiagStatusOK, findCheck(t, d, "data_integrity").Status)
 
 	for _, c := range d.Checks {
 		assert.Equal(t, DiagStatusOK, c.Status, "check %q should be ok", c.Name)
@@ -398,7 +400,56 @@ func TestRunDiagnosticsNilDB(t *testing.T) {
 	assert.Equal(t, DiagStatusError, dbCheck.Status)
 	assert.Equal(t, "error", d.Summary.Status)
 	// A nil db must not break the remaining checks: config/database/migrations/
-	// filesystem/backup (5) + one folded notifications check + carddav/caldav
-	// (2) + disk_space/background_jobs/version (3) = 11 rows.
-	assert.Len(t, d.Checks, 11)
+	// filesystem/backup (5) + data_integrity (1) + one folded notifications
+	// check + carddav/caldav (2) + disk_space/background_jobs/version (3) = 12
+	// rows.
+	assert.Len(t, d.Checks, 12)
+	assert.Equal(t, DiagStatusWarning, findCheck(t, d, "data_integrity").Status)
+}
+
+// TestRunDiagnosticsDataIntegrity: the data-invariant pass (DB-01, issue #460)
+// surfaces in the operator sweep as its own row — ok when the last recorded
+// result passed, warning when it failed or is stale, ok when the check is
+// disabled (a deliberate configuration).
+func TestRunDiagnosticsDataIntegrity(t *testing.T) {
+	t.Run("passed", func(t *testing.T) {
+		db := dbtest.New(t)
+		cfg := validDiagnosticsConfig(t)
+		cfg.DBIntegrityCheckEnabled = true
+		cfg.DBIntegrityCheckIntervalHours = 24
+		require.NoError(t, db.Create(&models.OperationalCheckResult{
+			CheckName: models.CheckNameDataIntegrity, Status: models.OpCheckStatusOK, CheckedAt: time.Now(),
+		}).Error)
+
+		c := findCheck(t, RunDiagnostics(context.Background(), db, cfg), "data_integrity")
+		assert.Equal(t, DiagStatusOK, c.Status)
+	})
+
+	t.Run("failed is a warning", func(t *testing.T) {
+		db := dbtest.New(t)
+		cfg := validDiagnosticsConfig(t)
+		cfg.DBIntegrityCheckEnabled = true
+		cfg.DBIntegrityCheckIntervalHours = 24
+		require.NoError(t, db.Create(&models.OperationalCheckResult{
+			CheckName: models.CheckNameDataIntegrity, Status: models.OpCheckStatusFailed,
+			Detail: "circle_member.orphaned_contact x3", CheckedAt: time.Now(),
+		}).Error)
+
+		d := RunDiagnostics(context.Background(), db, cfg)
+		c := findCheck(t, d, "data_integrity")
+		assert.Equal(t, DiagStatusWarning, c.Status)
+		assert.Equal(t, "warning", d.Summary.Status)
+		// The row.Detail can name tables — it must not reach the response body.
+		raw, err := json.Marshal(d)
+		require.NoError(t, err)
+		assert.NotContains(t, string(raw), "circle_member.orphaned_contact")
+	})
+
+	t.Run("disabled is ok", func(t *testing.T) {
+		db := dbtest.New(t)
+		cfg := validDiagnosticsConfig(t) // DBIntegrityCheckEnabled stays false
+		c := findCheck(t, RunDiagnostics(context.Background(), db, cfg), "data_integrity")
+		assert.Equal(t, DiagStatusOK, c.Status)
+		assert.Contains(t, c.Message, "disabled")
+	})
 }

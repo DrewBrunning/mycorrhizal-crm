@@ -105,6 +105,7 @@ func RunDiagnostics(ctx context.Context, db *gorm.DB, cfg config.Config) Diagnos
 		diagnosticsMigrations(db),
 		diagnosticsFilesystem(cfg),
 		diagnosticsBackup(db, cfg),
+		diagnosticsDataIntegrity(db, cfg),
 	)
 	out.Checks = append(out.Checks, diagnosticsNotifications(ctx, db, cfg)...)
 	out.Checks = append(out.Checks, diagnosticsIntegrations(ctx, db, cfg)...)
@@ -289,6 +290,31 @@ func diagnosticsBackup(db *gorm.DB, cfg config.Config) DiagnosticCheck {
 		return DiagnosticCheck{Name: "backup", Status: DiagStatusOK, Message: "restore drill is disabled"}
 	default:
 		return DiagnosticCheck{Name: "backup", Status: DiagStatusWarning, Message: d.Reason}
+	}
+}
+
+// diagnosticsDataIntegrity reuses persistedCheckDetail for the data-invariant
+// pass (DB-01, issue #460) — the last recorded result of the checker that
+// looks for relationships pointing at deleted contacts, orphaned join rows,
+// dangling external references and malformed canonical records. A stale or
+// failed pass is a warning (the instance still serves; the data has a logical
+// hole an operator should look at with `doctor` or GET /admin/integrity-check).
+// A disabled check is reported ok (deliberate configuration). This is the
+// #423 coordination point: the operational doctor surfaces the data doctor's
+// verdict without re-running it.
+func diagnosticsDataIntegrity(db *gorm.DB, cfg config.Config) DiagnosticCheck {
+	if db == nil {
+		return DiagnosticCheck{Name: "data_integrity", Status: DiagStatusWarning, Message: "cannot read data-integrity state"}
+	}
+	d := persistedCheckDetail(db, models.CheckNameDataIntegrity,
+		cfg.DBIntegrityCheckEnabled, cfg.DBIntegrityCheckIntervalHours)
+	switch d.Status {
+	case DeepStatusOK:
+		return DiagnosticCheck{Name: "data_integrity", Status: DiagStatusOK, Message: "last data-invariant check passed"}
+	case DeepStatusNotConfigured:
+		return DiagnosticCheck{Name: "data_integrity", Status: DiagStatusOK, Message: "data-invariant check is disabled"}
+	default:
+		return DiagnosticCheck{Name: "data_integrity", Status: DiagStatusWarning, Message: d.Reason}
 	}
 }
 
