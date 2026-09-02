@@ -8,16 +8,23 @@ it is the one operation that touches every row, it runs at startup before the
 app is available, and on SQLite it competes with itself for a single write
 lock and for disk.
 
-The same generator and harness serve PERF-01 (issue #468, benchmark fixtures)
-and issue #498 (capacity testing under constrained resources) — one dataset
-generator, not three.
+The same generator serves PERF-01 (issue #468, benchmark fixtures) and issue
+#498 (capacity testing under constrained resources) — one dataset generator,
+not three. The full profile catalogue (`smoke`/`typical`/`large`/`stress`,
+their user counts, graph shape and resource requirements) lives in
+[scale-profiles.md](scale-profiles.md). The migration test measures over the
+`--contacts N` slice of that generator: **one user, no hub/chain graph edges**,
+so the row counts below stay exactly predictable for the integrity assertion.
+The `large` PERF-01 profile is the same block-replicated data with a user count
+and the traversal graph added on top.
 
 ## What "large" means (written number, not an adjective)
 
-The large profile is derived from the intended MVP scale and stated as a
-shape, not a size. It is **100,000 contacts**, generated as 6,667 replicas of
-the canonical TEST-02 pathological manifest (issue #430), so every data shape
-— including the pathological ones — exists at scale. The exact row counts are
+The large migration profile is derived from the intended MVP scale and stated
+as a shape, not a size. It is **100,000 contacts**, generated as 6,667 replicas
+of the canonical TEST-02 pathological manifest (issue #430), so every data
+shape — including the pathological ones — exists at scale. The exact row counts
+are
 the canonical manifest's own ratios times 6,667 blocks:
 
 | Entity | Per block | At 100,000 contacts (6,667 blocks) |

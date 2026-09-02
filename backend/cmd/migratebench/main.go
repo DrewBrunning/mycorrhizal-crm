@@ -9,10 +9,15 @@
 //
 // Subcommands:
 //
-//	seed       --contacts N --db PATH
-//	           Build a large CURRENT-schema database at PATH: the canonical
-//	           TEST-02 manifest scaled to >= N contacts, populated through the
-//	           same code paths the REST API uses.
+//	seed       (--contacts N | --profile NAME) --db PATH
+//	           Build a large CURRENT-schema database at PATH, populated through
+//	           the same code paths the REST API uses. --contacts N is the
+//	           canonical TEST-02 manifest block-scaled to >= N contacts (one
+//	           user, no graph shape — the exact-row-count artifact the
+//	           migration test measures over). --profile NAME is a named entry
+//	           from the PERF-01 catalogue (internal/largedata: smoke|typical|
+//	           large|stress), which adds a user count and a dense-hub/deep-chain
+//	           graph on top — see docs/development/scale-profiles.md.
 //
 //	checkpoint --db PATH --version N --out PATH
 //	           Copy every row of a current-schema database into a fresh
@@ -114,28 +119,37 @@ func exitCode(name string, err error) int {
 	return 0
 }
 
-// runSeed populates a large current-schema database.
+// runSeed populates a large current-schema database — either an ad-hoc
+// --contacts count (one user, no graph shape: the exact-row-count artifact the
+// migration test measures over) or a named --profile from the PERF-01
+// catalogue (internal/largedata, multi-user + dense-hub/deep-chain graph:
+// docs/development/scale-profiles.md). Exactly one of the two is required.
 func runSeed(args []string) error {
 	fs := flag.NewFlagSet("seed", flag.ContinueOnError)
-	contacts := fs.Int("contacts", 0, "target contact count (rounded up to a whole manifest block)")
+	contacts := fs.Int("contacts", 0, "target contact count (rounded up to a whole manifest block); mutually exclusive with --profile")
+	profileName := fs.String("profile", "", "PERF-01 dataset profile: "+profileNames()+"; mutually exclusive with --contacts")
 	dbPath := fs.String("db", "", "output database path")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if *contacts <= 0 {
-		return fmt.Errorf("--contacts must be positive")
-	}
 	if *dbPath == "" {
 		return fmt.Errorf("--db is required")
+	}
+	if (*contacts > 0) == (*profileName != "") {
+		return fmt.Errorf("exactly one of --contacts or --profile is required")
+	}
+	var profile largedata.Profile
+	if *profileName != "" {
+		p, ok := largedata.ProfileByName(*profileName)
+		if !ok {
+			return fmt.Errorf("unknown --profile %q (have %s)", *profileName, profileNames())
+		}
+		profile = p
 	}
 	_ = os.Remove(*dbPath)
 
 	m, err := canonicalfixture.Read()
 	if err != nil { // # pragma: no cover — the committed manifest always resolves under the repo root
-		return err
-	}
-	scaled, err := largedata.Scale(m, *contacts)
-	if err != nil { // # pragma: no cover — a positive --contacts and a manifest that just loaded cannot fail Scale
 		return err
 	}
 
@@ -144,10 +158,28 @@ func runSeed(args []string) error {
 	if err != nil { // # pragma: no cover — a fresh path always migrates; the migration tests exercise the failure vocabulary
 		return err
 	}
-	if _, err := canonicalfixture.Populate(db, scaled); err != nil { // # pragma: no cover — a scaled manifest that validated against a migrated DB always populates; largedata tests exercise the failure vocabulary
-		_ = sqlClose(db)
-		return err
+
+	var summary string
+	if *profileName != "" {
+		ds, err := largedata.Populate(db, m, profile)
+		if err != nil { // # pragma: no cover — a catalogue profile always populates a fresh migrated DB; largedata tests exercise the failure vocabulary
+			_ = sqlClose(db)
+			return err
+		}
+		summary = fmt.Sprintf("profile=%s users=%d contacts=%d", profile.Name, len(ds.Users), ds.ContactCount())
+	} else {
+		scaled, err := largedata.Scale(m, *contacts)
+		if err != nil { // # pragma: no cover — a positive --contacts and a manifest that just loaded cannot fail Scale
+			_ = sqlClose(db)
+			return err
+		}
+		if _, err := canonicalfixture.Populate(db, scaled); err != nil { // # pragma: no cover — a scaled manifest that validated against a migrated DB always populates; largedata tests exercise the failure vocabulary
+			_ = sqlClose(db)
+			return err
+		}
+		summary = fmt.Sprintf("contacts=%d blocks=%d", len(scaled.Contacts), len(scaled.Contacts)/largedata.BlocksOfManifest)
 	}
+
 	sqlDB, err := db.DB()
 	if err != nil { // # pragma: no cover — DB() fails only on a closed handle, which was just opened
 		return err
@@ -165,10 +197,19 @@ func runSeed(args []string) error {
 	if err != nil { // # pragma: no cover — the file was just written
 		return err
 	}
-	fmt.Printf("migratebench seed: contacts=%d blocks=%d db_bytes=%d duration_ms=%d\n",
-		len(scaled.Contacts), len(scaled.Contacts)/largedata.BlocksOfManifest, size,
-		time.Since(start).Milliseconds())
+	fmt.Printf("migratebench seed: %s db_bytes=%d duration_ms=%d\n",
+		summary, size, time.Since(start).Milliseconds())
 	return nil
+}
+
+// profileNames is the catalogue's names as a "a|b|c" string for flag help and
+// error messages.
+func profileNames() string {
+	names := make([]string, 0, len(largedata.Profiles()))
+	for _, p := range largedata.Profiles() {
+		names = append(names, p.Name)
+	}
+	return strings.Join(names, "|")
 }
 
 // runCheckpoint transplants a current-schema database's rows into a fresh

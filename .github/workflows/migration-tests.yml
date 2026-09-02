@@ -324,7 +324,44 @@ jobs:
           set -eo pipefail
           out="$(go test ./internal/largedata/ -count=1 -v 2>&1)"
           echo "$out"
-          if ! grep -q -- "--- PASS: TestScalePopulatesLargeDataset " <<<"$out"; then
-            echo "::error::expected populate-at-scale test did not run (MYCORRHIZAL_LARGE_TESTS not honored?)"
-            exit 1
+          # Fail-safe: these are env-gated, so a typo'd variable would silently
+          # skip them and the job would pass vacuously.
+          for want in "TestScalePopulatesLargeDataset " "TestProfilePopulatesAtScale "; do
+            if ! grep -q -- "--- PASS: $want" <<<"$out"; then
+              echo "::error::expected large-dataset test '$want' did not run (MYCORRHIZAL_LARGE_TESTS not honored?)"
+              exit 1
+            fi
+          done
+
+      # PERF-01 (issue #468): the `large` benchmark profile is the biggest
+      # dataset a consumer (#469/#470/#498/#453) runs against. Seeding it is a
+      # ~2-minute one-off, so it is cached as a CI artifact keyed on the
+      # generator inputs and only rebuilt when they change. The seed CLI path
+      # (`migratebench seed --profile`) is the same generator the migration
+      # test uses — asserted here by using it.
+      - name: Cache the large benchmark-profile database
+        id: perf01-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ runner.temp }}/perf01-large.db
+          key: perf01-large-${{ hashFiles('testdata/canonical-fixture/manifest.json', 'backend/internal/largedata/**', 'backend/internal/canonicalfixture/**', 'backend/cmd/migratebench/**', 'backend/database/migrations/**') }}
+
+      - name: Seed + verify the large benchmark profile
+        working-directory: backend
+        run: |
+          set -eo pipefail
+          db="$RUNNER_TEMP/perf01-large.db"
+          if [ -f "$db" ]; then
+            echo "large profile DB restored from cache ($(stat -c%s "$db") bytes) — skipping the ~2-minute seed"
+          else
+            time go run ./cmd/migratebench seed --profile large --db "$db"
           fi
+          # Prove the cached/seeded artifact is a sound database at rest. The
+          # DB-01 application-invariant guarantee for the profile generator is
+          # carried by TestProfileDatasetPassesDB01 (smoke, every PR) and
+          # TestProfilePopulatesAtScale (typical, this job) — same generator,
+          # more rows.
+          out="$(go run ./cmd/dbinspect "$db" 2>/dev/null)"
+          echo "$out"
+          grep -q 'integrity_check=ok' <<<"$out" || { echo "::error::large profile DB failed integrity_check"; exit 1; }
+          grep -q 'dirty=false' <<<"$out" || { echo "::error::large profile DB is dirty"; exit 1; }
