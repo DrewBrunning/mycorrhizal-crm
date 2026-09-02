@@ -107,4 +107,14 @@ const (
 	// job_runs rows so the rebuild's duration and outcome are visible on the
 	// admin job-run timeline (issue #391) rather than only on a terminal.
 	JobNameSearchIndexRebuild = "search_index_rebuild"
+
+	// JobNameDerivedColumnsRebuild is the job name for the denormalized
+	// contact-column rebuild (issue #497) — the flat contacts.* projection,
+	// contacts.sort_name, contacts.addresses_flat and contacts.phones_normalized
+	// re-derived from the authoritative nested Card. Like
+	// JobNameSearchIndexRebuild it is operator-triggered (POST
+	// /admin/contacts/rebuild-derived), not scheduled, and auto-run after a
+	// restore; it produces job_runs rows so its duration and outcome show on
+	// the admin job-run timeline.
+	JobNameDerivedColumnsRebuild = "derived_columns_rebuild"
 )

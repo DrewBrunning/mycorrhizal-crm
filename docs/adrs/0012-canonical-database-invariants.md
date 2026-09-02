@@ -103,7 +103,15 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
   `retry(op) ≡ op` for every registered idempotent mutation.
 - **`INV-A5`** — `TestSearchIndex_RebuildMatchesIncremental`
   ([`services/search_index_property_test.go`](../../backend/services/search_index_property_test.go)):
-  a from-scratch `RebuildSearchIndex` produces an index identical to the trigger-maintained one.
+  a from-scratch `RebuildSearchIndex` produces an index identical to the trigger-maintained one. For
+  the flat-column family (issue #497): `RecomputeDerivedColumns` returns nothing for a freshly-saved
+  contact and names each corrupted column
+  ([`models/contact_derived_test.go`](../../backend/models/contact_derived_test.go));
+  `RebuildDerivedContactColumns` is idempotent, repairs a hook-bypassing write, and converges on the
+  `checkDerivedContactColumns` fixpoint
+  ([`services/derived_contact_columns_service_test.go`](../../backend/services/derived_contact_columns_service_test.go));
+  and every GORM plain-save primitive on a loaded contact preserves the Card-only members
+  (`TestBeforeSave_EveryPlainSavePrimitivePreservesCardOnlyData`).
 - **`INV-A6`** — `TestDataInvariant_A6_ContactSyncConvergesToAFixpoint`
   ([`services/data_integrity_sync_property_test.go`](../../backend/services/data_integrity_sync_property_test.go)):
   re-syncing an unchanged remote is a no-op with stable revision tokens, and a remote change applied
@@ -450,20 +458,29 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
   ([`services/search_service.go:331`](../../backend/services/search_service.go)), runnable as
   `cmd/backfill-search-index` and documented as "always the same as what the triggers would have
   produced" ([`backend/cmd/backfill-search-index/main.go`](../../backend/cmd/backfill-search-index/main.go));
-  the flat contact columns are recomputed from `Card` by `ApplyRecordToContact` + `BeforeSave`
-  ([`models/contact_record_reverse.go:53`](../../backend/models/contact_record_reverse.go)); FTS
-  triggers keep the index live between rebuilds (migrations `000007`, `000010`, `000020`).
-- **Can be violated by:** a raw-SQL migration or bulk import that bypasses the FTS triggers without a
-  follow-up backfill (the reason `cmd/backfill-search-index` exists); a derived artifact with *no*
-  rebuild path (#497 owns the inventory of these).
+  the flat contact columns have their own standalone rebuild too — `services.RebuildDerivedContactColumns`
+  ([`services/derived_contact_columns_service.go`](../../backend/services/derived_contact_columns_service.go)),
+  runnable as `cmd/backfill-derived-columns` or `POST /api/v1/admin/contacts/rebuild-derived`, which
+  re-derives the flat scalars straight from `Card`'s projection (`RecomputeDerivedColumns`,
+  [`models/contact_derived.go`](../../backend/models/contact_derived.go)) — and are otherwise kept live
+  by `BeforeSave` → `deriveDenormalized` + the T75 merge; FTS triggers keep the index live between
+  rebuilds (migrations `000007`, `000010`, `000020`). The full catalogue of derived / cached state,
+  each classified rebuildable / computed-on-read / canonical-not-derived / cached, is
+  [`docs/derived-data-inventory.md`](../derived-data-inventory.md) (issue #497).
+- **Can be violated by:** a raw-SQL migration or bulk import that bypasses the FTS triggers / the
+  GORM hooks without a follow-up backfill (the reason `cmd/backfill-search-index` and
+  `cmd/backfill-derived-columns` exist); a restore from a backup taken mid-write.
 - **Checked by:** `checkDerivedIndexes` (`data_integrity_service.go`) compares `COUNT(*)` of each
   `*_fts` table against its live base rows (`derived_index.fts_row_count_divergent`, repairable via
   `RebuildSearchIndex`) — the cheap version, driven from the TEST-02 fixture by the DB-03 matrix.
-  The deep, per-row, contract-aware comparison is INV-D9's `services.CheckSearchIndexConsistency`
-  (issue #462); the rebuild-vs-incremental equivalence for an arbitrary mutation sequence is
+  `checkDerivedContactColumns` (same file, `derived_contact_column.divergent`, issue #497) recomputes
+  each denormalized `contacts.*` column from `Card` and reports per user which drifted — repair is
+  `RebuildDerivedContactColumns`, never the orphan-row path. The deep, per-row, contract-aware FTS
+  comparison is INV-D9's `services.CheckSearchIndexConsistency` (issue #462); the
+  rebuild-vs-incremental equivalence for an arbitrary mutation sequence is
   `TestSearchIndex_RebuildMatchesIncremental`
-  ([`services/search_index_property_test.go`](../../backend/services/search_index_property_test.go)).
-  The flat-column family inventory is #497.
+  ([`services/search_index_property_test.go`](../../backend/services/search_index_property_test.go)),
+  and the flat-projection fixpoint property is `TestDataInvariant_D8_FlatProjectionIsAFixpoint`.
 
 #### INV-A6 — Every sync operation eventually converges
 
