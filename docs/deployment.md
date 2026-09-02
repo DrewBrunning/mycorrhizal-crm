@@ -340,6 +340,16 @@ expected meaning of restoring a file-level backup; there is no partial/merge res
    ```
    See [Rebuilding the full-text search index](operations/search-index.md) for the no-HTTP path and
    the guarantees.
+4b. **Rebuild the denormalized contact columns.** Same reasoning for the flat `contacts.*` projection,
+   `sort_name`, `addresses_flat` and `phones_normalized` — a cross-version restore's startup
+   migrations, or any hook-bypassing write, can leave them stale. Also cheap and idempotent:
+   ```sh
+   curl -fsS -X POST https://<host>/api/v1/admin/contacts/rebuild-derived \
+     -H "Authorization: Bearer <admin token>"
+   # → {"message":"Derived contact columns rebuilt","contacts_scanned":…,"contacts_updated":0,…}
+   ```
+   No-HTTP path: `go run ./cmd/backfill-derived-columns`. Full catalogue of derived state:
+   [Derived-data inventory](derived-data-inventory.md).
 5. **Verify** — a restore that has never been tested is a hypothesis. Log in and check that a known
    contact, a recent note, and a reminder are present; run a search for a contact you know exists;
    for the photo/attachment directories, open a contact's photo and download an attachment. The

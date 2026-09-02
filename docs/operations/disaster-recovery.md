@@ -427,12 +427,23 @@ or by physics, and the mitigations are all *before* the fact.
 - **A precise pre-incident instant.** There is no point-in-time replay; you
   recover to a backup's point, not to "5 minutes before the mistake".
 
-Derived state that looks like loss but is not: the **FTS search index** is
-fully rebuildable from canonical data — a documented restore step
-(`docs/deployment.md` → Restore, step 4) and, at any time, `POST
-/api/v1/admin/search/rebuild` or `cmd/backfill-search-index`
-(`operations/search-index.md`) — and **in-flight sessions / 2FA challenges**
-dropped by a key change are expected, not data loss.
+Derived state that looks like loss but is not: the **FTS search index** and the
+**denormalized `contacts.*` columns** (the flat name/email/phone projection,
+`sort_name`, `addresses_flat`, `phones_normalized`) are both fully rebuildable
+from canonical data. After a restore, run **both** rebuilds and then the DB-01
+checker:
+
+```sh
+curl -s -XPOST https://<host>/api/v1/admin/search/rebuild            # or: go run ./cmd/backfill-search-index
+curl -s -XPOST https://<host>/api/v1/admin/contacts/rebuild-derived  # or: go run ./cmd/backfill-derived-columns
+```
+
+A `VACUUM INTO` snapshot is transactionally consistent, so on a healthy backup
+these are no-ops — but a snapshot taken from a database that was itself mid-repair
+might not be, and the checker (verification step 2 below) proves it either way.
+The full catalogue of derived / cached state is
+[`derived-data-inventory.md`](../derived-data-inventory.md). **In-flight sessions /
+2FA challenges** dropped by a key change are expected, not data loss.
 
 ## Verifying a recovered instance
 
@@ -452,9 +463,12 @@ out a different class of failure.
 2. **Application invariants** — the data is meaningful, not just structurally
    intact. The DB-01 checker (issue [#460](https://github.com/DrewBrunning/mycorrhizal-crm/issues/460))
    reports relationships pointing at missing contacts, orphaned join rows,
-   attachment/photo rows with no file, and similar logical holes, distinctly from
-   the storage pass. Run it (or `make backup-verify` for the file-reconciliation
-   subset) and confirm it is clean.
+   attachment/photo rows with no file, a denormalized `contacts.*` column that
+   disagrees with its Card (issue [#497](https://github.com/DrewBrunning/mycorrhizal-crm/issues/497)),
+   and similar logical holes, distinctly from the storage pass. Run it (or
+   `make backup-verify` for the file-reconciliation subset) and confirm it is
+   clean — a `derived_contact_column.divergent` finding here means the
+   rebuild-derived step above has not been run.
 3. **Health and readiness** — the server agrees it is serving.
    ```sh
    curl -s https://<host>/health/ready   # → {"status":"ready", …}   (not_ready while migrations pending/dirty)

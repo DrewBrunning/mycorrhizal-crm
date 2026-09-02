@@ -9696,6 +9696,73 @@ paths:
                       contacts: { type: integer, format: int64, example: 1284 }
                       notes: { type: integer, format: int64, example: 4021 }
                       activities: { type: integer, format: int64, example: 903 }
+  /admin/contacts/rebuild-derived:
+    post:
+      summary: Rebuild the denormalized contact columns (admin)
+      operationId: adminRebuildDerivedColumns
+      description: >
+        Re-derives every live contact's denormalized columns — the flat
+        `contacts.*` projection scalars, `sort_name`, `addresses_flat` and
+        `phones_normalized` — from the authoritative nested Card (issue #497).
+        The flat-column analogue of POST /admin/search/rebuild. Idempotent —
+        these columns are derived data, so a rebuild always converges on what a
+        plain re-save through the ordinary write path would have produced. Run
+        it after a bulk import that INSERTed contact rows directly, a raw-SQL
+        migration that touched a base column, or a restore from backup; run it
+        alongside the search-index rebuild.
+
+
+        Commits page by page rather than in one transaction, so an interrupted
+        run resumes cleanly and a large instance never holds the write lock for
+        the whole pass. Recorded as a `derived_columns_rebuild` job run
+        (visible via GET /admin/job-runs). A rebuild already in progress
+        returns 409. On a faithful database it rewrites nothing.
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Not an admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A rebuild is already in progress.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: The rebuild failed; every page it had already committed is correct.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: Derived columns rebuilt.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message, contacts_scanned, contacts_updated]
+                properties:
+                  message:
+                    type: string
+                    example: Derived contact columns rebuilt
+                  contacts_scanned: { type: integer, format: int64, example: 1284 }
+                  contacts_updated: { type: integer, format: int64, example: 0 }
+                  column_updates:
+                    type: object
+                    nullable: true
+                    description: >
+                      Per-column count of rows rewritten; null when nothing
+                      drifted. Keys are column names
+                      (`firstname`, `sort_name`, `addresses_flat`, …).
+                    additionalProperties: { type: integer, format: int64 }
 
 components:
   securitySchemes:
