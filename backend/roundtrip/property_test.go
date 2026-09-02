@@ -40,6 +40,7 @@ import (
 // gets committed to the TEST-02 manifest when a real bug is found (the
 // "persist failing seeds" requirement).
 func TestRoundTrip_Property(t *testing.T) {
+	t.Parallel()
 	byConcept := correspondence.ByConcept()
 
 	for _, f := range formats {
@@ -80,6 +81,7 @@ func TestRoundTrip_Property(t *testing.T) {
 // idempotence shrinks to the smallest shape that still double-escapes,
 // double-wraps, or fails to settle.
 func TestRepeatedConversion_Property(t *testing.T) {
+	t.Parallel()
 	for _, f := range formats {
 		f := f
 		t.Run(f.name, rapid.MakeCheck(func(t *rapid.T) {

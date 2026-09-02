@@ -22,6 +22,7 @@ import (
 // mapped field failing to land, a change with no warn to explain it.
 
 func TestClassify_LossWithHomeAndNoWarn_IsDefect(t *testing.T) {
+	t.Parallel()
 	d := semanticequal.Difference{Concept: "email", PresentA: true}
 	// email has a v4 home (v4_prop EMAIL).
 	row := correspondence.Row{ConceptID: "email", V4Prop: "EMAIL"}
@@ -35,6 +36,7 @@ func TestClassify_LossWithHomeAndNoWarn_IsDefect(t *testing.T) {
 }
 
 func TestClassify_LossWithHomeAndWarn_IsAcceptable(t *testing.T) {
+	t.Parallel()
 	d := semanticequal.Difference{Concept: "adr", PresentA: true}
 	row := correspondence.Row{ConceptID: "adr", V3Prop: "ADR"}
 	diags := []contactmodel.Diagnostic{{Severity: "warn", Concept: "adr"}}
@@ -44,6 +46,7 @@ func TestClassify_LossWithHomeAndWarn_IsAcceptable(t *testing.T) {
 }
 
 func TestClassify_LossWithoutHomeAndNoWarn_IsSilentDropDefect(t *testing.T) {
+	t.Parallel()
 	d := semanticequal.Difference{Concept: "kind", PresentA: true}
 	row := correspondence.Row{ConceptID: "kind", V3Prop: "-"}
 	problems := classify(d, formats[0], row, nil)
@@ -56,6 +59,7 @@ func TestClassify_LossWithoutHomeAndNoWarn_IsSilentDropDefect(t *testing.T) {
 }
 
 func TestClassify_LossWithoutHomeAndWarn_IsAcceptable(t *testing.T) {
+	t.Parallel()
 	d := semanticequal.Difference{Concept: "created", PresentA: true}
 	row := correspondence.Row{ConceptID: "created", V3Prop: "-"}
 	diags := []contactmodel.Diagnostic{{Severity: "warn", Concept: "created"}}
@@ -65,6 +69,7 @@ func TestClassify_LossWithoutHomeAndWarn_IsAcceptable(t *testing.T) {
 }
 
 func TestClassify_ChangedWithoutWarn_IsDefect(t *testing.T) {
+	t.Parallel()
 	d := semanticequal.Difference{Concept: "email", PresentA: true, PresentB: true}
 	row := correspondence.Row{ConceptID: "email", V4Prop: "EMAIL"}
 	if problems := classify(d, formats[1], row, nil); len(problems) == 0 {
@@ -79,6 +84,7 @@ func TestClassify_ChangedWithoutWarn_IsDefect(t *testing.T) {
 }
 
 func TestClassify_Gain_IsAcceptable(t *testing.T) {
+	t.Parallel()
 	// A value present only in the round-tripped record (vCard 3.0 synthesizing
 	// the mandatory FN from components) is reported, not failed.
 	d := semanticequal.Difference{Concept: "name.full", PresentB: true}
@@ -88,6 +94,7 @@ func TestClassify_Gain_IsAcceptable(t *testing.T) {
 }
 
 func TestHasWarn_MatchesConceptAndSeverity(t *testing.T) {
+	t.Parallel()
 	diags := []contactmodel.Diagnostic{
 		{Severity: "info", Concept: "kind"},
 		{Severity: "warn", Concept: "created"},
@@ -114,6 +121,7 @@ func TestHasWarn_MatchesConceptAndSeverity(t *testing.T) {
 // into Record.Passthrough.VCard on import, re-emitted on export, and compares
 // equal across the full round trip.
 func TestRoundTrip_UnknownVCardPropertySurvivesViaPassthrough(t *testing.T) {
+	t.Parallel()
 	for _, f := range []format{formats[0], formats[1]} {
 		f := f
 		t.Run(f.name, func(t *testing.T) {
@@ -147,6 +155,7 @@ func vcardVersion(name string) string {
 // half of the same check: an unknown top-level JSContact property is captured
 // into Record.Passthrough.JSContact and re-spliced on export.
 func TestRoundTrip_UnknownJSContactPropertySurvivesViaPassthrough(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{"@type":"Card","version":"1.0","uid":"test-1","kind":"individual","x-vendor-prop":"verbatim"}`)
 	rec, _, err := jscontact.Adapter{}.Import(raw)
 	require.NoError(t, err)
@@ -169,6 +178,7 @@ func TestRoundTrip_UnknownJSContactPropertySurvivesViaPassthrough(t *testing.T) 
 // hard failure" check for a representative vCard 3.0 case (kind has no 3.0
 // home): the export succeeds, emits the warn, and omits the property.
 func TestRoundTrip_NoHomeFieldWarnsInsteadOfSilentDrop(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{Kind: "group", UID: "u1", Name: &contactmodel.Name{Full: "Test"}}}
 	out, diags, err := vcard3.Adapter{}.Export(rec)
 	require.NoError(t, err, "no-home fields must never hard-fail export")
