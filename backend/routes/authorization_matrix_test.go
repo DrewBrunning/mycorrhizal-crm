@@ -252,6 +252,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/admin/error-aggregation":    {class: classAdmin},
 		"GET /api/v1/admin/notification-health":  {class: classAdmin},
 		"GET /api/v1/admin/diagnostics":          {class: classAdmin},
+		"GET /api/v1/admin/integrity-check":      {class: classAdmin},
 		"GET /api/v1/admin/system-status":        {class: classAdmin},
 
 		// --- user / dashboard ----------------------------------------------

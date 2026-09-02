@@ -187,27 +187,41 @@ func integrationsCondition(h SubsystemHealth, cfg config.Config) alertConditionR
 	return r
 }
 
-// dbIntegrityCondition reads the persisted DB-integrity-check outcome directly:
-// the check emits no system_event, so ComputeSubsystemHealth cannot see it.
+// dbIntegrityCondition reads the persisted DB-integrity-check outcomes
+// directly: neither pass emits a system_event, so ComputeSubsystemHealth
+// cannot see them. Both the storage-level PRAGMA pass (issue #273) and the
+// application-level data-invariant pass (issue #460) feed this one "Database
+// integrity" alert — an operator wants a single page whether the disk is
+// failing or the data has a logical hole; the detail says which.
 func dbIntegrityCondition(db *gorm.DB) alertConditionResult {
 	r := alertConditionResult{key: alertConditionKeyDBIntegrity, title: "Database integrity"}
 	// Find, not First: a not-yet-run check is the common case and must not log
 	// a "record not found" every evaluation (subsystem_health.go's idiom).
 	var rows []models.OperationalCheckResult
-	if err := db.Where("check_name = ?", models.JobNameDBIntegrityCheck).Limit(1).Find(&rows).Error; err != nil {
+	if err := db.Where("check_name IN ?",
+		[]string{models.JobNameDBIntegrityCheck, models.CheckNameDataIntegrity}).
+		Find(&rows).Error; err != nil {
 		logger.Error().Err(err).Msg("alerting: failed to read db-integrity check result")
 		return r
 	}
-	if len(rows) == 0 {
-		return r // never run — not an incident
-	}
-	row := rows[0]
-	if row.Status == models.OpCheckStatusFailed || row.Status == models.OpCheckStatusError {
-		r.firing = true
-		r.detail = "PRAGMA integrity_check " + row.Status
-		if row.Detail != "" {
-			r.detail += ": " + row.Detail
+	var firing []string
+	for _, row := range rows {
+		if row.Status != models.OpCheckStatusFailed && row.Status != models.OpCheckStatusError {
+			continue
 		}
+		label := "storage"
+		if row.CheckName == models.CheckNameDataIntegrity {
+			label = "data"
+		}
+		msg := label + " " + row.Status
+		if row.Detail != "" {
+			msg += ": " + row.Detail
+		}
+		firing = append(firing, msg)
+	}
+	if len(firing) > 0 {
+		r.firing = true
+		r.detail = "DB integrity — " + strings.Join(firing, "; ")
 	}
 	return r
 }

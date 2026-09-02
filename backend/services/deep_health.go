@@ -88,6 +88,7 @@ type DeepHealth struct {
 	Database       HealthCheckDetail            `json:"database"`
 	Migrations     HealthCheckDetail            `json:"migrations"`
 	IntegrityCheck HealthCheckDetail            `json:"integrity_check"`
+	DataIntegrity  HealthCheckDetail            `json:"data_integrity"`
 	RestoreDrill   HealthCheckDetail            `json:"restore_drill"`
 	BackgroundJobs BackgroundJobsCheck          `json:"background_jobs"`
 	Integrations   map[string]HealthCheckDetail `json:"integrations"`
@@ -103,6 +104,7 @@ var deepHealthCache struct {
 type cachedDeepSection struct {
 	dbWrite        HealthCheckDetail
 	integrityCheck HealthCheckDetail
+	dataIntegrity  HealthCheckDetail
 	restoreDrill   HealthCheckDetail
 	integrations   map[string]HealthCheckDetail
 }
@@ -117,6 +119,7 @@ func DeepHealthSnapshot(db *gorm.DB, cfg config.Config) DeepHealth {
 		Migrations:     migrationLagCheck(db),
 		BackgroundJobs: backgroundJobsCheck(db),
 		IntegrityCheck: cached.integrityCheck,
+		DataIntegrity:  cached.dataIntegrity,
 		RestoreDrill:   cached.restoreDrill,
 		Integrations:   cached.integrations,
 	}
@@ -160,6 +163,10 @@ func cachedDeepHealthSection(db *gorm.DB, cfg config.Config) cachedDeepSection {
 	val := cachedDeepSection{
 		dbWrite: dbWriteProbe(db),
 		integrityCheck: persistedCheckDetail(db, models.JobNameDBIntegrityCheck,
+			cfg.DBIntegrityCheckEnabled, cfg.DBIntegrityCheckIntervalHours),
+		// The data-invariant pass runs on the same schedule / gate as the
+		// storage pass (issue #460) but records under its own check name.
+		dataIntegrity: persistedCheckDetail(db, models.CheckNameDataIntegrity,
 			cfg.DBIntegrityCheckEnabled, cfg.DBIntegrityCheckIntervalHours),
 		restoreDrill: persistedCheckDetail(db, models.JobNameRestoreDrill,
 			cfg.DBRestoreDrillEnabled, cfg.DBRestoreDrillIntervalHours),
@@ -389,7 +396,7 @@ func rollUpDeepStatus(h DeepHealth) string {
 	}
 	facets := []string{
 		h.Database.Status, h.Migrations.Status,
-		h.IntegrityCheck.Status, h.RestoreDrill.Status, h.BackgroundJobs.Status,
+		h.IntegrityCheck.Status, h.DataIntegrity.Status, h.RestoreDrill.Status, h.BackgroundJobs.Status,
 	}
 	for _, d := range h.Integrations {
 		facets = append(facets, d.Status)

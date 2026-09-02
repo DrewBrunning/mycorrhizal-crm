@@ -21,10 +21,10 @@ whose file is gone. Before this ADR the properties that must always hold were sp
 doc-comments, `/CLAUDE.md` traps, six other ADRs, and unwritten convention — so neither #460 (the
 checker) nor #494 (the tests) had a single list to implement against.
 
-This ADR is that list. It does **not** add enforcement code and does **not** build the checker —
-those are #460 and #494. It records, for each invariant: the exact statement, why it must hold,
-what maintains it today (`file:line`), and how it can still be violated — the last being the
-specification the checker is written against.
+This ADR is that list. It adds no enforcement code itself; the checker it specifies shipped in #460
+(see **Implemented by**, below) and the deeper per-invariant suite is #494. For each invariant it
+records: the exact statement, why it must hold, what maintains it today (`file:line`), how it can
+still be violated — the specification the checker is written against — and what now checks it.
 
 ### Two families, checked differently
 
@@ -56,6 +56,24 @@ specification the checker is written against.
 The following are the canonical database invariants. Each has a stable ID (`INV-D1`…`INV-D9`,
 `INV-A1`…`INV-A6`) that #460 and #494 cite.
 
+**Implemented by (DB-01, issue #460):** every at-rest invariant below (`INV-D1`…`INV-D8` and the
+cheap `INV-A5` count) has a detection probe in
+[`backend/services/data_integrity_service.go`](../../backend/services/data_integrity_service.go),
+keyed by a stable `Check` slug and its ADR ID. `RunDataIntegrityChecks` runs them read-only and
+per-user-scoped; the storage pass (`PRAGMA integrity_check` + `PRAGMA foreign_key_check`) lives in
+[`db_integrity_service.go`](../../backend/services/db_integrity_service.go). Operators reach both
+through `GET /api/v1/admin/integrity-check` and the `doctor` CLI
+([`backend/cmd/doctor`](../../backend/cmd/doctor)); the scheduled `db_integrity_check` job records a
+distinct `data_integrity_check` result and the deep `/health` / `/admin/diagnostics` surfaces show it
+separately. Repair is separate and dry-run-by-default
+([`data_integrity_repair.go`](../../backend/services/data_integrity_repair.go)), and only removes
+truly-orphaned hard-delete join/edge rows. Per-invariant "break the check" tests are in
+`data_integrity_service_test.go` / `data_integrity_repair_test.go`; #494 owns the operation-level
+`INV-A1`…`INV-A4`/`A6` suite and the deeper property coverage. `INV-D9` (the deep, contract-aware
+FTS comparison) is issue #462's — its probe is `services.CheckSearchIndexConsistency`
+([`search_consistency_service.go`](../../backend/services/search_consistency_service.go)), folded
+into the same scheduled job and the same `/admin/diagnostics` sweep.
+
 ---
 
 ### Data invariants
@@ -75,9 +93,11 @@ The following are the canonical database invariants. Each has a stable ID (`INV-
   `First` does not filter `deleted_at`, and nothing re-checks an edge after its endpoint is deleted);
   a direct import/merge path that writes an edge without going through `resolveRelationshipEndpoint`;
   a `Contact` hard-deleted out from under an edge by a path not in the cascade list (INV-D3).
-- **Checked by:** #460 lists every edge whose `SourceID`/`TargetID` has no live (`Unscoped` shows
-  `deleted_at IS NOT NULL`, or no row at all) `Contact` for that user. #494 creates the violation
-  (soft-delete a contact, leave the edge) and asserts the checker names it.
+- **Checked by:** `checkRelationshipEndpoints` (`data_integrity_service.go`) reports
+  `relationship_edge.endpoint_missing` (no `Contact` row at all, INV-D1) and
+  `relationship_edge.endpoint_soft_deleted` (INV-D7) per user, via one raw-SQL pass that keeps
+  soft-deleted rows visible. `TestDataIntegrity_INV_D7_SoftDeletedEndpoint` seeds the FK-invisible
+  case; #494 owns the deeper matrix.
 
 #### INV-D2 — Reciprocal relationships are consistent
 
@@ -97,9 +117,9 @@ The following are the canonical database invariants. Each has a stable ID (`INV-
   registered, or an asymmetric pair (`parent_of`/`child_of`) whose two rows stop being mutual
   inverses; a stored edge whose `Type` is not in the registry (bypassing the validator via a raw
   write or a migration).
-- **Checked by:** #460 asserts `InverseRelationType(InverseRelationType(t)) == t` for every registry
-  token and flags any stored `RelationshipEdge.Type` the registry does not know. #494 mutates the
-  registry to break the round-trip and asserts detection.
+- **Checked by:** `checkRelationshipRegistry` asserts `InverseRelationType(InverseRelationType(t)) == t`
+  for every `KnownRelationTypes()` token (`relationship_type.registry_inconsistent`) and flags any
+  stored `relationship_edges.type` the registry does not know (`relationship_edge.unknown_type`).
 
 #### INV-D3 — No orphaned relationship or join rows
 
@@ -117,8 +137,10 @@ The following are the canonical database invariants. Each has a stable ID (`INV-
 - **Can be violated by:** a partially-applied cascade (a delete transaction that failed after some
   but not all dependent tables — see INV-A2); a new join entity added without a line in
   `deleteContactAssociations`; the `VCardUID`-keyed rows, which no FK cascade touches.
-- **Checked by:** #460 counts join rows whose parent id resolves to no row (`Unscoped`) per user.
-  #494 deletes a parent, suppresses one table in the enumeration, and asserts the orphan is found.
+- **Checked by:** `checkOrphanedContactRefs` counts `circle_members` / `household_members` /
+  `contact_tags` / `field_values` rows whose contact (`*_vcard_uid` / `entity_id`) resolves to no
+  row (`join_row.orphaned`, repairable) or a soft-deleted one (INV-D7). The parent-entity side
+  (`circle_id`, `tag_id`, …) is FK-backed and covered by the storage pass's `foreign_key_check`.
 
 #### INV-D4 — No dangling external or cross-table references
 
@@ -138,9 +160,11 @@ The following are the canonical database invariants. Each has a stable ID (`INV-
   a failed write); a `FieldDefinition` removed while values remain; the audit log deliberately
   outliving its subjects (append-only, `/CLAUDE.md` — a tombstone, not a violation, but the checker
   must distinguish the two).
-- **Checked by:** #460 reports each class distinctly (missing contact, missing definition, missing
-  file), sharing the file-reconciliation logic with #454. #494 removes a file / definition and
-  asserts the specific class is reported.
+- **Checked by:** `checkDanglingExternalRefs` (`external_identity` / `external_activity` /
+  `import_source_link` → contact), `checkDanglingFieldValues` (`field_value.dangling_definition`,
+  repairable), and `checkMissingFiles` (`attachment.missing_file`, `contact.missing_photo_file` —
+  skipped when the dir is unset). `checkVanishedAuditRefs` reports `audit_event.vanished_contact` as
+  `info`, since an append-only audit row legitimately outlives a soft-deleted contact.
 
 #### INV-D5 — Identifiers are stable
 
@@ -177,9 +201,10 @@ The following are the canonical database invariants. Each has a stable ID (`INV-
 - **Can be violated by:** a write path that skips the middleware (internal service code, import,
   migration backfill) and constructs a struct by hand; a `CHECK` constraint that drifts from the Go
   `oneof` tag (`/CLAUDE.md` frontend trap #4 is the same drift class).
-- **Checked by:** #460 validates a representative set of enum/format columns against their known
-  vocabularies. `PRAGMA foreign_key_check` is added to #460's *storage* pass (per #460 action 3).
-  #494 inserts a row that violates a `CHECK` via raw SQL and asserts the scan reports it.
+- **Checked by:** `checkRequiredFields` flags `relationship_edges` rows whose `status` / `source` /
+  `sensitivity` is out of range or whose `type` is empty (`relationship_edge.invalid_enum`), and
+  contacts with a blank `vcard_uid` (`contact.missing_vcard_uid`, also INV-D5).
+  `RunStorageIntegrityChecks` runs `PRAGMA foreign_key_check` for the referential half.
 
 #### INV-D7 — Deleted entities are not active relationship targets
 
@@ -198,9 +223,10 @@ The following are the canonical database invariants. Each has a stable ID (`INV-
   consequence. It is called out separately because it is the one the milestone names explicitly
   ("deleted records cannot unexpectedly remain active") and the one a checker should phrase in those
   terms.
-- **Checked by:** #460 reports any `confirmed` edge or live membership whose contact is
-  `deleted_at IS NOT NULL` (assert with `Unscoped()`, `/CLAUDE.md` trap #6). #494 soft-deletes a
-  contact that is in a circle and asserts the stale membership is named.
+- **Checked by:** the `*.endpoint_soft_deleted` / `*.soft_deleted_contact` findings emitted by
+  `checkRelationshipEndpoints` and `checkOrphanedContactRefs` — a soft-deleted contact that is still
+  a `confirmed` edge endpoint or a live membership. Asserted with `Unscoped()` (`/CLAUDE.md` trap
+  #6). Never auto-repaired: the contact may be undeleted.
 
 #### INV-D8 — Canonical records are internally consistent
 
@@ -222,9 +248,11 @@ The following are the canonical database invariants. Each has a stable ID (`INV-
   contact without the merge (`/CLAUDE.md` trap #3 standing rule); an import or migration that writes
   `Card` JSON directly with duplicate element IDs or a flat column that disagrees with the nested
   value.
-- **Checked by:** #460 parses each `Contact.Card`, asserts it is valid JSON with no duplicate element
-  IDs, and compares a re-projection against the stored flat columns. #494 writes a contact whose flat
-  `name` disagrees with `Card.name` and asserts divergence is reported.
+- **Checked by:** `checkCanonicalRecords` streams live contacts in pages and reports
+  `canonical_record.invalid_json` (the `card` column does not parse) and
+  `canonical_record.duplicate_element_id` (a Card collection has two elements with one `id`, breaking
+  the round-trip). The flat-vs-nested reprojection comparison is deferred to #494's property suite
+  (false-positive risk against the TEST-02 fixture).
 
 #### INV-D9 — The FTS search index matches canonical data, modulo its contract
 
@@ -355,10 +383,12 @@ The following are the canonical database invariants. Each has a stable ID (`INV-
 - **Can be violated by:** a raw-SQL migration or bulk import that bypasses the FTS triggers without a
   follow-up backfill (the reason `cmd/backfill-search-index` exists); a derived artifact with *no*
   rebuild path (#497 owns the inventory of these).
-- **Checked by:** #460 does a cheap count comparison (FTS row count vs canonical); the deep,
-  per-row, contract-aware version is INV-D9's `services.CheckSearchIndexConsistency` (issue #462).
-  #494 mutates rows with triggers disabled, rebuilds, and asserts the index matches a from-scratch
-  build.
+- **Checked by:** `checkDerivedIndexes` (`data_integrity_service.go`) compares `COUNT(*)` of each
+  `*_fts` table against its live base rows (`derived_index.fts_row_count_divergent`, repairable via
+  `RebuildSearchIndex`) — the cheap version. The deep, per-row, contract-aware comparison is
+  INV-D9's `services.CheckSearchIndexConsistency` (issue #462); the flat-column family inventory is
+  #497. #494 mutates rows with triggers disabled, rebuilds, and asserts the index matches a
+  from-scratch build.
 
 #### INV-A6 — Every sync operation eventually converges
 

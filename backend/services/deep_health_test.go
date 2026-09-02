@@ -21,7 +21,35 @@ func TestDeepHealthSnapshot_HealthyBaseline(t *testing.T) {
 	assert.Equal(t, DeepStatusOK, h.Database.Status)
 	assert.Equal(t, DeepStatusOK, h.Migrations.Status)
 	assert.Equal(t, DeepStatusNotConfigured, h.IntegrityCheck.Status)
+	assert.Equal(t, DeepStatusNotConfigured, h.DataIntegrity.Status)
 	assert.Empty(t, h.Integrations)
+}
+
+// The data-invariant pass (issue #460) is its own facet, gated by the same
+// DB_INTEGRITY_CHECK_ENABLED flag but read from its own check-name row, so an
+// operator sees "storage ok / data degraded" (or vice versa) distinctly.
+func TestDeepHealthSnapshot_DataIntegrityFacetIsDistinct(t *testing.T) {
+	ResetDeepHealthCache()
+	defer ResetDeepHealthCache()
+	SetDeepHealthCacheTTL(0)
+	defer SetDeepHealthCacheTTL(30 * time.Second)
+
+	db := freshDB(t, "deep-data-integrity.db")
+	cfg := config.Config{DBIntegrityCheckEnabled: true, DBIntegrityCheckIntervalHours: 24}
+
+	// Storage pass recorded OK, data pass recorded a failure.
+	require.NoError(t, db.Create(&models.OperationalCheckResult{
+		CheckName: models.JobNameDBIntegrityCheck, Status: models.OpCheckStatusOK, CheckedAt: time.Now(),
+	}).Error)
+	require.NoError(t, db.Create(&models.OperationalCheckResult{
+		CheckName: models.CheckNameDataIntegrity, Status: models.OpCheckStatusFailed,
+		Detail: "relationship_edge.endpoint_missing x1", CheckedAt: time.Now(),
+	}).Error)
+
+	h := DeepHealthSnapshot(db, cfg)
+	assert.Equal(t, DeepStatusOK, h.IntegrityCheck.Status)
+	assert.Equal(t, DeepStatusDegraded, h.DataIntegrity.Status)
+	assert.Equal(t, "degraded", h.Status, "a data-invariant failure degrades the overall picture")
 }
 
 func TestDeepHealthSnapshot_CachesSlowSection(t *testing.T) {

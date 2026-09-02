@@ -9310,6 +9310,44 @@ paths:
         "403":
           description: Not an admin, or an API token was used on an admin path.
 
+  /admin/integrity-check:
+    get:
+      summary: Run the data-integrity checker (admin)
+      operationId: adminRunIntegrityCheck
+      description: >
+        The on-demand data-integrity sweep (DB-01, issue #460) — the "is the
+        data meaningful?" check an operator runs after a restore, a migration,
+        or a bulk import. It folds two passes:
+
+        - the storage pass: `PRAGMA integrity_check` (pages, indexes, b-tree
+          structure) and `PRAGMA foreign_key_check` (declared foreign keys with
+          no parent — a hole only possible if enforcement was ever bypassed);
+
+        - the data pass: one probe per invariant in
+          `docs/adrs/0012-canonical-database-invariants.md` —
+          relationships pointing at a missing or soft-deleted contact,
+          reciprocal-type-registry inconsistency, orphaned circle/household/tag
+          memberships and field values, dangling external references, missing
+          attachment/photo files, malformed `Card` JSON, and FTS index
+          divergence.
+
+        Read-only and secret-free: every finding carries a table/column name
+        and a row count, never a value, an id, or a file path. Detection only —
+        there is no repair over HTTP; the `doctor` CLI performs repair behind
+        an explicit `-confirm`. A broken database still returns HTTP 200 with
+        `ok: false` — the diagnosis IS the payload. Instance-wide, admin-only.
+      responses:
+        "200":
+          description: The combined storage + data integrity report.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrityCheckResponse"
+        "401":
+          description: Not authenticated (cookie or full-scope bearer token required).
+        "403":
+          description: Not an admin, or an API token was used on an admin path.
+
   /admin/system-status:
     get:
       summary: Aggregated system status (admin)
@@ -11104,6 +11142,78 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DiagnosticCheck"
+    StorageIntegrityReport:
+      type: object
+      description: >
+        The storage-level pass of the integrity checker (DB-01, issue #460):
+        the two SQLite structural pragmas. `ok` is true only when both are
+        clean.
+      required: [ok, integrity_check, foreign_key_check]
+      properties:
+        ok: { type: boolean }
+        integrity_check:
+          type: string
+          description: '`ok`, or the "; "-joined problem lines from PRAGMA integrity_check.'
+        foreign_key_check:
+          type: string
+          description: '`ok`, or a "; "-joined summary of PRAGMA foreign_key_check violations ("<table> row <rowid> -> <parent>").'
+    IntegrityFinding:
+      type: object
+      description: >
+        One class of data-invariant problem found by one probe, aggregated per
+        owning user. Secret-free: table/column names and counts only.
+      required: [invariant, check, severity, count, detail, repairable]
+      properties:
+        invariant:
+          type: string
+          description: "ADR 0012 identifier, e.g. INV-D1."
+        check:
+          type: string
+          description: "Stable probe slug, e.g. relationship_edge.endpoint_missing."
+        severity:
+          type: string
+          enum: [violation, info]
+          description: "Only `violation` flips the report's `ok`, records a failed check, or fires the alert."
+        user_id:
+          type: integer
+          description: "Owner of the affected rows; omitted / 0 for an instance-wide probe."
+        count: { type: integer, description: "Affected rows/references for this (check, user)." }
+        detail: { type: string, description: "Short, secret-free human message." }
+        repairable:
+          type: boolean
+          description: "True when the `doctor` CLI can safely remove the affected rows (a truly-orphaned hard-delete join/edge row)."
+    DataIntegrityReport:
+      type: object
+      description: >
+        The application-invariant pass of the integrity checker (DB-01, issue
+        #460): one probe per at-rest invariant in ADR 0012.
+      required: [timestamp, ok, findings]
+      properties:
+        timestamp: { type: string, format: date-time }
+        ok:
+          type: boolean
+          description: "True when no `violation`-severity finding was produced and every probe completed."
+        findings:
+          type: array
+          items:
+            $ref: "#/components/schemas/IntegrityFinding"
+    IntegrityCheckResponse:
+      type: object
+      description: >
+        The combined output of GET /admin/integrity-check (DB-01, issue #460):
+        the storage pass and the data pass, reported distinctly. Always HTTP
+        200 for an admin caller — a broken database is reported in the body,
+        not as a non-2xx.
+      required: [timestamp, ok, storage, data]
+      properties:
+        timestamp: { type: string, format: date-time }
+        ok:
+          type: boolean
+          description: "True only when both passes are clean."
+        storage:
+          $ref: "#/components/schemas/StorageIntegrityReport"
+        data:
+          $ref: "#/components/schemas/DataIntegrityReport"
     ErrorBucket:
       type: object
       description: >

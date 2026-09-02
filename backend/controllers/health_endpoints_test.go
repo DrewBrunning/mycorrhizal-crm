@@ -213,7 +213,7 @@ func TestDeepHealth_HealthyWithRecordedOKResults(t *testing.T) {
 	cfg.DBRestoreDrillEnabled = true
 
 	now := time.Now()
-	for _, name := range []string{models.JobNameDBIntegrityCheck, models.JobNameRestoreDrill} {
+	for _, name := range []string{models.JobNameDBIntegrityCheck, models.CheckNameDataIntegrity, models.JobNameRestoreDrill} {
 		require.NoError(t, db.Create(&models.OperationalCheckResult{
 			CheckName: name, Status: models.OpCheckStatusOK, CheckedAt: now,
 		}).Error)

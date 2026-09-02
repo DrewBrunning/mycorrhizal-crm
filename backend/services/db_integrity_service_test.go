@@ -331,6 +331,81 @@ func TestCheckDBIntegrityScheduledDisabledByConfig(t *testing.T) {
 	assert.Zero(t, count, "a disabled job must never touch the job_executions table")
 }
 
+// ---------------------------------------------------------------------------
+// DB-01 (issue #460) — storage pass gains PRAGMA foreign_key_check, and the
+// scheduled job runs the data-invariant pass alongside it, recording distinctly.
+// ---------------------------------------------------------------------------
+
+func TestRunStorageIntegrityChecks_HealthyDB(t *testing.T) {
+	db, _ := seededLiveDB(t, "storage-healthy.db")
+
+	report, err := RunStorageIntegrityChecks(db)
+	require.NoError(t, err)
+	assert.True(t, report.OK)
+	assert.Equal(t, "ok", report.IntegrityCheck)
+	assert.Equal(t, "ok", report.ForeignKeyCheck)
+	assert.Empty(t, report.Detail())
+}
+
+func TestRunStorageIntegrityChecks_DetectsForeignKeyViolation(t *testing.T) {
+	db, _ := seededLiveDB(t, "storage-fk.db")
+
+	// Insert a child row whose foreign key has no parent, with enforcement
+	// off — the exact hole a migration that toggled PRAGMA foreign_keys=OFF,
+	// or a restore from a non-enforcing tool, could leave behind.
+	require.NoError(t, db.Exec("PRAGMA foreign_keys=OFF").Error)
+	require.NoError(t, db.Exec(
+		`INSERT INTO circle_members (created_at, updated_at, circle_id, user_id, member_vcard_uid)
+		 VALUES (CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'no-such-circle', 1, 'no-such-contact')`).Error)
+	require.NoError(t, db.Exec("PRAGMA foreign_keys=ON").Error)
+
+	report, err := RunStorageIntegrityChecks(db)
+	require.NoError(t, err, "the pragma itself must run cleanly even when it finds problems")
+	assert.False(t, report.OK)
+	assert.Equal(t, "ok", report.IntegrityCheck, "the pages are fine; only the FK is dangling")
+	assert.Contains(t, report.ForeignKeyCheck, "circle_members")
+	assert.Contains(t, report.Detail(), "foreign_key_check")
+}
+
+func TestCheckDBIntegrityScheduled_RecordsDistinctDataResult(t *testing.T) {
+	db, _ := seededLiveDB(t, "scheduled-data.db")
+	var user models.User
+	require.NoError(t, db.Where("username = ?", "integritytester").First(&user).Error)
+
+	// Seed a data-invariant violation the PRAGMA pass cannot see: an edge
+	// pointing at a contact that does not exist.
+	require.NoError(t, db.Create(&models.RelationshipEdge{
+		UserID: user.ID, SourceID: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+		TargetID: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", Type: "friend_of",
+		Source: models.RelationshipSourceUserConfirmed, Confidence: 1,
+		Status: models.RelationshipStatusConfirmed, Sensitivity: models.RelationshipSensitivityNormal,
+	}).Error)
+
+	cfg := config.Config{DBIntegrityCheckEnabled: true, DBIntegrityCheckIntervalHours: 24}
+	require.NotPanics(t, func() { CheckDBIntegrityScheduled(db, cfg) })
+
+	var storage models.OperationalCheckResult
+	require.NoError(t, db.Where("check_name = ?", models.JobNameDBIntegrityCheck).First(&storage).Error)
+	assert.Equal(t, models.OpCheckStatusOK, storage.Status, "storage pass is clean")
+
+	var data models.OperationalCheckResult
+	require.NoError(t, db.Where("check_name = ?", models.CheckNameDataIntegrity).First(&data).Error)
+	assert.Equal(t, models.OpCheckStatusFailed, data.Status, "data pass found the dangling edge")
+	assert.Contains(t, data.Detail, "relationship_edge.endpoint_missing")
+}
+
+func TestCheckDBIntegrityScheduled_DataPassCleanRecordsOK(t *testing.T) {
+	db, _ := seededLiveDB(t, "scheduled-data-ok.db")
+
+	cfg := config.Config{DBIntegrityCheckEnabled: true, DBIntegrityCheckIntervalHours: 24}
+	require.NotPanics(t, func() { CheckDBIntegrityScheduled(db, cfg) })
+
+	var data models.OperationalCheckResult
+	require.NoError(t, db.Where("check_name = ?", models.CheckNameDataIntegrity).First(&data).Error)
+	assert.Equal(t, models.OpCheckStatusOK, data.Status)
+	assert.Empty(t, data.Detail)
+}
+
 // TestCheckDBIntegrityScheduledFoldsInSearchIndexConsistency pins SEARCH-02
 // (issue #462) recommended action 6: the FTS consistency pass rides the
 // existing integrity job — no third schedule — and records its own
