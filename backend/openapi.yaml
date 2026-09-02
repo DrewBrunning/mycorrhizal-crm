@@ -11040,7 +11040,8 @@ components:
         human message. Check names: `config`, `database`, `migrations`,
         `filesystem`, `backup`, `notification_<channel>` (one per delivery
         channel), `integration_<system>` (carddav, caldav, immich, paperless,
-        seafile, nextcloud), `disk_space`, `background_jobs`, `version`.
+        seafile, nextcloud), `disk_space`, `background_jobs`, `search_index`
+        (FTS index consistency, SEARCH-02), `version`.
       properties:
         name: { type: string, description: "Stable snake_case identifier" }
         status: { type: string, enum: [ok, warning, error] }

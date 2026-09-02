@@ -53,7 +53,7 @@ specification the checker is written against.
 
 ## Decision
 
-The following are the canonical database invariants. Each has a stable ID (`INV-D1`…`INV-D8`,
+The following are the canonical database invariants. Each has a stable ID (`INV-D1`…`INV-D9`,
 `INV-A1`…`INV-A6`) that #460 and #494 cite.
 
 ---
@@ -226,6 +226,50 @@ The following are the canonical database invariants. Each has a stable ID (`INV-
   IDs, and compares a re-projection against the stored flat columns. #494 writes a contact whose flat
   `name` disagrees with `Card.name` and asserts divergence is reported.
 
+#### INV-D9 — The FTS search index matches canonical data, modulo its contract
+
+> Every live (`deleted_at IS NULL`) `contacts` / `notes` / `activities` row is present in its FTS5
+> index (`contacts_fts` / `notes_fts` / `activities_fts`) with the indexed columns and `user_id`
+> equal to the base row's; no index row references a base row that no longer exists. The index is
+> **not** authoritative on deletion or archive state — a soft-deleted or archived row *may or may
+> not* sit in the index, and that is not a divergence.
+
+- **The contract, precisely** (SEARCH-02, issue #462). The index is derived data maintained by SQL
+  triggers ([`000007_search_fts5.up.sql:44-59`](../../backend/database/migrations/000007_search_fts5.up.sql),
+  extended by `000010`/`000020`). It promises *searchability of live rows*, nothing about deleted or
+  archived ones: search correctness for those is enforced by the query, not the index —
+  `applyContactSearch`'s FTS subquery "is not trusted to filter them — the outer query's existing
+  `archived` Where and GORM's default soft-delete scope do that"
+  ([`controllers/contact_controller.go:151-165`](../../backend/controllers/contact_controller.go)).
+  The triggers are deliberately asymmetric about deletion: `*_fts_au` re-inserts only
+  `WHERE new.deleted_at IS NULL` (a soft-delete drops the row from the index), while `*_fts_ai` has
+  no such guard (a row inserted already-soft-deleted — a bulk import, a hand-written migration —
+  stays). Both are acceptable; it just means the index's soft-delete content depends on which path
+  wrote it. **Decision (issue #462 action 7): the consistency check and the rebuild-equivalence
+  property normalise this in the comparison — they only ever compare the index against *live* base
+  rows — rather than aligning the `*_fts_ai` triggers with a migration.** Aligning them is a possible
+  future tightening, tracked in #463 (SEARCH-03, mutation paths).
+- **Holds because:** the triggers fire on every ordinary INSERT/UPDATE/DELETE
+  ([`000007_search_fts5.up.sql`](../../backend/database/migrations/000007_search_fts5.up.sql)); the
+  rebuild ([`services/search_service.go` `RebuildSearchIndex`](../../backend/services/search_service.go),
+  runnable as `cmd/backfill-search-index` or `POST /admin/search/rebuild`) inserts exactly the live
+  rows, so a rebuild always converges on what the triggers would have produced (INV-A5).
+- **Can be violated by:** a raw-SQL migration or bulk import that updates a base table's indexed
+  columns without going through the triggers (stale content); a hard delete a path outside the
+  cascade list performed with triggers somehow bypassed (orphan index row); a scoping bug that
+  writes a wrong `user_id` into the index; a schema change that indexes a new column without adding
+  it to `RebuildSearchIndex` and `ftsConsistencySpecs`.
+- **Checked by:** `services.CheckSearchIndexConsistency`
+  ([`services/search_consistency_service.go`](../../backend/services/search_consistency_service.go)) —
+  read-only, all three indexes, contract-aware (never reports a soft-deleted or archived row in the
+  index), reporting each of four classes per row: `missing_from_index`, `orphan_in_index`,
+  `content_mismatch` (with column names), `scope_mismatch`. Folded into the scheduled DB-integrity
+  job and the on-demand `/admin/diagnostics` sweep (issue #423), not a third schedule. #460 (DB-01)
+  picks it up as one of its application-invariant passes; #494 (DB-03) creates each divergence class
+  and asserts detection; the `TestSearchIndex_RebuildMatchesIncremental` property
+  ([`services/search_index_property_test.go`](../../backend/services/search_index_property_test.go))
+  asserts rebuild-vs-incremental agreement modulo the contract for an arbitrary mutation sequence.
+
 ---
 
 ### Application invariants
@@ -311,9 +355,10 @@ The following are the canonical database invariants. Each has a stable ID (`INV-
 - **Can be violated by:** a raw-SQL migration or bulk import that bypasses the FTS triggers without a
   follow-up backfill (the reason `cmd/backfill-search-index` exists); a derived artifact with *no*
   rebuild path (#497 owns the inventory of these).
-- **Checked by:** #460 does a cheap count comparison (FTS row count vs canonical); #462 owns the deep
-  version. #494 mutates rows with triggers disabled, rebuilds, and asserts the index matches a
-  from-scratch build.
+- **Checked by:** #460 does a cheap count comparison (FTS row count vs canonical); the deep,
+  per-row, contract-aware version is INV-D9's `services.CheckSearchIndexConsistency` (issue #462).
+  #494 mutates rows with triggers disabled, rebuilds, and asserts the index matches a from-scratch
+  build.
 
 #### INV-A6 — Every sync operation eventually converges
 
