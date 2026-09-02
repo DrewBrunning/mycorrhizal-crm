@@ -56,6 +56,7 @@ func formatProp(r Row, f Format) string {
 // shows up as a reviewable diff, because this test fails until
 // docs/data-01-field-compatibility-matrix.md is regenerated.
 func TestMatrixReproducesCommittedDoc(t *testing.T) {
+	t.Parallel()
 	got := Render()
 	committed, err := os.ReadFile(committedMatrixRel)
 	if err != nil {
@@ -74,6 +75,7 @@ func TestMatrixReproducesCommittedDoc(t *testing.T) {
 // the locked table (ADR-0002): every concept_id has exactly one matrix row with
 // the table's own neutral path and transform, and no matrix row is foreign.
 func TestMatrixCoversEveryCorrespondenceRow(t *testing.T) {
+	t.Parallel()
 	table := ByConcept() // panics on a duplicate concept_id
 	entries := Build()
 
@@ -110,6 +112,7 @@ func TestMatrixCoversEveryCorrespondenceRow(t *testing.T) {
 // canonical field with no correspondence row appears in the matrix, classified
 // unsupported in every format — never as a missing row.
 func TestNoHomeFieldsAppearAsUnsupported(t *testing.T) {
+	t.Parallel()
 	entries := Build()
 	var audit []Entry
 	for _, e := range entries {
@@ -152,6 +155,7 @@ func TestNoHomeFieldsAppearAsUnsupported(t *testing.T) {
 // Each check runs only on cells the mechanical rule governs; the special cases
 // are asserted separately by TestSpecialCasesAreTableGrounded.
 func TestBucketInvariants(t *testing.T) {
+	t.Parallel()
 	for _, e := range Build() {
 		if e.Source != "correspondence" {
 			continue
@@ -203,6 +207,7 @@ func TestBucketInvariants(t *testing.T) {
 
 // TestEveryCellHasABucket guards against an empty Bucket leaking into the doc.
 func TestEveryCellHasABucket(t *testing.T) {
+	t.Parallel()
 	for _, e := range Build() {
 		for f, c := range e.Cells {
 			if c.Bucket == "" {
@@ -219,6 +224,7 @@ func TestEveryCellHasABucket(t *testing.T) {
 // (the server default) and annotates the vCard 3.0 classification wherever it
 // differs.
 func TestCardDAVColumnTracksNegotiation(t *testing.T) {
+	t.Parallel()
 	for _, e := range Build() {
 		v4 := e.Cells[FormatVCard4]
 		v3 := e.Cells[FormatVCard3]
@@ -245,6 +251,7 @@ func TestCardDAVColumnTracksNegotiation(t *testing.T) {
 // exclusions (CRM-local flags and relational tables, issue #515) excluded on
 // both sides.
 func TestLossReportCorrespondence(t *testing.T) {
+	t.Parallel()
 	reports := LossReports()
 	reportSet := make(map[string]bool, len(reports))
 	for _, lr := range reports {
@@ -283,6 +290,7 @@ func TestLossReportCorrespondence(t *testing.T) {
 // relational timeline tables (issue #515 policy exclusions) never surface as
 // fidelity loss in DATA-02 — they are deliberate decisions, not losses.
 func TestPolicyExclusionsProduceNoLossReport(t *testing.T) {
+	t.Parallel()
 	for _, lr := range LossReports() {
 		switch lr.Concept {
 		case "crm.archived", "crm.is_favorite", "crm.notes", "crm.activities", "crm.reminders":
@@ -299,6 +307,7 @@ func TestPolicyExclusionsProduceNoLossReport(t *testing.T) {
 // report must correspond to a matrix entry" enforceable at runtime, not just
 // on the generated doc.
 func TestClassificationForCorrespondence(t *testing.T) {
+	t.Parallel()
 	// Matrix -> lookup: every registry entry resolves identically.
 	for _, lr := range LossReports() {
 		got, ok := ClassificationFor(lr.Concept, lr.Format)
@@ -340,6 +349,7 @@ func TestClassificationForCorrespondence(t *testing.T) {
 // correspondence row, so a removed concept can't leave an orphaned override
 // silently misclassifying something else.
 func TestSpecialCasesAreTableGrounded(t *testing.T) {
+	t.Parallel()
 	table := ByConcept()
 	for _, m := range []map[string]Cell{v4Special, v3Special, jsSpecial} {
 		for concept := range m {
@@ -366,6 +376,7 @@ func TestSpecialCasesAreTableGrounded(t *testing.T) {
 // the table's columns: "-" means no home, "X-" / a non-pointer js_ptr means an
 // extension, a non-identity transform means transformed.
 func TestClassifyBranches(t *testing.T) {
+	t.Parallel()
 	// vCard 4.0: "-" -> unsupported.
 	if c := classifyV4(Row{ConceptID: "synthetic.v4dash", V4Prop: "-", Transform: "identity"}); c.Bucket != BucketUnsupported {
 		t.Errorf("classifyV4(\"-\") = %s, want unsupported", c.Bucket)
@@ -386,6 +397,7 @@ func TestClassifyBranches(t *testing.T) {
 
 // TestFormatName covers the CardDAV case and the default fallthrough.
 func TestFormatName(t *testing.T) {
+	t.Parallel()
 	for f, want := range map[Format]string{
 		FormatVCard4:    "vCard 4.0",
 		FormatVCard3:    "vCard 3.0",
@@ -407,6 +419,7 @@ func TestFormatName(t *testing.T) {
 // the matrix, the no-home supplement, and the DATA-02 input must all be
 // present, and the no-home table must be non-empty.
 func TestRenderedDocHasRequiredSections(t *testing.T) {
+	t.Parallel()
 	doc := Render()
 	for _, want := range []string{
 		"## Bucket legend",
