@@ -45,8 +45,8 @@ jobs:
           filters: .github/filters.yaml
 
   # Keeps the shipped container's Go version in lockstep with the toolchain
-  # CI actually tests against. backend/go.mod pins `toolchain go1.26.6`, and
-  # the Dockerfiles hardcode `golang:1.26.6-alpine` independently -- when
+  # CI actually tests against. backend/go.mod pins `toolchain go1.27.1`, and
+  # the Dockerfiles hardcode `golang:1.27.1-alpine` independently -- when
   # Dependabot bumps the gomod toolchain it does not touch the Dockerfile
   # FROM line, so the two can drift silently and ship a container built with
   # an older Go than CI tested. The Go toolchain here is pinned deliberately
