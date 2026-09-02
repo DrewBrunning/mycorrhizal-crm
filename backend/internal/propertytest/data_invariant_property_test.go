@@ -230,6 +230,16 @@ func TestDataInvariant_D8_FlatProjectionIsAFixpoint(t *testing.T) {
 		r, err := services.RunDataIntegrityChecks(context.Background(), db, config.Config{})
 		require.NoError(t, err)
 		for _, f := range r.Findings {
+			// The sweep here guards INV-D8's structural half only (valid JSON,
+			// unique element ids). canonical_record.unresolved_remote_photo is
+			// the transient-photo carve-out from the doc comment above: a
+			// generated contact may hold a Card.Media{kind:"photo"} entry with
+			// a remote http(s) URI and an empty contacts.photo, mergeMedia
+			// preserves it across the plain db.Save above, and the probe
+			// surfaces it at info severity by design — not a projection fault.
+			if f.Check == "canonical_record.unresolved_remote_photo" {
+				continue
+			}
 			require.NotEqual(t, "INV-D8", f.Invariant, "generated contacts must not trip an INV-D8 probe: %+v", f)
 		}
 	}))
