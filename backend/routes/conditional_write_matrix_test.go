@@ -295,13 +295,14 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/users/2fa/recovery-codes/regenerate": exempt(reasonAuth),
 
 		// === Admin ===
-		"POST /api/v1/admin/users":               exempt(reasonAdmin),
-		"PATCH /api/v1/admin/users/:id":          exempt(reasonAdmin),
-		"DELETE /api/v1/admin/users/:id":         exempt(reasonAdmin),
-		"POST /api/v1/admin/users/:id/reset-2fa": exempt(reasonAdmin),
-		"POST /api/v1/admin/trigger-reminders":   exempt(reasonAdmin),
-		"POST /api/v1/admin/trigger-purge":       exempt(reasonAdmin),
-		"POST /api/v1/admin/search/rebuild":      exempt(reasonAdmin),
+		"POST /api/v1/admin/users":                    exempt(reasonAdmin),
+		"PATCH /api/v1/admin/users/:id":               exempt(reasonAdmin),
+		"DELETE /api/v1/admin/users/:id":              exempt(reasonAdmin),
+		"POST /api/v1/admin/users/:id/reset-2fa":      exempt(reasonAdmin),
+		"POST /api/v1/admin/trigger-reminders":        exempt(reasonAdmin),
+		"POST /api/v1/admin/trigger-purge":            exempt(reasonAdmin),
+		"POST /api/v1/admin/search/rebuild":           exempt(reasonAdmin),
+		"POST /api/v1/admin/contacts/rebuild-derived": exempt(reasonAdmin),
 
 		// === Uploads (multipart, not a JSON row replace) ===
 		"POST /api/v1/contacts/:id/attachments":     exempt(reasonCollectionOp),

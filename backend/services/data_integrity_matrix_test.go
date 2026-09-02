@@ -365,8 +365,20 @@ func TestDataIntegrity_TEST02_InvariantMatrix(t *testing.T) {
 			name:      "INV-D8/canonical record Card collection has a duplicate element id",
 			invariant: "INV-D8", wantCheck: "canonical_record.duplicate_element_id", repairable: false,
 			mutate: func(t *testing.T, db *gorm.DB, ds *canonicalfixture.Dataset) {
-				dup := `{"emails":[{"id":"e1","address":"a@x.com"},{"id":"e1","address":"b@x.com"}]}`
-				require.NoError(t, db.Exec("UPDATE contacts SET card = ? WHERE id = ?", dup, ds.Contacts["dmitri"].ID).Error)
+				// Splice a duplicate-id collection into dmitri's existing card
+				// rather than replacing it wholesale: personalInfo has no flat
+				// column, so this breaks only the round-trip invariant and
+				// leaves the flat projection (and every other probe) untouched.
+				id := ds.Contacts["dmitri"].ID
+				var raw string
+				require.NoError(t, db.Raw("SELECT card FROM contacts WHERE id = ?", id).Scan(&raw).Error)
+				var card map[string]json.RawMessage
+				require.NoError(t, json.Unmarshal([]byte(raw), &card))
+				card["personalInfo"] = json.RawMessage(
+					`[{"id":"p1","kind":"hobby","value":"a"},{"id":"p1","kind":"hobby","value":"b"}]`)
+				patched, err := json.Marshal(card)
+				require.NoError(t, err)
+				require.NoError(t, db.Exec("UPDATE contacts SET card = ? WHERE id = ?", string(patched), id).Error)
 			},
 		},
 		{
@@ -374,6 +386,16 @@ func TestDataIntegrity_TEST02_InvariantMatrix(t *testing.T) {
 			invariant: "INV-A5", wantCheck: "derived_index.fts_row_count_divergent", repairable: true,
 			mutate: func(t *testing.T, db *gorm.DB, ds *canonicalfixture.Dataset) {
 				require.NoError(t, db.Exec("DELETE FROM contacts_fts WHERE rowid = (SELECT MIN(id) FROM contacts)").Error)
+			},
+		},
+		{
+			name:      "INV-A5/denormalized contact column diverges from Card (issue #497)",
+			invariant: "INV-A5", wantCheck: "derived_contact_column.divergent", repairable: false,
+			mutate: func(t *testing.T, db *gorm.DB, ds *canonicalfixture.Dataset) {
+				// A raw write to sort_name only — surgical: it does not touch
+				// Card and trips no other probe.
+				require.NoError(t, db.Exec(
+					"UPDATE contacts SET sort_name = ? WHERE id = ?", "zzz-drift", ds.Contacts["ada"].ID).Error)
 			},
 		},
 	}

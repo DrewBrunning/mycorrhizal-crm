@@ -354,6 +354,31 @@ func DeriveSortName(lastname, firstname string) string {
 // CRMEnvelope.Kind, ...) are preserved unconditionally. The full rule with
 // its rationale lives on mergeRecordFromFlat in contact_card_merge.go.
 func (c *Contact) BeforeSave(tx *gorm.DB) error {
+	c.deriveDenormalized()
+
+	// T18 audit: mark create-vs-update and capture the pre-update snapshot.
+	auditBeforeSave[Contact](tx, AuditEntityContact, c.ID, c.ID == 0)
+
+	return nil
+}
+
+// deriveDenormalized recomputes every denormalized/derived field on the
+// contact from its authoritative source — the nested Card (and its
+// projection), or, on a cardSetDirectly save, the Record ApplyRecordToContact
+// has just installed. It is the single derivation the write path
+// (BeforeSave), the standalone rebuild (services.RebuildDerivedContactColumns)
+// and the INV-A5 consistency probe (issue #497) all run, so a rebuilt or
+// checked column can never disagree with what a plain re-save would have
+// written.
+//
+// It mutates only the receiver's derived fields — the flat scalars,
+// AddressesFlat / PhonesNormalized / SortName, FN / Org, and the T75-merged
+// Card / CRM / Passthrough — and performs no I/O. A caller that only wants to
+// inspect the result without persisting it (the probe) runs this on a copy
+// and diffs the derived fields; the shallow copy is safe because every
+// assignment here replaces a field wholesale rather than mutating a shared
+// backing array.
+func (c *Contact) deriveDenormalized() {
 	if len(c.Emails) > 0 {
 		c.Email = c.Emails[0].Value
 	}
@@ -420,11 +445,6 @@ func (c *Contact) BeforeSave(tx *gorm.DB) error {
 	// Lastname (the projection assignments above may have just replaced
 	// them), so it is computed here, after them.
 	c.SortName = DeriveSortName(c.Lastname, c.Firstname)
-
-	// T18 audit: mark create-vs-update and capture the pre-update snapshot.
-	auditBeforeSave[Contact](tx, AuditEntityContact, c.ID, c.ID == 0)
-
-	return nil
 }
 
 // generates VCardUID for new contacts

@@ -114,6 +114,8 @@ var KnownJobNames = []string{
 	JobNameStorageSample,
 	// Operator-triggered, not scheduled (SEARCH-01, issue #461).
 	JobNameSearchIndexRebuild,
+	// Operator-triggered, not scheduled (issue #497).
+	JobNameDerivedColumnsRebuild,
 }
 
 // maxJobRunFieldLen caps the persisted Error / Detail strings.
