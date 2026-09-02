@@ -1,5 +1,5 @@
 # Build stage
-FROM --platform=$BUILDPLATFORM node:26-alpine@sha256:aadf416b2cdce311a8811ba3f0608a61b77dbf997500e2eafe781b51f6a0b019 AS builder
+FROM --platform=$BUILDPLATFORM node:26-alpine@sha256:2d984a15c9b54fd0aeb608b8e0d0d83529eb34d2966db27a1fb4f1edc3d298a3 AS builder
 
 WORKDIR /app
 
@@ -41,7 +41,7 @@ ENV VITE_API_URL=${VITE_API_URL}
 RUN yarn build
 
 # Production stage - serve with unprivileged nginx
-FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:44e36330f74d4f3a1d4e222acca9e23b401fb87811a7597024502bb759c4dd49
+FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:d9083fe47768377ef55dedafd67d4da7c2f2bc2bece7554954f29359deb0dce9
 
 # The base image's own alpine 3.24.1 layer ships libssl3/libcrypto3 3.5.7-r0,
 # which CVE-2026-14456 fixes in 3.5.8-r0 -- already present in this same
