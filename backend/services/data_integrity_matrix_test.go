@@ -48,15 +48,24 @@ import (
 	"gorm.io/gorm"
 )
 
-// loadCanonicalFixture populates a real migrated database with the TEST-02
-// dataset and writes a backing file for every live attachment / bare-filename
-// profile photo, so a clean run has no INV-D4 missing-file false positive. It
-// returns the DB, a cfg whose file directories point at the populated temp
-// dirs, and the created Dataset.
+// loadCanonicalFixture populates a fresh migrated database with the TEST-02
+// dataset. See populateCanonicalFixture for what the cfg / file backing do.
 func loadCanonicalFixture(t *testing.T) (*gorm.DB, config.Config, *canonicalfixture.Dataset) {
 	t.Helper()
-
 	db := dbtest.New(t)
+	cfg, ds := populateCanonicalFixture(t, db)
+	return db, cfg, ds
+}
+
+// populateCanonicalFixture loads the TEST-02 dataset into an already-migrated
+// db and writes a backing file for every live attachment / bare-filename
+// profile photo, so a clean run has no INV-D4 missing-file false positive. It
+// returns a cfg whose file directories point at the populated temp dirs and
+// the created Dataset. Split from loadCanonicalFixture so the operation tests
+// can drive it against a file-backed dbtest.NewAt database (backup/restore).
+func populateCanonicalFixture(t *testing.T, db *gorm.DB) (config.Config, *canonicalfixture.Dataset) {
+	t.Helper()
+
 	m, err := canonicalfixture.Read()
 	require.NoError(t, err, "read TEST-02 manifest")
 	ds, err := canonicalfixture.Populate(db, m)
@@ -84,7 +93,7 @@ func loadCanonicalFixture(t *testing.T) (*gorm.DB, config.Config, *canonicalfixt
 		require.NoError(t, os.WriteFile(filepath.Join(cfg.ProfilePhotoDir, p), []byte("x"), 0o600))
 	}
 
-	return db, cfg, ds
+	return cfg, ds
 }
 
 // violationSlugs is the set of distinct Check slugs among a report's violation
