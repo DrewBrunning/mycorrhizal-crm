@@ -583,6 +583,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// changes that bypassed the FTS triggers
 			admin.POST("/search/rebuild", controllers.RebuildSearchIndexHandler)
 
+			// Rebuild the denormalized contact columns (issue #497) — the flat
+			// contacts.* projection, sort_name, addresses_flat,
+			// phones_normalized — from the nested Card. Same trigger-bypass
+			// situations as the search rebuild; run both after a restore.
+			admin.POST("/contacts/rebuild-derived", controllers.RebuildDerivedColumnsHandler)
+
 			// Operational-event timeline (issue #424) — instance-wide
 			// diagnostics, admin-only.
 			admin.GET("/system-events", controllers.ListSystemEvents)
