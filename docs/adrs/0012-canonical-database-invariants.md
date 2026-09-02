@@ -68,11 +68,46 @@ distinct `data_integrity_check` result and the deep `/health` / `/admin/diagnost
 separately. Repair is separate and dry-run-by-default
 ([`data_integrity_repair.go`](../../backend/services/data_integrity_repair.go)), and only removes
 truly-orphaned hard-delete join/edge rows. Per-invariant "break the check" tests are in
-`data_integrity_service_test.go` / `data_integrity_repair_test.go`; #494 owns the operation-level
-`INV-A1`…`INV-A4`/`A6` suite and the deeper property coverage. `INV-D9` (the deep, contract-aware
-FTS comparison) is issue #462's — its probe is `services.CheckSearchIndexConsistency`
+`data_integrity_service_test.go` / `data_integrity_repair_test.go`. `INV-D9` (the deep,
+contract-aware FTS comparison) is issue #462's — its probe is `services.CheckSearchIndexConsistency`
 ([`search_consistency_service.go`](../../backend/services/search_consistency_service.go)), folded
 into the same scheduled job and the same `/admin/diagnostics` sweep.
+
+**Verified by (DB-03, issue #494):** every invariant below has both a *holds* case and a
+*detected* case, and the "break the code" step is a committed test rather than a manual ritual
+(`/CLAUDE.md`: a test that has never failed has proven nothing).
+
+- **`INV-D1`…`INV-D8`** — a table-driven matrix
+  ([`backend/services/data_integrity_matrix_test.go`](../../backend/services/data_integrity_matrix_test.go))
+  drives every probe from the full TEST-02 pathological fixture (#430): the untouched fixture is
+  clean (no false positives), and one surgical mutation per invariant is detected, named with the
+  right ADR id, and adds exactly one new violation class. Hand-verified by neutering each of the ten
+  probes and confirming only its rows fail.
+- **`INV-D9`** — the FTS consistency probe ships with issue #462's own per-class tests
+  ([`services/search_consistency_service_test.go`](../../backend/services/search_consistency_service_test.go):
+  `DetectsMissingFromIndex` / `DetectsOrphanInIndex` / `DetectsContentMismatch` /
+  `DetectsScopeMismatch`, `CleanCorpusReportsClean`, `SoftDeletedAndArchivedAreNotDivergence`,
+  `HandVerify`).
+- **Across operations** — the invariants still hold after contact merge (#433), a full delete
+  cascade, source import, a migration-chain re-run and a backup/restore round-trip
+  ([`data_integrity_operations_test.go`](../../backend/services/data_integrity_operations_test.go),
+  [`controllers/data_integrity_operations_test.go`](../../backend/controllers/data_integrity_operations_test.go));
+  a contact left behind by a skipped cascade line is named by the checker, turning `/CLAUDE.md` trap
+  #6 into a failing test from the checker's side of `TestDeleteCascadeCoverage` (#611).
+- **`INV-A1`, `INV-A2`, `INV-A4`, `INV-D8`** — generative properties
+  ([`backend/internal/propertytest/data_invariant_property_test.go`](../../backend/internal/propertytest/data_invariant_property_test.go)):
+  committed state survives a reopen; a cancelled import commits nothing; every import record is
+  accounted for; the flat `contacts.*` projection is a fixpoint of a plain re-save.
+- **`INV-A3`** — `TestIdempotentMutation_RetryIsFixpoint`
+  ([`internal/propertytest/idempotency_property_test.go`](../../backend/internal/propertytest/idempotency_property_test.go)):
+  `retry(op) ≡ op` for every registered idempotent mutation.
+- **`INV-A5`** — `TestSearchIndex_RebuildMatchesIncremental`
+  ([`services/search_index_property_test.go`](../../backend/services/search_index_property_test.go)):
+  a from-scratch `RebuildSearchIndex` produces an index identical to the trigger-maintained one.
+- **`INV-A6`** — `TestDataInvariant_A6_ContactSyncConvergesToAFixpoint`
+  ([`services/data_integrity_sync_property_test.go`](../../backend/services/data_integrity_sync_property_test.go)):
+  re-syncing an unchanged remote is a no-op with stable revision tokens, and a remote change applied
+  twice converges to an identical state.
 
 ---
 
@@ -97,7 +132,8 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
   `relationship_edge.endpoint_missing` (no `Contact` row at all, INV-D1) and
   `relationship_edge.endpoint_soft_deleted` (INV-D7) per user, via one raw-SQL pass that keeps
   soft-deleted rows visible. `TestDataIntegrity_INV_D7_SoftDeletedEndpoint` seeds the FK-invisible
-  case; #494 owns the deeper matrix.
+  case; the DB-03 matrix (`data_integrity_matrix_test.go`) drives both the missing and
+  soft-deleted cases from the full TEST-02 fixture and asserts each is the *only* new violation.
 
 #### INV-D2 — Reciprocal relationships are consistent
 
@@ -183,8 +219,9 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
   references with it; `AutoMigrate` on a UUID-PK entity (adds a conflicting `ID uint`, `/CLAUDE.md`
   trap #7).
 - **Checked by:** primarily a migration-review and schema-dump concern (`cmd/genschema`, issue #529);
-  #494 asserts a round-trip save/reload preserves every PK and that `VCardUID` is unchanged after a
-  contact edit.
+  `checkRequiredFields` also reports `contact.missing_vcard_uid` (a blank stable id, DB-03 matrix
+  row), and the INV-A1 durability property asserts every contact's `vcard_uid` is byte-identical
+  after a close/reopen.
 
 #### INV-D6 — Required fields are present and valid
 
@@ -251,8 +288,11 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
 - **Checked by:** `checkCanonicalRecords` streams live contacts in pages and reports
   `canonical_record.invalid_json` (the `card` column does not parse) and
   `canonical_record.duplicate_element_id` (a Card collection has two elements with one `id`, breaking
-  the round-trip). The flat-vs-nested reprojection comparison is deferred to #494's property suite
-  (false-positive risk against the TEST-02 fixture).
+  the round-trip). The flat-vs-nested reprojection comparison is DB-03's
+  `TestDataInvariant_D8_FlatProjectionIsAFixpoint` — over generated records the flat `contacts.*`
+  columns are a fixpoint of a plain re-save (it compares the flat columns only; a plain `db.Save`
+  still drops a `Media` entry whose photo was never downloaded to `contacts.photo`, a separate
+  T75-adjacent bug tracked outside this ADR).
 
 #### INV-D9 — The FTS search index matches canonical data, modulo its contract
 
@@ -293,8 +333,9 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
   index), reporting each of four classes per row: `missing_from_index`, `orphan_in_index`,
   `content_mismatch` (with column names), `scope_mismatch`. Folded into the scheduled DB-integrity
   job and the on-demand `/admin/diagnostics` sweep (issue #423), not a third schedule. #460 (DB-01)
-  picks it up as one of its application-invariant passes; #494 (DB-03) creates each divergence class
-  and asserts detection; the `TestSearchIndex_RebuildMatchesIncremental` property
+  picks it up as one of its application-invariant passes; issue #462 ships a per-class holds/detected
+  suite ([`services/search_consistency_service_test.go`](../../backend/services/search_consistency_service_test.go));
+  the `TestSearchIndex_RebuildMatchesIncremental` property
   ([`services/search_index_property_test.go`](../../backend/services/search_index_property_test.go))
   asserts rebuild-vs-incremental agreement modulo the contract for an arbitrary mutation sequence.
 
@@ -314,9 +355,10 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
 - **Can be violated by:** a swallowed `.Error` (the trap-#4 class); a `2xx` written before commit; a
   best-effort side-write mistaken for the mutation (`RecordImportRun` is deliberately best-effort and
   must never be the durability boundary, [`models/import_run.go:72`](../../backend/models/import_run.go)).
-- **Checked by:** #494 (with #434's seams) kills the process immediately after a `2xx` and asserts
-  the row is present on restart; a property test asserts no `2xx` path returns before its `.Error`
-  check.
+- **Checked by:** `TestDataInvariant_A1_CommittedStateSurvivesReopen`
+  ([`internal/propertytest/data_invariant_property_test.go`](../../backend/internal/propertytest/data_invariant_property_test.go)):
+  a generated batch of creates and updates, then close the connection and reopen the file the way a
+  restart would — the whole-database content fingerprint and the contact set are unchanged.
 
 #### INV-A2 — A failed mutation leaves the canonical model unchanged
 
@@ -329,8 +371,12 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
 - **Can be violated by:** a cascade or import loop that does N separate top-level writes instead of
   one transaction (INV-D3's "partially-applied cascade" gap); a handler that catches an error and
   continues.
-- **Checked by:** #494 injects a failure at write k of n (via #434) and asserts writes 1…k-1 are not
-  visible; the delete-cascade suite gets a fault-injected variant.
+- **Checked by:** `TestDataInvariant_A2_CancelledImportCommitsNothing` — a source import runs in one
+  `ctx`-bound transaction; cancelling it at a random point (from the `progress` callback) leaves the
+  database fingerprint byte-identical to before. The example-seam form is
+  `TestConfirmInjectedDBErrorFailsClosed` ([`services/import_fault_injection_test.go`](../../backend/services/import_fault_injection_test.go),
+  #434). A skipped delete-cascade line is caught by
+  `TestDataIntegrity_DetectsSkippedDeleteCascade` ([`controllers/data_integrity_operations_test.go`](../../backend/controllers/data_integrity_operations_test.go)).
 
 #### INV-A3 — An idempotent-op retry yields the same logical result
 
@@ -343,9 +389,11 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
   0009). Derived-index rebuilds are idempotent by construction (INV-A5).
 - **Can be violated by:** a mutating endpoint that does not consult the key store; a retry window
   shorter than a client's; a conditional-write path that falls back to last-write-wins.
-- **Checked by:** #494 issues the same keyed `POST` twice and asserts one row + identical responses;
-  a stale `If-Match` is rejected, not applied (already exercised by
-  [`controllers/conditional_write_test.go`](../../backend/controllers/conditional_write_test.go) and
+- **Checked by:** `TestIdempotentMutation_RetryIsFixpoint`
+  ([`internal/propertytest/idempotency_property_test.go`](../../backend/internal/propertytest/idempotency_property_test.go)):
+  for every registered idempotent mutation, `retry(op)` leaves the database fingerprint unchanged
+  from `op`. A stale `If-Match` is rejected, not applied
+  ([`controllers/conditional_write_test.go`](../../backend/controllers/conditional_write_test.go),
   [`controllers/idempotency_e2e_test.go`](../../backend/controllers/idempotency_e2e_test.go)).
 
 #### INV-A4 — An import is wholly accepted or explicitly reported partial/unusable
@@ -363,9 +411,12 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
 - **Can be violated by:** an import path that writes a record but omits it from every count; a
   crash mid-import with no `ImportRun` written (best-effort write, INV-A1 note); a mapping that
   partially applies a record and reports it as fully created.
-- **Checked by:** #494 feeds an import batch with one unmappable record and asserts `Errors`
-  names it and the counts sum to the input size; a fault mid-batch leaves either a complete record
-  or none, and the `ImportResult` reflects reality.
+- **Checked by:** `TestDataInvariant_A4_ImportAccountsForEveryRecord` — a generated plan of N valid
+  contacts plus k relationships with unresolved endpoints: every valid contact is created, every
+  unmappable relationship is named in `report.Issues` (count exact), and the result trips no
+  integrity probe. `TestDataIntegrity_HoldsAfterImport`
+  ([`services/data_integrity_operations_test.go`](../../backend/services/data_integrity_operations_test.go))
+  covers the clean path.
 
 #### INV-A5 — Every derived index is regenerable from canonical data
 
@@ -385,10 +436,12 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
   rebuild path (#497 owns the inventory of these).
 - **Checked by:** `checkDerivedIndexes` (`data_integrity_service.go`) compares `COUNT(*)` of each
   `*_fts` table against its live base rows (`derived_index.fts_row_count_divergent`, repairable via
-  `RebuildSearchIndex`) — the cheap version. The deep, per-row, contract-aware comparison is
-  INV-D9's `services.CheckSearchIndexConsistency` (issue #462); the flat-column family inventory is
-  #497. #494 mutates rows with triggers disabled, rebuilds, and asserts the index matches a
-  from-scratch build.
+  `RebuildSearchIndex`) — the cheap version, driven from the TEST-02 fixture by the DB-03 matrix.
+  The deep, per-row, contract-aware comparison is INV-D9's `services.CheckSearchIndexConsistency`
+  (issue #462); the rebuild-vs-incremental equivalence for an arbitrary mutation sequence is
+  `TestSearchIndex_RebuildMatchesIncremental`
+  ([`services/search_index_property_test.go`](../../backend/services/search_index_property_test.go)).
+  The flat-column family inventory is #497.
 
 #### INV-A6 — Every sync operation eventually converges
 
@@ -405,9 +458,11 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
   discard-local-on-remote-change policy without deciding deliberately (the T13 warning); a partial
   apply of a remote batch with no retry marker; an `etag` derived from wall-clock (ADR 0006's
   rejected alternative).
-- **Checked by:** #494 syncs an unchanged remote twice and asserts the second run is a no-op
-  (zero writes, stable `revision`); a remote change interrupted mid-apply is either absent or
-  complete on the next run.
+- **Checked by:** `TestDataInvariant_A6_ContactSyncConvergesToAFixpoint`
+  ([`services/data_integrity_sync_property_test.go`](../../backend/services/data_integrity_sync_property_test.go)):
+  a generative property over `reconcileContactSync` — re-syncing an unchanged remote is a no-op with
+  stable `revision` tokens, and a remote change applied twice converges to a byte-identical state,
+  never a half-merge.
 
 ## Consequences
 
@@ -415,10 +470,12 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
   storage-level `PRAGMA integrity_check` pass, plus `PRAGMA foreign_key_check` on the storage side.
   Detection is separate from repair and ships first; repair is a separate operator-invoked command,
   independently tested (#460 action 4).
-- **#494 (DB-03) implements one test per invariant**, and for each the "break the code" step is the
-  deliverable, not a manual ritual (`/CLAUDE.md`: a test that has never failed has proven nothing).
-  `INV-D*` are table-driven against a real migrated schema (`/CLAUDE.md` trap #1); `INV-A*` use the
-  #434 fault-injection seams and the #435 property suite.
+- **#494 (DB-03) implements one test per invariant** — see **Verified by**, above — and for each the
+  "break the code" step is a committed test, not a manual ritual (`/CLAUDE.md`: a test that has never
+  failed has proven nothing). `INV-D*` are a table-driven matrix over the TEST-02 fixture against a
+  real migrated schema (`/CLAUDE.md` trap #1) plus an across-operations suite (merge / cascade /
+  import / migration / restore); `INV-A*` are generative properties (`internal/propertytest`, the
+  #435 suite) with the #434 seams as the example-form backstop.
 - **This ADR is the citable list the `v0.6.8` gate (#538) requires.** Each invariant above is
   written down with `file:line` references; "critical database invariants are explicitly documented"
   and "each invariant is written down and citable" are satisfied by this file.
