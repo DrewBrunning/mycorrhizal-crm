@@ -3,10 +3,12 @@ package contactmodel
 import "testing"
 
 func TestProjectionRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullProjection())
 }
 
 func TestDeriveProjection_Normal(t *testing.T) {
+	t.Parallel()
 	r := fullRecord()
 
 	p := DeriveProjection(&r)
@@ -35,6 +37,7 @@ func TestDeriveProjection_Normal(t *testing.T) {
 }
 
 func TestDeriveProjection_FNFallback(t *testing.T) {
+	t.Parallel()
 	r := &Record{
 		Card: Card{
 			Name: &Name{
@@ -55,6 +58,7 @@ func TestDeriveProjection_FNFallback(t *testing.T) {
 }
 
 func TestDeriveProjection_EmptyEmailsAndPhonesNoPanic(t *testing.T) {
+	t.Parallel()
 	r := &Record{Card: Card{
 		Name: &Name{Full: "No Contacts"},
 	}}
@@ -76,6 +80,7 @@ func TestDeriveProjection_EmptyEmailsAndPhonesNoPanic(t *testing.T) {
 }
 
 func TestDeriveProjection_NilRecordNoPanic(t *testing.T) {
+	t.Parallel()
 	defer func() {
 		if rec := recover(); rec != nil {
 			t.Fatalf("DeriveProjection panicked on nil *Record: %v", rec)
@@ -90,6 +95,7 @@ func TestDeriveProjection_NilRecordNoPanic(t *testing.T) {
 }
 
 func TestDeriveProjection_MultipleEmailsLowestPrefWins(t *testing.T) {
+	t.Parallel()
 	r := &Record{Card: Card{
 		Emails: []Email{
 			{Address: "no-pref@example.com"},
@@ -115,6 +121,7 @@ func TestDeriveProjection_MultipleEmailsLowestPrefWins(t *testing.T) {
 }
 
 func TestDeriveProjection_UnsetPrefSortsLastAndIsStable(t *testing.T) {
+	t.Parallel()
 	r := &Record{Card: Card{
 		Emails: []Email{
 			{Address: "first-no-pref@example.com"},
@@ -132,6 +139,7 @@ func TestDeriveProjection_UnsetPrefSortsLastAndIsStable(t *testing.T) {
 }
 
 func TestDeriveProjection_NoAnniversariesBirthdayEmpty(t *testing.T) {
+	t.Parallel()
 	r := &Record{Card: Card{
 		Name:          &Name{Full: "No Birthday"},
 		Anniversaries: nil,
@@ -145,6 +153,7 @@ func TestDeriveProjection_NoAnniversariesBirthdayEmpty(t *testing.T) {
 }
 
 func TestDeriveProjection_AnniversaryWrongKindIgnored(t *testing.T) {
+	t.Parallel()
 	r := &Record{Card: Card{
 		Anniversaries: []Anniversary{
 			{Kind: "wedding", Date: AnniversaryDate{Partial: &PartialDate{Year: ptr(2000), Month: ptr(6), Day: ptr(1)}}},
@@ -159,6 +168,7 @@ func TestDeriveProjection_AnniversaryWrongKindIgnored(t *testing.T) {
 }
 
 func TestDeriveProjection_BirthdayPartialWithoutYear(t *testing.T) {
+	t.Parallel()
 	r := &Record{Card: Card{
 		Anniversaries: []Anniversary{
 			{Kind: "birth", Date: AnniversaryDate{Partial: &PartialDate{Month: ptr(7), Day: ptr(4)}}},
