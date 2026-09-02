@@ -275,8 +275,13 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
   stays). Both are acceptable; it just means the index's soft-delete content depends on which path
   wrote it. **Decision (issue #462 action 7): the consistency check and the rebuild-equivalence
   property normalise this in the comparison — they only ever compare the index against *live* base
-  rows — rather than aligning the `*_fts_ai` triggers with a migration.** Aligning them is a possible
-  future tightening, tracked in #463 (SEARCH-03, mutation paths).
+  rows — rather than aligning the `*_fts_ai` triggers with a migration.** Aligning them remains a
+  possible future tightening; SEARCH-03 (#463) landed as mutation-path coverage — a per-path test
+  that every write path (REST create/update/delete, archive, merge, CardDAV reconcile, bulk import,
+  audit Undo, and each trigger state transition) leaves the index equal to a fresh rebuild
+  ([`backend/services/search_mutation_path_test.go`](../../backend/services/search_mutation_path_test.go),
+  [`backend/controllers/search_mutation_path_test.go`](../../backend/controllers/search_mutation_path_test.go)) —
+  and did not change the triggers.
 - **Holds because:** the triggers fire on every ordinary INSERT/UPDATE/DELETE
   ([`000007_search_fts5.up.sql`](../../backend/database/migrations/000007_search_fts5.up.sql)); the
   rebuild ([`services/search_service.go` `RebuildSearchIndex`](../../backend/services/search_service.go),
@@ -297,6 +302,11 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
   and asserts detection; the `TestSearchIndex_RebuildMatchesIncremental` property
   ([`services/search_index_property_test.go`](../../backend/services/search_index_property_test.go))
   asserts rebuild-vs-incremental agreement modulo the contract for an arbitrary mutation sequence.
+  SEARCH-03 (#463) adds `TestSearchMutationPath_TriggerColumnsCoverSearchableFields`
+  ([`services/search_mutation_path_test.go`](../../backend/services/search_mutation_path_test.go)) — a
+  structural guard that fails if a future migration widens an FTS table and its triggers without also
+  extending `ftsConsistencySpecs` (or vice versa), so this "indexes a new column without updating
+  `RebuildSearchIndex` / `ftsConsistencySpecs`" violation cannot land silently.
 
 ---
 
