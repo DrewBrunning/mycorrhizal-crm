@@ -77,6 +77,20 @@ table change that alters the classification shows up as a reviewable diff becaus
 DATA-02 (issue #442) input, so an unsupported/lossy classification change must land with its loss
 report.
 
+Integration classification matrix (INT-01, issue #464): `docs/int-01-integration-classification-matrix.md`
+is **generated** from `backend/integrations` (`Registry()` + `Dispositions()`) by
+`cd backend && go run ./cmd/genintegrationmatrix` (or `make gen-integration-matrix`) — never
+hand-authored. It classifies every external system (CardDAV/CalDAV, Immich, Paperless, Seafile,
+WebDAV, webhooks, ntfy/Gotify/Web Push, Resend/SMTP, OIDC, HIBP, update-check) along the axes that
+determine failure handling, and states the required behavior for all seven failure modes.
+`Dispositions()` is the **single** transient-vs-permanent table #465–#467 test against — don't add a
+second copy. Drift test `backend/integrations/matrix_test.go` fails until the doc is regenerated;
+`TestEveryOutboundClientIsClassified` fails if a `backend/services/` file opens an outbound client
+with no matrix row (add a `Registry()` entry, or — only if it reuses another integration's transport
+— a `nonIntegrationClients` entry with a reason); `TestSSRFClaimsMatchSource` fails if a row claims a
+guarded posture its source doesn't back up; and `services/integration_matrix_reconcile_test.go` fails
+if a declared timeout drifts from the client's actual timeout.
+
 **Breaking-change policy (MAINT-02, issue #491):** the `/api/v1` contract surface is pinned by a
 frozen baseline (`backend/internal/apibaseline/testdata/v1.json`) generated from `backend/openapi.yaml`
 by `cd backend && go run ./cmd/genapibaseline` (or `make gen-api-baseline`). The drift test
