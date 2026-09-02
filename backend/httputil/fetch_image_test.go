@@ -23,6 +23,7 @@ func plainTestClient() *http.Client {
 }
 
 func TestFetchImageWithClient_Success(t *testing.T) {
+	t.Parallel()
 	var gotUA string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotUA = r.Header.Get("User-Agent")
@@ -41,6 +42,7 @@ func TestFetchImageWithClient_Success(t *testing.T) {
 }
 
 func TestFetchImageWithClient_Non200Status(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("nope"))
@@ -53,6 +55,7 @@ func TestFetchImageWithClient_Non200Status(t *testing.T) {
 }
 
 func TestFetchImageWithClient_NonImageContentType(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
@@ -66,6 +69,7 @@ func TestFetchImageWithClient_NonImageContentType(t *testing.T) {
 }
 
 func TestFetchImageWithClient_ContentTypePrefixOnly(t *testing.T) {
+	t.Parallel()
 	// The check is a prefix match ("image/"), so an image type with parameters
 	// must still be accepted.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -82,6 +86,7 @@ func TestFetchImageWithClient_ContentTypePrefixOnly(t *testing.T) {
 }
 
 func TestFetchImageWithClient_TooLarge(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/png")
 		w.WriteHeader(http.StatusOK)
@@ -95,6 +100,7 @@ func TestFetchImageWithClient_TooLarge(t *testing.T) {
 }
 
 func TestFetchImageWithClient_ExactlyAtLimitIsAccepted(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/png")
 		w.WriteHeader(http.StatusOK)
@@ -110,6 +116,7 @@ func TestFetchImageWithClient_ExactlyAtLimitIsAccepted(t *testing.T) {
 // --- redirect policy ---
 
 func TestBuildImageClient_RedirectPolicyRejectsDisallowedTarget(t *testing.T) {
+	t.Parallel()
 	client := buildImageClient()
 	via := []*http.Request{}
 
@@ -124,6 +131,7 @@ func TestBuildImageClient_RedirectPolicyRejectsDisallowedTarget(t *testing.T) {
 }
 
 func TestBuildImageClient_RedirectPolicyCapsHops(t *testing.T) {
+	t.Parallel()
 	client := buildImageClient()
 
 	// A public target that passes validation with 3 prior hops must be
@@ -138,6 +146,7 @@ func TestBuildImageClient_RedirectPolicyCapsHops(t *testing.T) {
 }
 
 func TestBuildImageClient_RedirectPolicyAllowsPublicTarget(t *testing.T) {
+	t.Parallel()
 	client := buildImageClient()
 	req, err := http.NewRequest("GET", "http://93.184.216.34/photo.jpg", nil)
 	require.NoError(t, err)
@@ -147,6 +156,7 @@ func TestBuildImageClient_RedirectPolicyAllowsPublicTarget(t *testing.T) {
 }
 
 func TestBuildImageClient_TransportIsSSRFGuarded(t *testing.T) {
+	t.Parallel()
 	// The transport the fetch client dials through must be the SSRF-guarded
 	// dialer — a test can't reach the real network, but it can prove the
 	// dialer rejects a loopback target outright, which is exactly the guard
@@ -165,6 +175,7 @@ func TestBuildImageClient_TransportIsSSRFGuarded(t *testing.T) {
 // --- sanitizeURL ---
 
 func TestSanitizeURL(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "http://example.com/photo.jpg", sanitizeURL("http://example.com/photo.jpg"))
 	assert.Equal(t, "http://example.com/photo.jpg", sanitizeURL(" http ://example.com/photo.jpg "))
 	assert.Equal(t, "http://example.com/photo.jpg", sanitizeURL("http://example.com/pho\r\nto.jpg"))
@@ -172,6 +183,7 @@ func TestSanitizeURL(t *testing.T) {
 }
 
 func TestSanitizeURL_EmptyInput(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "", sanitizeURL(""))
 }
 
@@ -184,6 +196,7 @@ func TestSanitizeURL_EmptyInput(t *testing.T) {
 // exercised directly via fetchImageWithClient.)
 
 func TestFetchImageFromURL_StillRejectsLoopbackAfterRefactor(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Error("handler must never be reached for a loopback URL")
 	}))
@@ -195,6 +208,7 @@ func TestFetchImageFromURL_StillRejectsLoopbackAfterRefactor(t *testing.T) {
 }
 
 func TestFetchImageFromURL_CleanedURLPassesToResponseContract(t *testing.T) {
+	t.Parallel()
 	// Not a real fetch: the URL fails SSRF validation, but the error must be
 	// the *cleaned* URL's error (loopback rejection), proving sanitization ran
 	// before validation on the full pipeline.

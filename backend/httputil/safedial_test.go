@@ -9,6 +9,7 @@ import (
 )
 
 func TestSafeDialContextRejectsNonPublicAddresses(t *testing.T) {
+	t.Parallel()
 	errUnreachable := errors.New("unreachable")
 	errPrivate := errors.New("private")
 	dial := SafeDialContext(errUnreachable, errPrivate)
@@ -31,6 +32,7 @@ func TestSafeDialContextRejectsNonPublicAddresses(t *testing.T) {
 }
 
 func TestSafeDialContextFailsClosedOnResolutionFailure(t *testing.T) {
+	t.Parallel()
 	errUnreachable := errors.New("unreachable")
 	errPrivate := errors.New("private")
 	dial := SafeDialContext(errUnreachable, errPrivate)
@@ -42,6 +44,7 @@ func TestSafeDialContextFailsClosedOnResolutionFailure(t *testing.T) {
 }
 
 func TestSafeDialContextRejectsMalformedAddress(t *testing.T) {
+	t.Parallel()
 	dial := SafeDialContext(errors.New("unreachable"), errors.New("private"))
 
 	conn, err := dial(context.Background(), "tcp", "missing-port")

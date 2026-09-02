@@ -23,6 +23,7 @@ import (
 // network.
 
 func TestValidateURLForSSRF(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		rawURL  string
@@ -76,24 +77,28 @@ func TestValidateURLForSSRF(t *testing.T) {
 // adapted to call httputil.FetchImageFromURL directly.
 
 func TestFetchImageFromURL_BlocksLocalhostHostname(t *testing.T) {
+	t.Parallel()
 	if _, _, err := FetchImageFromURL("http://localhost/photo.jpg"); err == nil {
 		t.Error("expected fetching from localhost to be rejected as an SSRF target")
 	}
 }
 
 func TestFetchImageFromURL_BlocksLoopbackIPv4Literal(t *testing.T) {
+	t.Parallel()
 	if _, _, err := FetchImageFromURL("http://127.0.0.1/photo.jpg"); err == nil {
 		t.Error("expected fetching from 127.0.0.1 to be rejected as an SSRF target")
 	}
 }
 
 func TestFetchImageFromURL_BlocksLoopbackIPv6Literal(t *testing.T) {
+	t.Parallel()
 	if _, _, err := FetchImageFromURL("http://[::1]/photo.jpg"); err == nil {
 		t.Error("expected fetching from [::1] to be rejected as an SSRF target")
 	}
 }
 
 func TestFetchImageFromURL_BlocksUnspecifiedAddress(t *testing.T) {
+	t.Parallel()
 	// 0.0.0.0 is in fetch.go's blockedHosts list but not photostore's -- worth
 	// its own case since it is a real SSRF vector (many OSes route 0.0.0.0 to
 	// the local host) and is checked by hostname string, not resolved IP.
@@ -103,6 +108,7 @@ func TestFetchImageFromURL_BlocksUnspecifiedAddress(t *testing.T) {
 }
 
 func TestFetchImageFromURL_BlocksPrivateLANAddress(t *testing.T) {
+	t.Parallel()
 	// 192.168.0.0/16 is not in the hardcoded hostname blocklist at all -- this
 	// proves the resolved-IP check (IsPublicIP), not just the hostname string
 	// list, actually rejects it.
@@ -112,6 +118,7 @@ func TestFetchImageFromURL_BlocksPrivateLANAddress(t *testing.T) {
 }
 
 func TestFetchImageFromURL_BlocksLinkLocalMetadataAddress(t *testing.T) {
+	t.Parallel()
 	// 169.254.169.254 is the classic cloud-metadata SSRF target (AWS/GCP/Azure
 	// instance metadata service); IsPublicIP must catch it.
 	if _, _, err := FetchImageFromURL("http://169.254.169.254/latest/meta-data/"); err == nil {
@@ -120,12 +127,14 @@ func TestFetchImageFromURL_BlocksLinkLocalMetadataAddress(t *testing.T) {
 }
 
 func TestFetchImageFromURL_RejectsNonHTTPScheme(t *testing.T) {
+	t.Parallel()
 	if _, _, err := FetchImageFromURL("file:///etc/passwd"); err == nil {
 		t.Error("expected a non-http(s) scheme to be rejected")
 	}
 }
 
 func TestFetchImageFromURL_RejectsUnparsableURL(t *testing.T) {
+	t.Parallel()
 	// A URL containing a raw control character fails url.Parse itself.
 	_, err := url.Parse("http://\x7f")
 	if err == nil {
@@ -137,12 +146,14 @@ func TestFetchImageFromURL_RejectsUnparsableURL(t *testing.T) {
 }
 
 func TestFetchImageFromURL_RejectsURLWithNoHost(t *testing.T) {
+	t.Parallel()
 	if _, _, err := FetchImageFromURL("http://"); err == nil {
 		t.Error("expected a URL with no host to be rejected")
 	}
 }
 
 func TestFetchImageFromURL_SanitizesEmbeddedWhitespaceBeforeValidating(t *testing.T) {
+	t.Parallel()
 	// Google VCF-exported PHOTO;VALUE=uri fields can arrive line-folded, with
 	// embedded "\r\n " sequences splitting the URL. FetchImageFromURL strips
 	// spaces/newlines/CRs before parsing (fetch.go lines 64-67). Prove that
@@ -168,6 +179,7 @@ func TestFetchImageFromURL_SanitizesEmbeddedWhitespaceBeforeValidating(t *testin
 // receive the fixture image back, or increment the hit counter.
 
 func TestFetchImageFromURL_LoopbackIPv4LiteralNeverReachesListener(t *testing.T) {
+	t.Parallel()
 	var hits int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&hits, 1)
@@ -189,6 +201,7 @@ func TestFetchImageFromURL_LoopbackIPv4LiteralNeverReachesListener(t *testing.T)
 }
 
 func TestFetchImageFromURL_LocalhostHostnameNeverReachesListener(t *testing.T) {
+	t.Parallel()
 	var hits int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&hits, 1)
