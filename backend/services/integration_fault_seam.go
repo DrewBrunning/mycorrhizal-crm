@@ -36,9 +36,6 @@ func (rt faultingRoundTripper) RoundTrip(req *http.Request) (*http.Response, err
 	if err := faults.Hook(rt.name); err != nil {
 		return nil, err
 	}
-	base := rt.base
-	if base == nil {
-		base = http.DefaultTransport
-	}
-	return base.RoundTrip(req)
+	// rt.base is always set by the integration client's constructor.
+	return rt.base.RoundTrip(req)
 }

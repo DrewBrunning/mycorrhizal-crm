@@ -2,12 +2,36 @@ package services
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"testing"
+
+	"mycorrhizal/internal/faults"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// TestOIDC_InjectedRequestFaultSurfaces pins the services.oidc.request seam
+// (issue #434): an armed fault replaces every OIDC round trip, so the login
+// callback fails closed rather than swallowing it.
+func TestOIDC_InjectedRequestFaultSurfaces(t *testing.T) {
+	faults.Reset()
+	t.Cleanup(faults.Reset)
+
+	idp := newFakeIDP(t, "test-client")
+	defer idp.Close()
+	provider, err := InitOIDCProvider(context.Background(), testOIDCConfig(idp.Server.URL, "test-client"))
+	require.NoError(t, err)
+
+	sentinel := errors.New("injected OIDC provider failure")
+	faults.ArmError(faultOIDCRequest, sentinel)
+	t.Cleanup(func() { faults.Disarm(faultOIDCRequest) })
+
+	_, _, _, exErr := provider.ExchangeAndVerify(context.Background(), "code", "verifier")
+	require.Error(t, exErr)
+	assert.ErrorContains(t, exErr, sentinel.Error())
+}
 
 // TestOIDCClient_TimeoutIsWired pins that every OIDC call is bounded by
 // oidcRequestTimeout — before INT-02 (#465) the go-oidc / x/oauth2 default

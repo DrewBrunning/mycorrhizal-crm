@@ -111,3 +111,41 @@ func TestNotificationDelivery_InjectedFaultRecordsFailureAndKeepsReminderDue(t *
 		Count(&sentCount).Error)
 	assert.Zero(t, sentCount)
 }
+
+// TestNotificationDelivery_InjectedFaultOnWebPushKeepsSubscription pins that
+// the same seam covers the Web Push path (sendPushMessage): the send is
+// recorded failed, and the subscription is *kept* (a fault is not a 404/410,
+// so it is not a reason to drop the device).
+func TestNotificationDelivery_InjectedFaultOnWebPushKeepsSubscription(t *testing.T) {
+	faults.Reset()
+	t.Cleanup(faults.Reset)
+
+	db := setupNotificationTestDB(t)
+	user := newNotificationUser(t, db, false, false, true /*push*/, "", "")
+	reminder := newDueReminder(t, db, user, "Push me")
+	sub := models.PushSubscription{
+		UserID:   user.ID,
+		Endpoint: "https://push.example.com/x",
+		P256dh:   "BNNL5ZaTfK81qhXOx23-wewhigUeFb632jN6LvRWCFH1ubQr77FE_9qV1FuojuRmHP42zmf34rXgW80OvUVDgTk",
+		Auth:     "zqbxT6JKstKSY9JKibZLSQ",
+	}
+	require.NoError(t, db.Create(&sub).Error)
+
+	originalSender := sendReminderEmailFn
+	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	t.Cleanup(func() { sendReminderEmailFn = originalSender })
+
+	faults.ArmError(faultNotificationDelivery, errors.New("push service unreachable"))
+	t.Cleanup(func() { faults.Disarm(faultNotificationDelivery) })
+
+	sendRemindersExpectErrT(t, db, config.Config{ReminderTime: "12:00"})
+
+	var deliveries []models.NotificationDelivery
+	require.NoError(t, db.Where("reminder_id = ? AND channel = ?", reminder.ID, "push").Find(&deliveries).Error)
+	require.Len(t, deliveries, 1)
+	assert.Equal(t, "failed", deliveries[0].Status)
+
+	var remaining int64
+	require.NoError(t, db.Model(&models.PushSubscription{}).Where("id = ?", sub.ID).Count(&remaining).Error)
+	assert.Equal(t, int64(1), remaining, "an injected transport fault must not drop the subscription (only 404/410 does)")
+}

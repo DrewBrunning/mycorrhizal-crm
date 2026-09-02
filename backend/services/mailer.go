@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/smtp"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -38,6 +39,13 @@ var (
 	// the send.
 	smtpDeadline = 30 * time.Second
 )
+
+// smtpTLSConfig builds the TLS config for both SMTP transports. Production
+// always pins ServerName and verifies against the system roots; it is a var so
+// a test can trust a self-signed fake without weakening the real path.
+var smtpTLSConfig = func(serverName string) *tls.Config {
+	return &tls.Config{ServerName: serverName}
+}
 
 // faultEmailSend is the issue #434 failure-injection seam for the outbound
 // email path. Unarmed it is a no-op map lookup; armed, the sentinel crosses
@@ -111,9 +119,21 @@ func resendHTTPClient() *http.Client {
 	return &http.Client{Timeout: resendRequestTimeout}
 }
 
+// resendBaseURLOverride, when non-empty, repoints the Resend client at a test
+// server. The SDK reads its default base URL at package init from
+// RESEND_BASE_URL, so t.Setenv is too late; this is the equivalent of
+// hibp_service.go's hibpAPIBaseURL seam. Empty in production.
+var resendBaseURLOverride string
+
 // newResendClient builds the Resend SDK client with resendHTTPClient.
 func newResendClient(apiKey string) *resend.Client {
-	return resend.NewCustomClient(resendHTTPClient(), apiKey)
+	c := resend.NewCustomClient(resendHTTPClient(), apiKey)
+	if resendBaseURLOverride != "" {
+		if u, err := url.Parse(resendBaseURLOverride); err == nil {
+			c.BaseURL = u
+		}
+	}
+	return c
 }
 
 // delivers the message through the Resend API.
@@ -191,7 +211,7 @@ func sendSMTPStartTLS(cfg config.Config, addr string, auth smtp.Auth, to string,
 	}
 
 	if ok, _ := client.Extension("STARTTLS"); ok {
-		if err := client.StartTLS(&tls.Config{ServerName: cfg.SMTPHost}); err != nil {
+		if err := client.StartTLS(smtpTLSConfig(cfg.SMTPHost)); err != nil {
 			return fmt.Errorf("smtp starttls: %w", err)
 		}
 	}
@@ -207,14 +227,14 @@ func sendSMTPStartTLS(cfg config.Config, addr string, auth smtp.Auth, to string,
 
 // sendSMTPImplicitTLS sends a message over a connection that is wrapped in TLS (implicit TLS, typically port 465).
 func sendSMTPImplicitTLS(cfg config.Config, addr string, auth smtp.Auth, to string, body []byte) error {
-	conn, err := tls.DialWithDialer(&net.Dialer{Timeout: smtpDialTimeout}, "tcp", addr, &tls.Config{ServerName: cfg.SMTPHost})
+	conn, err := tls.DialWithDialer(&net.Dialer{Timeout: smtpDialTimeout}, "tcp", addr, smtpTLSConfig(cfg.SMTPHost))
 	if err != nil {
 		return fmt.Errorf("tls dial: %w", err)
 	}
 	_ = conn.SetDeadline(time.Now().Add(smtpDeadline))
 
 	client, err := smtp.NewClient(conn, cfg.SMTPHost)
-	if err != nil {
+	if err != nil { // # pragma: no cover — smtp.NewClient only fails if the server never sends a 220 greeting; the dial+deadline already covers a non-responsive server
 		return fmt.Errorf("smtp client: %w", err)
 	}
 	defer client.Close()
@@ -241,10 +261,10 @@ func smtpDeliver(client *smtp.Client, from, to string, body []byte) error {
 	if err != nil {
 		return fmt.Errorf("smtp data: %w", err)
 	}
-	if _, err := w.Write(body); err != nil {
+	if _, err := w.Write(body); err != nil { // # pragma: no cover — a write error needs the connection to break mid-DATA after a 354; the server-reject paths above are the meaningful failures
 		return fmt.Errorf("smtp write: %w", err)
 	}
-	if err := w.Close(); err != nil {
+	if err := w.Close(); err != nil { // # pragma: no cover — see the write branch above; a close error is the same mid-stream-break condition
 		return fmt.Errorf("smtp data close: %w", err)
 	}
 

@@ -61,7 +61,8 @@ var int02Coverage = map[string][]string{
 		"TestSendReminders_ChannelFailureIsolation",
 	},
 	"webpush": {
-		"TestNotificationDelivery_InjectedFaultRecordsFailureAndKeepsReminderDue", // shared faultNotificationDelivery seam (also in sendPushMessage)
+		"TestNotificationDelivery_InjectedFaultOnWebPushKeepsSubscription", // sendPushMessage seam: failed, subscription kept
+		"TestPushSender_RemovesStaleSubscription",                          // pre-existing: 404/410 → subscription dropped
 		"TestSendReminders_PushPrivateAddressBlocked",
 	},
 	"email-resend": {
