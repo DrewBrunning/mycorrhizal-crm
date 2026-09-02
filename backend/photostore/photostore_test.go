@@ -31,6 +31,7 @@ func decodeTestPNG(t *testing.T) []byte {
 // --- SaveContactPhoto ---
 
 func TestSaveContactPhoto(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	data := decodeTestPNG(t)
 
@@ -72,6 +73,7 @@ func TestSaveContactPhoto(t *testing.T) {
 }
 
 func TestSaveContactPhoto_EmptyInputIsNoop(t *testing.T) {
+	t.Parallel()
 	photoPath, thumbnail, err := SaveContactPhoto(nil, "", t.TempDir())
 	if err != nil {
 		t.Fatalf("SaveContactPhoto(nil) returned error: %v", err)
@@ -82,6 +84,7 @@ func TestSaveContactPhoto_EmptyInputIsNoop(t *testing.T) {
 }
 
 func TestSaveContactPhoto_InvalidImageDataErrors(t *testing.T) {
+	t.Parallel()
 	_, _, err := SaveContactPhoto([]byte("this is not an image"), "", t.TempDir())
 	if err == nil {
 		t.Error("expected an error decoding non-image bytes, got nil")
@@ -91,6 +94,7 @@ func TestSaveContactPhoto_InvalidImageDataErrors(t *testing.T) {
 // --- ReadContactPhoto / ReadContactPhotoDataURI ---
 
 func TestReadContactPhotoRoundTrip(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	data := decodeTestPNG(t)
 
@@ -118,6 +122,7 @@ func TestReadContactPhotoRoundTrip(t *testing.T) {
 }
 
 func TestReadContactPhoto_FallsBackToThumbnailWhenFileMissing(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	thumbnail := "data:image/jpeg;base64,Zm9vYmFy" // "foobar"
 
@@ -131,6 +136,7 @@ func TestReadContactPhoto_FallsBackToThumbnailWhenFileMissing(t *testing.T) {
 }
 
 func TestReadContactPhoto_NoPhotoAvailable(t *testing.T) {
+	t.Parallel()
 	got, mediaType := ReadContactPhoto("", "", "")
 	if got != "" || mediaType != "" {
 		t.Errorf("ReadContactPhoto with nothing set = (%q, %q), want empty strings", got, mediaType)
@@ -138,6 +144,7 @@ func TestReadContactPhoto_NoPhotoAvailable(t *testing.T) {
 }
 
 func TestReadContactPhotoDataURI(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	data := decodeTestPNG(t)
 	photoPath, _, err := SaveContactPhoto(data, "image/png", dir)
@@ -155,6 +162,7 @@ func TestReadContactPhotoDataURI(t *testing.T) {
 }
 
 func TestReadContactPhotoDataURI_NoPhotoAvailable(t *testing.T) {
+	t.Parallel()
 	uri, mediaType := ReadContactPhotoDataURI("", "", "")
 	if uri != "" || mediaType != "" {
 		t.Errorf("ReadContactPhotoDataURI with nothing set = (%q, %q), want empty strings", uri, mediaType)
@@ -164,6 +172,7 @@ func TestReadContactPhotoDataURI_NoPhotoAvailable(t *testing.T) {
 // --- ExtractPhotoData ---
 
 func TestExtractPhotoData_Nil(t *testing.T) {
+	t.Parallel()
 	data, mediaType, photoURL := ExtractPhotoData(nil)
 	if data != nil || mediaType != "" || photoURL != "" {
 		t.Errorf("ExtractPhotoData(nil) = (%v, %q, %q), want all zero values", data, mediaType, photoURL)
@@ -171,6 +180,7 @@ func TestExtractPhotoData_Nil(t *testing.T) {
 }
 
 func TestExtractPhotoData_InlineBase64WithTypeParam(t *testing.T) {
+	t.Parallel()
 	data := decodeTestPNG(t)
 	field := &vcard.Field{
 		Value:  base64.StdEncoding.EncodeToString(data),
@@ -190,6 +200,7 @@ func TestExtractPhotoData_InlineBase64WithTypeParam(t *testing.T) {
 }
 
 func TestExtractPhotoData_DataURIForm(t *testing.T) {
+	t.Parallel()
 	data := decodeTestPNG(t)
 	field := &vcard.Field{
 		Value: "data:image/png;base64," + base64.StdEncoding.EncodeToString(data),
@@ -208,6 +219,7 @@ func TestExtractPhotoData_DataURIForm(t *testing.T) {
 }
 
 func TestExtractPhotoData_ReferencedURI(t *testing.T) {
+	t.Parallel()
 	field := &vcard.Field{Value: "https://example.com/photo.jpg"}
 
 	data, _, photoURL := ExtractPhotoData(field)
@@ -231,24 +243,28 @@ func TestExtractPhotoData_ReferencedURI(t *testing.T) {
 // deterministically in this test.
 
 func TestFetchPhotoFromURL_BlocksLocalhostHostname(t *testing.T) {
+	t.Parallel()
 	if _, _, err := FetchPhotoFromURL("http://localhost/photo.jpg"); err == nil {
 		t.Error("expected fetching from localhost to be rejected as an SSRF target")
 	}
 }
 
 func TestFetchPhotoFromURL_BlocksLoopbackIPv4Literal(t *testing.T) {
+	t.Parallel()
 	if _, _, err := FetchPhotoFromURL("http://127.0.0.1/photo.jpg"); err == nil {
 		t.Error("expected fetching from 127.0.0.1 to be rejected as an SSRF target")
 	}
 }
 
 func TestFetchPhotoFromURL_BlocksLoopbackIPv6Literal(t *testing.T) {
+	t.Parallel()
 	if _, _, err := FetchPhotoFromURL("http://[::1]/photo.jpg"); err == nil {
 		t.Error("expected fetching from [::1] to be rejected as an SSRF target")
 	}
 }
 
 func TestFetchPhotoFromURL_BlocksPrivateLANAddress(t *testing.T) {
+	t.Parallel()
 	// 192.168.0.0/16 is not in the hardcoded hostname blocklist at all -- this
 	// proves the resolved-IP check (ip.IsPrivate()), not just the hostname
 	// string list, actually rejects it.
@@ -258,6 +274,7 @@ func TestFetchPhotoFromURL_BlocksPrivateLANAddress(t *testing.T) {
 }
 
 func TestFetchPhotoFromURL_BlocksLinkLocalMetadataAddress(t *testing.T) {
+	t.Parallel()
 	// 169.254.169.254 is the classic cloud-metadata SSRF target (AWS/GCP/Azure
 	// instance metadata service); ip.IsLinkLocalUnicast() must catch it.
 	if _, _, err := FetchPhotoFromURL("http://169.254.169.254/latest/meta-data/"); err == nil {
@@ -266,12 +283,14 @@ func TestFetchPhotoFromURL_BlocksLinkLocalMetadataAddress(t *testing.T) {
 }
 
 func TestFetchPhotoFromURL_RejectsNonHTTPScheme(t *testing.T) {
+	t.Parallel()
 	if _, _, err := FetchPhotoFromURL("file:///etc/passwd"); err == nil {
 		t.Error("expected a non-http(s) scheme to be rejected")
 	}
 }
 
 func TestFetchPhotoFromURL_RejectsUnparsableURL(t *testing.T) {
+	t.Parallel()
 	// A URL containing a raw control character fails url.Parse itself.
 	_, err := url.Parse("http://\x7f")
 	if err == nil {
@@ -285,6 +304,7 @@ func TestFetchPhotoFromURL_RejectsUnparsableURL(t *testing.T) {
 // --- DecodePhotoURI ---
 
 func TestDecodePhotoURI_EmptyValue(t *testing.T) {
+	t.Parallel()
 	data, mediaType, url := DecodePhotoURI("", "")
 	if data != nil || mediaType != "" || url != "" {
 		t.Errorf("DecodePhotoURI(\"\") = (%v, %q, %q), want all zero", data, mediaType, url)
@@ -292,6 +312,7 @@ func TestDecodePhotoURI_EmptyValue(t *testing.T) {
 }
 
 func TestDecodePhotoURI_HTTPURLWithMediaTypeHint(t *testing.T) {
+	t.Parallel()
 	data, mediaType, photoURL := DecodePhotoURI("https://example.com/photo.jpg", "image/jpeg")
 	if data != nil {
 		t.Error("expected nil data for an HTTP URL")
@@ -305,6 +326,7 @@ func TestDecodePhotoURI_HTTPURLWithMediaTypeHint(t *testing.T) {
 }
 
 func TestDecodePhotoURI_HTTPURLWithWhitespaceStripping(t *testing.T) {
+	t.Parallel()
 	// Simulates Google VCF format with embedded whitespace.
 	dirty := "https://example.com/pho\r\nto.jpg"
 	data, _, photoURL := DecodePhotoURI(dirty, "")
@@ -317,6 +339,7 @@ func TestDecodePhotoURI_HTTPURLWithWhitespaceStripping(t *testing.T) {
 }
 
 func TestDecodePhotoURI_RawBase64WithMediaTypeHint(t *testing.T) {
+	t.Parallel()
 	pngData := decodeTestPNG(t)
 	b64 := base64.StdEncoding.EncodeToString(pngData)
 
@@ -333,6 +356,7 @@ func TestDecodePhotoURI_RawBase64WithMediaTypeHint(t *testing.T) {
 }
 
 func TestDecodePhotoURI_DataURIWithMediaTypeExtraction(t *testing.T) {
+	t.Parallel()
 	pngData := decodeTestPNG(t)
 	uri := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngData)
 
@@ -349,6 +373,7 @@ func TestDecodePhotoURI_DataURIWithMediaTypeExtraction(t *testing.T) {
 }
 
 func TestDecodePhotoURI_DataURIPrefersMediaTypeHintOverEmbedded(t *testing.T) {
+	t.Parallel()
 	pngData := decodeTestPNG(t)
 	uri := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngData)
 
@@ -364,6 +389,7 @@ func TestDecodePhotoURI_DataURIPrefersMediaTypeHintOverEmbedded(t *testing.T) {
 }
 
 func TestDecodePhotoURI_InvalidBase64(t *testing.T) {
+	t.Parallel()
 	// Raw string that is not valid base64 — must return nil data, not an error.
 	data, mediaType, photoURL := DecodePhotoURI("!!!not-valid-base64!!!", "image/png")
 	if data != nil {
@@ -375,6 +401,7 @@ func TestDecodePhotoURI_InvalidBase64(t *testing.T) {
 }
 
 func TestDecodePhotoURI_MalformedDataURI(t *testing.T) {
+	t.Parallel()
 	// A data: URI with no comma separator — SplitN returns one part.
 	data, _, _ := DecodePhotoURI("data:bare-no-comma", "")
 	if data != nil {
@@ -385,6 +412,7 @@ func TestDecodePhotoURI_MalformedDataURI(t *testing.T) {
 // --- cropToSquare ---
 
 func TestCropToSquare_AlreadySquare(t *testing.T) {
+	t.Parallel()
 	img := image.NewRGBA(image.Rect(0, 0, 100, 100))
 	result := cropToSquare(img)
 	bounds := result.Bounds()
@@ -394,6 +422,7 @@ func TestCropToSquare_AlreadySquare(t *testing.T) {
 }
 
 func TestCropToSquare_WiderThanTall(t *testing.T) {
+	t.Parallel()
 	// 200x100 — should crop to 100x100 centered horizontally.
 	img := image.NewRGBA(image.Rect(0, 0, 200, 100))
 	result := cropToSquare(img)
@@ -404,6 +433,7 @@ func TestCropToSquare_WiderThanTall(t *testing.T) {
 }
 
 func TestCropToSquare_TallerThanWide(t *testing.T) {
+	t.Parallel()
 	// 100x200 — should crop to 100x100 centered vertically.
 	img := image.NewRGBA(image.Rect(0, 0, 100, 200))
 	result := cropToSquare(img)
@@ -416,6 +446,7 @@ func TestCropToSquare_TallerThanWide(t *testing.T) {
 // --- SaveContactPhoto: JPEG input and downscale path ---
 
 func TestSaveContactPhoto_JPEGInput(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	var buf bytes.Buffer
@@ -437,6 +468,7 @@ func TestSaveContactPhoto_JPEGInput(t *testing.T) {
 }
 
 func TestSaveContactPhoto_DownscaleWhenLargerThanMax(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	img := image.NewRGBA(image.Rect(0, 0, 500, 500))
@@ -468,6 +500,7 @@ func TestSaveContactPhoto_DownscaleWhenLargerThanMax(t *testing.T) {
 // --- ExtractPhotoData: edge cases ---
 
 func TestExtractPhotoData_EmptyValue(t *testing.T) {
+	t.Parallel()
 	field := &vcard.Field{Value: ""}
 	data, mediaType, photoURL := ExtractPhotoData(field)
 	if data != nil || mediaType != "" || photoURL != "" {
@@ -476,6 +509,7 @@ func TestExtractPhotoData_EmptyValue(t *testing.T) {
 }
 
 func TestExtractPhotoData_MEDIATYPEParam(t *testing.T) {
+	t.Parallel()
 	data := decodeTestPNG(t)
 	field := &vcard.Field{
 		Value:  base64.StdEncoding.EncodeToString(data),
