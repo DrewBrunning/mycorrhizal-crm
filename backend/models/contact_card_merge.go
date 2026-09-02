@@ -4,6 +4,7 @@ import (
 	"reflect"
 
 	"mycorrhizal/contactmodel"
+	"mycorrhizal/photostore"
 )
 
 // mergeRecordFromFlat reconciles the neutral Record derived fresh from a
@@ -63,8 +64,13 @@ import (
 //     compare and no ambiguity.
 //
 //   - Media is split by kind: photo is flat-owned (Contact.Photo /
-//     PhotoThumbnail) and always comes from fresh; logo/sound have no flat
-//     home and are preserved from loaded.
+//     PhotoThumbnail) and normally comes from fresh; logo/sound have no flat
+//     home and are preserved from loaded. The one exception (see mergeMedia):
+//     a loaded photo entry whose URI is a remote http(s) URL not yet
+//     downloaded to the photo store is preserved even when fresh has no photo
+//     entry — it is a transient reference the ingesting caller resolves to
+//     flat state later, and must not be lost by a plain db.Save in the
+//     meantime (ADR 0012 INV-D8).
 //
 //   - CRMEnvelope.Kind is preserved unconditionally (no flat field, T27);
 //     the flat-owned envelope fields (Circles, HowWeMet, WorkInformation,
@@ -296,23 +302,55 @@ func formatAnniversaryForMerge(d contactmodel.AnniversaryDate) string {
 	return proj.Birthday
 }
 
-// mergeMedia splits the media by kind: photo entries are flat-owned (they
-// bridge Contact.Photo/PhotoThumbnail) and always come from fresh; logo and
-// sound entries have no flat home and are preserved from loaded
-// unconditionally.
+// mergeMedia splits the media by kind. Photo entries bridge Contact.Photo/
+// PhotoThumbnail and are normally flat-owned: a fresh (flat-derived) photo
+// entry always wins, and a loaded photo entry is dropped on the assumption
+// buildMedia re-derives it from the flat columns. Logo and sound entries
+// have no flat home and are preserved from loaded unconditionally.
+//
+// The exception is a loaded photo entry whose URI is a remote http(s) URL
+// that has not been downloaded to the photo store yet (Contact.Photo empty,
+// so buildMedia emits no fresh photo entry): it is preserved even though
+// fresh has none. Such an entry is a *transient reference* — every ingestion
+// path resolves it to flat state eventually (applyMedia fetches + downloads
+// it when photoDir is set; the photoDir=="" import callers run their own
+// extractPhotoFromRecord/FetchPhotoFromURL/SaveContactPhoto pipeline) — but
+// until that happens it must ride through a plain db.Save intact rather than
+// being silently lost (same bug class as CLAUDE.md backend trap #3 / T75;
+// ADR 0012 INV-D8). A data: URI or a relative/local pointer IS the flat
+// projection, so its absence from fresh means the flat photo was cleared —
+// that delete is honoured and the entry still dropped. Once the URL is
+// downloaded, fresh carries a data: photo entry, freshHasPhoto is true, and
+// it replaces the remote-URL entry (its element ID is lost then, exactly as
+// happens for any photo today).
 func mergeMedia(loaded, fresh []contactmodel.Resource) []contactmodel.Resource {
 	result := make([]contactmodel.Resource, 0, len(fresh)+len(loaded))
+	freshHasPhoto := false
 	for _, r := range fresh {
 		if r.Kind == "photo" {
 			result = append(result, r)
+			freshHasPhoto = true
 		}
 	}
 	for _, r := range loaded {
-		if r.Kind != "photo" {
+		switch {
+		case r.Kind != "photo":
+			result = append(result, r)
+		case !freshHasPhoto && loadedPhotoHasNoFlatHome(r):
 			result = append(result, r)
 		}
 	}
 	return result
+}
+
+// loadedPhotoHasNoFlatHome reports whether a loaded photo Resource is a
+// remote http(s) reference not yet downloaded to the photo store — the one
+// case mergeMedia preserves when fresh has no photo entry. DecodePhotoURI is
+// the single definition of "remote photo URI" (a non-empty url return means
+// the value is an http:// or https:// reference, not embedded data:).
+func loadedPhotoHasNoFlatHome(r contactmodel.Resource) bool {
+	_, _, remoteURL := photostore.DecodePhotoURI(r.URI, r.MediaType)
+	return remoteURL != ""
 }
 
 // The projection functions below are the pure flat projections of a neutral

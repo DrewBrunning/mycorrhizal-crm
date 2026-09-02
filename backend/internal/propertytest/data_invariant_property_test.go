@@ -198,10 +198,12 @@ func TestDataInvariant_A4_ImportAccountsForEveryRecord(t *testing.T) {
 // consistency ADR 0012 deferred here from #460 (false-positive risk against
 // the TEST-02 fixture); over generated records it is safe.
 //
-// The comparison is the flat columns only, not the whole Card blob: a plain
-// db.Save currently drops a Media entry whose photo has not been downloaded to
-// contacts.photo (a pre-existing T75-adjacent behaviour, flagged separately —
-// see the PR). INV-D8's structural half (valid JSON, unique element ids) is
+// The comparison is the flat columns only, not the whole Card blob: a
+// Card.Media {kind:"photo"} entry whose photo has not been downloaded to
+// contacts.photo has no flat home, so it is outside this fixpoint by design
+// (ADR 0012 INV-D8 "transient-photo carve-out"; mergeMedia preserves such an
+// entry across a plain db.Save, and canonical_record.unresolved_remote_photo
+// surfaces it). INV-D8's structural half (valid JSON, unique element ids) is
 // covered by the RunDataIntegrityChecks sweep below.
 func TestDataInvariant_D8_FlatProjectionIsAFixpoint(t *testing.T) {
 	t.Run("reprojection", rapid.MakeCheck(func(t *rapid.T) {
