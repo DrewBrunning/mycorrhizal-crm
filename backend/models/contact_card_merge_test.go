@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"mycorrhizal/contactmodel"
@@ -318,4 +319,95 @@ func TestRestoreFlatStateFrom_ThenSavePreservesCardOnlyData(t *testing.T) {
 	if undone.CRM.Kind != "pet" {
 		t.Errorf("CRM.Kind = %q, want preserved through undo", undone.CRM.Kind)
 	}
+}
+
+// TestBeforeSave_PlainSavePreservesRemoteURLPhoto is the report's exact
+// reproduction: a Card.Media{kind:"photo"} entry whose URI is a remote
+// http(s) URL not yet downloaded to the photo store (contacts.photo empty)
+// must survive a plain db.Save on a loaded contact. Before the mergeMedia
+// carve-out (ADR 0012 INV-D8 transient-photo contract), the loaded photo
+// entry was dropped because buildMedia derives no fresh photo entry from the
+// empty flat column and mergeMedia discarded every loaded photo entry.
+func TestBeforeSave_PlainSavePreservesRemoteURLPhoto(t *testing.T) {
+	db := newT75TestDB(t)
+	user := User{Username: "media-remote", Password: "password123!A", Email: "media-remote@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Name:  &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Grace"}}},
+		Media: []contactmodel.Resource{{Kind: "photo", URI: "https://example.com/grace.jpg", MediaType: "image/jpeg"}},
+	}}
+	contact := &Contact{UserID: user.ID}
+	ApplyRecordToContact(contact, rec, "") // photoDir "" -> flat Photo stays empty, the entry has no flat home
+	require.NoError(t, db.Create(contact).Error)
+
+	var loaded Contact
+	require.NoError(t, db.First(&loaded, contact.ID).Error)
+	require.NoError(t, db.Save(&loaded).Error) // plain save -> BeforeSave merge path
+
+	var persisted Contact
+	require.NoError(t, db.First(&persisted, contact.ID).Error)
+	require.Len(t, persisted.Card.Media, 1, "the remote-URL photo entry must survive a plain save")
+	assert.Equal(t, "photo", persisted.Card.Media[0].Kind)
+	assert.Equal(t, "https://example.com/grace.jpg", persisted.Card.Media[0].URI)
+	assert.Empty(t, persisted.Photo, "the flat photo column stays empty until the URL is downloaded")
+}
+
+// TestBeforeSave_PlainSaveDropsDataURIPhotoWithNoFlatPhoto guards the other
+// edge of the carve-out: a loaded photo entry that IS the flat projection (a
+// data: URI) with an empty contacts.photo means the flat photo was cleared,
+// so it is still dropped. Flat-path photo deletion keeps working; only a
+// remote URL with no flat home is preserved.
+func TestBeforeSave_PlainSaveDropsDataURIPhotoWithNoFlatPhoto(t *testing.T) {
+	db := newT75TestDB(t)
+	user := User{Username: "media-datauri", Password: "password123!A", Email: "media-datauri@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Name:  &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Ada"}}},
+		Media: []contactmodel.Resource{{Kind: "photo", URI: "data:image/jpeg;base64,/9j/4AAQ", MediaType: "image/jpeg"}},
+	}}
+	contact := &Contact{UserID: user.ID}
+	ApplyRecordToContact(contact, rec, "")
+	require.NoError(t, db.Create(contact).Error)
+
+	var loaded Contact
+	require.NoError(t, db.First(&loaded, contact.ID).Error)
+	require.NoError(t, db.Save(&loaded).Error)
+
+	var persisted Contact
+	require.NoError(t, db.First(&persisted, contact.ID).Error)
+	assert.Empty(t, persisted.Card.Media, "a data: URI photo with no flat photo reads as a cleared photo and is dropped")
+}
+
+// TestBeforeSave_FlatPhotoReplacesStaleRemoteURLEntry: once the photo has
+// been downloaded to flat storage (PhotoThumbnail populated), buildMedia
+// derives a fresh data: photo entry, freshHasPhoto is true, and the stale
+// remote-URL entry is replaced. The carve-out only holds while the entry has
+// no flat home.
+func TestBeforeSave_FlatPhotoReplacesStaleRemoteURLEntry(t *testing.T) {
+	db := newT75TestDB(t)
+	user := User{Username: "media-downloaded", Password: "password123!A", Email: "media-downloaded@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Name:  &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Grace"}}},
+		Media: []contactmodel.Resource{{Kind: "photo", URI: "https://example.com/grace.jpg", MediaType: "image/jpeg"}},
+	}}
+	contact := &Contact{UserID: user.ID}
+	ApplyRecordToContact(contact, rec, "")
+	require.NoError(t, db.Create(contact).Error)
+
+	var loaded Contact
+	require.NoError(t, db.First(&loaded, contact.ID).Error)
+	// Simulate the ingesting caller's photo pipeline having fetched the URL
+	// into durable flat storage.
+	loaded.PhotoThumbnail = "data:image/jpeg;base64,/9j/4AAQSkZJRg=="
+	require.NoError(t, db.Save(&loaded).Error)
+
+	var persisted Contact
+	require.NoError(t, db.First(&persisted, contact.ID).Error)
+	require.Len(t, persisted.Card.Media, 1)
+	assert.True(t, strings.HasPrefix(persisted.Card.Media[0].URI, "data:"),
+		"the flat-derived data: entry replaces the stale remote URL, got %q", persisted.Card.Media[0].URI)
 }

@@ -239,11 +239,20 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
   — which merges the flat derivation *onto* the loaded `Card` rather than replacing it, so
   no-flat-home data (`SpeakToAs`, `PersonalInfo`, projections) survives a plain `db.Save`
   ([`models/contact.go:356`](../../backend/models/contact.go),
-  [`models/contact_card_merge.go:78`](../../backend/models/contact_card_merge.go); T75). `Card` is
+  [`models/contact_card_merge.go:84`](../../backend/models/contact_card_merge.go); T75). `Card` is
   read back with `RecordForContact` (reads what is persisted), never `RecordFromContact` (rebuilds
   from flat fields and silently drops the rest) — `/CLAUDE.md` trap #3
   ([`models/contact_record.go:50`](../../backend/models/contact_record.go)). Element `ID`s serialize
   (`json:"id,omitempty"`) so the round-trip survives save/reload (ADR 0001).
+- **Transient-photo carve-out:** the flat↔nested projection contract covers photo *bridging* only
+  for `data:` / flat-resolved entries. A `Card.Media` `{kind:"photo"}` entry whose URI is a remote
+  `http(s)` URL not yet downloaded to the photo store has no flat home (`contacts.photo` empty) —
+  it is a transient reference the ingesting caller resolves to flat state later (`applyMedia` when
+  `photoDir` is set; the `photoDir==""` import callers' own `extractPhotoFromRecord` pipeline).
+  `mergeMedia` ([`models/contact_card_merge.go`](../../backend/models/contact_card_merge.go))
+  deliberately preserves it across a plain `db.Save` so it is not lost before that resolution, and
+  `#494`'s reprojection property compares flat columns, *not* `Card.Media` photo entries, for this
+  reason.
 - **Can be violated by:** a new plain-save path that reintroduces a straight `db.Save` on a loaded
   contact without the merge (`/CLAUDE.md` trap #3 standing rule); an import or migration that writes
   `Card` JSON directly with duplicate element IDs or a flat column that disagrees with the nested
@@ -251,8 +260,12 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
 - **Checked by:** `checkCanonicalRecords` streams live contacts in pages and reports
   `canonical_record.invalid_json` (the `card` column does not parse) and
   `canonical_record.duplicate_element_id` (a Card collection has two elements with one `id`, breaking
-  the round-trip). The flat-vs-nested reprojection comparison is deferred to #494's property suite
-  (false-positive risk against the TEST-02 fixture).
+  the round-trip), both `violation`. It also reports `canonical_record.unresolved_remote_photo`
+  (`info`, advisory): a live contact whose `Card.Media` holds a remote-URL `{kind:"photo"}` entry
+  while `contacts.photo` is empty — the transient-photo carve-out above, surfaced so the
+  referenced-but-not-downloaded state is visible, not because it is corruption. The general
+  flat-vs-nested reprojection comparison is deferred to #494's property suite (false-positive risk
+  against the TEST-02 fixture).
 
 #### INV-D9 — The FTS search index matches canonical data, modulo its contract
 

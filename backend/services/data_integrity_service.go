@@ -13,6 +13,7 @@ import (
 	"mycorrhizal/attachments"
 	"mycorrhizal/config"
 	"mycorrhizal/models"
+	"mycorrhizal/photostore"
 
 	"gorm.io/gorm"
 )
@@ -593,10 +594,12 @@ func checkCanonicalRecords(ctx context.Context, db *gorm.DB, _ config.Config) ([
 		ID     uint
 		UserID uint
 		Card   string
+		Photo  string
 	}
 
 	malformed := map[uint]int{}
 	dupIDs := map[uint]int{}
+	unresolvedRemotePhoto := map[uint]int{}
 	var lastID uint
 
 	for {
@@ -605,7 +608,7 @@ func checkCanonicalRecords(ctx context.Context, db *gorm.DB, _ config.Config) ([
 		}
 		var rows []row
 		if err := db.WithContext(ctx).
-			Raw(`SELECT id, user_id, card FROM contacts WHERE deleted_at IS NULL AND id > ? ORDER BY id LIMIT ?`, lastID, page).
+			Raw(`SELECT id, user_id, card, photo FROM contacts WHERE deleted_at IS NULL AND id > ? ORDER BY id LIMIT ?`, lastID, page).
 			Scan(&rows).Error; err != nil {
 			return nil, err
 		}
@@ -625,6 +628,9 @@ func checkCanonicalRecords(ctx context.Context, db *gorm.DB, _ config.Config) ([
 			}
 			if collectionHasDuplicateElementID(top) {
 				dupIDs[r.UserID]++
+			}
+			if strings.TrimSpace(r.Photo) == "" && cardHasUnresolvedRemotePhoto(top) {
+				unresolvedRemotePhoto[r.UserID]++
 			}
 		}
 		if len(rows) < page {
@@ -649,7 +655,44 @@ func checkCanonicalRecords(ctx context.Context, db *gorm.DB, _ config.Config) ([
 			Repairable: false,
 		})
 	}
+	for uid, n := range unresolvedRemotePhoto {
+		out = append(out, IntegrityFinding{
+			Invariant: "INV-D8", Check: "canonical_record.unresolved_remote_photo",
+			Severity: IntegritySeverityInfo, UserID: uid, Count: n,
+			Detail:     fmt.Sprintf("%d contact(s) reference a remote photo URL in Card.Media that has not been downloaded to the photo store (contacts.photo empty); it is preserved across saves but not yet in durable local storage", n),
+			Repairable: false,
+		})
+	}
 	return out, nil
+}
+
+// cardHasUnresolvedRemotePhoto reports whether the Card's media array holds a
+// {kind:"photo"} entry whose uri is a remote http(s) reference. Callers gate
+// this on contacts.photo being empty: a photo entry that IS the flat
+// projection (a data: URI) is expected, but a remote URL with no flat photo
+// is a transient reference the ingesting caller has not resolved to durable
+// storage yet (ADR 0012 INV-D8; mergeMedia preserves it across saves).
+func cardHasUnresolvedRemotePhoto(top map[string]json.RawMessage) bool {
+	raw, ok := top["media"]
+	if !ok {
+		return false
+	}
+	var media []struct {
+		Kind string `json:"kind"`
+		URI  string `json:"uri"`
+	}
+	if err := json.Unmarshal(raw, &media); err != nil {
+		return false
+	}
+	for _, m := range media {
+		if m.Kind != "photo" {
+			continue
+		}
+		if _, _, remoteURL := photostore.DecodePhotoURI(m.URI, ""); remoteURL != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // collectionHasDuplicateElementID reports whether any top-level Card value that

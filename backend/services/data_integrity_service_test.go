@@ -386,6 +386,40 @@ func TestDataIntegrity_INV_D8_DuplicateElementID(t *testing.T) {
 	require.True(t, ok, "expected duplicate-element-id finding, got: %+v", r.Findings)
 }
 
+// A Card.Media photo entry pointing at a remote URL that has not been
+// downloaded to the photo store (contacts.photo empty) is the transient-photo
+// state mergeMedia preserves — surfaced as an advisory (info) finding, not a
+// violation.
+func TestDataIntegrity_INV_D8_UnresolvedRemotePhoto(t *testing.T) {
+	db, cfg := integrityTestDB(t)
+	u := mkUser(t, db, "alice")
+	c := mkContact(t, db, u.ID, "A")
+	card := `{"media":[{"kind":"photo","uri":"https://example.com/grace.jpg","mediaType":"image/jpeg"}]}`
+	require.NoError(t, db.Exec("UPDATE contacts SET card = ?, photo = '' WHERE id = ?", card, c.ID).Error)
+
+	r := runDataChecks(t, db, cfg)
+	f, ok := findingFor(r, "canonical_record.unresolved_remote_photo", u.ID)
+	require.True(t, ok, "expected INV-D8 unresolved-remote-photo finding, got: %+v", r.Findings)
+	assert.Equal(t, "INV-D8", f.Invariant)
+	assert.Equal(t, IntegritySeverityInfo, f.Severity)
+	assert.False(t, f.Repairable)
+	assert.True(t, r.OK, "an advisory info finding must not flip Report.OK")
+}
+
+// Once the remote photo has been downloaded (contacts.photo populated), the
+// Card.Media photo entry is a normal flat-backed bridge — no finding.
+func TestDataIntegrity_INV_D8_DownloadedRemotePhotoIsClean(t *testing.T) {
+	db, cfg := integrityTestDB(t)
+	u := mkUser(t, db, "alice")
+	c := mkContact(t, db, u.ID, "A")
+	card := `{"media":[{"kind":"photo","uri":"https://example.com/grace.jpg","mediaType":"image/jpeg"}]}`
+	require.NoError(t, db.Exec("UPDATE contacts SET card = ?, photo = 'grace-1234.jpg' WHERE id = ?", card, c.ID).Error)
+
+	r := runDataChecks(t, db, cfg)
+	_, ok := findingFor(r, "canonical_record.unresolved_remote_photo", u.ID)
+	assert.False(t, ok, "a downloaded photo (contacts.photo set) must not produce the advisory, got: %+v", r.Findings)
+}
+
 // ---------------------------------------------------------------------------
 // INV-A5 — derived index (FTS) divergence, cheap count version
 // ---------------------------------------------------------------------------

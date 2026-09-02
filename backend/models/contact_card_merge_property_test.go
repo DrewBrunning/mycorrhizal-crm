@@ -292,3 +292,70 @@ func deepCopyContactForEmailEdit(c *Contact) *Contact {
 	cp.Emails = append([]ContactEmail(nil), c.Emails...)
 	return &cp
 }
+
+// TestMergeRecordFromFlat_RemoteURLPhoto_SurvivesUntilDownloaded is Property
+// D, targeting mergeMedia's transient-photo carve-out (ADR 0012 INV-D8): a
+// loaded {kind:"photo"} entry whose URI is a remote http(s) URL is preserved
+// across a plain save while the flat photo column is empty (fresh has no
+// photo entry), and is replaced once the photo has been downloaded (fresh
+// carries a data: photo entry). A co-located logo entry — a genuine
+// no-flat-home member — must survive in both cases, proving the carve-out
+// composes with the existing logo/sound preservation.
+func TestMergeRecordFromFlat_RemoteURLPhoto_SurvivesUntilDownloaded(t *testing.T) {
+	for i := 0; i < mergePropertyIterations; i++ {
+		r := rand.New(rand.NewSource(int64(4000 + i)))
+		tag := fmt.Sprintf("media-%d", i)
+
+		contact := randPropertyContact(r, tag) // never sets Photo/PhotoThumbnail
+		fresh := RecordFromContact(contact, "")
+		loaded := *fresh
+		remoteURL := fmt.Sprintf("https://cdn-%d.example.test/%s.jpg", r.Intn(1_000_000), tag)
+		logo := contactmodel.Resource{Kind: "logo", URI: randPropertyString(r, tag+"-logo")}
+		loaded.Card.Media = []contactmodel.Resource{
+			{Kind: "photo", URI: remoteURL, MediaType: "image/jpeg"},
+			logo,
+		}
+
+		t.Run("not yet downloaded: remote-URL photo and logo both survive", func(t *testing.T) {
+			freshSame := RecordFromContact(contact, "") // no photo entry (flat photo empty)
+			merged := mergeRecordFromFlat(loaded, *freshSame)
+			var gotPhoto, gotLogo *contactmodel.Resource
+			for j := range merged.Card.Media {
+				switch merged.Card.Media[j].Kind {
+				case "photo":
+					gotPhoto = &merged.Card.Media[j]
+				case "logo":
+					gotLogo = &merged.Card.Media[j]
+				}
+			}
+			if gotPhoto == nil || gotPhoto.URI != remoteURL {
+				t.Fatalf("iteration %d (seed %d): remote-URL photo entry not preserved: got %+v", i, 4000+i, merged.Card.Media)
+			}
+			if gotLogo == nil || !reflect.DeepEqual(*gotLogo, logo) {
+				t.Fatalf("iteration %d (seed %d): logo entry not preserved: got %+v", i, 4000+i, merged.Card.Media)
+			}
+		})
+
+		t.Run("downloaded: data: photo wins, logo still survives", func(t *testing.T) {
+			freshWithPhoto := RecordFromContact(contact, "")
+			dataURI := "data:image/jpeg;base64,/9j/4AAQSkZJRg=="
+			freshWithPhoto.Card.Media = []contactmodel.Resource{{Kind: "photo", URI: dataURI, MediaType: "image/jpeg"}}
+			merged := mergeRecordFromFlat(loaded, *freshWithPhoto)
+			var gotPhoto, gotLogo *contactmodel.Resource
+			for j := range merged.Card.Media {
+				switch merged.Card.Media[j].Kind {
+				case "photo":
+					gotPhoto = &merged.Card.Media[j]
+				case "logo":
+					gotLogo = &merged.Card.Media[j]
+				}
+			}
+			if gotPhoto == nil || gotPhoto.URI != dataURI {
+				t.Fatalf("iteration %d (seed %d): fresh data: photo did not replace the stale remote URL: got %+v", i, 4000+i, merged.Card.Media)
+			}
+			if gotLogo == nil || !reflect.DeepEqual(*gotLogo, logo) {
+				t.Fatalf("iteration %d (seed %d): logo entry not preserved alongside the fresh photo: got %+v", i, 4000+i, merged.Card.Media)
+			}
+		})
+	}
+}
