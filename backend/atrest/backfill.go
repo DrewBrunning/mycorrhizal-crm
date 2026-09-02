@@ -39,6 +39,29 @@ var EncryptedColumns = []string{
 	"contact_sync_links.synced_values",
 }
 
+// auditEventsTable and auditEventsNoUpdateTrigger name the append-only audit
+// log and the BEFORE UPDATE trigger that enforces its immutability (migration
+// 000016, carried verbatim through the 000034 table rebuild). The trigger
+// RAISE(ABORT)s every UPDATE, so a sanctioned maintenance writer that must
+// rewrite audit_events rows drops it for the duration of its writes and
+// recreates it before its transaction commits. Two writers already do this —
+// migration 000034 itself and models.RecomputeAuditChain
+// (models/audit_chain.go) — and backfillColumn is the third: encrypting a
+// pre-existing plaintext before_snapshot is an in-place UPDATE.
+//
+// The DDL is a fourth copy of a string that already lives in three places
+// rather than a shared constant because atrest must not import models (models
+// blank-imports atrest to register the serializers) and models must not import
+// atrest's internals; a shared home would be a new package for one trigger.
+const (
+	auditEventsTable           = "audit_events"
+	auditEventsNoUpdateTrigger = "audit_events_no_update"
+
+	auditEventsNoUpdateTriggerDDL = "CREATE TRIGGER IF NOT EXISTS " + auditEventsNoUpdateTrigger + " " +
+		"BEFORE UPDATE ON " + auditEventsTable + " BEGIN " +
+		"SELECT RAISE(ABORT, 'audit_events is append-only: UPDATE is not allowed'); END"
+)
+
 // Backfill encrypts any rows whose encrypted column still holds plaintext
 // (written before at-rest encryption was enabled, or in a deployment that ran
 // with serializers pass-through). Idempotent and re-runnable: values that
@@ -97,6 +120,19 @@ func backfillColumn(db *gorm.DB, table, column string) error {
 	}
 
 	return db.Transaction(func(tx *gorm.DB) error {
+		// audit_events is append-only at the DB level: a BEFORE UPDATE trigger
+		// RAISE(ABORT)s every UPDATE. Drop it around the backfill's own
+		// UPDATEs and recreate it before commit — the sanctioned-writer
+		// pattern migration 000034 and models.RecomputeAuditChain use. SQLite
+		// DDL is transactional, so if the loop below fails the ROLLBACK
+		// restores the trigger with the rest of the transaction: no error path
+		// leaves the table mutable.
+		auditTable := table == auditEventsTable
+		if auditTable {
+			if err := tx.Exec("DROP TRIGGER IF EXISTS " + auditEventsNoUpdateTrigger).Error; err != nil {
+				return err // # pragma: no cover — DROP TRIGGER IF EXISTS inside an open write transaction has no failure mode a test can arrange; the recreate a few lines down proves the transaction is writable
+			}
+		}
 		for _, r := range rows {
 			id, err := idAsString(r["id"])
 			if err != nil {
@@ -114,6 +150,9 @@ func backfillColumn(db *gorm.DB, table, column string) error {
 			if err := tx.Table(table).Where("id = ?", id).Update(column, ct).Error; err != nil {
 				return err
 			}
+		}
+		if auditTable {
+			return tx.Exec(auditEventsNoUpdateTriggerDDL).Error
 		}
 		return nil
 	})
