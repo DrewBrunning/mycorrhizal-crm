@@ -88,9 +88,9 @@ jobs:
         with:
           artifact: backend-junit-results
           name: Backend Test Report
-          # Issue #630: the backend suite runs as three matrix legs, each
-          # emitting junit-<leg>.xml; the `backend` job bundles all three into
-          # this one artifact. dorny aggregates every glob match into a single
+          # Issue #630: the backend suite runs as several matrix legs, each
+          # emitting junit-<leg>.xml; the `backend` job bundles them into this
+          # one artifact. dorny aggregates every glob match into a single
           # check run.
           path: junit-*.xml
           reporter: java-junit
