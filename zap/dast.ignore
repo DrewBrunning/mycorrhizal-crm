@@ -51,3 +51,26 @@
 # reachable sink. Candidate for `form-action 'none'` in a future CSP hardening
 # pass — deliberately not part of this (DAST-infrastructure) ticket.
 10055-13 medium .*  # SPA makes no HTML <form> submissions; form-action has no sink
+
+# ZAP 40018's boolean-based SQL-injection check flagged the `email` parameter
+# of POST /api/v1/login: it reports that the responses for `... AND 1=1 -- `
+# and `... OR 1=1 -- ` "differed". This is a false positive.
+#
+# The login query is GORM-parameterised — controllers/user_controller.go builds
+# it as db.Where("email = ?", identifier) / db.Where("username = ?", identifier),
+# never string concatenation (the repo-wide "parameterised SQL only" posture;
+# docs/security/asvs-l2.md). The entire payload lands as one bound literal and
+# matches no row; there is no dynamic-SQL sink on this path.
+#
+# The heuristic misfires because the auth path's response genuinely varies with
+# the input string for reasons that are not SQL: the per-identifier account
+# rate-limiter (middleware.GetAccountRateLimiter) flips 401 -> 429 with a
+# retry_after body partway through ZAP's back-to-back probes; enumeration-
+# resistant handling returns an identical 401 for "no such user" and "bad
+# password"; and bcrypt only runs once a row is found, so response timing/size
+# shift with the probe value. ZAP's own evidence field is empty, confidence is
+# Medium, and it notes the original probe value also returned no data.
+#
+# Scoped to /login, not `.*`: a 40018 hit on any other route is a real signal
+# and must not be pre-accepted.
+40018 high /api/v1/login$  # false positive: login query is GORM-parameterised (email = ? / username = ?); 40018's boolean heuristic trips on the auth path's rate-limit/enumeration/bcrypt-driven response variance, not SQL
