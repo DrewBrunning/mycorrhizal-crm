@@ -165,6 +165,12 @@ These are real bugs that shipped, not hypotheticals.
    2026-08-12 by merging the flat derivation onto the loaded Card instead of replacing it; see
    `models/contact_card_merge.go`). If you add a new plain-save path, it must not re-introduce a
    straight `db.Save` on a loaded contact without going through that merge.
+   - `mergeMedia` (in that file) *deliberately* keeps a `Card.Media{kind:"photo"}` entry whose URI is
+     a remote `http(s)` URL when the flat `contacts.photo` column is empty — that entry is a
+     transient reference the ingesting caller downloads to flat state later, and dropping it is a
+     data-loss bug, not a trap #3 cleanup. The transient-photo contract is ADR 0012 INV-D8; the
+     `canonical_record.unresolved_remote_photo` checker finding (advisory) makes the pending state
+     visible. A `data:`-URI photo entry with no flat photo is still dropped (that is a real delete).
 
 4. **Check `.Error` on every `db.Updates`/`db.Save`.** Three sites silently swallowed failures until
    audited.
