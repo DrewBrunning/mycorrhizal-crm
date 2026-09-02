@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -72,13 +73,44 @@ func SearchAll(c *gin.Context) {
 }
 
 // RebuildSearchIndexHandler implements POST /admin/search/rebuild (admin):
-// rebuilds the FTS index from source, idempotently. Useful after a bulk
-// import or a raw-SQL migration that bypassed the FTS triggers.
+// rebuilds all three FTS indexes from canonical data, idempotently
+// (SEARCH-01, issue #461). It is the operator-facing rebuild path for a
+// deployment with no Go toolchain — a stock Docker install reaches it over
+// HTTP, no `go run` needed.
+//
+// The rebuild runs synchronously (like the other /admin/trigger-* jobs) but
+// records a job_runs row (trigger "manual", job_name "search_index_rebuild")
+// so its duration and outcome land on the admin job-run timeline (issue
+// #391), not only in this response. Search is not blocked while it runs;
+// ordinary writes queue behind it (see RebuildSearchIndexReport). A rebuild
+// already in progress in this process is reported as 409 rather than queued.
 func RebuildSearchIndexHandler(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
-	if err := services.RebuildSearchIndex(db); err != nil {
+	ctx := c.Request.Context()
+	start := time.Now()
+
+	stats, err := services.RebuildSearchIndexExclusive(db)
+	if errors.Is(err, services.ErrJobSkipped) {
+		// Nothing ran, so there is no job_runs row to record — and the
+		// in-progress rebuild holds SQLite's write lock, so a diagnostic
+		// insert here would only block on it. The 409 is the whole signal.
+		apperrors.AbortWithError(c, apperrors.ErrConflict("A search index rebuild is already in progress"))
+		return
+	}
+	if err != nil {
+		recordManualJobRun(ctx, db, models.JobNameSearchIndexRebuild, start, nil, err)
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to rebuild search index").WithError(err))
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Search index rebuilt"})
+
+	total := int(stats.Total())
+	recordManualJobRun(ctx, db, models.JobNameSearchIndexRebuild, start, &total, nil)
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Search index rebuilt",
+		"indexed": gin.H{
+			"contacts":   stats.Contacts,
+			"notes":      stats.Notes,
+			"activities": stats.Activities,
+		},
+	})
 }

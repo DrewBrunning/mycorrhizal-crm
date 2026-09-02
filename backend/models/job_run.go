@@ -89,8 +89,9 @@ const (
 // JobRunTriggers is the full trigger vocabulary, for validation and tests.
 var JobRunTriggers = []string{JobTriggerScheduled, JobTriggerInitial, JobTriggerManual}
 
-// KnownJobNames is every background job that produces JobRun rows, in the
-// order the scheduler registers them (main.go). ComputeJobRunHealth iterates
+// KnownJobNames is every background job that produces JobRun rows: first the
+// scheduled jobs in the order the scheduler registers them (main.go), then the
+// operator-triggered jobs that have no schedule. ComputeJobRunHealth iterates
 // this set so the health API returns one entry per job in a deterministic
 // order — including jobs that have not run yet (status "unknown"). Keep in
 // sync with the scheduler registrations and the JobName* consts.
@@ -111,6 +112,8 @@ var KnownJobNames = []string{
 	JobNameAlertEval,
 	JobNameJobRunPurge,
 	JobNameStorageSample,
+	// Operator-triggered, not scheduled (SEARCH-01, issue #461).
+	JobNameSearchIndexRebuild,
 }
 
 // maxJobRunFieldLen caps the persisted Error / Detail strings.
