@@ -394,8 +394,15 @@ func TestDataIntegrity_INV_D8_UnresolvedRemotePhoto(t *testing.T) {
 	db, cfg := integrityTestDB(t)
 	u := mkUser(t, db, "alice")
 	c := mkContact(t, db, u.ID, "A")
-	card := `{"media":[{"kind":"photo","uri":"https://example.com/grace.jpg","mediaType":"image/jpeg"}]}`
-	require.NoError(t, db.Exec("UPDATE contacts SET card = ?, photo = '' WHERE id = ?", card, c.ID).Error)
+	// Splice a remote-URL photo entry into the existing (name-consistent) Card
+	// via json_set so the denormalized contacts.* columns still project from it
+	// — this isolates the INV-D8 canonical_record probe from the INV-A5
+	// derived-column probe (issue #497). contacts.photo stays empty: the URL
+	// has not been downloaded to the photo store.
+	media := `[{"kind":"photo","uri":"https://example.com/grace.jpg","mediaType":"image/jpeg"}]`
+	require.NoError(t, db.Exec(
+		"UPDATE contacts SET card = json_set(card, '$.media', json(?)), photo = '' WHERE id = ?",
+		media, c.ID).Error)
 
 	r := runDataChecks(t, db, cfg)
 	f, ok := findingFor(r, "canonical_record.unresolved_remote_photo", u.ID)
@@ -412,12 +419,19 @@ func TestDataIntegrity_INV_D8_DownloadedRemotePhotoIsClean(t *testing.T) {
 	db, cfg := integrityTestDB(t)
 	u := mkUser(t, db, "alice")
 	c := mkContact(t, db, u.ID, "A")
-	card := `{"media":[{"kind":"photo","uri":"https://example.com/grace.jpg","mediaType":"image/jpeg"}]}`
-	require.NoError(t, db.Exec("UPDATE contacts SET card = ?, photo = 'grace-1234.jpg' WHERE id = ?", card, c.ID).Error)
+	// Same splice, but the photo has been downloaded: contacts.photo names a
+	// real file in the photo store, so the Card.Media entry is a normal
+	// flat-backed bridge and the advisory must not fire.
+	require.NoError(t, os.WriteFile(filepath.Join(cfg.ProfilePhotoDir, "grace-1234.jpg"), []byte("x"), 0o600))
+	media := `[{"kind":"photo","uri":"https://example.com/grace.jpg","mediaType":"image/jpeg"}]`
+	require.NoError(t, db.Exec(
+		"UPDATE contacts SET card = json_set(card, '$.media', json(?)), photo = 'grace-1234.jpg' WHERE id = ?",
+		media, c.ID).Error)
 
 	r := runDataChecks(t, db, cfg)
 	_, ok := findingFor(r, "canonical_record.unresolved_remote_photo", u.ID)
 	assert.False(t, ok, "a downloaded photo (contacts.photo set) must not produce the advisory, got: %+v", r.Findings)
+	assert.True(t, r.OK, "the spliced-but-consistent fixture must stay clean, got: %+v", r.Findings)
 }
 
 // ---------------------------------------------------------------------------
