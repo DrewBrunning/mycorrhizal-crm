@@ -5,15 +5,45 @@ import (
 	"fmt"
 	"mime"
 	"net"
+	"net/http"
 	"net/smtp"
 	"strconv"
 	"strings"
+	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/internal/faults"
 	"mycorrhizal/logger"
 
 	"github.com/resend/resend-go/v2"
 )
+
+// Outbound email is bounded by explicit timeouts on both transports (INT-02,
+// issue #465). Before this, the Resend path inherited the SDK's 60s default and
+// the SMTP path had no deadline at all — a hung MX could block a delivery
+// goroutine indefinitely.
+const (
+	// resendRequestTimeout bounds a single Resend API call.
+	resendRequestTimeout = 30 * time.Second
+)
+
+// smtpDialTimeout / smtpDeadline are vars (not consts) so a test can shrink
+// them to keep the stalled-server assertion fast — same pattern as
+// hibp_service.go's hibpAPIBaseURL / update_check.go's updateCheckCacheTTL.
+var (
+	// smtpDialTimeout bounds establishing the TCP (or TLS) connection.
+	smtpDialTimeout = 15 * time.Second
+	// smtpDeadline bounds the whole SMTP conversation once connected, so a
+	// server that accepts the socket and then stalls mid-dialogue cannot hang
+	// the send.
+	smtpDeadline = 30 * time.Second
+)
+
+// faultEmailSend is the issue #434 failure-injection seam for the outbound
+// email path. Unarmed it is a no-op map lookup; armed, the sentinel crosses
+// both transports' entry points so SendEmail's best-effort / combined-error
+// handling is what the injection test exercises.
+const faultEmailSend = "services.email.send"
 
 // EmailMessage is a transport-agnostic, already-rendered email ready for delivery.
 type EmailMessage struct {
@@ -74,9 +104,25 @@ func SendEmail(cfg config.Config, msg EmailMessage) error {
 	return nil
 }
 
+// resendHTTPClient is the explicit HTTP client for the Resend SDK. Extracted so
+// a test can assert the timeout without a live call — the SDK's own default
+// client is 60s (resend-go resend.go), which is not a value this project chose.
+func resendHTTPClient() *http.Client {
+	return &http.Client{Timeout: resendRequestTimeout}
+}
+
+// newResendClient builds the Resend SDK client with resendHTTPClient.
+func newResendClient(apiKey string) *resend.Client {
+	return resend.NewCustomClient(resendHTTPClient(), apiKey)
+}
+
 // delivers the message through the Resend API.
 func sendViaResend(cfg config.Config, msg EmailMessage) error {
-	client := resend.NewClient(cfg.ResendAPIKey)
+	if err := faults.Hook(faultEmailSend); err != nil {
+		return err
+	}
+
+	client := newResendClient(cfg.ResendAPIKey)
 
 	params := &resend.SendEmailRequest{
 		From:    cfg.ResendFromEmail,
@@ -96,6 +142,10 @@ func sendViaResend(cfg config.Config, msg EmailMessage) error {
 
 // delivers the message through an SMTP server
 func sendViaSMTP(cfg config.Config, msg EmailMessage) error {
+	if err := faults.Hook(faultEmailSend); err != nil {
+		return err
+	}
+
 	addr := net.JoinHostPort(cfg.SMTPHost, strconv.Itoa(cfg.SMTPPort))
 	body := buildSMTPMessage(cfg.SMTPFromEmail, msg)
 
@@ -109,8 +159,7 @@ func sendViaSMTP(cfg config.Config, msg EmailMessage) error {
 			return err
 		}
 	} else {
-		// smtp.SendMail upgrades to STARTTLS automatically when the server advertises it.
-		if err := smtp.SendMail(addr, auth, cfg.SMTPFromEmail, []string{msg.To}, body); err != nil {
+		if err := sendSMTPStartTLS(cfg, addr, auth, msg.To, body); err != nil {
 			return err
 		}
 	}
@@ -119,12 +168,50 @@ func sendViaSMTP(cfg config.Config, msg EmailMessage) error {
 	return nil
 }
 
+// sendSMTPStartTLS is the plaintext-with-opportunistic-STARTTLS path (the
+// default, typically port 587/25). It replaces net/smtp.SendMail so the dial
+// and the conversation are both bounded: SendMail sets no deadline, so a
+// stalled server hangs the caller forever. The STARTTLS-when-advertised and
+// PlainAuth behavior is preserved exactly.
+func sendSMTPStartTLS(cfg config.Config, addr string, auth smtp.Auth, to string, body []byte) error {
+	conn, err := net.DialTimeout("tcp", addr, smtpDialTimeout)
+	if err != nil {
+		return fmt.Errorf("smtp dial: %w", err)
+	}
+	_ = conn.SetDeadline(time.Now().Add(smtpDeadline))
+
+	client, err := smtp.NewClient(conn, cfg.SMTPHost)
+	if err != nil {
+		return fmt.Errorf("smtp client: %w", err)
+	}
+	defer client.Close()
+
+	if err := client.Hello(smtpHelloName()); err != nil {
+		return fmt.Errorf("smtp hello: %w", err)
+	}
+
+	if ok, _ := client.Extension("STARTTLS"); ok {
+		if err := client.StartTLS(&tls.Config{ServerName: cfg.SMTPHost}); err != nil {
+			return fmt.Errorf("smtp starttls: %w", err)
+		}
+	}
+
+	if auth != nil {
+		if err := client.Auth(auth); err != nil {
+			return fmt.Errorf("smtp auth: %w", err)
+		}
+	}
+
+	return smtpDeliver(client, cfg.SMTPFromEmail, to, body)
+}
+
 // sendSMTPImplicitTLS sends a message over a connection that is wrapped in TLS (implicit TLS, typically port 465).
 func sendSMTPImplicitTLS(cfg config.Config, addr string, auth smtp.Auth, to string, body []byte) error {
-	conn, err := tls.Dial("tcp", addr, &tls.Config{ServerName: cfg.SMTPHost})
+	conn, err := tls.DialWithDialer(&net.Dialer{Timeout: smtpDialTimeout}, "tcp", addr, &tls.Config{ServerName: cfg.SMTPHost})
 	if err != nil {
 		return fmt.Errorf("tls dial: %w", err)
 	}
+	_ = conn.SetDeadline(time.Now().Add(smtpDeadline))
 
 	client, err := smtp.NewClient(conn, cfg.SMTPHost)
 	if err != nil {
@@ -138,7 +225,12 @@ func sendSMTPImplicitTLS(cfg config.Config, addr string, auth smtp.Auth, to stri
 		}
 	}
 
-	if err := client.Mail(cfg.SMTPFromEmail); err != nil {
+	return smtpDeliver(client, cfg.SMTPFromEmail, to, body)
+}
+
+// smtpDeliver runs the MAIL/RCPT/DATA/QUIT tail shared by both SMTP paths.
+func smtpDeliver(client *smtp.Client, from, to string, body []byte) error {
+	if err := client.Mail(from); err != nil {
 		return fmt.Errorf("smtp mail from: %w", err)
 	}
 	if err := client.Rcpt(to); err != nil {
@@ -158,6 +250,11 @@ func sendSMTPImplicitTLS(cfg config.Config, addr string, auth smtp.Auth, to stri
 
 	return client.Quit()
 }
+
+// smtpHelloName is the EHLO/HELO name. net/smtp defaults to "localhost" when
+// Hello is never called; we call Hello explicitly (so STARTTLS negotiation
+// happens before AUTH) and keep the same name.
+func smtpHelloName() string { return "localhost" }
 
 // buildSMTPMessage assembles a minimal RFC 5322 HTML email.
 func buildSMTPMessage(from string, msg EmailMessage) []byte {

@@ -13,10 +13,8 @@ import (
 // test — living in package services so it can see the unexported timeout
 // constants — asserts the declared value is the one the client actually uses.
 //
-// Integrations whose timeout is enforced only by a request context deadline or
-// an SDK default (email-resend, email-smtp, oidc) declare Timeout == 0 with a
-// TimeoutNote; they are intentionally absent from wantTimeout and covered by
-// the "0 means note" invariant in integrations.TestRegistryInvariants instead.
+// Every integration now wires an explicit timeout (INT-02, issue #465 closed the
+// email-resend / email-smtp / oidc gaps), so wantTimeout is exhaustive.
 func TestIntegrationMatrixTimeoutsMatchCode(t *testing.T) {
 	wantTimeout := map[string]time.Duration{
 		"carddav":      contactSyncRequestTimeout,
@@ -29,6 +27,9 @@ func TestIntegrationMatrixTimeoutsMatchCode(t *testing.T) {
 		"ntfy":         deliveryClient.Timeout, // clientFor(cfg) hands back deliveryClient / guardedDeliveryClient
 		"gotify":       deliveryClient.Timeout,
 		"webpush":      deliveryClient.Timeout,
+		"email-resend": resendRequestTimeout,
+		"email-smtp":   smtpDialTimeout,
+		"oidc":         oidcRequestTimeout,
 		"hibp":         hibpClient.Timeout,
 		"update-check": updateCheckTimeout,
 	}

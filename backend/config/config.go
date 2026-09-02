@@ -29,6 +29,12 @@ type OIDCConfig struct {
 	TrustEmail            bool // skip email_verified requirement when linking accounts (for trusted self-hosted providers)
 	Scopes                []string
 	PostLogoutRedirectURL string // derived from FrontendURL, not configurable — see RedirectURL
+	// BlockPrivateURLs routes the discovery/token/JWKS/UserInfo calls through
+	// the SSRF-guarded dialer (httputil.SafeDialContext). Default off: a LAN
+	// identity provider (Authentik/Keycloak on the same Docker network) is a
+	// common self-hosted setup and must keep working. Same opt-in shape as the
+	// other *_BLOCK_PRIVATE_URLS knobs (INT-02, issue #465).
+	BlockPrivateURLs bool
 }
 
 // Config is the fully-loaded application configuration, populated once by
@@ -348,6 +354,7 @@ func LoadConfig() *Config {
 		TrustEmail:            getBoolEnv("OIDC_TRUST_EMAIL", false),
 		Scopes:                getScopesEnv(getEnv("OIDC_SCOPES", "")),
 		PostLogoutRedirectURL: cfg.FrontendURL + "/login",
+		BlockPrivateURLs:      getBoolEnv("OIDC_BLOCK_PRIVATE_URLS", false),
 	}
 
 	return cfg
