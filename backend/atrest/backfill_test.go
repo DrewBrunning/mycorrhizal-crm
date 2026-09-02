@@ -367,6 +367,103 @@ func TestBackfill_AlreadyEncryptedRowsUntouched(t *testing.T) {
 	require.Equal(t, "through work", got, "already-encrypted row is not double-encrypted")
 }
 
+// insertAuditEvent writes one audit_events row via raw SQL, bypassing the
+// serializer — the pre-backfill state of an instance that already had audit
+// history when at-rest encryption was introduced. Returns the new row's id.
+func insertAuditEvent(t *testing.T, db *gorm.DB, userID uint, beforeSnapshot string) int64 {
+	t.Helper()
+	res := db.Exec(
+		"INSERT INTO audit_events "+
+			"(created_at, updated_at, entity_type, entity_id, operation, user_id, before_snapshot, hash, prev_hash) "+
+			"VALUES (datetime('now'), datetime('now'), 'contact', 'urn:uuid:audit-fixture', 'update', ?, ?, '', '')",
+		userID, beforeSnapshot,
+	)
+	require.NoError(t, res.Error)
+	require.Equal(t, int64(1), res.RowsAffected)
+	var id int64
+	require.NoError(t, db.Table("audit_events").
+		Select("id").Where("user_id = ?", userID).Order("id DESC").Limit(1).Scan(&id).Error)
+	return id
+}
+
+// auditNoUpdateTriggerExists reports whether the append-only immutability
+// trigger is present on audit_events.
+func auditNoUpdateTriggerExists(t *testing.T, db *gorm.DB) bool {
+	t.Helper()
+	var n int64
+	require.NoError(t, db.Raw(
+		"SELECT count(*) FROM sqlite_master WHERE type = 'trigger' AND name = ?",
+		auditEventsNoUpdateTrigger,
+	).Scan(&n).Error)
+	return n == 1
+}
+
+// TestBackfill_AuditEventsBeforeSnapshot_EncryptsThroughImmutabilityTrigger is
+// the regression for the upgrade crash-loop: atrest.Backfill's in-place UPDATE
+// of a pre-existing plaintext audit_events.before_snapshot was rejected by the
+// append-only trigger (SQLite error 1811), so main.go's logger.Fatal fired on
+// every boot of any instance that had audit history. Backfill must drop the
+// trigger around its own writes and put it back.
+func TestBackfill_AuditEventsBeforeSnapshot_EncryptsThroughImmutabilityTrigger(t *testing.T) {
+	db, _ := realDB(t)
+	userID := createUser(t, db, "atrest-audit")
+
+	require.True(t, auditNoUpdateTriggerExists(t, db),
+		"precondition: the real migrated schema ships the append-only trigger")
+
+	const plaintext = `{"firstname":"Bob","lastname":"Vance"}`
+	id := insertAuditEvent(t, db, userID, plaintext)
+
+	var before int64
+	require.NoError(t, db.Table("audit_events").Count(&before).Error)
+
+	require.NoError(t, Backfill(db),
+		"backfill must encrypt audit history, not abort on the append-only trigger")
+
+	var after int64
+	require.NoError(t, db.Table("audit_events").Count(&after).Error)
+	require.Equal(t, before, after, "backfill only UPDATEs existing rows — the count is preserved")
+
+	var stored string
+	require.NoError(t, db.Table("audit_events").
+		Select("before_snapshot").Where("id = ?", id).Scan(&stored).Error)
+	require.Contains(t, stored, ciphertextPrefix,
+		"the plaintext snapshot must be encrypted at rest after backfill")
+	got, err := Decrypt(stored)
+	require.NoError(t, err)
+	require.Equal(t, plaintext, got, "the encrypted snapshot decrypts back to the original")
+
+	require.True(t, auditNoUpdateTriggerExists(t, db),
+		"the immutability trigger must be back in place after backfill")
+	tamper := db.Exec("UPDATE audit_events SET before_snapshot = 'tampered' WHERE id = ?", id).Error
+	require.Error(t, tamper, "audit_events must reject UPDATEs again after the backfill")
+	require.Contains(t, tamper.Error(), "append-only")
+
+	// Idempotent: a second run finds nothing to encrypt and still leaves the
+	// trigger intact.
+	require.NoError(t, Backfill(db))
+	require.True(t, auditNoUpdateTriggerExists(t, db))
+}
+
+// TestBackfillColumn_AuditEventsWriteBlocked_LeavesTriggerInPlace guards the
+// rollback-safety property: a backfill of audit_events that cannot write (here
+// the connection is read-only) surfaces the error and leaves the append-only
+// trigger untouched — the drop happens inside the same transaction as the
+// UPDATEs, so nothing that fails the transaction can leave the table mutable.
+func TestBackfillColumn_AuditEventsWriteBlocked_LeavesTriggerInPlace(t *testing.T) {
+	db, _ := realDB(t)
+	userID := createUser(t, db, "atrest-audit-ro")
+	insertAuditEvent(t, db, userID, `{"firstname":"Cara"}`)
+
+	require.NoError(t, db.Exec("PRAGMA query_only = ON").Error)
+	err := backfillColumn(db, auditEventsTable, "before_snapshot")
+	require.NoError(t, db.Exec("PRAGMA query_only = OFF").Error)
+
+	require.Error(t, err, "a write failure during the audit backfill must surface, not be swallowed")
+	require.True(t, auditNoUpdateTriggerExists(t, db),
+		"a failed audit backfill must leave the immutability trigger in place")
+}
+
 func TestBackfill_NoOpWhenNotArmed(t *testing.T) {
 	db := dbtest.New(t)
 	require.NoError(t, Initialize(db, nil)) // no key → pass-through

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"mycorrhizal/atrest"
 	"mycorrhizal/config"
 	"mycorrhizal/database"
 	"mycorrhizal/models"
@@ -175,8 +176,77 @@ func TestFullInstallUpgrade(t *testing.T) {
 
 			// Exercise the migrated instance through the real HTTP stack.
 			exerciseUpgradedApp(t, db, username, liveID, liveFirst, photoDir, attachDir)
+
+			// database.InitDB is only the migration half of boot. main.go then
+			// runs the post-migration startup jobs — the at-rest encryption
+			// backfill (#380) and the audit hash-chain backfill (#381) — which
+			// rewrite real pre-existing rows. A migration-only upgrade test
+			// cannot see one of those jobs fail against real data: the
+			// at-rest backfill's UPDATE of audit_events.before_snapshot (both
+			// encrypted at rest AND behind the append-only immutability
+			// trigger) crash-looped every used instance's upgrade until it
+			// learned to drop that trigger around its writes.
+			verifyStartupBackfills(t, db)
 		})
 	}
+}
+
+// verifyStartupBackfills runs the post-migration startup jobs against an
+// upgraded install in the exact order main.go runs them after database.InitDB
+// (at-rest backfill first, so the audit chain hashes the decrypted
+// before_snapshot), and asserts each succeeds against the fixture's real
+// pre-existing rows — audit history is seeded by seedMigrationScopeData — that
+// the encrypted-at-rest audit snapshot round-trips, that the append-only
+// audit_events trigger is enforcing again afterwards, and that the hash chain
+// verifies. It is the end-to-end regression guard for a startup backfill that
+// collides with a table invariant.
+func verifyStartupBackfills(t *testing.T, db *gorm.DB) {
+	t.Helper()
+
+	// Resolve the master key the way main.go does: atrest.EncryptionKey reads
+	// JWT_SECRET_KEY when no dedicated key is configured.
+	t.Setenv("JWT_SECRET_KEY", "deploy02-startup-jobs-jwt-secret-abcdefghijkl")
+	kek, err := atrest.EncryptionKey()
+	require.NoError(t, err)
+	require.NotNil(t, kek, "a JWT secret must resolve an at-rest master key")
+	require.NoError(t, atrest.Initialize(db, kek))
+	t.Cleanup(atrest.ResetForTest)
+
+	require.NoError(t, atrest.Backfill(db),
+		"the at-rest backfill must encrypt pre-existing rows without tripping a table invariant")
+	require.NoError(t, models.RecomputeAuditChain(db),
+		"the audit hash-chain backfill must succeed after the at-rest backfill")
+
+	// The seeded plaintext audit snapshot is now ciphertext at rest and
+	// decrypts back through the serializer.
+	var rawSnapshot string
+	require.NoError(t, db.Table("audit_events").
+		Where("before_snapshot IS NOT NULL AND before_snapshot <> ''").
+		Order("id ASC").Limit(1).
+		Pluck("before_snapshot", &rawSnapshot).Error)
+	require.Contains(t, rawSnapshot, "encv1:",
+		"audit_events.before_snapshot must be encrypted at rest after the backfill")
+
+	var ev models.AuditEvent
+	require.NoError(t, db.Where("before_snapshot LIKE ?", "encv1:%").
+		Order("id ASC").First(&ev).Error)
+	require.JSONEq(t, `{"firstname":"Bob"}`, ev.BeforeSnapshot,
+		"the encrypted audit snapshot decrypts to the value seedMigrationScopeData wrote")
+
+	var triggerCount int64
+	require.NoError(t, db.Raw(
+		"SELECT count(*) FROM sqlite_master WHERE type = 'trigger' AND name = 'audit_events_no_update'").
+		Scan(&triggerCount).Error)
+	require.EqualValues(t, 1, triggerCount,
+		"the append-only trigger the backfill dropped must be restored")
+
+	gaps, err := models.VerifyAuditChain(db)
+	require.NoError(t, err)
+	require.Empty(t, gaps, "the audit hash chain must verify after the startup backfills")
+
+	// A second boot's jobs are a no-op and still leave the invariants intact.
+	require.NoError(t, atrest.Backfill(db))
+	require.NoError(t, models.RecomputeAuditChain(db))
 }
 
 // assertPreMigrationBackupRestorable is issue #451 action 5: the mandatory
