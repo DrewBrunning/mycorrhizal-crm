@@ -147,6 +147,58 @@ database opened by an N binary — *is* detected and refused
 ([Schema ahead of the binary](#schema-ahead-of-the-binary),
 `ErrSchemaAheadOfBinary`).
 
+## At-rest backfill vs. the audit-events trigger
+
+**Applies to:** an instance upgraded from **≤ v0.6.0** into **v0.6.1 – v0.6.8**
+that already had audit history. **Fixed in v0.6.9** — a `v0.6.0 → v0.6.9`
+upgrade does not hit this. See `docs/upgrade-compatibility.md` → "Known defect".
+
+**What it is.** Migrations apply and commit, then the backend exits at startup
+with
+
+```
+atrest: backfill audit_events.before_snapshot: constraint failed: audit_events is append-only: UPDATE is not allowed (1811)
+Failed to backfill at-rest encryption
+```
+
+and crash-loops (every request `502`s — nginx is up, the backend is not). The
+at-rest-encryption backfill (issue #380) rewrites pre-existing plaintext rows in
+place, and its `UPDATE` of `audit_events.before_snapshot` is rejected by the
+append-only trigger it failed to drop around its own writes.
+`schema_migrations` is at the new version and **not** dirty — this is a
+startup-job failure, not one of the migration-state refusals above.
+
+**Recovery — pick one.**
+
+**A. Roll back to the pre-migration snapshot** (safest; you stay on `v0.6.0`
+until `v0.6.9`). Follow [Rolling back a bad
+release](#rolling-back-a-bad-release-n1--n): stop the backend, deploy the
+`v0.6.0` image, restore the `…-pre-migration-31-to-<N>-….db` snapshot in place,
+clear stale `-wal`/`-shm`, start. Verify with [After recovery](#after-recovery).
+
+**B. Clear the trigger for one boot** (stay on the upgraded release). Once the
+backfill completes, startup recreates the trigger itself (`atrest.Backfill`
+finishes, then `RecomputeAuditChain` re-adds it).
+
+```sh
+# server stopped
+sqlite3 "$SQLITE_DB_PATH" "DROP TRIGGER IF EXISTS audit_events_no_update;"
+# start the server; watch it reach a clean boot with no 'Failed to backfill' line
+sqlite3 "$SQLITE_DB_PATH" \
+  "SELECT name FROM sqlite_master WHERE type='trigger' AND name='audit_events_no_update';"
+# expect one row: audit_events_no_update
+```
+
+If that query comes back empty, recreate the trigger by hand:
+
+```sh
+sqlite3 "$SQLITE_DB_PATH" "CREATE TRIGGER audit_events_no_update BEFORE UPDATE ON audit_events BEGIN SELECT RAISE(ABORT, 'audit_events is append-only: UPDATE is not allowed'); END;"
+```
+
+Then run [After recovery](#after-recovery). Both the at-rest backfill and the
+hash-chain backfill wrote to `audit_events` on that boot, so also confirm
+`/health` reports the expected migration version and the audit trail reads back.
+
 ## Dirty schema
 
 **What it is.** A migration started and did not finish, leaving the migration

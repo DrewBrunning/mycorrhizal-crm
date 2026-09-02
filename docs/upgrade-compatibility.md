@@ -50,6 +50,35 @@ still restores those from the routine three-piece backup
 Upgrading is unattended; that is exactly why the supported range is bounded and
 why the refusal cases below fail loudly instead of best-effort.
 
+### Known defect — upgrading into v0.6.1–v0.6.8 with existing audit history
+
+**Affected:** a direct upgrade from **≤ v0.6.0** to any of **v0.6.1 – v0.6.8**
+on an instance that has ever written an audit event with a `before_snapshot`
+(every contact edit or delete writes one). **Fixed in v0.6.9** — upgrading
+straight from `v0.6.0` to `v0.6.9` or later does not hit this.
+
+**Symptom.** Migrations apply and commit, then the backend exits at startup and
+crash-loops, so every request returns `502` (nginx is up, the backend is not):
+
+```
+atrest: backfill audit_events.before_snapshot: constraint failed: audit_events is append-only: UPDATE is not allowed (1811)
+Failed to backfill at-rest encryption
+```
+
+**Cause.** The at-rest-encryption backfill (issue #380) encrypts pre-existing
+plaintext rows with in-place `UPDATE`s. `audit_events` carries a `BEFORE UPDATE`
+trigger that makes it append-only, and the backfill did not drop that trigger
+around its own writes the way the other sanctioned audit-table writers
+(migration `000034`, `RecomputeAuditChain`) do. `schema_migrations` is left at
+the new version and not dirty — this is a startup-job failure, not a
+migration-state refusal, so none of the four refusal states below describe it.
+
+**Recovery.** [migration-recovery.md → At-rest backfill vs. the audit-events
+trigger](../operations/migration-recovery.md#at-rest-backfill-vs-the-audit-events-trigger):
+roll back to the pre-migration snapshot and wait for v0.6.9, or — to stay on the
+upgraded release — drop the `audit_events_no_update` trigger for one successful
+boot and let startup recreate it.
+
 ## What happens below the floor
 
 A database whose schema predates `v0.6.0` **refuses to migrate**. This is a

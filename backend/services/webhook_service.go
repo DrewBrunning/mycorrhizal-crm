@@ -11,6 +11,7 @@ import (
 	"io"
 	"mycorrhizal/config"
 	"mycorrhizal/httputil"
+	"mycorrhizal/internal/faults"
 	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
@@ -270,6 +271,14 @@ func deliverWebhook(ctx context.Context, db *gorm.DB, cfg config.Config, wh mode
 	req.Header.Set("X-Mycorrhizal-Event", eventType)
 	if id := logger.CorrelationID(ctx); id != "" {
 		req.Header.Set("X-Correlation-ID", id)
+	}
+
+	// Issue #434 failure-injection seam: an armed fault takes the same path as
+	// a transport error — a failed delivery row with the next retry scheduled,
+	// bounded by maxDeliveryAttempts.
+	if ferr := faults.Hook(faultWebhookDelivery); ferr != nil {
+		errStr := ferr.Error()
+		return finish(saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, retryAt(attempt)), errStr)
 	}
 
 	resp, err := clientFor(cfg).Do(req)

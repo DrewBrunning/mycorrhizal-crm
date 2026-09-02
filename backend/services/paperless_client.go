@@ -73,9 +73,13 @@ var (
 	ErrPaperlessRequestFailed  = errors.New("Paperless responded with an unexpected status")
 )
 
+// paperlessRequestTimeout is a var (not a const) so a test can shrink it to
+// keep the black-hole-host assertion fast — same pattern as mailer.go's
+// smtpDeadline (INT-02, issue #465).
+var paperlessRequestTimeout = 30 * time.Second
+
 const (
-	paperlessRequestTimeout = 30 * time.Second
-	maxPaperlessBodyBytes   = 5 * 1024 * 1024
+	maxPaperlessBodyBytes = 5 * 1024 * 1024
 	// maxPaperlessErrorBodyBytes bounds the response body captured alongside
 	// ErrPaperlessRequestFailed for logging — small, since it's diagnostic only.
 	maxPaperlessErrorBodyBytes = 2048
@@ -161,7 +165,7 @@ func NewPaperlessClient(baseURL, token string, blockPrivateURLs bool) (*Paperles
 		token:   token,
 		client: &http.Client{
 			Timeout:   paperlessRequestTimeout,
-			Transport: getPaperlessTransport(blockPrivateURLs),
+			Transport: faultingRoundTripper{name: faultPaperlessRequest, base: getPaperlessTransport(blockPrivateURLs)},
 		},
 	}, nil
 }
