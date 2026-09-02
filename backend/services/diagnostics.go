@@ -111,6 +111,7 @@ func RunDiagnostics(ctx context.Context, db *gorm.DB, cfg config.Config) Diagnos
 	out.Checks = append(out.Checks,
 		diagnosticsDiskSpace(cfg),
 		diagnosticsBackgroundJobs(ctx, db),
+		diagnosticsSearchIndex(db),
 		diagnosticsVersion(),
 	)
 
@@ -546,6 +547,27 @@ func diagnosticsBackgroundJobs(ctx context.Context, db *gorm.DB) DiagnosticCheck
 			Message: strings.Join(problems, "; ")}
 	}
 	return DiagnosticCheck{Name: "background_jobs", Status: DiagStatusOK, Message: "scheduled jobs are healthy"}
+}
+
+// diagnosticsSearchIndex runs the FTS index consistency check live (SEARCH-02,
+// issue #462) — cheap indexed joins, read-only. A divergence is a warning: the
+// database is fine, but search results are degraded until a rebuild
+// (POST /admin/search/rebuild). The message carries per-(index, class) counts,
+// never row values.
+func diagnosticsSearchIndex(db *gorm.DB) DiagnosticCheck {
+	if db == nil {
+		return DiagnosticCheck{Name: "search_index", Status: DiagStatusWarning, Message: "cannot read search index state"}
+	}
+	res, err := CheckSearchIndexConsistency(db)
+	if err != nil {
+		logger.Error().Err(err).Msg("diagnostics: search index consistency check failed to run")
+		return DiagnosticCheck{Name: "search_index", Status: DiagStatusWarning, Message: "consistency check could not run"}
+	}
+	if !res.Clean() {
+		return DiagnosticCheck{Name: "search_index", Status: DiagStatusWarning,
+			Message: "index out of sync with canonical data (" + res.Summary() + "); run POST /admin/search/rebuild"}
+	}
+	return DiagnosticCheck{Name: "search_index", Status: DiagStatusOK, Message: "index is consistent with canonical data"}
 }
 
 // diagnosticsVersion reports the build's version / commit / build date — the
