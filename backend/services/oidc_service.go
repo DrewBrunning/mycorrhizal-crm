@@ -6,10 +6,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/httputil"
+	"mycorrhizal/internal/faults"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
@@ -17,6 +21,64 @@ import (
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
 )
+
+// oidcRequestTimeout bounds every outbound OIDC call (discovery, token
+// exchange, JWKS, UserInfo). go-oidc / x/oauth2 use their default transports
+// otherwise, which set no timeout — a stalled provider would hang the login
+// callback for as long as the request context allowed (INT-02, issue #465).
+const oidcRequestTimeout = 15 * time.Second
+
+// faultOIDCRequest is the issue #434 failure-injection seam on the OIDC
+// transport. Unarmed it is a no-op; armed, the sentinel is returned from every
+// OIDC round trip so the callback's error path is what the injection test
+// exercises.
+const faultOIDCRequest = "services.oidc.request"
+
+// ErrOIDCUnreachable / ErrOIDCPrivateAddress are the sentinels the guarded
+// dialer surfaces when OIDC_BLOCK_PRIVATE_URLS is on.
+var (
+	ErrOIDCUnreachable    = errors.New("OIDC provider host could not be resolved")
+	ErrOIDCPrivateAddress = errors.New("OIDC provider URL resolves to a private or loopback address")
+)
+
+// oidcRoundTripper adds the failure-injection seam (and nothing else) to the
+// OIDC HTTP client, mirroring contactRoundTripper's shape.
+type oidcRoundTripper struct {
+	base http.RoundTripper
+}
+
+func (rt oidcRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	if err := faults.Hook(faultOIDCRequest); err != nil {
+		return nil, err
+	}
+	return rt.base.RoundTrip(req)
+}
+
+// withHTTPClient threads the timeout-bounded (and optionally SSRF-guarded)
+// client onto ctx for the go-oidc / oauth2 call about to be made. Test-built
+// providers may have a nil client; those fall back to the library default.
+func (p *OIDCProvider) withHTTPClient(ctx context.Context) context.Context {
+	if p.httpClient == nil {
+		return ctx
+	}
+	return oidc.ClientContext(ctx, p.httpClient)
+}
+
+// newOIDCHTTPClient builds the client threaded through every OIDC call via
+// oidc.ClientContext. It always imposes oidcRequestTimeout; it only refuses
+// private/loopback addresses when blockPrivate is set (OIDC_BLOCK_PRIVATE_URLS,
+// default off — a LAN IdP must keep working). Same opt-in shape as
+// NewContactSyncService.
+func newOIDCHTTPClient(blockPrivate bool) *http.Client {
+	transport := &http.Transport{}
+	if blockPrivate {
+		transport.DialContext = httputil.SafeDialContext(ErrOIDCUnreachable, ErrOIDCPrivateAddress)
+	}
+	return &http.Client{
+		Timeout:   oidcRequestTimeout,
+		Transport: oidcRoundTripper{base: transport},
+	}
+}
 
 var ErrOIDCUserNotFound = errors.New("no account found for OIDC identity")
 
@@ -28,14 +90,21 @@ var ErrOIDCNoEmail = errors.New("OIDC provider returned no email address")
 
 // OIDCProvider holds the initialized OIDC provider and OAuth2 config.
 type OIDCProvider struct {
-	provider  *oidc.Provider
-	oauth2Cfg oauth2.Config
-	verifier  *oidc.IDTokenVerifier
+	provider   *oidc.Provider
+	oauth2Cfg  oauth2.Config
+	verifier   *oidc.IDTokenVerifier
+	httpClient *http.Client
 }
 
 // InitOIDCProvider fetches the OIDC discovery document and builds the OAuth2 config.
 func InitOIDCProvider(ctx context.Context, cfg *config.Config) (*OIDCProvider, error) {
-	provider, err := oidc.NewProvider(ctx, cfg.OIDC.ProviderURL)
+	httpClient := newOIDCHTTPClient(cfg.OIDC.BlockPrivateURLs)
+
+	// Thread the timeout-bounded (and, when enabled, SSRF-guarded) client
+	// through discovery and every later call. go-oidc reads it from the
+	// context here and reuses it for the remote JWKS fetch; oauth2.Exchange
+	// and provider.UserInfo read the same key.
+	provider, err := oidc.NewProvider(oidc.ClientContext(ctx, httpClient), cfg.OIDC.ProviderURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize OIDC provider: %w", err)
 	}
@@ -51,9 +120,10 @@ func InitOIDCProvider(ctx context.Context, cfg *config.Config) (*OIDCProvider, e
 	verifier := provider.Verifier(&oidc.Config{ClientID: cfg.OIDC.ClientID})
 
 	return &OIDCProvider{
-		provider:  provider,
-		oauth2Cfg: oauth2Cfg,
-		verifier:  verifier,
+		provider:   provider,
+		oauth2Cfg:  oauth2Cfg,
+		verifier:   verifier,
+		httpClient: httpClient,
 	}, nil
 }
 
@@ -91,6 +161,8 @@ func (p *OIDCProvider) BuildAuthURL(state, nonce, pkceVerifier string) string {
 // Logout (OIDC RP-Initiated Logout 1.0) — it is otherwise discarded once
 // verified.
 func (p *OIDCProvider) ExchangeAndVerify(ctx context.Context, code, pkceVerifier string) (*oidc.IDToken, *oauth2.Token, string, error) {
+	ctx = p.withHTTPClient(ctx)
+
 	token, err := p.oauth2Cfg.Exchange(ctx, code, oauth2.VerifierOption(pkceVerifier))
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("failed to exchange code: %w", err)
@@ -229,6 +301,8 @@ func (p *OIDCProvider) enrichFromUserInfo(ctx context.Context, subject string, t
 	if token == nil {
 		return errors.New("no oauth2 token available for UserInfo request")
 	}
+
+	ctx = p.withHTTPClient(ctx)
 
 	info, err := p.provider.UserInfo(ctx, oauth2.StaticTokenSource(token))
 	if err != nil {

@@ -70,8 +70,11 @@ var (
 	ErrSeafileRequestFailed  = errors.New("Seafile responded with an unexpected status")
 )
 
+// seafileRequestTimeout is a var (not a const) so a test can shrink it — see
+// paperlessRequestTimeout (INT-02, issue #465).
+var seafileRequestTimeout = 30 * time.Second
+
 const (
-	seafileRequestTimeout    = 30 * time.Second
 	maxSeafileBodyBytes      = 5 * 1024 * 1024
 	maxSeafileErrorBodyBytes = 2048
 )
@@ -153,7 +156,7 @@ func NewSeafileClient(baseURL, token string, blockPrivateURLs bool) (*SeafileCli
 		token:   token,
 		client: &http.Client{
 			Timeout:   seafileRequestTimeout,
-			Transport: getSeafileTransport(blockPrivateURLs),
+			Transport: faultingRoundTripper{name: faultSeafileRequest, base: getSeafileTransport(blockPrivateURLs)},
 		},
 	}, nil
 }

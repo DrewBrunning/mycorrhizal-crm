@@ -11,6 +11,7 @@ import (
 	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/httputil"
+	"mycorrhizal/internal/faults"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 	"mycorrhizal/vcard3"
@@ -114,6 +115,12 @@ type contactRoundTripper struct {
 }
 
 func (t *contactRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Issue #434 failure-injection seam: an armed fault replaces the round
+	// trip, exactly as an unreachable / auth-expired / deleted-remotely
+	// upstream presents to reconcileContactSync and its post-run bookkeeping.
+	if err := faults.Hook(faultContactSyncRequest); err != nil {
+		return nil, err
+	}
 	// Carry the caller's correlation ID onto the outbound request so the
 	// remote's access log (and ours, on the response) can be tied back to the
 	// UI action or scheduled run that triggered the sync (issue #425).

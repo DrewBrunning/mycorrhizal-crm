@@ -72,9 +72,9 @@ tracking ("last successful sync: 47 days ago"), are #467/#427.
 | [ntfy push notifications](#ntfy) | optional | outbound | scheduled | none | degraded-feature | 15s | guarded-when-enabled | No in-call retry. |
 | [Gotify push notifications](#gotify) | optional | outbound | scheduled | none | degraded-feature | 15s | guarded-when-enabled | No in-call retry. |
 | [Web Push (VAPID) browser notifications](#webpush) | optional | outbound | scheduled | none | degraded-feature | 15s | guarded-when-enabled | No in-call retry. |
-| [Transactional email — Resend API](#email-resend) | optional | outbound | event-driven | none | blocked-workflow | _none wired_ | fixed-endpoint | No retry. |
-| [Transactional email — SMTP](#email-smtp) | optional | outbound | event-driven | none | blocked-workflow | _none wired_ | fixed-endpoint | No retry. |
-| [OIDC single sign-on provider](#oidc) | required-when-enabled | bidirectional | interactive | remote-authoritative | blocked-workflow | _none wired_ | unguarded | No retry. |
+| [Transactional email — Resend API](#email-resend) | optional | outbound | event-driven | none | blocked-workflow | 30s | fixed-endpoint | No retry. |
+| [Transactional email — SMTP](#email-smtp) | optional | outbound | event-driven | none | blocked-workflow | 15s | fixed-endpoint | No retry. |
+| [OIDC single sign-on provider](#oidc) | required-when-enabled | bidirectional | interactive | remote-authoritative | blocked-workflow | 15s | guarded-when-enabled | No retry. |
 | [Have I Been Pwned — breached-password check](#hibp) | optional | outbound | interactive | enrichment | degraded-feature | 5s | fixed-endpoint | No retry. |
 | [GitHub releases — update-availability check](#update-check) | optional | outbound | interactive | enrichment | degraded-feature | 3s | guarded-always | No retry. |
 
@@ -90,13 +90,13 @@ claiming a guarded posture actually references `SafeDialContext` in its source.
 | Posture | Meaning | Integrations |
 |---|---|---|
 | `guarded-always` | every connection through `SafeDialContext`, unconditionally | `immich`, `paperless`, `seafile`, `webdav`, `update-check` |
-| `guarded-when-enabled` | guarded only when the operator opts in (`*_BLOCK_PRIVATE_URLS`) | `carddav`, `caldav`, `webhooks`, `ntfy`, `gotify`, `webpush` |
+| `guarded-when-enabled` | guarded only when the operator opts in (`*_BLOCK_PRIVATE_URLS`) | `carddav`, `caldav`, `webhooks`, `ntfy`, `gotify`, `webpush`, `oidc` |
 | `fixed-endpoint` | no user-supplied URL — compiled-in vendor/operator host, no SSRF surface | `email-resend`, `email-smtp`, `hibp` |
-| `unguarded` | a user/operator URL reaches a transport that is **not** dial-guarded (known gap) | `oidc` |
 
-`unguarded` and the SMTP `fixed-endpoint` note are recorded, not hidden: they are
-known gaps with a named fix, so the next reader sees them instead of assuming
-every outbound call is dial-guarded.
+`fixed-endpoint` rows (Resend, SMTP, HIBP) are recorded rather than omitted: they
+carry no user-supplied URL, so there is no dialer to guard — the next reader sees
+*why*, instead of assuming every outbound call is dial-guarded. An `unguarded` row
+would be a known gap with a named fix; there are none today.
 
 ## Per-integration detail
 
@@ -385,7 +385,7 @@ Sends transactional email (password reset, invitations, reminder digests) throug
 - **Cadence** — event-driven. On password reset / invite / verification; also from the daily reminder job for email digests.
 - **Data authority** — none. Transport only.
 - **Failure impact** — blocked-workflow. A user cannot complete a password reset or accept an invite until email works or the operator uses an alternate path.
-- **Timeout** — _none wired_. No timeout is wired on our side; the call inherits resend-go's default http.Client, which sets Timeout: 1m (resend.go). So it is bounded, but at 60s and not by a value this project chose. Passing an explicit client via resend.NewCustomClient is INT-02 (#465) work — recorded so the bound is a deliberate number, not a library default.
+- **Timeout** — 30s. services.resendRequestTimeout on an explicit http.Client passed via resend.NewCustomClient (services.newResendClient). Before INT-02 this inherited the SDK's 60s default, which was not a value this project chose.
 - **Retry budget** — No retry. Best-effort: SendEmail tries every configured channel (Resend and/or SMTP) and returns success if at least one succeeds, a combined error only if all fail. The caller decides what a total failure means (password reset surfaces it; a reminder digest logs it).
 - **SSRF** — fixed-endpoint. Destination is Resend's fixed API host (api.resend.com); no user-supplied URL, so there is no SSRF surface. The API key is operator config.
 - **Source** — `backend/services/mailer.go`
@@ -394,7 +394,7 @@ Sends transactional email (password reset, invitations, reminder digests) throug
 | Failure mode | Class | Required behavior |
 |---|---|---|
 | `unreachable-host` | transient | SDK returns an error; logged as 'Failed to send email via Resend'; if SMTP is also configured it is tried; if not, SendEmail returns the combined error to the caller. |
-| `timeout` | transient | Bounded by resend-go's default 60s client timeout (see the timeout note). On error, same fallback-to-SMTP-or-combined-error path. |
+| `timeout` | transient | Bounded by services.resendRequestTimeout (30s) on the explicit client. On error, same fallback-to-SMTP-or-combined-error path. |
 | `auth-expiry` | permanent-until-human | 401 (API key revoked) → error surfaced to the caller / logged; a persistent 401 is an operator problem — the fix is a new key in config, there is no runtime re-auth. |
 | `authz-revoked` | permanent-until-human | 403 (domain not verified, sending disabled) handled as 401: surfaced/logged, operator must fix the Resend account. |
 | `malformed-response` | transient | Handled by the SDK; a decode error becomes a send error and the fallback/reporting path runs. |
@@ -412,7 +412,7 @@ Sends the same transactional email through an operator-configured SMTP server (S
 - **Cadence** — event-driven. Same triggers as the Resend path.
 - **Data authority** — none. Transport only.
 - **Failure impact** — blocked-workflow. Same as Resend — password reset / invite delivery is blocked until it works.
-- **Timeout** — _none wired_. GAP: net/smtp and tls.Dial are used with no deadline set, so a hung SMTP server is bounded only by the OS TCP stack. This runs off the request path (reminder job / async), but a bounded dial+send is INT-02 (#465) work. Recorded as a known gap.
+- **Timeout** — 15s. services.smtpDialTimeout (15s) bounds the TCP/TLS connect via net.DialTimeout / tls.DialWithDialer; services.smtpDeadline (30s) is set on the connection for the whole SMTP conversation. Before INT-02 the path used smtp.SendMail / tls.Dial with no deadline.
 - **Retry budget** — No retry. Part of the same best-effort multi-channel SendEmail: SMTP failure alone is tolerated if Resend succeeded; if SMTP is the only channel, the caller gets the error.
 - **SSRF** — fixed-endpoint. SMTPHost is operator configuration read from env, not a per-request user value, and net/smtp is not routed through SafeDialContext. Treated as a fixed operator endpoint rather than an SSRF surface; if SMTP host ever becomes user-supplied this row must change.
 - **Source** — `backend/services/mailer.go`
@@ -421,7 +421,7 @@ Sends the same transactional email through an operator-configured SMTP server (S
 | Failure mode | Class | Required behavior |
 |---|---|---|
 | `unreachable-host` | transient | Dial error → logged 'Failed to send email via SMTP'; combined-error path if SMTP is the only channel. |
-| `timeout` | transient | No explicit deadline (see the gap); an OS-level connection failure surfaces as a dial error and takes the same path. |
+| `timeout` | transient | smtpDialTimeout bounds the connect; smtpDeadline bounds a server that connects then stalls mid-dialogue. Either way the send returns an error and takes the combined-error path — it never hangs the delivery goroutine. |
 | `auth-expiry` | permanent-until-human | SMTP auth failure (535) → send error, surfaced/logged; operator must fix credentials in config. |
 | `authz-revoked` | permanent-until-human | Relay-denied / not-permitted (550/554) → send error, surfaced/logged; operator/relay configuration problem. |
 | `malformed-response` | transient | An unexpected SMTP reply code aborts that step with a wrapped error ('smtp mail from', 'smtp data', …); nothing partial is considered sent. |
@@ -439,16 +439,16 @@ Authenticates users via an external OpenID Connect provider (discovery, authoriz
 - **Cadence** — interactive. Token exchange and UserInfo happen inline in the login callback. Discovery runs once at startup (InitOIDCProvider) and is cached for the process lifetime.
 - **Data authority** — remote-authoritative. The provider is authoritative for identity (subject, email, name). We store the subject/provider mapping; we cannot mint an account without a successful exchange.
 - **Failure impact** — blocked-workflow. The user reaches the login callback and cannot get a session. Immediate and obvious (unlike the sync cases), so no silent-staleness risk.
-- **Timeout** — _none wired_. No dedicated client timeout: go-oidc / golang.org/x/oauth2 use their default transports. The calls are bounded by the login request's context deadline. A per-call timeout via oidc.ClientContext is INT-02 (#465) work.
+- **Timeout** — 15s. services.oidcRequestTimeout on services.newOIDCHTTPClient, threaded through discovery, token exchange, JWKS and UserInfo via oidc.ClientContext. Before INT-02 these ran on the go-oidc / x/oauth2 default transports with no timeout.
 - **Retry budget** — No retry. A failed exchange fails the login; the user retries by starting the flow again. Discovery is not re-fetched after startup, so a provider that changes its endpoints needs a restart.
-- **SSRF** — unguarded. GAP: the provider URL is operator configuration, and discovery/JWKS/UserInfo/token calls run on library default transports — NOT httputil.SafeDialContext. Lower risk than the per-user-URL integrations (the value is set once by the operator, not per request), but a redirect from the provider host to an internal address is not blocked. Recorded as a known gap; a guarded oidc.ClientContext is the fix.
+- **SSRF** — guarded-when-enabled. newOIDCHTTPClient wires httputil.SafeDialContext onto the transport (used for discovery/token/JWKS/UserInfo) only when OIDC_BLOCK_PRIVATE_URLS is set. Default off: a LAN identity provider (Authentik/Keycloak on the same Docker network) is a common self-hosted setup. Same opt-in shape as the other *_BLOCK_PRIVATE_URLS integrations.
 - **Source** — `backend/services/oidc_service.go`
 - **Failure behavior verified by** — #465 (INT-02); oidc_service_test.go; oidc_attack_matrix_test.go; oidc_userinfo_test.go.
 
 | Failure mode | Class | Required behavior |
 |---|---|---|
-| `unreachable-host` | transient | Startup: InitOIDCProvider returns an error and OIDC is not enabled (login falls back to whatever else is configured). Runtime: the token/UserInfo call fails, the callback returns a login error, no partial session is created. |
-| `timeout` | transient | Bounded by the request context; on deadline the callback fails with a login error. No session, no partial user row. |
+| `unreachable-host` | transient | Startup: InitOIDCProvider returns an error and OIDC is not enabled (login falls back to whatever else is configured). Runtime: the token/UserInfo call fails, the callback returns a login error, no partial session is created. With OIDC_BLOCK_PRIVATE_URLS on, a provider host that resolves to a private address is refused at dial time (ErrOIDCPrivateAddress). |
+| `timeout` | transient | Bounded by oidcRequestTimeout (15s) on the client, in addition to the request context deadline; on timeout the callback fails with a login error. No session, no partial user row. |
 | `auth-expiry` | permanent-until-human | Not applicable to a client credential (the client secret is operator config, a 401 there is a setup error surfaced at the callback). For the end user, an expired provider session just means they re-authenticate at the provider. |
 | `authz-revoked` | permanent-until-human | Provider returns access_denied / the user's account is disabled provider-side → the callback surfaces 'sign-in was refused by the provider'; no local account is created or unlocked. |
 | `malformed-response` | transient | ID-token signature/claims verification failure, UserInfo sub mismatch (OIDC Core 5.3.2), or an unparseable discovery doc → the flow aborts with a specific error; a claim is never trusted from a body that failed verification. |

@@ -12,6 +12,7 @@ import (
 	"mycorrhizal/config"
 	"mycorrhizal/httputil"
 	"mycorrhizal/i18n"
+	"mycorrhizal/internal/faults"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 	"net"
@@ -123,6 +124,13 @@ type calendarRoundTripper struct {
 }
 
 func (t *calendarRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Issue #434 failure-injection seam: an armed fault replaces the round
+	// trip, exactly as an unreachable / auth-expired / deleted-remotely
+	// upstream presents to importEvents / pushLocalEdits and the post-run
+	// sync-health bookkeeping.
+	if err := faults.Hook(faultCalendarSyncRequest); err != nil {
+		return nil, err
+	}
 	// Carry the caller's correlation ID onto the outbound request (issue #425).
 	if id := logger.CorrelationID(req.Context()); id != "" {
 		req.Header.Set("X-Correlation-ID", id)

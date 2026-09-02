@@ -340,6 +340,13 @@ func TestRenderHelpers(t *testing.T) {
 	if got := ssrfMeaning(SSRFPosture("something-new")); got != "something-new" {
 		t.Errorf("ssrfMeaning(unknown) = %q, want the raw value", got)
 	}
+	// Every known posture has a meaning, including ones the current registry
+	// happens not to use (no `unguarded` integrations today).
+	for _, p := range []SSRFPosture{SSRFGuardedAlways, SSRFGuardedWhenEnabled, SSRFFixedEndpoint, SSRFUnguarded} {
+		if strings.TrimSpace(ssrfMeaning(p)) == "" {
+			t.Errorf("ssrfMeaning(%q) is empty", p)
+		}
+	}
 	if got := noteSuffix(""); got != "" {
 		t.Errorf("noteSuffix(empty) = %q", got)
 	}
