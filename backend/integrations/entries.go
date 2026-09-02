@@ -437,7 +437,7 @@ func emailResendIntegration() Integration {
 		FailureImpactNote: "A user cannot complete a password reset or accept an invite until email works or the operator uses an alternate path.",
 
 		Timeout:     0,
-		TimeoutNote: "GAP: no explicit timeout is wired. The resend-go SDK uses its default http.Client; the call is bounded only by the SDK/OS defaults. Tightening this is INT-02 (#465) work — recorded here so it is a known gap, not a surprise.",
+		TimeoutNote: "No timeout is wired on our side; the call inherits resend-go's default http.Client, which sets Timeout: 1m (resend.go). So it is bounded, but at 60s and not by a value this project chose. Passing an explicit client via resend.NewCustomClient is INT-02 (#465) work — recorded so the bound is a deliberate number, not a library default.",
 
 		RetryBudget: "No retry. Best-effort: SendEmail tries every configured channel (Resend and/or SMTP) and returns success if at least one succeeds, a combined error only if all fail. The caller decides what a total failure means (password reset surfaces it; a reminder digest logs it).",
 
@@ -446,7 +446,7 @@ func emailResendIntegration() Integration {
 
 		Behavior: map[FailureMode]string{
 			FailureUnreachableHost:       "SDK returns an error; logged as 'Failed to send email via Resend'; if SMTP is also configured it is tried; if not, SendEmail returns the combined error to the caller.",
-			FailureTimeout:               "Bounded only by SDK/OS defaults (see the timeout gap). On error, same fallback-to-SMTP-or-combined-error path.",
+			FailureTimeout:               "Bounded by resend-go's default 60s client timeout (see the timeout note). On error, same fallback-to-SMTP-or-combined-error path.",
 			FailureAuthExpiry:            "401 (API key revoked) → error surfaced to the caller / logged; a persistent 401 is an operator problem — the fix is a new key in config, there is no runtime re-auth.",
 			FailureAuthzRevoked:          "403 (domain not verified, sending disabled) handled as 401: surfaced/logged, operator must fix the Resend account.",
 			FailureMalformedResponse:     "Handled by the SDK; a decode error becomes a send error and the fallback/reporting path runs.",
