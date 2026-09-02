@@ -11,6 +11,7 @@ import (
 )
 
 func TestSaveReadRemoveRoundTrip(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	stored, err := Save([]byte("hello attachment"), dir)
@@ -30,6 +31,7 @@ func TestSaveReadRemoveRoundTrip(t *testing.T) {
 }
 
 func TestStoredPathRejectsTraversal(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	for _, bad := range []string{"..", "../evil", "a/../evil", "/etc/passwd", "a/b", "..\\evil", ""} {
 		_, err := StoredPath(dir, bad)
@@ -38,10 +40,12 @@ func TestStoredPathRejectsTraversal(t *testing.T) {
 }
 
 func TestRemoveMissingFileIsNotAnError(t *testing.T) {
+	t.Parallel()
 	require.NoError(t, Remove(t.TempDir(), "nonexistent-uuid"))
 }
 
 func TestSaveGeneratesDistinctNames(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	a, err := Save([]byte("a"), dir)
 	require.NoError(t, err)
@@ -53,11 +57,13 @@ func TestSaveGeneratesDistinctNames(t *testing.T) {
 }
 
 func TestStoredPathRejectsEmptyDir(t *testing.T) {
+	t.Parallel()
 	_, err := StoredPath("", "some-uuid")
 	assert.Error(t, err, "StoredPath must reject an empty directory")
 }
 
 func TestStoredPathAcceptsBareName(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path, err := StoredPath(dir, "01234567-89ab-cdef-0123-456789abcdef")
 	require.NoError(t, err)
@@ -65,6 +71,7 @@ func TestStoredPathAcceptsBareName(t *testing.T) {
 }
 
 func TestSaveCreatesDirectoryRecursively(t *testing.T) {
+	t.Parallel()
 	// The directory does not exist yet; Save must create it.
 	dir := filepath.Join(t.TempDir(), "nested", "sub")
 	stored, err := Save([]byte("data"), dir)
@@ -74,6 +81,7 @@ func TestSaveCreatesDirectoryRecursively(t *testing.T) {
 }
 
 func TestSaveRejectsInvalidStoredPath(t *testing.T) {
+	t.Parallel()
 	// Save derives the stored name itself, so StoredPath cannot reject it;
 	// this test pins that Save still surfaces the write failure deterministically
 	// by pointing it at a read-only directory (MkdirAll succeeds — the dir
@@ -89,6 +97,7 @@ func TestSaveRejectsInvalidStoredPath(t *testing.T) {
 }
 
 func TestSaveFailsWhenDirIsAFile(t *testing.T) {
+	t.Parallel()
 	// MkdirAll errors when the target path is an existing regular file —
 	// deterministic, no permission dependency.
 	dir := filepath.Join(t.TempDir(), "not-a-dir")
@@ -98,11 +107,13 @@ func TestSaveFailsWhenDirIsAFile(t *testing.T) {
 }
 
 func TestRemoveRejectsInvalidStoredName(t *testing.T) {
+	t.Parallel()
 	err := Remove(t.TempDir(), "../escape.txt")
 	assert.Error(t, err, "Remove must reject a traversal stored name")
 }
 
 func TestRemoveFailurePropagates(t *testing.T) {
+	t.Parallel()
 	// A stored name that StoredPath accepts but whose file cannot be removed
 	// must surface the error rather than swallowing it. Skipped as root,
 	// where POSIX permission bits are not enforced.
