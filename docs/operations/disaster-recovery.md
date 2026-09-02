@@ -428,8 +428,11 @@ or by physics, and the mitigations are all *before* the fact.
   recover to a backup's point, not to "5 minutes before the mistake".
 
 Derived state that looks like loss but is not: the **FTS search index** is
-rebuilt from canonical data on restore, and **in-flight sessions / 2FA
-challenges** dropped by a key change are expected, not data loss.
+fully rebuildable from canonical data — a documented restore step
+(`docs/deployment.md` → Restore, step 4) and, at any time, `POST
+/api/v1/admin/search/rebuild` or `cmd/backfill-search-index`
+(`operations/search-index.md`) — and **in-flight sessions / 2FA challenges**
+dropped by a key change are expected, not data loss.
 
 ## Verifying a recovered instance
 

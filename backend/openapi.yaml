@@ -9639,9 +9639,19 @@ paths:
       summary: Rebuild the FTS search index (admin)
       operationId: adminRebuildSearchIndex
       description: >
-        Rebuilds the FTS5 full-text index from the live base tables (T11).
-        Idempotent; run after a bulk import or raw-SQL change that bypassed
-        the FTS triggers.
+        Rebuilds all three FTS5 full-text indexes (contacts, notes,
+        activities) from canonical base-table data (T11, SEARCH-01 issue
+        #461). Idempotent — the index is derived data, so a rebuild always
+        converges on what the maintenance triggers would have produced. Run it
+        after a bulk import, a raw-SQL migration that bypassed the FTS
+        triggers, or a restore from backup.
+
+
+        The whole rebuild runs in one transaction: an interruption leaves the
+        previous index intact, never a partial one, and search keeps serving
+        the old index until the rebuild commits. The rebuild is recorded as a
+        `search_index_rebuild` job run (visible via GET /admin/job-runs). A
+        rebuild already in progress returns 409.
       responses:
         "401":
           description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
@@ -9655,12 +9665,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          description: A rebuild is already in progress.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: The rebuild failed; the previous index is unchanged.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "200":
           description: Index rebuilt.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessageResponse"
+                type: object
+                required: [message, indexed]
+                properties:
+                  message:
+                    type: string
+                    example: Search index rebuilt
+                  indexed:
+                    type: object
+                    description: Rows written to each FTS index (live rows only).
+                    required: [contacts, notes, activities]
+                    properties:
+                      contacts: { type: integer, format: int64, example: 1284 }
+                      notes: { type: integer, format: int64, example: 4021 }
+                      activities: { type: integer, format: int64, example: 903 }
 
 components:
   securitySchemes:
@@ -11078,7 +11113,8 @@ components:
         human message. Check names: `config`, `database`, `migrations`,
         `filesystem`, `backup`, `notification_<channel>` (one per delivery
         channel), `integration_<system>` (carddav, caldav, immich, paperless,
-        seafile, nextcloud), `disk_space`, `background_jobs`, `version`.
+        seafile, nextcloud), `disk_space`, `background_jobs`, `search_index`
+        (FTS index consistency, SEARCH-02), `version`.
       properties:
         name: { type: string, description: "Stable snake_case identifier" }
         status: { type: string, enum: [ok, warning, error] }

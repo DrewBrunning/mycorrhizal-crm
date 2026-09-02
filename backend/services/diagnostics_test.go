@@ -69,10 +69,10 @@ func TestRunDiagnosticsHealthyInstall(t *testing.T) {
 	assert.Zero(t, d.Summary.Errors)
 	assert.Zero(t, d.Summary.Warnings)
 	// 5 config/db/migrations/filesystem/backup + 1 data_integrity + 4
-	// notifications + 6 integrations + 3 disk/background-jobs/version = 19
-	// rows, all ok.
-	assert.Equal(t, 19, d.Summary.OK)
-	assert.Len(t, d.Checks, 19)
+	// notifications + 6 integrations + 4 disk/background-jobs/search-index/
+	// version = 20 rows, all ok.
+	assert.Equal(t, 20, d.Summary.OK)
+	assert.Len(t, d.Checks, 20)
 	assert.Equal(t, DiagStatusOK, findCheck(t, d, "data_integrity").Status)
 
 	for _, c := range d.Checks {
@@ -263,6 +263,38 @@ func TestRunDiagnosticsFailingJob(t *testing.T) {
 	assert.Equal(t, "warning", d.Summary.Status)
 }
 
+// TestRunDiagnosticsSearchIndexDivergence: a desynchronised FTS index folds
+// into a search_index warning that points at the rebuild endpoint (SEARCH-02,
+// issue #462).
+func TestRunDiagnosticsSearchIndexDivergence(t *testing.T) {
+	db := dbtest.New(t)
+	cfg := validDiagnosticsConfig(t)
+	u := models.User{Username: "diag-fts", Password: "password123!A", Email: "diag-fts@example.com"}
+	require.NoError(t, db.Create(&u).Error)
+	c := models.Contact{UserID: u.ID, Firstname: "Diag", Lastname: "Fts"}
+	require.NoError(t, db.Create(&c).Error)
+	require.NoError(t, db.Exec(`DELETE FROM contacts_fts WHERE rowid = ?`, c.ID).Error)
+
+	d := RunDiagnostics(context.Background(), db, cfg)
+	check := findCheck(t, d, "search_index")
+	assert.Equal(t, DiagStatusWarning, check.Status)
+	assert.Contains(t, check.Message, "rebuild")
+	assert.Equal(t, "warning", d.Summary.Status)
+}
+
+// TestRunDiagnosticsSearchIndexCheckError: if the consistency check itself
+// cannot run, the sweep degrades to a warning rather than failing.
+func TestRunDiagnosticsSearchIndexCheckError(t *testing.T) {
+	db := dbtest.New(t)
+	cfg := validDiagnosticsConfig(t)
+	require.NoError(t, db.Exec(`DROP TABLE contacts_fts`).Error)
+
+	d := RunDiagnostics(context.Background(), db, cfg)
+	check := findCheck(t, d, "search_index")
+	assert.Equal(t, DiagStatusWarning, check.Status)
+	assert.Contains(t, check.Message, "could not run")
+}
+
 // TestRunDiagnosticsDiskSpace: the sweep reuses the alert evaluator's statfs
 // fold. Above the configured threshold is a warning; essentially full is an
 // error.
@@ -401,9 +433,9 @@ func TestRunDiagnosticsNilDB(t *testing.T) {
 	assert.Equal(t, "error", d.Summary.Status)
 	// A nil db must not break the remaining checks: config/database/migrations/
 	// filesystem/backup (5) + data_integrity (1) + one folded notifications
-	// check + carddav/caldav (2) + disk_space/background_jobs/version (3) = 12
-	// rows.
-	assert.Len(t, d.Checks, 12)
+	// check + carddav/caldav (2) + disk_space/background_jobs/search_index/
+	// version (4) = 13 rows.
+	assert.Len(t, d.Checks, 13)
 	assert.Equal(t, DiagStatusWarning, findCheck(t, d, "data_integrity").Status)
 }
 

@@ -405,3 +405,58 @@ func TestCheckDBIntegrityScheduled_DataPassCleanRecordsOK(t *testing.T) {
 	assert.Equal(t, models.OpCheckStatusOK, data.Status)
 	assert.Empty(t, data.Detail)
 }
+
+// TestCheckDBIntegrityScheduledFoldsInSearchIndexConsistency pins SEARCH-02
+// (issue #462) recommended action 6: the FTS consistency pass rides the
+// existing integrity job — no third schedule — and records its own
+// operational-check-result, distinct from the storage integrity_check.
+func TestCheckDBIntegrityScheduledFoldsInSearchIndexConsistency(t *testing.T) {
+	cfg := config.Config{DBIntegrityCheckEnabled: true, DBIntegrityCheckIntervalHours: 24}
+
+	t.Run("clean index records ok", func(t *testing.T) {
+		db := dbtest.New(t)
+		u := models.User{Username: "fts-fold-ok", Password: "password123!A", Email: "fts-fold-ok@example.com"}
+		require.NoError(t, db.Create(&u).Error)
+		require.NoError(t, db.Create(&models.Contact{UserID: u.ID, Firstname: "Fold", Lastname: "Ok"}).Error)
+
+		require.NotPanics(t, func() { CheckDBIntegrityScheduled(db, cfg) })
+
+		var row models.OperationalCheckResult
+		require.NoError(t, db.Where("check_name = ?", OpCheckSearchIndexConsistency).First(&row).Error)
+		assert.Equal(t, models.OpCheckStatusOK, row.Status)
+	})
+
+	t.Run("divergent index records failed with a detail", func(t *testing.T) {
+		db := dbtest.New(t)
+		u := models.User{Username: "fts-fold-bad", Password: "password123!A", Email: "fts-fold-bad@example.com"}
+		require.NoError(t, db.Create(&u).Error)
+		c := models.Contact{UserID: u.ID, Firstname: "Fold", Lastname: "Bad"}
+		require.NoError(t, db.Create(&c).Error)
+		require.NoError(t, db.Exec(`DELETE FROM contacts_fts WHERE rowid = ?`, c.ID).Error)
+
+		require.NotPanics(t, func() { CheckDBIntegrityScheduled(db, cfg) })
+
+		var row models.OperationalCheckResult
+		require.NoError(t, db.Where("check_name = ?", OpCheckSearchIndexConsistency).First(&row).Error)
+		assert.Equal(t, models.OpCheckStatusFailed, row.Status)
+		assert.Contains(t, row.Detail, "contacts_fts/"+FTSDivergenceMissingFromIndex)
+
+		// The storage integrity_check itself is untouched and still ok.
+		var storage models.OperationalCheckResult
+		require.NoError(t, db.Where("check_name = ?", models.JobNameDBIntegrityCheck).First(&storage).Error)
+		assert.Equal(t, models.OpCheckStatusOK, storage.Status)
+	})
+
+	t.Run("check that cannot run records error, not failed", func(t *testing.T) {
+		db := dbtest.New(t)
+		u := models.User{Username: "fts-fold-err", Password: "password123!A", Email: "fts-fold-err@example.com"}
+		require.NoError(t, db.Create(&u).Error)
+		require.NoError(t, db.Exec(`DROP TABLE notes_fts`).Error)
+
+		require.NotPanics(t, func() { CheckDBIntegrityScheduled(db, cfg) })
+
+		var row models.OperationalCheckResult
+		require.NoError(t, db.Where("check_name = ?", OpCheckSearchIndexConsistency).First(&row).Error)
+		assert.Equal(t, models.OpCheckStatusError, row.Status)
+	})
+}

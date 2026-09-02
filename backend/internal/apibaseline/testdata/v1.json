@@ -342,7 +342,7 @@
       "responses": [
         {
           "status": "200",
-          "schema": "ref:MessageResponse"
+          "schema": "object"
         },
         {
           "status": "401",
@@ -350,6 +350,14 @@
         },
         {
           "status": "403",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "500",
           "schema": "ref:Error"
         }
       ]

@@ -152,10 +152,11 @@ func checkDBIntegrity(db *gorm.DB) (ok bool, detail string, err error) {
 }
 
 // CheckDBIntegrityScheduled is the scheduled job entry point (issue #273 for
-// the storage pass, issue #460 for the data pass). Job-lock guarded (the T19
-// pattern) so a multi-instance deploy or a rapid restart doesn't re-run it
-// back to back. Both passes run under the one lock, on the one schedule and
-// config gate, but record and alert distinctly.
+// the storage pass, issue #460 for the data pass, issue #462 for the FTS
+// consistency pass). Job-lock guarded (the T19 pattern) so a multi-instance
+// deploy or a rapid restart doesn't re-run it back to back. All three passes
+// run under the one lock, on the one schedule and config gate, but record and
+// alert distinctly.
 func CheckDBIntegrityScheduled(db *gorm.DB, cfg config.Config) {
 	ctx := logger.JobContext(models.JobNameDBIntegrityCheck)
 	if !cfg.DBIntegrityCheckEnabled {
@@ -178,6 +179,13 @@ func CheckDBIntegrityScheduled(db *gorm.DB, cfg config.Config) {
 
 	runStorageIntegrityPass(ctx, db, cfg)
 	runDataIntegrityPass(ctx, db, cfg)
+
+	// SEARCH-02 (issue #462): the derived FTS index gets its own consistency
+	// pass, folded into this job rather than a third schedule. It is a meaning
+	// check, not a corruption check — the storage can be fine while search is
+	// degraded — so it records its own result and fires a warning-level
+	// webhook, independently of the two passes above.
+	checkSearchIndexConsistencyScheduled(ctx, db, cfg)
 }
 
 // runStorageIntegrityPass is the PRAGMA pass: records its outcome under
@@ -248,4 +256,37 @@ func summarizeIntegrityFindings(findings []IntegrityFinding) string {
 		parts = append(parts, fmt.Sprintf("%s x%d", f.Check, f.Count))
 	}
 	return strings.Join(parts, "; ")
+}
+
+// OpCheckSearchIndexConsistency is the operational-check-result name for the
+// scheduled FTS index consistency pass (SEARCH-02, issue #462).
+const OpCheckSearchIndexConsistency = "search_index_consistency"
+
+// EventSearchIndexInconsistent is the webhook event fired when the scheduled
+// FTS consistency pass finds the index out of sync with canonical data. It
+// reuses the db.integrity_check_failed channel (an operator wiring "database
+// health" alerts wants this too) with a discriminating payload; the storage
+// integrity_check itself is unaffected and its own OK result still stands.
+const EventSearchIndexInconsistent = EventDBIntegrityCheckFailed
+
+func checkSearchIndexConsistencyScheduled(ctx context.Context, db *gorm.DB, cfg config.Config) {
+	res, err := CheckSearchIndexConsistency(db)
+	if err != nil {
+		logger.Error().Err(err).Msg("search index consistency: check failed to run")
+		RecordOperationalCheckResult(db, OpCheckSearchIndexConsistency, models.OpCheckStatusError, err.Error())
+		return
+	}
+	if !res.Clean() {
+		summary := res.Summary()
+		logger.Warn().Str("detail", summary).Int("divergences", len(res.Divergences)).
+			Msg("search index consistency: index is out of sync with canonical data — a rebuild (POST /admin/search/rebuild) will repair it")
+		RecordOperationalCheckResult(db, OpCheckSearchIndexConsistency, models.OpCheckStatusFailed, summary)
+		triggerWebhooksForAllUsers(ctx, db, cfg, EventSearchIndexInconsistent, map[string]interface{}{
+			"check":  OpCheckSearchIndexConsistency,
+			"detail": summary,
+		})
+		return
+	}
+	RecordOperationalCheckResult(db, OpCheckSearchIndexConsistency, models.OpCheckStatusOK, "")
+	logger.Info().Msg("search index consistency: ok")
 }
