@@ -182,6 +182,33 @@
       ]
     },
     {
+      "method": "POST",
+      "path": "/admin/contacts/rebuild-derived",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "403",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "500",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "GET",
       "path": "/admin/diagnostics",
       "parameters": null,
