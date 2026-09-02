@@ -118,6 +118,7 @@ func dataIntegrityChecks() []dataIntegrityCheck {
 		{"required_fields", checkRequiredFields},                  // INV-D5 / INV-D6
 		{"canonical_records", checkCanonicalRecords},              // INV-D8
 		{"derived_indexes", checkDerivedIndexes},                  // INV-A5
+		{"derived_contact_columns", checkDerivedContactColumns},   // INV-A5 (issue #497)
 	}
 }
 
@@ -725,4 +726,109 @@ func abs64(n int64) int64 {
 		return -n
 	}
 	return n
+}
+
+// ---------------------------------------------------------------------------
+// INV-A5 (issue #497) — the flat contacts.* projection is a faithful,
+// rebuildable derivation of the nested Card
+// ---------------------------------------------------------------------------
+
+// checkDerivedContactColumns is the flat-column-family analogue of
+// checkDerivedIndexes: where that one asks "does the FTS index have the right
+// row count", this asks "is every denormalized contact column still what a
+// plain re-save would recompute". It streams live contacts in pages and, for
+// each, re-derives the denormalized columns through the same
+// models.Contact.RederiveDenormalized the write path and the rebuild use,
+// then reports — per user, per column — how many rows drifted.
+//
+// A faithful database produces nothing here: the projection is a fixpoint of
+// a re-save (ADR 0012 INV-A5 / INV-D8). A finding means a hook-bypassing
+// write (a raw-SQL migration, a bulk import that INSERTed rows directly, a
+// mid-write restore) left a column stale — repair is a full re-derivation,
+// services.RebuildDerivedContactColumns (POST /api/v1/admin/contacts/
+// rebuild-derived or cmd/backfill-derived-columns), never the orphan-row
+// repair path, so these findings are Repairable:false.
+func checkDerivedContactColumns(ctx context.Context, db *gorm.DB, _ config.Config) ([]IntegrityFinding, error) {
+	const page = 500
+	// perUserCols[userID][column] = number of live contacts of that user
+	// whose stored `column` disagrees with the re-derived value.
+	perUserCols := map[uint]map[string]int{}
+	perUserRows := map[uint]int{}
+	var lastID uint
+
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+
+		// Page over ids by raw SQL, then load each contact through GORM so the
+		// at-rest serializer decrypts card/crm/passthrough. A row whose card
+		// is unreadable (corrupt JSON, or ciphertext the key can't open) is
+		// already an INV-D8 canonical_record.invalid_json violation from
+		// checkCanonicalRecords — a derived-column check on it is meaningless,
+		// so skip it rather than failing the whole probe.
+		var ids []uint
+		if err := db.WithContext(ctx).Raw(
+			`SELECT id FROM contacts WHERE deleted_at IS NULL AND id > ? ORDER BY id LIMIT ?`,
+			lastID, page,
+		).Scan(&ids).Error; err != nil {
+			return nil, err
+		}
+		if len(ids) == 0 {
+			break
+		}
+		lastID = ids[len(ids)-1]
+
+		var rows []models.Contact
+		if err := db.WithContext(ctx).Where("id IN ?", ids).Find(&rows).Error; err != nil {
+			// One bad row fails the batch decode; fall back to per-row loads.
+			rows = rows[:0]
+			for _, id := range ids {
+				var one models.Contact
+				if err := db.WithContext(ctx).First(&one, id).Error; err != nil {
+					continue
+				}
+				rows = append(rows, one)
+			}
+		}
+		for i := range rows {
+			c := &rows[i]
+			fixes := c.RecomputeDerivedColumns()
+			if len(fixes) == 0 {
+				continue
+			}
+			if perUserCols[c.UserID] == nil {
+				perUserCols[c.UserID] = map[string]int{}
+			}
+			for _, f := range fixes {
+				perUserCols[c.UserID][f.Column]++
+			}
+			perUserRows[c.UserID]++
+		}
+		if len(ids) < page {
+			break
+		}
+	}
+
+	var out []IntegrityFinding
+	for uid, cols := range perUserCols {
+		names := make([]string, 0, len(cols))
+		for col := range cols {
+			names = append(names, col)
+		}
+		sort.Strings(names)
+		parts := make([]string, 0, len(names))
+		for _, col := range names {
+			parts = append(parts, fmt.Sprintf("%s x%d", col, cols[col]))
+		}
+		out = append(out, IntegrityFinding{
+			Invariant: "INV-A5", Check: "derived_contact_column.divergent",
+			Severity: IntegritySeverityViolation, UserID: uid, Count: perUserRows[uid],
+			Detail: fmt.Sprintf(
+				"%d contact(s) have a denormalized column that disagrees with the value re-derived from Card (%s) — rebuild with cmd/backfill-derived-columns or POST /admin/contacts/rebuild-derived",
+				perUserRows[uid], strings.Join(parts, ", ")),
+			Repairable: false,
+		})
+	}
+	return out, nil
 }

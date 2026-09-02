@@ -319,3 +319,72 @@ func TestRestoreFlatStateFrom_ThenSavePreservesCardOnlyData(t *testing.T) {
 		t.Errorf("CRM.Kind = %q, want preserved through undo", undone.CRM.Kind)
 	}
 }
+
+// assertCardOnlyDataIntact checks the members of richCardOnlyRecord that have
+// no flat-column home — the ones the pre-T75 wholesale flat->Card rebuild
+// silently destroyed on every plain save.
+func assertCardOnlyDataIntact(t *testing.T, c Contact) {
+	t.Helper()
+	if c.Card.SpeakToAs == nil || len(c.Card.SpeakToAs.Pronouns) != 1 || c.Card.SpeakToAs.Pronouns[0].Pronouns != "she/her" {
+		t.Errorf("SpeakToAs = %+v, want the pronouns preserved", c.Card.SpeakToAs)
+	}
+	if len(c.Card.PersonalInfo) != 1 || c.Card.PersonalInfo[0].Value != "sailing" {
+		t.Errorf("PersonalInfo = %+v, want the hobby preserved", c.Card.PersonalInfo)
+	}
+	if c.CRM.Kind != "pet" {
+		t.Errorf("CRM.Kind = %q, want the pet kind preserved", c.CRM.Kind)
+	}
+	if len(c.Passthrough.VCard) != 1 || c.Passthrough.VCard[0].Name != "X-CUSTOM" {
+		t.Errorf("Passthrough.VCard = %+v, want the imported X-CUSTOM property preserved", c.Passthrough.VCard)
+	}
+}
+
+// TestBeforeSave_EveryPlainSavePrimitivePreservesCardOnlyData turns the T75
+// standing rule into a test rather than a convention (issue #497 action 4):
+// whatever GORM write primitive a future plain-save path reaches for on a
+// *loaded* contact — Save, Updates(struct), Updates(map), Model().Update() —
+// it fires BeforeSave, which merges rather than rebuilds, so Card-only data
+// (SpeakToAs, PersonalInfo, CRMEnvelope.Kind, Passthrough) survives. A new
+// path that bypasses the hooks (raw SQL / UpdateColumns) is instead caught at
+// runtime by services.checkDerivedContactColumns.
+//
+// Hand-verification (CLAUDE.md — a test that has never failed has proven
+// nothing): revert mergeRecordFromFlat in contact_card_merge.go to the
+// pre-T75 wholesale `c.Card = RecordFromContact(c, DefaultPhotoDir).Card` and
+// every subtest here fails on the dropped Card-only members. Restore.
+func TestBeforeSave_EveryPlainSavePrimitivePreservesCardOnlyData(t *testing.T) {
+	primitives := map[string]func(db *gorm.DB, loaded *Contact) error{
+		"Save": func(db *gorm.DB, loaded *Contact) error {
+			loaded.Photo = "new.jpg"
+			return db.Save(loaded).Error
+		},
+		"Updates_struct": func(db *gorm.DB, loaded *Contact) error {
+			return db.Model(loaded).Updates(Contact{Photo: "new.jpg"}).Error
+		},
+		"Updates_map": func(db *gorm.DB, loaded *Contact) error {
+			return db.Model(loaded).Updates(map[string]any{"photo": "new.jpg"}).Error
+		},
+		"Model_Update": func(db *gorm.DB, loaded *Contact) error {
+			return db.Model(loaded).Update("archived", true).Error
+		},
+	}
+	for name, mutate := range primitives {
+		t.Run(name, func(t *testing.T) {
+			db := newT75TestDB(t)
+			user := User{Username: "t75-" + name, Password: "password123!A", Email: "t75-" + name + "@example.com"}
+			require.NoError(t, db.Create(&user).Error)
+
+			contact := &Contact{UserID: user.ID}
+			ApplyRecordToContact(contact, richCardOnlyRecord(), "")
+			require.NoError(t, db.Create(contact).Error)
+
+			var loaded Contact
+			require.NoError(t, db.First(&loaded, contact.ID).Error)
+			require.NoError(t, mutate(db, &loaded))
+
+			var persisted Contact
+			require.NoError(t, db.First(&persisted, contact.ID).Error)
+			assertCardOnlyDataIntact(t, persisted)
+		})
+	}
+}

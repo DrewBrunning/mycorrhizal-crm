@@ -219,6 +219,7 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/admin/trigger-reminders",
 		"POST /api/v1/admin/trigger-purge",
 		"POST /api/v1/admin/search/rebuild",
+		"POST /api/v1/admin/contacts/rebuild-derived",
 	} {
 		t[k] = exempt(idemReasonAdmin)
 	}
