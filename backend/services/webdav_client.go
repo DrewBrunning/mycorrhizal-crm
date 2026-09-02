@@ -70,8 +70,11 @@ var (
 	ErrWebDAVRequestFailed  = errors.New("Nextcloud responded with an unexpected status")
 )
 
+// webdavRequestTimeout is a var (not a const) so a test can shrink it — see
+// paperlessRequestTimeout (INT-02, issue #465).
+var webdavRequestTimeout = 30 * time.Second
+
 const (
-	webdavRequestTimeout = 30 * time.Second
 	// maxWebDAVBodyBytes bounds a PROPFIND response body.
 	maxWebDAVBodyBytes      = 8 * 1024 * 1024
 	maxWebDAVErrorBodyBytes = 2048
@@ -161,7 +164,7 @@ func NewWebDAVClient(baseURL, username, appPassword string, blockPrivateURLs boo
 		password:    appPassword,
 		client: &http.Client{
 			Timeout:   webdavRequestTimeout,
-			Transport: getWebDAVTransport(blockPrivateURLs),
+			Transport: faultingRoundTripper{name: faultWebDAVRequest, base: getWebDAVTransport(blockPrivateURLs)},
 		},
 	}, nil
 }

@@ -89,7 +89,14 @@ second copy. Drift test `backend/integrations/matrix_test.go` fails until the do
 with no matrix row (add a `Registry()` entry, or — only if it reuses another integration's transport
 — a `nonIntegrationClients` entry with a reason); `TestSSRFClaimsMatchSource` fails if a row claims a
 guarded posture its source doesn't back up; and `services/integration_matrix_reconcile_test.go` fails
-if a declared timeout drifts from the client's actual timeout.
+if a declared timeout drifts from the client's actual timeout. INT-02 (#465) adds the failure-behavior
+suite: every integration client has a `faults.Hook` request seam (a `faultingRoundTripper` on the
+transport, or a hook at the delivery boundary — `services/integration_fault_seam.go`), catalogued in
+`docs/development/fault-injection.md`; `services/*_failure_behavior_test.go` exercises the #465 modes
+(the outcome is *defined* — recorded, bounded, local data intact, observable via sync-health / delivery
+rows / `sync_failed` events), and `integrations/int02_coverage_test.go` fails if a matrix integration
+has no failure-behavior test. `Dispositions()` is the one transient/permanent table — #466/#467 assert
+against it, don't fork it.
 
 **Breaking-change policy (MAINT-02, issue #491):** the `/api/v1` contract surface is pinned by a
 frozen baseline (`backend/internal/apibaseline/testdata/v1.json`) generated from `backend/openapi.yaml`
