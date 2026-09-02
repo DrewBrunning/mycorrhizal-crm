@@ -9,6 +9,7 @@ import (
 )
 
 func TestLoadSnapshot_ParsesFixtureShape(t *testing.T) {
+	t.Parallel()
 	raw := `{
 	  "contacts": [
 	    { "id": 1, "first_name": "Ada", "gender_type": "F", "information": {
@@ -44,6 +45,7 @@ func TestLoadSnapshot_ParsesFixtureShape(t *testing.T) {
 }
 
 func TestLoadSnapshot_InitializesRelationshipMapForEmptySnapshot(t *testing.T) {
+	t.Parallel()
 	// A snapshot whose JSON explicitly nulls relationships (or omits it)
 	// must come back with a usable empty map.
 	snap, err := LoadSnapshot(strings.NewReader(`{"contacts": [], "relationships": null}`))
@@ -57,6 +59,7 @@ func TestLoadSnapshot_InitializesRelationshipMapForEmptySnapshot(t *testing.T) {
 }
 
 func TestLoadSnapshot_RejectsMalformedJSON(t *testing.T) {
+	t.Parallel()
 	_, err := LoadSnapshot(strings.NewReader(`{not json`))
 	assert.Error(t, err)
 }
