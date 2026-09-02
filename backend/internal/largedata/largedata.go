@@ -65,6 +65,16 @@ func Scale(m *canonicalfixture.Manifest, targetContacts int) (*canonicalfixture.
 		return nil, fmt.Errorf("largedata: manifest declares no contacts to scale")
 	}
 
+	return scaleSalted(m, targetContacts, "")
+}
+
+// scaleSalted is Scale with an explicit UID-derivation salt. An empty salt
+// reproduces Scale's historical output byte-for-byte (the migration path and
+// the scale-testing.md row-count table depend on that); a non-empty salt —
+// used by the PERF-01 profile catalogue (profiles.go) to key each user's
+// contacts distinctly — changes every regenerated card UID while leaving every
+// data field untouched.
+func scaleSalted(m *canonicalfixture.Manifest, targetContacts int, salt string) (*canonicalfixture.Manifest, error) {
 	blocks := (targetContacts + len(m.Contacts) - 1) / len(m.Contacts)
 
 	out := &canonicalfixture.Manifest{
@@ -75,7 +85,7 @@ func Scale(m *canonicalfixture.Manifest, targetContacts int) (*canonicalfixture.
 		User: m.User,
 	}
 	for b := 0; b < blocks; b++ {
-		appendBlock(out, m, b)
+		appendBlock(out, m, b, salt)
 	}
 	return out, nil
 }
@@ -96,6 +106,10 @@ type rewriter struct {
 }
 
 func newRewriter(m *canonicalfixture.Manifest, block int) *rewriter {
+	return newRewriterSalted(m, block, "")
+}
+
+func newRewriterSalted(m *canonicalfixture.Manifest, block int, salt string) *rewriter {
 	rw := &rewriter{
 		block:   block,
 		suffix:  fmt.Sprintf("_%06d", block),
@@ -103,7 +117,7 @@ func newRewriter(m *canonicalfixture.Manifest, block int) *rewriter {
 		baseUID: make(map[string]string, len(m.Contacts)),
 	}
 	for i, c := range m.Contacts {
-		uid := regeneratedUID(block, i)
+		uid := regeneratedUID(salt, block, i)
 		rw.uidOf[c.Name] = uid
 		if c.Card.UID != "" {
 			rw.baseUID[c.Card.UID] = c.Name
@@ -113,11 +127,17 @@ func newRewriter(m *canonicalfixture.Manifest, block int) *rewriter {
 }
 
 // regeneratedUID deterministically derives a new RFC 4122 v5 UUID for block b,
-// contact index i. Distinct per (block, index), so the partial unique index
-// idx_contacts_vcard_uid_user (WHERE deleted_at IS NULL) accepts every scaled
-// contact under the single scaled user.
-func regeneratedUID(block, index int) string {
-	return uuid.NewSHA1(uuid.Nil, []byte(fmt.Sprintf("largedata/block/%d/contact/%d", block, index))).String()
+// contact index i (optionally namespaced by salt). Distinct per
+// (salt, block, index), so the partial unique index idx_contacts_vcard_uid_user
+// (WHERE deleted_at IS NULL) accepts every scaled contact under one user, and
+// two users generated with different salts never collide. An empty salt keeps
+// the historical derivation string so Scale's output is byte-stable.
+func regeneratedUID(salt string, block, index int) string {
+	key := fmt.Sprintf("largedata/block/%d/contact/%d", block, index)
+	if salt != "" {
+		key = fmt.Sprintf("largedata/%s/block/%d/contact/%d", salt, block, index)
+	}
+	return uuid.NewSHA1(uuid.Nil, []byte(key)).String()
 }
 
 // name re-keys a manifest contact name to this block.
@@ -164,9 +184,11 @@ func cloneStrings(in []string) []string {
 	return out
 }
 
-// appendBlock copies every section of m into out, re-keyed for block b.
-func appendBlock(out, m *canonicalfixture.Manifest, b int) {
-	rw := newRewriter(m, b)
+// appendBlock copies every section of m into out, re-keyed for block b (its
+// regenerated card UIDs namespaced by salt — empty for Scale, per-user for the
+// profile catalogue).
+func appendBlock(out, m *canonicalfixture.Manifest, b int, salt string) {
+	rw := newRewriterSalted(m, b, salt)
 
 	for _, c := range m.Contacts {
 		cp := c

@@ -124,6 +124,51 @@ func TestSeedRefusesBadFlags(t *testing.T) {
 	require.Error(t, err, "an unknown flag is a parse error")
 }
 
+func TestSeedContactsAndProfileAreMutuallyExclusive(t *testing.T) {
+	db := filepath.Join(t.TempDir(), "x.db")
+	err := runSeed([]string{"--db", db})
+	require.Error(t, err, "neither --contacts nor --profile is an error")
+	require.Contains(t, err.Error(), "exactly one")
+
+	err = runSeed([]string{"--contacts", "15", "--profile", "smoke", "--db", db})
+	require.Error(t, err, "both --contacts and --profile is an error")
+	require.Contains(t, err.Error(), "exactly one")
+}
+
+func TestSeedRejectsUnknownProfile(t *testing.T) {
+	err := runSeed([]string{"--profile", "enormous", "--db", filepath.Join(t.TempDir(), "x.db")})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unknown --profile")
+}
+
+func TestSeedWithProfile(t *testing.T) {
+	// The concrete "the same generator serves #495 and #468" wiring: seeding
+	// through the PERF-01 profile catalogue builds a real multi-user,
+	// graph-shaped database on the same harness the migration test uses.
+	dbPath := filepath.Join(t.TempDir(), "smoke.db")
+	out := captureStdout(t, func() {
+		assert.Equal(t, 0, runCLI([]string{"seed", "--profile", "smoke", "--db", dbPath}))
+	})
+	require.Contains(t, out, "migratebench seed: profile=smoke")
+	require.Contains(t, out, "users=2")
+	require.Contains(t, out, "contacts=300", "smoke = 150 contacts/user x 2 users")
+
+	db, err := database.OpenMigratedFile(dbPath)
+	require.NoError(t, err)
+	defer func() {
+		if sqlDB, err := db.DB(); err == nil {
+			_ = sqlDB.Close()
+		}
+	}()
+	var users, contacts, edges int64
+	require.NoError(t, db.Table("users").Count(&users).Error)
+	require.NoError(t, db.Table("contacts").Count(&contacts).Error)
+	require.NoError(t, db.Table("relationship_edges").Count(&edges).Error)
+	assert.EqualValues(t, 2, users)
+	assert.EqualValues(t, 300, contacts)
+	assert.Greater(t, edges, int64(200), "the graph shape adds hub + chain edges on top of the block edges")
+}
+
 func TestCheckpointRefusesBadInputs(t *testing.T) {
 	_, err := os.Stat(filepath.Join(t.TempDir(), "none.db"))
 	err = runCheckpoint([]string{"--db", "src.db"})
