@@ -5,8 +5,14 @@ name: Migration Tests
 # names the release that broke. The supported set is v0.6.0 and later (issue
 # #529); the fixtures come from MIG-01 (issue #436, internal/schemafixture).
 #
-# Three shapes run here:
+# Shapes that run here:
 #
+#   - schemafixture-suite: the whole internal/schemafixture package in one
+#     non-race run with a coverprofile (uploaded to Codecov under the `backend`
+#     flag). This is the catch-all + the coverage source; the named slices
+#     below exist for a failure that points at the release that broke. It moved
+#     here from unit-tests.yml's `rest` leg, where it was ~17 min under -race
+#     and the long pole of the backend PR gate.
 #   - upgrade-matrix: every supported-release fixture is migrated to the
 #     CURRENT schema through database.InitDB — the exact path the server boots
 #     through, not a reconstructed migration call — asserting the final version
@@ -227,6 +233,58 @@ jobs:
       - name: Every migration ships its .down.sql
         working-directory: backend
         run: go test ./database/ -run '^TestEveryMigrationHasADownMigration$' -count=1 -v
+
+  # The whole internal/schemafixture package in one non-race run, with a
+  # coverprofile. The per-release matrix / adjacent-hop / down-direction jobs
+  # above run named slices of it for a failure that points at the release that
+  # broke; this job is the catch-all that also covers the tests those slices
+  # don't (cross-version restore, semantic-content preservation, the fixture
+  # loaders, the dump/expectation unit tests) AND supplies the coverage.
+  #
+  # It used to run inside unit-tests.yml's `rest` leg under -race, unsharded —
+  # ~17 min and the long pole of the backend PR gate. It is not on a critical
+  # path here: this job runs in parallel with every other job in this workflow
+  # and this workflow is not itself the backend gate's bottleneck.
+  schemafixture-suite:
+    permissions:
+      contents: read
+    name: schemafixture suite + coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # No -run filter: the entire package. Non-race, matching this workflow's
+      # convention (the -race concurrency signal for the one backup-consistency
+      # test is an accepted loss; the database package's _txlock=immediate pin
+      # keeps its own -race coverage in unit-tests.yml).
+      - name: Run the full schemafixture package with coverage
+        working-directory: backend
+        run: go test ./internal/schemafixture/ -count=1 -covermode=atomic -coverprofile=coverage-schemafixture.out
+
+      # Issue #294 pattern: multiple `backend`-flag uploads for one commit are
+      # merged by Codecov, so this composes with unit-tests.yml's upload rather
+      # than replacing it. Informational only — a failed upload must not fail
+      # the migration gate (fail_ci_if_error: false).
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: backend/coverage-schemafixture.out
+          disable_search: true
+          flags: backend
+          fail_ci_if_error: false
 
   # DEPLOY-02 (issue #451): the full-stack analogue of upgrade-matrix — not
   # just the database, the whole three-piece install (database +
