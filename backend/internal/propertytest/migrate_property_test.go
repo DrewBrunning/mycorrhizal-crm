@@ -38,6 +38,7 @@ import (
 
 // TestMigrateIsNonDestructive is the load-bearing migration property.
 func TestMigrateIsNonDestructive(t *testing.T) {
+	t.Parallel()
 	t.Run("rerun", rapid.MakeCheck(func(t *rapid.T) {
 		db, path, err := contactgen.MigratedDB(t)
 		require.NoError(t, err)

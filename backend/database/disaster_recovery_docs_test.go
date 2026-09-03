@@ -33,6 +33,7 @@ func repoRootFromTestFile(t *testing.T) string {
 // drift, and against the issue #455 checklist otherwise (one procedure per
 // scenario, RPO/RTO stated, an explicit "not recoverable" list).
 func TestDisasterRecoveryDocStatesTheBoundaries(t *testing.T) {
+	t.Parallel()
 	root := repoRootFromTestFile(t)
 	path := filepath.Join(root, "docs", "operations", "disaster-recovery.md")
 	raw, err := os.ReadFile(path)

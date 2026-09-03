@@ -49,6 +49,7 @@ func columnExists(t *testing.T, dbPath, table, column string) bool {
 // migration that only works against a schema that already has the column, and
 // against SQL that parses but fails on this SQLite build.
 func TestMigrationsApplyToEmptyDatabase(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "migrate.db")
 
 	db, err := InitDB(dbPath)
@@ -69,6 +70,7 @@ func TestMigrationsApplyToEmptyDatabase(t *testing.T) {
 // back to Down(), the version assertion below fails instead of a user's data
 // disappearing.
 func TestMigrateDownRollsBackExactlyOneMigration(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "down-one.db")
 
 	require.NoError(t, MigrateUp(dbPath))
@@ -110,6 +112,7 @@ func TestMigrateDownRollsBackExactlyOneMigration(t *testing.T) {
 // baseline (T22) never creates the legacy `relationships` table — it was
 // dropped and does not belong in the clean baseline.
 func TestSquashedSchemaHasNoLegacyRelationshipsTable(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "drop-relationships.db")
 	db, err := InitDB(dbPath)
 	require.NoError(t, err)
@@ -128,6 +131,7 @@ func TestSquashedSchemaHasNoLegacyRelationshipsTable(t *testing.T) {
 }
 
 func TestMigrationsAddCredentialLifecycleColumns(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "columns.db")
 
 	assert.True(t, columnExists(t, dbPath, "users", "token_version"),
@@ -142,6 +146,7 @@ func TestMigrationsAddCredentialLifecycleColumns(t *testing.T) {
 // must be supplied via the DSN on every InitDB call (openDSN) rather than a
 // one-time PRAGMA statement.
 func TestForeignKeysEnforced(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "fk.db")
 	db, err := InitDB(dbPath)
 	require.NoError(t, err)
@@ -158,6 +163,7 @@ func TestForeignKeysEnforced(t *testing.T) {
 // contact_tags/field_values have the identical shape and rely on the same
 // declared ON DELETE CASCADE).
 func TestForeignKeyCascadeDeletesOrphanedChildRows(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "fk-cascade.db")
 	db, err := InitDB(dbPath)
 	require.NoError(t, err)
@@ -190,6 +196,7 @@ func TestForeignKeyCascadeDeletesOrphanedChildRows(t *testing.T) {
 // never blocks re-creating a cadence for the same contact (the same T26
 // pattern as idx_contacts_vcard_uid_user).
 func TestMigrationsAddCadencePolicies(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "cadence-policies.db")
 	db, err := InitDB(dbPath)
 	require.NoError(t, err)
@@ -211,6 +218,7 @@ func TestMigrationsAddCadencePolicies(t *testing.T) {
 // columns and be keyed to the subject contact by entity_id (Contact.VCardUID),
 // never by a date — the agenda is contextual, not scheduled.
 func TestMigrationsAddConversationAgenda(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "conversation-agenda.db")
 	db, err := InitDB(dbPath)
 	require.NoError(t, err)
@@ -237,6 +245,7 @@ func TestMigrationsAddConversationAgenda(t *testing.T) {
 // LifeEvent/Activity references — keyed to the subject contact by entity_id
 // (Contact.VCardUID), never by a numeric ID.
 func TestMigrationsAddGifts(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "gifts.db")
 	db, err := InitDB(dbPath)
 	require.NoError(t, err)
@@ -264,6 +273,7 @@ func TestMigrationsAddGifts(t *testing.T) {
 // applies" is not the interesting assertion — "the migration applies and the
 // user's existing gifts are still there, unchanged" is.
 func TestMigrationsAddGiftURLAndNotes(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "t35-gift-url-notes.db")
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)
@@ -334,6 +344,7 @@ func TestMigrationsAddGiftURLAndNotes(t *testing.T) {
 // preference that predates the migration must survive it unchanged, with the
 // new column simply null rather than backfilled.
 func TestMigrationsAddPreferenceNotes(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "preference-notes.db")
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)
@@ -401,6 +412,7 @@ func TestMigrationsAddPreferenceNotes(t *testing.T) {
 // catch-all branch for a row with an unrecognized key, and the down
 // migration's reversal of the three deterministic branches.
 func TestMigrationsBackfillMediaPreferences(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "preference-media-backfill.db")
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)
@@ -462,6 +474,7 @@ func TestMigrationsBackfillMediaPreferences(t *testing.T) {
 // (T22) excludes the legacy contacts.food_preference column — it was retired
 // by T20a and removed from the baseline during the migration squash.
 func TestSquashedSchemaHasNoLegacyFoodPreference(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "no-food.db")
 	assert.False(t, columnExists(t, dbPath, "contacts", "food_preference"),
 		"food_preference column must not exist in the squashed baseline")
@@ -472,6 +485,7 @@ func TestSquashedSchemaHasNoLegacyFoodPreference(t *testing.T) {
 // WHERE vcard_uid IS NOT NULL AND deleted_at IS NULL clause, so a
 // soft-deleted contact never blocks re-import of the same vcard_uid.
 func TestSquashedSchemaHasT26PartialIndex(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "partial-idx.db")
 	db, err := InitDB(dbPath)
 	require.NoError(t, err)
@@ -490,6 +504,7 @@ func TestSquashedSchemaHasT26PartialIndex(t *testing.T) {
 // (dropped and recreated by 000010 because FTS5 cannot ALTER TABLE) indexes
 // it so a street/city search can hit.
 func TestMigrationsAddSearchAddressesFlat(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "search-addresses.db")
 	assert.True(t, columnExists(t, dbPath, "contacts", "addresses_flat"),
 		"contacts.addresses_flat must be added by the T38 migration")
@@ -525,6 +540,7 @@ func TestMigrationsAddSearchAddressesFlat(t *testing.T) {
 // the migration's own backfill — and become searchable through the FTS index
 // the migration rebuilds — without waiting for their next edit.
 func TestSearchAddressesMigrationBackfillsExistingRows(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "t38-backfill.db")
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)
@@ -603,6 +619,7 @@ func TestSearchAddressesMigrationBackfillsExistingRows(t *testing.T) {
 // without waiting for its next edit. Rows whose card has no such stranded
 // data must be left untouched.
 func TestFlatAddressSubStreetMigrationBackfillsStrandedCardData(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "t79-backfill.db")
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)
@@ -712,6 +729,7 @@ func TestFlatAddressSubStreetMigrationBackfillsStrandedCardData(t *testing.T) {
 // (dropped and recreated by 000020 because FTS5 cannot ALTER TABLE) indexes
 // it so a cross-format phone search can hit.
 func TestMigrationsAddPhonesNormalized(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "search-phones.db")
 	assert.True(t, columnExists(t, dbPath, "contacts", "phones_normalized"),
 		"contacts.phones_normalized must be added by the T69 migration")
@@ -748,6 +766,7 @@ func TestMigrationsAddPhonesNormalized(t *testing.T) {
 // PhoneKey — and become searchable through the rebuilt FTS index without
 // waiting for their next edit.
 func TestPhonesNormalizedMigrationBackfillsExistingRows(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "t69-backfill.db")
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)
@@ -821,6 +840,7 @@ func TestPhonesNormalizedMigrationBackfillsExistingRows(t *testing.T) {
 // sort_name, id) composite index exists to serve the name-sorted cursor
 // query (the same pattern as idx_contacts_feed).
 func TestMigrationsAddContactSortName(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "contact-sort-name.db")
 	db, err := InitDB(dbPath)
 	require.NoError(t, err)
@@ -846,6 +866,7 @@ func TestMigrationsAddContactSortName(t *testing.T) {
 // migration's own backfill — lastname when non-empty, firstname otherwise,
 // lowercased and trimmed — without waiting for their next edit.
 func TestContactSortNameMigrationBackfillsExistingRows(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "t73-backfill.db")
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)
@@ -921,6 +942,7 @@ func TestContactSortNameMigrationBackfillsExistingRows(t *testing.T) {
 // TestMigrationsAddLifeEventCategories pins the T36 migration's shape: an
 // additive nullable life_events.category column.
 func TestMigrationsAddLifeEventCategories(t *testing.T) {
+	t.Parallel()
 	assert.True(t, columnExists(t, filepath.Join(t.TempDir(), "life-event-categories.db"), "life_events", "category"),
 		"life_events.category must be added by the T36 migration")
 }
@@ -934,6 +956,7 @@ func TestMigrationsAddLifeEventCategories(t *testing.T) {
 // either) must be left NULL rather than guessed, per the ticket's own trap
 // note.
 func TestLifeEventCategoriesMigrationBackfillsExistingRows(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "t36-backfill.db")
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)
@@ -1010,6 +1033,7 @@ func TestLifeEventCategoriesMigrationBackfillsExistingRows(t *testing.T) {
 //   - journal_mode(WAL): persisted once set, needed for safe hot-backup.
 //   - foreign_keys(1): per-connection, needed for FK enforcement .
 func TestOpenDSN_PragmasArePresent(t *testing.T) {
+	t.Parallel()
 	dsn := openDSN("/path/to/db.sqlite")
 	assert.True(t, strings.Contains(dsn, "_pragma=journal_mode(WAL)"),
 		"openDSN must include the WAL journal pragma")
@@ -1029,6 +1053,7 @@ func TestOpenDSN_PragmasArePresent(t *testing.T) {
 // `?`, and IgnoreRecordNotFoundError stops the benign not-found SELECTs
 // entirely.
 func TestGormLoggerDoesNotInterpolatePII(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "gorm-logger.db")
 	db, err := InitDB(dbPath)
 	require.NoError(t, err)
@@ -1085,6 +1110,7 @@ func TestGormLoggerDoesNotInterpolatePII(t *testing.T) {
 // descriptors and a 20-minute CI job timeout. RunMigrations must close its
 // migrator when done.
 func TestInitDBDoesNotLeakMigratorGoroutines(t *testing.T) {
+	t.Parallel()
 	before := runtime.NumGoroutine()
 
 	const calls = 20
@@ -1112,6 +1138,7 @@ func TestInitDBDoesNotLeakMigratorGoroutines(t *testing.T) {
 // one backfilled 'sent' email delivery so the per-channel dispatch does not
 // re-email yesterday's reminders" is.
 func TestNotificationChannelsMigration(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "n9-migration.db")
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)
@@ -1229,6 +1256,7 @@ func TestNotificationChannelsMigration(t *testing.T) {
 // impossible), and rolling back 000014 drops it without touching pre-existing
 // tables.
 func TestAddressSuggestionDismissalMigration(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "t40-migration.db")
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)
@@ -1295,6 +1323,7 @@ func TestAddressSuggestionDismissalMigration(t *testing.T) {
 // gains the two nullable two-way sync columns (remote_etag, remote_path), and
 // rolling back drops them without touching pre-existing data.
 func TestCalendarTwoWayMigration(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "t13-migration.db")
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)
@@ -1342,6 +1371,7 @@ func TestCalendarTwoWayMigration(t *testing.T) {
 // table exists with its immutability trigger (an UPDATE is rejected), and
 // rolling back drops both without touching pre-existing data.
 func TestAuditEventsMigration(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "t18-migration.db")
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)
@@ -1385,6 +1415,7 @@ func TestAuditEventsMigration(t *testing.T) {
 // table exists with its columns/indexes, and rolling back drops it without
 // touching pre-existing data.
 func TestAttachmentsMigration(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "n7-migration.db")
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)
@@ -1427,6 +1458,7 @@ func TestAttachmentsMigration(t *testing.T) {
 // them loosely), widens the operation CHECK to the auth/admin vocabulary, keeps
 // the immutability trigger in force, and rolls back to the 000016 shape.
 func TestAuditHashChainMigration(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "t381-migration.db")
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)
@@ -1515,6 +1547,7 @@ func TestAuditHashChainMigration(t *testing.T) {
 // their history backfilled from the single last_sync_status bit they already
 // carried, and a rollback drops the columns without destroying rows.
 func TestSyncHealthFieldsMigration(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "sync-health-migration.db")
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)

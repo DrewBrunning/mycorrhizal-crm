@@ -58,6 +58,7 @@ func preMigrationSnapshots(t *testing.T, dir string) []string {
 }
 
 func TestInitDB_TakesVerifiedPreMigrationBackup(t *testing.T) {
+	t.Parallel()
 	latest := mustLatestVersion(t)
 	require.Greater(t, latest, SupportedUpgradeFloorVersion, "need at least one migration above the floor")
 
@@ -102,6 +103,7 @@ func TestInitDB_TakesVerifiedPreMigrationBackup(t *testing.T) {
 }
 
 func TestMigrateUp_TakesPreMigrationBackup(t *testing.T) {
+	t.Parallel()
 	latest := mustLatestVersion(t)
 	require.Greater(t, latest, SupportedUpgradeFloorVersion)
 
@@ -146,6 +148,7 @@ func TestInitDB_FailsClosedWhenBackupTargetUnwritable(t *testing.T) {
 }
 
 func TestInitDB_FreshDatabaseTakesNoBackup(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "fresh.db")
 
@@ -160,6 +163,7 @@ func TestInitDB_FreshDatabaseTakesNoBackup(t *testing.T) {
 }
 
 func TestInitDB_UpToDateDatabaseTakesNoNewBackup(t *testing.T) {
+	t.Parallel()
 	require.Greater(t, mustLatestVersion(t), SupportedUpgradeFloorVersion)
 
 	dir := t.TempDir()
@@ -183,6 +187,7 @@ func TestInitDB_UpToDateDatabaseTakesNoNewBackup(t *testing.T) {
 }
 
 func TestInitDB_DirtyDatabaseIsRefusedNotBackedUp(t *testing.T) {
+	t.Parallel()
 	latest := mustLatestVersion(t)
 	require.Greater(t, latest, SupportedUpgradeFloorVersion+1, "need a migration beyond the interrupted pair")
 
@@ -200,6 +205,7 @@ func TestInitDB_DirtyDatabaseIsRefusedNotBackedUp(t *testing.T) {
 }
 
 func TestInitDB_SubFloorWithoutBridgeIsRefusedNotBackedUp(t *testing.T) {
+	t.Parallel()
 	if SupportedUpgradeFloorVersion < 2 {
 		t.Skip("no sub-floor version to build")
 	}
@@ -236,6 +242,7 @@ func TestInitDB_SubFloorBridgeStillSnapshots(t *testing.T) {
 }
 
 func TestTakePreMigrationBackup_IdempotentPerHop(t *testing.T) {
+	t.Parallel()
 	latest := mustLatestVersion(t)
 	require.Greater(t, latest, SupportedUpgradeFloorVersion)
 
@@ -255,6 +262,7 @@ func TestTakePreMigrationBackup_IdempotentPerHop(t *testing.T) {
 }
 
 func TestTakePreMigrationBackup_IgnoresCorruptLeftoverSnapshot(t *testing.T) {
+	t.Parallel()
 	latest := mustLatestVersion(t)
 	require.Greater(t, latest, SupportedUpgradeFloorVersion)
 
@@ -279,6 +287,7 @@ func TestTakePreMigrationBackup_IgnoresCorruptLeftoverSnapshot(t *testing.T) {
 }
 
 func TestTakePreMigrationBackup_RecordsSystemEventWhenTableExists(t *testing.T) {
+	t.Parallel()
 	latest := mustLatestVersion(t)
 	// The pre-migration schema must already carry system_events (migration
 	// 000038) for the operational-timeline row to land.
@@ -305,6 +314,7 @@ func TestTakePreMigrationBackup_RecordsSystemEventWhenTableExists(t *testing.T) 
 }
 
 func TestMigrateFileWithPreBackup_PropagatesVersionReadError(t *testing.T) {
+	t.Parallel()
 	// A path whose directory component is a plain file: the migration-version
 	// read fails before any backup or migration is attempted, and the failure
 	// is surfaced as-is rather than mistaken for the backup refusal.

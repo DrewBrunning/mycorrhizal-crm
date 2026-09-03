@@ -16,6 +16,7 @@ import (
 // — for a migration that ships without its down half. It reads the same
 // embedded FS the migrator runs from, so it cannot drift from what boots.
 func TestEveryMigrationHasADownMigration(t *testing.T) {
+	t.Parallel()
 	entries, err := fs.ReadDir(migrationsFS, "migrations")
 	require.NoError(t, err)
 

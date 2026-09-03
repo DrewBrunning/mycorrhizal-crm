@@ -26,6 +26,7 @@ func (s *traceSpy) Trace(ctx context.Context, begin time.Time, fc func() (string
 // statement (and still forwards to the wrapped logger), Reset zeroes the tally,
 // and Count returns the running total.
 func TestQueryCounterStartsAtZeroAndCountsTraces(t *testing.T) {
+	t.Parallel()
 	c := NewQueryCounter()
 	require.Equal(t, int64(0), c.Count(), "a fresh counter must start at zero")
 
@@ -46,6 +47,7 @@ func TestQueryCounterStartsAtZeroAndCountsTraces(t *testing.T) {
 // transparent wrapper, not a replacement: the underlying gorm logger must
 // still receive the trace (via a spy that records what it was called with).
 func TestQueryCounterForwardsToWrappedLogger(t *testing.T) {
+	t.Parallel()
 	s := &traceSpy{}
 	c := &QueryCounter{Interface: s}
 

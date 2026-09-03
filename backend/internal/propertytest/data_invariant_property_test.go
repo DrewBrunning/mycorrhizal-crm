@@ -42,6 +42,7 @@ import (
 // and updates returns without error, closing the connection and reopening the
 // file the way a process restart would must find exactly the same content.
 func TestDataInvariant_A1_CommittedStateSurvivesReopen(t *testing.T) {
+	t.Parallel()
 	t.Run("durable", rapid.MakeCheck(func(t *rapid.T) {
 		db, path, err := contactgen.MigratedDB(t)
 		require.NoError(t, err)
@@ -90,6 +91,7 @@ func TestDataInvariant_A1_CommittedStateSurvivesReopen(t *testing.T) {
 // back — no partial multi-table write is visible. The example-seam version is
 // services.TestConfirmInjectedDBErrorFailsClosed.
 func TestDataInvariant_A2_CancelledImportCommitsNothing(t *testing.T) {
+	t.Parallel()
 	t.Run("atomic", rapid.MakeCheck(func(t *rapid.T) {
 		db, _, err := contactgen.MigratedDB(t)
 		require.NoError(t, err)
@@ -141,6 +143,7 @@ func TestDataInvariant_A2_CancelledImportCommitsNothing(t *testing.T) {
 // endpoints are not in the plan) is named in report.Issues — none is silently
 // dropped, and the result leaves no integrity hole.
 func TestDataInvariant_A4_ImportAccountsForEveryRecord(t *testing.T) {
+	t.Parallel()
 	t.Run("wholeness", rapid.MakeCheck(func(t *rapid.T) {
 		db, _, err := contactgen.MigratedDB(t)
 		require.NoError(t, err)
@@ -206,6 +209,7 @@ func TestDataInvariant_A4_ImportAccountsForEveryRecord(t *testing.T) {
 // surfaces it). INV-D8's structural half (valid JSON, unique element ids) is
 // covered by the RunDataIntegrityChecks sweep below.
 func TestDataInvariant_D8_FlatProjectionIsAFixpoint(t *testing.T) {
+	t.Parallel()
 	t.Run("reprojection", rapid.MakeCheck(func(t *rapid.T) {
 		db, _, err := contactgen.MigratedDB(t)
 		require.NoError(t, err)

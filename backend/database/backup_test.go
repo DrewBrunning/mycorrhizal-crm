@@ -85,6 +85,7 @@ func assertSeededData(t *testing.T, dbPath string) {
 // copied to a fresh path and opened there, so no hidden -wal/-shm sidecar is
 // doing any of the work.
 func TestBackupSnapshotOnlineCapturesRecentWrites(t *testing.T) {
+	t.Parallel()
 	srcPath := liveTestDB(t, "live.db")
 	dir := filepath.Dir(srcPath)
 	backupPath := filepath.Join(dir, "backup.db")
@@ -105,6 +106,7 @@ func TestBackupSnapshotOnlineCapturesRecentWrites(t *testing.T) {
 // out the live database — the source still opens, still has every row, and
 // still accepts writes afterwards.
 func TestBackupSnapshotDoesNotDisturbSource(t *testing.T) {
+	t.Parallel()
 	srcPath := liveTestDB(t, "live.db")
 	backupPath := filepath.Join(filepath.Dir(srcPath), "backup.db")
 
@@ -135,6 +137,7 @@ func TestBackupSnapshotDoesNotDisturbSource(t *testing.T) {
 // WAL sidecars) exactly as a data-loss incident would, put the snapshot back
 // in its place, and confirm every row is present.
 func TestBackupSnapshotRestoreRoundTrip(t *testing.T) {
+	t.Parallel()
 	srcPath := liveTestDB(t, "live.db")
 	backupPath := filepath.Join(filepath.Dir(srcPath), "backup.db")
 
@@ -157,6 +160,7 @@ func TestBackupSnapshotRestoreRoundTrip(t *testing.T) {
 // an existing file — the operator is expected to pick a fresh path (or let the
 // timestamped default do it). The pre-existing file must be left untouched.
 func TestBackupSnapshotRefusesToOverwrite(t *testing.T) {
+	t.Parallel()
 	srcPath := liveTestDB(t, "live.db")
 	backupPath := filepath.Join(filepath.Dir(srcPath), "existing.db")
 
@@ -174,6 +178,7 @@ func TestBackupSnapshotRefusesToOverwrite(t *testing.T) {
 // TestBackupSnapshotMissingSourceErrors: a typo'd SQLITE_DB_PATH must fail
 // loudly, not silently produce an empty or partial backup.
 func TestBackupSnapshotMissingSourceErrors(t *testing.T) {
+	t.Parallel()
 	err := database.BackupSnapshot(filepath.Join(t.TempDir(), "does-not-exist.db"), filepath.Join(t.TempDir(), "backup.db"))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "does not exist")
@@ -184,6 +189,7 @@ func TestBackupSnapshotMissingSourceErrors(t *testing.T) {
 // to the source (inside the same Docker bind mount) and keeps the source's
 // basename with a timestamp suffix.
 func TestDefaultBackupPath(t *testing.T) {
+	t.Parallel()
 	p := database.DefaultBackupPath("/srv/data/mycorrhizal.db")
 	assert.Equal(t, "/srv/data", filepath.Dir(p))
 	assert.Equal(t, ".db", filepath.Ext(p))
@@ -207,6 +213,7 @@ func TestDefaultBackupPath(t *testing.T) {
 // step fails, which is the moment the temp file may or may not have been
 // created — so the no-litter contract is what is being pinned.
 func TestBackupSnapshotFailureLeavesNoLitter(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	srcPath := filepath.Join(dir, "not-a-db") // exists, but is not a database
 	require.NoError(t, os.WriteFile(srcPath, []byte("this is not a sqlite database"), 0o644))
@@ -234,6 +241,7 @@ func TestBackupSnapshotFailureLeavesNoLitter(t *testing.T) {
 // environment (the same plumbing the migrate targets use) and produce a
 // restorable snapshot.
 func TestMakeBackupTarget(t *testing.T) {
+	t.Parallel()
 	makeBin, err := exec.LookPath("make")
 	if err != nil {
 		t.Skip("make not available; cannot exercise the Makefile target")

@@ -160,6 +160,7 @@ var idempotentOps = []idempotentOp{
 // TestIdempotentMutation_RetryIsFixpoint is the load-bearing property:
 // running each documented-idempotent mutation twice is a fixpoint.
 func TestIdempotentMutation_RetryIsFixpoint(t *testing.T) {
+	t.Parallel()
 	for _, op := range idempotentOps {
 		op := op
 		t.Run(op.name, rapid.MakeCheck(func(t *rapid.T) {

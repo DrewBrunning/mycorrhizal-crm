@@ -66,6 +66,7 @@ func TestMigrationEmitsPerStepProgress(t *testing.T) {
 // "VERSION/u IDENTIFIER", and anything that does not match must degrade to ""
 // rather than panic or emit a bogus name.
 func TestMigrationLogNameParsing(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "", migrationLogName(nil))
 	assert.Equal(t, "", migrationLogName([]interface{}{}))
 	assert.Equal(t, "", migrationLogName([]interface{}{123}))

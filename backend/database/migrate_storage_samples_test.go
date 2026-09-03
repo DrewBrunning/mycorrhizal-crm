@@ -15,6 +15,7 @@ import (
 // timestamps + byte counts for the daily storage sampler (issue #652), so
 // there is no existing-data-preservation concern — the table is new.
 func TestMigrationsAddStorageSamples(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "storage-samples.db")
 
 	db, err := InitDB(dbPath)
