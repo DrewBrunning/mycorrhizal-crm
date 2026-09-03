@@ -102,7 +102,7 @@ keeps its own fail-closed path.
 
 | Cell | Pinned by |
 |---|---|
-| Seed + migrate + FTS rebuild under a 20% `CPUQuota` stay correct | external: chaos job `cpu-limited-correctness` (exact row counts, `integrity_check=ok`, `doctor` clean) |
+| Seed + migrate + FTS rebuild under a 20% `CPUQuota` stay correct | external: chaos job `cpu-limited-correctness` (exact row counts, `integrity_check=ok` + `foreign_key_check`) |
 
 ### Slow storage / lock contention
 
