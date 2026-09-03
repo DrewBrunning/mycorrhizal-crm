@@ -295,6 +295,22 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
+      # Roll the -race build cache forward. actions/setup-go already restores
+      # ~/.cache/go-build, but it keys purely on go.sum and does NOT re-save on
+      # a hit — so the race-instrumented stdlib+deps objects are frozen at
+      # whatever first populated that key, and every run after a go.sum bump
+      # recompiles the world (~4-5 min on a cold cache). A unique `key` per run
+      # + a prefix `restore-keys` fallback makes this cache restore the newest
+      # prior snapshot and save an updated one every run, so incremental
+      # compiles from source changes are carried between runs.
+      - name: Cache Go race build objects
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/go-build
+          key: go-build-race-${{ runner.os }}-${{ hashFiles('backend/go.mod', 'backend/go.sum') }}-${{ github.run_id }}
+          restore-keys: |
+            go-build-race-${{ runner.os }}-${{ hashFiles('backend/go.mod', 'backend/go.sum') }}-
+
       # Issue #680 (TEST-08): the vCard-vobject differential tests live in
       # backend/differential, which is in the `rest` leg — so only that leg
       # needs the pinned reference (vobject 0.9.9). Installed with
