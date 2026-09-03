@@ -6,10 +6,15 @@
          backend before driving the login UI, exactly as the instrumented E2E
          suite does. That call is plain cleartext HTTP to the emulator's
          host-loopback alias (http://10.0.2.2:7300) or an adb-reversed
-         127.0.0.1, so this test-only APK opts into cleartext. The app under
-         test keeps its own locked-down network-security config. -->
+         127.0.0.1. Cleartext is scoped to those loopback aliases only via
+         @xml/network_security_config — not a blanket usesCleartextTraffic, and
+         never any destination but the test backend. allowBackup is false (no
+         app data to back up; mirrors the app manifest). The app under test
+         keeps its own locked-down network-security config. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <application android:usesCleartextTraffic="true" />
+    <application
+        android:allowBackup="false"
+        android:networkSecurityConfig="@xml/network_security_config" />
 
 </manifest>
