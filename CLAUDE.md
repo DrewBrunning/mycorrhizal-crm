@@ -147,6 +147,15 @@ Full runbook in `README-developer.md`. CI runs it via the `android-e2e` job in `
 This replaces the old "on-device verification on the Pixel 8a" *manual* gate — those flows now have
 an automated harness, so an Android ticket with an E2E gate should point here.
 
+Android macrobenchmark (issue #263): `android/macrobenchmark` (a `com.android.test` module) measures
+cold/warm/hot startup (`StartupBenchmark`) and dashboard render/scroll frame timing
+(`DashboardRenderBenchmark`, which logs into the same `docker-compose.test.yml` backend the E2E suite
+uses). It runs against the app's new `benchmark` build type (release R8 config, debug-signed,
+profileable). **Not a gate** — the `android-macrobenchmark` job in `android-tests.yml` is
+`continue-on-error` and asserts no timing threshold (emulator variance); it's a trend signal + local
+tool (`./gradlew :macrobenchmark:connectedCheck -Pandroidx.benchmark.suppressErrors=EMULATOR,UNLOCKED`).
+No Baseline Profile is shipped yet; that's a separate follow-up. Runbook in `README-developer.md`.
+
 Migrations: the server runs every pending migration on startup (`database.InitDB`, from an embedded FS),
 so `make migrate-up` is only needed to migrate a database without booting the app. Migration files are
 **hand-written SQL up/down pairs** in `backend/database/migrations/` — this project does **not** use GORM

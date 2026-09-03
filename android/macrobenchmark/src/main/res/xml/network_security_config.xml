@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Issue #263: this test-only APK makes exactly one outbound call — the
+    idempotent seed-account registration ([SeedBackend]) the dashboard scenario
+    performs against the docker-compose.test.yml backend. That backend lives on
+    the emulator's host loopback (http://10.0.2.2:7300) or an adb-reversed
+    127.0.0.1, so cleartext is permitted for those loopback aliases only — the
+    same narrow carve-out the app's debug network-security config uses. Unlike a
+    bare android:usesCleartextTraffic="true", this keeps every other destination
+    on the platform default (cleartext blocked for targetSdk 37).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Android emulator: the host machine's loopback. -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- Physical device: `adb reverse tcp:7300 tcp:7300` tunnels the
+             host's loopback onto the device's own 127.0.0.1. -->
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>
