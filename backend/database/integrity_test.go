@@ -10,6 +10,7 @@ import (
 )
 
 func TestIntegrityCheckReportsOKOnMigratedDatabase(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "ok.db")
 	require.NoError(t, MigrateUp(path))
 
@@ -19,12 +20,14 @@ func TestIntegrityCheckReportsOKOnMigratedDatabase(t *testing.T) {
 }
 
 func TestIntegrityCheckFailsOnMissingFile(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "does-not-exist.db")
 	_, err := IntegrityCheck(path)
 	require.Error(t, err)
 }
 
 func TestIntegrityCheckFailsOnCorruptFile(t *testing.T) {
+	t.Parallel()
 	// A real partial-write artifact (disk full, torn copy): a valid SQLite
 	// header with no usable pages. IntegrityCheck must reject it, not report
 	// "ok" — the fail-closed contract the chaos harness depends on.

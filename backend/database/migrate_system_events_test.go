@@ -15,6 +15,7 @@ import (
 // cleanly. system_events holds only system-generated diagnostic data, so
 // there is no existing-data-preservation concern — the table is new.
 func TestMigrationsAddSystemEvents(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "sys-events.db")
 
 	db, err := InitDB(dbPath)

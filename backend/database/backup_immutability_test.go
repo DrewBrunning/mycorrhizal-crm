@@ -89,6 +89,7 @@ func immutAssertRestores(t *testing.T, snapshot string) {
 // them — not the bytes, not the mode. This is the "overwrite / encrypt in
 // place" attempt, run through the only primitive the app has.
 func TestBackupImmutability_NewSnapshotLeavesPriorBackupsByteIdentical(t *testing.T) {
+	t.Parallel()
 	src := immutBackupTestDB(t)
 	backupDir := t.TempDir()
 
@@ -121,6 +122,7 @@ func TestBackupImmutability_NewSnapshotLeavesPriorBackupsByteIdentical(t *testin
 // snapshot straight at an existing backup file is refused, and the target is
 // left exactly as it was — the "overwrite / truncate" attempt, aimed directly.
 func TestBackupImmutability_RefusesToOverwriteAnExistingBackup(t *testing.T) {
+	t.Parallel()
 	src := immutBackupTestDB(t)
 	existing := filepath.Join(t.TempDir(), "mycorrhizal-20260101-000000.db")
 	require.NoError(t, BackupSnapshot(src, existing))
@@ -143,6 +145,7 @@ func TestBackupImmutability_RefusesToOverwriteAnExistingBackup(t *testing.T) {
 // leftover backup temp (same prefix/suffix, different random middle). This is
 // the "delete existing backups" attempt.
 func TestBackupImmutability_FailedSnapshotTouchesNothingElse(t *testing.T) {
+	t.Parallel()
 	backupDir := t.TempDir()
 
 	neighbour := filepath.Join(backupDir, "mycorrhizal-20260101-000000.db")
@@ -179,6 +182,7 @@ func TestBackupImmutability_FailedSnapshotTouchesNothingElse(t *testing.T) {
 // 'mycorrhizal-*.db' -mtime +N -delete`) cannot see it — even though its
 // filename does match that glob.
 func TestBackupImmutability_PreMigrationRollbackPointSurvivesRoutineRotation(t *testing.T) {
+	t.Parallel()
 	require.Greater(t, mustLatestVersion(t), SupportedUpgradeFloorVersion, "need a pending migration to snapshot")
 
 	dir := t.TempDir()
@@ -239,6 +243,7 @@ func TestBackupImmutability_PreMigrationRollbackPointSurvivesRoutineRotation(t *
 // operator-owned by policy (issue #505) — the app growing its own expirer is
 // the exact thing this test exists to catch in review.
 func TestBackupImmutability_NoBackupExpiryOrRotationCodeInTheApp(t *testing.T) {
+	t.Parallel()
 	backendDir := immutBackendDir(t)
 	deletionVerbs := []string{
 		"rotate", "prune", "expire", "purge", "reap", "sweep",
@@ -293,6 +298,7 @@ func TestBackupImmutability_NoBackupExpiryOrRotationCodeInTheApp(t *testing.T) {
 // operations in the two backup-writing source files: no recursive delete, no
 // truncate, and every os.Remove targets the reserved temp path only.
 func TestBackupImmutability_SnapshotSourceOnlyRemovesItsOwnTemp(t *testing.T) {
+	t.Parallel()
 	backendDir := immutBackendDir(t)
 	for _, rel := range []string{"database/backup.go", "database/premigration_backup.go"} {
 		data, err := os.ReadFile(filepath.Join(backendDir, rel))

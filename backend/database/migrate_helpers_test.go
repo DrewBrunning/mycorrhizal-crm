@@ -13,6 +13,7 @@ import (
 // that InitDB already migrated opens through the standard pragma DSN without
 // re-running migrations, and a bogus path fails cleanly.
 func TestOpenMigratedFileOpensWithoutMigrating(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "premigrated.db")
 	db, err := InitDB(dbPath)
 	require.NoError(t, err)
@@ -34,6 +35,7 @@ func TestOpenMigratedFileOpensWithoutMigrating(t *testing.T) {
 }
 
 func TestOpenMigratedFileRejectsBogusPath(t *testing.T) {
+	t.Parallel()
 	// A path inside a directory that does not exist: SQLite refuses to create
 	// the file (unlike a missing file at an existing path, which it creates).
 	_, err := OpenMigratedFile(filepath.Join(t.TempDir(), "no-such-dir", "x.db"))
@@ -44,6 +46,7 @@ func TestOpenMigratedFileRejectsBogusPath(t *testing.T) {
 // a database path whose parent directory does not exist cannot be migrated, so
 // InitDB must fail rather than returning a half-migrated connection.
 func TestInitDBReportsMigrationFailure(t *testing.T) {
+	t.Parallel()
 	_, err := InitDB(filepath.Join(t.TempDir(), "no-such-dir", "x.db"))
 	assert.Error(t, err, "a migration failure must surface from InitDB")
 }
@@ -51,6 +54,7 @@ func TestInitDBReportsMigrationFailure(t *testing.T) {
 // TestMigrationVersionOnUnmigratedDB pins the "no migration ever applied"
 // signal: ok=false, not an error.
 func TestMigrationVersionOnUnmigratedDB(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "empty.db")
 	version, dirty, ok, err := MigrationVersion(dbPath)
 	require.NoError(t, err)
@@ -60,6 +64,7 @@ func TestMigrationVersionOnUnmigratedDB(t *testing.T) {
 }
 
 func TestMigrationVersionOnMigratedDB(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "migrated-version.db")
 	require.NoError(t, MigrateUp(dbPath))
 
@@ -74,6 +79,7 @@ func TestMigrationVersionOnMigratedDB(t *testing.T) {
 }
 
 func TestMigrationVersionReportsBrokenDB(t *testing.T) {
+	t.Parallel()
 	// A path whose parent does not exist makes sql.Open succeed lazily but
 	// every query fail, so newMigrator's Ping surfaces the error.
 	_, _, _, err := MigrationVersion(filepath.Join(t.TempDir(), "nope", "x.db"))
@@ -85,6 +91,7 @@ func TestMigrationVersionReportsBrokenDB(t *testing.T) {
 // but empty (the state a freshly-created version table is in), the helper
 // reports ok=false with no error rather than failing.
 func TestAppliedMigrationVersionEmptyTableReturnsOkFalse(t *testing.T) {
+	t.Parallel()
 	db, err := InitDB(filepath.Join(t.TempDir(), "empty-table.db"))
 	require.NoError(t, err)
 	sqlDB, err := db.DB()
@@ -104,6 +111,7 @@ func TestAppliedMigrationVersionEmptyTableReturnsOkFalse(t *testing.T) {
 }
 
 func TestAppliedMigrationVersionReportsQueryError(t *testing.T) {
+	t.Parallel()
 	db, err := InitDB(filepath.Join(t.TempDir(), "applied-err.db"))
 	require.NoError(t, err)
 	sqlDB, err := db.DB()
@@ -118,6 +126,7 @@ func TestAppliedMigrationVersionReportsQueryError(t *testing.T) {
 // a version number and its NNNNNN_name.up.sql filename, plus its miss paths
 // (unknown version, non-numeric / non-up entries silently skipped).
 func TestMigrationFileForVersion(t *testing.T) {
+	t.Parallel()
 	latest, err := LatestMigrationVersion()
 	require.NoError(t, err)
 

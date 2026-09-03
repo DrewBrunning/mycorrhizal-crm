@@ -33,6 +33,7 @@ func subFloorDB(t *testing.T, steps int) string {
 // v0.6.0 as the required intermediate — not run a partial migration, not
 // crash. Version 30 is the last sub-floor release (v0.5.9).
 func TestSubFloorDatabaseRefusesToMigrate(t *testing.T) {
+	t.Parallel()
 	dbPath := subFloorDB(t, 30)
 
 	versionBefore, _, okBefore, err := MigrationVersion(dbPath)
@@ -63,6 +64,7 @@ func TestSubFloorDatabaseRefusesToMigrate(t *testing.T) {
 // the last sub-floor release (v0.5.9, 000030) all refuse rather than migrate
 // best-effort.
 func TestSubFloorRefusalHoldsForEveryPreFloorVersion(t *testing.T) {
+	t.Parallel()
 	for _, version := range []uint{8, 15, 22, 30} {
 		t.Run(fmt.Sprintf("version-%d", version), func(t *testing.T) {
 			dbPath := subFloorDB(t, int(version))
@@ -79,6 +81,7 @@ func TestSubFloorRefusalHoldsForEveryPreFloorVersion(t *testing.T) {
 // with an existing pre-floor schema: a brand-new database (no schema_migrations
 // row) is not a sub-floor instance and must migrate to the latest version.
 func TestFreshDatabaseIsNotSubFloor(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "fresh.db")
 	db, err := InitDB(dbPath)
 	require.NoError(t, err)
@@ -102,6 +105,7 @@ func TestFreshDatabaseIsNotSubFloor(t *testing.T) {
 // migration run, not a stable deployment, but the torn state still must not be
 // force-continued at boot.
 func TestDirtySubFloorDatabaseRefusesToMigrate(t *testing.T) {
+	t.Parallel()
 	dbPath := subFloorDB(t, 30)
 
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
@@ -151,6 +155,7 @@ func TestBridgeOverrideMigratesSubFloor(t *testing.T) {
 // see in the two-step refusal, so the documentation (which quotes it verbatim)
 // cannot drift from the implementation.
 func TestErrSubFloorMigrationIsStableSentinel(t *testing.T) {
+	t.Parallel()
 	err := &ErrSubFloorMigration{Version: 30}
 	msg := err.Error()
 	assert.Contains(t, msg, "predates the supported upgrade floor (v0.6.0, migration 31)")

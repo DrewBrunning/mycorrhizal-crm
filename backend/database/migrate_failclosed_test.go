@@ -51,6 +51,7 @@ func aheadDB(t *testing.T, dbPath string) uint {
 // the dirty version and the recovery path, and leave the database exactly as
 // it was — never force the version, never migrate on top, never boot.
 func TestDirtyDatabaseRefusesToStart(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "dirty.db")
 	dirtyDB(t, dbPath, 1)
 
@@ -79,6 +80,7 @@ func TestDirtyDatabaseRefusesToStart(t *testing.T) {
 // at the latest version all refuse identically. A dirty flag means the schema
 // state is unknown, and that is true at every version.
 func TestDirtyRefusalHoldsForEveryVersion(t *testing.T) {
+	t.Parallel()
 	latest, err := LatestMigrationVersion()
 	require.NoError(t, err)
 
@@ -119,6 +121,7 @@ func TestDirtyRefusalCannotBeBypassedByConfig(t *testing.T) {
 // the same silent-corruption class as the dirty-force bug. It must refuse,
 // name both versions, name the recovery, and leave the database untouched.
 func TestSchemaAheadOfBinaryRefusesToStart(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "ahead.db")
 	ahead := aheadDB(t, dbPath)
 
@@ -148,6 +151,7 @@ func TestSchemaAheadOfBinaryRefusesToStart(t *testing.T) {
 // TestSchemaAheadRefusalHoldsForMultipleAheadVersions makes the ahead refusal
 // hold one and several migrations past the binary's knowledge.
 func TestSchemaAheadRefusalHoldsForMultipleAheadVersions(t *testing.T) {
+	t.Parallel()
 	latest, err := LatestMigrationVersion()
 	require.NoError(t, err)
 
@@ -175,6 +179,7 @@ func TestSchemaAheadRefusalHoldsForMultipleAheadVersions(t *testing.T) {
 // row (version + dirty) is byte-identical to before, so the refusal itself can
 // never be the thing that loses data.
 func TestPreflightRefusalsLeaveDatabaseUntouched(t *testing.T) {
+	t.Parallel()
 	latest, err := LatestMigrationVersion()
 	require.NoError(t, err)
 
@@ -246,6 +251,7 @@ func TestPreflightRefusalsLeaveDatabaseUntouched(t *testing.T) {
 // only acts on a dirty database: running it against a healthy database is an
 // error, never a silent no-op.
 func TestMigrateForce_RefusesWhenClean(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "force-clean.db")
 	require.NoError(t, MigrateUp(dbPath))
 
@@ -257,6 +263,7 @@ func TestMigrateForce_RefusesWhenClean(t *testing.T) {
 // TestMigrateForce_RefusesWhenNeverMigrated pins that force against a database
 // with no migrations at all (nothing is dirty) is an error.
 func TestMigrateForce_RefusesWhenNeverMigrated(t *testing.T) {
+	t.Parallel()
 	err := MigrateForce(filepath.Join(t.TempDir(), "force-empty.db"))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no migrations have been applied")
@@ -265,6 +272,7 @@ func TestMigrateForce_RefusesWhenNeverMigrated(t *testing.T) {
 // TestMigrateForce_ReportsBrokenDB pins that force on an unopenable database
 // surfaces the open/migrator failure rather than panicking.
 func TestMigrateForce_ReportsBrokenDB(t *testing.T) {
+	t.Parallel()
 	err := MigrateForce(filepath.Join(t.TempDir(), "no-such-dir", "x.db"))
 	require.Error(t, err)
 }
@@ -274,6 +282,7 @@ func TestMigrateForce_ReportsBrokenDB(t *testing.T) {
 // cannot be force-validated (nothing to re-run, and the binary cannot confirm
 // the schema), so the recovery is roll-forward or restore, not force.
 func TestMigrateForce_RefusesWhenAheadOfBinary(t *testing.T) {
+	t.Parallel()
 	latest, err := LatestMigrationVersion()
 	require.NoError(t, err)
 	dbPath := filepath.Join(t.TempDir(), "force-ahead.db")
@@ -314,6 +323,7 @@ func interruptedDB(t *testing.T, dbPath string, at uint) {
 // version and re-runs every pending migration, landing clean at the latest
 // schema.
 func TestMigrateForce_RecoversDirtyDatabase(t *testing.T) {
+	t.Parallel()
 	latest, err := LatestMigrationVersion()
 	require.NoError(t, err)
 	require.Greater(t, latest, uint(1), "this test needs a migration beyond the baseline")
@@ -336,6 +346,7 @@ func TestMigrateForce_RecoversDirtyDatabase(t *testing.T) {
 // not a stable pre-floor deployment, so the floor two-step does not apply — the
 // operator's explicit confirmation is the gate.
 func TestMigrateForce_DirtySubFloor(t *testing.T) {
+	t.Parallel()
 	latest, err := LatestMigrationVersion()
 	require.NoError(t, err)
 
@@ -357,6 +368,7 @@ func TestMigrateForce_DirtySubFloor(t *testing.T) {
 // in the dirty refusal so the documentation (which quotes it) cannot drift from
 // the implementation.
 func TestErrDirtyMigrationIsStableSentinel(t *testing.T) {
+	t.Parallel()
 	err := &ErrDirtyMigration{Version: 43}
 	msg := err.Error()
 	assert.Contains(t, msg, "dirty migration state at version 43")
@@ -371,6 +383,7 @@ func TestErrDirtyMigrationIsStableSentinel(t *testing.T) {
 // TestErrSchemaAheadOfBinaryIsStableSentinel guards the ahead-of-binary
 // message the same way.
 func TestErrSchemaAheadOfBinaryIsStableSentinel(t *testing.T) {
+	t.Parallel()
 	err := &ErrSchemaAheadOfBinary{Version: 45, BinaryVersion: 44}
 	msg := err.Error()
 	assert.Contains(t, msg, "database schema version 45 is ahead of this binary (latest known migration 44)")
@@ -390,6 +403,7 @@ func TestErrSchemaAheadOfBinaryIsStableSentinel(t *testing.T) {
 // is all-or-nothing at exactly one version; the version row is dirty until a
 // human resolves it".
 func TestMigrationBodyRollsBackAsOneTransaction(t *testing.T) {
+	t.Parallel()
 	db := openTestSQLite(t)
 	m := &sqliteDriver{db: db, config: &sqliteConfig{MigrationsTable: defaultMigrationsTable}}
 
@@ -411,6 +425,7 @@ func TestMigrationBodyRollsBackAsOneTransaction(t *testing.T) {
 // operator-only force can reason about. The sabotage technique mirrors
 // TestMigrationFailureIdentifiesMigrationAndRecordsEvent.
 func TestSkippedMigrationFailureLeavesDirtyAndSchemaAtPreviousVersion(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "tx-fail.db")
 	require.NoError(t, MigrateUp(dbPath))
 
@@ -480,6 +495,7 @@ func TestSkippedMigrationFailureLeavesDirtyAndSchemaAtPreviousVersion(t *testing
 // pre-migration data is back. This is what makes "restore the pre-migration
 // backup" a verified recovery rather than a documented one.
 func TestDirtyRefusalRecoversByRestoringPreMigrationBackup(t *testing.T) {
+	t.Parallel()
 	latest, err := LatestMigrationVersion()
 	require.NoError(t, err)
 	require.Greater(t, latest, SupportedUpgradeFloorVersion+1, "this test needs a migration beyond the interrupted pair")

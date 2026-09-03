@@ -16,6 +16,7 @@ import (
 // timestamps for completed imports, so there is no existing-data-preservation
 // concern — the table is new (issue #651).
 func TestMigrationsAddImportRuns(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "import-runs.db")
 
 	db, err := InitDB(dbPath)

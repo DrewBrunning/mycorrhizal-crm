@@ -19,6 +19,7 @@ import (
 // ABOVE any historical token and no old etag value can ever recur), and rows
 // with no parseable etag must land on the column default of 1.
 func TestMigrationsAddRevisionTokens(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "revision-tokens.db")
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	require.NoError(t, err)

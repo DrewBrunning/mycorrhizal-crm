@@ -81,6 +81,7 @@ func (s *backupSet) verify(t *testing.T) *database.BackupSetReport {
 }
 
 func TestVerifyBackupSetCompleteSet(t *testing.T) {
+	t.Parallel()
 	s := newBackupSet(t)
 	s.addContactWithPhoto(t, 1, "uid-1", "aaa_photo.jpg")
 	s.addContactWithPhoto(t, 2, "uid-2", "bbb_photo.jpg")
@@ -100,6 +101,7 @@ func TestVerifyBackupSetCompleteSet(t *testing.T) {
 }
 
 func TestVerifyBackupSetMissingAttachmentFileIsNamed(t *testing.T) {
+	t.Parallel()
 	s := newBackupSet(t)
 	keptID := s.addAttachment(t, "kept-file")
 	goneID := s.addAttachment(t, "gone-file")
@@ -119,6 +121,7 @@ func TestVerifyBackupSetMissingAttachmentFileIsNamed(t *testing.T) {
 }
 
 func TestVerifyBackupSetMissingPhotoFileIsNamedByContactUID(t *testing.T) {
+	t.Parallel()
 	s := newBackupSet(t)
 	s.addContactWithPhoto(t, 1, "uid-present", "here_photo.jpg")
 	s.addContactWithPhoto(t, 2, "uid-lost", "lost_photo.jpg")
@@ -134,6 +137,7 @@ func TestVerifyBackupSetMissingPhotoFileIsNamedByContactUID(t *testing.T) {
 }
 
 func TestVerifyBackupSetContactWithoutVCardUIDFallsBackToID(t *testing.T) {
+	t.Parallel()
 	s := newBackupSet(t)
 	require.NoError(t, s.db.Exec(
 		`INSERT INTO contacts (id, firstname, user_id, photo) VALUES (7, 'NoUID', 1, 'x_photo.jpg')`).Error)
@@ -146,6 +150,7 @@ func TestVerifyBackupSetContactWithoutVCardUIDFallsBackToID(t *testing.T) {
 }
 
 func TestVerifyBackupSetOrphanFilesAreReportedButNotAFailure(t *testing.T) {
+	t.Parallel()
 	s := newBackupSet(t)
 	s.addContactWithPhoto(t, 1, "uid-1", "owned_photo.jpg")
 	s.addAttachment(t, "owned-attachment")
@@ -162,6 +167,7 @@ func TestVerifyBackupSetOrphanFilesAreReportedButNotAFailure(t *testing.T) {
 }
 
 func TestVerifyBackupSetIgnoresSoftDeletedRows(t *testing.T) {
+	t.Parallel()
 	s := newBackupSet(t)
 	// A soft-deleted attachment: its file is removed at delete time, so the
 	// absent file is the expected steady state, not a hole.
@@ -183,6 +189,7 @@ func TestVerifyBackupSetIgnoresSoftDeletedRows(t *testing.T) {
 }
 
 func TestVerifyBackupSetInlineThumbnailIsNotADiskReference(t *testing.T) {
+	t.Parallel()
 	s := newBackupSet(t)
 	// Full photo present on disk; thumbnail is an inline data URL (the norm).
 	require.NoError(t, s.db.Exec(
@@ -197,6 +204,7 @@ func TestVerifyBackupSetInlineThumbnailIsNotADiskReference(t *testing.T) {
 }
 
 func TestVerifyBackupSetFilenameThumbnailIsCheckedAndReferenced(t *testing.T) {
+	t.Parallel()
 	s := newBackupSet(t)
 	require.NoError(t, s.db.Exec(
 		`INSERT INTO contacts (id, firstname, user_id, vcard_uid, photo, photo_thumbnail)
@@ -216,6 +224,7 @@ func TestVerifyBackupSetFilenameThumbnailIsCheckedAndReferenced(t *testing.T) {
 }
 
 func TestVerifyBackupSetEmptyIsClean(t *testing.T) {
+	t.Parallel()
 	s := newBackupSet(t)
 
 	report := s.verify(t)
@@ -232,6 +241,7 @@ func TestVerifyBackupSetEmptyIsClean(t *testing.T) {
 // backup, not merely an empty one) fails loudly and names which query broke,
 // rather than being silently treated as "zero rows".
 func TestVerifyBackupSetQueryErrorsSurfaceWhichTable(t *testing.T) {
+	t.Parallel()
 	s := newBackupSet(t)
 	require.NoError(t, s.db.Exec(`DROP TABLE attachments`).Error)
 
@@ -241,6 +251,7 @@ func TestVerifyBackupSetQueryErrorsSurfaceWhichTable(t *testing.T) {
 }
 
 func TestVerifyBackupSetQueryErrorOnContactsTable(t *testing.T) {
+	t.Parallel()
 	s := newBackupSet(t)
 	require.NoError(t, s.db.Exec(`DROP TABLE contacts`).Error)
 
@@ -250,6 +261,7 @@ func TestVerifyBackupSetQueryErrorOnContactsTable(t *testing.T) {
 }
 
 func TestVerifyBackupSetIgnoresSubdirectories(t *testing.T) {
+	t.Parallel()
 	s := newBackupSet(t)
 	// A subdirectory inside either backup directory (e.g. a stray editor swap
 	// dir, or an operator's own nested organisation) must be neither a missing
@@ -265,6 +277,7 @@ func TestVerifyBackupSetIgnoresSubdirectories(t *testing.T) {
 }
 
 func TestVerifyBackupSetUsageErrors(t *testing.T) {
+	t.Parallel()
 	s := newBackupSet(t)
 
 	_, err := database.VerifyBackupSet(s.dbPath, "", s.attachmentsDir)

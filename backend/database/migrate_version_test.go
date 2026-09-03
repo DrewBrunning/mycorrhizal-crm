@@ -9,6 +9,7 @@ import (
 )
 
 func TestLatestMigrationVersion_MatchesHighestFile(t *testing.T) {
+	t.Parallel()
 	v, err := LatestMigrationVersion()
 	require.NoError(t, err)
 	// There are at least 37 migrations as of issue #421; the helper must track
@@ -17,6 +18,7 @@ func TestLatestMigrationVersion_MatchesHighestFile(t *testing.T) {
 }
 
 func TestAppliedMigrationVersion_FreshDBIsAtLatest(t *testing.T) {
+	t.Parallel()
 	db, err := InitDB(filepath.Join(t.TempDir(), "applied.db"))
 	require.NoError(t, err)
 
@@ -31,6 +33,7 @@ func TestAppliedMigrationVersion_FreshDBIsAtLatest(t *testing.T) {
 }
 
 func TestAppliedMigrationVersion_ReportsDirty(t *testing.T) {
+	t.Parallel()
 	db, err := InitDB(filepath.Join(t.TempDir(), "dirty.db"))
 	require.NoError(t, err)
 	require.NoError(t, db.Exec("UPDATE schema_migrations SET dirty = 1").Error)
