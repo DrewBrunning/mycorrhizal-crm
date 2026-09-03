@@ -1,4 +1,4 @@
-.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backfill-at-rest rotate-at-rest-key audit-backfill audit-verify backup backup-verify gen-contract-fixtures gen-schema-fixtures gen-api-baseline gen-compat-matrix gen-integration-matrix help
+.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backfill-at-rest rotate-at-rest-key audit-backfill audit-verify backup backup-verify gen-contract-fixtures gen-schema-fixtures gen-api-baseline gen-compat-matrix gen-integration-matrix gen-perf-baseline help
 
 # Database path. The migration CLI reads SQLITE_DB_PATH (the same variable the
 # server reads), so every target below EXPORTS this rather than just echoing
@@ -80,6 +80,9 @@ gen-compat-matrix: ## Regenerate the DATA-01 field compatibility matrix from the
 
 gen-integration-matrix: ## Regenerate the INT-01 integration classification matrix from backend/integrations (issue #464). Run when Registry()/Dispositions() change; the drift test fails until the docs diff is committed.
 	@go run cmd/genintegrationmatrix/main.go
+
+gen-perf-baseline: ## Regenerate the PERF-02 core-operation benchmark baseline + report (issue #469). Measures smoke+typical (add -large for the large profile). The drift test fails until the diff is committed; regenerate when an operation's query shape changes deliberately.
+	@go run ./cmd/perfbench
 
 backup: ## Create a consistent online snapshot of the SQLite database (VACUUM INTO; safe while the server runs)
 	@echo "Backing up $(DB_PATH)..."

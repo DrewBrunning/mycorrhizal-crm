@@ -125,7 +125,21 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 // each test a byte copy) or are reopening a database the same process already
 // migrated. Use InitDB for a fresh or possibly-stale database.
 func OpenMigratedFile(dbPath string) (*gorm.DB, error) {
-	db, err := gorm.Open(sqlite.Open(openDSN(dbPath)), &gorm.Config{Logger: newGormLogger(os.Stdout)})
+	return OpenMigratedFileWithLogger(dbPath, nil)
+}
+
+// OpenMigratedFileWithLogger is OpenMigratedFile with a caller-supplied GORM
+// logger. A nil logger keeps the standard os.Stdout logger every other
+// connection uses. The one caller that needs this is internal/perfbench, which
+// attaches a database.QueryCounter to the connection a benchmarked operation
+// runs on so it can pin that operation's query shape (issue #469) — the same
+// two-connection pattern controllers/hot_paths_perf_test.go uses, but through
+// the real openDSN pragmas rather than a bare file path.
+func OpenMigratedFileWithLogger(dbPath string, l gormLogger.Interface) (*gorm.DB, error) {
+	if l == nil {
+		l = newGormLogger(os.Stdout)
+	}
+	db, err := gorm.Open(sqlite.Open(openDSN(dbPath)), &gorm.Config{Logger: l})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect with GORM: %w", err)
 	}
