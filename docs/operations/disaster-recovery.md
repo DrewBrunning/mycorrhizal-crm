@@ -105,6 +105,36 @@ a cold start.
   `docs/development/scale-testing.md`'s methodology before quoting a fresh number
   in a release note.
 
+### Resource requirements (free space, memory, write-lock)
+
+The bulk operations that bracket a recovery — **backup** (`VACUUM INTO`) and
+**restore** — each write **a full second copy of the database**, so both need
+**free disk space at least equal to the live database size** before they start.
+An operator at 60% disk usage on the database volume cannot safely take a
+backup. Photos and attachments are copied on top of that (they are files, not
+rows, and are not compressed).
+
+The measured per-operation envelope — duration, peak memory, peak extra disk,
+and how long each holds SQLite's single write lock — is in
+`docs/development/data-movement-benchmarks.md` (PERF-03, issue
+[#470](https://github.com/DrewBrunning/mycorrhizal-crm/issues/470)), regenerated
+by `make gen-perf-baseline`. The load-bearing facts for an operator:
+
+- **Backup does not block writes.** `VACUUM INTO` reads through the WAL, so the
+  server keeps serving reads *and* writes for the snapshot's duration — it is a
+  background task, safe to run against a live instance.
+- **An FTS rebuild does block writes** for its whole single transaction
+  (`docs/operations/search-index.md`). At MVP scale that is well under a second;
+  it is not a backup-style background task.
+- **Two operations have super-linear peak memory.** Duplicate detection's pair
+  list is O(n²) in the size of a duplicate cluster; a bulk **import**'s preview
+  pass holds the whole batch *and* compares each row against every prior row
+  (also O(n²)). Both are capped in the product — dedup is a review surface,
+  imports cap at 20000 rows — but a genuinely huge address book should be
+  imported in chunks.
+- **Exports buffer the whole result in server memory** before the first byte is
+  sent. Peak RAM scales with the export size; there is no per-request disk cost.
+
 ## The recovery inputs
 
 Every procedure below draws on the same small set of artifacts. Know where each
