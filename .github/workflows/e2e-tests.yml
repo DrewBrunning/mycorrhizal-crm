@@ -187,13 +187,24 @@ jobs:
           LOADSMOKE_DURATION: "12s"
 
       # Issue #498: a concurrent write storm must never leave the database
-      # corrupt. Copy it out of the container (with its WAL sidecar so a
-      # checkpoint-less copy still recovers) and run PRAGMA integrity_check.
+      # corrupt. The check runs against a *quiesced* snapshot: stopping the
+      # stack first checkpoints the WAL and closes the DB cleanly, so the file
+      # copied out is a consistent point-in-time image of exactly the state the
+      # load left behind. (Copying the live DB out of the still-running
+      # container — .db, -wal and -shm as three separate instants — is a torn
+      # snapshot: a checkpoint landing between the copies reads pages from two
+      # generations and integrity_check reports corruption that is not on disk.
+      # Observed twice on PR #783.) The -wal sidecar is copied if a clean stop
+      # still left one; the -shm is never copied (it is a transient WAL index
+      # SQLite rebuilds, and a stale copy misleads the check). This is the same
+      # cold-DB assertion the chaos suite's SIGKILL jobs make after the
+      # container stops.
       - name: Assert the database is not corrupt after the load
         run: |
+          rm -f /tmp/loadsmoke.db /tmp/loadsmoke.db-wal /tmp/loadsmoke.db-shm
+          docker compose -f docker-compose.test.yml stop
           docker compose -f docker-compose.test.yml cp mycorrhizal:/app/data/test.db /tmp/loadsmoke.db
           docker compose -f docker-compose.test.yml cp mycorrhizal:/app/data/test.db-wal /tmp/loadsmoke.db-wal || true
-          docker compose -f docker-compose.test.yml cp mycorrhizal:/app/data/test.db-shm /tmp/loadsmoke.db-shm || true
           result="$(sqlite3 /tmp/loadsmoke.db 'PRAGMA integrity_check')"
           echo "integrity_check: $result"
           [ "$result" = "ok" ] || { echo "::error::post-load integrity_check failed: $result"; exit 1; }
