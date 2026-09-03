@@ -230,8 +230,10 @@ func (s *CalendarSyncService) SyncSubscription(ctx context.Context, db *gorm.DB,
 		"last_sync_error":  sub.LastSyncError,
 	}
 	// Sync-health last-known-good state (issue #390): fold this run into the
-	// consecutive-failure / incident / last-success bookkeeping.
-	for k, v := range sub.AdvanceForRun(now, runDuration, marshalSyncRunStats(stats), err) {
+	// consecutive-failure / incident / last-success bookkeeping. A run that
+	// failed with a permanent error also enters the terminal state (INT-04,
+	// #467) — the scheduler stops attempting it until the user acts.
+	for k, v := range sub.AdvanceForRun(now, runDuration, marshalSyncRunStats(stats), err, classifySyncFailure(err)) {
 		updates[k] = v
 	}
 	if saveErr := db.Model(&models.CalendarSubscription{}).Where("id = ?", sub.ID).Updates(updates).Error; saveErr != nil {
@@ -1070,12 +1072,26 @@ func marshalSyncRunStats(stats interface{}) string {
 
 // SyncAllCalendars syncs every enabled subscription. Failures on one
 // subscription are recorded on it and do not stop the others.
+//
+// Subscriptions in the terminal-failure state (INT-04, issue #467 — a
+// permanent error like revoked credentials) are skipped: retrying every hour
+// against a remote that will not recover on its own is a self-inflicted DoS and
+// buries the real signal. The user clears it by fixing and re-triggering the
+// sync, or by editing the subscription.
 func SyncAllCalendars(db *gorm.DB, cfg config.Config) {
 	var subscriptions []models.CalendarSubscription
-	if err := db.Where("sync_enabled = ?", true).Find(&subscriptions).Error; err != nil {
+	if err := db.Where("sync_enabled = ? AND terminal_failure_at IS NULL", true).Find(&subscriptions).Error; err != nil {
 		logger.Error().Err(err).Msg("Failed to load calendar subscriptions for scheduled sync")
 		return
 	}
+
+	var terminalCount int64
+	if err := db.Model(&models.CalendarSubscription{}).
+		Where("sync_enabled = ? AND terminal_failure_at IS NOT NULL", true).Count(&terminalCount).Error; err == nil && terminalCount > 0 {
+		logger.Info().Int64("count", terminalCount).
+			Msg("Scheduled calendar sync skipping subscriptions in a terminal-failure state — waiting on user action (#467)")
+	}
+
 	if len(subscriptions) == 0 {
 		return
 	}

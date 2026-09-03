@@ -12269,6 +12269,8 @@ components:
         incident_first_failure_at: { type: string, format: date-time, nullable: true, description: "First failure of the current unbroken run of failures; null when consecutive_failures is 0." }
         last_run_duration_ms: { type: integer, nullable: true, description: "Wall-clock duration of the last run." }
         last_run_stats: { type: object, additionalProperties: { type: integer }, description: "Last run's counter tallies (created/updated/skipped, plus archived for contacts). {} before the first run." }
+        terminal_failure_at: { type: string, format: date-time, nullable: true, description: "INT-04 (#467): non-null once the sync has hit a permanent error (revoked credentials, remote deleted) and the scheduler has stopped retrying it. Frozen at entry — it is 'when did this stop working'. Cleared by any success or a subscription edit." }
+        terminal_reason: { type: string, description: "Failure-mode slug behind terminal_failure_at (auth-expiry, authz-revoked, remote-resource-deleted); empty when not terminal." }
     ContactSubscriptionInput:
       type: object
       required: [name, url]
@@ -12304,6 +12306,8 @@ components:
         incident_first_failure_at: { type: string, format: date-time, nullable: true, description: "First failure of the current unbroken run of failures; null when consecutive_failures is 0." }
         last_run_duration_ms: { type: integer, nullable: true, description: "Wall-clock duration of the last run." }
         last_run_stats: { type: object, additionalProperties: { type: integer }, description: "Last run's counter tallies (created/updated/archived/skipped). {} before the first run." }
+        terminal_failure_at: { type: string, format: date-time, nullable: true, description: "INT-04 (#467): non-null once the sync has hit a permanent error (revoked credentials, remote deleted). Frozen at entry. Cleared by any success or a subscription edit." }
+        terminal_reason: { type: string, description: "Failure-mode slug behind terminal_failure_at (auth-expiry, authz-revoked, remote-resource-deleted); empty when not terminal." }
         pending_conflicts: { type: integer, description: "Unreviewed local edits this subscription's syncs have overwritten (issue #395). Contacts only." }
     ApiTokenInput:
       type: object
@@ -12353,6 +12357,16 @@ components:
           items: { type: string }
         is_active: { type: boolean }
         created_at: { type: string, format: date-time }
+        delivery_health:
+          type: object
+          description: "INT-04 (#467): a rollup of this webhook's most recent delivery attempt, so a permanently-failed receiver is visible next to the webhook itself. All fields are zero/null when the webhook has never been delivered to."
+          properties:
+            last_delivery_at: { type: string, format: date-time, nullable: true }
+            last_status_code: { type: integer, nullable: true }
+            last_error: { type: string, nullable: true }
+            failed_permanently: { type: boolean, description: "The last delivery hit a non-retryable status (401/403/404/410/4xx) and will not be retried." }
+            terminal_reason: { type: string, description: "Failure-mode slug behind failed_permanently (auth-expiry, authz-revoked, remote-resource-deleted, client-error); empty otherwise." }
+            retrying: { type: boolean, description: "The last delivery failed transiently and still has a retry scheduled." }
     WebhookCreateResponse:
       allOf:
         - $ref: "#/components/schemas/WebhookResponse"
@@ -12370,6 +12384,8 @@ components:
         attempts: { type: integer }
         next_retry_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
+        failed_permanently: { type: boolean, description: "INT-03 (#466): the delivery hit a non-retryable status (401/403/404/410/4xx); next_retry_at is null and it will not be retried." }
+        terminal_reason: { type: string, description: "Failure-mode slug behind failed_permanently; empty otherwise." }
     NotificationConfigInput:
       type: object
       description: "Channel URLs are optional (a user may use only one push-style channel) but, when present, must be valid http(s) URLs. gotify_token is write-only: empty keeps the stored token. Omitted toggles are left unchanged."

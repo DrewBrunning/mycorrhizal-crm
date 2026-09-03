@@ -350,6 +350,16 @@ export default function WebhooksSettings() {
                               color={wh.is_active ? 'success' : 'default'}
                               sx={{ height: 18, fontSize: '0.7rem' }}
                             />
+                            {wh.delivery_health?.failed_permanently && (
+                              <Tooltip title={t('settings.webhooks.deliveryFailingPermanently')}>
+                                <Chip
+                                  size="small"
+                                  color="error"
+                                  label={t('settings.webhooks.willNotRetry')}
+                                  sx={{ height: 18, fontSize: '0.7rem' }}
+                                />
+                              </Tooltip>
+                            )}
                           </Box>
                         }
                         secondary={
@@ -448,6 +458,15 @@ export default function WebhooksSettings() {
                                 >
                                   {new Date(d.created_at).toLocaleString()}
                                 </Typography>
+                                {d.failed_permanently && (
+                                  <Chip
+                                    size="small"
+                                    color="error"
+                                    variant="outlined"
+                                    label={t('settings.webhooks.willNotRetry')}
+                                    sx={{ height: 18, fontSize: '0.65rem' }}
+                                  />
+                                )}
                                 {d.error && (
                                   <Typography
                                     variant="caption"

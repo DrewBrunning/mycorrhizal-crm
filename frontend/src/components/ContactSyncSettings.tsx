@@ -1,5 +1,5 @@
 import AddIcon from '@mui/icons-material/Add';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import ContactsIcon from '@mui/icons-material/Contacts';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import SyncIcon from '@mui/icons-material/Sync';
@@ -31,38 +31,38 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  type CalendarSubscription,
-  createCalendarSubscription,
-  deleteCalendarSubscription,
-  getCalendarSubscriptions,
-  syncCalendarSubscription,
-  updateCalendarSubscription,
-} from '../api/calendars';
+  type ContactSubscription,
+  createContactSubscription,
+  deleteContactSubscription,
+  getContactSubscriptions,
+  syncContactSubscription,
+  updateContactSubscription,
+} from '../api/contactSubscriptions';
 import { daysSince, terminalReasonKey } from '../utils/syncHealth';
 
-interface CalendarFormState {
+// CardDAV address-book subscriptions. The CalDAV analog is CalendarSyncSettings;
+// this panel keeps the same shape minus the past/future-days window (no
+// contacts equivalent). Terminal-failure + staleness surfacing is INT-04 (#467).
+
+interface ContactFormState {
   name: string;
   url: string;
   username: string;
   password: string;
   sync_enabled: boolean;
-  past_days: string;
-  future_days: string;
 }
 
-const emptyForm = (): CalendarFormState => ({
+const emptyForm = (): ContactFormState => ({
   name: '',
   url: '',
   username: '',
   password: '',
   sync_enabled: true,
-  past_days: '5',
-  future_days: '10',
 });
 
-export default function CalendarSyncSettings() {
+export default function ContactSyncSettings() {
   const { t } = useTranslation();
-  const [calendars, setCalendars] = useState<CalendarSubscription[]>([]);
+  const [subscriptions, setSubscriptions] = useState<ContactSubscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -71,30 +71,29 @@ export default function CalendarSyncSettings() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingHasPassword, setEditingHasPassword] = useState(false);
   const [editingUsername, setEditingUsername] = useState('');
-  const [form, setForm] = useState<CalendarFormState>(emptyForm());
+  const [form, setForm] = useState<ContactFormState>(emptyForm());
   const [saving, setSaving] = useState(false);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [calendarToDelete, setCalendarToDelete] = useState<CalendarSubscription | null>(null);
+  const [toDelete, setToDelete] = useState<ContactSubscription | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const [syncing, setSyncing] = useState<Record<number, boolean>>({});
 
-  const loadCalendars = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await getCalendarSubscriptions();
-      setCalendars(data);
+      setSubscriptions(await getContactSubscriptions());
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.calendarSync.loadError'));
+      setError(err instanceof Error ? err.message : t('settings.contactSync.loadError'));
     } finally {
       setLoading(false);
     }
   }, [t]);
 
   useEffect(() => {
-    loadCalendars();
-  }, [loadCalendars]);
+    load();
+  }, [load]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -104,25 +103,18 @@ export default function CalendarSyncSettings() {
     setDialogOpen(true);
   };
 
-  const openEdit = (cal: CalendarSubscription) => {
-    setEditingId(cal.id);
-    setEditingHasPassword(cal.has_password);
-    setEditingUsername(cal.username);
+  const openEdit = (sub: ContactSubscription) => {
+    setEditingId(sub.id);
+    setEditingHasPassword(sub.has_password);
+    setEditingUsername(sub.username);
     setForm({
-      name: cal.name,
-      url: cal.url,
-      username: cal.username,
+      name: sub.name,
+      url: sub.url,
+      username: sub.username,
       password: '',
-      sync_enabled: cal.sync_enabled,
-      past_days: String(cal.past_days),
-      future_days: String(cal.future_days),
+      sync_enabled: sub.sync_enabled,
     });
     setDialogOpen(true);
-  };
-
-  const parseDays = (value: string, fallback: number) => {
-    const parsed = Number.parseInt(value, 10);
-    return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
   };
 
   const handleSave = async () => {
@@ -134,9 +126,6 @@ export default function CalendarSyncSettings() {
       url: form.url.trim(),
       username: form.username.trim(),
       password: form.password,
-      // Clear a stored password when the user removed the username of a
-      // previously protected calendar and left the password empty. Calendars
-      // that never had a username (password-only auth) are not affected.
       clear_password:
         editingId !== null &&
         editingHasPassword &&
@@ -144,79 +133,70 @@ export default function CalendarSyncSettings() {
         form.username.trim() === '' &&
         form.password === '',
       sync_enabled: form.sync_enabled,
-      past_days: parseDays(form.past_days, 5),
-      future_days: parseDays(form.future_days, 10),
     };
     try {
       if (editingId !== null) {
-        const updated = await updateCalendarSubscription(editingId, input);
-        setCalendars((prev) => prev.map((c) => (c.id === editingId ? updated : c)));
+        const updated = await updateContactSubscription(editingId, input);
+        setSubscriptions((prev) => prev.map((s) => (s.id === editingId ? updated : s)));
         setDialogOpen(false);
       } else {
-        const created = await createCalendarSubscription(input);
-        setCalendars((prev) => [...prev, created]);
+        const created = await createContactSubscription(input);
+        setSubscriptions((prev) => [...prev, created]);
         setDialogOpen(false);
-        // Trigger the first sync right away so the user gets feedback.
         await handleSync(created);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.calendarSync.saveError'));
+      setError(err instanceof Error ? err.message : t('settings.contactSync.saveError'));
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDeleteClick = (cal: CalendarSubscription) => {
-    setCalendarToDelete(cal);
-    setDeleteDialogOpen(true);
-  };
-
   const handleDeleteConfirm = async () => {
-    if (!calendarToDelete) return;
+    if (!toDelete) return;
     setDeleting(true);
     try {
-      await deleteCalendarSubscription(calendarToDelete.id);
-      setCalendars((prev) => prev.filter((c) => c.id !== calendarToDelete.id));
+      await deleteContactSubscription(toDelete.id);
+      setSubscriptions((prev) => prev.filter((s) => s.id !== toDelete.id));
       setDeleteDialogOpen(false);
-      setCalendarToDelete(null);
+      setToDelete(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.calendarSync.deleteError'));
+      setError(err instanceof Error ? err.message : t('settings.contactSync.deleteError'));
       setDeleteDialogOpen(false);
     } finally {
       setDeleting(false);
     }
   };
 
-  const handleSync = async (cal: CalendarSubscription) => {
-    setSyncing((prev) => ({ ...prev, [cal.id]: true }));
+  const handleSync = async (sub: ContactSubscription) => {
+    setSyncing((prev) => ({ ...prev, [sub.id]: true }));
     setSuccess('');
     setError('');
     try {
-      const result = await syncCalendarSubscription(cal.id);
+      const result = await syncContactSubscription(sub.id);
       setSuccess(
-        t('settings.calendarSync.syncSuccess', {
+        t('settings.contactSync.syncSuccess', {
           created: result.created,
           updated: result.updated,
+          archived: result.archived,
           skipped: result.skipped,
         }),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.calendarSync.syncError'));
+      setError(err instanceof Error ? err.message : t('settings.contactSync.syncError'));
     } finally {
-      setSyncing((prev) => ({ ...prev, [cal.id]: false }));
-      await loadCalendars();
+      setSyncing((prev) => ({ ...prev, [sub.id]: false }));
+      await load();
     }
   };
 
-  const formatLastSync = (cal: CalendarSubscription) => {
-    if (!cal.last_synced_at) return t('settings.calendarSync.neverSynced');
-    return t('settings.calendarSync.lastSynced', {
-      date: new Date(cal.last_synced_at).toLocaleString(),
+  const formatLastSync = (sub: ContactSubscription) => {
+    if (!sub.last_synced_at) return t('settings.contactSync.neverSynced');
+    return t('settings.contactSync.lastSynced', {
+      date: new Date(sub.last_synced_at).toLocaleString(),
     });
   };
 
-  // Staleness line (INT-04 #467 action 6): stays useful even when the failure
-  // classification is wrong — "last successful sync N days ago".
   const staleLine = (lastSuccessAt: string | null) => {
     const days = daysSince(lastSuccessAt);
     if (days === null) return t('settings.syncHealth.neverSucceeded');
@@ -226,73 +206,37 @@ export default function CalendarSyncSettings() {
     });
   };
 
-  // Terminal-failure notice (INT-04 #467): a permanent error stopped the sync.
-  // Rendered as a prominent error Alert with an actionable, reason-specific
-  // message plus the staleness line. Returns null when not terminal.
-  const renderTerminalNotice = (cal: CalendarSubscription) => {
-    if (!cal.terminal_failure_at) return null;
+  const renderTerminalNotice = (sub: ContactSubscription) => {
+    if (!sub.terminal_failure_at) return null;
     return (
       <Alert severity="error" sx={{ mt: 0.5, py: 0 }} icon={false}>
         <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
           {t('settings.syncHealth.terminalTitle')}
         </Typography>
         <Typography variant="caption" component="span" sx={{ display: 'block' }}>
-          {t(terminalReasonKey(cal.terminal_reason))}
+          {t(terminalReasonKey(sub.terminal_reason))}
         </Typography>
         <Typography variant="caption" component="span" sx={{ display: 'block' }}>
-          {staleLine(cal.last_success_at)}
+          {staleLine(sub.last_success_at)}
         </Typography>
       </Alert>
     );
   };
 
-  // Sync-health line (issue #390): a standing failure shows how long it has
-  // been failing and when it last worked; a healthy sync shows the last run's
-  // tallies. Returns null when there is nothing useful to say yet.
-  const renderHealthLine = (cal: CalendarSubscription) => {
-    // A terminal failure has its own dedicated notice — don't also show the
-    // generic "failing since" line.
-    if (cal.terminal_failure_at) return null;
-    if (cal.consecutive_failures > 0) {
-      const since = cal.incident_first_failure_at
-        ? new Date(cal.incident_first_failure_at).toLocaleString()
-        : t('settings.calendarSync.neverSynced');
-      const lastGood = cal.last_success_at
-        ? t('settings.calendarSync.healthLastSuccess', {
-            date: new Date(cal.last_success_at).toLocaleString(),
-          })
-        : t('settings.calendarSync.healthNeverSucceeded');
-      return (
-        <Typography
-          variant="caption"
-          color="error"
-          component="span"
-          sx={{
-            display: 'block',
-          }}
-        >
-          {t('settings.calendarSync.healthFailing', {
-            since,
-            count: cal.consecutive_failures,
-          })}{' '}
-          · {lastGood}
-        </Typography>
-      );
-    }
-    if (cal.last_sync_status === 'success' && Object.keys(cal.last_run_stats).length > 0) {
+  const renderHealthLine = (sub: ContactSubscription) => {
+    if (sub.terminal_failure_at) return null;
+    if (sub.last_sync_status === 'success' && Object.keys(sub.last_run_stats).length > 0) {
       return (
         <Typography
           variant="caption"
           component="span"
-          sx={{
-            color: 'text.secondary',
-            display: 'block',
-          }}
+          sx={{ color: 'text.secondary', display: 'block' }}
         >
-          {t('settings.calendarSync.healthLastRun', {
-            created: cal.last_run_stats.created ?? 0,
-            updated: cal.last_run_stats.updated ?? 0,
-            skipped: cal.last_run_stats.skipped ?? 0,
+          {t('settings.contactSync.healthLastRun', {
+            created: sub.last_run_stats.created ?? 0,
+            updated: sub.last_run_stats.updated ?? 0,
+            archived: sub.last_run_stats.archived ?? 0,
+            skipped: sub.last_run_stats.skipped ?? 0,
           })}
         </Typography>
       );
@@ -308,9 +252,9 @@ export default function CalendarSyncSettings() {
             sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <CalendarMonthIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
+              <ContactsIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
               <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
-                {t('settings.calendarSync.title')}
+                {t('settings.contactSync.title')}
               </Typography>
             </Box>
             <Button
@@ -320,19 +264,14 @@ export default function CalendarSyncSettings() {
               startIcon={<AddIcon />}
               onClick={openCreate}
             >
-              {t('settings.calendarSync.add')}
+              {t('settings.contactSync.add')}
             </Button>
           </Box>
           <Divider sx={{ mb: 1.5 }} />
 
           <Stack spacing={1.5}>
-            <Typography
-              variant="body2"
-              sx={{
-                color: 'text.secondary',
-              }}
-            >
-              {t('settings.calendarSync.description')}
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              {t('settings.contactSync.description')}
             </Typography>
             {error && (
               <Alert severity="error" sx={{ py: 0 }} onClose={() => setError('')}>
@@ -349,33 +288,27 @@ export default function CalendarSyncSettings() {
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
                 <CircularProgress size={24} />
               </Box>
-            ) : calendars.length === 0 ? (
-              <Typography
-                variant="body2"
-                sx={{
-                  color: 'text.secondary',
-                  fontStyle: 'italic',
-                }}
-              >
-                {t('settings.calendarSync.empty')}
+            ) : subscriptions.length === 0 ? (
+              <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                {t('settings.contactSync.empty')}
               </Typography>
             ) : (
               <List dense disablePadding>
-                {calendars.map((cal) => (
+                {subscriptions.map((sub) => (
                   <ListItem
-                    key={cal.id}
+                    key={sub.id}
                     divider
                     secondaryAction={
                       <Stack direction="row" spacing={0.5}>
-                        <Tooltip title={t('settings.calendarSync.syncNow')}>
+                        <Tooltip title={t('settings.contactSync.syncNow')}>
                           <span>
                             <IconButton
                               size="small"
-                              onClick={() => handleSync(cal)}
-                              disabled={!!syncing[cal.id]}
-                              aria-label={t('settings.calendarSync.syncNow')}
+                              onClick={() => handleSync(sub)}
+                              disabled={!!syncing[sub.id]}
+                              aria-label={t('settings.contactSync.syncNow')}
                             >
-                              {syncing[cal.id] ? (
+                              {syncing[sub.id] ? (
                                 <CircularProgress size={18} />
                               ) : (
                                 <SyncIcon fontSize="small" />
@@ -385,14 +318,17 @@ export default function CalendarSyncSettings() {
                         </Tooltip>
                         <IconButton
                           size="small"
-                          onClick={() => openEdit(cal)}
+                          onClick={() => openEdit(sub)}
                           aria-label={t('common.edit')}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
                         <IconButton
                           size="small"
-                          onClick={() => handleDeleteClick(cal)}
+                          onClick={() => {
+                            setToDelete(sub);
+                            setDeleteDialogOpen(true);
+                          }}
                           aria-label={t('common.delete')}
                         >
                           <DeleteIcon fontSize="small" />
@@ -403,30 +339,24 @@ export default function CalendarSyncSettings() {
                     <ListItemText
                       slotProps={{ secondary: { component: 'div' } }}
                       primary={
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          sx={{
-                            alignItems: 'center',
-                          }}
-                        >
+                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {cal.name}
+                            {sub.name}
                           </Typography>
-                          {!cal.sync_enabled && (
-                            <Chip size="small" label={t('settings.calendarSync.disabled')} />
+                          {!sub.sync_enabled && (
+                            <Chip size="small" label={t('settings.contactSync.disabled')} />
                           )}
-                          {cal.last_sync_status === 'error' && (
-                            <Tooltip title={cal.last_sync_error}>
+                          {sub.last_sync_status === 'error' && !sub.terminal_failure_at && (
+                            <Tooltip title={sub.last_sync_error}>
                               <Chip
                                 size="small"
                                 color="error"
                                 label={
-                                  cal.consecutive_failures > 1
-                                    ? t('settings.calendarSync.syncFailedCount', {
-                                        count: cal.consecutive_failures,
+                                  sub.consecutive_failures > 1
+                                    ? t('settings.contactSync.syncFailedCount', {
+                                        count: sub.consecutive_failures,
                                       })
-                                    : t('settings.calendarSync.syncFailed')
+                                    : t('settings.contactSync.syncFailed')
                                 }
                               />
                             </Tooltip>
@@ -438,15 +368,12 @@ export default function CalendarSyncSettings() {
                           <Typography
                             variant="caption"
                             component="span"
-                            sx={{
-                              color: 'text.secondary',
-                              display: 'block',
-                            }}
+                            sx={{ color: 'text.secondary', display: 'block' }}
                           >
-                            {cal.url} — {formatLastSync(cal)}
+                            {sub.url} — {formatLastSync(sub)}
                           </Typography>
-                          {renderHealthLine(cal)}
-                          {renderTerminalNotice(cal)}
+                          {renderHealthLine(sub)}
+                          {renderTerminalNotice(sub)}
                         </>
                       }
                     />
@@ -461,16 +388,16 @@ export default function CalendarSyncSettings() {
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
           {editingId !== null
-            ? t('settings.calendarSync.editTitle')
-            : t('settings.calendarSync.addTitle')}
+            ? t('settings.contactSync.editTitle')
+            : t('settings.contactSync.addTitle')}
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Alert severity="info" sx={{ py: 0.5 }}>
-              {t('settings.calendarSync.dialogInfo')}
+              {t('settings.contactSync.dialogInfo')}
             </Alert>
             <TextField
-              label={t('settings.calendarSync.name')}
+              label={t('settings.contactSync.name')}
               value={form.name}
               onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
               fullWidth
@@ -478,34 +405,34 @@ export default function CalendarSyncSettings() {
               size="small"
             />
             <TextField
-              label={t('settings.calendarSync.url')}
+              label={t('settings.contactSync.url')}
               value={form.url}
               onChange={(e) => setForm((prev) => ({ ...prev, url: e.target.value }))}
               fullWidth
               required
               size="small"
-              placeholder="https://cloud.example.com/remote.php/dav/calendars/user/personal/"
-              helperText={t('settings.calendarSync.urlHelp')}
+              placeholder="https://cloud.example.com/remote.php/dav/addressbooks/users/you/contacts/"
+              helperText={t('settings.contactSync.urlHelp')}
             />
             {form.url.trim().toLowerCase().startsWith('http://') &&
               (form.username.trim() !== '' || form.password !== '' || editingHasPassword) && (
                 <Alert severity="warning" sx={{ py: 0.5 }}>
-                  {t('settings.calendarSync.insecureUrlWarning')}
+                  {t('settings.contactSync.insecureUrlWarning')}
                 </Alert>
               )}
             <Box
               sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}
             >
               <TextField
-                label={t('settings.calendarSync.username')}
+                label={t('settings.contactSync.username')}
                 value={form.username}
                 onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))}
                 fullWidth
                 size="small"
-                helperText={t('settings.calendarSync.credentialsOptional')}
+                helperText={t('settings.contactSync.credentialsOptional')}
               />
               <TextField
-                label={t('settings.calendarSync.password')}
+                label={t('settings.contactSync.password')}
                 type="password"
                 value={form.password}
                 onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
@@ -514,33 +441,9 @@ export default function CalendarSyncSettings() {
                 autoComplete="new-password"
                 helperText={
                   editingId !== null && editingHasPassword
-                    ? t('settings.calendarSync.passwordKeep')
+                    ? t('settings.contactSync.passwordKeep')
                     : undefined
                 }
-              />
-            </Box>
-            <Box
-              sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}
-            >
-              <TextField
-                label={t('settings.calendarSync.pastDays')}
-                type="number"
-                value={form.past_days}
-                onChange={(e) => setForm((prev) => ({ ...prev, past_days: e.target.value }))}
-                size="small"
-                slotProps={{
-                  htmlInput: { min: 0, max: 3650 },
-                }}
-              />
-              <TextField
-                label={t('settings.calendarSync.futureDays')}
-                type="number"
-                value={form.future_days}
-                onChange={(e) => setForm((prev) => ({ ...prev, future_days: e.target.value }))}
-                size="small"
-                slotProps={{
-                  htmlInput: { min: 0, max: 3650 },
-                }}
               />
             </Box>
             <FormControlLabel
@@ -550,7 +453,7 @@ export default function CalendarSyncSettings() {
                   onChange={(e) => setForm((prev) => ({ ...prev, sync_enabled: e.target.checked }))}
                 />
               }
-              label={t('settings.calendarSync.autoSync')}
+              label={t('settings.contactSync.autoSync')}
             />
           </Stack>
         </DialogContent>
@@ -568,10 +471,10 @@ export default function CalendarSyncSettings() {
       </Dialog>
 
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>{t('settings.calendarSync.deleteTitle')}</DialogTitle>
+        <DialogTitle>{t('settings.contactSync.deleteTitle')}</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            {t('settings.calendarSync.deleteConfirm', { name: calendarToDelete?.name })}
+            {t('settings.contactSync.deleteConfirm', { name: toDelete?.name })}
           </DialogContentText>
         </DialogContent>
         <DialogActions>

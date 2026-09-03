@@ -42,6 +42,20 @@ type SyncHealthFields struct {
 	// (services.ContactSyncStats / services.CalendarSyncStats). Kept off the
 	// model's own JSON — the response DTO re-emits it as a nested object.
 	LastRunStats string `gorm:"column:last_run_stats;not null;default:''" json:"-"`
+
+	// TerminalFailureAt marks the sync as being in a permanent-until-human
+	// state (INT-04, issue #467): the last run failed with an error the
+	// integration matrix classifies as permanent (revoked credentials, remote
+	// resource deleted), so retrying is waste and the scheduler stops
+	// attempting it. NULL means "not terminal". Frozen at the moment of entry —
+	// it does not move on subsequent permanent runs, so it answers "when did
+	// this sync stop working". Cleared by any successful run, and by a
+	// subscription edit (the user acted).
+	TerminalFailureAt *time.Time `gorm:"column:terminal_failure_at" json:"terminal_failure_at"`
+	// TerminalReason is the integrations.FailureMode slug behind the terminal
+	// state (e.g. "auth-expiry", "remote-resource-deleted"); the frontend maps
+	// it to an actionable message. Empty exactly when TerminalFailureAt is NULL.
+	TerminalReason string `gorm:"column:terminal_reason;not null;default:''" json:"terminal_reason"`
 }
 
 // AdvanceForRun folds one completed sync run into the health state, mutating
@@ -49,7 +63,14 @@ type SyncHealthFields struct {
 // caller's own last_sync_status / last_sync_error writes. now is the run's
 // completion time, dur its wall-clock duration, statsJSON the JSON-encoded
 // counter struct, and runErr its outcome (nil means success).
-func (h *SyncHealthFields) AdvanceForRun(now time.Time, dur time.Duration, statsJSON string, runErr error) map[string]interface{} {
+//
+// terminalReason (INT-04, issue #467) is the integrations.FailureMode slug when
+// the caller has classified runErr as permanent-until-human, or "" when the
+// failure is transient (or runErr is nil). A permanent failure additionally
+// enters the terminal state — frozen at first entry; a transient failure never
+// does. Any success clears it (recovery). This is still the single writer of
+// every sync-health column.
+func (h *SyncHealthFields) AdvanceForRun(now time.Time, dur time.Duration, statsJSON string, runErr error, terminalReason string) map[string]interface{} {
 	ms := dur.Milliseconds()
 	h.LastAttemptAt = &now
 	h.LastRunDurationMS = &ms
@@ -70,16 +91,44 @@ func (h *SyncHealthFields) AdvanceForRun(now time.Time, dur time.Duration, stats
 		updates["last_failure_at"] = h.LastFailureAt
 		updates["consecutive_failures"] = h.ConsecutiveFailures
 		updates["incident_first_failure_at"] = h.IncidentFirstFailureAt
+
+		if terminalReason != "" {
+			// Enter the terminal state, but do not move an existing entry —
+			// TerminalFailureAt answers "when did this stop working".
+			if h.TerminalFailureAt == nil {
+				h.TerminalFailureAt = &now
+			}
+			h.TerminalReason = terminalReason
+			updates["terminal_failure_at"] = h.TerminalFailureAt
+			updates["terminal_reason"] = h.TerminalReason
+		}
 		return updates
 	}
 
 	h.LastSuccessAt = &now
 	h.ConsecutiveFailures = 0
 	h.IncidentFirstFailureAt = nil
+	h.TerminalFailureAt = nil
+	h.TerminalReason = ""
 	updates["last_success_at"] = h.LastSuccessAt
 	updates["consecutive_failures"] = 0
 	updates["incident_first_failure_at"] = nil
+	updates["terminal_failure_at"] = nil
+	updates["terminal_reason"] = ""
 	return updates
+}
+
+// ClearTerminalState returns the column→value map that lifts the terminal
+// failure state without recording a run — used when the user edits a
+// subscription (a deliberate action that deserves a fresh attempt). It also
+// mutates the receiver so an in-memory copy stays consistent.
+func (h *SyncHealthFields) ClearTerminalState() map[string]interface{} {
+	h.TerminalFailureAt = nil
+	h.TerminalReason = ""
+	return map[string]interface{}{
+		"terminal_failure_at": nil,
+		"terminal_reason":     "",
+	}
 }
 
 // SyncHealthResponse is the wire form of SyncHealthFields (issue #390),
@@ -94,6 +143,12 @@ type SyncHealthResponse struct {
 	IncidentFirstFailureAt *time.Time      `json:"incident_first_failure_at"`
 	LastRunDurationMS      *int64          `json:"last_run_duration_ms"`
 	LastRunStats           json.RawMessage `json:"last_run_stats"`
+	// Terminal (permanent-until-human) failure state (INT-04, issue #467).
+	// TerminalFailureAt is null unless the sync has stopped retrying and needs
+	// user action; TerminalReason is the failure-mode slug the UI maps to an
+	// actionable message.
+	TerminalFailureAt *time.Time `json:"terminal_failure_at"`
+	TerminalReason    string     `json:"terminal_reason"`
 }
 
 // NewSyncHealthResponse maps the embedded model fields to their wire form.
@@ -110,5 +165,7 @@ func NewSyncHealthResponse(h SyncHealthFields) SyncHealthResponse {
 		IncidentFirstFailureAt: h.IncidentFirstFailureAt,
 		LastRunDurationMS:      h.LastRunDurationMS,
 		LastRunStats:           stats,
+		TerminalFailureAt:      h.TerminalFailureAt,
+		TerminalReason:         h.TerminalReason,
 	}
 }

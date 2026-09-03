@@ -6,7 +6,7 @@ nav_order: 15
 # INT-01 — Integration classification matrix
 
 > **Generated artifact — do not hand-edit.** The source of truth is
-> `backend/integrations` (`Registry()` + `Dispositions()`). Regenerate with
+> `backend/integrations` (`Registry()` + `Dispositions()` + `OutboundOperations()`). Regenerate with
 > `cd backend && go run ./cmd/genintegrationmatrix` (or `make gen-integration-matrix`);
 > the drift test `backend/integrations/matrix_test.go` fails until this file and the
 > registry agree, and `TestEveryOutboundClientIsClassified` fails if a new outbound
@@ -58,6 +58,35 @@ instead of an in-call loop. `permanent-until-human` failures must stop retrying 
 be surfaced (#467); the transition into and out of that state, and staleness
 tracking ("last successful sync: 47 days ago"), are #467/#427.
 
+## Outbound operations — retry safety
+
+The table above classifies *failure modes*. This one classifies the *operations*:
+every write or side-effecting call this app makes to an external system, by what
+happens on an **ambiguous failure** — the request left, the response never came
+back, and a retry might double the effect. This is `integrations.OutboundOperations()`;
+INT-03 (#466) asserts every such operation has a row, an idempotency class, and a
+named safeguard, and that a new outbound-write integration cannot be added without
+one. Read-only calls (Ping, discovery, HIBP, update-check) are not listed — there
+is nothing to double.
+
+| Operation | Integration | Idempotency | Safeguard on retry | Retry budget |
+|---|---|---|---|---|
+| `webhook-delivery` | [`webhooks`](#webhooks) | `not-idempotent` | Every attempt replays one immutable event envelope whose `id` (a UUID minted once) is sent as the `Idempotency-Key` request header, so a receiver can de-duplicate a retry; a retry never mints a new event. A permanent HTTP status is not retried at all. | webhookRetryPolicy — up to maxDeliveryAttempts (3), exponential backoff base 5m ×3 with ±20% jitter capped at 6h; 401/403/404/410 and other request-level 4xx go terminal immediately (failed_permanently, integration_failed event, no next_retry_at); 429/503 wait at least the Retry-After hint. next_retry_at is a column, so ProcessWebhookRetries re-scans after a restart — pending retries survive. |
+| `caldav-push-event` | [`caldav`](#caldav) | `conditionally-idempotent` | The PUT carries the remote object's own UID and an `If-Match` ETag precondition (putCalendarObject), so a replay updates the same object in place and cannot create a duplicate. A 412 means the remote moved on and is resolved by the local-wins conflict policy, not retried blindly. | No in-call retry loop. The next scheduled calendar_sync run re-pushes while link.ContentHash still shows an unsent local edit; bounded by the job lock and, on a permanent failure, the subscription's terminal-failure state (#467). |
+| `notification-ntfy` | [`ntfy`](#ntfy) | `not-idempotent` | A `sent` NotificationDelivery row for (reminder, channel) suppresses any further send for that pair; a `failed`/`pending` row leaves it due. A retry after an ambiguous send is recognized by that key and does not double-notify. | No in-call retry. The reminder stays due for the channel and the next daily reminder run retries — that 24h cadence is itself the backoff. A Retry-After hint is respected where a run would otherwise retry sooner. |
+| `notification-gotify` | [`gotify`](#gotify) | `not-idempotent` | A `sent` NotificationDelivery row for (reminder, channel) suppresses any further send for that pair; a `failed`/`pending` row leaves it due. A retry after an ambiguous send is recognized by that key and does not double-notify. | No in-call retry. The reminder stays due for the channel and the next daily reminder run retries — that 24h cadence is itself the backoff. A Retry-After hint is respected where a run would otherwise retry sooner. |
+| `notification-webpush` | [`webpush`](#webpush) | `not-idempotent` | A `sent` NotificationDelivery row for (reminder, channel) suppresses any further send for that pair; a `failed`/`pending` row leaves it due. A retry after an ambiguous send is recognized by that key and does not double-notify. | No in-call retry. The reminder stays due for the channel and the next daily reminder run retries — that 24h cadence is itself the backoff. A Retry-After hint is respected where a run would otherwise retry sooner. |
+| `email-send-resend` | [`email-resend`](#email-resend) | `not-idempotent` | Per (reminder, channel='email') NotificationDelivery keying plus the legacy Reminder.EmailSent mirror: a reminder already emailed is skipped on the next run, so a retry after an ambiguous send cannot re-send the same digest. The two transports are backends of one best-effort SendEmail. | No in-call retry. A failed send leaves the reminder due for the email channel; the next daily reminder run retries. No tight loop against a broken mail host. |
+| `email-send-smtp` | [`email-smtp`](#email-smtp) | `not-idempotent` | Per (reminder, channel='email') NotificationDelivery keying plus the legacy Reminder.EmailSent mirror: a reminder already emailed is skipped on the next run, so a retry after an ambiguous send cannot re-send the same digest. The two transports are backends of one best-effort SendEmail. | No in-call retry. A failed send leaves the reminder due for the email channel; the next daily reminder run retries. No tight loop against a broken mail host. |
+
+`naturally-idempotent` means a bare retry converges; `conditionally-idempotent`
+means it is safe only with the stated precondition (`If-Match`, a dedup key);
+`not-idempotent` means a retry is only safe because a local delivery record keyed
+by the logical event recognizes it as a retry. `DispositionForHTTPStatus` and
+`RetryPolicy` (`backend/integrations/retry.go`) are the shared primitives every
+loop uses so backoff, jitter, `Retry-After`, and never-retry-a-permanent-status are
+decided in one place.
+
 ## The integrations
 
 | Integration | Criticality | Direction | Cadence | Data authority | Failure impact | Timeout | SSRF | Retry budget |
@@ -68,7 +97,7 @@ tracking ("last successful sync: 47 days ago"), are #467/#427.
 | [Paperless-ngx document links](#paperless) | optional | outbound | interactive | remote-authoritative | blocked-workflow | 30s | guarded-always | No retry — the call is inline in a user request. |
 | [Seafile file storage](#seafile) | optional | outbound | interactive | remote-authoritative | blocked-workflow | 30s | guarded-always | No retry — inline in a user request; the request fails with a mapped error and the user retries. |
 | [Generic WebDAV storage](#webdav) | optional | outbound | interactive | remote-authoritative | blocked-workflow | 30s | guarded-always | No retry — inline in a user request; fails with a mapped error and the user retries. |
-| [Outbound webhook delivery](#webhooks) | optional | outbound | event-driven | none | degraded-feature | 15s | guarded-when-enabled | maxDeliveryAttempts = 3. |
+| [Outbound webhook delivery](#webhooks) | optional | outbound | event-driven | none | degraded-feature | 15s | guarded-when-enabled | webhookRetryPolicy: maxDeliveryAttempts = 3, exponential backoff base 5m ×3 with ±20% jitter capped at 6h (integrations. |
 | [ntfy push notifications](#ntfy) | optional | outbound | scheduled | none | degraded-feature | 15s | guarded-when-enabled | No in-call retry. |
 | [Gotify push notifications](#gotify) | optional | outbound | scheduled | none | degraded-feature | 15s | guarded-when-enabled | No in-call retry. |
 | [Web Push (VAPID) browser notifications](#webpush) | optional | outbound | scheduled | none | degraded-feature | 15s | guarded-when-enabled | No in-call retry. |
@@ -278,20 +307,20 @@ POSTs a JSON envelope to operator-configured receiver URLs when app events fire.
 - **Data authority** — none. A transport for events we already hold; the receiver is not a data source.
 - **Failure impact** — degraded-feature. The receiver's downstream automation misses events; delivery rows record every attempt and outcome.
 - **Timeout** — 15s. http.Client.Timeout on both deliveryClient and guardedDeliveryClient; guarded client also caps redirects at 3.
-- **Retry budget** — maxDeliveryAttempts = 3. Delays: +5m then +15m (retryDelays). Retry state is a webhook_deliveries row (NextRetryAt), so it survives a restart. ProcessWebhookRetries runs under a job lock; a permanently-failing receiver stops after attempt 3 with the reason recorded — it does not retry forever.
+- **Retry budget** — webhookRetryPolicy: maxDeliveryAttempts = 3, exponential backoff base 5m ×3 with ±20% jitter capped at 6h (integrations.RetryPolicy). A permanent status (401/403/404/410 or another request-level 4xx) is NOT retried — the row is marked failed_permanently on that attempt and integration_failed is raised immediately. 429/503 wait at least the Retry-After hint. Retry state is a webhook_deliveries row (NextRetryAt), so it survives a restart; ProcessWebhookRetries runs under a job lock.
 - **SSRF** — guarded-when-enabled. clientFor(cfg) returns the SafeDialContext-guarded client only when WEBHOOK_BLOCK_PRIVATE_URLS is set (default off — self-hosted installs legitimately target LAN receivers). Guarding is in the dialer so redirect targets are checked too.
 - **Source** — `backend/services/webhook_service.go`
 - **Failure behavior verified by** — #465 (INT-02), #466 (INT-03 retry safety); webhook_delivery_test.go; webhook_ssrf_test.go; webhook_service_job_lock_test.go.
 
 | Failure mode | Class | Required behavior |
 |---|---|---|
-| `unreachable-host` | transient | Dialer sentinel (ErrWebhookUnreachable / ErrWebhookPrivateAddress) stored in the delivery row's Error; attempt counted; NextRetryAt set per the schedule until attempt 3. |
-| `timeout` | transient | 15s deadline → delivery row records the timeout, attempt counted, retry scheduled; the goroutine never blocks the event that triggered it. |
-| `auth-expiry` | permanent-until-human | A receiver 401 is recorded and retried within the 3-attempt budget, then goes terminal (#467) — webhooks carry a signing secret, not a refreshable credential, so this is 'the receiver rejected us', surfaced on the webhook's status. |
-| `authz-revoked` | permanent-until-human | 403 handled exactly like 401: recorded, bounded retries, then terminal with the last status shown. |
-| `malformed-response` | transient | The response body is not used; any 2xx is success. A non-2xx status is recorded with the code and retried within budget. |
-| `rate-limited` | transient | 429/503 → recorded and retried on the fixed +5m/+15m schedule; Retry-After larger than the schedule is honored (INT-03, #466). |
-| `remote-resource-deleted` | permanent-until-human | 404 on the receiver URL is a non-2xx like any other: recorded, bounded retries, then terminal. A deleted receiver endpoint is an operator configuration problem surfaced on the webhook. |
+| `unreachable-host` | transient | Dialer sentinel (ErrWebhookUnreachable / ErrWebhookPrivateAddress) stored in the delivery row's Error; attempt counted; NextRetryAt set per webhookRetryPolicy until attempt 3, then integration_failed. |
+| `timeout` | transient | 15s deadline → delivery row records the timeout, attempt counted, retry scheduled with backoff; the goroutine never blocks the event that triggered it. |
+| `auth-expiry` | permanent-until-human | A receiver 401 is terminal immediately (failed_permanently, terminal_reason=auth-expiry, integration_failed on that attempt, no retry) — webhooks carry a signing secret, not a refreshable credential, so a 401 will not self-heal; surfaced on the webhook's delivery health (#467). |
+| `authz-revoked` | permanent-until-human | 403 handled exactly like 401: terminal on the failing attempt, terminal_reason=authz-revoked, no retry. |
+| `malformed-response` | transient | The response body is not used; any 2xx is success. An unclassified 5xx is retried within budget; an unclassified 4xx is treated as permanent (terminal_reason=client-error). |
+| `rate-limited` | transient | 429/503 → recorded and retried with exponential backoff, but never sooner than the Retry-After hint (integrations.ParseRetryAfter); still bounded by the 3-attempt budget. |
+| `remote-resource-deleted` | permanent-until-human | 404/410 on the receiver URL is terminal immediately (terminal_reason=remote-resource-deleted, no retry). A deleted receiver endpoint is an operator configuration problem surfaced on the webhook. |
 
 ### ntfy push notifications
 

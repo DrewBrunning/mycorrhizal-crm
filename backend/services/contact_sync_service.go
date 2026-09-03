@@ -224,8 +224,10 @@ func (s *ContactSyncService) SyncSubscription(ctx context.Context, db *gorm.DB, 
 	updates["last_sync_error"] = sub.LastSyncError
 
 	// Sync-health last-known-good state (issue #390): fold this run into the
-	// consecutive-failure / incident / last-success bookkeeping.
-	for k, v := range sub.AdvanceForRun(now, runDuration, marshalSyncRunStats(stats), err) {
+	// consecutive-failure / incident / last-success bookkeeping. A permanent
+	// failure also enters the terminal state (INT-04, #467) so the UI can
+	// surface "sync stopped — action needed" instead of a silent stale book.
+	for k, v := range sub.AdvanceForRun(now, runDuration, marshalSyncRunStats(stats), err, classifySyncFailure(err)) {
 		updates[k] = v
 	}
 
