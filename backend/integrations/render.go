@@ -23,7 +23,7 @@ func Render() string {
 	b.WriteString("# INT-01 — Integration classification matrix\n\n")
 
 	b.WriteString("> **Generated artifact — do not hand-edit.** The source of truth is\n")
-	b.WriteString("> `backend/integrations` (`Registry()` + `Dispositions()`). Regenerate with\n")
+	b.WriteString("> `backend/integrations` (`Registry()` + `Dispositions()` + `OutboundOperations()`). Regenerate with\n")
 	b.WriteString("> `cd backend && go run ./cmd/genintegrationmatrix` (or `make gen-integration-matrix`);\n")
 	b.WriteString("> the drift test `backend/integrations/matrix_test.go` fails until this file and the\n")
 	b.WriteString("> registry agree, and `TestEveryOutboundClientIsClassified` fails if a new outbound\n")
@@ -40,6 +40,7 @@ func Render() string {
 
 	writeAxisLegend(&b)
 	writeDispositionTable(&b)
+	writeOutboundOperations(&b)
 	writeSummaryTable(&b)
 	writeSSRFSection(&b)
 	writePerIntegration(&b)
@@ -85,6 +86,33 @@ func writeDispositionTable(b *strings.Builder) {
 	b.WriteString("instead of an in-call loop. `permanent-until-human` failures must stop retrying and\n")
 	b.WriteString("be surfaced (#467); the transition into and out of that state, and staleness\n")
 	b.WriteString("tracking (\"last successful sync: 47 days ago\"), are #467/#427.\n\n")
+}
+
+func writeOutboundOperations(b *strings.Builder) {
+	b.WriteString("## Outbound operations — retry safety\n\n")
+	b.WriteString("The table above classifies *failure modes*. This one classifies the *operations*:\n")
+	b.WriteString("every write or side-effecting call this app makes to an external system, by what\n")
+	b.WriteString("happens on an **ambiguous failure** — the request left, the response never came\n")
+	b.WriteString("back, and a retry might double the effect. This is `integrations.OutboundOperations()`;\n")
+	b.WriteString("INT-03 (#466) asserts every such operation has a row, an idempotency class, and a\n")
+	b.WriteString("named safeguard, and that a new outbound-write integration cannot be added without\n")
+	b.WriteString("one. Read-only calls (Ping, discovery, HIBP, update-check) are not listed — there\n")
+	b.WriteString("is nothing to double.\n\n")
+
+	b.WriteString("| Operation | Integration | Idempotency | Safeguard on retry | Retry budget |\n")
+	b.WriteString("|---|---|---|---|---|\n")
+	for _, op := range OutboundOperations() {
+		b.WriteString(fmt.Sprintf("| `%s` | [`%s`](#%s) | `%s` | %s | %s |\n",
+			op.ID, op.Integration, op.Integration, op.Class, op.Safeguard, op.RetryPolicy))
+	}
+	b.WriteString("\n")
+	b.WriteString("`naturally-idempotent` means a bare retry converges; `conditionally-idempotent`\n")
+	b.WriteString("means it is safe only with the stated precondition (`If-Match`, a dedup key);\n")
+	b.WriteString("`not-idempotent` means a retry is only safe because a local delivery record keyed\n")
+	b.WriteString("by the logical event recognizes it as a retry. `DispositionForHTTPStatus` and\n")
+	b.WriteString("`RetryPolicy` (`backend/integrations/retry.go`) are the shared primitives every\n")
+	b.WriteString("loop uses so backoff, jitter, `Retry-After`, and never-retry-a-permanent-status are\n")
+	b.WriteString("decided in one place.\n\n")
 }
 
 func writeSummaryTable(b *strings.Builder) {

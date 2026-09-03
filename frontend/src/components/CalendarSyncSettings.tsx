@@ -38,6 +38,7 @@ import {
   syncCalendarSubscription,
   updateCalendarSubscription,
 } from '../api/calendars';
+import { daysSince, terminalReasonKey } from '../utils/syncHealth';
 
 interface CalendarFormState {
   name: string;
@@ -214,10 +215,44 @@ export default function CalendarSyncSettings() {
     });
   };
 
+  // Staleness line (INT-04 #467 action 6): stays useful even when the failure
+  // classification is wrong — "last successful sync N days ago".
+  const staleLine = (lastSuccessAt: string | null) => {
+    const days = daysSince(lastSuccessAt);
+    if (days === null) return t('settings.syncHealth.neverSucceeded');
+    if (days >= 2) return t('settings.syncHealth.staleDays', { days });
+    return t('settings.syncHealth.staleRecent', {
+      date: new Date(lastSuccessAt as string).toLocaleDateString(),
+    });
+  };
+
+  // Terminal-failure notice (INT-04 #467): a permanent error stopped the sync.
+  // Rendered as a prominent error Alert with an actionable, reason-specific
+  // message plus the staleness line. Returns null when not terminal.
+  const renderTerminalNotice = (cal: CalendarSubscription) => {
+    if (!cal.terminal_failure_at) return null;
+    return (
+      <Alert severity="error" sx={{ mt: 0.5, py: 0 }} icon={false}>
+        <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
+          {t('settings.syncHealth.terminalTitle')}
+        </Typography>
+        <Typography variant="caption" component="span" sx={{ display: 'block' }}>
+          {t(terminalReasonKey(cal.terminal_reason))}
+        </Typography>
+        <Typography variant="caption" component="span" sx={{ display: 'block' }}>
+          {staleLine(cal.last_success_at)}
+        </Typography>
+      </Alert>
+    );
+  };
+
   // Sync-health line (issue #390): a standing failure shows how long it has
   // been failing and when it last worked; a healthy sync shows the last run's
   // tallies. Returns null when there is nothing useful to say yet.
   const renderHealthLine = (cal: CalendarSubscription) => {
+    // A terminal failure has its own dedicated notice — don't also show the
+    // generic "failing since" line.
+    if (cal.terminal_failure_at) return null;
     if (cal.consecutive_failures > 0) {
       const since = cal.incident_first_failure_at
         ? new Date(cal.incident_first_failure_at).toLocaleString()
@@ -366,6 +401,7 @@ export default function CalendarSyncSettings() {
                     }
                   >
                     <ListItemText
+                      slotProps={{ secondary: { component: 'div' } }}
                       primary={
                         <Stack
                           direction="row"
@@ -410,6 +446,7 @@ export default function CalendarSyncSettings() {
                             {cal.url} — {formatLastSync(cal)}
                           </Typography>
                           {renderHealthLine(cal)}
+                          {renderTerminalNotice(cal)}
                         </>
                       }
                     />

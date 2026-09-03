@@ -98,6 +98,20 @@ rows / `sync_failed` events), and `integrations/int02_coverage_test.go` fails if
 has no failure-behavior test. `Dispositions()` is the one transient/permanent table — #466/#467 assert
 against it, don't fork it.
 
+Core-operation benchmarks (PERF-02, issue #469): `backend/internal/perfbench/testdata/baseline.json`
+is **generated** from the operation registry in `backend/internal/perfbench/operations.go` by
+`cd backend && go run ./cmd/perfbench` (or `make gen-perf-baseline`) — never hand-edited. It records
+the **query count** and **result-set size** of every cost-scaling operation (contact list/detail, FTS,
+graph traversal, dashboard, cadence, reach-out, duplicate detection, merge, delete cascade, create,
+update) at the PERF-01 `smoke` and `typical` profiles, plus the cross-scale growth class each is
+allowed. Query count is the regression gate — `TestCoreOperationBenchmarks` (per PR, `smoke` only —
+`typical` at 900 rows is too slow every PR under `-race`) fails on an N+1 or a result-size drift;
+`TestBenchmarksAtScale` (gated `MYCORRHIZAL_LARGE_TESTS=1`, nightly/main-push `migration-tests.yml`
+large-dataset job) runs smoke+typical+large and adds the full baseline-current check and the
+growth-class regression / super-linear-finding assertions. Wall-clock time is CI-hardware-variable and
+lives in the generated `docs/development/perf-benchmarks.md` as indicative context only (issue #261's
+stance). #471 turns these numbers into budgets.
+
 **Breaking-change policy (MAINT-02, issue #491):** the `/api/v1` contract surface is pinned by a
 frozen baseline (`backend/internal/apibaseline/testdata/v1.json`) generated from `backend/openapi.yaml`
 by `cd backend && go run ./cmd/genapibaseline` (or `make gen-api-baseline`). The drift test

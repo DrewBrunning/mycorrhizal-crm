@@ -352,12 +352,103 @@ func TestRenderHelpers(t *testing.T) {
 	}
 }
 
+// --- (6) INT-03 outbound-operation classification -------------------------
+
+// TestOutboundOperationsClassified pins the structural contract of
+// OutboundOperations() (issue #466 action 1): every row is complete, uses a
+// known IdempotencyClass, points at a real Integration.ID, and — for anything
+// that is not naturally idempotent — names a safeguard.
+func TestOutboundOperationsClassified(t *testing.T) {
+	seen := map[string]bool{}
+	for _, op := range OutboundOperations() {
+		if !kebab.MatchString(op.ID) {
+			t.Errorf("operation ID %q is not kebab-case", op.ID)
+		}
+		if seen[op.ID] {
+			t.Errorf("duplicate operation ID %q", op.ID)
+		}
+		seen[op.ID] = true
+
+		if _, ok := ByID(op.Integration); !ok {
+			t.Errorf("%s: Integration %q is not in Registry()", op.ID, op.Integration)
+		}
+		if !validIdempotencyClass[op.Class] {
+			t.Errorf("%s: unknown IdempotencyClass %q", op.ID, op.Class)
+		}
+		if strings.TrimSpace(op.Summary) == "" {
+			t.Errorf("%s: Summary is required", op.ID)
+		}
+		if strings.TrimSpace(op.RetryPolicy) == "" {
+			t.Errorf("%s: RetryPolicy is required (state it even when it is 'none')", op.ID)
+		}
+		if strings.TrimSpace(op.SourceRef) == "" {
+			t.Errorf("%s: SourceRef (file:func) is required", op.ID)
+		}
+		if op.Class != NaturallyIdempotent && strings.TrimSpace(op.Safeguard) == "" {
+			t.Errorf("%s: class %q needs a Safeguard — what makes a retry safe", op.ID, op.Class)
+		}
+	}
+}
+
+// TestOutboundOperationsCoverWriteIntegrations is the "a new outbound write
+// added without a classification fails the check" guard. Every integration in
+// knownOutboundWriteIntegrations must have at least one OutboundOperations()
+// row; a dead entry (an ID no longer in Registry(), or one with no row) also
+// fails, so the allowlist cannot rot. Same discipline as nonIntegrationClients.
+func TestOutboundOperationsCoverWriteIntegrations(t *testing.T) {
+	rows := map[string]int{}
+	for _, op := range OutboundOperations() {
+		rows[op.Integration]++
+	}
+	for id, reason := range knownOutboundWriteIntegrations {
+		if strings.TrimSpace(reason) == "" {
+			t.Errorf("knownOutboundWriteIntegrations[%q] has no reason", id)
+		}
+		if _, ok := ByID(id); !ok {
+			t.Errorf("knownOutboundWriteIntegrations names %q, not in Registry() — remove the dead entry", id)
+		}
+		if rows[id] == 0 {
+			t.Errorf("integration %q performs remote writes but has no OutboundOperations() row", id)
+		}
+	}
+	for _, op := range OutboundOperations() {
+		if _, ok := knownOutboundWriteIntegrations[op.Integration]; !ok {
+			t.Errorf("operation %q classifies integration %q, which is not in "+
+				"knownOutboundWriteIntegrations — add it there with a reason", op.ID, op.Integration)
+		}
+	}
+}
+
+// TestDispositionForHTTPStatus pins the status→disposition mapping INT-03
+// depends on: permanent statuses never come back Retryable, transient ones do,
+// and 429/503 carry the Retry-After obligation.
+func TestDispositionForHTTPStatus(t *testing.T) {
+	permanent := []int{400, 401, 403, 404, 405, 409, 410, 422, 501, 418}
+	for _, code := range permanent {
+		if d := DispositionForHTTPStatus(code); d.Retryable || d.Persistence != PermanentUntilHuman {
+			t.Errorf("status %d: got %+v, want permanent + not retryable", code, d)
+		}
+	}
+	transient := []int{429, 500, 502, 503, 504}
+	for _, code := range transient {
+		if d := DispositionForHTTPStatus(code); !d.Retryable || d.Persistence != Transient {
+			t.Errorf("status %d: got %+v, want transient + retryable", code, d)
+		}
+	}
+	for _, code := range []int{429, 503} {
+		if !DispositionForHTTPStatus(code).HonorRetryAfter {
+			t.Errorf("status %d must honor Retry-After", code)
+		}
+	}
+}
+
 // TestRenderedDocHasRequiredSections guards the committed artifact's shape.
 func TestRenderedDocHasRequiredSections(t *testing.T) {
 	doc := Render()
 	for _, want := range []string{
 		"## Classification axes",
 		"## Transient vs permanent — the per-error classification",
+		"## Outbound operations — retry safety",
 		"## The integrations",
 		"## SSRF is a property of this whole surface",
 		"## Per-integration detail",
