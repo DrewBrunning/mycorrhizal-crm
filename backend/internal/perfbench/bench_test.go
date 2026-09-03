@@ -13,7 +13,7 @@ import (
 // actual regression gate is TestCoreOperationBenchmarks' query-count and
 // growth assertions, not wall-clock, per issue #261.
 func BenchmarkCoreOperations(b *testing.B) {
-	env, err := NewEnv(EnvOptions{Profile: largedata.Smoke, WorkDir: b.TempDir()})
+	env, err := NewEnv(EnvOptions{Profile: largedata.Smoke, WorkDir: b.TempDir(), OpenMigrated: migratedOpener(b)})
 	if err != nil {
 		b.Fatalf("building smoke env: %v", err)
 	}

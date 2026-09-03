@@ -27,6 +27,7 @@ package perfbench
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -52,9 +53,9 @@ type EnvOptions struct {
 	WorkDir string
 	// OpenMigrated returns a fresh *gorm.DB on a migrated schema at path. nil
 	// selects database.InitDB — a real migration run of the hand-written SQL
-	// (CLAUDE.md backend trap #1), which is what both cmd/perfbench and the
-	// tests use. The hook exists so a caller can substitute a faster
-	// migrated-template copy if the per-Env migration cost ever matters.
+	// (CLAUDE.md backend trap #1), which cmd/perfbench uses. The tests inject
+	// an internal/dbtest template copy instead (schema built once per binary,
+	// byte-copied per Env) — a full InitDB per Env blows the CI -race timeout.
 	OpenMigrated func(path string) (*gorm.DB, error)
 }
 
@@ -75,10 +76,12 @@ type Env struct {
 	// population and handle resolution so those queries never land in
 	// Counter's tally (the two-connection pattern from
 	// controllers/hot_paths_perf_test.go).
-	seedDB  *gorm.DB
-	dataset *largedata.ProfileDataset
-	router  *gin.Engine
-	closers []func()
+	seedDB    *gorm.DB
+	dbPath    string
+	closeSeed bool // false when an injected opener (internal/dbtest) owns seedDB's lifetime
+	dataset   *largedata.ProfileDataset
+	router    *gin.Engine
+	closers   []func()
 
 	UserID uint
 
@@ -114,8 +117,10 @@ func NewEnv(opts EnvOptions) (*Env, error) {
 
 	dbPath := filepath.Join(opts.WorkDir, "perfbench.db")
 	open := opts.OpenMigrated
-	if open == nil {
+	closeSeed := false
+	if open == nil { // # pragma: no cover — the cmd's real-migration path; every test injects a dbtest opener
 		open = database.InitDB
+		closeSeed = true // this Env opened seedDB, so this Env closes it
 	}
 
 	seedDB, err := open(dbPath)
@@ -145,14 +150,19 @@ func NewEnv(opts EnvOptions) (*Env, error) {
 	}
 
 	e := &Env{
-		Profile: opts.Profile,
-		Cfg:     config.Config{ProfilePhotoDir: photoDir},
-		DB:      countDB,
-		Counter: counter,
-		seedDB:  seedDB,
-		dataset: ds,
+		Profile:   opts.Profile,
+		Cfg:       config.Config{ProfilePhotoDir: photoDir},
+		DB:        countDB,
+		Counter:   counter,
+		seedDB:    seedDB,
+		dbPath:    dbPath,
+		closeSeed: closeSeed,
+		dataset:   ds,
 	}
-	e.closers = append(e.closers, closeGorm(countDB), closeGorm(seedDB))
+	e.closers = append(e.closers, closeGorm(countDB))
+	if closeSeed { // # pragma: no cover — only set on the cmd's nil-opener path; tests' dbtest opener owns seedDB
+		e.closers = append(e.closers, closeGorm(seedDB))
+	}
 
 	if err := e.resolveHandles(base); err != nil { // # pragma: no cover — resolveHandles only fails on an empty dataset, which Populate never returns
 		e.Close()
@@ -247,6 +257,66 @@ func (e *Env) Router() *gin.Engine {
 // user — the row-count scale growth.go compares operations against.
 func (e *Env) ContactCount() int { return e.dataset.ContactCount() }
 
+// forkForDestructive returns a second Env backed by a byte copy of this Env's
+// (already populated) database, under workDir. It is how a destructive
+// operation (merge, delete cascade) gets its own fixture WITHOUT paying a
+// second migrate + populate — the dominant cost under CI -race. The copy has
+// identical rows and IDs, so the parent's resolved handles carry over
+// verbatim. The parent must not be mutated between forking and measuring.
+func (e *Env) forkForDestructive(workDir string) (*Env, error) {
+	// Fold the WAL back into the main file so a plain copy is complete and
+	// consistent (the internal/dbtest template trick).
+	sqlDB, err := e.seedDB.DB()
+	if err != nil { // # pragma: no cover — e.seedDB is a live handle
+		return nil, err
+	}
+	if _, err := sqlDB.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil { // # pragma: no cover — checkpoint on a healthy WAL db
+		return nil, err
+	}
+
+	dst := filepath.Join(workDir, "fork.db")
+	if err := copyFile(e.dbPath, dst); err != nil { // # pragma: no cover — copy within a writable temp tree
+		return nil, err
+	}
+
+	counter := database.NewQueryCounter()
+	countDB, err := database.OpenMigratedFileWithLogger(dst, counter)
+	if err != nil { // # pragma: no cover — reopening a just-copied migrated file
+		return nil, err
+	}
+	seedDB, err := database.OpenMigratedFile(dst)
+	if err != nil { // # pragma: no cover — see above
+		_ = closeGormNow(countDB)
+		return nil, err
+	}
+
+	photoDir := filepath.Join(workDir, "photos")
+	if err := os.MkdirAll(photoDir, 0o750); err != nil { // # pragma: no cover — mkdir under a writable temp dir
+		_ = closeGormNow(countDB)
+		_ = closeGormNow(seedDB)
+		return nil, err
+	}
+
+	f := &Env{
+		Profile:             e.Profile,
+		Cfg:                 config.Config{ProfilePhotoDir: photoDir},
+		DB:                  countDB,
+		Counter:             counter,
+		seedDB:              seedDB,
+		dbPath:              dst,
+		closeSeed:           true,
+		dataset:             e.dataset,
+		UserID:              e.UserID,
+		NormalContact:       e.NormalContact,
+		HubContact:          e.HubContact,
+		SecondHubContact:    e.SecondHubContact,
+		PathologicalContact: e.PathologicalContact,
+		CircleName:          e.CircleName,
+	}
+	f.closers = []func(){closeGorm(countDB), closeGorm(seedDB)}
+	return f, nil
+}
+
 // Close releases every connection this Env opened.
 func (e *Env) Close() {
 	for i := len(e.closers) - 1; i >= 0; i-- {
@@ -256,11 +326,34 @@ func (e *Env) Close() {
 }
 
 func closeGorm(db *gorm.DB) func() {
-	return func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
+	return func() { _ = closeGormNow(db) }
+}
+
+func closeGormNow(db *gorm.DB) error {
+	sqlDB, err := db.DB()
+	if err != nil { // # pragma: no cover — db is always a live handle here
+		return err
 	}
+	return sqlDB.Close()
+}
+
+// copyFile is a minimal file copy for forkForDestructive (mirrors the
+// unexported one in internal/dbtest).
+func copyFile(src, dst string) error {
+	in, err := os.Open(src) // #nosec G304 -- src is this package's own temp db path, never request input
+	if err != nil {         // # pragma: no cover — src was just written by Populate
+		return err
+	}
+	defer in.Close()
+	out, err := os.Create(dst) // #nosec G304 -- dst is a caller t.TempDir()/os.MkdirTemp path
+	if err != nil {            // # pragma: no cover — dst dir exists and is writable
+		return err
+	}
+	if _, err := io.Copy(out, in); err != nil { // # pragma: no cover — local temp-fs copy
+		_ = out.Close()
+		return err
+	}
+	return out.Close()
 }
 
 // blockName is largedata's contact-name re-keying: "<manifest name>_<block>".

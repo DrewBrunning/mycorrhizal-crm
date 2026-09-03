@@ -11,8 +11,9 @@ import (
 
 // readIterations is how many times a non-destructive operation is run for the
 // duration median. The query count and result size are read from the first
-// measured iteration (they are deterministic; the clock is not).
-const readIterations = 7
+// measured iteration (they are deterministic; the clock is not), so this only
+// governs the median's stability — kept modest to bound CI time under -race.
+const readIterations = 3
 
 // Result is one operation measured at one profile.
 type Result struct {
@@ -41,9 +42,12 @@ type Result struct {
 func Measure(e *Env, op Operation) (Result, error) {
 	iters := readIterations
 	warmUp := true
-	if op.Destructive {
+	switch {
+	case op.Destructive:
 		iters = 1
 		warmUp = false // the single run IS the measurement; there is no second chance.
+	case op.SlowRead:
+		iters = 1 // query count (iter 0) is still deterministic; the median is advisory
 	}
 
 	prepare := func() error {
@@ -102,15 +106,25 @@ func Measure(e *Env, op Operation) (Result, error) {
 	}, nil
 }
 
-// RunProfile builds an Env for opts.Profile and measures every registered
-// operation against it. Destructive operations each get their own fresh Env
-// (a sub-directory copy) so they never perturb another operation's numbers.
+// RunProfile builds an Env for opts.Profile, measures every registered
+// operation against it, and releases the Env.
 func RunProfile(opts EnvOptions) ([]Result, error) {
+	env, out, err := RunProfileKeepEnv(opts)
+	if env != nil {
+		env.Close()
+	}
+	return out, err
+}
+
+// RunProfileKeepEnv is RunProfile but hands the shared Env back to the caller
+// (who must Close it). Tests reuse it to run extra assertions against the same
+// populated fixture instead of paying for a second migrate + populate.
+// Destructive operations still run against their own byte copy of the fixture.
+func RunProfileKeepEnv(opts EnvOptions) (*Env, []Result, error) {
 	shared, err := NewEnv(opts)
 	if err != nil { // # pragma: no cover — NewEnv failure modes are all pragma'd there
-		return nil, err
+		return nil, nil, err
 	}
-	defer shared.Close()
 
 	var out []Result
 	for _, op := range Registry() {
@@ -118,11 +132,15 @@ func RunProfile(opts EnvOptions) ([]Result, error) {
 		if op.Destructive {
 			sub, err := os.MkdirTemp(opts.WorkDir, "op-"+op.Name+"-")
 			if err != nil { // # pragma: no cover — MkdirTemp under an existing writable dir
-				return nil, fmt.Errorf("perfbench: sub-dir for %s: %w", op.Name, err)
+				shared.Close()
+				return nil, nil, fmt.Errorf("perfbench: sub-dir for %s: %w", op.Name, err)
 			}
-			env, err = NewEnv(EnvOptions{Profile: opts.Profile, WorkDir: sub, OpenMigrated: opts.OpenMigrated})
-			if err != nil { // # pragma: no cover — same fresh-schema path NewEnv already succeeded on above
-				return nil, err
+			// A byte copy of the already-populated fixture — no second
+			// migrate + populate (the dominant cost under CI -race).
+			env, err = shared.forkForDestructive(sub)
+			if err != nil { // # pragma: no cover — copy + reopen of a healthy local db
+				shared.Close()
+				return nil, nil, err
 			}
 		}
 		r, err := Measure(env, op)
@@ -130,11 +148,12 @@ func RunProfile(opts EnvOptions) ([]Result, error) {
 			env.Close()
 		}
 		if err != nil { // # pragma: no cover — every registered operation succeeds against a freshly populated fixture
-			return nil, err
+			shared.Close()
+			return nil, nil, err
 		}
 		out = append(out, r)
 	}
-	return out, nil
+	return shared, out, nil
 }
 
 func medianNanos(durs []time.Duration) int64 {

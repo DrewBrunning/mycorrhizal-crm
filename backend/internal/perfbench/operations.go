@@ -45,6 +45,11 @@ type Operation struct {
 	// Destructive operations mutate the fixture irreversibly (merge, delete
 	// cascade). They get their own fresh Env and are measured exactly once.
 	Destructive bool
+	// SlowRead marks a read whose wall-clock is large enough that N iterations
+	// would dominate CI time (the deep recursive-CTE traversals). Measured
+	// once — the query count from that run is still the deterministic gate;
+	// only the median loses its averaging.
+	SlowRead bool
 	// ExpectedGrowth is the worst growth class this operation is allowed to
 	// exhibit across scales. Every core operation is "constant" in query count
 	// — a bounded number of statements regardless of data volume — except the
@@ -141,14 +146,14 @@ func Registry() []Operation {
 			},
 		},
 		{
-			Name: "graph.traverse_deep", Category: "read", ExpectedGrowth: GrowthConstant,
+			Name: "graph.traverse_deep", Category: "read", ExpectedGrowth: GrowthConstant, SlowRead: true,
 			Run: func(e *Env) (int, error) {
 				chains, err := services.TraverseGraph(e.DB, e.UserID, e.HubContact.VCardUID, 4, "")
 				return len(chains), err
 			},
 		},
 		{
-			Name: "graph.traverse_hub", Category: "read", ExpectedGrowth: GrowthConstant,
+			Name: "graph.traverse_hub", Category: "read", ExpectedGrowth: GrowthConstant, SlowRead: true,
 			Run: func(e *Env) (int, error) {
 				chains, err := services.TraverseGraph(e.DB, e.UserID, e.SecondHubContact.VCardUID, 3, "")
 				return len(chains), err
