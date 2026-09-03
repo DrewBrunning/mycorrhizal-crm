@@ -8,6 +8,7 @@ import (
 )
 
 func TestIsPublicIP(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		ip     string
@@ -69,10 +70,12 @@ func TestIsPublicIP(t *testing.T) {
 }
 
 func TestIsPublicIPNil(t *testing.T) {
+	t.Parallel()
 	assert.False(t, IsPublicIP(nil), "a nil IP must fail closed")
 }
 
 func TestFirstPublicIP(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		ips  []string

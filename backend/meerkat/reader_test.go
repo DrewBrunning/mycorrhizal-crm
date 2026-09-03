@@ -22,6 +22,7 @@ func newTestDB(t *testing.T) (*sql.DB, string) {
 }
 
 func TestOpen_RejectsMissingAndNonSQLiteFiles(t *testing.T) {
+	t.Parallel()
 	_, err := Open(filepath.Join(t.TempDir(), "nope.db"))
 	assert.Error(t, err, "missing file must error")
 
@@ -32,6 +33,7 @@ func TestOpen_RejectsMissingAndNonSQLiteFiles(t *testing.T) {
 }
 
 func TestOpen_ReadsContactsAndToleratesMissingTables(t *testing.T) {
+	t.Parallel()
 	db, path := newTestDB(t)
 	_, err := db.Exec(`CREATE TABLE contacts (
 		id INTEGER PRIMARY KEY, user_id INTEGER, deleted_at DATETIME,
@@ -69,6 +71,7 @@ func TestOpen_ReadsContactsAndToleratesMissingTables(t *testing.T) {
 }
 
 func TestOpen_ReadsRelationshipsNotesActivitiesReminders(t *testing.T) {
+	t.Parallel()
 	db, path := newTestDB(t)
 	stmts := []string{
 		`CREATE TABLE relationships (id INTEGER PRIMARY KEY, user_id INTEGER, deleted_at DATETIME, name TEXT, type TEXT, contact_id INTEGER, related_contact_id INTEGER)`,
@@ -132,6 +135,7 @@ func TestOpen_ReadsRelationshipsNotesActivitiesReminders(t *testing.T) {
 // carrying every optional column (photo_thumbnail, vcard_extra, etag, all the
 // JSON arrays, deleted_at) must decode each onto the right pointer.
 func TestOpen_DegenerateTableWithNoMatchingColumns(t *testing.T) {
+	t.Parallel()
 	db, path := newTestDB(t)
 	// An activity_contacts table that shares no columns with what the reader
 	// looks for: the reader must degrade to no rows, not fail. Same for a
@@ -157,6 +161,7 @@ func TestOpen_DegenerateTableWithNoMatchingColumns(t *testing.T) {
 // carrying every optional column (photo_thumbnail, vcard_extra, etag, all the
 // JSON arrays, deleted_at) must decode each onto the right pointer.
 func TestOpen_ReadsEveryContactColumn(t *testing.T) {
+	t.Parallel()
 	db, path := newTestDB(t)
 	_, err := db.Exec(`CREATE TABLE contacts (
 		id INTEGER PRIMARY KEY, user_id INTEGER, created_at DATETIME, updated_at DATETIME, deleted_at DATETIME,
@@ -214,6 +219,7 @@ func TestOpen_ReadsEveryContactColumn(t *testing.T) {
 }
 
 func TestOpen_ReadsUsersForThePicker(t *testing.T) {
+	t.Parallel()
 	db, path := newTestDB(t)
 	_, err := db.Exec(`
 		CREATE TABLE contacts (id INTEGER PRIMARY KEY, firstname TEXT);
@@ -234,6 +240,7 @@ func TestOpen_ReadsUsersForThePicker(t *testing.T) {
 }
 
 func TestOpen_UsersFallBackToFirstLastName(t *testing.T) {
+	t.Parallel()
 	db, path := newTestDB(t)
 	_, err := db.Exec(`
 		CREATE TABLE contacts (id INTEGER PRIMARY KEY);
@@ -250,6 +257,7 @@ func TestOpen_UsersFallBackToFirstLastName(t *testing.T) {
 }
 
 func TestOpen_NoUsersTable(t *testing.T) {
+	t.Parallel()
 	db, path := newTestDB(t)
 	_, err := db.Exec(`CREATE TABLE contacts (id INTEGER PRIMARY KEY);`)
 	require.NoError(t, err)

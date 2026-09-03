@@ -3,6 +3,7 @@ package contactmodel
 import "testing"
 
 func TestDiagnosticRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullDiagnostic())
 }
 
@@ -25,6 +26,7 @@ var (
 )
 
 func TestNoopAdapterSatisfiesInterfaces(t *testing.T) {
+	t.Parallel()
 	var imp Importer = noopAdapter{}
 	var exp Exporter = noopAdapter{}
 

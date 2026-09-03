@@ -19,6 +19,7 @@ import (
 // different case, or whose long values are folded differently is the SAME
 // contact.
 func TestRoundTrip_SerializedVarianceDoesNotFail(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:  "u1",
 		Name: &contactmodel.Name{Full: "Ada Lovelace"},
@@ -97,6 +98,7 @@ func permuteVCard(raw string) string {
 // same check explicitly: a value that is valid after being folded at a
 // different point than the encoder chose must parse to the same contact.
 func TestRoundTrip_LineFoldingVarianceDoesNotFail(t *testing.T) {
+	t.Parallel()
 	// A NOTE long enough to fold, exported once, then re-folded at a different
 	// width before re-import.
 	rec := &contactmodel.Record{Card: contactmodel.Card{

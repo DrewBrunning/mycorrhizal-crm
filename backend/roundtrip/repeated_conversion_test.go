@@ -89,6 +89,7 @@ func passthroughBytes(t *testing.T, rec *contactmodel.Record) []byte {
 // the format's exporter+importer is not idempotent-after-first-conversion:
 // repeated CardDAV sync of that contact would keep mutating it.
 func TestRepeatedConversion_SameFormatStabilizes(t *testing.T) {
+	t.Parallel()
 	m, err := canonicalfixture.Read()
 	require.NoError(t, err)
 
@@ -179,6 +180,7 @@ func formatByName(name string) format {
 // and never grows, and no new warn diagnostics appear after the first
 // traversal. Cross-format is where cardinality and structure loss compound.
 func TestRepeatedConversion_CrossFormatChainsConverge(t *testing.T) {
+	t.Parallel()
 	m, err := canonicalfixture.Read()
 	require.NoError(t, err)
 

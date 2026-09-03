@@ -34,6 +34,7 @@ func pagedJSON(items []map[string]any, page, lastPage, total int) []byte {
 }
 
 func TestNewClientURLNormalization(t *testing.T) {
+	t.Parallel()
 	cases := map[string]string{
 		"https://monica.example.com":      "https://monica.example.com/api",
 		"https://monica.example.com/":     "https://monica.example.com/api",
@@ -54,6 +55,7 @@ func TestNewClientURLNormalization(t *testing.T) {
 }
 
 func TestFetchAllContactsPaginationAndAuth(t *testing.T) {
+	t.Parallel()
 	var sawAuth, sawWith bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api/contacts", r.URL.Path)
@@ -86,6 +88,7 @@ func TestFetchAllContactsPaginationAndAuth(t *testing.T) {
 }
 
 func TestGetRetriesOn429(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -104,6 +107,7 @@ func TestGetRetriesOn429(t *testing.T) {
 }
 
 func TestGetGivesUpAfterMaxRetries(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -119,6 +123,7 @@ func TestGetGivesUpAfterMaxRetries(t *testing.T) {
 }
 
 func TestGetUnauthorized(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
@@ -129,6 +134,7 @@ func TestGetUnauthorized(t *testing.T) {
 }
 
 func TestGetUnreachableHost(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	server.Close() // connection refused
 
@@ -137,6 +143,7 @@ func TestGetUnreachableHost(t *testing.T) {
 }
 
 func TestGetInvalidJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "<html>login page</html>")
 	}))
@@ -149,6 +156,7 @@ func TestGetInvalidJSON(t *testing.T) {
 // blockPrivate=true refuses a host that resolves only to a loopback/private
 // address (httptest listens on 127.0.0.1), before any request is sent.
 func TestBlockPrivateRefusesLoopback(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write(pagedJSON(nil, 1, 1, 0))
 	}))
@@ -161,6 +169,7 @@ func TestBlockPrivateRefusesLoopback(t *testing.T) {
 }
 
 func TestCountEntities(t *testing.T) {
+	t.Parallel()
 	totals := map[string]int{
 		"/api/contacts": 12, "/api/activities": 4, "/api/notes": 7, "/api/reminders": 2,
 		"/api/calls": 1, "/api/tasks": 0, "/api/gifts": 3, "/api/debts": 5,
@@ -182,6 +191,7 @@ func TestCountEntities(t *testing.T) {
 }
 
 func TestFetchContactRelationships(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api/contacts/7/relationships", r.URL.Path)
 		_, _ = w.Write(pagedJSON([]map[string]any{{
@@ -200,6 +210,7 @@ func TestFetchContactRelationships(t *testing.T) {
 }
 
 func TestFetchAvatarTokenScoping(t *testing.T) {
+	t.Parallel()
 	var monicaAuth string
 	monicaServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		monicaAuth = r.Header.Get("Authorization")
@@ -230,6 +241,7 @@ func TestFetchAvatarTokenScoping(t *testing.T) {
 }
 
 func TestGetRespectsContextCancellation(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Retry-After", "5")
 		w.WriteHeader(http.StatusTooManyRequests)
@@ -246,6 +258,7 @@ func TestGetRespectsContextCancellation(t *testing.T) {
 // Nested endpoints (and some Monica versions) omit pagination meta entirely,
 // which must not truncate the list at the first full page.
 func TestFetchAllWithoutPaginationMeta(t *testing.T) {
+	t.Parallel()
 	fullPage := make([]map[string]any, pageSize)
 	for i := range fullPage {
 		fullPage[i] = map[string]any{"id": i}
@@ -274,6 +287,7 @@ func TestFetchAllWithoutPaginationMeta(t *testing.T) {
 
 // A short first page still ends the walk immediately.
 func TestFetchAllStopsOnShortPageWithoutMeta(t *testing.T) {
+	t.Parallel()
 	var calls int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
@@ -290,6 +304,7 @@ func TestFetchAllStopsOnShortPageWithoutMeta(t *testing.T) {
 
 // An endpoint that ignores the page parameter must not loop forever.
 func TestFetchAllStopsAtMaxPages(t *testing.T) {
+	t.Parallel()
 	fullPage := make([]map[string]any, pageSize)
 	for i := range fullPage {
 		fullPage[i] = map[string]any{"id": i}
@@ -308,6 +323,7 @@ func TestFetchAllStopsAtMaxPages(t *testing.T) {
 // TestFetchAllEntities exercises every FetchAll* wrapper (they only differ by
 // path) plus the progress callback.
 func TestFetchAllEntities(t *testing.T) {
+	t.Parallel()
 	var seenPaths []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		seenPaths = append(seenPaths, r.URL.Path)
@@ -332,6 +348,7 @@ func TestFetchAllEntities(t *testing.T) {
 }
 
 func TestRetryDelayHonoursRetryAfterSeconds(t *testing.T) {
+	t.Parallel()
 	// A numeric Retry-After is used verbatim (capped at maxRetryAfter).
 	respHdr := func(v string) *http.Response {
 		h := http.Header{}
@@ -347,6 +364,7 @@ func TestRetryDelayHonoursRetryAfterSeconds(t *testing.T) {
 }
 
 func TestHandleResponseClassifiesStatuses(t *testing.T) {
+	t.Parallel()
 	mk := func(code int) (bool, error) {
 		c := &Client{}
 		body := io.NopCloser(strings.NewReader(`{}`))
@@ -362,6 +380,7 @@ func TestHandleResponseClassifiesStatuses(t *testing.T) {
 }
 
 func TestFetchAvatarErrors(t *testing.T) {
+	t.Parallel()
 	c := newTestClient(t, "http://example.invalid")
 	_, _, err := c.FetchAvatar(context.Background(), "://bad")
 	assert.ErrorIs(t, err, ErrInvalidURL)

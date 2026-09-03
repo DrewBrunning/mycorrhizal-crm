@@ -50,6 +50,7 @@ func bombPNG(width, height uint32) []byte {
 // declaring 60000x60000 (3.6 billion pixels) is refused before any Decode
 // call would allocate a raster for it.
 func TestCheckImageDimensionsRefusesBomb(t *testing.T) {
+	t.Parallel()
 	bomb := bombPNG(60000, 60000)
 	if len(bomb) > 100 {
 		t.Fatalf("sanity: expected a tiny file, got %d bytes", len(bomb))
@@ -62,6 +63,7 @@ func TestCheckImageDimensionsRefusesBomb(t *testing.T) {
 // TestCheckImageDimensionsAllowsOrdinaryPhoto pins the non-regression side:
 // a normal photo-sized image is not caught by the guard.
 func TestCheckImageDimensionsAllowsOrdinaryPhoto(t *testing.T) {
+	t.Parallel()
 	ordinary := bombPNG(4000, 3000) // 12MP, a typical phone photo
 	if err := CheckImageDimensions(bytes.NewReader(ordinary)); err != nil {
 		t.Fatalf("expected an ordinary 4000x3000 image to pass, got: %v", err)
@@ -75,6 +77,7 @@ func TestCheckImageDimensionsAllowsOrdinaryPhoto(t *testing.T) {
 // actually wired into the real call, not just the helper it calls -- and
 // must not leave a file behind.
 func TestSaveContactPhoto_DecompressionBombRefused(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	bomb := bombPNG(60000, 60000)
 

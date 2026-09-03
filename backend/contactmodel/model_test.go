@@ -7,102 +7,127 @@ import (
 )
 
 func TestNameComponentRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullNameComponent())
 }
 
 func TestNameRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullName())
 }
 
 func TestNicknameRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullNickname())
 }
 
 func TestOrgUnitRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullOrgUnit())
 }
 
 func TestOrganizationRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullOrganization())
 }
 
 func TestTitleRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullTitle())
 }
 
 func TestEmailRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullEmail())
 }
 
 func TestPhoneRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullPhone())
 }
 
 func TestOnlineServiceRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullOnlineService())
 }
 
 func TestAddressComponentRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullAddressComponent())
 }
 
 func TestAddressRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullAddress())
 }
 
 func TestPartialDateRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullPartialDate())
 }
 
 func TestAnniversaryDateRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullAnniversaryDate())
 }
 
 func TestAnniversaryRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullAnniversary())
 }
 
 func TestSpeakToAsRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullSpeakToAs())
 }
 
 func TestGrammaticalGenderRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullGrammaticalGender())
 }
 
 func TestPronounsRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullPronouns())
 }
 
 func TestPersonalInfoRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullPersonalInfo())
 }
 
 func TestAuthorRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullAuthor())
 }
 
 func TestNoteRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullNote())
 }
 
 func TestResourceRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullResource())
 }
 
 func TestLanguagePrefRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullLanguagePref())
 }
 
 func TestRelationRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullRelation())
 }
 
 func TestTimestampRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullTimestamp())
 }
 
 func TestCardRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullCard())
 }
 
@@ -113,6 +138,7 @@ func TestCardRoundTrip(t *testing.T) {
 // survive a JSON marshal/unmarshal cycle; a plain reflect.DeepEqual of the
 // whole literal would therefore incorrectly fail on those two fields alone.
 func TestRecordRoundTrip(t *testing.T) {
+	t.Parallel()
 	original := fullRecord()
 
 	data, err := json.Marshal(original)

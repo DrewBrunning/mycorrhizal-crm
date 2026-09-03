@@ -12,6 +12,7 @@ import (
 // --- (a) no duplicate concept_id -------------------------------------------------
 
 func TestNoDuplicateConceptID(t *testing.T) {
+	t.Parallel()
 	seen := make(map[string]bool)
 	for _, r := range Load() {
 		if seen[r.ConceptID] {
@@ -94,6 +95,7 @@ func resolveNeutralPath(path string) error {
 }
 
 func TestNeutralPathResolves(t *testing.T) {
+	t.Parallel()
 	for _, r := range Load() {
 		r := r
 		t.Run(r.ConceptID, func(t *testing.T) {
@@ -132,6 +134,7 @@ var validTransforms = map[string]bool{
 }
 
 func TestTransformNamesAreRegistered(t *testing.T) {
+	t.Parallel()
 	for _, r := range Load() {
 		r := r
 		t.Run(r.ConceptID, func(t *testing.T) {
@@ -194,6 +197,7 @@ func baseProp(prop string) (name string, skip bool) {
 }
 
 func TestPropertyNamesAreIANA(t *testing.T) {
+	t.Parallel()
 	for _, r := range Load() {
 		r := r
 		t.Run(r.ConceptID+"/v4", func(t *testing.T) {

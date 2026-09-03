@@ -6,6 +6,7 @@ import (
 )
 
 func TestCRMEnvelopeRoundTrip(t *testing.T) {
+	t.Parallel()
 	assertRoundTrip(t, fullCRMEnvelope())
 }
 
@@ -30,6 +31,7 @@ func jsonOmitemptyOmitted[T any](zero T, key string) bool {
 // JSON serialization/deserialization, and never collides with the
 // standardized Card.SpeakToAs concepts it is deliberately distinct from.
 func TestCRMEnvelopeGenderRoundTrip(t *testing.T) {
+	t.Parallel()
 	env := fullCRMEnvelope()
 	if env.Gender != "female" {
 		t.Fatalf("fullCRMEnvelope().Gender = %q, want female", env.Gender)

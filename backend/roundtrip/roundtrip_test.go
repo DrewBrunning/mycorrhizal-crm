@@ -80,6 +80,7 @@ var formats = []format{
 //     for equality like any other mapped concept (the pt.vcard/pt.jscontact
 //     rows).
 func TestRoundTrip_CanonicalFixture(t *testing.T) {
+	t.Parallel()
 	m, err := canonicalfixture.Read()
 	require.NoError(t, err)
 	byConcept := correspondence.ByConcept()

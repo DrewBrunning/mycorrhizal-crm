@@ -43,6 +43,7 @@ func (f *fakeT) Fatalf(format string, args ...any) {
 }
 
 func TestLoadFixture(t *testing.T) {
+	t.Parallel()
 	data := LoadFixture("rfc6350-baseline.v4.vcf")
 	if len(data) == 0 {
 		t.Fatalf("LoadFixture returned empty data")
@@ -56,6 +57,7 @@ func TestLoadFixture(t *testing.T) {
 }
 
 func TestLoadFixture_missingPanics(t *testing.T) {
+	t.Parallel()
 	defer func() {
 		if r := recover(); r == nil {
 			t.Errorf("LoadFixture(missing) should have panicked")
@@ -72,16 +74,19 @@ const tinyVCard = "BEGIN:VCARD\r\n" +
 	"END:VCARD\r\n"
 
 func TestAssertVCardLine_matches(t *testing.T) {
+	t.Parallel()
 	AssertVCardLine(t, []byte(tinyVCard), "TEL", map[string]string{"TYPE": "cell"}, "+15551234567")
 }
 
 func TestAssertVCardLine_subsetParamsIgnoreExtras(t *testing.T) {
+	t.Parallel()
 	// wantParams only checks PREF; TYPE=cell is an "extra" param on the field
 	// and must not cause a mismatch (subset-match rule).
 	AssertVCardLine(t, []byte(tinyVCard), "TEL", map[string]string{"PREF": "1"}, "+15551234567")
 }
 
 func TestAssertVCardLine_reportsMismatchWithoutPanicking(t *testing.T) {
+	t.Parallel()
 	ft := &fakeT{}
 	assertVCardLine(ft, []byte(tinyVCard), "TEL", map[string]string{"TYPE": "fax"}, "+15551234567")
 	if !ft.failed {
@@ -90,6 +95,7 @@ func TestAssertVCardLine_reportsMismatchWithoutPanicking(t *testing.T) {
 }
 
 func TestAssertVCardLine_missingPropertyReportsError(t *testing.T) {
+	t.Parallel()
 	ft := &fakeT{}
 	assertVCardLine(ft, []byte(tinyVCard), "EMAIL", nil, "nobody@example.com")
 	if !ft.failed {
@@ -98,6 +104,7 @@ func TestAssertVCardLine_missingPropertyReportsError(t *testing.T) {
 }
 
 func TestAssertVCardLine_unparsableReportsFatal(t *testing.T) {
+	t.Parallel()
 	ft := &fakeT{}
 	assertVCardLine(ft, []byte("not a vcard at all"), "TEL", nil, "x")
 	if !ft.failed {
@@ -114,24 +121,29 @@ const tinyJSON = `{
 }`
 
 func TestAssertJSONPointer_matchesString(t *testing.T) {
+	t.Parallel()
 	AssertJSONPointer(t, []byte(tinyJSON), "/phones/k1/number", "+15551234567")
 }
 
 func TestAssertJSONPointer_matchesNumber(t *testing.T) {
+	t.Parallel()
 	// want as plain int; resolved JSON number decodes as float64 — helper must
 	// coerce for the comparison to succeed.
 	AssertJSONPointer(t, []byte(tinyJSON), "/phones/k1/pref", 1)
 }
 
 func TestAssertJSONPointer_matchesArrayIndex(t *testing.T) {
+	t.Parallel()
 	AssertJSONPointer(t, []byte(tinyJSON), "/nested/2/three", 3)
 }
 
 func TestAssertJSONPointer_matchesBool(t *testing.T) {
+	t.Parallel()
 	AssertJSONPointer(t, []byte(tinyJSON), "/keywords/family", true)
 }
 
 func TestAssertJSONPointer_unresolvableReportsError(t *testing.T) {
+	t.Parallel()
 	ft := &fakeT{}
 	assertJSONPointer(ft, []byte(tinyJSON), "/phones/does-not-exist/number", "x")
 	if !ft.failed {
@@ -140,6 +152,7 @@ func TestAssertJSONPointer_unresolvableReportsError(t *testing.T) {
 }
 
 func TestAssertJSONPointer_mismatchReportsError(t *testing.T) {
+	t.Parallel()
 	ft := &fakeT{}
 	assertJSONPointer(ft, []byte(tinyJSON), "/phones/k1/number", "+19998887777")
 	if !ft.failed {
@@ -148,6 +161,7 @@ func TestAssertJSONPointer_mismatchReportsError(t *testing.T) {
 }
 
 func TestAssertJSONPointer_invalidJSONReportsFatal(t *testing.T) {
+	t.Parallel()
 	ft := &fakeT{}
 	assertJSONPointer(ft, []byte("{not valid json"), "/x", "y")
 	if !ft.failed {
@@ -156,6 +170,7 @@ func TestAssertJSONPointer_invalidJSONReportsFatal(t *testing.T) {
 }
 
 func TestNeutralFromJSON_intoContactmodelRecord(t *testing.T) {
+	t.Parallel()
 	var rec contactmodel.Record
 	NeutralFromJSON(t, `{"card": {"uid": "abc-123", "kind": "individual"}}`, &rec)
 	if rec.Card.UID != "abc-123" {
@@ -167,6 +182,7 @@ func TestNeutralFromJSON_intoContactmodelRecord(t *testing.T) {
 }
 
 func TestNeutralFromJSON_badJSONReportsError(t *testing.T) {
+	t.Parallel()
 	ft := &fakeT{}
 	var rec contactmodel.Record
 	neutralFromJSON(ft, `{not valid json`, &rec)

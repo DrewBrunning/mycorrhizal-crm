@@ -25,6 +25,7 @@ const docsManifestPath = "../../../docs/adversarial-fixtures/MANIFEST.md"
 // TestEveryFixtureDeclared: a fixture file with no manifest entry is not a
 // test. Listing every file (not the reverse) is the strong direction.
 func TestEveryFixtureDeclared(t *testing.T) {
+	t.Parallel()
 	entries, err := fixturesFS.ReadDir("fixtures")
 	require.NoError(t, err)
 	for _, e := range entries {
@@ -39,6 +40,7 @@ func TestEveryFixtureDeclared(t *testing.T) {
 // TestEveryManifestEntryResolves: a manifest entry pointing at a missing
 // fixture is a dangling promise.
 func TestEveryManifestEntryResolves(t *testing.T) {
+	t.Parallel()
 	for _, fx := range Manifest {
 		if _, err := fixturesFS.ReadFile("fixtures/" + fx.Name); err != nil {
 			t.Errorf("manifest entry %s has no fixture file: %v", fx.Name, err)
@@ -49,6 +51,7 @@ func TestEveryManifestEntryResolves(t *testing.T) {
 // TestDeclaredTierVocabulary: the tier strings are exactly the ADR-0002
 // vocabulary; a typo like "presrve" would silently never be asserted.
 func TestDeclaredTierVocabulary(t *testing.T) {
+	t.Parallel()
 	for _, fx := range Manifest {
 		switch fx.Tier {
 		case "preserve", "warn", "error", "bound":
@@ -69,6 +72,7 @@ func TestDeclaredTierVocabulary(t *testing.T) {
 // stops the human-readable corpus description from drifting from the
 // assertions actually run.
 func TestManifestMirrorsDocs(t *testing.T) {
+	t.Parallel()
 	raw, err := os.ReadFile(docsManifestPath)
 	require.NoError(t, err)
 
@@ -116,6 +120,7 @@ func normTier(s string) string {
 // corpus unchanged — no silent hand-edits to make a harness pass (the same
 // rule ADR-0003 applies to golden fixtures).
 func TestFixturesByteIdenticalToDocs(t *testing.T) {
+	t.Parallel()
 	for _, fx := range Manifest {
 		embedded := LoadFixture(fx.Name)
 		onDisk, err := os.ReadFile(filepath.Join(docsDir, fx.Name))
@@ -140,6 +145,7 @@ func importFixture(fx Fixture, raw []byte) (*contactmodel.Record, []contactmodel
 // the test process; a hang trips the test timeout), and no fixture may
 // produce a partially-written record where the tier says preserve.
 func TestDeclaredTiersHold(t *testing.T) {
+	t.Parallel()
 	for _, fx := range Manifest {
 		t.Run(fx.Name, func(t *testing.T) {
 			raw := LoadFixture(fx.Name)
@@ -181,6 +187,7 @@ func hasWarn(diags []contactmodel.Diagnostic) bool {
 // landing spots for the fixtures that exist to prove passthrough are pinned
 // here.
 func TestPreservedDataLandsWhereDeclared(t *testing.T) {
+	t.Parallel()
 	// ven-x-properties.vcf: every X- property must survive into Passthrough.VCard.
 	rec, _, err := importFixture(*ByName("ven-x-properties.vcf"), LoadFixture("ven-x-properties.vcf"))
 	require.NoError(t, err)
@@ -226,6 +233,7 @@ func TestPreservedDataLandsWhereDeclared(t *testing.T) {
 // completes (no panic, no hang) on them. The upload-boundary limits
 // themselves are #415's suite, cross-referenced in docs/security/asvs-l2.md.
 func TestSizeHostility_Amplified(t *testing.T) {
+	t.Parallel()
 	seed := LoadFixture("size-huge-property.vcf")
 	// Amplify the single NOTE to ~2 MB — well under MaxVCFSize (50 MB) but
 	// far past any line/property-size threshold a naive parser would trip.
