@@ -322,3 +322,103 @@ jobs:
       - name: Stop services
         if: always()
         run: docker compose -f docker-compose.test.yml down -v
+
+  # Issue #263: startup + dashboard-render macrobenchmark. Same emulator + same
+  # docker-compose.test.yml backend as android-e2e, and the same triggers
+  # (nightly / dispatch / path-gated push:main — never on a PR). Deliberately
+  # NON-GATING: `continue-on-error` keeps a red result from blocking the
+  # workflow, and the benchmark asserts no timing threshold — emulator numbers
+  # are noisy, so this is a trend signal + a local dev tool, not a budget (that
+  # is a separate follow-up). The trace/JSON is published as a run artifact.
+  android-macrobenchmark:
+    permissions:
+      contents: read
+      actions: read
+    name: Android macrobenchmark (emulator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    continue-on-error: true
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'))
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      - name: Set up JDK
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      # Reuses the scope=combined build cache the android-e2e / web E2E jobs
+      # populate, so this is normally a near-instant cache hit.
+      - name: Build all-in-one backend image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          push: false
+          load: true
+          tags: mycorrhizal-crm-test:latest
+          cache-from: type=gha,scope=combined
+          cache-to: type=gha,scope=combined,mode=max
+
+      - name: Start test backend
+        run: |
+          docker compose -f docker-compose.test.yml up -d
+          echo "Waiting for services to be ready..."
+          timeout 120 bash -c 'until curl -s http://localhost:7300/health/live > /dev/null 2>&1; do sleep 2; done'
+          echo "App is ready"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # `connectedCheck` builds+installs the app's `benchmark` variant (see
+      # app/build.gradle.kts) and runs StartupBenchmark + DashboardRenderBenchmark.
+      # suppressErrors=EMULATOR,UNLOCKED,LOW-BATTERY,ACTIVITY-MISSING: an
+      # emulator is not a valid perf-measurement device, but the numbers are
+      # still a useful relative trend and this job never gates on them. The
+      # dashboard scenario reads the backend via adb-reversed 127.0.0.1:7300.
+      - name: Run macrobenchmark
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          working-directory: ./android
+          script: |
+            adb reverse tcp:7300 tcp:7300
+            ./gradlew :macrobenchmark:connectedCheck -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300 -Pandroidx.benchmark.suppressErrors=EMULATOR,UNLOCKED,LOW-BATTERY,ACTIVITY-MISSING
+
+      - name: Upload macrobenchmark results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: always()
+        with:
+          name: android-macrobenchmark-results
+          path: |
+            android/macrobenchmark/build/outputs/
+            android/macrobenchmark/build/reports/
+          retention-days: 14
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.test.yml logs mycorrhizal
+
+      - name: Stop services
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v

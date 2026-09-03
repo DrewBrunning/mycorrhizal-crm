@@ -31,6 +31,14 @@ androidxTest = "1.6.1"
 androidxTestExtJunit = "1.2.1"
 mockwebserver = "4.12.0"
 espresso = "3.7.0"
+# Issue #263: the :macrobenchmark module — androidx.benchmark.macro
+# (MacrobenchmarkRule) for cold/warm/hot startup + dashboard frame timing,
+# plus uiautomator to drive the login flow before the dashboard scenario.
+# Only the runtime library is used (no androidx.benchmark Gradle plugin), so
+# there is no AGP-version gate to satisfy — the :macrobenchmark module is a
+# plain `com.android.test` module.
+benchmark = "1.3.4"
+uiautomator = "2.3.0"
 # Issue #268: retry failed JVM/Robolectric tests in CI so a flake doesn't
 # fail the required check; flaky tests are surfaced by the CI step that
 # scans the test-results XML (a test that passed only on retry still leaves
@@ -150,6 +158,9 @@ androidx-test-runner = { group = "androidx.test", name = "runner", version.ref =
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExtJunit" }
 androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+# Issue #263: macrobenchmark harness (:macrobenchmark module only).
+androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmark" }
+androidx-test-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 # Issue #268: the org.gradle.test-retry plugin marker — resolved from the

@@ -62,6 +62,25 @@ android {
             )
             signingConfig = signingConfigs.findByName("release")
         }
+
+        // Issue #263: the build type the `:macrobenchmark` module measures. It
+        // inherits release's R8 + resource-shrinking config so the numbers
+        // reflect a shipping-shaped build, but:
+        //   - debug-signed, so it installs on the CI emulator without the
+        //     release keystore (which is env-only and absent in the Android
+        //     jobs — see the signingConfigs block above);
+        //   - non-debuggable + `isProfileable`, so macrobenchmark can read
+        //     startup and frame timing (a debuggable build is rejected /
+        //     warns, and JIT/debug overhead pollutes the numbers).
+        // Never distributed — no CI job assembles it except the macrobenchmark
+        // one, and the GitHub Release APK is still the `release` variant.
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+            isProfileable = true
+        }
     }
 }
 

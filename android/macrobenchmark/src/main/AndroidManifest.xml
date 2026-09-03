@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Issue #263: the dashboard scenario ([DashboardRenderBenchmark])
+         registers the shared seed account against the docker-compose.test.yml
+         backend before driving the login UI, exactly as the instrumented E2E
+         suite does. That call is plain cleartext HTTP to the emulator's
+         host-loopback alias (http://10.0.2.2:7300) or an adb-reversed
+         127.0.0.1, so this test-only APK opts into cleartext. The app under
+         test keeps its own locked-down network-security config. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application android:usesCleartextTraffic="true" />
+
+</manifest>
