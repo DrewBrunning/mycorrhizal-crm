@@ -172,6 +172,32 @@ jobs:
         env:
           LOADSMOKE_BASE_URL: http://localhost:7300
 
+      # Issue #498, "many users on one instance" axis: ten independent
+      # accounts, forty workers, so the contention is cross-user writers on
+      # the shared tables and FTS indexes against the one SQLite writer — a
+      # profile one user with ten times the data never produces. Same
+      # pass/fail contract (no SQLITE_BUSY, no spurious 429).
+      - name: Run many-users concurrency smoke test
+        working-directory: backend
+        run: go run ./cmd/loadsmoke
+        env:
+          LOADSMOKE_BASE_URL: http://localhost:7300
+          LOADSMOKE_USERS: "10"
+          LOADSMOKE_WORKERS: "40"
+          LOADSMOKE_DURATION: "12s"
+
+      # Issue #498: a concurrent write storm must never leave the database
+      # corrupt. Copy it out of the container (with its WAL sidecar so a
+      # checkpoint-less copy still recovers) and run PRAGMA integrity_check.
+      - name: Assert the database is not corrupt after the load
+        run: |
+          docker compose -f docker-compose.test.yml cp mycorrhizal:/app/data/test.db /tmp/loadsmoke.db
+          docker compose -f docker-compose.test.yml cp mycorrhizal:/app/data/test.db-wal /tmp/loadsmoke.db-wal || true
+          docker compose -f docker-compose.test.yml cp mycorrhizal:/app/data/test.db-shm /tmp/loadsmoke.db-shm || true
+          result="$(sqlite3 /tmp/loadsmoke.db 'PRAGMA integrity_check')"
+          echo "integrity_check: $result"
+          [ "$result" = "ok" ] || { echo "::error::post-load integrity_check failed: $result"; exit 1; }
+
       - name: Show container logs on failure
         if: failure()
         run: |

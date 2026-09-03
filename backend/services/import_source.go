@@ -8,11 +8,20 @@ import (
 	"time"
 
 	"mycorrhizal/contactmodel"
+	"mycorrhizal/internal/faults"
 	"mycorrhizal/models"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
+
+// faultImportSource is the failure-injection seam (issue #434 / #498) for the
+// shared source-import engine (Meerkat, Monica, any future mapper). Armed via
+// the faults package, it fails the whole import at the transaction boundary:
+// every contact and graph entity rolls back, no source-link row survives, and
+// a retry re-runs cleanly. The injection test asserts that fail-closed
+// outcome. See docs/development/fault-injection.md.
+const faultImportSource = "services.import.source"
 
 // This file is the shared source-import framework (issues #351 + #353): one
 // transactional engine that applies a mapped ImportSourcePlan — contacts and
@@ -335,6 +344,13 @@ func ExecuteSourceImportWithActions(ctx context.Context, db *gorm.DB, userID uin
 		}
 	}
 
+	// Issue #498: disk preflight before the one big transaction, so a
+	// too-full disk is a clear refusal with the local data untouched rather
+	// than an ENOSPC deep in pass 1.
+	if spaceErr := preflightImportDiskSpace(db, len(plan.Contacts)); spaceErr != nil {
+		return nil, nil, spaceErr
+	}
+
 	err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		return executeSourceImport(ctx, tx, userID, plan, actions, report, refToID, tick)
 	})
@@ -355,6 +371,13 @@ func ExecuteSourceImportWithActions(ctx context.Context, db *gorm.DB, userID uin
 const importGraphKinds = 10
 
 func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *ImportSourcePlan, actions map[string]SourceContactAction, report *ImportReport, refToID map[string]uint, tick func()) error {
+	// Issue #434/#498 failure-injection seam: an armed fault fails the whole
+	// source import at the transaction boundary — everything rolls back, no
+	// partial state, a retry re-runs cleanly. Unarmed this is a nil return.
+	if err := faults.Hook(faultImportSource); err != nil {
+		return err
+	}
+
 	imported := loadSourceLinks(tx, userID, plan.System)
 
 	// Pass 1: contacts. refToUID maps each plan contact's SourceRef to the

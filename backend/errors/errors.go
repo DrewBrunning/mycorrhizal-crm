@@ -83,6 +83,15 @@ const (
 	// Rate limiting
 	ErrCodeRateLimitExceeded = "RATE_LIMIT_EXCEEDED"
 
+	// ErrCodeInsufficientStorage signals that an operation was refused by a
+	// preflight capacity check — the filesystem holding the database does not
+	// have room to run it (a bulk import's transaction, a backup's second
+	// copy), or the request would materialize an unbounded result in memory (a
+	// full-database export beyond the safety cap). Issue #498: degrade with a
+	// clear, actionable error before an ENOSPC mid-write or an OOM kill.
+	// RFC 4918's 507 Insufficient Storage.
+	ErrCodeInsufficientStorage = "INSUFFICIENT_STORAGE"
+
 	// Internal errors
 	ErrCodeInternal = "INTERNAL_ERROR"
 	ErrCodeDatabase = "DATABASE_ERROR"
@@ -251,6 +260,19 @@ func ErrMissingField(field string) *AppError {
 // ErrRateLimitExceeded returns a rate limit exceeded error
 func ErrRateLimitExceeded() *AppError {
 	return NewError(ErrCodeRateLimitExceeded, "Rate limit exceeded. Please try again later.", http.StatusTooManyRequests)
+}
+
+// --- Capacity Errors ---
+
+// ErrInsufficientStorage returns a 507 Insufficient Storage error — an
+// operation refused by a preflight capacity check (issue #498). message should
+// be operator-actionable ("not enough disk space to import 4000 contacts",
+// "export of 1000000 contacts exceeds the 250000-row limit").
+func ErrInsufficientStorage(message string) *AppError {
+	if message == "" {
+		message = "The server does not have enough storage to complete this operation"
+	}
+	return NewError(ErrCodeInsufficientStorage, message, http.StatusInsufficientStorage)
 }
 
 // --- Internal Errors ---

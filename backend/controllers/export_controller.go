@@ -214,6 +214,12 @@ func ExportData(c *gin.Context) {
 		return
 	}
 
+	// Issue #498: refuse a pathologically large export before loading and
+	// buffering the whole dataset in memory.
+	if !guardExportContactCount(c, db, userID, exportOpCSV) {
+		return
+	}
+
 	// T7: the CSV
 	// export's custom-field columns now source from the v2 system
 	// (FieldDefinition + FieldValue) instead of the retired untyped v1. Every
@@ -639,6 +645,10 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 	query := db.Where("user_id = ?", userID)
 	if vcardUID := strings.TrimSpace(c.Query("vcard_uid")); vcardUID != "" {
 		query = query.Where("vcard_uid = ?", vcardUID)
+	} else if !guardExportContactCount(c, db, userID, exportOpVCard4) {
+		// Issue #498: only the unscoped "export everything" path is unbounded;
+		// a single-contact export is inherently small.
+		return
 	}
 	var contacts []models.Contact
 	if err := query.
@@ -712,6 +722,11 @@ func ExportContactsAsJSContact(c *gin.Context) {
 		return
 	}
 
+	// Issue #498: refuse a pathologically large export before buffering.
+	if !guardExportContactCount(c, db, userID, exportOpJSContact) {
+		return
+	}
+
 	// Same T9 field-picker query params as ExportContactsAsVCF; never
 	// applied to ExportData (the user's own full CSV backup).
 	sel, ok := parseExportFieldSelection(c, exportOpJSContact)
@@ -763,6 +778,46 @@ func ExportContactsAsJSContact(c *gin.Context) {
 		Msg("JSContact export completed successfully")
 }
 
+// MaxExportContacts is the safety ceiling on a single full-database contact
+// export (issue #498). ExportData / ExportContactsAsVCF /
+// ExportContactsAsJSContact each load every one of the user's contacts (and,
+// for the CSV backup, every field value, edge, note, activity and reminder)
+// into memory and assemble the whole payload in a bytes.Buffer before writing
+// a byte of the response — no streaming. That cost is proportional to contact
+// count, which for a personal CRM is small; but a pathological instance (a
+// scraped million-row address book) would OOM the process. 250k is far beyond
+// any real personal-CRM dataset — the `large` capacity profile is 15k/user —
+// and an export beyond it is refused with a 507 pointing at the paginated API
+// rather than loaded and killed. Mirrors MaxAuditExportRows.
+const MaxExportContacts = 250000
+
+// exportContactsLimit is the mutable seam over MaxExportContacts. Production
+// uses the constant; the boundary test lowers it so it can prove over-limit
+// rejection without seeding 250k contacts under CI's -race instrumentation.
+// Keep in sync with MaxExportContacts.
+var exportContactsLimit = MaxExportContacts
+
+// guardExportContactCount aborts with a 507 (and returns false) when the
+// caller's contact count exceeds exportContactsLimit. One COUNT query, run
+// before the unbounded fetch-and-buffer. op is the export operation token for
+// the structured failure detail.
+func guardExportContactCount(c *gin.Context, db *gorm.DB, userID uint, op string) bool {
+	var n int64
+	if err := db.Model(&models.Contact{}).Where("user_id = ?", userID).Count(&n).Error; err != nil {
+		// A failed COUNT is a database error on the export path like any
+		// other — surface it with the same structured detail.
+		abortExportError(c, logger.FromContext(c), op, exportCatDatabase, "Failed to count contacts for export", err)
+		return false
+	}
+	if n > int64(exportContactsLimit) {
+		apperrors.AbortWithError(c, apperrors.ErrInsufficientStorage(fmt.Sprintf(
+			"Export of %d contacts exceeds the single-request limit of %d; use the paginated /contacts API instead", n, exportContactsLimit,
+		)).WithDetails("operation", op).WithDetails("category", exportCatValidation))
+		return false
+	}
+	return true
+}
+
 // MaxAuditExportRows is the row bound for the audit-log export (issue #415).
 // The audit table grows with every write across every surface (REST, CardDAV,
 // CalDAV, background jobs) and is bounded only by AUDIT_RETENTION_DAYS, so
@@ -788,11 +843,11 @@ var auditExportLimit = MaxAuditExportRows
 // Unlike ListAuditEvents (audit_controller.go), which caps at 500 rows for
 // an interactive list view, this is a backup-style export with a far larger
 // but still finite bound — MaxAuditExportRows (100k, issue #415). A log
-// beyond the bound is rejected with a 400 rather than loaded into memory;
-// unlike ExportData/ExportContactsAsVCF/ExportContactsAsJSContact (whose
-// cost is bounded by the user's contact data), the audit table grows with
-// every write and is only bounded by AUDIT_RETENTION_DAYS, so it is the one
-// export surface that needed its own explicit bound.
+// beyond the bound is rejected with a 400 rather than loaded into memory.
+// ExportData/ExportContactsAsVCF/ExportContactsAsJSContact are bounded by the
+// user's contact count and carry their own far-higher safety ceiling
+// (MaxExportContacts, issue #498); the audit table grows with every write and
+// is only bounded by AUDIT_RETENTION_DAYS, so it keeps this tighter bound.
 //
 // BeforeSnapshot is deliberately NOT included by default. It is already
 // redacted for credentials (models.AuditEvent's auditDenyList), but --
