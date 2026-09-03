@@ -34,6 +34,13 @@ name: Chaos Tests (failure injection)
 #     a declared expected outcome asserted via dbinspect's exact-string contract;
 #     repeated kill/restart cycles must converge on that same state, never a
 #     worse one; the #530 pre-migration backup must survive the interruption.
+#   - Issue #498 (capacity under constrained resources): the constraint × op
+#     cells that need a real resource limit — ENOSPC during a bulk write and
+#     during an FTS rebuild (tmpfs), and migration under a memory cap / bulk
+#     write + FTS rebuild under a CPU cap (systemd-run --scope). Each asserts
+#     the milestone's non-negotiable outcome: PRAGMA integrity_check is `ok`
+#     and there is no silent partial success. Table:
+#     docs/development/capacity-under-constraint.md.
 #
 # Gating (chaos filter in .github/filters.yaml): the suite is slow by design
 # and does NOT run on every push — only when the injection harness itself
@@ -703,3 +710,330 @@ jobs:
           got="$(sqlite3 "$RUNNER_TEMP/server.db" 'SELECT count(*) FROM contacts')"
           [ "$got" = "$CONTACTS" ] || { echo "::error::contact count changed: $got != $CONTACTS"; exit 1; }
           echo "server reached /health/ready after 3 post-migration kills, data intact"
+
+  # Issue #498 (capacity under constrained resources): the constraint × operation
+  # cells that need a real resource limit rather than an in-process error seam.
+  # Each asserts the milestone's non-negotiable outcome — PRAGMA integrity_check
+  # is `ok` and no silent partial success — after the limit is hit. Slow and
+  # failed are acceptable; corrupt is not. The classification table these feed is
+  # docs/development/capacity-under-constraint.md.
+
+  disk-full-write:
+    permissions:
+      contents: read
+    name: ENOSPC during a bulk write does not corrupt
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Build the migratebench and dbinspect CLIs
+        working-directory: backend
+        run: |
+          go build -o "$RUNNER_TEMP/migratebench" ./cmd/migratebench
+          go build -o "$RUNNER_TEMP/dbinspect" ./cmd/dbinspect
+
+      # A ~2 MiB tmpfs holds the migrated schema but not thousands of seeded
+      # contact rows, so the populate transaction runs out of space partway —
+      # a real ENOSPC on an ordinary bulk write, the exact spot a low-disk box
+      # is said to corrupt.
+      - name: Mount a tiny filesystem to simulate disk exhaustion
+        run: |
+          sudo mkdir -p /mnt/diskfull
+          sudo mount -t tmpfs -o size=2m tmpfs /mnt/diskfull
+          echo "mounted 2m tmpfs at /mnt/diskfull"
+
+      - name: A bulk write that exhausts the disk must fail, not corrupt
+        working-directory: backend
+        run: |
+          set +e
+          "$RUNNER_TEMP/migratebench" seed --contacts 8000 --db /mnt/diskfull/seed.db > /tmp/seed.log 2>&1
+          rc=$?
+          set -e
+          echo "seed exit=$rc"
+          tail -n 20 /tmp/seed.log
+          if [ "$rc" -eq 0 ]; then
+            echo "::error::the bulk write succeeded on a 2 MiB disk — raise --contacts"
+            exit 1
+          fi
+          # The non-negotiable outcome (issue #498): whatever is on disk is
+          # never corrupt. An empty/absent file is fine (nothing committed); a
+          # readable database must pass integrity_check.
+          if [ -s /mnt/diskfull/seed.db ]; then
+            ic="$(sqlite3 /mnt/diskfull/seed.db 'PRAGMA integrity_check' 2>&1 || true)"
+            echo "integrity_check: $ic"
+            if [ "$ic" != "ok" ]; then
+              echo "::error::ENOSPC during a bulk write left a corrupt database: $ic"
+              exit 1
+            fi
+          else
+            echo "no partial database was committed"
+          fi
+
+      - name: The same write to healthy storage produces a clean database
+        working-directory: backend
+        run: |
+          "$RUNNER_TEMP/migratebench" seed --contacts 8000 --db "$RUNNER_TEMP/healthy.db"
+          state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/healthy.db")"
+          echo "$state"
+          case "$state" in
+            "integrity_check=ok version="*) ;;
+            *) echo "::error::healthy-storage seed did not produce a clean database: $state"; exit 1 ;;
+          esac
+
+      - name: Unmount the tiny filesystem
+        if: always()
+        run: |
+          sudo umount /mnt/diskfull || true
+
+  disk-full-fts-rebuild:
+    permissions:
+      contents: read
+    name: ENOSPC during an FTS rebuild leaves the prior index intact
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Build the migratebench, backfill-search-index and dbinspect CLIs
+        working-directory: backend
+        run: |
+          go build -o "$RUNNER_TEMP/migratebench" ./cmd/migratebench
+          go build -o "$RUNNER_TEMP/backfill-search-index" ./cmd/backfill-search-index
+          go build -o "$RUNNER_TEMP/dbinspect" ./cmd/dbinspect
+
+      - name: Seed a populated database and build its search index
+        working-directory: backend
+        run: |
+          "$RUNNER_TEMP/migratebench" seed --contacts 15000 --db "$RUNNER_TEMP/src.db"
+          "$RUNNER_TEMP/backfill-search-index" -db "$RUNNER_TEMP/src.db"
+          before="$(sqlite3 "$RUNNER_TEMP/src.db" 'SELECT count(*) FROM contacts_fts')"
+          echo "FTS_BEFORE=$before" >> "$GITHUB_ENV"
+          [ "$before" -gt 0 ] || { echo "::error::baseline FTS index is empty"; exit 1; }
+
+      # A filesystem with only 64 KiB of slack over the database file cannot
+      # hold the WAL a full DELETE-then-reINSERT of every FTS row generates, so
+      # the rebuild transaction hits ENOSPC and rolls back.
+      - name: Move the database onto a filesystem with almost no slack
+        run: |
+          bytes="$(stat -c %s "$RUNNER_TEMP/src.db")"
+          size=$(( bytes + 65536 ))
+          sudo mkdir -p /mnt/diskfull
+          sudo mount -t tmpfs -o "size=${size}" tmpfs /mnt/diskfull
+          cp "$RUNNER_TEMP/src.db" /mnt/diskfull/app.db
+          echo "mounted tmpfs size=${size} (db=${bytes}) at /mnt/diskfull"
+
+      - name: The rebuild fails closed and the prior index survives untouched
+        working-directory: backend
+        run: |
+          set +e
+          "$RUNNER_TEMP/backfill-search-index" -db /mnt/diskfull/app.db > /tmp/rebuild.log 2>&1
+          rc=$?
+          set -e
+          echo "rebuild exit=$rc"
+          tail -n 20 /tmp/rebuild.log
+          if [ "$rc" -eq 0 ]; then
+            echo "::error::the FTS rebuild somehow completed with almost no free space"
+            exit 1
+          fi
+          ic="$(sqlite3 /mnt/diskfull/app.db 'PRAGMA integrity_check' 2>&1 || true)"
+          echo "integrity_check: $ic"
+          [ "$ic" = "ok" ] || { echo "::error::ENOSPC during FTS rebuild corrupted the database: $ic"; exit 1; }
+          after="$(sqlite3 /mnt/diskfull/app.db 'SELECT count(*) FROM contacts_fts')"
+          echo "FTS rows before=$FTS_BEFORE after=$after"
+          [ "$after" = "$FTS_BEFORE" ] || { echo "::error::the rolled-back rebuild did not leave the prior index whole ($after != $FTS_BEFORE)"; exit 1; }
+
+      - name: On healthy storage the rebuild succeeds and the index is consistent
+        working-directory: backend
+        run: |
+          cp /mnt/diskfull/app.db "$RUNNER_TEMP/recovered.db"
+          "$RUNNER_TEMP/backfill-search-index" -db "$RUNNER_TEMP/recovered.db"
+          state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/recovered.db")"
+          echo "$state"
+          case "$state" in
+            "integrity_check=ok version="*) ;;
+            *) echo "::error::recovered database is not clean: $state"; exit 1 ;;
+          esac
+          live="$(sqlite3 "$RUNNER_TEMP/recovered.db" 'SELECT count(*) FROM contacts WHERE deleted_at IS NULL')"
+          fts="$(sqlite3 "$RUNNER_TEMP/recovered.db" 'SELECT count(*) FROM contacts_fts')"
+          echo "live contacts=$live indexed=$fts"
+          [ "$fts" = "$live" ] || { echo "::error::the recovered FTS index is inconsistent ($fts != $live)"; exit 1; }
+
+      - name: Unmount the tiny filesystem
+        if: always()
+        run: |
+          sudo umount /mnt/diskfull || true
+
+  mem-limited-migration:
+    permissions:
+      contents: read
+    name: Migration under a tight memory cap completes or refuses — never corrupts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Build the migratebench, migrate and dbinspect CLIs
+        working-directory: backend
+        run: |
+          go build -o "$RUNNER_TEMP/migratebench" ./cmd/migratebench
+          go build -o "$RUNNER_TEMP/migrate" ./cmd/migrate
+          go build -o "$RUNNER_TEMP/dbinspect" ./cmd/dbinspect
+
+      - name: Confirm systemd-run is available for the memory cap
+        run: sudo systemd-run --version
+
+      - name: Build a populated floor database
+        working-directory: backend
+        run: |
+          "$RUNNER_TEMP/migratebench" seed --contacts 8000 --db "$RUNNER_TEMP/src.db"
+          "$RUNNER_TEMP/migratebench" checkpoint --db "$RUNNER_TEMP/src.db" --version 31 --out "$RUNNER_TEMP/floor.db"
+          rm -f "$RUNNER_TEMP/src.db" "$RUNNER_TEMP/src.db-wal" "$RUNNER_TEMP/src.db-shm"
+
+      # 128 MiB, swap disabled: the migration either fits and completes, or the
+      # kernel OOM-kills it. Both are defined outcomes for issue #498; the one
+      # unacceptable result is a corrupt database.
+      - name: Migrate the floor database under a 128 MiB memory cap
+        run: |
+          set +e
+          sudo systemd-run --scope -p MemoryMax=128M -p MemorySwapMax=0 \
+            env SQLITE_DB_PATH="$RUNNER_TEMP/floor.db" \
+                MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR="$RUNNER_TEMP/premig" \
+            "$RUNNER_TEMP/migrate" up 2>&1 | tee /tmp/migrate-mem.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "migrate exit=$rc"
+          # systemd-run --scope ran as root; hand the files back so the
+          # non-sudo restart step can open them read-write.
+          sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP"/floor.db* "$RUNNER_TEMP/premig" 2>/dev/null || true
+
+      - name: Whatever the outcome, the database is structurally intact
+        run: |
+          state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/floor.db")"
+          echo "$state"
+          case "$state" in
+            "integrity_check=ok version="*) ;;
+            *) echo "::error::migration under a memory cap left the database corrupt: $state"; exit 1 ;;
+          esac
+
+      - name: A restart converges — resumes to latest, or refuses a dirty state
+        run: |
+          set +e
+          SQLITE_DB_PATH="$RUNNER_TEMP/floor.db" MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR="$RUNNER_TEMP/premig" \
+            "$RUNNER_TEMP/migrate" up > /tmp/migrate-restart.log 2>&1
+          set -e
+          cat /tmp/migrate-restart.log
+          state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/floor.db")"
+          echo "restart state: $state"
+          case "$state" in
+            "integrity_check=ok version="*" dirty=false")
+              echo "converged clean" ;;
+            "integrity_check=ok version="*" dirty=true")
+              grep -q "dirty migration state" /tmp/migrate-restart.log \
+                || { echo "::error::database left dirty but the restart did not fail closed"; exit 1; }
+              echo "left dirty and correctly refused (MIG-04)" ;;
+            *)
+              echo "::error::unexpected restart state: $state"; exit 1 ;;
+          esac
+
+  cpu-limited-correctness:
+    permissions:
+      contents: read
+    name: Operations under a tight CPU cap stay correct (just slower)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Build the migratebench and dbinspect CLIs, and backfill-search-index
+        working-directory: backend
+        run: |
+          go build -o "$RUNNER_TEMP/migratebench" ./cmd/migratebench
+          go build -o "$RUNNER_TEMP/backfill-search-index" ./cmd/backfill-search-index
+          go build -o "$RUNNER_TEMP/dbinspect" ./cmd/dbinspect
+
+      - name: Confirm systemd-run is available for the CPU cap
+        run: sudo systemd-run --version
+
+      # systemd-run --scope needs root, so the CLIs run as root and write
+      # root-owned database files; chown them back so the later read-only
+      # assertions run as the normal user without a WAL permission dance.
+      - name: Seed a database and rebuild its search index under a 20% CPU cap
+        run: |
+          sudo systemd-run --scope -p CPUQuota=20% \
+            "$RUNNER_TEMP/migratebench" seed --contacts 4000 --db "$RUNNER_TEMP/cpu.db"
+          sudo chown "$(id -u):$(id -g)" "$RUNNER_TEMP"/cpu.db*
+          got="$(sqlite3 "$RUNNER_TEMP/cpu.db" 'SELECT count(*) FROM contacts')"
+          [ "$got" -ge 4000 ] || { echo "::error::seed under a CPU cap produced $got contacts, want >= 4000"; exit 1; }
+
+          sudo systemd-run --scope -p CPUQuota=20% \
+            "$RUNNER_TEMP/backfill-search-index" -db "$RUNNER_TEMP/cpu.db"
+          sudo chown "$(id -u):$(id -g)" "$RUNNER_TEMP"/cpu.db*
+          live="$(sqlite3 "$RUNNER_TEMP/cpu.db" 'SELECT count(*) FROM contacts WHERE deleted_at IS NULL')"
+          fts="$(sqlite3 "$RUNNER_TEMP/cpu.db" 'SELECT count(*) FROM contacts_fts')"
+          echo "live contacts=$live indexed=$fts"
+          [ "$fts" = "$live" ] || { echo "::error::FTS rebuild under a CPU cap is inconsistent ($fts != $live)"; exit 1; }
+
+      # dbinspect is the "never corrupt" assertion; the exact row counts above
+      # are the "still correct" assertion. `doctor`'s ADR-0012 data pass is
+      # deliberately NOT run here — migratebench seeds attachment metadata rows
+      # with no backing files (scale-profiles.md), so its INV-D4 check always
+      # fires on a seeded fixture and says nothing about CPU throttling.
+      - name: The result is structurally intact
+        run: |
+          state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/cpu.db")"
+          echo "$state"
+          case "$state" in
+            "integrity_check=ok version="*) ;;
+            *) echo "::error::CPU-capped operations left the database in $state"; exit 1 ;;
+          esac
+          fk="$(sqlite3 "$RUNNER_TEMP/cpu.db" 'PRAGMA foreign_key_check' 2>&1 || true)"
+          [ -z "$fk" ] || { echo "::error::foreign_key_check reported rows: $fk"; exit 1; }

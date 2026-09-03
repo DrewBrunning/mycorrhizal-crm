@@ -137,6 +137,12 @@ in [scale-testing.md](scale-testing.md) ("Recorded resource requirements"): a
 migration that rebuilds a table needs room for a copy of that table. Add the
 declared attachment volume above as separate `ATTACHMENTS_DIR` storage.
 
+**When a limit is exceeded** — what each operation does when disk, memory or
+CPU actually runs out (completes / degrades with a clear error / fails closed /
+never corrupts), the free-space multiples backup and migration require, and the
+RSS floor per profile — is the `constraint × operation` table in
+[capacity-under-constraint.md](capacity-under-constraint.md) (issue #498).
+
 ## Generating a profile
 
 ```bash

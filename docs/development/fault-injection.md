@@ -87,7 +87,13 @@ here is a gap to file, never something to silently absorb.
 | `services.notification.delivery` | `services/notification_service.go` `postNotificationJSON` (ntfy/Gotify) **and** `sendPushMessage` (Web Push) | A push-style notification send fails | A `failed` `NotificationDelivery` row with the reason; the reminder is **not** marked sent for that channel, so the next run retries it — no silent drop, no double-send | in-process: `services/delivery_failure_behavior_test.go` `TestNotificationDelivery_InjectedFaultRecordsFailureAndKeepsReminderDue` |
 | `services.email.send` | `services/mailer.go` top of `sendViaResend` and `sendViaSMTP` | An outbound email send fails on either transport | The error surfaces to `SendEmail`'s best-effort handling: tolerated if another channel succeeded, otherwise returned as the combined `all email channels failed` error | in-process: `services/mailer_timeout_test.go` `TestSendEmail_InjectedSendFaultSurfaces`, `TestSendViaResend_InjectedFaultSurfaces` |
 | `services.oidc.request` | `oidcRoundTripper` on the OIDC HTTP client (`services/oidc_service.go`) | A discovery / token / JWKS / UserInfo call fails | The armed sentinel surfaces from the round trip; `InitOIDCProvider` / `ExchangeAndVerify` fail closed — no partial session, no partial user row | in-process: covered via the OIDC service suite; the guard + timeout the seam rides on are pinned by `services/oidc_ssrf_test.go` |
-| Real `ENOSPC` during backup | `cmd/backup` → `database.BackupSnapshot` | Disk exhaustion while snapshotting | The CLI exits non-zero; the source database is untouched (`integrity_check` ok); no partial file appears at the output path (temp-then-link, fail-closed) | external: chaos job `disk-full-backup` |
+| `services.import.source` | `services/import_source.go` `executeSourceImport` (inside the one transaction) | DB error mid Meerkat/Monica source import (issue #498) | The whole import **fails closed**: every contact and graph entity rolls back, no `import_source_links` ledger row survives, a retry re-runs cleanly. `PRAGMA integrity_check` + ADR-0012 invariants stay clean throughout | in-process: `services/capacity_fault_injection_test.go` `TestSourceImport_InjectedFaultFailsClosed` |
+| `services.search.rebuild` | `services/search_service.go` `RebuildSearchIndexReport` (inside the one transaction, before the DELETEs) | Crash / DB error / `ENOSPC` mid FTS rebuild (issue #498) | The whole rebuild runs in one transaction, so the rollback leaves the **previously-good index untouched** — never half-populated. `CheckSearchIndexConsistency` is still clean, storage is intact, and a later unarmed rebuild succeeds | in-process: `services/capacity_fault_injection_test.go` `TestSearchIndexRebuild_InjectedFaultLeavesPriorIndexIntact`; external: chaos job `disk-full-fts-rebuild` |
+| Real `ENOSPC` during backup | `cmd/backup` → `database.BackupSnapshot` | Disk exhaustion while snapshotting | The CLI exits non-zero; the source database is untouched (`integrity_check` ok); no partial file appears at the output path (temp-then-link, fail-closed). `BackupSnapshot` now also runs a `diskspace.Require` **preflight** (issue #498) that refuses up front with a typed `ErrInsufficientSpace` before any write | external: chaos job `disk-full-backup` |
+| Real `ENOSPC` during a **bulk write** | `cmd/migratebench seed` populating thousands of contact rows onto a 2 MiB tmpfs | Disk exhaustion mid ordinary bulk INSERT (issue #498) | The write exits non-zero; whatever is on disk is **never corrupt** — an empty/absent file (nothing committed) or a readable database that passes `integrity_check`; the same write to healthy storage produces a clean database | external: chaos job `disk-full-write` |
+| Real `ENOSPC` during an **FTS rebuild** | `cmd/backfill-search-index` on a populated DB mounted on a 64 KiB-slack tmpfs | Disk exhaustion while the rebuild's DELETE-then-reINSERT grows the WAL (issue #498) | The rebuild exits non-zero; `integrity_check` is `ok`; the prior index is **byte-for-byte intact** (`contacts_fts` row count unchanged — the single transaction rolled back); on healthy storage the rebuild then succeeds and the index matches the live contact count | external: chaos job `disk-full-fts-rebuild` |
+| Real memory cap during a **migration** | `sudo systemd-run --scope -p MemoryMax=128M` around `cmd/migrate up` on an 8k-contact floor DB | OOM pressure during the row-touching migration (issue #498) | The migration either **completes** (peak RSS ~35 MB even at 100 k contacts — the engine reads through the DB) or is OOM-killed and left **dirty**, and the next start **refuses** (MIG-04); `integrity_check` is `ok` in both cases — never a corrupt or healthy-looking half-migration | external: chaos job `mem-limited-migration` |
+| Real CPU cap during seed / migrate / FTS rebuild | `sudo systemd-run --scope -p CPUQuota=20%` around the CLIs | A throttled CPU (issue #498) | Every operation stays **correct** — exact row counts, `integrity_check=ok`, `foreign_key_check` clean — just slower | external: chaos job `cpu-limited-correctness` |
 | Real `ENOSPC` during a **large migration** | `cmd/migrate` on a 10k-contact floor database mounted on a 1 MiB-slack tmpfs | Disk exhaustion while the migration's row-touching backfills grow the WAL (issue #495's hand-verify: "reduce the available disk below what the migration needs") | The migration exits non-zero; the database is left **dirty at some migration with `integrity_check` ok** — never truncated, never a healthy-looking half-migration; the next startup run **refuses** on the dirty flag (MIG-04) | external: chaos job `large-migration-disk-full`. Note `RLIMIT_FSIZE` is NOT a valid in-process proxy: Linux `ftruncate` ignores it and SQLite pre-extends files with it — a real filesystem filling up is the honest test |
 
 ### Planned (filed) — same technique, consumers
@@ -108,9 +114,16 @@ the acceptance criteria, TEST-06 owns the technique:
   column are the terminal state. Uses the `services.webhook.delivery` and
   `services.{contact,calendar}sync.request` seams above; ledger
   `backend/integrations/int03_coverage_test.go`. See ADR 0013.
-- **#498** — constrained resources; **#530** — the mandatory pre-migration
-  backup, whose failure path fails the upgrade closed
-  (`ErrPreMigrationBackupFailed`); the backup seam exercises it.
+- ~~**#498** — constrained resources~~ — **landed**. The `constraint × operation`
+  classification table is [capacity-under-constraint.md](capacity-under-constraint.md);
+  new in-process seams `services.import.source` and `services.search.rebuild`,
+  new chaos jobs `disk-full-write` / `disk-full-fts-rebuild` /
+  `mem-limited-migration` / `cpu-limited-correctness`, disk-space preflight
+  guards (`backend/internal/diskspace`) on backup / import / (memory: export),
+  and `loadsmoke`'s `LOADSMOKE_USERS` many-users axis. **#530** — the mandatory
+  pre-migration backup, whose failure path fails the upgrade closed
+  (`ErrPreMigrationBackupFailed`); the backup seam and now the disk preflight
+  exercise it.
 - ~~The remaining integration clients (Paperless, Seafile, WebDAV, CardDAV/CalDAV,
   webhooks, notification channels)~~ — **landed** (INT-02, issue #465): all take the
   same seam shape as `services.immich.request` (a `faultingRoundTripper` on the
@@ -151,3 +164,19 @@ it. The readiness backstop added alongside (schema-ahead-of-binary is
 `not_ready`, not `ok`) is pinned by `controllers/health_endpoints_test.go`
 `TestReadiness_SchemaAheadOfBinary`; reverting the `applied > latest` branch in
 `readinessMigrations` fails it.
+
+Done for the issue #498 seams and guards
+([capacity-under-constraint.md](capacity-under-constraint.md) has the full
+list): deleting `faults.Hook(faultSearchRebuild)` in
+`services/search_service.go` `RebuildSearchIndexReport` fails
+`TestSearchIndexRebuild_InjectedFaultLeavesPriorIndexIntact` — the armed fault
+no longer aborts the rebuild, so it completes instead of rolling back; deleting
+`faults.Hook(faultImportSource)` in `executeSourceImport` fails
+`TestSourceImport_InjectedFaultFailsClosed` the same way. Deleting the
+`diskspace.Require` block in `database/backup.go` `BackupSnapshot` fails
+`database/backup_preflight_test.go` `TestBackupSnapshot_RefusesWhenDiskTooFull`
+(the error is no longer a typed `ErrInsufficientSpace`); deleting the
+`preflightImportDiskSpace` call in `services/import_session.go` `Confirm` fails
+`services/import_preflight_test.go` `TestConfirm_RefusesWhenDiskTooFull`;
+deleting the `guardExportContactCount` call in `ExportData` fails
+`controllers/export_limit_test.go`. Restore each.

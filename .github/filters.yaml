@@ -89,6 +89,19 @@ chaos:
   # before ready" kill point.
   - 'backend/main.go'
   - 'backend/controllers/health_controller.go'
+  # Issue #498 (capacity under constrained resources): the disk-full-write /
+  # disk-full-fts-rebuild / mem-limited-migration / cpu-limited-correctness
+  # jobs drive these CLIs and the code paths they exercise under a real
+  # resource limit.
+  - 'backend/internal/diskspace/**'
+  - 'backend/cmd/backfill-search-index/**'
+  - 'backend/cmd/doctor/**'
+  - 'backend/services/search_service.go'
+  - 'backend/services/import_session.go'
+  - 'backend/services/import_source.go'
+  - 'backend/services/capacity_preflight.go'
+  - 'backend/controllers/export_controller.go'
+  - 'backend/cmd/loadsmoke/**'
 
 # differential (issue #680): the reference-implementation differential suite
 # (backend/differential, the pinned reference CLIs it shells out to, and the

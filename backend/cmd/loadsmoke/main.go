@@ -35,6 +35,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"mycorrhizal/database"
 )
 
 type loadConfig struct {
@@ -42,6 +44,19 @@ type loadConfig struct {
 	workers     int
 	duration    time.Duration
 	minRequests int64
+	// users is how many distinct authenticated accounts to spread the workers
+	// across (issue #498's "many users on one instance" axis). 1 keeps the
+	// original single-shared-session behaviour — one user's browser firing
+	// overlapping writes. >1 registers that many accounts and binds each
+	// worker to one round-robin, so the contention is cross-user writers on
+	// the shared tables and FTS indexes against the one SQLite writer.
+	users int
+	// dbPath, when set, is a SQLite database file the tool runs
+	// PRAGMA integrity_check against after the load finishes. Only usable
+	// where the load generator can see the server's database file (a local
+	// run, or a CI job with a bind mount) — the docker-compose e2e job checks
+	// integrity via `docker compose exec` instead.
+	dbPath string
 }
 
 // defaultLoadConfig mirrors cmd/backup's env-var-with-defaults style.
@@ -50,6 +65,7 @@ var defaultLoadConfig = loadConfig{
 	workers:     20,
 	duration:    10 * time.Second,
 	minRequests: 50,
+	users:       1,
 }
 
 // loadConfigFromEnv reads LOADSMOKE_* overrides via getenv (injected so this
@@ -77,6 +93,14 @@ func loadConfigFromEnv(getenv func(string) string) loadConfig {
 			cfg.minRequests = n
 		}
 	}
+	if v := getenv("LOADSMOKE_USERS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			cfg.users = n
+		}
+	}
+	if v := getenv("LOADSMOKE_DB_PATH"); v != "" {
+		cfg.dbPath = v
+	}
 	return cfg
 }
 
@@ -89,19 +113,14 @@ func main() {
 func run() error {
 	cfg := loadConfigFromEnv(os.Getenv)
 
-	jar, err := cookiejar.New(nil)
+	clients, err := registerSessions(cfg.baseURL, cfg.users)
 	if err != nil {
-		return fmt.Errorf("create cookie jar: %w", err)
-	}
-	client := &http.Client{Jar: jar, Timeout: 10 * time.Second}
-
-	username := fmt.Sprintf("loadsmoke-%d", time.Now().UnixNano())
-	if err := registerAndLogin(client, cfg.baseURL, username); err != nil {
-		return fmt.Errorf("register/login test user: %w", err)
+		return err
 	}
 
-	fmt.Printf("loadsmoke: %d workers for %s against %s\n", cfg.workers, cfg.duration, cfg.baseURL)
-	result := runLoad(client, cfg.baseURL, cfg.workers, cfg.duration)
+	fmt.Printf("loadsmoke: %d workers across %d user(s) for %s against %s\n",
+		cfg.workers, len(clients), cfg.duration, cfg.baseURL)
+	result := runLoad(clients, cfg.baseURL, cfg.workers, cfg.duration)
 	fmt.Printf("loadsmoke: %d requests, %d busy, %d rate-limited, %d other errors\n",
 		result.total, result.busy, result.rateLimited, result.other)
 
@@ -116,7 +135,58 @@ func run() error {
 		return fmt.Errorf("%d/%d requests were rate-limited (429) against the raised test limit — samples:\n%s",
 			result.rateLimited, result.total, strings.Join(result.rateLimitedSamples, "\n"))
 	}
+
+	// Issue #498: a concurrent write storm must never leave the database
+	// corrupt. When the load generator can see the database file, prove it.
+	if err := verifyNoCorruption(cfg.dbPath); err != nil {
+		return err
+	}
 	return nil
+}
+
+// verifyNoCorruption runs PRAGMA integrity_check against dbPath, if one was
+// configured (LOADSMOKE_DB_PATH). An empty path is a no-op — the docker-based
+// e2e job checks integrity via `docker compose exec` instead, since the
+// database is inside the container there.
+func verifyNoCorruption(dbPath string) error {
+	if dbPath == "" {
+		return nil
+	}
+	res, err := database.IntegrityCheck(dbPath)
+	if err != nil {
+		return fmt.Errorf("post-load PRAGMA integrity_check on %s: %w", dbPath, err)
+	}
+	if res != "ok" { // # pragma: no cover — a genuinely corrupt SQLite file is not reproducible in a unit test; the assertion is what matters
+		return fmt.Errorf("post-load PRAGMA integrity_check on %s reported: %s", dbPath, res)
+	}
+	fmt.Printf("loadsmoke: post-load integrity_check on %s = ok\n", dbPath)
+	return nil
+}
+
+// registerSessions creates n throwaway accounts and returns one authenticated
+// *http.Client per account. Each client carries its own cookie jar, so the
+// sessions are independent; http.Client + Jar are documented safe for
+// concurrent use, so one client is still shared across the workers bound to
+// it.
+func registerSessions(baseURL string, n int) ([]*http.Client, error) {
+	if n < 1 {
+		n = 1
+	}
+	clients := make([]*http.Client, n)
+	base := time.Now().UnixNano()
+	for i := 0; i < n; i++ {
+		jar, err := cookiejar.New(nil)
+		if err != nil { // # pragma: no cover — cookiejar.New(nil) never returns an error
+			return nil, fmt.Errorf("create cookie jar: %w", err)
+		}
+		c := &http.Client{Jar: jar, Timeout: 10 * time.Second}
+		username := fmt.Sprintf("loadsmoke-%d-%d", base, i)
+		if err := registerAndLogin(c, baseURL, username); err != nil {
+			return nil, fmt.Errorf("register/login test user %d/%d: %w", i+1, n, err)
+		}
+		clients[i] = c
+	}
+	return clients, nil
 }
 
 // registerAndLogin creates a throwaway user and authenticates as them. The
@@ -211,8 +281,10 @@ type loadResult struct {
 // goroutines for `duration`, each looping create-update-delete on its own
 // contact (never touching another worker's row, so any lock contention
 // observed is purely from concurrent writers on the same table/database, not
-// two workers racing the same row).
-func runLoad(client *http.Client, baseURL string, workers int, duration time.Duration) loadResult {
+// two workers racing the same row). Workers are spread round-robin across
+// `clients` — one entry is the original single-user shape; several entries is
+// the many-users contention profile (issue #498).
+func runLoad(clients []*http.Client, baseURL string, workers int, duration time.Duration) loadResult {
 	t := &tally{}
 	deadline := time.Now().Add(duration)
 
@@ -221,6 +293,7 @@ func runLoad(client *http.Client, baseURL string, workers int, duration time.Dur
 		wg.Add(1)
 		go func(worker int) {
 			defer wg.Done()
+			client := clients[worker%len(clients)]
 			for i := 0; time.Now().Before(deadline); i++ {
 				loadIteration(client, baseURL, worker, i, t)
 			}

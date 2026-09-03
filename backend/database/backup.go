@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"mycorrhizal/internal/diskspace"
 )
 
 // BackupSnapshot writes a consistent online snapshot of the SQLite database at
@@ -59,6 +61,19 @@ func BackupSnapshot(srcPath, outPath string) error {
 	dir := filepath.Dir(outPath)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("create backup output directory %q: %w", dir, err)
+	}
+
+	// Preflight the disk before we start (issue #498). VACUUM INTO writes a
+	// full second copy of the database; on a shared self-hosted box the target
+	// filesystem is routinely near full. If it plainly does not have room,
+	// refuse now with a clear error while nothing has been touched, rather
+	// than filling the disk and failing mid-VACUUM. This is best-effort — the
+	// temp-then-link path below is still the fail-closed backstop for the race
+	// where another process eats the space in the gap, or the estimate is low.
+	if need := backupSpaceEstimate(srcPath); need > 0 {
+		if err := diskspace.Require(dir, need); err != nil {
+			return fmt.Errorf("backup preflight: %w", err)
+		}
 	}
 
 	// VACUUM INTO refuses to overwrite, so it cannot target outPath directly.
@@ -167,6 +182,30 @@ func reserveTempPath(dir, base string) (string, error) {
 		return "", err
 	}
 	return name, nil
+}
+
+// backupSpaceEstimate is how many free bytes BackupSnapshot's preflight
+// (issue #498) asks for at the output directory: the live database's on-disk
+// footprint (main file + -wal + -shm) plus a 10% / 16 MiB headroom margin for
+// SQLite's own scratch during VACUUM INTO. VACUUM INTO produces a compacted
+// copy no larger than the source, so this is a safe over-estimate. Returns 0
+// when the source size cannot be read, which makes the preflight a no-op
+// rather than a guess.
+func backupSpaceEstimate(srcPath string) uint64 {
+	var total int64
+	for _, suffix := range []string{"", "-wal", "-shm"} {
+		if fi, err := os.Stat(srcPath + suffix); err == nil {
+			total += fi.Size()
+		}
+	}
+	if total <= 0 {
+		return 0
+	}
+	margin := total / 10
+	if margin < 16<<20 {
+		margin = 16 << 20
+	}
+	return uint64(total + margin)
 }
 
 // DefaultBackupPath derives the output path used by cmd/backup when neither an
