@@ -255,6 +255,20 @@ jobs:
     # is where the deep generative/property pass lives (see the RAPID_CHECKS
     # notes on the test steps below), and it only needs to finish before the
     # next night's run starts.
+    #
+    # Where the speed levers stand after issues #630 / #632 / #774:
+    #  - `runs-on` is the standard 4-vCPU `ubuntu-latest`; no paid larger
+    #    runners. If `database` / `property` / `services` legs ever regrow past
+    #    ~8 min, moving *those* legs to a larger runner label and raising
+    #    `-parallel` to match is the next lever — but only after t.Parallel
+    #    (#774): a bigger runner amplifies nothing while a package's tests run
+    #    serially on one core.
+    #  - `-p` and `-parallel` both already default to GOMAXPROCS = 4 here, so
+    #    there is nothing to raise without a bigger runner.
+    #  - The two passes below (gate `-race`, then a separate no-rerun
+    #    `-coverprofile` pass) are deliberate and must not be collapsed:
+    #    `gotestsum --rerun-fails` truncates the coverprofile on its rerun
+    #    invocation (#639), so coverage has to come from a pass with no rerun.
     timeout-minutes: ${{ github.event_name == 'schedule' && 240 || 35 }}
     needs: changes
     if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
