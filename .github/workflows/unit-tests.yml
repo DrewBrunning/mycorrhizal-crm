@@ -264,8 +264,11 @@ jobs:
       fail-fast: false
       matrix:
         # controllers-1/-2 and services-1/-2 are the same package sharded by
-        # test-name regex (see the Resolve step); rest is every other package.
-        leg: [controllers-1, controllers-2, services-1, services-2, rest]
+        # test-name regex (see the Resolve step). `database` is the migration /
+        # persistence package — the next-heaviest after schemafixture, so it
+        # gets its own leg instead of hiding in `rest`. `property` is the
+        # rapid/large-data generative packages. `rest` is every other package.
+        leg: [controllers-1, controllers-2, services-1, services-2, database, property, rest]
 
     env:
       # TEST-07 (#435): the property-based tests' iteration budget, tiered by
@@ -323,16 +326,16 @@ jobs:
       # Each leg resolves to a package list plus an optional -run regex:
       #   controllers-1 / services-1 → ./<pkg>/...  -run '^(Test|Fuzz)[A-G]'
       #   controllers-2 / services-2 → ./<pkg>/...  -run '^(Test|Fuzz)[H-Z]'
-      #   rest                       → every OTHER package, no -run filter
-      # `rest`'s `grep -vE '…(controllers|services)$'` is anchored so a future
-      # controllers/services subpackage lands here rather than being dropped
-      # from both legs. `internal/schemafixture` is excluded too: the whole
-      # migration-hop / cross-version-restore / up-down-up suite it contains is
-      # owned by migration-tests.yml (per-release matrix jobs + a coverage-
-      # bearing full-package run), and re-running it here unsharded under -race
-      # was ~17 min on the PR critical path for zero extra signal.
-      # The [A-G]/[H-Z] shards are total only while every
-      # Test/Fuzz name starts with an uppercase letter — the next step
+      #   database                   → ./database/...            no -run filter
+      #   property                   → the rapid/large-data pkgs no -run filter
+      #   rest                       → every OTHER package        no -run filter
+      # `rest`'s exclusion grep is anchored (`$`) so a future subpackage of an
+      # excluded tree lands in `rest` rather than being dropped from every leg.
+      # It excludes: controllers/services (their own sharded legs);
+      # internal/schemafixture (owned by migration-tests.yml — ~17 min under
+      # -race here for zero extra signal); database and the property packages
+      # (their own legs below). The [A-G]/[H-Z] shards are total only while
+      # every Test/Fuzz name starts with an uppercase letter — the next step
       # enforces that so a shard can never silently skip a test.
       - name: Resolve packages for this leg
         id: pkgs
@@ -345,7 +348,9 @@ jobs:
             controllers-2) list="./controllers/..."; run='^(Test|Fuzz)[H-Z]' ;;
             services-1)    list="./services/...";    run='^(Test|Fuzz)[A-G]' ;;
             services-2)    list="./services/...";    run='^(Test|Fuzz)[H-Z]' ;;
-            rest)          list="$(go list ./... | grep -vE 'mycorrhizal/(controllers|services|internal/schemafixture)$' | tr '\n' ' ')"; run='' ;;
+            database)      list="./database/...";    run='' ;;
+            property)      list="./internal/propertytest/... ./internal/largedata/... ./internal/contactgen/..."; run='' ;;
+            rest)          list="$(go list ./... | grep -vE 'mycorrhizal/(controllers|services|database|internal/schemafixture|internal/propertytest|internal/largedata|internal/contactgen)$' | tr '\n' ' ')"; run='' ;;
             *)             echo "unknown leg: $LEG" >&2; exit 1 ;;
           esac
           echo "list=$list" >> "$GITHUB_OUTPUT"
@@ -516,15 +521,15 @@ jobs:
           merge-multiple: true
           path: backend
 
-      # Issue #630: `rest` and the controllers/services legs cover disjoint
-      # blocks, but controllers-1/-2 (and services-1/-2) are the SAME package
-      # under disjoint -run shards, so every block appears in both profiles —
-      # count 0 in the shard that didn't run it. A plain concat would list
-      # each of those blocks twice and `go tool cover` would double-count.
-      # So sum the count field per block key instead (atomic mode: counts are
-      # additive; blocks from different packages never share a key, so `rest`
-      # merges the same way). First-seen order is source order — shard 1
-      # already emits every block — which is what `go tool cover` expects.
+      # Issue #630: `database` / `property` / `rest` cover disjoint blocks, but
+      # controllers-1/-2 (and services-1/-2) are the SAME package under
+      # disjoint -run shards, so every block appears in both profiles — count 0
+      # in the shard that didn't run it. A plain concat would list each of
+      # those blocks twice and `go tool cover` would double-count. So sum the
+      # count field per block key instead (atomic mode: counts are additive;
+      # blocks from different packages never share a key, so the unsharded legs
+      # merge the same way). First-seen order is source order — shard 1 already
+      # emits every block — which is what `go tool cover` expects.
       #
       # Issue #639: require every leg's profile before uploading. Each leg's
       # coverage comes from a no-rerun `go test -coverprofile` pass that is
@@ -542,7 +547,7 @@ jobs:
         run: |
           files=""
           missing=""
-          for leg in controllers-1 controllers-2 services-1 services-2 rest; do
+          for leg in controllers-1 controllers-2 services-1 services-2 database property rest; do
             f="coverage-${leg}.out"
             if [ ! -s "$f" ] || [ "$(wc -l < "$f")" -lt 2 ]; then
               missing="$missing $leg"
