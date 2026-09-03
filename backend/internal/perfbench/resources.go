@@ -3,12 +3,27 @@ package perfbench
 import (
 	"database/sql"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
 )
+
+// heapDelta returns now-base as a signed byte count. runtime.MemStats heap
+// readings are uint64 but never approach math.MaxInt64 on any real machine;
+// clamping each operand first makes that explicit so gosec's G115
+// integer-overflow check is satisfied without a suppression.
+func heapDelta(now, base uint64) int64 {
+	if now > math.MaxInt64 {
+		now = math.MaxInt64
+	}
+	if base > math.MaxInt64 {
+		base = math.MaxInt64
+	}
+	return int64(now) - int64(base)
+}
 
 // ResourceSample is one data-movement operation measured once (PERF-03, issue
 // #470). Where PERF-02 records the deterministic query count of a fast
@@ -188,8 +203,8 @@ func sampleResources(watchPaths []string, probe *writeProbe, fn func() (rowsTouc
 	}
 	sample := ResourceSample{
 		DurationNanos:       elapsed.Nanoseconds(),
-		PeakHeapBytes:       int64(peakHeap) - int64(baseHeap),
-		HeapGrowthBytes:     int64(endHeap) - int64(baseHeap),
+		PeakHeapBytes:       heapDelta(peakHeap, baseHeap),
+		HeapGrowthBytes:     heapDelta(endHeap, baseHeap),
 		PeakExtraDiskBytes:  peakDisk - baseDisk,
 		FinalExtraDiskBytes: endDisk - baseDisk,
 		RowsTouched:         rows,
