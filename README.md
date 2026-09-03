@@ -2,31 +2,23 @@
 <img width="192" height="192" alt="mark-mycelium-light-192" src="https://github.com/user-attachments/assets/5f8e7a54-b8e6-408a-b594-9131739822da" />
 </p>
 
-<p align="center">
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="https://golang.org"><img src="https://img.shields.io/badge/Backend-Go-00ADD8?logo=go" alt="Backend: Go"></a>
-  <a href="https://reactjs.org"><img src="https://img.shields.io/badge/Frontend-React-61DAFB?logo=react" alt="Frontend: React"></a>
-  <a href="https://kotlinlang.org/"><img src="https://img.shields.io/badge/Android-Kotlin-B125EA?logo=kotlin" alt="Android: Kotlin"></a>
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Status-Beta-purple" alt="Status: Beta">
-  <!-- Not the native shields.io "ossf-scorecard" badge type: that service (see
-       badges/shields services/ossf-scorecard/ossf-scorecard.service.js) is hardcoded to
-       api.securityscorecards.dev, the domain OpenSSF is migrating off of. scorecard.yml
-       publishes to the current domain, api.scorecard.dev -- which the old domain 404s on
-       for any repo (like this one) whose results only ever landed on the new backend, so
-       that badge type renders "invalid repo path" despite the score being real and current.
-       This is shields' generic dynamic-JSON badge pointed straight at api.scorecard.dev,
-       bypassing their stale ossf-scorecard lookup. Trade-off: no automatic red-to-green
-       color scale (that's baked into the ossf-scorecard badge type, not available here) --
-       left as a static color rather than one that goes stale as the score changes. -->
-  <a href="https://scorecard.dev/viewer/?uri=github.com/DrewBrunning/mycorrhizal-crm"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FDrewBrunning%2Fmycorrhizal-crm&query=%24.score&label=openssf%20scorecard&suffix=%2F10" alt="OpenSSF Scorecard"></a>
-  <a href="https://www.bestpractices.dev/projects/14433"><img src="https://www.bestpractices.dev/projects/14433/baseline"></a> 
-  <a href="https://codecov.io/gh/DrewBrunning/mycorrhizal-crm"><img src="https://codecov.io/gh/DrewBrunning/mycorrhizal-crm/graph/badge.svg" alt="Coverage"></a>
-</p>
-
 # Mycorrhizal CRM
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Release](https://img.shields.io/github/v/release/DrewBrunning/mycorrhizal-crm?include_prereleases&sort=semver&label=Release)](https://github.com/DrewBrunning/mycorrhizal-crm/releases)
+
+[![Tests](https://github.com/DrewBrunning/mycorrhizal-crm/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/DrewBrunning/mycorrhizal-crm/actions/workflows/unit-tests.yml)
+[![Coverage](https://codecov.io/gh/DrewBrunning/mycorrhizal-crm/graph/badge.svg)](https://codecov.io/gh/DrewBrunning/mycorrhizal-crm)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/DrewBrunning/mycorrhizal-crm/badge)](https://scorecard.dev/viewer/?uri=github.com/DrewBrunning/mycorrhizal-crm)
+[![OpenSSF Baseline](https://www.bestpractices.dev/projects/14433/baseline)](https://www.bestpractices.dev/projects/14433)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14433/badge)](https://www.bestpractices.dev/projects/14433)
+
+[![Go](https://img.shields.io/badge/Go-00ADD8?logo=go&logoColor=white)](https://golang.org)
+[![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![React](https://img.shields.io/badge/React-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
 Mycorrhizal CRM is a self-hosted contact relationship management solution. It is a fork of [Meerkat CRM](https://github.com/fbuchner/meerkat-crm) by Frederic Buchner.
 
@@ -34,8 +26,6 @@ Mycorrhizal CRM is a self-hosted contact relationship management solution. It is
 > 
 > * Direct database migrations from upstream Meerkat are **NOT** supported at this time.
 > * Syncing Options: You can sync contacts between Meerkat and Mycorrhizal using CardDAV (though data not supported by standard CardDAV specs will not sync) or by exporting data from one and importing it into the other (though data not defined in the vCard 3.0 RFC is not guaranteed to persist across the export and import).
-
----
 
 ## Features & Enhancements On Top Of Upstream Meerkat
 
