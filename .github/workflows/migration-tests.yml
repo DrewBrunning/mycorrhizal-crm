@@ -365,3 +365,23 @@ jobs:
           echo "$out"
           grep -q 'integrity_check=ok' <<<"$out" || { echo "::error::large profile DB failed integrity_check"; exit 1; }
           grep -q 'dirty=false' <<<"$out" || { echo "::error::large profile DB is dirty"; exit 1; }
+
+      # PERF-02 (issue #469): the core-operation benchmark suite at the `large`
+      # profile — query counts and cross-scale growth for contact list/detail,
+      # FTS, graph traversal, dashboard, cadence, reach-out, duplicate
+      # detection, merge and delete cascade. Gated like the rest of this job;
+      # the per-PR signal is the smoke+typical suite in the default `go test`.
+      - name: Core-operation benchmarks at the large profile
+        working-directory: backend
+        env:
+          MYCORRHIZAL_LARGE_TESTS: "1"
+        run: |
+          set -eo pipefail
+          out="$(go test ./internal/perfbench/ -run '^TestProfileBenchmarksAtScale$' -count=1 -v 2>&1)"
+          echo "$out"
+          # Fail-safe: env-gated, so a typo'd variable would silently skip it
+          # and the job would pass vacuously.
+          if ! grep -q -- "--- PASS: TestProfileBenchmarksAtScale" <<<"$out"; then
+            echo "::error::PERF-02 large-profile benchmarks did not run (MYCORRHIZAL_LARGE_TESTS not honored?)"
+            exit 1
+          fi
