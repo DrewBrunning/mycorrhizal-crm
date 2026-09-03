@@ -173,11 +173,15 @@ type contactRefRow struct {
 	SoftDeletedActive int // subset of SoftDeleted that is still authoritative
 }
 
-func checkRelationshipEndpoints(ctx context.Context, db *gorm.DB, _ config.Config) ([]IntegrityFinding, error) {
-	// One pass over both endpoints. A soft-deleted contact still has its row,
-	// so a plain model query (deleted_at IS NULL scope) would hide exactly the
-	// INV-D7 case; raw SQL keeps both visible.
-	const q = `
+// relationshipEndpointsQuery is the INV-D1/D7 pass over both relationship-edge
+// endpoints. A soft-deleted contact still has its row, so a plain model query
+// (deleted_at IS NULL scope) would hide exactly the INV-D7 case; raw SQL keeps
+// both visible. The `LEFT JOIN contacts ... ON vcard_uid` therefore has no
+// `deleted_at IS NULL` filter and cannot use the partial
+// idx_contacts_vcard_uid_user — migration 000050's plain
+// idx_contacts_user_vcard_uid_all is what keeps this off a full table scan
+// (pinned by TestDataIntegrity_ContactRefJoinsUseAnIndex).
+const relationshipEndpointsQuery = `
 WITH endpoints AS (
     SELECT id AS edge_id, user_id, status, source_id AS cid FROM relationship_edges
     UNION ALL
@@ -192,8 +196,9 @@ LEFT JOIN contacts c ON c.vcard_uid = e.cid AND c.user_id = e.user_id
 GROUP BY e.user_id
 HAVING missing > 0 OR soft_deleted > 0`
 
+func checkRelationshipEndpoints(ctx context.Context, db *gorm.DB, _ config.Config) ([]IntegrityFinding, error) {
 	var rows []contactRefRow
-	if err := db.WithContext(ctx).Raw(q, models.RelationshipStatusConfirmed).Scan(&rows).Error; err != nil {
+	if err := db.WithContext(ctx).Raw(relationshipEndpointsQuery, models.RelationshipStatusConfirmed).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 
@@ -299,14 +304,19 @@ type contactRefTarget struct {
 	repairable bool
 }
 
-func (t contactRefTarget) scan(ctx context.Context, db *gorm.DB) ([]contactRefRow, error) {
+// query is the join-row orphan / soft-deleted-contact scan for one target
+// table. Like relationshipEndpointsQuery its `LEFT JOIN contacts` is
+// deliberately unfiltered by deleted_at (INV-D3 must see tombstones), so it
+// depends on migration 000050's idx_contacts_user_vcard_uid_all to stay off a
+// full scan.
+func (t contactRefTarget) query() string {
 	where := ""
 	if t.extraWhere != "" {
 		where = " WHERE " + t.extraWhere
 	}
 	// #nosec G201 -- t.table/t.col/t.extraWhere are constants defined in this
 	// file; the only dynamic value (the join) is a bound parameter.
-	q := fmt.Sprintf(`
+	return fmt.Sprintf(`
 SELECT j.user_id AS user_id,
        SUM(CASE WHEN c.id IS NULL THEN 1 ELSE 0 END) AS missing,
        SUM(CASE WHEN c.id IS NOT NULL AND c.deleted_at IS NOT NULL THEN 1 ELSE 0 END) AS soft_deleted,
@@ -315,9 +325,11 @@ FROM %s j
 LEFT JOIN contacts c ON c.vcard_uid = j.%s AND c.user_id = j.user_id%s
 GROUP BY j.user_id
 HAVING missing > 0 OR soft_deleted > 0`, t.table, t.col, where)
+}
 
+func (t contactRefTarget) scan(ctx context.Context, db *gorm.DB) ([]contactRefRow, error) {
 	var rows []contactRefRow
-	err := db.WithContext(ctx).Raw(q).Scan(&rows).Error
+	err := db.WithContext(ctx).Raw(t.query()).Scan(&rows).Error
 	return rows, err
 }
 

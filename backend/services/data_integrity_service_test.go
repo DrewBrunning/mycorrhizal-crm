@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"mycorrhizal/config"
@@ -487,4 +488,93 @@ func TestDataIntegrity_RespectsContextCancellation(t *testing.T) {
 	cancel()
 	_, err := RunDataIntegrityChecks(ctx, db, cfg)
 	assert.ErrorIs(t, err, context.Canceled)
+}
+
+// ---------------------------------------------------------------------------
+// query plan: the contact-ref joins must use an index, not scan `contacts`
+// ---------------------------------------------------------------------------
+
+// TestDataIntegrity_ContactRefJoinsUseAnIndex pins migration 000050: every
+// DB-01 pass that LEFT JOINs `contacts` on vcard_uid without a
+// `deleted_at IS NULL` filter (so it can see tombstones — INV-D3/D7) must
+// resolve that join through an index. Before 000050 the only vcard_uid index
+// was PARTIAL (`WHERE deleted_at IS NULL`), unusable here, and every one of
+// these scans was a full table scan of `contacts` — ~16 s at 4,000 contacts
+// (CAP-01). CheckDBIntegrityScheduled runs this pass on a timer in production.
+func TestDataIntegrity_ContactRefJoinsUseAnIndex(t *testing.T) {
+	db := dbtest.New(t)
+
+	// The real checker queries (referenced, not re-typed, so they can't drift).
+	queries := map[string]string{
+		"relationship_endpoints": relationshipEndpointsQuery,
+	}
+	for _, tgt := range []contactRefTarget{
+		{table: "circle_members", col: "member_vcard_uid"},
+		{table: "household_members", col: "member_vcard_uid"},
+		{table: "contact_tags", col: "contact_vcard_uid"},
+		{table: "field_values", col: "entity_id"},
+		{table: "external_identities", col: "entity_id"},
+		{table: "import_source_links", col: "entity_uid", extraWhere: "j.entity_kind = 'contact'"},
+	} {
+		queries[tgt.table] = tgt.query()
+	}
+
+	// contactsProbeConstrainsVCardUID reports whether the plan's join into
+	// `contacts` (alias c) narrows on vcard_uid. Without migration 000050 the
+	// best index available is idx_contacts_user_id, so the probe reads
+	// `SEARCH c USING INDEX idx_contacts_user_id (user_id=?)` — a per-user
+	// linear filter for the vcard_uid, i.e. O(contacts-per-user) per ref. With
+	// 000050 it reads `... (user_id=? AND vcard_uid=?)` — an O(log n) point
+	// lookup. The vcard_uid token in the plan line for `c` is the signal.
+	contactsProbeConstrainsVCardUID := func(t *testing.T, sql string) bool {
+		t.Helper()
+		var plan []struct {
+			Detail string `gorm:"column:detail"`
+		}
+		require.NoError(t, db.Raw("EXPLAIN QUERY PLAN "+sql, models.RelationshipStatusConfirmed).Scan(&plan).Error)
+		require.NotEmpty(t, plan)
+		for _, row := range plan {
+			d := row.Detail
+			isContactsProbe := strings.Contains(d, " c ") || strings.HasSuffix(d, " c") ||
+				strings.Contains(d, " c USING") || strings.Contains(d, " contacts")
+			if isContactsProbe && (strings.Contains(d, "SEARCH") || strings.Contains(d, "SCAN")) {
+				return strings.Contains(d, "vcard_uid")
+			}
+		}
+		t.Fatalf("no plan line for the `contacts` join in:\n%s", strings.Join(planDetails(plan), "\n"))
+		return false
+	}
+
+	for name, sql := range queries {
+		t.Run(name, func(t *testing.T) {
+			assert.Truef(t, contactsProbeConstrainsVCardUID(t, sql),
+				"the `contacts` join in the %s integrity query does not narrow on vcard_uid — migration 000050's index is missing or unused (this is the ~16s-at-4k-contacts scan from CAP-01)", name)
+		})
+	}
+
+	// Hand-verify inside the test: drop 000050's index and the same joins fall
+	// back to the user_id-only index, proving the assertion above has teeth.
+	t.Run("negative control: without 000050 the join no longer narrows on vcard_uid", func(t *testing.T) {
+		require.NoError(t, db.Exec("DROP INDEX idx_contacts_user_vcard_uid_all").Error)
+		t.Cleanup(func() {
+			require.NoError(t, db.Exec("CREATE INDEX idx_contacts_user_vcard_uid_all ON contacts(user_id, vcard_uid)").Error)
+		})
+		allNarrow := true
+		for _, sql := range queries {
+			if !contactsProbeConstrainsVCardUID(t, sql) {
+				allNarrow = false
+			}
+		}
+		assert.False(t, allNarrow, "with 000050's index dropped the contact-ref joins must lose the vcard_uid narrowing")
+	})
+}
+
+func planDetails(plan []struct {
+	Detail string `gorm:"column:detail"`
+}) []string {
+	out := make([]string, len(plan))
+	for i, r := range plan {
+		out[i] = "  " + r.Detail
+	}
+	return out
 }
