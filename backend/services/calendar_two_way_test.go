@@ -167,6 +167,61 @@ func TestTwoWay_LocalOnlyChangePushesWithIfMatch(t *testing.T) {
 	_ = stats
 }
 
+// TestTwoWay_PushRetryReusesRemoteUIDNoDuplicate is the INT-03 (#466) case for
+// the caldav-push-event operation: after a push fails transiently, the next
+// sync retries it, and the retry PUT targets the same remote object (same UID,
+// same If-Match ETag) — a retry cannot create a duplicate event.
+func TestTwoWay_PushRetryReusesRemoteUIDNoDuplicate(t *testing.T) {
+	db := setupCalendarSyncTestDB(t)
+	cfg := twoWayConfig()
+	user := createCalendarTestUser(t, db)
+
+	mock := newMockCalendarServer(vcalendarWith(importedVEvent("Original")), "etag-remote-1")
+	defer mock.Close()
+
+	sub := newTestSubscription(t, db, cfg, user.ID, mock.server.URL+"/calendars/test/", "", "")
+	service := NewCalendarSyncService(false)
+
+	_, err := service.SyncSubscription(context.Background(), db, cfg, sub)
+	require.NoError(t, err)
+
+	// Local edit, then make the first push attempt fail transiently.
+	time.Sleep(1100 * time.Millisecond)
+	_, activity := loadLinkAndActivity(t, db, sub)
+	activity.Title = "Local rename"
+	require.NoError(t, db.Save(&activity).Error)
+
+	var putAttempts int
+	mock.mu.Lock()
+	mock.putStatus = func(string) int {
+		putAttempts++
+		if putAttempts == 1 {
+			return http.StatusInternalServerError
+		}
+		return http.StatusOK
+	}
+	mock.mu.Unlock()
+
+	// First sync: the push fails, so the run errors and the edit stays pending.
+	_, err = service.SyncSubscription(context.Background(), db, cfg, sub)
+	require.Error(t, err, "a failed push must surface as a run error")
+	var reloaded models.CalendarSubscription
+	require.NoError(t, db.First(&reloaded, sub.ID).Error)
+	assert.Nil(t, reloaded.TerminalFailureAt, "a transient push failure is not terminal")
+
+	// Second sync: the push is retried and lands.
+	_, err = service.SyncSubscription(context.Background(), db, cfg, sub)
+	require.NoError(t, err)
+
+	mock.mu.Lock()
+	defer mock.mu.Unlock()
+	require.Len(t, mock.puts, 2, "the push was retried exactly once")
+	for i, p := range mock.puts {
+		assert.Contains(t, p.body, "UID:event-1", "PUT %d must target the remote event's own UID", i)
+		assert.Equal(t, `"etag-remote-1"`, p.ifMatch, "PUT %d must carry the stored If-Match so it updates in place", i)
+	}
+}
+
 func TestTwoWay_RemoteOnlyChangePullsWithoutPush(t *testing.T) {
 	db := setupCalendarSyncTestDB(t)
 	cfg := twoWayConfig()

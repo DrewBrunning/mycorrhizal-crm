@@ -138,6 +138,10 @@ func UpdateCalendarSubscription(c *gin.Context) {
 		subscription.PasswordEncrypted = passwordEncrypted
 	}
 
+	// Editing the subscription is a deliberate user action — lift any terminal
+	// failure state so the next sync (scheduled or manual) tries again (#467).
+	subscription.ClearTerminalState()
+
 	if err := db.Save(&subscription).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("update"))
 		return
@@ -189,7 +193,12 @@ func SyncCalendarSubscription(c *gin.Context) {
 	stats, err := service.SyncSubscription(c.Request.Context(), db, cfg, &subscription)
 	if err != nil {
 		logger.FromContext(c).Warn().Err(err).Uint("subscription_id", subscription.ID).Msg("Manual calendar sync failed")
-		apperrors.AbortWithError(c, calendarSyncError(err))
+		apiErr := calendarSyncError(err)
+		if subscription.TerminalReason != "" {
+			// So a user hitting "Sync now" sees the actionable reason (#467).
+			apiErr = apiErr.WithDetails("terminal_reason", subscription.TerminalReason)
+		}
+		apperrors.AbortWithError(c, apiErr)
 		return
 	}
 

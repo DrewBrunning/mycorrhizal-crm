@@ -47,6 +47,8 @@ function calendar(overrides: Partial<CalendarSubscription> = {}): CalendarSubscr
     incident_first_failure_at: null,
     last_run_duration_ms: null,
     last_run_stats: {},
+    terminal_failure_at: null,
+    terminal_reason: '',
     ...overrides,
   };
 }
@@ -231,4 +233,42 @@ test('warns when an http:// URL is paired with credentials', async () => {
   fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'alice' } });
 
   expect(screen.getByText(/unencrypted http/i)).toBeInTheDocument();
+});
+
+test('surfaces a terminal-failure notice with an actionable message (INT-04)', async () => {
+  vi.mocked(getCalendarSubscriptions).mockResolvedValue([
+    calendar({
+      name: 'Broken',
+      last_sync_status: 'error',
+      consecutive_failures: 9,
+      last_success_at: null,
+      terminal_failure_at: '2026-07-01T00:00:00Z',
+      terminal_reason: 'auth-expiry',
+    }),
+  ]);
+  render(<CalendarSyncSettings />);
+
+  await waitFor(() => expect(screen.getByText('Broken')).toBeInTheDocument());
+  expect(screen.getByText('Sync stopped — action needed')).toBeInTheDocument();
+  expect(screen.getByText(/password or token was rejected/i)).toBeInTheDocument();
+  expect(screen.getByText('This subscription has never synced successfully.')).toBeInTheDocument();
+  // The generic "failing since" line is replaced by the terminal notice.
+  expect(screen.queryByText(/consecutive failures/)).not.toBeInTheDocument();
+});
+
+test('terminal notice shows a staleness age when a past success exists', async () => {
+  const fortyDaysAgo = new Date(Date.now() - 40 * 86_400_000).toISOString();
+  vi.mocked(getCalendarSubscriptions).mockResolvedValue([
+    calendar({
+      name: 'Stale',
+      last_success_at: fortyDaysAgo,
+      terminal_failure_at: '2026-07-01T00:00:00Z',
+      terminal_reason: 'remote-resource-deleted',
+    }),
+  ]);
+  render(<CalendarSyncSettings />);
+
+  await waitFor(() => expect(screen.getByText('Stale')).toBeInTheDocument());
+  expect(screen.getByText(/no longer exists/i)).toBeInTheDocument();
+  expect(screen.getByText(/Last successful sync: 40 days ago/)).toBeInTheDocument();
 });

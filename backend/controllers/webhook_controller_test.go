@@ -61,6 +61,62 @@ func TestListWebhooks(t *testing.T) {
 	assert.Len(t, body["webhooks"], 2)
 }
 
+// TestListWebhooksDeliveryHealth pins the INT-04 (#467) rollup: the latest
+// delivery per webhook is summarized in `delivery_health`, and a webhook with
+// no deliveries reports a zero-valued one.
+func TestListWebhooksDeliveryHealth(t *testing.T) {
+	db, _ := setupRouter()
+	var user models.User
+	db.First(&user)
+
+	router := routerForUser(db, user.ID)
+	router.GET("/webhooks", ListWebhooks)
+
+	whFailed := seedWebhook(db, user.ID, "https://example.com/dead")
+	whQuiet := seedWebhook(db, user.ID, "https://example.com/quiet")
+
+	code200, code404 := 200, 404
+	errStr := "unexpected status 404"
+	// Two deliveries for the failed hook — the newer one is the terminal 404.
+	require.NoError(t, db.Create(&models.WebhookDelivery{
+		WebhookID: whFailed.ID, EventType: "contact.created", Payload: "{}", StatusCode: &code200, Attempts: 1,
+	}).Error)
+	require.NoError(t, db.Create(&models.WebhookDelivery{
+		WebhookID: whFailed.ID, EventType: "contact.created", Payload: "{}", StatusCode: &code404,
+		Error: &errStr, Attempts: 1, FailedPermanently: true, TerminalReason: "remote-resource-deleted",
+	}).Error)
+
+	req, _ := http.NewRequest("GET", "/webhooks", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var body struct {
+		Webhooks []models.WebhookResponse `json:"webhooks"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+
+	byID := map[uint]models.WebhookResponse{}
+	for _, wh := range body.Webhooks {
+		byID[wh.ID] = wh
+	}
+	failed := byID[whFailed.ID].DeliveryHealth
+	assert.True(t, failed.FailedPermanently, "the newest delivery (404) drives the rollup")
+	assert.Equal(t, "remote-resource-deleted", failed.TerminalReason)
+	assert.NotNil(t, failed.LastDeliveryAt)
+	require.NotNil(t, failed.LastStatusCode)
+	assert.Equal(t, 404, *failed.LastStatusCode)
+
+	quiet := byID[whQuiet.ID].DeliveryHealth
+	assert.False(t, quiet.FailedPermanently)
+	assert.Nil(t, quiet.LastDeliveryAt, "a webhook with no deliveries has a zero-valued rollup")
+
+	// latestDeliveryHealth short-circuits on an empty id list.
+	got, err := latestDeliveryHealth(db, nil)
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}
+
 func TestCreateWebhook(t *testing.T) {
 	db, _ := setupRouter()
 	var user models.User

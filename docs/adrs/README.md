@@ -18,3 +18,4 @@ ticket backlog moved to GitHub Issues.
 | [0010](0010-idempotency-keys.md) | One idempotency mechanism — a client-supplied `Idempotency-Key` | accepted |
 | [0011](0011-scheduled-job-catchup.md) | Scheduled-job catch-up semantics — fire missed occurrences once, de-duplicated | accepted |
 | [0012](0012-canonical-database-invariants.md) | Canonical database invariants | accepted |
+| [0013](0013-outbound-retry-safety-and-terminal-failures.md) | Outbound retry safety and permanent-failure terminal state | accepted |

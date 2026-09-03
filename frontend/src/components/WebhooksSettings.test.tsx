@@ -219,3 +219,47 @@ test('expanding deliveries fetches them once and shows recent attempts', async (
   fireEvent.click(screen.getByRole('button', { name: /recent deliveries/i }));
   expect(getWebhookDeliveries).toHaveBeenCalledTimes(1);
 });
+
+test('shows a "will not retry" badge for a webhook whose deliveries fail permanently (INT-04)', async () => {
+  vi.mocked(getWebhooks).mockResolvedValue([
+    webhook({
+      id: 3,
+      name: 'Dead Receiver',
+      delivery_health: {
+        last_delivery_at: '2026-02-01T00:00:00Z',
+        last_status_code: 404,
+        last_error: 'unexpected status 404',
+        failed_permanently: true,
+        terminal_reason: 'remote-resource-deleted',
+        retrying: false,
+      },
+    }),
+  ]);
+
+  render(<WebhooksSettings />);
+  await waitFor(() => expect(screen.getByText('Dead Receiver')).toBeInTheDocument());
+  expect(screen.getByText('Will not retry')).toBeInTheDocument();
+});
+
+test('marks an individual permanently-failed delivery row', async () => {
+  vi.mocked(getWebhooks).mockResolvedValue([webhook({ id: 9, name: 'Hook' })]);
+  vi.mocked(getWebhookDeliveries).mockResolvedValue([
+    {
+      id: 1,
+      event_type: 'contact.created',
+      status_code: 401,
+      error: 'unexpected status 401',
+      attempts: 1,
+      created_at: '2026-01-01T00:00:00Z',
+      failed_permanently: true,
+      terminal_reason: 'auth-expiry',
+    },
+  ]);
+
+  render(<WebhooksSettings />);
+  await waitFor(() => expect(screen.getByText('Hook')).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: /recent deliveries/i }));
+
+  await waitFor(() => expect(screen.getByText('contact.created')).toBeInTheDocument());
+  expect(screen.getByText('Will not retry')).toBeInTheDocument();
+});

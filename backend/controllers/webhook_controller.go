@@ -28,7 +28,47 @@ func ListWebhooks(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"webhooks": toWebhookResponses(webhooks)})
+	ids := make([]uint, len(webhooks))
+	for i, wh := range webhooks {
+		ids[i] = wh.ID
+	}
+	health, err := latestDeliveryHealth(db, ids)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("query"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"webhooks": toWebhookResponses(webhooks, health)})
+}
+
+// latestDeliveryHealth returns the most recent delivery attempt per webhook, as
+// the always-visible INT-04 (#467) rollup surfaced next to the webhook itself.
+func latestDeliveryHealth(db *gorm.DB, webhookIDs []uint) (map[uint]models.WebhookDeliveryHealth, error) {
+	out := map[uint]models.WebhookDeliveryHealth{}
+	if len(webhookIDs) == 0 {
+		return out, nil
+	}
+	newestPerWebhook := db.Model(&models.WebhookDelivery{}).
+		Select("MAX(id)").
+		Where("webhook_id IN ? AND deleted_at IS NULL", webhookIDs).
+		Group("webhook_id")
+
+	var rows []models.WebhookDelivery
+	if err := db.Where("id IN (?)", newestPerWebhook).Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	for _, d := range rows {
+		created := d.CreatedAt
+		out[d.WebhookID] = models.WebhookDeliveryHealth{
+			LastDeliveryAt:    &created,
+			LastStatusCode:    d.StatusCode,
+			LastError:         d.Error,
+			FailedPermanently: d.FailedPermanently,
+			TerminalReason:    d.TerminalReason,
+			Retrying:          d.NextRetryAt != nil,
+		}
+	}
+	return out, nil
 }
 
 const maxWebhooksPerUser = 20
@@ -228,24 +268,27 @@ func toWebhookResponse(wh models.Webhook) models.WebhookResponse {
 	}
 }
 
-func toWebhookResponses(whs []models.Webhook) []models.WebhookResponse {
+func toWebhookResponses(whs []models.Webhook, health map[uint]models.WebhookDeliveryHealth) []models.WebhookResponse {
 	out := make([]models.WebhookResponse, len(whs))
 	for i, wh := range whs {
 		out[i] = toWebhookResponse(wh)
+		out[i].DeliveryHealth = health[wh.ID]
 	}
 	return out
 }
 
 func toDeliveryResponse(d models.WebhookDelivery) models.WebhookDeliveryResponse {
 	return models.WebhookDeliveryResponse{
-		ID:          d.ID,
-		WebhookID:   d.WebhookID,
-		EventType:   d.EventType,
-		StatusCode:  d.StatusCode,
-		Error:       d.Error,
-		Attempts:    d.Attempts,
-		NextRetryAt: d.NextRetryAt,
-		CreatedAt:   d.CreatedAt,
+		ID:                d.ID,
+		WebhookID:         d.WebhookID,
+		EventType:         d.EventType,
+		StatusCode:        d.StatusCode,
+		Error:             d.Error,
+		Attempts:          d.Attempts,
+		NextRetryAt:       d.NextRetryAt,
+		CreatedAt:         d.CreatedAt,
+		FailedPermanently: d.FailedPermanently,
+		TerminalReason:    d.TerminalReason,
 	}
 }
 

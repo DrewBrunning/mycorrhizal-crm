@@ -32,4 +32,11 @@ type WebhookDelivery struct {
 	Error       *string
 	Attempts    int `gorm:"default:1"`
 	NextRetryAt *time.Time
+	// FailedPermanently is set when the delivery hit a non-retryable HTTP
+	// status (INT-03, issue #466): the receiver returned 401/403/404/410 or
+	// another request-level 4xx that a retry cannot fix, so NextRetryAt is left
+	// nil and ProcessWebhookRetries never picks the row up again.
+	// TerminalReason is the integrations.FailureMode slug behind it.
+	FailedPermanently bool   `gorm:"column:failed_permanently;not null;default:0"`
+	TerminalReason    string `gorm:"column:terminal_reason;not null;default:''"`
 }

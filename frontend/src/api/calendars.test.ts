@@ -33,6 +33,8 @@ const subscription: CalendarSubscription = {
   incident_first_failure_at: null,
   last_run_duration_ms: 1200,
   last_run_stats: { created: 0, updated: 2, skipped: 5 },
+  terminal_failure_at: null,
+  terminal_reason: '',
 };
 
 const okResponse = (body: unknown) => ({
