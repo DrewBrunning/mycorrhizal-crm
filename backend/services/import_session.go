@@ -416,6 +416,13 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 		return nil, apperrors.ErrInvalidInput("session", "Please generate a preview first")
 	}
 
+	// Issue #498: refuse now with a 507 if the disk plainly cannot hold this
+	// import, rather than filling it and failing mid-transaction. The session
+	// is left unconsumed, so a retry after space is freed applies cleanly.
+	if spaceErr := preflightImportDiskSpace(db, len(sessionData.session.PreviewRows)); spaceErr != nil {
+		return nil, spaceErr
+	}
+
 	actionMap := buildActionMap(req.Actions)
 	result := models.ImportResult{Errors: []string{}}
 	isVCFImport := sessionData.importType == "vcf"
@@ -577,6 +584,11 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 
 	if !sessionData.session.PreviewCached {
 		return nil, apperrors.ErrInvalidInput("session", "Please generate a preview first")
+	}
+
+	// Issue #498: disk preflight before the transaction (see Confirm).
+	if spaceErr := preflightImportDiskSpace(db, len(sessionData.session.PreviewRows)); spaceErr != nil {
+		return nil, spaceErr
 	}
 
 	actionMap := buildActionMap(req.Actions)

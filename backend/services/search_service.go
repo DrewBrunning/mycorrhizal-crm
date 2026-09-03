@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"mycorrhizal/internal/faults"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 	"strings"
@@ -10,6 +11,14 @@ import (
 
 	"gorm.io/gorm"
 )
+
+// faultSearchRebuild is the failure-injection seam (issue #434 / #498) for the
+// FTS rebuild transaction. Armed via the faults package, it fails the rebuild
+// inside the single transaction (before the DELETEs), so the rollback leaves
+// the previously-good index untouched — the injection test asserts search
+// still works and the index is still consistent afterward.
+// See docs/development/fault-injection.md.
+const faultSearchRebuild = "services.search.rebuild"
 
 // Full-text search over contacts, notes, and interactions (T11,
 // T11; addresses added by T38,
@@ -391,6 +400,13 @@ func RebuildSearchIndexReport(db *gorm.DB) (SearchIndexRebuildStats, error) {
 	start := time.Now()
 
 	err := db.Transaction(func(tx *gorm.DB) error {
+		// Issue #434/#498 failure-injection seam: an armed fault fails the
+		// rebuild inside the transaction, so the rollback leaves the
+		// previously-good index in place. Unarmed this is a nil return.
+		if err := faults.Hook(faultSearchRebuild); err != nil {
+			return err
+		}
+
 		for _, stmt := range []string{
 			"DELETE FROM contacts_fts",
 			"DELETE FROM notes_fts",
