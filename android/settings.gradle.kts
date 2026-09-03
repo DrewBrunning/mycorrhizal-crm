@@ -25,6 +25,9 @@ dependencyResolutionManagement {
 rootProject.name = "mycorrhizal-android"
 
 include(":app")
+// Issue #263: startup + dashboard-render macrobenchmark (trend signal, not a
+// CI gate). `com.android.test` module — driven by `:macrobenchmark:connectedCheck`.
+include(":macrobenchmark")
 include(":core:model")
 include(":core:network")
 include(":core:data")

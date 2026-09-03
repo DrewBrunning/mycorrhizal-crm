@@ -446,3 +446,31 @@ jobs:
             echo "::error::PERF-02 cross-scale benchmarks did not run (MYCORRHIZAL_LARGE_TESTS not honored?)"
             exit 1
           fi
+
+      # PERF-03 (issue #470): the cross-scale data-movement benchmark check —
+      # smoke + typical + large for import, export (3 formats), FTS rebuild,
+      # backup, restore, delete cascade and duplicate detection. Verifies the
+      # committed datamovement-baseline.json is a fresh smoke+typical run, that
+      # no operation's peak-memory class regresses across scales, that
+      # duplicate detection stays a recorded super-linear finding, and that the
+      # write probe still catches the FTS rebuild holding the write lock. Plus
+      # the migration resource envelope ("for comparability" — issue #495 owns
+      # migration depth). The per-PR signal is the smoke-only
+      # TestDataMovementBenchmarks in the default `go test`; this heavier check
+      # is gated like the rest of this job.
+      - name: Cross-scale data-movement benchmarks
+        working-directory: backend
+        env:
+          MYCORRHIZAL_LARGE_TESTS: "1"
+        run: |
+          set -eo pipefail
+          out="$(go test ./internal/perfbench/ -run '^TestDataMovementAtScale$|^TestMigrationAtScaleResourceEnvelope$' -count=1 -v 2>&1)"
+          echo "$out"
+          # Fail-safe: env-gated, so a typo'd variable would silently skip
+          # these and the job would pass vacuously.
+          for want in "TestDataMovementAtScale" "TestMigrationAtScaleResourceEnvelope"; do
+            if ! grep -q -- "--- PASS: $want" <<<"$out"; then
+              echo "::error::PERF-03 check '$want' did not run (MYCORRHIZAL_LARGE_TESTS not honored?)"
+              exit 1
+            fi
+          done

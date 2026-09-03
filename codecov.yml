@@ -59,3 +59,8 @@ ignore:
   # "frontend enum/registry lists are hardcoded mirrors" note — nothing here
   # is actually generated today.
   - "frontend/src/generated/**"
+  # Issue #263: the macrobenchmark harness is on-device instrumentation code
+  # (androidx.benchmark.macro) — not unit-testable and deliberately outside the
+  # JaCoCo aggregation (the module skips the coverage convention plugin). Keep
+  # the diff gate from faulting its lines.
+  - "android/macrobenchmark/**"
