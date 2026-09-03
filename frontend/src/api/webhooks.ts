@@ -8,6 +8,18 @@ export interface Webhook {
   events: string[];
   is_active: boolean;
   created_at: string;
+  // Rollup of the most recent delivery attempt (INT-04, issue #467). All
+  // fields zero/null when the webhook has never been delivered to.
+  delivery_health?: WebhookDeliveryHealth;
+}
+
+export interface WebhookDeliveryHealth {
+  last_delivery_at: string | null;
+  last_status_code: number | null;
+  last_error: string | null;
+  failed_permanently: boolean;
+  terminal_reason: string;
+  retrying: boolean;
 }
 
 export interface WebhookCreateResponse extends Webhook {
@@ -21,6 +33,10 @@ export interface WebhookDelivery {
   error: string | null;
   attempts: number;
   created_at: string;
+  // INT-03 (issue #466): the delivery hit a non-retryable status and will
+  // not be retried.
+  failed_permanently?: boolean;
+  terminal_reason?: string;
 }
 
 export async function getWebhooks(): Promise<Webhook[]> {

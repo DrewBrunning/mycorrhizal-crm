@@ -33,6 +33,7 @@ import { suggestRelationshipEdges } from './api/relationshipEdges';
 import CalendarSyncSettings from './components/CalendarSyncSettings';
 import ContactAddressSuggestions from './components/ContactAddressSuggestions';
 import ContactFieldSettings from './components/ContactFieldSettings';
+import ContactSyncSettings from './components/ContactSyncSettings';
 import CustomFieldsSettings from './components/CustomFieldsSettings';
 import ExportFieldPickerDialog from './components/ExportFieldPickerDialog';
 import ImportContactsDialog from './components/ImportContactsDialog';
@@ -198,6 +199,8 @@ export default function DataSettingsPage() {
       <CustomFieldsSettings />
 
       <CalendarSyncSettings />
+
+      <ContactSyncSettings />
 
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>

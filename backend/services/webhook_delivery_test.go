@@ -77,37 +77,54 @@ func TestComputeSignatureHandVerification(t *testing.T) {
 		"a receiving webhook consumer verifying HMAC-SHA256 over the raw body with the shared secret must accept this signature")
 }
 
-// ---- retryAt --------------------------------------------------------------
+// ---- retryAt (webhookRetryPolicy — INT-03 #466) --------------------------
 
 func TestRetryAtSchedule(t *testing.T) {
 	before := time.Now()
-	first := retryAt(1)
-	second := retryAt(2)
-	third := retryAt(3) // beyond len(retryDelays) == 2 -> no further retry
+	first := retryAt(1, 0)
+	second := retryAt(2, 0)
+	third := retryAt(3, 0) // budget of maxDeliveryAttempts (3) is spent
 	after := time.Now()
 
 	require.NotNil(t, first)
 	require.NotNil(t, second)
-	assert.Nil(t, third, "attempts beyond the configured backoff schedule must not be retried")
+	assert.Nil(t, third, "attempts at/over the retry budget must not be retried")
 
-	// attempt 1 -> now + 5m
-	assert.True(t, !first.Before(before.Add(5*time.Minute)) && !first.After(after.Add(5*time.Minute)),
-		"attempt 1 retry time %v must be ~5m from now (window %v..%v)", first, before.Add(5*time.Minute), after.Add(5*time.Minute))
+	// attempt 1 -> ~BaseDelay (5m), within the ±20% jitter window.
+	base := webhookRetryPolicy.BaseDelay
+	assertRetryWithin(t, first, before, after, time.Duration(float64(base)*0.8), time.Duration(float64(base)*1.2))
 
-	// attempt 2 -> now + 15m
-	assert.True(t, !second.Before(before.Add(15*time.Minute)) && !second.After(after.Add(15*time.Minute)),
-		"attempt 2 retry time %v must be ~15m from now (window %v..%v)", second, before.Add(15*time.Minute), after.Add(15*time.Minute))
+	// attempt 2 -> ~BaseDelay*Multiplier (15m), jittered.
+	step2 := time.Duration(float64(base) * webhookRetryPolicy.Multiplier)
+	assertRetryWithin(t, second, before, after, time.Duration(float64(step2)*0.8), time.Duration(float64(step2)*1.2))
 
-	// second retry delay must be strictly longer than the first (backoff grows).
-	assert.True(t, second.Sub(*first) > 0, "retry delay must grow between attempt 1 and attempt 2")
+	// Backoff grows between attempt 1 and attempt 2 (even with jitter, the
+	// windows do not overlap: 6m max vs 12m min).
+	assert.True(t, second.After(*first), "retry delay must grow between attempt 1 and attempt 2")
+}
+
+// assertRetryWithin checks that a scheduled retry time falls lo..hi from "now",
+// tolerating the before/after sampling window around the call.
+func assertRetryWithin(t *testing.T, at *time.Time, before, after time.Time, lo, hi time.Duration) {
+	t.Helper()
+	require.NotNil(t, at)
+	assert.False(t, at.Before(before.Add(lo)), "retry %v earlier than %v", at, before.Add(lo))
+	assert.False(t, at.After(after.Add(hi)), "retry %v later than %v", at, after.Add(hi))
 }
 
 func TestRetryAtNilBeyondMaxAttempts(t *testing.T) {
-	// maxDeliveryAttempts is 3; ProcessWebhookRetries only re-queues rows with
-	// attempts < maxDeliveryAttempts, and retryAt is the mechanism that stops
-	// scheduling further retries once the backoff table is exhausted.
-	assert.Nil(t, retryAt(len(retryDelays)+1))
-	assert.Nil(t, retryAt(maxDeliveryAttempts))
+	// The retry budget is maxDeliveryAttempts (3); retryAt is what stops
+	// scheduling once it is spent.
+	assert.Nil(t, retryAt(maxDeliveryAttempts, 0))
+	assert.Nil(t, retryAt(maxDeliveryAttempts+1, 0))
+}
+
+func TestRetryAtHonorsRetryAfterHint(t *testing.T) {
+	before := time.Now()
+	// A Retry-After far longer than the jittered backoff wins.
+	at := retryAt(1, 30*time.Minute)
+	require.NotNil(t, at)
+	assert.False(t, at.Before(before.Add(30*time.Minute)), "retry-after hint must not be shortened by the backoff")
 }
 
 // ---- saveDelivery -----------------------------------------------------
@@ -116,7 +133,7 @@ func TestSaveDeliveryPersistsSuccessRecord(t *testing.T) {
 	db := setupWebhookRetryTestDB(t)
 	statusCode := 200
 
-	d := saveDelivery(db, 42, "contact.created", `{"a":1}`, &statusCode, nil, 1, nil)
+	d := saveDelivery(db, 42, "contact.created", `{"a":1}`, &statusCode, nil, 1, nil, false, "")
 
 	require.NotZero(t, d.ID, "saveDelivery must return the persisted record with its ID populated")
 
@@ -142,7 +159,7 @@ func TestSaveDeliveryLogsAndReturnsOnCreateError(t *testing.T) {
 
 	var d models.WebhookDelivery
 	require.NotPanics(t, func() {
-		d = saveDelivery(db, 1, "contact.created", `{}`, nil, nil, 1, nil)
+		d = saveDelivery(db, 1, "contact.created", `{}`, nil, nil, 1, nil, false, "")
 	})
 	assert.Zero(t, d.ID, "a failed Create must leave the record unsaved (no ID assigned)")
 }
@@ -152,7 +169,7 @@ func TestSaveDeliveryPersistsFailureRecordWithRetry(t *testing.T) {
 	errMsg := "unexpected status 500"
 	next := time.Now().Add(5 * time.Minute)
 
-	d := saveDelivery(db, 7, "contact.updated", `{}`, nil, &errMsg, 1, &next)
+	d := saveDelivery(db, 7, "contact.updated", `{}`, nil, &errMsg, 1, &next, false, "")
 
 	var loaded models.WebhookDelivery
 	require.NoError(t, db.First(&loaded, d.ID).Error)
@@ -358,9 +375,13 @@ func TestDeliverWebhookNon2xxSchedulesRetryAndRecordsStatus(t *testing.T) {
 	assert.Equal(t, 500, *delivery.StatusCode)
 	require.NotNil(t, delivery.Error)
 	assert.Equal(t, "unexpected status 500", *delivery.Error)
-	require.NotNil(t, delivery.NextRetryAt, "a failed delivery on attempt 1 must be scheduled for retry")
-	assert.True(t, !delivery.NextRetryAt.Before(before.Add(5*time.Minute)) && !delivery.NextRetryAt.After(after.Add(5*time.Minute)))
+	require.NotNil(t, delivery.NextRetryAt, "a failed delivery on attempt 1 (500 is transient) must be scheduled for retry")
+	// webhookRetryPolicy: attempt 1 waits ~BaseDelay (5m) ± 20% jitter.
+	base := webhookRetryPolicy.BaseDelay
+	assertRetryWithin(t, delivery.NextRetryAt, before, after,
+		time.Duration(float64(base)*0.8), time.Duration(float64(base)*1.2))
 	assert.Equal(t, 1, delivery.Attempts)
+	assert.False(t, delivery.FailedPermanently, "a 500 is transient, not a permanent failure")
 }
 
 func TestDeliverWebhookFinalAttemptDoesNotScheduleRetry(t *testing.T) {
@@ -374,7 +395,7 @@ func TestDeliverWebhookFinalAttemptDoesNotScheduleRetry(t *testing.T) {
 	require.NoError(t, db.Create(&wh).Error)
 	cfg := config.Config{}
 
-	// attempt 3 exceeds len(retryDelays) == 2, so no further retry is scheduled
+	// attempt 3 spends the retry budget, so no further retry is scheduled
 	// even though the request itself still fails.
 	delivery := deliverWebhook(context.Background(), db, cfg, wh, "contact.created", []byte(`{}`), maxDeliveryAttempts)
 

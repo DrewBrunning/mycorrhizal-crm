@@ -549,8 +549,14 @@ func TestSyncAllCalendarsRecordsErrorsPerSubscription(t *testing.T) {
 	}))
 	defer okServer.Close()
 
+	// 503 (transient) rather than 401: this test exercises per-subscription
+	// error isolation and "the error clears after a later successful sync",
+	// which requires the failure to stay retryable. A 401 is permanent — the
+	// scheduler would (correctly, per INT-04 #467) skip the subscription on the
+	// next run instead of retrying it. That behavior has its own test:
+	// TestCalendarSync_PermanentFailureStopsScheduledRetries.
 	brokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
 	defer brokenServer.Close()
 

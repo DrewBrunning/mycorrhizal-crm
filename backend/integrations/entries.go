@@ -291,19 +291,19 @@ func webhooksIntegration() Integration {
 		Timeout:     15 * time.Second,
 		TimeoutNote: "http.Client.Timeout on both deliveryClient and guardedDeliveryClient; guarded client also caps redirects at 3.",
 
-		RetryBudget: "maxDeliveryAttempts = 3. Delays: +5m then +15m (retryDelays). Retry state is a webhook_deliveries row (NextRetryAt), so it survives a restart. ProcessWebhookRetries runs under a job lock; a permanently-failing receiver stops after attempt 3 with the reason recorded — it does not retry forever.",
+		RetryBudget: "webhookRetryPolicy: maxDeliveryAttempts = 3, exponential backoff base 5m ×3 with ±20% jitter capped at 6h (integrations.RetryPolicy). A permanent status (401/403/404/410 or another request-level 4xx) is NOT retried — the row is marked failed_permanently on that attempt and integration_failed is raised immediately. 429/503 wait at least the Retry-After hint. Retry state is a webhook_deliveries row (NextRetryAt), so it survives a restart; ProcessWebhookRetries runs under a job lock.",
 
 		SSRF:     SSRFGuardedWhenEnabled,
 		SSRFNote: "clientFor(cfg) returns the SafeDialContext-guarded client only when WEBHOOK_BLOCK_PRIVATE_URLS is set (default off — self-hosted installs legitimately target LAN receivers). Guarding is in the dialer so redirect targets are checked too.",
 
 		Behavior: map[FailureMode]string{
-			FailureUnreachableHost:       "Dialer sentinel (ErrWebhookUnreachable / ErrWebhookPrivateAddress) stored in the delivery row's Error; attempt counted; NextRetryAt set per the schedule until attempt 3.",
-			FailureTimeout:               "15s deadline → delivery row records the timeout, attempt counted, retry scheduled; the goroutine never blocks the event that triggered it.",
-			FailureAuthExpiry:            "A receiver 401 is recorded and retried within the 3-attempt budget, then goes terminal (#467) — webhooks carry a signing secret, not a refreshable credential, so this is 'the receiver rejected us', surfaced on the webhook's status.",
-			FailureAuthzRevoked:          "403 handled exactly like 401: recorded, bounded retries, then terminal with the last status shown.",
-			FailureMalformedResponse:     "The response body is not used; any 2xx is success. A non-2xx status is recorded with the code and retried within budget.",
-			FailureRateLimited:           "429/503 → recorded and retried on the fixed +5m/+15m schedule; Retry-After larger than the schedule is honored (INT-03, #466).",
-			FailureRemoteResourceDeleted: "404 on the receiver URL is a non-2xx like any other: recorded, bounded retries, then terminal. A deleted receiver endpoint is an operator configuration problem surfaced on the webhook.",
+			FailureUnreachableHost:       "Dialer sentinel (ErrWebhookUnreachable / ErrWebhookPrivateAddress) stored in the delivery row's Error; attempt counted; NextRetryAt set per webhookRetryPolicy until attempt 3, then integration_failed.",
+			FailureTimeout:               "15s deadline → delivery row records the timeout, attempt counted, retry scheduled with backoff; the goroutine never blocks the event that triggered it.",
+			FailureAuthExpiry:            "A receiver 401 is terminal immediately (failed_permanently, terminal_reason=auth-expiry, integration_failed on that attempt, no retry) — webhooks carry a signing secret, not a refreshable credential, so a 401 will not self-heal; surfaced on the webhook's delivery health (#467).",
+			FailureAuthzRevoked:          "403 handled exactly like 401: terminal on the failing attempt, terminal_reason=authz-revoked, no retry.",
+			FailureMalformedResponse:     "The response body is not used; any 2xx is success. An unclassified 5xx is retried within budget; an unclassified 4xx is treated as permanent (terminal_reason=client-error).",
+			FailureRateLimited:           "429/503 → recorded and retried with exponential backoff, but never sooner than the Retry-After hint (integrations.ParseRetryAfter); still bounded by the 3-attempt budget.",
+			FailureRemoteResourceDeleted: "404/410 on the receiver URL is terminal immediately (terminal_reason=remote-resource-deleted, no retry). A deleted receiver endpoint is an operator configuration problem surfaced on the webhook.",
 		},
 
 		SourceFiles: []string{"services/webhook_service.go"},

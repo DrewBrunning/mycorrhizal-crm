@@ -556,6 +556,24 @@ type WebhookResponse struct {
 	Events    []string  `json:"events"`
 	IsActive  bool      `json:"is_active"`
 	CreatedAt time.Time `json:"created_at"`
+	// DeliveryHealth is the always-visible INT-04 (#467) surface for a
+	// webhook: a rollup of its most recent delivery so a receiver that has
+	// permanently failed (revoked token, deleted endpoint) is visible next to
+	// the webhook itself, not only inside the collapsed delivery log.
+	DeliveryHealth WebhookDeliveryHealth `json:"delivery_health"`
+}
+
+// WebhookDeliveryHealth summarizes a webhook's latest delivery attempt.
+// Zero-valued (all nulls/false) when the webhook has never been delivered to.
+type WebhookDeliveryHealth struct {
+	LastDeliveryAt    *time.Time `json:"last_delivery_at"`
+	LastStatusCode    *int       `json:"last_status_code"`
+	LastError         *string    `json:"last_error"`
+	FailedPermanently bool       `json:"failed_permanently"`
+	TerminalReason    string     `json:"terminal_reason"`
+	// Retrying is true when the last delivery failed but still has a retry
+	// scheduled (a transient failure working itself out).
+	Retrying bool `json:"retrying"`
 }
 
 // WebhookCreateResponse is the DTO returned once after creation — includes the plaintext secret
@@ -571,14 +589,16 @@ type WebhookCreateResponse struct {
 
 // WebhookDeliveryResponse is the DTO returned for a webhook delivery record
 type WebhookDeliveryResponse struct {
-	ID          uint       `json:"id"`
-	WebhookID   uint       `json:"webhook_id"`
-	EventType   string     `json:"event_type"`
-	StatusCode  *int       `json:"status_code"`
-	Error       *string    `json:"error"`
-	Attempts    int        `json:"attempts"`
-	NextRetryAt *time.Time `json:"next_retry_at"`
-	CreatedAt   time.Time  `json:"created_at"`
+	ID                uint       `json:"id"`
+	WebhookID         uint       `json:"webhook_id"`
+	EventType         string     `json:"event_type"`
+	StatusCode        *int       `json:"status_code"`
+	Error             *string    `json:"error"`
+	Attempts          int        `json:"attempts"`
+	NextRetryAt       *time.Time `json:"next_retry_at"`
+	CreatedAt         time.Time  `json:"created_at"`
+	FailedPermanently bool       `json:"failed_permanently"`
+	TerminalReason    string     `json:"terminal_reason"`
 }
 
 // LinkFieldTypeInput is the DTO for creating/updating a LinkFieldType

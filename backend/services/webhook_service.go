@@ -9,8 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"mycorrhizal/config"
 	"mycorrhizal/httputil"
+	"mycorrhizal/integrations"
 	"mycorrhizal/internal/faults"
 	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/logger"
@@ -18,6 +20,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -92,7 +95,31 @@ func clientFor(cfg config.Config) *http.Client {
 	return deliveryClient
 }
 
-var retryDelays = []time.Duration{5 * time.Minute, 15 * time.Minute}
+// webhookRetryPolicy bounds the outbound webhook retry loop (INT-03, issue
+// #466): a capped exponential backoff with jitter so a batch of failed
+// deliveries does not retry in lockstep, and so a permanently slow receiver
+// cannot stretch the schedule without limit. maxDeliveryAttempts total tries.
+var webhookRetryPolicy = integrations.RetryPolicy{
+	MaxAttempts: maxDeliveryAttempts,
+	BaseDelay:   5 * time.Minute,
+	MaxDelay:    6 * time.Hour,
+	Multiplier:  3,
+	JitterFrac:  0.2,
+}
+
+// webhookRand backs the retry jitter. Guarded because deliverWebhook runs in
+// per-delivery goroutines. Non-cryptographic by design: this is load-spreading
+// for retry timing, not a security primitive.
+var webhookRand = struct {
+	sync.Mutex
+	r *rand.Rand
+}{r: rand.New(rand.NewSource(time.Now().UnixNano()))} //nolint:gosec // G404: retry-backoff jitter, not security-sensitive
+
+func webhookBackoff(attempt int, retryAfter time.Duration) time.Duration {
+	webhookRand.Lock()
+	defer webhookRand.Unlock()
+	return webhookRetryPolicy.NextDelay(attempt, retryAfter, webhookRand.r)
+}
 
 type webhookPayload struct {
 	ID        string      `json:"id"`
@@ -233,42 +260,34 @@ func deliverWebhook(ctx context.Context, db *gorm.DB, cfg config.Config, wh mode
 	finish := func(d models.WebhookDelivery, errMsg string) models.WebhookDelivery {
 		// integration_failed once a delivery has exhausted its retries and is
 		// still failing — the point at which an operator needs to know an
-		// external integration is down (issue #424). Detail carries the event
-		// type only, never the webhook URL (#424 non-goal).
+		// external integration is down (issue #424). A permanent status takes
+		// its own path below and raises this on the failing attempt.
 		if errMsg != "" && attempt >= maxDeliveryAttempts {
-			durMS := time.Since(start).Milliseconds()
-			logger.Ctx(ctx).Warn().
-				Str(logger.FieldEvent, models.SysEventIntegrationFailed).
-				Str(logger.FieldComponent, logger.ComponentWebhook).
-				Str(logger.FieldResult, logger.ResultFailure).
-				Int64(logger.FieldDurationMS, durMS).
-				Uint("webhook_id", wh.ID).
-				Str(logger.FieldError, logger.SanitizeLogField(errMsg)).
-				Msg("webhook delivery exhausted its retries")
-			models.RecordSystemEvent(ctx, db, models.SystemEvent{
-				EventType: models.SysEventIntegrationFailed, Component: logger.ComponentWebhook,
-				Operation: eventType, Result: models.SysResult(logger.ResultFailure),
-				DurationMS: &durMS, Error: errMsg,
-				Detail: fmt.Sprintf("event=%s attempts=%d", eventType, attempt),
-			})
+			emitWebhookIntegrationFailed(ctx, db, wh, eventType, attempt, start, errMsg)
 		}
 		return d
 	}
 
 	if cfg.WebhookBlockPrivateURLs && isPrivateURL(wh.URL) {
 		errStr := "webhook URL resolves to a private or loopback address"
-		return finish(saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, nil), errStr)
+		return finish(saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, nil, false, ""), errStr)
 	}
 
 	sig := computeSignature(wh.Secret, body)
 	req, err := http.NewRequest("POST", wh.URL, bytes.NewReader(body))
 	if err != nil {
 		errStr := err.Error()
-		return finish(saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, retryAt(attempt)), errStr)
+		return finish(saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, retryAt(attempt, 0), false, ""), errStr)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Webhook-Signature", "sha256="+sig)
 	req.Header.Set("X-Mycorrhizal-Event", eventType)
+	// The event envelope's id is stable across retries (ProcessWebhookRetries
+	// replays the same body), so a receiver can de-duplicate a redelivery on
+	// it (INT-03, issue #466 action 3).
+	if id := webhookPayloadID(body); id != "" {
+		req.Header.Set("Idempotency-Key", id)
+	}
 	if id := logger.CorrelationID(ctx); id != "" {
 		req.Header.Set("X-Correlation-ID", id)
 	}
@@ -278,13 +297,13 @@ func deliverWebhook(ctx context.Context, db *gorm.DB, cfg config.Config, wh mode
 	// bounded by maxDeliveryAttempts.
 	if ferr := faults.Hook(faultWebhookDelivery); ferr != nil {
 		errStr := ferr.Error()
-		return finish(saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, retryAt(attempt)), errStr)
+		return finish(saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, retryAt(attempt, 0), false, ""), errStr)
 	}
 
 	resp, err := clientFor(cfg).Do(req)
 	if err != nil {
 		errStr := err.Error()
-		return finish(saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, retryAt(attempt)), errStr)
+		return finish(saveDelivery(db, wh.ID, eventType, string(body), nil, &errStr, attempt, retryAt(attempt, 0), false, ""), errStr)
 	}
 	defer func() {
 		io.Copy(io.Discard, resp.Body) //nolint:errcheck
@@ -298,10 +317,74 @@ func deliverWebhook(ctx context.Context, db *gorm.DB, cfg config.Config, wh mode
 		// it (issue #622). Failed/retrying rows keep the full body because
 		// ProcessWebhookRetries replays it.
 		trimmed := trimSuccessfulDeliveryPayload(body)
-		return saveDelivery(db, wh.ID, eventType, string(trimmed), &statusCode, nil, attempt, nil)
+		return saveDelivery(db, wh.ID, eventType, string(trimmed), &statusCode, nil, attempt, nil, false, "")
 	}
+
 	errStr := fmt.Sprintf("unexpected status %d", statusCode)
-	return finish(saveDelivery(db, wh.ID, eventType, string(body), &statusCode, &errStr, attempt, retryAt(attempt)), errStr)
+	disp := integrations.DispositionForHTTPStatus(statusCode)
+	if !disp.Retryable {
+		// A permanent status (401/403/404/410 or another request-level 4xx):
+		// a retry sends the same bytes and gets the same answer. Stop now
+		// (no next_retry_at), record the reason, and raise integration_failed
+		// on this attempt rather than after burning the whole budget
+		// (INT-03 #466 action 6, INT-04 #467).
+		d := saveDelivery(db, wh.ID, eventType, string(body), &statusCode, &errStr, attempt, nil, true, webhookTerminalReason(statusCode))
+		emitWebhookIntegrationFailed(ctx, db, wh, eventType, attempt, start, errStr)
+		return d
+	}
+
+	var retryAfter time.Duration
+	if disp.HonorRetryAfter {
+		if ra, ok := integrations.ParseRetryAfter(resp.Header.Get("Retry-After")); ok {
+			retryAfter = ra // 429/503 — never retry sooner than the server asked (#466 action 5)
+		}
+	}
+	return finish(saveDelivery(db, wh.ID, eventType, string(body), &statusCode, &errStr, attempt, retryAt(attempt, retryAfter), false, ""), errStr)
+}
+
+// emitWebhookIntegrationFailed records the integration_failed operational event
+// (issue #424) for a delivery that will not be retried — either the retry
+// budget is exhausted or the status is permanent. Detail carries the event
+// type only, never the webhook URL (#424 non-goal).
+func emitWebhookIntegrationFailed(ctx context.Context, db *gorm.DB, wh models.Webhook, eventType string, attempt int, start time.Time, errMsg string) {
+	durMS := time.Since(start).Milliseconds()
+	logger.Ctx(ctx).Warn().
+		Str(logger.FieldEvent, models.SysEventIntegrationFailed).
+		Str(logger.FieldComponent, logger.ComponentWebhook).
+		Str(logger.FieldResult, logger.ResultFailure).
+		Int64(logger.FieldDurationMS, durMS).
+		Uint("webhook_id", wh.ID).
+		Str(logger.FieldError, logger.SanitizeLogField(errMsg)).
+		Msg("webhook delivery will not be retried")
+	models.RecordSystemEvent(ctx, db, models.SystemEvent{
+		EventType: models.SysEventIntegrationFailed, Component: logger.ComponentWebhook,
+		Operation: eventType, Result: models.SysResult(logger.ResultFailure),
+		DurationMS: &durMS, Error: errMsg,
+		Detail: fmt.Sprintf("event=%s attempts=%d", eventType, attempt),
+	})
+}
+
+// webhookTerminalReason is the integrations.FailureMode slug stored on a
+// permanently-failed delivery so the UI can show an actionable message. A 4xx
+// with no named mode (400/405/422) becomes "client-error".
+func webhookTerminalReason(statusCode int) string {
+	if mode, ok := integrations.ClassifyHTTPStatus(statusCode); ok {
+		return string(mode)
+	}
+	return "client-error"
+}
+
+// webhookPayloadID pulls the envelope id out of a serialized webhookPayload so
+// a retry can carry it as an Idempotency-Key. "" if body is not the envelope
+// shape (e.g. a hand-built error row).
+func webhookPayloadID(body []byte) string {
+	var env struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(body, &env); err != nil {
+		return ""
+	}
+	return env.ID
 }
 
 func computeSignature(secret string, body []byte) string {
@@ -310,23 +393,28 @@ func computeSignature(secret string, body []byte) string {
 	return fmt.Sprintf("%x", mac.Sum(nil))
 }
 
-func retryAt(attempt int) *time.Time {
-	if attempt > len(retryDelays) {
+// retryAt returns the time of the next webhook retry after `attempt` failed
+// transiently, or nil when the retry budget is spent. retryAfter is a
+// server-supplied Retry-After hint (0 = none) the wait is never shorter than.
+func retryAt(attempt int, retryAfter time.Duration) *time.Time {
+	if !webhookRetryPolicy.HasAttemptsLeft(attempt) {
 		return nil
 	}
-	t := time.Now().Add(retryDelays[attempt-1])
+	t := time.Now().Add(webhookBackoff(attempt, retryAfter))
 	return &t
 }
 
-func saveDelivery(db *gorm.DB, webhookID uint, eventType, payload string, statusCode *int, errMsg *string, attempts int, nextRetryAt *time.Time) models.WebhookDelivery {
+func saveDelivery(db *gorm.DB, webhookID uint, eventType, payload string, statusCode *int, errMsg *string, attempts int, nextRetryAt *time.Time, failedPermanently bool, terminalReason string) models.WebhookDelivery {
 	d := models.WebhookDelivery{
-		WebhookID:   webhookID,
-		EventType:   eventType,
-		Payload:     payload,
-		StatusCode:  statusCode,
-		Error:       errMsg,
-		Attempts:    attempts,
-		NextRetryAt: nextRetryAt,
+		WebhookID:         webhookID,
+		EventType:         eventType,
+		Payload:           payload,
+		StatusCode:        statusCode,
+		Error:             errMsg,
+		Attempts:          attempts,
+		NextRetryAt:       nextRetryAt,
+		FailedPermanently: failedPermanently,
+		TerminalReason:    terminalReason,
 	}
 	if err := db.Create(&d).Error; err != nil {
 		logger.Error().Err(err).Uint("webhook_id", webhookID).Msg("Failed to save webhook delivery")
@@ -360,7 +448,9 @@ func ProcessWebhookRetries(db *gorm.DB, cfg config.Config) {
 
 	now := time.Now()
 	var deliveries []models.WebhookDelivery
-	if err := db.Where("next_retry_at <= ? AND attempts < ? AND deleted_at IS NULL", now, maxDeliveryAttempts).Find(&deliveries).Error; err != nil {
+	// A permanently-failed row has next_retry_at = NULL and so is already
+	// excluded, but the explicit predicate documents the intent (INT-03 #466).
+	if err := db.Where("next_retry_at <= ? AND attempts < ? AND failed_permanently = ? AND deleted_at IS NULL", now, maxDeliveryAttempts, false).Find(&deliveries).Error; err != nil {
 		logger.Error().Err(err).Msg("Failed to load webhook deliveries for retry")
 		return
 	}
@@ -380,11 +470,14 @@ func ProcessWebhookRetries(db *gorm.DB, cfg config.Config) {
 		}
 
 		d, wh := d, wh
-		go func() {
+		// Tracked like the TriggerWebhooks fan-out so a leaked retry goroutine's
+		// DB access cannot race a test's t.TempDir teardown (issue #703), and
+		// WaitForWebhookGoroutines covers the retry path too.
+		webhookGoroutines(func() {
 			deliverySem <- struct{}{}
 			defer func() { <-deliverySem }()
 			// Replay the original payload so retries share the same event ID and timestamp
 			deliverWebhook(ctx, db, cfg, wh, d.EventType, []byte(d.Payload), d.Attempts+1)
-		}()
+		})
 	}
 }

@@ -23,6 +23,11 @@ export interface CalendarSubscription {
   incident_first_failure_at: string | null;
   last_run_duration_ms: number | null;
   last_run_stats: Record<string, number>;
+  // Terminal (permanent-until-human) failure state (INT-04, issue #467).
+  // terminal_failure_at is non-null once the sync has stopped retrying and
+  // needs user action; terminal_reason is the failure-mode slug.
+  terminal_failure_at: string | null;
+  terminal_reason: string;
 }
 
 export interface CalendarSubscriptionInput {

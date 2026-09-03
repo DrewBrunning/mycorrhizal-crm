@@ -8131,6 +8131,16 @@
           "required": false
         },
         {
+          "name": "terminal_failure_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "terminal_reason",
+          "type": "string",
+          "required": false
+        },
+        {
           "name": "url",
           "type": "string",
           "required": false
@@ -9773,6 +9783,16 @@
         {
           "name": "sync_enabled",
           "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "terminal_failure_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "terminal_reason",
+          "type": "string",
           "required": false
         },
         {
@@ -15854,6 +15874,11 @@
           "required": false
         },
         {
+          "name": "delivery_health",
+          "type": "object",
+          "required": false
+        },
+        {
           "name": "events",
           "type": "array\u003cstring\u003e",
           "required": false
@@ -15909,6 +15934,11 @@
           "required": false
         },
         {
+          "name": "failed_permanently",
+          "type": "boolean",
+          "required": false
+        },
+        {
           "name": "id",
           "type": "integer",
           "required": false
@@ -15921,6 +15951,11 @@
         {
           "name": "status_code",
           "type": "integer",
+          "required": false
+        },
+        {
+          "name": "terminal_reason",
+          "type": "string",
           "required": false
         },
         {
@@ -15961,6 +15996,11 @@
         {
           "name": "created_at",
           "type": "string",
+          "required": false
+        },
+        {
+          "name": "delivery_health",
+          "type": "object",
           "required": false
         },
         {
