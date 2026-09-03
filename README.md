@@ -22,6 +22,7 @@
        color scale (that's baked into the ossf-scorecard badge type, not available here) --
        left as a static color rather than one that goes stale as the score changes. -->
   <a href="https://scorecard.dev/viewer/?uri=github.com/DrewBrunning/mycorrhizal-crm"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FDrewBrunning%2Fmycorrhizal-crm&query=%24.score&label=openssf%20scorecard&suffix=%2F10" alt="OpenSSF Scorecard"></a>
+  <a href="https://www.bestpractices.dev/projects/14433"><img src="https://www.bestpractices.dev/projects/14433/baseline"></a> 
   <a href="https://codecov.io/gh/DrewBrunning/mycorrhizal-crm"><img src="https://codecov.io/gh/DrewBrunning/mycorrhizal-crm/graph/badge.svg" alt="Coverage"></a>
 </p>
 
