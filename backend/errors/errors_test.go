@@ -79,6 +79,8 @@ func TestHTTPStatusCodes(t *testing.T) {
 		{"External", ErrExternal("stripe", "fail"), http.StatusServiceUnavailable},
 		{"BusinessLogic", ErrBusinessLogic("nope"), http.StatusUnprocessableEntity},
 		{"OperationFailed", ErrOperationFailed("sync", "timeout"), http.StatusUnprocessableEntity},
+		{"InsufficientStorage", ErrInsufficientStorage("no room"), http.StatusInsufficientStorage},
+		{"InsufficientStorageDefault", ErrInsufficientStorage(""), http.StatusInsufficientStorage},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -98,6 +100,7 @@ func TestErrorCodes(t *testing.T) {
 		{ErrNotFound("X"), ErrCodeNotFound},
 		{ErrValidation("x"), ErrCodeValidation},
 		{ErrDatabase("x"), ErrCodeDatabase},
+		{ErrInsufficientStorage("x"), ErrCodeInsufficientStorage},
 	}
 	for _, tt := range tests {
 		if tt.e.Code != tt.want {
