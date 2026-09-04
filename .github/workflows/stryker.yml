@@ -39,7 +39,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          # COMPAT-01 (issue #472): floor comes from frontend/package.json's
+          # "engines.node" rather than a hardcoded number here.
+          node-version-file: frontend/package.json
           cache: 'yarn'
           cache-dependency-path: frontend/yarn.lock
 

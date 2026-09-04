@@ -8,6 +8,21 @@ has_children: false
 
 For initial setup see [Getting Started](getting-started.html). This page covers production-specific concerns.
 
+## Storage requirements
+
+**The database directory (`DATA_PATH` / `SQLITE_DB_PATH`) must be on local disk.** SQLite's WAL
+mode depends on advisory byte-range locks that network filesystems — NFS, SMB/CIFS, and similar —
+do not reliably implement across clients; running the database over one is a known corruption
+risk, not a theoretical one. This is the single most likely self-hosted mistake this project sees
+coming (mounting a NAS share and pointing the data directory at it), so it is stated here, first,
+rather than only in a forum answer.
+
+The backend logs a startup warning if it detects a known network-filesystem type under the
+database path, but that detection cannot cover every case (see
+[the supported runtime matrix](development/supported-runtime-matrix.md) for what it does and does
+not catch, plus every other supported-version floor for this project). Photos and attachments have
+no such constraint — see [Backups](#backups) below for where each piece of data lives.
+
 ## How the Docker Setup Works
 
 Mycorrhizal CRM runs as a single all-in-one container. Inside it, nginx serves the React SPA and proxies all `/api/`, `/carddav/`, and `/.well-known/carddav` requests to the Go backend on `127.0.0.1:8080`; the backend is never exposed to the host directly. Only the nginx port is published (default `7300`). This same-origin proxy is built in, so nothing extra is required.

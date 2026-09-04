@@ -8,7 +8,8 @@ nav_order: 2
 
 ## Setup
 
-Requires current [Go version](https://go.dev/doc/install).
+Requires the Go version pinned in `backend/go.mod` ([install Go](https://go.dev/doc/install)) —
+deliberately pinned, not floated; see the [supported runtime matrix](supported-runtime-matrix.md).
 
 ```sh
 cd backend
