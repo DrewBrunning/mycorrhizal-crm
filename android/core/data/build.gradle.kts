@@ -6,6 +6,23 @@ plugins {
 
 android {
     namespace = "com.mycorrhizal.crm.data"
+
+    // Issue #480: exportSchema is on (AppDatabase) so Room writes a versioned
+    // JSON schema here on every compile. That JSON is what `MigrationTestHelper`
+    // needs to build a historical "before" database for a migration test, and
+    // what `onValidateSchema` compares a migration's end state against — so the
+    // committed files are the real regression net for the current and every
+    // future migration, not just documentation. Exposed to both `test` (Robolectric)
+    // and `androidTest` (device) source sets since either could host a
+    // MigrationTestHelper-based test.
+    sourceSets {
+        getByName("test").assets.srcDir("schemas")
+        getByName("androidTest").assets.srcDir("schemas")
+    }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {

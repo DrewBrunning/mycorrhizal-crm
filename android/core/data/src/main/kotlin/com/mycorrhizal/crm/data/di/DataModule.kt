@@ -157,15 +157,14 @@ object DataModule {
             DB_NAME,
         )
             .openHelperFactory(SupportOpenHelperFactory(passphrase.toByteArray()))
-            // T76: an explicit migration for 13->14 so pending_interactions (a real
-            // not-yet-synced outbox) survives that specific version bump; the destructive
-            // fallback remains for any other/unexpected version gap, per this cache's
-            // general rebuild-from-server policy (see AppDatabase's doc comment).
-            .addMigrations(
-                com.mycorrhizal.crm.data.local.MIGRATION_13_14,
-                com.mycorrhizal.crm.data.local.MIGRATION_14_15,
-                com.mycorrhizal.crm.data.local.MIGRATION_15_16,
-            )
+            // T76/#480: REGISTERED_MIGRATIONS (Migrations.kt) is the single source of truth
+            // for which version bumps have a hand-written migration — so pending_interactions
+            // (a real not-yet-synced outbox) survives those bumps; the destructive fallback
+            // remains for any other/unexpected version gap, per this cache's general
+            // rebuild-from-server policy (see AppDatabase's doc comment).
+            // MigrationVersionCoverageTest guards against a future gap being left unregistered
+            // by accident.
+            .addMigrations(*com.mycorrhizal.crm.data.local.REGISTERED_MIGRATIONS.toTypedArray())
             .fallbackToDestructiveMigration()
             .build()
     }
