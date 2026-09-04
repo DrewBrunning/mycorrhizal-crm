@@ -3,14 +3,55 @@
 # Two statuses, deliberately asymmetric:
 #   - project: informational only. An absolute "must be at least N%" floor is
 #     the worst variant of a coverage gate (issue #267) and stays off.
-#   - patch: the hard gate. `target: 100%` fails a PR that adds any changed
-#     line the coverage tooling records as uncovered (Go coverprofile, vitest
-#     lcov, JaCoCo aggregated XML — all three upload via the flags below).
-#     `only_pulls: true` scopes it to PRs, where the author can act on it; a
-#     commit pushed straight to main has no PR diff to gate and passes. The
-#     override path is documented in docs/development/coverage.md: write the
-#     test, or `# pragma: no cover` a line that genuinely cannot be covered
-#     (rare, needs a reason), or add a file to `ignore:` below.
+#   - patch: the gate on changed lines (Go coverprofile, vitest lcov, JaCoCo
+#     aggregated XML — all three upload via the flags below). `only_pulls:
+#     true` scopes it to PRs, where the author can act on it; a commit pushed
+#     straight to main has no PR diff to gate and passes.
+#
+# Patch coverage is split into one status per area (2026-09-04 revision —
+# supersedes the original flat `target: 100%, threshold: 0%`), each scoped
+# via `flags:` so a mixed-area PR is judged separately per area instead of on
+# one blended number. The targets are not fitted to historical PR pass rates;
+# they come from reading what's actually testable in each area:
+#
+#   - backend (target 95%, threshold 5%): almost everything here is
+#     reasonably testable and tests demonstrably catch real regressions —
+#     dbtest.New(t) runs against the real migrated schema (CLAUDE.md's
+#     "Backend traps" lists bugs a real-DB test caught), and INT-02 built
+#     faults.Hook seams specifically so failure branches that used to be
+#     untestable now are. The 5% buffer absorbs ordinary noise (partial-branch
+#     attribution, a line mid-development-before-the-pragma-lands), not a
+#     declared "some backend code is fine untested."
+#   - frontend (target 90%, threshold 10%): a large share of files are
+#     presentational MUI/JSX (~188 component files vs. ~46 hook/logic files)
+#     where a test that only asserts `render()` doesn't throw adds coverage
+#     without catching anything. The real regression-catching tests (hooks,
+#     dialog state machines) sometimes hit genuinely fiddly async/race
+#     branches (see useContacts.ts's stale-response guard) that cost
+#     disproportionate effort for a marginal branch.
+#   - android (target 80%, threshold 15%): JaCoCo only instruments
+#     testDebugUnitTest (see AndroidConfig.kt's configureJacoco), so anything
+#     that only runs under the instrumented E2E suite (issue #238) is
+#     invisible to it. The clean-cut case — hand-written Hilt DI wiring
+#     (`*Module` classes: one-line @Provides/@Binds delegations with no
+#     branch) and Activity/Application framework-lifecycle callback bodies
+#     (MainActivity/MycorrhizalApplication — their actual logic is already
+#     factored into separately-covered pure functions) — is now excluded at
+#     the JaCoCo level in AndroidConfig.kt's JACOCO_EXCLUDES, the same
+#     mechanism already used for Hilt/Room/Moshi-generated code, rather than
+#     papered over with a lower percentage. What's left and not cleanly
+#     excludable — Keystore-backed code (RoomPassphraseStore) and
+#     Firebase-SDK-availability gates — has too much real logic mixed in to
+#     blanket-exclude by file, so it's absorbed by a target still below
+#     backend/frontend rather than pretending it's equally testable.
+#
+# Override path (docs/development/coverage.md): write the test first; then
+# `# pragma: no cover` / `/* v8 ignore next */` / `@Generated` a line that
+# genuinely cannot be covered (needs a reason); then a file-level entry in
+# `ignore:` below for a whole file outside the coverage model. The per-area
+# threshold buffer is for ordinary noise, not a substitute for the override
+# path on a line that's provably untestable — do that instead so the reason
+# is visible in the diff.
 codecov:
   require_ci_to_pass: false
 
@@ -20,9 +61,23 @@ coverage:
       default:
         informational: true
     patch:
-      default:
-        target: 100%
-        threshold: 0%
+      backend:
+        target: 95%
+        threshold: 5%
+        flags:
+          - backend
+        only_pulls: true
+      frontend:
+        target: 90%
+        threshold: 10%
+        flags:
+          - frontend
+        only_pulls: true
+      android:
+        target: 80%
+        threshold: 15%
+        flags:
+          - android
         only_pulls: true
 
 # CI is path-gated (dorny/paths-filter — see unit-tests.yml / android-tests.yml
