@@ -46,32 +46,6 @@ func RunAll(profiles []largedata.Profile, workRoot string, openMigrated func(pat
 	return s, nil
 }
 
-// isAtScale reports whether p is the `large` profile or larger — the profiles
-// where a SkipAtScale operation is omitted (see Operation.SkipAtScale). Keyed
-// on the contact target, not the name, so a future xlarge/stress profile is
-// covered without another edit.
-func isAtScale(p largedata.Profile) bool {
-	return p.Contacts >= largedata.Large.Contacts
-}
-
-// operationsForProfile is Registry() minus the SkipAtScale operations when p is
-// the `large` profile or larger (see Operation.SkipAtScale). Every profile
-// runs the full set otherwise.
-func operationsForProfile(p largedata.Profile) []Operation {
-	all := Registry()
-	if !isAtScale(p) {
-		return all
-	}
-	kept := make([]Operation, 0, len(all))
-	for _, op := range all {
-		if op.SkipAtScale {
-			continue
-		}
-		kept = append(kept, op)
-	}
-	return kept
-}
-
 // Baseline builds the committed baseline for this suite.
 func (s Suite) Baseline() Baseline {
 	return BuildBaseline(s.ResultsByProfile, s.ProfileOrder)

@@ -293,3 +293,34 @@ func TestTraverseGraph_FilterBeforeDedup(t *testing.T) {
 	require.Len(t, targetChain.Steps, 2)
 	assert.Equal(t, "spouse_of", targetChain.Steps[1].Relation, "the surviving chain must be the spouse_of one")
 }
+
+// TestTraverseGraph_UsesEndpointIndexes is the issue #792 regression guard: the
+// recursive CTE must seek relationship_edges by source_id / target_id, never
+// fall back to a scan of the whole user's edge set. The `(source_id = ? OR
+// target_id = ?)` form it replaced could not use either endpoint index, so
+// SQLite used idx_relationship_edges_user_id and rescanned every edge the user
+// has for every partial walk — quadratic, and it did not finish at the PERF-01
+// `large` scale. Two index-anchored UNION ALL terms + INDEXED BY keep the plan
+// pinned to the endpoint indexes.
+func TestTraverseGraph_UsesEndpointIndexes(t *testing.T) {
+	db := newGraphTestDB(t)
+
+	var plan []struct {
+		Detail string `gorm:"column:detail"`
+	}
+	require.NoError(t, db.Raw("EXPLAIN QUERY PLAN "+traversalCTE,
+		"x", "x", 1, models.RelationshipStatusConfirmed, models.RelationshipSensitivitySecret, maxTraversalDepth,
+		1, models.RelationshipStatusConfirmed, models.RelationshipSensitivitySecret, maxTraversalDepth,
+	).Scan(&plan).Error)
+
+	joined := ""
+	for _, p := range plan {
+		joined += p.Detail + "\n"
+	}
+	assert.Contains(t, joined, "idx_relationship_edges_source_id",
+		"the source_id-anchored recursive term must seek by idx_relationship_edges_source_id\nplan:\n%s", joined)
+	assert.Contains(t, joined, "idx_relationship_edges_target_id",
+		"the target_id-anchored recursive term must seek by idx_relationship_edges_target_id\nplan:\n%s", joined)
+	assert.NotContains(t, joined, "idx_relationship_edges_user_id",
+		"the recursive step must not fall back to scanning the whole user's edge set (issue #792)\nplan:\n%s", joined)
+}
