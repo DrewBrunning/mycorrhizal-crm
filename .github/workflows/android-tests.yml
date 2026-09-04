@@ -323,6 +323,166 @@ jobs:
         if: always()
         run: docker compose -f docker-compose.test.yml down -v
 
+  # COMPAT-02 (issue #473): the same instrumented E2E suite as android-e2e
+  # above, but on an emulator at API 26 -- the declared minSdk floor
+  # (android/build-logic/.../AndroidConfig.kt) -- instead of API 35. Proves
+  # the floor is a fact, not just a number in a build file. Deliberately
+  # schedule/dispatch-only (same as android-e2e / android-macrobenchmark):
+  # this doubles the emulator cost of an already-heavy suite, and the floor
+  # moves rarely.
+  android-e2e-min-sdk:
+    permissions:
+      contents: read
+      actions: read
+    name: Android E2E (emulator, minSdk 26)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      - name: Set up JDK
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Build all-in-one backend image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          push: false
+          load: true
+          tags: mycorrhizal-crm-test:latest
+          cache-from: type=gha,scope=combined
+          cache-to: type=gha,scope=combined,mode=max
+
+      - name: Start test backend
+        run: |
+          docker compose -f docker-compose.test.yml up -d
+          echo "Waiting for services to be ready..."
+          timeout 120 bash -c 'until curl -s http://localhost:7300/health/live > /dev/null 2>&1; do sleep 2; done'
+          echo "App is ready"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run instrumented E2E tests (API 26)
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 26
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          working-directory: ./android
+          script: |
+            adb reverse tcp:7300 tcp:7300
+            max_attempts=2; attempt=1; while true; do if ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300; then exit 0; fi; if [ "$attempt" -ge "$max_attempts" ]; then echo "connectedDebugAndroidTest failed after $max_attempts attempts" >&2; exit 1; fi; echo "connectedDebugAndroidTest failed on attempt $attempt/$max_attempts; preserving failing results and retrying"; mkdir -p "app/build/flaky-attempt-$attempt"; cp app/build/outputs/androidTest-results/connected/*.xml "app/build/flaky-attempt-$attempt/" 2>/dev/null || true; attempt=$((attempt + 1)); done
+
+      - name: Upload E2E results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: always()
+        with:
+          name: android-e2e-min-sdk-results
+          path: |
+            android/app/build/reports/androidTests/
+            android/app/build/outputs/androidTest-results/
+            android/app/build/flaky-attempt-*/
+          retention-days: 7
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.test.yml logs mycorrhizal
+
+      - name: Stop services
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v
+
+  # COMPAT-02 (issue #473 action 4 / the milestone's "unsupported
+  # environments fail clearly" criterion): a device one API level BELOW
+  # minSdk 26 must refuse the install outright, not run a broken app. This
+  # is standard Android PackageManager behavior (INSTALL_FAILED_OLDER_SDK)
+  # -- the assertion is that this project's minSdk declaration actually
+  # reaches the merged manifest and takes effect, not that Android itself
+  # works.
+  android-below-min-sdk:
+    permissions:
+      contents: read
+    name: Android below minSdk fails clearly (API 24)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      - name: Set up JDK
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      - name: Assemble debug APK
+        working-directory: android
+        run: ./gradlew :app:assembleDebug
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Assert install fails clearly on an API 24 device (below minSdk 26)
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 24
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          working-directory: ./android
+          script: |
+            apk="$(find app/build/outputs/apk/debug -name '*.apk' | head -n1)"
+            echo "Installing $apk on an API 24 (below minSdk 26) emulator..."
+            set +e
+            output="$(adb install "$apk" 2>&1)"
+            status=$?
+            set -e
+            echo "$output"
+            if [ "$status" -eq 0 ]; then
+              echo "::error::apk installed successfully on API 24 -- minSdk 26 is no longer enforced, or this job stopped testing it"
+              exit 1
+            fi
+            if ! echo "$output" | grep -qi 'OLDER_SDK'; then
+              echo "::error::install failed as expected but not with the comprehensible INSTALL_FAILED_OLDER_SDK error: $output"
+              exit 1
+            fi
+            echo "OK: install failed clearly (INSTALL_FAILED_OLDER_SDK)."
+
   # Issue #263: startup + dashboard-render macrobenchmark. Same emulator + same
   # docker-compose.test.yml backend as android-e2e, and the same triggers
   # (nightly / dispatch / path-gated push:main — never on a PR). Deliberately

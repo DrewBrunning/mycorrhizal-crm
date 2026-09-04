@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22.13.0",
+    "node": ">=22.22.2",
     "yarn": ">=1.22.0 <2.0.0"
   },
   "browserslist": [
@@ -64,6 +64,7 @@
     "@types/react-dom": "^19.2.5",
     "@vitejs/plugin-react": "^6.1.1",
     "@vitest/coverage-v8": "4.1.11",
+    "acorn": "^8.15.0",
     "axe-core": "^4.13.0",
     "browserslist-to-esbuild": "^2.1.1",
     "eslint": "^10.9.1",

@@ -19,5 +19,23 @@
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>
+    <!--
+      COMPAT-02 (issue #473): the app bundle is an ES module (the script
+      above), so a browser released before ES module support (~2017-18 --
+      well under the documented Chrome/Edge/Firefox >=111, Safari >=16.4
+      floor in docs/development/supported-runtime-matrix.md) skips that
+      script entirely and never even requests it. With no fallback that used
+      to render a permanently blank white page with zero indication why --
+      not even a console error, since the browser silently ignores a script
+      type it doesn't recognize. `nomodule` is the mirror-image attribute:
+      only a browser WITHOUT module support runs this one, so the two are
+      mutually exclusive by construction and no version sniffing is needed.
+      This is a separate file (public/unsupported-browser.js, served
+      same-origin) rather than an inline script because docker/nginx.conf's
+      CSP is `script-src 'self'` with no `'unsafe-inline'` -- an inline
+      nomodule block would be silently dropped by exactly the CSP-aware
+      browsers just below the floor, defeating the fallback.
+    -->
+    <script nomodule src="/unsupported-browser.js"></script>
   </body>
 </html>

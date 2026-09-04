@@ -1,0 +1,371 @@
+name: Minimum Version Tests
+
+# COMPAT-02 (issue #473). Every other workflow in this repository builds and
+# tests at CURRENT versions (whatever go.mod's toolchain line, the bundled
+# Playwright Chromium, or the runner's own Docker happen to be) — the exact
+# opposite of the MINIMUM this project claims to support in
+# docs/development/supported-runtime-matrix.md (COMPAT-01, issue #472). A
+# stated floor nothing exercises drifts upward silently the first time a
+# dependency bump raises its own requirement (see the Node.js job below,
+# which exists because COMPAT-02 caught exactly that already having
+# happened). These jobs install the DECLARED MINIMUM for each matrix row —
+# not go.mod's toolchain, not the latest Node/browser/Compose — and prove
+# both that the floor still works and that one version *below* it fails with
+# a comprehensible message rather than something silently broken (#473
+# action 4, the milestone's "unsupported environments fail clearly"
+# criterion). backend/internal/compatci is the structural coupling: a matrix
+# row with no job here (or a job renamed/removed out from under it) fails
+# TestMatrixRowsHaveCoverage.
+#
+# Deliberately NOT on pull_request/push: these are slow (multiple browser/
+# Node/Go toolchain downloads) and the floor moves rarely — per the issue,
+# "a scheduled run plus a required run before release is the right cadence."
+# workflow_call is exposed so a future REL-03 release-gate workflow (#447)
+# can require this to pass before cutting a release without editing this
+# file; nothing calls it yet.
+#
+# Coverage by row (docs/development/supported-runtime-matrix.md):
+#   Go              -> go-minimum / go-below-minimum
+#   Node.js, Yarn   -> node-yarn-minimum / node-below-minimum
+#   Browsers        -> browser-minimum (below-floor case: a frontend unit
+#                      test, not a job here — see that test's file header)
+#   SQLite          -> rides on Go (no version of its own)
+#   Docker Engine,
+#   Docker Compose  -> docker-compose-minimum
+#   Host OS / arch  -> not independently checkable (see compatci)
+#   Android         -> android-tests.yml's android-e2e-min-sdk /
+#                      android-below-min-sdk (a separate workflow because it
+#                      shares android-tests.yml's emulator/backend setup)
+
+on:
+  schedule:
+    - cron: '30 5 * * 1' # 05:30 UTC every Monday
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  # --- Go -----------------------------------------------------------------
+  # go.mod declares `go 1.26.0` (the floor this row states) and
+  # `toolchain go1.27.1` (what every other job actually builds with). Using
+  # go-version-file here would install the toolchain line, not the floor —
+  # the whole point of this job is to prove 1.26.0 itself still builds and
+  # passes, so the version is hardcoded to match the matrix doc instead.
+  go-minimum:
+    name: Go minimum version (1.26.0)
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Go at the declared floor
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26.0'
+          check-latest: false
+
+      # GOTOOLCHAIN=local is load-bearing: go.mod's `toolchain go1.27.1`
+      # line would otherwise make the 1.26.0 binary silently download and
+      # switch to 1.27.1 on the first command, which would pass every time
+      # regardless of whether the 1.26.0 floor itself still builds — exactly
+      # the silent-drift failure mode this ticket exists to catch.
+      - name: Build, vet, and test at the floor
+        working-directory: backend
+        env:
+          GOTOOLCHAIN: local
+        run: |
+          go version
+          go build ./...
+          go vet ./...
+          go test ./...
+
+  go-below-minimum:
+    name: Go below minimum fails clearly (1.25.5)
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install a Go one patch below the floor
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.25.5'
+          check-latest: false
+
+      - name: Assert the too-old toolchain refuses with a comprehensible message
+        working-directory: backend
+        env:
+          GOTOOLCHAIN: local
+        run: |
+          set +e
+          output="$(go build ./... 2>&1)"
+          status=$?
+          set -e
+          echo "$output"
+          if [ "$status" -eq 0 ]; then
+            echo "::error::go build succeeded on Go 1.25.5 -- the declared >=1.26.0 floor is no longer real, or this job stopped testing it"
+            exit 1
+          fi
+          if ! echo "$output" | grep -qF 'go.mod requires go >= 1.26.0'; then
+            echo "::error::build failed as expected but not with the comprehensible go.mod floor message: $output"
+            exit 1
+          fi
+          echo "OK: below-floor Go failed clearly."
+
+  # --- Node.js / Yarn -------------------------------------------------------
+  # Yarn Classic is downloaded as a standalone script and invoked via `node
+  # <yarn.js>` rather than relying on whatever `yarn` a runner image ships,
+  # so the pinned 1.22.0 floor is the one actually exercised regardless of
+  # PATH order.
+  node-yarn-minimum:
+    name: Node.js + Yarn minimum version (22.22.2 / 1.22.0)
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # node-version-file would install whatever frontend/package.json
+      # currently declares; that's the point being proven here, so it's
+      # hardcoded to guard against setup-node's own resolution masking a
+      # drift (e.g. if the file briefly named a version setup-node quietly
+      # rounds up from).
+      - name: Install Node.js at the declared floor
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22.22.2'
+
+      - name: Install Yarn Classic at the declared floor
+        run: |
+          curl -fsSL -o /tmp/yarn-1.22.0.tar.gz https://github.com/yarnpkg/yarn/releases/download/v1.22.0/yarn-v1.22.0.tar.gz
+          mkdir -p /tmp/yarn-1.22.0
+          tar -xzf /tmp/yarn-1.22.0.tar.gz -C /tmp/yarn-1.22.0 --strip-components=1
+          node /tmp/yarn-1.22.0/bin/yarn.js --version
+          echo "YARN_MIN_BIN=/tmp/yarn-1.22.0/bin/yarn.js" >> "$GITHUB_ENV"
+
+      # frontend/.yarnrc's engine-strict enforces both frontend's own
+      # engines.node AND every dependency's own engines field (jsdom@30 and
+      # react-router@8 both declare a Node floor of their own) -- this step
+      # succeeding at exactly 22.22.2 is what proves the declared floor is
+      # real, not just self-consistent.
+      - name: Install dependencies at the floor
+        working-directory: frontend
+        run: node "$YARN_MIN_BIN" install --frozen-lockfile
+
+      - name: Type check at the floor
+        working-directory: frontend
+        run: node "$YARN_MIN_BIN" tsc --noEmit
+
+      - name: Unit tests at the floor
+        working-directory: frontend
+        run: node "$YARN_MIN_BIN" test
+
+      - name: Production build at the floor
+        working-directory: frontend
+        run: node "$YARN_MIN_BIN" build
+
+  node-below-minimum:
+    name: Node.js below minimum fails clearly (22.22.1)
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install a Node one patch below the floor
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22.22.1'
+
+      - name: Install Yarn Classic at the declared floor
+        run: |
+          curl -fsSL -o /tmp/yarn-1.22.0.tar.gz https://github.com/yarnpkg/yarn/releases/download/v1.22.0/yarn-v1.22.0.tar.gz
+          mkdir -p /tmp/yarn-1.22.0
+          tar -xzf /tmp/yarn-1.22.0.tar.gz -C /tmp/yarn-1.22.0 --strip-components=1
+          echo "YARN_MIN_BIN=/tmp/yarn-1.22.0/bin/yarn.js" >> "$GITHUB_ENV"
+
+      - name: Assert the too-old Node refuses with a comprehensible message
+        working-directory: frontend
+        run: |
+          set +e
+          output="$(node "$YARN_MIN_BIN" install --frozen-lockfile 2>&1)"
+          status=$?
+          set -e
+          echo "$output"
+          if [ "$status" -eq 0 ]; then
+            echo "::error::yarn install succeeded on Node 22.22.1 -- the declared >=22.22.2 floor is no longer real, or this job stopped testing it"
+            exit 1
+          fi
+          if ! echo "$output" | grep -qF 'engine "node" is incompatible'; then
+            echo "::error::install failed as expected but not with a comprehensible engine message: $output"
+            exit 1
+          fi
+          echo "OK: below-floor Node failed clearly (frontend/.yarnrc engine-strict)."
+
+  # --- Browsers --------------------------------------------------------------
+  # Drives real, pinned browser binaries through raw WebDriver (curl only —
+  # see .github/scripts/min-browser-check.sh) to prove the browserslist floor
+  # (docs/development/supported-runtime-matrix.md) actually works end to end,
+  # not just that vite.config.ts's build.target compiled without error.
+  browser-minimum:
+    name: Browser minimum version (Firefox 111 / Chrome 115)
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: frontend/package.json
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Build the production bundle (browserslist-targeted)
+        working-directory: frontend
+        run: yarn build
+
+      - name: Serve the built bundle
+        working-directory: frontend/build
+        run: |
+          nohup python3 -m http.server 8899 > /tmp/static-server.log 2>&1 &
+          for _ in $(seq 1 30); do
+            curl -fsS -o /dev/null http://127.0.0.1:8899/index.html && break
+            sleep 1
+          done
+
+      - name: Download Firefox 111.0 (the documented floor) + a compatible geckodriver
+        run: |
+          curl -fsSL -o /tmp/firefox-111.tar.bz2 https://ftp.mozilla.org/pub/firefox/releases/111.0/linux-x86_64/en-US/firefox-111.0.tar.bz2
+          mkdir -p /tmp/firefox-111
+          tar -xjf /tmp/firefox-111.tar.bz2 -C /tmp/firefox-111 --strip-components=1
+          curl -fsSL -o /tmp/geckodriver.tar.gz https://github.com/mozilla/geckodriver/releases/download/v0.36.0/geckodriver-v0.36.0-linux64.tar.gz
+          tar -xzf /tmp/geckodriver.tar.gz -C /tmp
+          chmod +x /tmp/geckodriver /tmp/firefox-111/firefox-bin
+
+      - name: Assert the app loads on Firefox 111 (the documented floor)
+        run: |
+          /tmp/geckodriver --port 4444 > /tmp/geckodriver.log 2>&1 &
+          .github/scripts/min-browser-check.sh 4444 firefox /tmp/firefox-111/firefox-bin http://127.0.0.1:8899/index.html
+
+      # Google does not publish an officially pinned, downloadable Chrome
+      # 111 build anywhere — Chrome for Testing (the only versioned,
+      # reproducible artifact feed Google ships) starts at 113, and 113/114
+      # lack a matching chromedriver in that feed. 115.0.5763.0 is the
+      # earliest version with both a chrome and a chromedriver linux64
+      # artifact — four minors above the documented floor, and the closest
+      # real, reproducible stand-in available. See
+      # docs/development/supported-runtime-matrix.md; Edge shares Chrome's
+      # engine and floor and isn't tested separately for the same reason
+      # the matrix doc gives for pinning all three evergreen browsers to one
+      # release window.
+      - name: Download Chrome for Testing 115 (closest official pin to the 111 floor) + matching chromedriver
+        run: |
+          curl -fsSL -o /tmp/chrome.zip https://storage.googleapis.com/chrome-for-testing-public/115.0.5763.0/linux64/chrome-linux64.zip
+          curl -fsSL -o /tmp/chromedriver.zip https://storage.googleapis.com/chrome-for-testing-public/115.0.5763.0/linux64/chromedriver-linux64.zip
+          mkdir -p /tmp/chrome /tmp/chromedriver
+          unzip -q /tmp/chrome.zip -d /tmp/chrome
+          unzip -q /tmp/chromedriver.zip -d /tmp/chromedriver
+          chmod +x /tmp/chrome/chrome-linux64/chrome /tmp/chromedriver/chromedriver-linux64/chromedriver
+
+      - name: Assert the app loads on Chrome for Testing 115
+        run: |
+          /tmp/chromedriver/chromedriver-linux64/chromedriver --port=9515 > /tmp/chromedriver.log 2>&1 &
+          .github/scripts/min-browser-check.sh 9515 chrome /tmp/chrome/chrome-linux64/chrome http://127.0.0.1:8899/index.html
+
+      - name: Show driver/server logs on failure
+        if: failure()
+        run: |
+          echo "--- static server ---"; cat /tmp/static-server.log 2>/dev/null || true
+          echo "--- geckodriver ---"; cat /tmp/geckodriver.log 2>/dev/null || true
+          echo "--- chromedriver ---"; cat /tmp/chromedriver.log 2>/dev/null || true
+
+  # --- Docker / Docker Compose ------------------------------------------------
+  # Swaps in the earliest Compose V2 release (contemporaneous with the
+  # Engine >=23.0 floor that made `docker compose` the bundled default) as a
+  # standalone client binary against the runner's own, current dockerd.
+  # This validates the risk the matrix doc actually names for this row --
+  # "compose file syntax and behavior are exactly what changes across
+  # versions" -- by parsing and running the real docker-compose.yml with the
+  # oldest V2 client. It does NOT run an actual Engine 23.0 daemon: safely
+  # pinning the daemon itself to an old version on a shared, ephemeral
+  # runner is a separate, higher-risk piece of work than this ticket's
+  # verified scope covers, and is called out here rather than silently
+  # assumed away.
+  docker-compose-minimum:
+    name: Docker Compose minimum version (v2.17.2)
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Download Docker Compose at the floor
+        run: |
+          curl -fsSL -o /tmp/docker-compose https://github.com/docker/compose/releases/download/v2.17.2/docker-compose-linux-x86_64
+          chmod +x /tmp/docker-compose
+          /tmp/docker-compose version
+
+      # Same recipe as deploy-smoke.yml (issue #450): fresh .env from the
+      # documented template, real generated secret.
+      - name: Prepare a fresh .env from the documented template
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+          secret="$(openssl rand -base64 32)"
+          sed -i "s|^JWT_SECRET_KEY=.*|JWT_SECRET_KEY=${secret}|" .env
+
+      - name: Bring up the stack with the pinned Compose client
+        run: /tmp/docker-compose -f docker-compose.yml up -d --build --wait --wait-timeout 240
+
+      - name: Run the end-to-end workflow against the stack
+        working-directory: backend
+        run: go run ./cmd/deploysmoke
+        env:
+          DEPLOYSMOKE_BASE_URL: http://localhost:7300
+
+      - name: Show container logs on failure
+        if: failure()
+        run: /tmp/docker-compose -f docker-compose.yml logs --no-color mycorrhizal
+
+      - name: Tear down
+        if: always()
+        run: /tmp/docker-compose -f docker-compose.yml down -v
