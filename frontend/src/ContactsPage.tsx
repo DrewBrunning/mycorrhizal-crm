@@ -608,6 +608,8 @@ export default function ContactsPage() {
             {contacts.map((contact) => (
               <Card
                 key={contact.ID}
+                data-testid="contact-card"
+                data-contact-id={contact.ID}
                 onClick={() => navigate(`/contacts/${contact.ID}`)}
                 sx={{
                   display: 'flex',

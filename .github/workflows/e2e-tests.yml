@@ -143,6 +143,12 @@ jobs:
         run: npx playwright test
         env:
           CI: true
+          # Issue #556, two-tier perf split (#447): the @perf-heavy specs
+          # (listPerf, networkGraphScale — seed ~150 contacts / render 15k-node
+          # payloads) self-skip unless RUN_PERF_HEAVY is set, so they run on the
+          # nightly full-suite schedule only, not on every PR. The light @perf
+          # specs (route-stubbed) run unconditionally with the rest of the suite.
+          RUN_PERF_HEAVY: ${{ github.event_name == 'schedule' && '1' || '' }}
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
