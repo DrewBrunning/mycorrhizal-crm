@@ -128,6 +128,19 @@ also carries the operator free-space table). `TestDataMovementBenchmarks` is the
 same `migration-tests.yml` large-dataset job) add the cross-scale growth check. Migration depth stays
 #495's; #471 turns these into budgets; #498 is the resource-**exhaustion** companion.
 
+Web client performance budgets (issue #556, the web counterpart to PERF-01..04 / #263): defined in
+`docs/development/web-perf-budgets.md`. `frontend/bundle-budget.json` is the committed per-chunk
+**gzip** baseline, generated from a clean `yarn build` by `frontend/scripts/check-bundle-budget.mjs`
+— never hand-edited; regenerate with `cd frontend && yarn build && yarn budget:update` and commit the
+diff (the diff is the review). The `Frontend bundle-size budget` job in `unit-tests.yml` runs
+`yarn build && yarn budget` per-PR and fails on growth past tolerance. The network-graph render
+ceiling lives in `frontend/src/utils/graphBudget.ts` (`GRAPH_RENDER_NODE_CEILING` /
+`GRAPH_RENDER_EDGE_CEILING`) — above it `NetworkGraph` renders a notice + the always-present
+`NetworkListView` instead of mounting the force-graph canvas; keep the constants in sync with the doc
+table and the `networkGraphScale.spec.ts` benchmark. Two-tier per #447: bundle budget + unit tests +
+`@perf`-tagged route-stubbed Playwright specs per-PR; `@perf-heavy` seeded specs (`listPerf`,
+`networkGraphScale`) run nightly only via `e2e-tests.yml`'s schedule with `RUN_PERF_HEAVY=1`.
+
 **Breaking-change policy (MAINT-02, issue #491):** the `/api/v1` contract surface is pinned by a
 frozen baseline (`backend/internal/apibaseline/testdata/v1.json`) generated from `backend/openapi.yaml`
 by `cd backend && go run ./cmd/genapibaseline` (or `make gen-api-baseline`). The drift test
