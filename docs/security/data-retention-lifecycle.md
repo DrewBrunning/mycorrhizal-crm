@@ -104,7 +104,7 @@ It sits outside the soft-delete model above precisely because it is a copy, not 
 - **Deletion / propagation**: `PurgeExpiredAuditEvents` (`backend/services/audit_purge_service.go:26-45`)
   hard-deletes rows older than the window and re-links the surviving hash chain
   (`models.RecomputeAuditChain`) so tamper-evidence isn't broken by the purge itself. Runs daily via cron
-  (`backend/main.go:184-190`); `AUDIT_RETENTION_DAYS<=0` is treated as "disabled", never "delete
+  (`backend/main.go:185-191`); `AUDIT_RETENTION_DAYS<=0` is treated as "disabled", never "delete
   everything". No external mirror — audit never syncs to CardDAV/CalDAV/Android.
 - **Backups**: yes, and a restored backup's audit trail is only as fresh as the snapshot.
 - **Verification**: `backend/services/audit_purge_service_test.go` (`TestPurgeExpiredAuditEvents*`, 3

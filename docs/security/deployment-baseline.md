@@ -25,7 +25,7 @@ explicit non-goals none of them stated.
 Internet
    │  HTTPS — TLS terminated here. The app never terminates TLS itself; it has no
    │  certificate material and expects to be reached over plain HTTP from a
-   │  trusted proxy hop (`docs/deployment.md:17-30`).
+   │  trusted proxy hop (`docs/deployment.md:32-45`).
    ▼
 Operator-managed reverse proxy (nginx, Caddy, Traefik, …)
    — owns: TLS certificates/renewal, DNS, firewall/exposed ports, request

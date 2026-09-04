@@ -8,7 +8,9 @@ nav_order: 3
 
 ## Setup
 
-Requires Node.js and Yarn. The app is built with [Vite](https://vite.dev) (dev server, bundler) and
+Requires Node.js and Yarn — see `frontend/package.json`'s `engines` field (enforced by
+`.yarnrc`'s `engine-strict`) and the [supported runtime matrix](supported-runtime-matrix.md) for
+the minimum and why. The app is built with [Vite](https://vite.dev) (dev server, bundler) and
 tested with Vitest + Playwright.
 
 ```sh

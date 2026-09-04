@@ -341,7 +341,7 @@ What this pass actually did per chapter, beyond the automated citation checks th
 | **V6** Stored Cryptography | Manual audit C. 6.2.5 and 6.2.7 were `satisfied` with no citation at all and now cite the actual call sites plus the gosec/CodeQL enforcement (F-2). |
 | **V7** Error Handling | Manual audit D; found and documented the one envelope bypass. |
 | **V8** Data Protection | 8.1.3 and 8.3.1 were uncited assertions about absence and now cite the Semgrep rule that continuously enforces them (F-2). |
-| **V9** Communication | TLS boundary re-confirmed at `docs/deployment.md:17`; HSTS wiring re-located after `main.go` drift (`security_headers.go:43-45`, wired `main.go:266`). |
+| **V9** Communication | TLS boundary re-confirmed at `docs/deployment.md:32`; HSTS wiring re-located after `main.go` drift (`security_headers.go:43-45`, wired `main.go:279`). |
 | **V10** Malicious Code | 10.3.2's SRI claim now cites why SRI is moot here (no external origin in the CSP) rather than asserting it (F-2). |
 | **V11** Business Logic | The 3 `partial` rows are product decisions (per-user content quotas, unusual-activity monitoring, alerting) — unchanged, restated in §7. |
 | **V12** Files and Resources | 12.3.6 now cites the lockfiles and the absence of `os/exec` in non-test packages rather than asserting it (F-2). |

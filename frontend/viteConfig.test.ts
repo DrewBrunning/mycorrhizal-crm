@@ -9,10 +9,22 @@
 // imports vite.config.ts, which pulls in vite + its plugins -- modules that
 // break under vitest's jsdom environment (esbuild refuses to run there) and
 // that belong to the tsconfig.node.json project, not the DOM project.
+import browserslistToEsbuild from 'browserslist-to-esbuild';
 import { describe, expect, test } from 'vitest';
 import viteConfig from './vite.config';
 
 describe('Vite configuration (T48)', () => {
+  // COMPAT-01 (issue #472): package.json's "browserslist" must actually
+  // constrain the build, not just document a floor nothing reads. Pins that
+  // build.target is derived from browserslist rather than a hardcoded/absent
+  // value, and that it reflects the declared Safari 16.4+ (Web Push) floor.
+  test('derives build.target from package.json browserslist, not a hardcoded value', () => {
+    expect(viteConfig.build?.target).toEqual(browserslistToEsbuild());
+    expect(viteConfig.build?.target).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^safari16\.4$/)]),
+    );
+  });
+
   test('serves the dev server on port 7300 (launch.json + e2e base URL depend on it)', () => {
     expect(viteConfig.server?.port).toBe(7300);
   });

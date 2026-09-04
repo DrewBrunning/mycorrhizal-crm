@@ -1,4 +1,5 @@
 import react from '@vitejs/plugin-react';
+import browserslistToEsbuild from 'browserslist-to-esbuild';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -39,6 +40,12 @@ export default defineConfig({
     port: 7300,
   },
   build: {
+    // COMPAT-01 (issue #472): the supported-browser floor is declared once,
+    // in package.json's "browserslist" (grounded in Web Push's Safari 16.4+
+    // requirement -- see docs/development/supported-runtime-matrix.md), and
+    // read here so it actually constrains the build instead of living only
+    // in prose. esbuild lowers/rejects syntax the declared floor can't run.
+    target: browserslistToEsbuild(),
     // Keep CRA's output directory so the Dockerfile COPY paths and .gitignore
     // entries stay unchanged.
     outDir: 'build',

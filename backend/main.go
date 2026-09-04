@@ -10,6 +10,7 @@ import (
 	"mycorrhizal/database"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/i18n"
+	"mycorrhizal/internal/fsguard"
 	"mycorrhizal/logger"
 	"mycorrhizal/metrics"
 	"mycorrhizal/middleware"
@@ -225,6 +226,18 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to initialize database")
 	}
+
+	// COMPAT-01 (issue #472): warn loudly, but do not refuse to boot, when
+	// the database lives on a filesystem type known to risk SQLite WAL
+	// corruption (NFS/SMB/CIFS/etc — see internal/fsguard's doc comment for
+	// why this is advisory rather than fatal).
+	if warning := fsguard.NetworkFilesystemWarning(cfg.DBPath); warning != nil {
+		logger.Warn().
+			Str("path", warning.Path).
+			Str("filesystem", warning.FilesystemName).
+			Msg(warning.String())
+	}
+
 	// T18 audit trail: give the GORM hooks a standalone session for their
 	// fire-and-forget audit writes (never the hook's transaction).
 	models.RegisterAuditDB(db)

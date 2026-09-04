@@ -44,6 +44,15 @@ internal object AndroidConfig {
     // platform APIs the real app compiles/targets against, not what SDK the
     // test JVM emulates.
     const val COMPILE_SDK = 37
+
+    // COMPAT-01 (issue #472): 26 (Android 8.0 Oreo) because
+    // MycorrhizalApplication/MycorrhizalApp create NotificationChannels, an
+    // API-26 concept the app's notification features (push, ntfy, Gotify)
+    // depend on with no lower-API fallback path. Raising this drops real
+    // devices still on Android 8-9 and is a breaking change under
+    // docs/breaking-change-policy.md (MAINT-02, issue #491) -- it needs that
+    // process, not an incidental bump. Full rationale, and every other
+    // supported-version floor: docs/development/supported-runtime-matrix.md.
     const val MIN_SDK = 26
     const val TARGET_SDK = 37
 }
