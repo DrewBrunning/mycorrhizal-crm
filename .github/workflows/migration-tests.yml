@@ -431,7 +431,10 @@ jobs:
       # FTS, graph traversal, dashboard, cadence, reach-out, duplicate detection,
       # merge, delete cascade). The per-PR signal is the smoke-only
       # TestCoreOperationBenchmarks in the default `go test`; this heavier check
-      # is gated like the rest of this job.
+      # is gated like the rest of this job. Its WithinBudgetsAtScale / WallClockTrend
+      # subtests are the PERF-04 (issue #471) release-validation budget gate:
+      # absolute wall-clock ceilings at the `typical` anchor profile + the
+      # >3x wall-clock trend `::warning::` (advisory, never fails).
       - name: Cross-scale core-operation benchmarks
         working-directory: backend
         env:
@@ -457,7 +460,9 @@ jobs:
       # the migration resource envelope ("for comparability" — issue #495 owns
       # migration depth). The per-PR signal is the smoke-only
       # TestDataMovementBenchmarks in the default `go test`; this heavier check
-      # is gated like the rest of this job.
+      # is gated like the rest of this job. Its WithinBudgetsAtScale subtest is
+      # the PERF-04 (issue #471) release-validation gate for the absolute
+      # peak-heap ceilings (the OOM boundary) at the `typical` anchor profile.
       - name: Cross-scale data-movement benchmarks
         working-directory: backend
         env:

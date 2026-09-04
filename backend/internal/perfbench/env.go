@@ -21,8 +21,9 @@
 // growth.go compares the query count and the result size across two dataset
 // scales and flags any operation that grows faster than the row count as a
 // finding. baseline.go is the committed, diffable record (testdata/baseline.json);
-// cmd/perfbench regenerates it and docs/development/perf-benchmarks.md. #471
-// turns these numbers into budgets — this ticket only produces them.
+// cmd/perfbench regenerates it and docs/development/perf-benchmarks.md. PERF-04
+// (#471) turns these numbers into budgets: internal/perfbench/budgets.go +
+// testdata/budgets.json + docs/development/perf-budgets.md.
 package perfbench
 
 import (

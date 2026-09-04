@@ -201,8 +201,9 @@ func Registry() []Operation {
 			// quadratic surprise"): the query count is bounded (one window
 			// function per tier) but the in-memory pair expansion is
 			// O(group^2), and the block-replicated fixture puts an identical
-			// card name in every block. Recorded as a finding here; #471
-			// decides whether it needs a budget/fix.
+			// card name in every block. Recorded as a finding here; PERF-04
+			// (#471) waives its wall-clock budget (background/review surface)
+			// in budgets.json — the deterministic query-count budget still holds.
 			Name: "duplicates.find_pairs", Category: "read", ExpectedGrowth: GrowthSuperlinear, ClassifyResultGrowth: true,
 			Run: func(e *Env) (int, error) {
 				pairs, err := services.FindDuplicatePairs(e.DB, e.UserID)

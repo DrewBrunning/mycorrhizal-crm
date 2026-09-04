@@ -94,7 +94,9 @@ func renderDMMemoryGrowth(b *strings.Builder, findings []MemoryGrowthFinding) {
 	fmt.Fprintln(b, "for the exporters (they buffer the whole result) and is recorded, not gated.")
 	fmt.Fprintln(b, "`import.vcf` is declared `superlinear` on purpose — its preview pass is O(n²) in")
 	fmt.Fprintln(b, "the batch size — so the gate catches a *regression* past that, not the shape")
-	fmt.Fprintln(b, "itself. #471 turns these into budgets.")
+	fmt.Fprintln(b, "itself. PERF-04 (issue #471) adds an absolute peak-heap ceiling per operation in")
+	fmt.Fprintln(b, "`internal/perfbench/testdata/budgets.json` — the OOM boundary, enforced at the")
+	fmt.Fprintln(b, "anchor profile in release validation.")
 	fmt.Fprintln(b)
 	fmt.Fprintln(b, "| Operation | Scales | Contacts x | Work x | Peak heap x | Peak disk x | Duration x | Class | Expected |")
 	fmt.Fprintln(b, "|---|---|--:|--:|--:|--:|--:|---|---|")
@@ -130,7 +132,7 @@ func renderDMMemoryGrowth(b *strings.Builder, findings []MemoryGrowthFinding) {
 		fmt.Fprintln(b, "imports cap at `services.MaxVCFContacts`), but a large input should be chunked.")
 		fmt.Fprintln(b, "The `Class` column can read below `superlinear` at the smaller profiles — the")
 		fmt.Fprintln(b, "O(n²) term only dominates once the input is large; the gate compares the")
-		fmt.Fprintln(b, "smallest to the LARGEST measured profile. #471 / #725 decide the budget or fix.")
+		fmt.Fprintln(b, "smallest to the LARGEST measured profile. PERF-04 (#471) records the ceiling; #725 owns any fix.")
 		fmt.Fprintln(b)
 	}
 	if len(regressions) > 0 {

@@ -66,6 +66,7 @@ func TestRun_WritesThenCheckIsClean(t *testing.T) {
 	dmBaselinePath, dmReportPath := perfbench.DataMovementArtifactPaths(root)
 	assert.FileExists(t, dmBaselinePath)
 	assert.FileExists(t, dmReportPath)
+	assert.FileExists(t, perfbench.WallClockTrendPath(root))
 
 	out.Reset()
 	assert.Equal(t, 0, run([]string{"-check"}, &out, root, fakeSuite, fakeDMSuite))
