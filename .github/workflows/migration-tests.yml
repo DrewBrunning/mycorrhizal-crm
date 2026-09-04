@@ -472,8 +472,16 @@ jobs:
           out="$(go test ./internal/perfbench/ -run '^TestBenchmarksAtScale$' -count=1 -v -timeout 30m 2>&1)" || true
           echo "$out"
           # Fail-safe: env-gated, so a typo'd variable would silently skip it
-          # and the job would pass vacuously.
-          if ! grep -q -- "--- PASS: TestBenchmarksAtScale" <<<"$out"; then
+          # and the job would pass vacuously. The trailing space matters: `go
+          # test -v` also prints subtest lines like
+          # "--- PASS: TestBenchmarksAtScale/CommittedBaselineIsCurrent", and
+          # an unanchored grep for the bare test name matches that substring
+          # even when the top-level test itself FAILed (issue found alongside
+          # #795/#796's continued step-10 failure — a subtest always passes,
+          # so the fail-safe was silently green regardless of the real
+          # result). No `/` ever follows a top-level PASS line's test name;
+          # only a space does, before the "(duration)".
+          if ! grep -q -- "--- PASS: TestBenchmarksAtScale " <<<"$out"; then
             echo "::error::PERF-02 cross-scale benchmarks did not run (MYCORRHIZAL_LARGE_TESTS not honored?)"
             exit 1
           fi
@@ -509,8 +517,13 @@ jobs:
           out="$(go test ./internal/perfbench/ -run '^TestDataMovementAtScale$|^TestMigrationAtScaleResourceEnvelope$' -count=1 -v -timeout 45m 2>&1)" || true
           echo "$out"
           # Fail-safe: env-gated, so a typo'd variable would silently skip
-          # these and the job would pass vacuously.
-          for want in "TestDataMovementAtScale" "TestMigrationAtScaleResourceEnvelope"; do
+          # these and the job would pass vacuously. Trailing space on each
+          # $want, same reason as the core-operation step above: without it
+          # this grep is satisfied by any passing SUBTEST line (e.g.
+          # ".../CommittedBaselineIsCurrent") even when the top-level test
+          # FAILed — which is exactly how this step kept reporting green
+          # through #795/#796's real, ongoing failure.
+          for want in "TestDataMovementAtScale " "TestMigrationAtScaleResourceEnvelope "; do
             if ! grep -q -- "--- PASS: $want" <<<"$out"; then
               echo "::error::PERF-03 check '$want' did not run (MYCORRHIZAL_LARGE_TESTS not honored?)"
               exit 1

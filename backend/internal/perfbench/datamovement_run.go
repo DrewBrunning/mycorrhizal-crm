@@ -53,7 +53,20 @@ type MemoryGrowthFinding struct {
 // between two tiny noisy numbers is meaningless. Below this on BOTH ends the
 // operation is reported "constant" — there is genuinely no memory-growth
 // signal to gate on.
-const minHeapSignalBytes = 1 << 19 // 512 KiB
+//
+// 4 MiB, not the original 512 KiB: `backup.vacuum_into` ("VACUUM INTO runs
+// entirely inside SQLite; Go holds nothing") measured ~68 KiB at `smoke` and
+// ~621 KiB at `large` on a real CI run — a 9x ratio that tripped
+// NoMemoryGrowthRegression (expected constant) even though 621 KiB is
+// trivially negligible (0.6% of that op's own 32 MiB OOM-boundary budget).
+// 512 KiB was tight enough that ordinary GC/allocator noise on a "Go holds
+// nothing" op could cross it at `large` while `smoke` stayed under. Every
+// operation with a REAL memory-growth story (the exporters ~5-30 MiB+,
+// duplicates.find_pairs / import.vcf in the hundreds-of-MiB to GiB range at
+// `large`) clears 4 MiB by at least an order of magnitude at every profile
+// that matters, so this only changes behavior for the "Go holds nothing"
+// class of operation, which is exactly where it should.
+const minHeapSignalBytes = 4 << 20 // 4 MiB
 
 // stableBaselineMaxHeapRatio caps how much larger the largest measurement's
 // peak heap may be than the baseline's before AnalyzeMemoryGrowth steps the

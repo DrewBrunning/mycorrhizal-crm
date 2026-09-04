@@ -57,18 +57,21 @@ func TestAnalyzeMemoryGrowth_BaselineStepsUpFromANoiseAmplifiedSmall(t *testing.
 		assert.False(t, f[0].Regression)
 	})
 
-	// Genuine O(n^2): <1 MiB at smoke -> 3+ GiB at large. Nothing below `large`
-	// is within 64x, so the baseline correctly falls back to the smallest
-	// profile that clears the noise floor (smoke) and the full-span comparison
-	// still reads super-linear.
-	t.Run("pairwise op keeps the full-span smoke baseline", func(t *testing.T) {
+	// Genuine O(n^2): <1 MiB at smoke -> 3+ GiB at large. `smoke` (920 KiB) is
+	// itself below minHeapSignalBytes now (4 MiB — see that const's doc), so
+	// the baseline steps up to `typical`; nothing clears the 64x
+	// stability-ratio bar either, so `typical` is used via the noise-floor
+	// fallback, not the stable-ratio path. Either way the full O(n^2) growth
+	// still reads super-linear — that invariant is what this case pins, not
+	// which specific profile ends up as the baseline.
+	t.Run("pairwise op stays super-linear however its baseline lands", func(t *testing.T) {
 		f := AnalyzeMemoryGrowth([]DataMovementResult{
 			dmResult("duplicates.find_pairs", "smoke", 300, 370, 920_000, GrowthSuperlinear, true),
 			dmResult("duplicates.find_pairs", "typical", 900, 14220, 12_700_000, GrowthSuperlinear, true),
 			dmResult("duplicates.find_pairs", "large", 15000, 3_997_000, 3_295_000_000, GrowthSuperlinear, true),
 		})
 		require.Len(t, f, 1)
-		assert.Equal(t, "smoke", f[0].SmallProfile)
+		assert.Equal(t, "typical", f[0].SmallProfile, "920 KiB at smoke no longer clears minHeapSignalBytes")
 		assert.Equal(t, GrowthSuperlinear, f[0].Class)
 		assert.False(t, f[0].Regression)
 	})
@@ -84,6 +87,24 @@ func TestAnalyzeMemoryGrowth_BaselineStepsUpFromANoiseAmplifiedSmall(t *testing.
 		})
 		require.Len(t, f, 1)
 		assert.Equal(t, "smoke", f[0].SmallProfile)
+		assert.Equal(t, GrowthConstant, f[0].Class)
+		assert.False(t, f[0].Regression)
+	})
+
+	// The real incident: a "Go holds nothing" op (VACUUM INTO happens entirely
+	// inside SQLite) measured ~69 KiB at smoke and ~607 KiB at large on a real
+	// CI run. 607 KiB clears the OLD 512 KiB floor while smoke doesn't, so the
+	// both-below-floor guard no longer fires and the 9x ratio reads "linear"
+	// against a "constant" declaration — a false regression on an absolute
+	// 607 KiB, negligible next to this op's own 32 MiB OOM-boundary budget.
+	// 4 MiB keeps both ends below the floor.
+	t.Run("a small absolute peak that crept past the old floor stays constant", func(t *testing.T) {
+		f := AnalyzeMemoryGrowth([]DataMovementResult{
+			dmResult("backup.vacuum_into", "smoke", 300, 140, 68_744, GrowthConstant, false),
+			dmResult("backup.vacuum_into", "typical", 900, 840, 71_640, GrowthConstant, false),
+			dmResult("backup.vacuum_into", "large", 15000, 14000, 621_136, GrowthConstant, false),
+		})
+		require.Len(t, f, 1)
 		assert.Equal(t, GrowthConstant, f[0].Class)
 		assert.False(t, f[0].Regression)
 	})
