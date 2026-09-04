@@ -1538,6 +1538,10 @@
     "showCircles": "Kreise",
     "graphSummary": "Netzwerkdiagramm: {{contacts}} Kontakte, {{activities}} Aktivitäten, {{circles}} Kreise, {{connections}} Verbindungen. Dieselben Informationen sind unten in der Listenansicht verfügbar.",
     "listView": "Netzwerk als Liste",
+    "tooLargeToRender": {
+      "title": "Diagramm zu groß zum Zeichnen",
+      "body": "Dieses Netzwerk hat {{nodes}} Knoten und {{edges}} Verbindungen — zu viele, um es interaktiv anzuordnen, ohne die Seite einzufrieren. Filtern Sie nach Kreis oder zentrieren Sie auf einen Kontakt, um es einzugrenzen, oder verwenden Sie die Listenansicht unten, die jede Verbindung zeigt."
+    },
     "connectionRelationship": "{{type}}: {{name}}",
     "connectionActivity": "Nahm teil an {{title}}",
     "connectionCircle": "Mitglied von {{circle}}",

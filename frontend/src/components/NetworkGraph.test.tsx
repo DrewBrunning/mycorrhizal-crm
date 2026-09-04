@@ -3,6 +3,7 @@ import { forwardRef, useImperativeHandle } from 'react';
 import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { GraphData } from '../types/graph';
+import { GRAPH_RENDER_NODE_CEILING } from '../utils/graphBudget';
 import NetworkGraph from './NetworkGraph';
 
 // This codebase's vitest setup does not auto-cleanup between tests -- see
@@ -80,6 +81,54 @@ test('the canvas wrapper is role=img with a data-driven aria-label, and the pan/
   // descendants, of the img-role node.
   const panUpButton = screen.getByRole('button', { name: 'Pan up' });
   expect(img).not.toContainElement(panUpButton);
+});
+
+function oversizedData(): GraphData {
+  const nodes = Array.from({ length: GRAPH_RENDER_NODE_CEILING + 1 }, (_, i) => ({
+    id: `c-${i}`,
+    type: 'contact' as const,
+    label: `Contact ${i}`,
+  }));
+  return { nodes, edges: [] };
+}
+
+test('renders the defined fallback (not the canvas) when the filtered graph exceeds the render ceiling (#556)', () => {
+  mockMatchMedia(false);
+
+  render(
+    <NetworkGraph
+      data={oversizedData()}
+      onNodeClick={vi.fn()}
+      showRelationships
+      showActivities
+      showCircles={false}
+    />,
+  );
+
+  // The over-budget notice is shown, the force-graph canvas is not mounted,
+  // and the notice still carries the role=img text alternative.
+  const notice = screen.getByTestId('graph-over-budget');
+  expect(notice).toBeInTheDocument();
+  expect(notice).toHaveTextContent(/too many to lay out/i);
+  expect(screen.queryByTestId('force-graph-stub')).not.toBeInTheDocument();
+  expect(screen.getByRole('img')).toHaveTextContent(String(GRAPH_RENDER_NODE_CEILING + 1));
+});
+
+test('renders the canvas (not the fallback) for a graph under the render ceiling', () => {
+  mockMatchMedia(false);
+
+  render(
+    <NetworkGraph
+      data={sampleData()}
+      onNodeClick={vi.fn()}
+      showRelationships
+      showActivities
+      showCircles={false}
+    />,
+  );
+
+  expect(screen.getByTestId('force-graph-stub')).toBeInTheDocument();
+  expect(screen.queryByTestId('graph-over-budget')).not.toBeInTheDocument();
 });
 
 test('pan/zoom controls call the graph ref API', () => {

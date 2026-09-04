@@ -1538,6 +1538,10 @@
     "showCircles": "Cerchie",
     "graphSummary": "Diagramma di rete: {{contacts}} contatti, {{activities}} attività, {{circles}} cerchie, {{connections}} collegamenti. Le stesse informazioni sono disponibili nella vista elenco qui sotto.",
     "listView": "Rete in elenco",
+    "tooLargeToRender": {
+      "title": "Grafico troppo grande da disegnare",
+      "body": "Questa rete ha {{nodes}} nodi e {{edges}} collegamenti: troppi per disporli in modo interattivo senza bloccare la pagina. Filtra per cerchia o centra su un contatto per restringerla, oppure usa la vista elenco qui sotto, che mostra ogni collegamento."
+    },
     "connectionRelationship": "{{type}}: {{name}}",
     "connectionActivity": "Ha partecipato a {{title}}",
     "connectionCircle": "Membro di {{circle}}",

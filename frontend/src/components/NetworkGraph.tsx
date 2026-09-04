@@ -5,12 +5,21 @@ import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import RemoveIcon from '@mui/icons-material/Remove';
-import { Box, IconButton, Typography, useMediaQuery, useTheme } from '@mui/material';
+import {
+  Alert,
+  AlertTitle,
+  Box,
+  IconButton,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
 import { forceX, forceY } from 'd3-force';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { useTranslation } from 'react-i18next';
 import type { GraphData, GraphEdge, GraphNode } from '../types/graph';
+import { exceedsGraphRenderBudget } from '../utils/graphBudget';
 import { computeFilteredGraphData } from '../utils/networkGraphData';
 
 interface NetworkGraphProps {
@@ -315,6 +324,34 @@ export default function NetworkGraph({
     circles: graphData.nodes.filter((n) => n.type === 'circle').length,
     connections: graphData.links.length,
   });
+
+  // Issue #556: past the measured render ceiling, force-directed layout stops
+  // settling and pins the main thread. Rather than hang the tab, render a
+  // defined fallback -- a notice pointing at the filters and at the always-in-
+  // DOM list view below (NetworkListView, mounted by NetworkPage regardless).
+  // The check is on the *filtered* set, so applying a circle/contact filter
+  // that brings it back under the ceiling restores the canvas automatically.
+  if (exceedsGraphRenderBudget(graphData)) {
+    return (
+      <Box
+        ref={containerRef}
+        sx={{ width: '100%', height: '100%', position: 'relative', p: 2, overflow: 'auto' }}
+      >
+        <Alert
+          severity="warning"
+          role="img"
+          aria-label={graphSummary}
+          data-testid="graph-over-budget"
+        >
+          <AlertTitle>{t('network.tooLargeToRender.title')}</AlertTitle>
+          {t('network.tooLargeToRender.body', {
+            nodes: graphData.nodes.length,
+            edges: graphData.links.length,
+          })}
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box ref={containerRef} sx={{ width: '100%', height: '100%', position: 'relative' }}>

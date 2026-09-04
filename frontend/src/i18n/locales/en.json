@@ -1565,6 +1565,10 @@
     "showCircles": "Circles",
     "graphSummary": "Network diagram: {{contacts}} contacts, {{activities}} activities, {{circles}} circles, {{connections}} connections. The same information is available in the list view below.",
     "listView": "Network list view",
+    "tooLargeToRender": {
+      "title": "Graph too large to draw",
+      "body": "This network has {{nodes}} nodes and {{edges}} connections — too many to lay out interactively without freezing the page. Filter by circle or centre on a contact to narrow it down, or use the list view below, which shows every connection."
+    },
     "connectionRelationship": "{{type}}: {{name}}",
     "connectionActivity": "Attended {{title}}",
     "connectionCircle": "Member of {{circle}}",
