@@ -24,6 +24,7 @@ The name comes from mycorrhiza, the symbiotic network fungi form with plant root
 - [Upgrade compatibility & supported-upgrade floor](upgrade-compatibility.md)
 - [Field compatibility matrix (DATA-01)](data-01-field-compatibility-matrix.md)
 - [Breaking-change policy (MAINT-02)](breaking-change-policy.md)
+- [Dependency upgrade policy (COMPAT-03)](dependency-upgrade-policy.md)
 - [PII inventory (store-by-store)](security/pii-inventory.md)
 - [Observability: logs, correlation IDs, and the system-event timeline](operations/observability.md)
 - [Security checklist (OWASP ASVS L2 + API Security Top 10)](security/asvs-l2.md)

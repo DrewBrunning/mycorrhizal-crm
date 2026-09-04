@@ -1,0 +1,42 @@
+# Time-bounded dependency-advisory exceptions (COMPAT-03, issue #474).
+#
+# This is NOT another copy of the permanent, no-expiry ignore lists this repo
+# already has (.trivyignore, .grype.yml, zap/dast.ignore,
+# schemathesis/schemathesis.ignore, docker/cis-hardening.ignore,
+# android/.mobsf, docs/security/citation-drift.ignore,
+# docs/security/crypto-surface.ignore). Those exist for "the scanner is
+# right that this pattern exists, but it does not apply to how we use this
+# dependency" — a decision that can stand forever once written down.
+#
+# This file is for the different case dependency-upgrade-policy.md's
+# "Security fixes" tier describes: a real advisory against a dependency we
+# actually ship, that we currently CANNOT fix (no upstream release yet, the
+# fix is blocked by another pin, a license question is still open) — not a
+# false positive, an unresolved one. Recording it here instead of leaving it
+# silent buys time, but not indefinitely: every entry carries an `expires`
+# date, and `cd backend && go run ./cmd/depexceptions` fails once that date
+# passes. An expired entry must be resolved (apply the fix) or renewed (a
+# fresh dated entry with an updated reason) — it cannot just sit here.
+#
+# Format, one exception per line, pipe-delimited (`|`), no trailing `#`
+# comment — the reason is its own field so it can safely mention "issue 474"
+# or similar without colliding with a comment delimiter:
+#
+#   <advisory> | <ecosystem> | <package> | <opened> | <expires> | <owner> | <reason>
+#
+#   advisory   GHSA-xxxx-xxxx-xxxx, a CVE-YYYY-NNNNN, or another advisory ID
+#   ecosystem  one of: go, npm, gradle, docker, github-actions
+#   package    the module/package name the advisory is against
+#   opened     YYYY-MM-DD — the date this exception was first recorded
+#   expires    YYYY-MM-DD — must be after `opened`, at most 90 days out
+#              (matches the deprecation-policy default period, MAINT-01,
+#              issue #490 — one project-wide "revisit this" cadence)
+#   owner      the GitHub username who recorded it and will revisit it
+#   reason     why it cannot be fixed right now, non-empty
+#
+# Example (not a real exception — delete before adding a real one):
+#   GHSA-xxxx-xxxx-xxxx | npm | example-pkg | 2026-09-04 | 2026-11-03 | drew | no upstream fix yet; tracked at github.com/example/example-pkg/issues/1
+#
+# Currently empty: no known advisory against a shipped dependency is
+# unfixable right now. Add a line above this one, following the format, when
+# one comes up.
