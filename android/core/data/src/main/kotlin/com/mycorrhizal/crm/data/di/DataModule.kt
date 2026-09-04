@@ -140,6 +140,10 @@ object DataModule {
 
     @Provides
     @Singleton
+    // Room's Builder.addMigrations is vararg-only (the List-taking overload lives on the
+    // unrelated MigrationContainer.Builder, not this one), so spreading REGISTERED_MIGRATIONS
+    // is unavoidable here — a one-time call on the DB-open path, not a hot loop.
+    @Suppress("SpreadOperator")
     fun provideDatabase(
         @ApplicationContext context: android.content.Context,
         passphraseStore: RoomPassphraseStore,
