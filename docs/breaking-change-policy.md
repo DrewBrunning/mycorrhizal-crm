@@ -45,8 +45,9 @@ The policy applies to the surfaces a third party can depend on:
    behavior, etc.
 5. **Export formats** — vCard 3/4, JSContact, CSV, iCal/CalDAV output.
 6. **Documented behavior** — anything the docs promise that is not a bug.
-7. **The supported runtime matrix (issue #472)** and **the client/server
-   compatibility floor (issue #478)** — raising a minimum is a breaking change.
+7. **The supported runtime matrix (issue #472)** and **the
+   [client/server compatibility floor](client-compatibility-policy.md)**
+   (ANDROID-01, issue #478) — raising a minimum is a breaking change.
 
 Internal Go packages, internal endpoints, and implementation details are
 explicitly out of scope.
@@ -66,7 +67,7 @@ A change is breaking if it does any of the following to a covered surface:
 - **Changes a default in a way that alters behavior** — a config default that
   flips a documented default on or off.
 - **Raises a supported-version minimum** — the runtime matrix (issue #472) or
-  the client floor (issue #478) moves up.
+  the [client floor](client-compatibility-policy.md) (issue #478) moves up.
 - **Loses user data** — any migration, export, or operation that destroys
   data is breaking, period (see the data bar below).
 - **Breaks a documented behavior** — the docs said X; the new code does not-X
