@@ -3,12 +3,29 @@ package perfbench
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestWriteWallClockTrend(t *testing.T) {
+	root := fakeRepo(t) // from artifacts_test.go — lays out backend/internal/perfbench/testdata
+	path := WallClockTrendPath(root)
+	assert.Equal(t, filepath.Join(root, "backend", "internal", "perfbench", WallClockTrendFile), path)
+
+	data := []byte("{\"note\":\"x\"}\n")
+	require.NoError(t, WriteWallClockTrend(root, data))
+	got, err := os.ReadFile(path) //nolint:gosec // test-controlled path
+	require.NoError(t, err)
+	assert.Equal(t, data, got)
+
+	// A missing parent dir surfaces the error rather than panicking.
+	assert.Error(t, WriteWallClockTrend(filepath.Join(root, "nonexistent"), data))
+}
 
 // assertWallClockTrendAdvisory compares a fresh measured run against the
 // committed wallclock-trend.json and surfaces any >3x move for human review.
