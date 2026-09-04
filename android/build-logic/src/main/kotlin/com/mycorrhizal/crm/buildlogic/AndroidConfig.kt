@@ -213,6 +213,29 @@ private val JACOCO_EXCLUDES = listOf(
     // of scope regardless of whether a test happens to exercise it.
     "**/*_Impl.class",
     "**/*_Impl\$*.class",
+    // Hand-written Hilt DI wiring (Codecov threshold review, 2026-09-04): every
+    // `*Module` class in this codebase is a `@Module`/`@InstallIn` object of
+    // one-line `@Provides`/`@Binds` delegations (verified: `grep -rl '^@Module'
+    // android --include=*.kt` matches exactly the 4 files this pattern covers,
+    // no false positives). A unit test here just re-executes the delegation —
+    // it has no branch and no failure mode beyond a typo the compiler already
+    // catches, so it's the same "wiring nobody meaningfully tests" category as
+    // the Hilt-generated entries above, just hand-written instead of codegen'd.
+    "**/*Module.class",
+    // Activity/Application framework-lifecycle glue, not the pure logic in the
+    // same source files. This is a single-Activity app: MainActivity's real
+    // logic (deep-link/OIDC-return parsing) is deliberately factored into
+    // top-level functions specifically so it's unit-testable without an
+    // Activity (see MainActivity.kt's doc comments) — those compile to a
+    // separate `MainActivityKt` class and stay covered. What's excluded here
+    // is only the `MainActivity`/`MycorrhizalApplication` class bodies
+    // themselves: `onCreate()` callback wiring that requires a live
+    // Activity/Application context (splash screen, window flags, edge-to-edge
+    // insets, WorkManager/Hilt worker-factory setup) and whose only failure
+    // mode is "wrong call order," which the instrumented E2E suite (issue
+    // #238) already exercises end-to-end.
+    "**/MainActivity.class",
+    "**/MycorrhizalApplication.class",
 )
 
 /**

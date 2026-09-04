@@ -6,32 +6,83 @@ nav_order: 5
 
 # Coverage Gate
 
-The diff-based coverage gate (issue #267) fails a PR that adds **new uncovered
-lines** in changed files. It is a gate on *changes*, not an absolute coverage
-floor — the project-wide number is deliberately not gated (an "at least N%"
-threshold is the worst variant of a coverage gate and is rejected).
+The diff-based coverage gate (issue #267) fails a PR whose changed lines fall
+short of a per-area patch-coverage target. It is a gate on *changes*, not an
+absolute coverage floor — the project-wide number is deliberately not gated
+(an "at least N%" threshold on the whole codebase is the worst variant of a
+coverage gate and is rejected).
 
 ## How it works
 
 Codecov computes **patch coverage**: the fraction of the PR's changed lines that
-the coverage tooling records as covered. The gate is
+the coverage tooling records as covered. The gate is one status **per area**,
+each scoped to its own flag so a PR touching more than one area is judged
+separately per area instead of on one blended number:
 
 ```yaml
 coverage:
   status:
     patch:
-      default:
-        target: 100%
+      backend:
+        target: 95%
+        threshold: 5%
+        flags: [backend]
+        only_pulls: true
+      frontend:
+        target: 90%
+        threshold: 10%
+        flags: [frontend]
+        only_pulls: true
+      android:
+        target: 80%
+        threshold: 15%
+        flags: [android]
         only_pulls: true
 ```
 
-`target: 100%` means every changed executable line must be covered; any new
-uncovered line turns the `codecov/patch` status red and fails the PR.
-`only_pulls: true` scopes the status to pull requests — a commit pushed straight
-to main has no PR diff to act on and is not gated.
+`target` is the patch-coverage floor; `threshold` is how far a PR may miss it
+and still pass (e.g. backend's 95%/5% passes anything at or above 90%).
+`only_pulls: true` scopes the statuses to pull requests — a commit pushed
+straight to main has no PR diff to act on and is not gated. Each status shows
+up as its own GitHub check: `codecov/patch/backend`,
+`codecov/patch/frontend`, `codecov/patch/android`.
 
-Three coverage reports feed it, one per area, all uploaded with the flags in
-`codecov.yml`:
+**Why three different numbers, not one.** They aren't fitted to whatever PRs
+have historically passed — they come from reading what's actually testable in
+each area (2026-09-04 review, prompted by legitimate PRs failing the old flat
+`target: 100%, threshold: 0%`):
+
+- **Backend** stays closest to 100% because almost everything here really is
+  testable and tests demonstrably catch real regressions — `dbtest.New(t)`
+  runs against the real migrated schema (see CLAUDE.md's "Backend traps" for
+  bugs a real-DB test caught), and INT-02 built `faults.Hook` seams
+  specifically so failure branches that used to be untestable now are. The 5%
+  threshold absorbs ordinary noise, not a declared "some backend code is fine
+  untested."
+- **Frontend** is looser because a large share of files are presentational
+  MUI/JSX (component files substantially outnumber hook/logic files in
+  `frontend/src/`) where a test that only asserts `render()` doesn't throw
+  adds coverage without catching anything, and the tests that *do* protect
+  real behavior (hooks, dialog state machines) sometimes hit genuinely fiddly
+  async/race branches (e.g. `useContacts.ts`'s stale-response guard) for a
+  disproportionate cost per marginal branch.
+- **Android** is loosest because JaCoCo here only instruments
+  `testDebugUnitTest` (see `AndroidConfig.kt`'s `configureJacoco` doc
+  comment) — code exercised only by the instrumented E2E suite (issue #238)
+  is structurally invisible to it. The clean-cut cases — hand-written Hilt DI
+  wiring (`*Module` classes: one-line `@Provides`/`@Binds` delegations with
+  no branch) and Activity/Application framework-lifecycle callback bodies
+  (their real logic is already factored into separately-covered pure
+  functions) — are excluded at the JaCoCo level in `JACOCO_EXCLUDES`, the
+  same mechanism already used for Hilt/Room/Moshi-generated code, rather than
+  papered over with a lower percentage. What's left and not cleanly
+  excludable by file — Keystore-backed code (`RoomPassphraseStore`) and
+  Firebase-SDK-availability gates — has too much real logic mixed in to
+  blanket-exclude, so it's absorbed by a target still below backend/frontend
+  instead of being pretended equally testable.
+
+Three coverage reports feed the gate, one per area, all uploaded with the
+flags in `codecov.yml`:
 
 | Area | Report | Uploaded from |
 |---|---|---|
@@ -63,14 +114,17 @@ uncovered.
   has nothing to gate.
 - **PRs that touch an area whose tests are path-gated off** — the flag carries
   forward (`carryforward: true` in `codecov.yml`) and unaffected areas are not
-  re-measured.
+  re-measured; that area's status is simply not re-evaluated (a mixed PR can
+  still fail on the one area it actually regressed).
 
 ## Override path
 
-Overrides are deliberate and rare — a line that is "fine untested" should have a
-reason, not be the default. In order of preference:
+Prefer the override path over leaning on an area's threshold buffer — the
+buffer is for ordinary noise, not a substitute for marking a specific line as
+deliberately untested. In order of preference:
 
-1. **Write the test.** The gate is meant to be satisfiable by real tests.
+1. **Write the test.** The gate is meant to be satisfiable by real tests, and
+   most changed lines in every area are.
 2. **Line-level ignore**, using the mechanism native to each area's coverage
    tooling (these exclude the line from the report the gate reads, so they work
    deterministically):
@@ -87,17 +141,23 @@ reason, not be the default. In order of preference:
    — the marker is invisible in the diff otherwise.
 3. **File-level ignore.** Add the path to the `ignore:` list in `codecov.yml`
    with a justifying comment. Coarse — only for an entire file that is
-   genuinely outside the coverage model.
-
-There is no percentage-based leniency: the gate is all-or-nothing per line, so
-"a couple of uncovered lines is fine" never becomes the implicit norm.
+   genuinely outside the coverage model. `android/build-logic/.../AndroidConfig.kt`'s
+   `JACOCO_EXCLUDES` is the Android-specific version of this same idea, applied
+   at the JaCoCo report level rather than in `codecov.yml` — used for whole
+   *categories* of hand-written framework glue (Hilt DI modules,
+   Activity/Application lifecycle callback bodies) that JaCoCo's
+   `testDebugUnitTest`-only instrumentation structurally cannot see, alongside
+   the codegen it already excluded.
 
 ## Making the gate block merges
 
-The status check is `codecov/patch`. For the red status to actually prevent a
-merge it must be in the repository's **required checks** in GitHub branch
-protection, alongside the other required checks. Configuring branch protection
-is a GitHub-side setting, not something this repo's CI does.
+The status checks are `codecov/patch/backend`, `codecov/patch/frontend`, and
+`codecov/patch/android` (see "How it works" above — one per area, not a single
+`codecov/patch`). For a red status to actually prevent a merge it must be in
+the repository's **required checks** in GitHub branch protection, alongside
+the other required checks — add each area's status separately, or only the
+ones you want to block on. Configuring branch protection is a GitHub-side
+setting, not something this repo's CI does.
 
 ## Reference
 
