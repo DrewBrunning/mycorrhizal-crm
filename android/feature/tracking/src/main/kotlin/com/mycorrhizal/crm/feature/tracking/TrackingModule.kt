@@ -25,4 +25,7 @@ object TrackingProvidesModule {
 
     @Provides
     fun provideFcmTokenSource(impl: FirebaseFcmTokenSource): FcmTokenSource = impl
+
+    @Provides
+    fun provideFcmAvailability(impl: FirebaseFcmAvailability): FcmAvailability = impl
 }

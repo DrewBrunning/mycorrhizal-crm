@@ -64,6 +64,9 @@ class DeviceRegistrationManagerTest {
         val availability = mockk<FcmAvailability>()
         every { availability.isAvailable(context) } returns true
         val store = mockk<DeviceRegistrationStore>(relaxed = true)
+        // A relaxed mock's Int? getter defaults to 0, not null — pin the
+        // "nothing stored yet" case explicitly so no cleanup delete fires.
+        every { store.loadDeviceId() } returns null
 
         val result = manager(apiClient, availability, store).register()
 
@@ -97,8 +100,11 @@ class DeviceRegistrationManagerTest {
         val availability = mockk<FcmAvailability>()
         every { availability.isAvailable(context) } returns true
         val tokenSource = mockk<FcmTokenSource>(relaxed = true)
+        val store = mockk<DeviceRegistrationStore>(relaxed = true)
+        // See the note above: pin the "nothing stored yet" case explicitly.
+        every { store.loadDeviceId() } returns null
 
-        val result = manager(apiClient, availability, mockk<DeviceRegistrationStore>(relaxed = true), tokenSource)
+        val result = manager(apiClient, availability, store, tokenSource)
             .register(tokenOverride = "rotated-token")
 
         assertTrue(result.isSuccess)
@@ -107,6 +113,77 @@ class DeviceRegistrationManagerTest {
         assertEquals("rotated-token", captured.captured.token)
         // onNewToken passes its own token — the source is never consulted.
         coVerify(exactly = 0) { tokenSource.token() }
+    }
+
+    @Test
+    fun `rotation deletes the previous registration when the returned id differs`() = runTest {
+        // ANDROID-04 (issue #481): a rotated token registers as a brand-new
+        // server-side row (dedupe key is client+token, not device identity),
+        // so the manager must clean up the row it's replacing or the account
+        // accumulates one dead registration per rotation.
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.registerDevice(any()) } returns
+            Result.success(DeviceRegistration(id = 7, token = "rotated-token", client = "fcm"))
+        coEvery { apiClient.deleteDevice(any()) } returns Result.success(Unit)
+        val availability = mockk<FcmAvailability>()
+        every { availability.isAvailable(context) } returns true
+        val store = mockk<DeviceRegistrationStore>(relaxed = true)
+        every { store.loadDeviceId() } returns 3
+
+        val result = manager(apiClient, availability, store).register(tokenOverride = "rotated-token")
+
+        assertTrue(result.isSuccess)
+        coVerify { apiClient.deleteDevice(3) }
+        coVerify { store.saveDeviceId(7) }
+    }
+
+    @Test
+    fun `first-ever registration never attempts a cleanup delete`() = runTest {
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.registerDevice(any()) } returns
+            Result.success(DeviceRegistration(id = 1, token = "fetched-token", client = "fcm"))
+        val availability = mockk<FcmAvailability>()
+        every { availability.isAvailable(context) } returns true
+        val store = mockk<DeviceRegistrationStore>(relaxed = true)
+        every { store.loadDeviceId() } returns null
+
+        val result = manager(apiClient, availability, store).register()
+
+        assertTrue(result.isSuccess)
+        coVerify(exactly = 0) { apiClient.deleteDevice(any()) }
+    }
+
+    @Test
+    fun `re-registering to the same id does not attempt a cleanup delete`() = runTest {
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.registerDevice(any()) } returns
+            Result.success(DeviceRegistration(id = 5, token = "fetched-token", client = "fcm"))
+        val availability = mockk<FcmAvailability>()
+        every { availability.isAvailable(context) } returns true
+        val store = mockk<DeviceRegistrationStore>(relaxed = true)
+        every { store.loadDeviceId() } returns 5
+
+        val result = manager(apiClient, availability, store).register()
+
+        assertTrue(result.isSuccess)
+        coVerify(exactly = 0) { apiClient.deleteDevice(any()) }
+    }
+
+    @Test
+    fun `a cleanup delete failure does not fail the overall registration`() = runTest {
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.registerDevice(any()) } returns
+            Result.success(DeviceRegistration(id = 9, token = "rotated-token", client = "fcm"))
+        coEvery { apiClient.deleteDevice(any()) } returns Result.failure(RuntimeException("gone already"))
+        val availability = mockk<FcmAvailability>()
+        every { availability.isAvailable(context) } returns true
+        val store = mockk<DeviceRegistrationStore>(relaxed = true)
+        every { store.loadDeviceId() } returns 4
+
+        val result = manager(apiClient, availability, store).register(tokenOverride = "rotated-token")
+
+        assertTrue(result.isSuccess)
+        coVerify { store.saveDeviceId(9) }
     }
 
     @Test

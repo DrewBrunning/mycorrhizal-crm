@@ -13,15 +13,24 @@ import javax.inject.Inject
  * available. Everything that touches Firebase gates on this so the WorkManager
  * polling workers stay the sole push path instead of the app crashing or
  * spinning forever on an unavailable token.
+ *
+ * A `fun interface` (mirroring [FcmTokenSource]) rather than a concrete class:
+ * the CI instrumented suite (issue #238) has no real `google-services.json`,
+ * so the real [FirebaseFcmAvailability] would make every registration a no-op
+ * there and prove nothing — ANDROID-04 (#481) fakes this with a plain lambda
+ * to exercise [DeviceRegistrationManager] against the real backend instead.
  */
-class FcmAvailability @Inject constructor() {
+fun interface FcmAvailability {
+    fun isAvailable(context: Context): Boolean
+}
 
-    /**
-     * True when at least one FirebaseApp is initialized. An absent
-     * google-services.json leaves the app with zero apps (the Firebase init
-     * provider logs a warning and skips), which is exactly the "no Firebase
-     * project" signal this is for. Play Services absence on de-Googled devices
-     * surfaces the same way (FirebaseApp cannot initialize without it).
-     */
-    fun isAvailable(context: Context): Boolean = FirebaseApp.getApps(context).isNotEmpty()
+/**
+ * True when at least one FirebaseApp is initialized. An absent
+ * google-services.json leaves the app with zero apps (the Firebase init
+ * provider logs a warning and skips), which is exactly the "no Firebase
+ * project" signal this is for. Play Services absence on de-Googled devices
+ * surfaces the same way (FirebaseApp cannot initialize without it).
+ */
+class FirebaseFcmAvailability @Inject constructor() : FcmAvailability {
+    override fun isAvailable(context: Context): Boolean = FirebaseApp.getApps(context).isNotEmpty()
 }
