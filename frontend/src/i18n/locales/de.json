@@ -148,6 +148,15 @@
     "invalidCode": "Ungültiger Code. Bitte versuchen Sie es erneut.",
     "backToCredentials": "Zurück zur Anmeldung"
   },
+  "sessionExpired": {
+    "bannerMessage": "Ihre Sitzung ist abgelaufen.",
+    "signIn": "Anmelden",
+    "title": "Sitzung abgelaufen",
+    "description": "Melden Sie sich erneut an, um weiterzuarbeiten – Ihre nicht gespeicherten Änderungen bleiben erhalten.",
+    "notNow": "Nicht jetzt",
+    "logOut": "Abmelden",
+    "ssoButton": "Mit {{provider}} anmelden"
+  },
   "passwordReset": {
     "title": "Passwort zurücksetzen",
     "description": "Geben Sie die E-Mail-Adresse Ihres Kontos ein. Wir senden Ihnen ein Zurücksetzungstoken.",
@@ -810,7 +819,11 @@
     "info": "Weitere Informationen",
     "resultsCount_one": "{{count}} Ergebnis",
     "resultsCount_other": "{{count}} Ergebnisse",
-    "loading": "Wird geladen…"
+    "loading": "Wird geladen…",
+    "unsavedChangesTitle": "Nicht gespeicherte Änderungen verwerfen?",
+    "unsavedChangesMessage": "Du hast nicht gespeicherte Änderungen, die verloren gehen, wenn du fortfährst.",
+    "discard": "Verwerfen",
+    "keepEditing": "Weiter bearbeiten"
   },
   "externalLinks": {
     "title": "Externe Verknüpfungen",

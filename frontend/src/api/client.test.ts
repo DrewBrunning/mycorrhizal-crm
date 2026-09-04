@@ -1,5 +1,6 @@
-import { describe, expect, test } from 'vitest';
-import { ApiError, parseErrorResponse } from './client';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { ApiError, apiFetch, parseErrorResponse } from './client';
+import { onSessionExpired } from './sessionExpiry';
 
 describe('ApiError.getDisplayMessage', () => {
   test('returns the message when there are no details', () => {
@@ -65,5 +66,74 @@ describe('parseErrorResponse', () => {
     const err = await parseErrorResponse(response);
     expect(err.message).toBe('An error occurred');
     expect(err.status).toBe(500);
+  });
+});
+
+// Issue #557: apiFetch used to react to a 401 with
+// `window.location.href = '/login'` from inside this shared wrapper --
+// unconditional, on any request. That tore the whole React tree down (and
+// every unsaved field in it) with no prompt. These pin the replacement: no
+// navigation, no localStorage mutation, just a thrown, distinguishable error
+// plus a sessionExpiry notification the caller's own dialog survives to
+// catch.
+describe('apiFetch 401 handling', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    localStorage.clear();
+  });
+
+  test('does not navigate or touch localStorage on a 401', async () => {
+    localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })));
+    const originalHref = window.location.href;
+
+    await expect(apiFetch('/api/v1/contacts')).rejects.toThrow(ApiError);
+
+    expect(window.location.href).toBe(originalHref);
+    expect(localStorage.getItem('user_info')).not.toBeNull();
+  });
+
+  test('throws a distinguishable SESSION_EXPIRED ApiError', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })));
+
+    try {
+      await apiFetch('/api/v1/contacts');
+      expect.unreachable('apiFetch should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError);
+      expect((err as ApiError).code).toBe('SESSION_EXPIRED');
+      expect((err as ApiError).status).toBe(401);
+    }
+  });
+
+  test('a GET 401 (a background poll) notifies passive', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })));
+    const events: string[] = [];
+    const unsubscribe = onSessionExpired(({ mode }) => events.push(mode));
+
+    await expect(apiFetch('/api/v1/dashboard')).rejects.toThrow(ApiError);
+
+    expect(events).toEqual(['passive']);
+    unsubscribe();
+  });
+
+  test('a mutating 401 (an explicit save) notifies blocking', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })));
+    const events: string[] = [];
+    const unsubscribe = onSessionExpired(({ mode }) => events.push(mode));
+
+    await expect(apiFetch('/api/v1/notes', { method: 'POST', body: '{}' })).rejects.toThrow(
+      ApiError,
+    );
+
+    expect(events).toEqual(['blocking']);
+    unsubscribe();
+  });
+
+  test('a non-401 response is returned normally, untouched', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{"ok":true}', { status: 200 })));
+
+    const response = await apiFetch('/api/v1/contacts');
+    expect(response.status).toBe(200);
   });
 });

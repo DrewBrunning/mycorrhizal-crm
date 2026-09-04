@@ -148,6 +148,15 @@
     "invalidCode": "Invalid code. Please try again.",
     "backToCredentials": "Back to sign in"
   },
+  "sessionExpired": {
+    "bannerMessage": "Your session has expired.",
+    "signIn": "Sign in",
+    "title": "Session expired",
+    "description": "Sign in again to keep working — your unsaved changes will stay right where they are.",
+    "notNow": "Not now",
+    "logOut": "Log out",
+    "ssoButton": "Sign in with {{provider}}"
+  },
   "passwordReset": {
     "title": "Reset Password",
     "description": "Enter the email associated with your account and we'll send you a reset token.",
@@ -837,7 +846,11 @@
     "info": "More information",
     "resultsCount_one": "{{count}} result",
     "resultsCount_other": "{{count}} results",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "unsavedChangesTitle": "Discard unsaved changes?",
+    "unsavedChangesMessage": "You have unsaved changes that will be lost if you continue.",
+    "discard": "Discard",
+    "keepEditing": "Keep editing"
   },
   "externalLinks": {
     "title": "External Links",

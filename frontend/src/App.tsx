@@ -98,6 +98,7 @@ import ContactDetailPage from './ContactDetailPage';
 import ContactSharesPage from './ContactSharesPage';
 import ContactsPage from './ContactsPage';
 import BrandLogo from './components/BrandLogo';
+import ErrorBoundary from './components/ErrorBoundary';
 import RouteLoadingFallback from './components/RouteLoadingFallback';
 import DashboardPage from './DashboardPage';
 import DataSettingsPage from './DataSettingsPage';
@@ -630,150 +631,159 @@ function AppContent({
           mt: 7,
         }}
       >
-        <Routes>
-          <Route
-            path="/contacts"
-            element={
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <ContactsPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/contacts/:id"
-            element={
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <ContactDetailPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/contacts/:id/prep"
-            element={
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <PrepViewPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/notes"
-            element={
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <NotesPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/activities"
-            element={
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <ActivitiesPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <SettingsPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/settings/data"
-            element={
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <DataSettingsPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/network"
-            element={
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <NetworkPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/households"
-            element={
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <HouseholdsPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/circles"
-            element={
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <CirclesTagsPage />
-              </Suspense>
-            }
-          />
-          <Route path="/tags" element={<Navigate to="/circles?tab=tags" replace />} />
-          <Route
-            path="/shares"
-            element={
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <ContactSharesPage />
-              </Suspense>
-            }
-          />
-          <Route path="/search" element={<SearchRedirect />} />
-          <Route
-            path="/audit"
-            element={
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <AuditPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/users"
-            element={
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <UsersPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/system-events"
-            element={
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <SystemEventsPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/system-status"
-            element={
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <SystemStatusPage />
-              </Suspense>
-            }
-          />
-          <Route path="/api-tokens" element={<Navigate to="/settings" replace />} />
-          <Route
-            path="/circle-tag-triage"
-            element={
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <CircleTagTriagePage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/"
-            element={
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <DashboardPage />
-              </Suspense>
-            }
-          />
-          <Route path="/login" element={<Navigate to="/" replace />} />
-          <Route path="/register" element={<Navigate to="/" replace />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        {/* Issue #557: scoped to the routed page, not the whole app shell,
+            so a crash here leaves the AppBar/drawer/search (and anything
+            <SessionExpiredGate> is showing) intact -- "Try Again" retries
+            just this subtree instead of forcing a full reload. Keyed by
+            pathname so navigating to a different route recovers on its own;
+            an ErrorBoundary's caught-error state does not otherwise clear
+            just because its children changed. */}
+        <ErrorBoundary key={location.pathname} name="Page">
+          <Routes>
+            <Route
+              path="/contacts"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <ContactsPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/contacts/:id"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <ContactDetailPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/contacts/:id/prep"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <PrepViewPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/notes"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <NotesPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/activities"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <ActivitiesPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <SettingsPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/settings/data"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <DataSettingsPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/network"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <NetworkPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/households"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <HouseholdsPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/circles"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <CirclesTagsPage />
+                </Suspense>
+              }
+            />
+            <Route path="/tags" element={<Navigate to="/circles?tab=tags" replace />} />
+            <Route
+              path="/shares"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <ContactSharesPage />
+                </Suspense>
+              }
+            />
+            <Route path="/search" element={<SearchRedirect />} />
+            <Route
+              path="/audit"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <AuditPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/users"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <UsersPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/system-events"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <SystemEventsPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/system-status"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <SystemStatusPage />
+                </Suspense>
+              }
+            />
+            <Route path="/api-tokens" element={<Navigate to="/settings" replace />} />
+            <Route
+              path="/circle-tag-triage"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <CircleTagTriagePage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <DashboardPage />
+                </Suspense>
+              }
+            />
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/register" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </ErrorBoundary>
       </Box>
     </>
   );

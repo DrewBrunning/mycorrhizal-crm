@@ -148,6 +148,15 @@
     "invalidCode": "Codice non valido. Riprova.",
     "backToCredentials": "Torna all'accesso"
   },
+  "sessionExpired": {
+    "bannerMessage": "La tua sessione è scaduta.",
+    "signIn": "Accedi",
+    "title": "Sessione scaduta",
+    "description": "Accedi di nuovo per continuare: le modifiche non salvate rimarranno intatte.",
+    "notNow": "Non ora",
+    "logOut": "Esci",
+    "ssoButton": "Accedi con {{provider}}"
+  },
   "passwordReset": {
     "title": "Reimposta Password",
     "description": "Inserisci l'email associata al tuo account e ti invieremo un token di reset.",
@@ -810,7 +819,11 @@
     "info": "Maggiori informazioni",
     "resultsCount_one": "{{count}} risultato",
     "resultsCount_other": "{{count}} risultati",
-    "loading": "Caricamento…"
+    "loading": "Caricamento…",
+    "unsavedChangesTitle": "Scartare le modifiche non salvate?",
+    "unsavedChangesMessage": "Hai modifiche non salvate che andranno perse se continui.",
+    "discard": "Scarta",
+    "keepEditing": "Continua a modificare"
   },
   "externalLinks": {
     "title": "Collegamenti esterni",

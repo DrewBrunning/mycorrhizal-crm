@@ -12,8 +12,11 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type Contact, getContacts } from '../api/contacts';
+import { useDiscardGuard } from '../hooks/useDiscardGuard';
+import { readSessionDraft, useSessionDraft } from '../hooks/useSessionDraft';
 import { handleFetchError } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
+import ConfirmDiscardDialog from './ConfirmDiscardDialog';
 
 interface ContactBrief {
   ID: number;
@@ -41,6 +44,12 @@ interface AddNoteDialogProps {
   noteContactName?: string;
 }
 
+interface NoteDraft {
+  content: string;
+  date: string;
+  selectedContact: ContactBrief | null;
+}
+
 export default function AddNoteDialog({
   open,
   onClose,
@@ -55,11 +64,35 @@ export default function AddNoteDialog({
   const [saving, setSaving] = useState(false);
 
   const lockedContact = noteContactId != null;
+  // Issue #557: scoped per target contact (or "unassigned" for the global
+  // notes page) so drafts for different contacts never bleed into each
+  // other.
+  const draftKey = `note-dialog:${noteContactId ?? 'unassigned'}`;
 
   const [contacts, setContacts] = useState<ContactBrief[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [selectedContact, setSelectedContact] = useState<ContactBrief | null>(null);
+
+  // Restore a draft left behind by a session expiry, a crash, or an
+  // accidental tab close -- once per dialog open, before anything else can
+  // overwrite it.
+  useEffect(() => {
+    if (!open) return;
+    const draft = readSessionDraft<NoteDraft>(draftKey);
+    if (!draft) return;
+    setContent(draft.content);
+    setDate(draft.date);
+    if (!lockedContact) setSelectedContact(draft.selectedContact);
+  }, [open, draftKey, lockedContact]);
+
+  const isDirty = content.trim().length > 0 || (!lockedContact && selectedContact !== null);
+  const { clearDraft } = useSessionDraft(
+    draftKey,
+    { content, date, selectedContact },
+    open && isDirty,
+  );
+  const { guardedClose, confirmDialogProps } = useDiscardGuard(isDirty);
 
   const loadContacts = useCallback(async (search: string = '') => {
     setContactsLoading(true);
@@ -104,7 +137,10 @@ export default function AddNoteDialog({
     }
   };
 
+  // Clears the draft too -- reached after a successful save and after a
+  // confirmed discard, and in both cases the draft is no longer wanted.
   const handleClose = () => {
+    clearDraft();
     setContent('');
     setDate(new Date().toISOString().split('T')[0]);
     setError('');
@@ -114,8 +150,13 @@ export default function AddNoteDialog({
     onClose();
   };
 
+  // Issue #557: Cancel and Escape (AppDialog already blocks a backdrop
+  // click for every dialog) go through the discard guard -- a dirty note
+  // gets a confirmation instead of vanishing.
+  const handleRequestClose = () => guardedClose(handleClose);
+
   return (
-    <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={handleRequestClose} maxWidth="sm" fullWidth>
       <DialogTitle>{t('noteDialog.title')}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -189,13 +230,14 @@ export default function AddNoteDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} disabled={saving}>
+        <Button onClick={handleRequestClose} disabled={saving}>
           {t('noteDialog.cancel')}
         </Button>
         <Button onClick={handleSave} variant="contained" disabled={saving}>
           {t('noteDialog.save')}
         </Button>
       </DialogActions>
+      <ConfirmDiscardDialog {...confirmDialogProps} />
     </AppDialog>
   );
 }
