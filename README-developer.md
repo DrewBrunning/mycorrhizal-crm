@@ -98,9 +98,9 @@
   ```bash
   docker compose -f docker-compose.test.yml up -d --build
   cd android
-  ./gradlew :macrobenchmark:connectedCheck -Pandroidx.benchmark.suppressErrors=EMULATOR,UNLOCKED
+  ./gradlew :macrobenchmark:connectedCheck
   ```
-  On a physical device, `adb reverse tcp:7300 tcp:7300` first and add `-Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300` (same as the E2E suite). Startup-only: `./gradlew :macrobenchmark:connectedCheck --tests '*StartupBenchmark' -Pandroidx.benchmark.suppressErrors=EMULATOR,UNLOCKED`.
+  The `suppressErrors` list that lets this run on an emulator is baked into `macrobenchmark/build.gradle.kts` (`defaultConfig.testInstrumentationRunnerArguments`) — no `-P` flag needed. On a physical device, `adb reverse tcp:7300 tcp:7300` first and add `-Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300` (same as the E2E suite). Startup-only: `./gradlew :macrobenchmark:connectedCheck --tests '*StartupBenchmark'`.
 - Results (`*-benchmarkData.json` + Perfetto traces) land under `android/macrobenchmark/build/outputs/`.
 - CI runs it via the `android-macrobenchmark` job in [.github/workflows/android-tests.yml](.github/workflows/android-tests.yml) — same emulator + backend as `android-e2e`, same triggers (nightly / manual dispatch / path-gated push to `main`, never on a PR), `continue-on-error` so a red run never blocks. The trace/JSON is kept as a run artifact.
 

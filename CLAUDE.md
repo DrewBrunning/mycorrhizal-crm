@@ -183,7 +183,8 @@ cold/warm/hot startup (`StartupBenchmark`) and dashboard render/scroll frame tim
 uses). It runs against the app's new `benchmark` build type (release R8 config, debug-signed,
 profileable). **Not a gate** — the `android-macrobenchmark` job in `android-tests.yml` is
 `continue-on-error` and asserts no timing threshold (emulator variance); it's a trend signal + local
-tool (`./gradlew :macrobenchmark:connectedCheck -Pandroidx.benchmark.suppressErrors=EMULATOR,UNLOCKED`).
+tool (`./gradlew :macrobenchmark:connectedCheck` — the emulator-guard `suppressErrors` list is baked
+into `macrobenchmark/build.gradle.kts`).
 No Baseline Profile is shipped yet; that's a separate follow-up. Runbook in `README-developer.md`.
 
 Migrations: the server runs every pending migration on startup (`database.InitDB`, from an embedded FS),

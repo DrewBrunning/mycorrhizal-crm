@@ -14,8 +14,11 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
  * Run it (needs an emulator/device — see README-developer.md → "Android
  * macrobenchmark"):
  *
- *   cd android && ./gradlew :macrobenchmark:connectedCheck \
- *     -Pandroidx.benchmark.suppressErrors=EMULATOR,UNLOCKED
+ *   cd android && ./gradlew :macrobenchmark:connectedCheck
+ *
+ * (The `suppressErrors` list that lets this run on an emulator is baked into
+ * `defaultConfig.testInstrumentationRunnerArguments` below — no `-P` flag
+ * needed.)
  *
  * The dashboard scenario additionally needs the `docker-compose.test.yml`
  * backend reachable (same one the instrumented E2E suite uses); pass its origin
@@ -49,6 +52,18 @@ android {
         minSdk = 26
         targetSdk = 37
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // androidx.benchmark reads `suppressErrors` as an *instrumentation
+        // runner argument*, not a Gradle property — passing it as
+        // `-Pandroidx.benchmark.suppressErrors=…` (missing the
+        // `android.testInstrumentationRunnerArguments.` namespace) is silently
+        // ignored, and the run aborts with `ERRORS (not suppressed): EMULATOR`.
+        // Bake it in here (the form the library's own error message
+        // prescribes): the CI emulator and a local emulator are both valid for
+        // the *relative* trend this non-gating job tracks, even though neither
+        // is a valid absolute-perf device.
+        testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] =
+            "EMULATOR,UNLOCKED,LOW-BATTERY,ACTIVITY-MISSING"
     }
 
     // `com.android.test` modules default to a single `debug` build type. The
