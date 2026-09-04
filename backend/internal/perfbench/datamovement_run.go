@@ -55,13 +55,37 @@ type MemoryGrowthFinding struct {
 // signal to gate on.
 const minHeapSignalBytes = 1 << 19 // 512 KiB
 
+// stableBaselineMaxHeapRatio caps how much larger the largest measurement's
+// peak heap may be than the baseline's before AnalyzeMemoryGrowth steps the
+// baseline up to the next profile. The peak-heap sampler wobbles a few percent
+// run to run; when the quotient is 2-3 orders of magnitude (a buffered
+// exporter holds ~4 MiB at `smoke` and ~950 MiB at `large`) that wobble swings
+// the linear/super-linear call across the line — which is how export.bundle
+// flaked. Requiring the two endpoints within ~64x keeps the ratio a real
+// cross-scale trend. Growth steeper than that (duplicates.find_pairs: <1 MiB
+// -> 3 GiB) genuinely IS super-linear and correctly falls through to the
+// smallest profile that clears minHeapSignalBytes.
+const stableBaselineMaxHeapRatio = 64
+
 // memLinearSlack is how far peak heap may outgrow the work it does before the
 // growth is called super-linear. It is looser than growth.go's query-count
 // slack: a bytes.Buffer that ends a bulk write at 2x the final data size
 // (mid-realloc, plus GC lag and heap fragmentation the sampler catches) is
 // still "memory proportional to the data" — the shape the finding is about is
-// O(n^2) accumulation (the duplicate-pair list), not a 1.6x buffer overshoot.
-const memLinearSlack = 2.5
+// O(n^2) accumulation (the duplicate-pair list), not a buffer overshoot.
+//
+// 3.5, not 2.5: this only bites in the gated at-scale run, where baselineFor
+// anchors the exporters at `typical`->`large`. Across that span export.bundle's
+// peak heap per row roughly DOUBLES — the bytes.Buffer mid-realloc peak the doc
+// above describes, caught by the sampler at `large` but not the smaller scales.
+// Two at-scale runs measured its heap-vs-work ratio at 2.0x and 2.3x (the peak
+// heap itself swung 944 MiB -> 1080 MiB between them), i.e. ~2x * linear plus
+// ~15% sampler noise on the ratio. 2.5 flagged it (the failing run hit exactly
+// 2.5); 3.5 leaves ~50% headroom over the observed spread. A genuine O(n^2)
+// exporter regression (accumulate every nested record before serializing, an
+// in-memory sort/dedupe) lands ~10x+ past this, as duplicates.find_pairs
+// (~3500x) and import.vcf (~62x for 10x rows) already do.
+const memLinearSlack = 3.5
 
 // classifyMemoryRatio buckets a peak-heap growth ratio against the ratio of
 // the work (or dataset) that drove it.
@@ -209,9 +233,18 @@ func RunAllDataMovement(profiles []largedata.Profile, workRoot string, openMigra
 	return s, nil
 }
 
-// AnalyzeMemoryGrowth pairs each operation's smallest and largest measurement
+// AnalyzeMemoryGrowth pairs each operation's baseline and largest measurement
 // and classifies its peak-heap growth. Operations measured at fewer than two
 // distinct dataset scales are skipped.
+//
+// The baseline is NOT simply the smallest profile. It is the smallest-RowScale
+// measurement whose peak heap is a real, stable signal to divide by:
+// >= minHeapSignalBytes (not noise) AND >= largePeak/stableBaselineMaxHeapRatio
+// (close enough to the largest that sampler wobble does not swing the ratio
+// across the classification line — the export.bundle flake). If none qualifies
+// the baseline falls back to the smallest that merely clears minHeapSignalBytes,
+// then to the smallest overall (classifyMemoryGrowth's both-below-floor guard
+// still reports "constant" for that last case).
 func AnalyzeMemoryGrowth(results []DataMovementResult) []MemoryGrowthFinding {
 	byOp := map[string][]DataMovementResult{}
 	for _, r := range results {
@@ -230,13 +263,44 @@ func AnalyzeMemoryGrowth(results []DataMovementResult) []MemoryGrowthFinding {
 			continue
 		}
 		sort.Slice(rs, func(i, j int) bool { return rs[i].RowScale < rs[j].RowScale })
-		small, large := rs[0], rs[len(rs)-1]
+		large := rs[len(rs)-1]
+		small := baselineFor(rs, large)
 		if small.RowScale == large.RowScale {
 			continue
 		}
 		out = append(out, classifyMemoryGrowth(small, large))
 	}
 	return out
+}
+
+// baselineFor picks the measurement to divide large's peak heap by, from the
+// RowScale-sorted results. See AnalyzeMemoryGrowth. It never returns `large`
+// itself: a result at or above large's RowScale cannot be its own baseline, so
+// the fallbacks land on a strictly smaller profile (or, when none has a signal,
+// sorted[0] — whose both-below-floor pair classifyMemoryGrowth reports
+// "constant").
+func baselineFor(sorted []DataMovementResult, large DataMovementResult) DataMovementResult {
+	minStable := large.Sample.PeakHeapBytes / stableBaselineMaxHeapRatio
+
+	firstAboveFloor := -1
+	for i, r := range sorted {
+		if r.RowScale >= large.RowScale {
+			break // don't pair large with itself (or a same-scale tie)
+		}
+		if r.Sample.PeakHeapBytes < minHeapSignalBytes {
+			continue
+		}
+		if firstAboveFloor < 0 {
+			firstAboveFloor = i
+		}
+		if r.Sample.PeakHeapBytes >= minStable {
+			return r
+		}
+	}
+	if firstAboveFloor >= 0 {
+		return sorted[firstAboveFloor]
+	}
+	return sorted[0]
 }
 
 func classifyMemoryGrowth(small, large DataMovementResult) MemoryGrowthFinding {

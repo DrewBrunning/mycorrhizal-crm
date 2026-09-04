@@ -39,6 +39,56 @@ func TestAnalyzeMemoryGrowth_SkipsThinAndFlatScales(t *testing.T) {
 	})
 }
 
+func TestAnalyzeMemoryGrowth_BaselineStepsUpFromANoiseAmplifiedSmall(t *testing.T) {
+	// A buffered exporter: linear, but `smoke` peak (~4.5 MiB) is >64x smaller
+	// than `large` (~950 MiB), so smoke/large is a noise-amplified ~210x that
+	// straddles the linear/super-linear line. The baseline must step up to
+	// `typical` (~27 MiB, within 64x of large) where the ratio is a stable
+	// trend.
+	t.Run("exporter steps up to typical", func(t *testing.T) {
+		f := AnalyzeMemoryGrowth([]DataMovementResult{
+			dmResult("export.bundle", "smoke", 300, 140, 4_500_000, GrowthLinear, false),
+			dmResult("export.bundle", "typical", 900, 840, 27_700_000, GrowthLinear, false),
+			dmResult("export.bundle", "large", 15000, 14000, 944_000_000, GrowthLinear, false),
+		})
+		require.Len(t, f, 1)
+		assert.Equal(t, "typical", f[0].SmallProfile, "baseline must skip the noise-amplified smoke peak")
+		assert.Equal(t, GrowthLinear, f[0].Class)
+		assert.False(t, f[0].Regression)
+	})
+
+	// Genuine O(n^2): <1 MiB at smoke -> 3+ GiB at large. Nothing below `large`
+	// is within 64x, so the baseline correctly falls back to the smallest
+	// profile that clears the noise floor (smoke) and the full-span comparison
+	// still reads super-linear.
+	t.Run("pairwise op keeps the full-span smoke baseline", func(t *testing.T) {
+		f := AnalyzeMemoryGrowth([]DataMovementResult{
+			dmResult("duplicates.find_pairs", "smoke", 300, 370, 920_000, GrowthSuperlinear, true),
+			dmResult("duplicates.find_pairs", "typical", 900, 14220, 12_700_000, GrowthSuperlinear, true),
+			dmResult("duplicates.find_pairs", "large", 15000, 3_997_000, 3_295_000_000, GrowthSuperlinear, true),
+		})
+		require.Len(t, f, 1)
+		assert.Equal(t, "smoke", f[0].SmallProfile)
+		assert.Equal(t, GrowthSuperlinear, f[0].Class)
+		assert.False(t, f[0].Regression)
+	})
+
+	// When every sub-large peak is noise, the baseline falls all the way back
+	// to sorted[0] and classifyMemoryGrowth's both-below-floor guard reports
+	// "constant" — no meaningless ratio leaks into the class.
+	t.Run("all-noise sub-large peaks classify constant", func(t *testing.T) {
+		f := AnalyzeMemoryGrowth([]DataMovementResult{
+			dmResult("backup.vacuum_into", "smoke", 300, 140, 50_000, GrowthConstant, false),
+			dmResult("backup.vacuum_into", "typical", 900, 840, 54_000, GrowthConstant, false),
+			dmResult("backup.vacuum_into", "large", 15000, 14000, 60_000, GrowthConstant, false),
+		})
+		require.Len(t, f, 1)
+		assert.Equal(t, "smoke", f[0].SmallProfile)
+		assert.Equal(t, GrowthConstant, f[0].Class)
+		assert.False(t, f[0].Regression)
+	})
+}
+
 func TestClassifyMemoryGrowth_HeapVsWork(t *testing.T) {
 	// Heap grew 12x while the op's own work grew 3x -> superlinear, and since
 	// the op declared "constant" that is a regression.
@@ -78,10 +128,13 @@ func TestClassifyMemoryRatio(t *testing.T) {
 	// flat heap while work grew several-fold -> constant
 	assert.Equal(t, GrowthConstant, classifyMemoryRatio(1.2, 10))
 	// heap grew with the work, inside the buffer-realloc slack -> linear
-	assert.Equal(t, GrowthLinear, classifyMemoryRatio(6, 3))    // 6 <= 3*2.5
+	assert.Equal(t, GrowthLinear, classifyMemoryRatio(6, 3))    // 6 <= 3*3.5
 	assert.Equal(t, GrowthLinear, classifyMemoryRatio(20, 100)) // way under the data growth
-	// heap outgrew the work even allowing the slack -> superlinear
-	assert.Equal(t, GrowthSuperlinear, classifyMemoryRatio(12, 3)) // 12 > 3*2.5
+	// the memLinearSlack boundary is workRatio * 3.5
+	assert.Equal(t, GrowthLinear, classifyMemoryRatio(10.5, 3))      // exactly on the line
+	assert.Equal(t, GrowthSuperlinear, classifyMemoryRatio(10.6, 3)) // just over
+	// heap outgrew the work by well over the slack -> superlinear
+	assert.Equal(t, GrowthSuperlinear, classifyMemoryRatio(12, 3))
 	// no work growth to compare against -> anything above flat is superlinear
 	assert.Equal(t, GrowthSuperlinear, classifyMemoryRatio(4, 1))
 }
