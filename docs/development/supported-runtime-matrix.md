@@ -13,7 +13,10 @@ which is expected to summarize this table for `docs/deployment.md`'s audience ra
 duplicate it. The dependency-*upgrade policy* (how/when a floor is allowed to move) is
 COMPAT-03 (issue #474) and [breaking-change-policy.md](../breaking-change-policy.md)
 (MAINT-02, issue #491) — raising any row below is a breaking change under that policy, not a
-routine edit.
+routine edit. This table states what the *server* requires to run; the
+[client/server compatibility policy](../client-compatibility-policy.md) (ANDROID-01, issue
+#478) is the client-facing counterpart — what server versions require of the Android app and
+web client talking to them.
 
 | Component | Minimum | Why |
 |---|---|---|
