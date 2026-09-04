@@ -148,6 +148,15 @@
     "invalidCode": "Code invalide. Veuillez réessayer.",
     "backToCredentials": "Retour à la connexion"
   },
+  "sessionExpired": {
+    "bannerMessage": "Votre session a expiré.",
+    "signIn": "Se connecter",
+    "title": "Session expirée",
+    "description": "Reconnectez-vous pour continuer — vos modifications non enregistrées resteront intactes.",
+    "notNow": "Pas maintenant",
+    "logOut": "Se déconnecter",
+    "ssoButton": "Se connecter avec {{provider}}"
+  },
   "passwordReset": {
     "title": "Réinitialiser le mot de passe",
     "description": "Saisissez l'adresse e-mail associée à votre compte et nous vous enverrons un jeton de réinitialisation.",
@@ -810,7 +819,11 @@
     "info": "Plus d'informations",
     "resultsCount_one": "{{count}} résultat",
     "resultsCount_other": "{{count}} résultats",
-    "loading": "Chargement…"
+    "loading": "Chargement…",
+    "unsavedChangesTitle": "Abandonner les modifications non enregistrées ?",
+    "unsavedChangesMessage": "Vous avez des modifications non enregistrées qui seront perdues si vous continuez.",
+    "discard": "Abandonner",
+    "keepEditing": "Continuer la modification"
   },
   "externalLinks": {
     "title": "Liens externes",

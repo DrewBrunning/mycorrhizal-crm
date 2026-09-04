@@ -12,7 +12,10 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type Contact, getContacts } from '../api/contacts';
+import { useDiscardGuard } from '../hooks/useDiscardGuard';
+import { readSessionDraft, useSessionDraft } from '../hooks/useSessionDraft';
 import AppDialog from './AppDialog';
+import ConfirmDiscardDialog from './ConfirmDiscardDialog';
 
 interface AddActivityDialogProps {
   open: boolean;
@@ -25,6 +28,13 @@ interface AddActivityDialogProps {
     contact_ids: number[];
   }) => Promise<void>;
   preselectedContactId?: number;
+}
+
+interface ActivityDraft {
+  title: string;
+  description: string;
+  location: string;
+  date: string;
 }
 
 export default function AddActivityDialog({
@@ -44,6 +54,32 @@ export default function AddActivityDialog({
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Issue #557: scoped per preselected contact so a draft started from one
+  // contact's page never bleeds into another's. The selected-contacts list
+  // itself is deliberately not part of the draft -- when preselectedContactId
+  // is set, it's loaded async and would otherwise race a restored draft and
+  // silently clobber it; title/description/location are the fields with real
+  // loss cost anyway.
+  const draftKey = `activity-dialog:${preselectedContactId ?? 'unassigned'}`;
+
+  useEffect(() => {
+    if (!open) return;
+    const draft = readSessionDraft<ActivityDraft>(draftKey);
+    if (!draft) return;
+    setTitle(draft.title);
+    setDescription(draft.description);
+    setLocation(draft.location);
+    setDate(draft.date);
+  }, [open, draftKey]);
+
+  const isDirty = Boolean(title.trim() || description.trim() || location.trim());
+  const { clearDraft } = useSessionDraft(
+    draftKey,
+    { title, description, location, date },
+    open && isDirty,
+  );
+  const { guardedClose, confirmDialogProps } = useDiscardGuard(isDirty);
 
   const loadContacts = useCallback(async (search: string = '') => {
     setLoading(true);
@@ -112,7 +148,10 @@ export default function AddActivityDialog({
     }
   };
 
+  // Clears the draft too -- reached after a successful save and after a
+  // confirmed discard, and in both cases the draft is no longer wanted.
   const handleClose = () => {
+    clearDraft();
     setTitle('');
     setDescription('');
     setLocation('');
@@ -124,12 +163,17 @@ export default function AddActivityDialog({
     onClose();
   };
 
+  // Issue #557: Cancel and Escape (AppDialog already blocks a backdrop
+  // click for every dialog) go through the discard guard -- a dirty
+  // activity gets a confirmation instead of vanishing.
+  const handleRequestClose = () => guardedClose(handleClose);
+
   const getContactLabel = (contact: Contact) => {
     return `${contact.firstname}${contact.nickname ? ` "${contact.nickname}"` : ''} ${contact.lastname}`;
   };
 
   return (
-    <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <AppDialog open={open} onClose={handleRequestClose} maxWidth="sm" fullWidth>
       <DialogTitle>{t('activityDialog.title')}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -224,13 +268,14 @@ export default function AddActivityDialog({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} disabled={saving}>
+        <Button onClick={handleRequestClose} disabled={saving}>
           {t('activityDialog.cancel')}
         </Button>
         <Button onClick={handleSave} variant="contained" disabled={saving}>
           {t('activityDialog.save')}
         </Button>
       </DialogActions>
+      <ConfirmDiscardDialog {...confirmDialogProps} />
     </AppDialog>
   );
 }

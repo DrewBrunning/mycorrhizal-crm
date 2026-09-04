@@ -148,6 +148,15 @@
     "invalidCode": "Código no válido. Inténtalo de nuevo.",
     "backToCredentials": "Volver al inicio de sesión"
   },
+  "sessionExpired": {
+    "bannerMessage": "Tu sesión ha caducado.",
+    "signIn": "Iniciar sesión",
+    "title": "Sesión caducada",
+    "description": "Inicia sesión de nuevo para seguir trabajando; tus cambios sin guardar permanecerán intactos.",
+    "notNow": "Ahora no",
+    "logOut": "Cerrar sesión",
+    "ssoButton": "Iniciar sesión con {{provider}}"
+  },
   "passwordReset": {
     "title": "Restablecer Contraseña",
     "description": "Ingresa el email asociado con tu cuenta y te enviaremos un token de restablecimiento.",
@@ -810,7 +819,11 @@
     "info": "Más información",
     "resultsCount_one": "{{count}} resultado",
     "resultsCount_other": "{{count}} resultados",
-    "loading": "Cargando…"
+    "loading": "Cargando…",
+    "unsavedChangesTitle": "¿Descartar los cambios no guardados?",
+    "unsavedChangesMessage": "Tienes cambios sin guardar que se perderán si continúas.",
+    "discard": "Descartar",
+    "keepEditing": "Seguir editando"
   },
   "externalLinks": {
     "title": "Enlaces externos",

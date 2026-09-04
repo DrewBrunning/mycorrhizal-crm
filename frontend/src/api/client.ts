@@ -1,6 +1,7 @@
 // API client with authentication and error handling
 // Uses httpOnly cookies for authentication (credentials: 'include')
 import { API_BASE_URL } from '../auth';
+import { notifySessionExpired } from './sessionExpiry';
 
 export { API_BASE_URL };
 
@@ -127,12 +128,32 @@ export async function apiFetch(
 
     clearTimeout(timeoutId);
 
-    // Check if session has expired (401 Unauthorized)
+    // Issue #557: a 401 used to be a hard `window.location.href = '/login'`
+    // from inside this shared wrapper -- unconditional, on any request,
+    // including a background poll fired while the user was mid-edit
+    // elsewhere. That tore down the whole React tree (and every unsaved
+    // field in it) with no prompt. It no longer touches navigation or
+    // localStorage at all: it publishes an event (see sessionExpiry.ts) that
+    // <SessionExpiredGate> turns into an in-app re-authentication prompt, and
+    // throws so the caller's own catch block still runs -- every dialog in
+    // this app already leaves its form state untouched in the catch branch
+    // of its save handler, so the user's input survives by construction, not
+    // by any extra plumbing here.
+    //
+    // GET/HEAD is a read -- a background poll, a dashboard refresh, an
+    // autocomplete lookup -- and does not need to interrupt whatever the user
+    // is doing right now. Every mutation in this app is a direct, synchronous
+    // user action (Save, Delete, Confirm...), so a 401 there is surfaced
+    // immediately.
     if (response.status === 401) {
-      // Session is invalid or expired - logout and redirect
-      localStorage.removeItem('user_info');
-      window.location.href = '/login';
-      throw new Error('Session expired. Please login again.');
+      const method = (options.method || 'GET').toUpperCase();
+      const isMutating = method !== 'GET' && method !== 'HEAD';
+      notifySessionExpired(isMutating ? 'blocking' : 'passive');
+      throw new ApiError(
+        'Session expired. Please sign in again to continue.',
+        'SESSION_EXPIRED',
+        401,
+      );
     }
 
     return response;

@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { SnackbarProvider } from '../context/SnackbarContext';
@@ -15,6 +15,11 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   localStorage.clear();
+  // Issue #557: AddNoteDialog persists a draft to sessionStorage while
+  // dirty. jsdom's sessionStorage is shared across tests in this file, so a
+  // draft left behind by one test would otherwise leak into the next test's
+  // fresh render.
+  sessionStorage.clear();
   vi.unstubAllGlobals();
 });
 
@@ -40,6 +45,22 @@ const contactsResponse = () => ({
   next_cursor: '',
   limit: 40,
 });
+
+function renderDialog(props: Partial<React.ComponentProps<typeof AddNoteDialog>> = {}) {
+  const defaults: React.ComponentProps<typeof AddNoteDialog> = {
+    open: true,
+    onClose: vi.fn(),
+    onSave: vi.fn().mockResolvedValue(undefined),
+    ...props,
+  };
+  return render(
+    <SnackbarProvider>
+      <DateFormatProvider>
+        <AddNoteDialog {...defaults} />
+      </DateFormatProvider>
+    </SnackbarProvider>,
+  );
+}
 
 // T7: AddNoteDialog renders the contact Autocomplete for optional assignment
 // at creation time.
@@ -91,4 +112,86 @@ test('renders the dialog title', async () => {
   await waitFor(() => {
     expect(screen.getByText('Add Note')).toBeDefined();
   });
+});
+
+// Issue #557: Cancel on a clean (untouched) form closes immediately -- no
+// confirmation for a form with nothing to lose.
+test('cancel with no content closes immediately, without a confirmation prompt', async () => {
+  mockFetchByUrl({ '/contacts?': contactsResponse });
+  const onClose = vi.fn();
+  renderDialog({ onClose });
+  await waitFor(() => expect(screen.getByLabelText('Content *')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByText('Cancel'));
+
+  expect(onClose).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText('Discard unsaved changes?')).not.toBeInTheDocument();
+});
+
+// Issue #557 item 3: a dirty note is not silently discarded on Cancel.
+test('cancel with typed content asks for confirmation before discarding', async () => {
+  mockFetchByUrl({ '/contacts?': contactsResponse });
+  const onClose = vi.fn();
+  renderDialog({ onClose });
+  await waitFor(() => expect(screen.getByLabelText('Content *')).toBeInTheDocument());
+
+  fireEvent.change(screen.getByLabelText('Content *'), {
+    target: { value: 'Called to check in, all is well.' },
+  });
+  fireEvent.click(screen.getByText('Cancel'));
+
+  expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
+  expect(onClose).not.toHaveBeenCalled();
+
+  // "Keep editing" backs out without losing what was typed.
+  fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+  await waitFor(() =>
+    expect(screen.queryByText('Discard unsaved changes?')).not.toBeInTheDocument(),
+  );
+  expect(onClose).not.toHaveBeenCalled();
+  expect(screen.getByLabelText('Content *')).toHaveValue('Called to check in, all is well.');
+
+  // Confirming the discard actually closes.
+  fireEvent.click(screen.getByText('Cancel'));
+  fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+// Issue #557 item 4: a draft persisted to sessionStorage turns a killed tab
+// or a crash-and-retry into an interruption, not a loss. This simulates that
+// by unmounting (losing all in-memory React state, the same as a fresh page
+// load) and re-rendering a fresh instance of the dialog.
+test('a dirty draft survives an unmount/remount (tab close, crash recovery)', async () => {
+  mockFetchByUrl({ '/contacts?': contactsResponse });
+  const { unmount } = renderDialog();
+  await waitFor(() => expect(screen.getByLabelText('Content *')).toBeInTheDocument());
+
+  fireEvent.change(screen.getByLabelText('Content *'), {
+    target: { value: 'Draft note content' },
+  });
+  await waitFor(() => expect(screen.getByLabelText('Content *')).toHaveValue('Draft note content'));
+
+  unmount();
+
+  renderDialog();
+  await waitFor(() => expect(screen.getByLabelText('Content *')).toHaveValue('Draft note content'));
+});
+
+// A successful save must not leave a stale draft behind to reappear the next
+// time the dialog opens.
+test('a successful save clears the draft', async () => {
+  mockFetchByUrl({ '/contacts?': contactsResponse });
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  const { unmount } = renderDialog({ onSave });
+  await waitFor(() => expect(screen.getByLabelText('Content *')).toBeInTheDocument());
+
+  fireEvent.change(screen.getByLabelText('Content *'), { target: { value: 'Saved note' } });
+  fireEvent.click(screen.getByText('Save'));
+  await waitFor(() => expect(onSave).toHaveBeenCalled());
+
+  unmount();
+
+  renderDialog();
+  await waitFor(() => expect(screen.getByLabelText('Content *')).toBeInTheDocument());
+  expect(screen.getByLabelText('Content *')).toHaveValue('');
 });

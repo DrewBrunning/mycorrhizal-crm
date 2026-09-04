@@ -5,6 +5,7 @@ import './index.css';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 import ServiceWorkerUpdatePrompt from './components/ServiceWorkerUpdatePrompt';
+import SessionExpiredGate from './components/SessionExpiredGate';
 import reportWebVitals from './reportWebVitals';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 import { notifyUpdateAvailable } from './serviceWorkerUpdates';
@@ -27,6 +28,10 @@ root.render(
       <DateFormatProvider>
         <SnackbarProvider>
           <AnnouncerProvider>
+            {/* Issue #557: outside the ErrorBoundary on purpose -- a page
+                crash or a route navigation must not take the re-auth prompt
+                down with it. */}
+            <SessionExpiredGate />
             <ErrorBoundary name="Application" onError={logError} showDetails={import.meta.env.DEV}>
               <App />
               <ServiceWorkerUpdatePrompt />

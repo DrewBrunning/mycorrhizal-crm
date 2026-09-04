@@ -103,7 +103,12 @@ export function handleError(
 
   logError(error, context);
 
-  if (notifier) {
+  // Issue #557: a SESSION_EXPIRED 401 already surfaces through
+  // <SessionExpiredGate> (a passive banner or a blocking re-auth prompt,
+  // depending on what triggered it) -- showing it a second time as a plain
+  // error toast here would be redundant and, for a background request a user
+  // never asked for, a more confusing message than the one they already see.
+  if (notifier && getErrorCode(error) !== 'SESSION_EXPIRED') {
     notifier.showError(message);
   }
 

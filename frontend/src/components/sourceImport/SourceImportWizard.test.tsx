@@ -122,3 +122,89 @@ test('an error is shown as an alert', () => {
   renderWizard(makeWizard({ step: 'connect', error: 'something broke' }));
   expect(screen.getByText('something broke')).toBeInTheDocument();
 });
+
+// Issue #557 item 3: the review step has a live backend session the user may
+// have spent real time configuring per-row actions on -- Cancel no longer
+// discards it unconditionally.
+test('cancelling from the review step asks for confirmation before discarding the session', () => {
+  const cancel = vi.fn();
+  const reset = vi.fn();
+  const onClose = vi.fn();
+  render(
+    <SourceImportWizard
+      open
+      onClose={onClose}
+      titleKey="settings.monicaImport.title"
+      sourceLabel="Monica"
+      wizard={makeWizard({
+        step: 'review',
+        preview: {
+          session_id: 's1',
+          rows: [],
+          total_rows: 0,
+          valid_rows: 0,
+          duplicate_count: 0,
+          error_count: 0,
+          totals: { activities: 0, notes: 0, reminders: 0, relationships: 0, gifts: 0 },
+          loss_report: [],
+        },
+        cancel,
+        reset,
+      })}
+      connectStep={<div />}
+      onComplete={() => {}}
+    />,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
+  expect(cancel).not.toHaveBeenCalled();
+  expect(onClose).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+  expect(cancel).toHaveBeenCalled();
+  expect(reset).toHaveBeenCalled();
+  expect(onClose).toHaveBeenCalled();
+});
+
+test('cancelling from the connect step (no session yet) closes immediately', () => {
+  const cancel = vi.fn();
+  renderWizard(makeWizard({ step: 'connect', cancel }));
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  expect(screen.queryByText('Discard unsaved changes?')).not.toBeInTheDocument();
+  expect(cancel).toHaveBeenCalled();
+});
+
+// Previously the Dialog's onClose was always handleCancel, so Escape mid
+// -import cancelled the run in progress instead of matching the explicit
+// "Close (keep running)" button next to it.
+test('Escape during an active import keeps it running instead of cancelling it', () => {
+  const cancel = vi.fn();
+  const cancelImport = vi.fn();
+  const onClose = vi.fn();
+  render(
+    <SourceImportWizard
+      open
+      onClose={onClose}
+      titleKey="settings.monicaImport.title"
+      sourceLabel="Monica"
+      wizard={makeWizard({
+        step: 'importing',
+        status: { session_id: 's1', phase: 'importing', phase_done: 2, phase_total: 12 },
+        cancel,
+        cancelImport,
+      })}
+      connectStep={<div />}
+      onComplete={() => {}}
+    />,
+  );
+
+  fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape', code: 'Escape' });
+
+  expect(cancel).not.toHaveBeenCalled();
+  expect(cancelImport).not.toHaveBeenCalled();
+  expect(onClose).toHaveBeenCalled();
+});

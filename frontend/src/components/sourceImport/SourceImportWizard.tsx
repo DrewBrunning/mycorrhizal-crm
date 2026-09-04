@@ -1,7 +1,6 @@
 import {
   Alert,
   Button,
-  Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
@@ -11,10 +10,13 @@ import {
 } from '@mui/material';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDiscardGuard } from '../../hooks/useDiscardGuard';
 import type {
   SourceImportStep,
   SourceImportWizard as Wizard,
 } from '../../hooks/useSourceImportWizard';
+import AppDialog from '../AppDialog';
+import ConfirmDiscardDialog from '../ConfirmDiscardDialog';
 import SourceImportProgress from './SourceImportProgress';
 import SourceImportResult from './SourceImportResult';
 import SourceImportReview from './SourceImportReview';
@@ -63,10 +65,41 @@ export default function SourceImportWizard({
     onComplete();
   };
 
+  // Issue #557: 'fetching' and 'review' have a live backend session -- in
+  // review's case, one the user may have spent real time configuring
+  // per-row actions on. Cancelling from either discards it, so both routes
+  // through the same confirm-before-discard guard the free-text dialogs use.
+  // 'connect' has no session yet (beginFetch is what creates one) and
+  // 'result' has nothing left to lose, so neither needs it.
+  const hasLiveSession = step === 'fetching' || step === 'review';
+  const { guardedClose, confirmDialogProps } = useDiscardGuard(hasLiveSession);
+
+  const handleCancelClick = () => {
+    if (hasLiveSession) {
+      guardedClose(handleCancel);
+    } else {
+      handleCancel();
+    }
+  };
+
+  // Previously this Dialog's `onClose` was always `handleCancel`, so
+  // pressing Escape mid-*import* cancelled the run in progress -- the same
+  // silent-discard shape as the review-step bug above, just on the step that
+  // already has its own explicit "Cancel import" vs "Close (keep running)"
+  // buttons for exactly this decision. Escape there now matches "keep
+  // running" instead of guessing "cancel".
+  const handleDialogClose = () => {
+    if (step === 'importing') {
+      onClose();
+      return;
+    }
+    handleCancelClick();
+  };
+
   const photosPending = step === 'importing';
 
   return (
-    <Dialog open={open} onClose={handleCancel} maxWidth="md" fullWidth>
+    <AppDialog open={open} onClose={handleDialogClose} maxWidth="md" fullWidth>
       <DialogTitle>{t(titleKey)}</DialogTitle>
       <DialogContent dividers>
         <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
@@ -116,7 +149,7 @@ export default function SourceImportWizard({
           </>
         ) : (
           <>
-            <Button onClick={handleCancel}>{t('common.cancel')}</Button>
+            <Button onClick={handleCancelClick}>{t('common.cancel')}</Button>
             {step === 'review' && (
               <Button
                 variant="contained"
@@ -129,6 +162,7 @@ export default function SourceImportWizard({
           </>
         )}
       </DialogActions>
-    </Dialog>
+      <ConfirmDiscardDialog {...confirmDialogProps} />
+    </AppDialog>
   );
 }
