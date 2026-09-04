@@ -28,6 +28,8 @@
     "start": "vite",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "budget": "node scripts/check-bundle-budget.mjs",
+    "budget:update": "node scripts/check-bundle-budget.mjs --update",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",

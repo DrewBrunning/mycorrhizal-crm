@@ -709,3 +709,45 @@ jobs:
           name: frontend-junit-results
           path: frontend/junit.xml
           retention-days: 7
+
+  # Issue #556 (web PERF counterpart to #468-#471): the client bundle-size
+  # budget. A production `vite build` then `yarn budget`, which fails when a
+  # chunk (or the total) grows past frontend/bundle-budget.json by more than
+  # the stated tolerance. Deterministic bytes are the gate; the per-chunk
+  # table it writes to the job summary is the attribution. Wall-clock load
+  # time is a trend, measured by the Playwright @perf specs, not here.
+  # Separate job from `frontend` above because it needs the full build the
+  # vitest/tsc/lint job deliberately skips. Same path gating.
+  frontend-bundle-budget:
+    permissions:
+      contents: read
+    name: Frontend bundle-size budget
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Build production bundle
+        working-directory: frontend
+        run: yarn build
+
+      - name: Check bundle-size budget
+        working-directory: frontend
+        run: yarn budget
