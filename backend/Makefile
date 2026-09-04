@@ -81,7 +81,7 @@ gen-compat-matrix: ## Regenerate the DATA-01 field compatibility matrix from the
 gen-integration-matrix: ## Regenerate the INT-01 integration classification matrix from backend/integrations (issue #464). Run when Registry()/Dispositions() change; the drift test fails until the docs diff is committed.
 	@go run cmd/genintegrationmatrix/main.go
 
-gen-perf-baseline: ## Regenerate the PERF-02 core-operation (issue #469) AND PERF-03 data-movement (issue #470) benchmark baselines + reports. Measures smoke+typical (add -large for the large profile). The drift tests fail until the diffs are committed; regenerate when an operation's query shape or data-movement shape changes deliberately.
+gen-perf-baseline: ## Regenerate the PERF-02 core-operation (issue #469) AND PERF-03 data-movement (issue #470) benchmark baselines + reports, plus the PERF-04 (issue #471) wallclock-trend.json. Measures smoke+typical (add -large for the large profile). The baseline drift tests fail until those diffs are committed; the trend + reports are not drift-gated. Regenerate when an operation's query/data-movement shape changes deliberately. NOTE: testdata/budgets.json is hand-authored and never regenerated here.
 	@go run ./cmd/perfbench
 
 backup: ## Create a consistent online snapshot of the SQLite database (VACUUM INTO; safe while the server runs)

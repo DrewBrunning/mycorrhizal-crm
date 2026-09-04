@@ -1,0 +1,112 @@
+{
+  "note": "HAND-AUTHORED (PERF-04, issue #471) — the one file in internal/perfbench that is NOT generated. A budget is a governance decision, not a measurement. The deterministic budget (query count, rows touched) is the committed baseline.json / datamovement-baseline.json itself, re-asserted here from the budget vocabulary and gated per PR. `max_wall_ms` is a hard ceiling on the median at anchor_profile for operations on an interactive path — evaluated only in release validation (the gated at-scale tests), never on a noisy per-PR runner; 0 waives it (with a reason). `max_peak_heap_mib` is a hard OOM-boundary cap, also anchor-profile / release-validation only. Ceilings are set generously above the measured baseline so only an order-of-magnitude regression trips them. Changing a number here is a deliberate, reviewed edit that MUST update the sibling `reason`. Full policy: docs/development/perf-budgets.md.",
+  "anchor_profile": "typical",
+  "core_operations": {
+    "cadence.list_overdue": {
+      "max_wall_ms": 200,
+      "reason": "Dashboard/cadence widget, on the home screen's load path. One indexed query (~15us measured). 200ms is a >10,000x margin — it only fires if the query stops using its index entirely."
+    },
+    "contact_create": {
+      "max_wall_ms": 500,
+      "reason": "Interactive: the contact form's submit. Query count (8, incl. the fire-and-forget webhook lookup) is the real gate; 500ms wall-clock is ~500x the ~1ms measured median, loose enough for a cold -race runner but well under the ~1s a person reads as a hang on a save."
+    },
+    "contact_detail": {
+      "max_wall_ms": 300,
+      "reason": "Interactive: the contact drawer opens on every row click. Query count pinned at the #469 baseline (25) — a new preload that N+1s here is the classic regression this catches. 300ms is ~90x the 3.4ms measured median and an order of magnitude under the ~1s stall threshold."
+    },
+    "contact_detail.pathological": {
+      "max_wall_ms": 300,
+      "reason": "Same handler as contact_detail, measured against the awkward manifest record (duplicate keywords, many repeatable fields). A slow contact_detail is usually the pathological one, so it gets the same 300ms interactive ceiling."
+    },
+    "contact_list.filtered_sorted": {
+      "max_wall_ms": 300,
+      "reason": "Interactive: the main contact list with a circle filter + sort applied. One query, page-limited result. 300ms is ~18x the 16ms measured median; a filtered sort that stopped hitting an index would blow past it."
+    },
+    "contact_list.plain": {
+      "max_wall_ms": 300,
+      "reason": "Interactive: the default contact list — the first screen after login. One query, 50-row page. 300ms is a ~800x margin over the sub-millisecond median; effectively only a full-table-scan regression trips it."
+    },
+    "contact_merge": {
+      "max_wall_ms": 1500,
+      "reason": "Interactive but not latency-critical: an explicit admin action with a confirmation step, run once. 100 queries (the dependent-table walk) is the gate. 1500ms wall-clock is ~100x the 15ms measured median — generous because merge legitimately does a lot of work."
+    },
+    "contact_update": {
+      "max_wall_ms": 500,
+      "reason": "Interactive: the contact form's save on an existing record. 11 queries is the gate; 500ms is ~300x the 1.7ms median, matching contact_create's save-latency ceiling."
+    },
+    "dashboard": {
+      "max_wall_ms": 300,
+      "reason": "Interactive: the home screen. 8 fixed aggregate queries is the gate. 300ms is ~230x the 1.3ms median; a dashboard tile that started iterating contacts would trip it."
+    },
+    "delete_cascade": {
+      "max_wall_ms": 1000,
+      "reason": "Interactive but not latency-critical: an explicit delete with a confirmation, run once. The 35-query manual cascade (CLAUDE.md backend trap #6) is the gate. 1000ms is ~130x the 7.5ms median — loose because a cascade touches many tables by design."
+    },
+    "duplicates.find_pairs": {
+      "max_wall_ms": 0,
+      "reason": "WAIVED. Background maintenance feeding a review surface — never on an interactive request path. Already a recorded super-linear finding (#469): its pair count is O(cluster^2). The deterministic budget (query count 5, result size at the baseline) still applies; wall-clock stays a trend signal only."
+    },
+    "fts.contact_list_search": {
+      "max_wall_ms": 300,
+      "reason": "Interactive: the contact-list search box. One FTS5 query. 300ms is ~250x the 1.2ms median; a search that fell back off the FTS index to a LIKE scan would trip it."
+    },
+    "fts.search_all": {
+      "max_wall_ms": 300,
+      "reason": "Interactive: the global search across contacts/notes/activities. Three FTS5 queries (one per corpus). 300ms is ~350x the 858us median."
+    },
+    "graph.traverse_deep": {
+      "max_wall_ms": 0,
+      "reason": "WAIVED. Opt-in deep relationship traversal, not on a default screen. The PERF-01 profiles deliberately scale graph density (hubs, fan-out, chain depth) faster than contact count, so the 2.2s at typical is fixture depth, not a regression. Query count (2 — a recursive CTE, not an N+1) is the property under test. Trend signal only."
+    },
+    "graph.traverse_hub": {
+      "max_wall_ms": 0,
+      "reason": "WAIVED. Density-scaled exactly like graph.traverse_deep (315ms at typical is the hub's fan-out in the fixture). Query count (2) is the gate; wall-clock is a trend signal only."
+    },
+    "graph.traverse_shallow": {
+      "max_wall_ms": 500,
+      "reason": "Interactive: the 1-hop relationship view on the contact page. Query count (2) is the gate. 500ms (looser than the 300ms reads because result size grows with local density by design) is ~90x the 5.3ms median."
+    },
+    "reachout.detect": {
+      "max_wall_ms": 300,
+      "reason": "Interactive: the reach-out suggestions strip. Five bounded queries. 300ms is ~1,000x the 285us median."
+    }
+  },
+  "data_movement_operations": {
+    "backup.vacuum_into": {
+      "max_peak_heap_mib": 32,
+      "reason": "VACUUM INTO runs entirely inside SQLite; Go holds nothing (41 KiB measured peak). 32 MiB is the floor ceiling — anything approaching it means the backup path started buffering the database in Go memory."
+    },
+    "delete_cascade.hub": {
+      "max_peak_heap_mib": 32,
+      "reason": "The dependent-table walk issues SQL DELETEs; rows are not loaded (1.2 MiB measured). 32 MiB floor ceiling catches a cascade that started SELECT-ing whole tables into memory before deleting."
+    },
+    "duplicates.find_pairs": {
+      "max_peak_heap_mib": 64,
+      "reason": "Recorded super-linear peak-memory finding (#470): it expands O(cluster^2) candidate pairs in memory (12.8 MiB at typical). Capped in the product (it is a review surface, not an unbounded job). 64 MiB is ~5x the measured typical peak — a regression past the known shape trips it; the cross-scale growth-class gate in PERF-03 owns the shape itself."
+    },
+    "export.bundle": {
+      "max_peak_heap_mib": 128,
+      "reason": "ExportData builds one bytes.Buffer for the whole multi-section dump before the first byte is sent (linear, expected — 27 MiB at typical). 128 MiB is ~4.5x the measured typical peak; an export that also duplicated the buffer, or stopped freeing per-record scratch, would trip it well before OOM on a 512 MiB box."
+    },
+    "export.jscontact": {
+      "max_peak_heap_mib": 128,
+      "reason": "Same whole-result buffering as export.bundle (21 MiB at typical), JSContact serialization. Same 128 MiB OOM-boundary ceiling."
+    },
+    "export.vcard4": {
+      "max_peak_heap_mib": 128,
+      "reason": "Same whole-result buffering as export.bundle (21 MiB at typical), vCard 4 serialization. Same 128 MiB OOM-boundary ceiling."
+    },
+    "fts.rebuild": {
+      "max_peak_heap_mib": 32,
+      "reason": "INSERT ... SELECT into the FTS5 virtual table inside SQLite; Go holds nothing (23 KiB measured). 32 MiB floor ceiling catches a rebuild that started reading rows into Go to re-index them."
+    },
+    "import.vcf": {
+      "max_peak_heap_mib": 96,
+      "reason": "Recorded super-linear peak-memory finding (#470): ParseVCF holds the whole parsed batch and the preview pass is O(n^2) in the row count (20 MiB at typical). Capped in the product at services.MaxVCFContacts. 96 MiB is ~4.5x the measured typical peak — a regression past the known shape trips it; PERF-03's growth-class gate owns the shape."
+    },
+    "restore.snapshot": {
+      "max_peak_heap_mib": 32,
+      "reason": "Streams the snapshot file back into place (218 KiB measured peak). 32 MiB floor ceiling catches a restore that started loading the snapshot into memory."
+    }
+  }
+}

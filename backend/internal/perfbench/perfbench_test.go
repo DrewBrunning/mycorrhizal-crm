@@ -54,6 +54,17 @@ func TestCoreOperationBenchmarks(t *testing.T) {
 		}
 	})
 
+	t.Run("WithinBudgets", func(t *testing.T) {
+		bg, err := EmbeddedBudgets()
+		require.NoError(t, err)
+		// smoke only: the deterministic (query-count) budget is the N+1
+		// gate — this is the CLAUDE.md hand-verify target for #471. The
+		// absolute wall-clock budgets are anchored to `typical` and so only
+		// bite in the gated at-scale run, never on this noisy per-PR box.
+		breaches := bg.CheckCore(results, baseline)
+		assert.Emptyf(t, breaches, "smoke performance-budget breaches (PERF-04): %v", breaches)
+	})
+
 	// The rest reuse the already-populated Env for fixture-handle and
 	// error-path coverage without a second populate.
 	t.Run("ResolvesDistinctHandles", func(t *testing.T) {
@@ -212,5 +223,20 @@ func TestBenchmarksAtScale(t *testing.T) {
 					r.Operation, r.Queries, tp.Queries)
 			}
 		}
+	})
+
+	// PERF-04 (issue #471): the absolute interactive wall-clock budgets are
+	// evaluated here, at the anchor profile — this is the release-validation
+	// gate the milestone's "where practical" hedge points at, not something
+	// every PR pays for on a noisy runner.
+	t.Run("WithinBudgetsAtScale", func(t *testing.T) {
+		bg, err := EmbeddedBudgets()
+		require.NoError(t, err)
+		breaches := bg.CheckCore(suite.ResultsByProfile[bg.AnchorProfile], baseline)
+		assert.Emptyf(t, breaches, "typical performance-budget breaches (PERF-04): %v", breaches)
+	})
+
+	t.Run("WallClockTrend", func(t *testing.T) {
+		assertWallClockTrendAdvisory(t, suite, DataMovementSuite{})
 	})
 }

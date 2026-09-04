@@ -18,7 +18,7 @@ the sensitive rows — the profile datasets exercise with more rows, more users,
 and a realistically lopsided relationship graph.
 
 Consumers: #469 (PERF-02, core-operation benchmarks), #470 (PERF-03,
-data-movement benchmarks), #471 (PERF-04, budgets), #495 (large-dataset
+data-movement benchmarks), #471 (PERF-04, [budgets](perf-budgets.md)), #495 (large-dataset
 migration — the migration slice; see [scale-testing.md](scale-testing.md)),
 #498 (capacity under constrained resources), #453 (BACKUP-01, restore at
 scale). Each consumes `internal/largedata.Profile` / `largedata.Populate`, not

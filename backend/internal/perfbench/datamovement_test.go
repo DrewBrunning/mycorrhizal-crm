@@ -18,8 +18,10 @@ import (
 
 // smokePeakHeapCeiling is a deliberately loose absolute cap for the per-PR
 // smoke run: no data-movement operation on a ~300-contact dataset has any
-// business holding a quarter-gigabyte. It is not a budget (that is #471) — it
-// is a tripwire for an accumulation bug so bad it shows up even at smoke.
+// business holding a quarter-gigabyte. It is the coarse per-PR tripwire for an
+// accumulation bug so bad it shows up even at smoke; the per-operation
+// peak-heap budgets (PERF-04, budgets.json) are the precise ceilings, enforced
+// at the anchor profile in release validation.
 const smokePeakHeapCeiling = 256 << 20
 
 // TestDataMovementBenchmarks is the per-PR PERF-03 gate (issue #470): every
@@ -79,6 +81,16 @@ func TestDataMovementBenchmarks(t *testing.T) {
 			assert.Falsef(t, r.Sample.ProbeStalledOut,
 				"%s: stalled concurrent writes past the 5s busy_timeout on a 300-contact dataset", r.Operation)
 		}
+	})
+
+	t.Run("WithinBudgets", func(t *testing.T) {
+		bg, err := EmbeddedBudgets()
+		require.NoError(t, err)
+		// smoke only: the deterministic (rows-touched) budget. The absolute
+		// peak-heap ceilings are anchored to `typical` and bite only in the
+		// gated at-scale run.
+		breaches := bg.CheckDataMovement(results, baseline)
+		assert.Emptyf(t, breaches, "smoke data-movement budget breaches (PERF-04): %v", breaches)
 	})
 }
 
@@ -154,6 +166,22 @@ func TestDataMovementAtScale(t *testing.T) {
 		require.True(t, ok)
 		assert.Greater(t, fts.Sample.ProbeMaxStallNanos, backup.Sample.ProbeMaxStallNanos,
 			"the FTS rebuild holds the write lock longer than VACUUM INTO (which reads through the WAL)")
+	})
+
+	// PERF-04 (issue #471): the absolute peak-heap ceilings — the OOM
+	// boundary — are enforced here, at the anchor profile, in release
+	// validation rather than per PR.
+	t.Run("WithinBudgetsAtScale", func(t *testing.T) {
+		bg, err := EmbeddedBudgets()
+		require.NoError(t, err)
+		base, err := EmbeddedDataMovementBaseline()
+		require.NoError(t, err)
+		breaches := bg.CheckDataMovement(suite.ResultsByProfile[bg.AnchorProfile], base)
+		assert.Emptyf(t, breaches, "typical data-movement budget breaches (PERF-04): %v", breaches)
+	})
+
+	t.Run("WallClockTrend", func(t *testing.T) {
+		assertWallClockTrendAdvisory(t, Suite{}, suite)
 	})
 }
 

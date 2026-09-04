@@ -15,6 +15,12 @@
 //   - docs/development/data-movement-benchmarks.md — the report, which adds
 //     the indicative durations, peak heap and peak disk.
 //
+// PERF-04 (performance budgets, issue #471):
+//   - backend/internal/perfbench/testdata/wallclock-trend.json — the rolling
+//     wall-clock record the gated at-scale tests compare against for human
+//     review. Not drift-gated; rewritten every run. The budgets themselves
+//     (testdata/budgets.json) are hand-authored and never touched here.
+//
 // Normal workflow:
 //
 //	cd backend && go run ./cmd/perfbench          # smoke + typical
@@ -103,6 +109,15 @@ func run(args []string, stdout io.Writer, startDir string, measure measureFunc, 
 		return 1
 	}
 
+	// --- PERF-04: the rolling wall-clock trend (issue #471). Not drift-gated
+	// — it is regenerated on every run like the markdown reports, and the
+	// gated at-scale tests compare against it for human review only.
+	trendJSON, err := perfbench.BuildWallClockTrend(suite, dmSuite).Marshal()
+	if err != nil { // # pragma: no cover — the trend struct always marshals
+		fmt.Fprintln(stdout, "perfbench:", err)
+		return 1
+	}
+
 	if *check {
 		stale := false
 		if path, s := perfbench.CheckBaseline(root, baselineJSON); s {
@@ -129,8 +144,13 @@ func run(args []string, stdout io.Writer, startDir string, measure measureFunc, 
 		fmt.Fprintln(stdout, "perfbench:", err)
 		return 2
 	}
+	if err := perfbench.WriteWallClockTrend(root, trendJSON); err != nil { // # pragma: no cover — same dir WriteArtifacts just wrote to; TestRun_WriteFailureIsExit2 covers the sibling
+		fmt.Fprintln(stdout, "perfbench:", err)
+		return 2
+	}
 	bPath, rPath := perfbench.ArtifactPaths(root)
 	dmBPath, dmRPath := perfbench.DataMovementArtifactPaths(root)
-	fmt.Fprintf(stdout, "perfbench: wrote %s\nperfbench: wrote %s\nperfbench: wrote %s\nperfbench: wrote %s\n", bPath, rPath, dmBPath, dmRPath)
+	fmt.Fprintf(stdout, "perfbench: wrote %s\nperfbench: wrote %s\nperfbench: wrote %s\nperfbench: wrote %s\nperfbench: wrote %s\n",
+		bPath, rPath, dmBPath, dmRPath, perfbench.WallClockTrendPath(root))
 	return 0
 }

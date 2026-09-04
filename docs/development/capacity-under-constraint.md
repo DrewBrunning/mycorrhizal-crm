@@ -64,8 +64,10 @@ of accounts whose per-user background jobs multiply against one SQLite writer.
    set (`services/graph_traversal.go`, `services/duplicate_service.go`). They
    are **read-only**, so an OOM kill there cannot corrupt the database — the
    process dies, the next request works, `PRAGMA integrity_check` is `ok`.
-   Bounding those result sets is owned by #470/#471 (budgets); this ticket
-   only asserts the OOM is non-corrupting.
+   Bounding those result sets is owned by #470/#471
+   ([perf-budgets.md](perf-budgets.md) — `duplicates.find_pairs` carries a
+   peak-heap ceiling; graph-hub traversal is density-scaled and waived); this
+   ticket only asserts the OOM is non-corrupting.
 
 "**D → F**" means: the preflight check *degrades* (a clear refusal before
 anything is touched), and if the preflight is skipped or a racing process eats

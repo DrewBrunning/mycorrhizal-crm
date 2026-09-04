@@ -27,7 +27,8 @@ func RenderReport(resultsByProfile map[string][]Result, profileOrder []string, f
 	fmt.Fprintf(&b, "generating run on `%s/%s` — indicative only, never asserted, since it varies\n", runtime.GOOS, runtime.GOARCH)
 	fmt.Fprintln(&b, "across hardware (issue #261's stated philosophy). This file is regenerated with")
 	fmt.Fprintln(&b, "fresh medians on every run and is **not** drift-gated (only `baseline.json` is);")
-	fmt.Fprintln(&b, "commit it when it moves. #471 turns these numbers into budgets.")
+	fmt.Fprintln(&b, "commit it when it moves. PERF-04 (issue #471) turns these numbers into budgets:")
+	fmt.Fprintln(&b, "`internal/perfbench/testdata/budgets.json` + `docs/development/perf-budgets.md`.")
 	fmt.Fprintln(&b)
 	fmt.Fprintf(&b, "Profiles are the PERF-01 dataset shapes (issue #468): %s. `large` and `stress`\n", strings.Join(profiles, ", "))
 	fmt.Fprintln(&b, "are gated behind `MYCORRHIZAL_LARGE_TESTS=1`; `stress` is projection-only and is")
@@ -109,7 +110,7 @@ func RenderReport(resultsByProfile map[string][]Result, profileOrder []string, f
 		}
 		if len(superlinear) > 0 {
 			fmt.Fprintf(&b, "**Super-linear operations (hard findings):** %s. Recorded, not necessarily\n", strings.Join(backticked(superlinear), ", "))
-			fmt.Fprintln(&b, "bugs — #471 decides whether each needs a budget or a fix.")
+			fmt.Fprintln(&b, "bugs — PERF-04 (issue #471) records a budget or a waiver-with-reason for each in `budgets.json`.")
 			fmt.Fprintln(&b)
 		}
 		if len(slowGrowth) > 0 {

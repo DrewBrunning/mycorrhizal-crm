@@ -48,6 +48,18 @@ func CheckBaseline(repoRoot string, baselineJSON []byte) (stalePath string, stal
 	return baselinePath, false
 }
 
+// WallClockTrendPath resolves the on-disk location of the committed rolling
+// wall-clock record, given the repo root.
+func WallClockTrendPath(repoRoot string) string {
+	return filepath.Join(repoRoot, "backend", "internal", "perfbench", WallClockTrendFile)
+}
+
+// WriteWallClockTrend writes the rolling wall-clock record under repoRoot. It
+// is not drift-gated (like the markdown reports) — every run rewrites it.
+func WriteWallClockTrend(repoRoot string, trendJSON []byte) error {
+	return os.WriteFile(WallClockTrendPath(repoRoot), trendJSON, 0o600)
+}
+
 // FindRepoRoot walks up from startDir (or the working directory when empty)
 // until it finds the directory containing backend/go.mod.
 func FindRepoRoot(startDir string) (string, error) {

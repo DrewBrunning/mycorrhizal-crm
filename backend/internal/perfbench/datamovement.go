@@ -89,7 +89,8 @@ func DataMovementRegistry() []DataMovementOperation {
 			// O(n²) work whose allocation grows faster than the batch. Measured
 			// heap x63 for a x17 batch at smoke→large. The product caps imports
 			// at services.MaxVCFContacts (20000); a genuinely large address book
-			// should be chunked. #471/#725 decide the budget or the fix.
+			// should be chunked. PERF-04 (#471) sets an absolute peak-heap
+			// ceiling for it in budgets.json; #725 owns any fix.
 			ExpectedMemoryGrowth: GrowthSuperlinear,
 			FreeSpaceNote:        "None on disk; peak RAM grows FASTER than the batch — ParseVCF holds the whole parsed batch and its preview pass is O(n²) in the row count.",
 			Run: func(e *Env, _ string) (int, int64, error) {
