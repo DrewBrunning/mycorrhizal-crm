@@ -21,6 +21,7 @@ import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.feature.tracking.NotificationBuilder
+import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalColors
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -51,6 +52,13 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var authRepository: AuthRepository
+
+    // Exposed purely for the instrumented E2E suite (issue #238), the same way
+    // sessionManager is above: ANDROID-04 (#481) drives DeviceRegistrationManager
+    // directly against this already-authenticated singleton to exercise the FCM
+    // device-registration lifecycle against the real backend.
+    @Inject
+    lateinit var apiClient: ApiClient
 
     // M5 §6.6 (issue #152): the most recent notification deep link to route the
     // NavHost to. Notifications carry it as an extra on their content intent;

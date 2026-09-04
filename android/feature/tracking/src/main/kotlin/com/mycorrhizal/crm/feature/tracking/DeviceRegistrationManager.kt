@@ -38,10 +38,23 @@ class DeviceRegistrationManager @Inject constructor(
                 // still better served by the polling workers than by crashing.
                 return Result.success(Unit)
             }
-        return apiClient.registerDevice(
+        val previousId = store.loadDeviceId()
+        val device = apiClient.registerDevice(
             DeviceRegistrationInput(token = token, client = CLIENT_FCM, deviceLabel = deviceLabel()),
-        )
-            .map { device -> store.saveDeviceId(device.id) }
+        ).getOrElse { return Result.failure(it) }
+        store.saveDeviceId(device.id)
+        // A rotated token registers as a brand-new server-side row (the unique
+        // key is (client, token), not this physical install — see migration
+        // 000019's comment) — delete the old row so rotation replaces the
+        // registration instead of accumulating one per rotation (ANDROID-04,
+        // issue #481). Best-effort: a failed cleanup here doesn't fail the
+        // overall registration, since the new token is already live, and a
+        // row this misses is still pruned once FCM reports it dead
+        // (pushNotificationSender's stale-token path server-side).
+        if (previousId != null && previousId != device.id) {
+            apiClient.deleteDevice(previousId)
+        }
+        return Result.success(Unit)
     }
 
     /** Deletes this install's registration. No-op success when none is stored. */
