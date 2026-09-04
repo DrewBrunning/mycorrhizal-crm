@@ -168,6 +168,20 @@ is the declared breaking change that the release notes and approval process must
 changes (new endpoints/fields/params/enum values) pass the drift check but still require regeneration.
 Policy: `docs/breaking-change-policy.md`.
 
+**Dependency upgrade policy (COMPAT-03, issue #474):** `docs/dependency-upgrade-policy.md` is the
+per-ecosystem (Go/npm/Gradle/Docker/GitHub Actions) tiering — security fixes, batched patch/minor,
+individually-reviewed major — with response-time targets reused from elsewhere rather than invented
+(5 business days from `SECURITY.md`, a 90-day exception ceiling from MAINT-01/#490). An advisory that
+can't be fixed within its window gets a time-bounded entry in
+`docs/security/dependency-exceptions.ignore` — deliberately a different shape from this repo's other,
+permanent ignore-list-with-justification files (`.trivyignore`, `.grype.yml`, etc.), since this one
+must expire. `cd backend && go run ./cmd/depexceptions` fails on a malformed entry or one whose
+`expires` date has passed; it runs alongside `citecheck` in `unit-tests.yml`'s `backend-checks` job
+(every backend PR, plus the nightly full-suite run), so an expired exception surfaces without needing
+new PR activity to trip over it. A dependency bump that raises this project's own supported-runtime
+minimum (`docs/development/supported-runtime-matrix.md`, issue #472) is a breaking change under
+MAINT-02, not a routine merge — the policy page ties the two together.
+
 Android instrumented E2E (issue #238): the suite in `android/app/src/androidTest` drives the real app
 against the real `docker-compose.test.yml` backend on an emulator/device — login → list → detail →
 edit, favorites (issue #212), archive/delete + audit undo. Emulator: `cd android && ./gradlew

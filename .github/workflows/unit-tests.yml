@@ -107,6 +107,16 @@ jobs:
         working-directory: backend
         run: go run ./cmd/citecheck
 
+      # COMPAT-03 (issue #474): the dependency-advisory exception ledger
+      # (docs/security/dependency-exceptions.ignore) promises a fix or a
+      # renewal before an entry's `expires` date, not silence. Same job as
+      # citecheck above so this runs on every backend PR and on the nightly
+      # full-suite run (this workflow's `schedule` trigger), which is what
+      # surfaces an expired exception even with no PR activity to trip it.
+      - name: Verify dependency-exception ledger freshness
+        working-directory: backend
+        run: go run ./cmd/depexceptions
+
   # Issue #630: the backend test suite is split into parallel legs
   # (`backend-tests` matrix) so `controllers` and `services` — each ~20 min
   # under -race + -covermode=atomic on GitHub's shared runners, the latter
