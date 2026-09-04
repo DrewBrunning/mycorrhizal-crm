@@ -170,7 +170,15 @@ jobs:
           RELEASE: ${{ matrix.release }}
         run: |
           set -eo pipefail
-          out="$(go test ./internal/schemafixture/ -run "TestUpgradeFixtureToCurrent/${RELEASE}" -count=1 -v 2>&1)"
+          # `|| true` on the assignment: this shell runs under -e (the step's
+          # default, and set -eo pipefail below), and `var="$(cmd)"` is itself
+          # the checked command — a failing `go test` (any test failure, not
+          # just a crash) would abort the script AT THIS LINE, before `echo
+          # "$out"` ever runs, silently discarding every line of the actual
+          # failure output. Every occurrence of this pattern in this file had
+          # that bug; the real pass/fail is the grep below, unaffected by the
+          # `|| true`.
+          out="$(go test ./internal/schemafixture/ -run "TestUpgradeFixtureToCurrent/${RELEASE}" -count=1 -v 2>&1)" || true
           echo "$out"
           if ! grep -q -- "--- PASS: TestUpgradeFixtureToCurrent/${RELEASE} " <<<"$out"; then
             echo "::error::expected subtest TestUpgradeFixtureToCurrent/${RELEASE} did not pass (release not in SupportedReleases?)"
@@ -359,7 +367,9 @@ jobs:
           MYCORRHIZAL_LARGE_TESTS: "1"
         run: |
           set -eo pipefail
-          out="$(go test ./internal/schemafixture/ -run '^TestLargeDatasetUpgradeToCurrent$' -count=1 -v 2>&1)"
+          # `|| true`: see "Migrate ... fixture to current" above — without it,
+          # `set -e` swallows a failing run's entire output before `echo` runs.
+          out="$(go test ./internal/schemafixture/ -run '^TestLargeDatasetUpgradeToCurrent$' -count=1 -v 2>&1)" || true
           echo "$out"
           # Fail-safe: the tests are env-gated, so a typo'd variable would
           # silently skip them and the job would pass vacuously. Assert the
@@ -388,7 +398,9 @@ jobs:
           MYCORRHIZAL_LARGE_TESTS: "1"
         run: |
           set -eo pipefail
-          out="$(go test ./internal/largedata/ -count=1 -v 2>&1)"
+          # `|| true`: see "Migrate ... fixture to current" above — without it,
+          # `set -e` swallows a failing run's entire output before `echo` runs.
+          out="$(go test ./internal/largedata/ -count=1 -v 2>&1)" || true
           echo "$out"
           # Fail-safe: these are env-gated, so a typo'd variable would silently
           # skip them and the job would pass vacuously.
@@ -455,7 +467,9 @@ jobs:
           # reads still run minutes of advisory-only wall-clock (not a gate —
           # growth is classified on query count), so give them real headroom
           # under the job's timeout-minutes ceiling.
-          out="$(go test ./internal/perfbench/ -run '^TestBenchmarksAtScale$' -count=1 -v -timeout 30m 2>&1)"
+          # `|| true`: see "Migrate ... fixture to current" above — without it,
+          # `set -e` swallows a failing run's entire output before `echo` runs.
+          out="$(go test ./internal/perfbench/ -run '^TestBenchmarksAtScale$' -count=1 -v -timeout 30m 2>&1)" || true
           echo "$out"
           # Fail-safe: env-gated, so a typo'd variable would silently skip it
           # and the job would pass vacuously.
@@ -488,7 +502,11 @@ jobs:
           # super-linear finding, kept in: it terminates) plus the 3 exporters
           # over the full `large` fixture — so it needs materially more than the
           # core-op step, well past `go test`'s 10m default.
-          out="$(go test ./internal/perfbench/ -run '^TestDataMovementAtScale$|^TestMigrationAtScaleResourceEnvelope$' -count=1 -v -timeout 45m 2>&1)"
+          # `|| true`: see "Migrate ... fixture to current" above — without it,
+          # `set -e` swallows a failing run's entire output before `echo` runs.
+          # This is the step that has been failing silently for #795/#796 — this
+          # fix is what actually surfaces why.
+          out="$(go test ./internal/perfbench/ -run '^TestDataMovementAtScale$|^TestMigrationAtScaleResourceEnvelope$' -count=1 -v -timeout 45m 2>&1)" || true
           echo "$out"
           # Fail-safe: env-gated, so a typo'd variable would silently skip
           # these and the job would pass vacuously.

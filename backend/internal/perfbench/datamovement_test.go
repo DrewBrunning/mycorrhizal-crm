@@ -145,6 +145,23 @@ func TestDataMovementAtScale(t *testing.T) {
 
 	t.Run("NoMemoryGrowthRegression", func(t *testing.T) {
 		require.NotEmpty(t, suite.MemoryFindings)
+		// Log every measured peak heap and every finding under -v, not just the
+		// ones that fail: this classification runs on hardware this suite never
+		// sees before CI (a fresh 16 GiB runner is not this dev box), so on a
+		// failure the only way to see the actual numbers used to be a second
+		// CI round-trip with ad hoc diagnostics patched in — worse, the
+		// `out="$(go test ...)" ` / `set -e` pattern in migration-tests.yml
+		// discarded a failing run's entire stdout before it was ever echoed
+		// (fixed alongside this). Printing the numbers unconditionally means a
+		// red run's CI log already has what a local repro needs.
+		for _, prof := range suite.ProfileOrder {
+			for _, r := range suite.ResultsByProfile[prof] {
+				t.Logf("memstat %s @ %-8s peakHeap=%d rowsTouched=%d durNanos=%d", r.Operation, prof, r.Sample.PeakHeapBytes, r.Sample.RowsTouched, r.Sample.DurationNanos)
+			}
+		}
+		for _, f := range suite.MemoryFindings {
+			t.Logf("finding %s %s→%s class=%s heapRatio=%.2f workRatio=%.2f expected=%s regression=%v", f.Operation, f.SmallProfile, f.LargeProfile, f.Class, f.PeakHeapRatio, f.RowsTouchedRatio, f.Expected, f.Regression)
+		}
 		var superlinear int
 		for _, f := range suite.MemoryFindings {
 			assert.Falsef(t, f.Regression,
