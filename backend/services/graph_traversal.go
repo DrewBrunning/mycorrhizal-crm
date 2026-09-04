@@ -49,6 +49,66 @@ type traversalRow struct {
 	Depth   int
 }
 
+// traversalCTE walks relationship_edges from a start UID out to a depth cap.
+// Each recursion step joins the current contact to its edges, moves to the
+// other endpoint, and appends the raw edge type + a direction flag ('0' =
+// forward along the stored edge, source->target; '1' = against it,
+// target->source). Visited-set: the path string holds every uid seen on this
+// branch, so cycles terminate per-branch; the depth cap bounds the branch
+// length regardless. instr(path, uid) = 0 is the visited check — each uid is a
+// full UUID, so a substring match is unambiguous.
+//
+// The recursive step is TWO UNION ALL terms — one anchored on source_id, one on
+// target_id — NOT one term with `(source_id = ? OR target_id = ?)`. The OR form
+// cannot use idx_relationship_edges_source_id / _target_id, so SQLite falls
+// back to the far less selective user_id index and rescans every one of the
+// user's edges for every partial walk — quadratic, and it does not finish at
+// the PERF-01 `large` scale (issue #792). Each term here is a single indexed
+// equality; INDEXED BY pins that choice so a future planner/stats change cannot
+// silently reintroduce the user_id scan. SQLite allows multiple recursive terms
+// in one UNION ALL compound. Bind order: from_uid, from_uid, then per term
+// (user_id, status, sensitivity, max_depth) twice.
+//
+// TestTraverseGraph_UsesEndpointIndexes pins the query plan.
+const traversalCTE = `
+	WITH RECURSIVE traverse(curr_uid, path, types, dirs, depth) AS (
+		SELECT CAST(? AS TEXT), CAST(? AS TEXT), CAST('' AS TEXT), CAST('' AS TEXT), 0
+		UNION ALL
+		SELECT
+			e.target_id,
+			t.path || '>' || e.target_id,
+			t.types || '|' || e.type,
+			t.dirs || '|' || '0',
+			t.depth + 1
+		FROM traverse t
+		JOIN relationship_edges e INDEXED BY idx_relationship_edges_source_id
+			ON e.source_id = t.curr_uid
+			AND e.user_id = ?
+			AND e.status = ?
+			AND e.sensitivity != ?
+		WHERE t.depth < ?
+			AND instr(t.path, e.target_id) = 0
+		UNION ALL
+		SELECT
+			e.source_id,
+			t.path || '>' || e.source_id,
+			t.types || '|' || e.type,
+			t.dirs || '|' || '1',
+			t.depth + 1
+		FROM traverse t
+		JOIN relationship_edges e INDEXED BY idx_relationship_edges_target_id
+			ON e.target_id = t.curr_uid
+			AND e.user_id = ?
+			AND e.status = ?
+			AND e.sensitivity != ?
+		WHERE t.depth < ?
+			AND instr(t.path, e.source_id) = 0
+	)
+	SELECT curr_uid, path, types, dirs, depth
+	FROM traverse
+	WHERE depth > 0
+	ORDER BY depth, curr_uid`
+
 // TraverseGraph returns every contact reachable from fromUID within maxDepth
 // hops, each with its chain of relation steps, using a recursive CTE over
 // relationship_edges.
@@ -83,48 +143,14 @@ func TraverseGraph(db *gorm.DB, userID uint, fromUID string, maxDepth int, filte
 		canonicalFilter = resolved
 	}
 
-	// The recursive CTE. Each recursion step joins the current contact to its
-	// edges (either endpoint), moves to the other endpoint, and appends the
-	// raw edge type + a direction flag ('0' = forward along the stored edge,
-	// '1' = against it). Visited-set: the path string holds every uid seen on
-	// this branch, so cycles terminate per-branch; the depth cap bounds the
-	// branch length regardless.
-	//
-	// instr(path, uid) = 0 is the visited check — each uid is a full UUID, so
-	// a substring match is unambiguous.
-	const cte = `
-		WITH RECURSIVE traverse AS (
-			SELECT
-				CAST(? AS TEXT) AS curr_uid,
-				CAST(? AS TEXT) AS path,
-				CAST('' AS TEXT) AS types,
-				CAST('' AS TEXT) AS dirs,
-				0 AS depth
-			UNION ALL
-			SELECT
-				CASE WHEN e.source_id = t.curr_uid THEN e.target_id ELSE e.source_id END,
-				t.path || '>' || (CASE WHEN e.source_id = t.curr_uid THEN e.target_id ELSE e.source_id END),
-				t.types || '|' || e.type,
-				t.dirs || '|' || CASE WHEN e.source_id = t.curr_uid THEN '0' ELSE '1' END,
-				t.depth + 1
-			FROM traverse t
-			JOIN relationship_edges e
-				ON (e.source_id = t.curr_uid OR e.target_id = t.curr_uid)
-				AND e.user_id = ?
-				AND e.status = ?
-				AND e.sensitivity != ?
-			WHERE t.depth < ?
-				AND instr(t.path, CASE WHEN e.source_id = t.curr_uid THEN e.target_id ELSE e.source_id END) = 0
-		)
-		SELECT curr_uid, path, types, dirs, depth
-		FROM traverse
-		WHERE depth > 0
-		ORDER BY depth, curr_uid`
-
 	var rows []traversalRow
-	if err := db.Raw(cte,
+	if err := db.Raw(traversalCTE,
 		fromUID,
 		fromUID,
+		userID,
+		models.RelationshipStatusConfirmed,
+		models.RelationshipSensitivitySecret,
+		maxDepth,
 		userID,
 		models.RelationshipStatusConfirmed,
 		models.RelationshipSensitivitySecret,

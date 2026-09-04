@@ -50,22 +50,6 @@ type Operation struct {
 	// once — the query count from that run is still the deterministic gate;
 	// only the median loses its averaging.
 	SlowRead bool
-	// SkipAtScale omits this operation from the `large` profile only (it still
-	// runs at smoke + typical). It is for operations that are super-linear by
-	// construction — a walk-enumeration recursive CTE over a synthetically
-	// dense graph — whose one deterministic signal (a constant query count) is
-	// already pinned at smoke + typical, and which nothing asserts at `large`:
-	// growth.go classifies them on query count (see ClassifyResultGrowth's
-	// "a graph traversal returns more rows on a denser dataset by design"
-	// note), CommittedBaselineIsCurrent rebuilds from smoke + typical, and
-	// QueryCountsStayBoundedAtLarge only checks whatever ran. At `large` the
-	// PERF-01 graph shape (25 hubs x 150 fan-out) makes a depth-3/4 traversal
-	// enumerate millions of partial walks, each triggering a full scan of the
-	// edge table because the CTE's `(source_id = ? OR target_id = ?)` join
-	// cannot use an index — tens of minutes to hours for zero extra gated
-	// signal. Mirrors datamovement.go's bounded `large` import batch
-	// (maxImportContacts), same rationale, different lever.
-	SkipAtScale bool
 	// ExpectedGrowth is the worst growth class this operation is allowed to
 	// exhibit across scales. Every core operation is "constant" in query count
 	// — a bounded number of statements regardless of data volume — except the
@@ -162,21 +146,17 @@ func Registry() []Operation {
 			},
 		},
 		{
-			// SkipAtScale: from the block-0 lead — which the PERF-01 shape makes
-			// both the chain head and hub #0 — a depth-4 traversal of the
-			// `large` graph enumerates millions of partial walks against a
-			// non-indexable CTE join. Runs at smoke + typical (where the
-			// constant query count is pinned); see SkipAtScale's doc.
-			Name: "graph.traverse_deep", Category: "read", ExpectedGrowth: GrowthConstant, SlowRead: true, SkipAtScale: true,
+			// Depth-4 from the block-0 lead, which the PERF-01 shape makes both
+			// the chain head and hub #0 — the densest traversal in the suite.
+			Name: "graph.traverse_deep", Category: "read", ExpectedGrowth: GrowthConstant, SlowRead: true,
 			Run: func(e *Env) (int, error) {
 				chains, err := services.TraverseGraph(e.DB, e.UserID, e.HubContact.VCardUID, 4, "")
 				return len(chains), err
 			},
 		},
 		{
-			// SkipAtScale: depth-3 from a second dense hub — same combinatorial
-			// blow-up on the `large` graph as graph.traverse_deep.
-			Name: "graph.traverse_hub", Category: "read", ExpectedGrowth: GrowthConstant, SlowRead: true, SkipAtScale: true,
+			// Depth-3 from a second dense hub that is not the chain head.
+			Name: "graph.traverse_hub", Category: "read", ExpectedGrowth: GrowthConstant, SlowRead: true,
 			Run: func(e *Env) (int, error) {
 				chains, err := services.TraverseGraph(e.DB, e.UserID, e.SecondHubContact.VCardUID, 3, "")
 				return len(chains), err

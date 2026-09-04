@@ -127,7 +127,7 @@ func RunProfileKeepEnv(opts EnvOptions) (*Env, []Result, error) {
 	}
 
 	var out []Result
-	for _, op := range operationsForProfile(opts.Profile) {
+	for _, op := range Registry() {
 		env := shared
 		if op.Destructive {
 			sub, err := os.MkdirTemp(opts.WorkDir, "op-"+op.Name+"-")
