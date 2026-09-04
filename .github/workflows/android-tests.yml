@@ -389,10 +389,11 @@ jobs:
 
       # `connectedCheck` builds+installs the app's `benchmark` variant (see
       # app/build.gradle.kts) and runs StartupBenchmark + DashboardRenderBenchmark.
-      # suppressErrors=EMULATOR,UNLOCKED,LOW-BATTERY,ACTIVITY-MISSING: an
-      # emulator is not a valid perf-measurement device, but the numbers are
-      # still a useful relative trend and this job never gates on them. The
-      # dashboard scenario reads the backend via adb-reversed 127.0.0.1:7300.
+      # The emulator-not-a-valid-perf-device guard is suppressed in
+      # macrobenchmark/build.gradle.kts (defaultConfig.testInstrumentationRunnerArguments) —
+      # an emulator's numbers are still a useful relative trend and this job
+      # never gates on them. The dashboard scenario reads the backend via
+      # adb-reversed 127.0.0.1:7300.
       - name: Run macrobenchmark
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
@@ -403,7 +404,7 @@ jobs:
           working-directory: ./android
           script: |
             adb reverse tcp:7300 tcp:7300
-            ./gradlew :macrobenchmark:connectedCheck -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300 -Pandroidx.benchmark.suppressErrors=EMULATOR,UNLOCKED,LOW-BATTERY,ACTIVITY-MISSING
+            ./gradlew :macrobenchmark:connectedCheck -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
 
       - name: Upload macrobenchmark results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
