@@ -168,7 +168,7 @@ object DataModule {
             // rebuild-from-server policy (see AppDatabase's doc comment).
             // MigrationVersionCoverageTest guards against a future gap being left unregistered
             // by accident.
-            .addMigrations(*com.mycorrhizal.crm.data.local.REGISTERED_MIGRATIONS.toTypedArray())
+            .addMigrations(*com.mycorrhizal.crm.data.local.REGISTERED_MIGRATIONS.toTypedArray()) // # pragma: no cover — provideDatabase needs a real Android Keystore (RoomPassphraseStore); see RoomEncryptionGuardTest
             .fallbackToDestructiveMigration()
             .build()
     }
