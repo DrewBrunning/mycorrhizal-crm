@@ -71,3 +71,44 @@ val MIGRATION_15_16: Migration = object : Migration(startVersion = 15, endVersio
         connection.execSQL("ALTER TABLE `cached_contacts` ADD COLUMN `isFavorite` INTEGER NOT NULL DEFAULT 0")
     }
 }
+
+/**
+ * The [AppDatabase] schema version. A `const val` (rather than a bare `16` in the `@Database`
+ * annotation) so [MigrationVersionCoverageTest] can read the exact same value the annotation
+ * compiles with, instead of a second, independently-maintained copy of the number.
+ */
+const val CURRENT_VERSION: Int = 16
+
+/**
+ * Issue #480: the lowest [AppDatabase] version this repo has any evidence of shipping.
+ * This file's very first commit (the M1 Android app, PR #80, 2026-08-10) already declared
+ * `version = 13` — no release of this app ever ran a lower version, so [MigrationVersionCoverageTest]
+ * starts its version-pair sweep here rather than at 1. See [AppDatabase]'s doc comment.
+ */
+const val EARLIEST_KNOWN_VERSION: Int = 13
+
+/**
+ * Single source of truth for every hand-written migration this database registers, keyed by
+ * `startVersion`. `DataModule.provideDatabase` builds its `.addMigrations(...)` call from this
+ * list (never a second, hand-copied list — see ADR-style precedent throughout this repo for why a
+ * second copy of a mapping table always drifts), and [MigrationVersionCoverageTest] walks it
+ * against [EARLIEST_KNOWN_VERSION]..[CURRENT_VERSION] to prove no version pair in that range
+ * was left to the destructive fallback by accident.
+ */
+val REGISTERED_MIGRATIONS: List<Migration> = listOf(
+    MIGRATION_13_14,
+    MIGRATION_14_15,
+    MIGRATION_15_16,
+)
+
+/**
+ * Version pairs (`startVersion` only — each covers `start` -> `start + 1`) in
+ * [EARLIEST_KNOWN_VERSION]`..`[CURRENT_VERSION] that are deliberately left to
+ * `fallbackToDestructiveMigration` rather than a hand-written [Migration] — i.e. an explicit,
+ * reviewed decision that losing `pending_interactions` (the one non-rebuildable table) on that
+ * specific upgrade is acceptable, not an oversight. Empty today: every registered version bump
+ * since [EARLIEST_KNOWN_VERSION] has a real migration in [REGISTERED_MIGRATIONS]. Add an entry
+ * here — with a comment explaining why — the day that stops being true; leaving a gap in neither
+ * list is what [MigrationVersionCoverageTest] fails the build for.
+ */
+val ACCEPTED_DESTRUCTIVE_GAPS: Set<Int> = emptySet()
