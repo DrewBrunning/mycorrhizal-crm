@@ -151,9 +151,16 @@ jobs:
         with:
           node-version: '22.22.2'
 
+      # The hash below was computed by hand against this exact release asset
+      # (independently re-fetched and re-hashed to confirm it's stable) and
+      # is checked before anything downloaded is ever executed -- Yarn's own
+      # release tarball has no published checksum file to verify against
+      # instead. Bumping the pinned Yarn version means recomputing this hash
+      # against the new asset, not copying it forward.
       - name: Install Yarn Classic at the declared floor
         run: |
           curl -fsSL -o /tmp/yarn-1.22.0.tar.gz https://github.com/yarnpkg/yarn/releases/download/v1.22.0/yarn-v1.22.0.tar.gz
+          echo "de8871c4e2822cba80d58c2e72366fb78567ec56e873493c9ca0cca76c60f9a5  /tmp/yarn-1.22.0.tar.gz" | sha256sum -c -
           mkdir -p /tmp/yarn-1.22.0
           tar -xzf /tmp/yarn-1.22.0.tar.gz -C /tmp/yarn-1.22.0 --strip-components=1
           node /tmp/yarn-1.22.0/bin/yarn.js --version
@@ -197,9 +204,11 @@ jobs:
         with:
           node-version: '22.22.1'
 
+      # Same pinned asset + hash as node-yarn-minimum's identical step above.
       - name: Install Yarn Classic at the declared floor
         run: |
           curl -fsSL -o /tmp/yarn-1.22.0.tar.gz https://github.com/yarnpkg/yarn/releases/download/v1.22.0/yarn-v1.22.0.tar.gz
+          echo "de8871c4e2822cba80d58c2e72366fb78567ec56e873493c9ca0cca76c60f9a5  /tmp/yarn-1.22.0.tar.gz" | sha256sum -c -
           mkdir -p /tmp/yarn-1.22.0
           tar -xzf /tmp/yarn-1.22.0.tar.gz -C /tmp/yarn-1.22.0 --strip-components=1
           echo "YARN_MIN_BIN=/tmp/yarn-1.22.0/bin/yarn.js" >> "$GITHUB_ENV"
@@ -263,12 +272,22 @@ jobs:
             sleep 1
           done
 
+      # Both hashes are checked before anything downloaded is ever executed.
+      # Firefox's matches Mozilla's own published
+      # https://ftp.mozilla.org/pub/firefox/releases/111.0/SHA256SUMS;
+      # geckodriver has no published checksum file (only a GPG .asc
+      # signature), so that hash was computed by hand against the exact
+      # release asset and re-verified against an independent re-download.
+      # Bumping either pinned version means recomputing its hash, not
+      # copying this one forward.
       - name: Download Firefox 111.0 (the documented floor) + a compatible geckodriver
         run: |
           curl -fsSL -o /tmp/firefox-111.tar.bz2 https://ftp.mozilla.org/pub/firefox/releases/111.0/linux-x86_64/en-US/firefox-111.0.tar.bz2
+          echo "49599b5b0b24400b564af91f4578314c0e069347aea76602e7eca9d8055b6fc0  /tmp/firefox-111.tar.bz2" | sha256sum -c -
           mkdir -p /tmp/firefox-111
           tar -xjf /tmp/firefox-111.tar.bz2 -C /tmp/firefox-111 --strip-components=1
           curl -fsSL -o /tmp/geckodriver.tar.gz https://github.com/mozilla/geckodriver/releases/download/v0.36.0/geckodriver-v0.36.0-linux64.tar.gz
+          echo "0bde38707eb0a686a20c6bd50f4adcc7d60d4f73c60eb83ee9e0db8f65823e04  /tmp/geckodriver.tar.gz" | sha256sum -c -
           tar -xzf /tmp/geckodriver.tar.gz -C /tmp
           chmod +x /tmp/geckodriver /tmp/firefox-111/firefox-bin
 
@@ -288,10 +307,17 @@ jobs:
       # engine and floor and isn't tested separately for the same reason
       # the matrix doc gives for pinning all three evergreen browsers to one
       # release window.
+      # Chrome for Testing's own metadata feed publishes no checksum either
+      # (see the comment above), so both hashes were computed by hand
+      # against the exact release assets and re-verified against an
+      # independent re-download, same as geckodriver's above. Bumping the
+      # pinned version means recomputing both, not copying these forward.
       - name: Download Chrome for Testing 115 (closest official pin to the 111 floor) + matching chromedriver
         run: |
           curl -fsSL -o /tmp/chrome.zip https://storage.googleapis.com/chrome-for-testing-public/115.0.5763.0/linux64/chrome-linux64.zip
+          echo "629a0f81ec0ab6f2a8a494628d63ed06eece090696c09279b6206559c7c6aa28  /tmp/chrome.zip" | sha256sum -c -
           curl -fsSL -o /tmp/chromedriver.zip https://storage.googleapis.com/chrome-for-testing-public/115.0.5763.0/linux64/chromedriver-linux64.zip
+          echo "639cc2932f10ba58d7979469eae0f02464de9039f6040aeab15f81161f61471b  /tmp/chromedriver.zip" | sha256sum -c -
           mkdir -p /tmp/chrome /tmp/chromedriver
           unzip -q /tmp/chrome.zip -d /tmp/chrome
           unzip -q /tmp/chromedriver.zip -d /tmp/chromedriver
@@ -338,9 +364,15 @@ jobs:
         with:
           go-version-file: backend/go.mod
 
+      # Checked against docker/compose's own published
+      # docker-compose-linux-x86_64.sha256 release asset before anything
+      # downloaded is ever executed. Bumping the pinned version means
+      # fetching that release's own .sha256 file, not copying this hash
+      # forward.
       - name: Download Docker Compose at the floor
         run: |
           curl -fsSL -o /tmp/docker-compose https://github.com/docker/compose/releases/download/v2.17.2/docker-compose-linux-x86_64
+          echo "895e20812231543eae9f6b98ef9395327f4f21f1f31fa51fc252d21415802dda  /tmp/docker-compose" | sha256sum -c -
           chmod +x /tmp/docker-compose
           /tmp/docker-compose version
 
