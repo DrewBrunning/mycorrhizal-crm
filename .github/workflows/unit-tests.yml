@@ -666,12 +666,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          # COMPAT-01 (issue #472): read the floor from frontend/package.json's
-          # "engines.node" (>=22.13.0) instead of hardcoding it here, so the
-          # declared floor is the one CI actually runs. That floor already
-          # accounts for the vitest --no-experimental-webstorage flag below,
-          # which requires Node >= 22.4 (an older engines.node range would
-          # pass install and then fail here with a cryptic bad-option error).
+          # COMPAT-01 (issue #472) / COMPAT-02 (issue #473): read the floor
+          # from frontend/package.json's "engines.node" (>=22.22.2, tightened
+          # from the original 22.13.0 after COMPAT-02 hand-verified that
+          # jsdom@30's own engines field, not this project's own requirement,
+          # is the true binding constraint on the 22.x line) instead of
+          # hardcoding it here, so the declared floor is the one CI actually
+          # runs. That floor comfortably covers the older reason the 20.x
+          # line was dropped in the first place: vitest's
+          # --no-experimental-webstorage flag below needs Node >= 22.4.
           node-version-file: frontend/package.json
           cache: 'yarn'
           cache-dependency-path: frontend/yarn.lock
