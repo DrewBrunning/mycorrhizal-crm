@@ -1538,6 +1538,10 @@
     "showCircles": "Círculos",
     "graphSummary": "Diagrama de red: {{contacts}} contactos, {{activities}} actividades, {{circles}} círculos, {{connections}} conexiones. La misma información está disponible en la vista de lista de abajo.",
     "listView": "Vista de lista de la red",
+    "tooLargeToRender": {
+      "title": "Gráfico demasiado grande para dibujar",
+      "body": "Esta red tiene {{nodes}} nodos y {{edges}} conexiones: demasiados para organizarlos de forma interactiva sin congelar la página. Filtra por círculo o céntrate en un contacto para acotarla, o usa la vista de lista de abajo, que muestra todas las conexiones."
+    },
     "connectionRelationship": "{{type}}: {{name}}",
     "connectionActivity": "Asistió a {{title}}",
     "connectionCircle": "Miembro de {{circle}}",

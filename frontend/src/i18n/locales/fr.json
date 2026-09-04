@@ -1538,6 +1538,10 @@
     "showCircles": "Cercles",
     "graphSummary": "Diagramme du réseau : {{contacts}} contacts, {{activities}} activités, {{circles}} cercles, {{connections}} connexions. La même information est disponible dans la vue en liste ci-dessous.",
     "listView": "Réseau en liste",
+    "tooLargeToRender": {
+      "title": "Graphe trop grand pour être dessiné",
+      "body": "Ce réseau compte {{nodes}} nœuds et {{edges}} connexions — trop pour une disposition interactive sans figer la page. Filtrez par cercle ou centrez sur un contact pour le réduire, ou utilisez la vue en liste ci-dessous, qui montre chaque connexion."
+    },
     "connectionRelationship": "{{type}} : {{name}}",
     "connectionActivity": "A participé à {{title}}",
     "connectionCircle": "Membre de {{circle}}",

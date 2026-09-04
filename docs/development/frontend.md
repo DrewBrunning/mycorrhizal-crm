@@ -61,3 +61,13 @@ The frontend has two test layers: vitest unit/component tests co-located in
 `src/` (mocked network, no browser) and Playwright E2E tests against a running
 application in `e2e/`. Which layer a test belongs to is decided in
 [Testing](testing.md) — the explicit test pyramid.
+
+### Performance budgets
+
+Client performance budgets (bundle size, network-graph render ceiling, list at
+scale, search debounce) are defined in
+[Web performance budgets](web-perf-budgets.md) (issue #556). Deterministic
+metrics are hard CI gates; wall-clock is a trend. The bundle-size budget runs
+per-PR (`yarn build && yarn budget`); the seeded/large Playwright specs are
+tagged `@perf-heavy` and run in the nightly `e2e-tests.yml` schedule only
+(`RUN_PERF_HEAVY=1`).
