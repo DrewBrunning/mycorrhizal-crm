@@ -52,14 +52,28 @@ class RoomPassphraseStore(context: Context) {
         prefs.edit().remove(KEY_PASSPHRASE).apply()
     }
 
-    private fun generatePassphrase(): String {
-        val bytes = ByteArray(32)
-        SecureRandom().nextBytes(bytes)
-        return bytes.joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
-    }
+    private fun generatePassphrase(): String = randomHexPassphrase()
 
     companion object {
         private const val FILE_NAME = "secure_room"
         private const val KEY_PASSPHRASE = "room_passphrase"
     }
+}
+
+/**
+ * Returns [byteCount] random bytes hex-encoded as a lowercase string with no
+ * separators and no `0x` prefix — safe to splice into SQL as a `KEY '<hex>'`
+ * literal (see [RoomPassphraseStore]).
+ *
+ * Pure and internal so it is unit-testable without a Context/Keystore (issue
+ * #812): [SecureRandom] and hex-encoding run fine on a plain JVM, unlike the
+ * EncryptedSharedPreferences-backed store that normally calls this.
+ */
+internal fun randomHexPassphrase(
+    random: SecureRandom = SecureRandom(),
+    byteCount: Int = 32,
+): String {
+    val bytes = ByteArray(byteCount)
+    random.nextBytes(bytes)
+    return bytes.joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
 }
