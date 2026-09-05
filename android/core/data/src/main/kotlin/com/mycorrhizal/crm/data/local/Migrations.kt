@@ -73,11 +73,37 @@ val MIGRATION_15_16: Migration = object : Migration(startVersion = 15, endVersio
 }
 
 /**
- * The [AppDatabase] schema version. A `const val` (rather than a bare `16` in the `@Database`
+ * ANDROID-02 (issue #479): adds `pending_interactions.idempotencyKey` — the
+ * per-row CON-04/ADR-0010 retry key the sync worker sends as its
+ * `Idempotency-Key` header, so a retry after an ambiguous failure (server
+ * committed, response lost) replays server-side instead of creating a
+ * duplicate Activity.
+ *
+ * A single additive `ALTER TABLE ADD COLUMN` (nullable, rows preserved), then a
+ * SQL-side backfill so every *existing* unsynced row — a device that was
+ * offline when it upgraded — has a key too and is immediately retry-safe; no
+ * code path ever has to handle a keyless row specially.
+ *
+ * Hand-written rather than relying on `fallbackToDestructiveMigration` for the
+ * same reason as every migration since 13: the destructive path drops every
+ * table, `pending_interactions` (a real not-yet-synced outbox) included.
+ */
+val MIGRATION_16_17: Migration = object : Migration(startVersion = 16, endVersion = 17) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE `pending_interactions` ADD COLUMN `idempotencyKey` TEXT")
+        connection.execSQL(
+            "UPDATE `pending_interactions` SET `idempotencyKey` = lower(hex(randomblob(16))) " +
+                "WHERE `idempotencyKey` IS NULL",
+        )
+    }
+}
+
+/**
+ * The [AppDatabase] schema version. A `const val` (rather than a bare `17` in the `@Database`
  * annotation) so [MigrationVersionCoverageTest] can read the exact same value the annotation
  * compiles with, instead of a second, independently-maintained copy of the number.
  */
-const val CURRENT_VERSION: Int = 16
+const val CURRENT_VERSION: Int = 17
 
 /**
  * Issue #480: the lowest [AppDatabase] version this repo has any evidence of shipping.
@@ -99,6 +125,7 @@ val REGISTERED_MIGRATIONS: List<Migration> = listOf(
     MIGRATION_13_14,
     MIGRATION_14_15,
     MIGRATION_15_16,
+    MIGRATION_16_17,
 )
 
 /**

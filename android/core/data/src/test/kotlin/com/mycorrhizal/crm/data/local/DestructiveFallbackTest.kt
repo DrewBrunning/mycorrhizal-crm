@@ -21,9 +21,9 @@ import org.robolectric.annotation.GraphicsMode
  * doesn't require a registered migration for — it must fire (and recover cleanly) for those, and
  * only those.
  *
- * [Migration13To14Test]/[Migration14To15Test]/[Migration15To16Test]/
+ * [Migration13To14Test]/[Migration14To15Test]/[Migration15To16Test]/[Migration16To17Test]/
  * [PendingInteractionsSurviveMigrationTest] already prove the negative for every version pair
- * this database has ever shipped: no destructive wipe happens across 13->14->15->16, because each
+ * this database has ever shipped: no destructive wipe happens across 13->14->15->16->17, because each
  * of those hops has a registered [Migration]. This test proves the positive: an old,
  * unrecognized schema — the shape of "a device on some ancient version this codebase has no
  * migration path from, or has never even heard of" — does not crash the app or hang; Room
@@ -115,7 +115,7 @@ class DestructiveFallbackTest {
             .build()
 
         // If the destructive path had fired instead of the migration chain, this outbox row —
-        // present only because the real 13->16 migration chain preserves it — would be gone.
+        // present only because the real 13->current migration chain preserves it — would be gone.
         assertTrue(db.pendingInteractionDao().countUnsynced() == 1)
 
         db.close()

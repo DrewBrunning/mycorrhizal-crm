@@ -21,6 +21,27 @@ interface PendingInteractionDao {
     @Query("DELETE FROM pending_interactions WHERE synced = 1")
     suspend fun deleteSynced()
 
+    /** ANDROID-02 (issue #479): backfills a row that somehow has no retry key yet. */
+    @Query("UPDATE pending_interactions SET idempotencyKey = :key WHERE id = :id")
+    suspend fun setIdempotencyKey(id: Long, key: String)
+
+    /** ANDROID-02 (issue #479): drops a stale contact link on reconnect (ADR-0009). */
+    @Query("UPDATE pending_interactions SET matchedContactId = NULL WHERE id = :id")
+    suspend fun clearMatchedContact(id: Long)
+
+    /**
+     * ANDROID-02 (issue #479) recommended action 7: evicts the oldest unsynced
+     * rows so the queue stays bounded at [keep]. Called after every insert, in
+     * the same transaction — the outbox never grows past the cap no matter how
+     * long a device is offline.
+     */
+    @Query(
+        "DELETE FROM pending_interactions WHERE synced = 0 AND id NOT IN " +
+            "(SELECT id FROM pending_interactions WHERE synced = 0 " +
+            "ORDER BY timestampMillis DESC, id DESC LIMIT :keep)",
+    )
+    suspend fun trimUnsynced(keep: Int)
+
     @Query("SELECT * FROM pending_interactions WHERE kind = :kind AND phoneNumber = :phoneNumber AND timestampMillis > :sinceMillis ORDER BY timestampMillis DESC LIMIT 1")
     suspend fun findRecent(kind: String, phoneNumber: String, sinceMillis: Long): PendingInteraction?
 }

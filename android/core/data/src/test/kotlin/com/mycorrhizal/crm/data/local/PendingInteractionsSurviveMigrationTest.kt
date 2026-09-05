@@ -126,6 +126,15 @@ class PendingInteractionsSurviveMigrationTest {
             assertEquals("outgoing", cursor.getString(cursor.getColumnIndexOrThrow("direction")))
             assertEquals(1, cursor.getInt(cursor.getColumnIndexOrThrow("matchedContactId")))
             assertEquals("2026-01-01T00:00:00Z", cursor.getString(cursor.getColumnIndexOrThrow("syncedAt")))
+            // ANDROID-02 (issue #479): MIGRATION_16_17 backfills every migrated row with an
+            // idempotencyKey, so rows queued before the v17 upgrade are retry-safe immediately.
+            do {
+                val key = cursor.getString(cursor.getColumnIndexOrThrow("idempotencyKey"))
+                assertTrue(
+                    "every migrated row must have a backfilled 32-char hex idempotencyKey, was '$key'",
+                    Regex("[0-9a-f]{32}").matches(key),
+                )
+            } while (cursor.moveToNext())
         }
 
         // The matched contact itself also survived (a matchedContactId pointing at a row that
