@@ -32,10 +32,12 @@ const page = (contacts: Contact[], next_cursor = ''): ContactsResponse => ({
 
 function deferred<T>() {
   let resolve!: (v: T) => void;
-  const promise = new Promise<T>((res) => {
+  let reject!: (e: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
     resolve = res;
+    reject = rej;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
 test('loads the first page on mount', async () => {
@@ -112,6 +114,95 @@ test('a stale search response that settles after a newer query does not clobber 
   });
   expect(result.current.contacts.map((c) => c.ID)).toEqual([99]);
   expect(result.current.nextCursor).toBe('');
+});
+
+test('a stale search failure that settles after a newer query does not clobber the list (#556)', async () => {
+  // Same overlapping-deferred shape as the success-path guard test above, but
+  // the slow "ab" request fails instead of succeeding after "abc" returned.
+  const slowOld = deferred<ContactsResponse>();
+  const fastNew = deferred<ContactsResponse>();
+  vi.mocked(getContacts).mockReturnValueOnce(slowOld.promise).mockReturnValueOnce(fastNew.promise);
+
+  const { result, rerender } = renderHook(({ search }) => useContacts({ search }), {
+    initialProps: { search: 'ab' },
+  });
+  await act(async () => {});
+
+  // The query changes before the first request settles.
+  rerender({ search: 'abc' });
+  await act(async () => {
+    fastNew.resolve(page([contact(99, 'abc-match')], ''));
+  });
+  expect(result.current.contacts.map((c) => c.ID)).toEqual([99]);
+  expect(result.current.error).toBeNull();
+
+  // The stale "ab" failure arriving late must be dropped, not surfaced.
+  await act(async () => {
+    slowOld.reject(new Error('stale ab failure'));
+  });
+  expect(result.current.contacts.map((c) => c.ID)).toEqual([99]);
+  expect(result.current.error).toBeNull();
+});
+
+test('a stale loadMore response that settles after a newer loadMore does not clobber the list (#556)', async () => {
+  // Two overlapping "next page" requests: the second is newer and settles
+  // first, the first ("stale") settles afterwards and must be dropped.
+  const staleNext = deferred<ContactsResponse>();
+  const freshNext = deferred<ContactsResponse>();
+  vi.mocked(getContacts)
+    .mockResolvedValueOnce(page([contact(1, 'A')], 'cursor-1'))
+    .mockReturnValueOnce(staleNext.promise)
+    .mockReturnValueOnce(freshNext.promise);
+
+  const { result } = renderHook(() => useContacts());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  await act(async () => {
+    result.current.loadMore();
+    result.current.loadMore();
+  });
+
+  await act(async () => {
+    freshNext.resolve(page([contact(3, 'C')], 'cursor-3'));
+  });
+  expect(result.current.contacts.map((c) => c.ID)).toEqual([1, 3]);
+  expect(result.current.nextCursor).toBe('cursor-3');
+
+  // The stale first loadMore arriving late must be dropped.
+  await act(async () => {
+    staleNext.resolve(page([contact(2, 'B')], 'stale-cursor'));
+  });
+  expect(result.current.contacts.map((c) => c.ID)).toEqual([1, 3]);
+  expect(result.current.nextCursor).toBe('cursor-3');
+});
+
+test('a stale loadMore failure that settles after a newer loadMore does not surface an error (#556)', async () => {
+  const staleNext = deferred<ContactsResponse>();
+  const freshNext = deferred<ContactsResponse>();
+  vi.mocked(getContacts)
+    .mockResolvedValueOnce(page([contact(1, 'A')], 'cursor-1'))
+    .mockReturnValueOnce(staleNext.promise)
+    .mockReturnValueOnce(freshNext.promise);
+
+  const { result } = renderHook(() => useContacts());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  await act(async () => {
+    result.current.loadMore();
+    result.current.loadMore();
+  });
+
+  await act(async () => {
+    freshNext.resolve(page([contact(3, 'C')], ''));
+  });
+  expect(result.current.error).toBeNull();
+
+  // The stale first loadMore failing late must be dropped, not surfaced.
+  await act(async () => {
+    staleNext.reject(new Error('stale loadMore failure'));
+  });
+  expect(result.current.error).toBeNull();
+  expect(result.current.contacts.map((c) => c.ID)).toEqual([1, 3]);
 });
 
 test('does not fetch when unauthenticated', async () => {
