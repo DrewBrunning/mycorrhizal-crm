@@ -25,6 +25,7 @@ func setupGiftTestDB(t *testing.T) *gorm.DB {
 }
 
 func TestGiftBeforeCreateGeneratesUUID(t *testing.T) {
+	t.Parallel()
 	db := setupGiftTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -38,6 +39,7 @@ func TestGiftBeforeCreateGeneratesUUID(t *testing.T) {
 }
 
 func TestGiftBeforeCreatePreservesExplicitID(t *testing.T) {
+	t.Parallel()
 	db := setupGiftTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -53,6 +55,7 @@ func TestGiftBeforeCreatePreservesExplicitID(t *testing.T) {
 // T20b: status defaults to "idea" (a gift idea is captured opportunistically
 // without choosing a state), and every GiftStatus* token round-trips.
 func TestGiftStatusDefaultAndRoundTrip(t *testing.T) {
+	t.Parallel()
 	db := setupGiftTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -81,6 +84,7 @@ func TestGiftStatusDefaultAndRoundTrip(t *testing.T) {
 // must persist the pair — this pins that a value with its currency survives a
 // round-trip through the real column names (value_cents/currency).
 func TestGiftValueAndCurrencyRoundTrip(t *testing.T) {
+	t.Parallel()
 	db := setupGiftTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -102,6 +106,7 @@ func TestGiftValueAndCurrencyRoundTrip(t *testing.T) {
 // The optional LifeEvent/Activity references are soft references (no FK) — the
 // model must round-trip them, and ownership is the controller's job.
 func TestGiftReferencesRoundTrip(t *testing.T) {
+	t.Parallel()
 	db := setupGiftTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -124,6 +129,7 @@ func TestGiftReferencesRoundTrip(t *testing.T) {
 
 // T26: gift records are user-authored content, so delete must be a soft delete.
 func TestGiftSoftDelete(t *testing.T) {
+	t.Parallel()
 	db := setupGiftTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)

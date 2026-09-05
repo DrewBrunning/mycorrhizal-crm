@@ -20,6 +20,7 @@ func init() {
 }
 
 func TestImport_GrammaticalGender(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "gramgender-example",
 		"speakToAs": { "@type": "SpeakToAs", "grammaticalGender": "feminine" }
@@ -38,6 +39,7 @@ func TestImport_GrammaticalGender(t *testing.T) {
 }
 
 func TestImport_Pronouns(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "pronouns-example",
 		"speakToAs": {

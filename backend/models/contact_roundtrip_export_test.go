@@ -32,6 +32,7 @@ type fileExporter interface {
 // survive Record -> Contact -> Record) and named on the file level by
 // EnvelopeExportLossDiagnostics — never silent.
 func TestContactFileRoundTrip_VCard4AndJSContact(t *testing.T) {
+	t.Parallel()
 	original := fullyPopulatedContact()
 	photoDir := t.TempDir()
 	record := RecordFromContact(original, photoDir)

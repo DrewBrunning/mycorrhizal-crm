@@ -180,6 +180,7 @@ func canonicalRecordJSON(t *testing.T, rec *contactmodel.Record) string {
 // would have zeroed every field injectLosslessOnlyFields sets on every
 // single save.
 func TestMergeRecordFromFlat_PreservesLosslessFields_NoOpSave(t *testing.T) {
+	t.Parallel()
 	for i := 0; i < mergePropertyIterations; i++ {
 		r := rand.New(rand.NewSource(int64(1000 + i)))
 		tag := fmt.Sprintf("noop-%d", i)
@@ -205,6 +206,7 @@ func TestMergeRecordFromFlat_PreservesLosslessFields_NoOpSave(t *testing.T) {
 // the flat-owned Envelope scalars (which contact_card_merge.go always takes
 // from fresh, no dirty check) must track the edited contact exactly.
 func TestMergeRecordFromFlat_PreservesLosslessFields_AfterFlatEdit(t *testing.T) {
+	t.Parallel()
 	for i := 0; i < mergePropertyIterations; i++ {
 		r := rand.New(rand.NewSource(int64(2000 + i)))
 		tag := fmt.Sprintf("edit-%d", i)
@@ -240,6 +242,7 @@ func TestMergeRecordFromFlat_PreservesLosslessFields_AfterFlatEdit(t *testing.T)
 // (Type/Value), and is correctly dropped (fresh wins) when the caller does
 // edit that entry's flat form.
 func TestMergeRecordFromFlat_ProjectedArrayEntry_SurvivesUntouched_Emails(t *testing.T) {
+	t.Parallel()
 	for i := 0; i < mergePropertyIterations; i++ {
 		r := rand.New(rand.NewSource(int64(3000 + i)))
 		tag := fmt.Sprintf("email-%d", i)
@@ -302,6 +305,7 @@ func deepCopyContactForEmailEdit(c *Contact) *Contact {
 // no-flat-home member — must survive in both cases, proving the carve-out
 // composes with the existing logo/sound preservation.
 func TestMergeRecordFromFlat_RemoteURLPhoto_SurvivesUntilDownloaded(t *testing.T) {
+	t.Parallel()
 	for i := 0; i < mergePropertyIterations; i++ {
 		r := rand.New(rand.NewSource(int64(4000 + i)))
 		tag := fmt.Sprintf("media-%d", i)

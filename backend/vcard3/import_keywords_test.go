@@ -14,6 +14,7 @@ const keywordsImportVCF = "BEGIN:VCARD\n" +
 	"END:VCARD\n"
 
 func TestImport_Keywords(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(keywordsImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)

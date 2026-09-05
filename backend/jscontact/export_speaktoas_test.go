@@ -12,6 +12,7 @@ func init() {
 }
 
 func TestExport_GrammaticalGender(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "gramgender-example",
 		SpeakToAs: &contactmodel.SpeakToAs{
@@ -26,6 +27,7 @@ func TestExport_GrammaticalGender(t *testing.T) {
 }
 
 func TestExport_GrammaticalGender_MultipleCollapseByLanguage(t *testing.T) {
+	t.Parallel()
 	// JSContact's speakToAs.grammaticalGender is a scalar (RFC 9553 §2.2.4),
 	// so multiple neutral GrammaticalGenders entries must collapse to one on
 	// export. docs/adrs/0002-correspondence-table-locked-oracle.md "gramgender" row: prefer the entry whose
@@ -48,6 +50,7 @@ func TestExport_GrammaticalGender_MultipleCollapseByLanguage(t *testing.T) {
 }
 
 func TestExport_GrammaticalGender_MultipleNoLanguageMatchUsesFirst(t *testing.T) {
+	t.Parallel()
 	// No Card.Language set (and/or no entry matches it): fall back to the
 	// first stored entry, per the same "gramgender" row rule.
 	rec := &contactmodel.Record{Card: contactmodel.Card{
@@ -72,6 +75,7 @@ func TestExport_GrammaticalGender_MultipleNoLanguageMatchUsesFirst(t *testing.T)
 // diagnostic for the gramgender concept (ADR-0002) rather than drop
 // silently. The round-trip property found the silent drop.
 func TestExport_GrammaticalGender_MultipleWarns(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		SpeakToAs: &contactmodel.SpeakToAs{
 			GrammaticalGenders: []contactmodel.GrammaticalGender{
@@ -90,6 +94,7 @@ func TestExport_GrammaticalGender_MultipleWarns(t *testing.T) {
 }
 
 func TestExport_Pronouns(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "pronouns-example",
 		SpeakToAs: &contactmodel.SpeakToAs{

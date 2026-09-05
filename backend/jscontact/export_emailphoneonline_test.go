@@ -13,6 +13,7 @@ func init() {
 }
 
 func TestExport_Email(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:    "email-example",
 		Emails: []contactmodel.Email{{ID: "k1", Address: "alice@example.com"}},
@@ -25,6 +26,7 @@ func TestExport_Email(t *testing.T) {
 }
 
 func TestExport_Phone(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:    "phone-example",
 		Phones: []contactmodel.Phone{{ID: "k1", Number: "+15551234567", Features: []string{"voice"}}},
@@ -37,6 +39,7 @@ func TestExport_Phone(t *testing.T) {
 }
 
 func TestExport_IMPP(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "impp-example",
 		ImppAddresses: []contactmodel.OnlineService{
@@ -54,6 +57,7 @@ func TestExport_IMPP(t *testing.T) {
 }
 
 func TestExport_SocialProfile(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "social-example",
 		SocialProfiles: []contactmodel.OnlineService{
@@ -70,6 +74,7 @@ func TestExport_SocialProfile(t *testing.T) {
 }
 
 func TestExport_OtherOnlineServiceNoVCardNameTag(t *testing.T) {
+	t.Parallel()
 	// OtherOnlineServices entries have genuinely unknown origin, so export
 	// must NOT fabricate a vCardName tag (docs/adrs/0002-correspondence-table-locked-oracle.md).
 	rec := &contactmodel.Record{Card: contactmodel.Card{

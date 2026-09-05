@@ -50,6 +50,7 @@ func setupActivityTestDBFrozenClock(t *testing.T) *gorm.DB {
 }
 
 func TestActivityBeforeCreateGeneratesUUID(t *testing.T) {
+	t.Parallel()
 	db := setupActivityTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -61,6 +62,7 @@ func TestActivityBeforeCreateGeneratesUUID(t *testing.T) {
 }
 
 func TestActivityBeforeCreatePreservesExplicitUUID(t *testing.T) {
+	t.Parallel()
 	db := setupActivityTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -72,6 +74,7 @@ func TestActivityBeforeCreatePreservesExplicitUUID(t *testing.T) {
 }
 
 func TestActivityQualifying(t *testing.T) {
+	t.Parallel()
 	visit := Activity{Type: InteractionTypeVisit}
 	assert.True(t, visit.Qualifying(), "a visit is a real qualifying interaction")
 
@@ -83,6 +86,7 @@ func TestActivityQualifying(t *testing.T) {
 }
 
 func TestActivityETagGeneratedOnCreateAndPersists(t *testing.T) {
+	t.Parallel()
 	db := setupActivityTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -104,6 +108,7 @@ func TestActivityETagGeneratedOnCreateAndPersists(t *testing.T) {
 }
 
 func TestActivityETagChangesOnUpdate(t *testing.T) {
+	t.Parallel()
 	db := setupActivityTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -126,6 +131,7 @@ func TestActivityETagChangesOnUpdate(t *testing.T) {
 // new revision, so back-to-back Save() calls bump revision exactly twice and
 // never loop (UpdateColumns bypasses hooks).
 func TestActivityRevisionBumpsPerSaveNoLoop(t *testing.T) {
+	t.Parallel()
 	db := setupActivityTestDBFrozenClock(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -155,6 +161,7 @@ func TestActivityRevisionBumpsPerSaveNoLoop(t *testing.T) {
 // every row in the table (writing "e-0-..." and resetting every revision).
 // Both must be left alone.
 func TestActivityETagBulkUpdateOnZeroValueReceiverDoesNotCorrupt(t *testing.T) {
+	t.Parallel()
 	db := setupActivityTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)

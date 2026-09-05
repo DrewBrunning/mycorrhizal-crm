@@ -16,6 +16,7 @@ import (
 // corresponding loss report — otherwise the report⇄matrix correspondence the
 // milestone demands breaks at runtime.
 func TestEnvelopeLossConceptsAlignWithMatrix(t *testing.T) {
+	t.Parallel()
 	// Derive the diagnostic concepts from the code itself (not a hand-kept
 	// mirror): every populated envelope field that EnvelopeExportLossDiagnostics
 	// names.

@@ -13,6 +13,7 @@ func init() {
 }
 
 func TestExport_Adr(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Addresses: []contactmodel.Address{{
 			Components: []contactmodel.AddressComponent{
@@ -34,6 +35,7 @@ func TestExport_Adr(t *testing.T) {
 }
 
 func TestExport_AdrLabel(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Addresses: []contactmodel.Address{{
 			Components: []contactmodel.AddressComponent{{Kind: "name", Value: "123 Main Street"}},
@@ -54,6 +56,7 @@ func TestExport_AdrLabel(t *testing.T) {
 // silently (issue #431's "a field with no target-format home produces a warn
 // diagnostic rather than a silent drop").
 func TestExport_AdrCountryCodeWarns(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Addresses: []contactmodel.Address{{
 			Components:  []contactmodel.AddressComponent{{Kind: "locality", Value: "London"}},
@@ -80,6 +83,7 @@ func TestExport_AdrCountryCodeWarns(t *testing.T) {
 // line must not be emitted, but the extra-kind warn must still fire so the
 // drop is documented, never silent.
 func TestExport_AdrSkipsDegenerateExtraKinds(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Addresses: []contactmodel.Address{{
 			Components: []contactmodel.AddressComponent{{Kind: "room", Value: "A"}},
@@ -100,6 +104,7 @@ func TestExport_AdrSkipsDegenerateExtraKinds(t *testing.T) {
 // TestExport_AdrPostOfficeBox covers the postOfficeBox ADR slot (the only
 // vCard 3.0 ADR component kind the round-trip property does not generate).
 func TestExport_AdrPostOfficeBox(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Addresses: []contactmodel.Address{{
 			Components: []contactmodel.AddressComponent{

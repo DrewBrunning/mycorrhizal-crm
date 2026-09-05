@@ -82,6 +82,7 @@ func newT75TestDB(t *testing.T) *gorm.DB {
 // Card-only member must survive — before T75's merge, the flat→Card
 // rebuild in BeforeSave silently destroyed all of it.
 func TestBeforeSave_PlainSavePreservesCardOnlyData(t *testing.T) {
+	t.Parallel()
 	db := newT75TestDB(t)
 	user := User{Username: "t75-preserve", Password: "password123!A", Email: "t75-preserve@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -138,6 +139,7 @@ func TestBeforeSave_PlainSavePreservesCardOnlyData(t *testing.T) {
 // original whole-array rule would have rebuilt the entire array from flat
 // and destroyed the existing apartment; the per-entry rule preserves it.
 func TestBeforeSave_FlatArrayAppendPreservesUntouchedEntries(t *testing.T) {
+	t.Parallel()
 	db := newT75TestDB(t)
 	user := User{Username: "t75-append", Password: "password123!A", Email: "t75-append@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -187,6 +189,7 @@ func TestBeforeSave_FlatArrayAppendPreservesUntouchedEntries(t *testing.T) {
 // apartment expresses intent through the shape and gets it dropped from the
 // card, exactly like any other projected field.
 func TestBeforeSave_EditedFlatEntryRebuildsFromFlat(t *testing.T) {
+	t.Parallel()
 	db := newT75TestDB(t)
 	user := User{Username: "t75-edit", Password: "password123!A", Email: "t75-edit@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -241,6 +244,7 @@ func TestBeforeSave_EditedFlatEntryRebuildsFromFlat(t *testing.T) {
 // (PhotoThumbnail, VCardUID, VCardExtra, ETag) — which no snapshot ever
 // carried — untouched.
 func TestRestoreFlatStateFrom_LeavesNonsnapshotFieldsAlone(t *testing.T) {
+	t.Parallel()
 	current := &Contact{
 		Firstname: "Changed", Lastname: "Now", Photo: "current.jpg", PhotoThumbnail: "data:thumb",
 		VCardUID: "uid-current", VCardExtra: `{"properties":{"X-KEEP":[{"Value":"1"}]}}`, ETag: "e-1-1",
@@ -271,6 +275,7 @@ func TestRestoreFlatStateFrom_LeavesNonsnapshotFieldsAlone(t *testing.T) {
 // live contact, save, and assert the Card-only data that no snapshot ever
 // carried survives while the flat state is reverted.
 func TestRestoreFlatStateFrom_ThenSavePreservesCardOnlyData(t *testing.T) {
+	t.Parallel()
 	db := newT75TestDB(t)
 	user := User{Username: "t75-undo", Password: "password123!A", Email: "t75-undo@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -354,6 +359,7 @@ func assertCardOnlyDataIntact(t *testing.T, c Contact) {
 // pre-T75 wholesale `c.Card = RecordFromContact(c, DefaultPhotoDir).Card` and
 // every subtest here fails on the dropped Card-only members. Restore.
 func TestBeforeSave_EveryPlainSavePrimitivePreservesCardOnlyData(t *testing.T) {
+	t.Parallel()
 	primitives := map[string]func(db *gorm.DB, loaded *Contact) error{
 		"Save": func(db *gorm.DB, loaded *Contact) error {
 			loaded.Photo = "new.jpg"
@@ -398,6 +404,7 @@ func TestBeforeSave_EveryPlainSavePrimitivePreservesCardOnlyData(t *testing.T) {
 // entry was dropped because buildMedia derives no fresh photo entry from the
 // empty flat column and mergeMedia discarded every loaded photo entry.
 func TestBeforeSave_PlainSavePreservesRemoteURLPhoto(t *testing.T) {
+	t.Parallel()
 	db := newT75TestDB(t)
 	user := User{Username: "media-remote", Password: "password123!A", Email: "media-remote@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -428,6 +435,7 @@ func TestBeforeSave_PlainSavePreservesRemoteURLPhoto(t *testing.T) {
 // so it is still dropped. Flat-path photo deletion keeps working; only a
 // remote URL with no flat home is preserved.
 func TestBeforeSave_PlainSaveDropsDataURIPhotoWithNoFlatPhoto(t *testing.T) {
+	t.Parallel()
 	db := newT75TestDB(t)
 	user := User{Username: "media-datauri", Password: "password123!A", Email: "media-datauri@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -455,6 +463,7 @@ func TestBeforeSave_PlainSaveDropsDataURIPhotoWithNoFlatPhoto(t *testing.T) {
 // remote-URL entry is replaced. The carve-out only holds while the entry has
 // no flat home.
 func TestBeforeSave_FlatPhotoReplacesStaleRemoteURLEntry(t *testing.T) {
+	t.Parallel()
 	db := newT75TestDB(t)
 	user := User{Username: "media-downloaded", Password: "password123!A", Email: "media-downloaded@example.com"}
 	require.NoError(t, db.Create(&user).Error)

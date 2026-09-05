@@ -17,6 +17,7 @@ const passthroughImportVCF = "BEGIN:VCARD\n" +
 	"END:VCARD\n"
 
 func TestImport_PassthroughVCard(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(passthroughImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -43,6 +44,7 @@ func TestImport_PassthroughVCard(t *testing.T) {
 // a repeated conversion. Property names must be captured in sorted order,
 // exactly like vcard4.
 func TestImport_PassthroughOrderDeterministic(t *testing.T) {
+	t.Parallel()
 	raw := "BEGIN:VCARD\nVERSION:3.0\nFN:Test\nX-ZEBRA:a\nX-ALPHA:b\nEND:VCARD\n"
 	rec1, _, err := (Adapter{}).Import([]byte(raw))
 	if err != nil {

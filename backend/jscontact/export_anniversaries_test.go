@@ -15,6 +15,7 @@ func init() {
 }
 
 func TestExport_AnniversaryBirth(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "anniversary-birth-example",
 		Anniversaries: []contactmodel.Anniversary{
@@ -34,6 +35,7 @@ func TestExport_AnniversaryBirth(t *testing.T) {
 }
 
 func TestExport_AnniversaryWedding(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "anniversary-wedding-example",
 		Anniversaries: []contactmodel.Anniversary{
@@ -51,6 +53,7 @@ func TestExport_AnniversaryWedding(t *testing.T) {
 }
 
 func TestExport_AnniversaryDeath(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "anniversary-death-example",
 		Anniversaries: []contactmodel.Anniversary{
@@ -68,6 +71,7 @@ func TestExport_AnniversaryDeath(t *testing.T) {
 }
 
 func TestExport_AnniversaryPlaceBirth(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "anniversary-place-birth-example",
 		Anniversaries: []contactmodel.Anniversary{
@@ -82,6 +86,7 @@ func TestExport_AnniversaryPlaceBirth(t *testing.T) {
 }
 
 func TestExport_AnniversaryPlaceDeath(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "anniversary-place-death-example",
 		Anniversaries: []contactmodel.Anniversary{

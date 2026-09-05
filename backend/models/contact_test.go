@@ -82,6 +82,7 @@ func fullyPopulatedContact() *Contact {
 // TestRecordFromContact_FullyPopulated asserts every mapped Contact field
 // lands in the neutral home documented by docs/adrs/0002-correspondence-table-locked-oracle.md.
 func TestRecordFromContact_FullyPopulated(t *testing.T) {
+	t.Parallel()
 	c := fullyPopulatedContact()
 	record := RecordFromContact(c, "")
 	card := record.Card
@@ -282,6 +283,7 @@ func TestRecordFromContact_FullyPopulated(t *testing.T) {
 // an empty Contact or a nil receiver, per this WP's explicit requirement
 // (needed for BeforeSave on a brand-new, mostly-empty contact being created).
 func TestRecordFromContact_ZeroValue(t *testing.T) {
+	t.Parallel()
 	record := RecordFromContact(&Contact{}, "")
 	if record == nil {
 		t.Fatal("RecordFromContact(&Contact{}, \"\") returned nil")
@@ -308,6 +310,7 @@ func TestRecordFromContact_ZeroValue(t *testing.T) {
 // own existing tests/fixtures) still get that data mapped into Card, so the
 // P1 data migration is lossless for them.
 func TestRecordFromContact_ScalarOnlyFallback(t *testing.T) {
+	t.Parallel()
 	c := &Contact{
 		Firstname: "Alice",
 		Email:     "alice@example.com",
@@ -345,6 +348,7 @@ func TestRecordFromContact_ScalarOnlyFallback(t *testing.T) {
 // set. RecordForContact must return the persisted Card as-is instead of
 // re-deriving it from the (necessarily lossy) flat fields.
 func TestRecordForContact_PrefersPersistedCardOverFreshDerivation(t *testing.T) {
+	t.Parallel()
 	c := &Contact{
 		Firstname: "Ada",
 		Card: contactmodel.Card{
@@ -368,6 +372,7 @@ func TestRecordForContact_PrefersPersistedCardOverFreshDerivation(t *testing.T) 
 // Contact built directly in a test without going through BeforeSave) must
 // still fall back to deriving from the flat fields — not return an empty Card.
 func TestRecordForContact_FallsBackWhenCardIsZeroValue(t *testing.T) {
+	t.Parallel()
 	c := &Contact{
 		Firstname: "Bob",
 		Email:     "bob@example.com",
@@ -392,6 +397,7 @@ func TestRecordForContact_FallsBackWhenCardIsZeroValue(t *testing.T) {
 // the real migrated schema (dbtest.NewAt) and through the same
 // ApplyRecordToContact -> Create -> RecordForContact flow the controller uses.
 func TestRecordForContact_StampsCardUIDFromVCardUID(t *testing.T) {
+	t.Parallel()
 	db := dbtest.NewAt(t, filepath.Join(t.TempDir(), "card-uid.db"))
 	user := User{Username: "uidrepro", Password: "password123!A", Email: "uidrepro@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -427,6 +433,7 @@ func TestRecordForContact_StampsCardUIDFromVCardUID(t *testing.T) {
 // Card, and ApplyRecordToContact mirrors it into VCardUID) must NOT have it
 // clobbered by the stamping logic.
 func TestRecordForContact_PreservesImportedCardUID(t *testing.T) {
+	t.Parallel()
 	c := &Contact{
 		VCardUID: "imported-uid-1",
 		Card: contactmodel.Card{
@@ -449,6 +456,7 @@ func TestRecordForContact_PreservesImportedCardUID(t *testing.T) {
 // export path must name the drop as a warn Diagnostic rather than silently
 // omitting it.
 func TestEnvelopeExportLossDiagnostics(t *testing.T) {
+	t.Parallel()
 	// A nil record or an empty envelope must be silent.
 	if diags := EnvelopeExportLossDiagnostics(nil); len(diags) != 0 {
 		t.Errorf("EnvelopeExportLossDiagnostics(nil) = %+v, want none", diags)
@@ -496,6 +504,7 @@ func TestEnvelopeExportLossDiagnostics(t *testing.T) {
 // Firstname/Lastname/Email/Phone/Birthday/FN/Org (and the Card/CRM/
 // Passthrough columns) via the new DeriveProjection-based path.
 func TestBeforeSave_DerivesProjection(t *testing.T) {
+	t.Parallel()
 	c := fullyPopulatedContact()
 
 	if err := c.BeforeSave(nil); err != nil {
@@ -543,6 +552,7 @@ func TestBeforeSave_DerivesProjection(t *testing.T) {
 // guarded ("only overwrite when non-empty") assignment plus
 // RecordFromContact's scalar fallback together must make this a no-op.
 func TestBeforeSave_DoesNotBlankScalarOnlyContact(t *testing.T) {
+	t.Parallel()
 	c := &Contact{
 		Firstname: "Bob",
 		Email:     "bob@example.com",
@@ -568,6 +578,7 @@ func TestBeforeSave_DoesNotBlankScalarOnlyContact(t *testing.T) {
 // RecordFromContact -> DeriveProjection is a stable fixed point, not a
 // moving target that would drift on repeated saves/backfill runs.
 func TestRoundTrip_ProjectionStable(t *testing.T) {
+	t.Parallel()
 	samples := []*Contact{
 		fullyPopulatedContact(),
 		{Firstname: "Alice", Email: "alice@example.com", Phone: "+15550001111", Address: "42 Wallaby Way"},
@@ -620,6 +631,7 @@ func setupContactETagTestDB(t *testing.T) *gorm.DB {
 }
 
 func TestContactETagGeneratedOnCreateAndPersists(t *testing.T) {
+	t.Parallel()
 	db := setupContactETagTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -641,6 +653,7 @@ func TestContactETagGeneratedOnCreateAndPersists(t *testing.T) {
 }
 
 func TestContactETagChangesOnUpdate(t *testing.T) {
+	t.Parallel()
 	db := setupContactETagTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -669,6 +682,7 @@ func TestContactETagChangesOnUpdate(t *testing.T) {
 // back-to-back Save() calls must bump revision exactly twice and never loop
 // (UpdateColumns bypasses hooks).
 func TestContactRevisionBumpsPerSaveNoLoop(t *testing.T) {
+	t.Parallel()
 	db := setupContactETagTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -690,6 +704,7 @@ func TestContactRevisionBumpsPerSaveNoLoop(t *testing.T) {
 }
 
 func TestContactETagBulkUpdateOnZeroValueReceiverDoesNotCorrupt(t *testing.T) {
+	t.Parallel()
 	db := setupContactETagTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -720,6 +735,7 @@ func TestContactETagBulkUpdateOnZeroValueReceiverDoesNotCorrupt(t *testing.T) {
 // widened the projection with the sub-street parts a vCard ADR can carry, and
 // the conventional display ordering puts them between street and city.
 func TestFormatAddress(t *testing.T) {
+	t.Parallel()
 	full := ContactAddress{Type: "home", Street: "742 Clark St", POBox: "PO Box 42", Apartment: "Apt 3B", Floor: "Floor 2", City: "Springfield", Region: "IL", Postal: "62701", Country: "USA"}
 	if got := FormatAddress(full); got != "742 Clark St, PO Box 42, Apt 3B, Floor 2, Springfield, IL, 62701, USA" {
 		t.Errorf("FormatAddress(full) = %q", got)
@@ -746,6 +762,7 @@ func TestFormatAddress(t *testing.T) {
 // projection gained in T79 must appear in the flattened string (that is what
 // makes an imported PO box / apartment findable by search).
 func TestFlattenAddresses(t *testing.T) {
+	t.Parallel()
 	addresses := []ContactAddress{
 		{Type: "home", Street: "742 Clark St", POBox: "PO Box 42", Apartment: "Apt 3B", Floor: "Floor 2", City: "Springfield", Region: "IL", Postal: "62701", Country: "USA"},
 		{Type: "work", Street: "", City: "Chicago"},
@@ -771,6 +788,7 @@ func TestFlattenAddresses(t *testing.T) {
 // rows, so this test is what keeps the two from silently diverging (which
 // would make new-contact and pre-existing-contact search behavior differ).
 func TestFlattenPhones(t *testing.T) {
+	t.Parallel()
 	phones := []ContactPhone{
 		{Type: "cell", Value: "+18005551234"},   // 11 digits → full + key
 		{Type: "home", Value: "(800) 555-1234"}, // 10 digits → key == full, one token
@@ -806,6 +824,7 @@ func TestFlattenPhones(t *testing.T) {
 // the two from silently diverging (which would make new-contact and
 // pre-existing-contact sort behavior differ).
 func TestDeriveSortName(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name                string
 		lastname, firstname string
@@ -831,6 +850,7 @@ func TestDeriveSortName(t *testing.T) {
 // the final Firstname/Lastname (after the projection block), mirroring how
 // it keeps the AddressesFlat/PhonesNormalized derived columns in sync.
 func TestBeforeSave_DerivesSortName(t *testing.T) {
+	t.Parallel()
 	c := &Contact{Firstname: "Jane", Lastname: " Doe "}
 	if err := c.BeforeSave(nil); err != nil {
 		t.Fatalf("BeforeSave returned error: %v", err)

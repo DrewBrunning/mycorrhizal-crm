@@ -13,6 +13,7 @@ func init() {
 }
 
 func TestExport_Impp(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		ImppAddresses: []contactmodel.OnlineService{{URI: "xmpp:frank@example.com", Contexts: []string{"work"}}},
 	}}
@@ -29,6 +30,7 @@ func TestExport_Impp(t *testing.T) {
 // IMPP's GROUP token (mirroring the existing X-SOCIALPROFILE/X-SERVICE-TYPE
 // convention below).
 func TestExport_ImppWithServiceAndUsername(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		ImppAddresses: []contactmodel.OnlineService{{
 			URI: "xmpp:frank@example.com", Service: "Jabber", User: "frank94", Contexts: []string{"work"},
@@ -44,6 +46,7 @@ func TestExport_ImppWithServiceAndUsername(t *testing.T) {
 }
 
 func TestExport_Social(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		SocialProfiles: []contactmodel.OnlineService{{
 			URI: "https://example.com/@frank", Service: "Mastodon", Contexts: []string{"work"},
@@ -61,6 +64,7 @@ func TestExport_Social(t *testing.T) {
 // must round-trip through a grouped X-USERNAME companion property too
 // (previously never emitted at all for SOCIALPROFILE).
 func TestExport_SocialWithUsername(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		SocialProfiles: []contactmodel.OnlineService{{
 			URI: "https://example.com/@frank", Service: "Mastodon", User: "frank94", Contexts: []string{"work"},

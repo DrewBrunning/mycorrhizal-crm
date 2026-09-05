@@ -12,6 +12,7 @@ func init() {
 }
 
 func TestExport_Lang(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		PreferredLanguages: []contactmodel.LanguagePref{{Language: "en", Pref: intPtr(1)}},
 	}}
@@ -23,6 +24,7 @@ func TestExport_Lang(t *testing.T) {
 }
 
 func TestExport_Related(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		RelatedTo: []contactmodel.Relation{{Target: "https://example.com/directory/jdoe", Relations: []string{"friend"}}},
 	}}
@@ -34,6 +36,7 @@ func TestExport_Related(t *testing.T) {
 }
 
 func TestExport_Member(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Kind:    "group",
 		Members: []string{"urn:uuid:03a0e51f-d1aa-4385-8a53-e29025acd8af"},

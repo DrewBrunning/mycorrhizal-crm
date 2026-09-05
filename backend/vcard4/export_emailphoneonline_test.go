@@ -13,6 +13,7 @@ func init() {
 }
 
 func TestExport_Email(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Emails: []contactmodel.Email{{Address: "ada@example.com", Contexts: []string{"work"}, Pref: intPtr(1)}},
 	}}
@@ -24,6 +25,7 @@ func TestExport_Email(t *testing.T) {
 }
 
 func TestExport_Phone(t *testing.T) {
+	t.Parallel()
 	// docs/adrs/0003-golden-fixtures-external-test-oracle.md worked example: feat2type/pref transforms.
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Phones: []contactmodel.Phone{{Number: "+15551234567", Features: []string{"cell"}, Pref: intPtr(1)}},
@@ -36,6 +38,7 @@ func TestExport_Phone(t *testing.T) {
 }
 
 func TestExport_Impp(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		ImppAddresses: []contactmodel.OnlineService{{URI: "xmpp:alice@example.com"}},
 	}}
@@ -54,6 +57,7 @@ func TestExport_Impp(t *testing.T) {
 // its SERVICE-TYPE/USERNAME params (RFC 9554 §4.9/§4.10 allows both on
 // either property).
 func TestExport_OnlineServiceServiceTypeUsername(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		ImppAddresses: []contactmodel.OnlineService{{
 			URI: "xmpp:alice@example.com", Service: "xmpp", User: "alice@example.com",
@@ -68,6 +72,7 @@ func TestExport_OnlineServiceServiceTypeUsername(t *testing.T) {
 }
 
 func TestExport_SocialProfile(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		SocialProfiles: []contactmodel.OnlineService{{Service: "Mastodon", URI: "https://example.com/@foo", User: "foo"}},
 	}}
@@ -80,6 +85,7 @@ func TestExport_SocialProfile(t *testing.T) {
 }
 
 func TestExport_SocialProfileTextValue(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		SocialProfiles: []contactmodel.OnlineService{{Service: "SomeSite", User: "peter94"}},
 	}}
@@ -97,6 +103,7 @@ func TestExport_SocialProfileTextValue(t *testing.T) {
 // SOCIALPROFILE is a safe default guess, so these entries are dropped from
 // vCard export entirely and reported via a warn Diagnostic.
 func TestExport_OtherOnlineServicesWarnDrop(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		OtherOnlineServices: []contactmodel.OnlineService{{URI: "https://example.com/unclassified"}},
 	}}

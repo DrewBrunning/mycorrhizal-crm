@@ -23,6 +23,7 @@ func newJobRunTestDB(t *testing.T) *gorm.DB {
 }
 
 func TestRecordJobRun_PersistsWithDefaults(t *testing.T) {
+	t.Parallel()
 	db := newJobRunTestDB(t)
 
 	ctx := logger.WithCorrelationID(context.Background(), "job:daily_reminders:abc")
@@ -44,6 +45,7 @@ func TestRecordJobRun_PersistsWithDefaults(t *testing.T) {
 }
 
 func TestRecordJobRun_ItemsProcessedAndTrigger(t *testing.T) {
+	t.Parallel()
 	db := newJobRunTestDB(t)
 
 	n := 7
@@ -63,6 +65,7 @@ func TestRecordJobRun_ItemsProcessedAndTrigger(t *testing.T) {
 }
 
 func TestRecordJobRun_SanitizesAndTruncates(t *testing.T) {
+	t.Parallel()
 	db := newJobRunTestDB(t)
 
 	long := make([]rune, maxJobRunFieldLen+500)
@@ -83,6 +86,7 @@ func TestRecordJobRun_SanitizesAndTruncates(t *testing.T) {
 }
 
 func TestRecordJobRun_UnknownResultRejectedByCheckConstraint(t *testing.T) {
+	t.Parallel()
 	db := newJobRunTestDB(t)
 
 	// The emitter swallows the error (best-effort), so assert on the row
@@ -98,12 +102,14 @@ func TestRecordJobRun_UnknownResultRejectedByCheckConstraint(t *testing.T) {
 }
 
 func TestRecordJobRun_NilDBIsNoop(t *testing.T) {
+	t.Parallel()
 	require.NotPanics(t, func() {
 		RecordJobRun(context.Background(), nil, JobRun{JobName: JobNameDailyReminders})
 	})
 }
 
 func TestKnownJobNames_UniqueAndNonEmpty(t *testing.T) {
+	t.Parallel()
 	require.NotEmpty(t, KnownJobNames)
 	seen := map[string]bool{}
 	for _, name := range KnownJobNames {

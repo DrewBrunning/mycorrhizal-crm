@@ -13,6 +13,7 @@ func init() {
 }
 
 func TestExport_Nickname(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Nicknames: []contactmodel.Nickname{{Name: "Johnny", Contexts: []string{"work"}}},
 	}}

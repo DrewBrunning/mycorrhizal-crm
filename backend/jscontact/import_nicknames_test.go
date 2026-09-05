@@ -10,6 +10,7 @@ func init() {
 }
 
 func TestImport_Nickname(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "nickname-example",
 		"nicknames": {

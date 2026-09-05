@@ -14,6 +14,7 @@ func init() {
 }
 
 func TestImport_GrammaticalGender(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("gramgender.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -25,6 +26,7 @@ func TestImport_GrammaticalGender(t *testing.T) {
 }
 
 func TestImport_Pronouns(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("pronouns.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -46,6 +48,7 @@ func TestImport_Pronouns(t *testing.T) {
 // PRONOUNS TYPE was listed as a valid parameter alongside LANGUAGE/PREF/ALTID
 // but was never read into Pronouns.Contexts).
 func TestImport_PronounsType(t *testing.T) {
+	t.Parallel()
 	raw := []byte("BEGIN:VCARD\r\nVERSION:4.0\r\nUID:pronouns-type\r\nFN:Test\r\n" +
 		"PRONOUNS;TYPE=home:xe/xir\r\nEND:VCARD\r\n")
 	rec, _, err := Adapter{}.Import(raw)
@@ -69,6 +72,7 @@ func TestImport_PronounsType(t *testing.T) {
 // SpeakToAs.GrammaticalGenders is a slice, so every occurrence is stored
 // losslessly on import — no diagnostic, no dropped data.
 func TestImport_GrammaticalGenderMultiple(t *testing.T) {
+	t.Parallel()
 	raw := []byte("BEGIN:VCARD\r\nVERSION:4.0\r\nUID:gramgender-multi\r\nFN:Test\r\n" +
 		"GRAMGENDER;LANGUAGE=de:feminine\r\nGRAMGENDER;LANGUAGE=fr:masculine\r\nEND:VCARD\r\n")
 	rec, diags, err := Adapter{}.Import(raw)

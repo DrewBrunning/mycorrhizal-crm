@@ -22,6 +22,7 @@ func init() {
 }
 
 func TestImport_PassthroughUnknownProperty(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("rfc6350-baseline.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -44,6 +45,7 @@ func TestImport_PassthroughUnknownProperty(t *testing.T) {
 }
 
 func TestImport_PassthroughJSProp(t *testing.T) {
+	t.Parallel()
 	raw := []byte("BEGIN:VCARD\r\nVERSION:4.0\r\nUID:jsprop-example\r\nFN:Test\r\nJSPROP;JSPTR=/custom/field:\"hello\"\r\nEND:VCARD\r\n")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {

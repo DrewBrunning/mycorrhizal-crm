@@ -33,6 +33,7 @@ func canonicalize(t *testing.T, data []byte) []byte {
 // match our canonical form), but the codec's own canonical form must be
 // stable under repeated round-tripping.
 func TestFixtureRoundTripFixedPoint(t *testing.T) {
+	t.Parallel()
 	matches, err := filepath.Glob(filepath.Join("testdata", "*.json"))
 	if err != nil {
 		t.Fatalf("glob testdata: %v", err)
@@ -63,6 +64,7 @@ func TestFixtureRoundTripFixedPoint(t *testing.T) {
 // (docs/golden-fixtures/johndoe.jscontact.json) imports the
 // expected scalar/structured fields, beyond the generic fixed-point check.
 func TestJohnDoeFixtureFields(t *testing.T) {
+	t.Parallel()
 	raw, err := os.ReadFile(filepath.Join("testdata", "johndoe.jscontact.json"))
 	if err != nil {
 		t.Fatalf("read fixture: %v", err)
@@ -106,6 +108,7 @@ func TestJohnDoeFixtureFields(t *testing.T) {
 // TestTitleRoleFixtureFields spot-checks the title/organization Id-map
 // golden fixture (docs/golden-fixtures/title-role.jscontact.json).
 func TestTitleRoleFixtureFields(t *testing.T) {
+	t.Parallel()
 	raw, err := os.ReadFile(filepath.Join("testdata", "title-role.jscontact.json"))
 	if err != nil {
 		t.Fatalf("read fixture: %v", err)
@@ -133,6 +136,7 @@ func TestTitleRoleFixtureFields(t *testing.T) {
 // with explicit map keys must survive Unmarshal -> Marshal with their IDs
 // (and hence their map keys) intact and in sorted order.
 func TestExplicitEmailIDsPreserved(t *testing.T) {
+	t.Parallel()
 	raw, err := os.ReadFile(filepath.Join("testdata", "emails-explicit-ids.jscontact.json"))
 	if err != nil {
 		t.Fatalf("read fixture: %v", err)
@@ -179,6 +183,7 @@ func TestExplicitEmailIDsPreserved(t *testing.T) {
 // import ID becomes "" (the literal key), and on export the codec must
 // generate "k0" (the slice's 0th, and only, element) since ID is empty.
 func TestPhoneSyntheticKeyGeneration(t *testing.T) {
+	t.Parallel()
 	raw, err := os.ReadFile(filepath.Join("testdata", "phone-synthetic-key.jscontact.json"))
 	if err != nil {
 		t.Fatalf("read fixture: %v", err)
@@ -219,6 +224,7 @@ func TestPhoneSyntheticKeyGeneration(t *testing.T) {
 // checks Marshal assigns the synthetic "k<index>" key — the same rule, but
 // exercised without going through Unmarshal first.
 func TestSyntheticKeyGenerationFromGoValue(t *testing.T) {
+	t.Parallel()
 	c := &Card{
 		UID: "synthetic-from-go",
 		Emails: []EmailAddress{
@@ -250,6 +256,7 @@ func TestSyntheticKeyGenerationFromGoValue(t *testing.T) {
 // (a Card-level boolean-set) and Address.contexts (a nested boolean-set)
 // both convert cleanly between the wire {"x":true} map shape and Go []string.
 func TestContextsAndKeywordsBooleanSets(t *testing.T) {
+	t.Parallel()
 	raw, err := os.ReadFile(filepath.Join("testdata", "contexts-and-keywords.jscontact.json"))
 	if err != nil {
 		t.Fatalf("read fixture: %v", err)
@@ -288,6 +295,7 @@ func TestContextsAndKeywordsBooleanSets(t *testing.T) {
 // related entity's URI/text (Relation.Target), not a synthetic id, plus
 // Relation's own "relation" boolean-set field.
 func TestRelatedToKeyedByValueMap(t *testing.T) {
+	t.Parallel()
 	c := &Card{
 		UID: "related-to-example",
 		RelatedTo: []Relation{
@@ -332,6 +340,7 @@ func TestRelatedToKeyedByValueMap(t *testing.T) {
 // TestTypeDefaultedAndValidated exercises codec rule 1: @type is defaulted
 // when absent, and validated (error) when present but wrong.
 func TestTypeDefaultedAndValidated(t *testing.T) {
+	t.Parallel()
 	t.Run("defaulted when absent", func(t *testing.T) {
 		raw := []byte(`{"uid":"no-type-example","titles":{"T1":{"name":"Engineer"}}}`)
 		c, err := Unmarshal(raw)
@@ -365,6 +374,7 @@ func TestTypeDefaultedAndValidated(t *testing.T) {
 // export regardless of what's on the Go value, and any value is accepted on
 // import.
 func TestCardVersionRules(t *testing.T) {
+	t.Parallel()
 	c := &Card{UID: "version-example", Version: "bogus"}
 	out, err := Marshal(c)
 	if err != nil {
@@ -389,6 +399,7 @@ func TestCardVersionRules(t *testing.T) {
 
 // TestMarshalNilCard checks Marshal's nil guard.
 func TestMarshalNilCard(t *testing.T) {
+	t.Parallel()
 	if _, err := Marshal(nil); err == nil {
 		t.Fatal("Marshal(nil) succeeded, want error")
 	}
@@ -397,6 +408,7 @@ func TestMarshalNilCard(t *testing.T) {
 // TestUnmarshalUnknownFieldsIgnored checks codec rule 5: unrecognized
 // top-level/object properties must not cause Unmarshal to error.
 func TestUnmarshalUnknownFieldsIgnored(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card",
 		"uid": "unknown-fields-example",
@@ -422,6 +434,7 @@ func TestUnmarshalUnknownFieldsIgnored(t *testing.T) {
 // TestUnmarshalUnknownFieldsIgnored (which only asserts "does not error");
 // this test asserts the stronger "is preserved".
 func TestUnmarshalUnknownNestedFieldsPreserved(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card",
 		"uid": "unknown-nested-fields-example",

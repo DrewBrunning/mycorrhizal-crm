@@ -13,6 +13,7 @@ func init() {
 }
 
 func TestExport_PassthroughUnknownProperty(t *testing.T) {
+	t.Parallel()
 	valJSON, _ := json.Marshal("1;urn:uuid:53e374d9-337e-4727-8803-a1e9c14e0556")
 	rec := &contactmodel.Record{
 		Card: contactmodel.Card{Name: &contactmodel.Name{Full: "Test"}},
@@ -28,6 +29,7 @@ func TestExport_PassthroughUnknownProperty(t *testing.T) {
 }
 
 func TestExport_PassthroughDeDupGuard(t *testing.T) {
+	t.Parallel()
 	// de-dup guard: a passthrough entry whose name collides with a
 	// mapped property must NOT also be re-emitted verbatim.
 	valJSON, _ := json.Marshal("stray-uid-should-not-appear")
@@ -51,6 +53,7 @@ func TestExport_PassthroughDeDupGuard(t *testing.T) {
 }
 
 func TestExport_PassthroughJSProp(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{
 		Card: contactmodel.Card{Name: &contactmodel.Name{Full: "Test"}},
 		Passthrough: contactmodel.Passthrough{

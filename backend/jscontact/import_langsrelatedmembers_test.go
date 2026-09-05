@@ -12,6 +12,7 @@ func init() {
 }
 
 func TestImport_PreferredLanguage(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "lang-example",
 		"preferredLanguages": { "L1": { "@type": "LanguagePref", "language": "en", "pref": 1 } }
@@ -26,6 +27,7 @@ func TestImport_PreferredLanguage(t *testing.T) {
 }
 
 func TestImport_Related(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "related-example",
 		"relatedTo": { "https://example.com/directory/jdoe": { "@type": "Relation", "relation": { "friend": true } } }
@@ -47,6 +49,7 @@ func TestImport_Related(t *testing.T) {
 }
 
 func TestImport_Member(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "member-example", "kind": "group",
 		"members": { "urn:uuid:03a0e51f-d1aa-4385-8a53-e29025acd8af": true }

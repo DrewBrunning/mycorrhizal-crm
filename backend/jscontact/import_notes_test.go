@@ -16,6 +16,7 @@ func init() {
 }
 
 func TestImport_NoteWithAuthor(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "note-author-example",
 		"notes": {
@@ -46,6 +47,7 @@ func TestImport_NoteWithAuthor(t *testing.T) {
 }
 
 func TestImport_Keywords(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{"@type":"Card","version":"1.0","uid":"keywords-example","keywords":{"family":true,"work":true}}`)
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {

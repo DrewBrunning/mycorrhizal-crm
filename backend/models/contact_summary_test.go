@@ -18,6 +18,7 @@ import (
 // through RecordForContact instead, which prefers the already-persisted
 // Card. See models.RecordForContact's doc comment for the full history.
 func TestNewContactRecordResponse_PreservesPersistedCardOnlyData(t *testing.T) {
+	t.Parallel()
 	c := &Contact{
 		Firstname: "Ada",
 		Card: contactmodel.Card{
@@ -57,6 +58,7 @@ func TestNewContactRecordResponse_PreservesPersistedCardOnlyData(t *testing.T) {
 // T2/T3 superseded with circle_members, so populating it would have shipped
 // stale data rather than nothing.
 func TestNewContactSummary_IncludesNickname(t *testing.T) {
+	t.Parallel()
 	c := &Contact{
 		Firstname: "Ada",
 		Lastname:  "Lovelace",
@@ -77,6 +79,7 @@ func TestNewContactSummary_IncludesNickname(t *testing.T) {
 // endpoint can no longer serve) yields "" — which the DTOs' omitempty turns
 // into an absent field.
 func TestProfilePictureURL(t *testing.T) {
+	t.Parallel()
 	const thumb = "data:image/jpeg;base64,Zm9v"
 	tests := []struct {
 		name            string
@@ -107,6 +110,7 @@ func TestProfilePictureURL(t *testing.T) {
 // schema in contact_photo_url_test.go, where GORM's column Select actually
 // runs).
 func TestNewContactSummary_PhotoThumbnailIsURL(t *testing.T) {
+	t.Parallel()
 	const thumb = "data:image/jpeg;base64,Zm9v"
 	c := &Contact{Model: gorm.Model{ID: 3}, Firstname: "Ada", PhotoThumbnail: thumb}
 
@@ -127,6 +131,7 @@ func TestNewContactSummary_PhotoThumbnailIsURL(t *testing.T) {
 // URL (full-photo variant when a disk photo exists) rather than the data URI
 // the persisted Card carries.
 func TestNewContactRecordResponse_MediaPhotoURIIsURL(t *testing.T) {
+	t.Parallel()
 	const thumb = "data:image/jpeg;base64,Zm9v"
 	c := &Contact{
 		Model:          gorm.Model{ID: 9},
@@ -167,6 +172,7 @@ func TestNewContactRecordResponse_MediaPhotoURIIsURL(t *testing.T) {
 // original imported data URI — rather than blanked to the empty string by the
 // M6 rewrite.
 func TestNewContactRecordResponse_UnbackedMediaPhotoKept(t *testing.T) {
+	t.Parallel()
 	const importedPhoto = "data:image/png;base64,QUJDRA=="
 	c := &Contact{
 		Model:     gorm.Model{ID: 11},

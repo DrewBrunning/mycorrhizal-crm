@@ -14,6 +14,7 @@ const noteImportVCF = "BEGIN:VCARD\n" +
 	"END:VCARD\n"
 
 func TestImport_Note(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(noteImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)

@@ -21,6 +21,7 @@ import (
 // (and a plain save would then have destroyed them for good — the T75 bug).
 // Now they ride the flat struct, so the whole lifecycle must round-trip.
 func TestVCardImportSaveExportRoundTrip_SubStreetParts(t *testing.T) {
+	t.Parallel()
 	raw := "BEGIN:VCARD\r\n" +
 		"VERSION:4.0\r\n" +
 		"UID:t79-roundtrip-example\r\n" +
@@ -112,6 +113,7 @@ func TestVCardImportSaveExportRoundTrip_SubStreetParts(t *testing.T) {
 // Neither half was wrong on its own, which is why unit tests on either side
 // passed throughout. This test spans both.
 func TestVCardImportAddressType(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, typeParam, want string }{
 		{"home imports as the legacy home token", "HOME", "home"},
 		{"work is unaffected", "WORK", "work"},
@@ -146,6 +148,7 @@ func TestVCardImportAddressType(t *testing.T) {
 // line" promise makes — i.e. nothing is re-ordered or lost in the round trip
 // through the card.
 func TestAddressFromContactAddress_OrderingPinsFormatAddressSymmetry(t *testing.T) {
+	t.Parallel()
 	flat := ContactAddress{
 		Type: "home", Street: "742 Clark St", POBox: "PO Box 42", Apartment: "Apt 3B",
 		Floor: "Floor 2", City: "Springfield", Region: "IL", Postal: "62701", Country: "USA",

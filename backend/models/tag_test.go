@@ -24,6 +24,7 @@ func setupTagTestDB(t *testing.T) *gorm.DB {
 }
 
 func TestTagBeforeCreateGeneratesUUID(t *testing.T) {
+	t.Parallel()
 	db := setupTagTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -35,6 +36,7 @@ func TestTagBeforeCreateGeneratesUUID(t *testing.T) {
 }
 
 func TestTagBeforeCreatePreservesExplicitID(t *testing.T) {
+	t.Parallel()
 	db := setupTagTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -48,6 +50,7 @@ func TestTagBeforeCreatePreservesExplicitID(t *testing.T) {
 // A contact must not be tagged with the same tag twice — the unique index on
 // (tag_id, contact_vcard_uid) is the real DB-level constraint.
 func TestContactTagUniqueConstraintRejectsDuplicate(t *testing.T) {
+	t.Parallel()
 	db := setupTagTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -67,6 +70,7 @@ func TestContactTagUniqueConstraintRejectsDuplicate(t *testing.T) {
 
 // The same contact must still be taggable with two DIFFERENT tags.
 func TestContactTagAllowsSameContactWithDifferentTags(t *testing.T) {
+	t.Parallel()
 	db := setupTagTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)

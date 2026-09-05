@@ -40,6 +40,7 @@ func registerExportCoverage(conceptIDs ...string) {
 // now mapped and registered like any other identity/meta concept; see
 // import_identity_test.go / export_identity_test.go.)
 func TestCoverage_AllMappedConceptsHaveImportAndExportTests(t *testing.T) {
+	t.Parallel()
 	for _, row := range correspondence.Load() {
 		if row.JSPtr == "" || row.JSPtr == "-" {
 			continue

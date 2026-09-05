@@ -24,6 +24,7 @@ func setupCircleTestDB(t *testing.T) *gorm.DB {
 }
 
 func TestCircleBeforeCreateGeneratesUUID(t *testing.T) {
+	t.Parallel()
 	db := setupCircleTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -35,6 +36,7 @@ func TestCircleBeforeCreateGeneratesUUID(t *testing.T) {
 }
 
 func TestCircleBeforeCreatePreservesExplicitID(t *testing.T) {
+	t.Parallel()
 	db := setupCircleTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -49,6 +51,7 @@ func TestCircleBeforeCreatePreservesExplicitID(t *testing.T) {
 // (circle_id, member_vcard_uid) is the real DB-level constraint the model
 // depends on, not just an application-level check.
 func TestCircleMemberUniqueConstraintRejectsDuplicate(t *testing.T) {
+	t.Parallel()
 	db := setupCircleTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -69,6 +72,7 @@ func TestCircleMemberUniqueConstraintRejectsDuplicate(t *testing.T) {
 // The same contact must still be addable to two DIFFERENT circles — the
 // uniqueness is scoped to the (circle, member) pair, not the member alone.
 func TestCircleMemberAllowsSameContactInDifferentCircles(t *testing.T) {
+	t.Parallel()
 	db := setupCircleTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)

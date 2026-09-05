@@ -12,6 +12,7 @@ func init() {
 }
 
 func TestExport_Nickname(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "nickname-example",
 		Nicknames: []contactmodel.Nickname{

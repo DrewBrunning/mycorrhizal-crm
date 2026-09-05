@@ -12,6 +12,7 @@ func init() {
 }
 
 func TestExport_Expertise(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		PersonalInfo: []contactmodel.PersonalInfo{{Kind: "expertise", Value: "chemistry", Level: "high", ListAs: intPtr(1)}},
 	}}
@@ -23,6 +24,7 @@ func TestExport_Expertise(t *testing.T) {
 }
 
 func TestExport_Hobby(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		PersonalInfo: []contactmodel.PersonalInfo{{Kind: "hobby", Value: "reading", Level: "high", ListAs: intPtr(1)}},
 	}}
@@ -34,6 +36,7 @@ func TestExport_Hobby(t *testing.T) {
 }
 
 func TestExport_Interest(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		PersonalInfo: []contactmodel.PersonalInfo{{Kind: "interest", Value: "r&b music", Level: "medium", ListAs: intPtr(1)}},
 	}}

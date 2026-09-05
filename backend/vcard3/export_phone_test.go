@@ -13,6 +13,7 @@ func init() {
 }
 
 func TestExport_Phone(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Phones: []contactmodel.Phone{{
 			Number: "+1-919-676-9515", Features: []string{"voice"}, Contexts: []string{"work"},

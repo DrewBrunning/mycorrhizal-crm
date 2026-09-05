@@ -14,6 +14,7 @@ func init() {
 }
 
 func TestImport_Expertise(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "expertise-example",
 		"personalInfo": { "PI1": { "@type": "PersonalInfo", "kind": "expertise", "value": "chemistry", "level": "expert", "listAs": 1 } }
@@ -32,6 +33,7 @@ func TestImport_Expertise(t *testing.T) {
 }
 
 func TestImport_Hobby(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "hobby-example",
 		"personalInfo": { "PI1": { "@type": "PersonalInfo", "kind": "hobby", "value": "reading", "level": "high", "listAs": 1 } }
@@ -46,6 +48,7 @@ func TestImport_Hobby(t *testing.T) {
 }
 
 func TestImport_Interest(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "interest-example",
 		"personalInfo": { "PI1": { "@type": "PersonalInfo", "kind": "interest", "value": "r&b music", "level": "medium", "listAs": 1 } }

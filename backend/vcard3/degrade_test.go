@@ -55,6 +55,7 @@ func hasProp(t *testing.T, out []byte, prop string) bool {
 }
 
 func TestDegrade_Kind(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{Kind: "group"}}
 	out, diags, err := (Adapter{}).Export(rec)
 	if err != nil {
@@ -72,6 +73,7 @@ func TestDegrade_Kind(t *testing.T) {
 }
 
 func TestDegrade_Created(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{Created: &contactmodel.Timestamp{UTC: "2020-01-01T00:00:00Z"}}}
 	out, diags, err := (Adapter{}).Export(rec)
 	if err != nil {
@@ -93,6 +95,7 @@ func TestDegrade_Created(t *testing.T) {
 // data since Card.Language remains on the neutral Record regardless of
 // serialization.
 func TestDegrade_Language(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{Language: "de-AT"}}
 	out, diags, err := (Adapter{}).Export(rec)
 	if err != nil {
@@ -113,6 +116,7 @@ func TestDegrade_Language(t *testing.T) {
 }
 
 func TestDegrade_AnniversaryWedding_RedirectsToXAnniversary(t *testing.T) {
+	t.Parallel()
 	year, month, day := 2001, 6, 10
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Anniversaries: []contactmodel.Anniversary{{
@@ -137,6 +141,7 @@ func TestDegrade_AnniversaryWedding_RedirectsToXAnniversary(t *testing.T) {
 }
 
 func TestDegrade_AnniversaryDeath(t *testing.T) {
+	t.Parallel()
 	year := 2010
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Anniversaries: []contactmodel.Anniversary{{
@@ -157,6 +162,7 @@ func TestDegrade_AnniversaryDeath(t *testing.T) {
 }
 
 func TestDegrade_AnniversaryPlaceBirth(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Anniversaries: []contactmodel.Anniversary{{
 			Kind:  "birth",
@@ -174,6 +180,7 @@ func TestDegrade_AnniversaryPlaceBirth(t *testing.T) {
 }
 
 func TestDegrade_AnniversaryPlaceDeath(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Anniversaries: []contactmodel.Anniversary{{
 			Kind:  "death",
@@ -191,6 +198,7 @@ func TestDegrade_AnniversaryPlaceDeath(t *testing.T) {
 }
 
 func TestDegrade_GramGender(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		SpeakToAs: &contactmodel.SpeakToAs{GrammaticalGenders: []contactmodel.GrammaticalGender{{Value: "feminine"}}},
 	}}
@@ -207,6 +215,7 @@ func TestDegrade_GramGender(t *testing.T) {
 }
 
 func TestDegrade_Pronouns(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		SpeakToAs: &contactmodel.SpeakToAs{Pronouns: []contactmodel.Pronouns{{Pronouns: "they/them"}}},
 	}}
@@ -223,6 +232,7 @@ func TestDegrade_Pronouns(t *testing.T) {
 }
 
 func TestDegrade_Expertise(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		PersonalInfo: []contactmodel.PersonalInfo{{Kind: "expertise", Value: "Go programming"}},
 	}}
@@ -239,6 +249,7 @@ func TestDegrade_Expertise(t *testing.T) {
 }
 
 func TestDegrade_Hobby(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		PersonalInfo: []contactmodel.PersonalInfo{{Kind: "hobby", Value: "Chess"}},
 	}}
@@ -255,6 +266,7 @@ func TestDegrade_Hobby(t *testing.T) {
 }
 
 func TestDegrade_Interest(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		PersonalInfo: []contactmodel.PersonalInfo{{Kind: "interest", Value: "Hiking"}},
 	}}
@@ -271,6 +283,7 @@ func TestDegrade_Interest(t *testing.T) {
 }
 
 func TestDegrade_Directory(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Directories: []contactmodel.Resource{{Kind: "directory", URI: "https://dir.example.com/frank"}},
 	}}
@@ -287,6 +300,7 @@ func TestDegrade_Directory(t *testing.T) {
 }
 
 func TestDegrade_ContactURI(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		ContactURIs: []contactmodel.Resource{{URI: "https://contact.example.com/frank"}},
 	}}
@@ -309,6 +323,7 @@ func TestDegrade_ContactURI(t *testing.T) {
 // has no vCard export at all, in either 3.0 or 4.0, because neither IMPP nor
 // SOCIALPROFILE is a safe default guess for genuinely unclassified data.
 func TestDegrade_OtherOnlineServices(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		OtherOnlineServices: []contactmodel.OnlineService{{URI: "https://example.com/@frank", Service: "Unknown"}},
 	}}
@@ -334,6 +349,7 @@ func TestDegrade_OtherOnlineServices(t *testing.T) {
 }
 
 func TestDegrade_Lang(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		PreferredLanguages: []contactmodel.LanguagePref{{Language: "en"}},
 	}}
@@ -350,6 +366,7 @@ func TestDegrade_Lang(t *testing.T) {
 }
 
 func TestDegrade_Related_RedirectsToAgent(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		RelatedTo: []contactmodel.Relation{{Target: "urn:uuid:1234", Relations: []string{"friend"}}},
 	}}
@@ -370,6 +387,7 @@ func TestDegrade_Related_RedirectsToAgent(t *testing.T) {
 }
 
 func TestDegrade_Member(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{Members: []string{"urn:uuid:5678"}}}
 	out, diags, err := (Adapter{}).Export(rec)
 	if err != nil {
@@ -384,6 +402,7 @@ func TestDegrade_Member(t *testing.T) {
 }
 
 func TestDegrade_NameSurname2(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "surname2", Value: "Garcia"}}},
 	}}
@@ -400,6 +419,7 @@ func TestDegrade_NameSurname2(t *testing.T) {
 }
 
 func TestDegrade_NameGeneration(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "generation", Value: "III"}}},
 	}}
@@ -416,6 +436,7 @@ func TestDegrade_NameGeneration(t *testing.T) {
 }
 
 func TestDegrade_NamePhonetic(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Name: &contactmodel.Name{Full: "x", PhoneticScript: "jat6sin1"},
 	}}
@@ -437,6 +458,7 @@ func TestDegrade_NamePhonetic(t *testing.T) {
 // than drop silently — the same N PHONETIC/SCRIPT/ALTID degradation the row
 // declares (issue #431 round-trip surfaced this as a silent drop).
 func TestDegrade_NamePhoneticSystem(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Name: &contactmodel.Name{Full: "x", PhoneticSystem: "latn"},
 	}}
@@ -453,6 +475,7 @@ func TestDegrade_NamePhoneticSystem(t *testing.T) {
 }
 
 func TestDegrade_AdrExtraComponentKind(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Addresses: []contactmodel.Address{{
 			Components: []contactmodel.AddressComponent{
@@ -474,6 +497,7 @@ func TestDegrade_AdrExtraComponentKind(t *testing.T) {
 }
 
 func TestDegrade_NoteParams(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Notes: []contactmodel.Note{{Note: "hi", Author: &contactmodel.Author{Name: "Bob"}}},
 	}}
@@ -495,6 +519,7 @@ func TestDegrade_NoteParams(t *testing.T) {
 }
 
 func TestDegrade_PassthroughJSContact(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Passthrough: contactmodel.Passthrough{
 		JSContact: map[string]json.RawMessage{"/foo": json.RawMessage(`"bar"`)},
 	}}
@@ -513,6 +538,7 @@ func TestDegrade_PassthroughJSContact(t *testing.T) {
 // empty note text, so a param-carrying empty note dropped the params
 // silently — found by the round-trip property.
 func TestDegrade_NoteParamsOnEmptyNote(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Notes: []contactmodel.Note{{
 			Note:    "",
@@ -532,6 +558,7 @@ func TestDegrade_NoteParamsOnEmptyNote(t *testing.T) {
 // full-timestamp birthday is rendered date-only by vCard 3.0, dropping the
 // time-of-day, so it must warn rather than drop silently.
 func TestDegrade_AnniversaryTimestampedBirth(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Anniversaries: []contactmodel.Anniversary{{
 			Kind: "birth",
@@ -553,6 +580,7 @@ func TestDegrade_AnniversaryTimestampedBirth(t *testing.T) {
 // TestDegrade_AnniversaryTimestampedWedding pins the same TEST-07 fix for the
 // wedding anniversary redirect.
 func TestDegrade_AnniversaryTimestampedWedding(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Anniversaries: []contactmodel.Anniversary{{
 			Kind: "wedding",
