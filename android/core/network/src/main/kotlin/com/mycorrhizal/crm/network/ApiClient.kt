@@ -654,9 +654,16 @@ class ApiClient(
     suspend fun deleteActivity(id: Int): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH/$id")
 
-    /** POST /api/v1/activities — wrapped `{ message, activity }`, unwrapped here. */
-    suspend fun createActivity(input: ActivityInput): Result<Activity> =
-        executePost(ACTIVITIES_PATH, input) { _, body ->
+    /**
+     * POST /api/v1/activities — wrapped `{ message, activity }`, unwrapped here.
+     *
+     * ANDROID-02 (issue #479): the outbox sync passes the row's [idempotencyKey] so a retry
+     * after an ambiguous failure (server committed, response lost) replays the stored response
+     * instead of creating a second Activity — see CON-04/ADR-0010. Other callers omit it and
+     * get a plain, non-idempotent create.
+     */
+    suspend fun createActivity(input: ActivityInput, idempotencyKey: String? = null): Result<Activity> =
+        executePost(ACTIVITIES_PATH, input, idempotencyKey = idempotencyKey) { _, body ->
             moshi.adapter(CreateActivityResponse::class.java).fromJson(body)?.activity
         }
 
@@ -1752,13 +1759,18 @@ class ApiClient(
     private suspend fun <T> executePost(
         path: String,
         body: Any,
+        idempotencyKey: String? = null,
         mapper: (okhttp3.Response, String) -> T?,
     ): Result<T> {
-        val request = Request.Builder()
+        val requestBuilder = Request.Builder()
             .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
             .post(body.toJsonBody())
-            .build()
-        return execute(request, mapper)
+        // CON-04/ADR-0010 (issue #479): an outbox-sync retry must be recognized as one by the
+        // server. The key is per logical operation, generated once when the row is recorded.
+        if (idempotencyKey != null) {
+            requestBuilder.addHeader(IDEMPOTENCY_KEY_HEADER, idempotencyKey)
+        }
+        return execute(requestBuilder.build(), mapper)
     }
 
     private suspend fun <T> executePostEmpty(
@@ -1921,6 +1933,13 @@ class ApiClient(
     }
 
     companion object {
+        /**
+         * CON-04/ADR-0010 (issue #459/#479): the client-supplied idempotency header. The outbox
+         * sync worker sends each pending row's key on every attempt; the server replays the
+         * stored outcome for a repeated (user, key) instead of running the handler twice.
+         */
+        const val IDEMPOTENCY_KEY_HEADER = "Idempotency-Key"
+
         /**
          * Every request is built against this placeholder origin and rewritten
          * onto the configured server by [BaseUrlInterceptor]. Public so Coil
