@@ -11,6 +11,11 @@ import androidx.room.PrimaryKey
  *
  * The SMS body is deliberately NOT stored: only the sender phone + timestamp
  * are captured (§6.2 privacy boundary — the server never sees message content).
+ *
+ * ANDROID-02 (issue #479): [idempotencyKey] is the row's per-row CON-04 retry
+ * key (ADR-0010), generated at record time and backfilled by the v17
+ * migration — it makes an ambiguous-failure retry (server committed, response
+ * lost) replay instead of duplicating. See the domain type's doc comment.
  */
 @Entity(tableName = "pending_interactions")
 data class PendingInteraction(
@@ -28,4 +33,6 @@ data class PendingInteraction(
     /** True once a server Activity has been created from this row. */
     val synced: Boolean = false,
     val syncedAt: String? = null,
+    /** CON-04/ADR-0010 retry key (v17); null only pre-backfill. */
+    val idempotencyKey: String? = null,
 )

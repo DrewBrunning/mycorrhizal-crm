@@ -1133,6 +1133,41 @@ class ApiClientTest {
     }
 
     @Test
+    fun `create activity sends the idempotency key header when one is supplied`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"message":"ok","activity":{"ID":7,"title":"Call"}}"""),
+        )
+
+        val result = client.createActivity(
+            ActivityInput(title = "Call", date = "2026-09-04T00:00:00Z", type = "call"),
+            idempotencyKey = "row-key-1",
+        )
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        // ANDROID-02 (issue #479): the outbox's per-row retry key must reach the server on the
+        // wire, or an ambiguous-failure retry creates a duplicate Activity (CON-04/ADR-0010).
+        assertEquals("row-key-1", request.getHeader("Idempotency-Key"))
+    }
+
+    @Test
+    fun `create activity sends no idempotency key header when none is supplied`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"message":"ok","activity":{"ID":7,"title":"Call"}}"""),
+        )
+
+        val result = client.createActivity(ActivityInput(title = "Call", type = "call"))
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals(null, request.getHeader("Idempotency-Key"))
+    }
+
+    @Test
     fun `update activity sends a PUT and parses the raw activity`() = runBlocking {
         server.enqueue(
             MockResponse()

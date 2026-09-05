@@ -19,7 +19,9 @@ import com.mycorrhizal.crm.data.repository.AppLocale
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
+import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
 import com.mycorrhizal.crm.feature.tracking.NotificationBuilder
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.ui.R
@@ -59,6 +61,20 @@ class MainActivity : ComponentActivity() {
     // device-registration lifecycle against the real backend.
     @Inject
     lateinit var apiClient: ApiClient
+
+    // ANDROID-02 (issue #479): exposed purely for the offline-sync E2E suite —
+    // it queues interactions through the real outbox repository (the same call
+    // the call-log/SMS capture paths make) and drives the real periodic sync
+    // worker against the real backend, rather than exercising a mocked copy.
+    @Inject
+    lateinit var pendingInteractionRepository: PendingInteractionRepository
+
+    // ANDROID-02 (issue #479): the same suite enables the call/SMS tracking
+    // opt-ins through the real DataStore-backed repository the worker itself
+    // reads (InteractionSyncWorker gates on these), so the E2E run is the real
+    // production gate, not a test-only backdoor.
+    @Inject
+    lateinit var trackingSettings: TrackingSettingsRepository
 
     // M5 §6.6 (issue #152): the most recent notification deep link to route the
     // NavHost to. Notifications carry it as an extra on their content intent;
