@@ -13,6 +13,7 @@ func init() {
 }
 
 func TestImport_NoteAuthor(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("note-author.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -34,6 +35,7 @@ func TestImport_NoteAuthor(t *testing.T) {
 }
 
 func TestImport_Keywords(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("keywords.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {

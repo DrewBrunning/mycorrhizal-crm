@@ -12,6 +12,7 @@ func init() {
 }
 
 func TestExport_UID(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{UID: "urn:uuid:test-uid", Name: &contactmodel.Name{Full: "Test"}}}
 	out, _, err := Adapter{}.Export(rec)
 	if err != nil {
@@ -21,6 +22,7 @@ func TestExport_UID(t *testing.T) {
 }
 
 func TestExport_Kind(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{Kind: "group", Name: &contactmodel.Name{Full: "Group"}}}
 	out, _, err := Adapter{}.Export(rec)
 	if err != nil {
@@ -30,6 +32,7 @@ func TestExport_Kind(t *testing.T) {
 }
 
 func TestExport_ProdID(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{ProdID: "-//Mycorrhizal//Test 1.0//EN", Name: &contactmodel.Name{Full: "Test"}}}
 	out, _, err := Adapter{}.Export(rec)
 	if err != nil {
@@ -39,6 +42,7 @@ func TestExport_ProdID(t *testing.T) {
 }
 
 func TestExport_Updated(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Updated: &contactmodel.Timestamp{UTC: "1996-10-22T14:00:00Z"},
 		Name:    &contactmodel.Name{Full: "Test"},
@@ -51,6 +55,7 @@ func TestExport_Updated(t *testing.T) {
 }
 
 func TestExport_Created(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Created: &contactmodel.Timestamp{UTC: "2022-07-05T09:34:12Z"},
 		Name:    &contactmodel.Name{Full: "Test"},
@@ -63,6 +68,7 @@ func TestExport_Created(t *testing.T) {
 }
 
 func TestExport_Language(t *testing.T) {
+	t.Parallel()
 	// Matches the verbatim RFC 9554 §3.3 example: LANGUAGE:de-AT.
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Language: "de-AT",

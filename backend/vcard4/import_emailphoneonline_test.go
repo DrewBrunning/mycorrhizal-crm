@@ -18,6 +18,7 @@ func init() {
 }
 
 func TestImport_Email(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("rfc6350-baseline.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -29,6 +30,7 @@ func TestImport_Email(t *testing.T) {
 }
 
 func TestImport_Phone(t *testing.T) {
+	t.Parallel()
 	raw := []byte("BEGIN:VCARD\r\nVERSION:4.0\r\nUID:phone-example\r\nFN:Test\r\nTEL;PREF=1;TYPE=home,voice:+1-555-555-0100\r\nEND:VCARD\r\n")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -53,6 +55,7 @@ func TestImport_Phone(t *testing.T) {
 }
 
 func TestImport_Impp(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("impp.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -69,6 +72,7 @@ func TestImport_Impp(t *testing.T) {
 // on the SOCIALPROFILE branch, silently losing both params when they
 // appeared on IMPP.
 func TestImport_ImppServiceTypeUsername(t *testing.T) {
+	t.Parallel()
 	raw := []byte("BEGIN:VCARD\r\nVERSION:4.0\r\nUID:impp-svc\r\nFN:Test\r\n" +
 		"IMPP;SERVICE-TYPE=xmpp;USERNAME=alice@example.com:xmpp:alice@example.com\r\nEND:VCARD\r\n")
 	rec, _, err := Adapter{}.Import(raw)
@@ -91,6 +95,7 @@ func TestImport_ImppServiceTypeUsername(t *testing.T) {
 }
 
 func TestImport_SocialProfile(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("socialprofile.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {

@@ -18,6 +18,7 @@ func init() {
 }
 
 func TestImport_Photo(t *testing.T) {
+	t.Parallel()
 	rec, _, err := Adapter{}.Import(rfctest.LoadFixture("photo.v4.vcf"))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -28,6 +29,7 @@ func TestImport_Photo(t *testing.T) {
 }
 
 func TestImport_Logo(t *testing.T) {
+	t.Parallel()
 	rec, _, err := Adapter{}.Import(rfctest.LoadFixture("logo.v4.vcf"))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -38,6 +40,7 @@ func TestImport_Logo(t *testing.T) {
 }
 
 func TestImport_Sound(t *testing.T) {
+	t.Parallel()
 	rec, _, err := Adapter{}.Import(rfctest.LoadFixture("sound.v4.vcf"))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -48,6 +51,7 @@ func TestImport_Sound(t *testing.T) {
 }
 
 func TestImport_Calendar(t *testing.T) {
+	t.Parallel()
 	rec, _, err := Adapter{}.Import(rfctest.LoadFixture("calendar.v4.vcf"))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -58,6 +62,7 @@ func TestImport_Calendar(t *testing.T) {
 }
 
 func TestImport_FreeBusy(t *testing.T) {
+	t.Parallel()
 	rec, _, err := Adapter{}.Import(rfctest.LoadFixture("freebusy.v4.vcf"))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -68,6 +73,7 @@ func TestImport_FreeBusy(t *testing.T) {
 }
 
 func TestImport_Caladruri(t *testing.T) {
+	t.Parallel()
 	rec, _, err := Adapter{}.Import(rfctest.LoadFixture("caladruri.v4.vcf"))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -78,6 +84,7 @@ func TestImport_Caladruri(t *testing.T) {
 }
 
 func TestImport_Key(t *testing.T) {
+	t.Parallel()
 	rec, _, err := Adapter{}.Import(rfctest.LoadFixture("key.v4.vcf"))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -88,6 +95,7 @@ func TestImport_Key(t *testing.T) {
 }
 
 func TestImport_Directory(t *testing.T) {
+	t.Parallel()
 	rec, _, err := Adapter{}.Import(rfctest.LoadFixture("directory.v4.vcf"))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -105,6 +113,7 @@ func TestImport_Directory(t *testing.T) {
 }
 
 func TestImport_Source(t *testing.T) {
+	t.Parallel()
 	rec, _, err := Adapter{}.Import(rfctest.LoadFixture("source.v4.vcf"))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -115,6 +124,7 @@ func TestImport_Source(t *testing.T) {
 }
 
 func TestImport_Link(t *testing.T) {
+	t.Parallel()
 	rec, _, err := Adapter{}.Import(rfctest.LoadFixture("link.v4.vcf"))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -125,6 +135,7 @@ func TestImport_Link(t *testing.T) {
 }
 
 func TestImport_ContactURI(t *testing.T) {
+	t.Parallel()
 	rec, _, err := Adapter{}.Import(rfctest.LoadFixture("contacturi.v4.vcf"))
 	if err != nil {
 		t.Fatalf("Import: %v", err)

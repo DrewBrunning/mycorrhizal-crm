@@ -12,6 +12,7 @@ func init() {
 }
 
 func TestExport_Nickname(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Nicknames: []contactmodel.Nickname{{Name: "Johnny", Contexts: []string{"work"}, Pref: intPtr(1)}},
 	}}
@@ -28,6 +29,7 @@ func TestExport_Nickname(t *testing.T) {
 // never survives a re-import — churning the serialized form across a repeated
 // conversion.
 func TestExport_NicknameSkipsEmpty(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Nicknames: []contactmodel.Nickname{{Name: ""}, {Name: "Bobby"}},
 	}}

@@ -12,6 +12,7 @@ func init() {
 }
 
 func TestImport_Nickname(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("nickname.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -23,6 +24,7 @@ func TestImport_Nickname(t *testing.T) {
 }
 
 func TestImport_NicknamePrefType(t *testing.T) {
+	t.Parallel()
 	raw := []byte("BEGIN:VCARD\r\nVERSION:4.0\r\nUID:nick-pt\r\nFN:Test\r\nNICKNAME;PREF=1;TYPE=work:Johnny\r\nEND:VCARD\r\n")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {

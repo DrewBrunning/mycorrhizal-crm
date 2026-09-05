@@ -19,6 +19,7 @@ func partialDate(y, m, d int) contactmodel.AnniversaryDate {
 }
 
 func TestExport_AnniversaryBirth(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Anniversaries: []contactmodel.Anniversary{{Kind: "birth", Date: partialDate(1985, 4, 12)}},
 	}}
@@ -30,6 +31,7 @@ func TestExport_AnniversaryBirth(t *testing.T) {
 }
 
 func TestExport_AnniversaryWedding(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Anniversaries: []contactmodel.Anniversary{{Kind: "wedding", Date: partialDate(2009, 8, 16)}},
 	}}
@@ -41,6 +43,7 @@ func TestExport_AnniversaryWedding(t *testing.T) {
 }
 
 func TestExport_AnniversaryDeath(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Anniversaries: []contactmodel.Anniversary{{Kind: "death", Date: partialDate(1996, 4, 15)}},
 	}}
@@ -52,6 +55,7 @@ func TestExport_AnniversaryDeath(t *testing.T) {
 }
 
 func TestExport_AnniversaryPlaceBirth(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Anniversaries: []contactmodel.Anniversary{{Kind: "birth", Place: &contactmodel.Address{Full: "Babies'R'Us Hospital"}}},
 	}}
@@ -63,6 +67,7 @@ func TestExport_AnniversaryPlaceBirth(t *testing.T) {
 }
 
 func TestExport_AnniversaryPlaceDeath(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Anniversaries: []contactmodel.Anniversary{{Kind: "death", Place: &contactmodel.Address{Coordinates: "geo:41.7325,-49.9469"}}},
 	}}

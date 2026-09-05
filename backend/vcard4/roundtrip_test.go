@@ -14,6 +14,7 @@ import (
 // import_*/export_*/coverage_test.go job).
 
 func TestRoundtrip_RFC6350Baseline(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("rfc6350-baseline.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -46,6 +47,7 @@ func TestRoundtrip_RFC6350Baseline(t *testing.T) {
 }
 
 func TestRoundtrip_NExpanded(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("n-expanded.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -60,6 +62,7 @@ func TestRoundtrip_NExpanded(t *testing.T) {
 }
 
 func TestRoundtrip_AdrExpanded(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("adr-expanded.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -96,6 +99,7 @@ func TestRoundtrip_AdrExpanded(t *testing.T) {
 }
 
 func TestRoundtrip_Pronouns(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("pronouns.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -118,6 +122,7 @@ func TestRoundtrip_Pronouns(t *testing.T) {
 }
 
 func TestRoundtrip_TitleRole(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("title-role.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -150,6 +155,7 @@ func TestRoundtrip_TitleRole(t *testing.T) {
 // "PROP-ID/ID round-trips" bullet: an element's ID, once exported as
 // PROP-ID, must come back as the same ID on re-import (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md).
 func TestRoundtrip_PropIDIdentity(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Name: &contactmodel.Name{Full: "Test"},
 		Emails: []contactmodel.Email{
@@ -215,6 +221,7 @@ var goldenFixturesV4 = []string{
 // the first round trip (e.g. a property that re-imports into a different
 // shape, or an ID re-synthesized differently the second time).
 func TestRoundtripIdempotent_GoldenFixtures(t *testing.T) {
+	t.Parallel()
 	for _, name := range goldenFixturesV4 {
 		t.Run(name, func(t *testing.T) {
 			raw := rfctest.LoadFixture(name)

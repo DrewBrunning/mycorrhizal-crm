@@ -21,6 +21,7 @@ func init() {
 }
 
 func TestImport_AnniversaryBirth(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("anniversary-birth.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -40,6 +41,7 @@ func TestImport_AnniversaryBirth(t *testing.T) {
 }
 
 func TestImport_AnniversaryWedding(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("anniversary-wedding.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -55,6 +57,7 @@ func TestImport_AnniversaryWedding(t *testing.T) {
 }
 
 func TestImport_AnniversaryDeath(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("anniversary-death.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -70,6 +73,7 @@ func TestImport_AnniversaryDeath(t *testing.T) {
 }
 
 func TestImport_AnniversaryDeathValueText(t *testing.T) {
+	t.Parallel()
 	// RFC 6474 §2.3's VALUE=text free-text variant has no neutral
 	// AnniversaryDate representation (per the row's note); it must be
 	// preserved via passthrough, not forced into a bogus PartialDate.
@@ -96,6 +100,7 @@ func TestImport_AnniversaryDeathValueText(t *testing.T) {
 }
 
 func TestImport_AnniversaryPlaceBirth(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("anniversary-place-birth.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -113,6 +118,7 @@ func TestImport_AnniversaryPlaceBirth(t *testing.T) {
 }
 
 func TestImport_AnniversaryPlaceDeath(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("anniversary-place-death.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {

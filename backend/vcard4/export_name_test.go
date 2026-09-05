@@ -16,6 +16,7 @@ func init() {
 }
 
 func TestExport_NameFull(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{Name: &contactmodel.Name{Full: "J. Doe"}}}
 	out, _, err := Adapter{}.Export(rec)
 	if err != nil {
@@ -25,6 +26,7 @@ func TestExport_NameFull(t *testing.T) {
 }
 
 func TestExport_NameComponents(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{Name: &contactmodel.Name{
 		Full: "Dr. John Philip Paul Stevenson Jr.",
 		Components: []contactmodel.NameComponent{
@@ -46,6 +48,7 @@ func TestExport_NameComponents(t *testing.T) {
 }
 
 func TestExport_NameSurname2AndGeneration(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{Name: &contactmodel.Name{
 		Components: []contactmodel.NameComponent{
 			{Kind: "surname", Value: "Garcia"},
@@ -61,6 +64,7 @@ func TestExport_NameSurname2AndGeneration(t *testing.T) {
 }
 
 func TestExport_NameDerivedFN(t *testing.T) {
+	t.Parallel()
 	// Reproduces the golden fixture derived-fn.v4.vcf: N:;John;Quinlan;Mr.;
 	// -> FN;DERIVED=TRUE:Mr. John Quinlan (RFC 9554 §4.4).
 	rec := &contactmodel.Record{Card: contactmodel.Card{Name: &contactmodel.Name{
@@ -78,6 +82,7 @@ func TestExport_NameDerivedFN(t *testing.T) {
 }
 
 func TestExport_NamePhonetic(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{Name: &contactmodel.Name{
 		PhoneticSystem: "jyut",
 		PhoneticScript: "Latn",

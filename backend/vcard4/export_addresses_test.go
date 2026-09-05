@@ -13,6 +13,7 @@ func init() {
 }
 
 func TestExport_Address(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Addresses: []contactmodel.Address{{
 			Components: []contactmodel.AddressComponent{
@@ -35,6 +36,7 @@ func TestExport_Address(t *testing.T) {
 }
 
 func TestExport_AddressGeo(t *testing.T) {
+	t.Parallel()
 	// GEO carries a mandatory literal comma (RFC 5870 geo: URI syntax); see
 	// exportAddresses's comment on the go-vcard quoting limitation this
 	// works around via a post-encode splice rather than the plain Params
@@ -53,6 +55,7 @@ func TestExport_AddressGeo(t *testing.T) {
 }
 
 func TestExport_AddressTZ(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Addresses: []contactmodel.Address{{TimeZone: "America/New_York"}},
 	}}

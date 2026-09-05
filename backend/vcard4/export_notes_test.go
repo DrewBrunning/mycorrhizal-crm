@@ -13,6 +13,7 @@ func init() {
 }
 
 func TestExport_NoteAuthor(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Notes: []contactmodel.Note{{
 			Note:    "This is some note.",
@@ -30,6 +31,7 @@ func TestExport_NoteAuthor(t *testing.T) {
 }
 
 func TestExport_Keywords(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{Keywords: []string{"family", "work"}}}
 	out, _, err := Adapter{}.Export(rec)
 	if err != nil {
@@ -45,6 +47,7 @@ func TestExport_Keywords(t *testing.T) {
 // repeated conversion. An all-empty keyword list must emit no CATEGORIES line
 // at all, and empty entries must be filtered out of a mixed list.
 func TestExport_KeywordsSkipsEmpty(t *testing.T) {
+	t.Parallel()
 	t.Run("all_empty_keywords_emit_no_categories", func(t *testing.T) {
 		out, _, err := Adapter{}.Export(&contactmodel.Record{Card: contactmodel.Card{Keywords: []string{"", ""}}})
 		if err != nil {

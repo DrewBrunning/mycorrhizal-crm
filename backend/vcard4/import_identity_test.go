@@ -16,6 +16,7 @@ func init() {
 }
 
 func TestImport_UID(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("rfc6350-baseline.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -27,6 +28,7 @@ func TestImport_UID(t *testing.T) {
 }
 
 func TestImport_Kind(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("member.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -38,6 +40,7 @@ func TestImport_Kind(t *testing.T) {
 }
 
 func TestImport_ProdID(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("prodid.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -49,6 +52,7 @@ func TestImport_ProdID(t *testing.T) {
 }
 
 func TestImport_Updated(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("updated.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -63,6 +67,7 @@ func TestImport_Updated(t *testing.T) {
 }
 
 func TestImport_Created(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("created.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -77,6 +82,7 @@ func TestImport_Created(t *testing.T) {
 }
 
 func TestImport_Language(t *testing.T) {
+	t.Parallel()
 	// language.v4.vcf: verbatim RFC 9554 §3.3 example, LANGUAGE:de-AT.
 	raw := rfctest.LoadFixture("language.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)

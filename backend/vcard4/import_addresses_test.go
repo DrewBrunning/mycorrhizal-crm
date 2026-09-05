@@ -14,6 +14,7 @@ func init() {
 }
 
 func TestImport_AddressExpanded(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("adr-expanded.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -52,6 +53,7 @@ func TestImport_AddressExpanded(t *testing.T) {
 }
 
 func TestImport_AddressGeo(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("adr-expanded.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -63,6 +65,7 @@ func TestImport_AddressGeo(t *testing.T) {
 }
 
 func TestImport_AddressTZ(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("adr-tz.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {

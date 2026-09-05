@@ -12,6 +12,7 @@ func init() {
 }
 
 func TestImport_Lang(t *testing.T) {
+	t.Parallel()
 	rec, _, err := Adapter{}.Import(rfctest.LoadFixture("lang.v4.vcf"))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -25,6 +26,7 @@ func TestImport_Lang(t *testing.T) {
 }
 
 func TestImport_Related(t *testing.T) {
+	t.Parallel()
 	rec, _, err := Adapter{}.Import(rfctest.LoadFixture("related.v4.vcf"))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -42,6 +44,7 @@ func TestImport_Related(t *testing.T) {
 }
 
 func TestImport_Member(t *testing.T) {
+	t.Parallel()
 	rec, _, err := Adapter{}.Import(rfctest.LoadFixture("member.v4.vcf"))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
