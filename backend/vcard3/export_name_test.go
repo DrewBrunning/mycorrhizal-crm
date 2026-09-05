@@ -32,6 +32,7 @@ func nameRecord() *contactmodel.Record {
 }
 
 func TestExport_NameFull(t *testing.T) {
+	t.Parallel()
 	out, _, err := (Adapter{}).Export(nameRecord())
 	if err != nil {
 		t.Fatalf("Export: %v", err)
@@ -40,6 +41,7 @@ func TestExport_NameFull(t *testing.T) {
 }
 
 func TestExport_NameComponents(t *testing.T) {
+	t.Parallel()
 	out, _, err := (Adapter{}).Export(nameRecord())
 	if err != nil {
 		t.Fatalf("Export: %v", err)
@@ -48,6 +50,7 @@ func TestExport_NameComponents(t *testing.T) {
 }
 
 func TestExport_NameFull_DerivedWhenEmpty(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Name: &contactmodel.Name{
 			Components: []contactmodel.NameComponent{
@@ -70,6 +73,7 @@ func TestExport_NameFull_DerivedWhenEmpty(t *testing.T) {
 // across a repeated conversion. The N line must not be emitted; the per-kind
 // warn documents the loss.
 func TestExport_NameSkipsAllEmptyComponents(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Name: &contactmodel.Name{
 			Components: []contactmodel.NameComponent{{Kind: "surname2", Value: "von Trapp"}},

@@ -12,6 +12,7 @@ func init() {
 }
 
 func TestExport_GrammaticalGender(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		SpeakToAs: &contactmodel.SpeakToAs{GrammaticalGenders: []contactmodel.GrammaticalGender{{Value: "feminine"}}},
 	}}
@@ -26,6 +27,7 @@ func TestExport_GrammaticalGender(t *testing.T) {
 // round trip: every stored GrammaticalGenders[] entry is re-emitted as its
 // own GRAMGENDER field with its own LANGUAGE param (RFC 9554 §3.2).
 func TestExport_GrammaticalGenderMultiple(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		SpeakToAs: &contactmodel.SpeakToAs{GrammaticalGenders: []contactmodel.GrammaticalGender{
 			{Value: "feminine", Language: "de"},
@@ -41,6 +43,7 @@ func TestExport_GrammaticalGenderMultiple(t *testing.T) {
 }
 
 func TestExport_Pronouns(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		SpeakToAs: &contactmodel.SpeakToAs{Pronouns: []contactmodel.Pronouns{{Pronouns: "xe/xir", Pref: intPtr(1)}}},
 	}}
@@ -55,6 +58,7 @@ func TestExport_Pronouns(t *testing.T) {
 // JSContact Pronouns.contexts) must round-trip out as vCard4's PRONOUNS TYPE
 // parameter, not be silently dropped.
 func TestExport_PronounsContexts(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		SpeakToAs: &contactmodel.SpeakToAs{Pronouns: []contactmodel.Pronouns{{Pronouns: "xe/xir", Contexts: []string{"private"}}}},
 	}}

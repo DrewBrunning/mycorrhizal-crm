@@ -14,6 +14,7 @@ func init() {
 }
 
 func TestImport_OrgUnits(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("org-unit.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -32,6 +33,7 @@ func TestImport_OrgUnits(t *testing.T) {
 }
 
 func TestImport_TitleRoleOrganizationID(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("title-role.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {

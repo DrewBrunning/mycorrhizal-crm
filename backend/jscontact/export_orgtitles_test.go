@@ -12,6 +12,7 @@ func init() {
 }
 
 func TestExport_TitleRoleOrg(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "title-role-example",
 		Titles: []contactmodel.Title{
@@ -34,6 +35,7 @@ func TestExport_TitleRoleOrg(t *testing.T) {
 }
 
 func TestExport_OrgUnit(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "org-unit-example",
 		Organizations: []contactmodel.Organization{

@@ -14,6 +14,7 @@ func init() {
 }
 
 func TestExport_Keywords(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{Keywords: []string{"Family", "Friends"}}}
 	out, _, err := (Adapter{}).Export(rec)
 	if err != nil {
@@ -28,6 +29,7 @@ func TestExport_Keywords(t *testing.T) {
 // that never survives a re-import — churning the serialized form across a
 // repeated conversion.
 func TestExport_KeywordsSkipsEmpty(t *testing.T) {
+	t.Parallel()
 	out, _, err := (Adapter{}).Export(&contactmodel.Record{Card: contactmodel.Card{Keywords: []string{"", ""}}})
 	if err != nil {
 		t.Fatalf("Export: %v", err)

@@ -14,6 +14,7 @@ func init() {
 }
 
 func TestExport_Email(t *testing.T) {
+	t.Parallel()
 	pref := 1
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Emails: []contactmodel.Email{{Address: "Frank_Dawson@Lotus.com", Pref: &pref, Contexts: []string{"work"}}},
@@ -34,6 +35,7 @@ func TestExport_Email(t *testing.T) {
 // without a trace AND churning the serialized form across a repeated
 // conversion). It must be dropped with a warn diagnostic instead.
 func TestExport_ContextWithoutV3TokenWarns(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Emails: []contactmodel.Email{{Address: "billing@example.com", Contexts: []string{"billing"}}},
 	}}

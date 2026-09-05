@@ -26,6 +26,7 @@ const resourcesImportVCF = "BEGIN:VCARD\n" +
 	"END:VCARD\n"
 
 func TestImport_Photo(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(resourcesImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -43,6 +44,7 @@ func TestImport_Photo(t *testing.T) {
 }
 
 func TestImport_Logo(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(resourcesImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -60,6 +62,7 @@ func TestImport_Logo(t *testing.T) {
 }
 
 func TestImport_Sound(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(resourcesImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -77,6 +80,7 @@ func TestImport_Sound(t *testing.T) {
 }
 
 func TestImport_Calendar(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(resourcesImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -90,6 +94,7 @@ func TestImport_Calendar(t *testing.T) {
 }
 
 func TestImport_FreeBusy(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(resourcesImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -103,6 +108,7 @@ func TestImport_FreeBusy(t *testing.T) {
 }
 
 func TestImport_Caladruri(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(resourcesImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -113,6 +119,7 @@ func TestImport_Caladruri(t *testing.T) {
 }
 
 func TestImport_Key(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(resourcesImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -124,6 +131,7 @@ func TestImport_Key(t *testing.T) {
 }
 
 func TestImport_Source(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(resourcesImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -137,6 +145,7 @@ func TestImport_Source(t *testing.T) {
 }
 
 func TestImport_Link(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(resourcesImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)

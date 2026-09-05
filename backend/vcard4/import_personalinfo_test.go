@@ -14,6 +14,7 @@ func init() {
 }
 
 func TestImport_Expertise(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("expertise.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -36,6 +37,7 @@ func TestImport_Expertise(t *testing.T) {
 }
 
 func TestImport_Hobby(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("hobby.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -51,6 +53,7 @@ func TestImport_Hobby(t *testing.T) {
 }
 
 func TestImport_Interest(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("interest.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {

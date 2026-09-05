@@ -12,6 +12,7 @@ func init() {
 }
 
 func TestExport_UIDAndKind(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:  "22B2C7DF-9120-4969-8460-05956FE6B065",
 		Kind: "individual",
@@ -28,6 +29,7 @@ func TestExport_UIDAndKind(t *testing.T) {
 }
 
 func TestExport_ProdID(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:    "prodid-example",
 		ProdID: "-//ACME//AddressBook//EN",
@@ -45,6 +47,7 @@ func TestExport_ProdID(t *testing.T) {
 // exactly like Updated. The @type-discriminated Timestamp object form is
 // reserved for the anniversary date union.
 func TestExport_Created(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:     "created-example",
 		Created: &contactmodel.Timestamp{UTC: "2021-08-24T18:30:00Z"},
@@ -57,6 +60,7 @@ func TestExport_Created(t *testing.T) {
 }
 
 func TestExport_Updated(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:     "updated-example",
 		Updated: &contactmodel.Timestamp{UTC: "2021-08-24T18:30:00Z"},
@@ -69,6 +73,7 @@ func TestExport_Updated(t *testing.T) {
 }
 
 func TestExport_Language(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:      "language-example",
 		Language: "de-AT",

@@ -28,6 +28,7 @@ import (
 //  2. updating it bumps the revision to 2 and re-derives the ETag;
 //  3. the revision column persists exactly what the in-memory struct says.
 func TestRevisionToken_RealMigratedSchema(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "revision-real.db")
 	db := dbtest.NewAt(t, dbPath)
 
@@ -121,6 +122,7 @@ func assertRevisionContract(t *testing.T, table string, id any, etag string, rev
 // migrated schema") and hand-verified per CLAUDE.md: temporarily reverting the
 // counter increment in Contact.AfterSave makes this fail.
 func TestRevisionCounterSubSecondResolution_RealMigratedSchema(t *testing.T) {
+	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "subsecond-real.db")
 	db := dbtest.NewAt(t, dbPath)
 

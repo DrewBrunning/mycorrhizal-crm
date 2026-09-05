@@ -13,6 +13,7 @@ func init() {
 }
 
 func TestExport_OrgUnits(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Organizations: []contactmodel.Organization{{Name: "Example Corp", Units: []contactmodel.OrgUnit{{Name: "Sales"}, {Name: "East"}}}},
 	}}
@@ -31,6 +32,7 @@ func TestExport_OrgUnits(t *testing.T) {
 // an org must not emit an ORG line at all, and empty units must be filtered
 // out of a named org.
 func TestExport_OrganizationSkipsEmptyContent(t *testing.T) {
+	t.Parallel()
 	t.Run("all_empty_org_emits_no_org_line", func(t *testing.T) {
 		rec := &contactmodel.Record{Card: contactmodel.Card{
 			Organizations: []contactmodel.Organization{{Name: "", Units: []contactmodel.OrgUnit{{Name: ""}}}},
@@ -56,6 +58,7 @@ func TestExport_OrganizationSkipsEmptyContent(t *testing.T) {
 }
 
 func TestExport_TitleRoleOrganizationID(t *testing.T) {
+	t.Parallel()
 	// Reproduces golden fixture title-role.v4.vcf's GROUP-linking mechanism
 	// (RFC 9555 §2.9.6): a Title with Kind=role and a matching
 	// OrganizationID must share a synthetic GROUP prefix with its ORG.

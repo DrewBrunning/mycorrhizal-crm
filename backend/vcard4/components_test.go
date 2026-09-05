@@ -10,6 +10,7 @@ import (
 // --- escape / split / join round-trips ---
 
 func TestEscapeUnescapeComponentRoundTrip(t *testing.T) {
+	t.Parallel()
 	cases := []string{
 		"",
 		"plain",
@@ -30,6 +31,7 @@ func TestEscapeUnescapeComponentRoundTrip(t *testing.T) {
 }
 
 func TestEscapeComponentDoesNotEscapeCommaOrNewline(t *testing.T) {
+	t.Parallel()
 	// Comma and newline escaping is intentionally left to go-vcard's own line
 	// encoder (see the comment on escapeComponent); this codec only escapes
 	// "\" and ";" so it doesn't collide with that downstream escaping.
@@ -41,6 +43,7 @@ func TestEscapeComponentDoesNotEscapeCommaOrNewline(t *testing.T) {
 }
 
 func TestSplitComponentsHonorsEscapedSemicolon(t *testing.T) {
+	t.Parallel()
 	// "1 Main St\; Suite 2" must not be split at the escaped semicolon.
 	value := `1 Main St\; Suite 2;Anytown`
 	got := splitComponents(value)
@@ -51,6 +54,7 @@ func TestSplitComponentsHonorsEscapedSemicolon(t *testing.T) {
 }
 
 func TestSplitComponentsEmptyTrailingFields(t *testing.T) {
+	t.Parallel()
 	value := ";;a;;"
 	got := splitComponents(value)
 	want := []string{"", "", "a", "", ""}
@@ -60,6 +64,7 @@ func TestSplitComponentsEmptyTrailingFields(t *testing.T) {
 }
 
 func TestJoinSplitComponentsRoundTrip(t *testing.T) {
+	t.Parallel()
 	cases := [][]string{
 		{"a", "b", "c"},
 		{"", "", ""},
@@ -77,6 +82,7 @@ func TestJoinSplitComponentsRoundTrip(t *testing.T) {
 }
 
 func TestSplitComponentsMinimumOneElement(t *testing.T) {
+	t.Parallel()
 	got := splitComponents("")
 	want := []string{""}
 	if !reflect.DeepEqual(got, want) {
@@ -87,6 +93,7 @@ func TestSplitComponentsMinimumOneElement(t *testing.T) {
 // --- N (7-component) assembly / disassembly round-trips ---
 
 func TestNAssembleDisassembleRoundTrip(t *testing.T) {
+	t.Parallel()
 	cases := []NComponents{
 		{Family: "Public", Given: "John", Additional: "Quinlan", Prefix: "Mr.", Suffix: "Esq."},
 		{
@@ -106,6 +113,7 @@ func TestNAssembleDisassembleRoundTrip(t *testing.T) {
 }
 
 func TestNAssembleFieldOrder(t *testing.T) {
+	t.Parallel()
 	n := NComponents{
 		Family: "F", Given: "G", Additional: "A", Prefix: "P",
 		Suffix: "S", Surname2: "S2", Generation: "Gen",
@@ -118,6 +126,7 @@ func TestNAssembleFieldOrder(t *testing.T) {
 }
 
 func TestDisassembleNLegacyFiveComponent(t *testing.T) {
+	t.Parallel()
 	// Legacy/short-form N values (e.g. the 5-component RFC 6350 form) must
 	// leave the two RFC 9554 trailing components empty rather than erroring.
 	got := disassembleN("Doe;J.;;;")
@@ -130,6 +139,7 @@ func TestDisassembleNLegacyFiveComponent(t *testing.T) {
 // --- ADR (18-component) assembly / disassembly round-trips ---
 
 func TestAdrAssembleDisassembleRoundTrip(t *testing.T) {
+	t.Parallel()
 	cases := []AdrComponents{
 		{Street: "123 Main Street", Locality: "Any Town", Region: "CA", Code: "91921-1234", Country: "U.S.A"},
 		{}, // all-empty
@@ -157,6 +167,7 @@ func TestAdrAssembleDisassembleRoundTrip(t *testing.T) {
 //	  ;;123 Main Street;Any Town;CA;91921-1234;U.S.A
 //	  ;;;;123;Main Street;;;;;;
 func TestAdrFieldOrderMatchesRFC9554Example(t *testing.T) {
+	t.Parallel()
 	a := AdrComponents{
 		Street: "123 Main Street", Locality: "Any Town", Region: "CA",
 		Code: "91921-1234", Country: "U.S.A", Number: "123", StreetName: "Main Street",
@@ -177,6 +188,7 @@ func TestAdrFieldOrderMatchesRFC9554Example(t *testing.T) {
 }
 
 func TestDisassembleAdrLegacySevenComponent(t *testing.T) {
+	t.Parallel()
 	got := disassembleAdr(";;123 Main Street;Any Town;CA;91921-1234;U.S.A.")
 	want := AdrComponents{
 		Street: "123 Main Street", Locality: "Any Town", Region: "CA",
@@ -190,6 +202,7 @@ func TestDisassembleAdrLegacySevenComponent(t *testing.T) {
 // --- PROP-ID / group / X-ABLabel label handling ---
 
 func TestGroupForIndex(t *testing.T) {
+	t.Parallel()
 	cases := map[int]string{1: "item1", 2: "item2", 42: "item42"}
 	for n, want := range cases {
 		if got := groupForIndex(n); got != want {
@@ -199,6 +212,7 @@ func TestGroupForIndex(t *testing.T) {
 }
 
 func TestIsXABLabelField(t *testing.T) {
+	t.Parallel()
 	if !isXABLabelField("X-ABLabel") {
 		t.Error("isXABLabelField(\"X-ABLabel\") = false, want true")
 	}
@@ -211,6 +225,7 @@ func TestIsXABLabelField(t *testing.T) {
 }
 
 func TestLabelFromXABLabel(t *testing.T) {
+	t.Parallel()
 	// Hand-built field group, generalizing the item{n}.X-ABLabel pattern from
 	// backend/carddav/vcard_mapper.go's addTypedField/labelFromGroup.
 	labelFields := []*vcard.Field{
@@ -234,6 +249,7 @@ func TestLabelFromXABLabel(t *testing.T) {
 }
 
 func TestNormalizeAppleLabel(t *testing.T) {
+	t.Parallel()
 	cases := map[string]string{
 		"_$!<Home>!$_":   "home",
 		"_$!<Work>!$_":   "work",
@@ -249,6 +265,7 @@ func TestNormalizeAppleLabel(t *testing.T) {
 }
 
 func TestPropIDGetSet(t *testing.T) {
+	t.Parallel()
 	f := &vcard.Field{Value: "+15550000000"}
 	if got := propID(f); got != "" {
 		t.Errorf("propID on fresh field = %q, want \"\"", got)
@@ -273,6 +290,7 @@ func TestPropIDGetSet(t *testing.T) {
 // label, then resolve that label back out of the X-ABLabel property's field
 // list on import.
 func TestLabelHandlingHandBuiltFieldGroups(t *testing.T) {
+	t.Parallel()
 	card := vcard.Card{}
 
 	g1 := groupForIndex(1)

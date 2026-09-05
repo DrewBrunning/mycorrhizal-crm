@@ -14,6 +14,7 @@ func init() {
 }
 
 func TestImport_AnniversaryBirth(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "anniversary-birth-example",
 		"anniversaries": {
@@ -37,6 +38,7 @@ func TestImport_AnniversaryBirth(t *testing.T) {
 }
 
 func TestImport_AnniversaryWedding(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "anniversary-wedding-example",
 		"anniversaries": {
@@ -57,6 +59,7 @@ func TestImport_AnniversaryWedding(t *testing.T) {
 }
 
 func TestImport_AnniversaryDeath(t *testing.T) {
+	t.Parallel()
 	// RFC 6474 §2.3's DEATHDATE:19960415 worked example, expressed in JSContact.
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "anniversary-death-example",
@@ -78,6 +81,7 @@ func TestImport_AnniversaryDeath(t *testing.T) {
 }
 
 func TestImport_AnniversaryPlaceBirth(t *testing.T) {
+	t.Parallel()
 	// RFC 6474 §2.1's BIRTHPLACE:Babies'R'Us Hospital worked example.
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "anniversary-place-birth-example",
@@ -103,6 +107,7 @@ func TestImport_AnniversaryPlaceBirth(t *testing.T) {
 }
 
 func TestImport_AnniversaryPlaceDeath(t *testing.T) {
+	t.Parallel()
 	// RFC 6474 §2.2's DEATHPLACE:Aboard the Titanic\, near Newfoundland worked example.
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "anniversary-place-death-example",

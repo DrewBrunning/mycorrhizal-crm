@@ -16,6 +16,7 @@ func init() {
 }
 
 func TestImport_PassthroughVCardProps(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "pt-vcard-example",
 		"vCardProps": [
@@ -40,6 +41,7 @@ func TestImport_PassthroughVCardProps(t *testing.T) {
 // property must not cause an error, and must be preserved (not silently
 // dropped) via Record.Passthrough.JSContact.
 func TestImport_PassthroughUnknownTopLevelProperty(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "pt-jscontact-example",
 		"x-vendor-extension": { "foo": "bar", "n": 42 }
@@ -82,6 +84,7 @@ func keysOfJSContactPassthrough(r *contactmodel.Record) []string {
 // earlier (buggy) version of this adapter would have produced (or, since it
 // couldn't see the value at all, simply dropped).
 func TestImport_PassthroughUnknownNestedProperty(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "pt-nested-example",
 		"emails": {
@@ -116,6 +119,7 @@ func TestImport_PassthroughUnknownNestedProperty(t *testing.T) {
 // ("/addresses/{id}/components/{index}/{key}"), not just a single
 // id-map-element level.
 func TestImport_PassthroughUnknownDeeplyNestedProperty(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "pt-deep-nested-example",
 		"addresses": {

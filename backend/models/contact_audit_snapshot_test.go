@@ -67,6 +67,7 @@ func TestAudit_ContactUpdateSnapshotCapturesNestedData(t *testing.T) {
 // while non-photo media (logo/sound, which have no flat home) survive, and the
 // persisted Card is untouched.
 func TestAudit_ContactSnapshotStripsPhotoMedia(t *testing.T) {
+	t.Parallel()
 	c := &Contact{
 		Card: contactmodel.Card{Media: []contactmodel.Resource{
 			{Kind: "photo", URI: "data:image/jpeg;base64,AAAA", MediaType: "image/jpeg"},
@@ -90,6 +91,7 @@ func TestAudit_ContactSnapshotStripsPhotoMedia(t *testing.T) {
 // once they are present. A deny-listed key at any depth of the nested Card is
 // stripped; innocent sibling keys survive.
 func TestAudit_SnapshotRedactionReachesNestedData(t *testing.T) {
+	t.Parallel()
 	snap := ContactAuditSnapshot{
 		Contact: Contact{Firstname: "Ada"},
 		Card: contactmodel.Card{
@@ -122,6 +124,7 @@ func TestAudit_SnapshotRedactionReachesNestedData(t *testing.T) {
 // Contact (what undoContact reads). This is the shape the /audit API serves and
 // POST /audit/:id/undo consumes.
 func TestAudit_ContactAuditSnapshotRoundTrip(t *testing.T) {
+	t.Parallel()
 	c := &Contact{Firstname: "Ada", Lastname: "Lovelace"}
 	c.Card = contactmodel.Card{
 		Name:         &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Ada"}}},

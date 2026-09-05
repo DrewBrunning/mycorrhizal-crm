@@ -12,6 +12,7 @@ func init() {
 }
 
 func TestExport_Address(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "adr-example",
 		Addresses: []contactmodel.Address{
@@ -35,6 +36,7 @@ func TestExport_Address(t *testing.T) {
 }
 
 func TestExport_AddressGeo(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:       "adr-geo-example",
 		Addresses: []contactmodel.Address{{ID: "ADR-1", Coordinates: "geo:46.772673,-71.282945"}},
@@ -47,6 +49,7 @@ func TestExport_AddressGeo(t *testing.T) {
 }
 
 func TestExport_AddressTZ(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:       "adr-tz-example",
 		Addresses: []contactmodel.Address{{ID: "ADR-1", TimeZone: "America/New_York"}},

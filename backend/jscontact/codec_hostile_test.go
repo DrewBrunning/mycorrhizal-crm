@@ -8,6 +8,7 @@ import (
 // TestUnmarshal_UTF8BOM pins the TEST-04 js-bom fix: a UTF-8 BOM prefix must
 // be stripped, not reject the card.
 func TestUnmarshal_UTF8BOM(t *testing.T) {
+	t.Parallel()
 	raw := "\xef\xbb\xbf{\"@type\":\"Card\",\"version\":\"1.0\",\"uid\":\"bom\",\"name\":{\"full\":\"Ada Lovelace\"}}"
 	c, err := Unmarshal([]byte(raw))
 	if err != nil {
@@ -22,6 +23,7 @@ func TestUnmarshal_UTF8BOM(t *testing.T) {
 // null is not a Card instance and must error rather than silently decode to
 // an empty card.
 func TestUnmarshal_NullRejected(t *testing.T) {
+	t.Parallel()
 	for _, raw := range []string{"null", "  null  ", "\nnull\n"} {
 		_, err := Unmarshal([]byte(raw))
 		if err == nil || !strings.Contains(err.Error(), "not a JSContact Card") {
@@ -32,6 +34,7 @@ func TestUnmarshal_NullRejected(t *testing.T) {
 
 // TestUnmarshal_EmptyRejected: an empty document is not a Card either.
 func TestUnmarshal_EmptyRejected(t *testing.T) {
+	t.Parallel()
 	for _, raw := range []string{"", "   ", "\n"} {
 		if _, err := Unmarshal([]byte(raw)); err == nil {
 			t.Errorf("Unmarshal(%q) succeeded, want error", raw)
@@ -43,6 +46,7 @@ func TestUnmarshal_EmptyRejected(t *testing.T) {
 // importUnknownTopLevel re-parses the raw bytes, so the strip must happen
 // before both passes.
 func TestAdapterImport_UTF8BOM(t *testing.T) {
+	t.Parallel()
 	raw := "\xef\xbb\xbf{\"@type\":\"Card\",\"version\":\"1.0\",\"uid\":\"bom\",\"name\":{\"full\":\"Ada Lovelace\"},\"xCustom\":1}"
 	rec, _, err := Adapter{}.Import([]byte(raw))
 	if err != nil {

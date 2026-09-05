@@ -18,6 +18,7 @@ func init() {
 }
 
 func TestImport_Email(t *testing.T) {
+	t.Parallel()
 	// email.jscontact.json: hand-authored minimal fixture, RFC 9553
 	// §2.3.1 EmailAddress object shape.
 	raw := rfctest.LoadFixture("email.jscontact.json")
@@ -34,6 +35,7 @@ func TestImport_Email(t *testing.T) {
 }
 
 func TestImport_Phone(t *testing.T) {
+	t.Parallel()
 	// phone.jscontact.json: hand-authored minimal fixture, RFC 9553
 	// §2.3.3 Phone object shape.
 	raw := rfctest.LoadFixture("phone.jscontact.json")
@@ -50,6 +52,7 @@ func TestImport_Phone(t *testing.T) {
 }
 
 func TestImport_IMPP(t *testing.T) {
+	t.Parallel()
 	// vCardName="impp" (RFC 9555 §2.7.2/§2.15.3) is the hint that routes this
 	// entry into Card.ImppAddresses rather than Card.OtherOnlineServices.
 	raw := []byte(`{
@@ -71,6 +74,7 @@ func TestImport_IMPP(t *testing.T) {
 }
 
 func TestImport_SocialProfile(t *testing.T) {
+	t.Parallel()
 	// vCardName="socialprofile" (RFC 9555 §2.7.5/§2.15.3) is the hint that
 	// routes this entry into Card.SocialProfiles rather than
 	// Card.OtherOnlineServices.
@@ -97,6 +101,7 @@ func TestImport_SocialProfile(t *testing.T) {
 }
 
 func TestImport_OnlineServiceNoVCardNameHint(t *testing.T) {
+	t.Parallel()
 	// No vCardName hint at all: per docs/adrs/0002-correspondence-table-locked-oracle.md, this must
 	// route to Card.OtherOnlineServices — never guessed into ImppAddresses
 	// or SocialProfiles by a presence-based heuristic (e.g. service/user set).

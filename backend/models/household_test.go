@@ -24,6 +24,7 @@ func setupHouseholdTestDB(t *testing.T) *gorm.DB {
 }
 
 func TestHouseholdBeforeCreateGeneratesUUID(t *testing.T) {
+	t.Parallel()
 	db := setupHouseholdTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -35,6 +36,7 @@ func TestHouseholdBeforeCreateGeneratesUUID(t *testing.T) {
 }
 
 func TestHouseholdBeforeCreatePreservesExplicitID(t *testing.T) {
+	t.Parallel()
 	db := setupHouseholdTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -49,6 +51,7 @@ func TestHouseholdBeforeCreatePreservesExplicitID(t *testing.T) {
 // index on (household_id, member_vcard_uid) is what the suggestion engine's
 // idempotency relies on being enforceable at all.
 func TestHouseholdMemberUniqueConstraintRejectsDuplicate(t *testing.T) {
+	t.Parallel()
 	db := setupHouseholdTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -69,6 +72,7 @@ func TestHouseholdMemberUniqueConstraintRejectsDuplicate(t *testing.T) {
 // The same contact must still be addable to two DIFFERENT households — the
 // uniqueness is scoped to the (household, member) pair, not the member alone.
 func TestHouseholdMemberAllowsSameContactInDifferentHouseholds(t *testing.T) {
+	t.Parallel()
 	db := setupHouseholdTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)

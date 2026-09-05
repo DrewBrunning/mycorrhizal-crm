@@ -13,6 +13,7 @@ func init() {
 }
 
 func TestExport_Title(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Titles: []contactmodel.Title{{Kind: "title", Name: "Vice President"}},
 	}}
@@ -24,6 +25,7 @@ func TestExport_Title(t *testing.T) {
 }
 
 func TestExport_Role(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Titles: []contactmodel.Title{{Kind: "role", Name: "Executive"}},
 	}}

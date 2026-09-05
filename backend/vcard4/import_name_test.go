@@ -31,6 +31,7 @@ func nameComponent(t *testing.T, comps []contactmodel.NameComponent, kind string
 }
 
 func TestImport_NameFull_Baseline(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("rfc6350-baseline.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -42,6 +43,7 @@ func TestImport_NameFull_Baseline(t *testing.T) {
 }
 
 func TestImport_NameComponents_Expanded(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("n-expanded.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -70,6 +72,7 @@ func TestImport_NameComponents_Expanded(t *testing.T) {
 }
 
 func TestImport_NameSurname2(t *testing.T) {
+	t.Parallel()
 	// name.surname2 has no dedicated golden fixture; n-expanded.v4.vcf's N
 	// value has an empty 6th (surname2) component (Stevenson;John;Philip,Paul;
 	// Dr.;Jr.,M.D.,A.C.P.;;Jr.), so exercise the concept directly against a
@@ -95,6 +98,7 @@ func TestImport_NameSurname2(t *testing.T) {
 }
 
 func TestImport_NameDerivedFN_NotAuthoritative(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("derived-fn.v4.vcf")
 	rec, diags, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -132,6 +136,7 @@ func TestImport_NameDerivedFN_NotAuthoritative(t *testing.T) {
 }
 
 func TestImport_NamePhonetic(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("phonetic-n.v4.vcf")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {

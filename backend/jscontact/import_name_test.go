@@ -21,6 +21,7 @@ func init() {
 }
 
 func TestImport_NameGivenSurname(t *testing.T) {
+	t.Parallel()
 	// johndoe.jscontact.json (RFC 9553 Fig. 6): components = [given:John, surname:Doe].
 	raw := rfctest.LoadFixture("johndoe.jscontact.json")
 	rec, _, err := Adapter{}.Import(raw)
@@ -45,6 +46,7 @@ func TestImport_NameGivenSurname(t *testing.T) {
 }
 
 func TestImport_NameFull(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{"@type":"Card","version":"1.0","uid":"name-full-example","name":{"@type":"Name","full":"Dr. John Doe Jr."}}`)
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -56,6 +58,7 @@ func TestImport_NameFull(t *testing.T) {
 }
 
 func TestImport_NameGiven2TitleCredentialSurname2Generation(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "name-expanded-example",
 		"name": {
@@ -94,6 +97,7 @@ func TestImport_NameGiven2TitleCredentialSurname2Generation(t *testing.T) {
 }
 
 func TestImport_NamePhonetic(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{"@type":"Card","version":"1.0","uid":"name-phonetic-example","name":{"@type":"Name","full":"Bocelli","phoneticScript":"Latn","phoneticSystem":"ipa"}}`)
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {

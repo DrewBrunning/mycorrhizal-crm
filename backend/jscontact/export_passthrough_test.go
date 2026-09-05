@@ -14,6 +14,7 @@ func init() {
 }
 
 func TestExport_PassthroughVCardProps(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "pt-vcard-example",
 	}}
@@ -33,6 +34,7 @@ func TestExport_PassthroughVCardProps(t *testing.T) {
 // fixture with an unknown top-level property and re-exporting it must
 // re-emit that property unchanged (docs/adrs/0003-golden-fixtures-external-test-oracle.md).
 func TestExport_PassthroughUnknownTopLevelPropertyIsTrueInverse(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "pt-jscontact-roundtrip-example",
 		"x-vendor-extension": { "foo": "bar", "n": 42 }
@@ -56,6 +58,7 @@ func TestExport_PassthroughUnknownTopLevelPropertyIsTrueInverse(t *testing.T) {
 // this adapter actually maps (e.g. "/uid") must never shadow or duplicate
 // the mapped value.
 func TestExport_PassthroughDeDupGuard(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{UID: "mapped-uid-wins"}}
 	rec.Passthrough.JSContact = map[string]json.RawMessage{
 		"/uid": json.RawMessage(`"should-never-appear"`),
@@ -75,6 +78,7 @@ func TestExport_PassthroughDeDupGuard(t *testing.T) {
 // or (as an earlier, buggy version of this adapter would have done, had it
 // even recovered the value) mis-splice it at the Card's top level.
 func TestExport_PassthroughUnknownNestedPropertyIsTrueInverse(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "pt-nested-roundtrip-example",
 		"emails": {
@@ -103,6 +107,7 @@ func TestExport_PassthroughUnknownNestedPropertyIsTrueInverse(t *testing.T) {
 // (addresses{}.components[]) must round-trip at its full mixed map/array
 // pointer.
 func TestExport_PassthroughUnknownDeeplyNestedPropertyIsTrueInverse(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "pt-deep-nested-roundtrip-example",
 		"addresses": {

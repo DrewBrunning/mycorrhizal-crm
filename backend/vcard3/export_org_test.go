@@ -14,6 +14,7 @@ func init() {
 }
 
 func TestExport_Org(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Organizations: []contactmodel.Organization{{
 			Name:  "Lotus Development Corporation",
@@ -33,6 +34,7 @@ func TestExport_Org(t *testing.T) {
 // would churn the serialized form across a repeated conversion. It must emit
 // no ORG line at all, and empty units must be filtered out of a named org.
 func TestExport_OrgSkipsAllEmptyContent(t *testing.T) {
+	t.Parallel()
 	t.Run("all_empty_org_emits_no_org_line", func(t *testing.T) {
 		rec := &contactmodel.Record{Card: contactmodel.Card{
 			Organizations: []contactmodel.Organization{{Name: "", Units: []contactmodel.OrgUnit{{Name: ""}}}},

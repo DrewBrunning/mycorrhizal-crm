@@ -20,6 +20,7 @@ func init() {
 }
 
 func TestImport_MediaResources(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "media-resources-example",
 		"media": {
@@ -51,6 +52,7 @@ func TestImport_MediaResources(t *testing.T) {
 }
 
 func TestImport_CalendarAndFreeBusy(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "calendar-resources-example",
 		"calendars": {
@@ -71,6 +73,7 @@ func TestImport_CalendarAndFreeBusy(t *testing.T) {
 }
 
 func TestImport_CaladrURIAndKey(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "caladruri-key-example",
 		"schedulingAddresses": { "S1": { "@type": "SchedulingAddress", "uri": "mailto:janedoe@example.com" } },
@@ -89,6 +92,7 @@ func TestImport_CaladrURIAndKey(t *testing.T) {
 }
 
 func TestImport_DirectoryAndSource(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "directory-source-example",
 		"directories": {
@@ -118,6 +122,7 @@ func TestImport_DirectoryAndSource(t *testing.T) {
 }
 
 func TestImport_LinkAndContactURI(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "link-contacturi-example",
 		"links": {

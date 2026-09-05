@@ -10,6 +10,7 @@ import (
 )
 
 func TestAdvanceForRunAccruesConsecutiveFailures(t *testing.T) {
+	t.Parallel()
 	var h SyncHealthFields
 	base := time.Date(2026, 8, 27, 12, 0, 0, 0, time.UTC)
 	boom := errors.New("boom")
@@ -52,6 +53,7 @@ func TestAdvanceForRunAccruesConsecutiveFailures(t *testing.T) {
 }
 
 func TestAdvanceForRunReturnsPersistableUpdates(t *testing.T) {
+	t.Parallel()
 	var h SyncHealthFields
 	now := time.Date(2026, 8, 27, 12, 0, 0, 0, time.UTC)
 
@@ -70,6 +72,7 @@ func TestAdvanceForRunReturnsPersistableUpdates(t *testing.T) {
 }
 
 func TestAdvanceForRunTerminalFailureLifecycle(t *testing.T) {
+	t.Parallel()
 	var h SyncHealthFields
 	base := time.Date(2026, 8, 27, 12, 0, 0, 0, time.UTC)
 	boom := errors.New("401 unauthorized")
@@ -100,6 +103,7 @@ func TestAdvanceForRunTerminalFailureLifecycle(t *testing.T) {
 }
 
 func TestClearTerminalStateLiftsWithoutRecordingARun(t *testing.T) {
+	t.Parallel()
 	h := SyncHealthFields{
 		ConsecutiveFailures: 4,
 		TerminalReason:      "auth-expiry",

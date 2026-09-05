@@ -13,6 +13,7 @@ func init() {
 }
 
 func TestExport_Note(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Notes: []contactmodel.Note{{Note: "Met at IETF."}},
 	}}
