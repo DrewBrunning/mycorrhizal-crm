@@ -17,6 +17,7 @@ func init() {
 }
 
 func TestExport_Photo(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Media: []contactmodel.Resource{{Kind: "photo", URI: "data:image/jpeg;base64,/9j/4AAQ"}},
 	}}
@@ -28,6 +29,7 @@ func TestExport_Photo(t *testing.T) {
 }
 
 func TestExport_Photo_BareURI(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Media: []contactmodel.Resource{{Kind: "photo", URI: "https://example.com/frank.jpg"}},
 	}}
@@ -39,6 +41,7 @@ func TestExport_Photo_BareURI(t *testing.T) {
 }
 
 func TestExport_Logo(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Media: []contactmodel.Resource{{Kind: "logo", URI: "data:image/png;base64,iVBORw0K"}},
 	}}
@@ -50,6 +53,7 @@ func TestExport_Logo(t *testing.T) {
 }
 
 func TestExport_Sound(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Media: []contactmodel.Resource{{Kind: "sound", URI: "data:audio/basic;base64,AAAA"}},
 	}}
@@ -61,6 +65,7 @@ func TestExport_Sound(t *testing.T) {
 }
 
 func TestExport_Calendar(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Calendars: []contactmodel.Resource{{URI: "http://cal.example.com/frank"}},
 	}}
@@ -72,6 +77,7 @@ func TestExport_Calendar(t *testing.T) {
 }
 
 func TestExport_FreeBusy(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		FreeBusyURLs: []contactmodel.Resource{{URI: "http://fb.example.com/frank"}},
 	}}
@@ -83,6 +89,7 @@ func TestExport_FreeBusy(t *testing.T) {
 }
 
 func TestExport_Caladruri(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		SchedulingAddresses: []contactmodel.Resource{{URI: "mailto:frank@example.com"}},
 	}}
@@ -94,6 +101,7 @@ func TestExport_Caladruri(t *testing.T) {
 }
 
 func TestExport_Key(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		CryptoKeys: []contactmodel.Resource{{URI: "data:application/x509;base64,MIIBIjANBgkqhkiG"}},
 	}}
@@ -105,6 +113,7 @@ func TestExport_Key(t *testing.T) {
 }
 
 func TestExport_Source(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Directories: []contactmodel.Resource{{Kind: "entry", URI: "ldap://ldap.example.com/cn=Frank"}},
 	}}
@@ -116,6 +125,7 @@ func TestExport_Source(t *testing.T) {
 }
 
 func TestExport_Link(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Links: []contactmodel.Resource{{URI: "http://home.earthlink.net/~fdawson", Contexts: []string{"work"}}},
 	}}

@@ -14,6 +14,7 @@ const anniversaryBirthImportVCF = "BEGIN:VCARD\n" +
 	"END:VCARD\n"
 
 func TestImport_AnniversaryBirth(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(anniversaryBirthImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -35,6 +36,7 @@ func TestImport_AnniversaryBirth(t *testing.T) {
 // not fall through to the timestamp default (issue #431 round-trip surfaced
 // this as a mangled date).
 func TestImport_AnniversaryBirthYearlessDashed(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte("BEGIN:VCARD\nVERSION:3.0\nFN:Leap\nBDAY:--02-29\nEND:VCARD\n"))
 	if err != nil {
 		t.Fatalf("Import: %v", err)

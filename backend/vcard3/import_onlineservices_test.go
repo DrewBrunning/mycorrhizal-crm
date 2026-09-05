@@ -17,6 +17,7 @@ const imppImportVCF = "BEGIN:VCARD\n" +
 	"END:VCARD\n"
 
 func TestImport_Impp(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(imppImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -51,6 +52,7 @@ const imppImportWithServiceAndUsernameVCF = "BEGIN:VCARD\n" +
 	"END:VCARD\n"
 
 func TestImport_ImppWithServiceAndUsername(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(imppImportWithServiceAndUsernameVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -78,6 +80,7 @@ const socialImportVCF = "BEGIN:VCARD\n" +
 	"END:VCARD\n"
 
 func TestImport_Social(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(socialImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -110,6 +113,7 @@ const socialImportWithUsernameVCF = "BEGIN:VCARD\n" +
 	"END:VCARD\n"
 
 func TestImport_SocialWithUsername(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(socialImportWithUsernameVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)

@@ -13,6 +13,7 @@ func init() {
 }
 
 func TestExport_UID(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{UID: "frank-dawson-uid-1"}}
 	out, _, err := (Adapter{}).Export(rec)
 	if err != nil {
@@ -22,6 +23,7 @@ func TestExport_UID(t *testing.T) {
 }
 
 func TestExport_ProdID(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{ProdID: "-//Mycorrhizal// Test//EN"}}
 	out, _, err := (Adapter{}).Export(rec)
 	if err != nil {
@@ -31,6 +33,7 @@ func TestExport_ProdID(t *testing.T) {
 }
 
 func TestExport_Updated(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Updated: &contactmodel.Timestamp{UTC: "2023-01-02T03:04:05Z"},
 	}}
@@ -42,6 +45,7 @@ func TestExport_Updated(t *testing.T) {
 }
 
 func TestExport_AlwaysHasVersion3(t *testing.T) {
+	t.Parallel()
 	out, _, err := (Adapter{}).Export(&contactmodel.Record{})
 	if err != nil {
 		t.Fatalf("Export: %v", err)

@@ -14,6 +14,7 @@ const orgImportVCF = "BEGIN:VCARD\n" +
 	"END:VCARD\n"
 
 func TestImport_Org(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(orgImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -27,6 +28,7 @@ func TestImport_Org(t *testing.T) {
 }
 
 func TestImport_OrgUnit(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(orgImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)

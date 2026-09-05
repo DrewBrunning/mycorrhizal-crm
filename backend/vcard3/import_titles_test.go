@@ -15,6 +15,7 @@ const titlesImportVCF = "BEGIN:VCARD\n" +
 	"END:VCARD\n"
 
 func TestImport_Title(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(titlesImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -31,6 +32,7 @@ func TestImport_Title(t *testing.T) {
 }
 
 func TestImport_Role(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(titlesImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)

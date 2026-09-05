@@ -21,6 +21,7 @@ const nameImportVCF = "BEGIN:VCARD\n" +
 	"END:VCARD\n"
 
 func TestImport_NameFull(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(nameImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -35,6 +36,7 @@ func TestImport_NameFull(t *testing.T) {
 }
 
 func TestImport_NameComponents(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(nameImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)

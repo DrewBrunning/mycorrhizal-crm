@@ -39,6 +39,7 @@ func neutralRoundtripFixture(pref int) *contactmodel.Record {
 // independent of any correspondence-row bookkeeping, so a shared
 // misconception in this package's own tests cannot hide behind it.
 func TestRoundtrip_RFC2426Baseline(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("rfc2426-baseline.v3.vcf")
 	rec, diags, err := (Adapter{}).Import(raw)
 	if err != nil {
@@ -95,6 +96,7 @@ func TestRoundtrip_RFC2426Baseline(t *testing.T) {
 // produced above and spot-checks a few properties survive the
 // import -> neutral -> export leg (P -> neutral -> P).
 func TestRoundtrip_RFC2426Baseline_ReExport(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("rfc2426-baseline.v3.vcf")
 	rec, _, err := (Adapter{}).Import(raw)
 	if err != nil {
@@ -114,6 +116,7 @@ func TestRoundtrip_RFC2426Baseline_ReExport(t *testing.T) {
 // neutral) and checks the round trip preserves a representative set of
 // fully-mapped fields.
 func TestRoundtrip_NeutralExportImport(t *testing.T) {
+	t.Parallel()
 	pref := 1
 	rec := neutralRoundtripFixture(pref)
 
@@ -154,6 +157,7 @@ var goldenFixturesV3 = []string{
 // cycle, a second cycle must reproduce byte-identical output. See
 // vcard4/roundtrip_test.go's copy of this test for the full rationale.
 func TestRoundtripIdempotent_GoldenFixtures(t *testing.T) {
+	t.Parallel()
 	for _, name := range goldenFixturesV3 {
 		t.Run(name, func(t *testing.T) {
 			raw := rfctest.LoadFixture(name)

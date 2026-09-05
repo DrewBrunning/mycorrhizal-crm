@@ -13,6 +13,7 @@ func init() {
 }
 
 func TestExport_AnniversaryBirth(t *testing.T) {
+	t.Parallel()
 	year, month, day := 1996, 4, 15
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Anniversaries: []contactmodel.Anniversary{{

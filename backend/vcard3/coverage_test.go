@@ -34,6 +34,7 @@ func registerExportCoverage(conceptIDs ...string) {
 // (v3_prop not "-") has been exercised by at least one import test and one
 // export test in this package (docs/adrs/0003-golden-fixtures-external-test-oracle.md).
 func TestCoverage_AllMappedConceptsHaveImportAndExportTests(t *testing.T) {
+	t.Parallel()
 	for _, row := range correspondence.Load() {
 		if row.V3Prop == "-" {
 			continue

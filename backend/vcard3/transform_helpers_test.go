@@ -5,6 +5,7 @@ import (
 )
 
 func TestIsAllDigits(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		in   string
@@ -30,6 +31,7 @@ func TestIsAllDigits(t *testing.T) {
 }
 
 func TestGeoURIToLatLon(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name   string
 		in     string
@@ -68,6 +70,7 @@ func TestGeoURIToLatLon(t *testing.T) {
 }
 
 func TestLatLonToGeoURI(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name   string
 		in     string

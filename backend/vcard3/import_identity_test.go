@@ -15,6 +15,7 @@ const identityImportVCF = "BEGIN:VCARD\n" +
 	"END:VCARD\n"
 
 func TestImport_UID(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(identityImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -25,6 +26,7 @@ func TestImport_UID(t *testing.T) {
 }
 
 func TestImport_ProdID(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(identityImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -35,6 +37,7 @@ func TestImport_ProdID(t *testing.T) {
 }
 
 func TestImport_Updated(t *testing.T) {
+	t.Parallel()
 	rec, _, err := (Adapter{}).Import([]byte(identityImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -50,6 +53,7 @@ func TestImport_Updated(t *testing.T) {
 
 // Sanity: no diagnostics fire for plain, fully-mapped identity fields.
 func TestImport_Identity_NoDiagnostics(t *testing.T) {
+	t.Parallel()
 	_, diags, err := (Adapter{}).Import([]byte(identityImportVCF))
 	if err != nil {
 		t.Fatalf("Import: %v", err)

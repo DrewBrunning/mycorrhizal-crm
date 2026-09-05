@@ -14,6 +14,7 @@ func init() {
 }
 
 func TestExport_PassthroughVCard(t *testing.T) {
+	t.Parallel()
 	val, _ := json.Marshal("hello")
 	rec := &contactmodel.Record{Passthrough: contactmodel.Passthrough{
 		VCard: []contactmodel.JCardProp{{Name: "x-custom-prop", Type: "text", Value: val}},
@@ -28,6 +29,7 @@ func TestExport_PassthroughVCard(t *testing.T) {
 // De-dup guard: a passthrough entry whose name is already produced by
 // a mapped row (e.g. UID) must not be re-emitted a second time.
 func TestExport_PassthroughVCard_DedupGuard(t *testing.T) {
+	t.Parallel()
 	val, _ := json.Marshal("should-not-appear")
 	rec := &contactmodel.Record{
 		Card: contactmodel.Card{UID: "real-uid"},
