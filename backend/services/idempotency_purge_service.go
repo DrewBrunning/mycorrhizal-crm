@@ -49,9 +49,15 @@ func PurgeExpiredIdempotencyKeys(db *gorm.DB, cfg config.Config) {
 // don't double-purge.
 func PurgeExpiredIdempotencyKeysScheduled(db *gorm.DB, cfg config.Config) {
 	acquired, err := acquireJobLock(db, models.JobNameIdempotencyKeyPurge, idempotencyKeyPurgeMinInterval)
-	if err != nil {
-		logger.Error().Err(err).Msg("idempotency key purge: failed to check job lock")
-		return
+	// The error branch below is structurally unreachable today: acquireJobLock
+	// normalizes every transaction failure (a lost connection, a locked DB)
+	// into (acquired=false, err=nil) — job_lock.go returns `err == nil, nil` —
+	// so a failing lock check lands in the `!acquired` path, not here. Kept as
+	// the defensive guard the (bool, error) contract implies for a future
+	// acquireJobLock that propagates errors.
+	if err != nil { // # pragma: no cover — unreachable: acquireJobLock never returns an error (job_lock.go returns err == nil, nil)
+		logger.Error().Err(err).Msg("idempotency key purge: failed to check job lock") // # pragma: no cover — see the comment above
+		return                                                                         // # pragma: no cover — see the comment above
 	}
 	if !acquired {
 		return

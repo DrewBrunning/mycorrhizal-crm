@@ -192,7 +192,13 @@ func (w *responseCapture) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
+// WriteString is an interface-conformance shim: it exists only to satisfy
+// gin.ResponseWriter's WriteString method (gin-gonic/gin@v1.12.0/response_writer.go:37).
+// Gin's rendering never calls it — render.WriteString funnels through
+// fmt.Fprintf(w, ...), which ends in Write — and no handler in this codebase
+// calls c.Writer.WriteString directly. Provably dead, kept only for the
+// interface.
 func (w *responseCapture) WriteString(s string) (int, error) {
-	w.body.WriteString(s)
-	return w.ResponseWriter.WriteString(s)
+	w.body.WriteString(s)                  // # pragma: no cover — interface-conformance shim gin never invokes; see the method comment
+	return w.ResponseWriter.WriteString(s) // # pragma: no cover — interface-conformance shim gin never invokes; see the method comment
 }

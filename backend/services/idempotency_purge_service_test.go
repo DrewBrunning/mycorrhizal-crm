@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -85,4 +86,76 @@ func TestPurgeExpiredIdempotencyKeysScheduled_JobLockGuards(t *testing.T) {
 	seedIdemKey(t, db, uid, "ancient-2", 48*time.Hour)
 	PurgeExpiredIdempotencyKeysScheduled(db, cfg)
 	assert.EqualValues(t, 1, countIdemKeys(t, db), "the job lock suppresses the immediate second run")
+}
+
+// --- failure branches (issue #809) -----------------------------------------
+
+// TestPurgeExpiredIdempotencyKeys_DBErrorIsLoggedNotPanic pins the DELETE-error
+// branch of the plain purge: a failed statement is logged and returns, it must
+// not panic. (Same close-the-sql.DB-mid-test technique as
+// db_integrity_service_test.go's TestCheckDBIntegrityErrorsOnClosedConnection.)
+func TestPurgeExpiredIdempotencyKeys_DBErrorIsLoggedNotPanic(t *testing.T) {
+	buf := captureLoggerOutput(t)
+	db, uid := newIdempotencyPurgeDB(t)
+	seedIdemKey(t, db, uid, "ancient", 48*time.Hour)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	require.NotPanics(t, func() {
+		PurgeExpiredIdempotencyKeys(db, config.Config{IdempotencyKeyRetentionHours: 24})
+	})
+	require.Contains(t, buf.String(), "idempotency key purge: failed to delete expired keys")
+}
+
+// TestPurgeExpiredIdempotencyKeysScheduled_LockCheckDBFailureIsSilentNoOp
+// documents the *current* contract of a DB-level failure during the lock check,
+// which issue #809's item 9 assumed would hit the "failed to check job lock"
+// error branch. It cannot: acquireJobLock normalizes every transaction failure
+// into (acquired=false, err=nil) — job_lock.go returns `err == nil, nil` — so a
+// closed-DB lock check is a quiet suppression, not an error. That branch is
+// therefore unreachable and carries a `# pragma: no cover` justification in
+// idempotency_purge_service.go. This test pins the actual behavior so a future
+// acquireJobLock that propagates errors makes this test fail loudly (it would
+// then log "failed to check job lock") instead of changing semantics silently.
+func TestPurgeExpiredIdempotencyKeysScheduled_LockCheckDBFailureIsSilentNoOp(t *testing.T) {
+	buf := captureLoggerOutput(t)
+	db, uid := newIdempotencyPurgeDB(t)
+	seedIdemKey(t, db, uid, "ancient", 48*time.Hour)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	require.NotPanics(t, func() {
+		PurgeExpiredIdempotencyKeysScheduled(db, config.Config{IdempotencyKeyRetentionHours: 24})
+	})
+	require.NotContains(t, buf.String(), "idempotency key purge: failed to check job lock",
+		"acquireJobLock normalizes DB failures to acquired=false; the error branch is unreachable today")
+	require.NotContains(t, buf.String(), "Purged expired idempotency keys",
+		"the job must not run (and therefore not purge) when the lock check cannot reach the database")
+}
+
+// TestPurgeExpiredIdempotencyKeysScheduled_ReleaseLockErrorIsLogged pins the
+// deferred releaseJobLock-error branch. There is no clean seam that fails only
+// the *release*: acquire and release both run inside db.Transaction, and
+// closing the whole DB makes the acquire fail first (the
+// LockCheckDBFailureIsSilentNoOp test above). The release's one distinguishing
+// operation is the final tx.Save(&job) — an UPDATE — so that is poisoned with a
+// GORM update callback registered after seeding. Acquire (query + insert) and
+// the purge DELETE (raw Exec) are unaffected, so the job runs and only the
+// deferred cleanup fails — the branch under test.
+func TestPurgeExpiredIdempotencyKeysScheduled_ReleaseLockErrorIsLogged(t *testing.T) {
+	buf := captureLoggerOutput(t)
+	db, uid := newIdempotencyPurgeDB(t)
+	seedIdemKey(t, db, uid, "ancient", 48*time.Hour)
+
+	require.NoError(t, db.Callback().Update().Before("gorm:update").
+		Register("idempotency_purge_test_fail_release", func(tx *gorm.DB) {
+			tx.AddError(errors.New("simulated release failure"))
+		}))
+
+	require.NotPanics(t, func() {
+		PurgeExpiredIdempotencyKeysScheduled(db, config.Config{IdempotencyKeyRetentionHours: 24})
+	})
+	require.Contains(t, buf.String(), "idempotency key purge: failed to release job lock")
 }
