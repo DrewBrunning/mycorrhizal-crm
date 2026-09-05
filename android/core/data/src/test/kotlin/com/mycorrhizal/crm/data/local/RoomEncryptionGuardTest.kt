@@ -44,12 +44,12 @@ class RoomEncryptionGuardTest {
     @Test
     fun `the passphrase is a fresh 32-byte SecureRandom value, generated on first use`() {
         assertTrue(
-            "RoomPassphraseStore must generate the passphrase from SecureRandom",
-            passphraseStoreSource.contains("SecureRandom().nextBytes"),
+            "RoomPassphraseStore must generate the passphrase from SecureRandom (issue #812 moved the bytes into randomHexPassphrase)",
+            passphraseStoreSource.contains("random.nextBytes(bytes)"),
         )
         assertTrue(
-            "The passphrase must be 32 bytes (256-bit key material)",
-            passphraseStoreSource.contains("ByteArray(32)"),
+            "The passphrase must be 32 bytes by default (256-bit key material)",
+            passphraseStoreSource.contains("byteCount: Int = 32"),
         )
     }
 
