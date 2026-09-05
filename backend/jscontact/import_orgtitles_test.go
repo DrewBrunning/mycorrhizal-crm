@@ -17,6 +17,7 @@ func init() {
 }
 
 func TestImport_TitleRoleOrg(t *testing.T) {
+	t.Parallel()
 	// title-role.jscontact.json (RFC 9555 §2.9.6 golden fixture).
 	raw := rfctest.LoadFixture("title-role.jscontact.json")
 	rec, _, err := Adapter{}.Import(raw)
@@ -41,6 +42,7 @@ func TestImport_TitleRoleOrg(t *testing.T) {
 }
 
 func TestImport_OrgUnit(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "org-unit-example",
 		"organizations": {

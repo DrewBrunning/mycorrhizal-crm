@@ -12,6 +12,7 @@ func init() {
 }
 
 func TestExport_PreferredLanguage(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:                "lang-example",
 		PreferredLanguages: []contactmodel.LanguagePref{{ID: "L1", Language: "en", Pref: intPtr(1)}},
@@ -24,6 +25,7 @@ func TestExport_PreferredLanguage(t *testing.T) {
 }
 
 func TestExport_Related(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "related-example",
 		RelatedTo: []contactmodel.Relation{
@@ -38,6 +40,7 @@ func TestExport_Related(t *testing.T) {
 }
 
 func TestExport_Member(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:     "member-example",
 		Kind:    "group",

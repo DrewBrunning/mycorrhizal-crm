@@ -13,6 +13,7 @@ import (
 // individual fields directly against the correspondence table.
 
 func TestRoundTrip_JohnDoe(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("johndoe.jscontact.json")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -32,6 +33,7 @@ func TestRoundTrip_JohnDoe(t *testing.T) {
 }
 
 func TestRoundTrip_TitleRole(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("title-role.jscontact.json")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -49,6 +51,7 @@ func TestRoundTrip_TitleRole(t *testing.T) {
 }
 
 func TestRoundTrip_Phone(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("phone.jscontact.json")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -63,6 +66,7 @@ func TestRoundTrip_Phone(t *testing.T) {
 }
 
 func TestRoundTrip_Email(t *testing.T) {
+	t.Parallel()
 	raw := rfctest.LoadFixture("email.jscontact.json")
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -80,6 +84,7 @@ func TestRoundTrip_Email(t *testing.T) {
 // import->export cycle, including the vCardProps and unknown-top-level-
 // property passthrough escape hatches together.
 func TestRoundTrip_MultiConceptCard(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "multi-concept-example",
 		"kind": "individual",
@@ -129,6 +134,7 @@ var goldenFixturesJSContact = []string{
 // safe, non-flaky property). See vcard4/roundtrip_test.go's copy of this
 // test for the full rationale.
 func TestRoundtripIdempotent_GoldenFixtures(t *testing.T) {
+	t.Parallel()
 	for _, name := range goldenFixturesJSContact {
 		t.Run(name, func(t *testing.T) {
 			raw := rfctest.LoadFixture(name)

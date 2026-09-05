@@ -27,6 +27,7 @@ func init() {
 }
 
 func TestImport_UIDAndKind(t *testing.T) {
+	t.Parallel()
 	// johndoe.jscontact.json is the RFC 9553 Fig. 6 golden fixture: uid =
 	// "22B2C7DF-9120-4969-8460-05956FE6B065", kind = "individual".
 	raw := rfctest.LoadFixture("johndoe.jscontact.json")
@@ -46,6 +47,7 @@ func TestImport_UIDAndKind(t *testing.T) {
 }
 
 func TestImport_ProdID(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{"@type":"Card","version":"1.0","uid":"prodid-example","prodId":"-//ACME//AddressBook//EN"}`)
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -57,6 +59,7 @@ func TestImport_ProdID(t *testing.T) {
 }
 
 func TestImport_Updated(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{"@type":"Card","version":"1.0","uid":"updated-example","updated":"2021-08-24T18:30:00Z"}`)
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -68,6 +71,7 @@ func TestImport_Updated(t *testing.T) {
 }
 
 func TestImport_Language(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{"@type":"Card","version":"1.0","uid":"language-example","language":"de-AT"}`)
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {
@@ -89,6 +93,7 @@ func TestImport_Language(t *testing.T) {
 // an unmapped top-level key would be a (mapped-property) regression, not a
 // degradation-policy concern.
 func TestImport_Created(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{"@type":"Card","version":"1.0","uid":"created-example","created":"2021-08-24T18:30:00Z"}`)
 	rec, _, err := Adapter{}.Import(raw)
 	if err != nil {

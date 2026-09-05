@@ -16,6 +16,7 @@ func init() {
 }
 
 func TestExport_NameGivenSurname(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "22B2C7DF-9120-4969-8460-05956FE6B065",
 		Name: &contactmodel.Name{
@@ -37,6 +38,7 @@ func TestExport_NameGivenSurname(t *testing.T) {
 }
 
 func TestExport_NameFull(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:  "name-full-example",
 		Name: &contactmodel.Name{Full: "Dr. John Doe Jr."},
@@ -49,6 +51,7 @@ func TestExport_NameFull(t *testing.T) {
 }
 
 func TestExport_NameGiven2TitleCredentialSurname2Generation(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "name-expanded-example",
 		Name: &contactmodel.Name{
@@ -83,6 +86,7 @@ func TestExport_NameGiven2TitleCredentialSurname2Generation(t *testing.T) {
 }
 
 func TestExport_NamePhonetic(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:  "name-phonetic-example",
 		Name: &contactmodel.Name{Full: "Bocelli", PhoneticScript: "Latn", PhoneticSystem: "ipa"},

@@ -12,6 +12,7 @@ func init() {
 }
 
 func TestImport_Address(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "adr-example",
 		"addresses": {
@@ -49,6 +50,7 @@ func TestImport_Address(t *testing.T) {
 }
 
 func TestImport_AddressGeo(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "adr-geo-example",
 		"addresses": { "ADR-1": { "@type": "Address", "coordinates": "geo:46.772673,-71.282945" } }
@@ -63,6 +65,7 @@ func TestImport_AddressGeo(t *testing.T) {
 }
 
 func TestImport_AddressTZ(t *testing.T) {
+	t.Parallel()
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "adr-tz-example",
 		"addresses": { "ADR-1": { "@type": "Address", "timeZone": "America/New_York" } }

@@ -16,6 +16,7 @@ func init() {
 }
 
 func TestExport_MediaResources(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "media-resources-example",
 		Media: []contactmodel.Resource{
@@ -34,6 +35,7 @@ func TestExport_MediaResources(t *testing.T) {
 }
 
 func TestExport_CalendarAndFreeBusy(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:          "calendar-resources-example",
 		Calendars:    []contactmodel.Resource{{ID: "C1", URI: "https://example.com/calendar"}},
@@ -58,6 +60,7 @@ func TestExport_CalendarAndFreeBusy(t *testing.T) {
 }
 
 func TestExport_CaladrURIAndKey(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:                 "caladruri-key-example",
 		SchedulingAddresses: []contactmodel.Resource{{ID: "S1", URI: "mailto:janedoe@example.com"}},
@@ -72,6 +75,7 @@ func TestExport_CaladrURIAndKey(t *testing.T) {
 }
 
 func TestExport_DirectoryAndSource(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "directory-source-example",
 		Directories: []contactmodel.Resource{
@@ -88,6 +92,7 @@ func TestExport_DirectoryAndSource(t *testing.T) {
 }
 
 func TestExport_LinkAndContactURI(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:         "link-contacturi-example",
 		Links:       []contactmodel.Resource{{ID: "L1", URI: "https://example.com/jdoe"}},

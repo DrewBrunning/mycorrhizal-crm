@@ -12,6 +12,7 @@ func init() {
 }
 
 func TestExport_NoteWithAuthor(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "note-author-example",
 		Notes: []contactmodel.Note{
@@ -33,6 +34,7 @@ func TestExport_NoteWithAuthor(t *testing.T) {
 }
 
 func TestExport_Keywords(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:      "keywords-example",
 		Keywords: []string{"family", "work"},
@@ -51,6 +53,7 @@ func TestExport_Keywords(t *testing.T) {
 // concept (ADR-0002) rather than drop silently. The round-trip property
 // found the silent dedupe.
 func TestExport_Keywords_DuplicateWarns(t *testing.T) {
+	t.Parallel()
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Keywords: []string{"e\u0301tude", "e\u0301tude"},
 	}}
