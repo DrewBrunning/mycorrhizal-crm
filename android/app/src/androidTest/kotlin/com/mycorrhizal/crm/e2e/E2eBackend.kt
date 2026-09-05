@@ -165,6 +165,51 @@ class E2eBackend(
     fun undoAuditEvent(id: Long): Int =
         post("/audit/$id/undo", "", authenticated = true).use { it.code }
 
+    // --- activities ----------------------------------------------------------
+
+    /**
+     * Every one of the caller's activities, walking the `next_cursor` pages to
+     * exhaustion. ANDROID-02 (issue #479) uses these to count exactly how many
+     * server Activities an outbox sync produced (matched by `external_ref` +
+     * `date`), which is the "one record per queued entry" assertion.
+     */
+    fun listAllActivities(includeContacts: Boolean = false): List<JSONObject> {
+        val activities = mutableListOf<JSONObject>()
+        var cursor: String? = null
+        repeat(MAX_ACTIVITY_PAGES) {
+            val params = buildString {
+                append("limit=100")
+                cursor?.let { append("&cursor=").append(urlEncode(it)) }
+                if (includeContacts) append("&include=contacts")
+            }
+            get("/activities?$params", authenticated = true).use { response ->
+                check(response.code == 200) {
+                    "activity list failed: ${response.code} ${response.body?.string().orEmpty()}"
+                }
+                val json = JSONObject(response.body?.string().orEmpty())
+                val page = json.optJSONArray("activities") ?: JSONArray()
+                for (i in 0 until page.length()) activities += page.getJSONObject(i)
+                cursor = json.optString("next_cursor").takeIf { it.isNotBlank() }
+            }
+            if (cursor == null) return activities
+        }
+        error("activity list did not converge after $MAX_ACTIVITY_PAGES pages")
+    }
+
+    /** Deletes an activity by server id (used to clean up after an outbox test). */
+    fun deleteActivity(id: Long) {
+        delete("/activities/$id", authenticated = true).use {
+            check(it.code in 200..299 || it.code == 404) {
+                "delete activity failed: ${it.code} ${it.body?.string().orEmpty()}"
+            }
+        }
+    }
+
+    private companion object {
+        /** A full offline-sync test run creates tens of activities, never thousands. */
+        const val MAX_ACTIVITY_PAGES = 50
+    }
+
     // --- transport -----------------------------------------------------------
 
     private fun urlEncode(value: String): String = URLEncoder.encode(value, "UTF-8")
