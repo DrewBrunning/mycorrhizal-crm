@@ -25,6 +25,7 @@ func setupFieldDefinitionTestDB(t *testing.T) *gorm.DB {
 }
 
 func TestFieldDefinitionBeforeCreateGeneratesUUID(t *testing.T) {
+	t.Parallel()
 	db := setupFieldDefinitionTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -40,6 +41,7 @@ func TestFieldDefinitionBeforeCreateGeneratesUUID(t *testing.T) {
 }
 
 func TestFieldDefinitionBeforeCreatePreservesExplicitID(t *testing.T) {
+	t.Parallel()
 	db := setupFieldDefinitionTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -58,6 +60,7 @@ func TestFieldDefinitionBeforeCreatePreservesExplicitID(t *testing.T) {
 // reference (the key is the stable API field name) -- the unique index on
 // (user_id, key) is the real DB-level constraint this depends on.
 func TestFieldDefinitionUniqueConstraintRejectsDuplicateKey(t *testing.T) {
+	t.Parallel()
 	db := setupFieldDefinitionTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -80,6 +83,7 @@ func TestFieldDefinitionUniqueConstraintRejectsDuplicateKey(t *testing.T) {
 // The same key must still be usable by two DIFFERENT users -- uniqueness is
 // scoped to (user, key), not the key alone.
 func TestFieldDefinitionAllowsSameKeyForDifferentUsers(t *testing.T) {
+	t.Parallel()
 	db := setupFieldDefinitionTestDB(t)
 	userA := User{Username: "a", Password: "x", Email: "a@example.com"}
 	userB := User{Username: "b", Password: "x", Email: "b@example.com"}
@@ -103,6 +107,7 @@ func TestFieldDefinitionAllowsSameKeyForDifferentUsers(t *testing.T) {
 // stored -- not just compile, per the lesson that only a real
 // AutoMigrate-backed save/reload catches column/serializer mismatches.
 func TestFieldDefinitionConstraintsRoundTrip(t *testing.T) {
+	t.Parallel()
 	db := setupFieldDefinitionTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -130,6 +135,7 @@ func TestFieldDefinitionConstraintsRoundTrip(t *testing.T) {
 // unique index on (field_definition_id, entity_id) is the real DB-level
 // constraint.
 func TestFieldValueUniqueConstraintRejectsDuplicate(t *testing.T) {
+	t.Parallel()
 	db := setupFieldDefinitionTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)

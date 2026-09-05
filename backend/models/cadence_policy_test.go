@@ -24,6 +24,7 @@ func setupCadencePolicyTestDB(t *testing.T) *gorm.DB {
 }
 
 func TestCadencePolicyBeforeCreateGeneratesUUID(t *testing.T) {
+	t.Parallel()
 	db := setupCadencePolicyTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -37,6 +38,7 @@ func TestCadencePolicyBeforeCreateGeneratesUUID(t *testing.T) {
 }
 
 func TestCadencePolicyBeforeCreatePreservesExplicitID(t *testing.T) {
+	t.Parallel()
 	db := setupCadencePolicyTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -54,6 +56,7 @@ func TestCadencePolicyBeforeCreatePreservesExplicitID(t *testing.T) {
 // only globally non-qualifying type — it can never be re-admitted by listing
 // it in a policy.
 func TestCadencePolicyQualifies_DelegatesToActivityQualifying(t *testing.T) {
+	t.Parallel()
 	policy := CadencePolicy{TargetIntervalDays: 30, QualifyingTypes: nil}
 
 	assert.True(t, policy.Qualifies(&Activity{Type: InteractionTypeCall}))
@@ -67,6 +70,7 @@ func TestCadencePolicyQualifies_DelegatesToActivityQualifying(t *testing.T) {
 }
 
 func TestCadencePolicyQualifies_Filter(t *testing.T) {
+	t.Parallel()
 	policy := CadencePolicy{TargetIntervalDays: 30, QualifyingTypes: []string{InteractionTypeCall, InteractionTypeVisit}}
 
 	assert.True(t, policy.Qualifies(&Activity{Type: InteractionTypeCall}))
@@ -76,6 +80,7 @@ func TestCadencePolicyQualifies_Filter(t *testing.T) {
 }
 
 func TestCadencePolicyQualifies_EmptyMeansAllDefaultQualifyingTypes(t *testing.T) {
+	t.Parallel()
 	policy := CadencePolicy{TargetIntervalDays: 30}
 
 	assert.True(t, policy.Qualifies(&Activity{Type: InteractionTypeMessage}),

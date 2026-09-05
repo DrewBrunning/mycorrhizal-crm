@@ -14,6 +14,7 @@ import (
 // --- Type registry unit tests -----------------------------------------------
 
 func TestIsKnownRelationType(t *testing.T) {
+	t.Parallel()
 	assert.True(t, IsKnownRelationType("parent_of"))
 	assert.True(t, IsKnownRelationType("conflicts_with"))
 	assert.False(t, IsKnownRelationType("not_a_real_type"))
@@ -21,6 +22,7 @@ func TestIsKnownRelationType(t *testing.T) {
 }
 
 func TestInverseRelationType(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		token string
 		want  string
@@ -43,6 +45,7 @@ func TestInverseRelationType(t *testing.T) {
 }
 
 func TestRelationVCardTypeTag(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		token string
 		want  string
@@ -71,6 +74,7 @@ func TestRelationVCardTypeTag(t *testing.T) {
 // a dangling inverse would silently break projection for one direction of a
 // pair without any test noticing until it hit real data.
 func TestRelationTypeRegistryInversesAreConsistent(t *testing.T) {
+	t.Parallel()
 	for _, token := range KnownRelationTypes() {
 		inverse := InverseRelationType(token)
 		assert.NotEmpty(t, inverse, "token %q has no inverse", token)
@@ -81,6 +85,7 @@ func TestRelationTypeRegistryInversesAreConsistent(t *testing.T) {
 // MatchLegacyRelationType is what migration uses to resolve legacy
 // free-text Relationship.Type values to a registered token.
 func TestMatchLegacyRelationType(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		text string
@@ -108,6 +113,7 @@ func TestMatchLegacyRelationType(t *testing.T) {
 // fixtures (relationship_controller_test.go) — confirms the fallback path
 // this migration relies on is real, not hypothetical.
 func TestMatchLegacyRelationTypeNoMatch(t *testing.T) {
+	t.Parallel()
 	for _, text := range []string{"Work", "Family", "", "   ", "asdfghjkl"} {
 		t.Run(text, func(t *testing.T) {
 			_, ok := MatchLegacyRelationType(text)
@@ -117,6 +123,7 @@ func TestMatchLegacyRelationTypeNoMatch(t *testing.T) {
 }
 
 func TestRelatedToFallbackToken(t *testing.T) {
+	t.Parallel()
 	assert.True(t, IsKnownRelationType("related_to"))
 	assert.Equal(t, "related_to", InverseRelationType("related_to"))
 	assert.Equal(t, "contact", RelationVCardTypeTag("related_to"),
@@ -159,6 +166,7 @@ func createRelationshipTestContact(t *testing.T, db *gorm.DB, userID uint, first
 // logic worked through in the design (parent_of A->B => "parent" on B's
 // card, "child" on A's card) rather than just asserting *something* appears.
 func TestRecordForContact_ProjectsConfirmedEdgeOntoBothSides(t *testing.T) {
+	t.Parallel()
 	db := setupRelationshipTestDB(t)
 	user := createRelationshipTestUser(t, db)
 	alice := createRelationshipTestContact(t, db, user.ID, "Alice")
@@ -192,6 +200,7 @@ func TestRecordForContact_ProjectsConfirmedEdgeOntoBothSides(t *testing.T) {
 // same tag on both sides, not require special-casing distinct from the
 // asymmetric parent_of/child_of case above.
 func TestRecordForContact_ProjectsSymmetricEdge(t *testing.T) {
+	t.Parallel()
 	db := setupRelationshipTestDB(t)
 	user := createRelationshipTestUser(t, db)
 	alice := createRelationshipTestContact(t, db, user.ID, "Alice")
@@ -228,6 +237,7 @@ func TestRecordForContact_ProjectsSymmetricEdge(t *testing.T) {
 // "only confirmed edges are authoritative" — a suggested edge (e.g.
 // household-inferred, awaiting user review) must never appear in an export.
 func TestRecordForContact_DoesNotProjectSuggestedEdge(t *testing.T) {
+	t.Parallel()
 	db := setupRelationshipTestDB(t)
 	user := createRelationshipTestUser(t, db)
 	alice := createRelationshipTestContact(t, db, user.ID, "Alice")
@@ -253,6 +263,7 @@ func TestRecordForContact_DoesNotProjectSuggestedEdge(t *testing.T) {
 // exports. Private and secret are both tested since the gate is a single
 // equality check that could accidentally only cover one of them.
 func TestRecordForContact_DoesNotProjectAboveNormalSensitivity(t *testing.T) {
+	t.Parallel()
 	for _, sensitivity := range []string{RelationshipSensitivityPrivate, RelationshipSensitivitySecret} {
 		t.Run(sensitivity, func(t *testing.T) {
 			db := setupRelationshipTestDB(t)
@@ -282,6 +293,7 @@ func TestRecordForContact_DoesNotProjectAboveNormalSensitivity(t *testing.T) {
 // the spec's own example of a type that must stay internal even when
 // confirmed and normal-sensitivity.
 func TestRecordForContact_DoesNotProjectNonStandardType(t *testing.T) {
+	t.Parallel()
 	db := setupRelationshipTestDB(t)
 	user := createRelationshipTestUser(t, db)
 	alice := createRelationshipTestContact(t, db, user.ID, "Alice")
@@ -309,6 +321,7 @@ func TestRecordForContact_DoesNotProjectNonStandardType(t *testing.T) {
 // graph-derived entry that happens to duplicate an existing passthrough fact
 // must not appear twice.
 func TestRecordForContact_MergesWithPassthroughWithoutDuplication(t *testing.T) {
+	t.Parallel()
 	db := setupRelationshipTestDB(t)
 	user := createRelationshipTestUser(t, db)
 	alice := createRelationshipTestContact(t, db, user.ID, "Alice")
@@ -363,6 +376,7 @@ func TestRecordForContact_MergesWithPassthroughWithoutDuplication(t *testing.T) 
 // don't have a *gorm.DB handy — must return existing passthrough data
 // untouched, not panic or silently drop it.
 func TestRecordForContact_NilDBSkipsProjection(t *testing.T) {
+	t.Parallel()
 	c := &Contact{
 		Firstname: "Standalone",
 		Card: contactmodel.Card{
@@ -379,6 +393,7 @@ func TestRecordForContact_NilDBSkipsProjection(t *testing.T) {
 // this pins the backend half -- the one the validator and the vCard projection
 // both read -- rather than only asserting the token exists.
 func TestCoworkerRelationType(t *testing.T) {
+	t.Parallel()
 	assert.True(t, IsKnownRelationType("coworker_of"))
 
 	// Symmetric: one stored direction, and the inverse is itself. If this ever

@@ -31,6 +31,7 @@ func mkDerivedContact(t *testing.T, db *gorm.DB) *Contact {
 // A contact last written through the ordinary GORM path is a fixpoint: the
 // recompute finds nothing to change.
 func TestRecomputeDerivedColumns_FreshContactIsAFixpoint(t *testing.T) {
+	t.Parallel()
 	db := dbtest.New(t)
 	c := mkDerivedContact(t, db)
 	require.Empty(t, c.RecomputeDerivedColumns(),
@@ -41,6 +42,7 @@ func TestRecomputeDerivedColumns_FreshContactIsAFixpoint(t *testing.T) {
 // migration or a hook-bypassing bulk import — is detected, named, and paired
 // with the value it should hold.
 func TestRecomputeDerivedColumns_DetectsEachDrift(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		col     string
 		set     string // raw value to force into the column
@@ -79,6 +81,7 @@ func TestRecomputeDerivedColumns_DetectsEachDrift(t *testing.T) {
 // sort_name is compared case-insensitively so migration 000021's ASCII-only
 // lower() backfill of a non-ASCII name is not perpetually flagged as drift.
 func TestRecomputeDerivedColumns_SortNameCaseFoldedNotFlagged(t *testing.T) {
+	t.Parallel()
 	db := dbtest.New(t)
 	u := User{Username: "sn", Password: "password123!A", Email: "sn@example.com"}
 	require.NoError(t, db.Create(&u).Error)

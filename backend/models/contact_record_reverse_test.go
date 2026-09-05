@@ -18,6 +18,7 @@ import (
 // Photo/PhotoThumbnail — persisting the dead URL instead would break VCF/
 // JSContact export and CardDAV, whose consumers cannot fetch a relative path.
 func TestApplyRecordToContact_ReDerivesRelativePhotoURL(t *testing.T) {
+	t.Parallel()
 	photoDir := t.TempDir()
 	writeTestJPEG(t, filepath.Join(photoDir, "disk_photo.jpg"))
 
@@ -60,6 +61,7 @@ func TestApplyRecordToContact_ReDerivesRelativePhotoURL(t *testing.T) {
 // data-URI photo in the incoming card is still decoded and persisted to disk
 // (the pre-M6 behavior the round-trip test at the top of this file depends on).
 func TestApplyRecordToContact_RealPhotoRoundTripStillPersists(t *testing.T) {
+	t.Parallel()
 	photoDir := t.TempDir()
 	thumb := testJPEGDataURL()
 
@@ -96,6 +98,7 @@ func TestApplyRecordToContact_RealPhotoRoundTripStillPersists(t *testing.T) {
 // photoDir) then decodes and persists back to disk — proving the photo
 // round-trips through Card.Media in both directions, not just one.
 func TestApplyRecordToContact_RoundTrip(t *testing.T) {
+	t.Parallel()
 	original := fullyPopulatedContact()
 	photoDir := t.TempDir()
 	record := RecordFromContact(original, photoDir)
@@ -242,6 +245,7 @@ func TestApplyRecordToContact_RoundTrip(t *testing.T) {
 // the "five fields the flat projection can store" narrowing this ticket
 // closes.
 func TestAddressMapping_RoundTripsSubStreetFields(t *testing.T) {
+	t.Parallel()
 	neutral := contactmodel.Address{
 		Components: []contactmodel.AddressComponent{
 			{Kind: "postOfficeBox", Value: "PO Box 42"},
@@ -298,6 +302,7 @@ func TestAddressMapping_RoundTripsSubStreetFields(t *testing.T) {
 // legacy free-text Type straight into Contexts (Address has no Label field),
 // so an unrecognized context is user data that must survive, not be blanked.
 func TestAddressMapping_TranslatesContextsToLegacyType(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, context, want string }{
 		{"private becomes home", "private", "home"},
 		{"work is identical both ways", "work", "work"},
@@ -334,6 +339,7 @@ func TestAddressMapping_TranslatesContextsToLegacyType(t *testing.T) {
 // ContactAddress (nothing structured to recover it from) — but the data is
 // not gone, it remains verbatim in c.Card.Addresses[].Full.
 func TestApplyRecordToContact_AddressFullOnlyFallback(t *testing.T) {
+	t.Parallel()
 	record := &contactmodel.Record{
 		Card: contactmodel.Card{
 			Addresses: []contactmodel.Address{{Full: "42 Wallaby Way, Sydney"}},
@@ -359,6 +365,7 @@ func TestApplyRecordToContact_AddressFullOnlyFallback(t *testing.T) {
 // nil-safety test: ApplyRecordToContact must not panic on a nil Contact or a
 // nil Record.
 func TestApplyRecordToContact_NilSafety(t *testing.T) {
+	t.Parallel()
 	ApplyRecordToContact(nil, &contactmodel.Record{}, "")
 	ApplyRecordToContact(&Contact{}, nil, "")
 }
@@ -371,6 +378,7 @@ func TestApplyRecordToContact_NilSafety(t *testing.T) {
 // without it, BeforeSave's flat->Card derivation would silently wipe
 // SpeakToAs out on the very next save).
 func TestApplyRecordToContact_PreservesUnmappedCardData(t *testing.T) {
+	t.Parallel()
 	record := &contactmodel.Record{
 		Card: contactmodel.Card{
 			Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Ada"}}},
@@ -406,6 +414,7 @@ func TestApplyRecordToContact_PreservesUnmappedCardData(t *testing.T) {
 // household_service.go's classifyMember) depends on Contact.CRM.Kind, so a
 // regression here silently reclassifies every pet as an adult.
 func TestApplyRecordToContact_PreservesCRMKind(t *testing.T) {
+	t.Parallel()
 	record := &contactmodel.Record{
 		Card: contactmodel.Card{
 			Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Fluffy"}}},
@@ -445,6 +454,7 @@ func TestApplyRecordToContact_PreservesCRMKind(t *testing.T) {
 // phone number was removed via REST PUT, CardDAV sync, or VCF import kept a
 // stale c.Phone value even though c.Phones correctly went empty.
 func TestApplyRecordToContact_ClearsPhoneScalarWhenPhonesRemoved(t *testing.T) {
+	t.Parallel()
 	c := &Contact{Phone: "555-0100", Phones: []ContactPhone{{Type: "home", Value: "555-0100"}}}
 
 	ApplyRecordToContact(c, &contactmodel.Record{Card: contactmodel.Card{

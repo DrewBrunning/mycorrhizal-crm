@@ -27,6 +27,7 @@ func setupTagProjectionTestDB(t *testing.T) *gorm.DB {
 // Tags gets both tag names merged into RecordForContact's Card.Keywords,
 // alongside any pre-existing passthrough keyword, with no duplication.
 func TestRecordForContact_ProjectsTagsOntoKeywords(t *testing.T) {
+	t.Parallel()
 	db := setupTagProjectionTestDB(t)
 	user := User{Username: "tester", Password: "password123!A", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -55,6 +56,7 @@ func TestRecordForContact_ProjectsTagsOntoKeywords(t *testing.T) {
 // cardSetDirectly first (the same  pitfall documented in
 // services/household_service_test.go's createHouseholdTestContact).
 func TestRecordForContact_ProjectsTagsDedupesAgainstExistingKeywords(t *testing.T) {
+	t.Parallel()
 	db := setupTagProjectionTestDB(t)
 	user := User{Username: "tester", Password: "password123!A", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -74,6 +76,7 @@ func TestRecordForContact_ProjectsTagsDedupesAgainstExistingKeywords(t *testing.
 }
 
 func TestRecordForContact_NilDBSkipsTagProjection(t *testing.T) {
+	t.Parallel()
 	contact := Contact{Firstname: "Alice", VCardUID: "some-uid"}
 	record := RecordForContact(&contact, "", nil)
 	assert.Empty(t, record.Card.Keywords)

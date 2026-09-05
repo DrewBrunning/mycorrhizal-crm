@@ -132,6 +132,7 @@ func TestAudit_TableRejectsMutation(t *testing.T) {
 // TestAudit_SecretFieldsNeverReachTheLog pins the deny-list: a snapshot whose
 // JSON carries a deny-listed key (e.g. a password field) has it stripped.
 func TestAudit_SecretFieldsNeverReachTheLog(t *testing.T) {
+	t.Parallel()
 	raw := `{"firstname":"Ada","password":"hunter2","nested":{"totp_secret":"abc","ok":1},"api_token_hash":"x"}`
 	redacted, err := redactJSON([]byte(raw))
 	require.NoError(t, err)

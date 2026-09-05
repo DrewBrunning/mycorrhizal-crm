@@ -16,6 +16,7 @@ import (
 // shape (issue #442): a report names which contact lost which field to which
 // format, and the why comes from the DATA-01 matrix, not the adapter message.
 func TestLossReportsFor_CarriesContactAndMatrixContext(t *testing.T) {
+	t.Parallel()
 	contact := &Contact{Model: gorm.Model{ID: 7}, Firstname: "Ada", Lastname: "Lovelace", VCardUID: "urn:uuid:ada"}
 	diags := []contactmodel.Diagnostic{
 		// Gender: the issue #515 canary. The envelope-loss diagnostic has the
@@ -47,6 +48,7 @@ func TestLossReportsFor_CarriesContactAndMatrixContext(t *testing.T) {
 // collapse) but unsupported in vCard 3.0; anniversary.birth is lossy in vCard
 // 3.0 (date-only) but exact in vCard 4.0.
 func TestLossReportsFor_FormatSpecificClassification(t *testing.T) {
+	t.Parallel()
 	contact := &Contact{Firstname: "Grace", Lastname: "Hopper", VCardUID: "urn:uuid:grace"}
 
 	gg := contactmodel.Diagnostic{Severity: "warn", Concept: "gramgender", Message: "collapsed"}
@@ -69,6 +71,7 @@ func TestLossReportsFor_FormatSpecificClassification(t *testing.T) {
 // diagnostics corresponding to a matrix unsupported/lossy cell become reports:
 // info diagnostics and foreign concepts never surface.
 func TestLossReportsFor_NonWarnAndUnknownConceptsExcluded(t *testing.T) {
+	t.Parallel()
 	contact := &Contact{Firstname: "Katherine", Lastname: "Johnson", VCardUID: "urn:uuid:katherine"}
 	diags := []contactmodel.Diagnostic{
 		{Severity: "info", Concept: "crm.gender", Message: "info, not a loss"},
@@ -85,6 +88,7 @@ func TestLossReportsFor_NonWarnAndUnknownConceptsExcluded(t *testing.T) {
 // is the "every field the matrix marks unsupported or lossy must be capable of
 // producing a report" guarantee.
 func TestLossReportsFor_EveryMatrixLossIsReachable(t *testing.T) {
+	t.Parallel()
 	contact := &Contact{Firstname: "A", Lastname: "Contact", VCardUID: "urn:uuid:a"}
 	for _, lr := range correspondence.LossReports() {
 		reports := LossReportsFor(string(lr.Format), contact, []contactmodel.Diagnostic{
@@ -100,6 +104,7 @@ func TestLossReportsFor_EveryMatrixLossIsReachable(t *testing.T) {
 // trap #8 shape: an empty diagnostics list must marshal as `[]`, never `null`,
 // so a client can always read `.length`.
 func TestExportLossPreflightResponse_EmptySerializesAsArray(t *testing.T) {
+	t.Parallel()
 	raw, err := json.Marshal(ExportLossPreflightResponse{Format: "vcard4", Diagnostics: []LossReport{}})
 	require.NoError(t, err)
 	assert.Contains(t, string(raw), `"diagnostics":[]`)

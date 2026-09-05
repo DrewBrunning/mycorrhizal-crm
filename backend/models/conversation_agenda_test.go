@@ -25,6 +25,7 @@ func setupConversationAgendaTestDB(t *testing.T) *gorm.DB {
 }
 
 func TestConversationAgendaBeforeCreateGeneratesUUID(t *testing.T) {
+	t.Parallel()
 	db := setupConversationAgendaTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -38,6 +39,7 @@ func TestConversationAgendaBeforeCreateGeneratesUUID(t *testing.T) {
 }
 
 func TestConversationAgendaBeforeCreatePreservesExplicitID(t *testing.T) {
+	t.Parallel()
 	db := setupConversationAgendaTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -53,6 +55,7 @@ func TestConversationAgendaBeforeCreatePreservesExplicitID(t *testing.T) {
 // The discussed flag with its date is the agenda's only resolution mechanism —
 // pin that it round-trips and stays queryable both ways.
 func TestConversationAgendaDiscussedAtRoundTrip(t *testing.T) {
+	t.Parallel()
 	db := setupConversationAgendaTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -82,6 +85,7 @@ func TestConversationAgendaDiscussedAtRoundTrip(t *testing.T) {
 // T26: agenda items are user-authored content, so delete must be a soft
 // delete — discussed items must not vanish irrecoverably.
 func TestConversationAgendaSoftDelete(t *testing.T) {
+	t.Parallel()
 	db := setupConversationAgendaTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)

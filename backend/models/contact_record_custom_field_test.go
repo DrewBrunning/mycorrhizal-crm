@@ -37,6 +37,7 @@ func mustMarshal(t *testing.T, v interface{}) json.RawMessage {
 // "vcard:X-<NAME>"-projected, normal-sensitivity field appears as a JCardProp
 // in RecordForContact's output.
 func TestRecordForContact_ProjectsVCardCustomField(t *testing.T) {
+	t.Parallel()
 	db := setupCustomFieldProjectionTestDB(t)
 	user := User{Username: "tester", Password: "password123!A", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -67,6 +68,7 @@ func TestRecordForContact_ProjectsVCardCustomField(t *testing.T) {
 // An internal-only definition must never appear in the projection, even
 // though it has a value.
 func TestRecordForContact_DoesNotProjectInternalOnlyCustomField(t *testing.T) {
+	t.Parallel()
 	db := setupCustomFieldProjectionTestDB(t)
 	user := User{Username: "tester", Password: "password123!A", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -92,6 +94,7 @@ func TestRecordForContact_DoesNotProjectInternalOnlyCustomField(t *testing.T) {
 // mapping — default-exclude-from-export rule, same discipline
 // projectRelationshipEdges/projectTags already enforce.
 func TestRecordForContact_DoesNotProjectSensitiveCustomField(t *testing.T) {
+	t.Parallel()
 	db := setupCustomFieldProjectionTestDB(t)
 	user := User{Username: "tester", Password: "password123!A", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -116,6 +119,7 @@ func TestRecordForContact_DoesNotProjectSensitiveCustomField(t *testing.T) {
 // A custom field's projected name must not clobber an already-imported
 // passthrough entry of the same name.
 func TestRecordForContact_ProjectsCustomFieldDedupesAgainstExistingPassthrough(t *testing.T) {
+	t.Parallel()
 	db := setupCustomFieldProjectionTestDB(t)
 	user := User{Username: "tester", Password: "password123!A", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -146,6 +150,7 @@ func TestRecordForContact_ProjectsCustomFieldDedupesAgainstExistingPassthrough(t
 }
 
 func TestRecordForContact_NilDBSkipsCustomFieldProjection(t *testing.T) {
+	t.Parallel()
 	contact := Contact{Firstname: "Alice", VCardUID: "some-uid"}
 	record := RecordForContact(&contact, "", nil)
 	assert.Empty(t, record.Passthrough.VCard)

@@ -12,6 +12,7 @@ import (
 const expectedLifeEventTypeCount = 44
 
 func TestLifeEventCategories(t *testing.T) {
+	t.Parallel()
 	cats := LifeEventCategories()
 	assert.Equal(t, []string{
 		LifeEventCategoryHomeLiving,
@@ -23,6 +24,7 @@ func TestLifeEventCategories(t *testing.T) {
 }
 
 func TestLifeEventCategoriesReturnsACopy(t *testing.T) {
+	t.Parallel()
 	cats := LifeEventCategories()
 	cats[0] = "mutated"
 	assert.Equal(t, LifeEventCategoryHomeLiving, LifeEventCategories()[0],
@@ -30,6 +32,7 @@ func TestLifeEventCategoriesReturnsACopy(t *testing.T) {
 }
 
 func TestIsKnownLifeEventCategory(t *testing.T) {
+	t.Parallel()
 	assert.True(t, IsKnownLifeEventCategory("home_living"))
 	assert.True(t, IsKnownLifeEventCategory("family_relationships"))
 	assert.False(t, IsKnownLifeEventCategory("not_a_real_category"))
@@ -42,6 +45,7 @@ func TestIsKnownLifeEventCategory(t *testing.T) {
 // entry in LifeEventTypeCategories, and the map must have no stray entries
 // beyond those 44.
 func TestLifeEventTypeCategoriesCoversEveryConstant(t *testing.T) {
+	t.Parallel()
 	allTypes := []string{
 		// pre-existing
 		LifeEventTypeMarried, LifeEventTypeGraduated, LifeEventTypeJobChange,
@@ -91,6 +95,7 @@ func TestLifeEventTypeCategoriesCoversEveryConstant(t *testing.T) {
 // ordered-by-category view (used for backfill/tests) and the flat map (used
 // for validation) must never drift apart.
 func TestLifeEventTypesForCategoryRoundTripsWithTypeCategories(t *testing.T) {
+	t.Parallel()
 	for _, category := range LifeEventCategories() {
 		types := LifeEventTypesForCategory(category)
 		assert.NotEmpty(t, types, "category %q must have at least one type", category)
@@ -108,10 +113,12 @@ func TestLifeEventTypesForCategoryRoundTripsWithTypeCategories(t *testing.T) {
 }
 
 func TestLifeEventTypesForCategoryUnknownReturnsNil(t *testing.T) {
+	t.Parallel()
 	assert.Nil(t, LifeEventTypesForCategory("not_a_real_category"))
 }
 
 func TestLifeEventCategoryForType(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, LifeEventCategoryFamilyRelationships, LifeEventCategoryForType(LifeEventTypeMarried))
 	assert.Equal(t, LifeEventCategoryHomeLiving, LifeEventCategoryForType(LifeEventTypeMoved))
 	assert.Equal(t, "", LifeEventCategoryForType("a_custom_user_typed_event"),
@@ -119,6 +126,7 @@ func TestLifeEventCategoryForType(t *testing.T) {
 }
 
 func TestKnownLifeEventTypes(t *testing.T) {
+	t.Parallel()
 	tokens := KnownLifeEventTypes()
 	assert.Len(t, tokens, expectedLifeEventTypeCount)
 	assert.Contains(t, tokens, LifeEventTypeMarried)

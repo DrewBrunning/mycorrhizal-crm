@@ -57,6 +57,7 @@ func setupLifeEventTestDBFrozenClock(t *testing.T) *gorm.DB {
 }
 
 func TestLifeEventBeforeCreateGeneratesUUID(t *testing.T) {
+	t.Parallel()
 	db := setupLifeEventTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -70,6 +71,7 @@ func TestLifeEventBeforeCreateGeneratesUUID(t *testing.T) {
 }
 
 func TestLifeEventBeforeCreatePreservesExplicitID(t *testing.T) {
+	t.Parallel()
 	db := setupLifeEventTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -88,6 +90,7 @@ func TestLifeEventBeforeCreatePreservesExplicitID(t *testing.T) {
 // that only a real AutoMigrate-backed save/reload catches column/serializer
 // mismatches.
 func TestLifeEventPartialDateAndRelatedEntityIDsRoundTrip(t *testing.T) {
+	t.Parallel()
 	db := setupLifeEventTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -121,6 +124,7 @@ func TestLifeEventPartialDateAndRelatedEntityIDsRoundTrip(t *testing.T) {
 // migrated-schema save/reload, per the lesson (only a real DB catches
 // column/tag mismatches AutoMigrate-only tests can't see).
 func TestLifeEventCategoryRoundTrips(t *testing.T) {
+	t.Parallel()
 	db := setupLifeEventTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -146,6 +150,7 @@ func TestLifeEventCategoryRoundTrips(t *testing.T) {
 // sentinel, so the frontend's "Other / Uncategorized" bucket has something
 // unambiguous to check against.
 func TestLifeEventCategoryOmittedStaysEmpty(t *testing.T) {
+	t.Parallel()
 	db := setupLifeEventTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -161,6 +166,7 @@ func TestLifeEventCategoryOmittedStaysEmpty(t *testing.T) {
 }
 
 func TestLifeEventETagGeneratedOnCreateAndPersists(t *testing.T) {
+	t.Parallel()
 	db := setupLifeEventTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -184,6 +190,7 @@ func TestLifeEventETagGeneratedOnCreateAndPersists(t *testing.T) {
 }
 
 func TestLifeEventETagChangesOnUpdate(t *testing.T) {
+	t.Parallel()
 	db := setupLifeEventTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -207,6 +214,7 @@ func TestLifeEventETagChangesOnUpdate(t *testing.T) {
 // new revision, so back-to-back Save() calls bump revision exactly twice and
 // never loop (UpdateColumns bypasses hooks).
 func TestLifeEventRevisionBumpsPerSaveNoLoop(t *testing.T) {
+	t.Parallel()
 	db := setupLifeEventTestDBFrozenClock(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -238,6 +246,7 @@ func TestLifeEventRevisionBumpsPerSaveNoLoop(t *testing.T) {
 // and a naive hook would widen its UpdateColumns to every row in the table
 // (writing "e--<ts>" and resetting every revision). Both must be left alone.
 func TestLifeEventETagBulkRepointOnZeroValueReceiverDoesNotCorrupt(t *testing.T) {
+	t.Parallel()
 	db := setupLifeEventTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)

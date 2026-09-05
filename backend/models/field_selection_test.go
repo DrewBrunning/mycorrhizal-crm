@@ -59,6 +59,7 @@ func buildFullRecord() *contactmodel.Record {
 func intPtr(v int) *int { return &v }
 
 func TestFieldSections(t *testing.T) {
+	t.Parallel()
 	sections := FieldSections()
 	require.NotEmpty(t, sections)
 
@@ -75,6 +76,7 @@ func TestFieldSections(t *testing.T) {
 // frontend gates these behind the reveal action, and the backend threads the
 // IncludeSensitive override through exactly these projection steps.
 func TestIsSensitiveSection(t *testing.T) {
+	t.Parallel()
 	for token, want := range map[string]bool{
 		SectionEmails:         false,
 		SectionPhones:         false,
@@ -98,6 +100,7 @@ func TestIsSensitiveSection(t *testing.T) {
 }
 
 func TestFieldSelectionAllSelectsEverything(t *testing.T) {
+	t.Parallel()
 	sel := FieldSelectionAll()
 	for _, s := range FieldSections() {
 		assert.True(t, sel.Has(s), "FieldSelectionAll must select %q", s)
@@ -106,6 +109,7 @@ func TestFieldSelectionAllSelectsEverything(t *testing.T) {
 }
 
 func TestFieldSelectionEnableRejectsUnknownToken(t *testing.T) {
+	t.Parallel()
 	sel := NewFieldSelection()
 	require.Error(t, sel.Enable("not_a_section"))
 	assert.False(t, sel.Has("not_a_section"))
@@ -114,12 +118,14 @@ func TestFieldSelectionEnableRejectsUnknownToken(t *testing.T) {
 }
 
 func TestApplyFieldSelection_NilSelectionReturnsRecordUnchanged(t *testing.T) {
+	t.Parallel()
 	record := buildFullRecord()
 	got := ApplyFieldSelection(record, nil)
 	assert.Same(t, record, got, "nil selection must return the same pointer")
 }
 
 func TestApplyFieldSelection_AllSectionsKeepsEverything(t *testing.T) {
+	t.Parallel()
 	record := buildFullRecord()
 	got := ApplyFieldSelection(record, FieldSelectionAll())
 
@@ -134,6 +140,7 @@ func TestApplyFieldSelection_AllSectionsKeepsEverything(t *testing.T) {
 // (plus the always-exported identity data), clears the rest, and never
 // mutates the caller's record.
 func TestApplyFieldSelection_SubsetClearsOnlyDeselected(t *testing.T) {
+	t.Parallel()
 	record := buildFullRecord()
 
 	sel := NewFieldSelection()
@@ -177,6 +184,7 @@ func TestApplyFieldSelection_SubsetClearsOnlyDeselected(t *testing.T) {
 
 // organizations covers both Card.Organizations and Card.Titles.
 func TestApplyFieldSelection_OrganizationsClearsTitlesToo(t *testing.T) {
+	t.Parallel()
 	record := buildFullRecord()
 	sel := NewFieldSelection()
 	require.NoError(t, sel.Enable(SectionOrganizations))
@@ -191,6 +199,7 @@ func TestApplyFieldSelection_OrganizationsClearsTitlesToo(t *testing.T) {
 // custom_fields clears Passthrough (vCardProps and jsContactProps), which is
 // where vCard-projected custom fields ride.
 func TestApplyFieldSelection_CustomFieldsKeepsPassthrough(t *testing.T) {
+	t.Parallel()
 	record := buildFullRecord()
 	sel := NewFieldSelection()
 	require.NoError(t, sel.Enable(SectionCustomFields))
@@ -201,6 +210,7 @@ func TestApplyFieldSelection_CustomFieldsKeepsPassthrough(t *testing.T) {
 }
 
 func TestApplyFieldSelection_NilRecordIsSafe(t *testing.T) {
+	t.Parallel()
 	assert.Nil(t, ApplyFieldSelection(nil, FieldSelectionAll()))
 }
 
@@ -277,6 +287,7 @@ func buildSensitiveProjectionFixture(t *testing.T) (*gorm.DB, User, Contact) {
 // project all three sensitivity-bearing kinds (edges, preferences, custom
 // fields).
 func TestRecordForContactFiltered_SensitiveItemsRequireOptIn(t *testing.T) {
+	t.Parallel()
 	db, user, alice := buildSensitiveProjectionFixture(t)
 	_ = user
 
