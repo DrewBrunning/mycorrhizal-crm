@@ -41,6 +41,11 @@ const TEST_USER = {
   password: 'TestPassword123!',
 };
 
+// `make backup` and `cmd/backupverify` derive the snapshot-signing key from the
+// at-rest master key (issue #943), so they must run with the same secret the
+// server was started with — not just whatever is in process.env.
+const E2E_JWT_SECRET = 'backup-restore-e2e-secret-key-min-32-chars!';
+
 // A 1x1 PNG: the photo upload path validates that uploads are real images.
 const PNG_1x1 = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
@@ -102,7 +107,7 @@ function startServer(bin: string, port: number, dataDir: string): RunningServer 
       PROFILE_PHOTO_DIR: photosDir,
       ATTACHMENTS_DIR: attachmentsDir,
       FRONTEND_URL: `http://localhost:${port}`,
-      JWT_SECRET_KEY: 'backup-restore-e2e-secret-key-min-32-chars!',
+      JWT_SECRET_KEY: E2E_JWT_SECRET,
       DISABLE_REGISTRATION: 'false',
       // The whole lifecycle runs from one origin, so every request shares one
       // rate-limit bucket (same reason docker-compose.test.yml raises these).
@@ -297,6 +302,7 @@ test.describe('Full backup/restore (N6)', () => {
           ...process.env,
           SQLITE_DB_PATH: srv.dbPath,
           BACKUP_PATH: backupDb,
+          JWT_SECRET_KEY: E2E_JWT_SECRET,
         },
         stdio: 'pipe',
         timeout: 120_000,
@@ -320,6 +326,7 @@ test.describe('Full backup/restore (N6)', () => {
             SQLITE_DB_PATH: backupDb,
             PROFILE_PHOTO_DIR: photosDir,
             ATTACHMENTS_DIR: attachmentsDir,
+            JWT_SECRET_KEY: E2E_JWT_SECRET,
           },
           stdio: 'pipe',
           timeout: 120_000,

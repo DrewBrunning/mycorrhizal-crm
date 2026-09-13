@@ -125,7 +125,7 @@ The at-rest layer (`backend/atrest`) is the issue #380 implementation. Three wri
    deliberately no escrow. Losing `DATA_ENCRYPTION_KEY` makes every encrypted column undecryptable.
    Rotation (`cmd/rotate-at-rest-key`) rewraps the DEK under a new master key.
 
-### P5 — Backup confidentiality, retention & immutability: operator-owned boundary (#420, #505)
+### P5 — Backup confidentiality, retention, immutability & authenticity: operator-owned boundary (#420, #505, #943)
 
 Backups are a **complete copy of the CRM's sensitive data** (the DB snapshot at full sensitivity plus
 the photos/attachments directories), so the confidentiality bar for a backup is the same as for the
@@ -163,6 +163,21 @@ database itself. Issue #420's statement of where that bar sits:
   credential to reach: a pull-based off-host copy (documented default) or object-locked remote
   storage. Operator runbook + the verify-by-trying procedure: `docs/deployment.md` → "Backup
   immutability & ransomware resistance".
+- **Authenticity is signed, because the backup store is a trust boundary of its own (issue #943).**
+  A snapshot verified only with `PRAGMA integrity_check` proves the bytes are *a* valid SQLite
+  database, not that they are *this* database unmodified. `make backup` therefore writes a detached
+  HMAC-SHA256 manifest beside each snapshot (`backend/database/backup_signature.go`), keyed by the
+  at-rest master key derived with HKDF domain separation (`atrest.BackupSigningKey`), and
+  `make backup-verify` authenticates the manifest before trusting the snapshot — failing closed on a
+  missing or invalid signature (a legacy unsigned set requires the explicit
+  `BACKUP_ALLOW_UNSIGNED=1` opt-out). Because the key is operator env and never travels in the
+  backup, an attacker with write access to the store cannot forge a manifest for a substituted file
+  or silently strip one. Scope, stated plainly: this is tamper/substitution detection for the
+  **database** piece only (the operator-copied directories remain unsigned, like their retention), it
+  does not stop replay of an older *validly signed* snapshot, and it adds no confidentiality. Pinned
+  by `backend/database/backup_signature_test.go` (`TestSignBackupThenVerify`,
+  `TestVerifyBackupSignatureRejectsTamperedSnapshot`, `TestVerifyBackupSignatureRejectsSwappedManifest`,
+  `TestVerifyBackupSignatureRejectsWrongKey`).
 - **Restore security is verified, not assumed.** The restore drill (issue #275) restores a fresh
   snapshot into a scratch DB and compares every table's row count against live — and since #420 also
   verifies the snapshot's wrapped DEK unwraps under the current master key
@@ -171,9 +186,10 @@ database itself. Issue #420's statement of where that bar sits:
   resurrects soft-deleted rows (`docs/security/data-retention-lifecycle.md` §10).
 
 The operator runbook — where backups live, retention schedule, soft-deleted data and age-out — is
-`docs/deployment.md`'s "Backup confidentiality & retention" section, and "Backup immutability &
-ransomware resistance" immediately after it for the off-host/immutability choice and its
-verify-by-trying procedure; `data-retention-lifecycle.md` §10 is the per-data-type view.
+`docs/deployment.md`'s "Backup confidentiality & retention" section, "Backup authenticity" for
+snapshot signing and its verify-before-restore step, and "Backup immutability & ransomware
+resistance" immediately after it for the off-host/immutability choice and its verify-by-trying
+procedure; `data-retention-lifecycle.md` §10 is the per-data-type view.
 
 ### P6 — Update-availability check: opt-in GitHub call, off by default (#650)
 
@@ -431,7 +447,7 @@ L3-only, out of scope: none in this chapter (5.4 is L2).
 | 6.1.2 | Regulated health data at rest | not-applicable | Neutral contact model has no medical fields; no regulated health data by design |
 | 6.1.3 | Regulated financial data at rest | not-applicable | Gift records are non-sensitive user-authored notes (no account/credit/tax data) |
 | 6.2.1 | Crypto fails securely, no padding oracle | satisfied | AEAD (GCM) — no padding to oracle; failures are generic 500s (`errors/errors.go:362-373`) |
-| 6.2.2 | Approved algorithms/libraries | satisfied | bcrypt, AES-256-GCM, HMAC-SHA-256, SHA-256, HKDF-SHA256, RFC 6238 TOTP — all stdlib/`golang.org/x/crypto`. JWT signing/verification via `golang-jwt` (`backend/middleware/auth.go`, `backend/services/notification_service.go`); HMAC-SHA-256 webhook signatures (`backend/services/webhook_service.go`). The whole import surface is pinned by `cmd/citecheck`'s crypto-surface gate (issue #612) |
+| 6.2.2 | Approved algorithms/libraries | satisfied | bcrypt, AES-256-GCM, HMAC-SHA-256, SHA-256, HKDF-SHA256, RFC 6238 TOTP — all stdlib/`golang.org/x/crypto`. JWT signing/verification via `golang-jwt` (`backend/middleware/auth.go`, `backend/services/notification_service.go`); HMAC-SHA-256 webhook signatures (`backend/services/webhook_service.go`); HMAC-SHA-256 backup-snapshot signatures with an HKDF-domain-separated key (`backend/database/backup_signature.go`, `backend/atrest/atrest.go`, issue #943). The whole import surface is pinned by `cmd/citecheck`'s crypto-surface gate (issue #612) |
 | 6.2.3 | IV/cipher/mode config | satisfied | GCM 12-byte nonces from `crypto/rand` (`credential_crypto.go:47-50`); no ECB; no custom modes |
 | 6.2.4 | Algorithms swappable | partial | Direct calls, not behind an abstraction — deliberate pre-1.0 decision, documented in **P2** |
 | 6.2.5 | No weak modes/hashes | satisfied | The whole cryptographic surface is AES-256-GCM (`backend/services/credential_crypto.go:33-58`, `backend/atrest/atrest.go`), bcrypt (`backend/services/user_service.go:16-27`, `backend/controllers/user_controller.go`, `backend/carddav/auth.go`) and SHA-256 for one-way token digests (`backend/services/password_reset_service.go:34`) and the audit hash chain (`backend/models/audit_chain.go`). No MD5/DES/RC4/ECB/Blowfish use exists; the tree's single `crypto/sha1` import is HIBP's own k-anonymity wire format, annotated at the import (`backend/services/hibp_service.go:6`, **P3**). Enforced continuously by gosec via golangci-lint (`unit-tests.yml:360-362`), CodeQL (`codeql.yml`) and the `cmd/citecheck` crypto-surface gate (issue #612) |

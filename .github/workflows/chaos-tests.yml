@@ -245,6 +245,10 @@ jobs:
     timeout-minutes: 15
     needs: changes
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+    env:
+      # cmd/backup signs the snapshot (issue #943) with a key derived from the
+      # at-rest master key; give the CLI a fixed test key.
+      DATA_ENCRYPTION_KEY: WlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlo=
 
     steps:
       - name: Checkout repository

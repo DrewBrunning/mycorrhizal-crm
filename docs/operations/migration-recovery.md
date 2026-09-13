@@ -112,6 +112,12 @@ is exactly where it lives.
   boot instead of serving garbage — a pre-upgrade snapshot must be restored
   with the same key the upgrade ran under. See `docs/deployment.md` →
   Restore.
+- **Signing caveat.** The automatic pre-migration snapshot is **not** signed:
+  it is app-generated on the host, and snapshot signing (issue #943) covers the
+  operator-run `make backup` path. `make backup-verify` therefore treats a
+  pre-migration snapshot as unsigned; pass `BACKUP_ALLOW_UNSIGNED=1` if you
+  point it at one deliberately. Prefer `make backup-verify` against the routine
+  three-piece set when you want an authenticated check.
 
 ## Rolling back a bad release (N+1 → N)
 
