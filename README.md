@@ -20,83 +20,131 @@
 [![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
-Mycorrhizal CRM is a self-hosted contact relationship management solution. It is a fork of [Meerkat CRM](https://github.com/fbuchner/meerkat-crm) by Frederic Buchner.
+Mycorrhizal CRM is a self-hosted personal relationship OS: a private, structured place to keep
+track of the people (and pets) in your life, and to actually stay in touch with them. It is a fork
+of [Meerkat CRM](https://github.com/fbuchner/meerkat-crm) by Frederic Buchner - see
+[Related Projects](#related-projects) at the end of this file - but has since grown its own data
+model, sync layer and feature set.
 
-> ⚠️ Mycorrhizal CRM is a **structural fork** of [Meerkat CRM](https://github.com/fbuchner/meerkat-crm). Because this project introduces custom database schemas, modified tables, and expanded data types (such as bidirectional relationships and custom field mappings), **it is not directly database-compatible with upstream Meerkat.** 
-> 
-> * Direct database migrations from upstream Meerkat are **NOT** supported at this time.
-> * Syncing Options: You can sync contacts between Meerkat and Mycorrhizal using CardDAV (though data not supported by standard CardDAV specs will not sync) or by exporting data from one and importing it into the other (though data not defined in the vCard 3.0 RFC is not guaranteed to persist across the export and import).
+## What is Mycorrhizal?
 
-## Features & Enhancements On Top Of Upstream Meerkat
+A mycorrhiza is the symbiotic network fungi form with plant roots - an apt name for software whose
+whole job is the web of relationships around you. Mycorrhizal is not a social network, a sales
+pipeline, or a marketing tool: it's a private, self-hosted address book that also remembers *why*
+each person matters to you - how you're connected, when you last talked, what you meant to bring up
+next time, and when their birthday is sneaking up.
 
-Mycorrhizal builds heavily upon the solid foundation of Meerkat, adding modern protocol support, deeper structural relationships, and lifestyle tracking utilities.
+Planned and in-progress work lives in [GitHub Issues](https://github.com/DrewBrunning/mycorrhizal-crm/issues).
 
-Everything in this section is **built and working today** — nothing below is aspirational. (Planned-but-not-built work lives in [GitHub Issues](https://github.com/DrewBrunning/mycorrhizal-crm/issues), not here.)
+<p align="center">
+<img src="assets/screenshots/dashboard.png" alt="Mycorrhizal dashboard showing favorites, upcoming birthdays, reminders and a stay-in-touch list" width="850" />
+</p>
 
-### Modern Data Formats & Syncing
-- **Expanded Protocol Support:** In addition to vCard 3.0 and CardDAV/CalDAV, Mycorrhizal adds full support for **vCard 4.0** and **JSContact**.
-- **Flexible Export:** Granular selective field export so you can choose exactly which fields get exported for available formats.
-- **Field Sensitivity:** Mark fields as private or secret to exclude them from external sync, contact shares, and the vCard/JSContact exports entirely. Your own full CSV backup still contains them — it is a backup, not a share.
-- **Serve Interactions as CalDAV:** Expose activities and life events to a calendar client, and eventually two-way calendar sync.
+## Features
 
-### Relationships, Households & Pets
-- **Bidirectional Relationship Graphs:** Relationships are no longer strictly unidirectional. Creating a connection automatically maps it both ways and facilitates relationship-based searching.
-- **Multi-Hop Graph Traversal:** Explore how you're connected to someone through intermediaries, not just direct links.
-- **Household Tracking:** Automatically suggests relationships for contacts sharing the same address. Search by a household to pull lists for event invites, mail, or holiday cards.
-- **Pets as Contacts:** Add pets directly to your CRM and search for owners using their pet's name with the relationship support.
-- **Circles & Tags:** Two distinct grouping mechanisms — circles for the social groups a person belongs to, tags for free-form labeling.
+### Contacts, circles & tags
 
-### Data Management & Organization
-- **Contact Merging:** Seamlessly merge duplicate contact records.
-- **Custom Fields & Mappings:** Support for custom fields, including custom mappings to vCard fields to enable extended properties.
-- **Repurposed General Notes:** Upstream Meerkat's journaling notes have been refactored into general notes that can be cleanly associated with any contact at a later point, including a capture inbox for notes you file later.
-- **Full-Text Search:** SQLite FTS5 search across contacts, notes and addresses, with relationship synonyms and household scoping.
-- **Bulk Operations:** Apply circle, tag and delete operations across many contacts at once.
-- **One-Time Cross-User Sharing:** Share specific contacts with other users on the same instance, including granular selection of which fields are shared. *(Note: This is a one-time point-in-time copy/share to the target user rather than an ongoing real-time sync).*
-- **Files & Documents:** Upload and associate documents and files with a contact
-- **Full Backup & Restore:** `make backup` produces a consistent online SQLite snapshot (safe while the server runs), with a documented restore procedure covering the database, photos and attachments together. A scheduled integrity check and a periodic restore drill (actually restoring the latest backup into a scratch database and comparing row counts) run automatically to catch a corrupt or non-restorable backup before you'd ever need it. See [Deployment → Backups](https://drewbrunning.github.io/mycorrhizal-crm/deployment.html#backups).
+Contacts are stored against a neutral, standards-based card model (vCard 3.0/4.0, JSContact, and
+CardDAV/CalDAV sync) rather than a proprietary shape, with custom fields and custom vCard mappings
+for anything the built-in fields don't cover. **Circles** group the social groups a person belongs
+to; **tags** are free-form labels - two distinct, deliberately separate ways to organize the same
+contact. Fields can be marked `private` or `secret` to keep them out of external sync, contact
+shares and standards exports entirely. Full backups still contain private and secret fields
+because a backup is a backup, not a share.
 
-### Staying In Touch
-- **Favorites:** Star key contacts for a dedicated filter and a dashboard shortlist.
-- **Cadence & Relationship Health:** Set how often you intend to be in touch with someone and see who has gone quiet. Cadence resets on a real interaction, not on ticking off a task.
-- **Prep View:** A per-person briefing pulling together recent history, open agenda items and life events before you see or call someone.
-- **Conversation Agenda:** Keep a running list of things to raise next time you talk to a given person.
-- **Notification Channels:** Reminders can be delivered by email, [ntfy](https://ntfy.sh), [Gotify](https://gotify.net), or browser push — see [Notifications](#notifications) below.
+Duplicate contacts merge cleanly, bulk operations apply across contacts, and SQLite FTS5 search
+covers contacts, notes and addresses with relationship-aware synonyms.
 
-### Tracking & Integrations
-- **Expanded Life Event Reminders:** Automated reminders for major life events like anniversaries, complementing existing birthday tracking, organised into categories.
-- **Gift Tracking:** Modeled after [Monica](https://github.com/monicahq/monica), allowing you to track gift ideas, past gifts given, and received items, with links and notes.
-- **Immich Integration:** Link contacts directly to identified persons/faces in an [Immich](https://github.com/immich-app/immich) instance to easily view photos of individuals right from their profile.
-- **File Sharing Integrations:** Link contacts to documents in [Paperless-ngx](https://docs.paperless-ngx.com/) and to files/folders in [Seafile](https://www.seafile.com/) or [Nextcloud](https://nextcloud.com/)/[ownCloud](https://owncloud.com/) (via WebDAV). These are read-only links — the files stay on your own server.
-- **External Links:** Deep-link a contact into other systems you run, with a configurable link-type registry (`tel:`, `sms:`, WhatsApp, and anything else you define).
-- **Audit Trail:** A per-record history of what changed and when.
+<p align="center">
+<img src="assets/screenshots/contact-detail.png" alt="A contact's detail page showing circles, tags, personal info, contact methods and quick actions" width="850" />
+</p>
 
-### Account Security
-- **Two-Factor Authentication:** TOTP (RFC 6238) as a second factor on interactive login, with single-use recovery codes for when you lose the device. SSO via OIDC remains available as an alternative; CardDAV/API-token auth is unaffected either way.
+### Relationships, households & pets
 
-### Native Apps
-- **Android app:** A Kotlin/Jetpack Compose client in `android/` — login (including OIDC SSO), contact list + detail with offline cache and favorites, a tablet two-pane layout (NavigationRail + list/detail), dashboard and prep view, call/SMS tracking with a quick-capture overlay, device-contacts and VCF import, circles, tags, households, relationships and the network graph, the timeline (life events, gifts, preferences, agenda), reminders, cadence, contact sharing, audit trail, FCM push notifications, and per-user settings (profile, notification channels, webhooks, link actions).
+Relationships are bidirectional: connect two contacts once and the reverse relationship (parent →
+child, employer → employee, and so on) is derived automatically, which makes relationship-based
+search and multi-hop graph traversal possible - explore how you're connected to someone through
+intermediaries, not just direct links. Contacts sharing an address are automatically suggested as a
+household (confirming or rejecting a suggestion is always your choice), and a household doubles as
+a mailing list for invites, cards or gifts. Pets are first-class contacts too, searchable by name
+and connected into the same relationship graph as everyone else.
+
+<p align="center">
+<img src="assets/screenshots/network-graph.png" alt="An interactive contact network graph showing relationships and shared activities between contacts" width="850" />
+</p>
+
+### Staying in touch
+
+**Cadence** lets you set how often you intend to be in touch with someone and surfaces who has gone
+quiet - it resets on a real interaction, not on ticking off a task. **Favorites** pin your closest
+contacts to a dashboard shortlist. Before you see or call someone, **Prep View** pulls together
+their recent history, open agenda items and upcoming life events into a single briefing, and a
+running **conversation agenda** keeps track of things you meant to raise next time. Reminders can
+be delivered by email, [ntfy](https://ntfy.sh), [Gotify](https://gotify.net) or browser push - see
+[Notifications](#notifications) below.
+
+<p align="center">
+<img src="assets/screenshots/prep-view.png" alt="Prep View for a contact, showing last interaction, recent notes, related people and upcoming dates" width="850" />
+</p>
+
+### Tracking & integrations
+
+Life events beyond birthdays - anniversaries, and anything else worth a reminder - are organized
+into categories, and an audit trail records what changed on a contact and when. **Gift tracking**
+(modeled after [Monica](https://github.com/monicahq/monica)) covers ideas, gifts given and gifts
+received, with notes and links. Contacts can link to identified people in
+[Immich](https://github.com/immich-app/immich), documents in
+[Paperless-ngx](https://docs.paperless-ngx.com/), and files or folders in
+[Seafile](https://www.seafile.com/), [Nextcloud](https://nextcloud.com/) or
+[ownCloud](https://owncloud.com/) via read-only links. A configurable link registry also supports
+custom links such as `tel:`, `sms:` and WhatsApp.
+
+### Sync & data portability
+
+Contacts and calendars speak CardDAV and CalDAV, so any compatible client can sync against your
+instance, and activities/life events can be served as a read-only calendar feed. Exports support
+vCard 3.0, vCard 4.0 and JSContact, each with granular, selective field export. **Full backup and
+restore** (`make backup`) produces a consistent online SQLite snapshot safe to take while the
+server keeps running, with a documented restore procedure covering the database, photos and
+attachments together - a scheduled integrity check and a periodic restore drill catch a corrupt or
+non-restorable backup long before you'd ever need it (see
+[Deployment → Backups](https://drewbrunning.github.io/mycorrhizal-crm/deployment.html#backups)).
+**One-time cross-user sharing** lets you hand a specific contact (with granular field selection) to
+another user on the same instance as a point-in-time copy, not an ongoing sync.
+
+### Account security
+
+Two-factor authentication (TOTP, RFC 6238) is available as a second factor on interactive login,
+with single-use recovery codes for when you lose the device - SSO via OIDC remains available as an
+alternative, and CardDAV/API-token auth is unaffected either way.
+
+### Native Android app
+
+A Kotlin/Jetpack Compose client lives in [`android/`](android/): login (including OIDC SSO), a
+contact list and detail view with an offline cache and favorites, a tablet two-pane layout, the
+dashboard and Prep View, call/SMS tracking with a quick-capture overlay, device-contacts and VCF
+import, circles, tags, households, relationships and the network graph, the timeline (life events,
+gifts, preferences, agenda), reminders, cadence, contact sharing, the audit trail, push
+notifications, and per-user settings.
 
 ---
 
 ## Notifications
 
-Reminders can be delivered through four channels. Email is configured server-side; the other three are configured per user, in the app under **Settings → Notifications**, because each user has their own topic, token and devices.
+Reminders can be delivered through four channels. Email is configured server-side; the other three
+are configured per user, in the app under **Settings → Notifications**, because each user has their
+own topic, token and devices.
 
 | Channel | Configured | What you need |
 |---|---|---|
-| **Email** | Server (`.env`) | Either a [Resend](https://resend.com) API key, or SMTP host/credentials. Both may be set, in which case each email is sent through both. |
+| **Email** | Server (`.env`) | Either a [Resend](https://resend.com) API key, or SMTP host/credentials. |
 | **ntfy** | Per user, in-app | Your ntfy server URL and a topic. Works with the public ntfy.sh or a self-hosted instance. |
-| **Gotify** | Per user, in-app | Your Gotify server URL and an application token. The token is stored encrypted at rest. |
-| **Browser push** | Per user, in-app | Nothing to configure. The VAPID keypair is generated once on first use and stored in the database. |
+| **Gotify** | Per user, in-app | Your Gotify server URL and an application token. |
+| **Browser push** | Per user, in-app | Nothing to configure, but the app must be served over HTTPS. |
 
-`REMINDER_TIME` and `REMINDER_TIMEZONE` control *when* the daily reminder run happens; they apply to every enabled channel, not just email.
-
-The only server-side setting for ntfy/Gotify/push is `WEBHOOK_BLOCK_PRIVATE_URLS`. It defaults to `false` so the server can reach a self-hosted ntfy or Gotify on a private address — set it to `true` on a multi-tenant or cloud deployment, where posting to internal addresses on user-supplied URLs would be an SSRF risk.
-
-> **⚠️ Browser push requires HTTPS.** Push notifications are delivered to a service worker, and browsers refuse to register one on a plain-HTTP origin. `localhost` is exempt, so local testing works, but a LAN deployment reached over `http://` cannot register a device. The other three channels have no such requirement.
-
-Because the app registers a service worker, it is served cache-first. A newly deployed version therefore announces itself with a "new version available" prompt instead of appearing silently — reload when you see it.
+Self-hosted webhook targets (ntfy/Gotify) can be restricted to prevent SSRF against private
+network addresses on a multi-tenant deployment. Full configuration reference, scheduling behavior
+and troubleshooting: [docs/notifications.md](docs/notifications.md).
 
 ---
 
@@ -131,16 +179,16 @@ image is required). The easiest way to run it is with Docker Compose:
 4. **Access the application:**
     Open http://localhost:7300 in your browser.
 
+Want to see it running with realistic sample data before committing your own? See the
+[pen-test / demo environment](docs/development/pentest-environment.md) - one command
+(`docker compose -f docker-compose.pentest.yml up -d --build --wait`) brings up the same image
+pre-populated with a screenshot-ready dataset and a working login.
 
 ## Contributing
 
-Pull requests are welcome. Please read
-[`docs/development/contributing.md`](docs/development/contributing.md) first —
-one concern per PR, tests with the change, and **every commit signed off**
-under the [Developer Certificate of Origin](DCO) (`git commit -s`), which a
-required status check enforces. Project roles and who holds access to sensitive
-resources are in [`GOVERNANCE.md`](GOVERNANCE.md). Security issues go through
-[`SECURITY.md`](SECURITY.md), not a public issue.
+Contributions are welcome. See
+[`docs/development/contributing.md`](docs/development/contributing.md) for
+how to get set up and what a PR needs to be merged.
 
 ### Bugs and feature requests
 This application is currently in beta. Bugs are expected in testing, but are hopefully few and far-between. Please submit issues via GitHub.
@@ -177,11 +225,27 @@ Ensure you have [Go](https://golang.org/doc/install) installed. Then, set up you
    yarn start
    ```
 
-The exact toolchain versions required to build from source — Go (pinned in
+The exact toolchain versions required to build from source - Go (pinned in
 `backend/go.mod`), Node.js and Yarn (`frontend/package.json` `engines`), and the
-build tools each layer uses — are documented in
+build tools each layer uses - are documented in
 [`docs/development/backend.md`](docs/development/backend.md),
 [`docs/development/frontend.md`](docs/development/frontend.md), and
 [`docs/development/architecture.md`](docs/development/architecture.md). You can
 find a more comprehensive overview for developers in the
 [developer README](README-developer.md).
+
+---
+
+## Related Projects
+
+- **[Meerkat CRM](https://github.com/fbuchner/meerkat-crm)** by Frederic Buchner - the project
+  Mycorrhizal is forked from, and the reason this repository is MIT-licensed. The schema, sync
+  layer and data model have diverged enough since the fork that a direct database migration isn't
+  supported, but Mycorrhizal's in-app import assistant can read a Meerkat SQLite database directly
+  and map it onto the neutral contact model, showing you a full loss report before anything
+  commits - see [the mapping reference](docs/import/meerkat-mapping.md). Ongoing two-way sync
+  between the two is also possible over CardDAV.
+- **[Monica](https://github.com/monicahq/monica)** - an established personal relationship
+  management system that inspired Mycorrhizal's gift-tracking feature. The same import assistant
+  can pull an account from a live Monica instance (or a saved snapshot) and map it onto Mycorrhizal
+  contacts - see [the mapping reference](docs/import/monica-mapping.md).
