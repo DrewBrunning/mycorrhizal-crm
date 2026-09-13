@@ -88,6 +88,16 @@ func TestBackupStaleConditionMeasuresOperatorBackups(t *testing.T) {
 	})
 }
 
+// TestBackupStaleConditionQueryErrorIsNotFiring: if the event stream cannot be
+// read, the condition reports not-firing rather than panicking or firing.
+func TestBackupStaleConditionQueryErrorIsNotFiring(t *testing.T) {
+	db := dbtest.New(t)
+	require.NoError(t, db.Exec("DROP TABLE system_events").Error)
+
+	r := backupStaleCondition(context.Background(), db, alertTestConfig("x.db"))
+	assert.False(t, r.firing)
+}
+
 // TestEvaluateAlertConditionsWiresOperatorBackupFreshness guards the call site:
 // backup_stale must be produced by the evaluator with the operator-backup query,
 // not the old combined subsystem health.
