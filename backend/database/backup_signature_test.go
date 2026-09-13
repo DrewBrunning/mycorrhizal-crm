@@ -193,6 +193,38 @@ func TestSignBackupMissingSnapshotErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "stat snapshot")
 }
 
+// TestVerifyBackupSetDoesNotMutateSnapshot is the regression for the bug that
+// broke the signed-backup e2e: VerifyBackupSet opened the snapshot through
+// openDSN, whose journal_mode(WAL) pragma rewrote a journal_mode=delete
+// VACUUM INTO snapshot's header on open — changing its bytes after signing.
+// The reconciliation must leave the snapshot byte-identical, and its signature
+// must still verify.
+func TestVerifyBackupSetDoesNotMutateSnapshot(t *testing.T) {
+	t.Parallel()
+	src := liveTestDB(t, "live.db")
+	dir := t.TempDir()
+	snap := filepath.Join(dir, "snap.db")
+	require.NoError(t, database.BackupSnapshot(src, snap))
+	require.NoError(t, database.SignBackup(snap, testSigningKey))
+
+	before := sha256.Sum256(mustRead(t, snap))
+
+	photo := filepath.Join(dir, "photos")
+	attachments := filepath.Join(dir, "attachments")
+	require.NoError(t, os.MkdirAll(photo, 0o750))
+	require.NoError(t, os.MkdirAll(attachments, 0o750))
+	_, err := database.VerifyBackupSet(snap, photo, attachments)
+	require.NoError(t, err)
+
+	after := sha256.Sum256(mustRead(t, snap))
+	assert.Equal(t, hex.EncodeToString(before[:]), hex.EncodeToString(after[:]),
+		"VerifyBackupSet must not rewrite the snapshot it is verifying")
+	require.NoError(t, database.VerifyBackupSignature(snap, testSigningKey),
+		"the snapshot signature must still verify after a reconciliation")
+	assert.NoFileExists(t, snap+"-wal")
+	assert.NoFileExists(t, snap+"-shm")
+}
+
 // writeManifest rewrites the manifest beside p, bypassing SignBackup so the
 // tests can forge fields.
 func writeManifest(t *testing.T, snapshotPath string, m database.BackupManifest) {

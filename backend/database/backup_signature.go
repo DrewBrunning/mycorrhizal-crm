@@ -127,7 +127,7 @@ func SignBackup(snapshotPath string, signingKey []byte) error {
 	data = append(data, '\n')
 
 	manifestPath := ManifestPath(snapshotPath)
-	f, err := os.OpenFile(manifestPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	f, err := os.OpenFile(manifestPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600) // #nosec G304 -- manifestPath is the operator-supplied snapshot path plus a constant suffix, never request input
 	if err != nil {
 		if os.IsExist(err) {
 			return fmt.Errorf("sign backup: manifest %q already exists; refusing to overwrite", manifestPath)

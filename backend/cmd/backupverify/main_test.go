@@ -162,6 +162,26 @@ func TestRunVerifyErrorExitsTwo(t *testing.T) {
 	assert.NotEmpty(t, errOut.String())
 }
 
+// TestRunRepeatedVerifyKeepsSignatureValid mirrors the backupRestore e2e,
+// which runs `make backup-verify` twice against the same set: the first run
+// must not mutate the snapshot, or the second run's signature check fails
+// (VerifyBackupSet used to rewrite the header by forcing journal_mode(WAL)).
+func TestRunRepeatedVerifyKeepsSignatureValid(t *testing.T) {
+	dbPath, photoDir, attachmentsDir := setupSet(t)
+	signSet(t, dbPath)
+	t.Setenv("SQLITE_DB_PATH", dbPath)
+	t.Setenv("PROFILE_PHOTO_DIR", photoDir)
+	t.Setenv("ATTACHMENTS_DIR", attachmentsDir)
+
+	for i := 1; i <= 2; i++ {
+		var out, errOut bytes.Buffer
+		code := run(nil, &out, &errOut)
+		require.Equal(t, 0, code, "run %d stderr: %s", i, errOut.String())
+		assert.Contains(t, out.String(), "signature:   verified (hmac-sha256)")
+		assert.Contains(t, out.String(), "backup set is complete")
+	}
+}
+
 // TestRunUnsignedSetFailsUnlessExplicitlyAllowed covers issue #943's fail-closed
 // default for an unauthenticated snapshot and the documented opt-out for
 // reconciling a legacy set.

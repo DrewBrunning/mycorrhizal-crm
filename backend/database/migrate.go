@@ -68,6 +68,25 @@ func openDSN(dbPath string) string {
 	return dbPath + "?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_txlock=immediate"
 }
 
+// openReadOnlyDSN opens a database for inspection without mutating it. It is
+// the same file-DSN family as openDSN, but two differences are load-bearing:
+//
+//   - mode=ro forbids writes outright, so an inspection can never alter what
+//     it is inspecting; and
+//   - it deliberately does NOT set journal_mode(WAL). Setting the journal mode
+//     rewrites the database header, so a `journal_mode=delete` VACUUM INTO
+//     snapshot opened through openDSN was silently converted to WAL — changing
+//     its bytes after the fact. That broke the detached snapshot signature
+//     (issue #943), which is a content hash, and contradicted
+//     VerifyBackupSet's own "must be verifiable without mutating the snapshot"
+//     contract.
+//
+// busy_timeout/foreign_keys are harmless on a read-only connection and keep
+// behavior aligned with the app's other reader.
+func openReadOnlyDSN(dbPath string) string {
+	return "file:" + dbPath + "?mode=ro&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)"
+}
+
 // newGormLogger returns the GORM logger every connection opened through this
 // package uses.
 //

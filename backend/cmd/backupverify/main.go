@@ -101,7 +101,7 @@ func checkSnapshotSignature(dbPath string) (detail string, err error, exitCode i
 	}
 
 	manifestPath := database.ManifestPath(dbPath)
-	_, statErr := os.Stat(manifestPath)
+	_, statErr := os.Stat(manifestPath) // #nosec G703 -- manifestPath derives from the operator-supplied SQLITE_DB_PATH/argument, never request input
 	if os.IsNotExist(statErr) {
 		if allowUnsigned {
 			return "unsigned (allowed by BACKUP_ALLOW_UNSIGNED=1)", nil, 0
