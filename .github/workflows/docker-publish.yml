@@ -463,24 +463,29 @@ jobs:
           printf '%s' "$SIGNING_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/keystore.jks"
           echo "store_file=$RUNNER_TEMP/keystore.jks" >> "$GITHUB_OUTPUT"
 
-      # versionName strips the leading 'v', same idiom the scan job below uses
-      # for the Docker image tag. versionCode uses the workflow's own run
-      # number rather than parsing MAJOR.MINOR.PATCH out of the tag: this repo's
-      # tags aren't strict semver (e.g. v0.2.0-alpha-candidate), so two
-      # pre-release/final tags sharing a MAJOR.MINOR.PATCH would otherwise
-      # collide on the same versionCode. GITHUB_RUN_NUMBER only ever increases
-      # across runs of this workflow, so it's guaranteed strictly increasing
-      # release-over-release -- which is what Android requires to accept an APK
-      # as an upgrade over whatever's already installed. +1000 is headroom
-      # above 1, the static versionCode every non-release build (including a
-      # tester's manually sideloaded android-apk-build.yml APK) still carries.
+      # versionName strips the leading 'v' and, issue #1022, any `-rc.N`
+      # (or other) pre-release qualifier: an RC build reports itself as the
+      # plain release it will become (e.g. "0.7.0", not "0.7.0-rc.3"), since
+      # promotion ships this exact APK unrebuilt and a tester/end-user has no
+      # reason to see or care about the RC number. versionCode uses the
+      # workflow's own run number rather than parsing MAJOR.MINOR.PATCH out
+      # of the tag: this repo's tags aren't strict semver (e.g.
+      # v0.2.0-alpha-candidate), so two pre-release/final tags sharing a
+      # MAJOR.MINOR.PATCH would otherwise collide on the same versionCode.
+      # GITHUB_RUN_NUMBER only ever increases across runs of this workflow,
+      # so it's guaranteed strictly increasing release-over-release -- which
+      # is what Android requires to accept an APK as an upgrade over
+      # whatever's already installed. +1000 is headroom above 1, the static
+      # versionCode every non-release build (including a tester's manually
+      # sideloaded android-apk-build.yml APK) still carries.
       - name: Compute release version
         id: version
         env:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
         run: |
+          v="${RELEASE_TAG#v}"
           {
-            echo "name=${RELEASE_TAG#v}"
+            echo "name=${v%%-*}"
             echo "code=$((1000 + GITHUB_RUN_NUMBER))"
           } >> "$GITHUB_OUTPUT"
 
@@ -874,6 +879,8 @@ jobs:
       # OCI revision label.
       - name: Compute build stamp
         id: stamp
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
         run: |
           sha=$(git rev-parse HEAD)
           # REL-04 (issue #448): SOURCE_DATE_EPOCH is the release commit's
@@ -887,12 +894,25 @@ jobs:
           # and the image label both carry -- a deterministic value, so a
           # third-party rebuild of the tag reproduces the same bytes. It is not
           # the workflow's wall-clock, which was the old behaviour.
+          #
+          # issue #1022: `display_version` is what the running binary (and,
+          # via VITE_APP_VERSION, the frontend) reports as its own version --
+          # distinct from the image TAG, which must keep the full `-rc.N`
+          # suffix to stay distinguishable in the registry. Strips the
+          # leading `v` and everything from the first `-` onward, so an RC
+          # build of v0.7.0-rc.3 reports itself simply as "0.7.0" (the same
+          # value the eventual final release reports, since promotion copies
+          # this exact binary rather than rebuilding it) instead of exposing
+          # the pre-release qualifier to an end user who has no reason to
+          # know or care an RC number.
+          v="${RELEASE_TAG#v}"
           {
             echo "commit=$(echo "$sha" | cut -c1-12)"
             echo "sha7=$(echo "$sha" | cut -c1-7)"
             echo "sha_full=$sha"
             echo "source_date_epoch=$epoch"
             echo "created=$(date -u -d "@$epoch" +%Y-%m-%dT%H:%M:%SZ)"
+            echo "display_version=${v%%-*}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Extract metadata (tags, labels)
@@ -959,10 +979,13 @@ jobs:
           # Dockerfile's defaults apply and /health reports version "dev" --
           # so a published v0.2.0 image could not be told apart from any other
           # build, which is the exact problem the buildinfo package exists to
-          # solve. metadata-action's `version` output is the semver derived
-          # from the tag that triggered this run.
+          # solve. issue #1022: APP_VERSION is `stamp`'s display_version, not
+          # metadata-action's `version` output -- the former strips a `-rc.N`
+          # suffix (an RC binary should self-report the plain release it will
+          # become, not the pre-release qualifier), the latter is the actual
+          # image tag and must keep it.
           build-args: |
-            APP_VERSION=${{ steps.meta.outputs.version }}
+            APP_VERSION=${{ steps.stamp.outputs.display_version }}
             APP_COMMIT=${{ steps.stamp.outputs.commit }}
             APP_BUILD_DATE=${{ steps.stamp.outputs.created }}
           # scope is required, not cosmetic, once this step runs as a matrix:
