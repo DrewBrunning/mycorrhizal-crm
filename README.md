@@ -186,13 +186,9 @@ pre-populated with a screenshot-ready dataset and a working login.
 
 ## Contributing
 
-Pull requests are welcome. Please read
-[`docs/development/contributing.md`](docs/development/contributing.md) first -
-one concern per PR, tests with the change, and **every commit signed off**
-under the [Developer Certificate of Origin](DCO) (`git commit -s`), which a
-required status check enforces. Project roles and who holds access to sensitive
-resources are in [`GOVERNANCE.md`](GOVERNANCE.md). Security issues go through
-[`SECURITY.md`](SECURITY.md), not a public issue.
+Contributions are welcome. See
+[`docs/development/contributing.md`](docs/development/contributing.md) for
+how to get set up and what a PR needs to be merged.
 
 ### Bugs and feature requests
 This application is currently in beta. Bugs are expected in testing, but are hopefully few and far-between. Please submit issues via GitHub.
