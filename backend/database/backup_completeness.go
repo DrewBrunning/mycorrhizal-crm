@@ -119,10 +119,12 @@ func (r *BackupSetReport) String() string {
 // package-level comment above for what "missing" and "orphan" mean and why
 // soft-deleted rows are skipped.
 //
-// The database is opened read-only through the app's own connection pragmas
-// (openDSN) via a raw *sql.DB — deliberately not GORM, matching IntegrityCheck
-// — and no migrations are run: a backup set must be verifiable without mutating
-// the snapshot.
+// The database is opened read-only through openReadOnlyDSN via a raw *sql.DB
+// — deliberately not GORM and deliberately not openDSN, whose
+// journal_mode(WAL) pragma rewrote a `journal_mode=delete` VACUUM INTO
+// snapshot's header on open (changing its bytes and breaking the detached
+// signature, issue #943) — and no migrations are run: a backup set must be
+// verifiable without mutating the snapshot.
 func VerifyBackupSet(dbPath, photoDir, attachmentsDir string) (*BackupSetReport, error) {
 	if photoDir == "" || attachmentsDir == "" {
 		return nil, fmt.Errorf("verify backup set: both a photo directory and an attachments directory are required")
@@ -140,7 +142,7 @@ func VerifyBackupSet(dbPath, photoDir, attachmentsDir string) (*BackupSetReport,
 		return nil, err
 	}
 
-	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	sqlDB, err := sql.Open("sqlite", openReadOnlyDSN(dbPath))
 	if err != nil { // # pragma: no cover — a file DSN cannot fail to open here; errors surface at first query
 		return nil, fmt.Errorf("open %q: %w", dbPath, err)
 	}

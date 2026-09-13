@@ -1043,6 +1043,21 @@ func TestOpenDSN_PragmasArePresent(t *testing.T) {
 		"openDSN must preserve the db path as the DSN prefix")
 }
 
+// TestOpenReadOnlyDSN_DoesNotForceWAL pins the read-only inspection DSN used
+// by VerifyBackupSet (issue #943). It must forbid writes and must NOT carry the
+// journal_mode(WAL) pragma: forcing WAL rewrites a journal_mode=delete VACUUM
+// INTO snapshot's header on open, mutating the snapshot and invalidating its
+// detached signature.
+func TestOpenReadOnlyDSN_DoesNotForceWAL(t *testing.T) {
+	t.Parallel()
+	dsn := openReadOnlyDSN("/path/to/db.sqlite")
+	assert.True(t, strings.HasPrefix(dsn, "file:/path/to/db.sqlite?"),
+		"openReadOnlyDSN must use SQLite's file: URI form so mode=ro is honoured")
+	assert.Contains(t, dsn, "mode=ro", "openReadOnlyDSN must forbid writes")
+	assert.NotContains(t, dsn, "journal_mode",
+		"openReadOnlyDSN must not set journal_mode: doing so mutates the snapshot it inspects")
+}
+
 // TestGormLoggerDoesNotInterpolatePII pins issue #621: every connection opened
 // through this package must use a logger that never echoes literal query
 // values. GORM's default logger interpolates the WHERE/VALUES clause into

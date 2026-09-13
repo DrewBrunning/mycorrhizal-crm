@@ -430,6 +430,16 @@ design is ADR-0010 / CON-04, issue #479).
   documented default) or object-locked remote storage — so a compromise of the app host cannot reach
   what is already off it. Runbook + verify-by-trying: `docs/deployment.md` → "Backup immutability &
   ransomware resistance".
+- **Authenticity** (issue #943): a snapshot is signed. `make backup` writes a detached
+  HMAC-SHA256 manifest (`<snapshot>.manifest.json`, `backend/database/backup_signature.go`) keyed by
+  the at-rest master key derived with HKDF domain separation (`atrest.BackupSigningKey`), and
+  `make backup-verify` authenticates the database piece against it, failing closed on a missing or
+  invalid signature (a legacy unsigned set requires the explicit `BACKUP_ALLOW_UNSIGNED=1` opt-out).
+  The key is never in the backup, so an attacker with write access to the backup store cannot forge a
+  manifest for a substituted file or silently strip one. Scope: the **database** piece only — the
+  operator-copied photo/attachment directories stay unsigned — and it does not stop replay of an older
+  validly-signed snapshot; the restore drill's freshness signal and off-host storage are the controls
+  there.
 - **Deletion / propagation**: **does not happen automatically, ever** — deleting/purging live data has no
   effect on already-taken backup files. This is the one place in the whole lifecycle where "deletion
   propagates" is false by design, and `docs/deployment.md`'s Restore section already documents the
@@ -453,7 +463,14 @@ design is ADR-0010 / CON-04, issue #479).
   `TestRestoreDrillPassesWithEncryptedDatabase`, issue #420); `backend/database/backup_immutability_test.go`
   (issue #505 — write-new-only proven by trying overwrite/in-place-modify/neighbour-delete through the
   app's own primitive; a source walk fails on any in-app backup expiry/rotation function; the #530
-  pre-migration rollback point survives a non-recursive routine rotation sweep).
+  pre-migration rollback point survives a non-recursive routine rotation sweep); snapshot signing
+  (issue #943) by `backend/database/backup_signature_test.go`
+  (`TestVerifyBackupSignatureRejectsTamperedSnapshot`, `TestVerifyBackupSignatureRejectsSwappedManifest`,
+  `TestVerifyBackupSignatureRejectsWrongKey`) and the CLI fail-closed behavior in
+  `backend/cmd/backupverify/main_test.go` (`TestRunUnsignedSetFailsUnlessExplicitlyAllowed`,
+  `TestRunTamperedManifestFailsClosed`); the operator-backup freshness heartbeat by
+  `backend/services/alerting_conditions_test.go`
+  (`TestBackupStaleConditionMeasuresOperatorBackups`).
 
 ## 11. Exports (CSV / vCard3 / vCard4 / jSContact / audit log)
 
