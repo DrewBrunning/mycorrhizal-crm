@@ -229,6 +229,61 @@ func TestRunTamperedManifestFailsClosed(t *testing.T) {
 	assert.Contains(t, errOut.String(), "not authentic")
 }
 
+// TestRunMalformedSigningKeyConfigFails: a configured-but-invalid at-rest key
+// is a cannot-run error (exit 2), not a silent pass.
+func TestRunMalformedSigningKeyConfigFails(t *testing.T) {
+	dbPath, photoDir, attachmentsDir := setupSet(t)
+	signSet(t, dbPath)
+	t.Setenv("SQLITE_DB_PATH", dbPath)
+	t.Setenv("PROFILE_PHOTO_DIR", photoDir)
+	t.Setenv("ATTACHMENTS_DIR", attachmentsDir)
+	t.Setenv("DATA_ENCRYPTION_KEY", "not-base64!!")
+
+	var out, errOut bytes.Buffer
+	code := run(nil, &out, &errOut)
+	assert.Equal(t, 2, code)
+	assert.Contains(t, errOut.String(), "DATA_ENCRYPTION_KEY")
+}
+
+// TestRunManifestStatErrorExitsTwo: a manifest that exists but cannot be stat'd
+// (a symlink loop) is a cannot-run error, distinct from a missing manifest.
+func TestRunManifestStatErrorExitsTwo(t *testing.T) {
+	dbPath, photoDir, attachmentsDir := setupSet(t)
+	signSet(t, dbPath)
+	manifest := database.ManifestPath(dbPath)
+	require.NoError(t, os.Remove(manifest))
+	require.NoError(t, os.Symlink(manifest, manifest))
+
+	t.Setenv("SQLITE_DB_PATH", dbPath)
+	t.Setenv("PROFILE_PHOTO_DIR", photoDir)
+	t.Setenv("ATTACHMENTS_DIR", attachmentsDir)
+
+	var out, errOut bytes.Buffer
+	code := run(nil, &out, &errOut)
+	assert.Equal(t, 2, code)
+	assert.Contains(t, errOut.String(), "stat manifest")
+}
+
+// TestRunNoKeyWithManifestAndAllowUnsigned: with a manifest present but no
+// resolvable key, the explicit opt-out degrades to "not verified" instead of
+// failing.
+func TestRunNoKeyWithManifestAndAllowUnsigned(t *testing.T) {
+	dbPath, photoDir, attachmentsDir := setupSet(t)
+	signSet(t, dbPath)
+	t.Setenv("SQLITE_DB_PATH", dbPath)
+	t.Setenv("PROFILE_PHOTO_DIR", photoDir)
+	t.Setenv("ATTACHMENTS_DIR", attachmentsDir)
+	t.Setenv("BACKUP_ALLOW_UNSIGNED", "1")
+	t.Setenv("JWT_SECRET_KEY", "")
+	t.Setenv("DATA_ENCRYPTION_KEY", "")
+	t.Setenv("DATA_ENCRYPTION_KEY_FILE", "")
+
+	var out, errOut bytes.Buffer
+	code := run(nil, &out, &errOut)
+	assert.Equal(t, 0, code, "stderr: %s", errOut.String())
+	assert.Contains(t, out.String(), "not verified (no signing key")
+}
+
 // TestRunNoSigningKeyExitsTwo: with a manifest present but no resolvable key,
 // verification cannot even be attempted.
 func TestRunNoSigningKeyExitsTwo(t *testing.T) {
