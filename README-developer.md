@@ -26,8 +26,8 @@
 **Docker (All-in-one Image)**
 - The whole app ships as a single container built from the root [Dockerfile](Dockerfile): the React bundle and the Go backend served together by nginx (which proxies `/api` same-origin), managed by supervisord.
 - Copy `.env.example` to `.env` and configure `JWT_SECRET_KEY`, `FRONTEND_URL`, and optionally `DATA_PATH`/`PHOTOS_PATH` for volume locations.
-- Deploy using the pre-built image from GHCR: `docker compose up -d`. Set `IMAGE_TAG` in `.env` to pin a specific version (default: `latest`).
-- Build and run locally instead: uncomment the `build: .` line in [docker-compose.yml](docker-compose.yml), then `docker compose up -d --build` (or plain `docker build -t mycorrhizal-crm .`).
+- [docker-compose.yml](docker-compose.yml) builds the image locally from source (`build: .`) — deliberately, since the meerkat -> mycorrhizal rebrand fixed this file away from pulling the wrong upstream (`fbuchner/meerkat-crm`) image: `docker compose up -d --build` (or plain `docker build -t mycorrhizal-crm .`). There is no `image:`/`IMAGE_TAG` wiring in the compose file to uncomment — a compose-based pre-built-image deploy does not exist today (see [getting-started.md](docs/getting-started.md)).
+- CI still publishes real, signed images to GHCR (`ghcr.io/drewbrunning/mycorrhizal-crm[-backend|-frontend]:<version>`, plus `latest` on a final release) for direct `docker pull` / verification — see [docs/security/release-verification.md](docs/security/release-verification.md). Wiring that into `docker-compose.yml` as an alternative to building locally is a possible future change, not the current default.
 - The frontend build stage is **yarn-only**: `frontend/yarn.lock` must be present in the build context (it is committed and not `.dockerignore`d). There is no `npm` fallback — `yarn install --frozen-lockfile` and `yarn build` run unconditionally — so a trimmed build context that omits the lockfile will fail at the install step. Same for the split [frontend/Dockerfile](frontend/Dockerfile).
 - Container defaults (`PORT`, `SQLITE_DB_PATH`, `PROFILE_PHOTO_DIR`) are set in the root [Dockerfile](Dockerfile); override via `.env` if needed. `PORT` is the backend's internal bind port (8081) — nginx listens on 8080, which is what's actually exposed from the container.
 - The frontend bundle is built with an empty `VITE_API_URL` so it calls the API on relative paths; nginx (see [docker/nginx.conf](docker/nginx.conf)) proxies `/api`, `/health`, and `/carddav` to the backend on `127.0.0.1:8081`.
@@ -253,9 +253,11 @@ One-time setup (already done for this repo; re-do only if the App is rotated):
 
 Downstream:
 
-- Users deploy a new version by setting `IMAGE_TAG=v1.5.3` (or just `:latest`) in their `.env` and
-  running `docker compose up -d`.
-- Each published image carries an SBOM and SLSA provenance attestation and is keylessly signed with
-  `cosign`; the release APK carries GitHub-native SLSA build provenance plus an additive cosign
-  co-signature. Full operator-facing verification steps (exact commands, what expires and when):
+- Operators deploy a new version by pulling the tag and re-running `docker compose up -d --build`
+  ([docker-compose.yml](docker-compose.yml) builds locally from source; see the Docker section above
+  — there is no `IMAGE_TAG`/pre-built-image path through the compose file).
+- Each published GHCR image (still built and signed here, for direct-pull/verification use) carries
+  an SBOM and SLSA provenance attestation and is keylessly signed with `cosign`; the release APK
+  carries GitHub-native SLSA build provenance plus an additive cosign co-signature. Full
+  operator-facing verification steps (exact commands, what expires and when):
   `docs/security/release-verification.md`.
