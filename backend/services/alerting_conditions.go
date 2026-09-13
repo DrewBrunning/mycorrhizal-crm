@@ -96,7 +96,7 @@ func evaluateAlertConditions(ctx context.Context, db *gorm.DB, cfg config.Config
 			detail:       backupDetail(b),
 			failureCount: b.ConsecutiveFailures,
 		})
-		out = append(out, backupStaleCondition(b, cfg))
+		out = append(out, backupStaleCondition(ctx, db, cfg))
 	}
 
 	out = append(out,
@@ -128,23 +128,45 @@ func backupDetail(b SubsystemHealth) string {
 	return "The last backup / restore-drill run failed."
 }
 
-// backupStaleCondition fires when backups have succeeded before but not
-// recently. "Never succeeded" is deliberately not-firing: on a fresh instance
-// the plain backup condition covers a broken drill, and a not-yet-run drill is
-// not an incident.
-func backupStaleCondition(b SubsystemHealth, cfg config.Config) alertConditionResult {
+// backupStaleCondition fires when operator backups have succeeded before but
+// not recently (issue #943). It deliberately measures the last successful
+// `make backup` (`backup_completed` tagged component=backup) rather than the
+// `backup` subsystem's combined last success: the weekly restore drill emits
+// `restore_test_completed`, so folding both together let a dead operator
+// backup cron stay green as long as the drill kept running. The drill's own
+// health is still covered by the plain `backup` condition, and the
+// pre-migration snapshot (component=migration) deliberately does not count.
+//
+// "Never succeeded" is deliberately not-firing: on a fresh instance a
+// not-yet-run operator backup is not an incident, and the plain backup
+// condition covers a broken drill.
+func backupStaleCondition(ctx context.Context, db *gorm.DB, cfg config.Config) alertConditionResult {
 	maxAgeHours := cfg.AlertBackupMaxAgeHours
 	if maxAgeHours == 0 {
 		maxAgeHours = 2 * cfg.DBRestoreDrillIntervalHours
 	}
 	r := alertConditionResult{key: alertConditionKeyBackupStale, title: "Backup freshness"}
-	if b.LastSuccessAt == nil {
+
+	// Find, not First: never having taken an operator backup is the normal
+	// fresh-instance case and must not log a "record not found" every
+	// evaluation (subsystem_health.go's idiom).
+	var evs []models.SystemEvent
+	if err := db.WithContext(ctx).
+		Where("component = ? AND event_type = ?", logger.ComponentBackup, models.SysEventBackupCompleted).
+		Order("occurred_at DESC, id DESC").
+		Limit(1).
+		Find(&evs).Error; err != nil {
+		logger.Ctx(ctx).Error().Err(err).Msg("alerting: failed to read last operator backup event")
 		return r
 	}
-	age := time.Since(*b.LastSuccessAt)
+	if len(evs) == 0 {
+		return r
+	}
+
+	age := time.Since(evs[0].OccurredAt)
 	if age > time.Duration(maxAgeHours)*time.Hour {
 		r.firing = true
-		r.detail = fmt.Sprintf("Last successful backup was %s ago (threshold %dh).",
+		r.detail = fmt.Sprintf("Last successful operator backup (make backup) was %s ago (threshold %dh).",
 			age.Round(time.Hour), maxAgeHours)
 	}
 	return r

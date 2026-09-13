@@ -80,3 +80,8 @@ Make regular backups of your data: the SQLite database **and** the photo and att
 directories (they live outside the database file). See [Deployment → Backups](deployment.html#backups)
 for the tested online and offline procedures — in particular, do not copy the `.db` file while the
 server is running, since the database uses WAL mode.
+
+`make backup` signs each snapshot (a detached `.manifest.json`, issue #943) using a key derived from
+your at-rest master key, so it must run with the same `DATA_ENCRYPTION_KEY` (or `JWT_SECRET_KEY`) the
+server uses; `make backup-verify` checks that signature before a restore. Keep the manifest next to
+the snapshot.
