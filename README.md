@@ -137,18 +137,14 @@ own topic, token and devices.
 
 | Channel | Configured | What you need |
 |---|---|---|
-| **Email** | Server (`.env`) | Either a [Resend](https://resend.com) API key, or SMTP host/credentials. Both may be set, in which case each email is sent through both. |
+| **Email** | Server (`.env`) | Either a [Resend](https://resend.com) API key, or SMTP host/credentials. |
 | **ntfy** | Per user, in-app | Your ntfy server URL and a topic. Works with the public ntfy.sh or a self-hosted instance. |
-| **Gotify** | Per user, in-app | Your Gotify server URL and an application token. The token is stored encrypted at rest. |
-| **Browser push** | Per user, in-app | Nothing to configure. The VAPID keypair is generated once on first use and stored in the database. |
+| **Gotify** | Per user, in-app | Your Gotify server URL and an application token. |
+| **Browser push** | Per user, in-app | Nothing to configure, but the app must be served over HTTPS. |
 
-`REMINDER_TIME` and `REMINDER_TIMEZONE` control *when* the daily reminder run happens; they apply to every enabled channel, not just email.
-
-The only server-side setting for ntfy/Gotify/push is `WEBHOOK_BLOCK_PRIVATE_URLS`. It defaults to `false` so the server can reach a self-hosted ntfy or Gotify on a private address - set it to `true` on a multi-tenant or cloud deployment, where posting to internal addresses on user-supplied URLs would be an SSRF risk.
-
-> **⚠️ Browser push requires HTTPS.** Push notifications are delivered to a service worker, and browsers refuse to register one on a plain-HTTP origin. `localhost` is exempt, so local testing works, but a LAN deployment reached over `http://` cannot register a device. The other three channels have no such requirement.
-
-Because the app registers a service worker, it is served cache-first. A newly deployed version therefore announces itself with a "new version available" prompt instead of appearing silently - reload when you see it.
+Self-hosted webhook targets (ntfy/Gotify) can be restricted to prevent SSRF against private
+network addresses on a multi-tenant deployment. Full configuration reference, scheduling behavior
+and troubleshooting: [docs/notifications.md](docs/notifications.md).
 
 ---
 
