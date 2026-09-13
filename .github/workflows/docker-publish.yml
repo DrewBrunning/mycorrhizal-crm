@@ -905,10 +905,22 @@ jobs:
           # the ref and sha reads github.sha -- both wrong on a manual run,
           # which would publish an image labelled with the branch it was
           # dispatched from. Same output as before on a tag push.
+          #
+          # `latest` (docker compose version issue): this job never moved this
+          # tag, on any release, ever -- it sat frozen at whatever the last
+          # manual push left it (0.6.12, discovered when 0.7.0 shipped and
+          # `docker compose pull` kept reporting 0.6.12). Gated to skip an RC
+          # push (`-rc.N`) so a pre-release never becomes what a bare
+          # `docker compose pull` lands on; mirrors create-release's
+          # `make_latest` condition above. A *final* tag promoted via
+          # promote-rc.yml (REL-02) never reaches this job at all (pushed with
+          # GITHUB_TOKEN, so `on: push: tags` never fires) -- that path moves
+          # `latest` itself, unconditionally, in its own re-tag step.
           tags: |
             type=semver,pattern={{version}},value=${{ env.RELEASE_TAG }}
             type=semver,pattern={{major}}.{{minor}},value=${{ env.RELEASE_TAG }}
             type=raw,value=${{ steps.stamp.outputs.sha7 }}
+            type=raw,value=latest,enable=${{ !contains(env.RELEASE_TAG, '-rc.') }}
           # REL-04 (issue #448): pin the identity labels explicitly. Left to
           # metadata-action's defaults, `revision` is github.sha and `created`
           # is the run's wall-clock -- both wrong on a manual recovery run (the

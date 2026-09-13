@@ -251,14 +251,24 @@ jobs:
           for suffix in "" "-backend" "-frontend"; do
             src="ghcr.io/${repo}${suffix}:${rc}"
             dst="ghcr.io/${repo}${suffix}:${final}"
-            # Manifest copy: dst resolves to the SAME digest as src.
-            docker buildx imagetools create --tag "$dst" "$src"
+            dst_latest="ghcr.io/${repo}${suffix}:latest"
+            # Manifest copy: dst (and dst_latest) resolve to the SAME digest as
+            # src. `latest` is moved here -- not by docker-publish.yml -- because
+            # the final tag pushed above uses GITHUB_TOKEN and by design never
+            # triggers that workflow (see the "Create + push the final tag"
+            # step). Every promotion is to a final, non-RC tag by construction
+            # (validated earlier), so `latest` always moves here, unconditionally
+            # -- unlike docker-publish.yml's own `latest` tag, which is gated to
+            # skip RC pushes.
+            docker buildx imagetools create --tag "$dst" --tag "$dst_latest" "$src"
             digest="$(docker buildx imagetools inspect "$dst" --format '{{json .Manifest}}' | jq -r '.digest')"
             echo "ghcr.io/${repo}${suffix} ${digest}" | tee -a /tmp/final-digests.txt
             # Additional signature carrying the promote-rc.yml identity. The
             # RC pipeline's original cosign signature + GH build-provenance
             # attestation are digest-scoped and still verify for this tag
             # (the digest is unchanged) -- this is a promotion marker on top.
+            # Signing by digest (not by tag) covers both $dst and $dst_latest,
+            # which share this digest.
             cosign sign --yes "ghcr.io/${repo}${suffix}@${digest}"
           done
 
@@ -348,7 +358,8 @@ jobs:
             echo "- images re-tagged by digest (\`digest_rc == digest_final\` in promotion-metadata.json) -- **not** rebuilt"
             echo "- release assets copied byte-for-byte from the ${RC_TAG} Release; SHA256SUMS regenerated"
             echo "- final tag pushed with GITHUB_TOKEN, so docker-publish.yml did not fire"
-            echo "- \`${FINAL_TAG}\` is marked **latest** and is no longer a pre-release"
+            echo "- the three GHCR image \`:latest\` tags were moved to this digest"
+            echo "- the GitHub Release \`${FINAL_TAG}\` is marked **latest** and is no longer a pre-release"
             echo "- \`${SERIES_BRANCH}\` merged back into main"
             echo
             echo "Confirm Obtainium now offers \`${FINAL_TAG}\`, not the RC."
