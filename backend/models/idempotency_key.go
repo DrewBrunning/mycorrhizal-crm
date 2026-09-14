@@ -41,6 +41,12 @@ type IdempotencyKey struct {
 	// State is "pending" between the INSERT that claims the key and the UPDATE
 	// that records the response, then "completed". A concurrent retry that
 	// finds a pending row is told 409, not allowed to re-run the handler.
+	//
+	// ResponseStatus disambiguates the two "completed" outcomes: a stored
+	// response (a real HTTP status, replayed verbatim) vs. the
+	// terminal-but-unreplayable marker (0) written when the response could not
+	// be stored (issue #995). A completed/0 row must never be re-run — its
+	// handler already committed its write.
 	State string `gorm:"column:state;not null;default:pending" json:"state"`
 
 	ResponseStatus int    `gorm:"column:response_status;not null;default:0" json:"response_status"`
@@ -54,6 +60,10 @@ type IdempotencyKey struct {
 func (IdempotencyKey) TableName() string { return "idempotency_keys" }
 
 // Idempotency-key state values.
+//
+// A completed row with ResponseStatus == 0 is the terminal-but-unreplayable
+// marker: the handler ran (its write committed) but no response was stored, so
+// a retry is refused rather than re-run (issue #995).
 const (
 	IdempotencyStatePending   = "pending"
 	IdempotencyStateCompleted = "completed"
