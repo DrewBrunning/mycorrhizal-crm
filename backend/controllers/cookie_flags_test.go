@@ -58,6 +58,9 @@ var cookieFlagPolicy = map[string]http.SameSite{
 	"oidc_nonce":  http.SameSiteLaxMode,
 	"oidc_pkce":   http.SameSiteLaxMode,
 	"oidc_client": http.SameSiteLaxMode,
+	// Issue #965: the Android native-return binding cookies.
+	"oidc_app_state":     http.SameSiteLaxMode,
+	"oidc_app_challenge": http.SameSiteLaxMode,
 }
 
 // cookieAudit collects every Set-Cookie a response carries and asserts each
@@ -261,7 +264,10 @@ func checkCookieFlagPolicy(t *testing.T, cookieSecure bool) {
 	require.Equal(t, -1, cookies["id_token"].MaxAge, "logout must clear id_token")
 
 	// --- flow: OIDC login start (client=android) mints the handshake set ----
-	req, _ = http.NewRequest("GET", "/api/v1/auth/oidc/login?client=android", nil)
+	// Issue #965: the android start must carry the app's state + S256 PKCE
+	// challenge, which are recorded in their own path-scoped cookies.
+	req, _ = http.NewRequest("GET",
+		"/api/v1/auth/oidc/login?client=android&state=app-state&code_challenge=app-challenge", nil)
 	w, cookies = doRequest(router, req)
 	require.Equal(t, http.StatusFound, w.Code, "oidc login start: %s", w.Body.String())
 	audit.record(w)
@@ -272,6 +278,8 @@ func checkCookieFlagPolicy(t *testing.T, cookieSecure bool) {
 	require.NotNil(t, nonce, "oidc login start must mint oidc_nonce")
 	require.NotNil(t, pkce, "oidc login start must mint oidc_pkce")
 	require.NotNil(t, cookies["oidc_client"], "oidc login start (client=android) must mint oidc_client")
+	require.NotNil(t, cookies["oidc_app_state"], "oidc login start (client=android) must mint oidc_app_state")
+	require.NotNil(t, cookies["oidc_app_challenge"], "oidc login start (client=android) must mint oidc_app_challenge")
 
 	// --- flow: OIDC callback (web success) clears the handshake set and
 	// mints auth_token + id_token --------------------------------------------

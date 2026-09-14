@@ -9,31 +9,34 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-// M5 §5: the OIDC native-return deep link parsing is pure so it can be tested
-// without launching the Activity. Robolectric provides a real android.net.Uri;
-// the plain Application avoids booting the @HiltAndroidApp one.
+// M5 §5 / issue #965: the OIDC native-return deep link parsing is pure so it
+// can be tested without launching the Activity. Robolectric provides a real
+// android.net.Uri; the plain Application avoids booting the @HiltAndroidApp one.
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class OidcReturnParsingTest {
 
     @Test
-    fun `a success callback captures the token and profile prefs`() {
+    fun `a success callback captures the exchange code, state and profile prefs`() {
         val uri = Uri.parse(
-            "mycorrhizal://oidc/callback?token=eyJhbGciOiJIUzI1NiJ9.abc&language=de&date_format=eu",
+            "mycorrhizal://oidc/callback?code=single-use-code&state=app-state&language=de&date_format=eu",
         )
 
         val parsed = parseOidcReturn(uri)
 
-        assertEquals(OidcReturn.Success(token = "eyJhbGciOiJIUzI1NiJ9.abc", language = "de", dateFormat = "eu"), parsed)
+        assertEquals(
+            OidcReturn.Success(state = "app-state", code = "single-use-code", language = "de", dateFormat = "eu"),
+            parsed,
+        )
     }
 
     @Test
     fun `language and date format are optional`() {
-        val uri = Uri.parse("mycorrhizal://oidc/callback?token=abc")
+        val uri = Uri.parse("mycorrhizal://oidc/callback?code=abc&state=s")
 
         val parsed = parseOidcReturn(uri)
 
-        assertEquals(OidcReturn.Success(token = "abc", language = null, dateFormat = null), parsed)
+        assertEquals(OidcReturn.Success(state = "s", code = "abc", language = null, dateFormat = null), parsed)
     }
 
     @Test
@@ -51,14 +54,34 @@ class OidcReturnParsingTest {
     }
 
     @Test
-    fun `a token on a different path of the oidc host is ignored`() {
+    fun `a code on a different path of the oidc host is ignored`() {
         // MainActivity is exported, so the path is part of the contract too —
-        // an explicit-component VIEW intent must not be able to inject a token.
-        assertNull(parseOidcReturn(Uri.parse("mycorrhizal://oidc/other?token=abc")))
+        // an explicit-component VIEW intent must not be able to inject a code.
+        assertNull(parseOidcReturn(Uri.parse("mycorrhizal://oidc/other?code=abc&state=s")))
     }
 
     @Test
-    fun `a token-less success is ignored`() {
-        assertNull(parseOidcReturn(Uri.parse("mycorrhizal://oidc/callback")))
+    fun `a code-less callback is ignored`() {
+        assertNull(parseOidcReturn(Uri.parse("mycorrhizal://oidc/callback?state=s")))
+    }
+
+    @Test
+    fun `a callback without a state nonce is ignored`() {
+        // The state is what binds the callback to a flow this app started; a
+        // code alone (e.g. another app/attacker initiating the flow) is not
+        // accepted.
+        assertNull(parseOidcReturn(Uri.parse("mycorrhizal://oidc/callback?code=abc")))
+    }
+
+    // Issue #965 regression: the pre-fix backend delivered the raw session JWT
+    // in a `token` query parameter. That shape must stay unparseable — accepting
+    // it would reintroduce the custom-scheme token theft the fix removed.
+    @Test
+    fun `a legacy token-bearing callback is ignored`() {
+        assertNull(
+            parseOidcReturn(
+                Uri.parse("mycorrhizal://oidc/callback?token=eyJhbGciOiJIUzI1NiJ9.abc&language=de"),
+            ),
+        )
     }
 }

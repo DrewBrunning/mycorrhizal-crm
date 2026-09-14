@@ -143,3 +143,8 @@ ignore:
   - "android/app/src/main/kotlin/com/mycorrhizal/crm/applock/AppLockScreen.kt"
   - "android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/session/DeviceGrantTokenStorage.kt"
   - "android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/auth/AndroidLocalAuthCapabilities.kt"
+  # Issue #965: the Android OIDC pending-request store is EncryptedSharedPreferences
+  # + Keystore master key, like DeviceGrantTokenStorage above (guarded by
+  # EncryptedOidcPendingRequestStorageGuardTest). Its pure TTL helper is still
+  # unit-tested, but the file's store methods cannot run on the JVM.
+  - "android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/session/OidcPendingRequestStore.kt"

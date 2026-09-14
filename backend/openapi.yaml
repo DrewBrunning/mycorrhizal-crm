@@ -28,10 +28,11 @@ info:
       tokens (mycorrhizal_…) are accepted on the general REST path only when
       their scope is `full`; a `carddav`-scoped token is rejected with 403.
       API tokens cannot access the admin paths at all.
-    - **OIDC:** `/auth/oidc/login` and `/auth/oidc/callback` are registered
-      only when OIDC is enabled at server startup (`OIDC_ENABLED=true`); they
-      are documented here for completeness but 404 on a non-OIDC build.
-      `/auth/oidc/config` is always present.
+    - **OIDC:** `/auth/oidc/login`, `/auth/oidc/callback` and
+      `/auth/oidc/native/exchange` are registered only when OIDC is enabled at
+      server startup (`OIDC_ENABLED=true`); they are documented here for
+      completeness but 404 on a non-OIDC build. `/auth/oidc/config` is always
+      present.
     - **CardDAV:** the CardDAV surface (`.well-known/carddav`,
       `/carddav/*`) is a WebDAV/XML protocol, not JSON REST, and is out of
       scope for this spec by design. It is enabled separately via
@@ -171,15 +172,29 @@ paths:
         Only registered when OIDC_ENABLED=true. Sets three httpOnly cookies
         (oidc_state, oidc_nonce, oidc_pkce) and 302-redirects to the
         provider's authorization endpoint. With ?client=android, also sets an
-        oidc_client cookie so the callback returns the token to the native
-        app's deep link instead of the web SPA (M6 §4).
+        oidc_client cookie plus the native-PKCE cookies (oidc_app_state,
+        oidc_app_challenge) so the callback returns a short-lived, PKCE-bound
+        exchange code to the native app's deep link instead of the web SPA
+        (M6 §4). The
+        android start is refused (redirect to the deep link's error target) if
+        state/code_challenge are missing or code_challenge_method is not S256
+        (issue #965).
       parameters:
         - name: client
           in: query
-          schema: { type: string, enum: [android], description: "When present and equal to android, the callback delivers the JWT via the mycorrhizal://oidc/callback deep link." }
+          schema: { type: string, enum: [android], description: "When present and equal to android, the callback delivers a short-lived, PKCE-bound exchange code via the mycorrhizal://oidc/callback deep link." }
+        - name: state
+          in: query
+          schema: { type: string, description: "Required with client=android. The app's own CSRF state nonce, echoed in the deep link and verified by the app before it redeems the code." }
+        - name: code_challenge
+          in: query
+          schema: { type: string, description: "Required with client=android. The app's PKCE S256 code challenge; the exchange code is bound to it." }
+        - name: code_challenge_method
+          in: query
+          schema: { type: string, enum: [S256], default: S256, description: "Only S256 is accepted." }
       responses:
         "302":
-          description: Redirect to the provider's authorization URL.
+          description: Redirect to the provider's authorization URL, or (a binding-less client=android start) to the deep link's error target.
         "500":
           description: Failed to generate state/nonce.
   /auth/oidc/callback:
@@ -193,9 +208,12 @@ paths:
         /login?error=… on any failure), setting the auth_token and id_token
         cookies on success. When the flow was started with ?client=android
         (oidc_client cookie), success instead redirects to
-        mycorrhizal://oidc/callback?token=…&language=…&date_format=… and sets
-        no cookies; failures redirect to the same deep link with error=…
-        (M6 §4). state/nonce/PKCE are enforced identically for both flows.
+        mycorrhizal://oidc/callback?code=…&state=…&language=…&date_format=…
+        and sets no cookies: the code is a short-lived, single-purpose,
+        PKCE-bound exchange token (never the session JWT), redeemed by
+        POST /auth/oidc/native/exchange (issue #965). Failures redirect to the
+        same deep link with error=… (M6 §4). state/nonce/PKCE are enforced
+        identically for both flows.
       parameters:
         - name: code
           in: query
@@ -211,6 +229,38 @@ paths:
       responses:
         "302":
           description: Redirect to / (success) or /login?error=… (failure); the android flow uses the mycorrhizal://oidc/callback deep link for both.
+  /auth/oidc/native/exchange:
+    post:
+      summary: Redeem an Android OIDC native-return code for a session (only present when OIDC is enabled)
+      operationId: exchangeOIDCNativeCode
+      security: []
+      description: >
+        Issue #965. The Android app gives the short-lived, PKCE-bound code it
+        received in the mycorrhizal://oidc/callback deep link plus the code
+        verifier that never left the app. The code is not a session credential
+        — AuthMiddleware rejects it — and is redeemable only with the matching
+        verifier, so intercepting the (first-come-first-served) custom-scheme
+        redirect yields nothing usable. Returns the session JWT in the body
+        because Android has no cookie jar. Public and rate-limited like /login.
+      parameters:
+        - $ref: "#/components/parameters/ClientVersion"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OIDCNativeExchangeInput"
+      responses:
+        "200":
+          description: Session JWT issued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OIDCNativeExchangeResponse"
+        "400":
+          description: Missing code or code_verifier.
+        "401":
+          description: Invalid, expired, or non-redeemable code (wrong verifier, unknown purpose, unknown user).
 
   # --- Public auth ---
   /register:
@@ -12654,6 +12704,19 @@ components:
       required: [device_token]
       properties:
         device_token: { type: string, minLength: 32, description: "The plaintext grant held by an enrolled device." }
+    OIDCNativeExchangeInput:
+      type: object
+      required: [code, code_verifier]
+      properties:
+        code: { type: string, description: "The short-lived, PKCE-bound exchange code from the mycorrhizal://oidc/callback deep link. Not a session credential." }
+        code_verifier: { type: string, description: "The PKCE code verifier (RFC 7636) the app generated for this login and never transmitted." }
+    OIDCNativeExchangeResponse:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, description: "A freshly-issued session JWT (the same value a password login would set as the auth_token cookie)." }
+        language: { type: string }
+        date_format: { type: string, enum: [us, eu, iso] }
     WebhookInput:
       type: object
       required: [name, url, events]

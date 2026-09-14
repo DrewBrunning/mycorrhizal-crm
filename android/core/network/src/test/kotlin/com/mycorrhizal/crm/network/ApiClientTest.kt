@@ -4482,4 +4482,43 @@ class ApiClientTest {
         assertTrue(audit.isSuccess)
         assertEquals("/api/v1/audit/export", server.takeRequest().path)
     }
+
+    // --- Issue #965: Android OIDC native-return exchange ---
+
+    @Test
+    fun `exchangeOidcNativeCode posts the code and verifier and returns the token`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"token":"session-jwt","language":"de","date_format":"eu"}"""),
+        )
+
+        val result = client.exchangeOidcNativeCode("single-use-code", "pkce-verifier")
+
+        assertTrue(result.isSuccess)
+        assertEquals("session-jwt", result.getOrThrow())
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/auth/oidc/native/exchange", request.path)
+        val body = request.body.readUtf8()
+        assertTrue("body must carry the code", body.contains("\"code\":\"single-use-code\""))
+        assertTrue("body must carry the verifier", body.contains("\"code_verifier\":\"pkce-verifier\""))
+    }
+
+    @Test
+    fun `exchangeOidcNativeCode maps a rejected code to Client 401`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(401)
+                .setBody("""{"error":{"code":"invalid_credentials","message":"Invalid or expired authorization code"}}"""),
+        )
+
+        val result = client.exchangeOidcNativeCode("stale-code", "pkce-verifier")
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(401, (error as ApiError.Client).code)
+    }
 }

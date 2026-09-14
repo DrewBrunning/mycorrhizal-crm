@@ -126,7 +126,10 @@ func TestOIDCLoginHandler_AndroidClientCookie(t *testing.T) {
 	_, router := setupRouter()
 	router.GET("/login", OIDCLoginHandler(provider, cfg))
 
-	req, _ := http.NewRequest("GET", "/login?client=android", nil)
+	// Issue #965: the android start must carry the app's state + S256 PKCE
+	// challenge, so this M6 flag test sends them just like the real app.
+	req, _ := http.NewRequest("GET",
+		"/login?client=android&state=app-state&code_challenge=app-challenge", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -157,7 +160,8 @@ func TestOIDCLoginHandler_AndroidClientCookieSecureWhenConfigured(t *testing.T) 
 	_, router := setupRouter()
 	router.GET("/login", OIDCLoginHandler(provider, cfg))
 
-	req, _ := http.NewRequest("GET", "/login?client=android", nil)
+	req, _ := http.NewRequest("GET",
+		"/login?client=android&state=app-state&code_challenge=app-challenge", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -181,6 +185,79 @@ func TestOIDCLoginHandler_NoClientCookieWithoutAndroidParam(t *testing.T) {
 	assert.Equal(t, http.StatusFound, w.Code)
 	assert.Nil(t, findCookie(w.Result().Cookies(), "oidc_client"),
 		"any value other than android must keep the default web flow")
+}
+
+// Issue #965: a ?client=android start without the app's state nonce and S256
+// PKCE challenge must fail closed — the exchange flow cannot bind a code to
+// nothing, and the old deep-link-token shape is exactly what #965 removed.
+func TestOIDCLoginHandler_AndroidRequiresNativePKCEBinding(t *testing.T) {
+	provider := newFakeOIDCProviderForLogout(t, "")
+	cfg := &config.Config{CookieDomain: "", CookieSecure: false}
+
+	_, router := setupRouter()
+	router.GET("/login", OIDCLoginHandler(provider, cfg))
+
+	req, _ := http.NewRequest("GET", "/login?client=android", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusFound, w.Code)
+	loc, err := url.Parse(w.Header().Get("Location"))
+	require.NoError(t, err)
+	assert.Equal(t, "mycorrhizal", loc.Scheme)
+	assert.Equal(t, "oidc_error", loc.Query().Get("error"))
+	assert.Nil(t, findCookie(w.Result().Cookies(), "oidc_client"),
+		"a binding-less android start must not set the deep-link flag")
+}
+
+// Issue #965: a well-formed android start records the app's state nonce and
+// S256 challenge as separate, path-scoped cookies the callback binds the
+// exchange code to.
+func TestOIDCLoginHandler_AndroidSetsNativePKCECookies(t *testing.T) {
+	provider := newFakeOIDCProviderForLogout(t, "")
+	cfg := &config.Config{CookieDomain: "", CookieSecure: false}
+
+	_, router := setupRouter()
+	router.GET("/login", OIDCLoginHandler(provider, cfg))
+
+	// code_challenge_method omitted on purpose: S256 is the default.
+	req, _ := http.NewRequest("GET",
+		"/login?client=android&state=app-state&code_challenge=app-challenge", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusFound, w.Code)
+	stateCookie := findCookie(w.Result().Cookies(), "oidc_app_state")
+	require.NotNil(t, stateCookie)
+	assert.Equal(t, "app-state", stateCookie.Value)
+	challengeCookie := findCookie(w.Result().Cookies(), "oidc_app_challenge")
+	require.NotNil(t, challengeCookie)
+	assert.Equal(t, "app-challenge", challengeCookie.Value)
+	require.NotNil(t, findCookie(w.Result().Cookies(), "oidc_client"))
+
+	// The app's state must NOT be reused as the IdP round-trip state — that is
+	// generated server-side and is a different value.
+	parsedLoc, err := url.Parse(w.Header().Get("Location"))
+	require.NoError(t, err)
+	assert.NotEqual(t, "app-state", parsedLoc.Query().Get("state"))
+}
+
+func TestOIDCLoginHandler_AndroidRejectsNonS256Challenge(t *testing.T) {
+	provider := newFakeOIDCProviderForLogout(t, "")
+	cfg := &config.Config{CookieDomain: "", CookieSecure: false}
+
+	_, router := setupRouter()
+	router.GET("/login", OIDCLoginHandler(provider, cfg))
+
+	req, _ := http.NewRequest("GET",
+		"/login?client=android&state=app-state&code_challenge=app-challenge&code_challenge_method=plain", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	loc, err := url.Parse(w.Header().Get("Location"))
+	require.NoError(t, err)
+	assert.Equal(t, "mycorrhizal", loc.Scheme)
+	assert.Equal(t, "oidc_error", loc.Query().Get("error"))
 }
 
 // --- fakeCallbackIDP: a full OpenID Provider (discovery + JWKS + /token)
@@ -317,14 +394,20 @@ func fullCookieSet(state, nonce, pkce string) map[string]string {
 	return map[string]string{"oidc_state": state, "oidc_nonce": nonce, "oidc_pkce": pkce}
 }
 
-// androidCookieSet is fullCookieSet plus M6's oidc_client=android cookie,
-// the flag that routes the callback to the app's deep link.
+// androidCookieSet is fullCookieSet plus M6's oidc_client=android cookie plus
+// the issue #965 native-PKCE binding cookies (the app's own state nonce and
+// its S256 code challenge), the pair that routes the callback to the app's
+// deep link and binds the returned exchange code.
 func androidCookieSet(state, nonce, pkce string) map[string]string {
 	return map[string]string{
 		"oidc_state":  state,
 		"oidc_nonce":  nonce,
 		"oidc_pkce":   pkce,
 		"oidc_client": "android",
+		// Distinct from the IdP state on purpose: these are the app's values,
+		// carried separately so the deep link can echo the app's own state.
+		"oidc_app_state":     "app-state",
+		"oidc_app_challenge": "app-code-challenge",
 	}
 }
 
@@ -423,7 +506,10 @@ func TestOIDCCallbackHandler_ClearsCookiesEvenOnFailure(t *testing.T) {
 	// Booted with cfg := &config.Config{} (CookieSecure=false); Issue #605:
 	// the clears must follow the same flag rule as the sets, or the clear
 	// would itself be rejected by a browser on plain HTTP.
-	for _, name := range []string{"oidc_state", "oidc_nonce", "oidc_pkce", "oidc_client"} {
+	for _, name := range []string{
+		"oidc_state", "oidc_nonce", "oidc_pkce", "oidc_client",
+		"oidc_app_state", "oidc_app_challenge",
+	} {
 		c := findCookie(w.Result().Cookies(), name)
 		require.NotNil(t, c, "expected %s cookie to be cleared", name)
 		assert.Equal(t, -1, c.MaxAge)
@@ -676,19 +762,33 @@ func TestOIDCCallbackHandler_AndroidSuccessDeepLink(t *testing.T) {
 	assert.Equal(t, "/callback", loc.Path)
 
 	q := loc.Query()
-	token := q.Get("token")
-	require.NotEmpty(t, token, "the deep link must carry the JWT")
-	assert.Equal(t, 3, len(splitJWT(token)), "expected a well-formed JWT (header.payload.signature)")
+	// Issue #965: the deep link must carry a short-lived exchange code and the
+	// app's state nonce, NEVER the session JWT — the custom scheme is
+	// interceptable, so a stolen redirect must not be a usable credential.
+	assert.Empty(t, q.Get("token"), "the session JWT must never be delivered in the deep link")
+	code := q.Get("code")
+	require.NotEmpty(t, code, "the deep link must carry a single-use exchange code")
+	assert.Equal(t, 3, len(splitJWT(code)), "expected a well-formed JWT (header.payload.signature)")
+	assert.Equal(t, "app-state", q.Get("state"), "the deep link must echo the app's own state nonce")
 	assert.Equal(t, "de", q.Get("language"))
 	assert.Equal(t, "us", q.Get("date_format"))
+
+	// The code must not be usable as a bearer credential even if it leaks:
+	// it is single-purpose and rejected by AuthMiddleware.
+	_, _, ok := services.ParseOIDCNativeExchangeCode(code, cfg)
+	assert.True(t, ok, "the code must be a well-formed exchange token")
 
 	// The native client cannot read a cookie set in a Custom Tab's browser
 	// context, so the android flow must NOT mint one.
 	assert.Nil(t, findCookie(w.Result().Cookies(), "auth_token"))
 	assert.Nil(t, findCookie(w.Result().Cookies(), "id_token"))
 
-	// One-time cookies (including oidc_client) are cleared like the web flow.
-	for _, name := range []string{"oidc_state", "oidc_nonce", "oidc_pkce", "oidc_client"} {
+	// One-time cookies (including oidc_client and the native-PKCE pair) are
+	// cleared like the web flow.
+	for _, name := range []string{
+		"oidc_state", "oidc_nonce", "oidc_pkce", "oidc_client",
+		"oidc_app_state", "oidc_app_challenge",
+	} {
 		c := findCookie(w.Result().Cookies(), name)
 		require.NotNil(t, c, "expected %s cookie to be cleared", name)
 		assert.Equal(t, -1, c.MaxAge)
@@ -735,6 +835,27 @@ func TestOIDCCallbackHandler_AndroidStillRequiresPKCE(t *testing.T) {
 
 	req := callbackRequest(map[string]string{"oidc_state": "s", "oidc_nonce": "n", "oidc_client": "android"},
 		url.Values{"state": {"s"}, "code": {"c"}})
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	loc, err := url.Parse(w.Header().Get("Location"))
+	require.NoError(t, err)
+	assert.Equal(t, "mycorrhizal", loc.Scheme)
+	assert.Equal(t, "oidc_error", loc.Query().Get("error"))
+}
+
+// Issue #965: even with a fully valid IdP handshake, an android callback that
+// is missing the app's native state/PKCE cookies must fail closed rather than
+// emit a code that cannot be bound to a verifier.
+func TestOIDCCallbackHandler_AndroidMissingNativeBinding(t *testing.T) {
+	_, router := setupRouter()
+	cfg := &config.Config{}
+	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
+
+	req := callbackRequest(
+		map[string]string{"oidc_state": "s", "oidc_nonce": "n", "oidc_pkce": "p", "oidc_client": "android"},
+		url.Values{"state": {"s"}, "code": {"c"}},
+	)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 

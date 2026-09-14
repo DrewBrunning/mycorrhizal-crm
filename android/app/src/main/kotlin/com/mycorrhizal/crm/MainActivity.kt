@@ -16,6 +16,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.mycorrhizal.crm.data.repository.AppLocale
+import com.mycorrhizal.crm.data.session.OidcPendingRequestStore
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
@@ -58,6 +59,13 @@ class MainActivity : FragmentActivity() {
 
     @Inject
     lateinit var authRepository: AuthRepository
+
+    // Issue #965: the state nonce + PKCE verifier for an in-flight native OIDC
+    // login. Written when the flow starts, read (and cleared) when the deep
+    // link returns; persisted so a cold-start return after the app was
+    // backgrounded can still verify and redeem.
+    @Inject
+    lateinit var oidcPendingStore: OidcPendingRequestStore
 
     // Exposed purely for the instrumented E2E suite (issue #238), the same way
     // sessionManager is above: ANDROID-04 (#481) drives DeviceRegistrationManager
@@ -186,6 +194,7 @@ class MainActivity : FragmentActivity() {
                     darkTheme = darkTheme,
                     deepLinks = pendingDeepLink,
                     onDeepLinkHandled = { pendingDeepLink.value = null },
+                    onStartOidc = ::startOidcLogin,
                     oidcError = oidcError,
                     onOidcErrorShown = { oidcError.value = null },
                 )
@@ -214,16 +223,22 @@ class MainActivity : FragmentActivity() {
     }
 
     /**
-     * M5 §5: the backend's OIDC callback redirect. Success carries
-     * `token` + `language` + `date_format`; failure carries `error`. The token
-     * is stored with the server URL the login screen already persisted, and
-     * the session flow flips the app to logged-in. No httpOnly cookie is
-     * minted for the native flow (M6 §4), so bearer-token Android must capture
-     * the JWT itself.
+     * M5 §5 / issue #965: the backend's OIDC callback redirect. Success carries
+     * the short-lived `code` bound to the app's PKCE challenge plus the `state`
+     * nonce and `language`/`date_format`; failure carries `error`. The code is
+     * redeemed (with the on-device verifier) for a session JWT, which is stored
+     * with the server URL the login screen already persisted, and the session
+     * flow flips the app to logged-in. No httpOnly cookie is minted for the
+     * native flow (M6 §4), so bearer-token Android captures the JWT from the
+     * exchange response instead.
      */
     private fun handleOidcReturn(uri: Uri?) {
         when (val parsed = parseOidcReturn(uri)) {
             is OidcReturn.Failure -> {
+                // An error return we did not start (no pending request) is
+                // harmless; clearing is best-effort so a later callback cannot
+                // match a stale pending state.
+                lifecycleScope.launch { oidcPendingStore.clear() }
                 oidcError.value = getString(R.string.oidc_login_failed)
             }
             is OidcReturn.Success -> {
@@ -231,13 +246,33 @@ class MainActivity : FragmentActivity() {
                 lifecycleScope.launch {
                     // The persisted session hydrates asynchronously at startup;
                     // a cold-start deep link must await it or it'd read a null
-                    // server URL and drop the JWT (review-pass fix).
+                    // server URL and drop the login (review-pass fix).
                     sessionManager.awaitHydrated()
                     val serverUrl = sessionManager.serverUrl()
                     if (serverUrl.isNullOrBlank()) return@launch
+
+                    // Issue #965: accept the callback only if it belongs to a
+                    // flow this app started and has not gone stale, then redeem
+                    // its code with the verifier that never left the device.
+                    // The pending request is consumed either way.
+                    val pending = oidcPendingStore.load()
+                    oidcPendingStore.clear()
+                    if (pending == null || pending.isExpired() ||
+                        !OidcPkce.verifyState(pending.state, result.state)
+                    ) {
+                        oidcError.value = getString(R.string.oidc_login_failed)
+                        return@launch
+                    }
+
+                    val token = authRepository
+                        .completeOidcNativeLogin(result.code, pending.codeVerifier)
+                        .getOrElse {
+                            oidcError.value = getString(R.string.oidc_login_failed)
+                            return@launch
+                        }
                     sessionManager.setSession(
                         serverUrl = serverUrl,
-                        token = result.token,
+                        token = token,
                         state = SessionState(language = result.language, dateFormat = result.dateFormat),
                     )
                     // Validate the JWT against the server and enrich the
@@ -263,6 +298,32 @@ class MainActivity : FragmentActivity() {
                 }
             }
             null -> Unit
+        }
+    }
+
+    /**
+     * Issue #965: start the native OIDC flow. Generates a fresh state nonce
+     * and PKCE code verifier, persists the verifier on-device, and launches the
+     * browser with only the state + S256 challenge in the URL. The callback
+     * returns a short-lived code bound to that challenge, so the interceptable
+     * `mycorrhizal://` redirect never carries a usable credential.
+     */
+    private fun startOidcLogin(serverUrl: String) {
+        val state = OidcPkce.generateState()
+        val verifier = OidcPkce.generateVerifier()
+        val challenge = OidcPkce.challenge(verifier)
+        lifecycleScope.launch {
+            oidcPendingStore.save(state, verifier)
+            // M6 §4: `client=android` makes the backend return to the
+            // mycorrhizal://oidc/callback deep link instead of the web cookie
+            // path; the state/challenge are what bind that return.
+            val url = serverUrl.trim().trimEnd('/') +
+                "/api/v1/auth/oidc/login?client=android" +
+                "&state=" + Uri.encode(state) +
+                "&code_challenge=" + Uri.encode(challenge) +
+                "&code_challenge_method=S256"
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            runCatching { startActivity(intent) }
         }
     }
 }
@@ -318,12 +379,22 @@ private fun contactsRoute(path: String): String? {
 /**
  * Parses the OIDC native-return deep link (`mycorrhizal://oidc/callback`).
  * Pure and internal so it is unit-testable without an Activity.
- * [OidcReturn.Success] carries the captured JWT (bearer-token Android's
- * replacement for web's httpOnly cookie); [OidcReturn.Failure] carries the
- * backend's error; null means the URI is not this deep link.
+ *
+ * Issue #965: [OidcReturn.Success] carries a short-lived, PKCE-bound exchange
+ * `code` plus the app's `state` nonce — NOT the session JWT. The pre-#965
+ * `token` parameter is deliberately not parsed; a deep link that supplies one
+ * is ignored so the custom-scheme token theft it fixed cannot be reintroduced.
+ * [OidcReturn.Failure] carries the backend's error; null means the URI is not
+ * this deep link.
  */
 internal sealed interface OidcReturn {
-    data class Success(val token: String, val language: String?, val dateFormat: String?) : OidcReturn
+    data class Success(
+        val state: String,
+        val code: String,
+        val language: String?,
+        val dateFormat: String?,
+    ) : OidcReturn
+
     data object Failure : OidcReturn
 }
 
@@ -334,10 +405,15 @@ internal fun parseOidcReturn(uri: Uri?): OidcReturn? {
     // (review-pass fix).
     if (uri.path != "/callback") return null
     if (uri.getQueryParameter("error") != null) return OidcReturn.Failure
-    val token = uri.getQueryParameter("token")
-    if (token.isNullOrBlank()) return null
+    // #965: the code + state are the exchange contract. A raw token (the old
+    // shape) is not accepted — only a code redeemable with the on-device PKCE
+    // verifier is.
+    val code = uri.getQueryParameter("code")
+    val state = uri.getQueryParameter("state")
+    if (code.isNullOrBlank() || state.isNullOrBlank()) return null
     return OidcReturn.Success(
-        token = token,
+        state = state,
+        code = code,
         language = uri.getQueryParameter("language"),
         dateFormat = uri.getQueryParameter("date_format"),
     )

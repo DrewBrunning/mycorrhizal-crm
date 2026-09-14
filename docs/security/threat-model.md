@@ -257,9 +257,9 @@ times.
 **Keep, verified against the exact code.** `backend/controllers/user_controller.go:234-243` sets the
 session cookie `HttpOnly` (always), `Secure = cfg.CookieSecure`, and `SameSite=Strict` — tightened
 from `Lax` by issue #392, which closed the residual sibling-subdomain/CSRF gap `Lax` left open. The
-only cookies still deliberately `Lax` are the transient OIDC `oidc_state`/`oidc_nonce`/`oidc_pkce`
-handshake cookies, which must survive the cross-site redirect back from the provider
-(`backend/controllers/oidc_controller.go:87-90`). Boot-time config
+only cookies still deliberately `Lax` are the transient OIDC handshake cookies — `oidc_state`/`oidc_nonce`/`oidc_pkce`
+plus, for the native flow (issue #965), `oidc_client`/`oidc_app_state`/`oidc_app_challenge` — which must survive the cross-site redirect back from the provider
+(`backend/controllers/oidc_controller.go:105-145`). Boot-time config
 validation refuses the insecure combination `FRONTEND_URL=https` + `COOKIE_SECURE=false`
 (`backend/config/config.go:798-810`), so a misconfigured deployment can't accidentally serve an
 HTTPS-fronted cookie without `Secure`. No `__Host-` prefix (`asvs-l2.md` V3.4.4, partial) — the cookie
