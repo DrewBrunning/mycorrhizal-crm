@@ -302,6 +302,8 @@ class SettingsScreenTest {
         coEvery { trackingSettings.callTrackingEnabled() } returns false
         coEvery { trackingSettings.smsTrackingEnabled() } returns false
         coEvery { trackingSettings.notificationsEnabled() } returns true
+        coEvery { trackingSettings.includeUnknownNumbers() } returns false
+        coEvery { trackingSettings.filteredUnknownCount() } returns 0
         every { localAuthSettings.requireLocalAuth() } returns MutableStateFlow(false)
         every { localAuthSettings.autoLockDelay() } returns MutableStateFlow(AutoLockDelay.DEFAULT)
         every { localAuthSettings.biometricEnrollmentStatus() } returns MutableStateFlow(BiometricEnrollmentStatus.UNASKED)
@@ -495,6 +497,39 @@ class SettingsScreenTest {
 
         composeTestRule.onNodeWithText("Turn off biometric sign-in").performScrollTo().performClick()
         assertEquals(true, removed)
+    }
+
+    // --- Issue #1029: capture-policy escape hatch + diagnostics ------------
+
+    @Test
+    fun `the include-unknown toggle invokes its callback`() {
+        var changed: Boolean? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(),
+                    onIncludeUnknownChange = { changed = it },
+                    onLogout = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Log unknown numbers too").performScrollTo().performClick()
+        assertEquals(true, changed)
+    }
+
+    @Test
+    fun `the filtered unknown count is shown when nonzero`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(filteredUnknownCount = 12),
+                    onLogout = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Unknown numbers filtered: 12").performScrollTo().assertIsDisplayed()
     }
 
 }

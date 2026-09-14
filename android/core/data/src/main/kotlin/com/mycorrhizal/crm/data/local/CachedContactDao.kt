@@ -97,22 +97,31 @@ interface CachedContactDao {
     suspend fun setDeviceLookupKey(id: Int, lookupKey: String?)
 
     /**
-     * Best-effort phone match for call/SMS tracking (§6.1/6.2): the device
-     * number and the cached primaryPhone are both normalized to digits-only
-     * before comparison, so formatting differences (spaces/dashes/parens)
-     * don't hide a match. Exact digit-match only; international-prefix
-     * normalization is a deliberate non-goal here (see §12 open question 1).
+     * Call/SMS tracking match (§6.1/6.2, T76, issue #963): resolves a device
+     * number to a cached contact by its [PhoneKey] — the same last-10-digit
+     * canonical key the server and offline search use. [phoneKey] is matched as
+     * a *whole token* against `phonesNormalized` (the space-joined full-digit +
+     * key tokens [PhoneKey.flatten] builds from **every** number a contact
+     * stores), so it finds a number regardless of punctuation, an
+     * international (`+`/country-code) vs. local form, or a trunk-prefix
+     * difference — and matches any of the contact's numbers, not just
+     * [primaryPhone]. The `' ' || … || ' '` anchoring makes it a token-exact
+     * match: a key that is merely a suffix of a longer unrelated number (e.g.
+     * `5551234` vs. a stored `15551234`) never matches.
+     *
+     * The caller passes an already-computed, non-empty [PhoneKey.key]: the
+     * repository returns null for a <7-digit number, which keys to `""` and
+     * must never match (short codes / extensions).
      */
     @Query(
         """
         SELECT * FROM cached_contacts
         WHERE deleted = 0
-          AND REPLACE(REPLACE(REPLACE(REPLACE(primaryPhone, ' ', ''), '-', ''), '(', ''), ')', '')
-              = REPLACE(REPLACE(REPLACE(REPLACE(:phone, ' ', ''), '-', ''), '(', ''), ')', '')
+          AND instr(' ' || phonesNormalized || ' ', ' ' || :phoneKey || ' ') > 0
         LIMIT 1
         """,
     )
-    suspend fun findByPhoneDigits(phone: String): CachedContact?
+    suspend fun findByPhoneKey(phoneKey: String): CachedContact?
 
     @Query(
         """

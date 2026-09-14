@@ -105,7 +105,7 @@ class SmsBackfillWorkerTest {
     }
 
     @Test
-    fun `records a matched outgoing text and advances the watermark to the newest entry`() = runTest {
+    fun `records a matched outgoing text, filters the unmatched one, and advances the watermark`() = runTest {
         stubSentFolder(
             listOf(
                 arrayOf<Any?>("+15551234567", 6000L),
@@ -134,6 +134,28 @@ class SmsBackfillWorkerTest {
                 ),
             )
         }
+        // The unmatched row is dropped (issue #1029), never staged.
+        coVerify(exactly = 0) {
+            pendingInteractions.recordIfNew(match { it.phoneNumber == "+15559876543" })
+        }
+        coVerify(exactly = 1) { settings.incrementFilteredUnknownCount() }
+        // The watermark still advances past everything seen, filtered or not.
+        coVerify { settings.setLastSmsTimestamp(8000L) }
+    }
+
+    @Test
+    fun `the include-unknown opt-in stages an unmatched outgoing text`() = runTest {
+        stubSentFolder(listOf(arrayOf<Any?>("+15559876543", 8000L)))
+        val pendingInteractions = mockk<PendingInteractionRepository>(relaxed = true)
+        val contacts = mockk<ContactRepository>()
+        coEvery { contacts.findByPhone("+15559876543") } returns null
+        val settings = mockk<TrackingSettingsRepository>(relaxed = true)
+        coEvery { settings.smsTrackingEnabled() } returns true
+        coEvery { settings.lastSmsTimestamp() } returns 0L
+        coEvery { settings.includeUnknownNumbers() } returns true
+
+        worker(pendingInteractions, contacts, settings).doWork()
+
         coVerify {
             pendingInteractions.recordIfNew(
                 PendingInteraction(
@@ -145,7 +167,7 @@ class SmsBackfillWorkerTest {
                 ),
             )
         }
-        coVerify { settings.setLastSmsTimestamp(8000L) }
+        coVerify(exactly = 0) { settings.incrementFilteredUnknownCount() }
     }
 
     @Test

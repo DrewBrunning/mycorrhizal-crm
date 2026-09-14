@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
@@ -23,6 +24,8 @@ class TrackingSettingsRepositoryImpl @Inject constructor(
     private val callTracking = booleanPreferencesKey("call_tracking_enabled")
     private val smsTracking = booleanPreferencesKey("sms_tracking_enabled")
     private val notifications = booleanPreferencesKey("notifications_enabled")
+    private val includeUnknown = booleanPreferencesKey("include_unknown_numbers")
+    private val filteredUnknown = intPreferencesKey("filtered_unknown_count")
     private val lastCallLogTs = longPreferencesKey("last_call_log_timestamp")
     private val lastSmsTs = longPreferencesKey("last_sms_timestamp")
     private val lastSyncAt = longPreferencesKey("last_interaction_sync_at")
@@ -64,4 +67,22 @@ class TrackingSettingsRepositoryImpl @Inject constructor(
 
     override suspend fun lastInteractionSyncAt(): Long? =
         context.trackingDataStore.data.first()[lastSyncAt]
+
+    override suspend fun includeUnknownNumbers(): Boolean =
+        context.trackingDataStore.data.first()[includeUnknown] ?: false
+
+    override suspend fun setIncludeUnknownNumbers(enabled: Boolean) {
+        context.trackingDataStore.edit { it[includeUnknown] = enabled }
+    }
+
+    override suspend fun filteredUnknownCount(): Int =
+        context.trackingDataStore.data.first()[filteredUnknown] ?: 0
+
+    override suspend fun incrementFilteredUnknownCount() {
+        // Read-modify-write inside the (atomic) edit block so two captures
+        // racing can't lose an increment.
+        context.trackingDataStore.edit { prefs ->
+            prefs[filteredUnknown] = (prefs[filteredUnknown] ?: 0) + 1
+        }
+    }
 }

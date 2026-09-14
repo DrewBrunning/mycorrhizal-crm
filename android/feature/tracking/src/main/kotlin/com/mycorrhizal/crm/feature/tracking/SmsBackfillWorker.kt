@@ -8,7 +8,6 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.mycorrhizal.crm.domain.repository.ContactRepository
-import com.mycorrhizal.crm.domain.repository.PendingInteraction
 import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
 import dagger.assisted.Assisted
@@ -53,15 +52,18 @@ class SmsBackfillWorker @AssistedInject constructor(
         entries.forEach { entry ->
             if (entry.timestampMillis > maxTs) maxTs = entry.timestampMillis
             val number = entry.address ?: return@forEach
-            val contact = runCatching { contactRepository.findByPhone(number) }.getOrNull()
-            pendingInteractionRepository.recordIfNew(
-                PendingInteraction(
-                    timestampMillis = entry.timestampMillis,
-                    kind = InteractionCapture.KIND_MESSAGE,
-                    direction = InteractionCapture.DIR_OUTGOING,
-                    phoneNumber = number,
-                    matchedContactId = contact?.id,
-                ),
+            // Issue #1029: shared capture policy — an outgoing text to a number
+            // that maps to no cached contact is dropped (and counted), not
+            // staged. recordIfNew dedupes overlapping periodic + one-shot runs.
+            InteractionCapture.capture(
+                contactRepository = contactRepository,
+                pendingInteractionRepository = pendingInteractionRepository,
+                trackingSettings = trackingSettings,
+                kind = InteractionCapture.KIND_MESSAGE,
+                direction = InteractionCapture.DIR_OUTGOING,
+                number = number,
+                timestampMillis = entry.timestampMillis,
+                dedupe = true,
             )
         }
 
