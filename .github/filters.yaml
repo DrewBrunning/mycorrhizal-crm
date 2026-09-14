@@ -90,6 +90,8 @@ chaos:
   - 'backend/internal/faults/**'
   - 'backend/database/sqlite_driver.go'
   - 'backend/database/backup.go'
+  - 'backend/database/backup_signature.go'
+  - 'backend/database/backup_event.go'
   - 'backend/database/premigration_backup.go'
   - 'backend/database/migrate.go'
   - 'backend/cmd/dbinspect/**'

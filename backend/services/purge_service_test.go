@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -172,6 +173,135 @@ func TestPurgeSoftDeletedRows_PurgesSoftDeletedChildContent(t *testing.T) {
 	assert.Zero(t, oldCount, "a note soft-deleted past retention must be purged")
 	assert.Equal(t, int64(1), freshCount, "a recently soft-deleted note must survive")
 	assert.Equal(t, int64(1), parentCount, "purging a child must not touch its live parent")
+}
+
+// Issue #978: the disconnect handlers soft-delete the integration configs and
+// the subscriptions, but the T26 purge list had omitted them — so an encrypted
+// API token/app-password row (Immich was the sole exception, and it was listed)
+// and a token-bearing subscription URL lived forever and travelled into every
+// backup. LinkFieldType was omitted the same way. This pins every one of them:
+// a row soft-deleted past retention is hard-deleted, a row inside the window
+// survives (the undo affordance), and the purge never touches a live row.
+func TestPurgeSoftDeletedRows_PurgesSoftDeletedConfigsAndSubscriptions(t *testing.T) {
+	db, userID := newPurgeDB(t)
+
+	type purgeRow struct {
+		table  string
+		model  any
+		create func() any // creates one row and returns its primary key
+	}
+
+	rows := []purgeRow{
+		{"immich_configs", &models.ImmichConfig{}, func() any {
+			c := models.ImmichConfig{UserID: userID, BaseURL: "https://immich.example"}
+			require.NoError(t, db.Create(&c).Error)
+			return c.ID
+		}},
+		{"paperless_configs", &models.PaperlessConfig{}, func() any {
+			c := models.PaperlessConfig{UserID: userID, BaseURL: "https://paperless.example"}
+			require.NoError(t, db.Create(&c).Error)
+			return c.ID
+		}},
+		{"seafile_configs", &models.SeafileConfig{}, func() any {
+			c := models.SeafileConfig{UserID: userID, BaseURL: "https://seafile.example"}
+			require.NoError(t, db.Create(&c).Error)
+			return c.ID
+		}},
+		{"webdav_configs", &models.WebDAVConfig{}, func() any {
+			c := models.WebDAVConfig{UserID: userID, BaseURL: "https://nc.example", Username: "u"}
+			require.NoError(t, db.Create(&c).Error)
+			return c.ID
+		}},
+		{"link_field_types", &models.LinkFieldType{}, func() any {
+			l := models.LinkFieldType{UserID: userID, Name: "Matrix", Protocol: "https://matrix.to/#/{value}", Category: models.LinkFieldTypeCategoryMessaging}
+			require.NoError(t, db.Create(&l).Error)
+			return l.ID
+		}},
+		{"calendar_subscriptions", &models.CalendarSubscription{}, func() any {
+			s := models.CalendarSubscription{UserID: userID, Name: "cal", URL: "https://example.com/private-token/cal.ics"}
+			require.NoError(t, db.Create(&s).Error)
+			return s.ID
+		}},
+		{"contact_subscriptions", &models.ContactSubscription{}, func() any {
+			s := models.ContactSubscription{UserID: userID, Name: "carddav", URL: "https://example.com/remote.php/dav/addressbooks/user/token/"}
+			require.NoError(t, db.Create(&s).Error)
+			return s.ID
+		}},
+	}
+
+	for _, row := range rows {
+		t.Run(row.table, func(t *testing.T) {
+			// Create one row at a time and soft-delete it before the next: the
+			// integration-config tables carry a partial unique index on
+			// user_id WHERE deleted_at IS NULL, so two live rows would collide.
+			recent := row.create()
+			softDeleteAt(t, db, row.model, recent, time.Now().AddDate(0, 0, -2))
+
+			old := row.create()
+			softDeleteAt(t, db, row.model, old, time.Now().AddDate(0, 0, -60))
+
+			// A live row must survive the purge untouched.
+			live := row.create()
+
+			PurgeSoftDeletedRows(db, purgeConfig())
+
+			var oldCount, liveCount, recentCount int64
+			require.NoError(t, db.Unscoped().Model(row.model).Where("id = ?", old).Count(&oldCount).Error)
+			require.NoError(t, db.Model(row.model).Where("id = ?", live).Count(&liveCount).Error)
+			require.NoError(t, db.Unscoped().Model(row.model).Where("id = ?", recent).Count(&recentCount).Error)
+
+			assert.Zero(t, oldCount, "%s soft-deleted past retention must be hard-deleted", row.table)
+			assert.Equal(t, int64(1), liveCount, "%s live row must never be purged", row.table)
+			assert.Equal(t, int64(1), recentCount, "%s soft-deleted inside the undo window must survive", row.table)
+		})
+	}
+}
+
+// DELETED_RETENTION_DAYS=0 is the documented "disable the purge and keep
+// soft-deleted rows forever" value (.env.example), and a negative value is a
+// misconfiguration the purge service treats the same way. Without the guard the
+// cutoff is computed as now minus the window, so it lands on/after now and
+// `deleted_at < cutoff` matches the ENTIRE undo window — the issue #971
+// data-loss bug: the daily/boot job hard-deletes every soft-deleted row.
+//
+// This pins that a non-positive window purges nothing. Both the daily cron and
+// the boot-time Initial trigger call this function (via PurgeDeletedRows), so
+// the guard covers both paths.
+func TestPurgeSoftDeletedRows_NonPositiveRetentionDisablesPurge(t *testing.T) {
+	for _, retention := range []int{0, -1} {
+		t.Run(fmt.Sprintf("retention=%d", retention), func(t *testing.T) {
+			db, userID := newPurgeDB(t)
+
+			contact := models.Contact{UserID: userID, Firstname: "Doomed"}
+			require.NoError(t, db.Create(&contact).Error)
+			softDeleteAt(t, db, &models.Contact{}, contact.ID, time.Now().AddDate(0, 0, -60))
+
+			note := models.Note{UserID: userID, ContactID: &contact.ID, Content: "old note"}
+			require.NoError(t, db.Create(&note).Error)
+			softDeleteAt(t, db, &models.Note{}, note.ID, time.Now().AddDate(0, 0, -60))
+
+			other := models.Contact{UserID: userID, Firstname: "Other"}
+			require.NoError(t, db.Create(&other).Error)
+			require.NoError(t, db.Create(&models.RelationshipEdge{
+				UserID: userID, SourceID: contact.VCardUID, TargetID: other.VCardUID,
+				Type: "friend_of", Source: models.RelationshipSourceUserConfirmed,
+				Confidence: 1.0, Status: models.RelationshipStatusConfirmed,
+				Sensitivity: models.RelationshipSensitivityNormal,
+			}).Error)
+
+			PurgeSoftDeletedRows(db, config.Config{DeleteRetentionDays: retention})
+
+			var contactCount, noteCount, edgeCount int64
+			require.NoError(t, db.Unscoped().Model(&models.Contact{}).Where("id = ?", contact.ID).Count(&contactCount).Error)
+			require.NoError(t, db.Unscoped().Model(&models.Note{}).Where("id = ?", note.ID).Count(&noteCount).Error)
+			require.NoError(t, db.Model(&models.RelationshipEdge{}).
+				Where("source_id = ? OR target_id = ?", contact.VCardUID, contact.VCardUID).Count(&edgeCount).Error)
+
+			assert.Equal(t, int64(1), contactCount, "a non-positive retention must keep the soft-deleted contact")
+			assert.Equal(t, int64(1), noteCount, "a non-positive retention must keep the soft-deleted child content")
+			assert.Equal(t, int64(1), edgeCount, "a non-positive retention must keep the contact's edge rows")
+		})
+	}
 }
 
 func TestPurgeSoftDeletedRows_IsIdempotent(t *testing.T) {

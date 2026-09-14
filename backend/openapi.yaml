@@ -1259,7 +1259,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "409":
-          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly.
+          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly. Also returned, terminally, when an earlier request already completed but its response could not be stored for replay (IDEMPOTENCY_RESULT_UNAVAILABLE, issue #995) — do not resubmit that key.
           content:
             application/json:
               schema:
@@ -3046,7 +3046,15 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "409":
-          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly.
+          description: >
+            An edge with this (source, target, type) natural key already exists
+            for the user (issue #928) — a double-clicked or replayed create is
+            rejected rather than silently doubling the relationship. Also
+            returned when a request with this Idempotency-Key is still being
+            processed (CON-04, ADR 0010); retry shortly. Also returned,
+            terminally, when an earlier request already completed but its
+            response could not be stored for replay (IDEMPOTENCY_RESULT_UNAVAILABLE,
+            issue #995) — do not resubmit that key.
           content:
             application/json:
               schema:
@@ -3135,6 +3143,12 @@ paths:
                 $ref: "#/components/schemas/Error"
         "404":
           description: Edge or endpoint contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Re-pointing the edge onto the (source, target, type) natural key of an existing edge would duplicate it (issue #928).
           content:
             application/json:
               schema:
@@ -3612,7 +3626,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "409":
-          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly.
+          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly. Also returned, terminally, when an earlier request already completed but its response could not be stored for replay (IDEMPOTENCY_RESULT_UNAVAILABLE, issue #995) — do not resubmit that key.
           content:
             application/json:
               schema:
@@ -3880,7 +3894,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "409":
-          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly.
+          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly. Also returned, terminally, when an earlier request already completed but its response could not be stored for replay (IDEMPOTENCY_RESULT_UNAVAILABLE, issue #995) — do not resubmit that key.
           content:
             application/json:
               schema:
@@ -5166,7 +5180,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "409":
-          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly.
+          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly. Also returned, terminally, when an earlier request already completed but its response could not be stored for replay (IDEMPOTENCY_RESULT_UNAVAILABLE, issue #995) — do not resubmit that key.
           content:
             application/json:
               schema:
@@ -5563,7 +5577,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "409":
-          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly.
+          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly. Also returned, terminally, when an earlier request already completed but its response could not be stored for replay (IDEMPOTENCY_RESULT_UNAVAILABLE, issue #995) — do not resubmit that key.
           content:
             application/json:
               schema:
@@ -6396,7 +6410,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "409":
-          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly.
+          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010); retry shortly. Also returned, terminally, when an earlier request already completed but its response could not be stored for replay (IDEMPOTENCY_RESULT_UNAVAILABLE, issue #995) — do not resubmit that key.
           content:
             application/json:
               schema:
@@ -10066,7 +10080,12 @@ components:
         effect (webhook, push) result no matter how many retries. Reusing a key
         with a *different* request body is `422 IDEMPOTENCY_KEY_REUSED`; a
         retry that arrives while the first call is still in flight is
-        `409 IDEMPOTENCY_IN_PROGRESS` (retry shortly). Keys are retained for
+        `409 IDEMPOTENCY_IN_PROGRESS` (retry shortly). If the first call's write
+        commits but its response cannot be stored for replay (or the body is too
+        large to cache), the key becomes terminal and a retry is answered
+        `409 IDEMPOTENCY_RESULT_UNAVAILABLE` instead of re-running the handler —
+        the operation is applied but cannot be replayed, so resubmitting it
+        would risk a duplicate (issue #995). Keys are retained for
         `IDEMPOTENCY_KEY_RETENTION_HOURS` (default 24). `PUT`/`DELETE` are
         already idempotent and ignore this header.
       schema:

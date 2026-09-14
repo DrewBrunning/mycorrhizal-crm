@@ -94,7 +94,9 @@ func loadAlertStates(ctx context.Context, db *gorm.DB) (map[string]models.AlertS
 // transitionAlertState compares a condition's fresh verdict against its
 // persisted alert_states row. On a state change it updates the row and
 // dispatches exactly one raise/recover notification; with no change it never
-// notifies (the "no alert storms" guarantee).
+// notifies (the "no alert storms" guarantee) unless a previously-persisted
+// raise was never accepted by any delivery path, in which case it re-attempts
+// that raise (issue #973).
 func transitionAlertState(ctx context.Context, db *gorm.DB, cfg config.Config, res alertConditionResult, prev models.AlertState) {
 	now := time.Now().UTC()
 	hadRow := prev.ConditionKey != ""
@@ -110,16 +112,18 @@ func transitionAlertState(ctx context.Context, db *gorm.DB, cfg config.Config, r
 	}
 
 	if prevState == want {
-		transitionNoop(ctx, db, res, prev, hadRow, want, now)
+		transitionNoop(ctx, db, cfg, res, prev, hadRow, want, now)
 		return
 	}
 
 	row := models.AlertState{
-		ConditionKey:   res.key,
-		State:          want,
-		Since:          now,
-		Detail:         res.detail,
-		LastNotifiedAt: &now,
+		ConditionKey: res.key,
+		State:        want,
+		Since:        now,
+		Detail:       res.detail,
+		// A raise is pending delivery until a dispatch is durably accepted;
+		// a recovery is not retried (the raise is what matters — issue #973).
+		PendingNotify: res.firing,
 	}
 	alert := operationalAlert{
 		conditionKey: res.key,
@@ -150,13 +154,16 @@ func transitionAlertState(ctx context.Context, db *gorm.DB, cfg config.Config, r
 		Int("failure_count", alert.failureCount).
 		Msg("alerting: " + alert.subject())
 
-	dispatchOperationalAlert(ctx, db, cfg, alert)
+	if dispatchOperationalAlert(ctx, db, cfg, alert) {
+		markAlertNotified(ctx, db, res.key, now)
+	}
 }
 
 // transitionNoop handles the no-transition path: refresh a stored detail for an
 // ongoing incident, or write the clean baseline row for a first-ever
-// observation, but never notify.
-func transitionNoop(ctx context.Context, db *gorm.DB, res alertConditionResult, prev models.AlertState, hadRow bool, want string, now time.Time) {
+// observation, but never notify — except to re-attempt an outstanding raise
+// whose delivery was never accepted (issue #973).
+func transitionNoop(ctx context.Context, db *gorm.DB, cfg config.Config, res alertConditionResult, prev models.AlertState, hadRow bool, want string, now time.Time) {
 	if !hadRow {
 		row := models.AlertState{ConditionKey: res.key, State: want, Since: now, Detail: res.detail}
 		if err := db.WithContext(ctx).Create(&row).Error; err != nil {
@@ -173,6 +180,53 @@ func transitionNoop(ctx context.Context, db *gorm.DB, res alertConditionResult, 
 				Msg("alerting: failed to refresh alert detail")
 		}
 	}
+	if res.firing && prev.PendingNotify {
+		retryPendingRaise(ctx, db, cfg, res, prev, now)
+	}
+}
+
+// retryPendingRaise re-dispatches a still-outstanding raise. A raise is
+// outstanding when every personal channel failed and no webhook was enqueued
+// at the transition, so the operator may never have been paged (issue #973).
+// It re-uses the incident's original `since` and failure count so the message
+// is the raise that was missed, and clears the pending marker only once a
+// dispatch is durably handled.
+func retryPendingRaise(ctx context.Context, db *gorm.DB, cfg config.Config, res alertConditionResult, prev models.AlertState, now time.Time) {
+	alert := operationalAlert{
+		conditionKey: res.key,
+		title:        res.title,
+		firing:       true,
+		detail:       res.detail,
+		failureCount: prev.FailureCount,
+		since:        prev.Since,
+	}
+	if !dispatchOperationalAlert(ctx, db, cfg, alert) {
+		logger.Ctx(ctx).Warn().Str("condition", res.key).
+			Msg("alerting: raise still undelivered; will retry next evaluation")
+		return
+	}
+	logger.Ctx(ctx).Warn().
+		Str("condition", res.key).
+		Str(logger.FieldComponent, logger.ComponentApp).
+		Msg("alerting: redelivered previously undelivered raise")
+	markAlertNotified(ctx, db, res.key, now)
+}
+
+// markAlertNotified records that an alert dispatch was durably handled: it
+// clears the pending-retry marker and stamps the delivery time. A write
+// failure is logged, not fatal — leaving pending_notify set only means the
+// raise is re-sent, which is the safe direction.
+func markAlertNotified(ctx context.Context, db *gorm.DB, key string, now time.Time) {
+	if err := db.WithContext(ctx).Model(&models.AlertState{}).
+		Where("condition_key = ?", key).
+		Updates(map[string]interface{}{
+			"pending_notify":   false,
+			"last_notified_at": now,
+			"updated_at":       now,
+		}).Error; err != nil {
+		logger.Ctx(ctx).Error().Err(err).Str("condition", key).
+			Msg("alerting: failed to record alert delivery")
+	}
 }
 
 func persistAlertState(ctx context.Context, db *gorm.DB, row models.AlertState, hadRow bool) error {
@@ -186,6 +240,7 @@ func persistAlertState(ctx context.Context, db *gorm.DB, row models.AlertState, 
 			"since":            row.Since,
 			"detail":           row.Detail,
 			"failure_count":    row.FailureCount,
+			"pending_notify":   row.PendingNotify,
 			"last_notified_at": row.LastNotifiedAt,
 			"updated_at":       row.Since,
 		}).Error

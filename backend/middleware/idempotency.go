@@ -30,9 +30,18 @@ const idempotencyReplayedHeader = "Idempotency-Replayed"
 const maxIdempotencyKeyLen = 255
 
 // maxCachedResponseBytes caps what is stored for replay. A create response is a
-// few KB; anything larger is not cached (the row is dropped and the handler
-// re-runs on retry) rather than bloating the table.
+// few KB; anything larger is not cached (the key is marked
+// terminal-but-unreplayable, never re-run) rather than bloating the table.
 const maxCachedResponseBytes = 256 << 10 // 256 KiB
+
+// idempotencyPendingTimeout bounds how long a claimed-but-unfinished key may be
+// reported as "in progress". No live request can outlive the HTTP server's
+// write timeout, and that timeout is validated to at most 300s
+// (config.Config.WriteTimeout), so a pending row older than this cannot still
+// be in flight: it is one whose response store never landed. Such a row is
+// terminal (the handler's write already committed) and must not be re-run
+// (issue #995) — see ErrIdempotencyResultUnavailable.
+const idempotencyPendingTimeout = 10 * time.Minute
 
 // IdempotencyMiddleware implements the one CON-04 mechanism: a client-supplied
 // Idempotency-Key, the stored outcome of the request that first used it, and a
@@ -54,6 +63,12 @@ const maxCachedResponseBytes = 256 << 10 // 256 KiB
 //   - different request fingerprint -> 422 IDEMPOTENCY_KEY_REUSED
 //   - still pending                  -> 409 IDEMPOTENCY_IN_PROGRESS
 //   - completed                      -> replay stored status + body
+//   - completed with no stored response (the response store failed, or the
+//     body was too large to cache) -> 409 IDEMPOTENCY_RESULT_UNAVAILABLE:
+//     terminal, never re-runs the handler (the write already committed). A
+//     pending row older than idempotencyPendingTimeout is treated the same
+//     way, so a lost response store can never wedge a key "in progress" until
+//     the TTL purge and then double-apply on the first retry after it (#995).
 func IdempotencyMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key := c.GetHeader(IdempotencyKeyHeader)
@@ -121,7 +136,26 @@ func IdempotencyMiddleware() gin.HandlerFunc {
 				return
 			}
 			if existing.State != models.IdempotencyStateCompleted {
-				apperrors.AbortWithError(c, apperrors.ErrIdempotencyInProgress())
+				// A pending row is "still being processed" only while it can
+				// plausibly be in flight. Past idempotencyPendingTimeout it
+				// lost its response store (or the process died after
+				// claiming the key); the handler's write may already have
+				// committed, so this is terminal — never 409 "retry shortly"
+				// forever, and never a re-run (issue #995).
+				if existing.State == models.IdempotencyStatePending &&
+					time.Since(existing.CreatedAt) <= idempotencyPendingTimeout {
+					apperrors.AbortWithError(c, apperrors.ErrIdempotencyInProgress())
+					return
+				}
+				apperrors.AbortWithError(c, apperrors.ErrIdempotencyResultUnavailable())
+				return
+			}
+			if existing.ResponseStatus == 0 {
+				// Completed, but no response was stored for replay: the
+				// terminal-but-unreplayable marker (issue #995). Re-running
+				// the handler would double-apply a write that already
+				// committed, so refuse rather than replay or re-run.
+				apperrors.AbortWithError(c, apperrors.ErrIdempotencyResultUnavailable())
 				return
 			}
 			replayStoredResponse(c, existing)
@@ -135,27 +169,60 @@ func IdempotencyMiddleware() gin.HandlerFunc {
 		c.Writer = rc.ResponseWriter
 
 		status := rc.Status()
-		if status >= 200 && status < 300 && rc.body.Len() <= maxCachedResponseBytes {
-			upd := db.Model(&models.IdempotencyKey{}).
-				Where("id = ?", row.ID).
-				Updates(map[string]any{
-					"state":           models.IdempotencyStateCompleted,
-					"response_status": status,
-					"response_body":   rc.body.String(),
-					"updated_at":      time.Now().UTC(),
-				})
-			if upd.Error != nil {
-				logger.FromContext(c).Error().Err(upd.Error).Msg("idempotency: failed to store response for replay")
+		if status >= 200 && status < 300 {
+			if rc.body.Len() <= maxCachedResponseBytes {
+				upd := db.Model(&models.IdempotencyKey{}).
+					Where("id = ?", row.ID).
+					Updates(map[string]any{
+						"state":           models.IdempotencyStateCompleted,
+						"response_status": status,
+						"response_body":   rc.body.String(),
+						"updated_at":      time.Now().UTC(),
+					})
+				if upd.Error != nil {
+					logger.FromContext(c).Error().Err(upd.Error).Msg("idempotency: failed to store response for replay")
+					markTerminalUnreplayable(c, db, row.ID)
+				}
+				return
 			}
+			// A 2xx whose body is too large to cache. The handler's write
+			// committed; dropping the key here would let a retry re-run the
+			// handler and double-apply (issue #995), so mark it terminal
+			// instead of caching the oversized body.
+			logger.FromContext(c).Warn().Int("bytes", rc.body.Len()).
+				Msg("idempotency: response too large to cache; marking key terminal")
+			markTerminalUnreplayable(c, db, row.ID)
 			return
 		}
 
-		// Non-2xx, or a response too large to cache: drop the pending row so a
-		// corrected retry re-runs the handler rather than replaying a failure
-		// (or getting stuck as permanently "in progress").
+		// Non-2xx: drop the pending row so a corrected retry re-runs the
+		// handler rather than replaying a failure (or getting stuck as
+		// permanently "in progress").
 		if err := db.Where("id = ?", row.ID).Delete(&models.IdempotencyKey{}).Error; err != nil {
 			logger.FromContext(c).Error().Err(err).Msg("idempotency: failed to drop pending row after non-2xx")
 		}
+	}
+}
+
+// markTerminalUnreplayable flips a claimed key to the terminal-but-unreplayable
+// outcome: state=completed with response_status=0 and no stored body. A later
+// retry is answered IDEMPOTENCY_RESULT_UNAVAILABLE instead of re-running the
+// handler (whose write already committed) or being told "in progress" until the
+// TTL purge, after which a retry would double-apply (issue #995).
+//
+// It is a raw UPDATE, not a model save: it must repair the row even when the
+// failure was in the GORM response-store path, and it deliberately touches only
+// the state columns. The `response_status = 0` predicate means it can never
+// clobber a response the primary store actually wrote (the ambiguous case where
+// the UPDATE committed but the driver still returned an error). Best-effort: if
+// it also fails the row stays pending, and the bounded pending-timeout read path
+// above still refuses to re-run it.
+func markTerminalUnreplayable(c *gin.Context, db *gorm.DB, id uint) {
+	res := db.Exec(
+		"UPDATE idempotency_keys SET state = ?, response_status = 0, response_body = '', updated_at = ? WHERE id = ? AND response_status = 0",
+		models.IdempotencyStateCompleted, time.Now().UTC(), id)
+	if res.Error != nil {
+		logger.FromContext(c).Error().Err(res.Error).Msg("idempotency: failed to mark key terminal after response-store failure")
 	}
 }
 

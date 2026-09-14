@@ -158,6 +158,43 @@ func deriveKEKFromJWT(jwt string) []byte {
 	return kek
 }
 
+// backupSigningKeyInfo is the HKDF domain-separation string for the detached
+// snapshot-signing key (issue #943). The signing key is derived from the same
+// at-rest master key as the KEK, but with its own info string so the same
+// secret bytes are never used for both AES-GCM key wrapping and HMAC snapshot
+// signatures.
+const backupSigningKeyInfo = "mycorrhizal-backup-signing-key-v1"
+
+// DeriveBackupSigningKey derives the HMAC-SHA256 key used to sign backup
+// snapshot manifests (issue #943) from the at-rest master key. It is
+// domain-separated from the KEK and from credential_crypto's derivations.
+// Returns nil for a nil master key, matching EncryptionKey's "no key
+// configured" signal.
+func DeriveBackupSigningKey(master []byte) []byte {
+	if master == nil {
+		return nil
+	}
+	key := make([]byte, keySize)
+	_, _ = io.ReadFull(hkdf.New(sha256.New, master, nil, []byte(backupSigningKeyInfo)), key)
+	return key
+}
+
+// BackupSigningKey resolves the at-rest master key from the environment (via
+// EncryptionKey) and derives the snapshot-signing key from it. It returns
+// (nil, nil) when no master key is configured — the caller decides whether an
+// unsigned backup is acceptable; `make backup` treats it as a hard error
+// because an unsigned snapshot is exactly the authenticity gap issue #943
+// closes. Deriving from the at-rest key means a deployment that already
+// manages DATA_ENCRYPTION_KEY (or the JWT_SECRET_KEY fallback) needs no new
+// secret to sign its backups.
+func BackupSigningKey() ([]byte, error) {
+	master, err := EncryptionKey()
+	if err != nil || master == nil {
+		return nil, err
+	}
+	return DeriveBackupSigningKey(master), nil
+}
+
 // Initialize loads (or lazily creates) the wrapped DEK under the given
 // master key and arms the serializer layer. Calling it again replaces the
 // in-memory key material. A wrong KEK fails closed: unwrapping the stored DEK

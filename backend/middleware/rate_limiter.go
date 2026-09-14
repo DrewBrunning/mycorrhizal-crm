@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -372,11 +373,33 @@ func init() {
 	StartCleanupRoutine()
 }
 
+// clientIPKey maps a client IP to the rate-limit bucket key it shares with the
+// rest of its network prefix (issue #954). A subscriber is routinely handed a
+// whole IPv6 /64 by their ISP and can rotate the low 64 bits at will, so
+// keying on the literal address would hand an attacker a fresh bucket per
+// request and bypass the limiter; the /64 is the smallest unit the customer
+// controls, so that is the unit that owns a bucket. IPv4 is aggregated on the
+// /32 — a single address is already the natural unit, so its key is unchanged
+// (this also normalises IPv4-mapped IPv6 such as ::ffff:203.0.113.7). A value
+// that is not a parseable IP is returned verbatim rather than collapsed onto
+// one bucket, so malformed or non-IP keys can never merge unrelated clients.
+func clientIPKey(ip string) string {
+	parsed := net.ParseIP(ip)
+	if parsed == nil {
+		return ip
+	}
+	if v4 := parsed.To4(); v4 != nil {
+		return v4.String()
+	}
+	return parsed.Mask(net.CIDRMask(64, 128)).String() + "/64"
+}
+
 // RateLimitMiddleware creates a rate limiting middleware
 func RateLimitMiddleware(limiter *IPRateLimiter) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get client IP address
-		ip := c.ClientIP()
+		// Get client IP address, aggregated to its network prefix so rotating
+		// addresses within an allocation cannot escape the bucket (#954).
+		ip := clientIPKey(c.ClientIP())
 
 		// Get the rate limiter for this IP
 		rateLimiter := limiter.GetLimiter(ip)

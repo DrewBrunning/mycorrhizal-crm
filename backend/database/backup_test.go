@@ -1,6 +1,8 @@
 package database_test
 
 import (
+	"bytes"
+	"encoding/base64"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -8,12 +10,17 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/atrest"
 	"mycorrhizal/database"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// testBackupSigningKeyB64 is a fixed 32-byte at-rest key used so `make backup`
+// (which must sign, issue #943) has a deterministic key inside the subprocess.
+var testBackupSigningKeyB64 = base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{0x5a}, 32))
 
 // liveTestDB opens a real migrated database (never AutoMigrate — see
 // CLAUDE.md trap 1) and seeds it exactly the way a running server would have,
@@ -262,11 +269,20 @@ func TestMakeBackupTarget(t *testing.T) {
 	cmd.Env = append(os.Environ(),
 		"SQLITE_DB_PATH="+srcPath,
 		"BACKUP_PATH="+backupPath,
+		"DATA_ENCRYPTION_KEY="+testBackupSigningKeyB64,
+		"DATA_ENCRYPTION_KEY_FILE=",
 	)
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, "make backup must succeed; output:\n%s", output)
 
 	require.FileExists(t, backupPath, "make backup must write the snapshot to BACKUP_PATH")
+	require.FileExists(t, database.ManifestPath(backupPath),
+		"make backup must write the detached signature manifest beside the snapshot (issue #943)")
+
+	// The manifest verifies under the key the CLI was given.
+	decoded, err := base64.StdEncoding.DecodeString(testBackupSigningKeyB64)
+	require.NoError(t, err)
+	require.NoError(t, database.VerifyBackupSignature(backupPath, atrest.DeriveBackupSigningKey(decoded)))
 
 	// The produced snapshot restores cleanly — copy it over a wiped database
 	// and confirm the seeded rows are all there.

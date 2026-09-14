@@ -389,6 +389,42 @@ func TestValidate_ReminderTimezone(t *testing.T) {
 	assert.True(t, hasFieldError(errs, "REMINDER_TIMEZONE"), "invalid timezone should error")
 }
 
+// DELETED_RETENTION_DAYS is the soft-delete undo window. Positive values are a
+// number of days; 0 is the documented "disable the purge and keep soft-deleted
+// rows forever" value (.env.example), so it must validate; a negative value is
+// never meaningful and must fail boot rather than silently disabling the purge.
+// See issue #971.
+func TestValidate_DeleteRetentionDays(t *testing.T) {
+	t.Run("positive is accepted", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.DeleteRetentionDays = 30
+		assert.False(t, hasFieldError(cfg.Validate(), "DELETED_RETENTION_DAYS"))
+	})
+
+	t.Run("zero is accepted (documented purge-disable value)", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.DeleteRetentionDays = 0
+		assert.False(t, hasFieldError(cfg.Validate(), "DELETED_RETENTION_DAYS"),
+			"0 is the documented 'disable the purge' value and must not be rejected")
+	})
+
+	t.Run("negative is rejected naming the variable and value", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.DeleteRetentionDays = -1
+		errs := cfg.Validate()
+		require.True(t, hasFieldError(errs, "DELETED_RETENTION_DAYS"))
+
+		var msg string
+		for _, e := range errs {
+			if e.Field == "DELETED_RETENTION_DAYS" {
+				msg = e.Message
+			}
+		}
+		assert.Contains(t, msg, "-1")
+		assert.Contains(t, msg, "0", "the message must state the acceptable form (0 disables, positive is days)")
+	})
+}
+
 func TestLoadConfig_Defaults(t *testing.T) {
 	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
 	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
@@ -497,6 +533,36 @@ func TestLoadConfig_DeleteRetentionDays(t *testing.T) {
 
 	cfg := LoadConfig()
 	assert.Equal(t, 14, cfg.DeleteRetentionDays)
+}
+
+// A negative DELETED_RETENTION_DAYS survives the env read (getIntEnv does not
+// clamp retention) and must be caught by Validate — the operator typo should
+// fail boot rather than silently disable the purge. Issue #971.
+func TestLoadConfig_NegativeDeleteRetentionDaysFailsValidation(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+	t.Setenv("DELETED_RETENTION_DAYS", "-1")
+
+	cfg := LoadConfig()
+	require.Equal(t, -1, cfg.DeleteRetentionDays)
+	assert.True(t, hasFieldError(cfg.Validate(), "DELETED_RETENTION_DAYS"),
+		"a negative DELETED_RETENTION_DAYS must fail boot-time validation")
+}
+
+// 0 is the documented "disable the purge and keep soft-deleted rows forever"
+// value (.env.example), so it reads through unchanged and validates.
+func TestLoadConfig_ZeroDeleteRetentionDaysDisablesPurgeAndValidates(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+	t.Setenv("DELETED_RETENTION_DAYS", "0")
+
+	cfg := LoadConfig()
+	require.Equal(t, 0, cfg.DeleteRetentionDays)
+	assert.False(t, hasFieldError(cfg.Validate(), "DELETED_RETENTION_DAYS"))
 }
 
 func TestLoadConfig_ContactShareRetentionDays(t *testing.T) {
@@ -651,6 +717,50 @@ func TestValidate_TrustedProxies(t *testing.T) {
 	errs := cfg.Validate()
 
 	assert.True(t, hasFieldError(errs, "TRUSTED_PROXIES"), "an invalid proxy string must be rejected, got: %v", errs)
+}
+
+// TestValidate_TrustedProxyCatchAllRejected pins issue #954's refusal of a
+// trusted proxy that trusts every source: 0.0.0.0/0 (and its IPv6 twin ::/0)
+// lets any client forge X-Forwarded-For, escaping the IP rate limiter and
+// poisoning logged IPs. A normal CIDR must still be accepted.
+func TestValidate_TrustedProxyCatchAllRejected(t *testing.T) {
+	for _, proxy := range []string{"0.0.0.0/0", "::/0"} {
+		t.Run(proxy, func(t *testing.T) {
+			cfg := validConfig()
+			cfg.TrustedProxies = []string{proxy}
+			errs := cfg.Validate()
+			assert.True(t, hasFieldError(errs, "TRUSTED_PROXIES"), "catch-all proxy %q must be refused, got: %v", proxy, errs)
+		})
+	}
+
+	cfg := validConfig()
+	cfg.TrustedProxies = []string{"10.0.0.0/8", "172.16.0.0/12", "127.0.0.1/32"}
+	assert.Empty(t, cfg.Validate(), "a bounded trusted-proxy CIDR must be accepted")
+}
+
+// TestEffectiveTrustedProxies pins the default-loopback fallback the shipped
+// all-in-one image relies on (issue #954): with no TRUSTED_PROXIES the bundled
+// nginx on 127.0.0.1 must still be trusted, or every client collapses into one
+// bucket. An explicit list is passed through unchanged.
+func TestEffectiveTrustedProxies(t *testing.T) {
+	empty := &Config{}
+	assert.Equal(t, []string{"127.0.0.1/32", "::1/128"}, empty.EffectiveTrustedProxies())
+
+	configured := &Config{TrustedProxies: []string{"10.1.2.3"}}
+	assert.Equal(t, []string{"10.1.2.3"}, configured.EffectiveTrustedProxies())
+}
+
+// TestTrustedProxyWarnings pins the advisory (non-fatal) boot warning: a release
+// deployment with no configured proxies is told the fallback is loopback and
+// that an external proxy must be listed. It must not fire in dev, and must not
+// fire when the operator configured proxies.
+func TestTrustedProxyWarnings(t *testing.T) {
+	t.Setenv("GIN_MODE", "release")
+	assert.Len(t, (&Config{}).TrustedProxyWarnings(), 1, "release + empty must warn")
+	assert.Empty(t, (&Config{TrustedProxies: []string{"10.1.2.3"}}).TrustedProxyWarnings(), "release + configured must not warn")
+
+	t.Setenv("GIN_MODE", "debug")
+	assert.Empty(t, (&Config{}).TrustedProxyWarnings(), "dev must not warn")
 }
 
 func TestValidate_AttachmentsDirRelativeRejected(t *testing.T) {

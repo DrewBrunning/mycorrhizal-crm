@@ -56,14 +56,24 @@ byte-for-byte unaffected.
 - **First caller** — runs the handler, captures the response, and on a 2xx stores
   `(status, body, request_fingerprint)` with `state = completed`. A non-2xx **deletes** the pending
   row, so a corrected retry is allowed through (a failed create left nothing durable to replay).
+- **Response store failed (issue #995)** — the handler's write already committed, so the outcome must
+  not be re-run. If the `state = completed` store fails (or the 2xx body is too large to cache), the
+  key is flipped to a **terminal-but-unreplayable** marker: `state = completed` with
+  `response_status = 0` and no body. A later retry gets `409 IDEMPOTENCY_RESULT_UNAVAILABLE` — never
+  "in progress" until the purge, and never a second handler run. A `pending` row older than a bounded
+  timeout (longer than the HTTP write timeout, so it cannot still be in flight) is treated the same
+  way, covering a lost terminal-mark write or a crash after the claim.
 - **Later caller, same key** —
   - fingerprint (hash of method + path + body) differs → `422 IDEMPOTENCY_KEY_REUSED`. The key no
     longer names one operation; the stored response would be the wrong answer, so it is **not**
     replayed.
   - `state = pending` (first call still in flight) → `409 IDEMPOTENCY_IN_PROGRESS`, retry shortly.
-  - `state = completed` → the stored status + body are replayed verbatim, with an
-    `Idempotency-Replayed: true` response header. The handler does not run, so no second row and no
-    second side effect.
+  - `state = completed` with a stored response → the stored status + body are replayed verbatim, with
+    an `Idempotency-Replayed: true` response header. The handler does not run, so no second row and
+    no second side effect.
+  - `state = completed` with `response_status = 0` (terminal-but-unreplayable) →
+    `409 IDEMPOTENCY_RESULT_UNAVAILABLE`. The handler does not run; the client should treat the
+    operation as applied rather than resubmitting the key.
 
 Why a client-supplied key and not, say, a server-computed body hash: it composes with retries the
 client never told us about (a lost response looks identical to a lost request), it lets a client
@@ -88,6 +98,9 @@ the MAINT-02 baseline records them, so a later removal is a reviewable breaking-
 ## Consequences
 
 - A keyed `POST` retried after an ambiguous failure yields exactly one record and one side effect.
+- A response that cannot be stored for replay no longer wedges the key as "in progress" until the TTL
+  purge (after which the next retry would have double-applied): the retry gets a terminal
+  `409 IDEMPOTENCY_RESULT_UNAVAILABLE` immediately, and the handler never runs again (issue #995).
 - Double-submitting a create (same key) yields one contact, replayed.
 - A retried keyed create that also fires a webhook fires it once — the replay path never re-enters
   the handler.
