@@ -11,9 +11,16 @@ import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 /**
  * Foreground service that shows the quick-capture overlay when a call ends
@@ -35,6 +42,18 @@ class CallDetectionService : Service() {
     @Inject
     lateinit var activityRepository: ActivityRepository
 
+    @Inject
+    lateinit var trackingSettings: TrackingSettingsRepository
+
+    /**
+     * Dispatcher for the (suspend) contact lookup behind the overlay decision.
+     * Extracted as an override point so CallDetectionServiceTest can drive the
+     * lookup deterministically through a test scheduler (issue #1029).
+     */
+    internal var serviceDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate
+
+    private var serviceScope: CoroutineScope? = null
+
     // Owned by this service instance (not a static/singleton holder) so the
     // View it retains while shown is scoped to the service's lifetime;
     // dismiss()'d and dropped in onDestroy. internal (not private) so
@@ -51,6 +70,13 @@ class CallDetectionService : Service() {
     // -> show-overlay decision is directly testable -- Robolectric has no
     // shadow for simulating a real TelephonyManager/PhoneStateListener
     // callback, so this was otherwise only reachable via reflection.
+    //
+    // Issue #1029: the overlay is suppressed for a caller whose number maps to
+    // no cached contact (unless the user opted into unknown numbers) — the same
+    // known-contacts-only policy the automatic capture path applies. The
+    // lookup is suspend (Room is offline-only), so the decision runs on
+    // [serviceDispatcher]; the permission check and self-stop stay synchronous
+    // so the service's lifecycle behavior is unchanged.
     internal fun handleCallStateChanged(state: Int, phoneNumber: String?) {
         if (state == TelephonyManager.CALL_STATE_IDLE) {
             val hasOverlayPermission = ContextCompat.checkSelfPermission(
@@ -58,15 +84,35 @@ class CallDetectionService : Service() {
                 android.Manifest.permission.SYSTEM_ALERT_WINDOW,
             ) == PackageManager.PERMISSION_GRANTED
             if (hasOverlayPermission) {
-                (quickCaptureOverlay ?: QuickCaptureOverlay(
-                    contactRepository = contactRepository,
-                    activityRepository = activityRepository,
-                ).also { quickCaptureOverlay = it })
-                    .show(this@CallDetectionService, phoneNumber)
+                scope().launch {
+                    if (!shouldShowOverlay(phoneNumber)) return@launch
+                    (quickCaptureOverlay ?: QuickCaptureOverlay(
+                        contactRepository = contactRepository,
+                        activityRepository = activityRepository,
+                    ).also { quickCaptureOverlay = it })
+                        .show(this@CallDetectionService, phoneNumber)
+                }
             }
             resetSelfStop()
         }
     }
+
+    /**
+     * Issue #1029: whether an ended call's number warrants the quick-capture
+     * overlay. A known contact always does; an unknown/withheld/blank number
+     * only does when the user enabled [TrackingSettingsRepository.includeUnknownNumbers].
+     * A lookup failure counts as unknown (a failed local read cannot prove the
+     * number is known).
+     */
+    internal suspend fun shouldShowOverlay(phoneNumber: String?): Boolean {
+        val includeUnknown = trackingSettings.includeUnknownNumbers()
+        if (phoneNumber.isNullOrBlank()) return includeUnknown
+        val known = runCatching { contactRepository.findByPhone(phoneNumber) }.getOrNull() != null
+        return known || includeUnknown
+    }
+
+    private fun scope(): CoroutineScope =
+        serviceScope ?: CoroutineScope(SupervisorJob() + serviceDispatcher).also { serviceScope = it }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(
@@ -99,6 +145,8 @@ class CallDetectionService : Service() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        serviceScope?.cancel()
+        serviceScope = null
         quickCaptureOverlay?.dismiss()
         quickCaptureOverlay = null
         val telephonyManager = getSystemService(TelephonyManager::class.java)

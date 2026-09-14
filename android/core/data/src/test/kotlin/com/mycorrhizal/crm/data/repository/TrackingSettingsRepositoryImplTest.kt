@@ -32,6 +32,7 @@ class TrackingSettingsRepositoryImplTest {
         repository.setCallTrackingEnabled(false)
         repository.setSmsTrackingEnabled(false)
         repository.setNotificationsEnabled(true)
+        repository.setIncludeUnknownNumbers(false)
         repository.setLastCallLogTimestamp(0L)
         repository.setLastSmsTimestamp(0L)
     }
@@ -99,5 +100,32 @@ class TrackingSettingsRepositoryImplTest {
     @Test
     fun `lastInteractionSyncAt is null when never synced`() = runTest {
         assertNull(repository.lastInteractionSyncAt())
+    }
+
+    // --- Issue #1029: capture-policy escape hatch + dropped-count ----------
+
+    @Test
+    fun `includeUnknownNumbers defaults to false`() = runTest {
+        assertFalse(repository.includeUnknownNumbers())
+    }
+
+    @Test
+    fun `setIncludeUnknownNumbers persists the value`() = runTest {
+        repository.setIncludeUnknownNumbers(true)
+
+        assertTrue(repository.includeUnknownNumbers())
+    }
+
+    @Test
+    fun `incrementFilteredUnknownCount advances the counter`() = runTest {
+        // The counter has no reset API (by design — it is a running local
+        // diagnostic), and the DataStore stays warm across test methods, so
+        // assert the delta rather than an absolute value.
+        val before = repository.filteredUnknownCount()
+
+        repository.incrementFilteredUnknownCount()
+        repository.incrementFilteredUnknownCount()
+
+        assertEquals(before + 2, repository.filteredUnknownCount())
     }
 }

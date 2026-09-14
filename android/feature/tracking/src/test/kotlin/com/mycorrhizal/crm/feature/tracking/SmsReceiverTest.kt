@@ -105,7 +105,7 @@ class SmsReceiverTest {
     }
 
     @Test
-    fun `records an unmatched SMS as a pending interaction`() = runTest {
+    fun `an unmatched SMS is filtered and counted, not recorded`() = runTest {
         val pending = mockk<PendingInteractionRepository>(relaxed = true)
         val contacts = mockk<ContactRepository>(relaxed = true)
         val settings = mockk<TrackingSettingsRepository>(relaxed = true)
@@ -123,6 +123,29 @@ class SmsReceiverTest {
         testScheduler.advanceUntilIdle()
 
         coVerify { contacts.findByPhone("+15551234567") }
+        coVerify(exactly = 0) { pending.record(any()) }
+        coVerify(exactly = 1) { settings.incrementFilteredUnknownCount() }
+    }
+
+    @Test
+    fun `an unmatched SMS is recorded when the include-unknown opt-in is on`() = runTest {
+        val pending = mockk<PendingInteractionRepository>(relaxed = true)
+        val contacts = mockk<ContactRepository>(relaxed = true)
+        val settings = mockk<TrackingSettingsRepository>(relaxed = true)
+        coEvery { settings.smsTrackingEnabled() } returns true
+        coEvery { settings.includeUnknownNumbers() } returns true
+        coEvery { contacts.findByPhone("+15551234567") } returns null
+        val receiver = buildReceiver(
+            this,
+            pending,
+            contacts,
+            settings,
+            parseSms = { SmsEntry(address = "+15551234567", body = "hello", timestampMillis = 1234L) },
+        )
+
+        receiver.onReceive(context, smsIntent())
+        testScheduler.advanceUntilIdle()
+
         coVerify {
             pending.record(
                 PendingInteraction(
@@ -134,6 +157,7 @@ class SmsReceiverTest {
                 ),
             )
         }
+        coVerify(exactly = 0) { settings.incrementFilteredUnknownCount() }
     }
 
     @Test
@@ -168,7 +192,41 @@ class SmsReceiverTest {
     }
 
     @Test
-    fun `a contact lookup failure still records the interaction unmatched`() = runTest {
+    fun `a format-different number is recorded against the contact the repository matched`() = runTest {
+        // Pairs with #963: the receiver passes the raw sender through and the
+        // repository's PhoneKey normalization is what finds the contact. The
+        // receiver must link whatever id the repository returns.
+        val pending = mockk<PendingInteractionRepository>(relaxed = true)
+        val contacts = mockk<ContactRepository>(relaxed = true)
+        val settings = mockk<TrackingSettingsRepository>(relaxed = true)
+        coEvery { settings.smsTrackingEnabled() } returns true
+        coEvery { contacts.findByPhone("+4915112345678") } returns ContactSummary(id = 42)
+        val receiver = buildReceiver(
+            this,
+            pending,
+            contacts,
+            settings,
+            parseSms = { SmsEntry(address = "+4915112345678", body = "hello", timestampMillis = 777L) },
+        )
+
+        receiver.onReceive(context, smsIntent())
+        testScheduler.advanceUntilIdle()
+
+        coVerify {
+            pending.record(
+                PendingInteraction(
+                    timestampMillis = 777L,
+                    kind = InteractionCapture.KIND_MESSAGE,
+                    direction = InteractionCapture.DIR_INCOMING,
+                    phoneNumber = "+4915112345678",
+                    matchedContactId = 42,
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `a contact lookup failure is filtered by default, not synced as an orphan`() = runTest {
         val pending = mockk<PendingInteractionRepository>(relaxed = true)
         val contacts = mockk<ContactRepository>(relaxed = true)
         val settings = mockk<TrackingSettingsRepository>(relaxed = true)
@@ -186,21 +244,12 @@ class SmsReceiverTest {
         testScheduler.advanceUntilIdle()
 
         coVerify { contacts.findByPhone("+15551234567") }
-        coVerify {
-            pending.record(
-                PendingInteraction(
-                    timestampMillis = 1234L,
-                    kind = InteractionCapture.KIND_MESSAGE,
-                    direction = InteractionCapture.DIR_INCOMING,
-                    phoneNumber = "+15551234567",
-                    matchedContactId = null,
-                ),
-            )
-        }
+        coVerify(exactly = 0) { pending.record(any()) }
+        coVerify(exactly = 1) { settings.incrementFilteredUnknownCount() }
     }
 
     @Test
-    fun `an SMS with no address skips the phone match but is still recorded`() = runTest {
+    fun `an SMS with no address skips the phone match and is filtered`() = runTest {
         val pending = mockk<PendingInteractionRepository>(relaxed = true)
         val contacts = mockk<ContactRepository>(relaxed = true)
         val settings = mockk<TrackingSettingsRepository>(relaxed = true)
@@ -217,16 +266,7 @@ class SmsReceiverTest {
         testScheduler.advanceUntilIdle()
 
         coVerify(exactly = 0) { contacts.findByPhone(any()) }
-        coVerify {
-            pending.record(
-                PendingInteraction(
-                    timestampMillis = 5555L,
-                    kind = InteractionCapture.KIND_MESSAGE,
-                    direction = InteractionCapture.DIR_INCOMING,
-                    phoneNumber = null,
-                    matchedContactId = null,
-                ),
-            )
-        }
+        coVerify(exactly = 0) { pending.record(any()) }
+        coVerify(exactly = 1) { settings.incrementFilteredUnknownCount() }
     }
 }

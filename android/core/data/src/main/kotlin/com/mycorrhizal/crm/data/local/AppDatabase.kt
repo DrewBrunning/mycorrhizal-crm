@@ -43,6 +43,12 @@ import androidx.room.TypeConverters
  * MigrationTestHelper's JSON-backed `createDatabase` convenience. Any
  * migration registered from here on (17+) has a real prior-version JSON to
  * test against and should use `MigrationTestHelper` directly.
+ *
+ * Because those dumps are the "before" state those tests trust, a stale dump
+ * is a correctness bug, not just untidy: [RoomSchemaDumpTest] pins the current
+ * dump's identity hash to the schema KSP generated, and `android-tests.yml`'s
+ * "Room schema dumps are current" step regenerates and fails on any diff.
+ * Regenerate with `./gradlew :core:data:kspDebugKotlin --rerun`.
  */
 @Database(
     entities = [

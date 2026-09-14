@@ -9,7 +9,6 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
-import com.mycorrhizal.crm.domain.repository.PendingInteraction
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -55,21 +54,24 @@ class CallLogSyncWorker @AssistedInject constructor(
         entries.forEach { entry ->
             if (entry.timestampMillis > maxTs) maxTs = entry.timestampMillis
             val number = entry.number ?: return@forEach
-            val contact = runCatching { contactRepository.findByPhone(number) }.getOrNull()
             val direction = when (entry.type) {
                 CallLogKinds.INCOMING -> InteractionCapture.DIR_INCOMING
                 CallLogKinds.OUTGOING -> InteractionCapture.DIR_OUTGOING
                 CallLogKinds.MISSED -> InteractionCapture.DIR_MISSED
                 else -> null
             }
-            pendingInteractionRepository.recordIfNew(
-                PendingInteraction(
-                    timestampMillis = entry.timestampMillis,
-                    kind = InteractionCapture.KIND_CALL,
-                    direction = direction,
-                    phoneNumber = number,
-                    matchedContactId = contact?.id,
-                ),
+            // Issue #1029: shared capture policy — a call to/from a number that
+            // maps to no cached contact is dropped (and counted), not staged.
+            // recordIfNew dedupes overlapping periodic + one-shot runs.
+            InteractionCapture.capture(
+                contactRepository = contactRepository,
+                pendingInteractionRepository = pendingInteractionRepository,
+                trackingSettings = trackingSettings,
+                kind = InteractionCapture.KIND_CALL,
+                direction = direction,
+                number = number,
+                timestampMillis = entry.timestampMillis,
+                dedupe = true,
             )
         }
 

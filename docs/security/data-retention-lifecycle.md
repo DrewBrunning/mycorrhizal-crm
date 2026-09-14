@@ -352,6 +352,16 @@ design is ADR-0010 / CON-04, issue #479).
   interaction kind (`call`/`message`), direction, phone number, timestamp and an optional link to a
   cached contact id — **never an SMS body** (the §6.2 privacy boundary: the body is used only for
   on-device contact matching at capture time and is not persisted).
+- **Capture policy (issues #963/#1029)**: all three capture paths (incoming SMS, sent-SMS backfill,
+  call log) route through `InteractionCapture.capture`, which stages a row only when its number
+  resolves to a cached contact (matched via the shared `PhoneKey`, so formatting/country-code
+  differences don't hide a match). An unmappable number — a 2FA short code, service sender,
+  robocall, withheld number, or a number not in the address book — is **dropped and counted**
+  locally, never sent to the server. The `settings_include_unknown_numbers` opt-in restores the old
+  behavior of staging unknown numbers as unassociated Activities (and re-enables the quick-capture
+  overlay for unknown callers). The count is a bounded local-only integer
+  (`filtered_unknown_count` in the tracking DataStore, not the Room DB); it is diagnostics only and
+  is never synced or included in any backup.
 - **Retention**: rows persist until they sync, then are deleted. `InteractionSyncWorker` marks a row
   synced once the server Activity create succeeds and `deleteSynced()` removes synced rows every run,
   so a healthy row lives roughly one sync cadence (15-min periodic). Offline rows are bounded at 500

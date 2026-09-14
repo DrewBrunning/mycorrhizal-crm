@@ -208,6 +208,99 @@ class CachedContactDaoTest {
     }
 
     @Test
+    fun `findByPhoneKey matches a full-digit token`() = runBlocking {
+        dao.upsertAll(
+            listOf(
+                testContact(1, "Dana White").copy(
+                    primaryPhone = "(800) 555-1234",
+                    phonesNormalized = PhoneKey.flatten(listOf("(800) 555-1234")),
+                ),
+                testContact(2, "Bob Jones"),
+            ),
+        )
+
+        val result = dao.findByPhoneKey(PhoneKey.key("(800) 555-1234"))
+
+        assertEquals("Dana White", result?.fn)
+    }
+
+    @Test
+    fun `findByPhoneKey matches a contact by its non-primary number`() = runBlocking {
+        // Issue #963: matching must consider every stored number, not just the
+        // primary one — a secondary cell number was previously unmatchable.
+        dao.upsertAll(
+            listOf(
+                testContact(1, "Dana White").copy(
+                    primaryPhone = "(800) 555-1234",
+                    phonesNormalized = PhoneKey.flatten(listOf("(800) 555-1234", "555-0100")),
+                ),
+            ),
+        )
+
+        assertEquals("Dana White", dao.findByPhoneKey(PhoneKey.key("555-0100"))?.fn)
+    }
+
+    @Test
+    fun `findByPhoneKey reconciles an international vs local form via the key token`() = runBlocking {
+        // Issue #963's case: a CardDAV contact stored as "+49 (0) 151 12345678"
+        // must match a call-log sender shown as "+4915112345678" or "0151 12345678".
+        dao.upsertAll(
+            listOf(
+                testContact(1, "Klara Beispiel").copy(
+                    primaryPhone = "+49 (0) 151 12345678",
+                    phonesNormalized = PhoneKey.flatten(listOf("+49 (0) 151 12345678")),
+                ),
+            ),
+        )
+
+        assertEquals("Klara Beispiel", dao.findByPhoneKey(PhoneKey.key("+4915112345678"))?.fn)
+        assertEquals("Klara Beispiel", dao.findByPhoneKey(PhoneKey.key("0151 12345678"))?.fn)
+    }
+
+    @Test
+    fun `findByPhoneKey is token-exact and never matches a longer number's suffix`() = runBlocking {
+        // Boundary safety: a key that is a suffix of a longer stored number must
+        // not match it (5551234 must not match 15551234).
+        dao.upsertAll(
+            listOf(
+                testContact(1, "Short").copy(
+                    primaryPhone = "5551234",
+                    phonesNormalized = PhoneKey.flatten(listOf("5551234")),
+                ),
+                testContact(2, "Long").copy(
+                    primaryPhone = "15551234",
+                    phonesNormalized = PhoneKey.flatten(listOf("15551234")),
+                ),
+            ),
+        )
+
+        val result = dao.findByPhoneKey("5551234")
+        assertEquals(1, result?.id)
+    }
+
+    @Test
+    fun `findByPhoneKey returns null when nothing matches`() = runBlocking {
+        dao.upsertAll(listOf(testContact(1, "Dana White").copy(primaryPhone = "555-0100")))
+
+        assertNull(dao.findByPhoneKey("8005551234"))
+    }
+
+    @Test
+    fun `findByPhoneKey excludes soft-deleted contacts`() = runBlocking {
+        dao.upsertAll(
+            listOf(
+                testContact(1, "Dana White").copy(
+                    primaryPhone = "(800) 555-1234",
+                    phonesNormalized = PhoneKey.flatten(listOf("(800) 555-1234")),
+                    deleted = true,
+                ),
+            ),
+        )
+
+        assertNull(dao.findByPhoneKey("8005551234"))
+    }
+
+    @Test
     fun `deleteByIds removes the listed rows`() = runBlocking {
         dao.upsertAll(listOf(testContact(1, "Alice"), testContact(2, "Bob")))
         dao.deleteByIds(listOf(1))

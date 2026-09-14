@@ -219,6 +219,7 @@ fun SettingsScreen(
             onCallTrackingChange = viewModel::setCallTrackingEnabled,
             onSmsTrackingChange = viewModel::setSmsTrackingEnabled,
             onNotificationsChange = viewModel::setNotificationsEnabled,
+            onIncludeUnknownChange = viewModel::setIncludeUnknownNumbers,
             onRequireLocalAuthChange = viewModel::setRequireLocalAuth,
             onAutoLockDelayChange = viewModel::setAutoLockDelay,
             onEnrollBiometricSignIn = viewModel::enrollBiometricSignIn,
@@ -267,6 +268,8 @@ fun SettingsContent(
     onCallTrackingChange: (Boolean) -> Unit = {},
     onSmsTrackingChange: (Boolean) -> Unit = {},
     onNotificationsChange: (Boolean) -> Unit = {},
+    // Issue #1029: the unknown-number capture escape hatch.
+    onIncludeUnknownChange: (Boolean) -> Unit = {},
     // Issue #722: the opt-in local app lock.
     onRequireLocalAuthChange: (Boolean) -> Unit = {},
     onAutoLockDelayChange: (AutoLockDelay) -> Unit = {},
@@ -557,6 +560,20 @@ fun SettingsContent(
             checked = state.notificationsEnabled,
             onCheckedChange = onNotificationsChange,
         )
+        // Issue #1029: by default only interactions whose number maps to a
+        // contact are logged; this opts back into logging unknown numbers too.
+        ToggleRow(
+            label = stringResource(R.string.settings_include_unknown_numbers),
+            checked = state.includeUnknownNumbers,
+            onCheckedChange = onIncludeUnknownChange,
+        )
+        if (state.filteredUnknownCount > 0) {
+            Text(
+                text = stringResource(R.string.settings_filtered_unknown_count, state.filteredUnknownCount),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
         // M25: channels surfaces.
         NavigationRow(stringResource(R.string.settings_webhooks_title), onClick = onWebhooks)
