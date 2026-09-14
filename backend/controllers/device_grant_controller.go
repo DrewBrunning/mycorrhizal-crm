@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 
@@ -25,9 +26,9 @@ import (
 // observe the biometric, only the grant, so this endpoint is rate-limited like
 // /login and a revoked/unknown grant is rejected exactly like bad credentials.
 func ExchangeDeviceGrant(c *gin.Context, cfg *config.Config) {
-	var input models.DeviceGrantSessionInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("", err.Error()))
+	input, appErr := middleware.GetValidated[models.DeviceGrantSessionInput](c)
+	if appErr != nil {
+		apperrors.AbortWithError(c, appErr)
 		return
 	}
 
@@ -129,9 +130,9 @@ func CreateDeviceGrant(c *gin.Context) {
 		return
 	}
 
-	var input models.DeviceGrantInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("", err.Error()))
+	input, appErr := middleware.GetValidated[models.DeviceGrantInput](c)
+	if appErr != nil {
+		apperrors.AbortWithError(c, appErr)
 		return
 	}
 
