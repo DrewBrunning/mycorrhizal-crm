@@ -422,6 +422,60 @@ func getProxies(proxies string) []string {
 	return proxyList
 }
 
+// DefaultTrustedProxies is the trusted-proxy set the server falls back to when
+// TRUSTED_PROXIES is unset or empty. The shipped all-in-one image always runs
+// nginx in front of the backend over loopback (docker/nginx.conf proxies to
+// 127.0.0.1:8081), so with no trusted proxy every request would collapse into
+// a single 127.0.0.1 rate-limit bucket — a self-inflicted shared-bucket DoS,
+// and one that makes per-client limiting meaningless (issue #954). Trusting
+// loopback is safe even for a directly exposed instance: a remote client can
+// never present a loopback RemoteAddr, so only the bundled proxy (or another
+// local process) can ever match it.
+func DefaultTrustedProxies() []string {
+	return []string{"127.0.0.1/32", "::1/128"}
+}
+
+// EffectiveTrustedProxies is what the server hands to gin's SetTrustedProxies:
+// the operator's configured list when non-empty, otherwise the loopback
+// default that matches the shipped nginx topology.
+func (c *Config) EffectiveTrustedProxies() []string {
+	if len(c.TrustedProxies) == 0 {
+		return DefaultTrustedProxies()
+	}
+	return c.TrustedProxies
+}
+
+// isCatchAllProxy reports whether a trusted-proxy entry trusts every source,
+// i.e. a CIDR whose prefix length is zero (0.0.0.0/0 or ::/0). These are the
+// values that let a client forge its own X-Forwarded-For (issue #954) and are
+// refused at boot.
+func isCatchAllProxy(proxy string) bool {
+	_, network, err := net.ParseCIDR(proxy)
+	if err != nil {
+		return false
+	}
+	ones, _ := network.Mask.Size()
+	return ones == 0
+}
+
+// TrustedProxyWarnings returns advisory boot messages about the trusted-proxy
+// posture (issue #954) that must be surfaced but must not block startup. The
+// case it catches: a release deployment with no TRUSTED_PROXIES configured.
+// The loopback default keeps the shipped all-in-one image correct, but an
+// operator who fronts the app with an external proxy (bypassing the bundled
+// nginx) must add that proxy's address, or every client shares one bucket and
+// one log IP. Advisory only — bare-metal deployments with no proxy are fine,
+// and are why this warns rather than refuses.
+func (c *Config) TrustedProxyWarnings() []string {
+	if os.Getenv("GIN_MODE") != "release" {
+		return nil
+	}
+	if len(c.TrustedProxies) == 0 {
+		return []string{"TRUSTED_PROXIES is empty; trusting loopback (127.0.0.1/32, ::1/128) for the bundled nginx. If an external reverse proxy fronts this instance, add its address to TRUSTED_PROXIES — otherwise every client shares the proxy's rate-limit bucket and logged IP."}
+	}
+	return nil
+}
+
 // getScopesEnv parses a comma-separated OIDC scope list, defaulting to
 // openid/email/profile when unset since scopes must never end up empty.
 func getScopesEnv(scopes string) []string {
@@ -792,6 +846,22 @@ func (c *Config) Validate() []ValidationError {
 			Field:   "TRUSTED_PROXIES",
 			Message: fmt.Sprintf("Invalid proxy '%s'. Must be a valid IP address or CIDR notation.", proxy),
 		})
+	}
+
+	// Refuse a catch-all "trusted proxy" (0.0.0.0/0 or ::/0). Trusting every
+	// source means gin believes whatever X-Forwarded-For the client supplied,
+	// so a caller can rotate that header to escape the rate-limit bucket and
+	// poison the IP recorded in logs (issue #954). There is no legitimate
+	// deployment that needs to trust the whole internet; a /0 is never a real
+	// proxy address. This is refused (not warned) because it silently defeats
+	// the limiters rather than merely mis-bucketing them.
+	for _, proxy := range c.TrustedProxies {
+		if isCatchAllProxy(proxy) {
+			errors = append(errors, ValidationError{
+				Field:   "TRUSTED_PROXIES",
+				Message: fmt.Sprintf("TRUSTED_PROXIES trusts every source ('%s'). That lets any client forge X-Forwarded-For and bypass IP rate limiting; list only the actual proxy addresses instead.", proxy),
+			})
+		}
 	}
 
 	// Warn if OIDC is partially configured (some vars set but not all required ones)

@@ -243,6 +243,14 @@ func main() {
 	logger.Info().Msg("Validating configuration...")
 	cfg.ValidateOrPanic()
 
+	// Issue #954: surface a trusted-proxy posture that leaves client IPs
+	// wrong (an external proxy not listed, so every client shares one bucket)
+	// without refusing to boot — a bare-metal deployment with no proxy is
+	// perfectly valid and would otherwise hit a false positive.
+	for _, warning := range cfg.TrustedProxyWarnings() {
+		logger.Warn().Msg(warning)
+	}
+
 	// M2: config.Validate only checks that FCM_SERVICE_ACCOUNT_FILE exists
 	// (config cannot import services without an import cycle). The content
 	// check — valid JSON with project_id/client_email/private_key — lives
@@ -520,7 +528,7 @@ func main() {
 	// Add error handling middleware
 	r.Use(apperrors.ErrorHandlerMiddleware())
 
-	if err := r.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+	if err := r.SetTrustedProxies(cfg.EffectiveTrustedProxies()); err != nil {
 		logger.Fatal().Err(err).Strs("proxies", cfg.TrustedProxies).Msg("Failed to set trusted proxies")
 	}
 

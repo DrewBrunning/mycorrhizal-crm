@@ -719,6 +719,50 @@ func TestValidate_TrustedProxies(t *testing.T) {
 	assert.True(t, hasFieldError(errs, "TRUSTED_PROXIES"), "an invalid proxy string must be rejected, got: %v", errs)
 }
 
+// TestValidate_TrustedProxyCatchAllRejected pins issue #954's refusal of a
+// trusted proxy that trusts every source: 0.0.0.0/0 (and its IPv6 twin ::/0)
+// lets any client forge X-Forwarded-For, escaping the IP rate limiter and
+// poisoning logged IPs. A normal CIDR must still be accepted.
+func TestValidate_TrustedProxyCatchAllRejected(t *testing.T) {
+	for _, proxy := range []string{"0.0.0.0/0", "::/0"} {
+		t.Run(proxy, func(t *testing.T) {
+			cfg := validConfig()
+			cfg.TrustedProxies = []string{proxy}
+			errs := cfg.Validate()
+			assert.True(t, hasFieldError(errs, "TRUSTED_PROXIES"), "catch-all proxy %q must be refused, got: %v", proxy, errs)
+		})
+	}
+
+	cfg := validConfig()
+	cfg.TrustedProxies = []string{"10.0.0.0/8", "172.16.0.0/12", "127.0.0.1/32"}
+	assert.Empty(t, cfg.Validate(), "a bounded trusted-proxy CIDR must be accepted")
+}
+
+// TestEffectiveTrustedProxies pins the default-loopback fallback the shipped
+// all-in-one image relies on (issue #954): with no TRUSTED_PROXIES the bundled
+// nginx on 127.0.0.1 must still be trusted, or every client collapses into one
+// bucket. An explicit list is passed through unchanged.
+func TestEffectiveTrustedProxies(t *testing.T) {
+	empty := &Config{}
+	assert.Equal(t, []string{"127.0.0.1/32", "::1/128"}, empty.EffectiveTrustedProxies())
+
+	configured := &Config{TrustedProxies: []string{"10.1.2.3"}}
+	assert.Equal(t, []string{"10.1.2.3"}, configured.EffectiveTrustedProxies())
+}
+
+// TestTrustedProxyWarnings pins the advisory (non-fatal) boot warning: a release
+// deployment with no configured proxies is told the fallback is loopback and
+// that an external proxy must be listed. It must not fire in dev, and must not
+// fire when the operator configured proxies.
+func TestTrustedProxyWarnings(t *testing.T) {
+	t.Setenv("GIN_MODE", "release")
+	assert.Len(t, (&Config{}).TrustedProxyWarnings(), 1, "release + empty must warn")
+	assert.Empty(t, (&Config{TrustedProxies: []string{"10.1.2.3"}}).TrustedProxyWarnings(), "release + configured must not warn")
+
+	t.Setenv("GIN_MODE", "debug")
+	assert.Empty(t, (&Config{}).TrustedProxyWarnings(), "dev must not warn")
+}
+
 func TestValidate_AttachmentsDirRelativeRejected(t *testing.T) {
 	cfg := validConfig()
 	cfg.AttachmentsDir = "relative/path"
