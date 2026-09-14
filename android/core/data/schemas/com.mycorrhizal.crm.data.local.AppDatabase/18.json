@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 18,
-    "identityHash": "7302ebe2a0ea126f0da665264e0b42bf",
+    "identityHash": "eae18377b1a10d4ea1305a32523939a2",
     "entities": [
       {
         "tableName": "cached_contacts",
@@ -122,7 +122,7 @@
       },
       {
         "tableName": "cached_contacts_fts",
-        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`fn` TEXT, `firstname` TEXT, `lastname` TEXT, `primaryEmail` TEXT, `primaryPhone` TEXT, `phonesNormalized` TEXT, `org` TEXT, content=`cached_contacts`)",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`fn` TEXT, `firstname` TEXT, `lastname` TEXT, `primaryEmail` TEXT, `primaryPhone` TEXT, `phonesNormalized` TEXT, `org` TEXT, tokenize=unicode61, content=`cached_contacts`)",
         "fields": [
           {
             "fieldPath": "fn",
@@ -166,7 +166,7 @@
         },
         "ftsVersion": "FTS4",
         "ftsOptions": {
-          "tokenizer": "simple",
+          "tokenizer": "unicode61",
           "tokenizerArgs": [],
           "contentTable": "cached_contacts",
           "languageIdColumnName": "",
@@ -947,7 +947,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7302ebe2a0ea126f0da665264e0b42bf')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'eae18377b1a10d4ea1305a32523939a2')"
     ]
   }
 }
