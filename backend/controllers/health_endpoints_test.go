@@ -191,6 +191,63 @@ func TestReadiness_FilesystemDirNotWritable(t *testing.T) {
 	require.Contains(t, facet["reason"], "not writable")
 }
 
+// TestReadiness_DatabaseVolumeUnwritable is issue #976: the database is its own
+// volume in the documented deployment, and a full or read-only DB volume used
+// to leave /health/ready reporting ready while every write failed. Readiness
+// must probe the database directory exactly as the diagnostics sweep does.
+func TestReadiness_DatabaseVolumeUnwritable(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root ignores directory mode bits")
+	}
+	_, cfg, r := migratedHealthRouter(t)
+	vol := filepath.Join(t.TempDir(), "db-volume")
+	require.NoError(t, os.Mkdir(vol, 0o500))
+	t.Cleanup(func() { _ = os.Chmod(vol, 0o700) })
+	cfg.DBPath = filepath.Join(vol, "mycorrhizal.db")
+
+	code, body := getJSON(t, r, "/health/ready")
+	require.Equal(t, http.StatusServiceUnavailable, code)
+	require.Equal(t, "not_ready", body["status"])
+	checks, _ := body["checks"].(map[string]any)
+	facet, _ := checks["filesystem"].(map[string]any)
+	require.Equal(t, "failed", facet["status"])
+	reason, _ := facet["reason"].(string)
+	require.Contains(t, reason, "database directory")
+	require.Contains(t, reason, "not writable")
+	// The absolute path must not reach the unauthenticated body (ASVS 7.4.1).
+	require.NotContains(t, reason, vol)
+}
+
+// TestReadiness_DatabaseVolumeMissing: an unmounted or deleted DB volume must
+// also fail readiness (issue #976), reported as "is missing".
+func TestReadiness_DatabaseVolumeMissing(t *testing.T) {
+	_, cfg, r := migratedHealthRouter(t)
+	cfg.DBPath = filepath.Join(t.TempDir(), "unmounted", "mycorrhizal.db")
+
+	code, body := getJSON(t, r, "/health/ready")
+	require.Equal(t, http.StatusServiceUnavailable, code)
+	checks, _ := body["checks"].(map[string]any)
+	facet, _ := checks["filesystem"].(map[string]any)
+	require.Equal(t, "failed", facet["status"])
+	require.Contains(t, facet["reason"], "database directory")
+	require.Contains(t, facet["reason"], "missing")
+}
+
+// TestReadiness_WritableDatabaseVolumeStaysReady guards the other direction:
+// adding the database directory to the probe must not make a healthy instance
+// report not_ready.
+func TestReadiness_WritableDatabaseVolumeStaysReady(t *testing.T) {
+	_, cfg, r := migratedHealthRouter(t)
+	cfg.DBPath = filepath.Join(t.TempDir(), "mycorrhizal.db")
+
+	code, body := getJSON(t, r, "/health/ready")
+	require.Equal(t, http.StatusOK, code)
+	require.Equal(t, "ready", body["status"])
+	checks, _ := body["checks"].(map[string]any)
+	facet, _ := checks["filesystem"].(map[string]any)
+	require.Equal(t, "ok", facet["status"])
+}
+
 // --- deep health --------------------------------------------------------
 //
 // GET /health is unauthenticated and reports ONLY the rolled-up status word

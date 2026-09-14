@@ -191,39 +191,48 @@ func diagnosticsMigrations(db *gorm.DB) DiagnosticCheck {
 	}
 }
 
-// diagnosticsFilesystem probes every operator-owned storage directory the
-// instance must be able to write to: the profile-photo dir, the attachments
-// dir, and the directory holding the database (where backups land by default,
-// see database.DefaultBackupPath). A non-writable storage dir is an error —
-// writes will fail, which is exactly the "attachment directory became
-// read-only" case the issue calls out.
-func diagnosticsFilesystem(cfg config.Config) DiagnosticCheck {
-	dirs := []struct {
-		label string
-		dir   string
-	}{
-		{"profile photo directory", cfg.ProfilePhotoDir},
-		{"attachments directory", cfg.AttachmentsDir},
+// StorageDir is one operator-owned directory the instance must be able to
+// write to, paired with a short human label for health/diagnostics messages.
+type StorageDir struct {
+	Label string
+	Dir   string
+}
+
+// StorageDirs returns every operator-owned storage directory the instance must
+// be able to write to: the profile-photo dir, the attachments dir, and the
+// directory holding the database (where backups land by default, see
+// database.DefaultBackupPath). Both the readiness endpoint and the diagnostics
+// sweep probe exactly this list, so the two surfaces cannot disagree on what
+// "writable storage" means — the divergence that left /health/ready blind to a
+// full or read-only database volume (issue #976). Empty dirs are omitted.
+func StorageDirs(cfg config.Config) []StorageDir {
+	dirs := make([]StorageDir, 0, 3)
+	if cfg.ProfilePhotoDir != "" {
+		dirs = append(dirs, StorageDir{Label: "profile photo directory", Dir: cfg.ProfilePhotoDir})
+	}
+	if cfg.AttachmentsDir != "" {
+		dirs = append(dirs, StorageDir{Label: "attachments directory", Dir: cfg.AttachmentsDir})
 	}
 	if cfg.DBPath != "" {
-		dirs = append(dirs, struct {
-			label string
-			dir   string
-		}{"database directory", filepath.Dir(cfg.DBPath)})
+		dirs = append(dirs, StorageDir{Label: "database directory", Dir: filepath.Dir(cfg.DBPath)})
 	}
+	return dirs
+}
 
-	for _, d := range dirs {
-		if d.dir == "" {
-			continue
-		}
-		if reason := ProbeWritableDir(d.dir); reason != "" {
+// diagnosticsFilesystem probes every operator-owned storage directory the
+// instance must be able to write to (StorageDirs). A non-writable storage dir
+// is an error — writes will fail, which is exactly the "attachment directory
+// became read-only" case the issue calls out.
+func diagnosticsFilesystem(cfg config.Config) DiagnosticCheck {
+	for _, d := range StorageDirs(cfg) {
+		if reason := ProbeWritableDir(d.Dir); reason != "" {
 			// The absolute path goes to the log only (ASVS 7.4.1).
-			logger.Error().Str("dir", d.dir).Str("label", d.label).
-				Msg("diagnostics: " + d.label + " " + reason)
+			logger.Error().Str("dir", d.Dir).Str("label", d.Label).
+				Msg("diagnostics: " + d.Label + " " + reason)
 			return DiagnosticCheck{
 				Name:    "filesystem",
 				Status:  DiagStatusError,
-				Message: d.label + " " + reason,
+				Message: d.Label + " " + reason,
 			}
 		}
 	}

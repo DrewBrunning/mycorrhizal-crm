@@ -156,6 +156,35 @@ func TestProbeWritableDir(t *testing.T) {
 	assert.Equal(t, "is not a directory", ProbeWritableDir(f))
 }
 
+// TestStorageDirs is the issue #976 regression guard at the seam: the readiness
+// endpoint and the diagnostics sweep both probe exactly this list, so if the
+// database directory ever drops out of it again, both surfaces go blind to a
+// full or read-only DB volume together — and this test fails.
+func TestStorageDirs(t *testing.T) {
+	cfg := validDiagnosticsConfig(t)
+	dirs := StorageDirs(cfg)
+	require.Len(t, dirs, 3)
+
+	byLabel := map[string]string{}
+	for _, d := range dirs {
+		byLabel[d.Label] = d.Dir
+	}
+	assert.Equal(t, cfg.ProfilePhotoDir, byLabel["profile photo directory"])
+	assert.Equal(t, cfg.AttachmentsDir, byLabel["attachments directory"])
+	assert.Equal(t, filepath.Dir(cfg.DBPath), byLabel["database directory"],
+		"the database directory is the volume a full/read-only disk takes down first (issue #976)")
+}
+
+// TestStorageDirsOmitsUnconfigured: an unset directory is not probed, so an
+// empty config value never turns into a spurious "is missing" finding.
+func TestStorageDirsOmitsUnconfigured(t *testing.T) {
+	assert.Empty(t, StorageDirs(config.Config{}))
+
+	onlyDB := StorageDirs(config.Config{DBPath: filepath.Join(t.TempDir(), "myco.db")})
+	require.Len(t, onlyDB, 1)
+	assert.Equal(t, "database directory", onlyDB[0].Label)
+}
+
 // TestRunDiagnosticsBackup: the backup row folds the persisted restore-drill
 // result — a disabled drill is ok, a failed drill is a warning, and a stale
 // fresh-enough result is ok.

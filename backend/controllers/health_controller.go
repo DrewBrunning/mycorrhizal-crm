@@ -21,9 +21,10 @@ import (
 //     dependency must never make it fail, or the orchestrator restarts a
 //     healthy app.
 //   - GET /health/ready — readiness. Can THIS instance serve? Checks DB
-//     connectivity, migration state, and required filesystem access. 503 while
-//     any of those is not satisfied. This is what a load balancer gates traffic
-//     on.
+//     connectivity, migration state, and write access to every storage
+//     directory it owns (profile photos, attachments, and the database
+//     directory). 503 while any of those is not satisfied. This is what a load
+//     balancer gates traffic on.
 //   - GET /health       — deep health. Is the CRM actually operational?
 //     Everything /ready checks, plus persisted integrity-check / restore-drill
 //     outcomes, background-job locks, and server-scoped integration
@@ -167,19 +168,15 @@ func readinessMigrations(c *gin.Context) ReadinessCheckDetail {
 }
 
 func readinessFilesystem(c *gin.Context) ReadinessCheckDetail {
-	cfg := currentConfig(c)
-	for label, dir := range map[string]string{
-		"profile photo directory": cfg.ProfilePhotoDir,
-		"attachments directory":   cfg.AttachmentsDir,
-	} {
-		if dir == "" {
-			continue
-		}
-		if reason := services.ProbeWritableDir(dir); reason != "" {
+	// The same directory list the diagnostics sweep probes, so the two surfaces
+	// cannot diverge — a full or read-only database volume must fail readiness,
+	// not let the probe say ready and then fail every write (issue #976).
+	for _, d := range services.StorageDirs(currentConfig(c)) {
+		if reason := services.ProbeWritableDir(d.Dir); reason != "" {
 			// The absolute path and errno go to the log, not the
 			// unauthenticated response body (ASVS 7.4.1).
-			logger.Error().Str("dir", dir).Msg("readiness: " + label + " " + reason)
-			return ReadinessCheckDetail{Status: "failed", Reason: label + " " + reason}
+			logger.Error().Str("dir", d.Dir).Msg("readiness: " + d.Label + " " + reason)
+			return ReadinessCheckDetail{Status: "failed", Reason: d.Label + " " + reason}
 		}
 	}
 	return ReadinessCheckDetail{Status: "ok"}
