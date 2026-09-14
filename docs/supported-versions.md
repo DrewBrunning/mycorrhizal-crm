@@ -160,7 +160,7 @@ accepting an account on someone else's instance:
 | Custom **field definitions** (each user defines their own) | `REMINDER_TIME` / `REMINDER_TIMEZONE` — one clock for the whole deployment |
 | Integrations and their stored credentials + cached remote data; notification channels and registered devices | IP-based auth rate limiters; OIDC configuration; outbound email transport |
 | Account settings, language, API tokens, 2FA secret and recovery codes | `JWT_SECRET_KEY`, `COOKIE_*`, `FRONTEND_URL`, the uploaded-files directory, the admin role |
-| Full-text search rows and audit-trail rows (both carry `user_id`) | Operator backups — they contain every user's data; the app deliberately cannot expire them |
+| Full-text search rows and audit-trail rows (both carry `user_id`) | Operator backups — they contain every user's data; the app deliberately cannot expire them, and `make backup` signs each snapshot so a substituted or tampered file is detected before a restore (issue #943) |
 
 ### Registration
 

@@ -18,7 +18,6 @@ import com.mycorrhizal.crm.domain.repository.BiometricEnrollmentStatus
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.LocalAuthCapabilities
 import com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
-import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
@@ -249,24 +248,7 @@ class SettingsScreenTest {
         assertTrue(calendarSync)
     }
 
-    // --- T104 / data suggestions ---
-
-    @Test
-    fun `suggest relationships button invokes the callback`() {
-        var suggested = false
-        composeTestRule.setContent {
-            MycorrhizalTheme {
-                SettingsContent(
-                    state = SettingsUiState(),
-                    onSuggestRelationships = { suggested = true },
-                    onLogout = {},
-                )
-            }
-        }
-
-        composeTestRule.onNodeWithText("Suggest relationships").performScrollTo().performClick()
-        assertTrue(suggested)
-    }
+    // --- Data suggestions ---
 
     @Test
     fun `data row invokes the data navigation callback`() {
@@ -285,6 +267,21 @@ class SettingsScreenTest {
         assertTrue(data)
     }
 
+    @Test
+    fun `top-level settings no longer offers the duplicate suggest relationships action`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(),
+                    onLogout = {},
+                )
+            }
+        }
+
+        // The action lives only on the Data suggestions screen now.
+        composeTestRule.onNodeWithText("Suggest relationships").assertDoesNotExist()
+    }
+
     // --- Issue #214: Compose semantics a11y sweep (the axe-core analog) -----
     //
     // Mounts the real SettingsScreen (Scaffold + TopAppBar included) via a
@@ -296,7 +293,6 @@ class SettingsScreenTest {
         val authRepository = mockk<AuthRepository>()
         val trackingSettings = mockk<TrackingSettingsRepository>()
         val appSettings = mockk<AppSettingsRepository>()
-        val relationshipEdgeRepository = mockk<RelationshipEdgeRepository>()
         val permissionChecker = mockk<com.mycorrhizal.crm.feature.tracking.PermissionChecker>()
         val catchUpScheduler = mockk<com.mycorrhizal.crm.feature.tracking.TrackingCatchUpScheduler>(relaxed = true)
         val localAuthSettings = mockk<LocalAuthSettingsRepository>()
@@ -319,7 +315,6 @@ class SettingsScreenTest {
             authRepository,
             trackingSettings,
             appSettings,
-            relationshipEdgeRepository,
             localAuthSettings,
             localAuthCapabilities,
             deviceGrantManager,

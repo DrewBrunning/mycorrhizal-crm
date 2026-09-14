@@ -184,8 +184,11 @@ func TestClientVersionEnforcement_Gates2FAAndDeviceSession(t *testing.T) {
 	rec = authDoJSON(router, "POST", "/api/v1/auth/device/session", "0.5.0", map[string]string{"device_token": "x"})
 	assertClientNotSupported(t, rec)
 
-	rec = authDoJSON(router, "POST", "/api/v1/auth/device/session", "0.6.0", map[string]string{"device_token": "x"})
-	assert.NotEqual(t, http.StatusForbidden, rec.Code, rec.Body.String())
+	// A well-formed token that no grant matches: 401 proves the handler saw the
+	// parsed body. A 400 here would mean the body was consumed before the
+	// handler read it (#722's middleware double-read bug).
+	rec = authDoJSON(router, "POST", "/api/v1/auth/device/session", "0.6.0", map[string]string{"device_token": strings.Repeat("A", 43)})
+	assert.Equal(t, http.StatusUnauthorized, rec.Code, rec.Body.String())
 }
 
 // --- the response body must be actionable for a client that reads it --------

@@ -120,6 +120,7 @@ Which producers emit today:
 | Scheduler (`runJob`) | `job_failed` on a recovered panic; ordinary start/finish are log lines only (the scheduler ticks often — a per-tick row would swamp the timeline) |
 | Contact / calendar sync | `sync_completed` (with counts) / `sync_failed` (with the classified error) |
 | Restore drill (issue #275) | `restore_test_completed` on a healthy run; `backup_failed` (`severity=error`) on a failed or mismatched run |
+| `make backup` / cmd/backup (issue #943) | `backup_completed` (component `backup`, `operation=operator_backup`) after a signed, successful snapshot. This is the heartbeat `backup_stale` measures; the automatic pre-migration snapshot also emits `backup_completed`, but tagged component `migration`, and does not count as a routine backup |
 | Migration runner | `migration_completed` (with the from/to version) when the schema actually advanced. Every migration step also emits a log heartbeat — `event=migration_step_started` before a migration body runs and `event=migration_step_completed` (with `duration_ms`) after it commits and is marked clean — so a long migration is observable while it runs, not only when it finishes (issue #495) |
 | Notification dispatch | `notification_sent` / `notification_failed` per channel (`detail` = channel name only) |
 | Webhook delivery | `integration_failed` once a delivery exhausts its retry budget and is still failing; the outbound POST also carries `X-Correlation-ID` |
@@ -248,7 +249,7 @@ one alert, not one per evaluation.
 | condition | fires when | recovers when |
 |---|---|---|
 | `backup` | the `backup` subsystem is `failing` | it reports a success again (`backup_completed` / `restore_test_completed`) |
-| `backup_stale` | backups have succeeded before but not within `ALERT_BACKUP_MAX_AGE_HOURS` (default `2 ×` the restore-drill interval) | a success lands inside the window |
+| `backup_stale` | no successful **operator** backup (`make backup` → `backup_completed` tagged component `backup`, issue #943) has been observed within `ALERT_BACKUP_MAX_AGE_HOURS` (default `2 ×` the restore-drill interval); the weekly restore drill's `restore_test_completed` deliberately does **not** satisfy it | a `make backup` lands inside the window |
 | `sync:contact_sync` / `sync:calendar_sync` | the subsystem is `failing` with ≥ `ALERT_SYNC_FAILURE_THRESHOLD` consecutive failures | it reports healthy |
 | `notifications` | the `notification` subsystem is `failing` with ≥ `ALERT_NOTIFY_FAILURE_THRESHOLD` consecutive failures | it reports healthy |
 | `integrations` | the `webhook` subsystem is `failing` and its last failure is within `ALERT_INCIDENT_QUIET_HOURS` | no new `integration_failed` for that window (the webhook subsystem emits no success token — [#422](https://github.com/DrewBrunning/mycorrhizal-crm/issues/422)) |
@@ -303,7 +304,7 @@ Filtering the log stream on `operation=export:*` or `category=` covers every exp
 | `ALERT_EVAL_INTERVAL_MINUTES` | `15` | how often conditions are re-evaluated |
 | `ALERT_DISK_USAGE_PERCENT` | `90` | `disk_space` threshold; `0` disables the condition |
 | `ALERT_SYNC_FAILURE_THRESHOLD` / `ALERT_NOTIFY_FAILURE_THRESHOLD` | `3` / `3` | consecutive failures before `sync:*` / `notifications` fire |
-| `ALERT_BACKUP_MAX_AGE_HOURS` | `0` → `2 ×` restore-drill interval | `backup_stale` threshold |
+| `ALERT_BACKUP_MAX_AGE_HOURS` | `0` → `2 ×` restore-drill interval | `backup_stale` threshold, measured against the operator's own `make backup` heartbeat (issue #943) |
 | `ALERT_JOB_STALE_MULTIPLIER` | `3` | `job_stopped` fires at interval × this |
 | `ALERT_INCIDENT_QUIET_HOURS` | `6` | `integrations` recovery window |
 | `ALERT_BACKUP_ENABLED` / `ALERT_DB_INTEGRITY_ENABLED` / `ALERT_JOB_STOPPED_ENABLED` | on | per-condition switches for the conditions with no numeric knob |

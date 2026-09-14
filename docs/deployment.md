@@ -288,13 +288,21 @@ make backup
 
 It runs a best-effort WAL checkpoint first (a tidy-up, not a requirement —
 `VACUUM INTO` reads through the WAL, so the snapshot is complete regardless),
-refuses to overwrite an existing file, and verifies the result with
-`PRAGMA integrity_check` before reporting success. Set `BACKUP_PATH` to choose
-the output location instead of the timestamped default:
+refuses to overwrite an existing file, verifies the result with
+`PRAGMA integrity_check`, and signs it (issue #943 — see
+[Backup authenticity](#backup-authenticity)) before reporting success. Set
+`BACKUP_PATH` to choose the output location instead of the timestamped default:
 
 ```sh
 BACKUP_PATH=/backups/mycorrhizal-$(date +%F).db make backup
 ```
+
+Signing derives a key from the at-rest master key, so run `make backup` with
+the same key environment the server uses (`DATA_ENCRYPTION_KEY` /
+`DATA_ENCRYPTION_KEY_FILE`, or the `JWT_SECRET_KEY` fallback); with no key it
+refuses rather than writing an unauthenticated snapshot. It writes a second
+file, `mycorrhizal-<timestamp>.db.manifest.json`, beside the snapshot — **copy
+both** to your backup store, and verify them together (below).
 
 No Makefile/Go? Any SQLite client works — the operation is a plain SQL statement:
 
@@ -304,6 +312,11 @@ sqlite3 /path/to/data/mycorrhizal.db "PRAGMA wal_checkpoint(TRUNCATE); VACUUM IN
 
 (If the target already exists, `VACUUM INTO` errors rather than overwriting —
 remove it or pick a fresh path first.)
+
+A snapshot taken this way is **unsigned**, so `make backup-verify` will refuse
+it unless you pass `BACKUP_ALLOW_UNSIGNED=1` (see "Verifying a backup set is
+complete" below). Prefer `make backup` when you can; it is the path that
+authenticates the snapshot.
 
 Then back up the two directories (they cannot be snapshotted via SQLite):
 
@@ -344,6 +357,22 @@ SQLITE_DB_PATH=/backups/mycorrhizal.db PROFILE_PHOTO_DIR=/backups/photos \
   ATTACHMENTS_DIR=/backups/attachments make backup-verify
 ```
 
+It also authenticates the database piece (issue #943): if the snapshot has a
+`.manifest.json` beside it it verifies the HMAC signature before trusting the
+rows, and it fails closed when the manifest is missing. Verification needs the
+same at-rest key environment `make backup` used:
+
+```sh
+SQLITE_DB_PATH=/backups/mycorrhizal.db DATA_ENCRYPTION_KEY=... \
+  PROFILE_PHOTO_DIR=/backups/photos ATTACHMENTS_DIR=/backups/attachments make backup-verify
+```
+
+To reconcile a **legacy, unsigned** set (one taken before snapshot signing
+existed, or made with the toolchain-free `sqlite3 VACUUM INTO` above), pass
+`BACKUP_ALLOW_UNSIGNED=1`; that tolerates a *missing* manifest only — a manifest
+that is present and does not verify always fails. Prefer re-taking the backup
+with `make backup` over trusting an unsigned one.
+
 - A **missing** file — a live row with no backing file in the set — is a real defect: the command
   names it (e.g. `missing attachment: 3f2c…-file (owner attachment#42)`) and exits non-zero.
 - An **orphan** file — present with no owning row — is reported but does not fail the command; it
@@ -360,6 +389,11 @@ A restore is a deliberate **point-in-time rollback**: it replaces the whole inst
 snapshot, so anything created or edited *after* the backup was taken is lost — and anything that had
 been soft-deleted (but not yet purged, see T26) before the backup is resurrected. That is the
 expected meaning of restoring a file-level backup; there is no partial/merge restore.
+
+Before restoring, authenticate the set: run `make backup-verify` (above) against it. It now verifies
+the snapshot's signature and fails closed on a missing or invalid one, so a tampered or substituted
+backup is caught before it replaces the live instance (a legacy unsigned set must be reconciled with
+`BACKUP_ALLOW_UNSIGNED=1`, deliberately).
 
 1. Stop the server: `docker compose stop`.
 2. Replace the three pieces from backup. For a database backup produced by `VACUUM INTO`, the
@@ -421,6 +455,11 @@ cover the secrets that unlock or authenticate the instance — these live only i
   columns specifically because there is no fallback if it doesn't. Back this up wherever you keep
   the rest of your secrets, separately from the database/photo/attachment set — see "Backup
   confidentiality & retention" below for the full key-management story.
+- **The snapshot-signing key** is *derived* from `DATA_ENCRYPTION_KEY` (`atrest.BackupSigningKey`,
+  issue #943), so there is no separate backup secret to track — but it means losing or rotating the
+  at-rest master key also invalidates the signatures on snapshots taken under the old key, exactly
+  as it makes them undecryptable. Keep the at-rest key safe and copy the `.manifest.json` with each
+  snapshot.
 
 What **is** covered, for clarity: TOTP seeds and recovery-code hashes live in the database (the
 `users` table), so they travel with the database snapshot like any other row — no separate secret to
@@ -447,6 +486,11 @@ than discovered during a real disaster:
   budget to get a `WARN` (and a note on that row) when a run exceeds it — see
   [Recovery objectives (RPO and RTO)](#recovery-objectives-rpo-and-rto) for how that feeds the RTO
   number.
+
+`make backup` additionally records a `backup_completed` heartbeat (component `backup`, issue #943)
+so the `backup_stale` alert below measures **your** backup cadence rather than the app's weekly
+drill: a stopped backup cron goes stale even while the drill keeps passing. The pre-migration
+snapshot deliberately does *not* count as a routine backup.
 
 Either job logs and fires a webhook (`db.integrity_check_failed` / `db.restore_drill_failed`, see
 Settings → Webhooks) on failure, so "test restores regularly" above is now something the app does
@@ -479,10 +523,12 @@ this section is the citable derivation it references.
 | **Accidental deletion by the user** | **= your backup interval** (as host loss) | Soft delete keeps the row for `DELETED_RETENTION_DAYS` (default **30**) as a sync tombstone, **but there is no undelete**: `POST /api/v1/audit/:id/undo` reverts an accidental *edit* only (update events; it rejects deletes), and `DeleteContact` hard-deletes the contact's join rows and removes its attachment/photo files from disk immediately. Recovering a deleted contact is a point-in-time restore from a backup predating the deletion — see BACKUP-03. (*Archiving* a contact, by contrast, is reversible via `/unarchive`.) |
 
 The one freshness number the app enforces itself: the **`backup_stale` alert** fires when no
-successful backup or restore-drill run has been observed for `ALERT_BACKUP_MAX_AGE_HOURS` — default
-`2 × DB_RESTORE_DRILL_INTERVAL_HOURS` = **336 h** (14 days). That is a "something is badly wrong"
-alarm, deliberately far looser than the recommended daily cron so one missed nightly run does not
-page anyone; it is **not** an RPO SLA. To have the app hold you to a tighter number, set
+successful operator backup (`make backup` — a `backup_completed` heartbeat) has been observed for
+`ALERT_BACKUP_MAX_AGE_HOURS` — default `2 × DB_RESTORE_DRILL_INTERVAL_HOURS` = **336 h** (14 days).
+The weekly restore drill is tracked by the separate `backup` condition and no longer satisfies this
+one (issue #943), so a stopped backup cron cannot hide behind a passing drill. That is a "something
+is badly wrong" alarm, deliberately far looser than the recommended daily cron so one missed nightly
+run does not page anyone; it is **not** an RPO SLA. To have the app hold you to a tighter number, set
 `ALERT_BACKUP_MAX_AGE_HOURS` to roughly twice your actual cron interval.
 
 **The gap, stated rather than rounded away:** the only automatic, app-guaranteed RPO is the **0**
@@ -627,6 +673,49 @@ photo and an attachment (or run the `frontend/e2e/backupRestore.spec.ts` round t
 copy first). Restoring into an environment whose master key differs from the snapshot's fails closed
 at boot — that is the intended signal to check keys before touching the live instance. The audit
 trail in a restored database is only as fresh as the snapshot.
+
+### Backup authenticity
+
+Snapshot signing (issue #943) closes the gap between "this file is a valid SQLite database" and
+"this file is *our* database, exactly as we wrote it". The backup store is a **distinct trust
+boundary** from the app host (`docs/security/threat-model.md` → Trust boundaries): whoever can write
+to it could otherwise substitute a tampered or older snapshot, and every restore path trusted the
+bytes it found. `make backup` therefore signs each snapshot, and `make backup-verify` checks that
+signature before a restore.
+
+**How it works.**
+
+- `make backup` computes the snapshot's SHA-256 and writes a detached
+  `<snapshot>.manifest.json` beside it, holding the size, digest, and an HMAC-SHA256 over those
+  fields (`backend/database/backup_signature.go`). The manifest is written write-new-only, like the
+  snapshot itself.
+- The signing key is derived from the **at-rest master key** with a dedicated HKDF label
+  (`atrest.BackupSigningKey`), so a deployment that already manages `DATA_ENCRYPTION_KEY` (or the
+  `JWT_SECRET_KEY` fallback) needs no new secret. The key lives in your environment and is **never
+  in the backup**, so an attacker who can only write to the store cannot forge a manifest.
+- `make backup-verify` authenticates the manifest first, then checks the snapshot's size and digest
+  against it. A missing manifest fails unless you set `BACKUP_ALLOW_UNSIGNED=1`; an invalid one
+  always fails. **Copy the `.manifest.json` along with the `.db`** — a snapshot without its manifest
+  is treated as unsigned.
+
+**What it does and does not cover.**
+
+- It covers the **database** piece only. The photo/attachment directories are outside the tool's
+  boundary (BACKUP-02, issue #454) and stay unsigned; protect them like their retention — operator
+  storage and, if you want integrity there, your own `sha256sum`/`gpg` inventory.
+- It does **not** stop replay of an older snapshot that is itself validly signed (a rollback to a
+  previously-good backup). The `backup_stale` alert is the signal that *new* backups have stopped,
+  and the off-host/immutable storage below is the control for which snapshots exist to replay.
+- It adds **no confidentiality** — a snapshot is still a full-sensitivity copy; see "Backup
+  confidentiality & retention" immediately above.
+- Rotating the at-rest master key changes the signing key, so manifests written under the old key no
+  longer verify. That is consistent with old snapshots becoming undecryptable after a KEK rotation
+  (see "Encryption & key management"), and is one more reason to keep a dedicated
+  `DATA_ENCRYPTION_KEY` and back it up with the rest of your secrets.
+- It defends against an attacker with access to the **backup store** only. A **compromised app host**
+  has the at-rest master key, so it can forge manifests as well as read the database — that is the
+  documented host-compromise boundary in `docs/security/threat-model.md`, not something a manifest
+  inside the same trust domain can close.
 
 ### Backup immutability & ransomware resistance
 

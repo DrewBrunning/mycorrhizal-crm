@@ -82,6 +82,11 @@ jobs:
       contents: read
       checks: read
       statuses: read
+      # actions: write to `gh workflow run` the mandatory gates for an RC tag
+      # (issue #543) -- release/** never gets a push-triggered run of them,
+      # deliberately (see the dispatch step's own comment). Scoped to this
+      # workflow_dispatch/tag-push-only job with no PR path.
+      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -117,16 +122,65 @@ jobs:
           printf '  - %s\n' "${want[@]}"
           want_json="$(printf '%s\n' "${want[@]}" | jq -R . | jq -s .)"
 
+          # Issue #543: an RC tag (release/vX.Y.0) has no path to ever
+          # trigger these mandatory per-PR gate workflows for real --
+          # confirmed on a real RC cut, every one of the 9 gates sat at
+          # "missing" (never started, not merely slow) for the entire
+          # deadline. Root cause: these workflows trigger on `push: branches:
+          # [main]` only, never `release/**` -- deliberately, since a `push:
+          # release/**` trigger would give cache-write access to anyone who
+          # can push the branch, which is exactly what zizmor's
+          # cache-poisoning audit exists to catch. A final release tag was
+          # cut from main, so push:main already ran these for real on this
+          # exact commit; only an RC tag needs the explicit dispatch.
+          declare -A wf_since=()
+          if ! printf '%s' "$RELEASE_TAG" | grep -qE -- '-rc\.[0-9]+$'; then
+            echo "Final release tag -- mandatory gates already ran via push:main on ${sha}."
+          else
+            mapfile -t gate_wfs < <(jq -r '.gates[] | select(.release_gate == true) | .workflow' .github/release-gates.json | sort -u)
+            for wf in "${gate_wfs[@]}"; do
+              ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              echo "  ${wf}: dispatching on ${RELEASE_TAG} (ignoring any check-run started before ${ts})"
+              gh workflow run "$wf" --ref "$RELEASE_TAG"
+              wf_since["$wf"]="$ts"
+            done
+          fi
+
+          # issue #1013: re-dispatching the same workflow+ref more than once
+          # against this exact commit (a re-run while debugging, a retry --
+          # this repo's own release/v0.7.0 cut history did exactly this)
+          # leaves multiple check-runs sharing one name on the commit, and an
+          # older one can be `cancelled` (superseded by the workflow's own
+          # concurrency group) while the fresh dispatch is still running.
+          # Observed for real: "CIS container hardening scan" read back
+          # completed/cancelled from a stale 13:08 attempt and hard-failed
+          # the gate immediately, seconds after a fresh dispatch that did not
+          # finish (success) until 13:24 -- the poll never got a chance to
+          # wait for it. Record each dispatch's timestamp and, below, ignore
+          # any check-run for that gate that started before its own
+          # workflow's most recent dispatch this run. Empty for the
+          # final-tag path above (no dispatch happens there, so no cutoff --
+          # push:main's single real check-run is trusted as before).
+          since_json='{}'
+          for wf in "${!wf_since[@]}"; do
+            since_json="$(jq -c --arg wf "$wf" --arg ts "${wf_since[$wf]}" '. + {($wf): $ts}' <<<"$since_json")"
+          done
+          since_json="$(jq -c --argjson wf_since "$since_json" '
+            [.gates[] | select(.release_gate == true) | select(.workflow as $w | $wf_since | has($w)) | {(.check_context): $wf_since[.workflow]}] | add // {}
+          ' .github/release-gates.json)"
+
           # Enforcement semantics (deliberately asymmetric, see
           # docs/development/release-gates.md):
           #  - an observed failure/cancelled/timed_out/action_required on a
           #    mandatory gate is a HARD BLOCK -- this is #447's core promise;
           #  - all gates green -> pass;
-          #  - the 60-minute deadline with something still pending or not
-          #    reporting -> a loud WARNING, and publish proceeds. GitHub check
-          #    timing (a slow fuzz leg, an aggregation job that has not run yet)
-          #    is not a quality signal, and #499's release workflow will do the
-          #    deterministic trigger-and-wait this interim job cannot.
+          #  - the deadline with something still pending or not reporting ->
+          #    a loud WARNING, and publish proceeds. GitHub check timing (a
+          #    slow fuzz leg, an aggregation job that has not run yet) is not
+          #    a quality signal. 75 minutes (was 60) since dispatched runs
+          #    now need real time -- Android (Gradle) alone has a 40-minute
+          #    timeout-minutes budget -- matching the analogous poll in
+          #    release.yml.
           # $runs / $statuses can be several hundred KB on this repo (dozens of
           # workflows, matrix legs) -- passing that through --argjson on the
           # command line hits the exec argv-size limit (observed failing on a
@@ -135,12 +189,14 @@ jobs:
           # --slurpfile instead, which reads via open(2), not argv.
           runs_file="$(mktemp)"
           statuses_file="$(mktemp)"
-          deadline=$(( $(date +%s) + 60 * 60 ))
+          deadline=$(( $(date +%s) + 75 * 60 ))
           while :; do
             gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${sha}/check-runs" --jq '.check_runs' | jq -s 'add' > "$runs_file"
             gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${sha}/status" --jq '[.statuses[] | {name: .context, status: "completed", conclusion: (if .state=="success" then "success" elif .state=="pending" then "" else .state end)}]' | jq -s 'add' > "$statuses_file"
-            state="$(jq -c -n --argjson want "$want_json" --slurpfile runs "$runs_file" --slurpfile st "$statuses_file" '
-              (($runs[0] + $st[0]) | group_by(.name) | map(max_by(.started_at // "")) | map({(.name): {status, conclusion}}) | add // {}) as $latest
+            state="$(jq -c -n --argjson want "$want_json" --argjson since "$since_json" --slurpfile runs "$runs_file" --slurpfile st "$statuses_file" '
+              (($runs[0] + $st[0])
+                | map(select((.started_at // "") >= ($since[.name] // "")))
+                | group_by(.name) | map(max_by(.started_at // "")) | map({(.name): {status, conclusion}}) | add // {}) as $latest
               | $want | map({name: ., status: ($latest[.].status // "missing"), conclusion: ($latest[.].conclusion // "")})')"
 
             failed="$(printf '%s' "$state" | jq -r '.[] | select(.status == "completed" and .conclusion != "" and ([.conclusion] | inside(["success","neutral","skipped"]) | not)) | .name')"
@@ -162,7 +218,7 @@ jobs:
             fi
 
             if [ "$(date +%s)" -ge "$deadline" ]; then
-              echo "::warning::Release gate: 60-minute deadline reached with gate(s) not yet reporting a conclusion. No FAILED gate was observed, so publication proceeds -- verify these manually:"
+              echo "::warning::Release gate: 75-minute deadline reached with gate(s) not yet reporting a conclusion. No FAILED gate was observed, so publication proceeds -- verify these manually:"
               printf '%s' "$state" | jq -r '.[] | "  \(.name): \(.status)/\(.conclusion)"'
               {
                 echo "### :warning: Release gate: deadline reached, no failure observed, published anyway"
@@ -407,24 +463,29 @@ jobs:
           printf '%s' "$SIGNING_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/keystore.jks"
           echo "store_file=$RUNNER_TEMP/keystore.jks" >> "$GITHUB_OUTPUT"
 
-      # versionName strips the leading 'v', same idiom the scan job below uses
-      # for the Docker image tag. versionCode uses the workflow's own run
-      # number rather than parsing MAJOR.MINOR.PATCH out of the tag: this repo's
-      # tags aren't strict semver (e.g. v0.2.0-alpha-candidate), so two
-      # pre-release/final tags sharing a MAJOR.MINOR.PATCH would otherwise
-      # collide on the same versionCode. GITHUB_RUN_NUMBER only ever increases
-      # across runs of this workflow, so it's guaranteed strictly increasing
-      # release-over-release -- which is what Android requires to accept an APK
-      # as an upgrade over whatever's already installed. +1000 is headroom
-      # above 1, the static versionCode every non-release build (including a
-      # tester's manually sideloaded android-apk-build.yml APK) still carries.
+      # versionName strips the leading 'v' and, issue #1022, any `-rc.N`
+      # (or other) pre-release qualifier: an RC build reports itself as the
+      # plain release it will become (e.g. "0.7.0", not "0.7.0-rc.3"), since
+      # promotion ships this exact APK unrebuilt and a tester/end-user has no
+      # reason to see or care about the RC number. versionCode uses the
+      # workflow's own run number rather than parsing MAJOR.MINOR.PATCH out
+      # of the tag: this repo's tags aren't strict semver (e.g.
+      # v0.2.0-alpha-candidate), so two pre-release/final tags sharing a
+      # MAJOR.MINOR.PATCH would otherwise collide on the same versionCode.
+      # GITHUB_RUN_NUMBER only ever increases across runs of this workflow,
+      # so it's guaranteed strictly increasing release-over-release -- which
+      # is what Android requires to accept an APK as an upgrade over
+      # whatever's already installed. +1000 is headroom above 1, the static
+      # versionCode every non-release build (including a tester's manually
+      # sideloaded android-apk-build.yml APK) still carries.
       - name: Compute release version
         id: version
         env:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
         run: |
+          v="${RELEASE_TAG#v}"
           {
-            echo "name=${RELEASE_TAG#v}"
+            echo "name=${v%%-*}"
             echo "code=$((1000 + GITHUB_RUN_NUMBER))"
           } >> "$GITHUB_OUTPUT"
 
@@ -469,7 +530,8 @@ jobs:
             exit 1
           }
           echo "$out"
-          if ! printf '%s' "$out" | grep -qE 'Verified using v[23] scheme: true'; then
+          if ! printf '%s' "$out" | grep -qE 'Verified using v2 scheme .*: true' &&
+            ! printf '%s' "$out" | grep -qE 'Verified using v3 scheme .*: true'; then
             echo "::error::APK is not signed with the v2 or v3 signature scheme; Android will refuse to install it."
             exit 1
           fi
@@ -654,6 +716,24 @@ jobs:
   # generator uploads the `.intoto.jsonl` only as a workflow artifact, and
   # `verify-release-assets` attaches it to the Release alongside SHA256SUMS.
   # That sidesteps the create-release / action-gh-release collision #355 flags.
+  #
+  # permissions.contents is write, not read, even though upload-assets: false
+  # below means this job's own use of it never writes anything (issue #1006,
+  # a real STARTUP_FAILURE the first time this job ever ran for real): the
+  # called workflow's own internal `upload-assets` job unconditionally
+  # declares `permissions: contents: write` at the job level, regardless of
+  # the upload-assets input or this job's `if:`. GitHub validates a
+  # reusable-workflow caller's granted permissions as a ceiling for every
+  # job inside the called workflow at PARSE TIME, for the whole graph,
+  # before any `if:` is evaluated -- so a too-narrow ceiling here breaks the
+  # run before any job is even created, independent of whether that internal
+  # job would ever actually execute. Matches the project's own reference
+  # usage example (hashicorp/packer's
+  # examples/ci/github-actions-l3-delegated.yml), which grants contents:
+  # write for exactly this job. Verified in isolation (a throwaway
+  # workflow_dispatch-only workflow calling the same reusable workflow with
+  # these exact permissions, run to completion, then removed) before landing
+  # here.
   apk-provenance:
     name: SLSA provenance for the APK
     needs: [build-android-apk]
@@ -661,7 +741,7 @@ jobs:
     permissions:
       actions: read # the generator reads this workflow run to build the statement
       id-token: write # keyless Fulcio signing
-      contents: read
+      contents: write # ceiling for the generator's internal upload-assets job (unused here: upload-assets: false below)
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0 # zizmor: ignore[unpinned-uses]
     with:
       base64-subjects: ${{ needs.build-android-apk.outputs.hashes }}
@@ -799,6 +879,8 @@ jobs:
       # OCI revision label.
       - name: Compute build stamp
         id: stamp
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
         run: |
           sha=$(git rev-parse HEAD)
           # REL-04 (issue #448): SOURCE_DATE_EPOCH is the release commit's
@@ -812,12 +894,25 @@ jobs:
           # and the image label both carry -- a deterministic value, so a
           # third-party rebuild of the tag reproduces the same bytes. It is not
           # the workflow's wall-clock, which was the old behaviour.
+          #
+          # issue #1022: `display_version` is what the running binary (and,
+          # via VITE_APP_VERSION, the frontend) reports as its own version --
+          # distinct from the image TAG, which must keep the full `-rc.N`
+          # suffix to stay distinguishable in the registry. Strips the
+          # leading `v` and everything from the first `-` onward, so an RC
+          # build of v0.7.0-rc.3 reports itself simply as "0.7.0" (the same
+          # value the eventual final release reports, since promotion copies
+          # this exact binary rather than rebuilding it) instead of exposing
+          # the pre-release qualifier to an end user who has no reason to
+          # know or care an RC number.
+          v="${RELEASE_TAG#v}"
           {
             echo "commit=$(echo "$sha" | cut -c1-12)"
             echo "sha7=$(echo "$sha" | cut -c1-7)"
             echo "sha_full=$sha"
             echo "source_date_epoch=$epoch"
             echo "created=$(date -u -d "@$epoch" +%Y-%m-%dT%H:%M:%SZ)"
+            echo "display_version=${v%%-*}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Extract metadata (tags, labels)
@@ -830,10 +925,22 @@ jobs:
           # the ref and sha reads github.sha -- both wrong on a manual run,
           # which would publish an image labelled with the branch it was
           # dispatched from. Same output as before on a tag push.
+          #
+          # `latest` (docker compose version issue): this job never moved this
+          # tag, on any release, ever -- it sat frozen at whatever the last
+          # manual push left it (0.6.12, discovered when 0.7.0 shipped and
+          # `docker compose pull` kept reporting 0.6.12). Gated to skip an RC
+          # push (`-rc.N`) so a pre-release never becomes what a bare
+          # `docker compose pull` lands on; mirrors create-release's
+          # `make_latest` condition above. A *final* tag promoted via
+          # promote-rc.yml (REL-02) never reaches this job at all (pushed with
+          # GITHUB_TOKEN, so `on: push: tags` never fires) -- that path moves
+          # `latest` itself, unconditionally, in its own re-tag step.
           tags: |
             type=semver,pattern={{version}},value=${{ env.RELEASE_TAG }}
             type=semver,pattern={{major}}.{{minor}},value=${{ env.RELEASE_TAG }}
             type=raw,value=${{ steps.stamp.outputs.sha7 }}
+            type=raw,value=latest,enable=${{ !contains(env.RELEASE_TAG, '-rc.') }}
           # REL-04 (issue #448): pin the identity labels explicitly. Left to
           # metadata-action's defaults, `revision` is github.sha and `created`
           # is the run's wall-clock -- both wrong on a manual recovery run (the
@@ -872,10 +979,13 @@ jobs:
           # Dockerfile's defaults apply and /health reports version "dev" --
           # so a published v0.2.0 image could not be told apart from any other
           # build, which is the exact problem the buildinfo package exists to
-          # solve. metadata-action's `version` output is the semver derived
-          # from the tag that triggered this run.
+          # solve. issue #1022: APP_VERSION is `stamp`'s display_version, not
+          # metadata-action's `version` output -- the former strips a `-rc.N`
+          # suffix (an RC binary should self-report the plain release it will
+          # become, not the pre-release qualifier), the latter is the actual
+          # image tag and must keep it.
           build-args: |
-            APP_VERSION=${{ steps.meta.outputs.version }}
+            APP_VERSION=${{ steps.stamp.outputs.display_version }}
             APP_COMMIT=${{ steps.stamp.outputs.commit }}
             APP_BUILD_DATE=${{ steps.stamp.outputs.created }}
           # scope is required, not cosmetic, once this step runs as a matrix:
@@ -1142,6 +1252,16 @@ jobs:
         env:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # issue #1015: this job has no actions/checkout step (it only needs
+          # a downloaded artifact + `gh release` calls, not repo files), so
+          # `gh` has no git remote to infer the target repo from and fails
+          # with "not a git repository" on its first call -- never caught
+          # before because this job (if: event_name == 'push', an actual tag
+          # push) had never run to completion until #543's RC-verification
+          # cleared every gate ahead of it for the first time. GH_REPO is
+          # gh's own env var for exactly this: pointing it at a repo without
+          # needing a git checkout at all.
+          GH_REPO: ${{ github.repository }}
         run: |
           set -eu
           gh release upload "$RELEASE_TAG" release-assets/*.intoto.jsonl --clobber
@@ -1154,6 +1274,8 @@ jobs:
         env:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # See the previous step's comment -- same missing-checkout gap.
+          GH_REPO: ${{ github.repository }}
         run: |
           set -eu
           fail=0
