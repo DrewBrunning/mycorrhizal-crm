@@ -42,6 +42,18 @@ export const BLOCKING_A11Y_IMPACTS = ['critical', 'serious'];
 export const WCAG_A11Y_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
 /**
+ * axe's WCAG 1.4.6 Contrast (Enhanced) rule, the AAA (7:1) sibling of
+ * `color-contrast`. It is disabled by default (AAA is not part of the app-wide
+ * gate), so it must be opted into per call. Scoped deliberately: this palette
+ * claims AAA only for the documented token pairs -- secondary text on the
+ * parchment card surface is AA-only by design (6.35:1 light / 6.78:1 dark), so
+ * running this rule over a whole route reports hundreds of AA-not-AAA pairs
+ * that are not regressions. It is used against the brand-surface subtree, whose
+ * pair *is* claimed AAA (issue #964).
+ */
+export const AAA_CONTRAST_RULE = 'color-contrast-enhanced';
+
+/**
  * Annotation `type` a spec uses to opt a `test`/`test.describe` block out of
  * the automatic per-test scan below, for flows that intentionally render a
  * transient state (mid-animation toast, a deliberately-broken form left
@@ -78,6 +90,24 @@ export async function assertNoBlockingA11yViolations(page: Page, context?: strin
     firstTarget: v.nodes[0]?.target,
   }));
   expect(blocking, JSON.stringify(detail, null, 2)).toEqual([]);
+}
+
+/**
+ * Runs axe's AAA contrast rule (`color-contrast-enhanced`, SC 1.4.6) against a
+ * *scoped* subtree and fails on any violation. The scope is the whole point:
+ * this palette's AAA claim is a token-pair claim (see AAA_CONTRAST_RULE), and
+ * only the documented pair's rendered surface is scanned here. The app-wide
+ * AA gate stays `assertNoBlockingA11yViolations`.
+ */
+export async function assertNoAaaContrastViolations(page: Page, context: string): Promise<void> {
+  const results = await new AxeBuilder({ page })
+    .withRules([AAA_CONTRAST_RULE])
+    .include(context)
+    .analyze();
+  const detail = results.violations.flatMap((v) =>
+    v.nodes.map((n) => ({ id: v.id, target: n.target, summary: n.failureSummary })),
+  );
+  expect(detail, JSON.stringify(detail, null, 2)).toEqual([]);
 }
 
 export const test = base.extend<{ page: Page }>({
