@@ -7,9 +7,10 @@ import com.mycorrhizal.crm.model.network.ContactSummary
  * M5 §6.5 (issue #151): the pre-filled state a quick-capture activity form is
  * seeded with after a call ends. [title]/[type] follow the InteractionSyncWorker
  * conventions (a call logs as `type=call`); [date] is the call's end moment;
- * [participants] is the contact matched to the caller's number (empty when the
- * number is unknown or matches no contact — the sheet degrades to a
- * contact-less activity rather than dropping the interaction).
+ * [participants] is the contact matched to the caller's number. Issue #1029:
+ * the overlay is only shown for a known contact (or, when the user enabled
+ * `includeUnknownNumbers`, an unknown caller); in the latter case the factory
+ * degrades to a contact-less activity rather than dropping the interaction.
  */
 data class QuickCapturePrefill(
     val title: String,

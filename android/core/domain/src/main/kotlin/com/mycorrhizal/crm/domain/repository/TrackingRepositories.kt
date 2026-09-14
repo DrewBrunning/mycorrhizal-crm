@@ -102,4 +102,25 @@ interface TrackingSettingsRepository {
     suspend fun setLastSmsTimestamp(ts: Long)
     /** When the periodic interaction sync last ran. */
     suspend fun lastInteractionSyncAt(): Long?
+
+    /**
+     * Issue #1029: the capture-policy escape hatch. When false (the default),
+     * the automatic capture paths (incoming SMS, sent-SMS backfill, call log)
+     * stage an interaction only when its number resolves to a cached contact;
+     * unmappable numbers (2FA short codes, service senders, robocalls, withheld
+     * numbers) are dropped. When true, the pre-#1029 "firehose" is restored:
+     * unknown numbers are staged as unassociated Activities too, and the
+     * quick-capture overlay is shown for unknown callers again.
+     */
+    suspend fun includeUnknownNumbers(): Boolean
+    suspend fun setIncludeUnknownNumbers(enabled: Boolean)
+
+    /**
+     * Issue #1029: a bounded, local-only count of interactions the capture
+     * policy dropped because the number matched no contact. Never synced or
+     * sent anywhere — diagnostics only ("we filtered N"), so a spike in
+     * suppressed noise is visible without storing any of it.
+     */
+    suspend fun filteredUnknownCount(): Int
+    suspend fun incrementFilteredUnknownCount()
 }

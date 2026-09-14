@@ -22,9 +22,16 @@ import java.util.UUID
  * Periodic sync of PendingInteractions to the server as Activity rows (§6.1
  * "InteractionSyncWorker"). Each pending call becomes `type=call`; each
  * pending message becomes `type=message` with NO body (the §6.2 privacy
- * boundary — the server only ever sees the contact link + title). Rows that
- * matched no contact are skipped with the contact_ids empty, so they land as
- * unassociated activities rather than being lost.
+ * boundary — the server only ever sees the contact link + title).
+ *
+ * Issue #1029: the capture path (SmsReceiver / SmsBackfillWorker /
+ * CallLogSyncWorker, all through `InteractionCapture.capture`) stages only
+ * interactions whose number resolves to a cached contact by default, so an
+ * unknown-number row normally never reaches this worker. A row *can* still have
+ * no contact link — the user opted into unknown numbers via
+ * `includeUnknownNumbers`, or a legacy queued row predates the filter — and it
+ * is synced with `contact_ids` empty rather than dropped: the interaction is
+ * the value, the contact link is best-effort.
  *
  * ANDROID-02 (issue #479) made this worker retry-safe and self-healing:
  *

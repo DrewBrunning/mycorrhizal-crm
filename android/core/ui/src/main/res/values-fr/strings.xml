@@ -657,6 +657,9 @@
     <string name="quick_capture_note_label">Note</string>
     <string name="quick_capture_title_required">Le titre est requis</string>
     <string name="settings_notifications">Afficher les notifications</string>
+    <!-- Issue #1029: known-contacts-only capture filter + its local diagnostics counter. -->
+    <string name="settings_include_unknown_numbers">Journaliser aussi les numéros inconnus</string>
+    <string name="settings_filtered_unknown_count">Numéros inconnus filtrés : %1$d</string>
     <!-- Issue #721: runtime-permission flow for the tracking toggles. -->
     <string name="settings_permission_rationale_title">Autorisation requise</string>
     <string name="settings_call_permission_rationale">Le suivi des appels enregistre les appels comme activités, ce qui nécessite l\'accès à votre journal d\'appels et à l\'état du téléphone. Accordez l\'autorisation pour l\'activer.</string>

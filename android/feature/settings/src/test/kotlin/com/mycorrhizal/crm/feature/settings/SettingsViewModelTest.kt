@@ -58,12 +58,17 @@ class SettingsViewModelTest {
         smsStored: Boolean = false,
         callGranted: Boolean = false,
         smsGranted: Boolean = false,
+        includeUnknown: Boolean = false,
+        filteredCount: Int = 0,
     ): SettingsViewModel {
         coEvery { trackingSettings.callTrackingEnabled() } returns callStored
         coEvery { trackingSettings.smsTrackingEnabled() } returns smsStored
         coEvery { trackingSettings.notificationsEnabled() } returns true
+        coEvery { trackingSettings.includeUnknownNumbers() } returns includeUnknown
+        coEvery { trackingSettings.filteredUnknownCount() } returns filteredCount
         coEvery { trackingSettings.setCallTrackingEnabled(any()) } returns Unit
         coEvery { trackingSettings.setSmsTrackingEnabled(any()) } returns Unit
+        coEvery { trackingSettings.setIncludeUnknownNumbers(any()) } returns Unit
         every { authRepository.observeSession() } returns MutableStateFlow(session)
         coEvery { appSettings.themePreference() } returns flowOf(themePreference)
         every { localAuthSettings.requireLocalAuth() } returns MutableStateFlow(false)
@@ -193,6 +198,29 @@ class SettingsViewModelTest {
                 vm.uiState.value.pendingPermissionRequest,
             )
             coVerify(exactly = 0) { trackingSettings.setSmsTrackingEnabled(true) }
+        }
+
+    @Test
+    fun `exposes the include-unknown capture setting and the filtered count (issue #1029)`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel(includeUnknown = true, filteredCount = 7)
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.includeUnknownNumbers)
+            assertEquals(7, vm.uiState.value.filteredUnknownCount)
+        }
+
+    @Test
+    fun `setIncludeUnknownNumbers persists the escape hatch and updates the state`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel(includeUnknown = false)
+            advanceUntilIdle()
+
+            vm.setIncludeUnknownNumbers(true)
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.includeUnknownNumbers)
+            coVerify { trackingSettings.setIncludeUnknownNumbers(true) }
         }
 
     @Test

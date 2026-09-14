@@ -121,7 +121,7 @@ class CallLogSyncWorkerTest {
     }
 
     @Test
-    fun `records a matched incoming call and advances the watermark to the newest entry`() = runTest {
+    fun `records a matched incoming call, filters the unmatched one, and advances the watermark`() = runTest {
         stubCallLog(
             listOf(
                 arrayOf<Any?>("+15551234567", CallLog.Calls.INCOMING_TYPE, 5000L, 30L, "Jane"),
@@ -157,6 +157,33 @@ class CallLogSyncWorkerTest {
                 ),
             )
         }
+        // Unknown number dropped by the capture policy (issue #1029).
+        coVerify(exactly = 0) {
+            pendingInteractions.recordIfNew(match { it.phoneNumber == "+15559876543" })
+        }
+        coVerify(exactly = 1) { settings.incrementFilteredUnknownCount() }
+        coVerify { settings.setLastCallLogTimestamp(7000L) }
+    }
+
+    @Test
+    fun `the include-unknown opt-in stages an unmatched call`() = runTest {
+        stubCallLog(listOf(arrayOf<Any?>("+15559876543", CallLog.Calls.OUTGOING_TYPE, 7000L, 60L, null)))
+        val pendingInteractions = mockk<PendingInteractionRepository>(relaxed = true)
+        val contacts = mockk<ContactRepository>()
+        coEvery { contacts.findByPhone("+15559876543") } returns null
+        val settings = mockk<TrackingSettingsRepository>(relaxed = true)
+        coEvery { settings.callTrackingEnabled() } returns true
+        coEvery { settings.lastCallLogTimestamp() } returns 0L
+        coEvery { settings.includeUnknownNumbers() } returns true
+
+        CallLogSyncWorker(
+            appContext = context,
+            workerParams = mockk(relaxed = true),
+            pendingInteractionRepository = pendingInteractions,
+            contactRepository = contacts,
+            trackingSettings = settings,
+        ).doWork()
+
         coVerify {
             pendingInteractions.recordIfNew(
                 PendingInteraction(
@@ -168,7 +195,7 @@ class CallLogSyncWorkerTest {
                 ),
             )
         }
-        coVerify { settings.setLastCallLogTimestamp(7000L) }
+        coVerify(exactly = 0) { settings.incrementFilteredUnknownCount() }
     }
 
     @Test
@@ -176,7 +203,7 @@ class CallLogSyncWorkerTest {
         stubCallLog(listOf(arrayOf<Any?>("+15551234567", CallLog.Calls.MISSED_TYPE, 1000L, 0L, null)))
         val pendingInteractions = mockk<PendingInteractionRepository>(relaxed = true)
         val contacts = mockk<ContactRepository>(relaxed = true)
-        coEvery { contacts.findByPhone(any()) } returns null
+        coEvery { contacts.findByPhone(any()) } returns ContactSummary(id = 5)
         val settings = mockk<TrackingSettingsRepository>(relaxed = true)
         coEvery { settings.callTrackingEnabled() } returns true
         coEvery { settings.lastCallLogTimestamp() } returns 0L
@@ -197,7 +224,7 @@ class CallLogSyncWorkerTest {
                     kind = InteractionCapture.KIND_CALL,
                     direction = InteractionCapture.DIR_MISSED,
                     phoneNumber = "+15551234567",
-                    matchedContactId = null,
+                    matchedContactId = 5,
                 ),
             )
         }

@@ -32,7 +32,10 @@ class QuickCapturePrefillTest {
     }
 
     @Test
-    fun `an unknown number yields a contact-less activity rather than dropping it`() {
+    fun `an unknown number on the include-unknown path yields a contact-less activity`() {
+        // Issue #1029: the overlay is normally suppressed for an unknown
+        // caller; when the user opts into unknown numbers it is shown, and the
+        // factory degrades to a contact-less activity rather than dropping it.
         val prefill = QuickCapturePrefillFactory.forCall(null, nowIso)
 
         assertTrue(prefill.participants.isEmpty())

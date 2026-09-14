@@ -53,6 +53,14 @@ data class SettingsUiState(
     val callTrackingEnabled: Boolean = false,
     val smsTrackingEnabled: Boolean = false,
     val notificationsEnabled: Boolean = true,
+    /**
+     * Issue #1029: stage interactions whose number matches no cached contact
+     * (the pre-#1029 firehose). Off by default; turning it on also re-enables
+     * the quick-capture overlay for unknown callers.
+     */
+    val includeUnknownNumbers: Boolean = false,
+    /** Issue #1029: local-only count of interactions the capture policy dropped. */
+    val filteredUnknownCount: Int = 0,
     val themePreference: String = AppSettingsRepository.THEME_SYSTEM,
     val isChangingPassword: Boolean = false,
     /** Static password validation error as a string resource id, resolved in the UI (mirrors LoginViewModel). */
@@ -180,6 +188,11 @@ class SettingsViewModel @Inject constructor(
                     callTrackingEnabled = callStored && callGranted,
                     smsTrackingEnabled = smsStored && smsGranted,
                     notificationsEnabled = trackingSettings.notificationsEnabled(),
+                    // Issue #1029: the capture-policy escape hatch + its
+                    // diagnostics counter are plain reads (not flows), refreshed
+                    // with the rest of the tracking state.
+                    includeUnknownNumbers = trackingSettings.includeUnknownNumbers(),
+                    filteredUnknownCount = trackingSettings.filteredUnknownCount(),
                 )
             }
         }
@@ -254,6 +267,16 @@ class SettingsViewModel @Inject constructor(
     fun setNotificationsEnabled(enabled: Boolean) {
         _uiState.update { it.copy(notificationsEnabled = enabled) }
         viewModelScope.launch { trackingSettings.setNotificationsEnabled(enabled) }
+    }
+
+    /**
+     * Issue #1029: the capture-policy escape hatch. On (the default) only
+     * interactions whose number resolves to a contact are staged; off restores
+     * the old "every device row" behavior.
+     */
+    fun setIncludeUnknownNumbers(enabled: Boolean) {
+        _uiState.update { it.copy(includeUnknownNumbers = enabled) }
+        viewModelScope.launch { trackingSettings.setIncludeUnknownNumbers(enabled) }
     }
 
     // --- Issue #722: the opt-in local app lock ---

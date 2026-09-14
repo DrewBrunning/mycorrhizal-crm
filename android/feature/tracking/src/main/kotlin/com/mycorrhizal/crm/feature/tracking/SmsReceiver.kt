@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.mycorrhizal.crm.domain.repository.ContactRepository
-import com.mycorrhizal.crm.domain.repository.PendingInteraction
 import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
 import dagger.hilt.android.EntryPointAccessors
@@ -68,17 +67,19 @@ class SmsReceiver private constructor(
         scope.launch {
             val deps = dependencyProvider(context.applicationContext)
             if (!deps.trackingSettings.smsTrackingEnabled()) return@launch
-            val contact = runCatching {
-                sms.address?.let { deps.contactRepository.findByPhone(it) }
-            }.getOrNull()
-            deps.pendingInteractionRepository.record(
-                PendingInteraction(
-                    timestampMillis = sms.timestampMillis,
-                    kind = InteractionCapture.KIND_MESSAGE,
-                    direction = InteractionCapture.DIR_INCOMING,
-                    phoneNumber = sms.address,
-                    matchedContactId = contact?.id,
-                ),
+            // Issue #1029: one shared policy entry point — an SMS from a number
+            // that maps to no cached contact is dropped (and counted), not
+            // staged as an orphan Activity. Each broadcast is a unique event, so
+            // no dedupe.
+            InteractionCapture.capture(
+                contactRepository = deps.contactRepository,
+                pendingInteractionRepository = deps.pendingInteractionRepository,
+                trackingSettings = deps.trackingSettings,
+                kind = InteractionCapture.KIND_MESSAGE,
+                direction = InteractionCapture.DIR_INCOMING,
+                number = sms.address,
+                timestampMillis = sms.timestampMillis,
+                dedupe = false,
             )
         }
     }
