@@ -43,6 +43,21 @@ const (
 	oidcAppChallengeCookie = "oidc_app_challenge"
 )
 
+// setOIDCCookie sets one of this controller's cookies — the transient handshake
+// set (login start, and again cleared at the callback) or the session cookies
+// the callback mints. They all share the same deliberate flags: HttpOnly
+// always, SameSite set by the caller, and Secure = cfg.CookieSecure.
+//
+// Secure deliberately follows config rather than being forced true:
+// COOKIE_SECURE=false is a supported plain-HTTP self-hosted deployment, and
+// hardcoding true there made a browser reject the cookie outright (issue #605).
+// The operator owns that transport decision (docs/deployment.md), so CodeQL's
+// generic finding is a false positive here.
+func setOIDCCookie(c *gin.Context, cfg *config.Config, name, value, path string, maxAge int) {
+	// codeql[go/cookie-secure-not-set] — Secure follows config by design; see above.
+	c.SetCookie(name, value, maxAge, path, cfg.CookieDomain, cfg.CookieSecure, true)
+}
+
 // oidcErrorRedirect sends the browser to the login-error target for the given
 // client: the web SPA's /login?error=<code> for the default flow, or the
 // Android app's custom-scheme deep link for the client=android flow — so the
@@ -105,9 +120,9 @@ func OIDCLoginHandler(provider *services.OIDCProvider, cfg *config.Config) gin.H
 		// the callback would always see it missing and fail every OIDC
 		// login.
 		c.SetSameSite(http.SameSiteLaxMode)
-		c.SetCookie("oidc_state", state, 600, oidcCallbackPath, cfg.CookieDomain, cfg.CookieSecure, true)
-		c.SetCookie("oidc_nonce", nonce, 600, oidcCallbackPath, cfg.CookieDomain, cfg.CookieSecure, true)
-		c.SetCookie("oidc_pkce", pkceVerifier, 600, oidcCallbackPath, cfg.CookieDomain, cfg.CookieSecure, true)
+		setOIDCCookie(c, cfg, "oidc_state", state, oidcCallbackPath, 600)
+		setOIDCCookie(c, cfg, "oidc_nonce", nonce, oidcCallbackPath, 600)
+		setOIDCCookie(c, cfg, "oidc_pkce", pkceVerifier, oidcCallbackPath, 600)
 
 		// M6: remember a native-client login start so the callback can
 		// deliver back to the app's deep link instead of the web SPA.
@@ -135,14 +150,12 @@ func OIDCLoginHandler(provider *services.OIDCProvider, cfg *config.Config) gin.H
 				oidcErrorRedirect(c, true, "oidc_error")
 				return
 			}
-			// Issue #605: this cookie must follow cfg.CookieSecure like its
-			// three siblings above. It hardcoded Secure=true, which makes a
-			// browser reject it entirely on the supported plain-HTTP
-			// deployment (COOKIE_SECURE=false), silently dropping the
-			// android client hint.
-			c.SetCookie("oidc_client", "android", 600, oidcCallbackPath, cfg.CookieDomain, cfg.CookieSecure, true)
-			c.SetCookie(oidcAppStateCookie, appState, 600, oidcCallbackPath, cfg.CookieDomain, cfg.CookieSecure, true)
-			c.SetCookie(oidcAppChallengeCookie, codeChallenge, 600, oidcCallbackPath, cfg.CookieDomain, cfg.CookieSecure, true)
+			// Issue #605: these cookies follow cfg.CookieSecure via the shared
+			// helper, so a plain-HTTP deployment (COOKIE_SECURE=false) does not
+			// have its browser reject them.
+			setOIDCCookie(c, cfg, "oidc_client", "android", oidcCallbackPath, 600)
+			setOIDCCookie(c, cfg, oidcAppStateCookie, appState, oidcCallbackPath, 600)
+			setOIDCCookie(c, cfg, oidcAppChallengeCookie, codeChallenge, oidcCallbackPath, 600)
 		}
 
 		c.Redirect(http.StatusFound, provider.BuildAuthURL(state, nonce, pkceVerifier))
@@ -183,7 +196,7 @@ func OIDCCallbackHandler(provider *services.OIDCProvider, cfg *config.Config) gi
 			"oidc_state", "oidc_nonce", "oidc_pkce", "oidc_client",
 			oidcAppStateCookie, oidcAppChallengeCookie,
 		} {
-			c.SetCookie(name, "", -1, oidcCallbackPath, cfg.CookieDomain, cfg.CookieSecure, true)
+			setOIDCCookie(c, cfg, name, "", oidcCallbackPath, -1)
 		}
 
 		if err != nil || stateCookie == "" {
@@ -320,10 +333,10 @@ func OIDCCallbackHandler(provider *services.OIDCProvider, cfg *config.Config) gi
 		// a same-origin XHR/fetch from the loaded SPA — never a top-level
 		// cross-site navigation — so Strict costs nothing here.
 		c.SetSameSite(http.SameSiteStrictMode)
-		c.SetCookie("auth_token", tokenString, maxAge, "/", cfg.CookieDomain, cfg.CookieSecure, true)
+		setOIDCCookie(c, cfg, "auth_token", tokenString, "/", maxAge)
 		// Retained for RP-Initiated Logout's id_token_hint (LogoutUser) — its
 		// presence is also how logout knows this session came via SSO at all.
-		c.SetCookie("id_token", rawIDToken, maxAge, "/", cfg.CookieDomain, cfg.CookieSecure, true)
+		setOIDCCookie(c, cfg, "id_token", rawIDToken, "/", maxAge)
 
 		c.Redirect(http.StatusFound, "/")
 	}
