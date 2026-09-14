@@ -362,9 +362,6 @@
     <string name="settings_two_factor_recovery_copied">Copied!</string>
     <string name="settings_two_factor_recovery_done">Done</string>
     <string name="settings_two_factor_qr_content_description">QR code for your authenticator app. Scan it, or enter the manual setup key below.</string>
-    <string name="settings_relationships_suggested">%1$d new relationship suggestions generated — review them on a contact\'s Relationships screen.</string>
-    <string name="settings_relationships_none">No new relationship suggestions.</string>
-    <string name="settings_suggest_relationships_error">Could not generate relationship suggestions.</string>
     <string name="data_relationships_section">Relationships</string>
     <string name="data_relationships_description">Let the app find relationships your existing ones imply. Suggestions are only proposals — review each one before accepting.</string>
     <string name="data_relationships_generated">%1$d new relationship suggestions generated — review them on a contact\'s Relationships screen.</string>
