@@ -503,8 +503,14 @@ out a different class of failure.
 3. **Health and readiness** — the server agrees it is serving.
    ```sh
    curl -s https://<host>/health/ready   # → {"status":"ready", …}   (not_ready while migrations pending/dirty)
-   curl -s https://<host>/health         # → healthy, with the applied migration version in the payload
+   curl -s https://<host>/health         # → healthy; version/commit here are the BUILD, not the schema version
    ```
+   The applied migration version is **not** in `/health` — its `version` field is
+   the build version, and reading it as the schema version is a real trap (issue
+   [#976](https://github.com/DrewBrunning/mycorrhizal-crm/issues/976)). Get the
+   schema version from `cmd/dbinspect` in step 1 above (`version=<N>`), or from
+   the `/health/ready` `checks.migrations` facet, which is `ok` only when the
+   applied version matches this binary.
 4. **One end-to-end workflow** — the same basic flow the clean-install smoke test
    asserts (issue [#450](https://github.com/DrewBrunning/mycorrhizal-crm/issues/450),
    `backend/cmd/deploysmoke`): log in with a **pre-existing** account (the bcrypt
