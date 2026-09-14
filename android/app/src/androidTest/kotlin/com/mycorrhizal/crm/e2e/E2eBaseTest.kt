@@ -191,8 +191,10 @@ abstract class E2eBaseTest {
     /**
      * Navigates back via the screen's top-bar back arrow. Not Espresso.pressBack:
      * Espresso's event injection uses InputManager.getInstance(), which was
-     * removed on newer API levels (fails on the API 37 CI emulator), and every
-     * destination this suite backs out of has a real Back button anyway.
+     * removed on API 36+ — a real device/emulator at or above that level would
+     * fail here (none of CI's are: android-tests.yml pins its emulators to API
+     * 24/26/35), and every destination this suite backs out of has a real Back
+     * button anyway.
      */
     protected fun clickBack() {
         clickContentDescription("Back")

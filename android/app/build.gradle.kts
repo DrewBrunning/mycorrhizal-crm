@@ -163,7 +163,9 @@ dependencies {
     // Explicit override of compose ui-test's transitive espresso 3.5.0: the
     // compose Android test environment syncs through Espresso.onIdle() on
     // device, and espresso < 3.7.0 uses InputManager.getInstance(), which was
-    // removed on API 36+ (fails on the API 37 CI emulator).
+    // removed on API 36+ — no CI emulator reaches that level today
+    // (android-tests.yml pins API 24/26/35), but a real device/emulator at
+    // 36+ does, hence the explicit override.
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.compose.ui.test.manifest)
