@@ -11,6 +11,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/logger"
+	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 
 	"gorm.io/gorm"
@@ -29,6 +30,7 @@ const (
 	alertConditionKeyDBIntegrity   = "db_integrity"
 	alertConditionKeyDiskSpace     = "disk_space"
 	alertConditionKeyJobStopped    = "job_stopped"
+	alertConditionKeyAuthSpray     = "auth_spray"
 )
 
 // alertConditionResult is one condition's verdict for a single evaluation run.
@@ -115,7 +117,47 @@ func evaluateAlertConditions(ctx context.Context, db *gorm.DB, cfg config.Config
 	if cfg.AlertJobStoppedEnabled {
 		out = append(out, jobStoppedCondition(ctx, db, cfg))
 	}
+	if cfg.AlertAuthSprayEnabled {
+		out = append(out, authSprayCondition(cfg))
+	}
 	return out
+}
+
+// authVelocitySnapshot is indirected through a package var so tests can inject
+// a fixed signal without driving the process-wide rate limiter. Production
+// reads the same in-memory signal the login path consults for its throttle.
+var authVelocitySnapshot = func() middleware.AuthVelocitySnapshot {
+	return middleware.GetAccountRateLimiter().AuthVelocity()
+}
+
+// authSprayCondition fires while the instance-wide failed-auth velocity signal
+// (issue #940) is in an incident — many distinct identifiers failing across the
+// window, the distributed-credential-stuffing shape the per-identifier and
+// per-IP lockouts cannot see. It recovers once the signal's incident hold
+// lapses (no new spray for the hold window). The detail reports counts only —
+// never usernames — so an alert payload stays low-cardinality and does not leak
+// identifiers to a subscriber webhook.
+func authSprayCondition(cfg config.Config) alertConditionResult {
+	r := alertConditionResult{key: alertConditionKeyAuthSpray, title: "Authentication abuse"}
+	if !cfg.AuthSprayEnabled || !cfg.AlertAuthSprayEnabled {
+		return r
+	}
+	snap := authVelocitySnapshot()
+	if !snap.Incident {
+		return r
+	}
+	r.firing = true
+	r.failureCount = snap.Failures
+	r.detail = fmt.Sprintf(
+		"%d failed logins from %d identifiers across %d source IPs in the last %ds",
+		snap.Failures, snap.Identifiers, snap.SourceIPs, snap.WindowSeconds)
+	if snap.Throttled {
+		r.detail += fmt.Sprintf("; instance login throttle active for another %ds", snap.RetryAfterSecs)
+	}
+	if n := len(snap.TargetedIdentifiers); n > 0 {
+		r.detail += fmt.Sprintf("; %d identifier(s) failed from many source IPs", n)
+	}
+	return r
 }
 
 func backupDetail(b SubsystemHealth) string {

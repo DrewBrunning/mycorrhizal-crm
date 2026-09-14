@@ -512,6 +512,23 @@ func main() {
 	// init(); this only replaces them when the environment sets them).
 	middleware.ConfigureAPIRateLimiter(cfg.APIRateLimitInterval, cfg.APIRateLimitBurst)
 
+	// Arm the instance-wide failed-auth velocity signal (issue #940). The
+	// alert-visible incident is held for at least two evaluation cycles so the
+	// polled evaluator cannot miss a spray that starts and ends between two
+	// runs, while the login throttle itself stays short and self-clearing.
+	authSprayHold := 2 * time.Duration(cfg.AlertEvalIntervalMinutes) * time.Minute
+	if minHold := time.Duration(cfg.AuthSprayThrottleSeconds) * time.Second; minHold > authSprayHold {
+		authSprayHold = minHold
+	}
+	middleware.ConfigureAuthVelocity(middleware.AuthVelocityConfig{
+		Enabled:             cfg.AuthSprayEnabled,
+		Window:              time.Duration(cfg.AuthSprayWindowSeconds) * time.Second,
+		FailureThreshold:    cfg.AuthSprayFailureThreshold,
+		IdentifierThreshold: cfg.AuthSprayIdentifierThreshold,
+		Throttle:            time.Duration(cfg.AuthSprayThrottleSeconds) * time.Second,
+		IncidentHold:        authSprayHold,
+	})
+
 	// Add request body size limit middleware (10MB default) to prevent DoS
 	r.Use(middleware.DefaultBodySizeLimitMiddleware())
 

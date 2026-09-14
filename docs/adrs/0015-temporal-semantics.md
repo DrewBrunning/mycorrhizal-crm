@@ -22,7 +22,7 @@ distinctions were convention rather than type:
   type can represent — but the semantics lived entirely in the validator and in convention. `Anniversary`
   followed the same shape.
 - **Reminders fire on one server-wide clock**: `REMINDER_TIME` (default `06:00`) in `REMINDER_TIMEZONE`
-  (default `UTC`), IANA-validated (`backend/config/config.go:50-51,213-214,662-671,855-868`), scheduled
+  (default `UTC`), IANA-validated (`backend/config/config.go:50-51,229-230,760-767,972-979`), scheduled
   via `gocron.NewScheduler(cfg.GetReminderLocation())` with the daily job registered against it
   (`backend/main.go:284,306-307`). There is no per-user
   timezone, and that real product decision was written nowhere an operator would find it.
@@ -133,7 +133,7 @@ match the two canonical shapes are left untouched on the scalar rather than corr
 
 #### Category 4 — local wall time
 
-`Config.ReminderTime` + `Config.ReminderTimezone` (`backend/config/config.go:44-53,213-214,662-671`,
+`Config.ReminderTime` + `Config.ReminderTimezone` (`backend/config/config.go:44-53,229-230,760-767`,
 `GetReminderLocation` at `855-868`). The only wall-clock value in the product, and it is operator
 configuration, not a stored field. The scheduled digest and the life-event reminder hour (fixed at 09:00,
 `backend/controllers/life_event_controller.go:19-22`) both interpret it in the reminder zone.
@@ -279,7 +279,7 @@ birthday may be:
   `HouseholdMember.Since/Until` doc comments classify themselves (`backend/models/contact.go:90-96,
   137-139`, `life_event.go:141`, `household.go:105-106`).
 - The config struct, `GetReminderLocation`, and the scheduler carry the "one server-wide clock" and DST
-  statements (`backend/config/config.go:44-53,855-868`, `backend/main.go:284,306-307`); the import parser
+  statements (`backend/config/config.go:44-53,972-979`, `backend/main.go:284,306-307`); the import parser
   carries the zone-less assumption (`backend/services/import_source.go:699-724`).
 - DATE-02 (#483) writes the pathological-date tests against the rules above.
 

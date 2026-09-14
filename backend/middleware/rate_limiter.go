@@ -57,18 +57,37 @@ type AccountRateLimiter struct {
 	accounts     map[string]*AccountLockoutEntry
 	global       map[string]*AccountLockoutEntry
 	knownGoodIPs map[string]map[string]time.Time
-	mu           sync.RWMutex
-	ttl          time.Duration
+	// knownGoodGlobalIPs is the instance-wide counterpart to knownGoodIPs:
+	// source IPs that authenticated successfully for *any* identifier recently.
+	// They are exempt from the instance-wide spray throttle (auth_velocity.go)
+	// so a legitimate returning user is never denied by a distributed spray.
+	knownGoodGlobalIPs map[string]time.Time
+	// velocity is the instance-wide failed-auth velocity signal (issue #940).
+	velocity *authVelocityState
+	mu       sync.RWMutex
+	ttl      time.Duration
 }
 
 // NewAccountRateLimiter creates a new account-based rate limiter
 func NewAccountRateLimiter(ttl time.Duration) *AccountRateLimiter {
 	return &AccountRateLimiter{
-		accounts:     make(map[string]*AccountLockoutEntry),
-		global:       make(map[string]*AccountLockoutEntry),
-		knownGoodIPs: make(map[string]map[string]time.Time),
-		ttl:          ttl,
+		accounts:           make(map[string]*AccountLockoutEntry),
+		global:             make(map[string]*AccountLockoutEntry),
+		knownGoodIPs:       make(map[string]map[string]time.Time),
+		knownGoodGlobalIPs: make(map[string]time.Time),
+		velocity:           newAuthVelocityState(DefaultAuthVelocityConfig(), time.Now),
+		ttl:                ttl,
 	}
+}
+
+// ConfigureAuthVelocity installs the instance-wide failed-auth velocity
+// config on the process-wide account limiter (issue #940). Call once during
+// startup, before routes are registered; test code that needs an isolated
+// tracker replaces accountLimiter.velocity directly.
+func ConfigureAuthVelocity(cfg AuthVelocityConfig) {
+	accountLimiter.mu.Lock()
+	defer accountLimiter.mu.Unlock()
+	accountLimiter.velocity = newAuthVelocityState(cfg, time.Now)
 }
 
 // IsLocked checks if an account is currently locked out
@@ -181,6 +200,14 @@ func (a *AccountRateLimiter) CleanupStaleAccountEntries() {
 		}
 		if len(ips) == 0 {
 			delete(a.knownGoodIPs, identifier)
+		}
+	}
+
+	// Instance-wide known-good IPs (spray-throttle exemption) age out on the
+	// same TTL.
+	for ip, seen := range a.knownGoodGlobalIPs {
+		if now.Sub(seen) > KnownGoodIPTTL {
+			delete(a.knownGoodGlobalIPs, ip)
 		}
 	}
 }

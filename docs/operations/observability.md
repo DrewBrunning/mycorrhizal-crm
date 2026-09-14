@@ -266,6 +266,21 @@ raise is delivered, an ongoing incident stays silent again (the storm guarantee 
 | `db_integrity` | the last scheduled `PRAGMA integrity_check` result is `failed` / `error` | it flips back to `ok` |
 | `disk_space` | the filesystem holding the DB is ≥ `ALERT_DISK_USAGE_PERCENT` full | usage drops 5 points below the threshold (hysteresis) |
 | `job_stopped` | any config-enabled scheduled job's last **successful** completion is older than its interval × `ALERT_JOB_STALE_MULTIPLIER` | every watched job is fresh again |
+| `auth_spray` | the instance-wide failed-auth velocity signal is in an incident — ≥ `AUTH_SPRAY_FAILURE_THRESHOLD` failures across ≥ `AUTH_SPRAY_IDENTIFIER_THRESHOLD` **distinct identifiers** within `AUTH_SPRAY_WINDOW_SECONDS` (issue [#940](https://github.com/DrewBrunning/mycorrhizal-crm/issues/940)) | no new spray for the incident hold (≥ 2 × `ALERT_EVAL_INTERVAL_MINUTES`) |
+
+**Distributed credential stuffing / password spray.** The `(identifier, source-IP)` lockout and the
+per-identifier backstop (V2.2.1) each stop a *single-source* attack, but a spray of one common
+password across thousands of accounts from a botnet keeps every individual budget under threshold, so
+no key ever crosses its limit. The instance-wide signal closes that blind spot: it counts failures
+per window across **all** identifiers, and only the *distinct-identifier* count separates a spray
+from a single-account brute force (one account failing from many IPs is a targeted attack and does
+**not** trip it). When it trips it engages a short, self-clearing instance-wide login throttle that
+refuses sources which have not recently authenticated — the botnet is stopped, while a returning
+legitimate user (their `(identifier, IP)` pair, or any source that recently authenticated) is
+exempt. The `auth_spray` condition then pages the operator through the normal alert channels. State
+is in-memory and per-process like the rest of the rate limiter; identifiers are never placed in the
+alert payload (counts only), and identifiers failing from many IPs are surfaced as a greylist
+*signal* but deliberately **not** auto-locked (they are usually the victims).
 
 **Delivery** reuses the existing paths:
 
@@ -317,4 +332,7 @@ Filtering the log stream on `operation=export:*` or `category=` covers every exp
 | `ALERT_BACKUP_MAX_AGE_HOURS` | `0` → `2 ×` restore-drill interval | `backup_stale` threshold, measured against the operator's own `make backup` heartbeat (issue #943) |
 | `ALERT_JOB_STALE_MULTIPLIER` | `3` | `job_stopped` fires at interval × this |
 | `ALERT_INCIDENT_QUIET_HOURS` | `6` | `integrations` recovery window |
-| `ALERT_BACKUP_ENABLED` / `ALERT_DB_INTEGRITY_ENABLED` / `ALERT_JOB_STOPPED_ENABLED` | on | per-condition switches for the conditions with no numeric knob |
+| `ALERT_BACKUP_ENABLED` / `ALERT_DB_INTEGRITY_ENABLED` / `ALERT_JOB_STOPPED_ENABLED` / `ALERT_AUTH_SPRAY_ENABLED` | on | per-condition switches for the conditions with no numeric knob |
+| `AUTH_SPRAY_ENABLED` | on | master switch for the instance-wide failed-auth velocity signal + throttle (issue #940) |
+| `AUTH_SPRAY_WINDOW_SECONDS` / `AUTH_SPRAY_FAILURE_THRESHOLD` / `AUTH_SPRAY_IDENTIFIER_THRESHOLD` | `60` / `60` / `15` | the sliding window and the failures-plus-distinct-identifiers pair that arms the signal |
+| `AUTH_SPRAY_THROTTLE_SECONDS` | `300` | how long a tripped signal refuses sources that have not recently authenticated |

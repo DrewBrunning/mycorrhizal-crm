@@ -938,3 +938,61 @@ func TestLoadConfig_MinClientVersionEnv(t *testing.T) {
 		assert.Equal(t, "0.6.0", LoadConfig().MinClientVersion)
 	})
 }
+
+// AuthSpray defaults and clamping (issue #940). The velocity signal is a
+// security control, so a missing/zero threshold resolves to the safe default
+// rather than tripping on the first failure or silently disabling detection.
+func TestLoadConfig_AuthSprayDefaults(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+
+	cfg := LoadConfig()
+	assert.True(t, cfg.AuthSprayEnabled)
+	assert.Equal(t, 60, cfg.AuthSprayWindowSeconds)
+	assert.Equal(t, 60, cfg.AuthSprayFailureThreshold)
+	assert.Equal(t, 15, cfg.AuthSprayIdentifierThreshold)
+	assert.Equal(t, 300, cfg.AuthSprayThrottleSeconds)
+	assert.True(t, cfg.AlertAuthSprayEnabled)
+}
+
+func TestLoadConfig_AuthSprayEnvOverrides(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+
+	t.Setenv("AUTH_SPRAY_ENABLED", "false")
+	t.Setenv("AUTH_SPRAY_WINDOW_SECONDS", "120")
+	t.Setenv("AUTH_SPRAY_FAILURE_THRESHOLD", "200")
+	t.Setenv("AUTH_SPRAY_IDENTIFIER_THRESHOLD", "25")
+	t.Setenv("AUTH_SPRAY_THROTTLE_SECONDS", "600")
+	t.Setenv("ALERT_AUTH_SPRAY_ENABLED", "false")
+
+	cfg := LoadConfig()
+	assert.False(t, cfg.AuthSprayEnabled)
+	assert.Equal(t, 120, cfg.AuthSprayWindowSeconds)
+	assert.Equal(t, 200, cfg.AuthSprayFailureThreshold)
+	assert.Equal(t, 25, cfg.AuthSprayIdentifierThreshold)
+	assert.Equal(t, 600, cfg.AuthSprayThrottleSeconds)
+	assert.False(t, cfg.AlertAuthSprayEnabled)
+}
+
+func TestLoadConfig_AuthSprayThresholdsClamped(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+
+	t.Setenv("AUTH_SPRAY_WINDOW_SECONDS", "0")
+	t.Setenv("AUTH_SPRAY_FAILURE_THRESHOLD", "-1")
+	t.Setenv("AUTH_SPRAY_IDENTIFIER_THRESHOLD", "0")
+	t.Setenv("AUTH_SPRAY_THROTTLE_SECONDS", "-5")
+
+	cfg := LoadConfig()
+	assert.Equal(t, 60, cfg.AuthSprayWindowSeconds)
+	assert.Equal(t, 60, cfg.AuthSprayFailureThreshold)
+	assert.Equal(t, 15, cfg.AuthSprayIdentifierThreshold)
+	assert.Equal(t, 300, cfg.AuthSprayThrottleSeconds)
+}
