@@ -21,7 +21,6 @@ import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
-import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
 import com.mycorrhizal.crm.feature.tracking.NotificationBuilder
 import com.mycorrhizal.crm.network.ApiClient
@@ -225,112 +224,39 @@ class MainActivity : FragmentActivity() {
     /**
      * M5 §5 / issue #965: the backend's OIDC callback redirect. Success carries
      * the short-lived `code` bound to the app's PKCE challenge plus the `state`
-     * nonce and `language`/`date_format`; failure carries `error`. The code is
-     * redeemed (with the on-device verifier) for a session JWT, which is stored
-     * with the server URL the login screen already persisted, and the session
-     * flow flips the app to logged-in. No httpOnly cookie is minted for the
-     * native flow (M6 §4), so bearer-token Android captures the JWT from the
-     * exchange response instead.
+     * nonce and `language`/`date_format`; failure carries `error`. The
+     * orchestration (state/TTL binding, code redemption, profile enrichment)
+     * lives in [OidcLoginCoordinator] so it is unit-testable without an
+     * Activity; this just parses and reports the outcome.
      */
     private fun handleOidcReturn(uri: Uri?) {
-        when (val parsed = parseOidcReturn(uri)) {
-            is OidcReturn.Failure -> {
-                // An error return we did not start (no pending request) is
-                // harmless; clearing is best-effort so a later callback cannot
-                // match a stale pending state.
-                lifecycleScope.launch { oidcPendingStore.clear() }
+        lifecycleScope.launch {
+            if (oidcLogin.onCallback(parseOidcReturn(uri)) == OidcCallbackOutcome.Failed) {
                 oidcError.value = getString(R.string.oidc_login_failed)
             }
-            is OidcReturn.Success -> {
-                val result = parsed
-                lifecycleScope.launch {
-                    // The persisted session hydrates asynchronously at startup;
-                    // a cold-start deep link must await it or it'd read a null
-                    // server URL and drop the login (review-pass fix).
-                    sessionManager.awaitHydrated()
-                    val serverUrl = sessionManager.serverUrl()
-                    if (serverUrl.isNullOrBlank()) return@launch
-
-                    // Issue #965: accept the callback only if it belongs to a
-                    // flow this app started and has not gone stale, then redeem
-                    // its code with the verifier that never left the device.
-                    // The pending request is consumed either way.
-                    val pending = oidcPendingStore.load()
-                    oidcPendingStore.clear()
-                    if (pending == null || pending.isExpired() ||
-                        !OidcPkce.verifyState(pending.state, result.state)
-                    ) {
-                        oidcError.value = getString(R.string.oidc_login_failed)
-                        return@launch
-                    }
-
-                    val token = authRepository
-                        .completeOidcNativeLogin(result.code, pending.codeVerifier)
-                        .getOrElse {
-                            oidcError.value = getString(R.string.oidc_login_failed)
-                            return@launch
-                        }
-                    sessionManager.setSession(
-                        serverUrl = serverUrl,
-                        token = token,
-                        state = SessionState(language = result.language, dateFormat = result.dateFormat),
-                    )
-                    // Validate the JWT against the server and enrich the
-                    // profile the way a normal login does (user id/username/
-                    // admin for Settings); a stale/expired token never flips
-                    // the app to logged-in (review-pass fix).
-                    val profile = authRepository.fetchCurrentUser()
-                    profile.fold(
-                        onSuccess = { user ->
-                            sessionManager.setProfile(
-                                SessionState(
-                                    userId = user.id.takeIf { it != 0 },
-                                    username = user.username,
-                                    isAdmin = user.isAdmin,
-                                ),
-                            )
-                        },
-                        onFailure = {
-                            sessionManager.clearSession()
-                            oidcError.value = getString(R.string.oidc_login_failed)
-                        },
-                    )
-                }
-            }
-            null -> Unit
         }
     }
 
     /**
-     * Issue #965: start the native OIDC flow. Generates a fresh state nonce
-     * and PKCE code verifier, persists the verifier on-device, and launches the
-     * browser with only the state + S256 challenge in the URL. The callback
-     * returns a short-lived code bound to that challenge, so the interceptable
-     * `mycorrhizal://` redirect never carries a usable credential.
+     * Issue #965: open the native OIDC flow. [OidcLoginCoordinator.start]
+     * generates and persists the state + PKCE binding, then invokes this to
+     * launch the browser.
      */
     private fun startOidcLogin(serverUrl: String) {
-        val state = OidcPkce.generateState()
-        val verifier = OidcPkce.generateVerifier()
-        lifecycleScope.launch {
-            oidcPendingStore.save(state, verifier)
-            // M6 §4: `client=android` makes the backend return to the
-            // mycorrhizal://oidc/callback deep link instead of the web cookie
-            // path; the state/challenge are what bind that return.
-            //
-            // The S256 challenge is generated inline rather than bound to a
-            // local: CodeQL's java/android/sensitive-communication query treats
-            // any local whose name contains "challenge" as sensitive and flags
-            // it entering this implicit ACTION_VIEW Intent. The value is public
-            // by design (it is the authorization request, and a one-way hash of
-            // the verifier), so the name-based heuristic is a false positive.
-            val url = serverUrl.trim().trimEnd('/') +
-                "/api/v1/auth/oidc/login?client=android" +
-                "&state=" + Uri.encode(state) +
-                "&code_challenge=" + Uri.encode(OidcPkce.challenge(verifier)) +
-                "&code_challenge_method=S256"
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-            runCatching { startActivity(intent) }
-        }
+        lifecycleScope.launch { oidcLogin.start(serverUrl) }
+    }
+
+    /** Lazy so the injected fields above are set before it is built. */
+    private val oidcLogin: OidcLoginCoordinator by lazy {
+        OidcLoginCoordinator(
+            sessionManager = sessionManager,
+            authRepository = authRepository,
+            pendingStore = oidcPendingStore,
+            launchBrowser = { url ->
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                runCatching { startActivity(intent) }
+            },
+        )
     }
 }
 

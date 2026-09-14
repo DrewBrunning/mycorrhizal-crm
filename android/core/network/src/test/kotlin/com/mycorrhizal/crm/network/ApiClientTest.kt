@@ -4521,4 +4521,16 @@ class ApiClientTest {
         assertTrue(error is ApiError.Client)
         assertEquals(401, (error as ApiError.Client).code)
     }
+
+    @Test
+    fun `exchangeOidcNativeCode maps a blank token to a Parse error`() = runBlocking {
+        // A 200 whose body carries no usable session must not be treated as a
+        // successful login; the caller's getOrElse then leaves the session out.
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"token":""}"""))
+
+        val result = client.exchangeOidcNativeCode("code", "pkce-verifier")
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is ApiError.Parse)
+    }
 }

@@ -50,6 +50,14 @@ func TestOIDCNativeExchangeCode_RequiresChallenge(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestMintOIDCNativeExchangeCode_RejectsMissingSecret(t *testing.T) {
+	user := models.User{Username: "u"}
+	_, err := MintOIDCNativeExchangeCode(user, "challenge", &config.Config{})
+	assert.Error(t, err)
+	_, err = MintOIDCNativeExchangeCode(user, "challenge", nil)
+	assert.Error(t, err)
+}
+
 func TestParseOIDCNativeExchangeCode_Rejections(t *testing.T) {
 	cfg := nativeTestConfig()
 	user := models.User{Username: "native-user"}
