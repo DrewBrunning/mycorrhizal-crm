@@ -54,7 +54,7 @@ const (
 // The operator owns that transport decision (docs/deployment.md), so CodeQL's
 // generic finding is a false positive here.
 func setOIDCCookie(c *gin.Context, cfg *config.Config, name, value, path string, maxAge int) {
-	// codeql[go/cookie-secure-not-set] — Secure follows config by design; see above.
+	// codeql[go/cookie-secure-not-set]
 	c.SetCookie(name, value, maxAge, path, cfg.CookieDomain, cfg.CookieSecure, true)
 }
 
