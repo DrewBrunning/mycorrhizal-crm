@@ -17,11 +17,17 @@ import (
 )
 
 // recordingDeliverer captures every dispatched alert instead of delivering it,
-// so the transition logic can be tested without real HTTP.
-type recordingDeliverer struct{ alerts []operationalAlert }
+// so the transition logic can be tested without real HTTP. deliver simulates
+// whether the dispatch was durably accepted (a channel up vs every channel
+// down); the default after reset is true.
+type recordingDeliverer struct {
+	alerts  []operationalAlert
+	deliver bool
+}
 
-func (r *recordingDeliverer) fn(_ context.Context, _ *gorm.DB, _ config.Config, a operationalAlert) {
+func (r *recordingDeliverer) fn(_ context.Context, _ *gorm.DB, _ config.Config, a operationalAlert) bool {
 	r.alerts = append(r.alerts, a)
+	return r.deliver
 }
 func (r *recordingDeliverer) reset() { r.alerts = nil }
 
@@ -66,7 +72,7 @@ func TestEvaluateAlerts(t *testing.T) {
 	models.RegisterAuditDB(db)
 	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
-	rec := &recordingDeliverer{}
+	rec := &recordingDeliverer{deliver: true}
 	origDeliverer := alertDeliverer
 	alertDeliverer = rec.fn
 	t.Cleanup(func() { alertDeliverer = origDeliverer })
@@ -85,6 +91,7 @@ func TestEvaluateAlerts(t *testing.T) {
 			require.NoError(t, db.Exec("DELETE FROM "+table).Error)
 		}
 		rec.reset()
+		rec.deliver = true
 		diskPct = 10
 	}
 
@@ -133,6 +140,49 @@ func TestEvaluateAlerts(t *testing.T) {
 		row3, _ := alertStateFor(t, db, alertConditionKeyBackup)
 		assert.Equal(t, models.AlertStateOK, row3.State)
 		assert.Equal(t, 0, row3.FailureCount)
+	})
+
+	t.Run("an undelivered raise is retried until a channel accepts it", func(t *testing.T) {
+		reset(t)
+		baseline(t)
+		now := time.Now()
+
+		// Every channel is down at the transition instant (issue #973).
+		rec.deliver = false
+		seedEvent(t, db, logger.ComponentBackup, models.SysEventBackupFailed, now.Add(-1*time.Hour), "snapshot failed")
+		RunAlertEvaluation(ctx, db, cfg)
+		require.Len(t, rec.alerts, 1, "the raise is attempted once")
+		assert.True(t, rec.alerts[0].firing)
+
+		row, ok := alertStateFor(t, db, alertConditionKeyBackup)
+		require.True(t, ok)
+		assert.Equal(t, models.AlertStateAlerting, row.State)
+		assert.True(t, row.PendingNotify, "a raise no channel accepted must stay pending")
+		assert.Nil(t, row.LastNotifiedAt, "an undelivered raise records no notification time")
+
+		// The next evaluation re-attempts the raise even though the state did
+		// not change — the bug was that this path was a permanent no-op.
+		rec.reset()
+		RunAlertEvaluation(ctx, db, cfg)
+		require.Len(t, rec.alerts, 1, "the still-undelivered raise is retried")
+		assert.True(t, rec.alerts[0].firing)
+		assert.WithinDuration(t, row.Since, rec.alerts[0].since, 0, "the retry reuses the incident start")
+		row2, _ := alertStateFor(t, db, alertConditionKeyBackup)
+		assert.True(t, row2.PendingNotify, "still pending after another failed retry")
+
+		// A channel recovers: the retry lands and clears the marker.
+		rec.deliver = true
+		rec.reset()
+		RunAlertEvaluation(ctx, db, cfg)
+		require.Len(t, rec.alerts, 1)
+		row3, _ := alertStateFor(t, db, alertConditionKeyBackup)
+		assert.False(t, row3.PendingNotify, "a delivered raise clears the pending marker")
+		assert.NotNil(t, row3.LastNotifiedAt)
+
+		// The storm guarantee still holds once delivered.
+		rec.reset()
+		RunAlertEvaluation(ctx, db, cfg)
+		assert.Empty(t, rec.alerts, "a delivered ongoing alert must not keep re-notifying")
 	})
 
 	t.Run("sync needs the consecutive-failure threshold before it fires", func(t *testing.T) {
@@ -268,4 +318,33 @@ func TestEvaluateAlerts(t *testing.T) {
 		_, ok := alertStateFor(t, db, alertConditionKeyBackup)
 		assert.False(t, ok, "the evaluator must not touch alert_states when disabled")
 	})
+}
+
+// TestAlertingDeliveryBookkeepingErrors covers the failure branches of the
+// issue #973 bookkeeping: a failed admin lookup must not be mistaken for a
+// delivered alert, a failed webhook broadcast queues nothing, and a failed
+// pending-marker write is logged rather than fatal (leaving the marker set is
+// the safe direction — the raise is simply retried).
+func TestAlertingDeliveryBookkeepingErrors(t *testing.T) {
+	db := dbtest.New(t)
+	models.RegisterAuditDB(db)
+	t.Cleanup(func() { models.RegisterAuditDB(nil) })
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	ctx := context.Background()
+	alert := operationalAlert{
+		conditionKey: alertConditionKeyBackup,
+		title:        "Backup",
+		firing:       true,
+		since:        time.Now(),
+	}
+
+	assert.False(t, deliverOperationalAlert(ctx, db, config.Config{}, alert),
+		"a failed admin lookup with no queued webhook is not a delivered alert")
+	assert.Zero(t, triggerWebhooksForAllUsers(ctx, db, config.Config{}, EventAlertRaised, map[string]string{}),
+		"a failed webhook broadcast queues nothing")
+	assert.NotPanics(t, func() { markAlertNotified(ctx, db, alertConditionKeyBackup, time.Now()) })
 }

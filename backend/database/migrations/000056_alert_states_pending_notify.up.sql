@@ -1,0 +1,17 @@
+-- Close the lost-raise race in the alert evaluator (issue #973).
+--
+-- transitionAlertState persisted the alerting state first, then attempted
+-- delivery exactly once. Delivery is best-effort per channel (the per-admin
+-- webhook fan-out only logs a failure), and nothing fed the outcome back into
+-- alert_states: every later evaluation saw prev == want == alerting, took the
+-- no-op path, and never re-sent. An alert raised while every channel was
+-- momentarily unreachable was lost forever — the operator's first (and only)
+-- message about it was the eventual "recovered".
+--
+--   * pending_notify -- 1 while an `alerting` condition's raise has not yet
+--     been accepted by any delivery path, so the next evaluation re-attempts
+--     it. Set when a raise is persisted, cleared once a dispatch reports a
+--     durable enqueue (webhook) or a successful personal-channel send. A `0`
+--     default is correct for every existing row: neither `alerting` rows that
+--     were notified under the old behavior nor `ok` rows have a pending raise.
+ALTER TABLE alert_states ADD COLUMN pending_notify INTEGER NOT NULL DEFAULT 0;

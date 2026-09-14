@@ -244,6 +244,16 @@ when) is persisted in `alert_states`, one row per condition. A dispatch happens 
 freshly-computed verdict differs from the stored one, so a condition that keeps failing produces
 one alert, not one per evaluation.
 
+**Delivery is part of the transition, not a fire-and-forget side effect** (issue
+[#973](https://github.com/DrewBrunning/mycorrhizal-crm/issues/973)). The state is persisted first,
+then the notification is dispatched, and the dispatch reports back whether it was durably handled —
+a subscriber webhook was enqueued (durable; `webhook_retries` replays it), a personal channel
+accepted the message, or there was no channel to attempt. A raise that no path accepted leaves
+`alert_states.pending_notify` set, and the **next evaluation re-attempts it** until it lands or the
+condition clears. So an alert raised while every channel was briefly unreachable is no longer lost:
+the operator is never told only "recovered" about an incident they were never paged about. Once the
+raise is delivered, an ongoing incident stays silent again (the storm guarantee is unchanged).
+
 **Conditions** (each individually configurable; a `0` threshold disables that condition):
 
 | condition | fires when | recovers when |
