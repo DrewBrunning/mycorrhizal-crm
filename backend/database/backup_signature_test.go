@@ -225,6 +225,94 @@ func TestVerifyBackupSetDoesNotMutateSnapshot(t *testing.T) {
 	assert.NoFileExists(t, snap+"-shm")
 }
 
+// TestSignBackupDirectorySnapshotFails covers the hashing failure path (a
+// directory passes os.Stat but cannot be read as a file).
+func TestSignBackupDirectorySnapshotFails(t *testing.T) {
+	t.Parallel()
+	err := database.SignBackup(t.TempDir(), testSigningKey)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "hash")
+}
+
+// TestSignBackupUnreadableSnapshotFails covers the os.Open failure inside
+// hashing (stat succeeds, read permission does not).
+func TestSignBackupUnreadableSnapshotFails(t *testing.T) {
+	t.Parallel()
+	if os.Geteuid() == 0 {
+		t.Skip("permission-based test is meaningless as root")
+	}
+	p := writeStandaloneFile(t, "snap.db", []byte("snapshot"))
+	require.NoError(t, os.Chmod(p, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(p, 0o644) })
+
+	err := database.SignBackup(p, testSigningKey)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "open")
+}
+
+// TestSignBackupManifestCreateError covers the non-EEXIST create failure (an
+// unwritable output directory).
+func TestSignBackupManifestCreateError(t *testing.T) {
+	t.Parallel()
+	if os.Geteuid() == 0 {
+		t.Skip("permission-based test is meaningless as root")
+	}
+	dir := filepath.Join(t.TempDir(), "ro")
+	require.NoError(t, os.Mkdir(dir, 0o750))
+	p := filepath.Join(dir, "snap.db")
+	require.NoError(t, os.WriteFile(p, []byte("snapshot"), 0o640))
+	require.NoError(t, os.Chmod(dir, 0o500))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o750) })
+
+	err := database.SignBackup(p, testSigningKey)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "create manifest")
+}
+
+// TestReadBackupManifestReadError covers a manifest that exists but cannot be
+// read (a symlink loop returns ELOOP, not ENOENT).
+func TestReadBackupManifestReadError(t *testing.T) {
+	t.Parallel()
+	p := writeStandaloneFile(t, "snap.db", []byte("snapshot"))
+	require.NoError(t, os.Symlink(database.ManifestPath(p), database.ManifestPath(p)))
+
+	_, err := database.ReadBackupManifest(p)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "read manifest")
+}
+
+// TestVerifyBackupSignatureMalformedHMAC covers the signature-decode failure:
+// a structurally valid manifest whose hmac field is not base64.
+func TestVerifyBackupSignatureMalformedHMAC(t *testing.T) {
+	t.Parallel()
+	p := writeStandaloneFile(t, "snap.db", []byte("snapshot"))
+	writeManifest(t, p, database.BackupManifest{
+		Version:   1,
+		Algorithm: "hmac-sha256",
+		CreatedAt: "2026-01-01T00:00:00Z",
+		SizeBytes: int64(len("snapshot")),
+		SHA256:    "00",
+		HMAC:      "!!!not-base64!!!",
+	})
+
+	err := database.VerifyBackupSignature(p, testSigningKey)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "malformed signature")
+}
+
+// TestVerifyBackupSignatureMissingSnapshotAfterSigning covers the stat failure
+// after the manifest has already authenticated.
+func TestVerifyBackupSignatureMissingSnapshotAfterSigning(t *testing.T) {
+	t.Parallel()
+	p := writeStandaloneFile(t, "snap.db", []byte("snapshot"))
+	require.NoError(t, database.SignBackup(p, testSigningKey))
+	require.NoError(t, os.Remove(p))
+
+	err := database.VerifyBackupSignature(p, testSigningKey)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "stat snapshot")
+}
+
 // writeManifest rewrites the manifest beside p, bypassing SignBackup so the
 // tests can forge fields.
 func writeManifest(t *testing.T, snapshotPath string, m database.BackupManifest) {

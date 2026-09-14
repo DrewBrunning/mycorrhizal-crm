@@ -28,7 +28,7 @@ import (
 // path) so the operator sees that the freshness signal is stale.
 func RecordOperatorBackupCompleted(dbPath, snapshotPath string) error {
 	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
-	if err != nil {
+	if err != nil { // # pragma: no cover -- sql.Open is lazy; a file DSN does not fail here (see IntegrityCheck / premigration_backup.go)
 		return fmt.Errorf("record backup heartbeat: open %q: %w", dbPath, err)
 	}
 	defer sqlDB.Close()

@@ -118,6 +118,51 @@ func TestRunPositionalArgOverridesBackupPath(t *testing.T) {
 	assert.NoFileExists(t, envPath)
 }
 
+func TestRunMalformedSigningKeyConfigFails(t *testing.T) {
+	dbPath := newMigratedDB(t)
+	setSigningEnv(t, dbPath)
+	t.Setenv("DATA_ENCRYPTION_KEY", "not-base64!!")
+	t.Setenv("BACKUP_PATH", filepath.Join(filepath.Dir(dbPath), "snap.db"))
+
+	var out, errOut bytes.Buffer
+	code := run(nil, &out, &errOut)
+
+	assert.Equal(t, 2, code)
+	assert.Contains(t, errOut.String(), "DATA_ENCRYPTION_KEY")
+}
+
+// TestRunSignBackupFailureIsReported covers the post-snapshot signing failure:
+// a snapshot is written but the manifest already exists, so the command fails
+// rather than reporting success on an unauthenticated backup.
+func TestRunSignBackupFailureIsReported(t *testing.T) {
+	dbPath := newMigratedDB(t)
+	setSigningEnv(t, dbPath)
+	backupPath := filepath.Join(filepath.Dir(dbPath), "snap.db")
+	t.Setenv("BACKUP_PATH", backupPath)
+	require.NoError(t, os.WriteFile(database.ManifestPath(backupPath), []byte("pre-existing"), 0o600))
+
+	var out, errOut bytes.Buffer
+	code := run(nil, &out, &errOut)
+
+	assert.Equal(t, 1, code)
+	assert.Contains(t, errOut.String(), "refusing to overwrite")
+}
+
+// TestRunDefaultOutputPathWhenUnset covers the no-argument, no-BACKUP_PATH
+// branch: DefaultBackupPath's timestamped sibling.
+func TestRunDefaultOutputPathWhenUnset(t *testing.T) {
+	dbPath := newMigratedDB(t)
+	setSigningEnv(t, dbPath) // leaves BACKUP_PATH empty
+
+	var out, errOut bytes.Buffer
+	code := run(nil, &out, &errOut)
+	require.Equal(t, 0, code, "stderr: %s", errOut.String())
+
+	matches, err := filepath.Glob(filepath.Join(filepath.Dir(dbPath), "src-*.db"))
+	require.NoError(t, err)
+	assert.NotEmpty(t, matches, "a timestamped sibling snapshot must be written")
+}
+
 func TestRunTooManyArgsIsAUsageError(t *testing.T) {
 	var out, errOut bytes.Buffer
 	code := run([]string{"a", "b"}, &out, &errOut)

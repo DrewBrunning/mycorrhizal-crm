@@ -134,11 +134,11 @@ func SignBackup(snapshotPath string, signingKey []byte) error {
 		}
 		return fmt.Errorf("sign backup: create manifest %q: %w", manifestPath, err)
 	}
-	if _, err := f.Write(data); err != nil {
+	if _, err := f.Write(data); err != nil { // # pragma: no cover -- a short write to a freshly-created local manifest needs an I/O fault, not a reachable state
 		_ = f.Close()
 		return fmt.Errorf("sign backup: write manifest %q: %w", manifestPath, err)
 	}
-	if err := f.Close(); err != nil {
+	if err := f.Close(); err != nil { // # pragma: no cover -- see the write-error note above
 		return fmt.Errorf("sign backup: close manifest %q: %w", manifestPath, err)
 	}
 	return nil
@@ -198,7 +198,7 @@ func VerifyBackupSignature(snapshotPath string, signingKey []byte) error {
 		return fmt.Errorf("verify backup signature: snapshot %q is %d bytes, manifest says %d (tampered or substituted)", snapshotPath, fi.Size(), m.SizeBytes)
 	}
 	digest, err := sha256OfFile(snapshotPath)
-	if err != nil {
+	if err != nil { // # pragma: no cover -- os.Stat and the size check above already succeeded; only an I/O fault reaches here
 		return fmt.Errorf("verify backup signature: %w", err)
 	}
 	if subtle.ConstantTimeCompare([]byte(digest), []byte(m.SHA256)) != 1 {
