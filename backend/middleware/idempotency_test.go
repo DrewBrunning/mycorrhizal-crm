@@ -394,7 +394,9 @@ func TestIdempotency_ExistingKeyReadError_500(t *testing.T) {
 // UPDATE branch: a 2xx whose outcome cannot be persisted (the underlying DB is
 // closed by the handler mid-request, after the claim succeeded) is logged, not
 // surfaced to the client as an error — the handler already produced its
-// answer.
+// answer. The follow-up terminal-mark write cannot reach the closed DB either,
+// so that failure is logged too (issue #995); the row stays pending and the
+// bounded pending read path refuses to re-run it.
 func TestIdempotency_ResponseStoreUpdateError_Logged(t *testing.T) {
 	r, db, _ := idempotencyTestRouter(t)
 	sqlDB, err := db.DB()
@@ -414,6 +416,7 @@ func TestIdempotency_ResponseStoreUpdateError_Logged(t *testing.T) {
 
 	require.Equal(t, http.StatusCreated, w.Code, "the handler's own 2xx must still reach the client")
 	assert.Contains(t, buf.String(), "idempotency: failed to store response for replay")
+	assert.Contains(t, buf.String(), "idempotency: failed to mark key terminal after response-store failure")
 }
 
 // TestIdempotency_PendingRowDeleteError_Logged pins the pending-row DELETE
@@ -467,4 +470,153 @@ func TestIdempotency_PendingRow_409InProgress(t *testing.T) {
 	assertIdempotencyErrorCode(t, w, "IDEMPOTENCY_IN_PROGRESS")
 	assert.EqualValues(t, 0, atomic.LoadInt64(se), "an in-progress key must not re-run the handler")
 	assert.Empty(t, w.Header().Get("Idempotency-Replayed"))
+}
+
+// --- issue #995: response-store failure must not wedge a key, then double-run
+
+// TestIdempotency_ResponseStoreFailure_RetryIsTerminalNotRerun is the #995
+// regression test. Before the fix, a 2xx whose response-store UPDATE failed left
+// the key state=pending, so every retry got 409 IDEMPOTENCY_IN_PROGRESS until
+// the TTL purge — after which a retry slipped through and re-ran the handler,
+// double-applying the write the first request had already committed.
+//
+// The store UPDATE is failed with a GORM update callback scoped to the
+// idempotency_keys table, so the row is still reachable for the fallback
+// terminal-mark write (a raw UPDATE that bypasses the callback). The retry must
+// be told the outcome is terminal and must not run the handler again.
+func TestIdempotency_ResponseStoreFailure_RetryIsTerminalNotRerun(t *testing.T) {
+	r, db, se := idempotencyTestRouter(t)
+	var failStore atomic.Bool
+	failStore.Store(true)
+	const cb = "idempotency_test_fail_store_update"
+	require.NoError(t, db.Callback().Update().Before("gorm:update").
+		Register(cb, func(tx *gorm.DB) {
+			if tx.Statement.Table == "idempotency_keys" && failStore.Load() {
+				tx.AddError(errors.New("simulated response-store failure"))
+			}
+		}))
+	t.Cleanup(func() { _ = db.Callback().Update().Remove(cb) })
+
+	do := func() *httptest.ResponseRecorder {
+		req, _ := http.NewRequest("POST", "/api/v1/things", bytes.NewReader([]byte(`{"n":1}`)))
+		req.Header.Set("Idempotency-Key", "store-fail-retry")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		return w
+	}
+
+	first := do()
+	require.Equal(t, http.StatusCreated, first.Code, "the handler's own 2xx still reaches the client")
+
+	// The key is terminal now, not wedged pending: the retry is refused with the
+	// terminal code and the handler does not run again.
+	second := do()
+	require.Equal(t, http.StatusConflict, second.Code, second.Body.String())
+	assertIdempotencyErrorCode(t, second, "IDEMPOTENCY_RESULT_UNAVAILABLE")
+	assert.Empty(t, second.Header().Get("Idempotency-Replayed"))
+
+	var notes, keys int64
+	require.NoError(t, db.Model(&models.Note{}).Count(&notes).Error)
+	require.NoError(t, db.Model(&models.IdempotencyKey{}).Count(&keys).Error)
+	assert.EqualValues(t, 1, notes, "the store failure must not lead to a second create")
+	assert.EqualValues(t, 1, atomic.LoadInt64(se), "the handler side effect fired exactly once")
+	assert.EqualValues(t, 1, keys)
+
+	var stored models.IdempotencyKey
+	require.NoError(t, db.First(&stored).Error)
+	assert.Equal(t, models.IdempotencyStateCompleted, stored.State)
+	assert.EqualValues(t, 0, stored.ResponseStatus, "the marker stores no replayable response")
+}
+
+// TestIdempotency_StalePendingRow_Terminal pins the bounded pending timeout:
+// a claimed key whose response store never landed and whose terminal-mark write
+// also failed (or whose process died) stays state=pending forever. Past
+// idempotencyPendingTimeout it is no longer plausibly in flight, so a retry must
+// be refused as terminal (never 409 "retry shortly" until the TTL purge, and
+// never a re-run).
+func TestIdempotency_StalePendingRow_Terminal(t *testing.T) {
+	r, db, se := idempotencyTestRouter(t)
+	var user models.User
+	require.NoError(t, db.Where("username = ?", "idem").First(&user).Error)
+
+	body := []byte(`{"n":1}`)
+	key := "stale-pending-key"
+	stale := time.Now().UTC().Add(-2 * idempotencyPendingTimeout)
+	require.NoError(t, db.Create(&models.IdempotencyKey{
+		UserID: user.ID, Key: key, Method: "POST", Path: "/api/v1/things",
+		RequestFingerprint: fingerprintRequest("POST", "/api/v1/things", body),
+		State:              models.IdempotencyStatePending,
+		CreatedAt:          stale, UpdatedAt: stale,
+	}).Error)
+
+	req, _ := http.NewRequest("POST", "/api/v1/things", bytes.NewReader(body))
+	req.Header.Set("Idempotency-Key", key)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+	assertIdempotencyErrorCode(t, w, "IDEMPOTENCY_RESULT_UNAVAILABLE")
+	assert.EqualValues(t, 0, atomic.LoadInt64(se), "a stale pending key must not re-run the handler")
+}
+
+// TestIdempotency_CompletedWithoutStoredResponse_Terminal pins the read side of
+// the terminal-but-unreplayable marker directly (state=completed,
+// response_status=0): a retry is refused rather than replaying a zero status or
+// re-running the handler.
+func TestIdempotency_CompletedWithoutStoredResponse_Terminal(t *testing.T) {
+	r, db, se := idempotencyTestRouter(t)
+	var user models.User
+	require.NoError(t, db.Where("username = ?", "idem").First(&user).Error)
+
+	body := []byte(`{"n":1}`)
+	key := "completed-no-response"
+	now := time.Now().UTC()
+	require.NoError(t, db.Create(&models.IdempotencyKey{
+		UserID: user.ID, Key: key, Method: "POST", Path: "/api/v1/things",
+		RequestFingerprint: fingerprintRequest("POST", "/api/v1/things", body),
+		State:              models.IdempotencyStateCompleted, ResponseStatus: 0,
+		CreatedAt: now, UpdatedAt: now,
+	}).Error)
+
+	req, _ := http.NewRequest("POST", "/api/v1/things", bytes.NewReader(body))
+	req.Header.Set("Idempotency-Key", key)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+	assertIdempotencyErrorCode(t, w, "IDEMPOTENCY_RESULT_UNAVAILABLE")
+	assert.Empty(t, w.Header().Get("Idempotency-Replayed"))
+	assert.EqualValues(t, 0, atomic.LoadInt64(se), "a completed/unreplayable key must not re-run the handler")
+}
+
+// TestIdempotency_TooLarge2xx_TerminalNotRerun pins the oversized-response
+// branch: a 2xx too large to cache must not drop the key and let a retry re-run
+// the handler (which already committed); it is marked terminal instead.
+func TestIdempotency_TooLarge2xx_TerminalNotRerun(t *testing.T) {
+	r, db, _ := idempotencyTestRouter(t)
+	var runs int64
+	r.POST("/api/v1/big", func(c *gin.Context) {
+		atomic.AddInt64(&runs, 1)
+		c.Data(http.StatusCreated, "application/json", bytes.Repeat([]byte("x"), maxCachedResponseBytes+1))
+	})
+	do := func() *httptest.ResponseRecorder {
+		req, _ := http.NewRequest("POST", "/api/v1/big", bytes.NewReader([]byte(`{}`)))
+		req.Header.Set("Idempotency-Key", "big-key")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		return w
+	}
+
+	require.Equal(t, http.StatusCreated, do().Code)
+
+	second := do()
+	require.Equal(t, http.StatusConflict, second.Code, second.Body.String())
+	assertIdempotencyErrorCode(t, second, "IDEMPOTENCY_RESULT_UNAVAILABLE")
+	assert.EqualValues(t, 1, atomic.LoadInt64(&runs), "an uncacheable 2xx must not re-run the handler")
+
+	var stored models.IdempotencyKey
+	require.NoError(t, db.First(&stored).Error)
+	assert.Equal(t, models.IdempotencyStateCompleted, stored.State)
+	assert.EqualValues(t, 0, stored.ResponseStatus)
+	assert.Empty(t, stored.ResponseBody)
 }

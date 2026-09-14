@@ -783,8 +783,10 @@ design is ADR-0010 / CON-04, issue #479).
 - **What it contains**: the opaque client key, the request `method` + route template `path`, a
   SHA-256 `request_fingerprint` over method+path+body (to reject a key reused for a *different*
   request), a `state` (`pending` → `completed`), and — on a 2xx — the stored `response_status` and
-  `response_body` that later retries replay verbatim. `response_body` is a copy of the handler's
-  response, so for a create it holds the serialized new entity (the same class of copy as a
+  `response_body` that later retries replay verbatim. A `completed` row with `response_status = 0` is
+  the terminal-but-unreplayable marker: the handler's write committed but the response could not be
+  stored, so a retry is refused rather than re-run (issue #995). `response_body` is a copy of the
+  handler's response, so for a create it holds the serialized new entity (the same class of copy as a
   `webhook_deliveries` payload, §18). No credentials; nothing the caller did not already send or
   receive.
 - **Retention**: `IDEMPOTENCY_KEY_RETENTION_HOURS` (default **24**, `config/config.go`), anchored on
@@ -805,7 +807,10 @@ design is ADR-0010 / CON-04, issue #479).
   (`TestPurgeExpiredIdempotencyKeys_RemovesOnlyExpired`,
   `TestPurgeExpiredIdempotencyKeys_NonPositiveRetentionDisables`,
   `TestPurgeExpiredIdempotencyKeysScheduled_JobLockGuards`),
-  `backend/middleware/idempotency_test.go` (claim/replay/422/concurrent),
+  `backend/middleware/idempotency_test.go` (claim/replay/422/concurrent, plus
+  `TestIdempotency_ResponseStoreFailure_RetryIsTerminalNotRerun`, `TestIdempotency_StalePendingRow_Terminal`,
+  `TestIdempotency_CompletedWithoutStoredResponse_Terminal`, `TestIdempotency_TooLarge2xx_TerminalNotRerun` —
+  issue #995's terminal-but-unreplayable cases),
   `backend/controllers/delete_cascade_coverage_test.go` (`idempotency_keys` seeded + swept in the
   DeleteUser sweep, bucket `go-cascade-user`).
 

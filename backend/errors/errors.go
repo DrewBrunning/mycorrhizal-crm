@@ -78,6 +78,12 @@ const (
 	// retry cannot be served yet (CON-04, issue #459). 409 — the client
 	// retries after a short delay.
 	ErrCodeIdempotencyInProgress = "IDEMPOTENCY_IN_PROGRESS"
+	// ErrCodeIdempotencyResultUnavailable signals that the first request for
+	// this Idempotency-Key already ran to completion (its write committed)
+	// but its response could not be stored for replay, so this retry must
+	// NOT re-run the handler — it would double-apply (issue #995, CON-04).
+	// 409 — terminal, and distinct from the retryable IN_PROGRESS.
+	ErrCodeIdempotencyResultUnavailable = "IDEMPOTENCY_RESULT_UNAVAILABLE"
 	// ErrCodeGone signals that a requested resource (e.g. a change-feed cursor
 	// older than the purge retention window) no longer exists and the client
 	// must recover differently (full resync) — RFC 9110's 410 Gone.
@@ -233,6 +239,18 @@ func ErrIdempotencyKeyReused() *AppError {
 func ErrIdempotencyInProgress() *AppError {
 	return NewError(ErrCodeIdempotencyInProgress,
 		"a request with this Idempotency-Key is still being processed; retry shortly",
+		http.StatusConflict)
+}
+
+// ErrIdempotencyResultUnavailable returns a 409 when the first request for an
+// Idempotency-Key already ran to completion but its response was not stored for
+// replay (issue #995, CON-04, ADR 0010): the write committed, the response
+// store failed, so a retry must not re-run the handler. This is terminal, unlike
+// ErrIdempotencyInProgress — retrying the same key cannot succeed, and the
+// client should treat the operation as applied rather than resubmit it.
+func ErrIdempotencyResultUnavailable() *AppError {
+	return NewError(ErrCodeIdempotencyResultUnavailable,
+		"a previous request with this Idempotency-Key completed but its response is not available for replay; do not resubmit it with this key",
 		http.StatusConflict)
 }
 
