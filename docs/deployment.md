@@ -48,9 +48,35 @@ server {
         proxy_pass http://localhost:7300;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto https;
+        # Preserve the real client address for rate limiting and logging.
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 }
 ```
+
+### Trusted proxies (`TRUSTED_PROXIES`)
+
+Client IPs are derived from the `X-Forwarded-For` / `X-Real-IP` headers only for peers
+the backend trusts. The bundled nginx proxies over loopback, so when `TRUSTED_PROXIES`
+is unset the backend trusts `127.0.0.1/32` and `::1/128` and reads the real client from
+nginx's forwarded headers automatically — nothing extra is required for the shipped
+all-in-one setup.
+
+An **external** reverse proxy that reaches the backend directly (bypassing the bundled
+nginx) is not on loopback, so add its address (or network) to `TRUSTED_PROXIES`. If you
+do not, every client resolves to the proxy's own address and shares a single rate-limit
+bucket — one busy page load can then 429 everyone.
+
+```sh
+# .env — only the proxy hop(s) that actually connect to this backend
+TRUSTED_PROXIES=10.0.0.5,10.0.0.0/24
+```
+
+Never list a catch-all (`0.0.0.0/0` or `::/0`): that trusts a client-supplied
+`X-Forwarded-For`, which lets any caller forge its address and bypass the IP rate
+limiter. The server refuses to boot with such a value. A release deployment that leaves
+`TRUSTED_PROXIES` empty logs a startup warning naming this trade-off.
 
 ## Production Environment
 
@@ -61,6 +87,7 @@ Set these variables in `.env` when running over HTTPS:
 | `FRONTEND_URL` | Exact origin, e.g. `https://mycorrhizal.example.com` (never `*`) |
 | `COOKIE_SECURE` | `true` |
 | `COOKIE_DOMAIN` | Your domain |
+| `TRUSTED_PROXIES` | The address(es) of the reverse proxy hop(s) that connect to the backend, comma-separated (IPs or CIDRs). Leave unset for the bundled all-in-one nginx (loopback is trusted by default); set it when an external proxy reaches the backend directly, or every client shares one rate-limit bucket. Never `0.0.0.0/0` — the server refuses it. See [Trusted proxies](#trusted-proxies-trusted_proxies). |
 | `JWT_SECRET_KEY` | Generate with `openssl rand -base64 32`; the server refuses to start with the `.env.example` placeholder or a weak secret |
 | `WEBHOOK_BLOCK_PRIVATE_URLS`, `CALDAV_BLOCK_PRIVATE_URLS`, `IMMICH_BLOCK_PRIVATE_URLS`, `PAPERLESS_BLOCK_PRIVATE_URLS`, `SEAFILE_BLOCK_PRIVATE_URLS`, `WEBDAV_BLOCK_PRIVATE_URLS`, `MONICA_BLOCK_PRIVATE_URLS`, `OIDC_BLOCK_PRIVATE_URLS` | `true` on any instance reachable from the internet or hosting accounts you do not personally vet. These default to `false` (trusted-LAN assumption); with them off, an authenticated user's webhook/integration URL can reach loopback, LAN hosts, and `169.254.169.254`. See the [SSRF hardening row](security/deployment-baseline.html#recommended-baseline) in the security baseline. |
 
