@@ -47,7 +47,32 @@ func (a *AccountRateLimiter) IsLoginLocked(identifier, ip string) (bool, int) {
 		}
 	}
 
+	// Instance-wide spray throttle (issue #940): while the velocity signal is
+	// tripped, only sources that have recently authenticated get through.
+	if tLocked, tSecs := a.authThrottleLocked(identifier, ip, now); tLocked {
+		locked = true
+		if tSecs > secs {
+			secs = tSecs
+		}
+	}
+
 	return locked, secs
+}
+
+// authThrottleLocked reports whether the instance-wide spray throttle refuses
+// this attempt. A source is exempt when the (identifier, ip) pair recently
+// authenticated for the identifier, or when the IP recently authenticated for
+// any identifier (the instance-wide known-good set) — so the distributed
+// signal stops the botnet without denying the returning legitimate user.
+// Caller holds a.mu (read or write).
+func (a *AccountRateLimiter) authThrottleLocked(identifier, ip string, now time.Time) (bool, int) {
+	if a.velocity == nil || !a.velocity.throttled() {
+		return false, 0
+	}
+	if a.knownGoodIPLocked(identifier, ip, now) || a.globalKnownGoodIPLocked(ip, now) {
+		return false, 0
+	}
+	return true, a.velocity.remaining()
 }
 
 // RecordLoginFailure records a failed login for (identifier, ip): against the
@@ -62,12 +87,21 @@ func (a *AccountRateLimiter) RecordLoginFailure(identifier, ip string) (bool, in
 	now := time.Now()
 	pairLocked, pairSecs := recordExpBackoffLocked(a.accounts, LoginKey(identifier, ip), now)
 	a.recordGlobalFailureLocked(identifier, now)
+	// Feed the instance-wide velocity signal (issue #940). One failure is
+	// counted once, across every identifier, regardless of source.
+	a.velocity.record(identifier, ip)
 
 	locked, secs := pairLocked, pairSecs
 	if gLocked, gSecs := lockedForLocked(a.global, identifier, now); gLocked && !a.knownGoodIPLocked(identifier, ip, now) {
 		locked = true
 		if gSecs > secs {
 			secs = gSecs
+		}
+	}
+	if tLocked, tSecs := a.authThrottleLocked(identifier, ip, now); tLocked {
+		locked = true
+		if tSecs > secs {
+			secs = tSecs
 		}
 	}
 	return locked, secs
@@ -89,7 +123,27 @@ func (a *AccountRateLimiter) RecordLoginSuccess(identifier, ip string) {
 		ips = make(map[string]time.Time)
 		a.knownGoodIPs[identifier] = ips
 	}
-	ips[ip] = time.Now()
+	now := time.Now()
+	ips[ip] = now
+	// The source is also known-good instance-wide, so the spray throttle
+	// (issue #940) lets it through even for a different identifier.
+	a.knownGoodGlobalIPs[ip] = now
+}
+
+// globalKnownGoodIPLocked reports whether ip authenticated for any identifier
+// within KnownGoodIPTTL. Caller holds a.mu (read or write).
+func (a *AccountRateLimiter) globalKnownGoodIPLocked(ip string, now time.Time) bool {
+	seen, ok := a.knownGoodGlobalIPs[ip]
+	return ok && now.Sub(seen) <= KnownGoodIPTTL
+}
+
+// AuthVelocity returns the current instance-wide failed-auth velocity signal
+// (issue #940). It takes the write lock because pruning mutates the window
+// maps; it is only called by the scheduled alert evaluator, never the hot path.
+func (a *AccountRateLimiter) AuthVelocity() AuthVelocitySnapshot {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.velocity.snapshot()
 }
 
 // recordGlobalFailureLocked bumps the per-identifier failure count across all
@@ -130,4 +184,12 @@ func (a *AccountRateLimiter) KnownGoodIPCount(identifier string) int {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	return len(a.knownGoodIPs[identifier])
+}
+
+// GlobalKnownGoodIPCount exposes the instance-wide known-good IP set for tests
+// and monitoring.
+func (a *AccountRateLimiter) GlobalKnownGoodIPCount() int {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return len(a.knownGoodGlobalIPs)
 }

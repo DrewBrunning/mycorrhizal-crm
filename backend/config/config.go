@@ -94,19 +94,33 @@ type Config struct {
 	// people share one egress IP (a household behind NAT, or a reverse proxy
 	// without correct X-Forwarded-For) shares a single bucket between them.
 	// Defaults preserve the previous hardcoded behaviour exactly.
-	APIRateLimitInterval          time.Duration // Sustained refill interval, one token per interval
-	APIRateLimitBurst             int           // Bucket size, i.e. the largest instantaneous burst allowed
-	ImmichSyncIntervalHours       int           // Interval in hours for the scheduled Immich enrichment sync (T16)
-	ImmichBlockPrivateURLs        bool          // Block Immich fetches to private/loopback addresses (useful for cloud deployments)
-	PaperlessBlockPrivateURLs     bool          // Block Paperless-ngx fetches to private/loopback addresses (useful for cloud deployments)
-	SeafileBlockPrivateURLs       bool          // Block Seafile fetches to private/loopback addresses (useful for cloud deployments)
-	WebDAVBlockPrivateURLs        bool          // Block Nextcloud/ownCloud WebDAV fetches to private/loopback addresses (useful for cloud deployments)
-	MonicaBlockPrivateURLs        bool          // Block Monica import-assistant fetches to private/loopback addresses (useful for cloud deployments; issue #549)
-	FCMServiceAccountFile         string        // Path to the Firebase service-account JSON for FCM mobile push delivery (M2)
-	DBIntegrityCheckEnabled       bool          // Enable the scheduled live-DB PRAGMA integrity_check job (issue #273)
-	DBIntegrityCheckIntervalHours int           // Interval in hours for the scheduled DB integrity check
-	DBRestoreDrillEnabled         bool          // Enable the scheduled backup-restore drill job (issue #275)
-	DBRestoreDrillIntervalHours   int           // Interval in hours for the scheduled restore drill (default weekly)
+	APIRateLimitInterval time.Duration // Sustained refill interval, one token per interval
+	APIRateLimitBurst    int           // Bucket size, i.e. the largest instantaneous burst allowed
+
+	// Instance-wide failed-authentication velocity detection (issue #940). The
+	// per-identifier and per-IP limits below stop a single-source attack, but a
+	// distributed password spray keeps every individual budget under threshold.
+	// This measures failures across ALL identifiers in a sliding window and,
+	// when both thresholds are crossed, engages a short instance-wide login
+	// throttle and raises the auth_spray alert. Zero values are clamped to the
+	// safe defaults rather than disabling the signal.
+	AuthSprayEnabled             bool // Master switch for the velocity signal + throttle
+	AuthSprayWindowSeconds       int  // Sliding window velocity is measured over
+	AuthSprayFailureThreshold    int  // Failures within the window that arm the signal
+	AuthSprayIdentifierThreshold int  // Distinct identifiers within the window that arm the signal
+	AuthSprayThrottleSeconds     int  // How long a tripped signal refuses unknown sources
+
+	ImmichSyncIntervalHours       int    // Interval in hours for the scheduled Immich enrichment sync (T16)
+	ImmichBlockPrivateURLs        bool   // Block Immich fetches to private/loopback addresses (useful for cloud deployments)
+	PaperlessBlockPrivateURLs     bool   // Block Paperless-ngx fetches to private/loopback addresses (useful for cloud deployments)
+	SeafileBlockPrivateURLs       bool   // Block Seafile fetches to private/loopback addresses (useful for cloud deployments)
+	WebDAVBlockPrivateURLs        bool   // Block Nextcloud/ownCloud WebDAV fetches to private/loopback addresses (useful for cloud deployments)
+	MonicaBlockPrivateURLs        bool   // Block Monica import-assistant fetches to private/loopback addresses (useful for cloud deployments; issue #549)
+	FCMServiceAccountFile         string // Path to the Firebase service-account JSON for FCM mobile push delivery (M2)
+	DBIntegrityCheckEnabled       bool   // Enable the scheduled live-DB PRAGMA integrity_check job (issue #273)
+	DBIntegrityCheckIntervalHours int    // Interval in hours for the scheduled DB integrity check
+	DBRestoreDrillEnabled         bool   // Enable the scheduled backup-restore drill job (issue #275)
+	DBRestoreDrillIntervalHours   int    // Interval in hours for the scheduled restore drill (default weekly)
 	// DBRestoreDrillMaxDurationSeconds is the operator's RTO budget for the
 	// database piece of a restore (issue #506). When > 0, a restore-drill run
 	// whose measured wall-clock exceeds it still passes but logs a WARN and
@@ -132,6 +146,7 @@ type Config struct {
 	AlertBackupEnabled          bool // Enable the backup / backup_stale conditions
 	AlertDBIntegrityEnabled     bool // Enable the db_integrity condition
 	AlertJobStoppedEnabled      bool // Enable the job_stopped condition
+	AlertAuthSprayEnabled       bool // Enable the auth_spray condition (issue #940)
 	HIBPCheckEnabled            bool // Check new/changed passwords against HIBP's k-anonymity range API (issue #376). Off by default: an outbound call on a self-hosted app is a deliberate opt-in, not a safe default — see docs/security/asvs-l2.md's P3.
 	UpdateCheckEnabled          bool // Compare the running build against the latest GitHub release (issue #650). Off by default: an outbound call on a self-hosted app is a deliberate opt-in, not a safe default — see docs/security/asvs-l2.md's P6.
 
@@ -250,6 +265,11 @@ func LoadConfig() *Config {
 		SessionIdleTimeoutHours:       getIntEnv("SESSION_IDLE_TIMEOUT_HOURS", 12),
 		APIRateLimitInterval:          time.Duration(getIntEnv("API_RATE_LIMIT_INTERVAL_MS", 600)) * time.Millisecond,
 		APIRateLimitBurst:             getIntEnv("API_RATE_LIMIT_BURST", 1000),
+		AuthSprayEnabled:              getBoolEnv("AUTH_SPRAY_ENABLED", true),
+		AuthSprayWindowSeconds:        getIntEnv("AUTH_SPRAY_WINDOW_SECONDS", 60),
+		AuthSprayFailureThreshold:     getIntEnv("AUTH_SPRAY_FAILURE_THRESHOLD", 60),
+		AuthSprayIdentifierThreshold:  getIntEnv("AUTH_SPRAY_IDENTIFIER_THRESHOLD", 15),
+		AuthSprayThrottleSeconds:      getIntEnv("AUTH_SPRAY_THROTTLE_SECONDS", 300),
 		ImmichSyncIntervalHours:       getIntEnv("IMMICH_SYNC_INTERVAL_HOURS", 6),
 		ImmichBlockPrivateURLs:        getBoolEnv("IMMICH_BLOCK_PRIVATE_URLS", false),
 		PaperlessBlockPrivateURLs:     getBoolEnv("PAPERLESS_BLOCK_PRIVATE_URLS", false),
@@ -272,6 +292,7 @@ func LoadConfig() *Config {
 		AlertBackupEnabled:            getBoolEnv("ALERT_BACKUP_ENABLED", true),
 		AlertDBIntegrityEnabled:       getBoolEnv("ALERT_DB_INTEGRITY_ENABLED", true),
 		AlertJobStoppedEnabled:        getBoolEnv("ALERT_JOB_STOPPED_ENABLED", true),
+		AlertAuthSprayEnabled:         getBoolEnv("ALERT_AUTH_SPRAY_ENABLED", true),
 		HIBPCheckEnabled:              getBoolEnv("HIBP_CHECK_ENABLED", false),
 		UpdateCheckEnabled:            getBoolEnv("UPDATE_CHECK_ENABLED", false),
 		StorageWarnPercent:            getIntEnv("STORAGE_WARN_PERCENT", DefaultStorageWarnPercent),
@@ -337,6 +358,27 @@ func LoadConfig() *Config {
 	}
 	if cfg.AlertBackupMaxAgeHours < 0 {
 		cfg.AlertBackupMaxAgeHours = 0
+	}
+
+	// Instance-wide failed-auth velocity (issue #940). A zero/negative value
+	// would make the signal trip on the first failure (or never), so clamp to
+	// the safe defaults rather than letting a typo silently disable a security
+	// control. AUTH_SPRAY_ENABLED is the deliberate off switch.
+	if cfg.AuthSprayWindowSeconds < 1 {
+		log.Println("WARN: AUTH_SPRAY_WINDOW_SECONDS must be at least 1, using 60")
+		cfg.AuthSprayWindowSeconds = 60
+	}
+	if cfg.AuthSprayFailureThreshold < 1 {
+		log.Println("WARN: AUTH_SPRAY_FAILURE_THRESHOLD must be at least 1, using 60")
+		cfg.AuthSprayFailureThreshold = 60
+	}
+	if cfg.AuthSprayIdentifierThreshold < 1 {
+		log.Println("WARN: AUTH_SPRAY_IDENTIFIER_THRESHOLD must be at least 1, using 15")
+		cfg.AuthSprayIdentifierThreshold = 15
+	}
+	if cfg.AuthSprayThrottleSeconds < 1 {
+		log.Println("WARN: AUTH_SPRAY_THROTTLE_SECONDS must be at least 1, using 300")
+		cfg.AuthSprayThrottleSeconds = 300
 	}
 
 	// Storage-trend thresholds (issue #652): warn must be a sane 1..99 and

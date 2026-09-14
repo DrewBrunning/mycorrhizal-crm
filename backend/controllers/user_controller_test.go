@@ -373,6 +373,55 @@ func TestLoginUser_SameIP_StillLocksAfterMaxAttempts(t *testing.T) {
 		"MaxLoginAttempts-th failure from one IP must lock it")
 }
 
+// TestLoginUser_DistributedSprayTripsInstanceThrottle is issue #940 end to
+// end: a password spray spread across many accounts and source IPs — every
+// individual (identifier, IP) budget staying under its limit — crosses the
+// instance-wide signal and is refused, while a source that recently
+// authenticated is still let through.
+func TestLoginUser_DistributedSprayTripsInstanceThrottle(t *testing.T) {
+	cfg := config.Config{JWTSecretKey: "mysecretkey", JWTExpiryHours: 24}
+	db, router := setupRouter()
+	router.POST("/login", func(c *gin.Context) { LoginUser(c, &cfg) })
+
+	// Isolate the process-wide signal for this test and leave the limiter clean
+	// for every other test in the package.
+	t.Cleanup(func() { middleware.ConfigureAuthVelocity(middleware.DefaultAuthVelocityConfig()) })
+	middleware.ConfigureAuthVelocity(middleware.AuthVelocityConfig{
+		Enabled:             true,
+		Window:              time.Minute,
+		FailureThreshold:    10,
+		IdentifierThreshold: 5,
+		Throttle:            2 * time.Minute,
+		IncidentHold:        10 * time.Minute,
+	})
+
+	// A legitimate account that has already authenticated from its own IP.
+	u := models.User{Username: "spray_victim", Email: "spray_victim@example.com"}
+	u.Password, _ = services.HashPassword(strongPassword)
+	require.NoError(t, db.Create(&u).Error)
+	const victimIP = "198.51.100.200"
+	require.Equal(t, http.StatusOK, loginFrom(router, victimIP, "spray_victim", strongPassword).Code)
+
+	// The spray: 5 distinct accounts from 5 distinct IPs, twice each. Every
+	// pair sees only two failures, far under MaxLoginAttempts.
+	for round := 0; round < 2; round++ {
+		for i := 0; i < 5; i++ {
+			code := loginFrom(router, fmt.Sprintf("203.0.113.%d", i),
+				fmt.Sprintf("spray_%d@example.com", i), "wrong-password").Code
+			require.Equal(t, http.StatusUnauthorized, code, "round %d, account %d", round, i)
+		}
+	}
+
+	// A never-seen source is now refused instance-wide.
+	assert.Equal(t, http.StatusTooManyRequests,
+		loginFrom(router, "203.0.113.250", "spray_victim", "wrong-password").Code,
+		"a distributed spray must trip the instance-wide throttle")
+
+	// The legitimate user's already-authenticated source is exempt.
+	assert.Equal(t, http.StatusOK, loginFrom(router, victimIP, "spray_victim", strongPassword).Code,
+		"a recently-authenticated source must bypass the instance throttle (issue #867)")
+}
+
 func TestLoginUser_InvalidInput(t *testing.T) {
 	config := config.Config{
 		JWTSecretKey: "mysecretkey",
