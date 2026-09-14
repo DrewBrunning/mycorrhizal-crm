@@ -11,6 +11,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 
@@ -37,9 +38,9 @@ func deviceGrantRouter(t *testing.T, actingUser models.User, cfg config.Config) 
 		c.Next()
 	})
 
-	router.POST("/auth/device/session", func(c *gin.Context) { ExchangeDeviceGrant(c, &cfg) })
+	router.POST("/auth/device/session", middleware.ValidateJSONMiddleware(&models.DeviceGrantSessionInput{}), func(c *gin.Context) { ExchangeDeviceGrant(c, &cfg) })
 	router.GET("/auth/device/grants", ListDeviceGrants)
-	router.POST("/auth/device/grants", CreateDeviceGrant)
+	router.POST("/auth/device/grants", middleware.ValidateJSONMiddleware(&models.DeviceGrantInput{}), CreateDeviceGrant)
 	router.POST("/auth/device/grants/revoke-all", RevokeAllDeviceGrants)
 	router.DELETE("/auth/device/grants/:id", RevokeDeviceGrant)
 	return db, router
@@ -126,7 +127,7 @@ func TestDeviceGrant_ListScopesToCallerAndRevokeRespectsOwnership(t *testing.T) 
 		c.Next()
 	})
 	otherRouter.GET("/auth/device/grants", ListDeviceGrants)
-	otherRouter.POST("/auth/device/grants", CreateDeviceGrant)
+	otherRouter.POST("/auth/device/grants", middleware.ValidateJSONMiddleware(&models.DeviceGrantInput{}), CreateDeviceGrant)
 	otherRouter.DELETE("/auth/device/grants/:id", RevokeDeviceGrant)
 	otherCreated := postJSON(t, otherRouter, "/auth/device/grants", `{}`)
 	var otherCreate models.DeviceGrantCreateResponse
