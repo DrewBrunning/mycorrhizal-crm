@@ -1,0 +1,50 @@
+{
+  "_comment": [
+    "Shared, cross-implementation PhoneKey vectors (issue #963). Read by BOTH",
+    "backend/models/phonekey_vectors_test.go (models.NormalizePhoneDigits /",
+    "models.PhoneKey) and Android's core/data PhoneKeyVectorTest",
+    "(com.mycorrhizal.crm.data.local.PhoneKey). A change to either port's",
+    "normalization that makes one side disagree with this table fails that",
+    "side's test — the two implementations are a deliberate port of each other",
+    "and must stay byte-for-byte in agreement.",
+    "digits = strip every non-ASCII-digit character; key = digits, at most the",
+    "last 10, or \"\" below 7 digits (short codes/extensions must not collapse)."
+  ],
+  "vectors": [
+    { "input": "8005551234", "digits": "8005551234", "key": "8005551234", "why": "exactly 10" },
+    { "input": "(800) 555-1234", "digits": "8005551234", "key": "8005551234", "why": "punctuation" },
+    { "input": "800-555-1234", "digits": "8005551234", "key": "8005551234", "why": "dashes" },
+    { "input": "800.555.1234", "digits": "8005551234", "key": "8005551234", "why": "dots" },
+    { "input": "+1 (800) 555-1234", "digits": "18005551234", "key": "8005551234", "why": "country code dropped by last-10" },
+    { "input": "+18005551234", "digits": "18005551234", "key": "8005551234", "why": "country code" },
+    { "input": "+44 20 7946 0958", "digits": "442079460958", "key": "2079460958", "why": "UK trunk prefix reconciliation" },
+    { "input": "020 7946 0958", "digits": "02079460958", "key": "2079460958", "why": "UK local form" },
+    { "input": "+44 020 7946 0958", "digits": "4402079460958", "key": "2079460958", "why": "UK trunk + country code" },
+    { "input": "555-1234", "digits": "5551234", "key": "5551234", "why": "7 digits is the floor" },
+    { "input": "555-123", "digits": "555123", "key": "", "why": "6 digits keys to empty" },
+    { "input": "5551", "digits": "5551", "key": "", "why": "extension-like value never matches" },
+    { "input": "", "digits": "", "key": "", "why": "empty" },
+    { "input": "abc def", "digits": "", "key": "", "why": "no digits" },
+    { "input": "  \t\n", "digits": "", "key": "", "why": "whitespace only" },
+    { "input": "12345", "digits": "12345", "key": "", "why": "short code" },
+    { "input": "+1-800-555-1234 ext. 5599", "digits": "180055512345599", "key": "5512345599", "why": "extension digits participate (known limitation)" },
+    { "input": "１２３４５６７８９０", "digits": "", "key": "", "why": "non-ASCII digits are not digits" },
+    { "input": "+49 (0) 151 12345678", "digits": "49015112345678", "key": "5112345678", "why": "issue #963 German national form" },
+    { "input": "+4915112345678", "digits": "4915112345678", "key": "5112345678", "why": "issue #963 German international form" },
+    { "input": "0151 12345678", "digits": "015112345678", "key": "5112345678", "why": "issue #963 German local form" }
+  ],
+  "same_key_groups": [
+    {
+      "why": "issue #963: all three German spellings must map to one key",
+      "inputs": ["+49 (0) 151 12345678", "+4915112345678", "0151 12345678"]
+    },
+    {
+      "why": "US country-code reconciliation",
+      "inputs": ["+18005551234", "(800) 555-1234", "800-555-1234", "800.555.1234"]
+    },
+    {
+      "why": "UK trunk prefix",
+      "inputs": ["+44 20 7946 0958", "020 7946 0958", "+44 020 7946 0958"]
+    }
+  ]
+}

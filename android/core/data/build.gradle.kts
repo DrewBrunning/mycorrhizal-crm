@@ -16,7 +16,14 @@ android {
     // and `androidTest` (device) source sets since either could host a
     // MigrationTestHelper-based test.
     sourceSets {
-        getByName("test").assets.srcDir("schemas")
+        getByName("test") {
+            assets.srcDir("schemas")
+            // Issue #963: the shared PhoneKey vector table at /testdata/phonekey-vectors
+            // (repo root) is the single canonical copy both the backend test and Android's
+            // PhoneKeyVectorTest read, so the two ports can't silently drift. Added to the
+            // test classpath directly rather than duplicated into src/test/resources.
+            resources.srcDir("../../../testdata/phonekey-vectors")
+        }
         getByName("androidTest").assets.srcDir("schemas")
     }
 }

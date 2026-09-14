@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -523,6 +524,79 @@ class ContactRepositoryImplTest {
         assertEquals(0, parens.size)
         assertEquals(1, near.size)
         assertEquals("David Smith", smith[0].fn)
+    }
+
+    // --- Issue #963: call/SMS phone matching via PhoneKey -----------------
+
+    @Test
+    fun `findByPhone reconciles formatting and country-code differences`() = runTest {
+        db.cachedContactDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedContact(
+                id = 1,
+                fn = "Klara Beispiel",
+                primaryPhone = "+49 (0) 151 12345678",
+                phonesNormalized = com.mycorrhizal.crm.data.local.PhoneKey.flatten(listOf("+49 (0) 151 12345678")),
+            ),
+        )
+
+        assertEquals(1, repository.findByPhone("+4915112345678")?.id)
+        assertEquals(1, repository.findByPhone("0151 12345678")?.id)
+        assertEquals(1, repository.findByPhone("+49 (0) 151 12345678")?.id)
+    }
+
+    @Test
+    fun `findByPhone matches a non-primary number`() = runTest {
+        db.cachedContactDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedContact(
+                id = 1,
+                fn = "Dana White",
+                primaryPhone = "(800) 555-1234",
+                phonesNormalized = com.mycorrhizal.crm.data.local.PhoneKey.flatten(
+                    listOf("(800) 555-1234", "555-0100"),
+                ),
+            ),
+        )
+
+        assertEquals(1, repository.findByPhone("5550100")?.id)
+    }
+
+    @Test
+    fun `findByPhone never matches below seven digits`() = runTest {
+        db.cachedContactDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedContact(
+                id = 1,
+                fn = "Short Code",
+                primaryPhone = "5551",
+                phonesNormalized = com.mycorrhizal.crm.data.local.PhoneKey.flatten(listOf("5551")),
+            ),
+        )
+
+        assertNull(repository.findByPhone("5551"))
+        assertNull(repository.findByPhone("12345"))
+    }
+
+    @Test
+    fun `findByPhone ignores soft-deleted contacts`() = runTest {
+        db.cachedContactDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedContact(
+                id = 1,
+                fn = "Dana White",
+                primaryPhone = "(800) 555-1234",
+                phonesNormalized = com.mycorrhizal.crm.data.local.PhoneKey.flatten(listOf("(800) 555-1234")),
+                deleted = true,
+            ),
+        )
+
+        assertNull(repository.findByPhone("8005551234"))
+    }
+
+    @Test
+    fun `findByPhone returns null when no contact matches`() = runTest {
+        db.cachedContactDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Bob Jones"),
+        )
+
+        assertNull(repository.findByPhone("8005551234"))
     }
 
     // --- M24: delete / archive / unarchive / export ---

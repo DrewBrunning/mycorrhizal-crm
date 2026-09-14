@@ -179,8 +179,16 @@ class ContactRepositoryImpl @Inject constructor(
             emit(dao.getAll().map { it.toSummary() })
         }
 
-    override suspend fun findByPhone(phone: String): ContactSummary? =
-        dao.findByPhoneDigits(phone)?.toSummary()
+    override suspend fun findByPhone(phone: String): ContactSummary? {
+        // Issue #963: match on the shared PhoneKey (whole digits, last-10), not
+        // an ad-hoc digit strip, and against *every* number the contact stores
+        // (the phonesNormalized token index) rather than only primaryPhone. A
+        // <7-digit number keys to "" and can never match (short codes /
+        // extensions); see PhoneKey.key.
+        val key = PhoneKey.key(phone)
+        if (key.isEmpty()) return null
+        return dao.findByPhoneKey(key)?.toSummary()
+    }
 
     override suspend fun findByEmail(email: String): ContactSummary? =
         dao.findByEmail(email)?.toSummary()

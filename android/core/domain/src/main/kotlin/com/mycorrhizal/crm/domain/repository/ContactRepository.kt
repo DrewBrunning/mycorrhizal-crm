@@ -117,7 +117,15 @@ interface ContactRepository {
     /** Cached contact list summaries as a reactive stream (list + offline). */
     fun observeContacts(): Flow<List<ContactSummary>>
 
-    /** Local phone-match for call/SMS tracking (digits-normalized). */
+    /**
+     * Local phone-match for call/SMS tracking and the quick-capture overlay
+     * (issue #963). Normalizes [phone] to the shared phone-key semantics
+     * (digit-only, last 10; empty below 7 digits, which never matches) and
+     * matches it against every number the cached contact stores — not just the
+     * primary — so a number recorded internationally still finds a
+     * locally-stored contact and vice versa. Returns null when the number maps
+     * to no cached contact.
+     */
     suspend fun findByPhone(phone: String): ContactSummary?
 
     /** Local email match (case-insensitive) for T57 dedup. */
