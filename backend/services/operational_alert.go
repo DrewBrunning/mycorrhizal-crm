@@ -74,13 +74,18 @@ func operationalAlertHTML(body string) string {
 }
 
 // alertDeliverer is the delivery implementation, indirected through a package
-// var so alerting_service_test.go can record dispatches without real HTTP.
+// var so alerting_service_test.go can record dispatches without real HTTP. It
+// reports whether the alert was durably handled (see deliverOperationalAlert),
+// which the transition logic uses to decide whether to retry a raise (issue
+// #973).
 var alertDeliverer = deliverOperationalAlert
 
 // dispatchOperationalAlert is called by transitionAlertState on every
-// raise/clear transition.
-func dispatchOperationalAlert(ctx context.Context, db *gorm.DB, cfg config.Config, a operationalAlert) {
-	alertDeliverer(ctx, db, cfg, a)
+// raise/clear transition, and again on each evaluation while a raise whose
+// delivery was not accepted remains outstanding. It returns true when the
+// alert is durably handled.
+func dispatchOperationalAlert(ctx context.Context, db *gorm.DB, cfg config.Config, a operationalAlert) bool {
+	return alertDeliverer(ctx, db, cfg, a)
 }
 
 // deliverOperationalAlert pushes one alert through every existing delivery
@@ -89,14 +94,21 @@ func dispatchOperationalAlert(ctx context.Context, db *gorm.DB, cfg config.Confi
 // push) of ADMIN users only — infra health is an operator concern, not
 // something to page every user of a shared instance about. Best-effort per
 // channel: a failure on one never blocks the others.
-func deliverOperationalAlert(ctx context.Context, db *gorm.DB, cfg config.Config, a operationalAlert) {
+//
+// It returns true when the alert is durably handled and does not need
+// retrying: at least one subscriber webhook was enqueued (durable — the retry
+// job replays it), at least one personal channel accepted it, or there was no
+// channel to attempt at all. It returns false only when every attempted
+// personal channel failed and no webhook was enqueued — the lost-raise case
+// issue #973 fixes, which the evaluator re-attempts on the next run.
+func deliverOperationalAlert(ctx context.Context, db *gorm.DB, cfg config.Config, a operationalAlert) bool {
 	eventType := EventAlertCleared
 	state := models.AlertStateOK
 	if a.firing {
 		eventType = EventAlertRaised
 		state = models.AlertStateAlerting
 	}
-	triggerWebhooksForAllUsers(ctx, db, cfg, eventType, map[string]interface{}{
+	queued := triggerWebhooksForAllUsers(ctx, db, cfg, eventType, map[string]interface{}{
 		"condition":     a.conditionKey,
 		"title":         a.title,
 		"state":         state,
@@ -108,19 +120,25 @@ func deliverOperationalAlert(ctx context.Context, db *gorm.DB, cfg config.Config
 	var admins []models.User
 	if err := db.WithContext(ctx).Where("is_admin = ?", true).Find(&admins).Error; err != nil {
 		logger.Ctx(ctx).Error().Err(err).Msg("operational alert: failed to load admin users")
-		return
+		return queued > 0
 	}
 
+	sent, failed := 0, 0
 	subject, body := a.subject(), a.body()
 	for _, admin := range admins {
-		deliverOperationalAlertToUser(ctx, db, cfg, admin, subject, body)
+		s, f := deliverOperationalAlertToUser(ctx, db, cfg, admin, subject, body)
+		sent += s
+		failed += f
 	}
+	return queued > 0 || sent > 0 || failed == 0
 }
 
 // deliverOperationalAlertToUser fans one alert out to a single user's enabled
 // personal channels, mirroring each channel's own enablement predicate from
-// notification_service.go.
-func deliverOperationalAlertToUser(ctx context.Context, db *gorm.DB, cfg config.Config, user models.User, subject, body string) {
+// notification_service.go. It returns how many channels accepted the message
+// and how many were attempted but rejected, so the caller can tell a delivered
+// raise from one that needs retrying (issue #973).
+func deliverOperationalAlertToUser(ctx context.Context, db *gorm.DB, cfg config.Config, user models.User, subject, body string) (sent, failed int) {
 	nc, err := GetNotificationConfigForUser(db, user.ID)
 	if err != nil {
 		logger.Ctx(ctx).Warn().Err(err).Uint("user_id", user.ID).Msg("operational alert: failed to load notification config")
@@ -129,21 +147,34 @@ func deliverOperationalAlertToUser(ctx context.Context, db *gorm.DB, cfg config.
 	if cfg.EmailEnabled() && user.Email != "" {
 		if err := SendEmail(cfg, EmailMessage{To: user.Email, Subject: subject, HTML: operationalAlertHTML(body)}); err != nil {
 			logger.Ctx(ctx).Warn().Err(err).Uint("user_id", user.ID).Msg("operational alert: email delivery failed")
+			failed++
+		} else {
+			sent++
 		}
 	}
 	if user.NotifyNtfy && nc != nil && nc.NtfyURL != "" && nc.NtfyTopic != "" {
 		if err := sendNtfyMessage(cfg, nc, subject, body); err != nil {
 			logger.Ctx(ctx).Warn().Err(err).Uint("user_id", user.ID).Msg("operational alert: ntfy delivery failed")
+			failed++
+		} else {
+			sent++
 		}
 	}
 	if user.NotifyGotify && nc != nil && nc.GotifyURL != "" && nc.HasGotifyToken() {
 		if err := sendGotifyMessage(cfg, nc, subject, body); err != nil {
 			logger.Ctx(ctx).Warn().Err(err).Uint("user_id", user.ID).Msg("operational alert: gotify delivery failed")
+			failed++
+		} else {
+			sent++
 		}
 	}
 	if user.NotifyPush {
 		if err := deliverPushToUser(db, cfg, user, subject, body); err != nil {
 			logger.Ctx(ctx).Warn().Err(err).Uint("user_id", user.ID).Msg("operational alert: push delivery failed")
+			failed++
+		} else {
+			sent++
 		}
 	}
+	return sent, failed
 }

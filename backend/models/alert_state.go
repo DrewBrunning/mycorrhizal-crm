@@ -37,6 +37,13 @@ type AlertState struct {
 	// was raised, so the recovery notification can say "recovered after N
 	// failures". 0 while State is ok.
 	FailureCount int `gorm:"column:failure_count;not null;default:0" json:"failure_count"`
+	// PendingNotify is true while an alerting condition's raise has not been
+	// accepted by any delivery path (issue #973). The evaluator sets it when
+	// it persists a raise and clears it once a dispatch is durably enqueued
+	// or delivered, re-attempting on every evaluation in between so a raise
+	// made while every channel was briefly down is not lost. Always false
+	// while State is ok.
+	PendingNotify bool `gorm:"column:pending_notify;not null;default:false" json:"pending_notify"`
 	// LastNotifiedAt is when the last alert/recovery notification for this
 	// condition was dispatched. Nil until the first transition.
 	LastNotifiedAt *time.Time `gorm:"column:last_notified_at" json:"last_notified_at,omitempty"`

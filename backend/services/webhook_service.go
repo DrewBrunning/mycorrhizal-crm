@@ -219,7 +219,13 @@ func isPrivateURL(rawURL string) bool {
 // on ctx (if any) rides along to the delivery so a webhook receiver's log can
 // be tied back to the action that fired it (issue #425); pass
 // context.Background() from a fire-and-forget path with no correlation ID.
-func TriggerWebhooks(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, eventType string, data interface{}) {
+//
+// It returns how many webhooks a delivery was enqueued for. Delivery itself is
+// async (a durable WebhookDelivery row that ProcessWebhookRetries replays), so
+// a non-zero count means the event is durably handled even if the immediate
+// attempt fails. The alert evaluator (issue #973) uses that to decide whether
+// an undelivered personal-channel raise still needs retrying.
+func TriggerWebhooks(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, eventType string, data interface{}) int {
 	// The goroutines below outlive the caller (a handler returns as soon as
 	// this function does), so detach from ctx's cancellation/deadline while
 	// keeping its values — the correlation ID rides along, but the request
@@ -229,15 +235,16 @@ func TriggerWebhooks(ctx context.Context, db *gorm.DB, cfg config.Config, userID
 	var webhooks []models.Webhook
 	if err := db.Where("user_id = ? AND is_active = ? AND deleted_at IS NULL", userID, true).Find(&webhooks).Error; err != nil {
 		logger.Error().Err(err).Uint("user_id", userID).Msg("Failed to load webhooks for triggering")
-		return
+		return 0
 	}
 
 	body, err := buildPayloadBody(eventType, data)
 	if err != nil {
 		logger.Error().Err(err).Str("event", eventType).Msg("Failed to build webhook payload")
-		return
+		return 0
 	}
 
+	queued := 0
 	for _, wh := range webhooks {
 		subscribed := false
 		for _, e := range wh.Events {
@@ -250,6 +257,7 @@ func TriggerWebhooks(ctx context.Context, db *gorm.DB, cfg config.Config, userID
 			continue
 		}
 
+		queued++
 		wh := wh
 		webhookGoroutines(func() {
 			deliverySem <- struct{}{}
@@ -257,6 +265,7 @@ func TriggerWebhooks(ctx context.Context, db *gorm.DB, cfg config.Config, userID
 			deliverWebhook(deliveryCtx, db, cfg, wh, eventType, body, 1)
 		})
 	}
+	return queued
 }
 
 // TestWebhookDelivery delivers a test payload directly to the given webhook, ignoring event subscriptions.

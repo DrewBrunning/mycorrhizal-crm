@@ -339,6 +339,58 @@ func TestMigrationsAddGiftURLAndNotes(t *testing.T) {
 	assert.Equal(t, "The espresso machine", description, "a rollback must not destroy the gift")
 }
 
+// TestMigrationsAddAlertStatesPendingNotify covers 000056 (issue #973): the
+// pending_notify marker is additive, defaults to 0 so an alert that was
+// already firing before the upgrade is not re-notified (no duplicate page on
+// upgrade), and the down migration drops it without disturbing the alert row.
+func TestMigrationsAddAlertStatesPendingNotify(t *testing.T) {
+	t.Parallel()
+	dbPath := filepath.Join(t.TempDir(), "alert-pending-notify.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	// Everything up to but NOT including 000056, so the alerting row below
+	// genuinely predates the marker.
+	require.NoError(t, m.Steps(55))
+
+	_, err = sqlDB.Exec(`
+		INSERT INTO alert_states (condition_key, state, since, detail, failure_count, last_notified_at)
+		VALUES ('backup', 'alerting', datetime('now'), 'snapshot failed', 3, datetime('now'))`)
+	require.NoError(t, err)
+
+	// Apply exactly 000056 — Steps(1), not m.Up(), so the MigrateDown below
+	// still rolls back this migration.
+	require.NoError(t, m.Steps(1))
+
+	var pending int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT pending_notify FROM alert_states WHERE condition_key = 'backup'").Scan(&pending))
+	assert.Equal(t, int64(0), pending,
+		"an alert already firing at upgrade must not be marked pending — it was already dispatched under the old behavior")
+
+	var state, detail string
+	var failures int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT state, detail, failure_count FROM alert_states WHERE condition_key = 'backup'").
+		Scan(&state, &detail, &failures))
+	assert.Equal(t, "alerting", state)
+	assert.Equal(t, "snapshot failed", detail)
+	assert.Equal(t, int64(3), failures, "the additive migration must not disturb the existing alert state")
+
+	// Down drops the column; the alerting row survives.
+	require.NoError(t, MigrateDown(dbPath))
+	var colCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('alert_states') WHERE name = 'pending_notify'").Scan(&colCount))
+	assert.Equal(t, int64(0), colCount, "the down migration must drop pending_notify")
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT state FROM alert_states WHERE condition_key = 'backup'").Scan(&state))
+	assert.Equal(t, "alerting", state, "a rollback must not destroy the alert state")
+}
+
 // TestMigrationsAddPreferenceNotes covers 000029's additive preferences.notes
 // column, following TestMigrationsAddGiftURLAndNotes' exact template: a
 // preference that predates the migration must survive it unchanged, with the
