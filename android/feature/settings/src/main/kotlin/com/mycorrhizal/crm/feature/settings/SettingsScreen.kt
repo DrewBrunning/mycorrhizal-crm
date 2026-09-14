@@ -212,7 +212,6 @@ fun SettingsScreen(
             onData = onData,
             onManageUsers = onManageUsers,
             onSystemEvents = onSystemEvents,
-            onSuggestRelationships = viewModel::suggestRelationships,
             onLanguageChange = viewModel::updateLanguage,
             onDateFormatChange = viewModel::updateDateFormat,
             onThemeChange = viewModel::setThemePreference,
@@ -261,7 +260,6 @@ fun SettingsContent(
     onData: () -> Unit = {},
     onManageUsers: () -> Unit = {},
     onSystemEvents: () -> Unit = {},
-    onSuggestRelationships: () -> Unit = {},
     onLanguageChange: (String) -> Unit = {},
     onDateFormatChange: (String) -> Unit = {},
     onThemeChange: (String) -> Unit = {},
@@ -516,46 +514,13 @@ fun SettingsContent(
 
         HorizontalDivider()
 
-        // T104: propose data from what the graph already implies — the trigger
-        // for graph-inferred relationship suggestions plus the Data screen that
-        // reviews them (and the address-suggestion scan).
+        // T104 + data suggestions: the Data screen reviews graph-inferred
+        // relationship suggestions and runs the address-suggestion scan.
         Text(
             stringResource(R.string.settings_data),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.semantics { heading() },
         )
-        state.relationshipSuggestErrorRes?.let { res ->
-            Text(
-                text = stringResource(res),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
-            )
-        }
-        state.suggestedRelationshipCount?.let { count ->
-            Text(
-                text = if (count > 0) {
-                    stringResource(R.string.settings_relationships_suggested, count)
-                } else {
-                    stringResource(R.string.settings_relationships_none)
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        val suggestingLabel = stringResource(R.string.a11y_state_saving)
-        Button(
-            onClick = onSuggestRelationships,
-            enabled = !state.isSuggestingRelationships,
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { if (state.isSuggestingRelationships) stateDescription = suggestingLabel },
-        ) {
-            if (state.isSuggestingRelationships) {
-                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
-            }
-            Text(stringResource(R.string.settings_suggest_relationships))
-        }
         NavigationRow(stringResource(R.string.settings_data_review), onClick = onData)
 
         // Issue #348: admin-only user management, reachable only when the

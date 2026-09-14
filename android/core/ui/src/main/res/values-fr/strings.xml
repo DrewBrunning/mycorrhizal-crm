@@ -357,9 +357,6 @@
     <string name="settings_two_factor_recovery_copied">Copié !</string>
     <string name="settings_two_factor_recovery_done">Terminé</string>
     <string name="settings_two_factor_qr_content_description">Code QR pour votre application d\'authentification. Scannez-le ou saisissez la clé de configuration manuelle ci-dessous.</string>
-    <string name="settings_relationships_suggested">%1$d nouvelles suggestions de relations générées — examinez-les dans l\'écran Relations d\'un contact.</string>
-    <string name="settings_relationships_none">Aucune nouvelle suggestion de relation.</string>
-    <string name="settings_suggest_relationships_error">Impossible de générer les suggestions de relations.</string>
     <string name="data_relationships_section">Relations</string>
     <string name="data_relationships_description">Laissez l\'application découvrir des relations que vos relations existantes impliquent. Les suggestions ne sont que des propositions : examinez-les avant de les accepter.</string>
     <string name="data_relationships_generated">%1$d nouvelles suggestions de relations générées — examinez-les dans l\'écran Relations d\'un contact.</string>
