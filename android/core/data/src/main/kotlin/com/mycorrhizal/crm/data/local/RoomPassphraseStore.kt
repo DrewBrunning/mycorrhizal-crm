@@ -23,6 +23,17 @@ import java.security.SecureRandom
  * [RoomCacheEncryption] transition must never run against a passphrase that
  * was not just persisted here (a wrong key would make the migrated DB
  * permanently unreadable).
+ *
+ * Issue #998: [getOrCreate] therefore writes with [SharedPreferences.Editor.commit]
+ * (synchronous, blocks until the value is durably on disk) rather than `apply()`
+ * (queues an async write and returns immediately), and reads the value back to
+ * confirm it landed, before a freshly generated passphrase is ever handed to
+ * the encrypt-in-place step. `apply()` left a window where a process death
+ * before the queued write flushed meant the next launch generated a *different*
+ * passphrase and used it to open a database that was actually encrypted with
+ * the lost one — permanently undecryptable, with nothing here to recover it.
+ * [RoomDatabaseRecovery] is the backstop for a database already left in that
+ * state (by a pre-fix build, or any other cause) by the time this runs.
  */
 class RoomPassphraseStore(context: Context) {
 
@@ -39,11 +50,21 @@ class RoomPassphraseStore(context: Context) {
         )
     }
 
-    /** Returns the persisted passphrase, generating + persisting one on first use. */
+    /**
+     * Returns the persisted passphrase, generating + persisting one on first
+     * use. The persist is synchronous (`commit()`, not `apply()`) and
+     * verified with a read-back before returning, so a caller that goes on to
+     * encrypt the database with this value is never handed a passphrase that
+     * only exists in memory (issue #998).
+     */
     fun getOrCreate(): String {
         prefs.getString(KEY_PASSPHRASE, null)?.let { return it }
         val passphrase = generatePassphrase()
-        prefs.edit().putString(KEY_PASSPHRASE, passphrase).apply()
+        val committed = prefs.edit().putString(KEY_PASSPHRASE, passphrase).commit() // # pragma: no cover — needs a real Android Keystore (see RoomEncryptionGuardTest)
+        check(committed && prefs.getString(KEY_PASSPHRASE, null) == passphrase) { // # pragma: no cover
+            "Failed to durably persist the Room passphrase; refusing to encrypt the cache " + // # pragma: no cover
+                "with a value that might not survive a process death" // # pragma: no cover
+        } // # pragma: no cover
         return passphrase
     }
 

@@ -11,9 +11,11 @@ import java.io.File
  * behind Keystore-backed primitives that cannot be exercised directly on the
  * JVM (see [EncryptedTokenStorageGuardTest] for the same pattern), so this
  * asserts on the source: it fails if the passphrase store is downgraded to a
- * plain `SharedPreferences`, if the SQLCipher open-helper factory is dropped
- * from the DI wiring, if the plaintext→encrypted transition stops being run
- * before the database opens, or if the session no longer wipes cached data.
+ * plain `SharedPreferences`, if the passphrase write stops being synchronous
+ * (issue #998), if the SQLCipher open-helper factory is dropped from the DI
+ * wiring, if the DB-open recovery backstop is dropped, if the
+ * plaintext→encrypted transition stops being run before the database opens,
+ * or if the session no longer wipes cached data.
  */
 class RoomEncryptionGuardTest {
 
@@ -54,6 +56,24 @@ class RoomEncryptionGuardTest {
     }
 
     @Test
+    fun `a freshly generated passphrase is committed synchronously and verified, not fire-and-forget (issue 998)`() {
+        assertTrue(
+            "getOrCreate must persist with commit() so the write is durable before the passphrase is used",
+            passphraseStoreSource.contains(".putString(KEY_PASSPHRASE, passphrase).commit()"),
+        )
+        assertFalse(
+            "getOrCreate must not persist the freshly generated passphrase with the async, " +
+                "fire-and-forget apply() (clear()'s apply() is fine: it's only ever used " +
+                "alongside deleting the DB file outright, not before using the value)",
+            passphraseStoreSource.contains(".putString(KEY_PASSPHRASE, passphrase).apply()"),
+        )
+        assertTrue(
+            "getOrCreate must read the value back to confirm it actually landed",
+            passphraseStoreSource.contains("prefs.getString(KEY_PASSPHRASE, null) == passphrase"),
+        )
+    }
+
+    @Test
     fun `the database is opened through the SQLCipher open-helper factory`() {
         assertTrue(
             "provideDatabase must call ensureEncrypted before Room opens",
@@ -62,6 +82,15 @@ class RoomEncryptionGuardTest {
         assertTrue(
             "provideDatabase must set the SQLCipher SupportOpenHelperFactory",
             dataModuleSource.contains("SupportOpenHelperFactory"),
+        )
+    }
+
+    @Test
+    fun `an undecryptable database is recovered instead of boot-looping (issue 998)`() {
+        assertTrue(
+            "provideDatabase must open through RoomDatabaseRecovery so a wrong/lost passphrase " +
+                "wipes and rebuilds the mirror instead of crashing forever",
+            dataModuleSource.contains("RoomDatabaseRecovery.openOrRebuild"),
         )
     }
 
