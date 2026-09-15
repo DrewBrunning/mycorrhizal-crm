@@ -73,12 +73,17 @@ class SessionExpiryWiringGuardTest {
             "the registered listener must clear the session",
             wiringSource.contains("sessionManager.clearSession()"),
         )
-        // Issue #957 (finding #1, point 2): a 401 from clearSession's own
-        // authenticated teardown call must not attempt a refresh -- that
-        // would silently resurrect the session already being torn down.
+        // Issue #957/#967: the two guards found by the same review pass --
+        // re-entrancy (a 401 from clearSession's own teardown call must not
+        // attempt a refresh) and single-flight (a burst of 401s must not
+        // each launch their own refresh).
         assertTrue(
             "the listener must skip a refresh attempt while a clearSession call is already tearing down",
             wiringSource.contains("sessionManager.isClearingSession()"),
+        )
+        assertTrue(
+            "the listener must guard against more than one refresh in flight at a time",
+            wiringSource.contains("refreshInFlight"),
         )
     }
 

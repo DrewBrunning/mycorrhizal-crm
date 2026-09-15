@@ -223,4 +223,53 @@ class SessionExpiryWiringTest {
         assertNull("the session must end up logged out, not resurrected", manager.bearerToken())
         assertFalse(manager.observeSession().first().isLoggedIn)
     }
+
+    // Issue #967: a burst of concurrent 401s -- or the grant exchange's own
+    // 401 re-firing this listener recursively -- must collapse into exactly
+    // one refresh attempt, not a storm of grant-exchange requests.
+    @Test
+    fun `concurrent 401 signals collapse into a single refresh attempt`() = runTest {
+        val notifier = SessionExpiryNotifier()
+        val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+        var refreshStarts = 0
+        val refresherEntered = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val releaseRefresher = kotlinx.coroutines.CompletableDeferred<Unit>()
+
+        SessionExpiryWiring(notifier, manager, refresher = {
+            refreshStarts++
+            refresherEntered.complete(Unit)
+            releaseRefresher.await()
+            true
+        }).start(this)
+
+        // Fire a burst before the first refresh has had a chance to finish.
+        notifier.onSessionExpired()
+        refresherEntered.await()
+        notifier.onSessionExpired()
+        notifier.onSessionExpired()
+        releaseRefresher.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals("only one refresh may be in flight at a time", 1, refreshStarts)
+    }
+
+    // Issue #967: once a refresh completes (successfully or not), the guard
+    // must release so the NEXT, unrelated 401 is handled normally.
+    @Test
+    fun `the single-flight guard releases after a refresh completes`() = runTest {
+        val notifier = SessionExpiryNotifier()
+        val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+        var refreshStarts = 0
+
+        SessionExpiryWiring(notifier, manager, refresher = { refreshStarts++; true }).start(this)
+
+        notifier.onSessionExpired()
+        advanceUntilIdle()
+        notifier.onSessionExpired()
+        advanceUntilIdle()
+
+        assertEquals("a second, later 401 must start its own refresh", 2, refreshStarts)
+    }
 }
