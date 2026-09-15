@@ -124,5 +124,6 @@ internal class OidcLoginCoordinator(
     }
 
     private fun encode(value: String): String =
-        URLEncoder.encode(value, StandardCharsets.UTF_8)
+        // The String-charset overload (API 1); the Charset overload is API 33.
+        URLEncoder.encode(value, StandardCharsets.UTF_8.name())
 }
