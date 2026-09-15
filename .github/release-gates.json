@@ -55,7 +55,7 @@
       "tier": "per-pr",
       "mandatory": true,
       "release_gate": true,
-      "criterion": "the instrumented suite passes against the docker-compose.test.yml backend on an API-26 emulator."
+      "criterion": "the instrumented suite passes against the docker-compose.test.yml backend on an API-35 emulator."
     },
     {
       "name": "Android scan (mobsfscan)",
@@ -236,6 +236,16 @@
       "mandatory": true,
       "release_gate": false,
       "criterion": "the app builds and the suite passes against each declared minimum runtime (COMPAT-02, #473)."
+    },
+    {
+      "name": "Android E2E (emulator, minSdk 26)",
+      "workflow": "android-tests.yml",
+      "check_context": null,
+      "check_kind": "check_run",
+      "tier": "release-tier",
+      "mandatory": true,
+      "release_gate": false,
+      "criterion": "the same instrumented suite as `Android E2E (emulator)` passes against the docker-compose.test.yml backend on an API-26 emulator — the declared minSdk floor (COMPAT-02, #473). Runs on push:main, nightly, and dispatch so the floor is exercised pre-tag, not just a number in a build file (issue #927)."
     },
     {
       "name": "Migration at scale (large dataset)",

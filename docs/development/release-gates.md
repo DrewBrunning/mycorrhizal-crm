@@ -134,7 +134,7 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `Frontend (Vitest)` | per-pr | yes | `tsc --noEmit` and `vitest run` both pass. | `unit-tests.yml` |
 | `Run E2E Tests` | per-pr | yes | the route-stubbed Playwright suite (including @perf specs) passes. | `e2e-tests.yml` |
 | `Android (Gradle)` | per-pr | yes | `testDebugUnitTest`, `lintDebug`, `detekt`, and `assembleDebug` all pass. | `android-tests.yml` |
-| `Android E2E (emulator)` | per-pr | yes | the instrumented suite passes against the docker-compose.test.yml backend on an API-26 emulator. | `android-tests.yml` |
+| `Android E2E (emulator)` | per-pr | yes | the instrumented suite passes against the docker-compose.test.yml backend on an API-35 emulator. | `android-tests.yml` |
 | `Android scan (mobsfscan)` | per-pr | yes | mobsfscan reports no new high-severity finding on the Android sources. | `sast.yml` |
 | `Scan workflows (zizmor)` | per-pr | yes | zizmor exits 0 — no finding above what zizmor.yml's ignore list accepts. | `zizmor.yml` |
 | `CIS container hardening scan` | per-pr | yes | the all-in-one image passes docker/cis-hardening.sh and the Trivy misconfig/secret scan with no CRITICAL/HIGH. | `container-hardening.yml` |
@@ -153,6 +153,7 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `apk-provenance` | release-internal | yes | the `slsa-github-generator` reusable workflow signs the APK subject and emits `mycorrhizal-apk.intoto.jsonl` (SLSA build provenance) as a workflow artifact (issue #355). | `docker-publish.yml` |
 | `verify-release-assets` | release-internal | yes | attaches `mycorrhizal-apk.intoto.jsonl` and a `SHA256SUMS` manifest to the Release, then asserts the Release carries `app-release.apk`, `mycorrhizal-apk.sigstore.json`, `mycorrhizal-apk.intoto.jsonl` and `SHA256SUMS`, and every published image tag resolves in the registry. | `docker-publish.yml` |
 | `Test minimum supported versions` | release-tier | yes | the app builds and the suite passes against each declared minimum runtime (COMPAT-02, #473). | `min-version-tests.yml` |
+| `Android E2E (emulator, minSdk 26)` | release-tier | yes | the same instrumented suite as `Android E2E (emulator)` passes against the docker-compose.test.yml backend on an API-26 emulator — the declared minSdk floor (COMPAT-02, #473). Runs on push:main, nightly, and dispatch so the floor is exercised pre-tag, not just a number in a build file (issue #927). | `android-tests.yml` |
 | `Migration at scale (large dataset)` | release-tier | yes | with MYCORRHIZAL_LARGE_TESTS=1, every supported release migrates to current at ~134x the canonical manifest with row counts and integrity intact (#495). | `migration-tests.yml` |
 | `CardDAV real-server E2E` | release-tier | yes | a full round trip against the real reference servers matches the divergence register (#496). | `carddav-e2e.yml` |
 | `Constrained-resource chaos` | release-tier | yes | the disk-full / mem-limited / cpu-limited jobs fail closed with no corruption (#498). | `chaos-tests.yml` |
