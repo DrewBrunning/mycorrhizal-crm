@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -173,12 +174,24 @@ func copyTree(t *testing.T, src, dst string) {
 	}
 }
 
+// restoreCompletenessT is the subset of *testing.T's API assertRestoreCompleteness
+// needs, narrowed so its own self-test
+// (TestCrossVersionRestoreOntoNewerReleaseMissingPhotoDirIsIncomplete) can
+// invoke the REAL helper against a fake recorder instead of failing the test
+// binary — the same pattern as internal/rfctest's tReporter/fakeT. *testing.T
+// satisfies this without any wrapping, so every other call site is unchanged.
+type restoreCompletenessT interface {
+	Helper()
+	Errorf(format string, args ...any)
+	FailNow()
+}
+
 // assertRestoreCompleteness is the ticket's "every attachment row resolving to
 // a real file" — extended to photos, since the photo directory is the second
 // out-of-database piece and the hand-verify skips exactly it. Every live
 // attachment stored_name and every live contacts.photo must name a file that
 // exists under the restored directories.
-func assertRestoreCompleteness(t *testing.T, db *gorm.DB, photoDir, attachDir string) {
+func assertRestoreCompleteness(t restoreCompletenessT, db *gorm.DB, photoDir, attachDir string) {
 	t.Helper()
 
 	var storedNames []string
@@ -345,12 +358,40 @@ func TestCrossVersionRestoreOntoNewerRelease(t *testing.T) {
 	}
 }
 
+// fakeRestoreCompletenessT is a minimal restoreCompletenessT that records
+// failures without touching the enclosing *testing.T's pass/fail state, so
+// TestCrossVersionRestoreOntoNewerReleaseMissingPhotoDirIsIncomplete can
+// invoke the real assertRestoreCompleteness and assert that IT fails, rather
+// than re-implementing its SELECT + os.Stat loop — a bug inside the real
+// helper (wrong directory, a bad require.NotEmpty guard, os.Stat always
+// succeeding) would leave a re-implementation green (F7, issue #911).
+type fakeRestoreCompletenessT struct {
+	failed   bool
+	messages []string
+}
+
+func (f *fakeRestoreCompletenessT) Helper() {}
+
+func (f *fakeRestoreCompletenessT) Errorf(format string, args ...any) {
+	f.failed = true
+	f.messages = append(f.messages, fmt.Sprintf(format, args...))
+}
+
+func (f *fakeRestoreCompletenessT) FailNow() {
+	f.failed = true
+	// assertRestoreCompleteness only ever loops over an already-fetched slice
+	// after a require.NoError/require.NotEmpty call, so mark-and-continue (not
+	// a real runtime.Goexit) is equivalent here — same reasoning as
+	// internal/rfctest's fakeT.Fatalf.
+}
+
 // TestCrossVersionRestoreOntoNewerReleaseMissingPhotoDirIsIncomplete is the
 // ticket's hand-verify wired in: a restore that forgot the photo directory
 // must fail the completeness check (not pass quietly). It runs the same M > N
-// path as above but with skipPhotos=true and asserts the photo-resolution
-// half of assertRestoreCompleteness would fail — the attachment half still
-// passes, proving the check is specific.
+// path as above but with skipPhotos=true and invokes the real
+// assertRestoreCompleteness (via fakeRestoreCompletenessT, not a copy of its
+// logic) to assert that it fails on the photo half while the attachment half
+// stays clean, proving the check is specific.
 func TestCrossVersionRestoreOntoNewerReleaseMissingPhotoDirIsIncomplete(t *testing.T) {
 	from := SupportedReleases[0]
 	f := Load(t, from)
@@ -362,31 +403,17 @@ func TestCrossVersionRestoreOntoNewerReleaseMissingPhotoDirIsIncomplete(t *testi
 
 	db, _ := openRestoredDB(t, dbPath)
 
-	// Attachments still resolve — they were restored.
-	var storedNames []string
-	require.NoError(t, db.Raw(
-		"SELECT stored_name FROM attachments WHERE deleted_at IS NULL AND stored_name != ''").Scan(&storedNames).Error)
-	require.NotEmpty(t, storedNames)
-	for _, name := range storedNames {
-		p, err := attachments.StoredPath(attachDir, name)
-		require.NoError(t, err)
-		assert.FileExists(t, p, "attachments were restored, so they must still resolve")
-	}
+	fake := &fakeRestoreCompletenessT{}
+	assertRestoreCompleteness(fake, db, photoDir, attachDir)
 
-	// Photos do not — the directory was skipped. This is the failure the
-	// completeness assertion exists to catch.
-	var photos []string
-	require.NoError(t, db.Raw(
-		"SELECT photo FROM contacts WHERE deleted_at IS NULL AND photo != ''").Scan(&photos).Error)
-	require.NotEmpty(t, photos, "the fixture stamped photos onto contacts")
-	missing := 0
-	for _, name := range photos {
-		if _, err := os.Stat(filepath.Join(photoDir, name)); err != nil {
-			missing++
-		}
-	}
-	assert.Equal(t, len(photos), missing,
-		"a restore that skipped the photo directory must leave every photo row unresolved")
+	require.True(t, fake.failed,
+		"assertRestoreCompleteness must fail when the photo directory was skipped")
+
+	joined := strings.Join(fake.messages, "\n")
+	assert.Contains(t, joined, "contact photo",
+		"the failure must be about the photo half of the check")
+	assert.NotContains(t, joined, "attachment row",
+		"attachments were restored, so the real check's attachment half must not have failed")
 }
 
 // TestCrossVersionRestoreUnderOlderBinaryRefused is the M < N cell: a snapshot
