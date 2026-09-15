@@ -19,6 +19,8 @@ the coverage tooling records as covered. The gate is one status **per area**,
 each scoped to its own flag so a PR touching more than one area is judged
 separately per area instead of on one blended number:
 
+<!-- codecov-patch-status:begin -->
+
 ```yaml
 coverage:
   status:
@@ -39,6 +41,13 @@ coverage:
         flags: [android]
         only_pulls: true
 ```
+
+<!-- codecov-patch-status:end -->
+
+This block is not illustrative — it is asserted byte-for-byte (after YAML
+parsing) against `coverage.status.patch` in the real `codecov.yml` by
+`cmd/codecovcheck` (issue #979). Changing a target/threshold/flag/only_pulls
+value here without changing `codecov.yml` to match, or vice versa, fails CI.
 
 `target` is the patch-coverage floor; `threshold` is how far a PR may miss it
 and still pass (e.g. backend's 95%/5% passes anything at or above 90%).
@@ -148,6 +157,29 @@ deliberately untested. In order of preference:
    Activity/Application lifecycle callback bodies) that JaCoCo's
    `testDebugUnitTest`-only instrumentation structurally cannot see, alongside
    the codegen it already excluded.
+
+   `cmd/codecovcheck` (issue #979) enforces the "with a justifying comment"
+   part mechanically: every entry in `codecov.yml`'s `ignore:` list must have
+   its own non-empty `#` comment — immediately above it, or trailing on the
+   same line. It must be that entry's *own* comment, not one shared with a
+   neighboring entry: a bare, uncommented `ignore:` entry appended right
+   after an already-justified one — the shape a silent scope-narrowing edit
+   would take — still fails CI.
+
+## When measurement itself fails
+
+The backend coverage number is a merge of seven per-leg profiles
+(`unit-tests.yml`'s `backend-tests` matrix). A leg's dedicated no-rerun
+coverage pass is `continue-on-error` — a crash or timeout there must not
+fail the test gate — so its profile can go missing without the leg itself
+going red. On a push to `main` (where `only_pulls: true` means nothing is
+gated anyway) a missing leg is a `::warning::`: the Codecov upload is
+skipped and `carryforward` holds the last known number. On a **pull
+request**, the same gap is a hard failure of the `Backend (Go)` job instead
+(issue #979) — silently leaving `codecov/patch/backend` to grade the PR
+against stale carryforward data, with only a warning annotation as
+evidence, is the exact failure mode that motivated this doc's own
+`cmd/codecovcheck` gate above.
 
 ## Making the gate block merges
 
