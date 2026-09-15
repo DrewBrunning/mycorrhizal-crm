@@ -52,6 +52,12 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+    ignore:
+      # Issue #914: docker-compose.compat-test.yml pins this to v0.6.0
+      # deliberately — it is the compat E2E's real migration-floor server,
+      # not a dependency to keep current. Bumping it would silently defeat
+      # the test it exists for.
+      - dependency-name: "ghcr.io/drewbrunning/mycorrhizal-crm"
   - package-ecosystem: "docker"
     directory: "/backend"
     schedule:

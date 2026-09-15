@@ -169,4 +169,8 @@ dependencies {
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.compose.ui.test.manifest)
+    // Issue #914: ServerTooOldGateE2ETest stubs a below-baseline /health
+    // response — no real server is below this app's own migration floor to
+    // boot for that case (see the test's doc comment).
+    androidTestImplementation(libs.mockwebserver)
 }

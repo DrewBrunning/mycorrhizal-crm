@@ -296,14 +296,22 @@ jobs:
       # MIN_CLIENT_VERSION set above the debug APK's versionName. Only
       # ForceUpdateGateE2ETest talks to it; the rest of the suite keeps using
       # the floor-less 7300 instance (the policy's default posture).
-      - name: Start client-floor backend (issue #528)
+      # Issue #914: a third backend (port 7302), pinned to the real v0.6.0
+      # release image — this app's actual migration floor, not a stub.
+      # OldServerCompatibilityE2ETest / ServerTooOldGateE2ETest talk to it
+      # (the latter stubs its OWN below-floor response; only the real-server
+      # test needs this container up).
+      - name: Start compatibility backends (issues #528, #914)
         run: |
           docker compose -p mycorrhizal-compat -f docker-compose.compat-test.yml up -d
-          echo "Waiting for compatibility backend to be ready..."
+          echo "Waiting for compatibility backends to be ready..."
           timeout 120 bash -c 'until curl -s http://localhost:7301/health/live > /dev/null 2>&1; do sleep 2; done'
+          timeout 120 bash -c 'until curl -s http://localhost:7302/health > /dev/null 2>&1; do sleep 2; done'
           curl -s http://localhost:7301/health
           echo ""
-          echo "Compatibility backend is ready"
+          curl -s http://localhost:7302/health
+          echo ""
+          echo "Compatibility backends are ready"
 
       # Hardware acceleration for the emulator (required by android-emulator-runner).
       - name: Enable KVM
@@ -338,6 +346,7 @@ jobs:
           script: |
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
+            adb reverse tcp:7302 tcp:7302
             max_attempts=2; attempt=1; while true; do if ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300; then exit 0; fi; if [ "$attempt" -ge "$max_attempts" ]; then echo "connectedDebugAndroidTest failed after $max_attempts attempts" >&2; exit 1; fi; echo "connectedDebugAndroidTest failed on attempt $attempt/$max_attempts; preserving failing results and retrying"; mkdir -p "app/build/flaky-attempt-$attempt"; cp app/build/outputs/androidTest-results/connected/*.xml "app/build/flaky-attempt-$attempt/" 2>/dev/null || true; attempt=$((attempt + 1)); done
 
       # Issue #268: if the suite passed but only after a retry, the preserved
@@ -440,14 +449,15 @@ jobs:
           timeout 120 bash -c 'until curl -s http://localhost:7300/health/live > /dev/null 2>&1; do sleep 2; done'
           echo "App is ready"
 
-      # Issue #528: the client-floor backend ForceUpdateGateE2ETest drives (see
-      # the android-e2e job's step of the same name).
-      - name: Start client-floor backend (issue #528)
+      # Issue #528/#914: the compatibility backends android-e2e's step of the
+      # same name starts (ForceUpdateGateE2ETest / OldServerCompatibilityE2ETest).
+      - name: Start compatibility backends (issues #528, #914)
         run: |
           docker compose -p mycorrhizal-compat -f docker-compose.compat-test.yml up -d
-          echo "Waiting for compatibility backend to be ready..."
+          echo "Waiting for compatibility backends to be ready..."
           timeout 120 bash -c 'until curl -s http://localhost:7301/health/live > /dev/null 2>&1; do sleep 2; done'
-          echo "Compatibility backend is ready"
+          timeout 120 bash -c 'until curl -s http://localhost:7302/health > /dev/null 2>&1; do sleep 2; done'
+          echo "Compatibility backends are ready"
 
       - name: Enable KVM
         run: |
@@ -466,6 +476,7 @@ jobs:
           script: |
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
+            adb reverse tcp:7302 tcp:7302
             max_attempts=2; attempt=1; while true; do if ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300; then exit 0; fi; if [ "$attempt" -ge "$max_attempts" ]; then echo "connectedDebugAndroidTest failed after $max_attempts attempts" >&2; exit 1; fi; echo "connectedDebugAndroidTest failed on attempt $attempt/$max_attempts; preserving failing results and retrying"; mkdir -p "app/build/flaky-attempt-$attempt"; cp app/build/outputs/androidTest-results/connected/*.xml "app/build/flaky-attempt-$attempt/" 2>/dev/null || true; attempt=$((attempt + 1)); done
 
       - name: Upload E2E results
