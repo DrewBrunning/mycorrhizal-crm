@@ -114,9 +114,24 @@ reverses the earlier "a signing problem here shouldn't block the Docker images" 
 - asserts the built APK's **`versionCode`** equals the value the workflow computed
   (`1000 + GITHUB_RUN_NUMBER`, strictly increasing per [the versioning policy](../versioning-policy.md))
   and is `> 1` — a light pin on the plugin's override wiring so an in-place upgrade keeps
-  working. The full "install release N, then N+1" emulator test is
-  [#480](https://github.com/DrewBrunning/mycorrhizal-crm/issues/480).
+  working. It does not install anything.
 - asserts `app-release.apk` and `mycorrhizal-apk.sigstore.json` are present on the Release.
+
+**Known gap, accepted (issue #994):** no gate here, or anywhere in CI, drives the
+release-signed/R8-minified APK through an instrumented test, and none installs release N then
+N+1 over it to confirm the offline mirror survives — the "full emulator test" #480 originally
+named. [#480](https://github.com/DrewBrunning/mycorrhizal-crm/issues/480) (ANDROID-03) landed
+`RoomMigrationEncryptedTest`, which proves the Room migration chain against a real
+SQLCipher-encrypted file, and `MigrationVersionCoverageTest`, which guards that every version
+pair has a registered migration or a recorded destructive-fallback decision — but both run on
+the **debug** variant via the `android-e2e` job, not the minified release artifact, and neither
+performs a real two-APK install. [PR #804](https://github.com/DrewBrunning/mycorrhizal-crm/pull/804)
+deliberately did not build the literal install-N-then-install-N+1 harness: `versionCode` monotonicity
+(asserted above) is what makes Android accept the install, which is orthogonal to whether the
+database migrates correctly once the new code runs — the thing the JVM/instrumented migration
+suite already proves directly. Disposition: accept, not built — see the "E2E Android
+(instrumented)" section of [`testing.md`](testing.md#e2e-android-instrumented) for where this is
+tracked.
 
 **PKCS12 keystore note:** `SIGNING_KEY_PASSWORD` **must equal** `SIGNING_STORE_PASSWORD` for this
 keystore. A mismatch fails `assembleRelease` with an opaque padding error, not a clear message.
