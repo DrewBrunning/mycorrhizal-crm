@@ -282,15 +282,21 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   access.
 - **Retention**: a rebuildable cache, not a second source of truth — rows persist only until the next
   sync disagrees with them.
-- **Deletion / propagation**: `ContactRepositoryImpl.applySync` (`android/core/data/src/main/kotlin/.../
-  repository/ContactRepositoryImpl.kt:248-256`) reads the T17 `sync.incremental` id list from every list
-  response and calls `dao.deleteByIds(ids)` — the same tombstone mechanism §1/§7 rely on, consumed
-  correctly here too. A direct on-device delete (`deleteContact`) also removes the cached row immediately
-  on success (`ContactRepositoryImpl.kt:137-141`). On logout or an invalidated session,
-  `LocalDataCleaner.clear()` (`android/core/data/src/main/kotlin/.../local/LocalDataCleaner.kt`) calls
-  `AppDatabase.clearAllTables()` **and** deletes `context.cacheDir` recursively — wiping the FTS4 index,
-  Coil's photo disk cache, and the vCard-share `FileProvider` staging area together, so a "stolen device
-  after logout" story leaves nothing recoverable outside the (encrypted) DB the OS itself controls.
+- **Deletion / propagation**: `ContactRepositoryImpl.syncContacts` (`android/core/data/src/main/kotlin/.../
+  repository/ContactRepositoryImpl.kt`) drains the T17 `?since=` change feed and applies both the live rows
+  (upsert) and the server's soft-delete tombstones (a `ContactSummary` with `deleted:true`), calling
+  `dao.deleteByIds`. It bootstraps its feed watermark on the first sync from one page of the live list
+  (reconciling the mirror against that page when the list fits in a single page, which removes a row the
+  server deleted before this install held a cursor); a `?since=` cursor older than the retention window
+  gets `410 Gone` and re-bootstraps automatically. (The `sync` object on a list response — `mode` plus the
+  `incremental`/`full_resync` collection *names* — is the static sync-mode map, not a tombstone id list; an
+  earlier implementation misread those collection names as ids, so no delete ever propagated — issue #959.)
+  A direct on-device delete (`deleteContact`) also removes the cached row immediately on success. On logout
+  or an invalidated session, `LocalDataCleaner.clear()` (`android/core/data/src/main/kotlin/.../
+  LocalDataCleaner.kt`) calls `AppDatabase.clearAllTables()` **and** deletes `context.cacheDir` recursively
+  — wiping the FTS4 index, Coil's photo disk cache, and the vCard-share `FileProvider` staging area
+  together, so a "stolen device after logout" story leaves nothing recoverable outside the (encrypted) DB
+  the OS itself controls.
 - **Backups**: none — this is a device-local cache with no server-visible backup; Android's own
   Auto Backup is out of scope for app-internal DB files of this kind and isn't configured for it.
 
@@ -913,7 +919,7 @@ per §1/§7/§8), but it is a genuine, named gap rather than a silently-accepted
 | Sync-horizon 410 Gone matches purge window | `backend/controllers/cursor_feed_test.go` |
 | FTS index follows soft/hard delete | `backend/database/migrate_test.go`, FTS trigger coverage |
 | Android mirror wiped on logout | `LocalDataCleaner` — see Android test suite |
-| Android mirror deletes tombstoned ids | `ContactRepositoryImpl` sync tests (`core/data/src/test/.../repository/`) |
+| Android mirror applies `?since=` tombstones | `ContactRepositoryImpl` sync tests (`core/data/src/test/.../repository/`) |
 | Android server URL survives logout (non-credential config) | `DefaultSessionManagerTest` (`clearSession` cases incl. process restart), `SessionExpiryWiringTest` (`core/data/src/test/.../session/`), `LoginViewModelTest`/`LoginScreenTest` (`feature/auth`) |
 | No PII/credential in browser storage | `frontend/e2e/` (#419 Playwright regression) |
 | Backup restore actually restores | `frontend/e2e/backupRestore.spec.ts`, restore-drill job (#275) |

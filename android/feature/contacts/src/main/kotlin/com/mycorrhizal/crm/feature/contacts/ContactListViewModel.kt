@@ -112,6 +112,12 @@ class ContactListViewModel @Inject constructor(
         loadCircles()
         loadTags()
         loadContacts()
+        // Issue #959: reconcile the offline mirror with the T17 change feed so a
+        // contact deleted on another client (a tombstone no browse page carries)
+        // stops being served from the cache. Best-effort and non-blocking: the
+        // live list above renders from the network response, and an offline
+        // failure just leaves the last-known mirror in place.
+        viewModelScope.launch { contactRepository.syncContacts() }
     }
 
     private fun hasActiveFilter(state: ContactListUiState): Boolean =

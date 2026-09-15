@@ -260,7 +260,7 @@ the sentinel values; `DELETE` it; then inspect each store the inventory lists.
 | `audit_events.before_snapshot` | **retained** — holds a redacted snapshot of the deleted contact | hard-deleted at `AUDIT_RETENTION_DAYS` (90), i.e. ~60 days *after* the row itself is purged. **Deliberate**, documented in `../privacy.md` |
 | `webhook_deliveries.payload` | **retained** if a webhook fired on this contact — a plaintext copy of the deleted contact | hard-deleted at `WEBHOOK_DELIVERY_RETENTION_DAYS` (30), i.e. ~30 days after the delivery attempt; successful (2xx) deliveries no longer hold the entity body at all (only the event envelope) |
 | Operator backups | **retained** in every snapshot predating the delete; a restore resurrects the (soft-deleted, not yet purged) contact | ages out of *new* snapshots after the purge; survives in old snapshots until the operator deletes them |
-| Android Room mirror | dropped on the next sync (T17 tombstone id list) or on logout wipe | — |
+| Android Room mirror | dropped on the next `?since=` change-feed sync (T17 tombstone) or on logout wipe | — |
 | CardDAV/CalDAV clients | contact stops appearing in the next full listing (no delta protocol; `data-retention-lifecycle.md` §7) | — |
 
 Deliberate retention: **audit snapshots** and **backups** only. Both documented. Everything else

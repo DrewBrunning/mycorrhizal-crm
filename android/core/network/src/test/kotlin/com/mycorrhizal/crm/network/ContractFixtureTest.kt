@@ -108,6 +108,20 @@ class ContractFixtureTest {
         // The list query doesn't select `circles` -- absent on the wire, and
         // this pins it stays null through Moshi rather than throwing.
         assertNull(primary.circles)
+
+        // Issue #959: the `sync` block is the T17 mode contract, and its
+        // `incremental`/`full_resync` arrays are COLLECTION NAMES — not deleted
+        // ids. The old mirror wrongly parsed them as ids; pinning the real
+        // payload here stops that type confusion from quietly returning.
+        assertEquals("incremental", page.sync?.mode)
+        assertTrue(
+            "incremental must list collection names, not ids",
+            page.sync?.incremental?.contains("contacts") == true,
+        )
+        assertTrue(
+            "full_resync must list collection names",
+            page.sync?.fullResync?.contains("relationship_edges") == true,
+        )
     }
 
     // MAINT-02 (issue #491): the Android client must tolerate unknown response
