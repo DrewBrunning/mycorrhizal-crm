@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { Reminder } from '../api/reminders';
 import { DateFormatProvider } from '../DateFormatProvider';
@@ -7,6 +7,17 @@ import ReminderList from './ReminderList';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);
+
+// remind_at is a timestamp, formatted in the *local* zone (#962) -- pin TZ so
+// the date-chip assertions below don't depend on the test runner's ambient
+// timezone.
+const originalTZ = process.env.TZ;
+beforeAll(() => {
+  process.env.TZ = 'UTC';
+});
+afterAll(() => {
+  process.env.TZ = originalTZ;
+});
 
 function reminder(overrides: Partial<Reminder> = {}): Reminder {
   return {
