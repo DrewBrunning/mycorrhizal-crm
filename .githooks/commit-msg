@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Local mirror of .github/workflows/dco.yml: rejects a commit with no
+# well-formed 'Signed-off-by:' trailer matching the committer, so a missing
+# DCO sign-off is caught before the commit exists rather than as a red PR
+# check. Installed via scripts/install-git-hooks.sh.
+#
+# This is a local approximation of dco.yml's check: CI verifies every commit
+# in a PR against its actual recorded author/committer email; this hook, at
+# commit-msg time, checks the message being composed against the current
+# `git config user.email` (what `git commit -s` will actually stamp).
+
+set -u
+
+msg_file="$1"
+
+git_dir="$(git rev-parse --git-dir)"
+if [ -f "$git_dir/MERGE_HEAD" ]; then
+  # dco.yml also only checks non-merge commits (git rev-list --no-merges).
+  exit 0
+fi
+
+user_email="$(git config user.email | tr '[:upper:]' '[:lower:]')"
+
+# Same regex dco.yml uses against `git show --format='%B'`.
+signoffs="$(grep -iE '^Signed-off-by: .+ <[^<>@[:space:]]+@[^<>@[:space:]]+>[[:space:]]*$' "$msg_file" \
+  | sed -E 's/.*<([^<>]+)>.*/\1/' \
+  | tr '[:upper:]' '[:lower:]')"
+
+fail() {
+  cat >&2 <<EOF
+
+ERROR: missing or non-matching Developer Certificate of Origin sign-off.
+
+Every commit here must carry a line of the form:
+
+    Signed-off-by: Your Name <your@email.example>
+
+matching your configured user.email (currently: ${user_email:-<unset>}).
+
+Add it automatically:
+
+    git commit -s
+    # or, to fix the commit you just tried:
+    git commit --amend -s
+
+Full text you are certifying: /DCO
+EOF
+  exit 1
+}
+
+[ -z "$signoffs" ] && fail
+
+matched=0
+while IFS= read -r email; do
+  [ "$email" = "$user_email" ] && matched=1
+done <<< "$signoffs"
+
+[ "$matched" -eq 0 ] && fail
+
+exit 0
