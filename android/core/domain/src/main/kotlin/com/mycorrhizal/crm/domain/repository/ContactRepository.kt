@@ -42,6 +42,25 @@ interface ContactRepository {
     ): Result<ContactsPage>
 
     /**
+     * T17 change-feed reconciliation (issue #959). Applies every server-side
+     * change since the last sync to the Room mirror — including soft-delete
+     * **tombstones**, which no browse/list response ever carries. A contact
+     * deleted on another client stops being served offline after this runs.
+     *
+     * On the first sync (no cursor) it bootstraps from one page of the live
+     * list: that page's `next_cursor` becomes the feed watermark when the list
+     * is larger than a page, otherwise the response is the whole live set and
+     * the mirror is reconciled against it (drop cached rows the server no
+     * longer has). A `?since=` cursor older than the server's retention window
+     * returns 410 and transparently falls back to this bootstrap.
+     *
+     * Best-effort by design: callers ignore the failure (offline, server down)
+     * and keep serving the last-known mirror. Browsing ([listContacts]) is
+     * unaffected by sync state.
+     */
+    suspend fun syncContacts(): Result<Unit>
+
+    /**
      * M26: GET /contacts/circles?legacy=true — the distinct legacy free-text
      * circle strings still in the old flat `contacts.circles` JSON column, for
      * the circle/tag-triage tool.

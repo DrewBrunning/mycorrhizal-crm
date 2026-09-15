@@ -352,6 +352,59 @@ class ApiClientTest {
     }
 
     @Test
+    fun `list contacts sends only since and limit on the change feed`() = runBlocking {
+        // Issue #959: ?since= is sync state, not browsing — the backend ignores
+        // the other filters, so the client must not attach them (a silently
+        // dropped parameter is worse than an absent one).
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),
+        )
+
+        client.listContacts(
+            since = "CURSOR-1",
+            limit = 100,
+            cursor = "c1",
+            search = "ali",
+            includeArchived = true,
+            favorites = true,
+        )
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contacts?since=CURSOR-1&limit=100", request.path)
+    }
+
+    @Test
+    fun `list contacts parses a change-feed tombstone row`() = runBlocking {
+        // Issue #959: the ONLY tombstone shape the server sends is `deleted:true`
+        // via ?since=. A soft-deleted row comes back as a normal summary with the
+        // flag set (not an id list), which is what the mirror's delete path reads.
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {
+                  "contacts": [
+                    {"id": 1, "uid": "u1", "fn": "Alice"},
+                    {"id": 2, "uid": "u2", "fn": "Gone", "deleted": true}
+                  ],
+                  "next_cursor": "CURSOR-2",
+                  "sync": {"mode": "incremental", "incremental": ["contacts", "notes"]}
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        val result = client.listContacts(since = "CURSOR-1", limit = 100)
+
+        assertTrue(result.isSuccess)
+        val page = result.getOrThrow()
+        assertFalse(page.contacts[0].deleted)
+        assertTrue(page.contacts[1].deleted)
+        assertEquals("CURSOR-2", page.nextCursor)
+        assertEquals("incremental", page.sync?.mode)
+        assertEquals(listOf("contacts", "notes"), page.sync?.incremental)
+    }
+
+    @Test
     fun `list contacts omits the favorites filter by default`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),

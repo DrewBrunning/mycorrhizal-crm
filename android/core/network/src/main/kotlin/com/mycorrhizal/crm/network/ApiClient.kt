@@ -616,6 +616,12 @@ class ApiClient(
         // contacts only — the wire contract web #173 shipped.
         favorites: Boolean? = null,
         vcardUids: List<String>? = null,
+        // T17 change feed (issue #959): `?since=<opaque cursor>` returns every
+        // row changed after the cursor — created, updated, AND soft-deleted
+        // (`deleted:true` tombstones) — ordered forward and ignoring every
+        // filter. This is the ONLY path that surfaces tombstones, so the offline
+        // mirror's delete propagation depends on it. See `syncContacts`.
+        since: String? = null,
     ): Result<ContactsPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACTS_PATH".toHttpUrl().newBuilder()
         if (!vcardUids.isNullOrEmpty()) {
@@ -625,6 +631,13 @@ class ApiClient(
             // ignored server-side, and sending them here would be misleading.
             vcardUids.forEach { urlBuilder.addQueryParameter("vcard_uid", it) }
             includeArchived?.let { urlBuilder.addQueryParameter("include_archived", it.toString()) }
+        } else if (since != null) {
+            // The change feed is sync state, not browsing: the backend ignores
+            // search/circle/archive/favorites under ?since= (a feed must carry
+            // every row), so send only since + limit rather than attaching
+            // filters that would be silently dropped.
+            urlBuilder.addQueryParameter("since", since)
+            limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
         } else {
             cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
             limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
