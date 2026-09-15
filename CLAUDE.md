@@ -238,6 +238,45 @@ which blocks testing push notifications or any other service-worker-dependent fe
 `frontend-dev`. Use the `frontend-prod` launch config instead (`yarn build` + `serve -s build`,
 same port) — see T51's landing note.
 
+## Local pre-commit checks
+
+**Run once per clone, and once more in every worktree, before your first commit there** (idempotent,
+safe to re-run):
+
+```bash
+bash scripts/install-git-hooks.sh
+```
+
+This points `core.hooksPath` at the checked-in `.githooks/` — vendored git hooks (no external
+pre-commit framework) that mirror CI's fast, deterministic gates so a commit that would fail CI
+fails locally first, before a push. A linked worktree can carry its own `core.hooksPath` override
+that shadows the repo-wide setting (some environments provision every worktree this way, pinned at
+the real `.git/hooks` dir) — the script detects that and sets the override too, so this genuinely
+needs running per worktree, not just once per clone.
+
+- **Always:** a client-side secret scan (`gitleaks`, issue #376 — predates this section; see
+  `README-developer.md`), fail-closed on a missing `gitleaks` binary.
+- **Staged `backend/` files:** `gofmt -l`, `go build ./...`, `go vet ./...`, `golangci-lint` (pinned
+  to the same v2.12.2 `unit-tests.yml` uses), plus the contract-fixtures/DATA-01/INT-01/API-baseline
+  generated-artifact drift tests (targeted `go test -run`, not the full suite).
+- **Staged `frontend/` files:** `tsc --noEmit`, `biome ci`, `eslint` (`yarn lint`).
+- **Always:** the six docs-citations/governance checks (`citecheck`, `depexceptions`, `deprecations`,
+  `docscheck`, `releasegatecheck`, `governancecheck`) — CI runs these unconditionally too, since
+  `docs/**` maps to nothing in `.github/filters.yaml`.
+- **`commit-msg`:** rejects a commit with no `Signed-off-by:` trailer matching your `user.email`
+  (DCO) — use `git commit -s`.
+- **Reminder only, never blocks:** staging a migration, `backend/config/config.go`, or `.env.example`
+  prints a reminder to add an `## Upgrade notes` block (or `no-changelog: <reason>`) to the PR
+  description — see `docs/changelog-policy.md`. This can't be enforced at commit time because the
+  real `changelog-note` CI gate reads the PR body, which doesn't exist yet.
+
+Deliberately excluded (still CI-only, not commit-time gates): `govulncheck`, benchmarks/fuzz targets,
+and any full test suite (`go test ./...`, `vitest run`, Playwright, `yarn build`) — too slow for a
+hook that runs on every commit.
+
+**Never bypass with `git commit --no-verify`** except with the user's explicit go-ahead for that
+specific commit — a failing hook is CI catching you locally, not an obstacle to route around.
+
 ## Workflow
 
 - **One branch per concern.** `feature/<thing>`. Implement → verify → commit per concern → push → merge

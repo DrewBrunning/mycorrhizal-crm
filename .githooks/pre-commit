@@ -1,22 +1,174 @@
 #!/usr/bin/env bash
-# Issue #376: client-side secret scanning. Runs gitleaks against exactly what's
-# staged, before it ever leaves the machine — GitHub's own secret scanning
-# (and push protection, if enabled on the repo) only sees a commit after it's
-# pushed. This is opt-in per clone: `git config core.hooksPath .githooks`
-# (see README-developer.md). Fail-closed once opted in — a missing gitleaks
-# binary blocks the commit with install instructions rather than silently
-# skipping the check.
-set -euo pipefail
+# Local mirror of CI's fast, deterministic gates (linters + governance/drift
+# checks), run on every commit so a commit that would fail CI fails locally
+# first. Installed via `scripts/install-git-hooks.sh` (sets
+# core.hooksPath=.githooks). See CLAUDE.md's "Local pre-commit checks" section
+# for what this does and does not cover, and why.
+#
+# Also runs the pre-existing client-side secret scan (issue #376,
+# README-developer.md) — that check predates and is independent of everything
+# below it; kept first so a real secret is caught before spending time on
+# anything else.
+#
+# Path-scoping mirrors .github/filters.yaml's own backend/** and frontend/**
+# prefixes — keep the two in sync if filters.yaml's top-level areas change.
+# The docs-citations bundle runs unconditionally, matching unit-tests.yml's
+# docs-citations job (docs/** maps to nothing in filters.yaml, so an
+# unconditional job is CI's own answer to that).
+#
+# Every check below runs even after an earlier one fails, so one commit
+# attempt reports everything wrong at once (like a CI job list) rather than
+# stopping at the first failure. Overall exit status is non-zero if anything
+# failed.
 
-if ! command -v gitleaks >/dev/null 2>&1; then
-	echo "pre-commit: gitleaks is not installed, refusing to commit." >&2
-	echo "" >&2
-	echo "Install it, then retry:" >&2
-	echo "  macOS:   brew install gitleaks" >&2
-	echo "  Linux:   see https://github.com/gitleaks/gitleaks#installing" >&2
-	echo "" >&2
-	echo "To bypass this one commit (not recommended): git commit --no-verify" >&2
-	exit 1
+set -u
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+overall=0
+RED=$'\033[31m'
+GREEN=$'\033[32m'
+YELLOW=$'\033[33m'
+BOLD=$'\033[1m'
+RESET=$'\033[0m'
+
+# run <label> <workdir> <command...> — runs a command, reports pass/fail,
+# folds a failure into $overall without stopping the rest of the checks.
+run() {
+  local label="$1" workdir="$2"
+  shift 2
+  echo "${BOLD}==> ${label}${RESET}"
+  if (cd "$repo_root/$workdir" && "$@"); then
+    echo "${GREEN}    ok${RESET}"
+  else
+    echo "${RED}    FAILED: ${label}${RESET}"
+    overall=1
+  fi
+}
+
+# gofmt -l exits 0 even when it lists files, so it needs its own wrapper
+# rather than run()'s plain exit-code check.
+run_gofmt() {
+  echo "${BOLD}==> backend: gofmt -l${RESET}"
+  local out
+  out="$(cd "$repo_root/backend" && gofmt -l .)"
+  if [ -z "$out" ]; then
+    echo "${GREEN}    ok${RESET}"
+  else
+    echo "${RED}    FAILED: gofmt found unformatted files:${RESET}"
+    echo "$out" | sed 's/^/      /'
+    echo "    fix with: cd backend && gofmt -w <file>"
+    overall=1
+  fi
+}
+
+# Issue #376: gitleaks against exactly what's staged. Fail-closed once
+# opted in — a missing gitleaks binary blocks the commit with install
+# instructions rather than silently skipping the scan.
+run_gitleaks() {
+  echo "${BOLD}==> secret scan (gitleaks, issue #376)${RESET}"
+  if ! command -v gitleaks >/dev/null 2>&1; then
+    echo "${RED}    FAILED: gitleaks is not installed.${RESET}"
+    echo "    Install it, then retry:"
+    echo "      macOS:   brew install gitleaks"
+    echo "      Linux:   see https://github.com/gitleaks/gitleaks#installing"
+    overall=1
+    return
+  fi
+  if gitleaks protect --staged --redact -v --config "$repo_root/.gitleaks.toml"; then
+    echo "${GREEN}    ok${RESET}"
+  else
+    echo "${RED}    FAILED: gitleaks found a likely secret in the staged diff.${RESET}"
+    overall=1
+  fi
+}
+
+run_gitleaks
+
+staged_files="$(git diff --cached --name-only --diff-filter=ACMR)"
+
+backend_changed=false
+frontend_changed=false
+changelog_relevant=false
+
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  case "$f" in
+    backend/*) backend_changed=true ;;
+  esac
+  case "$f" in
+    frontend/*) frontend_changed=true ;;
+  esac
+  case "$f" in
+    backend/database/migrations/*|backend/config/config.go|.env.example)
+      changelog_relevant=true
+      ;;
+  esac
+done <<< "$staged_files"
+
+if [ "$backend_changed" = true ]; then
+  echo ""
+  echo "${BOLD}## Backend checks (staged backend/ files)${RESET}"
+  run_gofmt
+  run "backend: go build ./..." backend go build ./...
+  run "backend: go vet ./..." backend go vet ./...
+  run "backend: golangci-lint (gosec + bodyclose)" backend \
+    go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run ./...
+  run "backend: contract-fixtures drift (issue #266)" backend \
+    go test -run '^TestContractFixturesMatchSpec$' .
+  run "backend: DATA-01/INT-01 matrix drift (issues #441, #464)" backend \
+    go test -run '^TestMatrixReproducesCommittedDoc$' ./correspondence/... ./integrations/...
+  run "backend: API baseline drift (MAINT-02, issue #491)" backend \
+    go test -run '^TestContractBaselineHolds$|^TestContractBaselineIsCurrent$' ./internal/apibaseline/...
 fi
 
-gitleaks protect --staged --redact -v --config .gitleaks.toml
+if [ "$frontend_changed" = true ]; then
+  echo ""
+  echo "${BOLD}## Frontend checks (staged frontend/ files)${RESET}"
+  if [ ! -d "$repo_root/frontend/node_modules" ]; then
+    echo "${RED}${BOLD}    FAILED: frontend/node_modules is missing.${RESET}"
+    echo "    Run: cd frontend && yarn install --frozen-lockfile"
+    overall=1
+  else
+    # Local pinned binaries, not `npx` — this repo pins exact tool versions
+    # in package.json/yarn.lock (biome, typescript), and `npx` will silently
+    # fall through to fetching an unrelated or mismatched package from the
+    # registry when node_modules isn't populated, which is worse than a
+    # clear failure.
+    run "frontend: tsc --noEmit" frontend ./node_modules/.bin/tsc --noEmit
+    run "frontend: biome ci" frontend ./node_modules/.bin/biome ci .
+    run "frontend: eslint (yarn lint)" frontend yarn lint
+  fi
+fi
+
+echo ""
+echo "${BOLD}## Docs & governance checks (always — CI runs these unconditionally too)${RESET}"
+run "citecheck (security-doc citations)" backend go run ./cmd/citecheck
+run "depexceptions (dependency-exception ledger)" backend go run ./cmd/depexceptions
+run "deprecations (deprecation register)" backend go run ./cmd/deprecations
+run "docscheck (docs structure/links/drift)" backend go run ./cmd/docscheck
+run "releasegatecheck (release-gate registry)" backend go run ./cmd/releasegatecheck
+run "governancecheck (governance settings)" backend go run ./cmd/governancecheck
+
+if [ "$changelog_relevant" = true ]; then
+  echo ""
+  echo "${YELLOW}${BOLD}## Reminder: Upgrade notes${RESET}"
+  echo "${YELLOW}You staged a migration, backend/config/config.go, or .env.example.${RESET}"
+  echo "${YELLOW}This can't be checked locally (the real gate reads the PR description,"
+  echo "which doesn't exist yet) — but before opening/updating the PR, add an"
+  echo "'## Upgrade notes' block (and '## Breaking changes' if it applies), or"
+  echo "a 'no-changelog: <reason>' line if genuinely nothing is needed."
+  echo "See docs/changelog-policy.md.${RESET}"
+fi
+
+echo ""
+if [ "$overall" -ne 0 ]; then
+  echo "${RED}${BOLD}pre-commit: one or more checks failed — commit blocked.${RESET}"
+  echo "Fix the issues above and try again, or (only with the user's explicit"
+  echo "go-ahead for this specific commit) bypass with 'git commit --no-verify'."
+else
+  echo "${GREEN}${BOLD}pre-commit: all checks passed.${RESET}"
+fi
+
+exit "$overall"

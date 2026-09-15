@@ -10,7 +10,11 @@ nav_order: 6
 
 1. Fork the repository and clone your fork locally.
 2. Follow the setup steps in [Backend](backend.md) and [Frontend](frontend.md).
-3. Create a feature branch from `main`.
+3. Run `bash scripts/install-git-hooks.sh` once — it wires up local git hooks
+   that mirror CI's linters and a few governance/drift checks, so a commit
+   that would fail CI fails locally first. See `CLAUDE.md`'s "Local
+   pre-commit checks" section for exactly what runs.
+4. Create a feature branch from `main`.
 
 ## Development Workflow
 
@@ -64,7 +68,9 @@ git push --force-with-lease
 ```
 
 The `DCO` GitHub Actions check runs on every pull request and fails if any
-non-merge commit is missing a valid sign-off.
+non-merge commit is missing a valid sign-off. If you ran
+`scripts/install-git-hooks.sh` (step 3 above), a local `commit-msg` hook
+catches a missing or non-matching sign-off before the commit is even made.
 
 ## Project governance
 

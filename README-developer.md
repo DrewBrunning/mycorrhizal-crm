@@ -191,17 +191,22 @@
 - **Keep the Scorecard check green on changed workflow lines**: GitHub's Advanced Security Scorecard flags lines added by a PR with a top-level `checks: write` and with unpinned action versions. New/changed workflow steps therefore pin actions by commit SHA with a `# <tag>` comment (the one exception: `test-report.yml`'s job-scoped `checks: write`, which `dorny/test-reporter` genuinely needs to create Check Runs). Older, untouched workflow lines still use plain `@vN` tags; pin them when you touch them.
 
 **Client-side secret scanning (gitleaks, issue #376)**
-- GitHub's own secret scanning only sees a secret after it's pushed. To catch one before it ever leaves your machine, this repo ships an opt-in gitleaks pre-commit hook: [.githooks/pre-commit](.githooks/pre-commit) runs `gitleaks protect --staged` against exactly what's staged, using the rule config in [.gitleaks.toml](.gitleaks.toml) (extends gitleaks' default rule pack; no repo-specific rules yet).
-- **One-time setup per clone:**
-  ```bash
-  git config core.hooksPath .githooks
-  ```
-  Requires the `gitleaks` binary on `PATH` (`brew install gitleaks`, or a release binary from [github.com/gitleaks/gitleaks](https://github.com/gitleaks/gitleaks#installing)). Once configured, the hook is fail-closed: a missing `gitleaks` binary blocks the commit rather than silently skipping the scan. Bypass a single commit with `git commit --no-verify` (e.g. a deliberate false positive you've already reviewed).
+- GitHub's own secret scanning only sees a secret after it's pushed. To catch one before it ever leaves your machine, [.githooks/pre-commit](.githooks/pre-commit) runs `gitleaks protect --staged` against exactly what's staged, using the rule config in [.gitleaks.toml](.gitleaks.toml) (extends gitleaks' default rule pack; no repo-specific rules yet). Requires the `gitleaks` binary on `PATH` (`brew install gitleaks`, or a release binary from [github.com/gitleaks/gitleaks](https://github.com/gitleaks/gitleaks#installing)); fail-closed, so a missing binary blocks the commit rather than silently skipping the scan.
   - If a rule ever false-positives on deliberately-fake test material, add a scoped `[[allowlist]]` entry to `.gitleaks.toml` rather than disabling the rule globally.
 - This is local-only and doesn't replace server-side scanning — repo admins should also enable GitHub's **push protection** (Settings → Code security → Secret scanning → Push protection), which is a repo setting, not something this hook can turn on.
+- **Same hook, more checks:** `.githooks/pre-commit` also runs local mirrors of CI's linters and a
+  few governance/drift checks (path-scoped to what's staged), and `.githooks/commit-msg` enforces
+  DCO sign-off. **One-time setup per clone** (and once more in every linked worktree — see the
+  script's own comments for why):
+  ```bash
+  bash scripts/install-git-hooks.sh
+  ```
+  Bypass a single commit with `git commit --no-verify` (e.g. a deliberate false positive you've
+  already reviewed) — full list of what runs, and what's deliberately excluded, in `CLAUDE.md`'s
+  "Local pre-commit checks" section.
 
 **Commit sign-off (DCO, OSPS-LE-01.01)**
-- Every commit must carry a `Signed-off-by:` trailer matching its author (`git commit -s`) — the [Developer Certificate of Origin](DCO) 1.1. [.github/workflows/dco.yml](.github/workflows/dco.yml) checks every non-merge commit in a PR and fails on a missing or non-matching sign-off; fix a branch with `git rebase --signoff origin/main` then `git push --force-with-lease`. It is not path-gated (it runs on every PR). Add it to the `main` ruleset's required checks alongside the suites listed above. Contributor-facing copy: [docs/development/contributing.md](docs/development/contributing.md#sign-your-commits-dco); project roles and sensitive-resource access: [GOVERNANCE.md](GOVERNANCE.md).
+- Every commit must carry a `Signed-off-by:` trailer matching its author (`git commit -s`) — the [Developer Certificate of Origin](DCO) 1.1. [.github/workflows/dco.yml](.github/workflows/dco.yml) checks every non-merge commit in a PR and fails on a missing or non-matching sign-off; fix a branch with `git rebase --signoff origin/main` then `git push --force-with-lease`. It is not path-gated (it runs on every PR). Add it to the `main` ruleset's required checks alongside the suites listed above. Contributor-facing copy: [docs/development/contributing.md](docs/development/contributing.md#sign-your-commits-dco); project roles and sensitive-resource access: [GOVERNANCE.md](GOVERNANCE.md). [.githooks/commit-msg](.githooks/commit-msg) (installed by the same `scripts/install-git-hooks.sh` above) catches a missing/non-matching sign-off locally, before the commit exists.
 
 **Data & Integrations**
 - SQLite lives at `SQLITE_DB_PATH` (default mycorrhizal.db); migrations in [backend/database/migrations](backend/database/migrations) are embedded into the binary and auto-run on startup.
