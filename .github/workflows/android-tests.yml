@@ -379,10 +379,20 @@ jobs:
   # COMPAT-02 (issue #473): the same instrumented E2E suite as android-e2e
   # above, but on an emulator at API 26 -- the declared minSdk floor
   # (android/build-logic/.../AndroidConfig.kt) -- instead of API 35. Proves
-  # the floor is a fact, not just a number in a build file. Deliberately
-  # schedule/dispatch-only (same as android-e2e / android-macrobenchmark):
-  # this doubles the emulator cost of an already-heavy suite, and the floor
-  # moves rarely.
+  # the floor is a fact, not just a number in a build file.
+  #
+  # Issue #927: this is a named `release-tier` gate in .github/release-gates.json
+  # ("Android E2E (emulator, minSdk 26)") -- release-gates.json previously had
+  # NO row for this job, and the "Android E2E (emulator)" gate's own criterion
+  # wrongly claimed API-26 coverage while android-e2e above actually runs API
+  # 35, so the declared floor was never exercised pre-tag. `if:` now includes
+  # push:main, mirroring migration-tests.yml's `large-dataset` job, so a real
+  # release commit (the release.yml fixture-commit push for a final release,
+  # or its explicit workflow_dispatch for an RC ref) genuinely runs this job
+  # rather than release.yml's push:main-already-covered heuristic silently
+  # skipping the one gate it was added for. This doubles the emulator cost of
+  # an already-heavy suite on every main merge (was schedule/dispatch-only),
+  # which is the accepted trade-off for making the floor a real gate.
   android-e2e-min-sdk:
     permissions:
       contents: read
@@ -390,7 +400,7 @@ jobs:
     name: Android E2E (emulator, minSdk 26)
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout repository

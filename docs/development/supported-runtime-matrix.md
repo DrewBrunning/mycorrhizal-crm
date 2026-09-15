@@ -91,3 +91,9 @@ All of the above are scheduled weekly (`min-version-tests.yml`) or nightly (the 
 since the floor moves rarely and several of these jobs download and boot a second browser/Go
 toolchain/Compose client. `min-version-tests.yml` also exposes `workflow_call` for a future
 required pre-release gate (REL-03, issue #447) to invoke without editing the workflow.
+
+**Exception: `android-e2e-min-sdk`** (issue #927) also runs on every `push:main`, mirroring
+`migration-tests.yml`'s `large-dataset` job — it is a named `release-tier` gate in the
+[release-gates registry](release-gates.md) ("Android E2E (emulator, minSdk 26)"), and the API-26
+floor needs to be exercised on the actual commit a release cuts from, not merely at some point
+within the last week.
