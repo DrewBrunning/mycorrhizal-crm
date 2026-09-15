@@ -39,6 +39,11 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 		if cfg.OIDC.Enabled && oidcProvider != nil {
 			v1.GET("/auth/oidc/login", middleware.AuthRateLimitMiddleware(), controllers.OIDCLoginHandler(oidcProvider, cfg))
 			v1.GET("/auth/oidc/callback", middleware.AuthRateLimitMiddleware(), controllers.OIDCCallbackHandler(oidcProvider, cfg))
+			// Issue #965: the Android native flow redeems the callback's
+			// single-use, PKCE-bound code here for a session JWT. Public and
+			// rate-limited like /login; EnforceMinClientVersion applies because
+			// it mints a session (issue #692).
+			v1.POST("/auth/oidc/native/exchange", middleware.AuthRateLimitMiddleware(), middleware.EnforceMinClientVersion(cfg), middleware.ValidateJSONMiddleware(&models.OIDCNativeExchangeInput{}), controllers.OIDCNativeExchangeHandler(cfg))
 		}
 
 		// Public routes (no authentication required, strict rate limiting).

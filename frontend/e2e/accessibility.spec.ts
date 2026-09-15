@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { request as apiRequest } from '@playwright/test';
 import {
+  assertNoAaaContrastViolations,
   assertNoBlockingA11yViolations,
   createTestContact,
   deleteTestContact,
@@ -205,6 +206,95 @@ test.describe('accessibility dialog scans', {
       await page.locator('.edit-icon').first().click();
       await expect(page.getByRole('button', { name: 'Save' })).toBeVisible();
       await assertNoBlockingViolations(page);
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// WCAG AAA checks (issue #964)
+// ---------------------------------------------------------------------------
+// The palette claims AAA (7:1) for specific documented token pairs, not for
+// every string the app renders. The deterministic half of that claim is
+// unit-tested in src/themeAccessibility.test.ts; these two blocks add the
+// rendered-text half -- the brand AppBar surface, whose white-on-brand-green
+// pair is claimed AAA, and the global reduced-motion (2.3.3) behaviour. The
+// app-wide axe gate above stays AA by design: secondary text on parchment is
+// 6.35:1 (light) / 6.78:1 (dark), deliberately AA-only.
+
+test.describe('WCAG AAA contrast (documented brand surface)', {
+  annotation: {
+    type: SKIP_A11Y_SCAN,
+    description: 'scans the brand surface explicitly with the AAA rule',
+  },
+}, () => {
+  for (const theme of THEMES) {
+    test(`app bar brand surface (${theme}) has no AAA contrast violations`, async ({ page }) => {
+      await gotoWithTheme(page, '/', theme);
+      // The AppBar is pinned to a fixed brand green with white text in both
+      // modes (theme.ts's MuiAppBar override) -- the one rendered surface the
+      // palette claims AAA for.
+      await assertNoAaaContrastViolations(page, 'header');
+    });
+  }
+});
+
+/**
+ * Reads the computed motion styles of a freshly-injected probe element. Inline
+ * values are used so the probe depends on no app class name; the theme's
+ * reduced-motion override uses `!important`, which beats an author inline
+ * declaration, so under the preference the probe reports the collapsed values.
+ */
+async function probeMotion(page: Page): Promise<{
+  transitionMs: number;
+  animationMs: number;
+  scrollBehavior: string;
+}> {
+  return page.evaluate(() => {
+    const el = document.createElement('div');
+    el.style.transitionDuration = '250ms';
+    el.style.animationDuration = '250ms';
+    el.style.scrollBehavior = 'smooth';
+    document.body.appendChild(el);
+    const style = getComputedStyle(el);
+    const toMs = (value: string) =>
+      value.endsWith('ms') ? parseFloat(value) : parseFloat(value) * 1000;
+    const result = {
+      transitionMs: toMs(style.transitionDuration),
+      animationMs: toMs(style.animationDuration),
+      scrollBehavior: style.scrollBehavior,
+    };
+    el.remove();
+    return result;
+  });
+}
+
+test.describe('WCAG 2.3.3 reduced motion (AAA)', {
+  annotation: {
+    type: SKIP_A11Y_SCAN,
+    description: 'asserts computed motion styles, not axe findings',
+  },
+}, () => {
+  for (const theme of THEMES) {
+    test(`prefers-reduced-motion collapses transitions and animations (${theme})`, async ({
+      page,
+    }) => {
+      await gotoWithTheme(page, '/', theme);
+
+      // Control: without the preference the probe's inline values stand.
+      const normal = await probeMotion(page);
+      expect(normal.transitionMs).toBeCloseTo(250, 0);
+      expect(normal.animationMs).toBeCloseTo(250, 0);
+      expect(normal.scrollBehavior).toBe('smooth');
+
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      expect(
+        await page.evaluate(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches),
+      ).toBe(true);
+
+      const reduced = await probeMotion(page);
+      expect(reduced.transitionMs).toBeLessThan(1);
+      expect(reduced.animationMs).toBeLessThan(1);
+      expect(reduced.scrollBehavior).toBe('auto');
     });
   }
 });

@@ -175,6 +175,10 @@ export const lightTheme = createTheme({
     // transitions in ContactHeader.tsx for free. Duplicated in darkTheme
     // below since the two createTheme calls are independent (see the h5/
     // overline/MuiButtonBase comments in this file for the same pattern).
+    // Pinned by src/themeAccessibility.test.ts (the media-query block is
+    // present in both themes) and by the reduced-motion e2e case in
+    // e2e/accessibility.spec.ts (the override actually collapses a real
+    // transition/animation/scroll in the browser).
     MuiCssBaseline: {
       styleOverrides: `
         @media (prefers-reduced-motion: reduce) {

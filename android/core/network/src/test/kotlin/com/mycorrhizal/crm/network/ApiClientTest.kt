@@ -352,6 +352,59 @@ class ApiClientTest {
     }
 
     @Test
+    fun `list contacts sends only since and limit on the change feed`() = runBlocking {
+        // Issue #959: ?since= is sync state, not browsing — the backend ignores
+        // the other filters, so the client must not attach them (a silently
+        // dropped parameter is worse than an absent one).
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),
+        )
+
+        client.listContacts(
+            since = "CURSOR-1",
+            limit = 100,
+            cursor = "c1",
+            search = "ali",
+            includeArchived = true,
+            favorites = true,
+        )
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contacts?since=CURSOR-1&limit=100", request.path)
+    }
+
+    @Test
+    fun `list contacts parses a change-feed tombstone row`() = runBlocking {
+        // Issue #959: the ONLY tombstone shape the server sends is `deleted:true`
+        // via ?since=. A soft-deleted row comes back as a normal summary with the
+        // flag set (not an id list), which is what the mirror's delete path reads.
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {
+                  "contacts": [
+                    {"id": 1, "uid": "u1", "fn": "Alice"},
+                    {"id": 2, "uid": "u2", "fn": "Gone", "deleted": true}
+                  ],
+                  "next_cursor": "CURSOR-2",
+                  "sync": {"mode": "incremental", "incremental": ["contacts", "notes"]}
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        val result = client.listContacts(since = "CURSOR-1", limit = 100)
+
+        assertTrue(result.isSuccess)
+        val page = result.getOrThrow()
+        assertFalse(page.contacts[0].deleted)
+        assertTrue(page.contacts[1].deleted)
+        assertEquals("CURSOR-2", page.nextCursor)
+        assertEquals("incremental", page.sync?.mode)
+        assertEquals(listOf("contacts", "notes"), page.sync?.incremental)
+    }
+
+    @Test
     fun `list contacts omits the favorites filter by default`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),
@@ -4517,5 +4570,56 @@ class ApiClientTest {
         val audit = client.exportAuditLogCsv()
         assertTrue(audit.isSuccess)
         assertEquals("/api/v1/audit/export", server.takeRequest().path)
+    }
+
+    // --- Issue #965: Android OIDC native-return exchange ---
+
+    @Test
+    fun `exchangeOidcNativeCode posts the code and verifier and returns the token`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"token":"session-jwt","language":"de","date_format":"eu"}"""),
+        )
+
+        val result = client.exchangeOidcNativeCode("single-use-code", "pkce-verifier")
+
+        assertTrue(result.isSuccess)
+        assertEquals("session-jwt", result.getOrThrow())
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/auth/oidc/native/exchange", request.path)
+        val body = request.body.readUtf8()
+        assertTrue("body must carry the code", body.contains("\"code\":\"single-use-code\""))
+        assertTrue("body must carry the verifier", body.contains("\"code_verifier\":\"pkce-verifier\""))
+    }
+
+    @Test
+    fun `exchangeOidcNativeCode maps a rejected code to Client 401`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(401)
+                .setBody("""{"error":{"code":"invalid_credentials","message":"Invalid or expired authorization code"}}"""),
+        )
+
+        val result = client.exchangeOidcNativeCode("stale-code", "pkce-verifier")
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(401, (error as ApiError.Client).code)
+    }
+
+    @Test
+    fun `exchangeOidcNativeCode maps a blank token to a Parse error`() = runBlocking {
+        // A 200 whose body carries no usable session must not be treated as a
+        // successful login; the caller's getOrElse then leaves the session out.
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"token":""}"""))
+
+        val result = client.exchangeOidcNativeCode("code", "pkce-verifier")
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is ApiError.Parse)
     }
 }

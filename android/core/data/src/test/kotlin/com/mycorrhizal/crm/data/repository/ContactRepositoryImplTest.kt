@@ -53,6 +53,18 @@ class ContactRepositoryImplTest {
 
     private fun summary(id: Int, fn: String) = ContactSummary(id = id, fn = fn, firstname = fn)
 
+    /** A wire list/feed page (the repository consumes the network envelope). */
+    private fun networkPage(
+        contacts: List<ContactSummary>,
+        nextCursor: String? = null,
+        sync: SyncInfo? = null,
+    ) = com.mycorrhizal.crm.model.network.ContactsPage(
+        contacts = contacts,
+        nextCursor = nextCursor,
+        limit = 100,
+        sync = sync,
+    )
+
     @Test
     fun `listContacts caches the page into Room on success`() = runTest {
         coEvery { apiClient.listContacts(any(), any(), any(), any()) } returns Result.success(
@@ -215,28 +227,185 @@ class ContactRepositoryImplTest {
         assertEquals(false, db.cachedContactDao().getById(5)?.isFavorite)
     }
 
+    // --- Issue #959: the T17 ?since= tombstone feed (offline mirror deletes) ---
+
     @Test
-    fun `listContacts applies incremental sync deletions to the cache`() = runTest {
+    fun `listContacts never deletes from the sync incremental collection names`() = runTest {
+        // The exact #959 bug: sync.incremental is the static list of COLLECTION
+        // NAMES ("contacts", "notes", …), not deleted ids — parsing them as ids
+        // always yielded an empty list, and (worse) the mirror never applied a
+        // real tombstone. A genuine list response must leave the mirror alone.
+        db.cachedContactDao().upsertAll(
+            listOf(
+                com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Alice"),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Bob"),
+            ),
+        )
         coEvery { apiClient.listContacts(any(), any(), any(), any()) } returns Result.success(
             com.mycorrhizal.crm.model.network.ContactsPage(
                 contacts = listOf(summary(1, "Alice")),
                 nextCursor = "",
-                sync = SyncInfo(mode = "incremental", incremental = listOf("2", "3")),
-            ),
-        )
-        db.cachedContactDao().upsertAll(
-            listOf(
-                com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Alice"),
-                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Stale Bob"),
-                com.mycorrhizal.crm.data.local.CachedContact(id = 3, fn = "Stale Carol"),
+                sync = SyncInfo(
+                    mode = "incremental",
+                    incremental = listOf("contacts", "notes", "activities"),
+                ),
             ),
         )
 
         repository.listContacts()
 
-        val remaining = db.cachedContactDao().getAll()
-        assertEquals(1, remaining.size)
-        assertEquals(1, remaining[0].id)
+        assertEquals(listOf(1, 2), db.cachedContactDao().getAll().map { it.id }.sorted())
+    }
+
+    @Test
+    fun `syncContacts bootstrap reconciles a small server snapshot`() = runTest {
+        // A live set smaller than one feed page is the server's whole truth, so
+        // a cached row missing from it is a server-side delete.
+        db.cachedContactDao().upsertAll(
+            listOf(
+                com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Alice"),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Deleted Bob"),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 3, fn = "Carol"),
+            ),
+        )
+        coEvery { apiClient.listContacts(limit = 100, includeArchived = true) } returns Result.success(
+            networkPage(listOf(summary(1, "Alice"), summary(3, "Carol")), nextCursor = ""),
+        )
+
+        val result = repository.syncContacts()
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf(1, 3), db.cachedContactDao().getAll().map { it.id }.sorted())
+    }
+
+    @Test
+    fun `syncContacts applies a change-feed tombstone and removes the cached row`() = runTest {
+        db.cachedContactDao().upsertAll(
+            listOf(
+                com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Alice"),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Gone"),
+            ),
+        )
+        // Bootstrap: the page has a next page, so its trailing cursor becomes
+        // the feed watermark rather than triggering a reconcile.
+        coEvery { apiClient.listContacts(limit = 100, includeArchived = true) } returns Result.success(
+            networkPage(listOf(summary(1, "Alice"), summary(2, "Gone")), nextCursor = "cursor-1"),
+        )
+        repository.syncContacts()
+
+        // The change feed returns contact 2 as a deletion tombstone.
+        coEvery { apiClient.listContacts(since = "cursor-1", limit = 100) } returns Result.success(
+            networkPage(listOf(summary(2, "Gone").copy(deleted = true))),
+        )
+        val result = repository.syncContacts()
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf(1), db.cachedContactDao().getAll().map { it.id })
+    }
+
+    @Test
+    fun `syncContacts keeps an archived cached row present in the live snapshot`() = runTest {
+        // Bootstrapping with include_archived=true is what stops a reconcile
+        // from treating an archived cached row as a deleted one.
+        db.cachedContactDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Archived", archived = true),
+        )
+        coEvery { apiClient.listContacts(limit = 100, includeArchived = true) } returns Result.success(
+            networkPage(listOf(summary(1, "Archived").copy(archived = true))),
+        )
+
+        repository.syncContacts()
+
+        assertTrue(db.cachedContactDao().getById(1) != null)
+    }
+
+    @Test
+    fun `syncContacts drains every feed page and advances the watermark`() = runTest {
+        db.cachedContactDao().upsertAll(
+            listOf(
+                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Gone"),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 3, fn = "Gone Too"),
+            ),
+        )
+        coEvery { apiClient.listContacts(limit = 100, includeArchived = true) } returns Result.success(
+            networkPage(listOf(summary(1, "Alice")), nextCursor = "c1"),
+        )
+        repository.syncContacts()
+
+        coEvery { apiClient.listContacts(since = "c1", limit = 100) } returns Result.success(
+            networkPage(listOf(summary(2, "Gone").copy(deleted = true)), nextCursor = "c2"),
+        )
+        coEvery { apiClient.listContacts(since = "c2", limit = 100) } returns Result.success(
+            networkPage(listOf(summary(3, "Gone Too").copy(deleted = true)), nextCursor = ""),
+        )
+
+        val result = repository.syncContacts()
+
+        assertTrue(result.isSuccess)
+        // Both tombstones (2 and 3) are gone; the bootstrap's live row 1 stays.
+        assertEquals(listOf(1), db.cachedContactDao().getAll().map { it.id })
+        // Both feed pages were requested — draining doesn't stop at the first.
+        io.mockk.coVerify(exactly = 1) { apiClient.listContacts(since = "c1", limit = 100) }
+        io.mockk.coVerify(exactly = 1) { apiClient.listContacts(since = "c2", limit = 100) }
+    }
+
+    @Test
+    fun `syncContacts preserves cached full detail for a live feed row`() = runTest {
+        db.cachedContactDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedContact(
+                id = 1,
+                fn = "Alice",
+                card = Card(name = Name(full = "Alice Full Name")),
+            ),
+        )
+        coEvery { apiClient.listContacts(limit = 100, includeArchived = true) } returns Result.success(
+            networkPage(listOf(summary(1, "Alice")), nextCursor = "c1"),
+        )
+        repository.syncContacts()
+        coEvery { apiClient.listContacts(since = "c1", limit = 100) } returns Result.success(
+            networkPage(listOf(summary(1, "Alice"))),
+        )
+
+        repository.syncContacts()
+
+        // The feed row is summary-only; the cached card must survive.
+        assertEquals("Alice Full Name", db.cachedContactDao().getById(1)?.card?.name?.full)
+    }
+
+    @Test
+    fun `syncContacts reboots from a 410 Gone feed cursor`() = runTest {
+        db.cachedContactDao().upsertAll(
+            listOf(
+                com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Alice"),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Gone"),
+            ),
+        )
+        coEvery { apiClient.listContacts(limit = 100, includeArchived = true) } returnsMany listOf(
+            Result.success(networkPage(listOf(summary(1, "Alice"), summary(2, "Gone")), nextCursor = "old-cursor")),
+            // After the 410 the server's live set no longer holds contact 2.
+            Result.success(networkPage(listOf(summary(1, "Alice")), nextCursor = "")),
+        )
+        repository.syncContacts()
+
+        coEvery { apiClient.listContacts(since = "old-cursor", limit = 100) } returns
+            Result.failure(ApiError.Client(410, "full resync required"))
+
+        val result = repository.syncContacts()
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf(1), db.cachedContactDao().getAll().map { it.id })
+    }
+
+    @Test
+    fun `syncContacts propagates a network failure without touching the cache`() = runTest {
+        db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Alice"))
+        coEvery { apiClient.listContacts(limit = 100, includeArchived = true) } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+
+        val result = repository.syncContacts()
+
+        assertTrue(result.isFailure)
+        assertEquals(1, db.cachedContactDao().getById(1)?.id)
     }
 
     @Test

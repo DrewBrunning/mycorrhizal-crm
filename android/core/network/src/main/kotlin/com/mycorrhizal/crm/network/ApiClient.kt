@@ -150,6 +150,8 @@ import com.mycorrhizal.crm.model.network.MessageResponse
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteInput
 import com.mycorrhizal.crm.model.network.NotesPage
+import com.mycorrhizal.crm.model.network.OidcNativeExchangeRequest
+import com.mycorrhizal.crm.model.network.OidcNativeExchangeResponse
 import com.mycorrhizal.crm.model.network.NotificationConfig
 import com.mycorrhizal.crm.model.network.NotificationConfigInput
 import com.mycorrhizal.crm.model.network.NotificationTestChannelRequest
@@ -612,6 +614,24 @@ class ApiClient(
             moshi.adapter(RevokeAllDeviceGrantsResponse::class.java).fromJson(body)
         }
 
+    // --- Issue #965: Android OIDC native return. The callback delivers a
+    // short-lived, PKCE-bound code through an interceptable custom scheme; the
+    // app redeems it here with the verifier that never left the device.
+
+    /**
+     * POST /api/v1/auth/oidc/native/exchange — redeem the deep link's code for
+     * a session JWT. Returns just the token; the caller fetches the profile and
+     * persists the session like any other login.
+     */
+    suspend fun exchangeOidcNativeCode(code: String, codeVerifier: String): Result<String> =
+        executePost(
+            OIDC_NATIVE_EXCHANGE_PATH,
+            OidcNativeExchangeRequest(code = code, codeVerifier = codeVerifier),
+        ) { _, body ->
+            moshi.adapter(OidcNativeExchangeResponse::class.java)
+                .fromJson(body)?.token?.takeIf { it.isNotBlank() }
+        }
+
     /** DELETE /api/v1/auth/device/grants/{id} — revoke one enrolled device. */
     suspend fun revokeDeviceGrant(id: Long): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$DEVICE_GRANTS_PATH/$id")
@@ -633,6 +653,12 @@ class ApiClient(
         // contacts only — the wire contract web #173 shipped.
         favorites: Boolean? = null,
         vcardUids: List<String>? = null,
+        // T17 change feed (issue #959): `?since=<opaque cursor>` returns every
+        // row changed after the cursor — created, updated, AND soft-deleted
+        // (`deleted:true` tombstones) — ordered forward and ignoring every
+        // filter. This is the ONLY path that surfaces tombstones, so the offline
+        // mirror's delete propagation depends on it. See `syncContacts`.
+        since: String? = null,
     ): Result<ContactsPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACTS_PATH".toHttpUrl().newBuilder()
         if (!vcardUids.isNullOrEmpty()) {
@@ -642,6 +668,13 @@ class ApiClient(
             // ignored server-side, and sending them here would be misleading.
             vcardUids.forEach { urlBuilder.addQueryParameter("vcard_uid", it) }
             includeArchived?.let { urlBuilder.addQueryParameter("include_archived", it.toString()) }
+        } else if (since != null) {
+            // The change feed is sync state, not browsing: the backend ignores
+            // search/circle/archive/favorites under ?since= (a feed must carry
+            // every row), so send only since + limit rather than attaching
+            // filters that would be silently dropped.
+            urlBuilder.addQueryParameter("since", since)
+            limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
         } else {
             cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
             limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
@@ -2302,6 +2335,7 @@ class ApiClient(
         private const val DEVICE_GRANTS_PATH = "$API_V1/auth/device/grants"
         private const val DEVICE_SESSION_PATH = "$API_V1/auth/device/session"
         private const val SESSIONS_PATH = "$API_V1/sessions"
+        private const val OIDC_NATIVE_EXCHANGE_PATH = "$API_V1/auth/oidc/native/exchange"
         private const val NOTIFICATIONS_CONFIG_PATH = "$API_V1/notifications/config"
         private const val NOTIFICATIONS_DEVICES_PATH = "$API_V1/notifications/devices"
         private const val CONTACTS_PATH = "$API_V1/contacts"

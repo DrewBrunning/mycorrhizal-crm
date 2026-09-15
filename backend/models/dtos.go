@@ -656,3 +656,21 @@ type DeviceGrantCreateResponse struct {
 type DeviceGrantSessionInput struct {
 	DeviceToken string `json:"device_token" validate:"required,min=32"`
 }
+
+// OIDCNativeExchangeInput is the Android OIDC native-return redemption request
+// (issue #965): the short-lived, PKCE-bound code delivered in the
+// mycorrhizal://oidc/callback deep link plus the code verifier, which never
+// travelled through the interceptable custom scheme.
+type OIDCNativeExchangeInput struct {
+	Code         string `json:"code" validate:"required"`
+	CodeVerifier string `json:"code_verifier" validate:"required"`
+}
+
+// OIDCNativeExchangeResponse is a redeemed native OIDC login: the session JWT
+// (the client's bearer credential) and the profile preferences the deep link
+// used to carry.
+type OIDCNativeExchangeResponse struct {
+	Token      string `json:"token"`
+	Language   string `json:"language"`
+	DateFormat string `json:"date_format"`
+}

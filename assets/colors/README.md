@@ -49,6 +49,15 @@ Checked with the standard WCAG relative-luminance formula, not assumed:
 | Secondary text on default background | 7.17 (AAA) | 7.81 (AAA) |
 | Brand-primary button label | white, 8.26 (AAA) | dark `bone`, 7.92 (AAA) |
 
+These four rows are the palette's **whole** AAA claim — 7:1 for those specific token pairs, not for
+every string the app renders. Secondary text on the *card* surfaces (`parchment`) is deliberately
+AA-only at 6.35:1 (light) / 6.78:1 (dark), so the app-wide accessibility gate is WCAG 2.1 **AA**, and
+AAA is claimed only where listed here. The claim is pinned two ways so it cannot silently regress:
+`frontend/src/themeAccessibility.test.ts` recomputes these ratios from the live theme and fails if a
+pair drops below its grade, and `frontend/e2e/accessibility.spec.ts` runs axe's
+`color-contrast-enhanced` (SC 1.4.6) rule against the brand AppBar surface. If a token changes, the
+test is the oracle — update the token and this table together, never the table alone.
+
 **Important asymmetry**: in dark mode `mycelium` is bright (`L 0.75`), so a *light* button label fails
 badly (1.73:1) — it needs a *dark* label instead. `tokens.json`'s `contrastOnBrandPrimary` captures this
 per-mode (`white` in light mode, dark `bone` in dark mode), matching exactly what MUI calls

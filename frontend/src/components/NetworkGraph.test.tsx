@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { forwardRef, useImperativeHandle } from 'react';
 import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
@@ -20,15 +20,21 @@ const centerAtFn = vi.fn(() => ({ x: 0, y: 0 }));
 const zoomToFitFn = vi.fn();
 const d3ForceFn = vi.fn(() => ({ strength: vi.fn() }));
 
+interface ForceGraphStubProps {
+  cooldownTicks?: number;
+}
+
 vi.mock('react-force-graph-2d', () => ({
-  default: forwardRef((_props: unknown, ref: React.Ref<unknown>) => {
+  default: forwardRef<unknown, ForceGraphStubProps>((props, ref) => {
     useImperativeHandle(ref, () => ({
       zoom: zoomFn,
       centerAt: centerAtFn,
       zoomToFit: zoomToFitFn,
       d3Force: d3ForceFn,
     }));
-    return <div data-testid="force-graph-stub" />;
+    // Expose cooldownTicks so the reduced-motion tests can assert the graph
+    // settles instantly instead of animating (#194, WCAG 2.3.3).
+    return <div data-testid="force-graph-stub" data-cooldown-ticks={props.cooldownTicks} />;
   }),
 }));
 
@@ -152,4 +158,63 @@ test('pan/zoom controls call the graph ref API', () => {
 
   screen.getByRole('button', { name: 'Pan right' }).click();
   expect(centerAtFn).toHaveBeenCalled();
+});
+
+// #194 / WCAG 2.3.3 (Animation from Interactions, AAA): the force layout must
+// settle instantly and the initial zoom must not animate under the OS's
+// reduced-motion preference, not run regardless of it. The source comment at
+// NetworkGraph.tsx's `prefersReducedMotion` is the claim; these two tests are
+// the check. The control test pins the non-reduced path so a change that just
+// hard-codes "instant" everywhere cannot pass both.
+test('under prefers-reduced-motion the graph settles instantly and skips the zoom animation (#194)', () => {
+  mockMatchMedia(true);
+  zoomToFitFn.mockClear();
+  vi.useFakeTimers();
+  try {
+    render(
+      <NetworkGraph
+        data={sampleData()}
+        onNodeClick={vi.fn()}
+        showRelationships
+        showActivities
+        showCircles={false}
+      />,
+    );
+
+    expect(screen.getByTestId('force-graph-stub')).toHaveAttribute('data-cooldown-ticks', '0');
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    // zoomToFit(durationMs, paddingPx): 0 duration = no animation.
+    expect(zoomToFitFn).toHaveBeenLastCalledWith(0, 50);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('without the preference the graph still animates (control for #194)', () => {
+  mockMatchMedia(false);
+  zoomToFitFn.mockClear();
+  vi.useFakeTimers();
+  try {
+    render(
+      <NetworkGraph
+        data={sampleData()}
+        onNodeClick={vi.fn()}
+        showRelationships
+        showActivities
+        showCircles={false}
+      />,
+    );
+
+    expect(screen.getByTestId('force-graph-stub')).toHaveAttribute('data-cooldown-ticks', '100');
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(zoomToFitFn).toHaveBeenLastCalledWith(400, 80);
+  } finally {
+    vi.useRealTimers();
+  }
 });

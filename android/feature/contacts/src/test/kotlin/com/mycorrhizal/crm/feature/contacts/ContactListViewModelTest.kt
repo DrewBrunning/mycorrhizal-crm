@@ -48,6 +48,7 @@ class ContactListViewModelTest {
         val tagRepository = mockk<TagRepository>()
         coEvery { repo.observeContacts() } returns emptyFlow()
         coEvery { repo.searchLocal(any()) } returns emptyList()
+        coEvery { repo.syncContacts() } returns Result.success(Unit)
         coEvery { apiClient.search(any(), any(), any()) } returns Result.success(SearchResult())
         coEvery { circleRepository.list() } returns Result.success(emptyList())
         coEvery { tagRepository.list() } returns Result.success(emptyList())
@@ -66,6 +67,20 @@ class ContactListViewModelTest {
         assertFalse(state.isLoading)
         assertEquals(1, state.contacts.size)
         assertEquals("Alice", state.contacts[0].fn)
+    }
+
+    @Test
+    fun `initial load triggers the change-feed sync exactly once`() = runTest(mainDispatcherRule.testDispatcher) {
+        // Issue #959: opening the list is where the offline mirror reconciles
+        // with the server's tombstones. A future refactor that drops this call
+        // would silently reintroduce "deleted contacts linger offline".
+        val (_, contactRepository, _) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(ContactSummary(id = 1, fn = "Alice")))
+
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { contactRepository.syncContacts() }
     }
 
     @Test

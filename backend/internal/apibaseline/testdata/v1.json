@@ -1074,6 +1074,21 @@
           "name": "client",
           "in": "query",
           "required": false
+        },
+        {
+          "name": "code_challenge",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "code_challenge_method",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "state",
+          "in": "query",
+          "required": false
         }
       ],
       "responses": [
@@ -1083,6 +1098,32 @@
         },
         {
           "status": "500",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/auth/oidc/native/exchange",
+      "parameters": [
+        {
+          "name": "X-Client-Version",
+          "in": "header",
+          "required": false
+        }
+      ],
+      "request_body": "ref:OIDCNativeExchangeInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:OIDCNativeExchangeResponse"
+        },
+        {
+          "status": "400",
+          "schema": ""
+        },
+        {
+          "status": "401",
           "schema": ""
         }
       ]
@@ -14124,6 +14165,46 @@
           "name": "provider_name",
           "type": "string",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "OIDCNativeExchangeInput",
+      "properties": [
+        {
+          "name": "code",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "code_verifier",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "OIDCNativeExchangeResponse",
+      "properties": [
+        {
+          "name": "date_format",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "us",
+            "eu",
+            "iso"
+          ]
+        },
+        {
+          "name": "language",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "token",
+          "type": "string",
+          "required": true
         }
       ]
     },

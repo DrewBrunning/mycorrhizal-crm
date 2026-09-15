@@ -74,6 +74,36 @@ func TestAuthMiddleware_JWTWithMatchingTokenVersion(t *testing.T) {
 	assert.Equal(t, float64(user.ID), body["user_id"])
 }
 
+// Tokens that carry a `purpose` claim are single-purpose exchange artifacts,
+// never sessions. This covers both the 2FA step-2 challenge and (issue #965)
+// the Android OIDC native-return exchange code: a purpose-scoped token signed
+// by the same secret must still be refused as a bearer, and the gate must stay
+// total for any future purpose value.
+func TestAuthMiddleware_RejectsPurposeScopedTokens(t *testing.T) {
+	db, router := setupAuthTestRouter()
+
+	var user models.User
+	db.First(&user)
+	sid := seedSession(t, db, user.ID, time.Now())
+
+	for _, purpose := range []string{"2fa", "oidc_native_exchange", "some_future_purpose"} {
+		t.Run(purpose, func(t *testing.T) {
+			w := jwtRequest(router, signJWT(t, jwt.MapClaims{
+				"authorized":    true,
+				"user_id":       user.ID,
+				"username":      user.Username,
+				"token_version": user.TokenVersion,
+				"sid":           sid,
+				"purpose":       purpose,
+				"exp":           time.Now().Add(time.Hour).Unix(),
+			}))
+
+			assert.Equal(t, http.StatusUnauthorized, w.Code,
+				"a token carrying purpose=%q must never authenticate a session route", purpose)
+		})
+	}
+}
+
 // The point of the whole mechanism: bumping token_version (what a password
 // change or reset does) must invalidate an already-issued token.
 func TestAuthMiddleware_JWTRejectedAfterTokenVersionBump(t *testing.T) {

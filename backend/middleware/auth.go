@@ -106,12 +106,14 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		// N8: tokens minted as step-2 login challenges (purpose: "2fa") are
-		// NEVER sessions. They are single-purpose — exchangeable for a session
-		// only via /login/2fa after a TOTP/recovery code — so rejecting them
-		// here means a leaked challenge can never double as a session even if
-		// it somehow reached a protected route.
-		if purpose, _ := claims["purpose"].(string); purpose == "2fa" {
+		// N8 / #965: tokens that carry a `purpose` claim are single-purpose
+		// exchange artifacts — the 2FA step-2 challenge (purpose: "2fa") and
+		// the Android OIDC native-return code (purpose: "oidc_native_exchange")
+		// — and are NEVER sessions. Rejecting every purpose here (not just
+		// "2fa") keeps the gate total: a new single-use token type cannot
+		// silently double as a bearer credential because its minting code
+		// forgot to update this list. Session tokens never carry a purpose.
+		if purpose, _ := claims["purpose"].(string); purpose != "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			c.Abort()
 			return

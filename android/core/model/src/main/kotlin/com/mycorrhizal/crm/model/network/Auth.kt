@@ -143,3 +143,25 @@ data class PasswordResetConfirmRequest(
     val token: String,
     val password: String,
 )
+
+// --- Issue #965: Android OIDC native return ---
+
+/**
+ * POST /api/v1/auth/oidc/native/exchange body. [code] is the single-use
+ * exchange code from the `mycorrhizal://oidc/callback` deep link; [codeVerifier]
+ * is the PKCE verifier that never left the app (RFC 7636), so an interceptor
+ * that captured the deep link cannot redeem the code.
+ */
+@JsonClass(generateAdapter = true)
+data class OidcNativeExchangeRequest(
+    val code: String,
+    @Json(name = "code_verifier") val codeVerifier: String,
+)
+
+/** POST /api/v1/auth/oidc/native/exchange success body — the session JWT. */
+@JsonClass(generateAdapter = true)
+data class OidcNativeExchangeResponse(
+    val token: String = "",
+    val language: String? = null,
+    @Json(name = "date_format") val dateFormat: String? = null,
+)

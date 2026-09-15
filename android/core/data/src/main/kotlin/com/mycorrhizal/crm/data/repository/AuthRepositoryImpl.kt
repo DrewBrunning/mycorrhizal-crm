@@ -101,6 +101,20 @@ class AuthRepositoryImpl @Inject constructor(
         return Result.success(Unit)
     }
 
+    /**
+     * Issue #965: exchange the Android OIDC deep-link code + on-device PKCE
+     * verifier for a session JWT. The session is NOT persisted here — the
+     * caller (MainActivity's OIDC-return handler) owns the cookie-less native
+     * flow and persists it after this succeeds, mirroring how it already
+     * handled the raw token before.
+     */
+    override suspend fun completeOidcNativeLogin(code: String, codeVerifier: String): Result<String> =
+        apiClient.exchangeOidcNativeCode(code, codeVerifier)
+            .fold(
+                onSuccess = { token -> Result.success(token) },
+                onFailure = { Result.failure(it.toApiError()) },
+            )
+
     override suspend fun getTwoFactorStatus(): Result<TwoFactorStatusResponse> =
         apiClient.getTwoFactorStatus().fold(
             onSuccess = { Result.success(it) },

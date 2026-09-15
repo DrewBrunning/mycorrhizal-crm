@@ -68,7 +68,8 @@ export default function NetworkGraph({
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   // #194: under reduced motion, settle the force simulation instantly and
   // skip the initial zoom-to-fit animation instead of running them
-  // regardless of the OS setting (WCAG 2.3.3, AAA).
+  // regardless of the OS setting (WCAG 2.3.3, AAA). Pinned by
+  // NetworkGraph.test.tsx's reduced-motion cases.
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
 
   // Colors from theme

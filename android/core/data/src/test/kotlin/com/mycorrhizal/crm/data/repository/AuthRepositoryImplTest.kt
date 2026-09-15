@@ -118,6 +118,37 @@ class AuthRepositoryImplTest {
         assertTrue(h.sessionManager.observeSession().first().isLoggedIn)
     }
 
+    // --- Issue #965: Android OIDC native-return exchange ---
+
+    @Test
+    fun `completeOidcNativeLogin returns the exchanged session token without persisting it`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.exchangeOidcNativeCode("code-1", "verifier-1") } returns
+            Result.success("jwt-from-exchange")
+
+        val result = h.repository.completeOidcNativeLogin("code-1", "verifier-1")
+
+        assertTrue(result.isSuccess)
+        assertEquals("jwt-from-exchange", result.getOrThrow())
+        // The Activity owns persistence for this flow; the repository must not
+        // flip the session before the caller stores the token.
+        assertNull(h.tokenStorage.stored)
+        assertFalse(h.sessionManager.observeSession().first().isLoggedIn)
+        coVerify(exactly = 1) { h.apiClient.exchangeOidcNativeCode("code-1", "verifier-1") }
+    }
+
+    @Test
+    fun `completeOidcNativeLogin propagates a rejected code as a failure`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.exchangeOidcNativeCode(any(), any()) } returns
+            Result.failure(ApiError.Client(401, "Invalid or expired authorization code"))
+
+        val result = h.repository.completeOidcNativeLogin("bad-code", "verifier")
+
+        assertTrue(result.isFailure)
+        assertNull(h.tokenStorage.stored)
+    }
+
     @Test
     fun `logout clears the session`() = runTest {
         val h = Harness()

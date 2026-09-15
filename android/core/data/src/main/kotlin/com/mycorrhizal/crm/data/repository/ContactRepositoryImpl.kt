@@ -10,13 +10,15 @@ import com.mycorrhizal.crm.model.network.ContactAddressSuggestion
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactSummary
-import com.mycorrhizal.crm.model.network.SyncInfo
+import com.mycorrhizal.crm.model.network.ContactsPage as NetworkContactsPage
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 /**
@@ -28,6 +30,19 @@ class ContactRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
     private val dao: CachedContactDao,
 ) : ContactRepository {
+
+    /**
+     * Serializes [syncContacts] so two triggers landing together can't both
+     * advance (or bootstrap) the feed watermark and skip a range.
+     */
+    private val syncMutex = Mutex()
+
+    /**
+     * The T17 `?since=` watermark. Process-lifetime only — the mirror is a
+     * rebuildable cache, so a cold start bootstraps a fresh one from a single
+     * page (see [bootstrapSync]) rather than persisting sync state on disk.
+     */
+    private var feedCursor: String? = null
 
     override suspend fun listContacts(
         cursor: String?,
@@ -56,7 +71,6 @@ class ContactRepositoryImpl @Inject constructor(
         // full detail (card/crm) so a list refresh doesn't wipe offline detail.
         mergePreservingDetail(rows)
         dao.upsertAll(rows)
-        applySync(page.sync)
         return Result.success(
             ContactsPage(
                 contacts = page.contacts,
@@ -69,6 +83,97 @@ class ContactRepositoryImpl @Inject constructor(
 
     override suspend fun listLegacyCircles(): Result<List<String>> =
         apiClient.listLegacyCircles()
+
+    /**
+     * T17 change-feed sync (issue #959). The old implementation read
+     * `sync.incremental` — the static list of *collection names* the backend
+     * embeds on every list response — and tried to parse each name as a contact
+     * id, so the id list was always empty and no server-side delete ever
+     * propagated to the mirror. The real tombstone mechanism is the `?since=`
+     * change feed, which returns soft-deleted rows marked `deleted:true`; this
+     * drains that feed and applies both the live rows (upsert) and the
+     * tombstones (delete).
+     */
+    override suspend fun syncContacts(): Result<Unit> = syncMutex.withLock {
+        val cursor = feedCursor
+        if (cursor == null) bootstrapSync() else incrementalSync(cursor)
+    }
+
+    /** Drains the `?since=` feed from [cursor] to the head, applying each page. */
+    private suspend fun incrementalSync(cursor: String): Result<Unit> {
+        var from = cursor
+        while (true) {
+            val page = apiClient.listContacts(since = from, limit = FEED_PAGE_SIZE)
+                .getOrElse { error ->
+                    if (error is ApiError.Client && error.code == 410) {
+                        // The cursor predates the server's retention window, so
+                        // the tombstones we would have replayed were purged and
+                        // the feed can no longer converge (the backend says
+                        // "full resync required"). Drop it and rebootstrap.
+                        feedCursor = null
+                        return bootstrapSync()
+                    }
+                    return Result.failure(error.toApiError())
+                }
+            applyChanges(page)
+            val next = page.nextCursor?.takeIf { it.isNotEmpty() } ?: break
+            feedCursor = next
+            from = next
+        }
+        return Result.success(Unit)
+    }
+
+    /**
+     * Establishes the initial watermark. Fetches the newest page of the whole
+     * live set (archived included, so a reconcile never mistakes an archived
+     * cached row for a deleted one):
+     *  - more than one page of rows -> the trailing cursor is a valid feed
+     *    watermark; subsequent changes (including tombstones, whose delete
+     *    bumps `updated_at`) arrive via `?since=`;
+     *  - a single page -> that response is the entire live set, so reconcile
+     *    the mirror against it. This is what removes a row the server deleted
+     *    before this install ever held a cursor.
+     */
+    private suspend fun bootstrapSync(): Result<Unit> {
+        val page = apiClient.listContacts(limit = FEED_PAGE_SIZE, includeArchived = true)
+            .getOrElse { error -> return Result.failure(error.toApiError()) }
+        cachePage(page)
+        val next = page.nextCursor?.takeIf { it.isNotEmpty() }
+        if (next != null) {
+            feedCursor = next
+        } else {
+            reconcileAgainstSnapshot(page.contacts.map { it.id }.toSet())
+        }
+        return Result.success(Unit)
+    }
+
+    /** Upserts a feed page's live rows and deletes its tombstones. */
+    private suspend fun applyChanges(page: NetworkContactsPage) {
+        cachePage(page)
+        val tombstones = page.contacts.filter { it.deleted }.map { it.id }
+        if (tombstones.isNotEmpty()) dao.deleteByIds(tombstones)
+    }
+
+    /** Upserts live rows, preserving any cached full detail (summary-only rows). */
+    private suspend fun cachePage(page: NetworkContactsPage) {
+        val live = page.contacts.filterNot { it.deleted }
+        if (live.isEmpty()) return
+        val rows = live.map { it.toCached() }.toMutableList()
+        mergePreservingDetail(rows)
+        dao.upsertAll(rows)
+    }
+
+    /** Drops cached rows (live or tombstoned) absent from a complete live snapshot. */
+    private suspend fun reconcileAgainstSnapshot(presentIds: Set<Int>) {
+        val cachedIds = dao.getAll().map { it.id } + dao.getDeleted().map { it.id }
+        val stale = cachedIds.filterNot { it in presentIds }
+        if (stale.isNotEmpty()) dao.deleteByIds(stale)
+    }
+
+    private companion object {
+        /** The backend caps `limit` at 100; one page minimizes requests. */
+        const val FEED_PAGE_SIZE = 100
+    }
 
     override suspend fun resolveByUid(uids: List<String>): Result<Map<String, ContactSummary>> {
         val distinctUids = uids.distinct()
@@ -252,16 +357,6 @@ class ContactRepositoryImpl @Inject constructor(
         flow {
             emit(dao.getById(id)?.toRecord())
         }
-
-    /** Apply the T17 sync signal from a list response to the cache. */
-    private suspend fun applySync(sync: SyncInfo?) {
-        if (sync == null) return
-        val ids = sync.incremental.orEmpty()
-            .mapNotNull { it.toIntOrNull() }
-        if (ids.isNotEmpty()) dao.deleteByIds(ids)
-        // full_resync handling is a Phase-3 concern (multi-table); the
-        // contact table is always replaced by the fetched page anyway.
-    }
 
     /**
      * A list page's rows are summaries with null `card`/`crm`. Before
