@@ -47,10 +47,15 @@ install on day one, and a pin computed from the first-seen cert (trust-on-first-
 different feature — a pin store, a UI to review/clear it, and a break-glass path for legitimate
 rotation — not a checkbox toggle on the naive pinning MSTG-NETWORK-4 describes. **In scope per #377:**
 yes, MITM is a real actor (`threat-model.md` "Unauthenticated network attacker" row) — but it's
-neutralized today by standard TLS + system CA trust (`asvs-l2.md` V9, `masvs-l1.md` NETWORK-1/NETWORK-3),
-which holds for a self-signed cert too once the user has explicitly trusted it via the **KeyChain
-import flow** (`installCustomCertificate`) — never by disabling TLS verification (see the production
-`network_security_config.xml` comment). **Decision: keep declined.** Naive pinning is actively wrong
+neutralized today by standard TLS + system CA trust (`asvs-l2.md` V9, `masvs-l1.md` NETWORK-1/NETWORK-3).
+That trust anchor is `system` only in a release build — there is no KeyChain-import
+(`installCustomCertificate`) or other path to trust a self-signed or private-CA cert there (issue
+#961 found and corrected an earlier, false claim that one existed; see the production
+`network_security_config.xml` comment). A self-hosted deployment behind such a cert needs a
+certificate chaining to a CA the OS already trusts (e.g. a public ACME issuer such as Let's Encrypt
+in front of the reverse proxy, `docs/deployment.md:35`) for the Android client to reach it at all —
+that gap is tracked by #961, not something this pinning decision can lean on as a mitigation.
+**Decision: keep declined.** Naive pinning is actively wrong
 for this app's threat model, and TOFU/user-managed pinning is a distinct, uncosted feature this issue
 does not adopt — see `threat-model.md` gating decision 3.
 
@@ -59,7 +64,7 @@ does not adopt — see `threat-model.md` gating decision 3.
 The debug source set (`app/src/debug/res/xml/network_security_config.xml:19-28`) permits cleartext
 HTTP to `10.0.2.2` / `127.0.0.1` / `localhost` so `adb`-driven local-backend testing works. This
 file **never ships in a release build** — the production config forbids cleartext unconditionally
-(`app/src/main/res/xml/network_security_config.xml:18`). Ignored at INFO (`android_manifest_domain_config_cleartext`)
+(`app/src/main/res/xml/network_security_config.xml:27`). Ignored at INFO (`android_manifest_domain_config_cleartext`)
 so it stays visible in the source comment rather than adding CI noise.
 
 ### P3 — No root/SafetyNet detection, anti-task-hijacking by design (re-evaluated, kept declined, issue #507)
@@ -251,9 +256,9 @@ L2-only, out of scope: NETWORK-4, NETWORK-5, NETWORK-6.
 
 | ID | Requirement (abbrev.) | Status | Evidence |
 |---|---|---|---|
-| NETWORK-1 | TLS consistently, no cleartext | satisfied | Production network security config forbids cleartext (`cleartextTrafficPermitted="false"`) and trusts only system CAs — `app/src/main/res/xml/network_security_config.xml:17-23`, wired via `AndroidManifest.xml:43`. Pinned by test (see `NetworkSecurityConfigTest`). Debug-only loopback cleartext never ships (P2). |
+| NETWORK-1 | TLS consistently, no cleartext | satisfied | Production network security config forbids cleartext (`cleartextTrafficPermitted="false"`) and trusts only system CAs — `app/src/main/res/xml/network_security_config.xml:26-32`, wired via `AndroidManifest.xml:43`. Pinned by test (see `NetworkSecurityConfigTest`). Debug-only loopback cleartext never ships (P2). |
 | NETWORK-2 | TLS settings align with best practice | satisfied | The app lets the platform's TLS stack negotiate (no custom socket factory, no `sslSocketFactory` overrides anywhere); current OkHttp enforces TLS 1.2+. |
-| NETWORK-3 | Verify X.509, only trusted CAs | satisfied | Trust anchors are `system` only (`network_security_config.xml:20`); user-installed CAs are trusted **only** in the debug variant (`debug/res/xml/network_security_config.xml:30-35`). No custom trust manager or `X509TrustManager` override. |
+| NETWORK-3 | Verify X.509, only trusted CAs | satisfied | Trust anchors are `system` only (`network_security_config.xml:29`); user-installed CAs are trusted **only** in the debug variant (`debug/res/xml/network_security_config.xml:30-35`), which never ships in a release build. No custom trust manager or `X509TrustManager` override, and no KeyChain-import path either (P1, issue #961) — a self-signed or private-CA cert is not trusted by a release build at all. |
 
 ## V6 — Platform Interaction (MSTG-PLATFORM)
 

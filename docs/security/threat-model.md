@@ -216,9 +216,12 @@ two kept declined, two reversed.** All four were re-examined individually agains
 - **Certificate pinning — keep declined** (`masvs-l1.md` P1). Every user runs their own self-hosted
   server with a certificate the app cannot know in advance, frequently self-signed or from an internal
   CA; a naive pin would be wrong on day one for most installs. The MITM actor it would answer is real
-  (Actors × trust boundaries, above) but is already neutralized by standard TLS + the KeyChain
-  import flow for self-signed certs. Trust-on-first-use/user-managed pinning remains a distinct,
-  uncosted feature this issue does not adopt.
+  (Actors × trust boundaries, above) and is neutralized today by standard TLS + system CA trust — but
+  that trust anchor is system CAs only: a release build has no KeyChain-import path for a self-signed
+  cert (issue #961 corrected an earlier claim that one existed), so a self-hosted deployment behind
+  such a cert cannot be reached by the Android app at all today, independent of the pinning decision.
+  Trust-on-first-use/user-managed pinning remains a distinct, uncosted feature this issue does not
+  adopt.
 - **Root detection (+ SafetyNet) — keep declined** (`masvs-l1.md` P3). This is the audience-honesty
   weighing the issue specifically asked for: self-hosted users are disproportionately likely to root
   their devices deliberately, and the actor this control answers (attacker already has the device) is

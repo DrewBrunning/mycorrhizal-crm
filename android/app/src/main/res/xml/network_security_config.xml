@@ -1,10 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    TLS trust model (ticket §9.5).
+    TLS trust model (ticket §9.5; corrected by issue #961 — the file used to
+    describe a KeyChain-import flow that was never implemented).
 
-    Production: system CAs only, cleartext forbidden. Self-hosted servers with
-    self-signed certs are handled via the KeyChain import flow (installCustomCertificate),
-    never by disabling TLS verification.
+    Production: system CAs only, cleartext forbidden. Self-signed and
+    private-CA certificates are NOT trusted by a release build — there is no
+    `installCustomCertificate`/KeyChain-import path, and this config's trust
+    anchor is `system` only (the `user` anchor exists solely in the debug
+    source set below, which never ships in a release APK). Since minSdk 26,
+    Android does not trust user-installed CAs by default, so installing the
+    operator's cert via Settings does not help a release build either way. A
+    self-hosted deployment the Android app can reach needs a certificate
+    chaining to a CA the OS already trusts (e.g. a public ACME issuer such as
+    Let's Encrypt in front of whatever reverse proxy terminates TLS, per
+    docs/deployment.md's "How the Docker Setup Works").
 
     This is the config a RELEASE build actually uses. Debug builds don't use
     this file at all — the debug source set fully replaces it with
