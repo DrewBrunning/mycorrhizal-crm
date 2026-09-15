@@ -156,22 +156,39 @@ func seedMigrationScopeData(t *testing.T, f *Fixture) {
 // with real rows, not vacuous 0==0 comparisons: contacts, relationships
 // (direction lives in the source_id/target_id/type/directional columns the
 // content snapshot compares), custom fields, notes, life events, gifts, files,
-// circles, tags, external references, and audit history. A future fixture
-// change that stops populating one of them fails here.
+// circles, tags, external references, audit history, preferences,
+// households/household members, activities/activity participants, circle
+// membership, and tag assignments. A future fixture change that stops
+// populating one of them fails here.
+//
+// The last seven were the F8 gap (issue #911): the canonical TEST-02 manifest
+// (internal/canonicalfixture) has always populated preferences, households,
+// household_members, activities, activity_contacts, circle_members, and
+// contact_tags, but this guard never asserted it — so a loader regression
+// that stopped writing any of them would compare 0 rows before to 0 rows
+// after and report success, the exact vacuous comparison this function exists
+// to prevent.
 func assertCriteriaPopulated(t *testing.T, f *Fixture) {
 	t.Helper()
 	criteria := map[string]string{
-		"contact counts":      "contacts",
-		"relationships":       "relationship_edges",
-		"custom fields":       "field_values",
-		"notes":               "notes",
-		"life events":         "life_events",
-		"gifts":               "gifts",
-		"files (attachments)": "attachments",
-		"circles":             "circles",
-		"tags":                "tags",
-		"external references": "external_identities",
-		"audit history":       "audit_events",
+		"contact counts":        "contacts",
+		"relationships":         "relationship_edges",
+		"custom fields":         "field_values",
+		"notes":                 "notes",
+		"life events":           "life_events",
+		"gifts":                 "gifts",
+		"files (attachments)":   "attachments",
+		"circles":               "circles",
+		"tags":                  "tags",
+		"external references":   "external_identities",
+		"audit history":         "audit_events",
+		"preferences":           "preferences",
+		"households":            "households",
+		"household members":     "household_members",
+		"activities":            "activities",
+		"activity participants": "activity_contacts",
+		"circle membership":     "circle_members",
+		"tag assignments":       "contact_tags",
 	}
 	for name, table := range criteria {
 		var n int64

@@ -124,25 +124,14 @@ ignore:
   # the JVM (no AndroidKeyStore, no BiometricPrompt, no Hilt application host,
   # no live BiometricManager), so their changed lines can never be covered by
   # a unit test. Each is pinned by source-scan guard tests and/or the
-  # instrumented device suite (issue #238):
-  #  - MycorrhizalApp.kt: the Hilt-rooted root composable (its branch decision
-  #    is factored into the covered rootSurface() pure function + RootSurfaceTest).
-  #  - applock/BiometricUnlockVault.kt + AppUnlockPrompter.kt: Keystore
-  #    auth-bound keys + the OS BiometricPrompt (guarded by
-  #    BiometricUnlockCryptoGuardTest / AppUnlockPrompterGuardTest).
-  #  - applock/AppLockScreen.kt: stateful host of the OS prompt; its stateless
-  #    AppLockContent states are covered by AppLockScreenTest, but the file
-  #    also hosts the device-only prompt path so it is excluded whole.
-  #  - data/session/DeviceGrantTokenStorage.kt: EncryptedSharedPreferences +
-  #    Keystore master key (guarded by EncryptedDeviceGrantStorageGuardTest).
-  #  - data/auth/AndroidLocalAuthCapabilities.kt: BiometricManager device
-  #    posture — Robolectric cannot report a successful authenticator.
-  - "android/app/src/main/kotlin/com/mycorrhizal/crm/MycorrhizalApp.kt"
-  - "android/app/src/main/kotlin/com/mycorrhizal/crm/applock/BiometricUnlockVault.kt"
-  - "android/app/src/main/kotlin/com/mycorrhizal/crm/applock/AppUnlockPrompter.kt"
-  - "android/app/src/main/kotlin/com/mycorrhizal/crm/applock/AppLockScreen.kt"
-  - "android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/session/DeviceGrantTokenStorage.kt"
-  - "android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/auth/AndroidLocalAuthCapabilities.kt"
+  # instrumented device suite (issue #238) -- see the trailing comment on
+  # each entry below for which one.
+  - "android/app/src/main/kotlin/com/mycorrhizal/crm/MycorrhizalApp.kt"  # the Hilt-rooted root composable; its branch decision is factored into the covered rootSurface() pure function + RootSurfaceTest
+  - "android/app/src/main/kotlin/com/mycorrhizal/crm/applock/BiometricUnlockVault.kt"  # Keystore auth-bound keys; guarded by BiometricUnlockCryptoGuardTest
+  - "android/app/src/main/kotlin/com/mycorrhizal/crm/applock/AppUnlockPrompter.kt"  # drives the OS BiometricPrompt; guarded by AppUnlockPrompterGuardTest
+  - "android/app/src/main/kotlin/com/mycorrhizal/crm/applock/AppLockScreen.kt"  # stateful host of the OS prompt; stateless AppLockContent states are covered by AppLockScreenTest, but this file also hosts the device-only prompt path
+  - "android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/session/DeviceGrantTokenStorage.kt"  # EncryptedSharedPreferences + Keystore master key; guarded by EncryptedDeviceGrantStorageGuardTest
+  - "android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/auth/AndroidLocalAuthCapabilities.kt"  # BiometricManager device posture -- Robolectric cannot report a successful authenticator
   # Issue #965: the Android OIDC pending-request store is EncryptedSharedPreferences
   # + Keystore master key, like DeviceGrantTokenStorage above (guarded by
   # EncryptedOidcPendingRequestStorageGuardTest). Its pure TTL helper is still
