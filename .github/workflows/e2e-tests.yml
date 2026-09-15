@@ -160,7 +160,16 @@ jobs:
         # are compared here — any pixel diff to a pinned view fails the job.
         # Regenerate after an intentional visual change with
         # `npx playwright test visual.spec.ts --update-snapshots`.
-        run: npx playwright test
+        #
+        # --project=chromium (the 'setup' dependency still runs automatically):
+        # playwright.config.ts also declares a `webkit` project (issue #992,
+        # testMatch-scoped to e2e/webkitSmoke.spec.ts alone) which this job
+        # never installs a browser for -- that spec has its own dedicated
+        # `e2e-webkit-smoke` job below with its own `webkit` install step.
+        # Without this flag, an un-scoped `npx playwright test` here picks up
+        # every declared project and fails with "Executable doesn't exist"
+        # the moment a second engine's project is added to the config.
+        run: npx playwright test --project=chromium
         env:
           CI: true
           # Issue #556, two-tier perf split (#447): the @perf-heavy specs
@@ -323,8 +332,11 @@ jobs:
         # Only the @prod-defaults-tagged specs run here. A single worker keeps
         # request volume low enough to sit comfortably under the production
         # rate limit — the raised test values in docker-compose.test.yml were
-        # introduced precisely because the full suite could not.
-        run: npx playwright test --grep @prod-defaults --workers=1
+        # introduced precisely because the full suite could not. --project=chromium
+        # for the same reason as the main `e2e` job above: this job only installs
+        # chromium, and playwright.config.ts also declares a `webkit` project
+        # (issue #992) with its own dedicated job/install step below.
+        run: npx playwright test --grep @prod-defaults --workers=1 --project=chromium
         env:
           CI: true
 
