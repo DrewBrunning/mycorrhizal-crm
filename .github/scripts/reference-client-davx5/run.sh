@@ -150,7 +150,13 @@ adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1 >/dev/null 
 sleep 3
 
 log "Walking the intro carousel to the account list"
-tap_until_visible "Next" "Add account" 15
+# 15 attempts (each attempt is a full uiautomator dump + pull + a 1s sleep,
+# so meaningfully more than 15s of wall clock) was tight enough that this
+# step failed 3/3 times on push:main's much larger concurrent CI load while
+# passing 3/3 on the lighter-weight pull_request/workflow_dispatch triggers
+# — the same emulator, same pinned APK, just slower under load. Doubled to
+# match the budget "Finish" below already uses for the same reason.
+tap_until_visible "Next" "Add account" 30
 
 log "Starting 'Add account'"
 tap "Add account"
