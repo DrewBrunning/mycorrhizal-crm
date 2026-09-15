@@ -546,6 +546,7 @@
   },
   "contactDetail": {
     "notFound": "Contact not found",
+    "timelineLoadError": "Some timeline data failed to load. Try refreshing the page.",
     "section": {
       "name": "Name",
       "metadata": "Card metadata",

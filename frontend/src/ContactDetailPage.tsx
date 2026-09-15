@@ -1116,12 +1116,31 @@ export default function ContactDetailPage() {
 
     const fetchData = async () => {
       try {
-        // First batch: parallel fetch of core data
+        // First batch: parallel fetch of core data. Only getContactRecord is
+        // allowed to gate the not-found branch below -- notes, activities,
+        // and completions are auxiliary timeline data, and one of them
+        // 500ing must not make an existing contact look deleted (issue #958).
+        // Each is isolated with its own .catch() so a single failure falls
+        // back to an empty list and is surfaced as a non-fatal timeline
+        // error instead of rejecting the whole Promise.all.
+        let auxFetchFailed = false;
         const [recordData, notesData, activitiesData, completionsData, user] = await Promise.all([
           getContactRecord(id),
-          getContactNotes(id),
-          getContactActivities(id),
-          getCompletionsForContact(parseInt(id, 10)),
+          getContactNotes(id).catch((err) => {
+            console.error('Error fetching contact notes:', err);
+            auxFetchFailed = true;
+            return { notes: [] };
+          }),
+          getContactActivities(id).catch((err) => {
+            console.error('Error fetching contact activities:', err);
+            auxFetchFailed = true;
+            return { activities: [] };
+          }),
+          getCompletionsForContact(parseInt(id, 10)).catch((err) => {
+            console.error('Error fetching reminder completions:', err);
+            auxFetchFailed = true;
+            return [];
+          }),
           getCurrentUser().catch((err) => {
             console.error('Error fetching current user preferences:', err);
             return null;
@@ -1133,6 +1152,9 @@ export default function ContactDetailPage() {
         setActivities(activitiesData.activities || []);
         setCompletions(completionsData || []);
         setEnabledFields(resolveEnabledFields(user?.enabled_contact_fields ?? null));
+        if (auxFetchFailed) {
+          showError(t('contactDetail.timelineLoadError'));
+        }
         // T90: this page's own /users/me fetch is fresher than the localStorage
         // cache (e.g. right after a Settings picker change); take its value.
         // Only when the fetch actually succeeded — the `.catch(() => null)`
@@ -1189,6 +1211,10 @@ export default function ContactDetailPage() {
         URL.revokeObjectURL(currentBlobUrl);
       }
     };
+    // showError and t are intentionally left out: both are stable in
+    // practice (useCallback / react-i18next), and including t would refetch
+    // this whole page's timeline on every language switch for no reason.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     id,
     refreshReminders,

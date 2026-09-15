@@ -546,6 +546,7 @@
   },
   "contactDetail": {
     "notFound": "Contacto no encontrado",
+    "timelineLoadError": "No se pudieron cargar algunos datos de la cronología. Intenta actualizar la página.",
     "section": {
       "name": "Nombre",
       "metadata": "Metadatos de la tarjeta",

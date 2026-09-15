@@ -546,6 +546,7 @@
   },
   "contactDetail": {
     "notFound": "Contatto non trovato",
+    "timelineLoadError": "Impossibile caricare alcuni dati della cronologia. Prova ad aggiornare la pagina.",
     "section": {
       "name": "Nome",
       "metadata": "Metadati della scheda",
