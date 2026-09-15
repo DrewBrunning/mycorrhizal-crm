@@ -229,10 +229,13 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          # Each physical line of `script` runs as its own separate `sh -c`
+          # invocation (no shared shell state across lines, so a trailing
+          # `\` continuation is a literal "\" command, not a line join) —
+          # the whole invocation must stay on one line.
           script: |
             adb reverse tcp:7300 tcp:7300
-            SERVER_URL=http://127.0.0.1:7300 USERNAME=pentest PASSWORD='PentestPassword123!' \
-              .github/scripts/reference-client-davx5/run.sh /tmp/davx5.apk
+            SERVER_URL=http://127.0.0.1:7300 USERNAME=pentest PASSWORD='PentestPassword123!' .github/scripts/reference-client-davx5/run.sh /tmp/davx5.apk
 
       - name: Show server logs on failure
         if: failure()
