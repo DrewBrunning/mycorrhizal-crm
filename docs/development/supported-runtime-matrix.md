@@ -30,7 +30,7 @@ and multi-user-per-instance, its isolation guarantee, and what an admin can see 
 | **Go** | `1.26.0` (toolchain `1.27.1`, `backend/go.mod`) | Deliberately pinned per the security posture (see CLAUDE.md) — this row states the current pin, it does not float it. Contributors building from source need a matching Go install; the shipped Docker image does not (it's built inside a `golang:1.27.1-alpine` build stage). |
 | **Node.js** (contributor/CI, not the shipped image) | `>=22.22.2` (`frontend/package.json` `engines.node`) | The binding constraint is a transitive dependency's own `engines` field, not a floor this project chose: `jsdom@30` (a `devDependency`, vitest's DOM environment) declares `engines.node: "^22.22.2 \|\| ^24.15.0 \|\| >=26.0.0"`. On the 22.x line that pins the floor to the patch, not the minor — `22.22.0`/`22.22.1` fail `yarn install` outright with `.yarnrc`'s `engine-strict`. `react-router@8.x` (a runtime dependency) separately declares `engines.node: ">=22.22.0"`, looser than jsdom's but still well above vite@8.2.2/eslint@10's own `^20.19.0 \|\| >=22.13.0`. Found by COMPAT-02 (issue #473) hand-verifying this row: `yarn install --frozen-lockfile` at the previously-declared `22.13.0` and `22.22.0` both fail today — the floor had already silently drifted upward via a dependency bump before this ticket, which is exactly the failure mode #473 exists to catch. Separately, `frontend/vitest.config.ts` unconditionally passes `--no-experimental-webstorage` to the test worker, a flag that does not exist before Node 22.4 — moot now that jsdom's floor is tighter, but it's *why* the 20.x branch was dropped in the first place (COMPAT-01). The all-in-one Docker image builds the frontend itself inside a pinned `node:26-alpine` stage (`Dockerfile`), so an operator running the published image never needs a local Node at all — this row is for anyone building from source. |
 | **Yarn** | Classic v1, `>=1.22.0` (`frontend/package.json` `engines.yarn`) | Matches the committed `yarn.lock` v1 format and the version already used in CI/dev; nothing in this repo needs a newer Yarn Classic release, and migrating to Yarn Berry is a separate, undecided change (see the `nanoid`/postcss CommonJS constraint in CLAUDE.md, which is unrelated but shows the toolchain is deliberately conservative). `frontend/.yarnrc`'s `engine-strict true` makes this enforced, not decorative — Yarn Classic does not check `engines` by default. |
-| **Browsers** | Chrome/Edge/Firefox ≥ 111, Safari/iOS ≥ 16.4 (`frontend/package.json` `browserslist`) | The binding constraint is Web Push: `frontend/src/pushSubscription.ts` uses `PushManager`/`applicationServerKey`, and Safari only shipped Web Push support in **16.4** (March 2023). Every other evergreen engine has supported Web Push and service workers for far longer, so the other three floors are pinned to the same release window (~March 2023) for one coherent, testable statement rather than a false sense of a lower floor nothing else in the PWA feature set was ever exercised against. `frontend/vite.config.ts`'s `build.target: browserslistToEsbuild()` reads this array directly, so it constrains the actual build output — not just documentation. |
+| **Browsers** | Chrome/Edge/Firefox ≥ 111, Safari/iOS ≥ 16.4 (`frontend/package.json` `browserslist`) | The binding constraint is Web Push: `frontend/src/pushSubscription.ts` uses `PushManager`/`applicationServerKey`, and Safari only shipped Web Push support in **16.4** (March 2023). Every other evergreen engine has supported Web Push and service workers for far longer, so the other three floors are pinned to the same release window (~March 2023) for one coherent, testable statement rather than a false sense of a lower floor nothing else in the PWA feature set was ever exercised against. `frontend/vite.config.ts`'s `build.target: browserslistToEsbuild()` reads this array directly, so it constrains the actual build output — not just documentation. WebKit — the engine this floor's binding constraint actually names — has real CI coverage only as of issue #992; see the [WebKit engine caveat](#webkit-engine-caveat-issue-992) below. |
 | **SQLite** | Ships via the pure-Go `glebarez/sqlite` driver | No separate host SQLite install; the version travels with the Go module, governed by the Go row above. **Storage constraint, not a version number: local filesystem only.** SQLite's WAL mode depends on advisory byte-range locks that NFS, SMB/CIFS, and similar network filesystems do not reliably implement across clients — running the database over one is a documented corruption risk, and it is the most likely self-hosted mistake (mounting a NAS share and pointing `SQLITE_DB_PATH` at it). `backend/internal/fsguard` warns loudly at startup when it detects a known network-filesystem type under the database path (see "Fail-clearly behavior" below) but cannot catch every case — see its own doc comment for the FUSE caveat. |
 | **Docker Engine** | `>=23.0` | Every doc and script in this repo invokes `docker compose` (the Compose **V2** CLI plugin) — never the deprecated hyphenated `docker-compose` v1 binary. Compose V2 became the Engine-bundled default at 23.0. Nothing in the committed `docker-compose*.yml` files uses syntax newer than that (checked this session: no `develop:`, `include:`, or other recent top-level keys — just `services`, `healthcheck`, `environment`, `volumes`). |
 | **Docker Compose** | V2 (any release bundled with Engine `>=23.0`) | Same reasoning as above; there is no independent Compose-only floor beyond "whatever ships with the Engine minimum." |
@@ -80,7 +80,7 @@ below cannot drift apart silently.
 |---|---|---|
 | Go | `min-version-tests.yml` / `go-minimum`, `go-below-minimum` | `GOTOOLCHAIN=local` so go.mod's `toolchain` line can't silently mask the floor. |
 | Node.js, Yarn | `min-version-tests.yml` / `node-yarn-minimum`, `node-below-minimum` | Yarn Classic run via a pinned standalone download, not whatever the runner ships. |
-| Browsers | `min-version-tests.yml` / `browser-minimum` | Real, pinned Firefox 111 (exact floor) and Chrome for Testing 115 (closest official artifact to the 111 floor — Google publishes no pinned, downloadable Chrome 111) driven via raw WebDriver. Below-floor case is `frontend/src/unsupportedBrowserFallback.test.ts` (a unit test, not a live ancient browser — module/nomodule dispatch is a guaranteed HTML5 behavior, not project code). |
+| Browsers | `min-version-tests.yml` / `browser-minimum` | Real, pinned Firefox 111 (exact floor) and Chrome for Testing 115 (closest official artifact to the 111 floor — Google publishes no pinned, downloadable Chrome 111) driven via raw WebDriver. Below-floor case is `frontend/src/unsupportedBrowserFallback.test.ts` (a unit test, not a live ancient browser — module/nomodule dispatch is a guaranteed HTML5 behavior, not project code). WebKit has no entry here — there is nothing to pin an exact floor against; see the [WebKit engine caveat](#webkit-engine-caveat-issue-992) below. |
 | SQLite | rides on Go | No version of its own; travels with the Go module. |
 | Docker Engine, Docker Compose | `min-version-tests.yml` / `docker-compose-minimum` | Validates the compose-file-syntax floor with the earliest V2 client against the runner's current dockerd — does **not** run an actual old Engine daemon (see the job's own comment for why that's a deliberately separate, higher-risk piece of work). |
 | Host OS / architecture | not independently checkable | Linux x86_64/arm64 is the only shape this project builds/tests at all. |
@@ -97,3 +97,33 @@ required pre-release gate (REL-03, issue #447) to invoke without editing the wor
 [release-gates registry](release-gates.md) ("Android E2E (emulator, minSdk 26)"), and the API-26
 floor needs to be exercised on the actual commit a release cuts from, not merely at some point
 within the last week.
+
+### WebKit engine caveat (issue #992)
+
+Split from #917 finding G6: the Safari/iOS ≥16.4 floor's binding constraint is Web Push, but
+until this issue every browser job in this repository — this table's `browser-minimum`, this
+suite's Playwright `chromium` project, `e2e-sw-upgrade`'s chromium+firefox — drove Chromium or
+Firefox. WebKit itself had never run at all.
+
+It stays outside the `Minimum-version CI coverage` table above because the floor-pinning
+technique those jobs use doesn't transfer: Firefox and Chrome for Testing both publish a
+versioned, checksummed old release to download and drive (see `browser-minimum`'s own
+comments), and there is no WebKit equivalent — no vendor publishes a standalone, pinned old
+WebKit binary the way Mozilla and Google do. `.github/workflows/e2e-tests.yml`'s
+`e2e-webkit-smoke` job and `frontend/e2e/webkitSmoke.spec.ts` instead run a real-engine smoke
+check against whatever *current* WebKit build Playwright ships, on the same PR/nightly cadence
+as the rest of that suite: login, session, and a real authenticated route (the dashboard) all
+render correctly, and the service worker registers — proving the production bundle actually
+loads and functions on the engine the floor names, even though it isn't the exact 16.4 build.
+
+That smoke test also asserts the Push API surface itself is present. An earlier draft of this
+section (and the spec) claimed the opposite, based on a standalone WebKit2GTK 4.1
+GObject-introspection check against the distro `libwebkitgtk-6.0` package rather than Playwright's
+own bundled build: that engine reported `'serviceWorker' in navigator` true but `'PushManager' in
+window` false. Running the actual spec in CI against Playwright's real `webkit` channel showed the
+opposite — `PushManager` **is** present there. The two are not interchangeable stand-ins for each
+other; only the exact binary CI runs is authoritative, which is why `webkitSmoke.spec.ts` now
+asserts the capability directly rather than assuming either way. This still doesn't fully verify
+the floor's Web-Push rationale: no spec here, on any engine, performs a live `subscribe()` round
+trip against a real push service, and there is still no real-Safari CI runner to compare against
+— see the spec's own file header for the current, precise scope of what is and isn't proven.

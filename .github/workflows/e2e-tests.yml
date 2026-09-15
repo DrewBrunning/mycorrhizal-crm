@@ -160,7 +160,16 @@ jobs:
         # are compared here — any pixel diff to a pinned view fails the job.
         # Regenerate after an intentional visual change with
         # `npx playwright test visual.spec.ts --update-snapshots`.
-        run: npx playwright test
+        #
+        # --project=chromium (the 'setup' dependency still runs automatically):
+        # playwright.config.ts also declares a `webkit` project (issue #992,
+        # testMatch-scoped to e2e/webkitSmoke.spec.ts alone) which this job
+        # never installs a browser for -- that spec has its own dedicated
+        # `e2e-webkit-smoke` job below with its own `webkit` install step.
+        # Without this flag, an un-scoped `npx playwright test` here picks up
+        # every declared project and fails with "Executable doesn't exist"
+        # the moment a second engine's project is added to the config.
+        run: npx playwright test --project=chromium
         env:
           CI: true
           # Issue #556, two-tier perf split (#447): the @perf-heavy specs
@@ -323,8 +332,11 @@ jobs:
         # Only the @prod-defaults-tagged specs run here. A single worker keeps
         # request volume low enough to sit comfortably under the production
         # rate limit — the raised test values in docker-compose.test.yml were
-        # introduced precisely because the full suite could not.
-        run: npx playwright test --grep @prod-defaults --workers=1
+        # introduced precisely because the full suite could not. --project=chromium
+        # for the same reason as the main `e2e` job above: this job only installs
+        # chromium, and playwright.config.ts also declares a `webkit` project
+        # (issue #992) with its own dedicated job/install step below.
+        run: npx playwright test --grep @prod-defaults --workers=1 --project=chromium
         env:
           CI: true
 
@@ -428,3 +440,112 @@ jobs:
           name: test-results-sw
           path: frontend/test-results-sw/
           retention-days: 7
+
+  # Issue #992 (split from #917 finding G6): the only WebKit coverage in this
+  # repo. Every other browser job here -- the `e2e` job's `chromium` project,
+  # `e2e-sw-upgrade`'s chromium+firefox, min-version-tests.yml's
+  # `browser-minimum` -- drives Chromium or Firefox, leaving the engine the
+  # documented Safari/iOS >=16.4 floor actually names (see
+  # docs/development/supported-runtime-matrix.md's "Browsers" row) completely
+  # untested. See frontend/e2e/webkitSmoke.spec.ts's header for exactly what
+  # this proves (the app loads and functions, service worker registers) and
+  # does not (the Push API itself -- verified absent from every CI-available
+  # WebKit build, real Safari's push support depends on Apple frameworks no
+  # open-source WebKit replicates).
+  #
+  # Runs against the same docker-compose.test.yml stack as the `e2e` job
+  # (login + dashboard need the real backend) but only Playwright's `webkit`
+  # project and a single spec -- this is a smoke check on one engine, not the
+  # full suite, which has never been run against (and is not verified to
+  # pass on) anything but Chromium. Same path gating and nightly schedule as
+  # the other e2e jobs above.
+  e2e-webkit-smoke:
+    permissions:
+      contents: read
+    name: Run E2E WebKit Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Build all-in-one image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          push: false
+          load: true
+          tags: mycorrhizal-crm-test:latest
+          cache-from: type=gha,scope=combined
+          cache-to: type=gha,scope=combined,mode=max
+
+      - name: Start services
+        run: |
+          docker compose -f docker-compose.test.yml up -d
+          # Wait for the app to be ready (frontend + same-origin /api on 7300)
+          echo "Waiting for services to be ready..."
+          timeout 120 bash -c 'until curl -s http://localhost:7300/health/live > /dev/null 2>&1; do sleep 2; done'
+          echo "App is ready"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          # COMPAT-01 (issue #472): floor comes from frontend/package.json's
+          # "engines.node" rather than a hardcoded number here.
+          node-version-file: frontend/package.json
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/yarn.lock') }}
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps webkit
+
+      - name: Run Playwright WebKit smoke test
+        working-directory: frontend
+        run: npx playwright test --project=webkit
+        env:
+          CI: true
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: playwright-report-webkit
+          path: frontend/playwright-report/
+          retention-days: 7
+
+      - name: Upload test results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: test-results-webkit
+          path: frontend/test-results/
+          retention-days: 7
+
+      - name: Show container logs on failure
+        if: failure()
+        run: |
+          echo "=== Mycorrhizal logs (nginx + backend under supervisord) ==="
+          docker compose -f docker-compose.test.yml logs mycorrhizal
+
+      - name: Stop services
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v

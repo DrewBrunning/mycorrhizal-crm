@@ -62,7 +62,21 @@ export default defineConfig({
         storageState: 'playwright/.auth/user.json',
       },
       dependencies: ['setup'],
-      testIgnore: [/.*\.setup\.ts/, /sw-upgrade/],
+      testIgnore: [/.*\.setup\.ts/, /sw-upgrade/, /webkitSmoke/],
+    },
+    // Issue #992: the only WebKit coverage in this repo. Deliberately its own
+    // project rather than folded into 'chromium' -- webkitSmoke.spec.ts logs
+    // in through the UI itself instead of depending on 'setup'/storageState,
+    // so this engine's single spec can run standalone without dragging the
+    // rest of the (chromium-only-verified) suite onto an engine it was never
+    // written against. See that file's header for what it does and does not
+    // prove.
+    {
+      name: 'webkit',
+      use: {
+        ...devices['Desktop Safari'],
+      },
+      testMatch: /webkitSmoke\.spec\.ts/,
     },
   ],
 
