@@ -190,6 +190,7 @@ jobs:
       - name: Build backend and seed the canonical fixture
         working-directory: backend
         run: |
+          mkdir -p /tmp/e2e/photos /tmp/e2e/attachments
           go build -o /tmp/mycorrhizal-backend .
           go run ./cmd/pentestseed seed --db=/tmp/e2e/test.db --profile=demo \
             --manifest-out=/tmp/e2e/credentials.json --base-url=http://127.0.0.1:7300
@@ -206,7 +207,6 @@ jobs:
           CALDAV_ENABLED: "true"
           DISABLE_REGISTRATION: "false"
         run: |
-          mkdir -p /tmp/e2e/photos /tmp/e2e/attachments
           /tmp/mycorrhizal-backend > /tmp/e2e/server.log 2>&1 &
           for _ in $(seq 1 60); do
             code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:7300/health/live 2>/dev/null || true)
