@@ -210,9 +210,18 @@ wait_for "Finish" 30
 tap "Finish"
 
 log "Account created. Enabling CardDAV + CalDAV collection sync"
+# Diagnostic capture from a real CI failure: switching tabs kicks off an
+# async collection-discovery PROPFIND against our server, and the very next
+# tap used to fire before that finished — the captured UI dump showed the
+# CardDAV tab active with no collection row on screen yet, just the account
+# chrome (Synchronize now / Refresh list / Options menu). wait_for is this
+# script's existing tool for exactly this ("waiting out async work... with
+# no button to press in the meantime") — it just wasn't used here.
 tap "CardDAV"
+wait_for "synchronize this collection" 20
 tap "synchronize this collection"
 tap "CalDAV"
+wait_for "synchronize this collection" 20
 tap "synchronize this collection"
 
 log "Triggering a manual sync"
