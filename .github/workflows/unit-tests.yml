@@ -191,6 +191,19 @@ jobs:
         working-directory: backend
         run: go run ./cmd/governancecheck
 
+      # Issue #979: codecov.yml sits at the repo root, outside every suite's
+      # own review -- a PR that edits only codecov.yml sets every `changes`
+      # output false (.github/filters.yaml maps codecov.yml to nothing), so
+      # nothing else in CI ever parses it, and a one-line target/threshold/
+      # ignore: edit merges on human review alone. Same job/rationale as the
+      # checks above: unconditional, because codecov.yml doesn't map to any
+      # path filter. codecovcheck asserts codecov.yml's patch-status targets
+      # match the documented example in docs/development/coverage.md and
+      # that every ignore: entry carries its own justifying comment.
+      - name: Verify codecov.yml (patch targets, ignore justifications)
+        working-directory: backend
+        run: go run ./cmd/codecovcheck
+
   # REL-05 (issue #449): a PR that touches an operator-visible surface
   # (`changelog-relevant` in .github/filters.yaml — schema migrations, the
   # config surface, .env.example) must carry an `## Upgrade notes` /
@@ -729,12 +742,25 @@ jobs:
       # is present would silently upload a partial profile and tank the
       # number; instead skip the upload for this commit and let Codecov's
       # per-flag `carryforward` (codecov.yml) hold the last known coverage.
-      # `ok=false` gates every coverage step below; it never fails the
-      # required "Backend (Go)" check (coverage is informational).
+      #
+      # Issue #979: on a push/schedule run that's still only a `::warning::`
+      # (`ok=false` gates every coverage step below without failing the
+      # required "Backend (Go)" check — informational, matching
+      # codecov.yml's `only_pulls: true`, which doesn't gate those anyway).
+      # But on a PR, a missing leg means the codecov/patch/backend status
+      # about to be evaluated is silently running on stale carryforward
+      # data instead of this PR's real coverage -- exactly the "silently
+      # killed" failure mode #979 flagged (echoing the migration-tests.yml
+      # at-scale job precedent). So on `pull_request` this is a hard
+      # failure: `::error::` plus a non-zero exit, which fails the step and
+      # therefore the "Backend (Go)" required check, surfacing it instead
+      # of merging quietly on a stale number.
       - name: Merge coverage profiles
         id: merge
         if: needs.backend-tests.result == 'success'
         working-directory: backend
+        env:
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           files=""
           missing=""
@@ -747,6 +773,11 @@ jobs:
             fi
           done
           if [ -n "$missing" ]; then
+            if [ "$EVENT_NAME" = "pull_request" ]; then
+              echo "::error::coverage profile missing for leg(s):$missing — codecov/patch/backend would be evaluated against stale carryforward data instead of this PR's coverage. Re-run the job; if it keeps happening, a leg is crashing/timing out in the no-rerun coverage pass and needs investigating."
+              echo "ok=false" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
             echo "::warning::coverage profile missing for leg(s):$missing — skipping Codecov upload, carryforward holds last known coverage"
             echo "ok=false" >> "$GITHUB_OUTPUT"
             exit 0
