@@ -24,8 +24,12 @@ export default defineConfig({
   // Fail the build on CI if you accidentally left test.only in the source code
   forbidOnly: !!process.env.CI,
 
-  // Retry on CI only
-  retries: process.env.CI ? 1 : 0,
+  // Retry on CI only. Issue #974: the nightly `schedule` run (this repo's
+  // e2e-tests.yml runs its suite jobs unconditionally on schedule) gets 0
+  // retries via the default GITHUB_EVENT_NAME Actions env var, so a flaky
+  // spec fails hard at least once a day instead of staying green forever
+  // behind the retry. PR/push keep retrying once.
+  retries: process.env.CI ? (process.env.GITHUB_EVENT_NAME === 'schedule' ? 0 : 1) : 0,
 
   // Tests authenticate once via the `setup` project and reuse the saved
   // storageState, so they no longer log in through the UI on every test.

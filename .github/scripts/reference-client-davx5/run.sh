@@ -163,6 +163,47 @@ type_into_field_at() {
 	adb shell input text "$text"
 }
 
+# Prints one "x y" line per android.widget.EditText node in $DUMP_XML, in
+# document order (Base URL, User name, Password on the login screen).
+find_edit_text_fields() {
+	python3 - "$DUMP_XML" <<'PY'
+import sys, re
+import xml.etree.ElementTree as ET
+
+tree = ET.parse(sys.argv[1])
+for node in tree.iter("node"):
+    if node.get("class") == "android.widget.EditText":
+        b = node.get("bounds")
+        x0, y0, x1, y1 = map(int, re.findall(r"-?\d+", b))
+        print(f"{(x0 + x1) // 2} {(y0 + y1) // 2}")
+PY
+}
+
+# Polls (no tapping, like wait_for) until 3 EditText fields are on screen,
+# bounded by $1 attempts, 1s apart. Diagnostic capture from a real CI
+# failure: the login screen's own dump_ui was a single unretried call with
+# no dismiss_anr_if_present — an ANR dialog (observed: "Pixel Launcher isn't
+# responding", stacked on top of the login form after the carousel/Continue
+# taps above already dismissed two others under the same load) hid every
+# EditText node from the accessibility tree, and the script failed
+# immediately reading a dump it never gave a chance to recover from.
+wait_for_login_fields() {
+	local max_attempts="${1:-20}" attempts=0
+	while [ "$attempts" -lt "$max_attempts" ]; do
+		dump_ui
+		dismiss_anr_if_present
+		mapfile -t FIELD_COORDS < <(find_edit_text_fields)
+		if [ "${#FIELD_COORDS[@]}" -ge 3 ]; then
+			return 0
+		fi
+		sleep 1
+		attempts=$((attempts + 1))
+	done
+	log "ERROR: expected 3 login EditText fields (base URL, user name, password), found ${#FIELD_COORDS[@]} after ${attempts}s"
+	capture_failure_diagnostics "login-fields"
+	return 1
+}
+
 log "Installing DAVx5 from $APK_PATH"
 adb install -r "$APK_PATH"
 
@@ -194,30 +235,13 @@ tap "Login with URL and user name"
 tap "Continue"
 
 log "Filling in server URL / username / password"
-dump_ui
 # The three EditText fields are located by their bounds order (Base URL,
 # User name, Password) since Compose text fields carry no stable
-# text/content-desc before they're filled in.
-python3 - "$DUMP_XML" <<'PY' >"$WORKDIR/fields.txt"
-import sys, re
-import xml.etree.ElementTree as ET
-
-tree = ET.parse(sys.argv[1])
-fields = []
-for node in tree.iter("node"):
-    if node.get("class") == "android.widget.EditText":
-        b = node.get("bounds")
-        x0, y0, x1, y1 = map(int, re.findall(r"-?\d+", b))
-        fields.append(((x0 + x1) // 2, (y0 + y1) // 2))
-for x, y in fields:
-    print(x, y)
-PY
-
-mapfile -t FIELD_COORDS <"$WORKDIR/fields.txt"
-if [ "${#FIELD_COORDS[@]}" -lt 3 ]; then
-	log "ERROR: expected 3 login EditText fields (base URL, user name, password), found ${#FIELD_COORDS[@]}"
-	exit 1
-fi
+# text/content-desc before they're filled in. wait_for_login_fields polls
+# (dismissing any ANR dialog along the way) rather than reading a single
+# dump_ui, since the transition onto this screen is async — see that
+# function's own comment for the real failure this fixes.
+wait_for_login_fields 20
 
 # shellcheck disable=SC2086
 type_into_field_at ${FIELD_COORDS[0]} "$SERVER_URL"

@@ -21,6 +21,10 @@
 #
 # docs/** intentionally maps to nothing here: docs changes trigger only the
 # docs job (docs.yml), which is already path-filtered to docs/**.
+# The one exception is docs/golden-fixtures/** (see the `backend` filter
+# below): it is the ADR-0003 external test oracle that backend Go tests read
+# an embedded copy of, not narrative documentation, so it must gate the
+# backend suite too (issue #977).
 #
 # License-compliance gates (issue #361). These are narrower than the area
 # filters above: they only fire when the dependency *manifest* changes, so a
@@ -50,6 +54,16 @@ changelog-relevant:
 
 backend:
   - 'backend/**'
+  # Issue #977: the TEST-02 canonical manifest and the ADR-0003 golden-fixture
+  # oracle both live outside backend/ but are consumed by Go tests
+  # (internal/largedata, contactgen, services, roundtrip,
+  # internal/schemafixture, controllers/contact_merge_golden_test.go, and
+  # internal/rfctest's oracle-parity test) — a change to either must run the
+  # backend suite, not just the narrower carddav/reference-clients jobs that
+  # also reference testdata/canonical-fixture/** (issue #852 was this same
+  # class of gap).
+  - 'testdata/**'
+  - 'docs/golden-fixtures/**'
 
 frontend:
   - 'frontend/**'

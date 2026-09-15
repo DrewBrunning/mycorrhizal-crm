@@ -85,7 +85,14 @@ jobs:
     # variance headroom so a flaky timeout doesn't fail the required check.
     timeout-minutes: 40
     needs: changes
-    if: needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
+    # Issue #974: this was the one job in this file with no schedule
+    # exemption (every other job here — android-e2e, android-e2e-min-sdk,
+    # android-below-min-sdk, android-macrobenchmark — already runs
+    # unconditionally on the nightly cron). Without it, the test-retry
+    # plugin's maxRetries=0-on-schedule tier (AndroidConfig.kt) would never
+    # actually fire on a normal night, since paths-filter's diff against the
+    # previous commit is false most nights with no android/** change.
+    if: github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository
@@ -343,11 +350,18 @@ jobs:
           # line continuations. :app-scoped: a bare `connectedDebugAndroidTest`
           # would expand to every module, including libraries with no
           # instrumented tests whose connected tasks fail.
+          #
+          # Issue #974: max_attempts is 1 (no retry) on the nightly `schedule`
+          # run — GITHUB_EVENT_NAME is a default Actions env var, inherited by
+          # every sh -c the action spawns, not a script-local variable, so it
+          # survives the per-line-shell split. Without this, a flaky
+          # instrumented test could pass on retry every night forever with no
+          # run ever hard-failing on it.
           script: |
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
             adb reverse tcp:7302 tcp:7302
-            max_attempts=2; attempt=1; while true; do if ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300; then exit 0; fi; if [ "$attempt" -ge "$max_attempts" ]; then echo "connectedDebugAndroidTest failed after $max_attempts attempts" >&2; exit 1; fi; echo "connectedDebugAndroidTest failed on attempt $attempt/$max_attempts; preserving failing results and retrying"; mkdir -p "app/build/flaky-attempt-$attempt"; cp app/build/outputs/androidTest-results/connected/*.xml "app/build/flaky-attempt-$attempt/" 2>/dev/null || true; attempt=$((attempt + 1)); done
+            max_attempts=$([ "$GITHUB_EVENT_NAME" = "schedule" ] && echo 1 || echo 2); attempt=1; while true; do if ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300; then exit 0; fi; if [ "$attempt" -ge "$max_attempts" ]; then echo "connectedDebugAndroidTest failed after $max_attempts attempts" >&2; exit 1; fi; echo "connectedDebugAndroidTest failed on attempt $attempt/$max_attempts; preserving failing results and retrying"; mkdir -p "app/build/flaky-attempt-$attempt"; cp app/build/outputs/androidTest-results/connected/*.xml "app/build/flaky-attempt-$attempt/" 2>/dev/null || true; attempt=$((attempt + 1)); done
 
       # Issue #268: if the suite passed but only after a retry, the preserved
       # flaky-attempt-* XMLs are the flake signal (the final connected run
@@ -465,6 +479,8 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      # Issue #974: same non-retried nightly leg as android-e2e above —
+      # max_attempts is 1 on the `schedule` run.
       - name: Run instrumented E2E tests (API 26)
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
@@ -477,7 +493,7 @@ jobs:
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
             adb reverse tcp:7302 tcp:7302
-            max_attempts=2; attempt=1; while true; do if ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300; then exit 0; fi; if [ "$attempt" -ge "$max_attempts" ]; then echo "connectedDebugAndroidTest failed after $max_attempts attempts" >&2; exit 1; fi; echo "connectedDebugAndroidTest failed on attempt $attempt/$max_attempts; preserving failing results and retrying"; mkdir -p "app/build/flaky-attempt-$attempt"; cp app/build/outputs/androidTest-results/connected/*.xml "app/build/flaky-attempt-$attempt/" 2>/dev/null || true; attempt=$((attempt + 1)); done
+            max_attempts=$([ "$GITHUB_EVENT_NAME" = "schedule" ] && echo 1 || echo 2); attempt=1; while true; do if ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300; then exit 0; fi; if [ "$attempt" -ge "$max_attempts" ]; then echo "connectedDebugAndroidTest failed after $max_attempts attempts" >&2; exit 1; fi; echo "connectedDebugAndroidTest failed on attempt $attempt/$max_attempts; preserving failing results and retrying"; mkdir -p "app/build/flaky-attempt-$attempt"; cp app/build/outputs/androidTest-results/connected/*.xml "app/build/flaky-attempt-$attempt/" 2>/dev/null || true; attempt=$((attempt + 1)); done
 
       - name: Upload E2E results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
