@@ -335,6 +335,27 @@ fixtures on first run); the `e2e-sw-upgrade` job in `e2e-tests.yml` runs it in
 CI. `frontend-dev` is useless here (CLAUDE.md, T51): every build under test is
 a real `vite build`.
 
+### WebKit smoke (issue #992)
+
+`frontend/e2e/webkitSmoke.spec.ts` is the only WebKit coverage in this repo —
+every other browser job above drives Chromium or Firefox, leaving the engine
+the documented Safari/iOS ≥16.4 floor actually names (see
+[the supported runtime matrix](supported-runtime-matrix.md)'s "Browsers" row)
+completely untested until this issue. It runs under the main
+`playwright.config.ts`'s own `webkit` project (`testMatch`-scoped to just this
+one file, so it doesn't drag the rest of the chromium-only-verified suite onto
+an untested engine) against the same `docker-compose.test.yml` stack as the
+main `e2e` job: login → dashboard render → service-worker registration.
+
+It deliberately does **not** assert the Push API surface is present — no
+CI-available WebKit build (Playwright's own, or the open-source WebKitGTK
+engine checked locally for this issue) implements `window.PushManager`; see
+[the WebKit engine caveat](supported-runtime-matrix.md#webkit-engine-caveat-issue-992)
+for why, and the spec's own file header for the full reasoning. Run locally
+with `npx playwright test --project=webkit` (needs
+`npx playwright install --with-deps webkit` first); the `e2e-webkit-smoke` job
+in `e2e-tests.yml` runs it in CI on the same PR/nightly cadence as `e2e`.
+
 ## Release/install smoke (DEPLOY-01, issue #450)
 
 - **Responsible for** a clean install that proves the **workflow**, not the boot.
