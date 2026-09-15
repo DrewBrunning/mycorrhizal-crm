@@ -1152,6 +1152,8 @@ func formatDatePartial(d contactmodel.AnniversaryDate) string {
 			return fmt.Sprintf("%04d", *p.Year)
 		case p.Year == nil && p.Month != nil && p.Day == nil:
 			return fmt.Sprintf("--%02d", *p.Month)
+		case p.Year == nil && p.Month == nil && p.Day != nil:
+			return fmt.Sprintf("---%02d", *p.Day)
 		}
 	}
 	return ""
@@ -1190,10 +1192,24 @@ func parseDatePartial(v string) contactmodel.AnniversaryDate {
 		m, _ := strconv.Atoi(v[2:4])
 		d, _ := strconv.Atoi(v[4:6])
 		return contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{Month: &m, Day: &d}}
+	case len(v) == 5 && v[0] == '-' && v[1] == '-' && v[2] == '-':
+		// Day-only reduced form ("---" day, RFC 6350 §4.3, e.g. "---05").
+		// Previously fell through to the default case below and was
+		// mangled into a bogus Timestamp (issue #966).
+		d, _ := strconv.Atoi(v[3:5])
+		return contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{Day: &d}}
 	case len(v) == 4 && isAllDigits(v):
 		y, _ := strconv.Atoi(v)
 		return contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{Year: &y}}
 	default:
+		// Not a recognized reduced-precision date: try it as a full
+		// DATE-AND-OR-TIME timestamp (offset or Z forms included) and
+		// normalize to RFC3339 UTC rather than storing the wire spelling
+		// verbatim (issue #969); fall back to the raw value only if that
+		// also fails, so nothing is silently dropped.
+		if ts, ok := v3ToTs(v); ok {
+			return contactmodel.AnniversaryDate{Timestamp: &ts}
+		}
 		return contactmodel.AnniversaryDate{Timestamp: &v}
 	}
 }
@@ -1226,7 +1242,19 @@ func tsToV3(ts string) string {
 // tolerating the vCard 4.0-style compact TIMESTAMP form in case a
 // 4.0-authored REV value ends up in a 3.0 file.
 func v3ToTs(v string) (string, bool) {
-	layouts := []string{time.RFC3339, "20060102T150405Z", "2006-01-02T15:04:05"}
+	layouts := []string{
+		time.RFC3339, // extended, colon offset or Z
+		"2006-01-02T15:04:05Z0700",
+		"2006-01-02T15:04:05Z07", // e.g. the spec's own "19961022T140000-05"
+		"2006-01-02T15:04:05",    // pre-existing zone-less tolerance, unrelated to issue #969
+		"20060102T150405Z07:00",
+		"20060102T150405Z0700",
+		"20060102T150405Z07",
+		// Deliberately no zone-less compact layout: docs/adrs/0015-temporal-semantics.md
+		// Category 5 requires a zone-less imported timestamp be preserved
+		// verbatim rather than assumed-UTC; only the pre-existing extended
+		// zone-less tolerance above (predating this fix) is grandfathered in.
+	}
 	for _, layout := range layouts {
 		if t, err := time.Parse(layout, v); err == nil {
 			return t.UTC().Format(time.RFC3339), true

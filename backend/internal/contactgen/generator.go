@@ -332,13 +332,24 @@ func PartialDate(t *rapid.T) contactmodel.PartialDate {
 	year := maybeIntBias(t, "pd.year", 1, 9999, 2)
 	month := maybeIntBias(t, "pd.month", 1, 12, 4)
 	var day *int
-	if month != nil {
+	switch {
+	case month != nil:
 		day = maybeIntBias(t, "pd.day", 1, daysInMonth(intPtr(year, 2000), *month), 4)
-	} else {
-		// A day-only date (no year, no month) has no representation in any
-		// serialized format (RFC 6350 partial dates are YYYY / YYYY-MM /
-		// --MM-DD / YYYY-MM-DD), so a day is only generated alongside a month.
-		day = nil
+	case year == nil:
+		// A day-only date (no year, no month) IS representable via the
+		// vCard "---DD" reduced-precision form (RFC 6350 §4.3, "---" day) —
+		// generate it sometimes so the property round-trip suite exercises
+		// that grammar (issue #966 found it silently mangled by every
+		// importer because nothing had ever generated one). It has no
+		// month context to validate against, so any day-of-month value is
+		// valid; a plain 1-31 range is used rather than daysInMonth's
+		// month-scoped one. Only reachable when year is also nil — a
+		// year+day-with-no-month combination has no representation in any
+		// format (unlike day-only), so it must stay unreachable.
+		day = maybeIntBias(t, "pd.day", 1, 31, 4)
+	default:
+		// Year present, month absent: stays a year-only date (day has no
+		// home without a month, so it is not drawn here).
 	}
 	if year == nil && month == nil && day == nil {
 		// A date with no component at all is unrepresentable in every

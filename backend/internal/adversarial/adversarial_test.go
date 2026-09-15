@@ -1,6 +1,7 @@
 package adversarial
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -144,6 +145,14 @@ func importFixture(fx Fixture, raw []byte) (*contactmodel.Record, []contactmodel
 // tier its manifest declares. No fixture may panic or hang (a panic fails
 // the test process; a hang trips the test timeout), and no fixture may
 // produce a partially-written record where the tier says preserve.
+//
+// "preserve" and "warn" additionally require a registered landing check
+// (preserveLandingChecks / warnLandingChecks, landing_checks_test.go) that
+// asserts the specific data the manifest claims survives — not just
+// "no error, non-nil record", which an empty Record satisfies. "bound"
+// requires a registered companion test in boundFixtureCoverage. A fixture
+// at any of these three tiers with no registered entry fails here, so a
+// newly added fixture can't ship silently unasserted (issue #910).
 func TestDeclaredTiersHold(t *testing.T) {
 	t.Parallel()
 	for _, fx := range Manifest {
@@ -157,14 +166,19 @@ func TestDeclaredTiersHold(t *testing.T) {
 			case "preserve":
 				require.NoError(t, err, "%s must preserve (import must complete)", fx.Name)
 				require.NotNil(t, record, "%s must produce a record, not a partial write", fx.Name)
+				check, ok := preserveLandingChecks[fx.Name]
+				require.Truef(t, ok, "%s declares tier preserve but has no entry in preserveLandingChecks; a fixture with no landing assertion is not a test", fx.Name)
+				check(t, record)
 			case "warn":
 				require.NoError(t, err, "%s must complete with a warn diagnostic", fx.Name)
 				require.NotNil(t, record, "%s must produce a record alongside its warn", fx.Name)
 				require.True(t, hasWarn(diags), "%s must emit >=1 Diagnostic{Severity: warn}", fx.Name)
+				check, ok := warnLandingChecks[fx.Name]
+				require.Truef(t, ok, "%s declares tier warn but has no entry in warnLandingChecks; the documented loss and the surviving data must both be asserted", fx.Name)
+				check(t, record, diags)
 			case "bound":
-				// Covered by the dedicated bounded-failure tests in
-				// services/adversarial_import_test.go; nothing to assert
-				// single-card.
+				_, ok := boundFixtureCoverage[fx.Name]
+				require.Truef(t, ok, "%s declares tier bound but has no entry in boundFixtureCoverage naming its companion services-level test", fx.Name)
 			default:
 				t.Fatalf("unknown tier %q (vocabulary test should have caught this)", fx.Tier)
 			}
@@ -179,52 +193,6 @@ func hasWarn(diags []contactmodel.Diagnostic) bool {
 		}
 	}
 	return false
-}
-
-// TestPreservedDataLandsWhereDeclared: the preserve tier is not just
-// "no error" — the demonstrated data has to land somewhere, not vanish.
-// Unknown properties land in Passthrough (ADR-0002 tier 2); the specific
-// landing spots for the fixtures that exist to prove passthrough are pinned
-// here.
-func TestPreservedDataLandsWhereDeclared(t *testing.T) {
-	t.Parallel()
-	// ven-x-properties.vcf: every X- property must survive into Passthrough.VCard.
-	rec, _, err := importFixture(*ByName("ven-x-properties.vcf"), LoadFixture("ven-x-properties.vcf"))
-	require.NoError(t, err)
-	wantProps := map[string]bool{"x-vendor-note": false, "x-foo": false, "x-google-custom": false}
-	for _, p := range rec.Passthrough.VCard {
-		if _, ok := wantProps[strings.ToLower(p.Name)]; ok {
-			wantProps[strings.ToLower(p.Name)] = true
-		}
-	}
-	for name, found := range wantProps {
-		assert.Truef(t, found, "ven-x-properties.vcf: %s did not land in Passthrough.VCard", name)
-	}
-	assert.Equal(t, "Ada", rec.Card.Name.Components[1].Value, "known FN data must still land in the neutral model alongside passthrough")
-
-	// ven-apple-grouped.vcf: EMAIL/TEL land in neutral fields, X-ABLabel via passthrough.
-	rec, _, err = importFixture(*ByName("ven-apple-grouped.vcf"), LoadFixture("ven-apple-grouped.vcf"))
-	require.NoError(t, err)
-	require.Len(t, rec.Card.Emails, 1)
-	assert.Equal(t, "ada@example.com", rec.Card.Emails[0].Address)
-	require.Len(t, rec.Card.Phones, 1)
-	assert.Equal(t, "555-123-4567", rec.Card.Phones[0].Number)
-	hasABLabel := false
-	for _, p := range rec.Passthrough.VCard {
-		if strings.EqualFold(p.Name, "X-ABLabel") {
-			hasABLabel = true
-		}
-	}
-	assert.True(t, hasABLabel, "ven-apple-grouped.vcf: X-ABLabel must be preserved via passthrough")
-
-	// js-unknown-top-level.json: unknown top-level keys preserved via Passthrough.JSContact.
-	rec, _, err = importFixture(*ByName("js-unknown-top-level.json"), LoadFixture("js-unknown-top-level.json"))
-	require.NoError(t, err)
-	for _, key := range []string{"/xCustomThing", "/extensions"} {
-		_, ok := rec.Passthrough.JSContact[key]
-		assert.Truef(t, ok, "js-unknown-top-level.json: %s did not land in Passthrough.JSContact", key)
-	}
-	assert.Equal(t, "Ada Lovelace", rec.Card.Name.Full)
 }
 
 // TestSizeHostility_Amplified completes the size category the committed seed
@@ -245,20 +213,22 @@ func TestSizeHostility_Amplified(t *testing.T) {
 	require.Len(t, rec.Card.Notes, 1)
 	assert.GreaterOrEqual(t, len(rec.Card.Notes[0].Note), 2*1024*1024-10)
 
-	// Amplify the 2000 X- properties to 20000 on one card.
+	// Amplify the seed's own 2000 X- properties to 20000 on one card, by
+	// splicing more of the same shape into the loaded fixture rather than
+	// synthesizing a fresh card from scratch — the seed's actual property
+	// mixture must be what gets exercised at scale, not a stand-in for it.
 	seed = LoadFixture("size-many-properties.vcf")
-	var b strings.Builder
-	b.WriteString("BEGIN:VCARD\r\nVERSION:4.0\r\nUID:size-many-amplified\r\nFN:Ada Lovelace\r\nN:Lovelace;Ada;;;\r\n")
-	for i := 0; i < 20000; i++ {
-		b.WriteString("X-EXTRA-")
-		b.WriteString(strings.Repeat("0", len("20000")))
-		b.WriteString(":")
-		b.WriteString(strings.Repeat("v", 64))
-		b.WriteString("\r\n")
+	const seedPropertyCount = 2000
+	endIdx := strings.LastIndex(string(seed), "END:VCARD")
+	require.Greater(t, endIdx, 0, "seed must contain END:VCARD to splice before")
+	var extra strings.Builder
+	for i := seedPropertyCount; i < 20000; i++ {
+		fmt.Fprintf(&extra, "X-EXTRA-%d:value %d\n", i, i)
 	}
-	b.WriteString("END:VCARD\r\n")
-	rec, _, err = services.ImportVCardBlock([]byte(b.String()))
+	amplified := string(seed[:endIdx]) + extra.String() + string(seed[endIdx:])
+	require.NotEqual(t, string(seed), amplified, "amplification must actually enlarge the property count")
+	rec, _, err = services.ImportVCardBlock([]byte(amplified))
 	require.NoError(t, err)
 	require.NotNil(t, rec)
-	assert.Equal(t, 20000, len(rec.Passthrough.VCard), "every unknown property must be preserved, none dropped")
+	assert.Equal(t, 20000, len(rec.Passthrough.VCard), "every unknown property must be preserved, including the seed's own 2000, none dropped")
 }
