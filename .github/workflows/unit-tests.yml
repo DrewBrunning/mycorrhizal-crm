@@ -569,6 +569,15 @@ jobs:
       # collide. -timeout 20m -> 25m (issue #630): a leg has the whole runner
       # now, but the inner ceiling stays explicit.
       #
+      # Issue #974: retry-everywhere with no flake budget meant a test that
+      # fails 1-in-5 reruns, passes, and stays green forever — no run ever
+      # surfaced it as a hard failure. RERUN_FAILS is 0 on the nightly
+      # `schedule` run (confirmed: `--rerun-fails=0` makes gotestsum fail on
+      # the first failure, same as never passing the flag at all) so every
+      # flake gets at least one non-retried, hard-fail surface per day; PR/push
+      # keep the retry-and-report-only behavior so a rare CI-hardware blip
+      # doesn't flake a required check.
+      #
       # Issue #639: NO -coverprofile here. gotestsum's --rerun-fails re-invokes
       # `go test` for just the failed test's package, and `go test`
       # *truncates and rewrites* the coverprofile on that second invocation —
@@ -580,15 +589,16 @@ jobs:
       # env above (tiered by trigger — see the comment there).
       # RUN is the leg's shard regex ('' for `rest`); `go test -run ''` matches
       # every test, so it is passed unconditionally.
-      - name: Run tests (retry-on-failure)
+      - name: Run tests (retry-on-failure, except nightly)
         working-directory: backend
         env:
           LEG: ${{ matrix.leg }}
           PKGS: ${{ steps.pkgs.outputs.list }}
           RUN: ${{ steps.pkgs.outputs.run }}
+          RERUN_FAILS: ${{ github.event_name == 'schedule' && '0' || '1' }}
         run: >
           go run gotest.tools/gotestsum@v1.13.0
-          --rerun-fails=1 --rerun-fails-max-failures=20
+          --rerun-fails="$RERUN_FAILS" --rerun-fails-max-failures=20
           --rerun-fails-report="rerun-fails-${LEG}.txt"
           --junitfile="junit-${LEG}.xml"
           --packages="$PKGS"
@@ -621,7 +631,10 @@ jobs:
           go test "${pkgs[@]}" -run "$RUN" -timeout="$GO_TEST_TIMEOUT" -coverprofile="coverage-${LEG}.out" -covermode=atomic
 
       # Issue #268: the flake signal for Go — visibility only, does not fail
-      # the leg (the rerun exists precisely to keep the gate green).
+      # the leg (the rerun exists precisely to keep the gate green). On the
+      # nightly schedule run this report is always empty (issue #974:
+      # RERUN_FAILS=0 above means the leg already hard-failed on first
+      # failure instead of reaching this point green).
       - name: Report flaky tests (failed once, passed on retry)
         if: always()
         working-directory: backend

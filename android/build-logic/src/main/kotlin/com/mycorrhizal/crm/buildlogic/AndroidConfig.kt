@@ -165,12 +165,20 @@ internal fun Project.configureAndroidTestCommon() {
     // step (Gradle retains the failed attempt in the test-results XML even
     // when the retry passed). Off locally (no CI env var) so dev iteration
     // isn't slowed by re-runs.
+    //
+    // Issue #974: retrying every failure with no non-retried run meant a
+    // flaky test never produced a hard failure. GITHUB_EVENT_NAME is a
+    // default Actions env var; on the nightly `schedule` run (android-tests
+    // .yml's "Android (Gradle)" job, which now runs unconditionally on
+    // schedule) maxRetries is 0, so the task fails on the first failure
+    // instead of retrying it away. PR/push keep the single retry.
     pluginManager.apply("org.gradle.test-retry")
     val isCi = providers.environmentVariable("CI").isPresent
+    val isNightlySchedule = providers.environmentVariable("GITHUB_EVENT_NAME").orNull == "schedule"
     tasks.withType<Test>().configureEach {
         extensions.configure<TestRetryTaskExtension> {
             if (isCi) {
-                maxRetries.set(1)
+                maxRetries.set(if (isNightlySchedule) 0 else 1)
                 maxFailures.set(20)
             }
         }

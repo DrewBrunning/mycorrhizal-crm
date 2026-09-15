@@ -25,7 +25,13 @@ export default defineConfig({
     // writes anything that only passed on retry to the job summary ("Flaky
     // Tests"), and the junit reporter emits junit.xml for the
     // dorny/test-reporter check run (test-report.yml).
-    retry: process.env.CI ? 1 : 0,
+    // Issue #974: retrying everywhere with no non-retried run meant a
+    // 1-in-5 flake stayed green forever. GITHUB_EVENT_NAME is a default
+    // Actions env var, so the nightly `schedule` run (unit-tests.yml's
+    // frontend job, which runs unconditionally on schedule) gets 0 retries —
+    // any flake becomes a hard failure at least once a day. PR/push keep
+    // the retry-and-report-only behavior.
+    retry: process.env.CI ? (process.env.GITHUB_EVENT_NAME === 'schedule' ? 0 : 1) : 0,
     // Vitest's default 5s test timeout is too tight for MUI dialog tests
     // under v8 coverage instrumentation on loaded CI runners (see the
     // 13-click deselection test in ExportFieldPickerDialog.test.tsx, which
