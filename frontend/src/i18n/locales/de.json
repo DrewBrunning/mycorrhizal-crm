@@ -546,6 +546,7 @@
   },
   "contactDetail": {
     "notFound": "Kontakt nicht gefunden",
+    "timelineLoadError": "Einige Zeitachsendaten konnten nicht geladen werden. Bitte lade die Seite neu.",
     "section": {
       "name": "Name",
       "metadata": "Karten-Metadaten",

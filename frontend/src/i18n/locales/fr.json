@@ -546,6 +546,7 @@
   },
   "contactDetail": {
     "notFound": "Contact introuvable",
+    "timelineLoadError": "Certaines données de la chronologie n'ont pas pu être chargées. Veuillez actualiser la page.",
     "section": {
       "name": "Nom",
       "metadata": "Métadonnées de la carte",
