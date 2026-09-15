@@ -305,7 +305,7 @@
       "tier": "release-tier",
       "mandatory": true,
       "release_gate": false,
-      "criterion": "vdirsyncer round-trips against our server with no data loss (#681)."
+      "criterion": "vdirsyncer round-trips against our server with no data loss (#681); a real DAVx5 client discovers, syncs, and lands the canonical pathological fixture in Android's ContactsContract with no divergence (#917)."
     },
     {
       "name": "ZAP DAST",

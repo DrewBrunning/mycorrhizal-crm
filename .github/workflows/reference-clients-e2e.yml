@@ -1,18 +1,23 @@
-name: Reference-Client E2E (vdirsyncer against our server)
+name: Reference-Client E2E (vdirsyncer + DAVx5 against our server)
 
 # Issue #681 (TEST-09, direction 1): the reference-client interoperability
-# matrix. Our CardDAV server is consumed by a REAL third-party client
-# (vdirsyncer — a mature CardDAV/CalDAV sync client with its own protocol
-# implementation and its own vCard parser, vobject). The client's parser is a
-# better oracle for "can other software use this" than any assertion we write
-# about our own endpoints; this job proves provision/discover, GET/query,
-# PUT-create/update/delete and ETag-driven incremental sync all work for a
-# client that does not share our assumptions.
+# matrix. Our CardDAV server is consumed by REAL third-party clients —
+# vdirsyncer (a mature CardDAV/CalDAV sync client with its own protocol
+# implementation and its own vCard parser, vobject) and, since issue #917,
+# DAVx5 (a real sideloaded APK driven on an emulator). A real client's parser
+# is a better oracle for "can other software use this" than any assertion we
+# write about our own endpoints; the vdirsyncer job proves
+# provision/discover, GET/query, PUT-create/update/delete and ETag-driven
+# incremental sync all work for a client that does not share our
+# assumptions, and the davx5 job proves the same for a client whose UI a
+# human tester would otherwise have to drive by hand.
 #
 # The matrix itself (Apple Contacts, Thunderbird, Android native, DAVx5) is
-# documented in docs/development/reference-client-matrix.md: vdirsyncer is
-# the automated leg, the GUI/mobile clients are documented manual checklists
-# with last-run dates.
+# documented in docs/development/reference-client-matrix.md: vdirsyncer and
+# DAVx5 are the automated legs (DAVx5's run also exercises the Android
+# native provider row — see that doc), Apple Contacts and Thunderbird are
+# documented manual checklists with last-run dates, per the #917 scoping
+# decision recorded there.
 #
 # Gating: scheduled (nightly) + manual dispatch always run; on PR/push only
 # when the `reference-clients` filter in .github/filters.yaml matches.
@@ -130,6 +135,110 @@ jobs:
         run: |
           echo "=== our server logs ==="
           tail -50 /tmp/e2e/server.log || true
+
+      - name: Stop our server
+        if: always()
+        run: pkill -f mycorrhizal-backend || true
+
+  # Issue #917: the other automated leg of the matrix documented above —
+  # DAVx5, "the closest to scriptable" client per
+  # docs/development/reference-client-matrix.md. A REAL DAVx5 APK (sideloaded
+  # from its upstream GitHub release, pinned by version + checksum below) is
+  # driven through account setup on a real emulator via
+  # .github/scripts/reference-client-davx5/run.sh, which asserts the seeded
+  # canonical-fixture contacts (issue #430) — including non-ASCII names —
+  # actually land in Android's real ContactsContract. This also exercises the
+  # matrix's "Android native contacts (via the Android provider)" row per
+  # that doc's own note that the provider row rides along with this leg.
+  davx5:
+    permissions:
+      contents: read
+    name: Real DAVx5 client against our server (emulator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: changes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.reference-clients == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # DAVx5-OSE v4.5.19, sha256-pinned like every other downloaded binary
+      # in this repo (vdirsyncer above, golangci-lint in unit-tests.yml).
+      # Bumping the version requires re-verifying run.sh against the new
+      # release's UI (see that script's header) and updating both values
+      # together.
+      - name: Download DAVx5 (pinned + checksum-verified)
+        env:
+          DAVX5_APK_URL: https://github.com/bitfireAT/davx5-ose/releases/download/v4.5.19-ose/davx5-405190003-4.5.19-ose-release.apk
+          DAVX5_APK_SHA256: 4e8f1cd0d2f47f95a1003365340a30c99cb27173476c367d90ba9e14f97a3e10
+        run: |
+          curl -sSL "$DAVX5_APK_URL" -o /tmp/davx5.apk
+          echo "$DAVX5_APK_SHA256  /tmp/davx5.apk" | sha256sum -c -
+
+      # Seeded with the canonical pathological dataset (issue #430) via the
+      # same pentestseed tool the pen-test/demo environment uses — run.sh's
+      # non-ASCII-name assertions need real seeded data, not an empty account.
+      - name: Build backend and seed the canonical fixture
+        working-directory: backend
+        run: |
+          go build -o /tmp/mycorrhizal-backend .
+          go run ./cmd/pentestseed seed --db=/tmp/e2e/test.db --profile=demo \
+            --manifest-out=/tmp/e2e/credentials.json --base-url=http://127.0.0.1:7300
+
+      - name: Start our server
+        env:
+          PORT: 7300
+          SQLITE_DB_PATH: /tmp/e2e/test.db
+          JWT_SECRET_KEY: test-secret-key-for-e2e-testing-minimum-32-chars
+          PROFILE_PHOTO_DIR: /tmp/e2e/photos
+          ATTACHMENTS_DIR: /tmp/e2e/attachments
+          FRONTEND_URL: http://localhost:7300
+          CARDDAV_ENABLED: "true"
+          CALDAV_ENABLED: "true"
+          DISABLE_REGISTRATION: "false"
+        run: |
+          mkdir -p /tmp/e2e/photos /tmp/e2e/attachments
+          /tmp/mycorrhizal-backend > /tmp/e2e/server.log 2>&1 &
+          for _ in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:7300/health/live 2>/dev/null || true)
+            if [ "$code" = "200" ]; then echo "our server up"; break; fi
+            sleep 1
+          done
+
+      # Same KVM enablement android-tests.yml uses — required by
+      # android-emulator-runner.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run DAVx5 against our server
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            adb reverse tcp:7300 tcp:7300
+            SERVER_URL=http://127.0.0.1:7300 USERNAME=pentest PASSWORD='PentestPassword123!' \
+              .github/scripts/reference-client-davx5/run.sh /tmp/davx5.apk
+
+      - name: Show server logs on failure
+        if: failure()
+        run: |
+          echo "=== our server logs ==="
+          tail -80 /tmp/e2e/server.log || true
 
       - name: Stop our server
         if: always()

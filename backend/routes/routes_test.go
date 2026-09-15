@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"mycorrhizal/config"
@@ -64,4 +66,44 @@ func TestRegisterRoutes_RouteCountGuardsAgainstAccidentalDeletion(t *testing.T) 
 	routes := router.Routes()
 	assert.GreaterOrEqual(t, len(routes), 80,
 		"unexpectedly low route count — an entire route group may have been accidentally deleted")
+}
+
+// TestWellKnownDAVDiscovery_AcceptsPROPFIND pins issue #917's live interop
+// finding: a real DAVx5 client issues PROPFIND (not GET) directly against
+// the /.well-known/{carddav,caldav} URIs during account autodiscovery, and
+// expects the same redirect GET gets. The handler itself (WellKnownRedirect)
+// is method-agnostic, so a unit test that calls it directly can't catch
+// this — the bug was the router.GET-only registration. This test goes
+// through the real router, the way the client does.
+func TestWellKnownDAVDiscovery_AcceptsPROPFIND(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	cfg := testConfig()
+	cfg.CardDAVEnabled = true
+	cfg.CalDAVEnabled = true
+	RegisterRoutes(router, cfg, db, nil)
+
+	cases := []struct {
+		path         string
+		wantLocation string
+	}{
+		{"/.well-known/carddav", "/carddav/"},
+		{"/.well-known/caldav", "/caldav/"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			req := httptest.NewRequest("PROPFIND", tc.path, nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusMovedPermanently, w.Code,
+				"PROPFIND to %s must redirect like GET does, not 404", tc.path)
+			assert.Equal(t, tc.wantLocation, w.Header().Get("Location"))
+		})
+	}
 }

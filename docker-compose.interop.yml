@@ -1,0 +1,103 @@
+# Mycorrhizal CRM Docker Compose - reference-client interop test environment
+#
+# Issue #917: a single command that stands up a running instance of the
+# shipped all-in-one image, pre-populated with the canonical pathological
+# dataset (issue #430 — realistic contacts including non-ASCII names, an
+# empty-note-with-params, a country-code-only address, a historical
+# birthday), with CardDAV *and* CalDAV serving turned on — everything
+# docs/development/reference-client-matrix.md's manual checklist needs to
+# point a real client (Apple Contacts, Thunderbird, DAVx5, ...) at.
+#
+# This is docker-compose.pentest.yml's seeding pattern (issue #849) with
+# CARDDAV_ENABLED/CALDAV_ENABLED turned on instead of off — see that file
+# and docs/development/pentest-environment.md for the mechanism.
+#
+# USAGE:
+#   docker compose -f docker-compose.interop.yml up -d --build --wait
+#   docker compose -f docker-compose.interop.yml exec mycorrhizal cat /app/data/credentials.json
+#   # app + CardDAV/CalDAV on http://localhost:7300 — see
+#   # docs/development/reference-client-matrix.md for the exact client URLs
+#   # and the checklist to run against them.
+#   docker compose -f docker-compose.interop.yml down -v   # wipe and start over
+#
+# A REAL device (phone/laptop) pointing at this needs the host reachable on
+# your LAN, not localhost — set INTEROP_BASE_URL to that address (e.g.
+# http://192.168.1.20:7300) so the app's FRONTEND_URL/CORS matches how the
+# client actually reaches it; CardDAV/CalDAV auth is HTTP Basic and
+# unaffected either way.
+#
+# Environment overrides (put them in a .env file next to this one, or export them):
+#   INTEROP_PROFILE    demo (default) | smoke | typical | large — see
+#                       docs/development/scale-profiles.md. demo (one user,
+#                       27 contacts, the full pathological set) is what the
+#                       matrix checklist expects.
+#   INTEROP_PORT        host port to publish (default 7300)
+#   INTEROP_BASE_URL     the exact origin clients reach this on, scheme + host
+#                       + port (default http://localhost:7300)
+#
+# THROWAWAY TEST DATA ONLY. Fixed JWT secret, known passwords, registration
+# open. Never point this at real user data, and do not expose it on an
+# untrusted network — bind it to localhost/LAN and reach it over VPN if
+# testing from outside your network.
+
+services:
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend-builder
+    environment:
+      CGO_ENABLED: "0"
+      JWT_SECRET_KEY: interop-only-jwt-secret-key-not-for-production-use
+    command:
+      - sh
+      - -c
+      - >-
+        go run ./cmd/pentestseed seed
+        --db=/app/data/interop.db
+        --profile=${INTEROP_PROFILE:-demo}
+        --manifest-out=/app/data/credentials.json
+        --base-url=${INTEROP_BASE_URL:-http://localhost:7300}
+        && chown -R ${PUID:-1001}:${PGID:-1001} /app/data
+    volumes:
+      - interop-data:/app/data
+      - ./testdata/canonical-fixture/manifest.json:/app/testdata/canonical-fixture/manifest.json:ro
+      - interop-gocache:/root/.cache/go-build
+
+  mycorrhizal:
+    build: .
+    container_name: mycorrhizal-interop
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    environment:
+      - SQLITE_DB_PATH=/app/data/interop.db
+      - JWT_SECRET_KEY=interop-only-jwt-secret-key-not-for-production-use
+      - PROFILE_PHOTO_DIR=/app/static/photos
+      - ATTACHMENTS_DIR=/app/static/attachments
+      - FRONTEND_URL=${INTEROP_BASE_URL:-http://localhost:7300}
+      - DISABLE_REGISTRATION=false
+      # The whole point of this environment: both DAV surfaces on, unlike
+      # docker-compose.pentest.yml which leaves them off by default.
+      - CARDDAV_ENABLED=true
+      - CALDAV_ENABLED=true
+      - PUID=${PUID:-1001}
+      - PGID=${PGID:-1001}
+    volumes:
+      - interop-data:/app/data
+      - interop-photos:/app/static/photos
+      - interop-attachments:/app/static/attachments
+    ports:
+      - "${INTEROP_PORT:-7300}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health/live"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+volumes:
+  interop-data:
+  interop-photos:
+  interop-attachments:
+  interop-gocache:

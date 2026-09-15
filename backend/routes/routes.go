@@ -693,7 +693,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 // both DAV surfaces share one credential story. Read-only: clients subscribe,
 // they never write through this endpoint.
 func registerCalDAVRoutes(router *gin.Engine, db *gorm.DB) {
+	// GET is the RFC 6764 baseline, but real clients (DAVx5 confirmed by a
+	// live interop pass, issue #917) issue PROPFIND directly against the
+	// well-known URI instead of GET and expect the same redirect — a plain
+	// GET-only route 404s for them and autodiscovery fails outright.
 	router.GET("/.well-known/caldav", caldav.WellKnownRedirect)
+	router.Handle("PROPFIND", "/.well-known/caldav", caldav.WellKnownRedirect)
 
 	handler := caldav.NewHandler(db)
 
@@ -714,8 +719,10 @@ func registerCalDAVRoutes(router *gin.Engine, db *gorm.DB) {
 
 // registerCardDAVRoutes sets up CardDAV endpoints for contact synchronization
 func registerCardDAVRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB) {
-	// Well-known discovery endpoint (no auth required for discovery)
+	// Well-known discovery endpoint (no auth required for discovery). See the
+	// PROPFIND comment on the CalDAV well-known route above — same reason.
 	router.GET("/.well-known/carddav", carddav.WellKnownRedirect)
+	router.Handle("PROPFIND", "/.well-known/carddav", carddav.WellKnownRedirect)
 
 	handler := carddav.NewHandler(db, cfg.ProfilePhotoDir)
 

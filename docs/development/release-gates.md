@@ -159,7 +159,7 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `Constrained-resource chaos` | release-tier | yes | the disk-full / mem-limited / cpu-limited jobs fail closed with no corruption (#498). | `chaos-tests.yml` |
 | `Schemathesis API fuzzing` | release-tier | yes | no unhandled 500, no response that violates backend/openapi.yaml, no BOLA finding. | `schemathesis.yml` |
 | `Differential E2E (calcard)` | release-tier | yes | our JSContact / iCalendar output matches the pinned reference implementations (#680). | `differential-e2e.yml` |
-| `Reference-clients E2E` | release-tier | yes | vdirsyncer round-trips against our server with no data loss (#681). | `reference-clients-e2e.yml` |
+| `Reference-clients E2E` | release-tier | yes | vdirsyncer round-trips against our server with no data loss (#681); a real DAVx5 client discovers, syncs, and lands the canonical pathological fixture in Android's ContactsContract with no divergence (#917). | `reference-clients-e2e.yml` |
 | `ZAP DAST` | release-tier | yes | the baseline scan raises no new high-risk dynamic finding. | `zap-dast.yml` |
 | `OpenSSF Scorecard` | advisory | no | informational supply-chain posture; a score drop is reviewed, never release-blocking. | `scorecard.yml` |
 | `CodeQL` | advisory | no | SARIF is uploaded; a new alert is triaged in the Security tab, not release-blocking. | `codeql.yml` |
