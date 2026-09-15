@@ -71,11 +71,35 @@ for node in tree.iter("node"):
 PY
 }
 
+# Diagnostic capture from a real CI failure: an "isn't responding" ANR
+# dialog for **Pixel Launcher itself** (not DAVx5), with "Close app" / "Wait"
+# buttons, showed up mid-carousel under a resource-starved emulator — pure
+# OS-level contention, unrelated to anything DAVx5 or our server does. It
+# blocks all input to the app under test until dismissed, so every tap in
+# the calling loop silently lands on the dialog instead of the intended
+# target. Call after dump_ui in a polling loop; tapping "Wait" lets the
+# stalled process recover instead of burning the loop's whole retry budget
+# against a dialog that was never going to go away on its own.
+dismiss_anr_if_present() {
+	if grep -q "isn't responding" "$DUMP_XML" 2>/dev/null; then
+		local coords
+		coords="$(find_center "Wait")"
+		if [ -n "$coords" ]; then
+			log "WARNING: system ANR dialog detected, tapping 'Wait' to let it recover"
+			# shellcheck disable=SC2086
+			adb shell input tap $coords
+			sleep 2
+			dump_ui
+		fi
+	fi
+}
+
 # Taps the element whose text/content-desc exactly matches $1. Fails loudly
 # if it isn't on screen — a silent miss (e.g. from a coordinate guess) is
 # exactly the class of bug this script exists to avoid.
 tap() {
 	dump_ui
+	dismiss_anr_if_present
 	local coords
 	coords="$(find_center "$1")"
 	if [ -z "$coords" ]; then
@@ -95,6 +119,7 @@ tap_until_visible() {
 	local tap_target="$1" wait_for="$2" max_attempts="${3:-10}" attempts=0
 	while [ "$attempts" -lt "$max_attempts" ]; do
 		dump_ui
+		dismiss_anr_if_present
 		if [ -n "$(find_center "$wait_for")" ]; then
 			return 0
 		fi
@@ -119,6 +144,7 @@ wait_for() {
 	local wait_for="$1" max_attempts="${2:-20}" attempts=0
 	while [ "$attempts" -lt "$max_attempts" ]; do
 		dump_ui
+		dismiss_anr_if_present
 		if [ -n "$(find_center "$wait_for")" ]; then
 			return 0
 		fi
