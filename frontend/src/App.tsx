@@ -76,7 +76,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   createBrowserRouter,
@@ -180,12 +180,22 @@ function AppContent({
   const [searchResults, setSearchResults] = useState<Contact[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
+  // Stale-response guard (issue #960), mirroring useContacts.ts's
+  // `requestRef` pattern: a keystroke can retrigger this effect while an
+  // earlier request for a since-abandoned query is still in flight. Every
+  // pass through the effect claims a new id and every state write checks it
+  // is still current before landing, so a slow response for "jo" can never
+  // overwrite the results (or the loading spinner) for a newer "john".
+  const searchRequestRef = useRef(0);
+
   const handleDrawerToggle = () => {
     setMobileDrawerOpen(!mobileDrawerOpen);
   };
 
   // Debounced search for contacts
   useEffect(() => {
+    const requestId = ++searchRequestRef.current;
+
     if (!token || searchQuery.length < 2) {
       setSearchResults([]);
       return;
@@ -195,12 +205,14 @@ function AppContent({
       setSearchLoading(true);
       try {
         const result = await getContacts({ search: searchQuery, limit: 10 });
+        if (searchRequestRef.current !== requestId) return;
         setSearchResults(result.contacts || []);
       } catch (err) {
+        if (searchRequestRef.current !== requestId) return;
         console.error('Search error:', err);
         setSearchResults([]);
       } finally {
-        setSearchLoading(false);
+        if (searchRequestRef.current === requestId) setSearchLoading(false);
       }
     }, 300);
 

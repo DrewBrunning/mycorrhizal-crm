@@ -1,7 +1,9 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import App from './App';
 import { AppThemeProvider } from './AppThemeProvider';
+import type { Contact, ContactsResponse } from './api/contacts';
+import { getContacts } from './api/contacts';
 import { isAdmin } from './auth';
 import { AnnouncerProvider } from './context/AnnouncerContext';
 import { SnackbarProvider } from './context/SnackbarContext';
@@ -32,6 +34,12 @@ vi.mock('./api/dashboard', async (importOriginal) => {
 vi.mock('./api/circles', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/circles')>();
   return { ...actual, listCircles: vi.fn().mockResolvedValue({ circles: [] }) };
+});
+// The AppBar search test below drives getContacts's resolution order
+// directly, so it needs a controllable mock rather than a real fetch.
+vi.mock('./api/contacts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/contacts')>();
+  return { ...actual, getContacts: vi.fn().mockResolvedValue({ contacts: [] }) };
 });
 
 function renderApp() {
@@ -100,4 +108,71 @@ test('typing a search query shows the clear button, which resets the query', () 
 
   expect((searchBox as HTMLInputElement).value).toBe('');
   expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument();
+});
+
+function contact(id: number, firstname: string, lastname: string): Contact {
+  return { ID: id, firstname, lastname };
+}
+
+// Mirrors useContacts.test.ts's overlapping-request helper (issue #556): two
+// getContacts calls return promises this test resolves in whichever order it
+// chooses, to simulate a slow response for an abandoned query landing after
+// a faster response for the query that replaced it.
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+test('a stale AppBar search response does not clobber a newer query (#960)', async () => {
+  setLoggedInUser(false);
+  vi.useFakeTimers();
+  try {
+    // Simulates typing "jo" then "john" before "jo"'s (slower) response
+    // arrives: the second, newer request resolves first.
+    const slowJo = deferred<ContactsResponse>();
+    const fastJohn = deferred<ContactsResponse>();
+    vi.mocked(getContacts)
+      .mockReturnValueOnce(slowJo.promise)
+      .mockReturnValueOnce(fastJohn.promise);
+
+    renderApp();
+    const searchBox = screen.getByPlaceholderText('Search Contacts');
+
+    fireEvent.focus(searchBox);
+    fireEvent.change(searchBox, { target: { value: 'jo' } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+
+    fireEvent.change(searchBox, { target: { value: 'john' } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+
+    await act(async () => {
+      fastJohn.resolve({
+        contacts: [contact(1, 'John', 'Smith')],
+        next_cursor: '',
+        limit: 10,
+      });
+    });
+    expect(screen.getByText('John Smith')).toBeInTheDocument();
+
+    // The stale "jo" response settling afterwards must be dropped, not
+    // overwrite the list "john" already produced.
+    await act(async () => {
+      slowJo.resolve({
+        contacts: [contact(2, 'Joanna', 'Doe')],
+        next_cursor: '',
+        limit: 10,
+      });
+    });
+    expect(screen.queryByText('Joanna Doe')).not.toBeInTheDocument();
+    expect(screen.getByText('John Smith')).toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
 });
