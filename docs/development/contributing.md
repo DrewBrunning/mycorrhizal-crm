@@ -72,6 +72,13 @@ non-merge commit is missing a valid sign-off. If you ran
 `scripts/install-git-hooks.sh` (step 3 above), a local `commit-msg` hook
 catches a missing or non-matching sign-off before the commit is even made.
 
+Commits authored by GitHub-native Dependabot (the only bot with write access
+here — see [`GOVERNANCE.md`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/GOVERNANCE.md))
+are exempt: there's no human author to certify origin for an auto-generated
+dependency bump, and Dependabot has no mechanism to add the trailer anyway.
+The exemption is scoped to PRs GitHub itself attributes to `dependabot[bot]`
+and cannot be triggered by forging commit author metadata in your own PR.
+
 ## Project governance
 
 Roles, decision-making, and who holds access to sensitive project resources are
