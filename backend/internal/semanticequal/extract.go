@@ -69,10 +69,13 @@ func init() {
 		"role":  titleKind("role"),
 
 		// --- contact methods ---
-		"email":  sliceOf(func(r *contactmodel.Record) []contactmodel.Email { return r.Card.Emails }, func(e contactmodel.Email) string { return e.Address }),
-		"phone":  sliceOf(func(r *contactmodel.Record) []contactmodel.Phone { return r.Card.Phones }, func(p contactmodel.Phone) string { return p.Number }),
-		"impp":   sliceOf(func(r *contactmodel.Record) []contactmodel.OnlineService { return r.Card.ImppAddresses }, onlineServiceKey),
-		"social": sliceOf(func(r *contactmodel.Record) []contactmodel.OnlineService { return r.Card.SocialProfiles }, onlineServiceKey),
+		"email":               sliceOf(func(r *contactmodel.Record) []contactmodel.Email { return r.Card.Emails }, func(e contactmodel.Email) string { return e.Address }),
+		"email.label":         sliceOf(func(r *contactmodel.Record) []contactmodel.Email { return r.Card.Emails }, func(e contactmodel.Email) string { return e.Label }),
+		"phone":               sliceOf(func(r *contactmodel.Record) []contactmodel.Phone { return r.Card.Phones }, func(p contactmodel.Phone) string { return p.Number }),
+		"phone.label":         sliceOf(func(r *contactmodel.Record) []contactmodel.Phone { return r.Card.Phones }, func(p contactmodel.Phone) string { return p.Label }),
+		"impp":                sliceOf(func(r *contactmodel.Record) []contactmodel.OnlineService { return r.Card.ImppAddresses }, onlineServiceKey),
+		"social":              sliceOf(func(r *contactmodel.Record) []contactmodel.OnlineService { return r.Card.SocialProfiles }, onlineServiceKey),
+		"onlineservice.other": sliceOf(func(r *contactmodel.Record) []contactmodel.OnlineService { return r.Card.OtherOnlineServices }, onlineServiceKey),
 
 		// --- addresses ---
 		"adr":     sliceOf(func(r *contactmodel.Record) []contactmodel.Address { return r.Card.Addresses }, addressKey),

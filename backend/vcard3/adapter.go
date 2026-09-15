@@ -134,6 +134,10 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 			tokens = append(tokens, "PREF")
 		}
 		card.Add(PropEmail, newTypedField(e.Address, tokens))
+		// Email.Label (issue #968) has no vCard EMAIL carrier in 3.0 either.
+		if e.Label != "" {
+			warn(&diags, "email.label", "Email.Label has no vCard EMAIL carrier and was not exported (label: "+e.Label+")")
+		}
 	}
 
 	// --- Phones ---
@@ -150,6 +154,10 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 			tokens = append(tokens, "PREF")
 		}
 		card.Add(PropTel, newTypedField(p.Number, tokens))
+		// Phone.Label (issue #968) has no vCard TEL carrier in 3.0 either.
+		if p.Label != "" {
+			warn(&diags, "phone.label", "Phone.Label has no vCard TEL carrier and was not exported (label: "+p.Label+")")
+		}
 	}
 
 	// --- Online services: three-array design  ---
