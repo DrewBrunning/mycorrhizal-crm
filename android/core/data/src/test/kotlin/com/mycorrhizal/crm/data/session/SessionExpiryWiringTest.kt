@@ -157,4 +157,119 @@ class SessionExpiryWiringTest {
             clearCount++
         }
     }
+
+    // Issue #957 (finding #1, point 2): a 401 fired by clearSession()'s own
+    // teardown call (the bearer it just used is being invalidated) must not
+    // race a device-grant refresh that would silently resurrect the session
+    // the app is in the middle of ending.
+    @Test
+    fun `a 401 raised by clearSession's own teardown call does not trigger a refresh`() = runTest {
+        val notifier = SessionExpiryNotifier()
+        var refreshAttempts = 0
+        lateinit var manager: DefaultSessionManager
+        // The teardown step re-fires the notifier itself -- exactly what a
+        // real network call 401ing mid-teardown does via
+        // SessionExpiryInterceptor -- while clearSession is still running.
+        manager = DefaultSessionManager(
+            FakeTokenStorage(),
+            FakeSessionPrefsStorage(),
+            sessionTeardown = SessionTeardown { notifier.onSessionExpired() },
+        )
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+        // No grant to exchange -- the outer 401 falls through to clearSession,
+        // which is where the re-entrant signal from teardown fires.
+        SessionExpiryWiring(notifier, manager, refresher = { refreshAttempts++; false }).start(this)
+
+        notifier.onSessionExpired()
+        advanceUntilIdle()
+
+        assertEquals("only the original 401 may attempt a refresh, not the re-entrant one", 1, refreshAttempts)
+        assertNull("the session must still end up cleared", manager.bearerToken())
+    }
+
+    // Issue #957 (finding #1, point 2) — the actual reported bug: an
+    // EXPLICIT logout calls clearSession() directly, outside any refresh
+    // SessionExpiryWiring itself started. If teardown's own call 401s and a
+    // device grant is enrolled, a refresh that ignored isClearingSession()
+    // would SUCCEED and silently log the user back in seconds after they
+    // chose to log out. The guard must stop that regardless of whether a
+    // refresh WOULD have succeeded.
+    @Test
+    fun `an explicit logout's teardown 401 cannot silently resurrect the session via a working grant`() = runTest {
+        val notifier = SessionExpiryNotifier()
+        var grantExchangeCalled = false
+        lateinit var manager: DefaultSessionManager
+        manager = DefaultSessionManager(
+            FakeTokenStorage(),
+            FakeSessionPrefsStorage(),
+            sessionTeardown = SessionTeardown { notifier.onSessionExpired() },
+        )
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+        // A grant exchange that would succeed if ever attempted -- the guard
+        // must prevent it from being attempted at all here, not rely on it
+        // failing.
+        SessionExpiryWiring(notifier, manager, refresher = {
+            grantExchangeCalled = true
+            manager.setToken("resurrected-jwt")
+            true
+        }).start(this)
+
+        // The explicit logout path: AuthRepositoryImpl.logout() calls this
+        // directly, never through SessionExpiryWiring.
+        manager.clearSession()
+        advanceUntilIdle()
+
+        assertFalse("teardown's own 401 must never reach the grant exchange", grantExchangeCalled)
+        assertNull("the session must end up logged out, not resurrected", manager.bearerToken())
+        assertFalse(manager.observeSession().first().isLoggedIn)
+    }
+
+    // Issue #967: a burst of concurrent 401s -- or the grant exchange's own
+    // 401 re-firing this listener recursively -- must collapse into exactly
+    // one refresh attempt, not a storm of grant-exchange requests.
+    @Test
+    fun `concurrent 401 signals collapse into a single refresh attempt`() = runTest {
+        val notifier = SessionExpiryNotifier()
+        val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+        var refreshStarts = 0
+        val refresherEntered = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val releaseRefresher = kotlinx.coroutines.CompletableDeferred<Unit>()
+
+        SessionExpiryWiring(notifier, manager, refresher = {
+            refreshStarts++
+            refresherEntered.complete(Unit)
+            releaseRefresher.await()
+            true
+        }).start(this)
+
+        // Fire a burst before the first refresh has had a chance to finish.
+        notifier.onSessionExpired()
+        refresherEntered.await()
+        notifier.onSessionExpired()
+        notifier.onSessionExpired()
+        releaseRefresher.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals("only one refresh may be in flight at a time", 1, refreshStarts)
+    }
+
+    // Issue #967: once a refresh completes (successfully or not), the guard
+    // must release so the NEXT, unrelated 401 is handled normally.
+    @Test
+    fun `the single-flight guard releases after a refresh completes`() = runTest {
+        val notifier = SessionExpiryNotifier()
+        val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+        var refreshStarts = 0
+
+        SessionExpiryWiring(notifier, manager, refresher = { refreshStarts++; true }).start(this)
+
+        notifier.onSessionExpired()
+        advanceUntilIdle()
+        notifier.onSessionExpired()
+        advanceUntilIdle()
+
+        assertEquals("a second, later 401 must start its own refresh", 2, refreshStarts)
+    }
 }

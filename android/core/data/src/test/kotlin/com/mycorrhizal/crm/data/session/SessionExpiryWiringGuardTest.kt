@@ -25,6 +25,9 @@ class SessionExpiryWiringGuardTest {
     private val appNetworkModuleSource =
         File("../../app/src/main/kotlin/com/mycorrhizal/crm/di/AppNetworkModule.kt").readText()
 
+    private val sessionTeardownModuleSource =
+        File("../../app/src/main/kotlin/com/mycorrhizal/crm/di/SessionTeardownModule.kt").readText()
+
     @Test
     fun `the session manager is wired to the session-expiry notifier`() {
         assertTrue(
@@ -42,6 +45,22 @@ class SessionExpiryWiringGuardTest {
             "the 401 path must attempt a device-grant refresh before clearing",
             dataModuleSource.contains("refresher = { deviceGrantManager.get().refreshSessionFromStoredGrant() }"),
         )
+        // Issue #957: DefaultSessionManager must actually receive the
+        // Hilt-bound SessionTeardown, not silently fall back to the Noop
+        // default -- that would resurrect the original bug even though the
+        // ordering fix in DefaultSessionManager itself is correct. A plain
+        // (non-Provider) SessionTeardown parameter here is a real Dagger
+        // DependencyCycle (confirmed by hand: SessionTeardown -> ApiClient ->
+        // OkHttpClient -> TokenProvider -> SessionManager), so this also
+        // pins the Provider indirection.
+        assertTrue(
+            "provideSessionManager must take a Provider<SessionTeardown>, not SessionTeardown directly",
+            dataModuleSource.contains("sessionTeardown: javax.inject.Provider<SessionTeardown>"),
+        )
+        assertTrue(
+            "provideSessionManager must pass the resolved SessionTeardown into DefaultSessionManager",
+            dataModuleSource.contains("sessionTeardown = SessionTeardown { sessionTeardown.get().beforeClear() }"),
+        )
     }
 
     @Test
@@ -54,6 +73,18 @@ class SessionExpiryWiringGuardTest {
             "the registered listener must clear the session",
             wiringSource.contains("sessionManager.clearSession()"),
         )
+        // Issue #957/#967: the two guards found by the same review pass --
+        // re-entrancy (a 401 from clearSession's own teardown call must not
+        // attempt a refresh) and single-flight (a burst of 401s must not
+        // each launch their own refresh).
+        assertTrue(
+            "the listener must skip a refresh attempt while a clearSession call is already tearing down",
+            wiringSource.contains("sessionManager.isClearingSession()"),
+        )
+        assertTrue(
+            "the listener must guard against more than one refresh in flight at a time",
+            wiringSource.contains("refreshInFlight"),
+        )
     }
 
     @Test
@@ -65,6 +96,29 @@ class SessionExpiryWiringGuardTest {
         assertTrue(
             "AppNetworkModule must pass the interceptor into NetworkFactory",
             appNetworkModuleSource.contains("sessionExpiryInterceptor ="),
+        )
+    }
+
+    // Issue #957: core:data only knows the SessionTeardown interface (FCM
+    // deregistration lives in feature:tracking, which core:data cannot
+    // depend on) -- the real implementation must be Hilt-bound somewhere the
+    // DI graph can see, or provideSessionManager silently falls back to
+    // whatever default it declares (today NoopSessionTeardown), and logout
+    // regresses to the original bug with no compile error to catch it.
+    @Test
+    fun `the real SessionTeardown is bound and composes both teardown steps`() {
+        assertTrue(
+            "SessionTeardownModule must bind SessionTeardown to a real implementation",
+            sessionTeardownModuleSource.contains("abstract fun bindSessionTeardown(") &&
+                sessionTeardownModuleSource.contains(": SessionTeardown"),
+        )
+        assertTrue(
+            "the implementation must deregister the FCM device",
+            sessionTeardownModuleSource.contains("deviceRegistration.delete()"),
+        )
+        assertTrue(
+            "the implementation must revoke the server-side session",
+            sessionTeardownModuleSource.contains("sessionRevoker.revoke()"),
         )
     }
 }

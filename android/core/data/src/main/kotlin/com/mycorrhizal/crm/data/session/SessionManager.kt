@@ -42,6 +42,32 @@ object NoopSessionDataCleaner : SessionDataCleaner {
 }
 
 /**
+ * Issue #957: authenticated network cleanup that must run while the session
+ * is STILL valid, immediately before [SessionManager.clearSession] drops the
+ * bearer token — the one place a request that needs THIS session's own
+ * bearer (FCM device deregistration, the server-side session revoke) can
+ * still go out authenticated. A call that runs after the token is gone (the
+ * original bug) has nothing to attach and 401s, which then had a second,
+ * worse effect: that 401 raced a device-grant refresh and silently logged
+ * the user back in (see [SessionManager.isClearingSession]).
+ *
+ * core:data only knows this interface — FCM deregistration lives in
+ * feature:tracking, which core:data cannot depend on, so the real
+ * implementation is composed and Hilt-bound one layer up (the app module).
+ *
+ * Best-effort by contract: a failure here must never block the local clear
+ * the caller is waiting on — see [DefaultSessionManager.clearSession].
+ */
+fun interface SessionTeardown {
+    suspend fun beforeClear()
+}
+
+/** [SessionTeardown] that does nothing — the unit-test / no-binding default. */
+object NoopSessionTeardown : SessionTeardown {
+    override suspend fun beforeClear() = Unit
+}
+
+/**
  * Central session holder. Implements [TokenProvider] and [BaseUrlProvider]
  * from an in-memory cache so the synchronous OkHttp interceptors never touch
  * disk. The cache is hydrated at startup (see AppSessionManager).
@@ -87,4 +113,14 @@ interface SessionManager : TokenProvider, BaseUrlProvider {
      * go too (an explicit "forget this server" action, if one is ever added).
      */
     suspend fun clearSession(keepServerUrl: Boolean = true)
+
+    /**
+     * True while [clearSession] is actively running its authenticated
+     * [SessionTeardown] step (issue #957). [SessionExpiryWiring] checks this
+     * before attempting a device-grant refresh: a 401 that the teardown
+     * step's own network calls trigger (the bearer they used is being
+     * invalidated right now) must not race a refresh that would silently
+     * resurrect the session already being torn down.
+     */
+    fun isClearingSession(): Boolean
 }

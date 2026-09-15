@@ -138,6 +138,97 @@ class DefaultSessionManagerTest {
         }
     }
 
+    // Issue #957 (finding #1): the FCM-deregistration bug was that
+    // clearSession() dropped the bearer BEFORE the reactive listener that
+    // deregisters the device ever ran, so the request went out unauthenticated
+    // and 401ed. These pin the fix: SessionTeardown.beforeClear must see the
+    // still-valid session, must run exactly once per real clear, must not run
+    // again for a redundant/already-logged-out clear (no request to make), and
+    // a teardown failure must never block the local clear itself.
+
+    @Test
+    fun `clearSession runs the teardown step while the session is still authenticated`() = runTest {
+        // A fake that reads the manager's own bearerToken() at call time --
+        // the same thing AuthInterceptor reads -- proves teardown genuinely
+        // runs before the token is nulled, not just "before the flow emits".
+        var tokenSeenDuringTeardown: String? = null
+        lateinit var manager: DefaultSessionManager
+        manager = DefaultSessionManager(
+            FakeTokenStorage(),
+            FakeSessionPrefsStorage(),
+            sessionTeardown = SessionTeardown { tokenSeenDuringTeardown = manager.bearerToken() },
+        )
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+
+        manager.clearSession()
+
+        assertEquals("jwt-1", tokenSeenDuringTeardown)
+        assertNull("the token must still be dropped after teardown runs", manager.bearerToken())
+    }
+
+    @Test
+    fun `a teardown failure does not block the local clear`() = runTest {
+        val manager = DefaultSessionManager(
+            FakeTokenStorage(),
+            FakeSessionPrefsStorage(),
+            sessionTeardown = SessionTeardown { error("network unreachable") },
+        )
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+
+        manager.clearSession()
+
+        assertNull("the local clear must still happen despite the teardown throwing", manager.bearerToken())
+        assertFalse(manager.observeSession().first().isLoggedIn)
+    }
+
+    @Test
+    fun `clearSession on an already-logged-out session makes no teardown call`() = runTest {
+        var calls = 0
+        val manager = DefaultSessionManager(
+            FakeTokenStorage(),
+            FakeSessionPrefsStorage(),
+            sessionTeardown = SessionTeardown { calls++ },
+        )
+
+        manager.clearSession()
+
+        assertEquals("no active session means nothing to tear down", 0, calls)
+    }
+
+    @Test
+    fun `a redundant clearSession call after a real one makes no second teardown call`() = runTest {
+        var calls = 0
+        val manager = DefaultSessionManager(
+            FakeTokenStorage(),
+            FakeSessionPrefsStorage(),
+            sessionTeardown = SessionTeardown { calls++ },
+        )
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+
+        manager.clearSession()
+        manager.clearSession()
+
+        assertEquals(1, calls)
+    }
+
+    @Test
+    fun `isClearingSession is true only for the duration of the teardown call`() = runTest {
+        lateinit var manager: DefaultSessionManager
+        var duringTeardown = false
+        manager = DefaultSessionManager(
+            FakeTokenStorage(),
+            FakeSessionPrefsStorage(),
+            sessionTeardown = SessionTeardown { duringTeardown = manager.isClearingSession() },
+        )
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+        assertFalse("not clearing before logout", manager.isClearingSession())
+
+        manager.clearSession()
+
+        assertTrue("the flag must have been up while teardown ran", duringTeardown)
+        assertFalse("the flag must drop back down once clearSession returns", manager.isClearingSession())
+    }
+
     @Test
     fun `setServerUrl persists the origin`() = runTest {
         val (manager, _) = manager()
