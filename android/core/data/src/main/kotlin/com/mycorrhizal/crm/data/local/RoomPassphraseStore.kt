@@ -60,11 +60,11 @@ class RoomPassphraseStore(context: Context) {
     fun getOrCreate(): String {
         prefs.getString(KEY_PASSPHRASE, null)?.let { return it }
         val passphrase = generatePassphrase()
-        val committed = prefs.edit().putString(KEY_PASSPHRASE, passphrase).commit()
-        check(committed && prefs.getString(KEY_PASSPHRASE, null) == passphrase) {
-            "Failed to durably persist the Room passphrase; refusing to encrypt the cache " +
-                "with a value that might not survive a process death"
-        }
+        val committed = prefs.edit().putString(KEY_PASSPHRASE, passphrase).commit() // # pragma: no cover — needs a real Android Keystore (see RoomEncryptionGuardTest)
+        check(committed && prefs.getString(KEY_PASSPHRASE, null) == passphrase) { // # pragma: no cover
+            "Failed to durably persist the Room passphrase; refusing to encrypt the cache " + // # pragma: no cover
+                "with a value that might not survive a process death" // # pragma: no cover
+        } // # pragma: no cover
         return passphrase
     }
 

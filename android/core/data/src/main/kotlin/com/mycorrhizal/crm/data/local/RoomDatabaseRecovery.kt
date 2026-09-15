@@ -41,22 +41,28 @@ object RoomDatabaseRecovery {
     // a wrong/lost key as a plain SQLiteException from native code; any
     // failure here funnels into the same wipe-and-rebuild recovery.
     @Suppress("TooGenericExceptionCaught")
-    fun openOrRebuild(dbFile: File, build: () -> AppDatabase): AppDatabase {
-        val db = build()
-        try {
-            db.openHelper.writableDatabase.query("SELECT count(*) FROM sqlite_master", emptyArray()).use {
-                it.moveToFirst()
-            }
-            return db
-        } catch (e: Exception) {
-            Log.e(TAG, "Room mirror at ${dbFile.name} failed to open; wiping and rebuilding it", e)
-            db.close()
-            deleteDatabaseFiles(dbFile)
-            return build()
-        }
+    fun openOrRebuild(dbFile: File, build: () -> AppDatabase): AppDatabase { // # pragma: no cover — needs a real Room/SQLCipher database; see RoomDatabaseRecoveryTest (app/androidTest)
+        val db = build() // # pragma: no cover
+        try { // # pragma: no cover
+            db.openHelper.writableDatabase.query("SELECT count(*) FROM sqlite_master", emptyArray()).use { // # pragma: no cover
+                it.moveToFirst() // # pragma: no cover
+            } // # pragma: no cover
+            return db // # pragma: no cover
+        } catch (e: Exception) { // # pragma: no cover
+            Log.e(TAG, "Room mirror at ${dbFile.name} failed to open; wiping and rebuilding it", e) // # pragma: no cover
+            db.close() // # pragma: no cover
+            deleteDatabaseFiles(dbFile) // # pragma: no cover
+            return build() // # pragma: no cover
+        } // # pragma: no cover
     }
 
-    private fun deleteDatabaseFiles(dbFile: File) {
+    /**
+     * The pure file-I/O half of [openOrRebuild]'s recovery — split out so it
+     * has real JVM unit coverage ([RoomDatabaseRecoveryTest] in
+     * `core/data/src/test`) even though the SQLCipher-dependent caller around
+     * it does not.
+     */
+    internal fun deleteDatabaseFiles(dbFile: File) {
         dbFile.delete()
         listOf("-journal", "-wal", "-shm").forEach { suffix ->
             File(dbFile.parentFile, dbFile.name + suffix).delete()
