@@ -206,6 +206,15 @@ Detail and the hard-won traps for each layer follow.
   **off the PR path** (issue #578, B5): push:main + nightly + manual, so an
   Android PR is gated by Robolectric only and the emulator signal lands
   post-merge and nightly.
+- **Known gap, accepted:** this suite (and every other instrumented job) runs
+  the **debug** build only. Neither a release/R8-minified APK nor an
+  install-release-N-then-install-N+1 upgrade is ever driven by an instrumented
+  test — `RoomMigrationEncryptedTest` (issue #480,
+  [PR #804](https://github.com/DrewBrunning/mycorrhizal-crm/pull/804)) proves the
+  Room migration chain in isolation on the debug variant, not through a real
+  two-APK install of the shipped artifact. Accepted, not built: see
+  [`release-gates.md`](release-gates.md#the-android-decision-issue-527) — issue
+  #994.
 
 ## E2E web (Playwright)
 
