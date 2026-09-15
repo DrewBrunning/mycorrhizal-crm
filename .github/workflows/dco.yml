@@ -10,6 +10,19 @@ name: DCO
 #
 # Self-contained on purpose (a bash step over `git`, no third-party action to
 # pin beyond actions/checkout) to match this repo's supply-chain posture.
+#
+# Exemption: commits authored by GitHub-native Dependabot (the only bot with
+# write access here, per GOVERNANCE.md) are exempt. Dependabot has no
+# mechanism to add a Signed-off-by trailer, and there is no human author to
+# certify origin for an auto-generated dependency bump in the first place —
+# the maintainer already asserts trust in that pipeline by configuring
+# `.github/dependabot.yml`. The exemption is gated on
+# `github.event.pull_request.user.login`, which GitHub sets server-side from
+# who actually opened the PR and cannot be forged via commit author/committer
+# fields (unlike the trailer itself), plus a per-commit author check as
+# defense in depth: only commits actually authored by dependabot[bot] skip
+# the requirement, so a maintainer commit added to a Dependabot PR branch
+# still needs its own sign-off.
 
 on:
   pull_request:
@@ -38,6 +51,7 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           set -euo pipefail
 
@@ -51,9 +65,20 @@ jobs:
 
           fail=0
           while IFS= read -r sha; do
+            author_name="$(git show -s --format='%an' "$sha")"
             author_email="$(git show -s --format='%ae' "$sha" | tr '[:upper:]' '[:lower:]')"
             committer_email="$(git show -s --format='%ce' "$sha" | tr '[:upper:]' '[:lower:]')"
             subject="$(git show -s --format='%s' "$sha")"
+
+            # Dependabot exemption: only applies inside a PR that GitHub itself
+            # attributes to dependabot[bot], and only to commits actually
+            # authored by dependabot[bot] within it. See the workflow header.
+            if [ "$PR_AUTHOR" = "dependabot[bot]" ] \
+              && [ "$author_name" = "dependabot[bot]" ] \
+              && [[ "$author_email" =~ ^[0-9]+\+dependabot\[bot\]@users\.noreply\.github\.com$ ]]; then
+              echo "skip (Dependabot-authored, exempt)  ${sha:0:12}  ${subject}"
+              continue
+            fi
 
             # All Signed-off-by trailers on this commit, emails lower-cased.
             mapfile -t signoffs < <(
