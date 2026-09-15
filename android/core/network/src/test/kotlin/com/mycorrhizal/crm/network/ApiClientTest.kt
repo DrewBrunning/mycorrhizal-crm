@@ -3045,6 +3045,42 @@ class ApiClientTest {
     }
 
     @Test
+    fun `list sessions unwraps the sessions array`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"sessions":[
+                    {"id":"sid-1","created_at":"2026-08-01T00:00:00Z","last_seen_at":"2026-08-18T00:00:00Z","expires_at":"2026-09-01T00:00:00Z","user_agent":"okhttp/Android","ip":"10.0.0.1","current":true},
+                    {"id":"sid-2","created_at":"2026-08-02T00:00:00Z","last_seen_at":"2026-08-17T00:00:00Z","expires_at":"2026-09-02T00:00:00Z","user_agent":"Mozilla/5.0","ip":"10.0.0.2","current":false}
+                ]}""",
+            ),
+        )
+
+        val result = client.listSessions()
+
+        assertTrue(result.isSuccess)
+        val sessions = result.getOrThrow()
+        assertEquals(2, sessions.size)
+        assertEquals("sid-1", sessions[0].id)
+        assertTrue(sessions[0].current)
+        assertFalse(sessions[1].current)
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/sessions", request.path)
+    }
+
+    @Test
+    fun `revoke session issues DELETE against the session id`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message":"Session revoked"}"""))
+
+        val result = client.revokeSession("sid-1")
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/sessions/sid-1", request.path)
+    }
+
+    @Test
     fun `list webhooks parses and unwraps the webhooks array`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(

@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * In-memory-backed [SessionManager] used by unit tests and as the base for
@@ -16,12 +17,14 @@ class DefaultSessionManager(
     private val tokenStorage: TokenStorage,
     private val prefsStorage: SessionPrefsStorage,
     private val localDataCleaner: SessionDataCleaner = NoopSessionDataCleaner,
+    private val sessionTeardown: SessionTeardown = NoopSessionTeardown,
 ) : SessionManager {
 
     private var cachedToken: String? = null
     private var cachedServerUrl: String? = null
     private val sessionState = MutableStateFlow(SessionState())
     private val hydrated = kotlinx.coroutines.CompletableDeferred<Unit>()
+    private val clearingSession = AtomicBoolean(false)
 
     /** Load both cached values and surface the initial session. */
     suspend fun init() {
@@ -79,6 +82,29 @@ class DefaultSessionManager(
     }
 
     override suspend fun clearSession(keepServerUrl: Boolean) {
+        // Issue #957: run the authenticated teardown step (FCM
+        // deregistration, server-side session revoke) BEFORE the bearer
+        // below is dropped — both need to reach the server as this session,
+        // and any request after this point goes out with no Authorization
+        // header. Skipped entirely when there is no session to tear down
+        // (already logged out, or a redundant/racing clearSession call), so
+        // a repeat call makes no network request.
+        //
+        // clearingSession is up only for the duration of this call so
+        // SessionExpiryWiring can tell a 401 caused by the teardown step's
+        // own request (the bearer it used is being invalidated right now)
+        // apart from an unrelated 401 — the former must not race a
+        // device-grant refresh that would silently resurrect the session
+        // this call is in the middle of ending. Best-effort: a teardown
+        // failure must never block the local clear below.
+        if (cachedToken != null) {
+            clearingSession.set(true)
+            try {
+                runCatching { sessionTeardown.beforeClear() }
+            } finally {
+                clearingSession.set(false)
+            }
+        }
         cachedToken = null
         tokenStorage.clear()
         // Issue #723: the server URL is device config, not a session secret —
@@ -97,6 +123,8 @@ class DefaultSessionManager(
             SessionState()
         }
     }
+
+    override fun isClearingSession(): Boolean = clearingSession.get()
 
     private fun refreshState() {
         sessionState.value = SessionState(

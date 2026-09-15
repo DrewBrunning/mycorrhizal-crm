@@ -168,6 +168,8 @@ import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderCompleteResponse
 import com.mycorrhizal.crm.model.network.SearchResult
 import com.mycorrhizal.crm.model.network.ServerHealth
+import com.mycorrhizal.crm.model.network.SessionInfo
+import com.mycorrhizal.crm.model.network.SessionsResponse
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.network.TagDetailResponse
 import com.mycorrhizal.crm.model.network.TagInput
@@ -452,6 +454,21 @@ class ApiClient(
         executeGet("$PLACEHOLDER_ORIGIN$NOTIFICATIONS_DEVICES_PATH") { _, body ->
             moshi.adapter(DeviceRegistrationsResponse::class.java).fromJson(body)?.devices
         }
+
+    // Issue #866: active-session inventory. Issue #957 is the first Android
+    // consumer — CurrentSessionRevoker finds this install's own row (the
+    // `current` flag) and revokes it on logout, using the session's own
+    // still-valid bearer.
+
+    /** GET /api/v1/sessions — `{ sessions: [...] }`, unwrapped here. */
+    suspend fun listSessions(): Result<List<SessionInfo>> =
+        executeGet("$PLACEHOLDER_ORIGIN$SESSIONS_PATH") { _, body ->
+            moshi.adapter(SessionsResponse::class.java).fromJson(body)?.sessions
+        }
+
+    /** DELETE /api/v1/sessions/:id — `{ message }`. */
+    suspend fun revokeSession(id: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$SESSIONS_PATH/$id")
 
     /** GET /api/v1/webhooks — `{ webhooks: [...] }`, unwrapped here. */
     suspend fun listWebhooks(): Result<List<Webhook>> =
@@ -2284,6 +2301,7 @@ class ApiClient(
         private const val CONTACT_SUBSCRIPTIONS_PATH = "$API_V1/contact-subscriptions"
         private const val DEVICE_GRANTS_PATH = "$API_V1/auth/device/grants"
         private const val DEVICE_SESSION_PATH = "$API_V1/auth/device/session"
+        private const val SESSIONS_PATH = "$API_V1/sessions"
         private const val NOTIFICATIONS_CONFIG_PATH = "$API_V1/notifications/config"
         private const val NOTIFICATIONS_DEVICES_PATH = "$API_V1/notifications/devices"
         private const val CONTACTS_PATH = "$API_V1/contacts"

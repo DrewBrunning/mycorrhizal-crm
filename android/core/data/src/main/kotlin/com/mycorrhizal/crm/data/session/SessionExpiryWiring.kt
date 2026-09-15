@@ -17,6 +17,13 @@ import kotlinx.coroutines.launch
  * rejected) — or when no grant is enrolled, the default — does the session
  * clear. A grant that the server has revoked therefore still ends exactly as
  * a 401 always has.
+ *
+ * Issue #957 (finding #1, point 2) — re-entrancy guard
+ * ([SessionManager.isClearingSession]): [clearSession]'s own authenticated
+ * teardown step (FCM deregister, session revoke) makes network calls with
+ * the bearer being invalidated right now, so it can 401 too. Without this
+ * guard that 401 would attempt a grant exchange — silently logging the user
+ * back in seconds after an explicit logout.
  */
 class SessionExpiryWiring(
     private val sessionExpiryNotifier: SessionExpiryNotifier,
@@ -25,6 +32,7 @@ class SessionExpiryWiring(
 ) {
     fun start(scope: CoroutineScope) {
         sessionExpiryNotifier.register {
+            if (sessionManager.isClearingSession()) return@register
             scope.launch {
                 val refreshed = refresher()
                 if (!refreshed) sessionManager.clearSession()

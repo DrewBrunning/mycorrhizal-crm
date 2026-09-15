@@ -70,6 +70,7 @@ import com.mycorrhizal.crm.data.session.SessionDataCleaner
 import com.mycorrhizal.crm.data.session.SessionExpiryWiring
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SessionPrefsStorage
+import com.mycorrhizal.crm.data.session.SessionTeardown
 import com.mycorrhizal.crm.data.session.TokenStorage
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.AuditRepository
@@ -285,8 +286,25 @@ object DataModule {
         // very singleton this provider is building. The manager is only
         // resolved when a 401 actually arrives, by which point it exists.
         deviceGrantManager: javax.inject.Provider<com.mycorrhizal.crm.data.auth.DeviceGrantManager>,
+        // Issue #957: FCM deregistration lives in feature:tracking, which
+        // core:data cannot depend on, so the real SessionTeardown is
+        // composed and Hilt-bound one layer up (the app module) — this
+        // provider only knows the interface. A `Provider` for the same
+        // reason as deviceGrantManager above: the real implementation
+        // (AppSessionTeardown) needs ApiClient, ApiClient needs the shared
+        // OkHttpClient, and that client's TokenProvider is bound to
+        // SessionManager — the very singleton this provider is building.
+        // Confirmed the hard way: eagerly injecting SessionTeardown here
+        // compiled fine through kspDebugKotlin but failed Dagger's full
+        // graph validation at hiltJavaCompileDebug with a DependencyCycle.
+        sessionTeardown: javax.inject.Provider<SessionTeardown>,
     ): DefaultSessionManager {
-        val manager = DefaultSessionManager(tokenStorage, prefsStorage, localDataCleaner)
+        val manager = DefaultSessionManager(
+            tokenStorage,
+            prefsStorage,
+            localDataCleaner,
+            sessionTeardown = SessionTeardown { sessionTeardown.get().beforeClear() },
+        )
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         // Issue #678: a 401 on any API call must clear the session so the app
         // lands on the auth flow rather than a stuck or half-rendered screen.
