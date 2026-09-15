@@ -38,7 +38,10 @@ export default defineConfig({
   workers: 1,
 
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  // Issue #974: same nightly non-retried leg as playwright.config.ts — 0
+  // retries on the `schedule` run so a flake here gets a hard-fail surface
+  // at least once a day instead of staying green behind the retry forever.
+  retries: process.env.CI ? (process.env.GITHUB_EVENT_NAME === 'schedule' ? 0 : 1) : 0,
 
   reporter: [['html', { open: 'never', outputFolder: 'playwright-report-sw' }], ['list']],
 
