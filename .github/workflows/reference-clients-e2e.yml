@@ -235,7 +235,36 @@ jobs:
           # the whole invocation must stay on one line.
           script: |
             adb reverse tcp:7300 tcp:7300
-            SERVER_URL=http://127.0.0.1:7300 USERNAME=pentest PASSWORD='PentestPassword123!' .github/scripts/reference-client-davx5/run.sh /tmp/davx5.apk
+            SERVER_URL=http://127.0.0.1:7300 USERNAME=pentest PASSWORD='PentestPassword123!' DAVX5_WORKDIR=/tmp/davx5-diag .github/scripts/reference-client-davx5/run.sh /tmp/davx5.apk
+
+      # A step in this job's own runs, not inside the emulator, so
+      # /tmp/davx5-diag from the script above is still on disk here. Printed
+      # inline (not just uploaded) so a failure is diagnosable straight from
+      # the log, no artifact download round-trip needed.
+      - name: Show DAVx5 UI-dump diagnostics on failure
+        if: failure()
+        run: |
+          echo "=== files captured ==="
+          ls -la /tmp/davx5-diag/ 2>/dev/null || echo "(no diagnostics directory)"
+          for f in /tmp/davx5-diag/failure-dump-*.xml; do
+            [ -e "$f" ] || continue
+            echo "=== $f ==="
+            cat "$f"
+          done
+          for f in /tmp/davx5-diag/failure-logcat-*.txt; do
+            [ -e "$f" ] || continue
+            echo "=== $f (last 100 lines) ==="
+            tail -100 "$f"
+          done
+
+      - name: Upload DAVx5 failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: davx5-failure-diagnostics
+          path: /tmp/davx5-diag/
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Show server logs on failure
         if: failure()

@@ -28,8 +28,23 @@ SERVER_URL="${SERVER_URL:-http://127.0.0.1:7300}"
 USERNAME="${USERNAME:?USERNAME env var required}"
 PASSWORD="${PASSWORD:?PASSWORD env var required}"
 PACKAGE="at.bitfire.davdroid"
-WORKDIR="$(mktemp -d)"
+# Fixed (not mktemp) so a CI step can find and upload this directory as a
+# failure-diagnostics artifact after this script exits.
+WORKDIR="${DAVX5_WORKDIR:-$(mktemp -d)}"
+mkdir -p "$WORKDIR"
 DUMP_XML="$WORKDIR/dump.xml"
+
+# Screenshot + UI dump + the app's own logcat, for postmortem diagnosis of a
+# step that fails with no single missing element to blame (a slow carousel,
+# an unexpected system dialog, a crash). Safe to call multiple times; each
+# call overwrites, callers pass a distinct $1 tag to keep multiple failures
+# in one run.
+capture_failure_diagnostics() {
+	local tag="$1"
+	adb exec-out screencap -p >"$WORKDIR/failure-$tag.png" 2>/dev/null || true
+	cp "$DUMP_XML" "$WORKDIR/failure-dump-$tag.xml" 2>/dev/null || true
+	adb logcat -d -s "$PACKAGE:*" >"$WORKDIR/failure-logcat-$tag.txt" 2>/dev/null || true
+}
 
 log() { echo "[davx5-interop] $*" >&2; }
 
@@ -56,17 +71,40 @@ for node in tree.iter("node"):
 PY
 }
 
+# Diagnostic capture from a real CI failure: an "isn't responding" ANR
+# dialog for **Pixel Launcher itself** (not DAVx5), with "Close app" / "Wait"
+# buttons, showed up mid-carousel under a resource-starved emulator — pure
+# OS-level contention, unrelated to anything DAVx5 or our server does. It
+# blocks all input to the app under test until dismissed, so every tap in
+# the calling loop silently lands on the dialog instead of the intended
+# target. Call after dump_ui in a polling loop; tapping "Wait" lets the
+# stalled process recover instead of burning the loop's whole retry budget
+# against a dialog that was never going to go away on its own.
+dismiss_anr_if_present() {
+	if grep -q "isn't responding" "$DUMP_XML" 2>/dev/null; then
+		local coords
+		coords="$(find_center "Wait")"
+		if [ -n "$coords" ]; then
+			log "WARNING: system ANR dialog detected, tapping 'Wait' to let it recover"
+			# shellcheck disable=SC2086
+			adb shell input tap $coords
+			sleep 2
+			dump_ui
+		fi
+	fi
+}
+
 # Taps the element whose text/content-desc exactly matches $1. Fails loudly
 # if it isn't on screen — a silent miss (e.g. from a coordinate guess) is
 # exactly the class of bug this script exists to avoid.
 tap() {
 	dump_ui
+	dismiss_anr_if_present
 	local coords
 	coords="$(find_center "$1")"
 	if [ -z "$coords" ]; then
 		log "ERROR: could not find tappable element with text/content-desc '$1'"
-		adb exec-out screencap -p >"$WORKDIR/failure-$(date +%s).png" || true
-		cp "$DUMP_XML" "$WORKDIR/failure-dump-$(date +%s).xml" || true
+		capture_failure_diagnostics "tap-$1"
 		return 1
 	fi
 	# shellcheck disable=SC2086
@@ -81,6 +119,7 @@ tap_until_visible() {
 	local tap_target="$1" wait_for="$2" max_attempts="${3:-10}" attempts=0
 	while [ "$attempts" -lt "$max_attempts" ]; do
 		dump_ui
+		dismiss_anr_if_present
 		if [ -n "$(find_center "$wait_for")" ]; then
 			return 0
 		fi
@@ -94,6 +133,7 @@ tap_until_visible() {
 		attempts=$((attempts + 1))
 	done
 	log "ERROR: '$wait_for' never appeared after tapping '$tap_target' $attempts times"
+	capture_failure_diagnostics "tap-until-visible-$wait_for"
 	return 1
 }
 
@@ -104,6 +144,7 @@ wait_for() {
 	local wait_for="$1" max_attempts="${2:-20}" attempts=0
 	while [ "$attempts" -lt "$max_attempts" ]; do
 		dump_ui
+		dismiss_anr_if_present
 		if [ -n "$(find_center "$wait_for")" ]; then
 			return 0
 		fi
@@ -111,6 +152,7 @@ wait_for() {
 		attempts=$((attempts + 1))
 	done
 	log "ERROR: '$wait_for' never appeared after ${max_attempts}s"
+	capture_failure_diagnostics "wait-for-$wait_for"
 	return 1
 }
 
@@ -134,7 +176,13 @@ adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1 >/dev/null 
 sleep 3
 
 log "Walking the intro carousel to the account list"
-tap_until_visible "Next" "Add account" 15
+# 15 attempts (each attempt is a full uiautomator dump + pull + a 1s sleep,
+# so meaningfully more than 15s of wall clock) was tight enough that this
+# step failed 3/3 times on push:main's much larger concurrent CI load while
+# passing 3/3 on the lighter-weight pull_request/workflow_dispatch triggers
+# — the same emulator, same pinned APK, just slower under load. Doubled to
+# match the budget "Finish" below already uses for the same reason.
+tap_until_visible "Next" "Add account" 30
 
 log "Starting 'Add account'"
 tap "Add account"
@@ -188,9 +236,18 @@ wait_for "Finish" 30
 tap "Finish"
 
 log "Account created. Enabling CardDAV + CalDAV collection sync"
+# Diagnostic capture from a real CI failure: switching tabs kicks off an
+# async collection-discovery PROPFIND against our server, and the very next
+# tap used to fire before that finished — the captured UI dump showed the
+# CardDAV tab active with no collection row on screen yet, just the account
+# chrome (Synchronize now / Refresh list / Options menu). wait_for is this
+# script's existing tool for exactly this ("waiting out async work... with
+# no button to press in the meantime") — it just wasn't used here.
 tap "CardDAV"
+wait_for "synchronize this collection" 20
 tap "synchronize this collection"
 tap "CalDAV"
+wait_for "synchronize this collection" 20
 tap "synchronize this collection"
 
 log "Triggering a manual sync"
