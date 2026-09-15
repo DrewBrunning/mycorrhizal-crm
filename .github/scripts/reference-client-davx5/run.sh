@@ -28,8 +28,23 @@ SERVER_URL="${SERVER_URL:-http://127.0.0.1:7300}"
 USERNAME="${USERNAME:?USERNAME env var required}"
 PASSWORD="${PASSWORD:?PASSWORD env var required}"
 PACKAGE="at.bitfire.davdroid"
-WORKDIR="$(mktemp -d)"
+# Fixed (not mktemp) so a CI step can find and upload this directory as a
+# failure-diagnostics artifact after this script exits.
+WORKDIR="${DAVX5_WORKDIR:-$(mktemp -d)}"
+mkdir -p "$WORKDIR"
 DUMP_XML="$WORKDIR/dump.xml"
+
+# Screenshot + UI dump + the app's own logcat, for postmortem diagnosis of a
+# step that fails with no single missing element to blame (a slow carousel,
+# an unexpected system dialog, a crash). Safe to call multiple times; each
+# call overwrites, callers pass a distinct $1 tag to keep multiple failures
+# in one run.
+capture_failure_diagnostics() {
+	local tag="$1"
+	adb exec-out screencap -p >"$WORKDIR/failure-$tag.png" 2>/dev/null || true
+	cp "$DUMP_XML" "$WORKDIR/failure-dump-$tag.xml" 2>/dev/null || true
+	adb logcat -d -s "$PACKAGE:*" >"$WORKDIR/failure-logcat-$tag.txt" 2>/dev/null || true
+}
 
 log() { echo "[davx5-interop] $*" >&2; }
 
@@ -65,8 +80,7 @@ tap() {
 	coords="$(find_center "$1")"
 	if [ -z "$coords" ]; then
 		log "ERROR: could not find tappable element with text/content-desc '$1'"
-		adb exec-out screencap -p >"$WORKDIR/failure-$(date +%s).png" || true
-		cp "$DUMP_XML" "$WORKDIR/failure-dump-$(date +%s).xml" || true
+		capture_failure_diagnostics "tap-$1"
 		return 1
 	fi
 	# shellcheck disable=SC2086
@@ -94,6 +108,7 @@ tap_until_visible() {
 		attempts=$((attempts + 1))
 	done
 	log "ERROR: '$wait_for' never appeared after tapping '$tap_target' $attempts times"
+	capture_failure_diagnostics "tap-until-visible-$wait_for"
 	return 1
 }
 
@@ -111,6 +126,7 @@ wait_for() {
 		attempts=$((attempts + 1))
 	done
 	log "ERROR: '$wait_for' never appeared after ${max_attempts}s"
+	capture_failure_diagnostics "wait-for-$wait_for"
 	return 1
 }
 
