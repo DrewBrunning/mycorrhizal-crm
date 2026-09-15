@@ -166,8 +166,13 @@ type matrixCase struct {
 	mutate     func(t *testing.T, db *gorm.DB, ds *canonicalfixture.Dataset)
 }
 
-func TestDataIntegrity_TEST02_InvariantMatrix(t *testing.T) {
-	cases := []matrixCase{
+// db03MatrixCases is the DB-03 (#494) matrix itself — one row per invariant
+// mutation. It is a package-level func, not a test-local var, so the DB-02
+// (#912) completeness gate in data_integrity_completeness_test.go can read
+// the same (invariant, Check-slug) pairs this test runtime-verifies, rather
+// than hand-copying a second list that could drift from what actually runs.
+func db03MatrixCases() []matrixCase {
+	return []matrixCase{
 		{
 			name:      "INV-D1/relationship endpoint references a contact that never existed",
 			invariant: "INV-D1", wantCheck: "relationship_edge.endpoint_missing", repairable: true,
@@ -355,6 +360,53 @@ func TestDataIntegrity_TEST02_InvariantMatrix(t *testing.T) {
 			},
 		},
 		{
+			name:      "INV-D7/soft-deleted contact is still a live field value target",
+			invariant: "INV-D7", wantCheck: "field_value.soft_deleted_contact", repairable: false,
+			mutate: func(t *testing.T, db *gorm.DB, ds *canonicalfixture.Dataset) {
+				x := mkContact(t, db, ds.User.ID, "X7fv")
+				require.NoError(t, db.Create(&models.FieldValue{
+					FieldDefinitionID: ds.FieldDefinitions[0].ID, UserID: ds.User.ID,
+					EntityID: x.VCardUID, Value: json.RawMessage(`"x"`),
+				}).Error)
+				softDeleteContact(t, db, x)
+			},
+		},
+		{
+			name:      "INV-D7/soft-deleted contact is still referenced by an external identity",
+			invariant: "INV-D7", wantCheck: "external_identity.soft_deleted_contact", repairable: false,
+			mutate: func(t *testing.T, db *gorm.DB, ds *canonicalfixture.Dataset) {
+				x := mkContact(t, db, ds.User.ID, "X7ei")
+				require.NoError(t, db.Create(&models.ExternalIdentity{
+					UserID: ds.User.ID, EntityID: x.VCardUID, System: "github", ExternalID: "octocat-x7ei",
+				}).Error)
+				softDeleteContact(t, db, x)
+			},
+		},
+		{
+			name:      "INV-D7/soft-deleted contact is still referenced by an external activity",
+			invariant: "INV-D7", wantCheck: "external_activity.soft_deleted_contact", repairable: false,
+			mutate: func(t *testing.T, db *gorm.DB, ds *canonicalfixture.Dataset) {
+				x := mkContact(t, db, ds.User.ID, "X7ea")
+				require.NoError(t, db.Create(&models.ExternalActivity{
+					UserID: ds.User.ID, EntityID: x.VCardUID, SourceSystem: "immich",
+					ExternalID: "asset-x7ea", Type: "photo-appearance", OccurredAt: time.Now(),
+				}).Error)
+				softDeleteContact(t, db, x)
+			},
+		},
+		{
+			name:      "INV-D7/soft-deleted contact is still referenced by an import source link",
+			invariant: "INV-D7", wantCheck: "import_source_link.soft_deleted_contact", repairable: false,
+			mutate: func(t *testing.T, db *gorm.DB, ds *canonicalfixture.Dataset) {
+				x := mkContact(t, db, ds.User.ID, "X7isl")
+				require.NoError(t, db.Create(&models.ImportSourceLink{
+					UserID: ds.User.ID, System: "monica", ExternalID: "contact/x7isl",
+					EntityKind: models.ImportSourceLinkKindContact, EntityUID: x.VCardUID,
+				}).Error)
+				softDeleteContact(t, db, x)
+			},
+		},
+		{
 			name:      "INV-D8/canonical record Card column is not valid JSON",
 			invariant: "INV-D8", wantCheck: "canonical_record.invalid_json", repairable: false,
 			mutate: func(t *testing.T, db *gorm.DB, ds *canonicalfixture.Dataset) {
@@ -399,8 +451,10 @@ func TestDataIntegrity_TEST02_InvariantMatrix(t *testing.T) {
 			},
 		},
 	}
+}
 
-	for _, tc := range cases {
+func TestDataIntegrity_TEST02_InvariantMatrix(t *testing.T) {
+	for _, tc := range db03MatrixCases() {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			db, cfg, ds := loadCanonicalFixture(t)
