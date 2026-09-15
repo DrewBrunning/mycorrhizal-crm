@@ -43,7 +43,7 @@ FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec4
 # (exit-code: 1 on fixed CRITICAL/HIGH). No base-image digest bump needed;
 # `apk policy libssl3` against this exact digest already lists 3.5.8-r0 from
 # alpine/v3.24/main.
-RUN apk add --no-cache ca-certificates=20260611-r0 tzdata=2026c-r0 shadow=4.18.0-r1 su-exec=0.3-r0 libc6-compat=1.1.0-r4 libssl3=3.5.8-r0 libcrypto3=3.5.8-r0
+RUN apk add --no-cache ca-certificates=20260611-r0 tzdata=2026d-r0 shadow=4.18.0-r1 su-exec=0.3-r0 libc6-compat=1.1.0-r4 libssl3=3.5.8-r0 libcrypto3=3.5.8-r0
 
 WORKDIR /app
 
