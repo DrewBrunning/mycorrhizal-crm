@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"mycorrhizal/contactmodel"
 )
@@ -471,6 +472,20 @@ func exportAddresses(r *contactmodel.Record, c *Card) {
 
 // --- anniversaries -----------------------------------------------------
 
+// normalizeUTCTimestamp defends the RFC 9553 UTCDateTime boundary (issue
+// #969): every wire `utc`/UTCDateTime string must actually be UTC ("Z"),
+// not merely RFC3339. A value carrying a non-Z offset (e.g. from a producer
+// upstream of this adapter that didn't normalize) is converted rather than
+// passed through, since a conformant consumer would otherwise read it as
+// UTC verbatim — a silent shift by the offset. A value that doesn't even
+// parse as RFC3339 is left unchanged rather than dropped.
+func normalizeUTCTimestamp(s string) string {
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t.UTC().Format(time.RFC3339)
+	}
+	return s
+}
+
 // timestampToNeutral converts a JSContact wire Timestamp object (anniversary
 // dates; the `@type`-discriminated object form RFC 9553/9555 require for the
 // date-and-or-time union) into the neutral model.
@@ -478,14 +493,14 @@ func timestampToNeutral(t *Timestamp) *contactmodel.Timestamp {
 	if t == nil {
 		return nil
 	}
-	return &contactmodel.Timestamp{UTC: t.UTC}
+	return &contactmodel.Timestamp{UTC: normalizeUTCTimestamp(t.UTC)}
 }
 
 func timestampFromNeutral(t *contactmodel.Timestamp) *Timestamp {
 	if t == nil {
 		return nil
 	}
-	return &Timestamp{UTC: t.UTC}
+	return &Timestamp{UTC: normalizeUTCTimestamp(t.UTC)}
 }
 
 // utcDateTimeToNeutral converts a JSContact wire UTCDateTime string (Card
@@ -495,20 +510,21 @@ func utcDateTimeToNeutral(s *string) *contactmodel.Timestamp {
 	if s == nil {
 		return nil
 	}
-	return &contactmodel.Timestamp{UTC: *s}
+	return &contactmodel.Timestamp{UTC: normalizeUTCTimestamp(*s)}
 }
 
 func utcDateTimeFromNeutral(t *contactmodel.Timestamp) *string {
 	if t == nil {
 		return nil
 	}
-	return &t.UTC
+	norm := normalizeUTCTimestamp(t.UTC)
+	return &norm
 }
 
 func anniversaryDateToNeutral(d AnniversaryDate) contactmodel.AnniversaryDate {
 	var out contactmodel.AnniversaryDate
 	if d.Timestamp != nil {
-		utc := d.Timestamp.UTC
+		utc := normalizeUTCTimestamp(d.Timestamp.UTC)
 		out.Timestamp = &utc
 	}
 	if d.PartialDate != nil {
@@ -525,7 +541,7 @@ func anniversaryDateToNeutral(d AnniversaryDate) contactmodel.AnniversaryDate {
 func anniversaryDateFromNeutral(d contactmodel.AnniversaryDate) AnniversaryDate {
 	var out AnniversaryDate
 	if d.Timestamp != nil {
-		out.Timestamp = &Timestamp{UTC: *d.Timestamp}
+		out.Timestamp = &Timestamp{UTC: normalizeUTCTimestamp(*d.Timestamp)}
 	}
 	if d.Partial != nil {
 		out.PartialDate = &PartialDate{
