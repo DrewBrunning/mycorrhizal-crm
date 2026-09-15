@@ -6,7 +6,6 @@
 package com.mycorrhizal.crm
 
 import androidx.annotation.StringRes
-import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -241,6 +240,11 @@ fun MycorrhizalApp(
     mainViewModel: MainViewModel = hiltViewModel(),
     deepLinks: kotlinx.coroutines.flow.Flow<android.net.Uri?> = kotlinx.coroutines.flow.flowOf(null),
     onDeepLinkHandled: () -> Unit = {},
+    // Issue #965: starts the native OIDC flow. The Activity owns the PKCE
+    // generation + on-device verifier storage and the browser launch, so this
+    // is injected rather than built inline (the pre-#965 shape constructed a
+    // bare login URL here with no state/PKCE binding).
+    onStartOidc: (String) -> Unit = {},
     // #203: the OIDC-return failure Toast is replaced by LoginScreen's own
     // SnackbarHostState — both failure paths in MainActivity.handleOidcReturn
     // leave the session logged out, so this is only ever consumed by the
@@ -314,7 +318,6 @@ fun MycorrhizalApp(
             // login screen from the register/forgot screens instead of exiting
             // the app (review-pass fix).
             var authScreen by rememberSaveable { mutableStateOf(AuthScreen.LOGIN) }
-            val context = LocalContext.current
             val oidcErrorState by oidcError.collectAsStateWithLifecycle(initialValue = null)
             BackHandler(enabled = authScreen != AuthScreen.LOGIN) {
                 authScreen = AuthScreen.LOGIN
@@ -326,15 +329,11 @@ fun MycorrhizalApp(
                         // the tree; issue #722 then offers biometric sign-in.
                         showEnrollmentPrompt = true
                     },
-                    onSignInWithSso = { serverUrl ->
-                        // M6 §4: `client=android` makes the backend redirect back to
-                        // the mycorrhizal://oidc/callback deep link (MainActivity)
-                        // instead of the web cookie path — without it this whole
-                        // native flow is unreachable (review-pass fix).
-                        val url = serverUrl.trim().trimEnd('/') + "/api/v1/auth/oidc/login?client=android"
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                        runCatching { context.startActivity(intent) }
-                    },
+                    // Issue #965: the Activity builds the binding (state +
+                    // S256 PKCE challenge) and launches the browser; the
+                    // callback's code is redeemable only with the on-device
+                    // verifier.
+                    onSignInWithSso = onStartOidc,
                     onRegisterClick = { authScreen = AuthScreen.REGISTER },
                     onForgotPasswordClick = { authScreen = AuthScreen.FORGOT_PASSWORD },
                     oidcError = oidcErrorState,

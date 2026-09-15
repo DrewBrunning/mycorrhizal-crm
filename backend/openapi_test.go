@@ -244,7 +244,7 @@ func operationForMethod(pi *openapi3.PathItem, method string) *openapi3.Operatio
 // the drift test must not flag them as dead documentation.
 func isConditionallyRegisteredPath(path string) bool {
 	switch path {
-	case "/auth/oidc/login", "/auth/oidc/callback":
+	case "/auth/oidc/login", "/auth/oidc/callback", "/auth/oidc/native/exchange":
 		return true
 	}
 	return false

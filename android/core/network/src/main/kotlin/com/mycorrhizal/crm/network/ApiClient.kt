@@ -150,6 +150,8 @@ import com.mycorrhizal.crm.model.network.MessageResponse
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteInput
 import com.mycorrhizal.crm.model.network.NotesPage
+import com.mycorrhizal.crm.model.network.OidcNativeExchangeRequest
+import com.mycorrhizal.crm.model.network.OidcNativeExchangeResponse
 import com.mycorrhizal.crm.model.network.NotificationConfig
 import com.mycorrhizal.crm.model.network.NotificationConfigInput
 import com.mycorrhizal.crm.model.network.NotificationTestChannelRequest
@@ -593,6 +595,24 @@ class ApiClient(
     suspend fun revokeAllDeviceGrants(): Result<RevokeAllDeviceGrantsResponse> =
         executePostEmpty("$DEVICE_GRANTS_PATH/revoke-all") { _, body ->
             moshi.adapter(RevokeAllDeviceGrantsResponse::class.java).fromJson(body)
+        }
+
+    // --- Issue #965: Android OIDC native return. The callback delivers a
+    // short-lived, PKCE-bound code through an interceptable custom scheme; the
+    // app redeems it here with the verifier that never left the device.
+
+    /**
+     * POST /api/v1/auth/oidc/native/exchange — redeem the deep link's code for
+     * a session JWT. Returns just the token; the caller fetches the profile and
+     * persists the session like any other login.
+     */
+    suspend fun exchangeOidcNativeCode(code: String, codeVerifier: String): Result<String> =
+        executePost(
+            OIDC_NATIVE_EXCHANGE_PATH,
+            OidcNativeExchangeRequest(code = code, codeVerifier = codeVerifier),
+        ) { _, body ->
+            moshi.adapter(OidcNativeExchangeResponse::class.java)
+                .fromJson(body)?.token?.takeIf { it.isNotBlank() }
         }
 
     /** DELETE /api/v1/auth/device/grants/{id} — revoke one enrolled device. */
@@ -2297,6 +2317,7 @@ class ApiClient(
         private const val CONTACT_SUBSCRIPTIONS_PATH = "$API_V1/contact-subscriptions"
         private const val DEVICE_GRANTS_PATH = "$API_V1/auth/device/grants"
         private const val DEVICE_SESSION_PATH = "$API_V1/auth/device/session"
+        private const val OIDC_NATIVE_EXCHANGE_PATH = "$API_V1/auth/oidc/native/exchange"
         private const val NOTIFICATIONS_CONFIG_PATH = "$API_V1/notifications/config"
         private const val NOTIFICATIONS_DEVICES_PATH = "$API_V1/notifications/devices"
         private const val CONTACTS_PATH = "$API_V1/contacts"

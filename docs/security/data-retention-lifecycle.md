@@ -320,6 +320,16 @@ password change/reset and 2FA
 enable/disable/reset, and swept by account deletion (`DeleteUser`) — a soft-deleted grant row is
 revoked, not reused. Backups: the DB snapshot carries only the hash; the plaintext exists solely in
 the device's encrypted store and is not part of any server backup.
+
+**Android OIDC pending request (issue #965).** While a native OIDC login is in flight, the app holds a
+short-lived `state` nonce and PKCE code verifier in EncryptedSharedPreferences
+(`secure_oidc_pending`, Keystore master key — the same envelope as the session JWT and device grant;
+`android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/session/OidcPendingRequestStore.kt`). It is
+not user content: it exists only to bind the callback and redeem the callback's short-lived exchange code,
+and it is deleted the moment the deep link returns — success or failure. An abandoned request is refused
+after `OIDC_PENDING_REQUEST_TTL_MILLIS` (10 min) and overwritten by the next login attempt. There is no
+server-side copy and nothing here reaches a backup.
+
 ### Android session store (bearer token + server URL) (issues #385, #723)
 
 The device-side auth material and the non-credential server config that outlives it. Distinct from the

@@ -61,6 +61,16 @@ interface AuthRepository {
     /** Authenticate with a `mycorrhizal_` API token (no password; bypasses 2FA). */
     suspend fun loginWithApiToken(token: String): Result<Unit>
 
+    /**
+     * Issue #965: redeem the short-lived code from the Android OIDC
+     * `mycorrhizal://oidc/callback` deep link, using the PKCE verifier kept on
+     * device, for a freshly-minted session JWT. Returns just the token — the
+     * caller persists the session and fetches the profile, exactly as for
+     * [login]. A stolen deep link carries the code but not the verifier, so it
+     * cannot be redeemed.
+     */
+    suspend fun completeOidcNativeLogin(code: String, codeVerifier: String): Result<String>
+
     // M26: account creation + password reset.
 
     /**
