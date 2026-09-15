@@ -345,14 +345,20 @@ completely untested until this issue. It runs under the main
 `playwright.config.ts`'s own `webkit` project (`testMatch`-scoped to just this
 one file, so it doesn't drag the rest of the chromium-only-verified suite onto
 an untested engine) against the same `docker-compose.test.yml` stack as the
-main `e2e` job: login → dashboard render → service-worker registration.
+main `e2e` job: login → dashboard render → service-worker registration → the
+Push API surface (`window.PushManager`) is present.
 
-It deliberately does **not** assert the Push API surface is present — no
-CI-available WebKit build (Playwright's own, or the open-source WebKitGTK
-engine checked locally for this issue) implements `window.PushManager`; see
+That last assertion was flipped once already: an earlier draft asserted
+`PushManager` was *absent*, based on a standalone WebKit2GTK 4.1
+GObject-introspection check against the distro package rather than
+Playwright's own bundled `webkit` build — a reasonable first check, but not
+the exact binary CI actually runs. The real CI run on Playwright's WebKit
+showed `PushManager` present, so the spec (and this note) were corrected. See
 [the WebKit engine caveat](supported-runtime-matrix.md#webkit-engine-caveat-issue-992)
-for why, and the spec's own file header for the full reasoning. Run locally
-with `npx playwright test --project=webkit` (needs
+and the spec's own file header for the full story and the current, precise
+scope of what is and isn't proven — a real Push `subscribe()` round trip
+against a live push service still isn't exercised here, on any engine. Run
+locally with `npx playwright test --project=webkit` (needs
 `npx playwright install --with-deps webkit` first); the `e2e-webkit-smoke` job
 in `e2e-tests.yml` runs it in CI on the same PR/nightly cadence as `e2e`.
 

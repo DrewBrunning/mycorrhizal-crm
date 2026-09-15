@@ -92,6 +92,12 @@ since the floor moves rarely and several of these jobs download and boot a secon
 toolchain/Compose client. `min-version-tests.yml` also exposes `workflow_call` for a future
 required pre-release gate (REL-03, issue #447) to invoke without editing the workflow.
 
+**Exception: `android-e2e-min-sdk`** (issue #927) also runs on every `push:main`, mirroring
+`migration-tests.yml`'s `large-dataset` job — it is a named `release-tier` gate in the
+[release-gates registry](release-gates.md) ("Android E2E (emulator, minSdk 26)"), and the API-26
+floor needs to be exercised on the actual commit a release cuts from, not merely at some point
+within the last week.
+
 ### WebKit engine caveat (issue #992)
 
 Split from #917 finding G6: the Safari/iOS ≥16.4 floor's binding constraint is Web Push, but
@@ -110,14 +116,14 @@ as the rest of that suite: login, session, and a real authenticated route (the d
 render correctly, and the service worker registers — proving the production bundle actually
 loads and functions on the engine the floor names, even though it isn't the exact 16.4 build.
 
-That smoke test deliberately does **not** assert the Push API surface is present. Verified for
-this issue (2026-09-14) with a standalone WebKit2GTK 4.1 GObject-introspection check — the same
-open-source WebKit codebase Playwright's own `webkit` channel is built from, minus Apple's
-private, macOS-only push-service frameworks: `'serviceWorker' in navigator` is `true`, but
-`'PushManager' in window` is `false`. Real Safari's Web Push support depends on those proprietary
-frameworks, which no open-source WebKit build — Playwright's or WebKitGTK's — replicates, and no
-CI provider offers a real-Safari runner. So the floor's Web-Push rationale itself remains
-genuinely unverifiable in CI; `webkitSmoke.spec.ts` pins the absence explicitly (an assertion
-that fails, on purpose, the day a future WebKit ships `PushManager` — the signal to strengthen
-it into a real capability check and update this row and `docs/supported-versions.md`) rather
-than silently assuming a capability nothing here can check.
+That smoke test also asserts the Push API surface itself is present. An earlier draft of this
+section (and the spec) claimed the opposite, based on a standalone WebKit2GTK 4.1
+GObject-introspection check against the distro `libwebkitgtk-6.0` package rather than Playwright's
+own bundled build: that engine reported `'serviceWorker' in navigator` true but `'PushManager' in
+window` false. Running the actual spec in CI against Playwright's real `webkit` channel showed the
+opposite — `PushManager` **is** present there. The two are not interchangeable stand-ins for each
+other; only the exact binary CI runs is authoritative, which is why `webkitSmoke.spec.ts` now
+asserts the capability directly rather than assuming either way. This still doesn't fully verify
+the floor's Web-Push rationale: no spec here, on any engine, performs a live `subscribe()` round
+trip against a real push service, and there is still no real-Safari CI runner to compare against
+— see the spec's own file header for the current, precise scope of what is and isn't proven.

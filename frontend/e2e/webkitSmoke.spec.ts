@@ -21,29 +21,25 @@ import { TEST_USER } from './global-setup';
 // question -- login, session, dashboard render -- which nothing else in CI
 // does.
 //
-// It deliberately does NOT assert the Push API surface is present. Verified
-// for this issue (2026-09-14) with a standalone WebKit2GTK 4.1
-// GObject-introspection smoke check (same open-source WebKit codebase
-// Playwright's own "webkit" channel is built from, minus Apple's private,
-// macOS-only push-service frameworks): `'serviceWorker' in navigator` is
-// true, but `'PushManager' in window` is false. Real Safari's Web Push
-// support is tied to those proprietary frameworks, which no open-source
-// WebKit build -- Playwright's or WebKitGTK's -- replicates, and there is no
-// real-Safari CI runner available here. So the floor's Web-Push rationale
-// itself stays genuinely unverifiable in CI; the test below pins that
-// absence explicitly (per this issue's own disposition: "explicitly record
-// that the stated floor rationale is unverified") rather than silently
-// assuming a capability nothing here can check, or asserting something that
-// would fail for a reason unrelated to this project's code. If a future
-// WebKit ships PushManager, this assertion breaks -- on purpose, as the
-// signal to strengthen it into a real capability check and update the two
-// docs above.
+// It also asserts the Push API surface itself is present -- confirmed on the
+// real Playwright-shipped WebKit build in CI for this issue (2026-09-14).
+// That corrects an earlier draft of this spec, which asserted the opposite
+// based on a standalone WebKit2GTK 4.1 GObject-introspection check (the
+// distro WebKitGTK 2.52.6 package, not Playwright's bundled build): that
+// engine reported `'serviceWorker' in navigator` true but `'PushManager' in
+// window` false. The two turned out not to be equivalent stand-ins -- real
+// CI on Playwright's actual webkit channel shows `PushManager` IS present.
+// Lesson for next time: a local proxy engine is a reasonable first check but
+// not a substitute for confirming against the exact binary CI will run.
 //
-// Like notifications.spec.ts's push-subscription test, no spec in this repo
-// -- on any engine -- performs a live subscribe() round trip against a real
-// push service; that is exercised through the API directly.
+// This still isn't a full verification of the floor's Web-Push rationale: no
+// spec in this repo, on any engine -- see notifications.spec.ts's
+// push-subscription test -- performs a live subscribe() round trip against a
+// real push service, and there is still no real-Safari CI runner anywhere to
+// compare against. What this pins is the capability surface the app's own
+// browserSupportsPush() checks for, on the actual engine CI can run.
 test.describe('WebKit smoke (issue #992)', () => {
-  test('the app loads and functions on WebKit; the Push API surface is absent', async ({
+  test('the app loads and functions on WebKit, with the Push API surface present', async ({
     page,
   }) => {
     await page.goto('/');
@@ -74,8 +70,9 @@ test.describe('WebKit smoke (issue #992)', () => {
       )
       .toBeGreaterThan(0);
 
-    // See the file header: this is a known, verified absence in every
-    // CI-available WebKit build, not a regression to chase.
+    // The exact binding constraint docs/development/supported-runtime-matrix.md's
+    // "Browsers" row names for the Safari/iOS >=16.4 floor: browserSupportsPush()
+    // in frontend/src/pushSubscription.ts checks for these same two globals.
     const capabilities = await page.evaluate(() => ({
       serviceWorker: 'serviceWorker' in navigator,
       pushManager: 'PushManager' in window,
@@ -83,9 +80,10 @@ test.describe('WebKit smoke (issue #992)', () => {
     expect(capabilities.serviceWorker, 'WebKit should expose the serviceWorker API').toBe(true);
     expect(
       capabilities.pushManager,
-      'WebKit unexpectedly exposes PushManager -- the Push API is now verifiable on this engine; ' +
-        'loosen this assertion to `.toBe(true)` and update the "Browsers" row notes in ' +
-        'docs/development/supported-runtime-matrix.md and docs/supported-versions.md',
-    ).toBe(false);
+      'WebKit no longer exposes PushManager on the Playwright build CI runs -- if this regressed ' +
+        'upstream, update this assertion and the "Browsers" row notes in ' +
+        'docs/development/supported-runtime-matrix.md and docs/supported-versions.md to say the ' +
+        'Push API surface is unverifiable again',
+    ).toBe(true);
   });
 });
