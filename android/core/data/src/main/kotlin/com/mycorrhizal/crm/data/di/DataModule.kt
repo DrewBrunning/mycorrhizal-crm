@@ -177,7 +177,7 @@ object DataModule {
         val dbFile = context.getDatabasePath(DB_NAME)
         val passphrase = passphraseStore.getOrCreate()
         RoomCacheEncryption.ensureEncrypted(dbFile, passphrase)
-        return Room.databaseBuilder(
+        fun buildDatabase(): AppDatabase = Room.databaseBuilder( // # pragma: no cover — provideDatabase needs a real Android Keystore (RoomPassphraseStore); see RoomEncryptionGuardTest
             context,
             AppDatabase::class.java,
             DB_NAME,
@@ -193,6 +193,12 @@ object DataModule {
             .addMigrations(*com.mycorrhizal.crm.data.local.REGISTERED_MIGRATIONS.toTypedArray()) // # pragma: no cover — provideDatabase needs a real Android Keystore (RoomPassphraseStore); see RoomEncryptionGuardTest
             .fallbackToDestructiveMigration()
             .build()
+        // Issue #998: if dbFile is left encrypted with some other, now-lost
+        // passphrase (e.g. a pre-fix build hit the RoomPassphraseStore
+        // async-persist race), it will fail to open under `passphrase` no
+        // matter how correctly that value was just persisted — recover by
+        // wiping and rebuilding a fresh cache rather than boot-looping.
+        return com.mycorrhizal.crm.data.local.RoomDatabaseRecovery.openOrRebuild(dbFile, ::buildDatabase) // # pragma: no cover — provideDatabase needs a real Android Keystore (RoomPassphraseStore); see RoomEncryptionGuardTest
     }
 
     @Provides
