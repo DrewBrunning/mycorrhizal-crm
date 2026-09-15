@@ -1,4 +1,4 @@
-# Mycorrhizal CRM Docker Compose - client/server compatibility E2E backend
+# Mycorrhizal CRM Docker Compose - client/server compatibility E2E backends
 #
 # Issue #528: a second all-in-one backend, on port 7301, that advertises a
 # client floor ABOVE the debug APK's versionName (0.1.0). The instrumented
@@ -10,9 +10,28 @@
 # builds — no second image build. It is a separate compose project so it does
 # not collide with the main test backend's container/volume names.
 #
+# Issue #914: a THIRD backend, on port 7302, pinned to the real
+# `ghcr.io/drewbrunning/mycorrhizal-crm:0.6.0` release image — this app's
+# actual migration/compatibility floor
+# (ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION), not a rebuild of current
+# main with a spoofed version. Before this, every client-facing compatibility
+# workflow (this file included) only ever booted the freshly-built `latest`
+# image, so the "a real old server still works, and post-baseline features are
+# hidden against it" claims in docs/client-compatibility-policy.md had no
+# end-to-end evidence. OldServerCompatibilityE2ETest drives the real app
+# against THIS instance. There is deliberately no fourth backend for a
+# BELOW-baseline server: v0.6.0 IS the floor, so no older release exists to
+# pin — that case (the blocking "server needs an upgrade" gate) is covered by
+# ServerTooOldGateE2ETest's synthetic /health response instead.
+#
+# The pinned tag must never move — it is the floor, not "the latest patch of
+# the floor line" (see the docker-ecosystem `ignore` entry in
+# .github/dependabot.yml).
+#
 # USAGE (CI):
 #   docker compose -p mycorrhizal-compat -f docker-compose.compat-test.yml up -d
 #   adb reverse tcp:7301 tcp:7301
+#   adb reverse tcp:7302 tcp:7302
 #   docker compose -p mycorrhizal-compat -f docker-compose.compat-test.yml down -v
 
 services:
@@ -45,7 +64,41 @@ services:
       retries: 15
       start_period: 5s
 
+  mycorrhizal-old-server:
+    # Pinned deliberately — this IS the v0.6.0 migration floor
+    # (ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION), not "whatever the
+    # 0.6.x line currently points at". Do not bump this tag.
+    image: ghcr.io/drewbrunning/mycorrhizal-crm:0.6.0
+    container_name: mycorrhizal-old-server-test
+    environment:
+      - SQLITE_DB_PATH=/app/data/old-server.db
+      - JWT_SECRET_KEY=test-secret-key-for-e2e-testing-minimum-32-chars
+      - PROFILE_PHOTO_DIR=/app/static/photos
+      - ATTACHMENTS_DIR=/app/static/attachments
+      - FRONTEND_URL=http://localhost:7302
+      - DISABLE_REGISTRATION=false
+      - API_RATE_LIMIT_INTERVAL_MS=1
+      - API_RATE_LIMIT_BURST=100000
+      - DB_RESTORE_DRILL_ENABLED=false
+    volumes:
+      - old-server-test-data:/app/data
+      - old-server-test-photos:/app/static/photos
+      - old-server-test-attachments:/app/static/attachments
+    ports:
+      - "7302:8080"
+    healthcheck:
+      # v0.6.0 predates the /health/live liveness split (that route 404s on
+      # this image) — the plain /health endpoint has existed since it did.
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
 volumes:
   compat-test-data:
   compat-test-photos:
   compat-test-attachments:
+  old-server-test-data:
+  old-server-test-photos:
+  old-server-test-attachments:

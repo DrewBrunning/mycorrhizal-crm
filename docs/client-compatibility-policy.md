@@ -256,6 +256,18 @@ required a client to update to keep working.
   the authoritative backstop for a client that skips its own check.
 - `/health` unreachable or returning a malformed body leaves both clients
   fully functional (fail open).
+- Issue #914: the degrade-against-an-older-server and
+  refuse-a-below-baseline-server claims above are proven against a real old
+  server, not only against the version-gate logic in isolation. Android's
+  `OldServerCompatibilityE2ETest` drives the real app against the pinned real
+  `ghcr.io/drewbrunning/mycorrhizal-crm:0.6.0` release image (this app's
+  actual migration floor) and asserts login still succeeds and a
+  post-baseline feature (`ServerFeature.API_TOKENS_ADVANCED`) is hidden;
+  `ServerTooOldGateE2ETest` covers the below-baseline case, which has no real
+  older release to boot (v0.6.0 IS the floor) and so stubs a synthetic
+  below-floor `/health` response instead. Both live in
+  `docker-compose.compat-test.yml` / `android-tests.yml`, alongside the
+  existing issue #528 `ForceUpdateGateE2ETest`.
 
 ## Related
 
