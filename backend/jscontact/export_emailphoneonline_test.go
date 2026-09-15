@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	registerExportCoverage("email", "phone", "impp", "social")
+	registerExportCoverage("email", "phone", "impp", "social", "email.label", "phone.label", "onlineservice.other")
 }
 
 func TestExport_Email(t *testing.T) {
@@ -36,6 +36,38 @@ func TestExport_Phone(t *testing.T) {
 		t.Fatalf("Export: %v", err)
 	}
 	rfctest.AssertJSONPointer(t, out, "/phones/k1/number", "+15551234567")
+}
+
+// TestExport_EmailLabel pins issue #968's email.label concept on export: the
+// neutral Card.Emails[].Label lands at the RFC 9553 §2.3.1 EmailAddress
+// `label` member, unlike the vCard formats which drop it with a warn.
+func TestExport_EmailLabel(t *testing.T) {
+	t.Parallel()
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		UID:    "email-label-example",
+		Emails: []contactmodel.Email{{ID: "k1", Address: "alice@example.com", Label: "Work Email"}},
+	}}
+	out, _, err := Adapter{}.Export(rec)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	rfctest.AssertJSONPointer(t, out, "/emails/k1/label", "Work Email")
+}
+
+// TestExport_PhoneLabel pins issue #968's phone.label concept on export: the
+// neutral Card.Phones[].Label lands at the RFC 9553 §2.3.3 Phone `label`
+// member, unlike the vCard formats which drop it with a warn.
+func TestExport_PhoneLabel(t *testing.T) {
+	t.Parallel()
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		UID:    "phone-label-example",
+		Phones: []contactmodel.Phone{{ID: "k1", Number: "+15551234567", Label: "Mobile"}},
+	}}
+	out, _, err := Adapter{}.Export(rec)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	rfctest.AssertJSONPointer(t, out, "/phones/k1/label", "Mobile")
 }
 
 func TestExport_IMPP(t *testing.T) {

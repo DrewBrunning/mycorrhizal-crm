@@ -6,15 +6,19 @@ import (
 	"mycorrhizal/internal/rfctest"
 )
 
-// Concepts: email, phone, impp, social.
+// Concepts: email, phone, impp, social, email.label, phone.label, onlineservice.other.
 // Rows: email  Card.Emails[].Address              /emails/{id}/address        identity
 //
 //	phone  Card.Phones[].Number               /phones/{id}/number         identity
 //	impp   Card.ImppAddresses[].URI           /onlineServices/{id}/uri    identity (routed by vCardName="impp")
 //	social Card.SocialProfiles[].Service      /onlineServices/{id}        onlineservice (anchor
 //	       field Service; jointly handles sibling .User, per the row's notes; routed by vCardName="socialprofile")
+//	email.label          Card.Emails[].Label                /emails/{id}/label   identity (issue #968)
+//	phone.label          Card.Phones[].Label                /phones/{id}/label   identity (issue #968)
+//	onlineservice.other  Card.OtherOnlineServices[].Service  /onlineServices/{id} identity (issue #968;
+//	                     exercised by TestImport_OnlineServiceNoVCardNameHint below)
 func init() {
-	registerImportCoverage("email", "phone", "impp", "social")
+	registerImportCoverage("email", "phone", "impp", "social", "email.label", "phone.label", "onlineservice.other")
 }
 
 func TestImport_Email(t *testing.T) {
@@ -97,6 +101,46 @@ func TestImport_SocialProfile(t *testing.T) {
 	}
 	if len(rec.Card.ImppAddresses) != 0 || len(rec.Card.OtherOnlineServices) != 0 {
 		t.Errorf("expected no ImppAddresses/OtherOnlineServices, got %+v / %+v", rec.Card.ImppAddresses, rec.Card.OtherOnlineServices)
+	}
+}
+
+// TestImport_EmailLabel pins issue #968's email.label concept: the RFC 9553
+// §2.3.1 EmailAddress `label` member round-trips into Card.Emails[].Label,
+// unlike the vCard formats which have no carrier for it at all.
+func TestImport_EmailLabel(t *testing.T) {
+	t.Parallel()
+	raw := []byte(`{
+		"@type": "Card", "version": "1.0", "uid": "email-label-example",
+		"emails": {
+			"k1": { "@type": "EmailAddress", "address": "alice@example.com", "label": "Work Email" }
+		}
+	}`)
+	rec, _, err := Adapter{}.Import(raw)
+	if err != nil {
+		t.Fatalf("Import: %v", err)
+	}
+	if len(rec.Card.Emails) != 1 || rec.Card.Emails[0].Label != "Work Email" {
+		t.Errorf("Emails = %+v, want Label \"Work Email\"", rec.Card.Emails)
+	}
+}
+
+// TestImport_PhoneLabel pins issue #968's phone.label concept: the RFC 9553
+// §2.3.3 Phone `label` member round-trips into Card.Phones[].Label, unlike
+// the vCard formats which have no carrier for it at all.
+func TestImport_PhoneLabel(t *testing.T) {
+	t.Parallel()
+	raw := []byte(`{
+		"@type": "Card", "version": "1.0", "uid": "phone-label-example",
+		"phones": {
+			"k1": { "@type": "Phone", "number": "+15551234567", "label": "Mobile" }
+		}
+	}`)
+	rec, _, err := Adapter{}.Import(raw)
+	if err != nil {
+		t.Fatalf("Import: %v", err)
+	}
+	if len(rec.Card.Phones) != 1 || rec.Card.Phones[0].Label != "Mobile" {
+		t.Errorf("Phones = %+v, want Label \"Mobile\"", rec.Card.Phones)
 	}
 }
 
