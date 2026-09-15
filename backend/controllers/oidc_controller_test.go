@@ -865,6 +865,43 @@ func TestOIDCCallbackHandler_AndroidMissingNativeBinding(t *testing.T) {
 	assert.Equal(t, "oidc_error", loc.Query().Get("error"))
 }
 
+// Issue #965: the native mint must fail closed. With no JWT secret configured
+// (an impossible-but-defensive config), a fully valid android callback still
+// must not hand back a code — it redirects to the app's error target instead.
+func TestOIDCCallbackHandler_AndroidMintFailureRedirectsToError(t *testing.T) {
+	idp := newFakeCallbackIDP(t, "test-client")
+	idp.IDTokenClaims["nonce"] = "matching-nonce"
+	idp.IDTokenClaims["sub"] = "existing-subject"
+
+	provider, cfg := newCallbackTestSetup(t, idp)
+	cfg.JWTSecretKey = ""
+
+	db, router := setupRouter()
+	router.GET("/callback", OIDCCallbackHandler(provider, cfg))
+
+	subject := "existing-subject"
+	providerURL := idp.Server.URL
+	linkedUser := models.User{
+		Username:     "mint-failure",
+		Password:     "",
+		Email:        "mint-failure@example.com",
+		OIDCSubject:  &subject,
+		OIDCProvider: &providerURL,
+	}
+	require.NoError(t, db.Create(&linkedUser).Error)
+
+	req := callbackRequest(androidCookieSet("good-state", "matching-nonce", "good-pkce"),
+		url.Values{"state": {"good-state"}, "code": {"auth-code"}})
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	loc, err := url.Parse(w.Header().Get("Location"))
+	require.NoError(t, err)
+	assert.Equal(t, "mycorrhizal", loc.Scheme)
+	assert.Equal(t, "oidc_error", loc.Query().Get("error"))
+	assert.Empty(t, loc.Query().Get("code"), "no exchange code may be emitted")
+}
+
 func splitJWT(s string) []string {
 	var parts []string
 	start := 0

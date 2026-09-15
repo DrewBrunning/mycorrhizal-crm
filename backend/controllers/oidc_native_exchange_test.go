@@ -128,6 +128,19 @@ func TestOIDCNativeExchangeHandler_ValidationAndRejections(t *testing.T) {
 	})
 }
 
+// The handler is defensive if it is ever invoked without the JSON-validation
+// middleware in front of it (GetValidated finds nothing in context): it must
+// reject rather than nil-panic.
+func TestOIDCNativeExchangeHandler_MissingValidatedBodyIsRejected(t *testing.T) {
+	_, router := setupRouter()
+	cfg := exchangeTestConfig()
+	router.POST("/exchange", OIDCNativeExchangeHandler(cfg))
+
+	w := postExchange(t, router, map[string]string{"code": "x", "code_verifier": "y"})
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
 // The exchange code must never be usable as a bearer session, even though it is
 // signed by the same secret: AuthMiddleware rejects any token carrying a
 // `purpose` claim. This is the property that makes leaking the deep link
