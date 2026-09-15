@@ -34,6 +34,47 @@ describe('formatDateWithFormat', () => {
   test('returns unparseable input unchanged', () => {
     expect(formatDateWithFormat('not-a-date', 'eu')).toBe('not-a-date');
   });
+
+  test('formats a year-less date-only string (--MM-DD)', () => {
+    expect(formatDateWithFormat('--06-11', 'iso')).toBe('06-11');
+    expect(formatDateWithFormat('--06-11', 'eu')).toBe('11.06.');
+  });
+});
+
+// Issue #962: timestamps (as opposed to date-only YYYY-MM-DD strings) must
+// render in the *local* zone, matching the rest of the app's `toLocaleString()`
+// calls. The old implementation read UTC getters unconditionally, so a
+// timestamp near local midnight rendered on the wrong day for any non-UTC
+// user. Changing process.env.TZ at runtime does move Date's local getters in
+// this Node/V8 build, so these are real, deterministic timezone regressions
+// -- not simulated.
+describe('formatDateWithFormat with timestamps (#962)', () => {
+  const originalTZ = process.env.TZ;
+
+  afterEach(() => {
+    process.env.TZ = originalTZ;
+  });
+
+  test('renders a timestamp on its local date for a negative UTC offset', () => {
+    process.env.TZ = 'America/Bogota'; // UTC-05:00, no DST
+    // 20:00 local on the 11th is 01:00 UTC on the 12th. The UTC-getter bug
+    // rendered this one day ahead of the user's actual local date.
+    expect(formatDateWithFormat('2026-06-11T20:00:00-05:00', 'iso')).toBe('2026-06-11');
+  });
+
+  test('renders a timestamp on its local date for a positive UTC offset', () => {
+    process.env.TZ = 'Pacific/Auckland'; // NZST is UTC+12 in June (southern winter, no DST)
+    // 01:00 local on the 12th is 13:00 UTC on the 11th. The UTC-getter bug
+    // rendered this one day behind the user's actual local date.
+    expect(formatDateWithFormat('2026-06-12T01:00:00+12:00', 'iso')).toBe('2026-06-12');
+  });
+
+  test('date-only strings stay timezone-independent', () => {
+    process.env.TZ = 'Pacific/Kiritimati'; // UTC+14, furthest-ahead extreme
+    expect(formatDateWithFormat('2026-06-11', 'iso')).toBe('2026-06-11');
+    process.env.TZ = 'Etc/GMT+12'; // UTC-12, furthest-behind extreme
+    expect(formatDateWithFormat('2026-06-11', 'iso')).toBe('2026-06-11');
+  });
 });
 
 describe('formatBirthdayWithFormat', () => {

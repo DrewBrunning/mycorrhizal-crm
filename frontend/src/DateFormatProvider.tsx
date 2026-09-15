@@ -203,18 +203,41 @@ function formatYearlessDate(month: string, day: string, format: DateFormat): str
   }
 }
 
+// Date-only strings (RFC 3339 full-date / vCard year-less) carry no time
+// component, so there is no timezone to shift them by — read the calendar
+// digits straight out of the string.
+const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const DATE_ONLY_YEARLESS_REGEX = /^--\d{2}-\d{2}$/;
+
 /**
- * Format a standard date (ISO format) to the user's preferred display format
+ * Format a standard date (ISO format) to the user's preferred display format.
+ *
+ * `dateString` is either a date-only string (no timezone to convert — the
+ * calendar digits are read directly) or a timestamp (parsed and rendered in
+ * the *local* zone, matching how the rest of the app renders timestamps with
+ * `toLocaleString()`). Rendering a timestamp's UTC calendar date instead of
+ * its local one shifts the displayed day for any non-UTC user — see #962.
  */
 export function formatDateWithFormat(dateString: string, format: DateFormat): string {
   if (!dateString) return '';
 
+  if (DATE_ONLY_REGEX.test(dateString)) {
+    const [year, month, day] = dateString.split('-');
+    return formatFullDate(year, month, day, format);
+  }
+
+  if (DATE_ONLY_YEARLESS_REGEX.test(dateString)) {
+    const month = dateString.substring(2, 4);
+    const day = dateString.substring(5, 7);
+    return formatYearlessDate(month, day, format);
+  }
+
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return dateString;
 
-  const day = String(date.getUTCDate()).padStart(2, '0');
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const year = date.getUTCFullYear();
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
 
   return formatFullDate(String(year), month, day, format);
 }
