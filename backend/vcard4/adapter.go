@@ -376,12 +376,47 @@ func rfc3339ToVCardTimestamp(rfc3339 string) string {
 	return t.UTC().Format(vcardTimestampLayout)
 }
 
-func vcardTimestampToRFC3339(v string) string {
-	t, err := time.Parse(vcardTimestampLayout, v)
-	if err != nil {
-		return v
+// vcardDateTimeLayouts are the DATE-AND-OR-TIME/TIMESTAMP layouts (RFC 6350
+// §4.3) that carry a "T" AND a zone: both the compact (basic) and extended
+// (dashed) date forms, each with a UTC "Z" suffix or a numeric offset (with
+// or without a ":" and with or without minutes, e.g. "-05" per the spec's
+// own `19961022T140000-05` example). Issue #969: a value in any of these
+// forms was previously stored verbatim instead of being converted, so an
+// offset form was later emitted as JSContact `utc` unconverted — not
+// RFC 9553's UTCDateTime, and read by a conformant consumer as if it were
+// already UTC (a silent shift by the offset).
+//
+// Deliberately excludes zone-less layouts ("2006-01-02T15:04:05" /
+// "20060102T150405" with no trailing zone): docs/adrs/0015-temporal-semantics.md
+// Category 5 requires a zone-less imported timestamp be preserved verbatim,
+// never assumed-UTC — pinned by the `sem-timestamp-no-tz` adversarial
+// fixture. Only a value that already states its own offset is safe to
+// convert.
+var vcardDateTimeLayouts = []string{
+	"2006-01-02T15:04:05Z07:00",
+	"2006-01-02T15:04:05Z0700",
+	"2006-01-02T15:04:05Z07",
+	"20060102T150405Z07:00",
+	"20060102T150405Z0700",
+	"20060102T150405Z07",
+}
+
+// parseVCardTimestamp tries every vcardDateTimeLayouts form and reports
+// whether one matched.
+func parseVCardTimestamp(v string) (time.Time, bool) {
+	for _, layout := range vcardDateTimeLayouts {
+		if t, err := time.Parse(layout, v); err == nil {
+			return t, true
+		}
 	}
-	return t.UTC().Format(time.RFC3339)
+	return time.Time{}, false
+}
+
+func vcardTimestampToRFC3339(v string) string {
+	if t, ok := parseVCardTimestamp(v); ok {
+		return t.UTC().Format(time.RFC3339)
+	}
+	return v
 }
 
 // ---------------------------------------------------------------------------
@@ -1127,6 +1162,20 @@ func parsePartialDate(v string) *contactmodel.PartialDate {
 	if v == "" {
 		return nil
 	}
+	if strings.HasPrefix(v, "---") {
+		// Day-only reduced form ("---" day, RFC 6350 §4.3, e.g. "---05").
+		// Must be checked before the "--" (month[-day]) branch below, since
+		// "---05" also matches that prefix and was previously misread as
+		// month=05 instead of day=5 (issue #966).
+		core := strings.TrimPrefix(v, "---")
+		var pd contactmodel.PartialDate
+		if len(core) >= 2 {
+			if d, err := strconv.Atoi(core[0:2]); err == nil {
+				pd.Day = &d
+			}
+		}
+		return &pd
+	}
 	if strings.HasPrefix(v, "--") {
 		core := strings.ReplaceAll(strings.TrimPrefix(v, "--"), "-", "")
 		var pd contactmodel.PartialDate
@@ -1195,6 +1244,13 @@ func formatPartialDate(p *contactmodel.PartialDate) string {
 
 func parseVCardDateAndOrTime(v string) contactmodel.AnniversaryDate {
 	if strings.Contains(v, "T") {
+		if t, ok := parseVCardTimestamp(v); ok {
+			ts := t.UTC().Format(time.RFC3339)
+			return contactmodel.AnniversaryDate{Timestamp: &ts}
+		}
+		// Unparseable (e.g. a reduced DATE-TIME with no year, "--1022T1400")
+		// has no absolute-instant representation; preserve the wire value
+		// rather than silently drop it.
 		return contactmodel.AnniversaryDate{Timestamp: &v}
 	}
 	return contactmodel.AnniversaryDate{Partial: parsePartialDate(v)}
