@@ -581,6 +581,27 @@ warned about. Two directions:
    wheels — regenerate per its header if setup-python moves), and runs the
    test, which registers its own throwaway user.
 
+3. **Reference GUI client → our server** (issue #917, the reference-client
+   *matrix*'s automated leg — see `docs/development/reference-client-matrix.md`
+   for the full matrix and what's manual vs. automated). A real, pinned
+   **DAVx5-OSE** APK — sideloaded, not our own instrumented code — is driven
+   through account setup on an Android emulator by
+   `.github/scripts/reference-client-davx5/run.sh` via `adb`/uiautomator,
+   locating every UI element by exact text/content-desc (DAVx5 is a Jetpack
+   Compose app with no resource-ids in its accessibility tree) rather than
+   hardcoded coordinates. Unlike vdirsyncer above, the assertion isn't a Go
+   test reading the client's in-memory state — it's `adb shell content query`
+   against Android's real `ContactsContract`, the same surface a human
+   tester's eyeball would check, seeded with the canonical pathological
+   dataset (issue #430) so non-ASCII names are part of the assertion. This
+   also stands in for the matrix's "Android native contacts (via the Android
+   provider)" row: DAVx5 syncs through Android's real sync adapter into the
+   real provider, so one pass covers both. The workflow job (`davx5` in
+   `reference-clients-e2e.yml`) seeds a server with `pentestseed`, boots the
+   emulator via `reactivecircus/android-emulator-runner` (the same action
+   `android-tests.yml` uses), and runs the script — same nightly +
+   path-gated schedule as the vdirsyncer job.
+
 **Running locally:** start our server (see the launch.json note in CLAUDE.md),
 then
 
@@ -616,6 +637,15 @@ the fake suite):
   by design" (403). Fixed with a red test.
 - **GET/DELETE of a missing card returned 500** instead of 404 — vdirsyncer's
   delete round-trip surfaced it. Fixed with a red test.
+- **`.well-known/{carddav,caldav}` 404'd on `PROPFIND`**, only accepting
+  `GET`. RFC 6764 only requires `GET`, but a real DAVx5 client issues
+  `PROPFIND` directly at the well-known URI during autodiscovery and got a
+  404 instead of the redirect — account setup failed outright with
+  "Couldn't find CalDAV or CardDAV service." Found by the DAVx5 leg (#917) on
+  its first-ever run; a Go-only test of the handler couldn't have caught this
+  since the handler itself is method-agnostic — the bug was the router
+  registration. Fixed in `backend/routes/routes.go`, pinned by
+  `TestWellKnownDAVDiscovery_AcceptsPROPFIND`.
 
 **Known limitation (documented, not yet fixed):** our go-webdav client cannot
 negotiate an `address-data` version (go-webdav v0.7.0 `AddressDataRequest` has

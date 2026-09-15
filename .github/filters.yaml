@@ -164,7 +164,13 @@ carddav:
 reference-clients:
   - '.github/workflows/reference-clients-e2e.yml'
   - '.github/scripts/carddav-reference/**'
+  # Issue #917: the DAVx5 leg also exercises CalDAV (both collections get
+  # enabled in the app), and its own well-known-discovery fix lives in
+  # routes/routes.go, not a carddav/caldav package file — covered by the
+  # workflow-file entry above plus routes.go's own broad test suite.
+  - '.github/scripts/reference-client-davx5/**'
   - 'backend/carddav/**'
+  - 'backend/caldav/**'
   - 'backend/services/carddav_vdirsyncer_integration_test.go'
   # Same reason as the carddav filter: this suite stages the whole TEST-02
   # canonical manifest, so a persona-only fixture change must run it (#852).
