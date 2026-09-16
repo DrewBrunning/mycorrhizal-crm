@@ -167,20 +167,22 @@ suppressed inline with `# zizmor: ignore[unpinned-uses]` on that line, and the
 verification consequence is documented in
 `docs/security/release-verification.md`.
 
-**Gradle is not locked yet, and that is a recorded decision, not an
-oversight.** `license-compliance.yml`'s Trivy license scan can only enumerate
-Gradle dependency licenses from a `gradle.lockfile`, which this repo does not
-emit — so Android's dependency tree is the one ecosystem with no automated
-license or (beyond Dependabot's own alerts) vulnerability visibility.
-Adopting Gradle dependency locking (`./gradlew dependencies --write-locks`
-plus a verify-lockfile CI step) is a real, separate lift — it touches the
-Android build's version-catalog wiring, not just a scanner config — and is
-deliberately deferred rather than bundled into this policy page as a side
-effect. Until it lands, Android dependency risk is covered by Dependabot's
-`gradle` ecosystem entry alone (weekly, grouped minor/patch, 7-day cooldown,
-same as every other ecosystem) — narrower than the other four, and that
-narrowness is the gap this paragraph exists to keep visible rather than
-silent.
+**Gradle is now locked too (issue #942).** Every module's `release`
+compile/runtime classpaths — the classpath that actually becomes the
+published APK — carry a committed `gradle.lockfile`
+(`android/build.gradle.kts`'s `subprojects` block registers
+`resolveAndLockAll` to regenerate them and `verifyDependencyLocks` to check
+them without writing). `debug`, test, and the app's benchmark-only build type
+are deliberately excluded: they never ship, and resolving several of AGP's
+internal project-to-project configurations outside its own variant-aware
+task graph hits a real (locking-unrelated) variant-ambiguity error — see the
+doc comment above `subprojects` for the full reasoning. With a lockfile per
+module, `license-compliance.yml`'s Trivy license scan can finally enumerate
+Gradle licenses the same way it already reads `go.sum`/`yarn.lock` — the
+`android-license` job downloads the real dependency files
+(`downloadLicenseScanArtifacts`, this ecosystem's equivalent of `go mod
+download`) before scanning. Android dependency risk is no longer covered by
+Dependabot's `gradle` ecosystem entry alone.
 
 ## When an update cannot be applied
 
@@ -193,16 +195,18 @@ answer is a **recorded, time-bounded exception**, never silence:
 
 [`docs/security/dependency-exceptions.ignore`](security/dependency-exceptions.ignore)
 records one entry per unresolved advisory — the advisory ID, ecosystem,
-package, when it was opened, when it expires (at most 90 days out — the same
-default review period [MAINT-01 (issue #490)](breaking-change-policy.md)
-uses for a deprecation window, reused here rather than inventing a second
-number), the owner, and why it cannot be fixed yet. `cd backend && go run
-./cmd/depexceptions` parses and validates that ledger — malformed entries
-fail, and **an entry whose `expires` date has passed fails the check** — and
-runs alongside `citecheck` in `unit-tests.yml`'s `backend-checks` job, so it
-executes on every backend PR and on the nightly full-suite run
-(`unit-tests.yml`'s `schedule` trigger), which means an expired exception
-gets surfaced within a day even with no PR activity to trip over it.
+package, when it was first opened, when the current window opened, when it
+expires (at most 90 days out — the same default review period
+[MAINT-01 (issue #490)](breaking-change-policy.md) uses for a deprecation
+window, reused here rather than inventing a second number), how many times
+it has been renewed, the owner, and why it cannot be fixed yet. `cd backend
+&& go run ./cmd/depexceptions` parses and validates that ledger — malformed
+entries fail, and **an entry whose `expires` date has passed fails the
+check** — and runs alongside `citecheck` in `unit-tests.yml`'s
+`backend-checks` job, so it executes on every backend PR and on the nightly
+full-suite run (`unit-tests.yml`'s `schedule` trigger), which means an
+expired exception gets surfaced within a day even with no PR activity to
+trip over it.
 
 This is deliberately a different shape from this repo's existing permanent
 ignore lists (`.trivyignore`, `.grype.yml`, `zap/dast.ignore`,
@@ -214,7 +218,19 @@ dependency" — a decision that can stand forever once written down. The
 dependency-exceptions ledger records the opposite situation: a real,
 applicable advisory that is temporarily unfixed. An exception that is still
 open when it expires must be resolved (apply the fix) or renewed (a fresh
-dated entry with an updated reason) — it cannot just sit there.
+dated window, an incremented `renewals` count, and an updated reason) — it
+cannot just sit there.
+
+**Renewing is not free forever (issue #942).** A `renewals` count that keeps
+climbing with nothing else changing is exactly the silent-forever-extension
+failure mode a time-bounded exception was supposed to prevent in the first
+place — an unfixable CVE could otherwise sit behind perpetual quiet 90-day
+renewals indefinitely. Once an entry's `renewals` reaches 2 (its third
+recording — roughly nine months unresolved), `depexceptions` additionally
+requires `reason` to contain an `escalated:` note. The bar is a written
+decision, not a fixed remediation: "still waiting on upstream, checked
+2026-11-01" is a valid escalation as long as someone actually looked and
+said so.
 
 ## Tying this to the compatibility matrix
 

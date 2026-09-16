@@ -29,11 +29,9 @@
 # License-compliance gates (issue #361). These are narrower than the area
 # filters above: they only fire when the dependency *manifest* changes, so a
 # source-only edit doesn't pay for dependency resolution + a license scan.
-# Gradle is deliberately absent — trivy can only enumerate Gradle licenses
-# from a `gradle.lockfile` (dependency locking), which this repo doesn't emit
-# yet; see license-compliance.yml. Enabling Gradle dependency locking is
-# deferred to COMPAT-03 (issue #474) — see docs/security/reproducible-builds.md
-# ("Known, accepted limitations").
+# Issue #942 added the Gradle leg once dependency locking (`gradle.lockfile`
+# per module) gave Trivy something to enumerate Gradle licenses from — see
+# license-compliance.yml.
 go-manifests:
   - 'backend/go.mod'
   - 'backend/go.sum'
@@ -41,6 +39,12 @@ go-manifests:
 npm-manifests:
   - 'frontend/package.json'
   - 'frontend/yarn.lock'
+
+gradle-manifests:
+  - 'android/**/build.gradle.kts'
+  - 'android/**/gradle.lockfile'
+  - 'android/gradle/libs.versions.toml'
+  - 'android/settings.gradle.kts'
 
 # REL-05 (issue #449): the operator-visible surfaces. A PR touching one of these
 # must carry an `## Upgrade notes` / `## Breaking changes` block in its

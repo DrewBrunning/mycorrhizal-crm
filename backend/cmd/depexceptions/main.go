@@ -13,17 +13,24 @@
 // This command re-verifies both structural and temporal correctness of that
 // ledger on every run:
 //
-//  1. Every non-comment line parses as the seven-field format the ledger's
-//     own header documents (advisory, ecosystem, package, opened, expires,
-//     owner, reason), with valid dates and a known ecosystem.
+//  1. Every non-comment line parses as the nine-field format the ledger's
+//     own header documents (advisory, ecosystem, package, first_opened,
+//     opened, expires, renewals, owner, reason), with valid dates, a
+//     non-negative renewal count, and a known ecosystem.
 //  2. `opened` is not after `expires`, and the window between them is at most
 //     90 days (the deprecation-policy default period, MAINT-01, issue #490).
 //  3. `expires` has not already passed relative to when the check runs — the
 //     mechanical half of "something surfaces it when the expiry passes".
+//  4. `renewals` has not reached escalationThresholdRenewals without a
+//     recorded escalation decision in `reason` — issue #942's answer to "an
+//     unfixable CVE can sit behind perpetual 90-day renewals with no
+//     visibility that it never resolved": renewing quietly forever is not
+//     allowed, only renewing-with-a-written-decision is.
 //
-// Exit status 0 means every entry is well-formed and unexpired (including
-// zero entries — nothing to report is not a failure); 1 means at least one
-// entry is malformed or expired; 2 means the check itself could not run.
+// Exit status 0 means every entry is well-formed, unexpired, and not overdue
+// for escalation (including zero entries — nothing to report is not a
+// failure); 1 means at least one entry is malformed, expired, or overdue for
+// escalation; 2 means the check itself could not run.
 package main
 
 import (
@@ -32,6 +39,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -47,6 +55,21 @@ const dateLayout = "2006-01-02"
 // default review period (MAINT-01, issue #490) — one project-wide number for
 // "revisit this," not a second one invented here.
 const maxWindowDays = 90
+
+// escalationThresholdRenewals is the number of quiet renewals an exception
+// may accumulate before it must carry a written escalation decision (issue
+// #942). At 0 renewals (first recording) and 1 renewal (one quiet extension,
+// already covered by the normal 90-day review cadence above), nothing extra
+// is required; from the 2nd renewal on — roughly nine months of an
+// unresolved advisory — silence is no longer acceptable, and `reason` must
+// record that someone looked at it again and made a deliberate call.
+const escalationThresholdRenewals = 2
+
+// escalationMarker is the case-insensitive substring `reason` must contain
+// once escalationThresholdRenewals is reached. Deliberately loose (a marker
+// plus free text, not a fixed schema) — the point is a human wrote down a
+// decision, not that they filled out a form.
+const escalationMarker = "escalated:"
 
 // validEcosystems are the Dependabot ecosystems this repo actually tracks
 // (.github/dependabot.yml): Go modules, npm/Yarn, Gradle, Docker base
@@ -66,14 +89,16 @@ func main() {
 
 // exception is one parsed, structurally valid ledger entry.
 type exception struct {
-	line      int
-	advisory  string
-	ecosystem string
-	pkg       string
-	opened    time.Time
-	expires   time.Time
-	owner     string
-	reason    string
+	line        int
+	advisory    string
+	ecosystem   string
+	pkg         string
+	firstOpened time.Time
+	opened      time.Time
+	expires     time.Time
+	renewals    int
+	owner       string
+	reason      string
 }
 
 // finding is one problem, reported as `line N: message`. Every finding this
@@ -122,6 +147,18 @@ func check(w io.Writer, root string, now time.Time) (int, error) {
 
 	if len(findings) == 0 {
 		fmt.Fprintf(w, "%s: %d recorded exception(s), none expired.\n", exceptionsFile, len(entries))
+		// Visibility for a passing-but-renewed entry (issue #942): below the
+		// escalationThresholdRenewals gate above, so it doesn't fail the
+		// build, but a renewal is worth surfacing on every run rather than
+		// only once it becomes a failure — the whole point is that nobody
+		// has to remember to go looking.
+		for _, e := range entries {
+			if e.renewals > 0 {
+				ageDays := int(now.Sub(e.firstOpened).Hours() / 24)
+				fmt.Fprintf(w, "  renewed: %s (%s/%s) — %d renewal(s), open %d day(s) (since %s)\n",
+					e.advisory, e.ecosystem, e.pkg, e.renewals, ageDays, e.firstOpened.Format(dateLayout))
+			}
+		}
 		return 0, nil
 	}
 
@@ -134,7 +171,7 @@ func check(w io.Writer, root string, now time.Time) (int, error) {
 }
 
 // parseExceptions reads every non-blank, non-comment line of the ledger as a
-// seven-field pipe-delimited entry. A line that fails to parse is reported as
+// nine-field pipe-delimited entry. A line that fails to parse is reported as
 // a finding rather than skipped, so a typo cannot silently disappear.
 func parseExceptions(body string) ([]exception, []finding) {
 	var entries []exception
@@ -149,9 +186,9 @@ func parseExceptions(body string) ([]exception, []finding) {
 		for j := range fields {
 			fields[j] = strings.TrimSpace(fields[j])
 		}
-		if len(fields) != 7 {
+		if len(fields) != 9 {
 			findings = append(findings, finding{lineNo, fmt.Sprintf(
-				"expected 7 pipe-delimited fields (advisory | ecosystem | package | opened | expires | owner | reason), got %d", len(fields))})
+				"expected 9 pipe-delimited fields (advisory | ecosystem | package | first_opened | opened | expires | renewals | owner | reason), got %d", len(fields))})
 			continue
 		}
 		e := exception{
@@ -159,8 +196,8 @@ func parseExceptions(body string) ([]exception, []finding) {
 			advisory:  fields[0],
 			ecosystem: fields[1],
 			pkg:       fields[2],
-			owner:     fields[5],
-			reason:    fields[6],
+			owner:     fields[7],
+			reason:    fields[8],
 		}
 		var bad []string
 		if e.advisory == "" {
@@ -178,17 +215,29 @@ func parseExceptions(body string) ([]exception, []finding) {
 		if e.reason == "" {
 			bad = append(bad, "reason is empty")
 		}
-		opened, err := time.Parse(dateLayout, fields[3])
+		firstOpened, err := time.Parse(dateLayout, fields[3])
 		if err != nil {
-			bad = append(bad, fmt.Sprintf("opened %q is not a YYYY-MM-DD date", fields[3]))
+			bad = append(bad, fmt.Sprintf("first_opened %q is not a YYYY-MM-DD date", fields[3]))
+		} else {
+			e.firstOpened = firstOpened
+		}
+		opened, err := time.Parse(dateLayout, fields[4])
+		if err != nil {
+			bad = append(bad, fmt.Sprintf("opened %q is not a YYYY-MM-DD date", fields[4]))
 		} else {
 			e.opened = opened
 		}
-		expires, err := time.Parse(dateLayout, fields[4])
+		expires, err := time.Parse(dateLayout, fields[5])
 		if err != nil {
-			bad = append(bad, fmt.Sprintf("expires %q is not a YYYY-MM-DD date", fields[4]))
+			bad = append(bad, fmt.Sprintf("expires %q is not a YYYY-MM-DD date", fields[5]))
 		} else {
 			e.expires = expires
+		}
+		renewals, err := strconv.Atoi(fields[6])
+		if err != nil || renewals < 0 {
+			bad = append(bad, fmt.Sprintf("renewals %q is not a non-negative integer", fields[6]))
+		} else {
+			e.renewals = renewals
 		}
 		if len(bad) > 0 {
 			findings = append(findings, finding{lineNo, strings.Join(bad, "; ")})
@@ -199,11 +248,18 @@ func parseExceptions(body string) ([]exception, []finding) {
 	return entries, findings
 }
 
-// validate checks the temporal rules that need both dates parsed
-// successfully: the window is ordered and bounded, and expiry hasn't passed.
+// validate checks the rules that need every field parsed successfully: the
+// opened/expires window is ordered and bounded, first_opened isn't after
+// opened, expiry hasn't passed, and a heavily renewed entry has a recorded
+// escalation decision.
 func validate(entries []exception, now time.Time) []finding {
 	var out []finding
 	for _, e := range entries {
+		if e.opened.Before(e.firstOpened) {
+			out = append(out, finding{e.line, fmt.Sprintf(
+				"opened (%s) is before first_opened (%s)", e.opened.Format(dateLayout), e.firstOpened.Format(dateLayout))})
+			continue
+		}
 		if e.expires.Before(e.opened) {
 			out = append(out, finding{e.line, fmt.Sprintf(
 				"expires (%s) is before opened (%s)", e.expires.Format(dateLayout), e.opened.Format(dateLayout))})
@@ -219,6 +275,12 @@ func validate(entries []exception, now time.Time) []finding {
 			out = append(out, finding{e.line, fmt.Sprintf(
 				"%s (%s/%s) expired on %s — apply the fix, or renew with a fresh dated entry and an updated reason",
 				e.advisory, e.ecosystem, e.pkg, e.expires.Format(dateLayout))})
+			continue
+		}
+		if e.renewals >= escalationThresholdRenewals && !strings.Contains(strings.ToLower(e.reason), escalationMarker) {
+			out = append(out, finding{e.line, fmt.Sprintf(
+				"%s (%s/%s) has been renewed %d time(s) (open since %s) with no recorded escalation — add an %q note to reason describing the decision to keep renewing, or apply the fix",
+				e.advisory, e.ecosystem, e.pkg, e.renewals, e.firstOpened.Format(dateLayout), escalationMarker)})
 		}
 	}
 	return out
