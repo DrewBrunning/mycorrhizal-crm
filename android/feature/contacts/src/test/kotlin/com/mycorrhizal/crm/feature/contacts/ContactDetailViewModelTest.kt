@@ -31,8 +31,10 @@ import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.ui.R
 import androidx.lifecycle.SavedStateHandle
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -579,6 +581,116 @@ class ContactDetailViewModelTest {
         io.mockk.coVerify(exactly = 1) { contactRepository.getContact(5) }
     }
 
+    // --- CON-01..04 style: the isMutating double-submit guard shared by
+    // delete/archive/export/upload. Coverage-analysis follow-up: nothing
+    // proved the early return in each of these actually blocks a second
+    // concurrent call while one is in flight. ---
+
+    @Test
+    fun `deleteContact ignores a second call while the first is in flight`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        val gate = CompletableDeferred<Unit>()
+        coEvery { contactRepository.deleteContact(5) } coAnswers {
+            gate.await()
+            Result.success(Unit)
+        }
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        vm.deleteContact()
+        advanceUntilIdle() // isMutating flips true and the coroutine suspends on the gate
+        assertTrue(vm.uiState.value.isMutating)
+
+        vm.deleteContact() // a second call while the first is still in flight must be a no-op
+
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { contactRepository.deleteContact(5) }
+        assertEquals(ContactDetailEvent.ContactDeleted, vm.events.value)
+    }
+
+    @Test
+    fun `setArchived ignores a second call while the first is in flight`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        val gate = CompletableDeferred<Unit>()
+        coEvery { contactRepository.archiveContact(5) } coAnswers {
+            gate.await()
+            Result.success(Unit)
+        }
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        vm.setArchived(archived = true)
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.isMutating)
+
+        vm.setArchived(archived = true)
+
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { contactRepository.archiveContact(5) }
+    }
+
+    @Test
+    fun `uploadPhoto ignores a second call while the first is in flight`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        val bytes = ByteArray(8) { it.toByte() }
+        val gate = CompletableDeferred<Unit>()
+        coEvery { contactRepository.uploadPhoto(5, bytes, "image/jpeg") } coAnswers {
+            gate.await()
+            Result.success(Unit)
+        }
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        vm.uploadPhoto(bytes, "image/jpeg")
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.isMutating)
+
+        vm.uploadPhoto(bytes, "image/jpeg")
+
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { contactRepository.uploadPhoto(5, bytes, "image/jpeg") }
+    }
+
+    @Test
+    fun `isMutating is shared across actions -- exportVcf is blocked while deleteContact is in flight`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+            val gate = CompletableDeferred<Unit>()
+            coEvery { contactRepository.deleteContact(5) } coAnswers {
+                gate.await()
+                Result.success(Unit)
+            }
+
+            val vm = viewModel(5)
+            advanceUntilIdle()
+
+            vm.deleteContact()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.isMutating)
+
+            // A completely different mutating action must also be blocked by the
+            // same shared isMutating flag.
+            vm.exportVcf()
+
+            gate.complete(Unit)
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { contactRepository.exportContactVcf(any(), any()) }
+        }
+
     // --- Issue #220: External Links panel + Immich ---
 
     @Test
@@ -752,6 +864,88 @@ class ContactDetailViewModelTest {
         assertFalse(handed)
         assertTrue(vm.uiState.value.error != null)
     }
+
+    // --- isExternalLinkMutating / immichPeopleLoading double-submit guards
+    // (coverage-analysis follow-up; same rationale as the isMutating tests
+    // above). ---
+
+    @Test
+    fun `deleteExternalIdentity ignores a second call while the first is in flight`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+            val gate = CompletableDeferred<Unit>()
+            coEvery { externalIdentityRepository.delete("i1") } coAnswers {
+                gate.await()
+                Result.success(Unit)
+            }
+
+            val vm = viewModel(5)
+            advanceUntilIdle()
+
+            vm.deleteExternalIdentity("i1")
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.isExternalLinkMutating)
+
+            vm.deleteExternalIdentity("i1")
+
+            gate.complete(Unit)
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { externalIdentityRepository.delete("i1") }
+        }
+
+    @Test
+    fun `isExternalLinkMutating is shared -- unlinkImmichPerson is blocked while deleteExternalIdentity is in flight`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+            val gate = CompletableDeferred<Unit>()
+            coEvery { externalIdentityRepository.delete("i1") } coAnswers {
+                gate.await()
+                Result.success(Unit)
+            }
+
+            val vm = viewModel(5)
+            advanceUntilIdle()
+
+            vm.deleteExternalIdentity("i1")
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.isExternalLinkMutating)
+
+            vm.unlinkImmichPerson()
+
+            gate.complete(Unit)
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { immichRepository.unlinkPerson(any()) }
+        }
+
+    @Test
+    fun `loadImmichPeople ignores a second call while the first is in flight`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+            val gate = CompletableDeferred<Unit>()
+            coEvery { immichRepository.listPeople() } coAnswers {
+                gate.await()
+                Result.success(emptyList())
+            }
+
+            val vm = viewModel(5)
+            advanceUntilIdle()
+
+            vm.loadImmichPeople()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.immichPeopleLoading)
+
+            vm.loadImmichPeople()
+
+            gate.complete(Unit)
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { immichRepository.listPeople() }
+        }
 
     // --- M24: inline circle/tag editors ---
 
@@ -986,6 +1180,42 @@ class ContactDetailViewModelTest {
     }
 
     @Test
+    fun `loadSeafileLibraries failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        coEvery { seafileRepository.listLibraries() } returns Result.failure(ApiError.Server(500, "boom"))
+        vm.loadSeafileLibraries()
+        advanceUntilIdle()
+
+        assertEquals("Server error (500)", vm.uiState.value.error)
+        assertFalse(vm.uiState.value.seafileBrowseLoading)
+    }
+
+    @Test
+    fun `enterSeafileDir failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        coEvery { seafileRepository.listDir("r1", "/") } returns
+            Result.failure(ApiError.Client(404, "Directory not found"))
+        vm.enterSeafileDir("r1")
+        advanceUntilIdle()
+
+        assertEquals("Not found", vm.uiState.value.error)
+        assertFalse(vm.uiState.value.seafileBrowseLoading)
+        // The failed directory is still recorded (matches the loading-flag reset
+        // behaviour of the other browse failures) rather than silently reverting.
+        assertEquals("r1", vm.uiState.value.seafileBrowseRepoId)
+    }
+
+    @Test
     fun `enterSeafileDir then backSeafileDir returns to the library list`() = runTest(mainDispatcherRule.testDispatcher) {
         val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
@@ -1034,6 +1264,27 @@ class ContactDetailViewModelTest {
     }
 
     @Test
+    fun `linkSeafileItem failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        coEvery { seafileRepository.listDir("r1", "/") } returns Result.success(emptyList())
+        vm.enterSeafileDir("r1")
+        advanceUntilIdle()
+
+        val expectedRequest = SeafileLinkRequest(repoId = "r1", path = "/doc.pdf", name = "doc.pdf", type = "file", size = 1024)
+        coEvery { seafileRepository.linkItem("u5", expectedRequest) } returns
+            Result.failure(ApiError.Client(409, "Already linked"))
+        vm.linkSeafileItem(SeafileItem(id = "f1", name = "doc.pdf", type = "file", size = 1024))
+        advanceUntilIdle()
+
+        assertEquals("Already linked", vm.uiState.value.error)
+    }
+
+    @Test
     fun `loadNextcloudDir populates the browse list at the given path`() = runTest(mainDispatcherRule.testDispatcher) {
         val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
@@ -1053,6 +1304,22 @@ class ContactDetailViewModelTest {
     }
 
     @Test
+    fun `loadNextcloudDir failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        coEvery { nextcloudRepository.listDir("/Photos") } returns Result.failure(ApiError.Server(500, "boom"))
+        vm.loadNextcloudDir("/Photos")
+        advanceUntilIdle()
+
+        assertEquals("Server error (500)", vm.uiState.value.error)
+        assertFalse(vm.uiState.value.nextcloudBrowseLoading)
+    }
+
+    @Test
     fun `linkNextcloudItem links then reloads the panel`() = runTest(mainDispatcherRule.testDispatcher) {
         val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
@@ -1067,5 +1334,22 @@ class ContactDetailViewModelTest {
 
         io.mockk.coVerify(exactly = 1) { nextcloudRepository.linkItem("u5", item) }
         io.mockk.coVerify(atLeast = 2) { externalIdentityRepository.listForContact("u5") }
+    }
+
+    @Test
+    fun `linkNextcloudItem failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        val item = WebDAVItem(name = "img.jpg", path = "/Photos/img.jpg", type = "file", size = 2048)
+        coEvery { nextcloudRepository.linkItem("u5", item) } returns
+            Result.failure(ApiError.Client(409, "Already linked"))
+        vm.linkNextcloudItem(item)
+        advanceUntilIdle()
+
+        assertEquals("Already linked", vm.uiState.value.error)
     }
 }
