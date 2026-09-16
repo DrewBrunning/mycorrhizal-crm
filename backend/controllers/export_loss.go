@@ -130,23 +130,51 @@ type exportLossHeader struct {
 // response, bounding the diagnostics to maxExportLossHeaderBytes with a
 // truncated flag when the full list does not fit.
 func setExportLossReportHeader(c *gin.Context, format string, reports []models.LossReport) {
-	header := exportLossHeader{Format: format, Count: len(reports), Diagnostics: reports}
-	payload := header
-	for {
-		raw, err := json.Marshal(payload)
+	encodeAt := func(k int, truncated bool) (string, error) {
+		raw, err := json.Marshal(exportLossHeader{
+			Format: format, Count: len(reports), Truncated: truncated, Diagnostics: reports[:k],
+		})
 		if err != nil { // # pragma: no cover — LossReport has no unmarshalable field; a marshal failure here is impossible
-			return
+			return "", err
 		}
-		encoded := url.QueryEscape(string(raw))
-		if len(encoded) <= maxExportLossHeaderBytes || len(payload.Diagnostics) == 0 {
-			c.Header(exportLossReportHeader, encoded)
-			return
-		}
-		// Drop diagnostics from the tail until the header fits; the count
-		// always reflects the true total and truncated flags the gap.
-		payload.Truncated = true
-		payload.Diagnostics = payload.Diagnostics[:len(payload.Diagnostics)-1]
+		return url.QueryEscape(string(raw)), nil
 	}
+
+	full, err := encodeAt(len(reports), false)
+	if err != nil {
+		return
+	}
+	if len(full) <= maxExportLossHeaderBytes || len(reports) == 0 {
+		c.Header(exportLossReportHeader, full)
+		return
+	}
+
+	// The untruncated header doesn't fit: binary-search for the largest
+	// kept-diagnostics prefix that does, instead of dropping one diagnostic
+	// at a time and re-marshaling the whole remaining list on every drop.
+	// Encoded length is monotonically non-increasing as the tail shrinks, so
+	// the result is identical to that one-at-a-time removal, just O(n log n)
+	// instead of O(n^2) — the latter measurably stalled a full-catalog
+	// export at large scale (PERF-03 at-scale finding, issue #1082).
+	best, err := encodeAt(0, true)
+	if err != nil {
+		return
+	}
+	lo, hi := 0, len(reports)-1
+	for lo <= hi {
+		mid := lo + (hi-lo)/2
+		enc, err := encodeAt(mid, true)
+		if err != nil {
+			return
+		}
+		if len(enc) <= maxExportLossHeaderBytes {
+			best = enc
+			lo = mid + 1
+		} else {
+			hi = mid - 1
+		}
+	}
+	c.Header(exportLossReportHeader, best)
 }
 
 // ExportPreflight computes what an export would lose for the requested
