@@ -57,6 +57,42 @@ func TestRunAtReportsFindings(t *testing.T) {
 	assert.Contains(t, s, "governance finding(s).")
 }
 
+// TestRunAtReportsMissingReleaseOnlyCheck is the #925 regression: a
+// release-branches.json that requires exactly main-protection.json's checks
+// (i.e. looks consistent under the old exact-equality rule) but omits a
+// declared release-only check, such as the RC fix criterion, must still be
+// flagged -- documenting an RC-specific check as "required" is not enough,
+// it has to actually be in the ruleset's required_status_checks.
+func TestRunAtReportsMissingReleaseOnlyCheck(t *testing.T) {
+	root := t.TempDir()
+	write := func(rel, body string) {
+		p := filepath.Join(root, rel)
+		require.NoError(t, os.MkdirAll(filepath.Dir(p), 0o755))
+		require.NoError(t, os.WriteFile(p, []byte(body), 0o644))
+	}
+	write(".github/rulesets/main-protection.json", `{"name":"main-protection","target":"branch","enforcement":"active","rules":[
+	  {"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"Backend (Go)"}]}}]}`)
+	write(".github/rulesets/main-hard-checks.json", `{"name":"h","target":"branch","enforcement":"active","rules":[{"type":"deletion"}]}`)
+	write(".github/rulesets/tags-v.json", `{"name":"v","target":"tag","enforcement":"active","rules":[{"type":"deletion"}]}`)
+	// Matches main-protection.json exactly -- no drift under the old rule --
+	// but is missing "RC fix is traceable to a finding", which
+	// governance.ReleaseOnlyRequiredChecks declares as required.
+	write(".github/rulesets/release-branches.json", `{"name":"release-branch-protection","target":"branch","enforcement":"active","rules":[
+	  {"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"Backend (Go)"}]}}]}`)
+	write(".github/release-gates.json", `{"gates":[
+	  {"name":"Backend (Go)","workflow":"unit-tests.yml","check_context":"Backend (Go)","check_kind":"check_run","tier":"per-pr","mandatory":true,"release_gate":true,"criterion":"x"}]}`)
+	write("docs/development/repo-governance.md", "refs .github/rulesets/main-protection.json and .github/rulesets/main-hard-checks.json and .github/rulesets/tags-v.json and .github/rulesets/release-branches.json\n"+
+		"<!-- governance-required-checks:begin -->\n| `Backend (Go)` | a |\n<!-- governance-required-checks:end -->\n")
+	write("docs/security/release-verification.md", "--certificate-identity-regexp 'https://github.com/o/r/.github/workflows/docker-publish.yml@refs/tags/v'")
+
+	var out bytes.Buffer
+	code := runAt(&out, root)
+	require.Equal(t, 1, code)
+	s := out.String()
+	assert.Contains(t, s, `missing required check "RC fix is traceable to a finding"`)
+	assert.Contains(t, s, "#925")
+}
+
 func TestRunAtMissingFileExits2(t *testing.T) {
 	var out bytes.Buffer
 	assert.Equal(t, 2, runAt(&out, t.TempDir()))

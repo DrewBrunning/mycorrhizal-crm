@@ -81,9 +81,22 @@ Four mechanisms, in order of when they fire:
      `schema-fixture-gate` all `needs:` this job, so nothing publishes;
    - **all gates green** (`success` / `neutral` / `skipped` — a path-skipped suite reports
      success by design, #264) → pass;
-   - the **75-minute deadline** (was 60; see the #543 note above) with a gate still not
-     reporting a conclusion → a loud `::warning::` and publication **proceeds**. GitHub check
-     timing (a slow fuzz leg, an aggregation job that has not run yet) is not a quality signal.
+   - the **75-minute deadline** (was 60; see the #543 note above) is where "still not
+     reporting" splits into two outcomes that used to be conflated
+     ([#913](https://github.com/DrewBrunning/mycorrhizal-crm/issues/913) — REL-03 finding F3,
+     the highest-severity finding of the #502 independent review): a gate that **never
+     reported a check-run/commit-status at all on this commit** ("missing" — a disabled or
+     renamed workflow, a filter regression that skips the job entirely, a failed dispatch) is
+     a **hard block**, same as an observed failure; only a gate that **did start** and is
+     genuinely still running (`queued`/`in_progress`) gets a loud `::warning::` and lets
+     publication **proceed**. GitHub check timing (a slow fuzz leg, an aggregation job that
+     has not run yet) is not a quality signal — but the total absence of a check-run is,
+     because "no failure observed" and "never verified" are not the same claim. The
+     missing-vs-pending decision is made by
+     [`.github/scripts/release-gate-decide.sh`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/scripts/release-gate-decide.sh),
+     shared with the identical poll in `release.yml` (below) and pinned by
+     `.github/scripts/tests/release-gate-decide.test.sh`, so the two pollers cannot drift back
+     apart on this.
 4. **The `needs:` graph** — the `release-internal` gates enforce themselves: `build-and-push`
    `needs: build-android-apk`, `create-release` `needs: build-android-apk`, everything
    `needs: release-gate`. `verify-release-assets` is the final belt-and-suspenders check that
@@ -161,7 +174,7 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `Migration Tests` | per-pr | yes | every supported-release upgrade leg, adjacent hop, and down round-trip passes. Per-leg check names make polling impractical; the release commit only adds a frozen schema dump, which schema-fixture-gate verifies, and the push:main run covers the chain. | `migration-tests.yml` |
 | `Go binary reproducible` | per-pr | yes | two builds from different paths are byte-identical (REL-04). Runs on the release commit's push:main; not in the ruleset. | `reproducibility.yml` |
 | `validate-tag` | release-internal | yes | the pushed tag matches the versioning-policy pattern (REL-01, backend/internal/versionpolicy). Blocks every downstream job. | `docker-publish.yml` |
-| `release-gate` | release-internal | yes | dispatches each mandatory release_gate:true gate's workflow for an RC tag (#543 — a final release already got them via push:main); no mandatory gate is observed FAILED on the release commit; all-green passes; a 75-minute deadline with a gate still not reporting is a warning and publication proceeds. A workflow_dispatch run with a non-empty override_reason skips the poll and records the override with the actor. | `docker-publish.yml` |
+| `release-gate` | release-internal | yes | dispatches each mandatory release_gate:true gate's workflow for an RC tag (#543 — a final release already got them via push:main); no mandatory gate is observed FAILED on the release commit; all-green passes; at the 75-minute deadline a gate that never reported a check-run at all is a hard block (#913), while a gate that started but is still running is a warning and publication proceeds. A workflow_dispatch run with a non-empty override_reason skips the poll and records the override with the actor. | `docker-publish.yml` |
 | `schema-fixture-gate` | release-internal | yes | a committed backend/database/testdata/schemas/<tag>.sql exists for a mycorrhizal-supported-series tag (MIG-01, #436/#529). | `docker-publish.yml` |
 | `build-and-push` | release-internal | yes | the multi-arch images build and push; each digest gets a cosign keyless signature, an SBOM, and SLSA build provenance. | `docker-publish.yml` |
 | `build-android-apk` | release-internal | yes | the release APK assembles, is keystore-signed, `apksigner verify` passes (and matches ANDROID_SIGNING_CERT_SHA256 when set), its versionCode equals the computed value and is > 1, a GH build-provenance attestation + a cosign bundle are produced and attached to the Release, and its sha256 subject is exported for the SLSA generator. | `docker-publish.yml` |
