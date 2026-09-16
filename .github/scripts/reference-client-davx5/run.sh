@@ -262,12 +262,21 @@ type_login_field() {
 # described on type_login_field above); Password is only checked for
 # non-emptiness since DAVx5 may or may not expose a masked field's real
 # value to the accessibility tree. Retries the whole sequence (bounded by
-# $1, default 4) rather than a single field, since the failure this guards
+# $1, default 8) rather than a single field, since the failure this guards
 # against is cross-field contamination — a per-field check can't detect its
 # own value ending up in the WRONG field, only that the intended field looks
 # right in isolation.
+#
+# Diagnostic capture from a real CI failure (run 35148449853, the very first
+# run of the verify-and-retry logic above): every one of 4 attempts hit an
+# ANR dialog, exhausting a budget of 4 — the captured logcat showed
+# "Sending oneway calls to frozen process" throughout, i.e. the emulator's
+# app-freezer under sustained resource pressure, not a one-off blip. Doubled
+# to 8 to match this file's existing doubling convention for exactly this
+# failure mode (see "Next"/"Add account" and "synchronize this collection"
+# above).
 fill_login_form() {
-	local max_attempts="${1:-4}" attempt=0
+	local max_attempts="${1:-8}" attempt=0
 	while [ "$attempt" -lt "$max_attempts" ]; do
 		wait_for_login_fields
 
