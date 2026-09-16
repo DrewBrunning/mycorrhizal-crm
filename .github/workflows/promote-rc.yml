@@ -207,10 +207,13 @@ jobs:
             git -c credential.helper="$helper" push origin "HEAD:${SERIES_BRANCH}"
           fi
 
-      # Merge FIRST, tag SECOND: the final tag is the point of no return
-      # (docker-publish.yml recovery keys off it), so it is only pushed once the
-      # main merge has landed. FINAL_SHA (the fixture commit) is an ancestor of
-      # main after the --no-ff merge, so the tag still points at the RC's tree.
+      # Merge FIRST, tag LAST: the final tag is the point of no return
+      # (docker-publish.yml recovery keys off it, and Obtainium/update-checkers
+      # only see a promotion once the tag + Release exist), so it is only
+      # pushed once the main merge has landed AND the images below have been
+      # re-tagged and proven to be byte-identical to the RC's. FINAL_SHA (the
+      # fixture commit) is an ancestor of main after the --no-ff merge, so the
+      # tag still points at the RC's tree.
       - name: Merge the release branch back into main
         env:
           FINAL_TAG: ${{ env.FINAL_TAG }}
@@ -225,21 +228,7 @@ jobs:
           helper='!f() { echo "username=x-access-token"; echo "password=${GH_APP_TOKEN}"; }; f'
           git -c credential.helper="$helper" push origin "HEAD:refs/heads/main"
 
-      - name: Create + push the final tag (GITHUB_TOKEN -> no rebuild)
-        env:
-          FINAL_TAG: ${{ env.FINAL_TAG }}
-          FINAL_SHA: ${{ env.FINAL_SHA }}
-          GH_TOKEN_PUSH: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -eu
-          git tag "$FINAL_TAG" "$FINAL_SHA"
-          # A tag pushed with GITHUB_TOKEN never triggers on:push:tags, so
-          # docker-publish.yml stays dormant -- this workflow does the publish.
-          # shellcheck disable=SC2016
-          helper='!f() { echo "username=x-access-token"; echo "password=${GH_TOKEN_PUSH}"; }; f'
-          git -c credential.helper="$helper" push origin "refs/tags/${FINAL_TAG}"
-
-      - name: Re-tag the images by digest, then cosign-sign the final tag
+      - name: Re-tag the images by digest, then cosign-sign the promoted tag
         env:
           RC_TAG: ${{ inputs.rc_tag }}
           FINAL_TAG: ${{ env.FINAL_TAG }}
@@ -254,11 +243,12 @@ jobs:
             dst_latest="ghcr.io/${repo}${suffix}:latest"
             # Manifest copy: dst (and dst_latest) resolve to the SAME digest as
             # src. `latest` is moved here -- not by docker-publish.yml -- because
-            # the final tag pushed above uses GITHUB_TOKEN and by design never
-            # triggers that workflow (see the "Create + push the final tag"
-            # step). Every promotion is to a final, non-RC tag by construction
-            # (validated earlier), so `latest` always moves here, unconditionally
-            # -- unlike docker-publish.yml's own `latest` tag, which is gated to
+            # the final git tag (pushed by a later step, once the digest check
+            # below has passed) uses GITHUB_TOKEN and by design never triggers
+            # that workflow (see the "Create + push the final tag" step). Every
+            # promotion is to a final, non-RC tag by construction (validated
+            # earlier), so `latest` always moves here, unconditionally --
+            # unlike docker-publish.yml's own `latest` tag, which is gated to
             # skip RC pushes.
             docker buildx imagetools create --tag "$dst" --tag "$dst_latest" "$src"
             digest="$(docker buildx imagetools inspect "$dst" --format '{{json .Manifest}}' | jq -r '.digest')"
@@ -271,6 +261,52 @@ jobs:
             # which share this digest.
             cosign sign --yes "ghcr.io/${repo}${suffix}@${digest}"
           done
+
+      # issue #997: this gate used to run inside "Emit + attach promotion
+      # metadata", AFTER the final git tag was pushed and the GitHub Release
+      # published -- so a digest mismatch was reported only once the bad state
+      # (a promoted tag/Release that does not actually match the tested RC
+      # image) was already live. It now runs here, before either exists: a
+      # mismatch aborts the workflow with the git tag unpushed and no final
+      # Release created, leaving only the (harmless, untagged-by-git) GHCR
+      # re-tag from the step above to clean up. The per-image comparison
+      # itself is unchanged; it is just no longer downstream of the point of
+      # no return. images.json is handed to "Emit + attach promotion metadata"
+      # below so that step does not need to recompute it.
+      - name: Verify promoted image digests match the RC's (before the tag is pushed)
+        run: |
+          set -eu
+          mismatch=0
+          images_json='[]'
+          # Both files list ghcr.io/<repo><suffix> <digest>, one line per image,
+          # in the same order (all-in-one, backend, frontend).
+          while read -r ref rc_digest _ final_digest; do
+            match=true
+            [ "$rc_digest" = "$final_digest" ] || { match=false; mismatch=1; }
+            images_json="$(jq -c --arg n "$ref" --arg r "$rc_digest" --arg f "$final_digest" --argjson m "$match" \
+              '. + [{ref:$n, digest_rc:$r, digest_final:$f, match:$m}]' <<<"$images_json")"
+          done < <(paste -d' ' /tmp/rc-digests.txt /tmp/final-digests.txt)
+          echo "$images_json" > /tmp/promotion-images.json
+
+          if [ "$mismatch" -ne 0 ]; then
+            echo "::error::A promoted image digest does not match the RC's -- promotion rebuilt instead of copying. Refusing to push the final tag or publish a Release for ${FINAL_TAG:-the final tag}; the GHCR :latest move above still needs manual cleanup."
+            jq -c '.[] | select(.match == false)' /tmp/promotion-images.json
+            exit 1
+          fi
+
+      - name: Create + push the final tag (GITHUB_TOKEN -> no rebuild)
+        env:
+          FINAL_TAG: ${{ env.FINAL_TAG }}
+          FINAL_SHA: ${{ env.FINAL_SHA }}
+          GH_TOKEN_PUSH: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          git tag "$FINAL_TAG" "$FINAL_SHA"
+          # A tag pushed with GITHUB_TOKEN never triggers on:push:tags, so
+          # docker-publish.yml stays dormant -- this workflow does the publish.
+          # shellcheck disable=SC2016
+          helper='!f() { echo "username=x-access-token"; echo "password=${GH_TOKEN_PUSH}"; }; f'
+          git -c credential.helper="$helper" push origin "refs/tags/${FINAL_TAG}"
 
       - name: Publish the final GitHub Release with the RC's assets
         env:
@@ -312,32 +348,22 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -eu
-          mismatch=0
-          images_json='[]'
-          # Both files list ghcr.io/<repo><suffix> <digest>, one line per image,
-          # in the same order (all-in-one, backend, frontend).
-          while read -r ref rc_digest _ final_digest; do
-            match=true
-            [ "$rc_digest" = "$final_digest" ] || { match=false; mismatch=1; }
-            images_json="$(jq -c --arg n "$ref" --arg r "$rc_digest" --arg f "$final_digest" --argjson m "$match" \
-              '. + [{ref:$n, digest_rc:$r, digest_final:$f, match:$m}]' <<<"$images_json")"
-          done < <(paste -d' ' /tmp/rc-digests.txt /tmp/final-digests.txt)
-
+          # The per-image digest_rc == digest_final comparison already ran (and
+          # would have aborted the workflow before the tag/Release existed) in
+          # "Verify promoted image digests match the RC's" above; this step
+          # only formats that already-verified result into the published
+          # artifact, it does not re-derive or re-gate on it.
           jq -n \
             --arg rc_tag "$RC_TAG" --arg final_tag "$FINAL_TAG" \
             --arg rc_sha "$RC_SHA" --arg final_sha "$FINAL_SHA" \
             --arg promoted_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg workflow_run "$RUN_URL" \
-            --argjson images "$images_json" \
+            --argjson images "$(cat /tmp/promotion-images.json)" \
             '{rc_tag:$rc_tag, final_tag:$final_tag, rc_sha:$rc_sha, final_sha:$final_sha,
               promoted_at:$promoted_at, workflow_run:$workflow_run, images:$images,
               rebuilt:false}' | tee promotion-metadata.json
 
           gh release upload "$FINAL_TAG" promotion-metadata.json --clobber
-          if [ "$mismatch" -ne 0 ]; then
-            echo "::error::A promoted image digest does not match the RC's -- promotion rebuilt instead of copying. Investigate before trusting ${FINAL_TAG}."
-            exit 1
-          fi
 
       - name: Upload promotion metadata (workflow artifact)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
