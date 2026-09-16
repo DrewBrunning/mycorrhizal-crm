@@ -334,6 +334,48 @@ class ReminderFormViewModelTest {
     }
 
     @Test
+    fun `a create failure clears isSaving and surfaces the error instead of blocking the button forever`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Coverage-analysis follow-up: only loadExisting()'s failure path was
+            // tested before. If save()'s create/update failure branch regressed,
+            // isSaving could stay true forever and permanently disable Save.
+            coEvery { reminderRepository.create(5, any()) } returns Result.failure(
+                ApiError.Client(400, "remind_at is required"),
+            )
+
+            val vm = createViewModel()
+            vm.onMessageChange("Call Dana")
+            vm.onRemindAtChange("2026-08-10T14:00:00Z")
+            vm.save()
+            advanceUntilIdle()
+
+            assertFalse("a failed save must not leave isSaving stuck true", vm.uiState.value.isSaving)
+            assertEquals("remind_at is required", vm.uiState.value.error)
+            assertNull(vm.events.value)
+        }
+
+    @Test
+    fun `an update failure clears isSaving and surfaces the error instead of blocking the button forever`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { reminderRepository.get(1) } returns Result.success(
+                Reminder(id = 1, message = "Call Dana", recurrence = ReminderRecurrence.WEEKLY, remindAt = "2026-08-10T14:00:00Z"),
+            )
+            coEvery { reminderRepository.update(1, any()) } returns Result.failure(
+                ApiError.Client(409, "Reminder was modified by another session"),
+            )
+
+            val vm = createViewModel(reminderId = 1)
+            advanceUntilIdle()
+            vm.onMessageChange("Call Dana today")
+            vm.save()
+            advanceUntilIdle()
+
+            assertFalse("a failed save must not leave isSaving stuck true", vm.uiState.value.isSaving)
+            assertEquals("Reminder was modified by another session", vm.uiState.value.error)
+            assertNull(vm.events.value)
+        }
+
+    @Test
     fun `invalid date format blocks save`() = runTest(mainDispatcherRule.testDispatcher) {
         val vm = createViewModel()
         vm.onMessageChange("Call Dana")
