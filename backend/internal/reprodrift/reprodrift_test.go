@@ -171,17 +171,26 @@ func TestGoBinaryCheckAlwaysRunsButBuildStaysGated(t *testing.T) {
 		t.Errorf("go-binary's `needs:` (%v) does not include `changes`", goBinary.Needs)
 	}
 
-	var gated bool
-	for _, step := range goBinary.Steps {
-		if strings.Contains(step.If, "needs.changes.outputs.repro") {
-			gated = true
+	// Deliberately targets the expensive step by name, not "any step
+	// mentions needs.changes.outputs.repro" -- the "Skip (...)" step
+	// mentions the same output (with a `!=` check) and would make a loose
+	// substring match here pass even if the actual build step's gate were
+	// dropped.
+	const buildStepName = "Build the server twice from different paths"
+	var buildStep *workflowStep
+	for i := range goBinary.Steps {
+		if goBinary.Steps[i].Name == buildStepName {
+			buildStep = &goBinary.Steps[i]
 			break
 		}
 	}
-	if !gated {
-		t.Error("no step in go-binary has an `if:` referencing needs.changes.outputs.repro -- " +
-			"the double build looks unconditional, which would make every PR pay for it and would " +
-			"falsify the docs' \"proves path-independence ... not per-PR\" wording")
+	if buildStep == nil {
+		t.Fatalf("go-binary has no step named %q -- update this test to match the renamed step", buildStepName)
+	}
+	if !strings.Contains(buildStep.If, "needs.changes.outputs.repro") || !strings.Contains(buildStep.If, "== 'true'") {
+		t.Errorf("go-binary's %q step has `if:` %q -- it must be gated on needs.changes.outputs.repro == 'true', "+
+			"or the double build becomes unconditional, making every PR pay for it and falsifying the docs' "+
+			"\"proves path-independence ... not per-PR\" wording", buildStepName, buildStep.If)
 	}
 }
 
