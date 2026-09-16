@@ -38,6 +38,7 @@ orthogonal mechanism; this page is about *which layer a test belongs to*, not
 | E2E web | Complete user flows through the **shipped** artifact (image + compose + nginx + backend) | Anything reachable in a lower layer | `frontend/e2e/` | `npx playwright test` | `e2e` job / `frontend`+`openapi`+`infra` |
 | E2E Android | Real app on emulator against the real backend; the Playwright analog | JVM-testable logic | `android/app/src/androidTest/` | `:app:connectedDebugAndroidTest` (see README-developer.md) | `android-e2e` job / `android`+`openapi`+`infra` |
 | Release/install smoke | Clean install from nothing; misconfiguration diagnostics; startup ordering | Anything presupposing a working install | `backend/cmd/deploysmoke/`, `backend/config/startup_smoke_test.go`, `.github/workflows/deploy-smoke.yml` | `go test ./cmd/deploysmoke/... ./config/...`; `go run ./cmd/deploysmoke` against a fresh `docker compose up` | `deploy-smoke` job / `infra` |
+| Post-publish smoke | The published GHCR image (by digest) boots and serves the same real workflow | A from-source build (that's the row above); pre-publish gating (nothing here can block a tag already pushed) | `docker-compose.published-smoke.yml`, `.github/workflows/docker-publish.yml` (`post-publish-smoke` job) | `MYCORRHIZAL_IMAGE=<ref>@<digest> docker compose -f docker-compose.published-smoke.yml up -d --wait`; `go run ./cmd/deploysmoke` | `post-publish-smoke` job, every tag push |
 | Performance/load | N+1/query-count regressions, benchmark bodies, concurrent-write smoke vs the deployed artifact, scale (planned) | Correctness (that's the pyramid) | `backend/**/benchmark` tests, `backend/cmd/loadsmoke` | `go test -bench . -benchtime=1x`, `go run ./cmd/loadsmoke` | `backend-checks` + e2e `loadsmoke` step |
 | Security/adversarial | BOLA/IDOR, spec fuzzing, DAST, static analysis — the vulnerability classes no pyramid layer is shaped to catch | — | their own workflows | per-workflow | `schemathesis.yml`, `zap-dast.yml`, `codeql.yml`, `sast.yml`, … |
 
@@ -403,6 +404,30 @@ in `e2e-tests.yml` runs it in CI on the same PR/nightly cadence as `e2e`.
 - This is the layer that v0.6.6 (install/upgrade/backup/recovery) and its sibling
   DEPLOY-02 (#451, upgrade) / DEPLOY-03 (#452, interrupted startup) build on.
 
+### Post-publish functional smoke (DEPLOY-04, issue #996)
+
+- **Responsible for** proving the *published artifact* boots, not a from-source
+  build of the release commit. Everything above tests a `docker compose up -d
+  --build` of the checked-out tree; `docker-publish.yml`'s own
+  `verify-release-assets` job only proves the pushed image **resolves** in the
+  registry (`docker buildx imagetools inspect` — presence, not behavior). A
+  release-path-only defect (a broken entrypoint, a bad baked-in env default, a
+  migration that only fails inside the real Dockerfile's build context) could
+  reach operators completely undetected between those two checks — split from
+  #923 into #996.
+- `docker-publish.yml`'s `post-publish-smoke` job (`needs:
+  verify-release-assets`, `if: github.event_name == 'push'`) `cosign verify`s
+  the just-published all-in-one image's identity, resolves its digest, and
+  boots it with [`docker-compose.published-smoke.yml`](../../docker-compose.published-smoke.yml)
+  — a standalone compose file (no `build:` anywhere in it, since Compose
+  merges a `build:` present in the file set with an `image:` override by
+  building anyway rather than pulling, which would silently defeat the point)
+  that references `${MYCORRHIZAL_IMAGE}` **by digest**, never the mutable tag.
+  It then runs the *same* `backend/cmd/deploysmoke` workflow the from-source
+  job runs, against the real artifact.
+- Runs once per release, inside the tag-triggered `docker-publish.yml` — not a
+  separate schedule, since there is nothing to smoke-test between releases.
+
 ## Cross-cutting: performance/load and security
 
 Two sets are **not** pyramid layers in the "write a test here" sense, but they
@@ -462,6 +487,7 @@ gap to file, never something to silently absorb.
 | Interrupted migration, migration rollback/recovery, first-boot migration on empty DB | Migration + release/install smoke | v0.6.4, v0.6.6, #438/#452 |
 | Monica/Meerkat import mapping errors | Import/export interop (fixtures per DATA-*) | v0.6.4 (#351/#353) |
 | Clean-install failure (env vars, CORS, permissions, empty-DB migration) | Release/install smoke (`deploy-smoke.yml` + `cmd/deploysmoke` + `config/startup_smoke_test.go`) | v0.6.6 (#450) |
+| Release-path-only defect (broken entrypoint, bad baked-in env default, a migration that only fails inside the real Dockerfile's build context) reaching the published image undetected | Post-publish smoke (`docker-publish.yml`'s `post-publish-smoke` job + `docker-compose.published-smoke.yml` + `cmd/deploysmoke`) | #996 |
 | Backup/restore/cross-version restore failure | DB/integration (`backup_test.go`, restore tests) + release/install smoke | v0.6.6 |
 | Component/hook state bugs, i18n key/placeholder drift, format-provider bugs | Frontend unit | v0.6.11 |
 | Android view-model/editor/offline/local-migration bugs | Android unit/Robolectric | v0.6.7, v0.6.10 |
