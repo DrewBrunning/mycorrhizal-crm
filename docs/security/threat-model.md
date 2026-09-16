@@ -167,9 +167,11 @@ touching the app's own attack surface. This is the cell #377's boundary matrix l
   fast, who decides) is COMPAT-03.
 - **Compromised build (detection, not prevention).** The Go server binary and the `linux/amd64`
   image are reproducible (REL-04, `docs/security/reproducible-builds.md`); `reproducibility.yml`
-  double-builds them every relevant PR. A build that was tampered with in the pipeline diverges
-  from an independent rebuild, and the SLSA provenance names the exact source commit and
-  workflow run that produced a given digest.
+  double-builds them on every relevant PR (path-filtered to backend/build-input changes, not
+  every PR) as a same-runner path-independence check, and rebuilds the Go binary across two
+  independent runner images weekly to prove true reproducibility end-to-end. A build that was
+  tampered with in the pipeline diverges from an independent rebuild, and the SLSA provenance
+  names the exact source commit and workflow run that produced a given digest.
 
 ### What is *not* covered
 

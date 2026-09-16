@@ -6,6 +6,15 @@ name: Reproducible builds
 # digests (all-in-one image, linux/amd64). The per-run output in the job
 # summary *is* the recorded double-build comparison the issue asks for.
 #
+# go-binary / all-in-one-image build both copies on the *same* runner (only a
+# different path), so per-PR they prove *path*-independence, not an
+# independent-builder reproduction -- and they only run on PRs that touch
+# backend/build inputs (see the `paths:` filter below), never on every PR.
+# go-binary-independent-rebuild is the artifact-level check that actually
+# substantiates "byte-reproducible": it builds on two different GitHub-hosted
+# runner images and compares across them, but only weekly (and on manual
+# dispatch) -- see issue #947.
+#
 # What this does NOT gate: the published multi-arch manifest digest (arm64 is
 # built under emulation; the manifest list carries per-arch descriptors), and
 # the Android APK (not bit-reproducible by design — keystore signature).
@@ -164,3 +173,97 @@ jobs:
             exit 1
           fi
           echo "Reproducible: image config + layer digests match."
+
+  go-binary-independent-rebuild:
+    name: Go server binary — independent rebuild (${{ matrix.runner }})
+    # go-binary above double-builds on one runner and only proves the build
+    # doesn't leak an absolute path. This job is the true independent
+    # rebuild: two separate GitHub-hosted runner images (different machine,
+    # OS, filesystem layout), compared by go-binary-independent-rebuild-compare
+    # below. It's weekly/manual-only, not a per-PR gate -- a full matrix on
+    # every PR would be slow for a property (toolchain + source determinism)
+    # that doesn't change PR-to-PR the way the source tree does.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    strategy:
+      matrix:
+        runner: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache: false
+
+      - name: Build the server and hash it
+        run: |
+          set -eu
+          ldflags="-X mycorrhizal/buildinfo.Version=${REPRO_APP_VERSION} \
+                   -X mycorrhizal/buildinfo.Commit=${REPRO_APP_COMMIT} \
+                   -X mycorrhizal/buildinfo.BuildDate=${REPRO_APP_BUILD_DATE}"
+          ( cd backend && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+              SOURCE_DATE_EPOCH="${REPRO_SOURCE_DATE_EPOCH}" \
+              go build -trimpath -buildvcs=false -ldflags "$ldflags" -o /tmp/repro-independent . )
+          sha256sum /tmp/repro-independent | cut -d' ' -f1 > /tmp/repro-independent.sha256
+          {
+            echo "### Go server binary — independent rebuild (${{ matrix.runner }})"
+            echo
+            echo "\`$(cat /tmp/repro-independent.sha256)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload hash
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: repro-independent-${{ matrix.runner }}
+          path: /tmp/repro-independent.sha256
+          retention-days: 7
+
+  go-binary-independent-rebuild-compare:
+    name: Independent rebuild — cross-runner comparison
+    needs: go-binary-independent-rebuild
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download all runner hashes
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: repro-independent-*
+          path: /tmp/hashes
+
+      - name: Compare hashes across independent runners
+        run: |
+          set -eu
+          {
+            echo "### Go server binary — independent rebuild (different runners)"
+            echo
+            echo "| runner | sha256 |"
+            echo "|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          first=""
+          mismatch=0
+          for dir in /tmp/hashes/repro-independent-*; do
+            runner=$(basename "$dir" | sed 's/^repro-independent-//')
+            hash=$(cat "$dir/repro-independent.sha256")
+            echo "| $runner | \`$hash\` |" >> "$GITHUB_STEP_SUMMARY"
+            if [ -z "$first" ]; then
+              first="$hash"
+            elif [ "$hash" != "$first" ]; then
+              mismatch=1
+            fi
+          done
+
+          if [ "$mismatch" -ne 0 ]; then
+            echo "::error::Go server binary is not reproducible across independent runners -- see the job summary."
+            exit 1
+          fi
+          echo "Reproducible across independent runners: $first"
