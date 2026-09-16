@@ -312,6 +312,32 @@ class NetworkViewModelTest {
         }
 
     @Test
+    fun `a search failure resets the loading spinner instead of leaving it spinning forever`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Regression coverage: onFailure is the ONLY place that resets
+            // contactSearchLoading. If it regressed, the picker's search
+            // spinner would spin forever on any network failure.
+            stubFrom(uid = "uid-1", name = "Alice")
+            coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
+            stubConnections()
+            coEvery {
+                contactRepository.listContacts(search = "bo", limit = 25)
+            } returns Result.failure(ApiError.Client(500, "boom"))
+
+            val vm = viewModel(contactId = 1)
+            advanceUntilIdle()
+
+            vm.searchContacts("bo")
+            advanceUntilIdle()
+
+            assertFalse(
+                "a failed search must not leave contactSearchLoading stuck true",
+                vm.uiState.value.contactSearchLoading,
+            )
+            assertTrue(vm.uiState.value.contactSearchResults.isEmpty())
+        }
+
+    @Test
     fun `selecting a from contact reloads connections with the new uid`() =
         runTest(mainDispatcherRule.testDispatcher) {
             stubFrom()
