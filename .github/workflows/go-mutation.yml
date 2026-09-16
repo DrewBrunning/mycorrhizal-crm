@@ -106,6 +106,27 @@ jobs:
           # always real, not a leftover from setup-go's restored cache or an
           # earlier step in this same job.
           go clean -testcache
+
+          # Issue #1087: an ARITHMETIC_BASE mutant at vcard4/adapter.go:1685
+          # (fixCategoryListEscapes's `next := i + 2` flipped to `i - 2`)
+          # turns a line-boundary scan into an infinite loop that rewinds
+          # over the same "\r\n" forever, appending to a bytes.Buffer every
+          # cycle — reproduced locally growing past 40GB of RSS in ~1s.
+          # gremlins' own per-mutant timeout (~13.84s calibrated) never gets
+          # a chance to fire because the runner's real RAM is exhausted
+          # first, taking down the whole runner agent ("The runner has
+          # received a shutdown signal") instead of surfacing as a normal
+          # go-test failure. A per-process virtual-memory cap turns that
+          # into a contained subprocess crash gremlins can observe and
+          # report, the same way it already handles a killed/timed-out
+          # mutant. 8 GiB is sized with real headroom above every scope's
+          # legitimate peak (measured locally via `ulimit -v` bisection on a
+          # cold cache, single worker: services-import ~4GB, controllers-
+          # delete-cascade ~5GB, database ~3GB, the three isolated exporter
+          # packages under 1GB) while stopping a runaway far short of the
+          # standard GitHub-hosted Linux runner's total RAM.
+          ulimit -v 8000000
+
           go run github.com/go-gremlins/gremlins/cmd/gremlins@${{ env.GREMLINS_VERSION }} unleash \
             --workers 4 \
             --timeout-coefficient 30 \
