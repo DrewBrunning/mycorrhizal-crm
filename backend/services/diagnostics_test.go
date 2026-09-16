@@ -41,6 +41,8 @@ func validDiagnosticsConfig(t *testing.T) config.Config {
 		DBRestoreDrillIntervalHours: 168,
 		LogLevel:                    "info",
 		GinMode:                     "debug",
+		APIRateLimitBurst:           1000,
+		APIRateLimitInterval:        600 * time.Millisecond,
 	}
 }
 

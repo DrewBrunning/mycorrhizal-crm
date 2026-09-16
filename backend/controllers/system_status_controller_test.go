@@ -73,20 +73,22 @@ func seedAdmin(t *testing.T, db *gorm.DB) models.User {
 func validSystemStatusConfig(t *testing.T, dbPath string) config.Config {
 	t.Helper()
 	return config.Config{
-		JWTSecretKey:     "a-sufficiently-long-and-random-testing-jwt-secret-value",
-		DBPath:           dbPath,
-		ProfilePhotoDir:  t.TempDir(),
-		AttachmentsDir:   t.TempDir(),
-		FrontendURL:      "http://localhost:5173",
-		Port:             "7300",
-		ReminderTime:     "09:00",
-		ReminderTimezone: "UTC",
-		JWTExpiryHours:   96,
-		ReadTimeout:      15,
-		WriteTimeout:     15,
-		IdleTimeout:      60,
-		LogLevel:         "info",
-		GinMode:          "debug",
+		JWTSecretKey:         "a-sufficiently-long-and-random-testing-jwt-secret-value",
+		DBPath:               dbPath,
+		ProfilePhotoDir:      t.TempDir(),
+		AttachmentsDir:       t.TempDir(),
+		FrontendURL:          "http://localhost:5173",
+		Port:                 "7300",
+		ReminderTime:         "09:00",
+		ReminderTimezone:     "UTC",
+		JWTExpiryHours:       96,
+		ReadTimeout:          15,
+		WriteTimeout:         15,
+		IdleTimeout:          60,
+		LogLevel:             "info",
+		GinMode:              "debug",
+		APIRateLimitBurst:    1000,
+		APIRateLimitInterval: 600 * time.Millisecond,
 	}
 }
 

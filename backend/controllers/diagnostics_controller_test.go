@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
@@ -22,20 +23,22 @@ import (
 func diagnosticsTestConfig(t *testing.T) config.Config {
 	t.Helper()
 	return config.Config{
-		JWTSecretKey:     "diagnostics-controller-secret-key-that-is-long-enough",
-		JWTExpiryHours:   96,
-		DBPath:           filepath.Join(t.TempDir(), "myco.db"),
-		ProfilePhotoDir:  t.TempDir(),
-		AttachmentsDir:   t.TempDir(),
-		Port:             "8080",
-		ReminderTime:     "06:00",
-		ReminderTimezone: "UTC",
-		FrontendURL:      "http://localhost:5173",
-		ReadTimeout:      15,
-		WriteTimeout:     15,
-		IdleTimeout:      60,
-		LogLevel:         "info",
-		GinMode:          "debug",
+		JWTSecretKey:         "diagnostics-controller-secret-key-that-is-long-enough",
+		JWTExpiryHours:       96,
+		DBPath:               filepath.Join(t.TempDir(), "myco.db"),
+		ProfilePhotoDir:      t.TempDir(),
+		AttachmentsDir:       t.TempDir(),
+		Port:                 "8080",
+		ReminderTime:         "06:00",
+		ReminderTimezone:     "UTC",
+		FrontendURL:          "http://localhost:5173",
+		ReadTimeout:          15,
+		WriteTimeout:         15,
+		IdleTimeout:          60,
+		LogLevel:             "info",
+		GinMode:              "debug",
+		APIRateLimitBurst:    1000,
+		APIRateLimitInterval: 600 * time.Millisecond,
 	}
 }
 

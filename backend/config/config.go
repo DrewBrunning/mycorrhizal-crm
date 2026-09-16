@@ -666,6 +666,19 @@ func isValidClientVersion(s string) bool {
 	return clientVersionPattern.MatchString(strings.TrimSpace(s))
 }
 
+// cookieDomainPattern matches a hostname suitable for a cookie's Domain
+// attribute: one or more dot-separated RFC 1123 labels (letters, digits,
+// hyphens; no leading/trailing hyphen per label), optionally preceded by a
+// single leading dot — the conventional way to request subdomain matching
+// (issue #935). Deliberately does not require a public-suffix check: a
+// self-hosted deployment's domain (a LAN hostname, a .local/.internal
+// suffix) is not necessarily a real public TLD.
+var cookieDomainPattern = regexp.MustCompile(`^\.?([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$`)
+
+func isValidCookieDomain(s string) bool {
+	return cookieDomainPattern.MatchString(strings.TrimSpace(s))
+}
+
 func (e ValidationError) Error() string {
 	return fmt.Sprintf("Configuration Error [%s]: %s", e.Field, e.Message)
 }
@@ -838,6 +851,18 @@ func (c *Config) Validate() []ValidationError {
 		})
 	}
 
+	// COOKIE_DOMAIN (issue #935): unvalidated, a malformed value is emitted
+	// onto the auth cookie's Domain attribute verbatim. Empty is fine (the
+	// documented "current domain only" default); a leading "." is allowed —
+	// that's the standard way to request subdomain matching — but the rest
+	// must look like a real hostname.
+	if c.CookieDomain != "" && !isValidCookieDomain(c.CookieDomain) {
+		errors = append(errors, ValidationError{
+			Field:   "COOKIE_DOMAIN",
+			Message: fmt.Sprintf("Invalid COOKIE_DOMAIN '%s'. Must be a hostname (e.g. 'example.com' or '.example.com' to match subdomains), or unset for the current domain only.", c.CookieDomain),
+		})
+	}
+
 	// Validate JWT Expiry Hours
 	if c.JWTExpiryHours < 1 || c.JWTExpiryHours > 8760 {
 		errors = append(errors, ValidationError{
@@ -874,6 +899,25 @@ func (c *Config) Validate() []ValidationError {
 		errors = append(errors, ValidationError{
 			Field:   "HTTP_IDLE_TIMEOUT",
 			Message: fmt.Sprintf("Invalid idle timeout '%d'. Must be between 1 and 300 seconds.", c.IdleTimeout),
+		})
+	}
+
+	// API_RATE_LIMIT_BURST/API_RATE_LIMIT_INTERVAL_MS (issue #935): a
+	// zero/negative burst makes the limiter reject every request (or,
+	// depending on implementation details, none at all) — either way, a
+	// self-inflicted denial of service the operator did not intend. A
+	// zero/negative interval is likewise never meaningful: the limiter
+	// refills one token per interval.
+	if c.APIRateLimitBurst < 1 {
+		errors = append(errors, ValidationError{
+			Field:   "API_RATE_LIMIT_BURST",
+			Message: fmt.Sprintf("Invalid API_RATE_LIMIT_BURST '%d'. Must be at least 1.", c.APIRateLimitBurst),
+		})
+	}
+	if c.APIRateLimitInterval <= 0 {
+		errors = append(errors, ValidationError{
+			Field:   "API_RATE_LIMIT_INTERVAL_MS",
+			Message: fmt.Sprintf("Invalid API_RATE_LIMIT_INTERVAL_MS '%s'. Must be a positive duration in milliseconds.", c.APIRateLimitInterval),
 		})
 	}
 
@@ -1048,6 +1092,34 @@ func (c *Config) Validate() []ValidationError {
 			Message: fmt.Sprintf("Invalid retention '%d'. Must be 0 (disable the purge and keep soft-deleted rows forever) or a positive number of days.", c.DeleteRetentionDays),
 		})
 	}
+
+	// The remaining retention-day knobs (issue #935) share DELETED_RETENTION_DAYS'
+	// exact semantics — 0 disables the purge, negative is never meaningful —
+	// but had no check at all, so a negative value silently armed each purge
+	// job with a cutoff in the future.
+	for _, r := range []struct {
+		field string
+		days  int
+	}{
+		{"AUDIT_RETENTION_DAYS", c.AuditRetentionDays},
+		{"CONTACT_SHARE_RETENTION_DAYS", c.ContactShareRetentionDays},
+		{"SYSTEM_EVENT_RETENTION_DAYS", c.SystemEventRetentionDays},
+		{"WEBHOOK_DELIVERY_RETENTION_DAYS", c.WebhookDeliveryRetentionDays},
+		{"JOB_RUN_RETENTION_DAYS", c.JobRunRetentionDays},
+	} {
+		if r.days < 0 {
+			errors = append(errors, ValidationError{
+				Field:   r.field,
+				Message: fmt.Sprintf("Invalid retention '%d'. Must be 0 (disable the purge) or a positive number of days.", r.days),
+			})
+		}
+	}
+
+	// OIDC_PROVIDER_URL absolute-URL validation (issue #935) already landed
+	// as part of #934/PR #1106's OIDC completeness gate, above — gated on
+	// oidcSet == 3 there, which is the more correct condition (it only
+	// checks the URL once OIDC is actually fully configured, rather than on
+	// any non-empty value). Nothing to add here.
 
 	// LOG_LEVEL and GIN_MODE (issue #936) are new Config fields as of this
 	// change; give them a real enum check from day one rather than

@@ -15,20 +15,22 @@ import (
 // individual tests can mutate just the field(s) they care about.
 func validConfig() *Config {
 	return &Config{
-		DBPath:           "test.db",
-		ReminderTime:     "12:00",
-		ReminderTimezone: "UTC",
-		FrontendURL:      "https://crm.example.com",
-		CookieSecure:     true,
-		Port:             "8080",
-		JWTSecretKey:     "a-very-long-jwt-secret-key-that-is-32-chars",
-		JWTExpiryHours:   96,
-		ReadTimeout:      15,
-		WriteTimeout:     15,
-		IdleTimeout:      60,
-		ProfilePhotoDir:  "/var/data/photos",
-		LogLevel:         "info",
-		GinMode:          "debug",
+		DBPath:               "test.db",
+		ReminderTime:         "12:00",
+		ReminderTimezone:     "UTC",
+		FrontendURL:          "https://crm.example.com",
+		CookieSecure:         true,
+		Port:                 "8080",
+		JWTSecretKey:         "a-very-long-jwt-secret-key-that-is-32-chars",
+		JWTExpiryHours:       96,
+		ReadTimeout:          15,
+		WriteTimeout:         15,
+		IdleTimeout:          60,
+		ProfilePhotoDir:      "/var/data/photos",
+		LogLevel:             "info",
+		GinMode:              "debug",
+		APIRateLimitBurst:    1000,
+		APIRateLimitInterval: 600 * time.Millisecond,
 	}
 }
 
@@ -668,6 +670,81 @@ func TestLoadConfig_WebhookDeliveryRetentionDays(t *testing.T) {
 
 	cfg := LoadConfig()
 	assert.Equal(t, 60, cfg.WebhookDeliveryRetentionDays)
+}
+
+// --- Issue #935: type/range validation for previously-unvalidated fields --
+
+func TestValidate_CookieDomain(t *testing.T) {
+	for _, valid := range []string{"", "example.com", ".example.com", "crm.example.com", "localhost"} {
+		cfg := validConfig()
+		cfg.CookieDomain = valid
+		assert.False(t, hasFieldError(cfg.Validate(), "COOKIE_DOMAIN"), "%q should be a valid cookie domain", valid)
+	}
+
+	for _, invalid := range []string{"not a domain!!", "http://example.com", "example.com/path", "-example.com", "example..com"} {
+		cfg := validConfig()
+		cfg.CookieDomain = invalid
+		assert.True(t, hasFieldError(cfg.Validate(), "COOKIE_DOMAIN"), "%q should be rejected as an invalid cookie domain", invalid)
+	}
+}
+
+func TestValidate_APIRateLimitBurst(t *testing.T) {
+	cfg := validConfig()
+	cfg.APIRateLimitBurst = 1000
+	assert.False(t, hasFieldError(cfg.Validate(), "API_RATE_LIMIT_BURST"))
+
+	for _, invalid := range []int{0, -1} {
+		cfg := validConfig()
+		cfg.APIRateLimitBurst = invalid
+		assert.True(t, hasFieldError(cfg.Validate(), "API_RATE_LIMIT_BURST"), "burst %d must be rejected", invalid)
+	}
+}
+
+func TestValidate_APIRateLimitInterval(t *testing.T) {
+	cfg := validConfig()
+	cfg.APIRateLimitInterval = 600 * time.Millisecond
+	assert.False(t, hasFieldError(cfg.Validate(), "API_RATE_LIMIT_INTERVAL_MS"))
+
+	for _, invalid := range []time.Duration{0, -100 * time.Millisecond} {
+		cfg := validConfig()
+		cfg.APIRateLimitInterval = invalid
+		assert.True(t, hasFieldError(cfg.Validate(), "API_RATE_LIMIT_INTERVAL_MS"), "interval %s must be rejected", invalid)
+	}
+}
+
+func TestValidate_ExtraRetentionDaysFields(t *testing.T) {
+	for _, field := range []string{
+		"AUDIT_RETENTION_DAYS", "CONTACT_SHARE_RETENTION_DAYS", "SYSTEM_EVENT_RETENTION_DAYS",
+		"WEBHOOK_DELIVERY_RETENTION_DAYS", "JOB_RUN_RETENTION_DAYS",
+	} {
+		t.Run(field, func(t *testing.T) {
+			cfg := validConfig()
+			setRetentionField(cfg, field, -1)
+			assert.True(t, hasFieldError(cfg.Validate(), field), "a negative %s must be rejected", field)
+
+			cfg = validConfig()
+			setRetentionField(cfg, field, 0)
+			assert.False(t, hasFieldError(cfg.Validate(), field), "0 (disable the purge) must be accepted for %s", field)
+		})
+	}
+}
+
+// setRetentionField sets the Config field corresponding to one of the
+// retention-day env var names above, so TestValidate_ExtraRetentionDaysFields
+// can drive all five through one table instead of five near-identical tests.
+func setRetentionField(cfg *Config, field string, days int) {
+	switch field {
+	case "AUDIT_RETENTION_DAYS":
+		cfg.AuditRetentionDays = days
+	case "CONTACT_SHARE_RETENTION_DAYS":
+		cfg.ContactShareRetentionDays = days
+	case "SYSTEM_EVENT_RETENTION_DAYS":
+		cfg.SystemEventRetentionDays = days
+	case "WEBHOOK_DELIVERY_RETENTION_DAYS":
+		cfg.WebhookDeliveryRetentionDays = days
+	case "JOB_RUN_RETENTION_DAYS":
+		cfg.JobRunRetentionDays = days
+	}
 }
 
 func TestLoadConfig_DBIntegrityCheckIntervalHoursClampedToMinimumOne(t *testing.T) {
