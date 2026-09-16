@@ -259,6 +259,82 @@ test('bulk delete asks for confirmation naming the count before running', async 
   expect(runBulkOperation).not.toHaveBeenCalled();
 });
 
+// handleBulk's catch block: the request itself throws (network error, 500,
+// etc.), not just a partial per-item failure.
+test('a bulk operation that throws alerts a generic error and leaves the selection in place', async () => {
+  mockTwoPages();
+  vi.mocked(runBulkOperation).mockRejectedValue(new Error('network down'));
+  const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.click(screen.getByLabelText('Select Alice'));
+  fireEvent.click(screen.getByText('Archive'));
+
+  await waitFor(() =>
+    expect(alertSpy).toHaveBeenCalledWith('The bulk operation failed. Please try again.'),
+  );
+  // The catch block never reaches setSelectedUids(new Set()) -- the
+  // selection survives so the user can retry without reselecting.
+  expect(selectedText('1 selected')).toBeInTheDocument();
+  alertSpy.mockRestore();
+});
+
+// The "partial success" branch: the request itself succeeds, but some rows
+// failed server-side. That still alerts (so nothing fails silently) while
+// clearing the selection and refetching, unlike the hard-failure catch above.
+test('a bulk operation with per-row failures alerts the counts, clears selection, and refetches', async () => {
+  mockTwoPages();
+  vi.mocked(runBulkOperation).mockResolvedValue({
+    action: 'archive',
+    total: 1,
+    succeeded: 0,
+    failed: 1,
+    failures: [{ vcard_uid: 'uid-1', reason: 'locked' }],
+  } as BulkOperationResult);
+  const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+  const getContactsCallsBefore = vi.mocked(getContacts).mock.calls.length;
+
+  fireEvent.click(screen.getByLabelText('Select Alice'));
+  fireEvent.click(screen.getByText('Archive'));
+
+  await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('0 of 1 succeeded. 1 failed.'));
+  // Unlike the hard-failure case, a partial success still clears the
+  // selection and refetches.
+  expect(selectedText('1 selected')).toBeUndefined();
+  await waitFor(() =>
+    expect(vi.mocked(getContacts).mock.calls.length).toBeGreaterThan(getContactsCallsBefore),
+  );
+  alertSpy.mockRestore();
+});
+
+test('bulk unarchive sends the unarchive action for the selected contacts', async () => {
+  mockTwoPages();
+  vi.mocked(runBulkOperation).mockResolvedValue({
+    action: 'unarchive',
+    total: 1,
+    succeeded: 1,
+    failed: 0,
+    failures: [],
+  } as BulkOperationResult);
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.click(screen.getByLabelText('Select Alice'));
+  fireEvent.click(screen.getByText('Unarchive'));
+
+  await waitFor(() =>
+    expect(runBulkOperation).toHaveBeenCalledWith({
+      action: 'unarchive',
+      vcard_uids: ['uid-1'],
+      circle_id: undefined,
+      tag_id: undefined,
+    }),
+  );
+});
+
 // Regression test: the row Checkbox sits inside a Card whose own onClick
 // navigates to the contact's detail page. stopPropagation() on the
 // Checkbox's onChange does nothing for the native click event that bubbles
@@ -798,6 +874,37 @@ test('clicking the star on a favorite POSTs to unfavorite and empties the star',
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Mark Alice as favorite' })).toBeInTheDocument(),
   );
+});
+
+// handleToggleFavorite's catch block: the optimistic flip must roll back and
+// the page must refetch so the star can't silently disagree with the server.
+test('a failed favorite toggle rolls back the optimistic star and refetches', async () => {
+  vi.mocked(getContacts).mockResolvedValueOnce({
+    contacts: [contact(1, 'uid-1', 'Alice', false)],
+    next_cursor: '',
+    limit: 10,
+  });
+  vi.mocked(favoriteContact).mockRejectedValue(new Error('server exploded'));
+  const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  renderPage();
+
+  await screen.findByLabelText('Select Alice');
+  // The refetch after failure re-resolves with the server's (unchanged) state.
+  vi.mocked(getContacts).mockResolvedValueOnce({
+    contacts: [contact(1, 'uid-1', 'Alice', false)],
+    next_cursor: '',
+    limit: 10,
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Mark Alice as favorite' }));
+
+  await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Failed to update favorite'));
+  // Rolled back to the non-favorite star, not left on the optimistic "filled" state.
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Mark Alice as favorite' })).toBeInTheDocument(),
+  );
+  expect(vi.mocked(getContacts).mock.calls.length).toBeGreaterThanOrEqual(2);
+  alertSpy.mockRestore();
 });
 
 test('clicking the star does not navigate to the contact detail page', async () => {
