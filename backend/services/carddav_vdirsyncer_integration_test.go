@@ -42,6 +42,36 @@ import (
 // path-gated, not per-PR.
 // ---------------------------------------------------------------------------
 
+// knownExportLossConcepts (issue #968, PR #1074, gap #1077): vCard 4.0 has
+// no carrier for a free-text label on EMAIL/TEL, and Card.OtherOnlineServices
+// has no safe default vCard property, so vcard4.Adapter's exportEmails/
+// exportPhones/exportOnlineServices never send them (see their warn
+// diagnostics) — every real round trip loses these deterministically,
+// before the card ever reaches a server. #1074 correctly made semanticequal
+// report this (previously silently unclassified); this suite tests OUR OWN
+// server round-tripping OUR OWN export, so it hits the same loss uniformly
+// for every fixture that has one of these fields set — filtered once here
+// rather than pinned per contact (contrast the real-third-party-server
+// suite in carddav_radicale_integration_test.go, whose divergence register
+// also carries genuine per-server idiosyncrasies alongside this).
+var knownExportLossConcepts = map[string]bool{
+	"email.label":         true,
+	"phone.label":         true,
+	"onlineservice.other": true,
+}
+
+// unexplainedDifferences renders every difference in report NOT explained by
+// knownExportLossConcepts, one per line, for test failure output.
+func unexplainedDifferences(report semanticequal.Report) []string {
+	var out []string
+	for _, d := range report.Differences {
+		if !knownExportLossConcepts[d.Concept] {
+			out = append(out, d.String())
+		}
+	}
+	return out
+}
+
 // vdirsyncerEnv resolves the connection info and the vdirsyncer binary.
 func vdirsyncerEnv(t *testing.T) (baseURL, cmd string) {
 	t.Helper()
@@ -194,6 +224,13 @@ func TestCardDAVVdirsyncer_ClientRoundTrip(t *testing.T) {
 	// Every staged contact must come back through the real client's parser
 	// semantically equal — OUR server round-trips its own exports, so any
 	// divergence here is a real server bug that a real client would surface.
+	// EXCEPT the concepts in knownExportLossConcepts (issue #968, PR #1074,
+	// gap #1077): vCard 4.0 has no carrier for a free-text label on
+	// EMAIL/TEL and no safe default property for an unclassified online
+	// service, so our own exporter never sends them — the loss happens
+	// before the card ever reaches this (or any) server, uniformly for
+	// every fixture contact that has one set, so it is filtered once here
+	// rather than pinned per contact.
 	for _, entry := range entries {
 		entry := entry
 		t.Run(entry.name, func(t *testing.T) {
@@ -204,8 +241,8 @@ func TestCardDAVVdirsyncer_ClientRoundTrip(t *testing.T) {
 				t.Logf("import diag: %s: %s", d.Severity, d.Message)
 			}
 			report := semanticequal.Compare(entry.rec, pulled)
-			if len(report.Differences) > 0 {
-				t.Errorf("fixture contact %q did not survive the round trip through a REAL client (vdirsyncer):\n%s", entry.name, report.DiffText())
+			if unexplained := unexplainedDifferences(report); len(unexplained) > 0 {
+				t.Errorf("fixture contact %q did not survive the round trip through a REAL client (vdirsyncer):\n%s", entry.name, strings.Join(unexplained, "\n"))
 			}
 		})
 	}
