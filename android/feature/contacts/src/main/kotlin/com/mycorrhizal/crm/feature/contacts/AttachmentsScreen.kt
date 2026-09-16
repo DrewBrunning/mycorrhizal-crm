@@ -92,21 +92,22 @@ fun AttachmentsScreen(
             // size check ever ran (mirrors ContactDetailScreen's photo picker
             // and VcfImportScreen).
             val meta = withContext(Dispatchers.IO) { queryAttachmentMeta(resolver, uri) }
-            if (meta != null && meta.size != null && meta.size > AttachmentsViewModel.MAX_ATTACHMENT_SIZE_BYTES) {
+            if (exceedsAttachmentSizeLimit(meta.size, AttachmentsViewModel.MAX_ATTACHMENT_SIZE_BYTES)) {
                 viewModel.rejectUpload()
                 return@launch
             }
             val bytes = withContext(Dispatchers.IO) { readAttachmentBytes(resolver, uri) }
             // Backstop for providers that report no size.
-            if (bytes.size > AttachmentsViewModel.MAX_ATTACHMENT_SIZE_BYTES) {
+            if (exceedsAttachmentSizeLimit(bytes.size.toLong(), AttachmentsViewModel.MAX_ATTACHMENT_SIZE_BYTES)) {
                 viewModel.rejectUpload()
                 return@launch
             }
             if (bytes.isEmpty()) return@launch
+            val upload = resolveAttachmentUpload(meta, bytes)
             viewModel.upload(
-                fileName = meta?.name?.takeIf { it.isNotBlank() } ?: "attachment",
-                mimeType = meta?.mimeType ?: "application/octet-stream",
-                bytes = bytes,
+                fileName = upload.fileName,
+                mimeType = upload.mimeType,
+                bytes = upload.bytes,
             )
         }
     }
@@ -325,21 +326,33 @@ private fun AttachmentRow(
 
 @Composable
 private fun attachmentMetaLine(sizeBytes: Long): String {
-    val size = if (sizeBytes > 0) {
-        stringResource(R.string.attachments_size, formatFileSize(sizeBytes))
-    } else {
-        ""
-    }
+    val formatted = attachmentSizeText(sizeBytes) ?: return ""
+    val size = stringResource(R.string.attachments_size, formatted)
     return listOfNotNull(size.takeIf { it.isNotBlank() }).joinToString(" · ")
 }
+
+/**
+ * The pure byte/KB/MB decision behind [attachmentMetaLine]: null for an
+ * unknown/zero size (nothing to show), otherwise the [formatFileSize]
+ * rendering of [sizeBytes]. Split out so it can be unit-tested without a
+ * Composable/`stringResource` context.
+ */
+internal fun attachmentSizeText(sizeBytes: Long): String? =
+    if (sizeBytes > 0) formatFileSize(sizeBytes) else null
 
 /**
  * Writes a downloaded attachment to the cache and hands it to a viewer via
  * FileProvider with a scoped read. The filename is sanitized before use — the
  * server's original_name is display-only and must never reach a filesystem
  * path untouched.
+ *
+ * `internal` (rather than `private`) so [AttachmentsScreenLogicTest] can drive
+ * the `catch` branch directly — there is no activity registered to view an
+ * arbitrary attachment under a Robolectric-driven Context, so the swallow
+ * behavior needs its own regression test rather than relying on it never
+ * throwing in practice.
  */
-private fun openDownloadedAttachment(context: Context, attachment: ContactAttachment, bytes: ByteArray) {
+internal fun openDownloadedAttachment(context: Context, attachment: ContactAttachment, bytes: ByteArray) {
     val dir = File(context.cacheDir, "attachments").apply { mkdirs() }
     val safeName = attachment.originalName
         .replace(Regex("""[^A-Za-z0-9._-]"""), "_")
@@ -360,13 +373,21 @@ private fun openDownloadedAttachment(context: Context, attachment: ContactAttach
     }
 }
 
-private data class AttachmentPick(
+/** `internal`: [resolveAttachmentUpload] and the [AttachmentsScreenLogicTest] tests need direct access. */
+internal data class AttachmentPick(
     val name: String?,
     val mimeType: String?,
     val size: Long?,
 )
 
-private fun queryAttachmentMeta(resolver: ContentResolver, uri: Uri): AttachmentPick {
+/**
+ * `internal` (rather than `private`) so [AttachmentsScreenLogicTest] can drive
+ * a fake [ContentResolver]/`Cursor` directly, including a cursor whose
+ * projection is missing the `DISPLAY_NAME`/`SIZE` columns entirely (a real
+ * provider can omit either) — `getColumnIndex` returns `-1` for those and
+ * must not be read as a valid index.
+ */
+internal fun queryAttachmentMeta(resolver: ContentResolver, uri: Uri): AttachmentPick {
     var name: String? = null
     var size: Long? = null
     resolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -383,3 +404,31 @@ private fun queryAttachmentMeta(resolver: ContentResolver, uri: Uri): Attachment
 /** Reads the picked file's bytes off the main thread (post-size-probe). */
 private fun readAttachmentBytes(resolver: ContentResolver, uri: Uri): ByteArray =
     resolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
+
+/**
+ * True when [size] is a known value over [maxSizeBytes]. A `null` size (a
+ * provider that doesn't report one) is never rejected here — the post-read
+ * byte-length call below is the backstop for that case. Shared by both the
+ * pre-read metadata probe and that backstop so the two checks can't drift.
+ */
+internal fun exceedsAttachmentSizeLimit(size: Long?, maxSizeBytes: Long): Boolean =
+    size != null && size > maxSizeBytes
+
+/** The upload() call's derived arguments once a pick has passed both size checks and isn't empty. */
+internal data class AttachmentUpload(
+    val fileName: String,
+    val mimeType: String,
+    val bytes: ByteArray,
+)
+
+/**
+ * Derives the upload's filename/MIME type from whatever the picker's
+ * metadata probe found, falling back to a generic name/type for a provider
+ * that reports neither. Pure — no I/O, no Compose — so it is unit-tested
+ * directly.
+ */
+internal fun resolveAttachmentUpload(meta: AttachmentPick, bytes: ByteArray): AttachmentUpload = AttachmentUpload(
+    fileName = meta.name?.takeIf { it.isNotBlank() } ?: "attachment",
+    mimeType = meta.mimeType ?: "application/octet-stream",
+    bytes = bytes,
+)
