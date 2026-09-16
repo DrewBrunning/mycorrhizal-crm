@@ -82,12 +82,17 @@ a **new** ruleset, `target: branch`, `refs/heads/release/*`, `enforcement: activ
 release-candidate series (`v1.0.0-rc.N`) is cut from `release/vX.Y.0` and iterated there while
 `main` keeps moving (RC-02, [issue #446](https://github.com/DrewBrunning/mycorrhizal-crm/issues/446);
 full policy in [`docs/release-candidate-process.md`](../release-candidate-process.md)). The ruleset
-carries **exactly the same required status checks as `main-protection`** — `backend/internal/governance.CheckReleaseBranchesMatchMain`
-fails the build if the two lists ever diverge, so "RC gates match release gates" (#446 action 7)
-is enforced, not aspirational — plus `required_linear_history`, `deletion`, and `non_fast_forward`
-(a published RC's history is immutable). Bypass actors: the repo Admin role and the release
-GitHub App (`release.yml` cuts RC tags from `release/*`; `promote-rc.yml` commits the final schema
-fixture there and merges the branch back into `main`).
+carries **every required status check `main-protection` has, plus the RC-only checks in
+`backend/internal/governance.ReleaseOnlyRequiredChecks`** — currently just `RC fix is traceable
+to a finding` (`rc-fix.yml`, RC-02 action 4, [issue #925](https://github.com/DrewBrunning/mycorrhizal-crm/issues/925)),
+which has no `main` counterpart because it only applies to PRs targeting `release/**`.
+`backend/internal/governance.CheckReleaseBranchesMatchMain` fails the build if
+`release-branches.json` ever requires less than `main-protection` plus that declared extra, or
+requires anything else undeclared, so "RC gates match release gates" (#446 action 7) is enforced,
+not aspirational — plus `required_linear_history`, `deletion`, and `non_fast_forward` (a published
+RC's history is immutable). Bypass actors: the repo Admin role and the release GitHub App
+(`release.yml` cuts RC tags from `release/*`; `promote-rc.yml` commits the final schema fixture
+there and merges the branch back into `main`).
 
 ## Protected `release` environment
 

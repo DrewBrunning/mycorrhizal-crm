@@ -1,5 +1,5 @@
 {
-  "_comment": "Governance settings as code (#508) for the RC-02 release-candidate workflow (#446). Desired state for a NEW branch ruleset covering release/* branches -- the branch an RC series (v1.0.0-rc.N) is cut from and iterated on. It carries the SAME required status checks as main-protection.json so 'RC gates match release gates' (#446 action 7) is enforced, not aspirational; backend/internal/governance.CheckReleaseBranchesMatchMain asserts the two lists are equal. Apply with: gh api --method POST /repos/DrewBrunning/mycorrhizal-crm/rulesets --input .github/rulesets/release-branches.json (this ruleset does not exist yet). governance-drift.yml tracks it once applied. bypass_actors: the repo Admin role and the release GitHub App (release.yml cuts RC tags from release/*, promote-rc.yml commits the final schema fixture there and merges it back to main); actor_id values are instance-specific.",
+  "_comment": "Governance settings as code (#508) for the RC-02 release-candidate workflow (#446). Desired state for a NEW branch ruleset covering release/* branches -- the branch an RC series (v1.0.0-rc.N) is cut from and iterated on. It carries every required status check main-protection.json has, PLUS the RC-specific 'RC fix is traceable to a finding' check (rc-fix.yml, #925) that has no main-branch counterpart -- backend/internal/governance.CheckReleaseBranchesMatchMain asserts release-branches.json requires exactly main's checks plus governance.ReleaseOnlyRequiredChecks, no more and no less, so 'RC gates match release gates' (#446 action 7) is enforced, not aspirational. Apply with: gh api --method POST /repos/DrewBrunning/mycorrhizal-crm/rulesets --input .github/rulesets/release-branches.json (this ruleset does not exist yet). governance-drift.yml tracks it once applied. bypass_actors: the repo Admin role and the release GitHub App (release.yml cuts RC tags from release/*, promote-rc.yml commits the final schema fixture there and merges it back to main); actor_id values are instance-specific.",
   "name": "release-branch-protection",
   "target": "branch",
   "enforcement": "active",
@@ -29,7 +29,8 @@
           { "context": "Go server binary is byte-reproducible" },
           { "context": "codecov/patch/backend" },
           { "context": "codecov/patch/frontend" },
-          { "context": "codecov/patch/android" }
+          { "context": "codecov/patch/android" },
+          { "context": "RC fix is traceable to a finding" }
         ]
       }
     },
