@@ -104,6 +104,21 @@ non-rebuildable `pending_interactions` outbox; the plaintext file is overwritten
 The DB, its WAL/shm sidecars, and the Coil/photo cache are purged on logout/account-removal
 (`LocalDataCleaner.kt`).
 
+**Correction (2026-09-16, found via Codecov coverage triage, no filed issue — see PR #1080):** "the
+plaintext file is overwritten before deletion" was not true from this control's resolution
+(2026-08-25) until this fix. `RoomCacheEncryption.overwriteFile` read `file.length()` *after*
+`FileOutputStream(file)` had already opened (and truncated) it, so `remaining` was always `0` and
+the write loop never ran a single iteration — the plaintext file went straight from its real content
+to empty with the underlying disk blocks never actually overwritten, exactly the "stolen device,
+data recoverable from freed blocks" scenario this control exists to prevent. Fixed by capturing the
+length before the truncating stream opens
+(`android/core/data/src/main/kotlin/com/mycorrhizal/crm/data/local/RoomCacheEncryption.kt:239-241`);
+pinned by three new JVM tests in `RoomCacheEncryptionTest.kt` (`overwriteFile replaces the content
+but keeps the file length`, `overwriteFile on an empty file does not throw and leaves it empty`,
+`overwriteFile handles content larger than its internal buffer`), hand-verified to fail against the
+pre-fix code. STORAGE-1 stays `satisfied` — on a now-true basis, not a status flip, since the row
+was never marked `partial` for this — see `asvs-l2-verification-report.md` pass 1.25.
+
 Deliberate test carve-out: the Robolectric JVM unit tests run the migration/DAO logic against the
 plain framework SQLite factory because SQLCipher's `libsqlcipher.so` is an Android-native binary
 that cannot load on the JVM. The encrypted factory — same migration chain plus the transition and
