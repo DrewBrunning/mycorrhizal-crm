@@ -736,8 +736,34 @@ criterion.**
   informational. Full mechanics: `docs/development/coverage.md`.
 - **Coverage ≠ correctness.** A line can be 100% covered while every assertion
   misses what a planted bug changes — that is exactly what mutation testing
-  (`stryker.yml`, nightly, report-only on the core domain modules) measures, and
-  why it complements rather than replaces the layers.
+  measures, and why it complements rather than replaces the layers. Issue
+  #915 found the original version of this (frontend-only, advisory, never
+  reaching the Go safety-critical paths) insufficient to back that claim, so
+  it is now two nightly, threshold-gated workflows rather than one advisory
+  one:
+  - `stryker.yml` — frontend, the core domain modules (`src/api/contacts.ts`,
+    `relationshipEdges.ts`, `lifeEvents.ts`). `frontend/stryker.conf.json`'s
+    `thresholds.break` fails the run itself on a score drop below the
+    committed baseline (60.73% measured 2026-09-15; `break: 55` leaves margin
+    for run-to-run noise, not because a further drop is expected).
+  - `go-mutation.yml` — backend, gremlins against the paths where silent
+    data loss lives: migration/upgrade and backup/restore (`database`),
+    data-integrity invariants (`atrest`), delete cascade (the two files
+    `contact_controller.go`/`admin_user_controller.go` name in backend trap
+    6), import ingestion (`services`' import-source files), and the three
+    exporters (`vcard3`, `vcard4`, `jscontact`). The complete scope and each
+    leg's threshold (with the baseline run it ratchets from) live in
+    `backend/internal/mutationscope.Scopes`, generated into
+    `backend/.gremlins/*.yaml` by `cmd/genmutationscope` — regenerate after
+    adding or removing a file in a scoped package (`controllers`/`services`
+    are far larger than the scope, so the exclude list is mechanical, not
+    hand-maintained).
+
+  Both stay nightly + manual-dispatch rather than per-PR: mutation testing is
+  O(test suite × mutant count), too slow to gate every diff. Neither is a
+  release gate (`docs/development/release-gates.md`) for the same reason —
+  the ratchet catches a regression by morning, not by blocking the PR that
+  introduced it.
 
 ## Determinism and isolation (the "test infrastructure" acceptance criteria)
 
