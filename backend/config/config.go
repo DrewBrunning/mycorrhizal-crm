@@ -5,7 +5,6 @@
 package config
 
 import (
-	"encoding/base64"
 	"fmt"
 	"log"
 	"math"
@@ -16,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"mycorrhizal/atrest"
 )
 
 // OIDCConfig holds optional OIDC provider settings.
@@ -161,9 +162,12 @@ type Config struct {
 
 	// DataEncryptionKey is the base64-encoded 32-byte master key for
 	// field-level at-rest encryption (issue #380, ASVS V6.4/V8.3). When unset,
-	// atrest falls back to DATA_ENCRYPTION_KEY_FILE, then to an HKDF-SHA256
-	// derivation from JWT_SECRET_KEY so existing deployments get encryption
-	// with zero config. See backend/atrest/atrest.go.
+	// atrest falls back to DataEncryptionKeyFile, then to an HKDF-SHA256
+	// derivation from JWTSecretKey so existing deployments get encryption
+	// with zero config. In-process callers resolve the actual key by passing
+	// these two fields plus JWTSecretKey to atrest.ResolveMasterKey — the
+	// validated Config fields ARE the resolution inputs, not a second,
+	// independent env read (issue #938). See backend/atrest/atrest.go.
 	DataEncryptionKey     string // base64, 32 bytes
 	DataEncryptionKeyFile string // path to a file whose trimmed contents are the base64 key
 
@@ -620,15 +624,6 @@ type ValidationError struct {
 	Message string
 }
 
-// isValidBase64Key reports whether s is a base64 string that decodes to
-// exactly 32 bytes (the AES-256 master-key size atrest requires). It exists
-// so config.Validate can fail boot on a set-but-broken DATA_ENCRYPTION_KEY
-// without importing atrest (config must not create an import cycle).
-func isValidBase64Key(s string) bool {
-	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(s))
-	return err == nil && len(raw) == 32
-}
-
 // clientVersionPattern matches the version shapes an Android `versionName`
 // (and the server build version it is compared against) can legitimately
 // take: `major`, `major.minor`, or `major.minor.patch`, optionally followed
@@ -695,8 +690,13 @@ func (c *Config) Validate() []ValidationError {
 	// HKDF derivation from JWT_SECRET_KEY), but a set-but-broken key must fail
 	// boot: an operator who thinks they configured a key and didn't would
 	// otherwise run with a weaker derivation than they believe.
+	//
+	// This reuses atrest.DecodeMasterKey — the same function
+	// atrest.ResolveMasterKey calls to actually decode the key — rather than
+	// a second, independent base64/length check, so validation and use can
+	// never silently disagree about what makes a key valid (issue #938).
 	if c.DataEncryptionKey != "" {
-		if !isValidBase64Key(c.DataEncryptionKey) {
+		if _, err := atrest.DecodeMasterKey(c.DataEncryptionKey); err != nil {
 			errors = append(errors, ValidationError{
 				Field:   "DATA_ENCRYPTION_KEY",
 				Message: "DATA_ENCRYPTION_KEY must be base64-encoded 32 random bytes, e.g. `openssl rand -base64 32`. Unset it to use the JWT-derived key.",

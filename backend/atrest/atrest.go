@@ -108,30 +108,38 @@ func DecodeMasterKey(raw string) ([]byte, error) {
 	return kek, nil
 }
 
-// EncryptionKey resolves the master key (KEK) from the environment:
+// ResolveMasterKey implements the resolution order for the at-rest master
+// key (KEK), parameterized on explicit inputs rather than reading the
+// environment itself:
 //
-//  1. DATA_ENCRYPTION_KEY (base64, 32 bytes), else
-//  2. DATA_ENCRYPTION_KEY_FILE (path whose trimmed contents are base64,
-//     32 bytes), else
-//  3. HKDF-SHA256 over JWT_SECRET_KEY (the zero-config fallback, mirroring
+//  1. dataKey (base64, 32 bytes), else
+//  2. dataKeyFile (path whose trimmed contents are base64, 32 bytes), else
+//  3. HKDF-SHA256 over jwtSecret (the zero-config fallback, mirroring
 //     services/credential_crypto.go's coupling so existing deployments keep
 //     working without a new required variable).
 //
-// Returns (nil, nil) when none of the three sources yields a key — callers
+// Returns (nil, nil) when none of the three inputs yields a key — callers
 // treat that as "encryption not configured" rather than an error; production
 // always has JWT_SECRET_KEY (config validation requires it), so production
 // always encrypts.
-func EncryptionKey() ([]byte, error) {
-	if raw := os.Getenv("DATA_ENCRYPTION_KEY"); raw != "" {
-		kek, err := DecodeMasterKey(raw)
+//
+// In-process callers that already hold a validated config.Config must pass
+// its DataEncryptionKey/DataEncryptionKeyFile/JWTSecretKey fields here
+// instead of calling EncryptionKey (which re-reads the environment
+// independently) — otherwise config.Validate and the value actually used to
+// arm encryption are two separate reads of the same variables that could, in
+// principle, disagree (issue #938).
+func ResolveMasterKey(dataKey, dataKeyFile, jwtSecret string) ([]byte, error) {
+	if dataKey != "" {
+		kek, err := DecodeMasterKey(dataKey)
 		if err != nil {
 			return nil, fmt.Errorf("DATA_ENCRYPTION_KEY %w", err)
 		}
 		return kek, nil
 	}
 
-	if path := os.Getenv("DATA_ENCRYPTION_KEY_FILE"); path != "" {
-		raw, err := os.ReadFile(path) // #nosec G304 G703 -- path is an operator-supplied config path (DATA_ENCRYPTION_KEY_FILE), not request input
+	if dataKeyFile != "" {
+		raw, err := os.ReadFile(dataKeyFile) // #nosec G304 G703 -- path is an operator-supplied config path (DATA_ENCRYPTION_KEY_FILE), not request input
 		if err != nil {
 			return nil, fmt.Errorf("DATA_ENCRYPTION_KEY_FILE: %w", err)
 		}
@@ -142,11 +150,28 @@ func EncryptionKey() ([]byte, error) {
 		return kek, nil
 	}
 
-	if jwt := os.Getenv("JWT_SECRET_KEY"); jwt != "" {
-		return deriveKEKFromJWT(jwt), nil
+	if jwtSecret != "" {
+		return deriveKEKFromJWT(jwtSecret), nil
 	}
 
 	return nil, nil
+}
+
+// EncryptionKey resolves the master key (KEK) directly from the process
+// environment (DATA_ENCRYPTION_KEY, DATA_ENCRYPTION_KEY_FILE,
+// JWT_SECRET_KEY) via ResolveMasterKey. It exists for the standalone CLI
+// tools (cmd/backup, cmd/backupverify, cmd/rotate-at-rest-key,
+// cmd/backfill-at-rest, cmd/backfill-unicode-nfc) that operate without
+// building a full config.Config. Server code that already holds a validated
+// config.Config (main.go, services/restore_drill_service.go) must call
+// ResolveMasterKey with its fields instead, so the validated value is the
+// used value (issue #938).
+func EncryptionKey() ([]byte, error) {
+	return ResolveMasterKey(
+		os.Getenv("DATA_ENCRYPTION_KEY"),
+		os.Getenv("DATA_ENCRYPTION_KEY_FILE"),
+		os.Getenv("JWT_SECRET_KEY"),
+	)
 }
 
 // deriveKEKFromJWT derives the 32-byte master key from the JWT secret via

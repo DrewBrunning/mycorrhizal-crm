@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/atrest"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -857,6 +859,32 @@ func TestValidate_DataEncryptionKey_AndFileConflict(t *testing.T) {
 	cfg.DataEncryptionKeyFile = "/tmp/somewhere"
 	errs := cfg.Validate()
 	assert.True(t, hasFieldError(errs, "DATA_ENCRYPTION_KEY"), "setting both key and key file must error")
+}
+
+// TestValidate_DataEncryptionKey_AgreesWithAtrest pins the issue #938 fix:
+// config.Validate must accept/reject DATA_ENCRYPTION_KEY exactly where
+// atrest.DecodeMasterKey (the function atrest.ResolveMasterKey actually
+// calls to arm encryption) would, because Validate calls that same function
+// rather than an independent, potentially-drifting base64/length check.
+func TestValidate_DataEncryptionKey_AgreesWithAtrest(t *testing.T) {
+	cases := []string{
+		base64.StdEncoding.EncodeToString(make([]byte, 32)), // valid
+		base64.StdEncoding.EncodeToString(make([]byte, 16)), // wrong length
+		"this-is-not-base64!!!",                             // not base64
+		"",
+	}
+
+	for _, raw := range cases {
+		_, atrestErr := atrest.DecodeMasterKey(raw)
+		atrestAccepts := raw == "" || atrestErr == nil // empty is "unset", handled separately by Validate
+
+		cfg := validConfig()
+		cfg.DataEncryptionKey = raw
+		validateAccepts := !hasFieldError(cfg.Validate(), "DATA_ENCRYPTION_KEY")
+
+		assert.Equal(t, atrestAccepts, validateAccepts,
+			"Validate and atrest.DecodeMasterKey disagreed on %q", raw)
+	}
 }
 
 func TestLoadConfig_DataEncryptionKeyFileEnv(t *testing.T) {
