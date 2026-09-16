@@ -275,11 +275,21 @@ log "Account created. Enabling CardDAV + CalDAV collection sync"
 # chrome (Synchronize now / Refresh list / Options menu). wait_for is this
 # script's existing tool for exactly this ("waiting out async work... with
 # no button to press in the meantime") — it just wasn't used here.
+#
+# 20 attempts wasn't enough under load: a second real CI failure (this one
+# past that first race) showed the server-side PROPFIND chain completing
+# (every request 207, confirmed from the server's own request log) over a
+# minute before the client's collection row ever rendered — each wait_for
+# attempt's own dump_ui (two adb round trips) got slow enough under the same
+# emulator contention documented elsewhere in this file that 20 attempts
+# used up far more than 20 wall-clock seconds and still wasn't enough.
+# Doubled to 40 to match this file's existing doubling convention for this
+# exact failure mode (see "Next"/"Add account" above).
 tap "CardDAV"
-wait_for "synchronize this collection" 20
+wait_for "synchronize this collection" 40
 tap "synchronize this collection"
 tap "CalDAV"
-wait_for "synchronize this collection" 20
+wait_for "synchronize this collection" 40
 tap "synchronize this collection"
 
 log "Triggering a manual sync"
