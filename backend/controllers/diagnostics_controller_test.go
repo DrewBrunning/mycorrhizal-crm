@@ -34,6 +34,8 @@ func diagnosticsTestConfig(t *testing.T) config.Config {
 		ReadTimeout:      15,
 		WriteTimeout:     15,
 		IdleTimeout:      60,
+		LogLevel:         "info",
+		GinMode:          "debug",
 	}
 }
 

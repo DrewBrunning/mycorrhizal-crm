@@ -85,6 +85,8 @@ func validSystemStatusConfig(t *testing.T, dbPath string) config.Config {
 		ReadTimeout:      15,
 		WriteTimeout:     15,
 		IdleTimeout:      60,
+		LogLevel:         "info",
+		GinMode:          "debug",
 	}
 }
 

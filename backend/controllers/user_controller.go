@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -346,7 +345,7 @@ func CheckPasswordStrength(context *gin.Context) {
 // RequestPasswordReset generates a reset token and sends instructions to the user.
 func RequestPasswordReset(context *gin.Context, cfg *config.Config) {
 	// Check if demo mode is enabled - password changes are disabled in demo
-	if os.Getenv("DEMO_MODE") == "true" {
+	if cfg.DemoMode {
 		apperrors.AbortWithError(context, apperrors.ErrForbidden("Password changes are disabled in demo mode"))
 		return
 	}
@@ -420,7 +419,7 @@ func RequestPasswordReset(context *gin.Context, cfg *config.Config) {
 // ConfirmPasswordReset validates the token and updates the password.
 func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 	// Check if demo mode is enabled - password changes are disabled in demo
-	if os.Getenv("DEMO_MODE") == "true" {
+	if cfg.DemoMode {
 		apperrors.AbortWithError(context, apperrors.ErrForbidden("Password changes are disabled in demo mode"))
 		return
 	}
@@ -729,7 +728,7 @@ func GetEnabledContactFields(c *gin.Context) {
 
 func ChangePassword(context *gin.Context, cfg *config.Config) {
 	// Check if demo mode is enabled - password changes are disabled in demo
-	if os.Getenv("DEMO_MODE") == "true" {
+	if cfg.DemoMode {
 		apperrors.AbortWithError(context, apperrors.ErrForbidden("Password changes are disabled in demo mode"))
 		return
 	}

@@ -27,6 +27,8 @@ func validConfig() *Config {
 		WriteTimeout:     15,
 		IdleTimeout:      60,
 		ProfilePhotoDir:  "/var/data/photos",
+		LogLevel:         "info",
+		GinMode:          "debug",
 	}
 }
 
@@ -77,10 +79,9 @@ func TestValidate_FrontendURLWildcard(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("GIN_MODE", tt.ginMode)
-
 			cfg := validConfig()
 			cfg.FrontendURL = "*"
+			cfg.GinMode = tt.ginMode
 			errs := cfg.Validate()
 
 			if tt.expectError {
@@ -93,20 +94,18 @@ func TestValidate_FrontendURLWildcard(t *testing.T) {
 }
 
 func TestValidate_SpecificFrontendURLAllowedInRelease(t *testing.T) {
-	t.Setenv("GIN_MODE", "release")
-
 	cfg := validConfig()
 	cfg.FrontendURL = "https://crm.example.com"
+	cfg.GinMode = "release"
 	errs := cfg.Validate()
 
 	assert.False(t, hasFieldError(errs, "FRONTEND_URL"), "a specific FRONTEND_URL should be allowed in release mode, got: %v", errs)
 }
 
 func TestValidate_EmptyFrontendURLStillRejected(t *testing.T) {
-	t.Setenv("GIN_MODE", "")
-
 	cfg := validConfig()
 	cfg.FrontendURL = ""
+	cfg.GinMode = ""
 	errs := cfg.Validate()
 
 	assert.True(t, hasFieldError(errs, "FRONTEND_URL"), "empty FRONTEND_URL should still be rejected regardless of GIN_MODE, got: %v", errs)
@@ -471,6 +470,88 @@ func TestLoadConfig_Defaults(t *testing.T) {
 	assert.Equal(t, 168, cfg.DBRestoreDrillIntervalHours)
 	assert.Equal(t, DefaultDBRestoreDrillIntervalHours, cfg.DBRestoreDrillIntervalHours)
 	assert.Equal(t, 0, cfg.DBRestoreDrillMaxDurationSeconds)
+
+	// Process-level settings (issue #936): DEMO_MODE off, LOG_LEVEL=info and
+	// GIN_MODE=debug by default, and LogPretty forced true because GIN_MODE
+	// isn't "release".
+	assert.False(t, cfg.DemoMode)
+	assert.Equal(t, "info", cfg.LogLevel)
+	assert.Equal(t, "debug", cfg.GinMode)
+	assert.True(t, cfg.LogPretty)
+}
+
+// --- Process-level settings (issue #936) ----------------------------------
+
+func TestLoadConfig_DemoModeEnv(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+	t.Setenv("DEMO_MODE", "true")
+
+	cfg := LoadConfig()
+	assert.True(t, cfg.DemoMode)
+}
+
+// LogPretty's dev-mode override (main.go used to compute this directly from
+// os.Getenv before issue #936 moved it into LoadConfig) must survive the
+// move unchanged: an explicit LOG_PRETTY is honored only in release mode;
+// any non-release GIN_MODE always forces pretty output.
+func TestLoadConfig_LogPrettyDevModeOverride(t *testing.T) {
+	baseEnv := func(t *testing.T) {
+		t.Helper()
+		t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+		t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+		t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+		t.Setenv("FRONTEND_URL", "http://localhost:5173")
+	}
+
+	tests := []struct {
+		name       string
+		ginMode    string
+		logPretty  string
+		wantPretty bool
+	}{
+		{name: "dev, LOG_PRETTY unset", ginMode: "debug", logPretty: "", wantPretty: true},
+		{name: "dev, LOG_PRETTY=false is overridden", ginMode: "debug", logPretty: "false", wantPretty: true},
+		{name: "release, LOG_PRETTY unset", ginMode: "release", logPretty: "", wantPretty: false},
+		{name: "release, LOG_PRETTY=true honored", ginMode: "release", logPretty: "true", wantPretty: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			baseEnv(t)
+			t.Setenv("GIN_MODE", tt.ginMode)
+			if tt.logPretty != "" {
+				t.Setenv("LOG_PRETTY", tt.logPretty)
+			}
+			cfg := LoadConfig()
+			assert.Equal(t, tt.wantPretty, cfg.LogPretty)
+		})
+	}
+}
+
+func TestValidate_LogLevelEnum(t *testing.T) {
+	for _, level := range []string{"debug", "info", "warn", "error", "fatal", "panic"} {
+		cfg := validConfig()
+		cfg.LogLevel = level
+		assert.False(t, hasFieldError(cfg.Validate(), "LOG_LEVEL"), "%q should be a valid log level", level)
+	}
+
+	cfg := validConfig()
+	cfg.LogLevel = "verbose"
+	assert.True(t, hasFieldError(cfg.Validate(), "LOG_LEVEL"), "an unknown log level must be rejected")
+}
+
+func TestValidate_GinModeEnum(t *testing.T) {
+	for _, mode := range []string{"debug", "release", "test"} {
+		cfg := validConfig()
+		cfg.GinMode = mode
+		assert.False(t, hasFieldError(cfg.Validate(), "GIN_MODE"), "%q should be a valid GIN_MODE", mode)
+	}
+
+	cfg := validConfig()
+	cfg.GinMode = "production"
+	assert.True(t, hasFieldError(cfg.Validate(), "GIN_MODE"), "an unknown GIN_MODE must be rejected")
 }
 
 func TestLoadConfig_RestoreDrillMaxDurationSeconds(t *testing.T) {
@@ -757,12 +838,10 @@ func TestEffectiveTrustedProxies(t *testing.T) {
 // that an external proxy must be listed. It must not fire in dev, and must not
 // fire when the operator configured proxies.
 func TestTrustedProxyWarnings(t *testing.T) {
-	t.Setenv("GIN_MODE", "release")
-	assert.Len(t, (&Config{}).TrustedProxyWarnings(), 1, "release + empty must warn")
-	assert.Empty(t, (&Config{TrustedProxies: []string{"10.1.2.3"}}).TrustedProxyWarnings(), "release + configured must not warn")
+	assert.Len(t, (&Config{GinMode: "release"}).TrustedProxyWarnings(), 1, "release + empty must warn")
+	assert.Empty(t, (&Config{GinMode: "release", TrustedProxies: []string{"10.1.2.3"}}).TrustedProxyWarnings(), "release + configured must not warn")
 
-	t.Setenv("GIN_MODE", "debug")
-	assert.Empty(t, (&Config{}).TrustedProxyWarnings(), "dev must not warn")
+	assert.Empty(t, (&Config{GinMode: "debug"}).TrustedProxyWarnings(), "dev must not warn")
 }
 
 func TestValidate_AttachmentsDirRelativeRejected(t *testing.T) {

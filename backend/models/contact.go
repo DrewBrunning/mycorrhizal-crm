@@ -2,7 +2,6 @@ package models
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -13,24 +12,22 @@ import (
 )
 
 // DefaultPhotoDir is the configured profile-photo directory
-// (config.Config.ProfilePhotoDir), read directly from the PROFILE_PHOTO_DIR
-// environment variable (the same variable config.LoadConfig() reads) rather
-// than threaded in from main.go: BeforeSave is a GORM hook with a fixed
+// (config.Config.ProfilePhotoDir). BeforeSave is a GORM hook with a fixed
 // signature (tx *gorm.DB) error — it has no per-call parameter to receive a
 // photoDir through, unlike RecordFromContact/ApplyRecordToContact's own
-// explicit photoDir parameter (added  photo-bridging
-// prerequisite, docs/adrs/0001-neutral-hub-and-spoke-contact-model.md). A
-// package-level var populated at process-init time is the least-invasive way
-// to give BeforeSave the same capability without changing its signature or
-// reaching into files outside backend/models' file scope (this WP does
-// not touch main.go). Environment variables are already present in the OS
-// process environment before the Go binary starts (this codebase does not
-// load a .env file itself — see config/config.go), so reading it here at var-
-// init time is equivalent to config.LoadConfig() reading it moments later in
-// main(). Empty ("") is a safe default: RecordFromContact's photo bridging
-// degrades gracefully to the base64 PhotoThumbnail fallback (or is skipped
-// entirely if neither Photo nor PhotoThumbnail is set), never panics.
-var DefaultPhotoDir = os.Getenv("PROFILE_PHOTO_DIR")
+// explicit photoDir parameter — so a package-level var is how BeforeSave
+// gets the same capability without changing its signature.
+//
+// main() sets this from cfg.ProfilePhotoDir immediately after
+// config.LoadConfig() (issue #936): Config is the single source of truth
+// for the path, not a second, independent PROFILE_PHOTO_DIR env read here —
+// this var used to read the environment directly at package-init time,
+// which could silently disagree with Config if the two were ever computed
+// differently. Empty ("") is a safe default before main() sets it (and for
+// any test that never does): RecordFromContact's photo bridging degrades
+// gracefully to the base64 PhotoThumbnail fallback (or is skipped entirely
+// if neither Photo nor PhotoThumbnail is set), never panics.
+var DefaultPhotoDir string
 
 // ContactEmail is a single typed email address (vCard EMAIL).
 type ContactEmail struct {

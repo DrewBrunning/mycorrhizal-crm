@@ -39,6 +39,8 @@ func validDiagnosticsConfig(t *testing.T) config.Config {
 		IdleTimeout:                 60,
 		DBRestoreDrillEnabled:       true,
 		DBRestoreDrillIntervalHours: 168,
+		LogLevel:                    "info",
+		GinMode:                     "debug",
 	}
 }
 

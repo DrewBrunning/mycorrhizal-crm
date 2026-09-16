@@ -188,6 +188,20 @@ type Config struct {
 	// breaking change actually strands older clients — a floor is a deliberate,
 	// reviewed event, never a side effect of a release.
 	MinClientVersion string `cfgreg:"env=MIN_CLIENT_VERSION;type=string;range=major[.minor[.patch]] optionally with -prerelease/+build;default=;required=false;restart=true;desc=Oldest Android client versionName this server still supports"`
+
+	// Process-level settings (issue #936): previously read directly from
+	// os.Getenv at scattered call sites — DEMO_MODE in the controllers,
+	// LOG_LEVEL/LOG_PRETTY/GIN_MODE in main.go's logger bootstrap — bypassing
+	// Config entirely, so no register could be complete without them. Now
+	// Config is the single source; main.go builds the logger from these
+	// fields instead of raw env reads, and gin's own GIN_MODE env read
+	// (which happens inside the gin package, outside our control) is left
+	// alone, but every other place in this codebase that cared about
+	// GIN_MODE now reads c.GinMode instead of re-reading the env var.
+	DemoMode  bool   `cfgreg:"env=DEMO_MODE;type=bool;default=false;required=false;restart=true;desc=Disable registration-adjacent writes (password change, photo upload) for a public demo deployment"`
+	LogLevel  string `cfgreg:"env=LOG_LEVEL;type=enum;enum=debug|info|warn|error|fatal|panic;default=info;required=false;restart=true;desc=Structured log verbosity"`
+	LogPretty bool   `cfgreg:"env=LOG_PRETTY;type=bool;default=false;required=false;restart=true;desc=Console-formatted (vs. JSON) log output; always on when GIN_MODE != release, regardless of this setting"`
+	GinMode   string `cfgreg:"env=GIN_MODE;type=enum;enum=debug|release|test;default=debug;required=false;restart=true;desc=Gin framework mode; also read directly by the gin package itself"`
 }
 
 // Defaults for the storage-trend thresholds (issue #652). Exported so the
@@ -307,11 +321,23 @@ func LoadConfig() *Config {
 		DataEncryptionKeyFile:         getEnv("DATA_ENCRYPTION_KEY_FILE", ""),
 		MetricsToken:                  getEnv("METRICS_TOKEN", ""),
 		MinClientVersion:              getEnv("MIN_CLIENT_VERSION", ""),
+		DemoMode:                      getBoolEnv("DEMO_MODE", false),
+		LogLevel:                      getEnv("LOG_LEVEL", "info"),
+		GinMode:                       getEnv("GIN_MODE", "debug"),
 	}
 
 	// Assigned outside the aligned literal above so a longer key name does not
 	// reflow every line in it. Opt-in RTO budget for the restore drill (#506).
 	cfg.DBRestoreDrillMaxDurationSeconds = getIntEnv("DB_RESTORE_DRILL_MAX_DURATION_SECONDS", 0)
+
+	// LogPretty (issue #936): preserves the exact behavior main.go used to
+	// compute directly from os.Getenv — an explicit LOG_PRETTY is honored,
+	// but a non-release GIN_MODE always forces pretty output regardless of
+	// what LOG_PRETTY says, so local/dev logs stay readable by default.
+	cfg.LogPretty = getBoolEnv("LOG_PRETTY", false)
+	if cfg.GinMode != "release" {
+		cfg.LogPretty = true
+	}
 
 	if cfg.CalDAVSyncIntervalHours < 1 {
 		log.Println("WARN: CALDAV_SYNC_INTERVAL_HOURS must be at least 1, using 1")
@@ -514,7 +540,7 @@ func isCatchAllProxy(proxy string) bool {
 // one log IP. Advisory only — bare-metal deployments with no proxy are fine,
 // and are why this warns rather than refuses.
 func (c *Config) TrustedProxyWarnings() []string {
-	if os.Getenv("GIN_MODE") != "release" {
+	if c.GinMode != "release" {
 		return nil
 	}
 	if len(c.TrustedProxies) == 0 {
@@ -789,7 +815,7 @@ func (c *Config) Validate() []ValidationError {
 	// live hole today - but it's fragile defense-in-depth, not a guarantee, so
 	// refuse to boot with it in release mode. "*" remains fine for local dev
 	// (GIN_MODE unset or "debug").
-	if c.FrontendURL == "*" && os.Getenv("GIN_MODE") == "release" {
+	if c.FrontendURL == "*" && c.GinMode == "release" {
 		errors = append(errors, ValidationError{
 			Field:   "FRONTEND_URL",
 			Message: "FRONTEND_URL cannot be '*' when GIN_MODE=release. '*' is dev-only (see .env.example); set FRONTEND_URL to your actual frontend origin(s) in production.",
@@ -1020,6 +1046,26 @@ func (c *Config) Validate() []ValidationError {
 		errors = append(errors, ValidationError{
 			Field:   "DELETED_RETENTION_DAYS",
 			Message: fmt.Sprintf("Invalid retention '%d'. Must be 0 (disable the purge and keep soft-deleted rows forever) or a positive number of days.", c.DeleteRetentionDays),
+		})
+	}
+
+	// LOG_LEVEL and GIN_MODE (issue #936) are new Config fields as of this
+	// change; give them a real enum check from day one rather than
+	// reintroducing the silent-fallback problem elsewhere in this file.
+	switch c.LogLevel {
+	case "debug", "info", "warn", "error", "fatal", "panic":
+	default:
+		errors = append(errors, ValidationError{
+			Field:   "LOG_LEVEL",
+			Message: fmt.Sprintf("Invalid log level '%s'. Must be one of: debug, info, warn, error, fatal, panic.", c.LogLevel),
+		})
+	}
+	switch c.GinMode {
+	case "debug", "release", "test":
+	default:
+		errors = append(errors, ValidationError{
+			Field:   "GIN_MODE",
+			Message: fmt.Sprintf("Invalid GIN_MODE '%s'. Must be one of: debug, release, test.", c.GinMode),
 		})
 	}
 

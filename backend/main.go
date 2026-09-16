@@ -216,32 +216,27 @@ func sessionPurgeTask(db *gorm.DB) func() error {
 }
 
 func main() {
-	// Initialize logger first
-	logLevel := os.Getenv("LOG_LEVEL")
-	if logLevel == "" {
-		logLevel = "info"
-	}
-
-	isPretty := os.Getenv("LOG_PRETTY")
-	prettyLog := isPretty == "true" || isPretty == "1"
-
-	// In development, use pretty logs by default
-	if os.Getenv("GIN_MODE") != "release" {
-		prettyLog = true
-	}
+	// Config is loaded before the logger so LOG_LEVEL/LOG_PRETTY/GIN_MODE
+	// (issue #936) come from Config, not a raw os.Getenv read — LoadConfig's
+	// own WARN lines go through the stdlib `log` package regardless, so
+	// this ordering doesn't change what gets logged, only when.
+	cfg := config.LoadConfig()
 
 	logger.InitLogger(logger.Config{
-		Level:  logLevel,
-		Pretty: prettyLog,
+		Level:  cfg.LogLevel,
+		Pretty: cfg.LogPretty,
 	})
 
 	logger.Info().Msg("Loading server...")
 
-	logger.Info().Msg("Loading configuration...")
-	cfg := config.LoadConfig()
-
 	logger.Info().Msg("Validating configuration...")
 	cfg.ValidateOrPanic()
+
+	// Issue #936: config.Config is the single source of truth for the
+	// profile-photo directory. models.DefaultPhotoDir used to read
+	// PROFILE_PHOTO_DIR directly at package-init time, independently of
+	// Config — a second, possibly-disagreeing source for the same path.
+	models.DefaultPhotoDir = cfg.ProfilePhotoDir
 
 	// Issue #954: surface a trusted-proxy posture that leaves client IPs
 	// wrong (an external proxy not listed, so every client shares one bucket)
