@@ -314,9 +314,16 @@ jobs:
           # checks that are now genuinely running, not (as before this fix)
           # a wait for something structurally absent. Enforcement matches
           # the docker-publish release-gate job (docs/development/
-          # release-gates.md): an OBSERVED failure is a hard block; the
-          # deadline with something still not reporting is a loud warning
-          # and the release proceeds.
+          # release-gates.md): an OBSERVED failure is a hard block; a gate
+          # that NEVER reported a check-run at all is ALSO a hard block once
+          # the deadline is reached (issue #913, REL-03 finding F3 -- absence
+          # is a structural signal, not noise, and used to be silently
+          # equivalent to "verified"); the deadline with something that DID
+          # start but has not concluded is a loud warning and the release
+          # proceeds. The missing-vs-pending decision is shared with the
+          # docker-publish poll via .github/scripts/release-gate-decide.sh
+          # (tested in .github/scripts/tests/release-gate-decide.test.sh) so
+          # the two cannot drift apart on this again.
           # $runs / $statuses can be several hundred KB on this repo (dozens of
           # workflows, matrix legs) -- passing that through --argjson on the
           # command line hits the exec argv-size limit (observed failing on a
@@ -335,26 +342,44 @@ jobs:
                 | group_by(.name) | map(max_by(.started_at // "")) | map({(.name): {status, conclusion}}) | add // {}) as $latest
               | $want | map({name: ., status: ($latest[.].status // "missing"), conclusion: ($latest[.].conclusion // "")})')"
 
-            failed="$(printf '%s' "$state" | jq -r '.[] | select(.status == "completed" and .conclusion != "" and ([.conclusion] | inside(["success","neutral","skipped"]) | not)) | .name')"
-            if [ -n "$failed" ]; then
-              echo "::error::Mandatory gate(s) FAILED on ${sha} -- refusing to release:"
-              printf '%s' "$state" | jq -r '.[] | "  \(.name): \(.status)/\(.conclusion)"'
-              exit 1
-            fi
-            unfinished="$(printf '%s' "$state" | jq -r '.[] | select(.status != "completed" or .conclusion == "") | .name')"
-            if [ -z "$unfinished" ]; then
-              echo "All ${#want[@]} mandatory gates green on ${sha}."
-              echo "MANDATORY_GATES=all-green" >> "$GITHUB_ENV"
-              exit 0
-            fi
-            if [ "$(date +%s)" -ge "$deadline" ]; then
-              echo "::warning::Mandatory-gate deadline reached with gate(s) not reporting. No FAILURE observed, so the release proceeds -- verify manually:"
-              printf '%s' "$state" | jq -r '.[] | "  \(.name): \(.status)/\(.conclusion)"'
-              echo "MANDATORY_GATES=deadline-warning" >> "$GITHUB_ENV"
-              exit 0
-            fi
-            echo "Not concluded yet: $(printf '%s' "$unfinished" | tr '\n' ',' | sed 's/,$//'); re-checking in 45s..."
-            sleep 45
+            deadline_reached=false
+            [ "$(date +%s)" -ge "$deadline" ] && deadline_reached=true
+            decision_out="$(printf '%s' "$state" | .github/scripts/release-gate-decide.sh "$deadline_reached")"
+            decision="$(printf '%s\n' "$decision_out" | head -1)"
+            names="$(printf '%s\n' "$decision_out" | tail -n +2)"
+
+            case "$decision" in
+              FAIL_OBSERVED)
+                echo "::error::Mandatory gate(s) FAILED on ${sha} -- refusing to release:"
+                printf '%s' "$state" | jq -r '.[] | "  \(.name): \(.status)/\(.conclusion)"'
+                exit 1
+                ;;
+              PASS)
+                echo "All ${#want[@]} mandatory gates green on ${sha}."
+                echo "MANDATORY_GATES=all-green" >> "$GITHUB_ENV"
+                exit 0
+                ;;
+              FAIL_MISSING)
+                echo "::error::Mandatory gate(s) on ${sha} NEVER reported a check-run after the 75-minute deadline -- this is absence, not a slow check, and is refused rather than silently released:"
+                printf '%s' "$state" | jq -r '.[] | "  \(.name): \(.status)/\(.conclusion)"'
+                printf '%s\n' "$names" | sed 's/^/::error::missing gate: /'
+                exit 1
+                ;;
+              WARN_PASS)
+                echo "::warning::Mandatory-gate deadline reached with gate(s) still running (none missing). No FAILURE observed, so the release proceeds -- verify manually:"
+                printf '%s' "$state" | jq -r '.[] | "  \(.name): \(.status)/\(.conclusion)"'
+                echo "MANDATORY_GATES=deadline-warning" >> "$GITHUB_ENV"
+                exit 0
+                ;;
+              POLL)
+                echo "Not concluded yet: $(printf '%s' "$names" | tr '\n' ',' | sed 's/,$//'); re-checking in 45s..."
+                sleep 45
+                ;;
+              *)
+                echo "::error::release-gate-decide.sh returned an unrecognized decision: ${decision}"
+                exit 1
+                ;;
+            esac
           done
 
       # Final-release only: an RC re-verifies via the standing per-PR citecheck

@@ -53,7 +53,7 @@ ENV VITE_APP_VERSION=${VITE_APP_VERSION}
 RUN yarn build
 
 # Production stage - serve with unprivileged nginx
-FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:19c132c9ab02d3b783f478743dafc7a7f42e27aa7d2bdcbec1bb1128ca8f2a07
+FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:b54ac358b83fc6c965793fd271839b4ea4cdb6e99895bb19618cbc2ca152d972
 
 # The base image's own alpine 3.24.1 layer ships libssl3/libcrypto3 3.5.7-r0,
 # which CVE-2026-14456 fixes in 3.5.8-r0 -- already present in this same
