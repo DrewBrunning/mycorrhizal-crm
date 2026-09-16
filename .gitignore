@@ -68,6 +68,11 @@ node_modules/
 # Issue #578: Stryker mutation report, emitted in CI (uploaded as an artifact;
 # the stryker.conf.json scope is tracked)
 frontend/reports/
+frontend/.stryker-tmp/
+
+# Issue #915: gremlins mutation-testing JSON output, emitted in CI (uploaded
+# as an artifact per matrix leg; backend/.gremlins/*.yaml config is tracked)
+backend/gremlins-*.json
 
 # IDE specific
 .vscode/

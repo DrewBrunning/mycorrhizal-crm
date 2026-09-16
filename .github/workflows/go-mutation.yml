@@ -1,0 +1,122 @@
+name: Mutation Testing (Go)
+
+# Issue #915: stryker.yml (frontend) never reached the safety-critical Go
+# paths — migration/upgrade, backup/restore, delete cascade, import/export,
+# data-integrity invariants — where coverage cannot substitute (a line can be
+# executed by an assertion-free test and still read 100% covered). This
+# workflow runs gremlins (github.com/go-gremlins/gremlins) mutation testing
+# against those paths.
+#
+# Scope is internal/mutationscope.Scopes, the single source of truth for
+# both the matrix below and each leg's generated config
+# (backend/.gremlins/<scope>.yaml, `cd backend && go run
+# ./cmd/genmutationscope`): atrest, database, vcard3, vcard4 and jscontact
+# are already isolated packages and are mutated whole; controllers-delete-
+# cascade and services-import narrow controllers/ and services/ (both much
+# larger, shared packages) down to the specific files that own the cascade-
+# delete and import-ingestion logic, via a generated exclude-files list —
+# see the package doc for why that list is generated rather than a hand-
+# written "just these two files" regex (RE2 has no negative lookahead).
+# TestWorkflowMatrixMatchesScopes (backend/internal/mutationscope) fails if
+# this matrix and internal/mutationscope.Scopes drift apart.
+#
+# Each generated config also carries that scope's --threshold-efficacy /
+# --threshold-mcover floor (Scope.Efficacy / Scope.MutantCoverage), so
+# gremlins itself exits non-zero on a regression below the recorded
+# baseline — this is a real gate, not report-only (contrast stryker.yml,
+# which is still advisory pending its own ratchet).
+#
+# Tier 3 (nightly) + manual dispatch only, same rationale as stryker.yml:
+# mutation testing is O(test suite × mutant count), too slow to gate every
+# diff. One job per scope (matrix) so the legs run in parallel rather than
+# serially eating the whole nightly window.
+
+on:
+  schedule:
+    - cron: '15 3 * * *' # 03:15 UTC nightly — offset from stryker.yml's 02:30
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GREMLINS_VERSION: v0.6.0
+
+jobs:
+  mutate:
+    name: Mutation test (${{ matrix.scope }})
+    runs-on: ubuntu-latest
+    # controllers-delete-cascade and services-import each carry their whole
+    # package's existing (real-sqlite) test suite as the per-mutant retest
+    # cost, not just the target files' own tests — measured well over an
+    # hour on a 4-core GitHub-hosted runner. Generous because this is
+    # nightly/dispatch only, never a PR or merge gate.
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - scope: atrest
+            package: atrest
+          - scope: database
+            package: database
+          - scope: controllers-delete-cascade
+            package: controllers
+          - scope: services-import
+            package: services
+          - scope: vcard3
+            package: vcard3
+          - scope: vcard4
+            package: vcard4
+          - scope: jscontact
+            package: jscontact
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Mutation config is current
+        working-directory: backend
+        run: |
+          go run ./cmd/genmutationscope
+          git diff --exit-code -- .gremlins/ || {
+            echo "::error::backend/.gremlins/ is stale — run \`cd backend && go run ./cmd/genmutationscope\` and commit the diff"
+            exit 1
+          }
+
+      - name: Run gremlins (${{ matrix.scope }})
+        working-directory: backend
+        run: |
+          # gremlins times each mutant retest against the elapsed time of its
+          # own one-time coverage-gathering `go test` run (elapsed *
+          # --timeout-coefficient). actions/setup-go caches $GOCACHE across
+          # runs, and Go's test cache lives inside it — a cache hit on that
+          # one measurement (nothing changed since a prior identical
+          # invocation) reports a near-zero elapsed time, so gremlins derives
+          # a near-zero timeout and every real mutant retest (source
+          # genuinely changed, so it can't hit cache) times out. Force a cold
+          # test cache immediately before the run so the measurement is
+          # always real, not a leftover from setup-go's restored cache or an
+          # earlier step in this same job.
+          go clean -testcache
+          go run github.com/go-gremlins/gremlins/cmd/gremlins@${{ env.GREMLINS_VERSION }} unleash \
+            --workers 4 \
+            --timeout-coefficient 30 \
+            --config .gremlins/${{ matrix.scope }}.yaml \
+            --output "gremlins-${{ matrix.scope }}.json" \
+            ${{ matrix.package }}
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: gremlins-report-${{ matrix.scope }}
+          path: backend/gremlins-${{ matrix.scope }}.json
+          retention-days: 30

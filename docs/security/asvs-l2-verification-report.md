@@ -180,7 +180,7 @@ last runs on `main` are green, not that they were re-executed here.
 | `database/concurrent_write_test.go` | `_txlock=immediate` — the DSN flag without which concurrent writes 500 with `database is locked` in under 5 ms. | PR |
 | CodeQL, Trivy (misconfig + secret), zizmor, actionlint, shellcheck, golangci-lint (gosec + bodyclose), govulncheck, Dependency Review | SAST/SCA/workflow-security hard gates. | PR |
 | Signed SBOM (`syft-sbom.yml`), Grype, TruffleHog git-history | Supply-chain second opinions. | main |
-| Stryker mutation testing, full-length fuzz, CIS container hardening | Test-suite quality and container baseline. | nightly |
+| Mutation testing (Stryker frontend, gremlins backend — issue #915), full-length fuzz, CIS container hardening | Test-suite quality and container baseline. | nightly |
 | **`backend/cmd/citecheck` (this pass)** | Every citation in the security checklists resolves, and no `satisfied` row cites nothing. | PR |
 
 ---

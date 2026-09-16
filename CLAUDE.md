@@ -158,6 +158,40 @@ table and the `networkGraphScale.spec.ts` benchmark. Two-tier per #447: bundle b
 `@perf`-tagged route-stubbed Playwright specs per-PR; `@perf-heavy` seeded specs (`listPerf`,
 `networkGraphScale`) run nightly only via `e2e-tests.yml`'s schedule with `RUN_PERF_HEAVY=1`.
 
+**Mutation testing (issue #915):** two nightly (`workflow_dispatch` too), threshold-gated workflows
+— not report-only, and not a per-PR or release gate, since mutation testing is O(test suite × mutant
+count). `stryker.yml` (frontend, unchanged scope: `src/api/{contacts,relationshipEdges,lifeEvents}.ts`)
+now sets `thresholds.break` in `frontend/stryker.conf.json`, so `npx stryker run` itself fails below the
+committed baseline. `go-mutation.yml` (backend, new) runs `gremlins` against the safety-critical Go
+paths coverage alone can't prove: migration/upgrade + backup/restore (`database`), data-integrity
+invariants (`atrest`), delete cascade (`contact_controller.go`/`admin_user_controller.go`, the trap 6
+canonical checklist files), import ingestion (the import-source files in `services`), and the three
+exporters (`vcard3`, `vcard4`, `jscontact`). The scope and each leg's threshold live in
+`backend/internal/mutationscope.Scopes` — the single source for both go-mutation.yml's matrix and each
+leg's generated config (`backend/.gremlins/<scope>.yaml`, `cd backend && go run
+./cmd/genmutationscope` or `make gen-mutation-scope`). Delete-cascade and import scope narrow the much
+larger `controllers`/`services` packages down to specific files via a **generated** exclude-files list
+— RE2 (the regexp engine gremlins' `exclude-files` patterns use) has no negative lookahead to write
+"everything except these files" by hand, so the exclude list is mechanical and the drift test
+(`backend/internal/mutationscope`) fails if a file is added to or removed from either package without
+regenerating. Retesting a mutant re-runs `go test` on the **whole** containing package (Go's test
+binary is package-granular; gremlins does not narrow to covering tests only) — `controllers` alone is
+~25s fresh and `services` (the largest scope, 31m41s measured end to end) noticeably more —
+`timeout-minutes: 150` on the matrix job leaves generous headroom for that, not a guess.
+
+**Trap: gremlins' per-mutant timeout is derived from ONE cacheable `go test` run — a Go test-cache hit
+there silently produces a near-zero budget and every real mutant times out.** gremlins measures its own
+one-time coverage-gathering `go test -cover` invocation's elapsed time and multiplies by
+`--timeout-coefficient` for every mutant's retest budget. If that single measurement hits Go's test
+cache (nothing about that exact invocation changed since a prior identical one — including one primed
+by `actions/setup-go`'s restored `$GOCACHE`, which the test cache lives inside), the "elapsed" is ~0.2s
+instead of the package's real ~25s, so the derived timeout is far too small — and since every actual
+mutant retest genuinely changed the source (cache miss), it legitimately can't finish in time and is
+misreported `TIMED OUT`, not `LIVED` or `KILLED`. This produced a false 218/234-timed-out baseline for
+`controllers-delete-cascade` during development, caused entirely by a `go test ./controllers` run moments
+before priming the cache. `go-mutation.yml` runs `go clean -testcache` immediately before every
+`gremlins unleash` invocation for exactly this reason — don't remove it.
+
 **Breaking-change policy (MAINT-02, issue #491):** the `/api/v1` contract surface is pinned by a
 frozen baseline (`backend/internal/apibaseline/testdata/v1.json`) generated from `backend/openapi.yaml`
 by `cd backend && go run ./cmd/genapibaseline` (or `make gen-api-baseline`). The drift test

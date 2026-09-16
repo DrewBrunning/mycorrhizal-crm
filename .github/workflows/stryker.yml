@@ -12,9 +12,13 @@ name: Mutation Testing (Stryker)
 # whole tree, and the vitest-runner's `related` mode narrows each mutant to
 # the tests that touch it.
 #
-# Report-only for now: the HTML report is uploaded as an artifact and the
-# mutation score is printed to the log, but nothing fails on it. Gate on a
-# score threshold once a stable baseline settles.
+# Threshold-gated (issue #915): stryker.conf.json's `thresholds.break` is set
+# at the current baseline, so `npx stryker run` itself exits non-zero — and
+# this job goes red — on a mutation-score drop below it, rather than the
+# score being printed and ignored. The HTML report still uploads as an
+# artifact either way. Still advisory at release time
+# (docs/development/release-gates.md): nightly-only, so a regression is
+# caught by morning rather than blocking the PR that introduced it.
 
 on:
   schedule:
@@ -49,7 +53,7 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
-      - name: Run Stryker (report-only)
+      - name: Run Stryker (fails below thresholds.break)
         working-directory: frontend
         run: npx stryker run
 

@@ -365,7 +365,17 @@
       "tier": "advisory",
       "mandatory": false,
       "release_gate": false,
-      "criterion": "mutation-score trend for the core modules; advisory."
+      "criterion": "frontend/stryker.conf.json's thresholds.break fails the nightly run itself on a mutation-score drop below the ratchet (issue #915); still nightly-only and not release-blocking, so tier stays advisory."
+    },
+    {
+      "name": "Go mutation testing",
+      "workflow": "go-mutation.yml",
+      "check_context": null,
+      "check_kind": "check_run",
+      "tier": "advisory",
+      "mandatory": false,
+      "release_gate": false,
+      "criterion": "gremlins mutation testing against the safety-critical Go paths (migration/upgrade, backup/restore, delete cascade, import/export, data-integrity invariants — backend/internal/mutationscope.Scopes); each matrix leg's generated config fails the nightly run itself below its recorded threshold (issue #915). Per-leg check names make polling impractical; nightly-only and not release-blocking, so tier stays advisory."
     },
     {
       "name": "Android macrobenchmark",
