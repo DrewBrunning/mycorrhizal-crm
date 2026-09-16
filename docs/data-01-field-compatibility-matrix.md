@@ -64,6 +64,9 @@ never for the CardDAV carrier itself.
 | `phone` | `Card.Phones[].Number` | `identity` | **exact** · `TEL` | **exact** · `TEL` | **exact** · `/phones/{id}/number` | **exact** · `TEL` |
 | `impp` | `Card.ImppAddresses[].URI` | `identity` | **exact** · `IMPP` | **exact** · `IMPP` | **exact** · `/onlineServices/{id}/uri` | **exact** · `IMPP` |
 | `social` | `Card.SocialProfiles[].Service` | `onlineservice` | **transformed** · `SOCIALPROFILE` | **extended** · `X-SOCIALPROFILE` — X- property | **transformed** · `/onlineServices/{id}` | **transformed** · `SOCIALPROFILE` — v3: extended |
+| `email.label` | `Card.Emails[].Label` | `identity` | **unsupported** — no vCard 4.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) | **unsupported** — no vCard 3.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) | **exact** · `/emails/{id}/label` | **unsupported** — no vCard 4.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) |
+| `phone.label` | `Card.Phones[].Label` | `identity` | **unsupported** — no vCard 4.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) | **unsupported** — no vCard 3.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) | **exact** · `/phones/{id}/label` | **unsupported** — no vCard 4.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) |
+| `onlineservice.other` | `Card.OtherOnlineServices[].Service` | `identity` | **unsupported** — no vCard 4.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) | **unsupported** — no vCard 3.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) | **exact** · `/onlineServices/{id}` | **unsupported** — no vCard 4.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) |
 | `adr` | `Card.Addresses[]` | `adr_components` | **transformed** · `ADR` | **lossy** · `ADR` — v3 ADR has only the 7 legacy fields; RFC 9553/9554 component kinds beyond those and the CC parameter are dropped with a warn | **transformed** · `/addresses/{id}` | **transformed** · `ADR` — v3: lossy |
 | `adr.geo` | `Card.Addresses[].Coordinates` | `geo_uri` | **transformed** · `ADR` | **transformed** · `GEO` — no ADR GEO param in v3; emitted as a separate GEO property (lat;lon) | **transformed** · `/addresses/{id}/coordinates` | **transformed** · `ADR` |
 | `adr.tz` | `Card.Addresses[].TimeZone` | `identity` | **exact** · `ADR` | **transformed** · `TZ` — no ADR TZ param in v3; emitted as a separate TZ property | **exact** · `/addresses/{id}/timeZone` | **exact** · `ADR` — v3: transformed |
@@ -133,6 +136,12 @@ report, and every report is an unsupported/lossy cell).
 | `name.surname2` | vCard 3.0 | **unsupported** | no vCard 3.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) |
 | `name.generation` | vCard 3.0 | **unsupported** | no vCard 3.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) |
 | `name.phonetic` | vCard 3.0 | **unsupported** | no vCard 3.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) |
+| `email.label` | vCard 4.0 | **unsupported** | no vCard 4.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) |
+| `email.label` | vCard 3.0 | **unsupported** | no vCard 3.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) |
+| `phone.label` | vCard 4.0 | **unsupported** | no vCard 4.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) |
+| `phone.label` | vCard 3.0 | **unsupported** | no vCard 3.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) |
+| `onlineservice.other` | vCard 4.0 | **unsupported** | no vCard 4.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) |
+| `onlineservice.other` | vCard 3.0 | **unsupported** | no vCard 3.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) |
 | `adr` | vCard 3.0 | **lossy** | v3 ADR has only the 7 legacy fields; RFC 9553/9554 component kinds beyond those and the CC parameter are dropped with a warn |
 | `anniversary.birth` | vCard 3.0 | **lossy** | v3 BDAY is date-only; time-of-day dropped (warns) |
 | `anniversary.death` | vCard 3.0 | **unsupported** | no vCard 3.0 home; dropped with a warn diagnostic (ADR-0002 degradation policy) |

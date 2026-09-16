@@ -9,6 +9,7 @@ import (
 	vcard "github.com/emersion/go-vcard"
 
 	"mycorrhizal/contactmodel"
+	"mycorrhizal/internal/rfctest"
 )
 
 // degrade_test.go asserts, for every docs/adrs/0002-correspondence-table-locked-oracle.md
@@ -346,6 +347,50 @@ func TestDegrade_OtherOnlineServices(t *testing.T) {
 	if len(rec.Card.OtherOnlineServices) != 1 {
 		t.Errorf("source Record.Card.OtherOnlineServices mutated: %+v", rec.Card.OtherOnlineServices)
 	}
+}
+
+// TestDegrade_EmailLabel covers Card.Emails[].Label (issue #968): a sibling
+// field of the `email` concept (anchored on .Address only) with no vCard
+// EMAIL carrier in 3.0 (or 4.0). It must be dropped from export with a warn
+// Diagnostic, not silently — the address itself still lands.
+func TestDegrade_EmailLabel(t *testing.T) {
+	t.Parallel()
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Emails: []contactmodel.Email{{Address: "frank@example.com", Label: "Work Email"}},
+	}}
+	out, diags, err := (Adapter{}).Export(rec)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	if !hasWarn(diags, "email.label") {
+		t.Errorf("diags = %+v, want a warn for concept email.label", diags)
+	}
+	if strings.Contains(string(out), "Work Email") {
+		t.Errorf("Email.Label unexpectedly leaked into output:\n%s", out)
+	}
+	rfctest.AssertVCardLine(t, out, PropEmail, nil, "frank@example.com")
+}
+
+// TestDegrade_PhoneLabel covers Card.Phones[].Label (issue #968): a sibling
+// field of the `phone` concept (anchored on .Number only) with no vCard TEL
+// carrier in 3.0 (or 4.0). It must be dropped from export with a warn
+// Diagnostic, not silently — the number itself still lands.
+func TestDegrade_PhoneLabel(t *testing.T) {
+	t.Parallel()
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Phones: []contactmodel.Phone{{Number: "+1-919-676-9515", Label: "Mobile"}},
+	}}
+	out, diags, err := (Adapter{}).Export(rec)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	if !hasWarn(diags, "phone.label") {
+		t.Errorf("diags = %+v, want a warn for concept phone.label", diags)
+	}
+	if strings.Contains(string(out), "Mobile") {
+		t.Errorf("Phone.Label unexpectedly leaked into output:\n%s", out)
+	}
+	rfctest.AssertVCardLine(t, out, PropTel, nil, "+1-919-676-9515")
 }
 
 func TestDegrade_Lang(t *testing.T) {

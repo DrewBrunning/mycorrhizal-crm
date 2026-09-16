@@ -128,8 +128,8 @@ func (Adapter) Export(rec *contactmodel.Record) ([]byte, []contactmodel.Diagnost
 	exportNicknames(rec, card)
 	orgIDToGroup := exportOrganizations(rec, card)
 	exportTitles(rec, card, orgIDToGroup)
-	exportEmails(rec, card)
-	exportPhones(rec, card)
+	exportEmails(rec, card, &diags)
+	exportPhones(rec, card, &diags)
 	exportOnlineServices(rec, card, &diags)
 	exportAddresses(rec, card, &splices)
 	exportAnniversaries(rec, card, &diags)
@@ -831,13 +831,22 @@ func importEmails(card vcard.Card, rec *contactmodel.Record) {
 	}
 }
 
-func exportEmails(rec *contactmodel.Record, card vcard.Card) {
+// exportEmails emits Card.Emails[].Address as EMAIL. Email.Label (issue
+// #968) is a sibling field with no vCard EMAIL carrier in either version —
+// dropped with a warn rather than silently, matching the vCard 3.0 adapter.
+func exportEmails(rec *contactmodel.Record, card vcard.Card, diags *[]contactmodel.Diagnostic) {
 	for i, e := range rec.Card.Emails {
 		f := &vcard.Field{Value: e.Address}
 		addTypeTokens(f, contextsToTypeTokens(e.Contexts)...)
 		setPref(f, e.Pref)
 		setPropID(f, idOrSynthetic(e.ID, "email", i))
 		card.Add(PropEmail, f)
+		if e.Label != "" {
+			*diags = append(*diags, contactmodel.Diagnostic{
+				Severity: "warn", Concept: "email.label",
+				Message: "Email.Label has no vCard EMAIL carrier and was not exported (label: " + e.Label + ")",
+			})
+		}
 	}
 }
 
@@ -854,7 +863,10 @@ func importPhones(card vcard.Card, rec *contactmodel.Record) {
 	}
 }
 
-func exportPhones(rec *contactmodel.Record, card vcard.Card) {
+// exportPhones emits Card.Phones[].Number as TEL. Phone.Label (issue #968)
+// is a sibling field with no vCard TEL carrier in either version — dropped
+// with a warn rather than silently, matching the vCard 3.0 adapter.
+func exportPhones(rec *contactmodel.Record, card vcard.Card, diags *[]contactmodel.Diagnostic) {
 	for i, p := range rec.Card.Phones {
 		f := &vcard.Field{Value: p.Number}
 		addTypeTokens(f, contextsToTypeTokens(p.Contexts)...)
@@ -862,6 +874,12 @@ func exportPhones(rec *contactmodel.Record, card vcard.Card) {
 		setPref(f, p.Pref)
 		setPropID(f, idOrSynthetic(p.ID, "phone", i))
 		card.Add(PropTel, f)
+		if p.Label != "" {
+			*diags = append(*diags, contactmodel.Diagnostic{
+				Severity: "warn", Concept: "phone.label",
+				Message: "Phone.Label has no vCard TEL carrier and was not exported (label: " + p.Label + ")",
+			})
+		}
 	}
 }
 
@@ -962,8 +980,11 @@ func exportOnlineServices(rec *contactmodel.Record, card vcard.Card, diags *[]co
 		if os.URI != "" {
 			msg += " (uri: " + os.URI + ")"
 		}
+		// Concept "onlineservice.other" (issue #968; not "impp" — that concept
+		// is Card.ImppAddresses, a distinct, unrelated correspondence row).
+		// Matches the vCard 3.0 adapter's concept id for the same drop.
 		*diags = append(*diags, contactmodel.Diagnostic{
-			Severity: "warn", Concept: "impp", Message: msg,
+			Severity: "warn", Concept: "onlineservice.other", Message: msg,
 		})
 	}
 }

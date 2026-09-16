@@ -77,6 +77,20 @@ into the same scheduled job and the same `/admin/diagnostics` sweep.
 *detected* case, and the "break the code" step is a committed test rather than a manual ritual
 (`/CLAUDE.md`: a test that has never failed has proven nothing).
 
+**Kept in sync by (DB-02, issue #912):** the ADR rows above, the probe registry
+(`dataIntegrityChecks()` in `data_integrity_service.go`), and the DB-03 matrix
+(`data_integrity_matrix_test.go`) are three lists that used to drift silently — an invariant added
+here with no probe, or a probe finding with no matrix row, was invisible. `TestDB02_*` in
+[`backend/services/data_integrity_completeness_test.go`](../../backend/services/data_integrity_completeness_test.go)
+reads this file's own `#### INV-*` headings and `data_integrity_service.go`'s own `Check` slug
+literals — not a third hand-maintained copy — and fails if either side of the mapping has an entry
+the other doesn't: every ADR invariant must resolve to a DB-03 matrix row or a named,
+existence-checked "operation-level" test citation, and every registered `Check` slug must appear in
+the DB-03 matrix or a named, existence-checked citation elsewhere. `cmd/doctor` (the operator-facing
+runtime checker this section describes) is not built or run by any CI workflow — a known,
+deliberately low-severity gap (issue #912), since the probe functions it wraps are still exercised
+in CI via `RunDataIntegrityChecks`.
+
 - **`INV-D1`…`INV-D8`** — a table-driven matrix
   ([`backend/services/data_integrity_matrix_test.go`](../../backend/services/data_integrity_matrix_test.go))
   drives every probe from the full TEST-02 pathological fixture (#430): the untouched fixture is

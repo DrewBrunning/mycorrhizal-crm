@@ -116,11 +116,65 @@ func TestExport_OtherOnlineServicesWarnDrop(t *testing.T) {
 	}
 	var found bool
 	for _, d := range diags {
-		if d.Concept == "impp" && d.Severity == "warn" {
+		if d.Concept == "onlineservice.other" && d.Severity == "warn" {
 			found = true
 		}
 	}
 	if !found {
-		t.Errorf("no warn Diagnostic emitted for dropped OtherOnlineServices entry; diags = %+v", diags)
+		t.Errorf("no warn Diagnostic emitted for dropped OtherOnlineServices entry (concept onlineservice.other); diags = %+v", diags)
+	}
+}
+
+// TestExport_EmailLabelWarnDrop covers Card.Emails[].Label (issue #968): a
+// sibling field of the `email` concept (anchored on .Address only) with no
+// vCard EMAIL carrier in either version. It must be dropped from export with
+// a warn Diagnostic, not silently.
+func TestExport_EmailLabelWarnDrop(t *testing.T) {
+	t.Parallel()
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Emails: []contactmodel.Email{{Address: "ada@example.com", Label: "Work Email"}},
+	}}
+	out, diags, err := Adapter{}.Export(rec)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	if strings.Contains(string(out), "Work Email") {
+		t.Errorf("Email.Label leaked into vCard output, want dropped: %s", out)
+	}
+	var found bool
+	for _, d := range diags {
+		if d.Concept == "email.label" && d.Severity == "warn" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("no warn Diagnostic emitted for dropped Email.Label; diags = %+v", diags)
+	}
+}
+
+// TestExport_PhoneLabelWarnDrop covers Card.Phones[].Label (issue #968): a
+// sibling field of the `phone` concept (anchored on .Number only) with no
+// vCard TEL carrier in either version. It must be dropped from export with a
+// warn Diagnostic, not silently.
+func TestExport_PhoneLabelWarnDrop(t *testing.T) {
+	t.Parallel()
+	rec := &contactmodel.Record{Card: contactmodel.Card{
+		Phones: []contactmodel.Phone{{Number: "+15551234567", Label: "Mobile"}},
+	}}
+	out, diags, err := Adapter{}.Export(rec)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	if strings.Contains(string(out), "Mobile") {
+		t.Errorf("Phone.Label leaked into vCard output, want dropped: %s", out)
+	}
+	var found bool
+	for _, d := range diags {
+		if d.Concept == "phone.label" && d.Severity == "warn" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("no warn Diagnostic emitted for dropped Phone.Label; diags = %+v", diags)
 	}
 }
