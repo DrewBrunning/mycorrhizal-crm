@@ -90,16 +90,8 @@ class AuthRepositoryImpl @Inject constructor(
         return persistSessionWithProfileFetch(token)
     }
 
-    override suspend fun loginWithApiToken(token: String): Result<Unit> {
-        sessionManager.setSession(
-            serverUrl = sessionManager.serverUrl().orEmpty(),
-            token = token,
-            state = SessionState(),
-        )
-        val profile = apiClient.currentUser().getOrElse { return Result.failure(it.toApiError()) }
-        persistSession(token, profile)
-        return Result.success(Unit)
-    }
+    override suspend fun loginWithApiToken(token: String): Result<Unit> =
+        persistSessionWithProfileFetch(token)
 
     /**
      * Issue #965: exchange the Android OIDC deep-link code + on-device PKCE
@@ -224,9 +216,19 @@ class AuthRepositoryImpl @Inject constructor(
 
     /**
      * The shared tail of both interactive-login steps ([login] and
-     * [complete2faLogin]): persist the token, then fetch the profile. Returns
-     * a failure Result when the profile fetch fails (the session is left set —
-     * exactly the pre-existing [login] behaviour).
+     * [complete2faLogin]): persist the token, then fetch the profile.
+     *
+     * Bug fix (found via coverage analysis, this failure branch had zero
+     * test coverage at any of its 3 call sites): a failed profile fetch used
+     * to leave the just-set token in place with an empty [SessionState].
+     * [DefaultSessionManager.setSession] unconditionally sets `isLoggedIn =
+     * true`, and that flag alone drives navigation (`MainViewModel`/
+     * `MycorrhizalApp`'s `rootSurface`) — so the app would silently navigate
+     * into the main UI with no username/isAdmin/language/dateFormat, at the
+     * same moment this function returns a failure the login screen displays
+     * as an error. Callers saw a contradiction: an error banner *and* being
+     * logged in. On this failure we now roll the session back to logged-out
+     * before returning, so a failed login stays failed everywhere.
      */
     private suspend fun persistSessionWithProfileFetch(token: String): Result<Unit> {
         // Persist the token BEFORE the profile fetch: the OkHttp stack's
@@ -241,7 +243,14 @@ class AuthRepositoryImpl @Inject constructor(
             state = SessionState(),
         )
 
-        val profile = apiClient.currentUser().getOrElse { return Result.failure(it.toApiError()) }
+        val profileResult = apiClient.currentUser()
+        val profile = profileResult.getOrElse { error ->
+            // Roll back the half-established session: leaving isLoggedIn=true
+            // with an empty profile would let the app navigate into the main
+            // UI despite this function reporting failure.
+            sessionManager.clearSession()
+            return Result.failure(error.toApiError())
+        }
         persistSession(token, profile)
         return Result.success(Unit)
     }

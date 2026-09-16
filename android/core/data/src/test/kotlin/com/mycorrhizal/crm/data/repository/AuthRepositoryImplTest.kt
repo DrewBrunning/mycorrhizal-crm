@@ -104,6 +104,73 @@ class AuthRepositoryImplTest {
         assertFalse(h.sessionManager.observeSession().first().isLoggedIn)
     }
 
+    // --- Coverage-analysis bug fix: profile-fetch failure must roll back
+    // the session, not leave isLoggedIn=true with an empty profile (that
+    // flag alone drives MainViewModel/MycorrhizalApp's navigation, so a
+    // stale-set session would silently navigate into the main app despite
+    // this call reporting failure). ---
+
+    @Test
+    fun `login clears the session when the post-login profile fetch fails`() = runTest {
+        val h = Harness()
+        h.sessionManager.setServerUrl("https://crm.example.com")
+        coEvery { h.apiClient.login(any(), any()) } returns Result.success(
+            LoginResult(token = "jwt-123", language = "en", dateFormat = "eu"),
+        )
+        coEvery { h.apiClient.currentUser() } returns Result.failure(
+            ApiError.Client(500, "Internal server error"),
+        )
+
+        val result = h.repository.login("alice", "secret")
+
+        assertTrue(result.isFailure)
+        val state = h.sessionManager.observeSession().first()
+        assertFalse("a failed profile fetch must not leave the session logged in", state.isLoggedIn)
+        assertNull(state.username)
+        assertNull(h.tokenStorage.stored)
+        assertNull(h.sessionManager.bearerToken())
+    }
+
+    @Test
+    fun `complete2faLogin clears the session when the post-login profile fetch fails`() = runTest {
+        val h = Harness()
+        h.sessionManager.setServerUrl("https://crm.example.com")
+        coEvery { h.apiClient.login(any(), any()) } returns Result.success(
+            LoginResult(token = null, language = null, dateFormat = null, twoFactorRequired = true, pending2faCookie = "challenge-jwt"),
+        )
+        coEvery { h.apiClient.complete2faLogin("123456", "challenge-jwt") } returns Result.success(
+            LoginResult(token = "jwt-2fa", language = "en", dateFormat = "eu"),
+        )
+        coEvery { h.apiClient.currentUser() } returns Result.failure(
+            ApiError.Client(500, "Internal server error"),
+        )
+        h.repository.login("alice", "secret")
+
+        val result = h.repository.complete2faLogin("123456")
+
+        assertTrue(result.isFailure)
+        val state = h.sessionManager.observeSession().first()
+        assertFalse("a failed profile fetch must not leave the session logged in", state.isLoggedIn)
+        assertNull(h.tokenStorage.stored)
+        assertNull(h.sessionManager.bearerToken())
+    }
+
+    @Test
+    fun `loginWithApiToken clears the session when the profile fetch fails`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.currentUser() } returns Result.failure(
+            ApiError.Client(401, "Authorization token required"),
+        )
+
+        val result = h.repository.loginWithApiToken("mycorrhizal_bad")
+
+        assertTrue(result.isFailure)
+        val state = h.sessionManager.observeSession().first()
+        assertFalse("a failed profile fetch must not leave the session logged in", state.isLoggedIn)
+        assertNull(h.tokenStorage.stored)
+        assertNull(h.sessionManager.bearerToken())
+    }
+
     @Test
     fun `loginWithApiToken stores the token and fetches profile`() = runTest {
         val h = Harness()
