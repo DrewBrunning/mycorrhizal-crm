@@ -341,7 +341,9 @@ jobs:
   # contacts incl. the soft-delete + vcard-uid-recreate traps at scale),
   # migrates to the current schema through database.InitDB with every table's
   # row count surviving and integrity ok; plus the interrupted-migration
-  # fail-closed and backup-restore-at-scale properties.
+  # fail-closed, backup-restore-at-scale, and cross-version-restore-at-scale
+  # (issue #923: the floor release's large-scale snapshot restored and
+  # migrated forward onto a current install) properties.
   #
   # These tests are gated behind MYCORRHIZAL_LARGE_TESTS=1 and deliberately
   # SKIPPED in the default Go suite: at 2,010 contacts each they take minutes
@@ -403,7 +405,7 @@ jobs:
           MYCORRHIZAL_LARGE_TESTS: "1"
         run: >
           go test ./internal/schemafixture/ -run
-          '^TestLargeDatasetInterruptedMigrationFailsClosed$|^TestLargeDatasetBackupRestoresAtScale$|^TestLargeDatasetUpgradeEmitsProgress$'
+          '^TestLargeDatasetInterruptedMigrationFailsClosed$|^TestLargeDatasetBackupRestoresAtScale$|^TestLargeDatasetUpgradeEmitsProgress$|^TestCrossVersionRestoreAtScale$'
           -count=1 -v
 
       - name: Large-dataset generator unit tests
