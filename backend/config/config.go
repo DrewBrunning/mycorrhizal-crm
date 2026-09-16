@@ -22,73 +22,73 @@ import (
 
 // OIDCConfig holds optional OIDC provider settings.
 type OIDCConfig struct {
-	Enabled               bool
-	ProviderURL           string
-	ClientID              string
-	ClientSecret          string
-	RedirectURL           string // derived from FrontendURL, not configurable
-	AllowAutoProvision    bool
-	TrustEmail            bool // skip email_verified requirement when linking accounts (for trusted self-hosted providers)
-	Scopes                []string
-	PostLogoutRedirectURL string // derived from FrontendURL, not configurable — see RedirectURL
+	Enabled               bool     `cfgreg:"derived=true;desc=true when OIDC_PROVIDER_URL, OIDC_CLIENT_ID and OIDC_CLIENT_SECRET are all set"`
+	ProviderURL           string   `cfgreg:"env=OIDC_PROVIDER_URL;type=string;range=absolute http(s) URL;default=;required=false;restart=true;desc=OIDC provider issuer URL"`
+	ClientID              string   `cfgreg:"env=OIDC_CLIENT_ID;type=string;default=;required=false;restart=true;desc=OIDC client ID"`
+	ClientSecret          string   `cfgreg:"env=OIDC_CLIENT_SECRET;type=string;default=;required=false;restart=true;desc=OIDC client secret"`
+	RedirectURL           string   `cfgreg:"derived=true;desc=derived from FRONTEND_URL, not configurable"` // derived from FrontendURL, not configurable
+	AllowAutoProvision    bool     `cfgreg:"env=OIDC_AUTO_PROVISION;type=bool;default=false;required=false;restart=true;desc=Auto-create a local account on first OIDC login"`
+	TrustEmail            bool     `cfgreg:"env=OIDC_TRUST_EMAIL;type=bool;default=false;required=false;restart=true;desc=Skip email_verified requirement when linking accounts"` // skip email_verified requirement when linking accounts (for trusted self-hosted providers)
+	Scopes                []string `cfgreg:"env=OIDC_SCOPES;type=stringlist;default=openid,email,profile;required=false;restart=true;desc=Comma-separated OIDC scopes"`
+	PostLogoutRedirectURL string   `cfgreg:"derived=true;desc=derived from FRONTEND_URL, not configurable"` // derived from FrontendURL, not configurable — see RedirectURL
 	// BlockPrivateURLs routes the discovery/token/JWKS/UserInfo calls through
 	// the SSRF-guarded dialer (httputil.SafeDialContext). Default off: a LAN
 	// identity provider (Authentik/Keycloak on the same Docker network) is a
 	// common self-hosted setup and must keep working. Same opt-in shape as the
 	// other *_BLOCK_PRIVATE_URLS knobs (INT-02, issue #465).
-	BlockPrivateURLs bool
+	BlockPrivateURLs bool `cfgreg:"env=OIDC_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Route OIDC discovery/token/JWKS/UserInfo calls through the SSRF-guarded dialer"`
 }
 
 // Config is the fully-loaded application configuration, populated once by
 // LoadConfig from environment variables at process start.
 type Config struct {
-	DBPath string
+	DBPath string `cfgreg:"env=SQLITE_DB_PATH;type=string;default=mycorrhizal.db;required=true;restart=true;desc=SQLite database file path"`
 	// ReminderTime and ReminderTimezone are the operator's single reminder
 	// clock: REMINDER_TIME is a local wall time (HH:MM) interpreted in
 	// REMINDER_TIMEZONE (IANA), and together they are server-wide — every
 	// user on the deployment is scheduled against this one clock, never a
 	// per-user zone (docs/adrs/0015-temporal-semantics.md "local wall time"
 	// category). See GetReminderLocation.
-	ReminderTime                 string
-	ReminderTimezone             string
-	FrontendURL                  string
-	Port                         string
-	TrustedProxies               []string
-	UseResend                    bool
-	ResendAPIKey                 string
-	ResendFromEmail              string
-	ResendToEmail                string
-	UseSMTP                      bool
-	SMTPHost                     string
-	SMTPPort                     int
-	SMTPUsername                 string
-	SMTPPassword                 string
-	SMTPFromEmail                string
-	SMTPUseTLS                   bool // implicit TLS (e.g. port 465); otherwise STARTTLS is used when available
-	JWTSecretKey                 string
-	JWTExpiryHours               int
-	ReadTimeout                  int    // HTTP server read timeout in seconds
-	WriteTimeout                 int    // HTTP server write timeout in seconds
-	IdleTimeout                  int    // HTTP server idle timeout in seconds
-	ProfilePhotoDir              string // Directory for storing profile photos (must be absolute path)
-	AttachmentsDir               string // Directory for storing contact attachments (N7; alongside the photo dir, must be absolute path)
-	CardDAVEnabled               bool   // Enable CardDAV server for contact sync
-	CalDAVEnabled                bool   // Enable CalDAV server for Interaction/LifeEvent sync (T12b)
-	CalDAVTwoWayEnabled          bool   // Allow calendar sync to push local edits back out (T13)
-	CookieSecure                 bool   // Set Secure flag on auth cookie (requires HTTPS)
-	CookieDomain                 string // Domain for auth cookie (empty = current domain only)
-	RegistrationDisabled         bool   // Disable new user registration
-	WebhookBlockPrivateURLs      bool   // Block webhook deliveries to private/loopback addresses (useful for cloud deployments)
-	CalDAVSyncIntervalHours      int    // Interval in hours for the scheduled calendar sync job
-	CalDAVBlockPrivateURLs       bool   // Block calendar sync requests to private/loopback addresses (useful for cloud deployments)
-	DeleteRetentionDays          int    // Days soft-deleted rows survive before the purge job hard-deletes them (T26)
-	AuditRetentionDays           int    // Days audit events survive before the retention purge removes them (T18, default 90)
-	ContactShareRetentionDays    int    // Days a ContactShare snapshot survives before the purge job hard-deletes it (issue #574, default 30)
-	SystemEventRetentionDays     int    // Days system_events rows survive before the retention purge removes them (issue #424, default 30)
-	WebhookDeliveryRetentionDays int    // Days webhook_deliveries rows survive before the purge job hard-deletes them (issue #622, default 30)
-	JobRunRetentionDays          int    // Days job_runs rows survive before the retention purge removes them (issue #391, default 30)
-	IdempotencyKeyRetentionHours int    // Hours idempotency_keys rows survive before the TTL purge removes them (issue #459, CON-04, default 24; <=0 disables)
-	SessionIdleTimeoutHours      int    // Hours a session may sit unused before AuthMiddleware rejects it, short of the JWT_EXPIRY_HOURS absolute ceiling (issue #866, default 12; 0 disables idle enforcement)
+	ReminderTime                 string   `cfgreg:"env=REMINDER_TIME;type=string;range=HH:MM 24h wall time;default=06:00;required=false;restart=true;desc=Daily reminder wall-clock time"`
+	ReminderTimezone             string   `cfgreg:"env=REMINDER_TIMEZONE;type=string;range=IANA timezone name;default=UTC;required=false;restart=true;desc=Reminder clock's IANA timezone"`
+	FrontendURL                  string   `cfgreg:"env=FRONTEND_URL;type=string;range=absolute origin, or * for dev only;default=*;required=false;restart=true;desc=Frontend origin used for CORS and OIDC redirect URLs"`
+	Port                         string   `cfgreg:"env=PORT;type=int;range=1..65535;default=8080;required=false;restart=true;desc=HTTP listen port"`
+	TrustedProxies               []string `cfgreg:"env=TRUSTED_PROXIES;type=stringlist;range=IP or CIDR, no 0.0.0.0/0 or ::/0;default=(loopback 127.0.0.1/32, ::1/128);required=false;restart=true;desc=Reverse-proxy addresses trusted for X-Forwarded-For"`
+	UseResend                    bool     `cfgreg:"derived=true;desc=true when RESEND_API_KEY and RESEND_FROM_EMAIL are both set"`
+	ResendAPIKey                 string   `cfgreg:"env=RESEND_API_KEY;type=string;default=;required=false;restart=true;desc=Resend email API key"`
+	ResendFromEmail              string   `cfgreg:"env=RESEND_FROM_EMAIL;type=string;default=;required=false;restart=true;desc=Resend sender address"`
+	ResendToEmail                string   `cfgreg:"env=RESEND_TO_EMAIL;type=string;default=;required=false;restart=true;desc=Declared but not read by LoadConfig today; setting it currently has no effect"`
+	UseSMTP                      bool     `cfgreg:"derived=true;desc=true when SMTP_HOST and SMTP_FROM_EMAIL are both set"`
+	SMTPHost                     string   `cfgreg:"env=SMTP_HOST;type=string;default=;required=false;restart=true;desc=SMTP server hostname"`
+	SMTPPort                     int      `cfgreg:"env=SMTP_PORT;type=int;range=1..65535 when SMTP enabled;default=587;required=false;restart=true;desc=SMTP server port"`
+	SMTPUsername                 string   `cfgreg:"env=SMTP_USERNAME;type=string;default=;required=false;restart=true;desc=SMTP auth username"`
+	SMTPPassword                 string   `cfgreg:"env=SMTP_PASSWORD;type=string;default=;required=false;restart=true;desc=SMTP auth password"`
+	SMTPFromEmail                string   `cfgreg:"env=SMTP_FROM_EMAIL;type=string;default=;required=false;restart=true;desc=SMTP sender address"`
+	SMTPUseTLS                   bool     `cfgreg:"env=SMTP_USE_TLS;type=bool;default=false;required=false;restart=true;desc=Use implicit TLS (e.g. port 465) instead of STARTTLS"` // implicit TLS (e.g. port 465); otherwise STARTTLS is used when available
+	JWTSecretKey                 string   `cfgreg:"env=JWT_SECRET_KEY;type=string;range=>=32 bytes, not a known placeholder, sufficient entropy;default=;required=true;restart=true;desc=Secret key signing auth JWTs"`
+	JWTExpiryHours               int      `cfgreg:"env=JWT_EXPIRY_HOURS;type=int;range=1..8760;default=96;required=false;restart=true;desc=JWT absolute expiry, in hours"`
+	ReadTimeout                  int      `cfgreg:"env=HTTP_READ_TIMEOUT;type=int;range=1..300;default=15;required=false;restart=true;desc=HTTP server read timeout, in seconds"`                                                // HTTP server read timeout in seconds
+	WriteTimeout                 int      `cfgreg:"env=HTTP_WRITE_TIMEOUT;type=int;range=1..300;default=15;required=false;restart=true;desc=HTTP server write timeout, in seconds"`                                              // HTTP server write timeout in seconds
+	IdleTimeout                  int      `cfgreg:"env=HTTP_IDLE_TIMEOUT;type=int;range=1..300;default=60;required=false;restart=true;desc=HTTP server idle timeout, in seconds"`                                                // HTTP server idle timeout in seconds
+	ProfilePhotoDir              string   `cfgreg:"env=PROFILE_PHOTO_DIR;type=string;range=absolute path;default=;required=true;restart=true;desc=Directory storing profile photos"`                                             // Directory for storing profile photos (must be absolute path)
+	AttachmentsDir               string   `cfgreg:"env=ATTACHMENTS_DIR;type=string;range=absolute path;default=(PROFILE_PHOTO_DIR's parent)/attachments;required=false;restart=true;desc=Directory storing contact attachments"` // Directory for storing contact attachments (N7; alongside the photo dir, must be absolute path)
+	CardDAVEnabled               bool     `cfgreg:"env=CARDDAV_ENABLED;type=bool;default=false;required=false;restart=true;desc=Enable the CardDAV contact-sync server"`                                                         // Enable CardDAV server for contact sync
+	CalDAVEnabled                bool     `cfgreg:"env=CALDAV_ENABLED;type=bool;default=false;required=false;restart=true;desc=Enable the CalDAV interaction/life-event sync server"`                                            // Enable CalDAV server for Interaction/LifeEvent sync (T12b)
+	CalDAVTwoWayEnabled          bool     `cfgreg:"env=CALDAV_TWO_WAY_ENABLED;type=bool;default=false;required=false;restart=true;desc=Allow calendar sync to push local edits back out"`                                        // Allow calendar sync to push local edits back out (T13)
+	CookieSecure                 bool     `cfgreg:"env=COOKIE_SECURE;type=bool;default=false;required=false;restart=true;desc=Set Secure flag on the auth cookie (requires HTTPS)"`                                              // Set Secure flag on auth cookie (requires HTTPS)
+	CookieDomain                 string   `cfgreg:"env=COOKIE_DOMAIN;type=string;range=hostname, optionally dot-prefixed;default=;required=false;restart=true;desc=Domain for the auth cookie"`                                  // Domain for auth cookie (empty = current domain only)
+	RegistrationDisabled         bool     `cfgreg:"env=DISABLE_REGISTRATION;type=bool;default=false;required=false;restart=true;desc=Disable new user registration"`
+	WebhookBlockPrivateURLs      bool     `cfgreg:"env=WEBHOOK_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block webhook deliveries to private/loopback addresses"`
+	CalDAVSyncIntervalHours      int      `cfgreg:"env=CALDAV_SYNC_INTERVAL_HOURS;type=int;range=>=1, invalid value refuses to boot;default=6;required=false;restart=true;desc=Interval for the scheduled calendar sync job, in hours"`
+	CalDAVBlockPrivateURLs       bool     `cfgreg:"env=CALDAV_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block calendar sync requests to private/loopback addresses"`
+	DeleteRetentionDays          int      `cfgreg:"env=DELETED_RETENTION_DAYS;type=int;range=>=0, 0 disables the purge;default=30;required=false;restart=true;desc=Days soft-deleted rows survive before the purge job hard-deletes them"`
+	AuditRetentionDays           int      `cfgreg:"env=AUDIT_RETENTION_DAYS;type=int;range=>=0, 0 disables the purge;default=90;required=false;restart=true;desc=Days audit events survive before the retention purge removes them"`
+	ContactShareRetentionDays    int      `cfgreg:"env=CONTACT_SHARE_RETENTION_DAYS;type=int;range=>=0, 0 disables the purge;default=30;required=false;restart=true;desc=Days a ContactShare snapshot survives before the purge job hard-deletes it"`
+	SystemEventRetentionDays     int      `cfgreg:"env=SYSTEM_EVENT_RETENTION_DAYS;type=int;range=>=0, 0 disables the purge;default=30;required=false;restart=true;desc=Days system_events rows survive before the retention purge removes them"`
+	WebhookDeliveryRetentionDays int      `cfgreg:"env=WEBHOOK_DELIVERY_RETENTION_DAYS;type=int;range=>=0, 0 disables the purge;default=30;required=false;restart=true;desc=Days webhook_deliveries rows survive before the purge job hard-deletes them"`
+	JobRunRetentionDays          int      `cfgreg:"env=JOB_RUN_RETENTION_DAYS;type=int;range=>=0, 0 disables the purge;default=30;required=false;restart=true;desc=Days job_runs rows survive before the retention purge removes them"`
+	IdempotencyKeyRetentionHours int      `cfgreg:"env=IDEMPOTENCY_KEY_RETENTION_HOURS;type=int;range=any integer, <=0 disables;default=24;required=false;restart=true;desc=Hours idempotency_keys rows survive before the TTL purge removes them"`
+	SessionIdleTimeoutHours      int      `cfgreg:"env=SESSION_IDLE_TIMEOUT_HOURS;type=int;range=0 (disabled) or 1..JWT_EXPIRY_HOURS;default=12;required=false;restart=true;desc=Hours a session may sit unused before AuthMiddleware rejects it"`
 
 	// General-API rate limiting, per client IP. Configurable because the
 	// hardcoded values had already been raised once to stop a full Playwright
@@ -96,8 +96,8 @@ type Config struct {
 	// people share one egress IP (a household behind NAT, or a reverse proxy
 	// without correct X-Forwarded-For) shares a single bucket between them.
 	// Defaults preserve the previous hardcoded behaviour exactly.
-	APIRateLimitInterval time.Duration // Sustained refill interval, one token per interval
-	APIRateLimitBurst    int           // Bucket size, i.e. the largest instantaneous burst allowed
+	APIRateLimitInterval time.Duration `cfgreg:"env=API_RATE_LIMIT_INTERVAL_MS;type=duration;range=>0ms;default=600ms;required=false;restart=true;desc=Sustained rate-limit refill interval (milliseconds)"` // Sustained refill interval, one token per interval
+	APIRateLimitBurst    int           `cfgreg:"env=API_RATE_LIMIT_BURST;type=int;range=>=1;default=1000;required=false;restart=true;desc=Rate-limit bucket size, largest instantaneous burst allowed"`      // Bucket size, i.e. the largest instantaneous burst allowed
 
 	// Instance-wide failed-authentication velocity detection (issue #940). The
 	// per-identifier and per-IP limits below stop a single-source attack, but a
@@ -106,30 +106,30 @@ type Config struct {
 	// when both thresholds are crossed, engages a short instance-wide login
 	// throttle and raises the auth_spray alert. Zero values are clamped to the
 	// safe defaults rather than disabling the signal.
-	AuthSprayEnabled             bool // Master switch for the velocity signal + throttle
-	AuthSprayWindowSeconds       int  // Sliding window velocity is measured over
-	AuthSprayFailureThreshold    int  // Failures within the window that arm the signal
-	AuthSprayIdentifierThreshold int  // Distinct identifiers within the window that arm the signal
-	AuthSprayThrottleSeconds     int  // How long a tripped signal refuses unknown sources
+	AuthSprayEnabled             bool `cfgreg:"env=AUTH_SPRAY_ENABLED;type=bool;default=true;required=false;restart=true;desc=Master switch for the instance-wide failed-auth velocity signal"`                                                               // Master switch for the velocity signal + throttle
+	AuthSprayWindowSeconds       int  `cfgreg:"env=AUTH_SPRAY_WINDOW_SECONDS;type=int;range=>=1, invalid/low values clamped to 60 with a WARN;default=60;required=false;restart=true;desc=Sliding window velocity is measured over, in seconds"`              // Sliding window velocity is measured over
+	AuthSprayFailureThreshold    int  `cfgreg:"env=AUTH_SPRAY_FAILURE_THRESHOLD;type=int;range=>=1, invalid/low values clamped to 60 with a WARN;default=60;required=false;restart=true;desc=Failures within the window that arm the signal"`                 // Failures within the window that arm the signal
+	AuthSprayIdentifierThreshold int  `cfgreg:"env=AUTH_SPRAY_IDENTIFIER_THRESHOLD;type=int;range=>=1, invalid/low values clamped to 15 with a WARN;default=15;required=false;restart=true;desc=Distinct identifiers within the window that arm the signal"`  // Distinct identifiers within the window that arm the signal
+	AuthSprayThrottleSeconds     int  `cfgreg:"env=AUTH_SPRAY_THROTTLE_SECONDS;type=int;range=>=1, invalid/low values clamped to 300 with a WARN;default=300;required=false;restart=true;desc=How long a tripped signal refuses unknown sources, in seconds"` // How long a tripped signal refuses unknown sources
 
-	ImmichSyncIntervalHours       int    // Interval in hours for the scheduled Immich enrichment sync (T16)
-	ImmichBlockPrivateURLs        bool   // Block Immich fetches to private/loopback addresses (useful for cloud deployments)
-	PaperlessBlockPrivateURLs     bool   // Block Paperless-ngx fetches to private/loopback addresses (useful for cloud deployments)
-	SeafileBlockPrivateURLs       bool   // Block Seafile fetches to private/loopback addresses (useful for cloud deployments)
-	WebDAVBlockPrivateURLs        bool   // Block Nextcloud/ownCloud WebDAV fetches to private/loopback addresses (useful for cloud deployments)
-	MonicaBlockPrivateURLs        bool   // Block Monica import-assistant fetches to private/loopback addresses (useful for cloud deployments; issue #549)
-	FCMServiceAccountFile         string // Path to the Firebase service-account JSON for FCM mobile push delivery (M2)
-	DBIntegrityCheckEnabled       bool   // Enable the scheduled live-DB PRAGMA integrity_check job (issue #273)
-	DBIntegrityCheckIntervalHours int    // Interval in hours for the scheduled DB integrity check
-	DBRestoreDrillEnabled         bool   // Enable the scheduled backup-restore drill job (issue #275)
-	DBRestoreDrillIntervalHours   int    // Interval in hours for the scheduled restore drill (default weekly)
+	ImmichSyncIntervalHours       int    `cfgreg:"env=IMMICH_SYNC_INTERVAL_HOURS;type=int;range=>=1, invalid value refuses to boot;default=6;required=false;restart=true;desc=Interval for the scheduled Immich enrichment sync, in hours"`
+	ImmichBlockPrivateURLs        bool   `cfgreg:"env=IMMICH_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Immich fetches to private/loopback addresses"`
+	PaperlessBlockPrivateURLs     bool   `cfgreg:"env=PAPERLESS_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Paperless-ngx fetches to private/loopback addresses"`
+	SeafileBlockPrivateURLs       bool   `cfgreg:"env=SEAFILE_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Seafile fetches to private/loopback addresses"`
+	WebDAVBlockPrivateURLs        bool   `cfgreg:"env=WEBDAV_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Nextcloud/ownCloud WebDAV fetches to private/loopback addresses"`
+	MonicaBlockPrivateURLs        bool   `cfgreg:"env=MONICA_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block Monica import-assistant fetches to private/loopback addresses"`
+	FCMServiceAccountFile         string `cfgreg:"env=FCM_SERVICE_ACCOUNT_FILE;type=string;range=path to an existing file;default=;required=false;restart=true;desc=Path to the Firebase service-account JSON for FCM mobile push"`
+	DBIntegrityCheckEnabled       bool   `cfgreg:"env=DB_INTEGRITY_CHECK_ENABLED;type=bool;default=true;required=false;restart=true;desc=Enable the scheduled live-DB PRAGMA integrity_check job"`
+	DBIntegrityCheckIntervalHours int    `cfgreg:"env=DB_INTEGRITY_CHECK_INTERVAL_HOURS;type=int;range=>=1, invalid value refuses to boot;default=24;required=false;restart=true;desc=Interval for the scheduled DB integrity check, in hours"`
+	DBRestoreDrillEnabled         bool   `cfgreg:"env=DB_RESTORE_DRILL_ENABLED;type=bool;default=true;required=false;restart=true;desc=Enable the scheduled backup-restore drill job"`
+	DBRestoreDrillIntervalHours   int    `cfgreg:"env=DB_RESTORE_DRILL_INTERVAL_HOURS;type=int;range=>=1, invalid value refuses to boot;default=168;required=false;restart=true;desc=Interval for the scheduled restore drill, in hours"`
 	// DBRestoreDrillMaxDurationSeconds is the operator's RTO budget for the
 	// database piece of a restore (issue #506). When > 0, a restore-drill run
 	// whose measured wall-clock exceeds it still passes but logs a WARN and
 	// annotates the restore_test_completed timeline row — restore-time drift
 	// visible before an incident, not during one. 0 (default) = no budget; the
 	// drill's duration_ms is recorded on every run regardless.
-	DBRestoreDrillMaxDurationSeconds int
+	DBRestoreDrillMaxDurationSeconds int `cfgreg:"env=DB_RESTORE_DRILL_MAX_DURATION_SECONDS;type=int;range=>=0, invalid value refuses to boot;default=0;required=false;restart=true;desc=RTO budget for the database piece of a restore; 0 means no budget"`
 
 	// Alerting on state transitions (issue #428). The scheduled evaluator
 	// (services.EvaluateAlerts) detects failure/recovery transitions on the
@@ -137,28 +137,28 @@ type Config struct {
 	// notification per transition through the existing webhook + notification
 	// channels. Personal channels (email/ntfy/Gotify/push) go to admin users
 	// only; webhooks broadcast as usual.
-	AlertingEnabled             bool // Master switch for the alert evaluator
-	AlertEvalIntervalMinutes    int  // How often the evaluator runs
-	AlertDiskUsagePercent       int  // Raise disk_space when used% >= this; 0 disables the condition
-	AlertSyncFailureThreshold   int  // Consecutive sync failures before sync:* fires
-	AlertNotifyFailureThreshold int  // Consecutive notification failures before the notifications condition fires
-	AlertBackupMaxAgeHours      int  // Raise backup_stale when the last backup success is older than this; 0 => 2 * DBRestoreDrillIntervalHours
-	AlertJobStaleMultiplier     int  // Raise job_stopped when a job's last successful run is older than interval * this
-	AlertIncidentQuietHours     int  // integrations recovers when no new integration_failed event lands within this window
-	AlertBackupEnabled          bool // Enable the backup / backup_stale conditions
-	AlertDBIntegrityEnabled     bool // Enable the db_integrity condition
-	AlertJobStoppedEnabled      bool // Enable the job_stopped condition
-	AlertAuthSprayEnabled       bool // Enable the auth_spray condition (issue #940)
-	HIBPCheckEnabled            bool // Check new/changed passwords against HIBP's k-anonymity range API (issue #376). Off by default: an outbound call on a self-hosted app is a deliberate opt-in, not a safe default — see docs/security/asvs-l2.md's P3.
-	UpdateCheckEnabled          bool // Compare the running build against the latest GitHub release (issue #650). Off by default: an outbound call on a self-hosted app is a deliberate opt-in, not a safe default — see docs/security/asvs-l2.md's P6.
+	AlertingEnabled             bool `cfgreg:"env=ALERTING_ENABLED;type=bool;default=true;required=false;restart=true;desc=Master switch for the alert evaluator"`                                                                                                                         // Master switch for the alert evaluator
+	AlertEvalIntervalMinutes    int  `cfgreg:"env=ALERT_EVAL_INTERVAL_MINUTES;type=int;range=>=1, invalid value refuses to boot;default=15;required=false;restart=true;desc=How often the alert evaluator runs, in minutes"`                                                               // How often the evaluator runs
+	AlertDiskUsagePercent       int  `cfgreg:"env=ALERT_DISK_USAGE_PERCENT;type=int;range=0..99, invalid value refuses to boot;default=90;required=false;restart=true;desc=Raise disk_space when used% >= this; 0 disables the condition"`                                                 // Raise disk_space when used% >= this; 0 disables the condition
+	AlertSyncFailureThreshold   int  `cfgreg:"env=ALERT_SYNC_FAILURE_THRESHOLD;type=int;range=>=1, invalid value refuses to boot;default=3;required=false;restart=true;desc=Consecutive sync failures before sync:* fires"`                                                                // Consecutive sync failures before sync:* fires
+	AlertNotifyFailureThreshold int  `cfgreg:"env=ALERT_NOTIFY_FAILURE_THRESHOLD;type=int;range=>=1, invalid value refuses to boot;default=3;required=false;restart=true;desc=Consecutive notification failures before the notifications condition fires"`                                 // Consecutive notification failures before the notifications condition fires
+	AlertBackupMaxAgeHours      int  `cfgreg:"env=ALERT_BACKUP_MAX_AGE_HOURS;type=int;range=>=0, invalid value refuses to boot;default=0;required=false;restart=true;desc=Raise backup_stale when the last backup success is older than this; 0 means 2x DB_RESTORE_DRILL_INTERVAL_HOURS"` // Raise backup_stale when the last backup success is older than this; 0 => 2 * DBRestoreDrillIntervalHours
+	AlertJobStaleMultiplier     int  `cfgreg:"env=ALERT_JOB_STALE_MULTIPLIER;type=int;range=>=2, invalid value refuses to boot;default=3;required=false;restart=true;desc=Raise job_stopped when a job's last successful run is older than interval times this"`                           // Raise job_stopped when a job's last successful run is older than interval * this
+	AlertIncidentQuietHours     int  `cfgreg:"env=ALERT_INCIDENT_QUIET_HOURS;type=int;range=>=1, invalid value refuses to boot;default=6;required=false;restart=true;desc=integrations recovers when no new integration_failed event lands within this window, in hours"`                  // integrations recovers when no new integration_failed event lands within this window
+	AlertBackupEnabled          bool `cfgreg:"env=ALERT_BACKUP_ENABLED;type=bool;default=true;required=false;restart=true;desc=Enable the backup / backup_stale conditions"`                                                                                                               // Enable the backup / backup_stale conditions
+	AlertDBIntegrityEnabled     bool `cfgreg:"env=ALERT_DB_INTEGRITY_ENABLED;type=bool;default=true;required=false;restart=true;desc=Enable the db_integrity condition"`                                                                                                                   // Enable the db_integrity condition
+	AlertJobStoppedEnabled      bool `cfgreg:"env=ALERT_JOB_STOPPED_ENABLED;type=bool;default=true;required=false;restart=true;desc=Enable the job_stopped condition"`                                                                                                                     // Enable the job_stopped condition
+	AlertAuthSprayEnabled       bool `cfgreg:"env=ALERT_AUTH_SPRAY_ENABLED;type=bool;default=true;required=false;restart=true;desc=Enable the auth_spray condition"`                                                                                                                       // Enable the auth_spray condition (issue #940)
+	HIBPCheckEnabled            bool `cfgreg:"env=HIBP_CHECK_ENABLED;type=bool;default=false;required=false;restart=true;desc=Check new/changed passwords against HIBP's k-anonymity range API"`                                                                                           // Check new/changed passwords against HIBP's k-anonymity range API (issue #376). Off by default: an outbound call on a self-hosted app is a deliberate opt-in, not a safe default — see docs/security/asvs-l2.md's P3.
+	UpdateCheckEnabled          bool `cfgreg:"env=UPDATE_CHECK_ENABLED;type=bool;default=false;required=false;restart=true;desc=Compare the running build against the latest GitHub release"`                                                                                              // Compare the running build against the latest GitHub release (issue #650). Off by default: an outbound call on a self-hosted app is a deliberate opt-in, not a safe default — see docs/security/asvs-l2.md's P6.
 
 	// Storage-growth trend thresholds (issue #652). The /admin/system-status
 	// storage block folds usage_percent against these two tiers into
 	// ok | warning | critical (with -5% hysteresis), and the daily storage
 	// sampler retains StorageSampleRetentionDays of history.
-	StorageWarnPercent         int // usage% >= this turns the storage threshold warning (default 75)
-	StorageCriticalPercent     int // usage% >= this turns it critical (default 90)
-	StorageSampleRetentionDays int // days of storage_samples history kept (default 180)
+	StorageWarnPercent         int `cfgreg:"env=STORAGE_WARN_PERCENT;type=int;range=1..99, invalid value refuses to boot;default=75;required=false;restart=true;desc=usage% >= this turns the storage threshold warning"`
+	StorageCriticalPercent     int `cfgreg:"env=STORAGE_CRITICAL_PERCENT;type=int;range=>STORAGE_WARN_PERCENT and <=100, invalid value refuses to boot;default=90;required=false;restart=true;desc=usage% >= this turns the storage threshold critical"`
+	StorageSampleRetentionDays int `cfgreg:"env=STORAGE_SAMPLE_RETENTION_DAYS;type=int;range=>=7, invalid value refuses to boot;default=180;required=false;restart=true;desc=Days of storage_samples history kept"`
 	OIDC                       OIDCConfig
 
 	// DataEncryptionKey is the base64-encoded 32-byte master key for
@@ -169,15 +169,15 @@ type Config struct {
 	// these two fields plus JWTSecretKey to atrest.ResolveMasterKey — the
 	// validated Config fields ARE the resolution inputs, not a second,
 	// independent env read (issue #938). See backend/atrest/atrest.go.
-	DataEncryptionKey     string // base64, 32 bytes
-	DataEncryptionKeyFile string // path to a file whose trimmed contents are the base64 key
+	DataEncryptionKey     string `cfgreg:"env=DATA_ENCRYPTION_KEY;type=string;range=base64-encoded 32 random bytes;default=;required=false;restart=true;desc=At-rest field-encryption master key"`                     // base64, 32 bytes
+	DataEncryptionKeyFile string `cfgreg:"env=DATA_ENCRYPTION_KEY_FILE;type=string;range=path to an existing file;default=;required=false;restart=true;desc=Path to a file whose trimmed contents are the master key"` // path to a file whose trimmed contents are the base64 key
 
 	// MetricsToken gates the Prometheus GET /metrics endpoint (issue #389).
 	// Opt-in: when empty the route is not registered at all. When set, every
 	// scrape must carry `Authorization: Bearer <MetricsToken>`. Minimum 16
 	// characters (enforced in Validate) — a short scrape credential is worse
 	// than none.
-	MetricsToken string
+	MetricsToken string `cfgreg:"env=METRICS_TOKEN;type=string;range=>=16 characters when set;default=;required=false;restart=true;desc=Bearer token gating GET /metrics; unset leaves the route unregistered"`
 
 	// MinClientVersion is the oldest Android client `versionName` this server
 	// still supports, advertised verbatim on GET /health as
@@ -187,7 +187,7 @@ type Config struct {
 	// compatible. It is set via MIN_CLIENT_VERSION only when a MAINT-02
 	// breaking change actually strands older clients — a floor is a deliberate,
 	// reviewed event, never a side effect of a release.
-	MinClientVersion string
+	MinClientVersion string `cfgreg:"env=MIN_CLIENT_VERSION;type=string;range=major[.minor[.patch]] optionally with -prerelease/+build;default=;required=false;restart=true;desc=Oldest Android client versionName this server still supports"`
 }
 
 // Defaults for the storage-trend thresholds (issue #652). Exported so the
