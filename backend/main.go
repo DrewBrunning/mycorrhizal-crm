@@ -293,7 +293,7 @@ func main() {
 	// logical (decrypted) audit_events.before_snapshot value via the GORM
 	// serializer, so encryption needs to be armed first.
 	{
-		kek, err := atrest.EncryptionKey()
+		kek, err := atrest.ResolveMasterKey(cfg.DataEncryptionKey, cfg.DataEncryptionKeyFile, cfg.JWTSecretKey)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("Failed to resolve at-rest encryption master key")
 		}

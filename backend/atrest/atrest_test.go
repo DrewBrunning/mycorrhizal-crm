@@ -1,6 +1,7 @@
 package atrest
 
 import (
+	"bytes"
 	"encoding/base64"
 	"os"
 	"path/filepath"
@@ -298,6 +299,72 @@ func TestEncryptionKey_FileInvalidContent(t *testing.T) {
 	_, err := EncryptionKey()
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "DATA_ENCRYPTION_KEY_FILE")
+}
+
+// TestResolveMasterKey_Precedence pins the env → file → JWT resolution order
+// directly on ResolveMasterKey's explicit inputs (no environment involved),
+// so the precedence is proven independently of EncryptionKey's env-reading
+// wrapper (issue #938: EncryptionKey and in-process callers like main.go and
+// restore_drill_service.go must share exactly this resolution logic).
+func TestResolveMasterKey_Precedence(t *testing.T) {
+	dataKey := base64.StdEncoding.EncodeToString(testKEK(t))
+
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "key")
+	fileKey := bytes.Repeat([]byte{0x7a}, keySize)
+	require.NoError(t, os.WriteFile(filePath, []byte(base64.StdEncoding.EncodeToString(fileKey)), 0o600))
+
+	t.Run("DataKey wins over file and JWT", func(t *testing.T) {
+		kek, err := ResolveMasterKey(dataKey, filePath, "a-jwt-secret-that-is-long-enough-12345")
+		require.NoError(t, err)
+		require.Equal(t, testKEK(t), kek)
+	})
+
+	t.Run("file wins over JWT when DataKey is empty", func(t *testing.T) {
+		kek, err := ResolveMasterKey("", filePath, "a-jwt-secret-that-is-long-enough-12345")
+		require.NoError(t, err)
+		require.Equal(t, fileKey, kek)
+	})
+
+	t.Run("JWT fallback when DataKey and file are empty", func(t *testing.T) {
+		kek, err := ResolveMasterKey("", "", "a-jwt-secret-that-is-long-enough-12345")
+		require.NoError(t, err)
+		require.NotNil(t, kek)
+		require.Len(t, kek, keySize)
+	})
+
+	t.Run("nil, nil when nothing is configured", func(t *testing.T) {
+		kek, err := ResolveMasterKey("", "", "")
+		require.NoError(t, err)
+		require.Nil(t, kek)
+	})
+
+	t.Run("invalid DataKey errors even with a valid file and JWT fallback available", func(t *testing.T) {
+		_, err := ResolveMasterKey("not-valid-base64!!!", filePath, "a-jwt-secret-that-is-long-enough-12345")
+		require.Error(t, err)
+	})
+
+	t.Run("nonexistent file errors even with a JWT fallback available", func(t *testing.T) {
+		_, err := ResolveMasterKey("", filepath.Join(dir, "does-not-exist"), "a-jwt-secret-that-is-long-enough-12345")
+		require.Error(t, err)
+	})
+}
+
+// TestEncryptionKey_MatchesResolveMasterKey pins that the env-reading
+// EncryptionKey wrapper is nothing more than ResolveMasterKey applied to the
+// three environment variables — the single owner of the resolution order
+// (issue #938).
+func TestEncryptionKey_MatchesResolveMasterKey(t *testing.T) {
+	key := base64.StdEncoding.EncodeToString(testKEK(t))
+	t.Setenv("DATA_ENCRYPTION_KEY", key)
+	t.Setenv("DATA_ENCRYPTION_KEY_FILE", "")
+	t.Setenv("JWT_SECRET_KEY", "")
+
+	fromEnv, err := EncryptionKey()
+	require.NoError(t, err)
+	fromParams, err := ResolveMasterKey(key, "", "")
+	require.NoError(t, err)
+	require.Equal(t, fromParams, fromEnv)
 }
 
 func TestInitialize_NilDBWithKeyErrors(t *testing.T) {
