@@ -92,8 +92,12 @@ jobs:
       # The fuzz runner is a committed script that unit-tests.yml calls, so
       # actionlint's shellcheck of `run:` blocks cannot see it — shellcheck
       # the scripts here explicitly, where shellcheck is already installed.
+      # reference-client-davx5/run.sh is the same shape: it's invoked as a
+      # standalone script from inside android-emulator-runner's own `script:`
+      # block in reference-clients-e2e.yml, one level removed from anything
+      # actionlint's own shellcheck pass can see into.
       - name: Shellcheck repo scripts
-        run: shellcheck .github/scripts/run-fuzz-targets.sh .github/scripts/tests/run-fuzz-targets.test.sh .github/scripts/min-browser-check.sh .github/scripts/assert-below-min-sdk-install.sh .github/scripts/release-gate-decide.sh .github/scripts/tests/release-gate-decide.test.sh .github/scripts/release-register-decide.sh .github/scripts/tests/release-register-decide.test.sh
+        run: shellcheck .github/scripts/run-fuzz-targets.sh .github/scripts/tests/run-fuzz-targets.test.sh .github/scripts/min-browser-check.sh .github/scripts/assert-below-min-sdk-install.sh .github/scripts/release-gate-decide.sh .github/scripts/tests/release-gate-decide.test.sh .github/scripts/release-register-decide.sh .github/scripts/tests/release-register-decide.test.sh .github/scripts/reference-client-davx5/run.sh
 
       # Issue #712: exercise the fuzz runner's hardening against a stubbed
       # `go` binary (pass / deadline-race / crash / seed-replay), asserting

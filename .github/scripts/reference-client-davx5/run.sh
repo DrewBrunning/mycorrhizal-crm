@@ -43,7 +43,15 @@ capture_failure_diagnostics() {
 	local tag="$1"
 	adb exec-out screencap -p >"$WORKDIR/failure-$tag.png" 2>/dev/null || true
 	cp "$DUMP_XML" "$WORKDIR/failure-dump-$tag.xml" 2>/dev/null || true
-	adb logcat -d -s "$PACKAGE:*" >"$WORKDIR/failure-logcat-$tag.txt" 2>/dev/null || true
+	# `-s "$PACKAGE:*"` filters logcat by TAG, but $PACKAGE
+	# ("at.bitfire.davdroid") is a package name, not a logcat tag — this
+	# always matched nothing and silently produced a 0-byte file (confirmed
+	# on a real CI failure, where it left this diagnostic empty for exactly
+	# the run that needed it). Dump the tail of the full unfiltered buffer
+	# instead: the signal this script actually needs (ANR entries from
+	# system_server/ActivityManager, per dismiss_anr_if_present's own
+	# comment) doesn't come from the app's own tag anyway.
+	adb logcat -d -t 2000 >"$WORKDIR/failure-logcat-$tag.txt" 2>/dev/null || true
 }
 
 log() { echo "[davx5-interop] $*" >&2; }
@@ -156,13 +164,6 @@ wait_for() {
 	return 1
 }
 
-type_into_field_at() {
-	local x="$1" y="$2" text="$3"
-	adb shell input tap "$x" "$y"
-	sleep 1
-	adb shell input text "$text"
-}
-
 # Prints one "x y" line per android.widget.EditText node in $DUMP_XML, in
 # document order (Base URL, User name, Password on the login screen).
 find_edit_text_fields() {
@@ -176,6 +177,23 @@ for node in tree.iter("node"):
         b = node.get("bounds")
         x0, y0, x1, y1 = map(int, re.findall(r"-?\d+", b))
         print(f"{(x0 + x1) // 2} {(y0 + y1) // 2}")
+PY
+}
+
+# Prints the current `text` value of the Nth (0-based, document order)
+# android.widget.EditText node in $DUMP_XML, or nothing if there is no such
+# node. Used to verify a value actually landed in the field it was meant
+# for, not merely that some typing happened somewhere.
+edit_text_value_at() {
+	python3 - "$DUMP_XML" "$1" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+path, index = sys.argv[1], int(sys.argv[2])
+tree = ET.parse(path)
+fields = [n for n in tree.iter("node") if n.get("class") == "android.widget.EditText"]
+if index < len(fields):
+    print(fields[index].get("text") or "")
 PY
 }
 
@@ -201,6 +219,73 @@ wait_for_login_fields() {
 	done
 	log "ERROR: expected 3 login EditText fields (base URL, user name, password), found ${#FIELD_COORDS[@]} after ${attempts}s"
 	capture_failure_diagnostics "login-fields"
+	return 1
+}
+
+# Clears whatever is already in the EditText at document-order index $1 (0 =
+# Base URL, 1 = User name, 2 = Password) and types $2 into it. Re-dumps and
+# dismisses any ANR dialog immediately before locating the field — every
+# other interaction in this script does the same before acting, but the
+# three field-fill calls this replaces used to reuse coordinates captured
+# once, before any of the three taps. Diagnostic capture from a real CI
+# failure: an ANR dialog interposed between two of those blind taps, so the
+# password ended up typed into the Base URL field while User name and
+# Password were left empty — login was never actually attempted, and the
+# script spent its whole budget waiting for a "Finish" screen that could
+# never appear. Clears the field first (move to end, then backspace past any
+# plausible existing content) so a retry from fill_login_form's outer loop
+# can't append onto stray text a previous failed attempt left behind.
+type_login_field() {
+	local field_index="$1" text="$2"
+	dump_ui
+	dismiss_anr_if_present
+	local coords
+	coords="$(find_edit_text_fields | sed -n "$((field_index + 1))p")"
+	if [ -z "$coords" ]; then
+		log "WARNING: login field #$field_index not on screen"
+		return 0
+	fi
+	# shellcheck disable=SC2086
+	adb shell input tap $coords
+	sleep 1
+	adb shell input keyevent KEYCODE_MOVE_END
+	# shellcheck disable=SC2046
+	adb shell input keyevent $(printf 'KEYCODE_DEL %.0s' $(seq 1 80))
+	adb shell input text "$text"
+	sleep 1
+}
+
+# Fills the three login EditText fields and verifies the values actually
+# landed in the fields they were meant for before returning — Base URL and
+# User name are checked for an exact match (both are plain-text fields, so
+# this is exactly the check that would have caught the real failure
+# described on type_login_field above); Password is only checked for
+# non-emptiness since DAVx5 may or may not expose a masked field's real
+# value to the accessibility tree. Retries the whole sequence (bounded by
+# $1, default 4) rather than a single field, since the failure this guards
+# against is cross-field contamination — a per-field check can't detect its
+# own value ending up in the WRONG field, only that the intended field looks
+# right in isolation.
+fill_login_form() {
+	local max_attempts="${1:-4}" attempt=0
+	while [ "$attempt" -lt "$max_attempts" ]; do
+		wait_for_login_fields
+
+		type_login_field 0 "$SERVER_URL"
+		type_login_field 1 "$USERNAME"
+		type_login_field 2 "$PASSWORD"
+
+		dump_ui
+		if [ "$(edit_text_value_at 0)" = "$SERVER_URL" ] \
+			&& [ "$(edit_text_value_at 1)" = "$USERNAME" ] \
+			&& [ -n "$(edit_text_value_at 2)" ]; then
+			return 0
+		fi
+		attempt=$((attempt + 1))
+		log "WARNING: login fields did not contain the expected values after filling (attempt $attempt/$max_attempts), retrying"
+	done
+	log "ERROR: could not fill the login form correctly after $max_attempts attempts"
+	capture_failure_diagnostics "fill-login-form"
 	return 1
 }
 
@@ -245,18 +330,11 @@ tap "Continue"
 log "Filling in server URL / username / password"
 # The three EditText fields are located by their bounds order (Base URL,
 # User name, Password) since Compose text fields carry no stable
-# text/content-desc before they're filled in. wait_for_login_fields polls
-# (dismissing any ANR dialog along the way) rather than reading a single
-# dump_ui, since the transition onto this screen is async — see that
-# function's own comment for the real failure this fixes.
-wait_for_login_fields 20
-
-# shellcheck disable=SC2086
-type_into_field_at ${FIELD_COORDS[0]} "$SERVER_URL"
-# shellcheck disable=SC2086
-type_into_field_at ${FIELD_COORDS[1]} "$USERNAME"
-# shellcheck disable=SC2086
-type_into_field_at ${FIELD_COORDS[2]} "$PASSWORD"
+# text/content-desc before they're filled in. fill_login_form re-locates and
+# re-checks for an ANR dialog before every individual field (not just once
+# up front) and verifies the values actually landed correctly — see its own
+# comment and type_login_field's for the real CI failure this fixes.
+fill_login_form
 
 log "Dismissing keyboard and logging in"
 adb shell input keyevent KEYCODE_BACK
