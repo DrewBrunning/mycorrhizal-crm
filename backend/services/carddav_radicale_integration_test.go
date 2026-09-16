@@ -156,20 +156,43 @@ type serverDivergence struct {
 // downgrade moves the 4.0-only concepts into the passthrough and derives
 // name.full from FN; the register pins exactly which concepts each fixture
 // contact is affected in. Anything OUTSIDE this set is a real failure.
+//
+// email.label/phone.label/onlineservice.other (issue #968, PR #1074, gap
+// #1077) are a separate, UNIVERSAL entry in every affected fixture's
+// concepts below, independent of which server is in play: vCard 4.0 has no
+// carrier for a free-text label on EMAIL/TEL, and Card.OtherOnlineServices
+// has no safe default vCard property, so our OWN exporter never sends them
+// (vcard4.Adapter's exportEmails/exportPhones/exportOnlineServices warn
+// diagnostics) — the loss happens before the card reaches any server. #1074
+// correctly made semanticequal report this (previously silently
+// unclassified); this register just catches up to that honesty.
 func referenceServerDivergences(serverID string) []serverDivergence {
 	switch serverID {
 	case "radicale":
 		return []serverDivergence{
 			{name: "celine", reason: "rejected by Radicale: exported card carries two N properties (RFC 9554 §3.3 alternative-name ALTID); vobject refuses >1 N"},
-			{name: "bob", concepts: "adr;photo", reason: "vobject re-serializes on output: inline data: PHOTO truncated at the first ';' and ADR components beyond the seven RFC 6350 slots (apartment, floor) dropped"},
+			{name: "ada", concepts: "email.label;phone.label;onlineservice.other", reason: "issue #968: vCard 4.0 has no EMAIL/TEL label carrier and no safe default property for an unclassified online service — never exported"},
+			{name: "bob", concepts: "adr;photo;email.label;phone.label", reason: "vobject re-serializes on output: inline data: PHOTO truncated at the first ';' and ADR components beyond the seven RFC 6350 slots (apartment, floor) dropped; plus issue #968 (email/phone label never exported)"},
+			{name: "eve", concepts: "email.label;phone.label", reason: "issue #968: email/phone label never exported"},
+			{name: "hugo", concepts: "email.label;phone.label", reason: "issue #968: email/phone label never exported"},
+			{name: "ida", concepts: "email.label;phone.label", reason: "issue #968: email/phone label never exported"},
 			// I18N-01 (issue #484): compound-surname and extended-granularity
 			// address personas hit the same vobject-only-knows-RFC-6350 wall as
 			// bob. Radicale stores the 4.0 card otherwise verbatim (KIND,
 			// LANGUAGE, ADR CC/TZ all survive), so the divergence is confined to
-			// the component counts vobject truncates.
-			{name: "carmen", concepts: "name.surname2", reason: "vobject re-serializes on output: N truncated to the five RFC 6350 components, dropping the RFC 9554 6th (secondary surname)"},
-			{name: "joao", concepts: "name.surname2", reason: "vobject re-serializes on output: N truncated to the five RFC 6350 components, dropping the RFC 9554 6th (secondary surname)"},
-			{name: "somchai", concepts: "adr", reason: "vobject re-serializes on output: ADR components beyond the seven RFC 6350 slots (subdistrict, district) dropped"},
+			// the component counts vobject truncates, plus issue #968.
+			{name: "naoki", concepts: "email.label;phone.label", reason: "issue #968: email/phone label never exported"},
+			{name: "wei", concepts: "email.label;phone.label", reason: "issue #968: email/phone label never exported"},
+			{name: "minjun", concepts: "email.label;phone.label", reason: "issue #968: email/phone label never exported"},
+			{name: "layla", concepts: "email.label;phone.label", reason: "issue #968: email/phone label never exported"},
+			{name: "yael", concepts: "email.label;phone.label", reason: "issue #968: email/phone label never exported"},
+			{name: "bjork", concepts: "email.label;phone.label", reason: "issue #968: email/phone label never exported"},
+			{name: "carmen", concepts: "name.surname2;email.label;phone.label", reason: "vobject re-serializes on output: N truncated to the five RFC 6350 components, dropping the RFC 9554 6th (secondary surname); plus issue #968 (email/phone label never exported)"},
+			{name: "joao", concepts: "name.surname2;email.label;phone.label", reason: "vobject re-serializes on output: N truncated to the five RFC 6350 components, dropping the RFC 9554 6th (secondary surname); plus issue #968 (email/phone label never exported)"},
+			{name: "jan", concepts: "email.label;phone.label", reason: "issue #968: email/phone label never exported"},
+			{name: "somchai", concepts: "adr;email.label;phone.label", reason: "vobject re-serializes on output: ADR components beyond the seven RFC 6350 slots (subdistrict, district) dropped; plus issue #968 (email/phone label never exported)"},
+			{name: "priya", concepts: "email.label;phone.label", reason: "issue #968: email/phone label never exported"},
+			{name: "aoife", concepts: "email.label;phone.label", reason: "issue #968: email/phone label never exported"},
 		}
 	case "baikal", "nextcloud":
 		// The accepted-card divergences are byte-identical between Baikal and
@@ -182,12 +205,12 @@ func referenceServerDivergences(serverID string) []serverDivergence {
 		// only in eve.
 		common := []serverDivergence{
 			{name: "celine", reason: "rejected: exported card carries two N properties (RFC 9554 §3.3 alternative-name ALTID); Sabre VObject rejects >1 N"},
-			{name: "ada", concepts: "adr;adr.tz;created;gramgender;hobby;impp;interest;kind;language;member;prodid;pronouns;pt.vcard;related;social", reason: "Sabre VObject re-serializes the vCard 4.0 export as vCard 3.0: 4.0-only concepts (kind, created, language, social, gramgender, pronouns, hobby, interest, related, member, adr CC/TZ, impp scheme) land in passthrough, prodid added"},
-			{name: "bob", concepts: "adr;impp;kind;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: adr/photo structure and impp land in passthrough"},
+			{name: "ada", concepts: "adr;adr.tz;created;gramgender;hobby;impp;interest;kind;language;member;prodid;pronouns;pt.vcard;related;social;email.label;phone.label;onlineservice.other", reason: "Sabre VObject re-serializes the vCard 4.0 export as vCard 3.0: 4.0-only concepts (kind, created, language, social, gramgender, pronouns, hobby, interest, related, member, adr CC/TZ, impp scheme) land in passthrough, prodid added; plus issue #968 (email/phone label and unclassified online service never exported)"},
+			{name: "bob", concepts: "adr;impp;kind;prodid;pt.vcard;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade: adr/photo structure and impp land in passthrough; plus issue #968 (email/phone label never exported)"},
 			{name: "dmitri", concepts: "kind;name.full;prodid", reason: "Sabre VObject 3.0 downgrade; the vcard3 importer derives name.full from FN where the neutral record stores only components"},
 			{name: "frank", concepts: "kind;prodid", reason: "Sabre VObject 3.0 downgrade"},
-			{name: "hugo", concepts: "adr;kind;prodid", reason: "Sabre VObject 3.0 downgrade: adr CC/TZ params dropped"},
-			{name: "ida", concepts: "kind;prodid", reason: "Sabre VObject 3.0 downgrade"},
+			{name: "hugo", concepts: "adr;kind;prodid;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade: adr CC/TZ params dropped; plus issue #968 (email/phone label never exported)"},
+			{name: "ida", concepts: "kind;prodid;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade; plus issue #968 (email/phone label never exported)"},
 			{name: "julie", concepts: "kind;name.full;prodid", reason: "Sabre VObject 3.0 downgrade; the vcard3 importer derives name.full from FN where the neutral record stores only components"},
 			{name: "test07_country_code_only_address", concepts: "adr;kind;name.full;prodid", reason: "Sabre VObject 3.0 downgrade: the country-only ADR loses its country code"},
 			{name: "test07_duplicate_keywords", concepts: "kind;name.full;prodid", reason: "Sabre VObject 3.0 downgrade; name.full derived from FN"},
@@ -203,25 +226,25 @@ func referenceServerDivergences(serverID string) []serverDivergence {
 			// the recomposed components). carmen/joao additionally lose the
 			// RFC 9554 N 6th component (secondary surname); naoki's ADR has no
 			// TZ in the fixture, so it has no adr.tz divergence.
-			{name: "naoki", concepts: "adr;kind;language;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC dropped, prodid added"},
-			{name: "wei", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added"},
-			{name: "minjun", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added"},
-			{name: "layla", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added"},
-			{name: "yael", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added"},
-			{name: "bjork", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added"},
-			{name: "carmen", concepts: "adr;adr.tz;kind;language;name.surname2;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, N truncated to five RFC 6350 components dropping the RFC 9554 6th (secondary surname), prodid added"},
-			{name: "joao", concepts: "adr;adr.tz;kind;language;name.surname2;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, N truncated to five RFC 6350 components dropping the RFC 9554 6th (secondary surname), prodid added"},
-			{name: "jan", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added"},
-			{name: "somchai", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params and the RFC 9554 extended components (subdistrict, district) dropped, prodid added"},
-			{name: "priya", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added"},
-			{name: "aoife", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added"},
+			{name: "naoki", concepts: "adr;kind;language;prodid;pt.vcard;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC dropped, prodid added; plus issue #968 (email/phone label never exported)"},
+			{name: "wei", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added; plus issue #968 (email/phone label never exported)"},
+			{name: "minjun", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added; plus issue #968 (email/phone label never exported)"},
+			{name: "layla", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added; plus issue #968 (email/phone label never exported)"},
+			{name: "yael", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added; plus issue #968 (email/phone label never exported)"},
+			{name: "bjork", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added; plus issue #968 (email/phone label never exported)"},
+			{name: "carmen", concepts: "adr;adr.tz;kind;language;name.surname2;prodid;pt.vcard;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, N truncated to five RFC 6350 components dropping the RFC 9554 6th (secondary surname), prodid added; plus issue #968 (email/phone label never exported)"},
+			{name: "joao", concepts: "adr;adr.tz;kind;language;name.surname2;prodid;pt.vcard;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, N truncated to five RFC 6350 components dropping the RFC 9554 6th (secondary surname), prodid added; plus issue #968 (email/phone label never exported)"},
+			{name: "jan", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added; plus issue #968 (email/phone label never exported)"},
+			{name: "somchai", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params and the RFC 9554 extended components (subdistrict, district) dropped, prodid added; plus issue #968 (email/phone label never exported)"},
+			{name: "priya", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added; plus issue #968 (email/phone label never exported)"},
+			{name: "aoife", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added; plus issue #968 (email/phone label never exported)"},
 		}
 		if serverID == "baikal" {
 			// eve is ACCEPTED by Baikal but its BDAY (no value-type) survives
 			// only as passthrough under the 3.0 downgrade.
 			common = append(common, serverDivergence{
-				name: "eve", concepts: "anniversary.birth;kind;prodid;pt.vcard",
-				reason: "Sabre VObject 3.0 downgrade: BDAY without a value-type survives only as passthrough",
+				name: "eve", concepts: "anniversary.birth;kind;prodid;pt.vcard;email.label;phone.label",
+				reason: "Sabre VObject 3.0 downgrade: BDAY without a value-type survives only as passthrough; plus issue #968 (email/phone label never exported)",
 			})
 		} else {
 			// ... and REJECTED outright by Nextcloud.
