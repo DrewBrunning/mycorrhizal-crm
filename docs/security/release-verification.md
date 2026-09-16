@@ -291,9 +291,12 @@ image" above) — it's the same document, just without a portable standalone sig
 The checks above prove an artifact came from this repo's CI. A related question — *can I rebuild
 the source and get the same bytes?* — has its own page:
 [Reproducible builds](reproducible-builds.md) (REL-04, issue #448). In short: the Go server
-binary is byte-reproducible and gated every PR by `.github/workflows/reproducibility.yml`
-(`-trimpath -buildvcs=false`, `SOURCE_DATE_EPOCH`); the `linux/amd64` image's config + layer
-digests are double-build-compared every run (not yet a hard gate); the multi-arch manifest
-digest and the signed Android APK are not bit-reproducible by design, and provenance is the
-mitigation. That page carries the exact rebuild-and-compare commands and the full per-artifact
-table.
+binary is byte-reproducible. `.github/workflows/reproducibility.yml`'s `go-binary` job proves
+this is path-independent (double-built from two different paths on the same runner) — gated
+on every PR touching the backend/build inputs (`backend/**`, the Dockerfiles, `docker/**`; it is
+path-filtered, not every PR). A separate `go-binary-independent-rebuild` job goes further with a
+true independent rebuild across two different runners, substantiating the end-to-end claim, but
+only weekly (and on manual dispatch) — see issue #947. The `linux/amd64` image's config + layer digests are
+double-build-compared every run (not yet a hard gate); the multi-arch manifest digest and the
+signed Android APK are not bit-reproducible by design, and provenance is the mitigation. That
+page carries the exact rebuild-and-compare commands and the full per-artifact table.
