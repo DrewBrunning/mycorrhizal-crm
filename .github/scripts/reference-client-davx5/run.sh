@@ -278,7 +278,7 @@ type_login_field() {
 fill_login_form() {
 	local max_attempts="${1:-8}" attempt=0
 	while [ "$attempt" -lt "$max_attempts" ]; do
-		wait_for_login_fields
+		wait_for_login_fields 20
 
 		type_login_field 0 "$SERVER_URL"
 		type_login_field 1 "$USERNAME"
@@ -343,7 +343,7 @@ log "Filling in server URL / username / password"
 # re-checks for an ANR dialog before every individual field (not just once
 # up front) and verifies the values actually landed correctly — see its own
 # comment and type_login_field's for the real CI failure this fixes.
-fill_login_form
+fill_login_form 8
 
 log "Dismissing keyboard and logging in"
 adb shell input keyevent KEYCODE_BACK
