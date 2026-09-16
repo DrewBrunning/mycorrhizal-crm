@@ -155,7 +155,7 @@ func runRestoreDrill(db *gorm.DB, cfg config.Config) (ok bool, detail string, er
 	// wrapped DEK unwraps under the current master key, so a rotated or lost
 	// key is caught here (weekly, in a throwaway scratch DB) instead of at
 	// the moment of need during a real disaster (issue #420).
-	kek, err := atrest.EncryptionKey()
+	kek, err := atrest.ResolveMasterKey(cfg.DataEncryptionKey, cfg.DataEncryptionKeyFile, cfg.JWTSecretKey)
 	if err != nil {
 		return false, "", fmt.Errorf("resolve at-rest master key: %w", err)
 	}
