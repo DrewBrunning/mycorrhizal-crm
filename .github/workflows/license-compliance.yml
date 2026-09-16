@@ -22,11 +22,13 @@ name: License Compliance
 # backend/frontend areas — resolution is expensive and only worth it when the
 # dependency set actually changed (issue #264 pattern).
 #
-# Android/Gradle is deliberately not covered yet: Trivy can only enumerate
-# Gradle licenses from a `gradle.lockfile` (dependency locking), which this
-# repo doesn't emit. When `gradle.lockfile` lands, add a `gradle-manifests`
-# filter and a third job that builds to populate the Gradle cache before
-# scanning. Until then the gate is Go + npm only.
+# Issue #942 added the third leg: Android/Gradle now emits a `gradle.lockfile`
+# per module (dependency locking on the `release` compile/runtime classpaths —
+# the classpath that actually ships, see android/build.gradle.kts), so Trivy
+# has something to enumerate Gradle licenses from. Same shape as the other two
+# legs: resolve real dependency files first (the `downloadLicenseScanArtifacts`
+# task, this repo's equivalent of `go mod download` / `yarn install`), then
+# scan + gate.
 
 on:
   push:
@@ -49,6 +51,7 @@ jobs:
     outputs:
       go-manifests: ${{ steps.filter.outputs['go-manifests'] }}
       npm-manifests: ${{ steps.filter.outputs['npm-manifests'] }}
+      gradle-manifests: ${{ steps.filter.outputs['gradle-manifests'] }}
       workflows: ${{ steps.filter.outputs.workflows }}
     steps:
       - name: Checkout repository
@@ -68,6 +71,7 @@ jobs:
         run: |
           echo "go-manifests=$GO_MANIFESTS_CHANGED"
           echo "npm-manifests=$NPM_MANIFESTS_CHANGED"
+          echo "gradle-manifests=$GRADLE_MANIFESTS_CHANGED"
           echo "workflows=$WORKFLOWS_CHANGED"
         env:
           # Boolean outputs only (the *_files outputs are the
@@ -75,6 +79,7 @@ jobs:
           # template-injection audit has nothing to flag in this workflow.
           GO_MANIFESTS_CHANGED: ${{ steps.filter.outputs['go-manifests'] }}
           NPM_MANIFESTS_CHANGED: ${{ steps.filter.outputs['npm-manifests'] }}
+          GRADLE_MANIFESTS_CHANGED: ${{ steps.filter.outputs['gradle-manifests'] }}
           WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
 
   backend-license:
@@ -197,4 +202,79 @@ jobs:
         with:
           name: frontend-license-report
           path: frontend-license-report.json
+          retention-days: 30
+
+  android-license:
+    name: Android (Gradle) license scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs['gradle-manifests'] == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      - name: Set up JDK
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      # The verify-lockfile step (issue #942's fix): a manifest change (a
+      # version-catalog bump, a new dependency) that isn't matched by a
+      # regenerated `gradle.lockfile` fails here — dependency locking itself
+      # is the check (see android/build.gradle.kts's `verifyDependencyLocks`
+      # doc comment for why this needs eager artifact resolution rather than
+      # just the resolved graph). Runs before the download step below so a
+      # stale lockfile is reported as a lock-drift failure, not muddled into
+      # a generic download error.
+      - name: Verify Gradle lockfiles are current
+        working-directory: android
+        run: ./gradlew verifyDependencyLocks
+
+      # Trivy reads license metadata from the actual downloaded dependency
+      # files, not the lockfile's coordinates alone — same reason Go needs
+      # `go mod download` and npm needs `yarn install` above. Populates the
+      # local Gradle module cache with the real `release`-classpath
+      # jars/aars (local project modules excluded — first-party code, not a
+      # license question).
+      - name: Download Gradle dependencies (populate license source)
+        working-directory: android
+        run: ./gradlew downloadLicenseScanArtifacts
+
+      - name: Scan licenses (report)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: ./android
+          scanners: license
+          format: json
+          output: android-license-report.json
+
+      - name: Gate on copyleft licenses (CRITICAL, HIGH)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: ./android
+          scanners: license
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+
+      - name: Upload license report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: android-license-report
+          path: android/android-license-report.json
           retention-days: 30
