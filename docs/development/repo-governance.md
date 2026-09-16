@@ -166,6 +166,22 @@ and confirm a PR whose required checks are red cannot be merged.
 `.github/rulesets/`. Reading rulesets over the API needs `Administration: read`, which the
 built-in `GITHUB_TOKEN` cannot be granted — set an optional repo **secret
 `GOVERNANCE_READ_TOKEN`** (a fine-grained PAT scoped to this repo with *Administration: read*) to
-enable the `ruleset-drift` job; without it that job records a note and the `cosign-identity-probe`
-job still runs. The workflow is `continue-on-error`: a diff is a review prompt, not a build
-failure, because a maintainer may adjust a setting deliberately and then reconcile the JSON.
+enable the `ruleset-drift` job; without it that job records a note and exits 0 (the one
+deliberately non-failing path — the token is optional operator configuration, not a repository-state
+problem), and the `cosign-identity-probe` job still runs regardless.
+
+With the token present, both jobs **fail** on real drift (issue #916 / #502 finding F4 — before
+that fix, both jobs were `continue-on-error` with no failing exit path at all, so a live protection
+weakened in the GitHub UI, or a released image that no longer verified against the pinned cosign
+identity, produced only an ignorable job-summary warning). Neither job is in the main-protection
+required-check list, so a failure here does not block a PR merge; it shows as a red job on the
+weekly schedule run (which triggers GitHub's workflow-failure notification) and as a visible,
+non-blocking check on a PR that touches the paths this workflow watches. `ruleset-drift`'s
+per-ruleset decision (`cmd/rulesetdrift`) treats a committed ruleset with no live counterpart the
+same as a normalized-JSON mismatch — both are drift. A maintainer who is deliberately adjusting a
+setting mid-reconciliation records that in
+[`docs/security/governance-drift.ignore`](../security/governance-drift.ignore) (one
+`<ruleset name>  # <reason>` line) rather than by reintroducing `continue-on-error`; the ignore
+file is bidirectional the same way `citation-drift.ignore` and `crypto-surface.ignore` are — an
+entry for a ruleset that is back in sync, or that names no committed ruleset, fails the job too, so
+it cannot accumulate dead suppressions.

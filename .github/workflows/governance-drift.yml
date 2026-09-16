@@ -11,9 +11,19 @@ name: Governance drift
 #   - whether the latest release image still verifies against the pinned
 #     cosign identity docs/security/release-verification.md documents.
 #
-# Both jobs are `continue-on-error` -- a maintainer may adjust settings
-# deliberately, and a diff is a review prompt, not a build failure. The output
-# is the job summary.
+# Both jobs FAIL the run when they find real drift (issue #916 / #502 finding
+# F4 -- both used to be `continue-on-error` with no failing exit path at all,
+# so this "standing alarm" could never actually alarm). Neither job is in the
+# main-protection required-check list, so a failure here does not block a PR
+# merge; it is a red job on the schedule run (which GitHub emails/notifies on)
+# and a visible check on a PR that touches the paths this workflow watches.
+#
+# ruleset-drift's one deliberate non-failing path is a missing
+# GOVERNANCE_READ_TOKEN secret, since that PAT is optional operator
+# configuration, not a repository-state problem -- see the job below. A real
+# drift once the token is present can be deliberately accepted (a maintainer
+# adjusting a setting mid-reconciliation) via
+# docs/security/governance-drift.ignore, not by re-adding continue-on-error.
 
 on:
   schedule:
@@ -33,7 +43,6 @@ jobs:
   ruleset-drift:
     name: Committed rulesets vs live
     runs-on: ubuntu-latest
-    continue-on-error: true
     permissions:
       contents: read
     steps:
@@ -41,6 +50,11 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
 
       - name: Diff each committed ruleset against the live one
         env:
@@ -72,14 +86,18 @@ jobs:
             echo "### :information_source: ruleset-drift skipped -- GOVERNANCE_READ_TOKEN not set" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          drift=0
+          # results collects one {"name","applied","drifted"} object per
+          # committed ruleset; cmd/rulesetdrift turns it (plus
+          # docs/security/governance-drift.ignore) into the step's pass/fail --
+          # this loop only fetches and displays, it never decides.
+          results="[]"
           for f in .github/rulesets/*.json; do
             name="$(jq -r '.name' "$f")"
             id="$(printf '%s' "$live_index" | jq -r --arg n "$name" '.[] | select(.name == $n) | .id' | head -1)"
             if [ -z "$id" ] || [ "$id" = "null" ]; then
               echo "::warning::ruleset '$name' ($f) is not applied on the repository yet."
               { echo "### :warning: \`$name\` not applied"; echo "\`$f\` has no live counterpart. Apply it (see docs/development/repo-governance.md)."; } >> "$GITHUB_STEP_SUMMARY"
-              drift=1
+              results="$(printf '%s' "$results" | jq --arg n "$name" '. + [{"name": $n, "applied": false, "drifted": false}]')"
               continue
             fi
             jq -S "$norm" "$f" > /tmp/want.json
@@ -87,19 +105,30 @@ jobs:
             if ! diff -u /tmp/want.json /tmp/live.json > /tmp/d.txt; then
               echo "::warning::ruleset '$name' has drifted from $f"
               { echo "### :warning: \`$name\` drift"; echo '```diff'; cat /tmp/d.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-              drift=1
+              results="$(printf '%s' "$results" | jq --arg n "$name" '. + [{"name": $n, "applied": true, "drifted": true}]')"
             else
               echo "ok: $name matches $f"
+              results="$(printf '%s' "$results" | jq --arg n "$name" '. + [{"name": $n, "applied": true, "drifted": false}]')"
             fi
           done
-          if [ "$drift" -eq 0 ]; then
-            echo "### Governance drift: all rulesets match \`.github/rulesets/\`" >> "$GITHUB_STEP_SUMMARY"
-          fi
+          printf '%s' "$results" > /tmp/ruleset-drift-results.json
+
+          # cmd/rulesetdrift is the actual pass/fail decision (issue #916):
+          # exit 0 only when every ruleset matches, or its gap is accepted in
+          # governance-drift.ignore with no stale/unknown entries left behind.
+          set +e
+          decision="$(cd backend && go run ./cmd/rulesetdrift \
+            -results /tmp/ruleset-drift-results.json \
+            -ignore ../docs/security/governance-drift.ignore)"
+          decision_code=$?
+          set -e
+          echo "$decision"
+          { echo "### Governance drift decision"; echo '```'; echo "$decision"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit "$decision_code"
 
   cosign-identity-probe:
     name: Latest release verifies against the pinned identity
     runs-on: ubuntu-latest
-    continue-on-error: true
     permissions:
       contents: read
       packages: read
@@ -146,7 +175,12 @@ jobs:
                --certificate-oidc-issuer https://token.actions.githubusercontent.com >/tmp/v.txt 2>&1; then
             echo "### Release $tag verifies against the documented cosign identity" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "::warning::cosign verify of $img failed against the documented identity regexp."
-            { echo "### :warning: \`cosign verify\` mismatch for $tag"; echo '```'; cat /tmp/v.txt; echo '```';
+            # #916: this is the sole automated detector of a published release
+            # whose image no longer verifies against the identity operators are
+            # told to check -- fail the job (not just warn) so the release is
+            # already out, and escalation is the point.
+            echo "::error::cosign verify of $img failed against the documented identity regexp."
+            { echo "### :x: \`cosign verify\` mismatch for $tag"; echo '```'; cat /tmp/v.txt; echo '```';
               echo "The release may predate the pinned-identity change, or the signing identity moved. See docs/security/release-verification.md."; } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
           fi
