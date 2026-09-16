@@ -204,3 +204,163 @@ test('renders no star when onToggleFavorite is not provided', () => {
   expect(screen.queryByLabelText('Mark as favorite')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Unmark as favorite')).not.toBeInTheDocument();
 });
+
+// --- circle/tag add/remove/create-new flows ---------------------------------
+
+function circle(id: string, name: string) {
+  return { id, name, created_at: '', updated_at: '' };
+}
+function tag(id: string, name: string) {
+  return { id, name, created_at: '', updated_at: '' };
+}
+
+test('picking an existing circle from the autocomplete calls onAddCircle', async () => {
+  mockMatchMedia(false);
+  const onAddCircle = vi.fn();
+  renderHeader({ allCircles: [circle('c1', 'Friends')], onAddCircle });
+
+  // The first "Edit" pencil belongs to the name section; the circles pencil
+  // is the second.
+  fireEvent.click(screen.getAllByLabelText('Edit')[1]);
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Select existing circle...' }));
+  fireEvent.click(await screen.findByRole('option', { name: 'Friends' }));
+
+  expect(onAddCircle).toHaveBeenCalledWith(circle('c1', 'Friends'));
+});
+
+test('pressing Enter in the new-circle field calls onAddCircle with a fresh circle', () => {
+  mockMatchMedia(false);
+  const onAddCircle = vi.fn();
+  renderHeader({ onAddCircle });
+
+  fireEvent.click(screen.getAllByLabelText('Edit')[1]);
+  const input = screen.getByPlaceholderText('New circle name...');
+  fireEvent.change(input, { target: { value: 'Book Club' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+
+  expect(onAddCircle).toHaveBeenCalledWith({
+    id: '',
+    created_at: '',
+    updated_at: '',
+    name: 'Book Club',
+  });
+  // The field clears after submitting.
+  expect(input).toHaveValue('');
+});
+
+test('pressing Enter with only whitespace does not call onAddCircle', () => {
+  mockMatchMedia(false);
+  const onAddCircle = vi.fn();
+  renderHeader({ onAddCircle });
+
+  fireEvent.click(screen.getAllByLabelText('Edit')[1]);
+  const input = screen.getByPlaceholderText('New circle name...');
+  fireEvent.change(input, { target: { value: '   ' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+
+  expect(onAddCircle).not.toHaveBeenCalled();
+});
+
+test('deleting a circle chip calls onRemoveCircle', () => {
+  mockMatchMedia(false);
+  const onRemoveCircle = vi.fn();
+  renderHeader({ contactCircles: [circle('c1', 'Friends')], onRemoveCircle });
+
+  fireEvent.click(screen.getAllByLabelText('Edit')[1]);
+  // MUI Chip's delete icon renders as a button-like SVG with no accessible
+  // name of its own; select it via the chip's delete test id.
+  fireEvent.click(screen.getByTestId('CancelIcon'));
+
+  expect(onRemoveCircle).toHaveBeenCalledWith(circle('c1', 'Friends'));
+});
+
+test('picking an existing tag from the autocomplete calls onAddTag', async () => {
+  mockMatchMedia(false);
+  const onAddTag = vi.fn();
+  renderHeader({ allTags: [tag('t1', 'VIP')], onAddTag });
+
+  // Edit pencils in order: name, circles, tags.
+  fireEvent.click(screen.getAllByLabelText('Edit')[2]);
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Select tag...' }));
+  fireEvent.click(await screen.findByRole('option', { name: 'VIP' }));
+
+  expect(onAddTag).toHaveBeenCalledWith(tag('t1', 'VIP'));
+});
+
+test('pressing Enter in the new-tag field calls onAddTag with a fresh tag', () => {
+  mockMatchMedia(false);
+  const onAddTag = vi.fn();
+  renderHeader({ onAddTag });
+
+  fireEvent.click(screen.getAllByLabelText('Edit')[2]);
+  const input = screen.getByPlaceholderText('New tag...');
+  fireEvent.change(input, { target: { value: 'Neighbor' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+
+  expect(onAddTag).toHaveBeenCalledWith({
+    id: '',
+    created_at: '',
+    updated_at: '',
+    name: 'Neighbor',
+  });
+});
+
+test('deleting a tag chip calls onRemoveTag', () => {
+  mockMatchMedia(false);
+  const onRemoveTag = vi.fn();
+  renderHeader({ contactTags: [tag('t1', 'VIP')], onRemoveTag });
+
+  fireEvent.click(screen.getAllByLabelText('Edit')[2]);
+  fireEvent.click(screen.getByTestId('CancelIcon'));
+
+  expect(onRemoveTag).toHaveBeenCalledWith(tag('t1', 'VIP'));
+});
+
+// --- archived-state button/menu variants ------------------------------------
+
+test('wide layout: an archived contact shows Unarchive and hides Archive/Delete', () => {
+  mockMatchMedia(false);
+  const onUnarchiveContact = vi.fn();
+  renderHeader({
+    record: baseRecord({ archived: true }),
+    onArchiveContact: vi.fn(),
+    onUnarchiveContact,
+  });
+
+  expect(screen.getByText('Archived')).toBeInTheDocument();
+  const unarchiveButton = screen.getByRole('button', { name: 'Unarchive' });
+  expect(unarchiveButton).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Archive' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+
+  fireEvent.click(unarchiveButton);
+  expect(onUnarchiveContact).toHaveBeenCalledTimes(1);
+});
+
+test('wide layout: a non-archived contact shows Archive and Delete, not Unarchive', () => {
+  mockMatchMedia(false);
+  renderHeader({ onArchiveContact: vi.fn(), onUnarchiveContact: vi.fn() });
+
+  expect(screen.getByRole('button', { name: 'Archive' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Unarchive' })).not.toBeInTheDocument();
+});
+
+test("compact layout: an archived contact's overflow menu offers only Unarchive", () => {
+  mockMatchMedia(true);
+  const onUnarchiveContact = vi.fn();
+  renderHeader({
+    record: baseRecord({ archived: true }),
+    onArchiveContact: vi.fn(),
+    onUnarchiveContact,
+    onDeleteContact: vi.fn(),
+  });
+
+  fireEvent.click(screen.getByLabelText('Actions'));
+  expect(screen.getByText('Unarchive')).toBeInTheDocument();
+  expect(screen.queryByText('Archive')).not.toBeInTheDocument();
+  expect(screen.queryByText('Delete Contact')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByText('Unarchive'));
+  expect(onUnarchiveContact).toHaveBeenCalledTimes(1);
+});
