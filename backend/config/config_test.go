@@ -1175,3 +1175,76 @@ func TestLoadConfig_OIDCPartialEnvFailsValidation(t *testing.T) {
 	errs := cfg.Validate()
 	assert.True(t, hasFieldError(errs, "OIDC"), "a partial OIDC env must fail Validate(), got: %v", errs)
 }
+
+// --- Public-exposure SSRF-guard boot warning (issue #951) ---
+//
+// Every *_BLOCK_PRIVATE_URLS flag defaults to off so a trusted-LAN
+// self-host keeps working with zero config (see docs/int-01-integration-
+// classification-matrix.md). PublicExposureWarnings is the advisory signal
+// for the case that default doesn't cover: a deployment that looks
+// reachable from outside a trusted LAN while a guard is still off. It must
+// never appear in Validate()'s errors — it's advisory, like
+// TrustedProxyWarnings, not a boot failure.
+
+func TestPublicExposureWarnings_NotPublicFacingIsQuiet(t *testing.T) {
+	cfg := &Config{FrontendURL: "http://localhost:7300", CookieSecure: false}
+	assert.Empty(t, cfg.PublicExposureWarnings())
+}
+
+func TestPublicExposureWarnings_HTTPSFrontendWithGuardsOffWarns(t *testing.T) {
+	cfg := &Config{FrontendURL: "https://crm.example.com", CookieSecure: true}
+	warnings := cfg.PublicExposureWarnings()
+	require.Len(t, warnings, 1)
+	assert.Contains(t, warnings[0], "WEBHOOK_BLOCK_PRIVATE_URLS")
+	assert.Contains(t, warnings[0], "OIDC_BLOCK_PRIVATE_URLS")
+}
+
+func TestPublicExposureWarnings_CookieSecureAloneImpliesPublic(t *testing.T) {
+	// COOKIE_SECURE=true with a non-https FrontendURL is an unusual but
+	// legal combination (see TestValidate_CookieSecureTrueAlwaysAllowed) —
+	// it alone must still be read as "this deployment intends HTTPS".
+	cfg := &Config{FrontendURL: "http://localhost:7300", CookieSecure: true}
+	assert.NotEmpty(t, cfg.PublicExposureWarnings())
+}
+
+func TestPublicExposureWarnings_AllGuardsOnIsQuiet(t *testing.T) {
+	cfg := &Config{
+		FrontendURL:               "https://crm.example.com",
+		CookieSecure:              true,
+		WebhookBlockPrivateURLs:   true,
+		CalDAVBlockPrivateURLs:    true,
+		ImmichBlockPrivateURLs:    true,
+		PaperlessBlockPrivateURLs: true,
+		SeafileBlockPrivateURLs:   true,
+		WebDAVBlockPrivateURLs:    true,
+		MonicaBlockPrivateURLs:    true,
+		OIDC:                      OIDCConfig{BlockPrivateURLs: true},
+	}
+	assert.Empty(t, cfg.PublicExposureWarnings(), "every guard on must not warn")
+}
+
+func TestPublicExposureWarnings_NamesOnlyTheFlagsThatAreOff(t *testing.T) {
+	cfg := &Config{
+		FrontendURL:             "https://crm.example.com",
+		CookieSecure:            true,
+		WebhookBlockPrivateURLs: true, // this one is on and must not be named
+	}
+	warnings := cfg.PublicExposureWarnings()
+	require.Len(t, warnings, 1)
+	assert.NotContains(t, warnings[0], "WEBHOOK_BLOCK_PRIVATE_URLS")
+	assert.Contains(t, warnings[0], "CALDAV_BLOCK_PRIVATE_URLS")
+	assert.Contains(t, warnings[0], "IMMICH_BLOCK_PRIVATE_URLS")
+	assert.Contains(t, warnings[0], "PAPERLESS_BLOCK_PRIVATE_URLS")
+	assert.Contains(t, warnings[0], "SEAFILE_BLOCK_PRIVATE_URLS")
+	assert.Contains(t, warnings[0], "WEBDAV_BLOCK_PRIVATE_URLS")
+	assert.Contains(t, warnings[0], "MONICA_BLOCK_PRIVATE_URLS")
+	assert.Contains(t, warnings[0], "OIDC_BLOCK_PRIVATE_URLS")
+}
+
+func TestPublicExposureWarnings_NeverSurfacesAsValidationError(t *testing.T) {
+	// Advisory only — must never block boot the way TestValidate_ValidConfigHasNoErrors
+	// pins for the rest of Validate().
+	cfg := validConfig() // https FrontendURL + CookieSecure=true, every *_BLOCK_PRIVATE_URLS off
+	assert.NotEmpty(t, cfg.PublicExposureWarnings(), "sanity: this config should actually warn")
+	assert.Empty(t, cfg.Validate(), "PublicExposureWarnings must never leak into Validate()'s errors")
+}

@@ -251,6 +251,15 @@ func main() {
 		logger.Warn().Msg(warning)
 	}
 
+	// Issue #951: surface a deployment that looks public-facing (HTTPS
+	// frontend / Secure cookie) while an SSRF guard an authenticated user's
+	// input can reach is still off. Advisory, not fatal — see
+	// PublicExposureWarnings' doc comment for why a trusted-LAN self-host
+	// over HTTPS must not be forced to change anything.
+	for _, warning := range cfg.PublicExposureWarnings() {
+		logger.Warn().Msg(warning)
+	}
+
 	// M2: config.Validate only checks that FCM_SERVICE_ACCOUNT_FILE exists
 	// (config cannot import services without an import cycle). The content
 	// check — valid JSON with project_id/client_email/private_key — lives
