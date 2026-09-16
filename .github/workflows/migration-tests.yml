@@ -257,12 +257,22 @@ jobs:
   # ~17 min and the long pole of the backend PR gate. It is not on a critical
   # path here: this job runs in parallel with every other job in this workflow
   # and this workflow is not itself the backend gate's bottleneck.
+  #
+  # `go test` defaults to a 10-minute self-timeout when none is given, which
+  # is independent of (and can fire well before) this job's timeout-minutes
+  # below. This package's runtime scales with SupportedReleases (every
+  # release appends an entry, per #529), and at 21 supported releases it
+  # crossed that default under -covermode=atomic — the suite was still
+  # running real work (not hung) when `go test` panicked it. Pass an explicit
+  # -timeout with headroom under the job timeout so growth in the release
+  # list doesn't silently flip this red again the next time it grows; bump
+  # both together if it ever gets close.
   schemafixture-suite:
     permissions:
       contents: read
     name: schemafixture suite + coverage
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     needs: changes
     if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
     steps:
@@ -283,7 +293,7 @@ jobs:
       # keeps its own -race coverage in unit-tests.yml).
       - name: Run the full schemafixture package with coverage
         working-directory: backend
-        run: go test ./internal/schemafixture/ -count=1 -covermode=atomic -coverprofile=coverage-schemafixture.out
+        run: go test ./internal/schemafixture/ -count=1 -timeout=25m -covermode=atomic -coverprofile=coverage-schemafixture.out
 
       # Issue #294 pattern: multiple `backend`-flag uploads for one commit are
       # merged by Codecov, so this composes with unit-tests.yml's upload rather
