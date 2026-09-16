@@ -149,6 +149,150 @@ func TestImport_ZoneLessTimestampsStayVerbatim(t *testing.T) {
 	}
 }
 
+// intPtrEqual reports whether two *int point to equal values (or are both
+// nil); used by the table-driven parsePartialDate assertions below.
+func intPtrEqual(a, b *int) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
+func derefInt(p *int) any {
+	if p == nil {
+		return nil
+	}
+	return *p
+}
+
+// TestParsePartialDate exercises every reduced/partial date form RFC 6350
+// §4.3 permits (day-only "---DD", month "--MM", month-day "--MMDD"/"--MM-DD",
+// year "YYYY", year-month "YYYYMM"/"YYYY-MM", year-month-day
+// "YYYYMMDD"/"YYYY-MM-DD"), plus the malformed-digit and wrong-length
+// branches that silently drop a field (via a swallowed strconv.Atoi error)
+// or the whole value (the `default: return nil` branch) rather than
+// panicking. Issue #966 shipped a real bug in the "---" vs "--" prefix
+// disambiguation, so this class of parsing logic is a repeat-risk, not a
+// hypothetical.
+func TestParsePartialDate(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                string
+		in                  string
+		wantNil             bool
+		wantY, wantM, wantD *int
+	}{
+		{name: "empty_string", in: "", wantNil: true},
+		{name: "day_only_compact", in: "---05", wantD: intPtr(5)},
+		{name: "day_only_invalid_digits", in: "---xy"},
+		{name: "day_only_empty_core", in: "---"},
+		{name: "double_dash_empty_core", in: "--"},
+		{name: "month_only", in: "--05", wantM: intPtr(5)},
+		{name: "month_only_invalid_digits", in: "--ab"},
+		{name: "month_day_compact", in: "--0522", wantM: intPtr(5), wantD: intPtr(22)},
+		{name: "month_day_dashed", in: "--05-22", wantM: intPtr(5), wantD: intPtr(22)},
+		{name: "month_day_invalid_day_digits", in: "--05ab", wantM: intPtr(5)},
+		{name: "year_only", in: "2025", wantY: intPtr(2025)},
+		{name: "year_only_invalid_digits", in: "abcd"},
+		{name: "year_month_compact", in: "202505", wantY: intPtr(2025), wantM: intPtr(5)},
+		{name: "year_month_dashed", in: "2025-05", wantY: intPtr(2025), wantM: intPtr(5)},
+		{name: "year_month_invalid_month_digits", in: "2025ab", wantY: intPtr(2025)},
+		{name: "year_month_day_compact", in: "20250522", wantY: intPtr(2025), wantM: intPtr(5), wantD: intPtr(22)},
+		{name: "year_month_day_dashed", in: "2025-05-22", wantY: intPtr(2025), wantM: intPtr(5), wantD: intPtr(22)},
+		{name: "year_month_day_invalid_day_digits", in: "202505ab", wantY: intPtr(2025), wantM: intPtr(5)},
+		{name: "invalid_length_3", in: "202", wantNil: true},
+		{name: "invalid_length_5", in: "20250", wantNil: true},
+		{name: "invalid_length_7", in: "2025052", wantNil: true},
+		{name: "invalid_length_9", in: "202505220", wantNil: true},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := parsePartialDate(tt.in)
+			if tt.wantNil {
+				if got != nil {
+					t.Fatalf("parsePartialDate(%q) = %+v, want nil", tt.in, got)
+				}
+				return
+			}
+			if got == nil {
+				t.Fatalf("parsePartialDate(%q) = nil, want non-nil {Year:%v Month:%v Day:%v}",
+					tt.in, derefInt(tt.wantY), derefInt(tt.wantM), derefInt(tt.wantD))
+			}
+			if !intPtrEqual(got.Year, tt.wantY) || !intPtrEqual(got.Month, tt.wantM) || !intPtrEqual(got.Day, tt.wantD) {
+				t.Errorf("parsePartialDate(%q) = {Year:%v Month:%v Day:%v}, want {Year:%v Month:%v Day:%v}",
+					tt.in, derefInt(got.Year), derefInt(got.Month), derefInt(got.Day),
+					derefInt(tt.wantY), derefInt(tt.wantM), derefInt(tt.wantD))
+			}
+		})
+	}
+}
+
+// TestFormatPartialDate exercises every non-empty PartialDate combination
+// parsePartialDate can actually produce, plus the nil and all-fields-nil
+// cases.
+func TestFormatPartialDate(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		in   *contactmodel.PartialDate
+		want string
+	}{
+		{name: "nil_pointer", in: nil, want: ""},
+		{name: "all_fields_nil", in: &contactmodel.PartialDate{}, want: ""},
+		{name: "year_month_day", in: &contactmodel.PartialDate{Year: intPtr(1985), Month: intPtr(4), Day: intPtr(12)}, want: "1985-04-12"},
+		{name: "year_month", in: &contactmodel.PartialDate{Year: intPtr(2025), Month: intPtr(5)}, want: "2025-05"},
+		{name: "year_only", in: &contactmodel.PartialDate{Year: intPtr(2025)}, want: "2025"},
+		{name: "month_day", in: &contactmodel.PartialDate{Month: intPtr(5), Day: intPtr(22)}, want: "--05-22"},
+		{name: "month_only", in: &contactmodel.PartialDate{Month: intPtr(5)}, want: "--05"},
+		{name: "day_only", in: &contactmodel.PartialDate{Day: intPtr(5)}, want: "---05"},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := formatPartialDate(tt.in); got != tt.want {
+				t.Errorf("formatPartialDate(%+v) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestPartialDateRoundTrip pins parse(format(x)) == x for every partial-date
+// shape, using formatPartialDate's own canonical (dashed extended) output as
+// the wire value fed back into parsePartialDate.
+func TestPartialDateRoundTrip(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		pd   *contactmodel.PartialDate
+	}{
+		{"year_month_day", &contactmodel.PartialDate{Year: intPtr(1985), Month: intPtr(4), Day: intPtr(12)}},
+		{"year_month", &contactmodel.PartialDate{Year: intPtr(2025), Month: intPtr(5)}},
+		{"year_only", &contactmodel.PartialDate{Year: intPtr(2025)}},
+		{"month_day", &contactmodel.PartialDate{Month: intPtr(5), Day: intPtr(22)}},
+		{"month_only", &contactmodel.PartialDate{Month: intPtr(5)}},
+		{"day_only", &contactmodel.PartialDate{Day: intPtr(28)}},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			wire := formatPartialDate(tt.pd)
+			got := parsePartialDate(wire)
+			if got == nil {
+				t.Fatalf("parsePartialDate(formatPartialDate(%+v)) = %q -> nil", tt.pd, wire)
+			}
+			if !intPtrEqual(got.Year, tt.pd.Year) || !intPtrEqual(got.Month, tt.pd.Month) || !intPtrEqual(got.Day, tt.pd.Day) {
+				t.Errorf("round trip via %q = {Year:%v Month:%v Day:%v}, want {Year:%v Month:%v Day:%v}",
+					wire, derefInt(got.Year), derefInt(got.Month), derefInt(got.Day),
+					derefInt(tt.pd.Year), derefInt(tt.pd.Month), derefInt(tt.pd.Day))
+			}
+		})
+	}
+}
+
 func TestImport_UpdatedWithOffset(t *testing.T) {
 	t.Parallel()
 	raw := []byte("BEGIN:VCARD\r\nVERSION:4.0\r\nUID:rev-offset\r\nFN:Test\r\nREV:19961022T090000-05\r\nEND:VCARD\r\n")
