@@ -87,9 +87,9 @@ func TestCheck(t *testing.T) {
 			wantMsg: "0 recorded exception(s), none expired",
 		},
 		{
-			name: "valid, unexpired entry passes",
+			name: "valid, unexpired, unrenewed entry passes",
 			ledger: body(
-				"GHSA-aaaa-bbbb-cccc | npm | example-pkg | 2026-08-01 | 2026-10-01 | drew | waiting on upstream fix\n"),
+				"GHSA-aaaa-bbbb-cccc | npm | example-pkg | 2026-08-01 | 2026-08-01 | 2026-10-01 | 0 | drew | waiting on upstream fix\n"),
 			now:     now,
 			wantMsg: "1 recorded exception(s), none expired",
 		},
@@ -98,12 +98,12 @@ func TestCheck(t *testing.T) {
 			ledger:  body("GHSA-aaaa-bbbb-cccc | npm | example-pkg\n"),
 			now:     now,
 			wantErr: true,
-			wantMsg: "expected 7 pipe-delimited fields",
+			wantMsg: "expected 9 pipe-delimited fields",
 		},
 		{
 			name: "every field invalid at once still reports each problem",
 			ledger: body(
-				" |  |  | not-a-date | also-not-a-date |  | \n"),
+				" |  |  | not-a-date | also-not-a-date | still-not-a-date | not-a-number |  | \n"),
 			now:     now,
 			wantErr: true,
 			wantMsg: "advisory is empty",
@@ -111,15 +111,39 @@ func TestCheck(t *testing.T) {
 		{
 			name: "invalid ecosystem fails",
 			ledger: body(
-				"GHSA-aaaa-bbbb-cccc | rust | example-pkg | 2026-08-01 | 2026-10-01 | drew | reason\n"),
+				"GHSA-aaaa-bbbb-cccc | rust | example-pkg | 2026-08-01 | 2026-08-01 | 2026-10-01 | 0 | drew | reason\n"),
 			now:     now,
 			wantErr: true,
 			wantMsg: `ecosystem "rust" is not one of`,
 		},
 		{
+			name: "negative renewals fails",
+			ledger: body(
+				"GHSA-aaaa-bbbb-cccc | go | example-pkg | 2026-08-01 | 2026-08-01 | 2026-10-01 | -1 | drew | reason\n"),
+			now:     now,
+			wantErr: true,
+			wantMsg: `renewals "-1" is not a non-negative integer`,
+		},
+		{
+			name: "non-numeric renewals fails",
+			ledger: body(
+				"GHSA-aaaa-bbbb-cccc | go | example-pkg | 2026-08-01 | 2026-08-01 | 2026-10-01 | once | drew | reason\n"),
+			now:     now,
+			wantErr: true,
+			wantMsg: `renewals "once" is not a non-negative integer`,
+		},
+		{
+			name: "opened before first_opened fails",
+			ledger: body(
+				"GHSA-aaaa-bbbb-cccc | go | example-pkg | 2026-08-15 | 2026-08-01 | 2026-10-01 | 0 | drew | reason\n"),
+			now:     now,
+			wantErr: true,
+			wantMsg: "is before first_opened",
+		},
+		{
 			name: "expires before opened fails",
 			ledger: body(
-				"GHSA-aaaa-bbbb-cccc | go | example-pkg | 2026-08-15 | 2026-08-01 | drew | reason\n"),
+				"GHSA-aaaa-bbbb-cccc | go | example-pkg | 2026-08-15 | 2026-08-15 | 2026-08-01 | 0 | drew | reason\n"),
 			now:     now,
 			wantErr: true,
 			wantMsg: "is before opened",
@@ -127,7 +151,7 @@ func TestCheck(t *testing.T) {
 		{
 			name: "window over 90 days fails",
 			ledger: body(
-				"GHSA-aaaa-bbbb-cccc | go | example-pkg | 2026-08-01 | 2026-12-01 | drew | reason\n"),
+				"GHSA-aaaa-bbbb-cccc | go | example-pkg | 2026-08-01 | 2026-08-01 | 2026-12-01 | 0 | drew | reason\n"),
 			now:     now,
 			wantErr: true,
 			wantMsg: "more than 90 days after opened",
@@ -135,7 +159,7 @@ func TestCheck(t *testing.T) {
 		{
 			name: "expired entry fails",
 			ledger: body(
-				"GHSA-aaaa-bbbb-cccc | docker | example-pkg | 2026-06-01 | 2026-07-01 | drew | reason\n"),
+				"GHSA-aaaa-bbbb-cccc | docker | example-pkg | 2026-06-01 | 2026-06-01 | 2026-07-01 | 0 | drew | reason\n"),
 			now:     now,
 			wantErr: true,
 			wantMsg: "expired on 2026-07-01",
@@ -143,15 +167,51 @@ func TestCheck(t *testing.T) {
 		{
 			name: "entry expiring exactly today is not yet expired",
 			ledger: body(
-				"GHSA-aaaa-bbbb-cccc | github-actions | example-pkg | 2026-08-01 | 2026-09-04 | drew | reason\n"),
+				"GHSA-aaaa-bbbb-cccc | github-actions | example-pkg | 2026-08-01 | 2026-08-01 | 2026-09-04 | 0 | drew | reason\n"),
 			now:     now,
 			wantMsg: "1 recorded exception(s), none expired",
 		},
 		{
+			name: "one renewal passes and is surfaced in the summary",
+			ledger: body(
+				"GHSA-aaaa-bbbb-cccc | npm | example-pkg | 2026-06-01 | 2026-08-06 | 2026-10-01 | 1 | drew | still no upstream fix\n"),
+			now:     now,
+			wantMsg: "renewed: GHSA-aaaa-bbbb-cccc (npm/example-pkg) — 1 renewal(s), open 95 day(s) (since 2026-06-01)",
+		},
+		{
+			name: "renewals at the escalation threshold without a marker fails",
+			ledger: body(
+				"GHSA-aaaa-bbbb-cccc | npm | example-pkg | 2026-01-01 | 2026-08-06 | 2026-10-01 | 2 | drew | still no upstream fix\n"),
+			now:     now,
+			wantErr: true,
+			wantMsg: "has been renewed 2 time(s) (open since 2026-01-01) with no recorded escalation",
+		},
+		{
+			name: "renewals at the escalation threshold with a marker passes",
+			ledger: body(
+				"GHSA-aaaa-bbbb-cccc | npm | example-pkg | 2026-01-01 | 2026-08-06 | 2026-10-01 | 2 | drew | escalated: still waiting on upstream, checked 2026-09-01\n"),
+			now:     now,
+			wantMsg: "renewed: GHSA-aaaa-bbbb-cccc (npm/example-pkg) — 2 renewal(s), open 246 day(s) (since 2026-01-01)",
+		},
+		{
+			name: "escalation marker is case-insensitive",
+			ledger: body(
+				"GHSA-aaaa-bbbb-cccc | npm | example-pkg | 2026-01-01 | 2026-08-06 | 2026-10-01 | 3 | drew | ESCALATED: reviewed again, still blocked\n"),
+			now:     now,
+			wantMsg: "3 renewal(s)",
+		},
+		{
+			name: "one renewal below the threshold needs no escalation marker",
+			ledger: body(
+				"GHSA-aaaa-bbbb-cccc | npm | example-pkg | 2026-06-01 | 2026-08-06 | 2026-10-01 | 1 | drew | reason with no marker\n"),
+			now:     now,
+			wantMsg: "1 renewal(s)",
+		},
+		{
 			name: "multiple problems are reported in line order",
 			ledger: body(
-				"GHSA-aaaa-bbbb-cccc | rust | example-pkg | 2026-08-01 | 2026-08-02 | drew | reason\n" +
-					"GHSA-bbbb-cccc-dddd | npm | example-pkg | 2026-08-01 | 2026-08-02 | drew\n"),
+				"GHSA-aaaa-bbbb-cccc | rust | example-pkg | 2026-08-01 | 2026-08-01 | 2026-08-02 | 0 | drew | reason\n" +
+					"GHSA-bbbb-cccc-dddd | npm | example-pkg | 2026-08-01 | 2026-08-01 | 2026-08-02 | 0 | drew\n"),
 			now:     now,
 			wantErr: true,
 			wantMsg: "2 problem(s)",
