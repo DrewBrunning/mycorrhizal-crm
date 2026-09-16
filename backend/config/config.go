@@ -9,6 +9,7 @@ import (
 	"log"
 	"math"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -906,16 +907,55 @@ func (c *Config) Validate() []ValidationError {
 		}
 	}
 
-	// Warn if OIDC is partially configured (some vars set but not all required ones)
-	oidcVars := []string{c.OIDC.ProviderURL, c.OIDC.ClientID, c.OIDC.ClientSecret}
+	// OIDC (issue #934): a partial configuration used to boot with SSO
+	// silently disabled and only a log line naming the problem — an operator
+	// who set one or two of the three required vars believed SSO was on.
+	// Any var set at all means OIDC was intended, so an incomplete set now
+	// fails boot instead, naming exactly what's missing.
 	oidcSet := 0
-	for _, v := range oidcVars {
-		if v != "" {
+	var oidcMissing []string
+	for _, v := range []struct{ name, value string }{
+		{"OIDC_PROVIDER_URL", c.OIDC.ProviderURL},
+		{"OIDC_CLIENT_ID", c.OIDC.ClientID},
+		{"OIDC_CLIENT_SECRET", c.OIDC.ClientSecret},
+	} {
+		if v.value != "" {
 			oidcSet++
+		} else {
+			oidcMissing = append(oidcMissing, v.name)
 		}
 	}
 	if oidcSet > 0 && oidcSet < 3 {
-		log.Println("WARN: OIDC is partially configured. Set OIDC_PROVIDER_URL, OIDC_CLIENT_ID, and OIDC_CLIENT_SECRET to enable SSO.")
+		errors = append(errors, ValidationError{
+			Field:   "OIDC",
+			Message: fmt.Sprintf("OIDC is partially configured (%d of 3 required variables set). Set %s too, or unset OIDC_PROVIDER_URL/OIDC_CLIENT_ID/OIDC_CLIENT_SECRET entirely to leave SSO disabled.", oidcSet, strings.Join(oidcMissing, ", ")),
+		})
+	}
+
+	// A fully-configured OIDC provider must have a usable URL and a scope
+	// list with no empty entries — neither was ever format-checked, so a
+	// typo'd provider URL or a stray comma in OIDC_SCOPES (e.g.
+	// "openid,,email") used to boot clean and fail only at the first login
+	// attempt. Gated on oidcSet == 3, computed above from the fields
+	// themselves, rather than c.OIDC.Enabled: Enabled is only ever derived
+	// correctly by LoadConfig, and Validate must give the same answer for a
+	// Config built any other way (tests, or any future caller).
+	if oidcSet == 3 {
+		if u, err := url.Parse(c.OIDC.ProviderURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			errors = append(errors, ValidationError{
+				Field:   "OIDC_PROVIDER_URL",
+				Message: fmt.Sprintf("OIDC_PROVIDER_URL %q must be an absolute http(s) URL, e.g. https://idp.example.com/realms/main.", c.OIDC.ProviderURL),
+			})
+		}
+		for _, scope := range c.OIDC.Scopes {
+			if strings.TrimSpace(scope) == "" {
+				errors = append(errors, ValidationError{
+					Field:   "OIDC_SCOPES",
+					Message: fmt.Sprintf("OIDC_SCOPES %q contains an empty entry — check for a stray or trailing comma.", strings.Join(c.OIDC.Scopes, ",")),
+				})
+				break
+			}
+		}
 	}
 
 	// M2: the FCM service account file is parsed and fully validated by the

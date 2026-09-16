@@ -1024,3 +1024,154 @@ func TestLoadConfig_AuthSprayThresholdsClamped(t *testing.T) {
 	assert.Equal(t, 15, cfg.AuthSprayIdentifierThreshold)
 	assert.Equal(t, 300, cfg.AuthSprayThrottleSeconds)
 }
+
+// --- OIDC configuration validation (issue #934) ---
+//
+// #501 claimed "no required value can be omitted silently"; OIDC being
+// treated as enabled only when all three of OIDC_PROVIDER_URL/CLIENT_ID/
+// CLIENT_SECRET are set, with a bare log line otherwise, was exactly that.
+// These pin the replacement: any var set at all means SSO was intended, so
+// an incomplete set is now a boot-failing ValidationError naming what's
+// missing, and a complete-but-malformed set (bad URL, empty scope entry)
+// fails too instead of only breaking at the first login attempt.
+
+func TestValidate_OIDCUnsetIsFine(t *testing.T) {
+	cfg := validConfig()
+	cfg.OIDC = OIDCConfig{}
+	errs := cfg.Validate()
+	assert.False(t, hasFieldError(errs, "OIDC"), "no OIDC vars set must not error, got: %v", errs)
+}
+
+func TestValidate_OIDCPartialConfig(t *testing.T) {
+	full := OIDCConfig{
+		ProviderURL:  "https://idp.example.com",
+		ClientID:     "client-id",
+		ClientSecret: "client-secret",
+		Scopes:       []string{"openid"},
+	}
+
+	tests := []struct {
+		name string
+		oidc OIDCConfig
+	}{
+		{"only provider URL set", OIDCConfig{ProviderURL: full.ProviderURL, Scopes: full.Scopes}},
+		{"only client ID set", OIDCConfig{ClientID: full.ClientID, Scopes: full.Scopes}},
+		{"only client secret set", OIDCConfig{ClientSecret: full.ClientSecret, Scopes: full.Scopes}},
+		{"provider URL and client ID set, secret missing", OIDCConfig{ProviderURL: full.ProviderURL, ClientID: full.ClientID, Scopes: full.Scopes}},
+		{"client ID and secret set, provider URL missing", OIDCConfig{ClientID: full.ClientID, ClientSecret: full.ClientSecret, Scopes: full.Scopes}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := validConfig()
+			cfg.OIDC = tt.oidc
+			errs := cfg.Validate()
+			assert.True(t, hasFieldError(errs, "OIDC"), "a partial OIDC config must fail boot naming what's missing, got: %v", errs)
+		})
+	}
+}
+
+func TestValidate_OIDCPartialConfig_NamesMissingVars(t *testing.T) {
+	cfg := validConfig()
+	cfg.OIDC = OIDCConfig{ProviderURL: "https://idp.example.com"}
+	errs := cfg.Validate()
+
+	require.True(t, hasFieldError(errs, "OIDC"))
+	var msg string
+	for _, e := range errs {
+		if e.Field == "OIDC" {
+			msg = e.Message
+		}
+	}
+	assert.Contains(t, msg, "OIDC_CLIENT_ID")
+	assert.Contains(t, msg, "OIDC_CLIENT_SECRET")
+	assert.Contains(t, msg, "Set OIDC_CLIENT_ID, OIDC_CLIENT_SECRET too", "the missing-vars clause must list exactly the vars that are missing")
+}
+
+func TestValidate_OIDCCompleteConfigPasses(t *testing.T) {
+	cfg := validConfig()
+	cfg.OIDC = OIDCConfig{
+		ProviderURL:  "https://idp.example.com/realms/main",
+		ClientID:     "client-id",
+		ClientSecret: "client-secret",
+		Scopes:       []string{"openid", "email", "profile"},
+	}
+	errs := cfg.Validate()
+	assert.False(t, hasFieldError(errs, "OIDC"), "a fully configured OIDC must not error, got: %v", errs)
+	assert.False(t, hasFieldError(errs, "OIDC_PROVIDER_URL"), "got: %v", errs)
+	assert.False(t, hasFieldError(errs, "OIDC_SCOPES"), "got: %v", errs)
+}
+
+func TestValidate_OIDCProviderURLFormat(t *testing.T) {
+	tests := []struct {
+		name        string
+		providerURL string
+		expectError bool
+	}{
+		{"https URL with path", "https://idp.example.com/realms/main", false},
+		{"http URL (self-hosted LAN IdP)", "http://keycloak.internal:8080/realms/main", false},
+		{"no scheme", "idp.example.com", true},
+		{"unsupported scheme", "ftp://idp.example.com", true},
+		{"scheme only, no host", "https://", true},
+		{"garbage", "not a url at all", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := validConfig()
+			cfg.OIDC = OIDCConfig{
+				ProviderURL:  tt.providerURL,
+				ClientID:     "client-id",
+				ClientSecret: "client-secret",
+				Scopes:       []string{"openid"},
+			}
+			errs := cfg.Validate()
+			if tt.expectError {
+				assert.True(t, hasFieldError(errs, "OIDC_PROVIDER_URL"), "expected OIDC_PROVIDER_URL error for %q, got: %v", tt.providerURL, errs)
+			} else {
+				assert.False(t, hasFieldError(errs, "OIDC_PROVIDER_URL"), "did not expect OIDC_PROVIDER_URL error for %q, got: %v", tt.providerURL, errs)
+			}
+		})
+	}
+}
+
+func TestValidate_OIDCScopesRejectsEmptyEntries(t *testing.T) {
+	cfg := validConfig()
+	cfg.OIDC = OIDCConfig{
+		ProviderURL:  "https://idp.example.com",
+		ClientID:     "client-id",
+		ClientSecret: "client-secret",
+		// getScopesEnv would produce exactly this shape from "openid,,email"
+		// (a stray comma) or "openid, ,email" (a whitespace-only entry).
+		Scopes: []string{"openid", "", "email"},
+	}
+	errs := cfg.Validate()
+	assert.True(t, hasFieldError(errs, "OIDC_SCOPES"), "an empty scope entry must be rejected, got: %v", errs)
+}
+
+func TestValidate_OIDCNotEnabledSkipsFormatChecks(t *testing.T) {
+	// A malformed provider URL sitting behind a partial config must surface
+	// as the OIDC "incomplete" error, not also (or instead) as an
+	// OIDC_PROVIDER_URL format error — Enabled gates the format checks so
+	// they only run once the set is actually complete.
+	cfg := validConfig()
+	cfg.OIDC = OIDCConfig{ProviderURL: "not a url at all"}
+	errs := cfg.Validate()
+	assert.True(t, hasFieldError(errs, "OIDC"))
+	assert.False(t, hasFieldError(errs, "OIDC_PROVIDER_URL"), "format check must not run until OIDC is fully configured, got: %v", errs)
+}
+
+func TestLoadConfig_OIDCPartialEnvFailsValidation(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+	t.Setenv("OIDC_CLIENT_ID", "some-client-id")
+	t.Setenv("OIDC_CLIENT_SECRET", "some-client-secret")
+	// OIDC_PROVIDER_URL deliberately left unset.
+
+	cfg := LoadConfig()
+	require.False(t, cfg.OIDC.Enabled, "OIDC must not be treated as enabled with the provider URL missing")
+	errs := cfg.Validate()
+	assert.True(t, hasFieldError(errs, "OIDC"), "a partial OIDC env must fail Validate(), got: %v", errs)
+}
