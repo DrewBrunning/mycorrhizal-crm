@@ -229,8 +229,16 @@ log "Starting 'Add account'"
 tap "Add account"
 
 log "Selecting 'Login with URL and user name' and continuing"
-# Already the default-selected radio option, but tap it explicitly so this
-# script doesn't depend on that default surviving a DAVx5 update.
+# The tap above only fires the transition; under CI resource contention
+# (same class of flake already hardened for the intro carousel and the
+# post-account-creation "Finish" step above/below — see their comments) the
+# next screen can take longer than tap()'s fixed 1s sleep to render, so a
+# dump taken immediately after still shows the previous screen. Wait for the
+# target screen first, same pattern as those other steps. Already the
+# default-selected radio option once this screen is up, but tap it
+# explicitly so this script doesn't depend on that default surviving a
+# DAVx5 update.
+wait_for "Login with URL and user name" 20
 tap "Login with URL and user name"
 tap "Continue"
 
