@@ -394,6 +394,23 @@ above — not from memory:
 | Ahead of the binary | Point an older binary at a database migrated by a newer one (e.g. a schema dump from `backend/database/testdata/schemas/` at a higher version) | The [Schema ahead of the binary](#schema-ahead-of-the-binary) reinstall or restore | Same as above |
 | Below the floor | Point the current binary at a `v0.5.x`-schema database | The [Below the floor](#below-the-floor) two-step | The refusal message names `v0.6.0`, and the two-step lands at the current schema |
 | Interrupted startup | Park `make migrate-up` at a fault seam and SIGKILL it (`MYCORRHIZAL_FAULTS=database.migration.before_batch:pause:120s` for "before any migration"; `database.migration.statement:pause:120s` for "during"), or stop the container mid-`docker compose up` | The matching row in [Interrupted startup](#interrupted-startup) | `dbinspect` shows the state that section predicts for the kill point, and a plain restart (or the named recovery for the dirty case) lands clean at the latest version with `/health/ready` `ready` |
+| Bad-release rollback (N+1 → N) | Upgrade a real three-piece install in place (the mandatory pre-migration backup, [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530), fires during this step) | [Rolling back a bad release](#rolling-back-a-bad-release-n1--n): stop N+1, deploy N, restore the pre-migration snapshot + the two file directories | The restored (not-further-migrated) instance passes the same real-workflow check as [After recovery](#after-recovery) — `dbinspect` reports the PRE-upgrade version and `integrity_check=ok`, every live attachment/photo row resolves to a real file, and a pre-existing account can actually log in, search, read/edit a contact, and export |
+
+Automated coverage for the last row: `TestBadReleaseRollbackDrill`
+(`backend/internal/schemafixture/rollback_drill_test.go`, issue #997, split
+from #923) plays this out end to end against a real three-piece install —
+upgrade, restore the automatic pre-migration snapshot, then drive the
+restored instance through the real HTTP router (login, search, read+edit,
+export) — the HTTP exercise the split-out finding said was missing from a
+rollback that had only ever been checked at the schema/row-count level
+(`assertPreMigrationBackupRestorable`). It targets the most recent
+`SupportedReleases` entry still behind the current schema (the realistic
+"N" for "N+1 turned out bad") rather than every historical release, because
+the test drives the restored, OLDER-schema database with the CURRENT
+binary's routes — a stand-in for "the old binary" that only holds up when
+the schema gap between N and N+1 is small; see that file's own comment for
+the hand-verified detail (columns/tables added since v0.6.11 break login
+against schemas further back than that).
 
 A step that is missing or cannot be followed from this document is a bug in
 this runbook — fix it here. The round-trip leg of the drill (every migration
