@@ -1,0 +1,58 @@
+# Mycorrhizal CRM Docker Compose - post-publish functional smoke (issue #996)
+#
+# docker-publish.yml's verify-release-assets job proves the published image
+# RESOLVES in the registry (`docker buildx imagetools inspect` -- presence,
+# not behavior); docker-compose.yml's own smoke test (deploy-smoke.yml) proves
+# a FROM-SOURCE build of the release commit boots and serves a real workflow.
+# Neither pulls the actual artifact CI just pushed and boots IT -- a
+# release-path-only defect (a broken entrypoint, a bad baked-in env default, a
+# migration that only fails inside the real Dockerfile's build context) could
+# still reach operators undetected. This is that third leg.
+#
+# Deliberately no `build:` here: Compose merges a `build:` present ANYWHERE in
+# the effective file set with an `image:` override by building anyway and
+# just naming the result -- that would silently go back to testing a
+# from-source build, defeating the point. This is a standalone file (not an
+# override layered onto docker-compose.yml) for exactly that reason, the same
+# shape as docker-compose.compat-test.yml's pinned-release-image service.
+#
+# Named volumes (not the host bind mounts docker-compose.yml uses) so this
+# needs no PUID/PGID host-permission setup -- a fresh ephemeral CI run has
+# nothing to persist past teardown.
+#
+# USAGE (CI, .github/workflows/docker-publish.yml's post-publish-smoke job):
+#   MYCORRHIZAL_IMAGE=ghcr.io/<repo>@sha256:<digest> \
+#     docker compose -f docker-compose.published-smoke.yml up -d --wait --wait-timeout 240
+#   ( cd backend && DEPLOYSMOKE_BASE_URL=http://localhost:7300 go run ./cmd/deploysmoke )
+#   docker compose -f docker-compose.published-smoke.yml down -v
+
+services:
+  mycorrhizal:
+    image: ${MYCORRHIZAL_IMAGE:?set MYCORRHIZAL_IMAGE to the published image reference, by digest}
+    container_name: mycorrhizal-published-smoke
+    environment:
+      # The two values docs/getting-started.md/.env.example call out as
+      # REQUIRED. Committed as a fixed test-only value rather than generated
+      # per run -- this job proves the published artifact boots and serves
+      # real requests, not the operator's own JWT_SECRET_KEY-generation step
+      # (deploy-smoke.yml already covers that, from source). Same convention
+      # as docker-compose.compat-test.yml's committed test secrets.
+      - JWT_SECRET_KEY=post-publish-smoke-test-jwt-secret-key-32-chars-min
+      - FRONTEND_URL=http://localhost:7300
+    volumes:
+      - published-smoke-data:/app/data
+      - published-smoke-photos:/app/static/photos
+      - published-smoke-attachments:/app/static/attachments
+    ports:
+      - "7300:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health/live"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+
+volumes:
+  published-smoke-data:
+  published-smoke-photos:
+  published-smoke-attachments:
