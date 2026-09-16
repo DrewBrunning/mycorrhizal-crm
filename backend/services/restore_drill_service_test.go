@@ -72,9 +72,11 @@ func TestRestoreDrillPassesWithEncryptedDatabase(t *testing.T) {
 	t.Cleanup(atrest.ResetForTest)
 
 	seedNotes(t, db, "drillatrest", 10)
-	t.Setenv("DATA_ENCRYPTION_KEY", base64.StdEncoding.EncodeToString(kek))
 
-	cfg := config.Config{DBPath: path}
+	// The drill resolves the master key from cfg.DataEncryptionKey (issue
+	// #938: it must be the validated Config field, not a second, independent
+	// env read), so the key goes on cfg here, not the environment.
+	cfg := config.Config{DBPath: path, DataEncryptionKey: base64.StdEncoding.EncodeToString(kek)}
 	ok, detail, err := runRestoreDrill(db, cfg)
 	require.NoError(t, err)
 	assert.True(t, ok, "detail: %s", detail)
@@ -82,11 +84,11 @@ func TestRestoreDrillPassesWithEncryptedDatabase(t *testing.T) {
 
 // TestRestoreDrillFailsWhenSnapshotNotDecryptable is the hand-verified
 // opposite of the healthy test: the live database is encrypted under key B,
-// but the drill resolves key A from the environment — the exact mismatch a
-// real restore hits after a master-key rotation. The restored snapshot's
-// wrapped DEK must NOT unwrap under A, and the drill must fail loudly rather
-// than pass on matching row counts (the encrypted columns count the same
-// regardless of key).
+// but the drill resolves key A from cfg.DataEncryptionKey — the exact
+// mismatch a real restore hits after a master-key rotation. The restored
+// snapshot's wrapped DEK must NOT unwrap under A, and the drill must fail
+// loudly rather than pass on matching row counts (the encrypted columns
+// count the same regardless of key).
 func TestRestoreDrillFailsWhenSnapshotNotDecryptable(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "drill-atrest-key-mismatch.db")
 	db := dbtest.NewAt(t, path)
@@ -102,12 +104,10 @@ func TestRestoreDrillFailsWhenSnapshotNotDecryptable(t *testing.T) {
 
 	seedNotes(t, db, "drillatrestkey", 10)
 
-	// The drill resolves the master key from the environment; make it a
+	// The drill resolves the master key from cfg.DataEncryptionKey; make it a
 	// different key than the one the live database (and therefore the
 	// snapshot) is wrapped under.
-	t.Setenv("DATA_ENCRYPTION_KEY", base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{0x41}, 32)))
-
-	cfg := config.Config{DBPath: path}
+	cfg := config.Config{DBPath: path, DataEncryptionKey: base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{0x41}, 32))}
 	_, _, err := runRestoreDrill(db, cfg)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not decryptable under the current master key")
