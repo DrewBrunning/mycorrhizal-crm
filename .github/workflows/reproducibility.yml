@@ -8,8 +8,9 @@ name: Reproducible builds
 #
 # go-binary / all-in-one-image build both copies on the *same* runner (only a
 # different path), so per-PR they prove *path*-independence, not an
-# independent-builder reproduction -- and they only run on PRs that touch
-# backend/build inputs (see the `paths:` filter below), never on every PR.
+# independent-builder reproduction -- and the actual double build only runs
+# on PRs that touch backend/build inputs (see the `changes` job and the
+# `repro` filter in .github/filters.yaml), not on every PR.
 # go-binary-independent-rebuild is the artifact-level check that actually
 # substantiates "byte-reproducible": it builds on two different GitHub-hosted
 # runner images and compares across them, but only weekly (and on manual
@@ -19,17 +20,25 @@ name: Reproducible builds
 # built under emulation; the manifest list carries per-arch descriptors), and
 # the Android APK (not bit-reproducible by design — keystore signature).
 # docs/security/reproducible-builds.md is the full per-artifact statement.
+#
+# `Go server binary is byte-reproducible` (the go-binary job) is a *required*
+# status check (docs/development/repo-governance.md). It used to be gated by
+# a `paths:` filter on this workflow's own `pull_request` trigger, which meant
+# a PR outside that filter (e.g. a Dependabot GitHub-Actions bump touching
+# only other .github/workflows/*.yml files) never triggered this workflow at
+# all -- no run, so no status is ever posted under that check name, which
+# GitHub shows as permanently "Expected -- waiting for status" and which
+# blocks merge forever. The fix mirrors the `changes`/"Detect Changes" +
+# always-run-gate-job pattern unit-tests.yml already uses for this exact
+# problem (issue #264): the workflow now triggers on every PR, the `changes`
+# job computes whether the double-build inputs actually changed, and
+# go-binary always runs and always reports -- it just skips the expensive
+# build steps (reporting success) when the `changes` job says nothing
+# relevant did.
 
 on:
   pull_request:
     branches: [main, "release/**"]
-    paths:
-      - 'backend/**'
-      - 'Dockerfile'
-      - 'backend/Dockerfile'
-      - 'frontend/Dockerfile'
-      - 'docker/**'
-      - '.github/workflows/reproducibility.yml'
   push:
     branches: [main]
   schedule:
@@ -48,18 +57,65 @@ env:
   REPRO_APP_BUILD_DATE: '1970-01-01T00:00:00Z'
 
 jobs:
-  go-binary:
-    name: Go server binary is byte-reproducible
-    runs-on: ubuntu-latest
+  # Computes whether this run actually needs the double build. push/schedule/
+  # workflow_dispatch always do (they never had a paths filter); pull_request
+  # does only when the `repro` or `workflows` filter matches -- the latter so
+  # a change to *any* .github/workflows/*.yml file (not just this one) still
+  # exercises the real build, matching filters.yaml's "workflows -> re-runs
+  # everything" convention.
+  changes:
     permissions:
       contents: read
+      pull-requests: read
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      repro: ${{ steps.resolve.outputs.repro }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
+      - name: Detect changed areas
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+      - name: Resolve gating decision
+        id: resolve
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            if [ "$REPRO_CHANGED" = "true" ] || [ "$WORKFLOWS_CHANGED" = "true" ]; then
+              repro=true
+            else
+              repro=false
+            fi
+          else
+            repro=true
+          fi
+          echo "repro=$repro" | tee -a "$GITHUB_OUTPUT"
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REPRO_CHANGED: ${{ steps.filter.outputs.repro }}
+          WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
+
+  go-binary:
+    name: Go server binary is byte-reproducible
+    runs-on: ubuntu-latest
+    needs: changes
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        if: needs.changes.outputs.repro == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Set up Go
+        if: needs.changes.outputs.repro == 'true'
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: backend/go.mod
@@ -68,6 +124,7 @@ jobs:
           cache: false
 
       - name: Build the server twice from different paths
+        if: needs.changes.outputs.repro == 'true'
         run: |
           set -eu
           ldflags="-X mycorrhizal/buildinfo.Version=${REPRO_APP_VERSION} \
@@ -104,9 +161,21 @@ jobs:
           fi
           echo "Reproducible: $a"
 
+      - name: Skip (no reproducibility-relevant paths changed)
+        if: needs.changes.outputs.repro != 'true'
+        run: |
+          echo "No backend/build-input paths changed on this PR -- skipping the double build." >> "$GITHUB_STEP_SUMMARY"
+          echo "This required check still runs and reports so path-gating can't strand it (branch protection would otherwise wait on a status that never posts)." >> "$GITHUB_STEP_SUMMARY"
+
   all-in-one-image:
     name: All-in-one image (linux/amd64) is reproducible
     runs-on: ubuntu-latest
+    needs: changes
+    # Not a required check, so unlike go-binary above this job can just be
+    # skipped outright (not merely have its steps no-op) when nothing
+    # relevant changed -- a skipped, non-required job doesn't strand branch
+    # protection the way a required one would.
+    if: needs.changes.outputs.repro == 'true'
     # Not a hard gate yet: the Go binary check above is proven bit-reproducible,
     # but the image adds an `apk add` layer and BuildKit's own metadata, and
     # this has not yet been observed green across enough runs to block a merge

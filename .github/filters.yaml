@@ -16,6 +16,8 @@
 #                explicitly because the contract lives outside those trees)
 #   infra     -> the deployed artifact (all-in-one image + compose + nginx):
 #                the e2e suites, since they build and run that artifact
+#   repro     -> reproducibility.yml's own double-build inputs (Go server
+#                binary + all-in-one image reproducibility check)
 #   workflows -> any change under .github/ (including this file) re-runs
 #                everything, because a workflow change can affect any check
 #
@@ -77,6 +79,23 @@ android:
 
 openapi:
   - 'backend/openapi.yaml'
+
+# repro (issue: "Go server binary is byte-reproducible" required check was
+# stranded on PRs outside this filter, e.g. a Dependabot GitHub-Actions bump
+# touching only other .github/workflows/*.yml files): the inputs
+# reproducibility.yml's go-binary/all-in-one-image double-builds actually
+# depend on. Kept as its own named filter (not reused from backend/infra)
+# because it also has to gate the all-in-one-image job, which additionally
+# cares about frontend/Dockerfile. reproducibility.yml's own `changes` job
+# ORs this with the `workflows` filter below, so a change to any
+# .github/workflows/*.yml file — not just reproducibility.yml itself — still
+# runs the real double build instead of only the always-green stub.
+repro:
+  - 'backend/**'
+  - 'Dockerfile'
+  - 'backend/Dockerfile'
+  - 'frontend/Dockerfile'
+  - 'docker/**'
 
 infra:
   - 'Dockerfile'
