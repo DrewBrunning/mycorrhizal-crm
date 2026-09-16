@@ -45,7 +45,10 @@ Four mechanisms, in order of when they fire:
    changelog must carry a new row since the previous release tag, unless the dispatch supplied
    `ack_asvs_current` with a reason. After the fixture commit it triggers and waits on the
    release-tier suites (above). Any failure means no tag is pushed, so `docker-publish.yml`
-   never starts. `dry_run: true` runs this whole battery and stops before any write.
+   never starts. `dry_run: true` runs this whole battery and stops before any write, and is
+   exercised automatically — not just documented — by `release-dry-run.yml` (weekly + on demand,
+   issue #929), which dispatches it against the last shipped release and fails if the rehearsal
+   fails.
 
    **Dispatch, not just poll, for the mandatory per-PR gates**
    ([#543](https://github.com/DrewBrunning/mycorrhizal-crm/issues/543)): a real RC cut found
@@ -197,6 +200,7 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `Go mutation testing` | advisory | no | gremlins mutation testing against the safety-critical Go paths (migration/upgrade, backup/restore, delete cascade, import/export, data-integrity invariants — backend/internal/mutationscope.Scopes); each matrix leg's generated config fails the nightly run itself below its recorded threshold (issue #915). Per-leg check names make polling impractical; nightly-only and not release-blocking, so tier stays advisory. | `go-mutation.yml` |
 | `Android macrobenchmark` | advisory | no | cold/warm/hot startup and dashboard frame timing trend; continue-on-error by design (emulator variance). | `android-tests.yml` |
 | `Reproducible image (all-in-one)` | advisory | no | double-build config + layer digest compare for the linux/amd64 image; continue-on-error until reliably green on main (REL-04, #448). | `reproducibility.yml` |
+| `Release dry-run rehearsal` | advisory | no | weekly + on-demand: dispatches release.yml with dry_run:true against the last SupportedReleases entry and fails if that dry run fails; exercises the final-release path's gate battery + fixture regeneration without cutting a release (issue #929). Not release-blocking -- a failure means the automation regressed, triaged like any other advisory gate. | `release-dry-run.yml` |
 
 <!-- release-gates:end -->
 

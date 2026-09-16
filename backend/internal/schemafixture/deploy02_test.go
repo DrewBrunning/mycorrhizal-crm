@@ -282,12 +282,17 @@ func verifyStartupBackfills(t *testing.T, db *gorm.DB) {
 	require.Empty(t, gaps, "the audit hash chain must still verify after a second boot's jobs")
 }
 
-// assertPreMigrationBackupRestorable is issue #451 action 5: the mandatory
-// pre-migration snapshot (#530) must exist after the upgrade, be a valid
-// database at the PRE-upgrade schema (so "install the previous release, restore
-// this" actually works — downgrade being unsupported, this is the only way
-// back), and its three-piece restore must resolve every file row.
-func assertPreMigrationBackupRestorable(t *testing.T, dir, dbPath string, from, to uint, photoDir, attachDir string) {
+// restorePreMigrationSnapshot locates the mandatory pre-migration snapshot
+// (#530) for the from->to hop, verifies it is a valid database still at the
+// PRE-upgrade schema (a rollback point, not a post-migration copy), and
+// restores it as a three-piece install -- opened WITHOUT migrating, the exact
+// state docs/operations/migration-recovery.md's "Rolling back a bad release
+// (N+1 -> N)" procedure reaches after step 4 ("Restore the file directories"),
+// right before step 5 ("Start N"). Shared by assertPreMigrationBackupRestorable
+// (the schema/file-completeness half of issue #451 action 5) and
+// TestBadReleaseRollbackDrill (issue #997's added HTTP exercise of that same
+// restored instance).
+func restorePreMigrationSnapshot(t *testing.T, dir, dbPath string, from, to uint, photoDir, attachDir string) (rdb *gorm.DB, restoredPhotoDir, restoredAttachDir string) {
 	t.Helper()
 	base := filepath.Base(dbPath)
 	stem := strings.TrimSuffix(base, filepath.Ext(base))
@@ -306,17 +311,29 @@ func assertPreMigrationBackupRestorable(t *testing.T, dir, dbPath string, from, 
 
 	// Three-piece restore of the rollback point: the previous release's binary
 	// opens it with no migration, and every attachment/photo row resolves.
-	restoredDB, restoredPhotos, restoredAttach := restoreThreePieces(t, snap, photoDir, attachDir, false)
-	rdb, err := database.OpenMigratedFile(restoredDB)
+	restoredDB, restoredPhotoDir, restoredAttachDir := restoreThreePieces(t, snap, photoDir, attachDir, false)
+	rdb, err = database.OpenMigratedFile(restoredDB)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if sqlDB, err := rdb.DB(); err == nil {
 			_ = sqlDB.Close()
 		}
 	})
-	rv, _, _, err := database.AppliedMigrationVersion(rdb)
+	rv, rdirty, _, err := database.AppliedMigrationVersion(rdb)
 	require.NoError(t, err)
 	assert.EqualValues(t, from, rv, "restoring the rollback point under its own release must not migrate it")
+	assert.False(t, rdirty)
+	return rdb, restoredPhotoDir, restoredAttachDir
+}
+
+// assertPreMigrationBackupRestorable is issue #451 action 5: the mandatory
+// pre-migration snapshot (#530) must exist after the upgrade, be a valid
+// database at the PRE-upgrade schema (so "install the previous release, restore
+// this" actually works — downgrade being unsupported, this is the only way
+// back), and its three-piece restore must resolve every file row.
+func assertPreMigrationBackupRestorable(t *testing.T, dir, dbPath string, from, to uint, photoDir, attachDir string) {
+	t.Helper()
+	rdb, restoredPhotos, restoredAttach := restorePreMigrationSnapshot(t, dir, dbPath, from, to, photoDir, attachDir)
 	assertRestoreCompleteness(t, rdb, restoredPhotos, restoredAttach)
 }
 
