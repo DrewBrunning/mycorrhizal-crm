@@ -74,7 +74,17 @@ Every row above is exercised at its stated floor by a CI job — not the current
 every other workflow in this repository builds and tests with. `backend/internal/compatci` is the
 structural coupling: a matrix row with no entry in `compatci.MatrixCoverage` (or one naming a
 workflow/job that doesn't exist) fails `TestMatrixRowsHaveCoverage`, so this table and the jobs
-below cannot drift apart silently.
+below cannot drift apart silently. That test only proves the named job still *exists*, though —
+`TestGoFloorMatchesMinVersionJob`, `TestNodeFloorMatchesMinVersionJob`,
+`TestYarnFloorMatchesMinVersionJob`, and `TestAndroidFloorMatchesMinVersionJob` (issue #997, split
+from #923) close the gap that left: each parses the row's stated version straight out of this
+table and the *literal* `min-version-tests.yml`/`android-tests.yml` pins it (`go-version:`,
+`node-version:`, the Yarn download URL, `api-level:`) and fails if they disagree, so bumping one
+without the other is caught even though the job itself was never renamed or removed. Browsers,
+Docker Engine/Compose, and Host OS/architecture have no such test — their floors aren't a single
+version literal a workflow input pins the same way (the browser row is two vendors at once with no
+shared pin, Docker/Compose has no `--version` input at all, and Host OS/architecture is a
+build-matrix shape, not a version number).
 
 | Row | Job(s) | Notes |
 |---|---|---|
