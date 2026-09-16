@@ -1,0 +1,24 @@
+# Accepted ruleset-drift entries (issue #916).
+#
+# governance-drift.yml's ruleset-drift job diffs each committed
+# .github/rulesets/*.json against its live GitHub counterpart and FAILS the
+# job when they differ, or when a committed ruleset has no live counterpart
+# at all. That is a deliberate alarm (#916 / #502 finding F4 -- this used to
+# be advisory-only and never actually failed), not a suggestion -- but
+# reconciling a ruleset genuinely takes two separate actions (commit the JSON
+# change, then `gh api --method PUT` it live, or the other order) that will
+# not always land in the same PR. An entry here is how a maintainer accepts a
+# specific, understood, temporary gap between committed and live instead of
+# leaving the job red with no explanation.
+#
+# Same ignore-list-with-justification shape as .trivyignore, .grype.yml,
+# docs/security/citation-drift.ignore and docs/security/crypto-surface.ignore:
+# an entry is a written-down decision, not a mute button. A ruleset that has
+# drifted (or was never applied) and is NOT listed here FAILS the job, and an
+# entry here for a ruleset that is back in sync with its committed JSON ALSO
+# fails -- so this file cannot quietly accumulate dead suppressions.
+#
+# Format:  <ruleset name, the committed .github/rulesets/*.json "name" field>  # why the gap exists and how/when it will be resolved
+#
+# No entries currently accepted -- every committed ruleset is expected to
+# match its live counterpart.
