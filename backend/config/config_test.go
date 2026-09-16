@@ -31,6 +31,21 @@ func validConfig() *Config {
 		GinMode:              "debug",
 		APIRateLimitBurst:    1000,
 		APIRateLimitInterval: 600 * time.Millisecond,
+		// issue #937: these fields fail Validate() outside their documented
+		// range (some floors are >0, so the zero value is invalid) — see the
+		// intRange checks in Validate().
+		CalDAVSyncIntervalHours:       6,
+		ImmichSyncIntervalHours:       6,
+		DBIntegrityCheckIntervalHours: 24,
+		DBRestoreDrillIntervalHours:   DefaultDBRestoreDrillIntervalHours,
+		AlertEvalIntervalMinutes:      15,
+		AlertSyncFailureThreshold:     3,
+		AlertNotifyFailureThreshold:   3,
+		AlertJobStaleMultiplier:       3,
+		AlertIncidentQuietHours:       6,
+		StorageWarnPercent:            DefaultStorageWarnPercent,
+		StorageCriticalPercent:        DefaultStorageCriticalPercent,
+		StorageSampleRetentionDays:    DefaultStorageSampleRetentionDays,
 	}
 }
 
@@ -565,10 +580,12 @@ func TestLoadConfig_RestoreDrillMaxDurationSeconds(t *testing.T) {
 	t.Setenv("DB_RESTORE_DRILL_MAX_DURATION_SECONDS", "900")
 	assert.Equal(t, 900, LoadConfig().DBRestoreDrillMaxDurationSeconds)
 
-	// Negative is clamped to 0 (no budget) rather than refusing to boot — same
-	// posture as the ALERT_* knobs.
+	// Negative reads through unchanged (issue #937: no longer clamped in
+	// LoadConfig) and fails boot-time validation instead.
 	t.Setenv("DB_RESTORE_DRILL_MAX_DURATION_SECONDS", "-5")
-	assert.Equal(t, 0, LoadConfig().DBRestoreDrillMaxDurationSeconds)
+	cfg := LoadConfig()
+	assert.Equal(t, -5, cfg.DBRestoreDrillMaxDurationSeconds)
+	assert.True(t, hasFieldError(cfg.Validate(), "DB_RESTORE_DRILL_MAX_DURATION_SECONDS"))
 }
 
 func TestLoadConfig_StorageThresholds(t *testing.T) {
@@ -584,14 +601,20 @@ func TestLoadConfig_StorageThresholds(t *testing.T) {
 	assert.Equal(t, 95, cfg.StorageCriticalPercent)
 	assert.Equal(t, 365, cfg.StorageSampleRetentionDays)
 
-	// A critical at or below warn is meaningless — clamp to the default.
+	// A critical at or below warn is meaningless — reads through unchanged
+	// (issue #937: no longer clamped in LoadConfig) and fails validation.
 	t.Setenv("STORAGE_WARN_PERCENT", "85")
 	t.Setenv("STORAGE_CRITICAL_PERCENT", "85")
-	assert.Equal(t, 90, LoadConfig().StorageCriticalPercent)
+	cfg2 := LoadConfig()
+	assert.Equal(t, 85, cfg2.StorageCriticalPercent)
+	assert.True(t, hasFieldError(cfg2.Validate(), "STORAGE_CRITICAL_PERCENT"))
 
-	// A retention window that can't hold even a week of samples is clamped.
+	// A retention window that can't hold even a week of samples likewise
+	// reads through and fails validation instead of being clamped.
 	t.Setenv("STORAGE_SAMPLE_RETENTION_DAYS", "3")
-	assert.Equal(t, 180, LoadConfig().StorageSampleRetentionDays)
+	cfg3 := LoadConfig()
+	assert.Equal(t, 3, cfg3.StorageSampleRetentionDays)
+	assert.True(t, hasFieldError(cfg3.Validate(), "STORAGE_SAMPLE_RETENTION_DAYS"))
 }
 
 func TestLoadConfig_UpdateCheckEnabledEnv(t *testing.T) {
@@ -747,7 +770,10 @@ func setRetentionField(cfg *Config, field string, days int) {
 	}
 }
 
-func TestLoadConfig_DBIntegrityCheckIntervalHoursClampedToMinimumOne(t *testing.T) {
+// Issue #937: DB_INTEGRITY_CHECK_INTERVAL_HOURS/DB_RESTORE_DRILL_INTERVAL_HOURS
+// used to be silently clamped to 1 here; they now read through unchanged and
+// fail boot-time validation instead (see the fail-fast tests below).
+func TestLoadConfig_DBIntegrityCheckIntervalHoursReadsThroughForValidation(t *testing.T) {
 	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
 	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
 	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
@@ -755,10 +781,11 @@ func TestLoadConfig_DBIntegrityCheckIntervalHoursClampedToMinimumOne(t *testing.
 	t.Setenv("DB_INTEGRITY_CHECK_INTERVAL_HOURS", "0")
 
 	cfg := LoadConfig()
-	assert.Equal(t, 1, cfg.DBIntegrityCheckIntervalHours, "an interval below 1 must be clamped, not left non-positive")
+	assert.Equal(t, 0, cfg.DBIntegrityCheckIntervalHours, "no longer clamped in LoadConfig")
+	assert.True(t, hasFieldError(cfg.Validate(), "DB_INTEGRITY_CHECK_INTERVAL_HOURS"))
 }
 
-func TestLoadConfig_DBRestoreDrillIntervalHoursClampedToMinimumOne(t *testing.T) {
+func TestLoadConfig_DBRestoreDrillIntervalHoursReadsThroughForValidation(t *testing.T) {
 	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
 	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
 	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
@@ -766,7 +793,104 @@ func TestLoadConfig_DBRestoreDrillIntervalHoursClampedToMinimumOne(t *testing.T)
 	t.Setenv("DB_RESTORE_DRILL_INTERVAL_HOURS", "-5")
 
 	cfg := LoadConfig()
-	assert.Equal(t, 1, cfg.DBRestoreDrillIntervalHours, "a negative interval must be clamped, not left negative")
+	assert.Equal(t, -5, cfg.DBRestoreDrillIntervalHours, "no longer clamped in LoadConfig")
+	assert.True(t, hasFieldError(cfg.Validate(), "DB_RESTORE_DRILL_INTERVAL_HOURS"))
+}
+
+// TestValidate_FailFastIntFields is the issue #937 fail-fast gate: each of
+// these fields must (a) reject an out-of-range value and (b) reject a
+// set-but-unparseable one (via LoadConfig -> parseErrors, not Validate()
+// alone), so a typo fails boot with a named message instead of silently
+// falling back to the default.
+func TestValidate_FailFastIntFields(t *testing.T) {
+	tests := []struct {
+		field   string
+		invalid int
+	}{
+		{"CALDAV_SYNC_INTERVAL_HOURS", 0},
+		{"IMMICH_SYNC_INTERVAL_HOURS", 0},
+		{"DB_INTEGRITY_CHECK_INTERVAL_HOURS", 0},
+		{"DB_RESTORE_DRILL_INTERVAL_HOURS", 0},
+		{"DB_RESTORE_DRILL_MAX_DURATION_SECONDS", -1},
+		{"ALERT_EVAL_INTERVAL_MINUTES", 0},
+		{"ALERT_DISK_USAGE_PERCENT", 100},
+		{"ALERT_SYNC_FAILURE_THRESHOLD", 0},
+		{"ALERT_NOTIFY_FAILURE_THRESHOLD", 0},
+		{"ALERT_JOB_STALE_MULTIPLIER", 1},
+		{"ALERT_INCIDENT_QUIET_HOURS", 0},
+		{"ALERT_BACKUP_MAX_AGE_HOURS", -1},
+		{"STORAGE_WARN_PERCENT", 0},
+		{"STORAGE_SAMPLE_RETENTION_DAYS", 6},
+	}
+	for _, tt := range tests {
+		t.Run(tt.field, func(t *testing.T) {
+			cfg := validConfig()
+			setFailFastIntField(cfg, tt.field, tt.invalid)
+			assert.True(t, hasFieldError(cfg.Validate(), tt.field), "%d must be rejected for %s", tt.invalid, tt.field)
+		})
+	}
+}
+
+func TestValidate_StorageCriticalPercentMustExceedWarnPercent(t *testing.T) {
+	cfg := validConfig()
+	cfg.StorageWarnPercent = 75
+	cfg.StorageCriticalPercent = 75
+	assert.True(t, hasFieldError(cfg.Validate(), "STORAGE_CRITICAL_PERCENT"), "critical == warn must be rejected")
+
+	cfg.StorageCriticalPercent = 101
+	assert.True(t, hasFieldError(cfg.Validate(), "STORAGE_CRITICAL_PERCENT"), "critical > 100 must be rejected")
+
+	cfg.StorageCriticalPercent = 76
+	assert.False(t, hasFieldError(cfg.Validate(), "STORAGE_CRITICAL_PERCENT"))
+}
+
+func setFailFastIntField(cfg *Config, field string, v int) {
+	switch field {
+	case "CALDAV_SYNC_INTERVAL_HOURS":
+		cfg.CalDAVSyncIntervalHours = v
+	case "IMMICH_SYNC_INTERVAL_HOURS":
+		cfg.ImmichSyncIntervalHours = v
+	case "DB_INTEGRITY_CHECK_INTERVAL_HOURS":
+		cfg.DBIntegrityCheckIntervalHours = v
+	case "DB_RESTORE_DRILL_INTERVAL_HOURS":
+		cfg.DBRestoreDrillIntervalHours = v
+	case "DB_RESTORE_DRILL_MAX_DURATION_SECONDS":
+		cfg.DBRestoreDrillMaxDurationSeconds = v
+	case "ALERT_EVAL_INTERVAL_MINUTES":
+		cfg.AlertEvalIntervalMinutes = v
+	case "ALERT_DISK_USAGE_PERCENT":
+		cfg.AlertDiskUsagePercent = v
+	case "ALERT_SYNC_FAILURE_THRESHOLD":
+		cfg.AlertSyncFailureThreshold = v
+	case "ALERT_NOTIFY_FAILURE_THRESHOLD":
+		cfg.AlertNotifyFailureThreshold = v
+	case "ALERT_JOB_STALE_MULTIPLIER":
+		cfg.AlertJobStaleMultiplier = v
+	case "ALERT_INCIDENT_QUIET_HOURS":
+		cfg.AlertIncidentQuietHours = v
+	case "ALERT_BACKUP_MAX_AGE_HOURS":
+		cfg.AlertBackupMaxAgeHours = v
+	case "STORAGE_WARN_PERCENT":
+		cfg.StorageWarnPercent = v
+	case "STORAGE_SAMPLE_RETENTION_DAYS":
+		cfg.StorageSampleRetentionDays = v
+	}
+}
+
+// TestLoadConfig_FailFastFieldParseErrorSurfacesInValidate pins the
+// getIntEnvChecked wiring end to end: a set-but-unparseable value for one of
+// the issue #937 fields is collected into Config.parseErrors by LoadConfig
+// and surfaced as a named error by Validate() — not silently defaulted.
+func TestLoadConfig_FailFastFieldParseErrorSurfacesInValidate(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+	t.Setenv("ALERT_DISK_USAGE_PERCENT", "not-a-number")
+
+	cfg := LoadConfig()
+	assert.Equal(t, 90, cfg.AlertDiskUsagePercent, "an unparseable value falls back to the default")
+	assert.True(t, hasFieldError(cfg.Validate(), "ALERT_DISK_USAGE_PERCENT"), "but the parse failure itself must still fail boot")
 }
 
 func TestValidateOrPanic_ValidConfigDoesNotPanic(t *testing.T) {

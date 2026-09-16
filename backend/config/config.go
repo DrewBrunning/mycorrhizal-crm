@@ -202,6 +202,16 @@ type Config struct {
 	LogLevel  string `cfgreg:"env=LOG_LEVEL;type=enum;enum=debug|info|warn|error|fatal|panic;default=info;required=false;restart=true;desc=Structured log verbosity"`
 	LogPretty bool   `cfgreg:"env=LOG_PRETTY;type=bool;default=false;required=false;restart=true;desc=Console-formatted (vs. JSON) log output; always on when GIN_MODE != release, regardless of this setting"`
 	GinMode   string `cfgreg:"env=GIN_MODE;type=enum;enum=debug|release|test;default=debug;required=false;restart=true;desc=Gin framework mode; also read directly by the gin package itself"`
+
+	// parseErrors carries integer-parse failures (issue #937) from
+	// LoadConfig's checkedInt calls through to Validate(), so a set-but-
+	// unparseable value ("ALERT_DISK_USAGE_PERCENT=high") fails boot with a
+	// named message instead of silently falling back to the default.
+	// Unexported: not part of the public Config surface, never set by a
+	// caller constructing a Config directly (a hand-built Config that skips
+	// LoadConfig has no raw env values to have failed parsing in the first
+	// place, so a nil/empty slice there is correct, not a gap).
+	parseErrors []ValidationError
 }
 
 // Defaults for the storage-trend thresholds (issue #652). Exported so the
@@ -243,6 +253,20 @@ func LoadConfig() *Config {
 	writeTimeout := getIntEnv("HTTP_WRITE_TIMEOUT", 15)
 	idleTimeout := getIntEnv("HTTP_IDLE_TIMEOUT", 60)
 
+	// checkedInt is getIntEnv for the fields issue #937 moved from
+	// clamp-with-WARN to fail-fast: a value that fails to parse is collected
+	// into parseErrs (surfaced by Validate(), below) instead of silently
+	// falling back to the default. Range/bounds for these same fields are
+	// checked in Validate() too — LoadConfig no longer clamps them.
+	var parseErrs []ValidationError
+	checkedInt := func(key string, fallback int) int {
+		v, perr := getIntEnvChecked(key, fallback)
+		if perr != nil {
+			parseErrs = append(parseErrs, *perr)
+		}
+		return v
+	}
+
 	cfg := &Config{
 		DBPath:                        getEnv("SQLITE_DB_PATH", "mycorrhizal.db"),
 		ReminderTime:                  getEnv("REMINDER_TIME", "06:00"),
@@ -272,7 +296,7 @@ func LoadConfig() *Config {
 		CookieDomain:                  getEnv("COOKIE_DOMAIN", ""),
 		RegistrationDisabled:          getBoolEnv("DISABLE_REGISTRATION", false),
 		WebhookBlockPrivateURLs:       getBoolEnv("WEBHOOK_BLOCK_PRIVATE_URLS", false),
-		CalDAVSyncIntervalHours:       getIntEnv("CALDAV_SYNC_INTERVAL_HOURS", 6),
+		CalDAVSyncIntervalHours:       checkedInt("CALDAV_SYNC_INTERVAL_HOURS", 6),
 		CalDAVBlockPrivateURLs:        getBoolEnv("CALDAV_BLOCK_PRIVATE_URLS", false),
 		DeleteRetentionDays:           getIntEnv("DELETED_RETENTION_DAYS", 30),
 		AuditRetentionDays:            getIntEnv("AUDIT_RETENTION_DAYS", 90),
@@ -289,7 +313,7 @@ func LoadConfig() *Config {
 		AuthSprayFailureThreshold:     getIntEnv("AUTH_SPRAY_FAILURE_THRESHOLD", 60),
 		AuthSprayIdentifierThreshold:  getIntEnv("AUTH_SPRAY_IDENTIFIER_THRESHOLD", 15),
 		AuthSprayThrottleSeconds:      getIntEnv("AUTH_SPRAY_THROTTLE_SECONDS", 300),
-		ImmichSyncIntervalHours:       getIntEnv("IMMICH_SYNC_INTERVAL_HOURS", 6),
+		ImmichSyncIntervalHours:       checkedInt("IMMICH_SYNC_INTERVAL_HOURS", 6),
 		ImmichBlockPrivateURLs:        getBoolEnv("IMMICH_BLOCK_PRIVATE_URLS", false),
 		PaperlessBlockPrivateURLs:     getBoolEnv("PAPERLESS_BLOCK_PRIVATE_URLS", false),
 		SeafileBlockPrivateURLs:       getBoolEnv("SEAFILE_BLOCK_PRIVATE_URLS", false),
@@ -297,26 +321,26 @@ func LoadConfig() *Config {
 		MonicaBlockPrivateURLs:        getBoolEnv("MONICA_BLOCK_PRIVATE_URLS", false),
 		FCMServiceAccountFile:         getEnv("FCM_SERVICE_ACCOUNT_FILE", ""),
 		DBIntegrityCheckEnabled:       getBoolEnv("DB_INTEGRITY_CHECK_ENABLED", true),
-		DBIntegrityCheckIntervalHours: getIntEnv("DB_INTEGRITY_CHECK_INTERVAL_HOURS", 24),
+		DBIntegrityCheckIntervalHours: checkedInt("DB_INTEGRITY_CHECK_INTERVAL_HOURS", 24),
 		DBRestoreDrillEnabled:         getBoolEnv("DB_RESTORE_DRILL_ENABLED", true),
-		DBRestoreDrillIntervalHours:   getIntEnv("DB_RESTORE_DRILL_INTERVAL_HOURS", DefaultDBRestoreDrillIntervalHours),
+		DBRestoreDrillIntervalHours:   checkedInt("DB_RESTORE_DRILL_INTERVAL_HOURS", DefaultDBRestoreDrillIntervalHours),
 		AlertingEnabled:               getBoolEnv("ALERTING_ENABLED", true),
-		AlertEvalIntervalMinutes:      getIntEnv("ALERT_EVAL_INTERVAL_MINUTES", 15),
-		AlertDiskUsagePercent:         getIntEnv("ALERT_DISK_USAGE_PERCENT", 90),
-		AlertSyncFailureThreshold:     getIntEnv("ALERT_SYNC_FAILURE_THRESHOLD", 3),
-		AlertNotifyFailureThreshold:   getIntEnv("ALERT_NOTIFY_FAILURE_THRESHOLD", 3),
-		AlertBackupMaxAgeHours:        getIntEnv("ALERT_BACKUP_MAX_AGE_HOURS", 0),
-		AlertJobStaleMultiplier:       getIntEnv("ALERT_JOB_STALE_MULTIPLIER", 3),
-		AlertIncidentQuietHours:       getIntEnv("ALERT_INCIDENT_QUIET_HOURS", 6),
+		AlertEvalIntervalMinutes:      checkedInt("ALERT_EVAL_INTERVAL_MINUTES", 15),
+		AlertDiskUsagePercent:         checkedInt("ALERT_DISK_USAGE_PERCENT", 90),
+		AlertSyncFailureThreshold:     checkedInt("ALERT_SYNC_FAILURE_THRESHOLD", 3),
+		AlertNotifyFailureThreshold:   checkedInt("ALERT_NOTIFY_FAILURE_THRESHOLD", 3),
+		AlertBackupMaxAgeHours:        checkedInt("ALERT_BACKUP_MAX_AGE_HOURS", 0),
+		AlertJobStaleMultiplier:       checkedInt("ALERT_JOB_STALE_MULTIPLIER", 3),
+		AlertIncidentQuietHours:       checkedInt("ALERT_INCIDENT_QUIET_HOURS", 6),
 		AlertBackupEnabled:            getBoolEnv("ALERT_BACKUP_ENABLED", true),
 		AlertDBIntegrityEnabled:       getBoolEnv("ALERT_DB_INTEGRITY_ENABLED", true),
 		AlertJobStoppedEnabled:        getBoolEnv("ALERT_JOB_STOPPED_ENABLED", true),
 		AlertAuthSprayEnabled:         getBoolEnv("ALERT_AUTH_SPRAY_ENABLED", true),
 		HIBPCheckEnabled:              getBoolEnv("HIBP_CHECK_ENABLED", false),
 		UpdateCheckEnabled:            getBoolEnv("UPDATE_CHECK_ENABLED", false),
-		StorageWarnPercent:            getIntEnv("STORAGE_WARN_PERCENT", DefaultStorageWarnPercent),
-		StorageCriticalPercent:        getIntEnv("STORAGE_CRITICAL_PERCENT", DefaultStorageCriticalPercent),
-		StorageSampleRetentionDays:    getIntEnv("STORAGE_SAMPLE_RETENTION_DAYS", DefaultStorageSampleRetentionDays),
+		StorageWarnPercent:            checkedInt("STORAGE_WARN_PERCENT", DefaultStorageWarnPercent),
+		StorageCriticalPercent:        checkedInt("STORAGE_CRITICAL_PERCENT", DefaultStorageCriticalPercent),
+		StorageSampleRetentionDays:    checkedInt("STORAGE_SAMPLE_RETENTION_DAYS", DefaultStorageSampleRetentionDays),
 		DataEncryptionKey:             getEnv("DATA_ENCRYPTION_KEY", ""),
 		DataEncryptionKeyFile:         getEnv("DATA_ENCRYPTION_KEY_FILE", ""),
 		MetricsToken:                  getEnv("METRICS_TOKEN", ""),
@@ -328,7 +352,11 @@ func LoadConfig() *Config {
 
 	// Assigned outside the aligned literal above so a longer key name does not
 	// reflow every line in it. Opt-in RTO budget for the restore drill (#506).
-	cfg.DBRestoreDrillMaxDurationSeconds = getIntEnv("DB_RESTORE_DRILL_MAX_DURATION_SECONDS", 0)
+	cfg.DBRestoreDrillMaxDurationSeconds = checkedInt("DB_RESTORE_DRILL_MAX_DURATION_SECONDS", 0)
+
+	// issue #937: collected by checkedInt above; surfaced (with the range
+	// checks that used to live here as WARN+clamp blocks) by Validate().
+	cfg.parseErrors = parseErrs
 
 	// LogPretty (issue #936): preserves the exact behavior main.go used to
 	// compute directly from os.Getenv — an explicit LOG_PRETTY is honored,
@@ -339,57 +367,13 @@ func LoadConfig() *Config {
 		cfg.LogPretty = true
 	}
 
-	if cfg.CalDAVSyncIntervalHours < 1 {
-		log.Println("WARN: CALDAV_SYNC_INTERVAL_HOURS must be at least 1, using 1")
-		cfg.CalDAVSyncIntervalHours = 1
-	}
-
-	if cfg.ImmichSyncIntervalHours < 1 {
-		log.Println("WARN: IMMICH_SYNC_INTERVAL_HOURS must be at least 1, using 1")
-		cfg.ImmichSyncIntervalHours = 1
-	}
-
-	if cfg.DBIntegrityCheckIntervalHours < 1 {
-		log.Println("WARN: DB_INTEGRITY_CHECK_INTERVAL_HOURS must be at least 1, using 1")
-		cfg.DBIntegrityCheckIntervalHours = 1
-	}
-
-	if cfg.DBRestoreDrillIntervalHours < 1 {
-		log.Println("WARN: DB_RESTORE_DRILL_INTERVAL_HOURS must be at least 1, using 1")
-		cfg.DBRestoreDrillIntervalHours = 1
-	}
-
-	if cfg.DBRestoreDrillMaxDurationSeconds < 0 {
-		log.Println("WARN: DB_RESTORE_DRILL_MAX_DURATION_SECONDS cannot be negative, using 0 (no budget)")
-		cfg.DBRestoreDrillMaxDurationSeconds = 0
-	}
-
-	if cfg.AlertEvalIntervalMinutes < 1 {
-		log.Println("WARN: ALERT_EVAL_INTERVAL_MINUTES must be at least 1, using 1")
-		cfg.AlertEvalIntervalMinutes = 1
-	}
-
-	if cfg.AlertDiskUsagePercent < 0 || cfg.AlertDiskUsagePercent > 99 {
-		log.Println("WARN: ALERT_DISK_USAGE_PERCENT must be between 0 and 99, using 90")
-		cfg.AlertDiskUsagePercent = 90
-	}
-
-	if cfg.AlertSyncFailureThreshold < 1 {
-		cfg.AlertSyncFailureThreshold = 1
-	}
-	if cfg.AlertNotifyFailureThreshold < 1 {
-		cfg.AlertNotifyFailureThreshold = 1
-	}
-	if cfg.AlertJobStaleMultiplier < 2 {
-		log.Println("WARN: ALERT_JOB_STALE_MULTIPLIER must be at least 2, using 2")
-		cfg.AlertJobStaleMultiplier = 2
-	}
-	if cfg.AlertIncidentQuietHours < 1 {
-		cfg.AlertIncidentQuietHours = 1
-	}
-	if cfg.AlertBackupMaxAgeHours < 0 {
-		cfg.AlertBackupMaxAgeHours = 0
-	}
+	// CALDAV_SYNC_INTERVAL_HOURS, IMMICH_SYNC_INTERVAL_HOURS,
+	// DB_INTEGRITY_CHECK_INTERVAL_HOURS, DB_RESTORE_DRILL_INTERVAL_HOURS,
+	// DB_RESTORE_DRILL_MAX_DURATION_SECONDS, and the ALERT_* thresholds below
+	// used to be clamped to a safe value here (some silently, issue #937).
+	// They're now range-checked in Validate() instead — a bad value refuses
+	// to boot, naming the variable, rather than running with a value the
+	// operator didn't choose. See the "issue #937" block in Validate().
 
 	// Instance-wide failed-auth velocity (issue #940). A zero/negative value
 	// would make the signal trip on the first failure (or never), so clamp to
@@ -412,22 +396,9 @@ func LoadConfig() *Config {
 		cfg.AuthSprayThrottleSeconds = 300
 	}
 
-	// Storage-trend thresholds (issue #652): warn must be a sane 1..99 and
-	// critical strictly above warn (otherwise the two tiers collapse and the
-	// threshold is meaningless). Same "clamp to a working value, don't refuse
-	// to boot" posture as the ALERT_* knobs above.
-	if cfg.StorageWarnPercent < 1 || cfg.StorageWarnPercent > 99 {
-		log.Println("WARN: STORAGE_WARN_PERCENT must be between 1 and 99, using 75")
-		cfg.StorageWarnPercent = DefaultStorageWarnPercent
-	}
-	if cfg.StorageCriticalPercent <= cfg.StorageWarnPercent || cfg.StorageCriticalPercent > 100 {
-		log.Println("WARN: STORAGE_CRITICAL_PERCENT must be above STORAGE_WARN_PERCENT and at most 100, using 90")
-		cfg.StorageCriticalPercent = DefaultStorageCriticalPercent
-	}
-	if cfg.StorageSampleRetentionDays < 7 {
-		log.Println("WARN: STORAGE_SAMPLE_RETENTION_DAYS must be at least 7, using 180")
-		cfg.StorageSampleRetentionDays = DefaultStorageSampleRetentionDays
-	}
+	// Storage-trend thresholds (issue #652) used to be clamped here too
+	// (issue #937); STORAGE_WARN_PERCENT/STORAGE_CRITICAL_PERCENT/
+	// STORAGE_SAMPLE_RETENTION_DAYS are now range-checked in Validate().
 
 	// An email channel is enabled only when it is fully configured
 	cfg.UseResend = cfg.ResendAPIKey != "" && cfg.ResendFromEmail != ""
@@ -469,6 +440,29 @@ func getIntEnv(key string, fallback int) int {
 		return intValue
 	}
 	return fallback
+}
+
+// getIntEnvChecked is getIntEnv's counterpart for the fields issue #937
+// moved from clamp-with-WARN to fail-fast. Unlike getIntEnv, it lets the
+// caller distinguish "unset" (fine, use the default) from "set but
+// unparseable" (must fail boot): the former returns a nil error, the
+// latter a *ValidationError naming the variable, the offending raw value,
+// and the expected form — collected into Config.parseErrors by LoadConfig
+// and surfaced by Validate(), so a typo'd value fails boot instead of
+// silently running on the default.
+func getIntEnvChecked(key string, fallback int) (int, *ValidationError) {
+	value, exists := os.LookupEnv(key)
+	if !exists {
+		return fallback, nil
+	}
+	intValue, err := strconv.Atoi(value)
+	if err != nil {
+		return fallback, &ValidationError{
+			Field:   key,
+			Message: fmt.Sprintf("Invalid value '%s' for %s. Must be a whole number.", value, key),
+		}
+	}
+	return intValue, nil
 }
 
 func getBoolEnv(key string, fallback bool) bool {
@@ -685,7 +679,11 @@ func (e ValidationError) Error() string {
 
 // Validate checks if the configuration is valid and returns detailed errors if not
 func (c *Config) Validate() []ValidationError {
-	var errors []ValidationError
+	// parseErrors (issue #937): a raw env value LoadConfig could not parse as
+	// an integer for one of the fields below. Surfaced first so a malformed
+	// value and an out-of-range value on the same field both show up, rather
+	// than the range check silently re-validating LoadConfig's fallback.
+	errors := append([]ValidationError(nil), c.parseErrors...)
 
 	// Validate JWT Secret Key - critical for security. The checks are ordered
 	// from most-certain to most-heuristic so a broken secret surfaces the
@@ -1120,6 +1118,46 @@ func (c *Config) Validate() []ValidationError {
 	// oidcSet == 3 there, which is the more correct condition (it only
 	// checks the URL once OIDC is actually fully configured, rather than on
 	// any non-empty value). Nothing to add here.
+
+	// issue #937: these fields used to be silently clamped (or, for
+	// AlertSyncFailureThreshold/AlertNotifyFailureThreshold/
+	// AlertIncidentQuietHours/AlertBackupMaxAgeHours, clamped with no WARN
+	// at all) in LoadConfig. A wrong number here changes safety-relevant
+	// behavior — sync cadence, alert thresholds, backup-staleness — so a
+	// bad value now refuses to boot instead of silently running on a value
+	// the operator didn't choose.
+	intRange := func(field string, value, min, max int, maxLabel string) {
+		if value < min || (max >= 0 && value > max) {
+			errors = append(errors, ValidationError{
+				Field:   field,
+				Message: fmt.Sprintf("Invalid %s '%d'. Must be %s.", field, value, maxLabel),
+			})
+		}
+	}
+	intRange("CALDAV_SYNC_INTERVAL_HOURS", c.CalDAVSyncIntervalHours, 1, -1, "at least 1")
+	intRange("IMMICH_SYNC_INTERVAL_HOURS", c.ImmichSyncIntervalHours, 1, -1, "at least 1")
+	intRange("DB_INTEGRITY_CHECK_INTERVAL_HOURS", c.DBIntegrityCheckIntervalHours, 1, -1, "at least 1")
+	intRange("DB_RESTORE_DRILL_INTERVAL_HOURS", c.DBRestoreDrillIntervalHours, 1, -1, "at least 1")
+	intRange("DB_RESTORE_DRILL_MAX_DURATION_SECONDS", c.DBRestoreDrillMaxDurationSeconds, 0, -1, "0 (no budget) or positive")
+	intRange("ALERT_EVAL_INTERVAL_MINUTES", c.AlertEvalIntervalMinutes, 1, -1, "at least 1")
+	intRange("ALERT_DISK_USAGE_PERCENT", c.AlertDiskUsagePercent, 0, 99, "between 0 and 99")
+	intRange("ALERT_SYNC_FAILURE_THRESHOLD", c.AlertSyncFailureThreshold, 1, -1, "at least 1")
+	intRange("ALERT_NOTIFY_FAILURE_THRESHOLD", c.AlertNotifyFailureThreshold, 1, -1, "at least 1")
+	intRange("ALERT_JOB_STALE_MULTIPLIER", c.AlertJobStaleMultiplier, 2, -1, "at least 2")
+	intRange("ALERT_INCIDENT_QUIET_HOURS", c.AlertIncidentQuietHours, 1, -1, "at least 1")
+	intRange("ALERT_BACKUP_MAX_AGE_HOURS", c.AlertBackupMaxAgeHours, 0, -1, "0 (use 2x the restore-drill interval) or positive")
+	intRange("STORAGE_WARN_PERCENT", c.StorageWarnPercent, 1, 99, "between 1 and 99")
+	intRange("STORAGE_SAMPLE_RETENTION_DAYS", c.StorageSampleRetentionDays, 7, -1, "at least 7")
+
+	// STORAGE_CRITICAL_PERCENT is checked against STORAGE_WARN_PERCENT's own
+	// (already-validated-above) value, not a fixed floor, so it doesn't fit
+	// the intRange helper.
+	if c.StorageCriticalPercent <= c.StorageWarnPercent || c.StorageCriticalPercent > 100 {
+		errors = append(errors, ValidationError{
+			Field:   "STORAGE_CRITICAL_PERCENT",
+			Message: fmt.Sprintf("Invalid STORAGE_CRITICAL_PERCENT '%d'. Must be above STORAGE_WARN_PERCENT (%d) and at most 100.", c.StorageCriticalPercent, c.StorageWarnPercent),
+		})
+	}
 
 	// LOG_LEVEL and GIN_MODE (issue #936) are new Config fields as of this
 	// change; give them a real enum check from day one rather than

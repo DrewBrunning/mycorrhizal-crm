@@ -89,6 +89,20 @@ func validSystemStatusConfig(t *testing.T, dbPath string) config.Config {
 		GinMode:              "debug",
 		APIRateLimitBurst:    1000,
 		APIRateLimitInterval: 600 * time.Millisecond,
+		// issue #937: these fields fail Validate() outside their documented
+		// range (some floors are >0, so the zero value is invalid).
+		CalDAVSyncIntervalHours:       6,
+		ImmichSyncIntervalHours:       6,
+		DBIntegrityCheckIntervalHours: 24,
+		DBRestoreDrillIntervalHours:   config.DefaultDBRestoreDrillIntervalHours,
+		AlertEvalIntervalMinutes:      15,
+		AlertSyncFailureThreshold:     3,
+		AlertNotifyFailureThreshold:   3,
+		AlertJobStaleMultiplier:       3,
+		AlertIncidentQuietHours:       6,
+		StorageWarnPercent:            config.DefaultStorageWarnPercent,
+		StorageCriticalPercent:        config.DefaultStorageCriticalPercent,
+		StorageSampleRetentionDays:    config.DefaultStorageSampleRetentionDays,
 	}
 }
 
