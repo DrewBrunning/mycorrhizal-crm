@@ -65,7 +65,20 @@ name: Release
 # tag. This is how the workflow is exercised without cutting a release (issue
 # #499: "the workflow is itself tested"); the "tag exists / already registered"
 # checks in step 1 are downgraded to warnings so a dry run can target the last
-# shipped version.
+# shipped version. `release-dry-run.yml` is what actually does this: weekly
+# + on demand, it dispatches this workflow with dry_run: true against the
+# last entry in SupportedReleases (issue #929 -- previously nothing did, so a
+# defect in the final-release path was only ever discovered by cutting a real
+# release).
+#
+# Rehearsing an ALREADY-REGISTERED version (issue #929): step 4's "Register
+# the release" step skips re-appending a SupportedReleases entry when the
+# version is already there (`.github/scripts/release-register-decide.sh`) --
+# a dry run against the last shipped version regenerates every dump from the
+# UNCHANGED release set and must reproduce them byte-identical, so step 4's
+# "Assert only the new dump changed" step expects NO diff at all in that
+# case, not a new untracked file. A dry run against a version that has not
+# shipped yet still expects exactly one new untracked dump, same as before.
 #
 # One-time setup (see docs/security/release-verification.md, "How a release is
 # cut"):
@@ -446,6 +459,22 @@ jobs:
           MIGRATION_VERSION: ${{ env.MIGRATION_VERSION }}
         run: |
           set -eu
+          # issue #929: a dry run is allowed (step 1, downgraded to a warning)
+          # to target a version already in SupportedReleases -- the documented
+          # way to rehearse the final-release path against the last shipped
+          # release. That is the ONLY way this step can be reached with an
+          # already-registered $VERSION (a real, non-dry-run cut of an
+          # already-registered version fails step 1 outright). Skip re-adding
+          # it: appending a second entry for the same tag corrupted the
+          # frozen-chain assertion below every time (genschema regenerated
+          # that version's dump byte-identical, so the assertion's expected
+          # "one new untracked file" was never true).
+          decision="$(.github/scripts/release-register-decide.sh backend/internal/schemafixture/releases.go "$VERSION")"
+          echo "REGISTRATION=$decision" >> "$GITHUB_ENV"
+          if [ "$decision" = "SKIP" ]; then
+            echo "$VERSION is already registered in SupportedReleases -- skipping re-registration (dry-run rehearsal of an already-shipped version)."
+            exit 0
+          fi
           # Append {Tag: "$VERSION", Version: $MIGRATION_VERSION} after the last
           # existing SupportedReleases entry, preserving release order.
           python3 - "$VERSION" "$MIGRATION_VERSION" <<'PYEOF'
@@ -465,23 +494,40 @@ jobs:
         working-directory: backend
         run: go run ./cmd/genschema
 
-      # The frozen-chain check: genschema rewrites every dump in place, so this
-      # asserts exactly one new (untracked) file and zero modifications.
+      # The frozen-chain check: genschema rewrites every dump in place. A new
+      # release expects exactly one new (untracked) file and zero
+      # modifications. issue #929: rehearsing an already-registered version
+      # (REGISTRATION=SKIP, above -- only reachable via a dry run) appends
+      # nothing new to SupportedReleases, so regenerating from the unchanged
+      # set must reproduce every dump byte-identical -- the correct
+      # expectation there is NO diff at all, not a new file that was never
+      # going to appear.
       - name: Assert only the new dump changed
         if: ${{ env.IS_RC != 'true' }}
         env:
           VERSION: ${{ env.VERSION }}
+          REGISTRATION: ${{ env.REGISTRATION }}
         run: |
           set -eu
-          expected="?? backend/database/testdata/schemas/${VERSION}.sql"
+          if [ "$REGISTRATION" = "SKIP" ]; then
+            expected=""
+            description="no changes (dry run rehearsing already-registered ${VERSION}: the frozen chain must reproduce it byte-identically)"
+          else
+            expected="?? backend/database/testdata/schemas/${VERSION}.sql"
+            description="exactly: ${expected}"
+          fi
           actual="$(git status --porcelain -- backend/database/testdata/schemas/)"
           if [ "$actual" != "$expected" ]; then
             echo "::error::Schema dumps did not regenerate as expected."
-            echo "::error::Expected exactly: ${expected}"
+            echo "::error::Expected ${description}"
             echo "$actual"
             exit 1
           fi
-          echo "Frozen chain holds: existing dumps byte-identical; ${VERSION}.sql is the only new file."
+          if [ "$REGISTRATION" = "SKIP" ]; then
+            echo "Frozen chain holds: regenerating from the current (unchanged) release set reproduced every dump byte-identical."
+          else
+            echo "Frozen chain holds: existing dumps byte-identical; ${VERSION}.sql is the only new file."
+          fi
 
       - name: Verify test gates
         if: ${{ env.IS_RC != 'true' }}

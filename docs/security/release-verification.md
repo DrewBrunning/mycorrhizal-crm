@@ -18,9 +18,13 @@ registry, and workflow artifacts.
 `release.yml` (REL-06, `workflow_dispatch`) is the whole release process. Inputs: the version
 (e.g. `v0.6.6`, or `v1.0.0-rc.1` for a release candidate); `ref` (`main` for a final release,
 `release/vX.Y.0` for an RC); `dry_run` (run every gate + regenerate the fixture, make no
-commit/push/tag — this is how the workflow is exercised without cutting a release);
-`ack_asvs_current` (a reason to proceed when the ASVS/MASVS re-verification row is absent —
-recorded, not silent). It:
+commit/push/tag — this is how the workflow is exercised without cutting a release, including
+against the last shipped version); `ack_asvs_current` (a reason to proceed when the ASVS/MASVS
+re-verification row is absent — recorded, not silent). `release-dry-run.yml` dispatches it with
+`dry_run: true` against the last shipped version weekly and on demand, so this rehearsal is
+actually run by CI rather than only documented (issue #929).
+
+It:
 
 1. **verifies repository state** — the checkout is the exact tip of `origin/<ref>`;
 2. **runs the mandatory gate battery and refuses to go further on any failure** —
@@ -30,9 +34,12 @@ recorded, not silent). It:
    the ASVS/MASVS re-verification obligation — `docs/security/asvs-l2-verification-report.md`'s
    §10 changelog must carry a new row since the previous release tag, unless `ack_asvs_current`
    was supplied;
-3. registers the release in `backend/internal/schemafixture/releases.go` and regenerates its
-   committed schema dump (`cmd/genschema`), failing if any *other* dump changes — the frozen,
-   append-only migration chain must reproduce byte-identical;
+3. registers the release in `backend/internal/schemafixture/releases.go` (skipped when the
+   version is already registered — only reachable via a dry run rehearsing the last shipped
+   version) and regenerates the committed schema dumps (`cmd/genschema`), asserting either exactly
+   one new dump (a version not yet registered) or, when registration was skipped, that regenerating
+   from the unchanged set reproduces every dump byte-identical — the frozen, append-only migration
+   chain must reproduce byte-identical either way (issue #929);
 4. runs the schemafixture + genschema + releaselist test gates;
 5. writes `release-metadata.json` (version, migration version, **source revision**, workflow-run
    URL, dry-run flag, gate results) — kept as a workflow artifact and, on a real run, attached

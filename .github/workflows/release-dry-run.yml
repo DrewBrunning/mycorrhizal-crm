@@ -1,0 +1,124 @@
+name: Release dry-run rehearsal
+
+# Issue #929: release.yml's `dry_run: true` mode ("runs the whole battery and
+# stops before any write") is documented (docs/development/release-gates.md,
+# docs/security/release-verification.md) as the way the release workflow is
+# exercised without cutting a release -- and specifically as able to target
+# the last shipped version (step 1's "tag exists / already registered" checks
+# downgrade to warnings for exactly that). Nothing dispatched it, though: a
+# real defect in the final-release path (the registration step appending a
+# SECOND entry for an already-shipped version, which broke the frozen-chain
+# assertion every time -- see release.yml's own "Register the release" step
+# comment) would only ever have been discovered by cutting a real release.
+#
+# This workflow is the missing exercise: weekly, plus on demand, it dispatches
+# release.yml with dry_run: true against the last entry in
+# backend/internal/schemafixture.SupportedReleases -- always an
+# already-shipped final release, the exact case the fix above targets -- and
+# fails if that dry run fails. Advisory tier
+# (docs/development/release-gates.md): a rehearsal failure means the release
+# AUTOMATION regressed, not that main itself is unreleasable, so it is
+# investigated rather than blocking a PR.
+
+on:
+  schedule:
+    - cron: '15 3 * * 1' # 03:15 UTC every Monday
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to rehearse (default: the last entry in SupportedReleases -- an already-shipped final release)'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    name: Rehearse release.yml (dry_run)
+    runs-on: ubuntu-latest
+    # Generous headroom for the mandatory gate battery's own 75-minute poll
+    # deadline (release.yml's "Gate - mandatory checks are green" step) plus
+    # citecheck/releasegatecheck/genschema/test-gate time; dry_run never
+    # reaches step 8's release-tier wait, so this is well under release.yml's
+    # own 120-minute budget.
+    timeout-minutes: 100
+    permissions:
+      contents: read
+      # Dispatch release.yml and poll its run — the same scope release.yml
+      # itself uses to dispatch the release-tier suites and mandatory gates.
+      actions: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Resolve the version to rehearse
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
+        run: |
+          set -eu
+          if [ -n "$VERSION_INPUT" ]; then
+            version="$VERSION_INPUT"
+          else
+            # SupportedReleases only ever records final releases, in release
+            # order (internal/schemafixture/releases.go) -- its last entry is
+            # always the most recently shipped final version, the target
+            # release.yml's own DRY RUN comment names.
+            version="$(grep -oE '\{Tag: "v[0-9]+\.[0-9]+\.[0-9]+"' backend/internal/schemafixture/releases.go | tail -1 | sed -E 's/.*"(v[^"]+)".*/\1/')"
+          fi
+          if [ -z "$version" ]; then
+            echo "::error::Could not resolve a version to rehearse (no SupportedReleases entry found, and no version input given)."
+            exit 1
+          fi
+          echo "Rehearsing dry_run against ${version}."
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Dispatch release.yml (dry_run)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ env.VERSION }}
+        run: |
+          set -eu
+          since="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          gh workflow run release.yml --ref main \
+            -f "version=${VERSION}" -f "ref=main" -f "dry_run=true"
+
+          # `gh workflow run` does not return the run it created, so find it
+          # by timestamp -- the same cutoff trick release.yml itself uses
+          # (issue #1013) to avoid picking up a stale/unrelated run.
+          run_id=""
+          for _ in $(seq 1 30); do
+            run_id="$(gh run list --workflow release.yml --branch main --event workflow_dispatch \
+                        --limit 5 --json databaseId,createdAt \
+                        --jq "[.[] | select(.createdAt >= \"$since\")] | sort_by(.createdAt) | .[0].databaseId // empty")"
+            [ -n "$run_id" ] && break
+            sleep 10
+          done
+          if [ -z "$run_id" ]; then
+            echo "::error::Could not find the dispatched release.yml run (dispatched since ${since})."
+            exit 1
+          fi
+          echo "Dispatched release.yml run: $run_id"
+          echo "RUN_ID=$run_id" >> "$GITHUB_ENV"
+          echo "RUN_URL=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${run_id}" >> "$GITHUB_ENV"
+
+      - name: Wait for the dry run to conclude
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ env.RUN_ID }}
+        run: gh run watch "$RUN_ID" --exit-status
+
+      - name: Summary
+        if: always()
+        env:
+          VERSION: ${{ env.VERSION }}
+          RUN_URL: ${{ env.RUN_URL }}
+        run: |
+          {
+            echo "### Release dry-run rehearsal: ${VERSION:-<unresolved>}"
+            echo
+            echo "release.yml dispatched with \`dry_run: true\` against \`${VERSION:-<unresolved>}\`: ${RUN_URL:-<not dispatched>}"
+          } >> "$GITHUB_STEP_SUMMARY"
