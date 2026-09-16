@@ -47,11 +47,10 @@ Base images (digest-pinned) and apk packages (exact-version-pinned) were already
 
 - **The multi-arch manifest digest** — see the table. Provenance + signature is the mitigation.
 - **The Android APK** — not bit-reproducible by design; signature + provenance is the mitigation.
-- **Gradle dependency locking** — the Android build emits no `gradle.lockfile`, which is also why
-  `license-compliance.yml` cannot enumerate Gradle licenses (`.github/filters.yaml`). Enabling it
-  is **deferred to COMPAT-03 (issue #474)**, the dependency-upgrade-policy work, where it belongs
-  alongside the other ecosystems' lockfile decisions. The APK's SLSA provenance already answers
-  "what produced this," which is the reproducibility-adjacent question that matters most here.
+- **Gradle dependency locking (issue #942)** — resolved: every module now locks its `release`
+  compile/runtime classpaths (`android/build.gradle.kts`), giving `license-compliance.yml`'s Trivy
+  scan a `gradle.lockfile` per module to enumerate Gradle licenses from, the same way it already
+  reads `go.sum`/`yarn.lock`. No residual gap.
 - **`npm` install pinning (issue #331)** — resolved: PR #737 removed the dead
   `if … elif … else npm install` branch from all three Dockerfiles, leaving only
   `yarn install --frozen-lockfile`. No residual gap.
