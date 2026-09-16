@@ -180,7 +180,8 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `CodeQL` | advisory | no | SARIF is uploaded; a new alert is triaged in the Security tab, not release-blocking. | `codeql.yml` |
 | `Grype vulnerability scan` | advisory | no | second-opinion CVE scan; the critical/high hard gate is on main + nightly, advisory at release time. | `grype.yml` |
 | `TruffleHog secret scan` | advisory | no | verified-secret git-history scan; a hit is investigated immediately but is not a release job. | `trufflehog.yml` |
-| `Stryker mutation testing` | advisory | no | mutation-score trend for the core modules; advisory. | `stryker.yml` |
+| `Stryker mutation testing` | advisory | no | frontend/stryker.conf.json's thresholds.break fails the nightly run itself on a mutation-score drop below the ratchet (issue #915); still nightly-only and not release-blocking, so tier stays advisory. | `stryker.yml` |
+| `Go mutation testing` | advisory | no | gremlins mutation testing against the safety-critical Go paths (migration/upgrade, backup/restore, delete cascade, import/export, data-integrity invariants — backend/internal/mutationscope.Scopes); each matrix leg's generated config fails the nightly run itself below its recorded threshold (issue #915). Per-leg check names make polling impractical; nightly-only and not release-blocking, so tier stays advisory. | `go-mutation.yml` |
 | `Android macrobenchmark` | advisory | no | cold/warm/hot startup and dashboard frame timing trend; continue-on-error by design (emulator variance). | `android-tests.yml` |
 | `Reproducible image (all-in-one)` | advisory | no | double-build config + layer digest compare for the linux/amd64 image; continue-on-error until reliably green on main (REL-04, #448). | `reproducibility.yml` |
 
