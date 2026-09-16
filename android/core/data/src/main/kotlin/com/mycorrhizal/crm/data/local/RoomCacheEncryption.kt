@@ -59,17 +59,61 @@ object RoomCacheEncryption {
         return header != PLAINTEXT_MAGIC
     }
 
-    // detekt(TooGenericExceptionCaught): the transition funnels every failure
-    // (SQLCipher errors, IO, SQL) into one of two deliberate outcomes — rethrow
-    // as a fatal boot error when the plaintext is intact, or log-and-continue
-    // when the swap already succeeded.
-    @Suppress("TooGenericExceptionCaught")
     private fun reencryptInPlace(dbFile: File, passphrase: String) {
+        runReencryption(
+            dbFile = dbFile,
+            export = { encrypted -> exportToEncrypted(dbFile, encrypted, passphrase) },
+            rebuildFts = { rebuildFtsMirrors(dbFile, passphrase) },
+        )
+    }
+
+    /**
+     * The crash-recovery state machine behind [reencryptInPlace], with its two
+     * SQLCipher-touching steps injected as [export] (copy every object — schema,
+     * triggers, virtual tables, rows — into a fresh encrypted file) and
+     * [rebuildFts] (rebuild the FTS index afterward), plus [postSwap] (defaults
+     * to the real [deleteSidecars]) so a failure strictly after the swap has
+     * completed can be simulated too. Everything else here — the secure-erase
+     * overwrite, the rename/copy swap, sidecar cleanup, and above all the
+     * three-way recovery decision (export failed / swap failed / a post-swap
+     * step failed) — is plain `java.io.File` control flow with no native
+     * dependency, so it is `internal` rather than `private`: it lets
+     * [RoomCacheEncryptionTest] (JVM, same module) drive every recovery branch
+     * directly with fakes. The real [export]/[rebuildFts] lambdas call into
+     * `net.zetetic.database.sqlcipher.SQLiteDatabase`, which needs
+     * `libsqlcipher.so` — an Android-native (Bionic) binary that cannot load
+     * even under Robolectric (see that test's class doc, and
+     * `Migration13To14Test`'s), so only the instrumented
+     * `RoomCacheEncryptionTest` in `app/src/androidTest` can exercise the real
+     * SQLCipher calls end to end.
+     *
+     * Bug fix (found while adding the crash-recovery tests: `swapped` used to
+     * flip to `true` only *after* [deleteSidecars] returned, i.e. as the very
+     * last statement of the try block — so a failure there could never take
+     * the `if (swapped)` branch below; it fell through to `encrypted.exists()`
+     * instead, which is false once the rename above already moved the file,
+     * so it took the *last* branch and threw claiming "cache left untouched"
+     * even though the swap had already fully succeeded. `swapped` now flips
+     * right after the swap itself, before the (best-effort) [postSwap] call,
+     * so a sidecar-cleanup failure is correctly treated as non-fatal.
+     *
+     * detekt(TooGenericExceptionCaught): the transition funnels every failure
+     * (SQLCipher errors, IO, SQL) into one of two deliberate outcomes — rethrow
+     * as a fatal boot error when the plaintext is intact, or log-and-continue
+     * when the swap already succeeded.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    internal fun runReencryption(
+        dbFile: File,
+        export: (encrypted: File) -> Unit,
+        rebuildFts: () -> Unit,
+        postSwap: (File) -> Unit = ::deleteSidecars,
+    ) {
         val encrypted = File(dbFile.parentFile, dbFile.name + ".encrypted")
         encrypted.delete()
         var swapped = false
         try {
-            exportToEncrypted(dbFile, encrypted, passphrase)
+            export(encrypted)
 
             // Overwrite the plaintext pages with random bytes before unlinking so
             // they are not recoverable from freed blocks (the "stolen device"
@@ -80,10 +124,13 @@ object RoomCacheEncryption {
                 encrypted.copyTo(dbFile, overwrite = true)
                 encrypted.delete()
             }
+            swapped = true
             // The old plaintext WAL/journal sidecars may hold uncheckpointed
             // plaintext pages; the encrypted file is self-contained, so drop them.
-            deleteSidecars(dbFile)
-            swapped = true
+            // Best-effort: dbFile is already the live encrypted database at this
+            // point, so a failure here must not be reported as encryption having
+            // failed (see the bug-fix note above).
+            postSwap(dbFile)
         } catch (e: Exception) {
             if (swapped) {
                 // A post-swap step failed (sidecar deletion); the encrypted DB is live.
@@ -116,7 +163,7 @@ object RoomCacheEncryption {
         // SQLite virtual-table internals; any failure is intentionally swallowed.
         @Suppress("TooGenericExceptionCaught")
         try {
-            rebuildFtsMirrors(dbFile, passphrase)
+            rebuildFts()
         } catch (e: Exception) {
             Log.w(TAG, "FTS mirror rebuild failed after encryption transition", e)
         }
@@ -172,11 +219,29 @@ object RoomCacheEncryption {
         }
     }
 
-    private fun overwriteFile(file: File) {
+    /**
+     * Secure-erase: overwrite every byte of [file] with fresh random data
+     * before it is unlinked, so the plaintext pages are not recoverable from
+     * freed disk blocks. `internal` (rather than `private`) only so
+     * [RoomCacheEncryptionTest] can assert on it directly — plain
+     * `java.io.File`/`SecureRandom`, no native dependency.
+     *
+     * Bug fix (found via the new JVM tests): the original length was read
+     * from [file] *after* `FileOutputStream(file)` had already opened (and
+     * therefore truncated) it, so `remaining` was always `0` and the write
+     * loop below never ran a single iteration — the file silently went
+     * straight from its real content to empty, with the actual disk blocks
+     * that held the plaintext never overwritten at all. That is exactly the
+     * "stolen device, data recoverable from freed blocks" scenario this
+     * function exists to prevent. The length must be captured before the
+     * truncating stream is opened.
+     */
+    internal fun overwriteFile(file: File) {
+        val length = file.length()
         val buffer = ByteArray(64 * 1024)
         SecureRandom().nextBytes(buffer)
         FileOutputStream(file).use { out ->
-            var remaining = file.length()
+            var remaining = length
             while (remaining > 0) {
                 val chunk = min(remaining, buffer.size.toLong()).toInt()
                 out.write(buffer, 0, chunk)
