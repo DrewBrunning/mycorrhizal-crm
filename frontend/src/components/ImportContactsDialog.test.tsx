@@ -465,6 +465,135 @@ test('an upload failure surfaces the error without advancing the step', async ()
   expect(screen.getByText(/drag and drop a csv or vcf file/i)).toBeInTheDocument();
 });
 
+test('a preview-generation failure surfaces the error and leaves the mapping step in place', async () => {
+  vi.mocked(uploadCSVForImport).mockResolvedValue({
+    session_id: 'sess-3',
+    headers: ['Name'],
+    suggested_mappings: [{ csv_column: 'Name', contact_field: 'firstname', group: 0 }],
+    row_count: 1,
+    sample_data: [['Ada Lovelace']],
+  });
+  vi.mocked(getImportPreview).mockRejectedValue(new Error('preview generation blew up'));
+
+  renderDialog();
+  selectFile(new File(['Name\nAda Lovelace'], 'contacts.csv', { type: 'text/csv' }));
+
+  await waitFor(() => expect(screen.getByText('Name')).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+  await waitFor(() => expect(screen.getByText('preview generation blew up')).toBeInTheDocument());
+  // Still on the mapping step -- the column mapping UI is still showing, not
+  // the preview summary chips.
+  expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
+  expect(screen.queryByText(/to create/)).not.toBeInTheDocument();
+});
+
+test('a confirm-import failure surfaces the error and stays on the preview step', async () => {
+  vi.mocked(uploadCSVForImport).mockResolvedValue({
+    session_id: 'sess-4',
+    headers: ['Name'],
+    suggested_mappings: [{ csv_column: 'Name', contact_field: 'firstname', group: 0 }],
+    row_count: 1,
+    sample_data: [['Ada Lovelace']],
+  });
+  vi.mocked(getImportPreview).mockResolvedValue({
+    session_id: 'sess-4',
+    rows: [row({ parsed_contact: { firstname: 'Ada', lastname: '', email: '' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+  });
+  vi.mocked(confirmImport).mockRejectedValue(new Error('confirm blew up'));
+
+  renderDialog();
+  selectFile(new File(['Name\nAda Lovelace'], 'contacts.csv', { type: 'text/csv' }));
+  await waitFor(() => expect(screen.getByText('Name')).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+  await waitFor(() => expect(screen.getByText('1 to create')).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: /apply decisions/i }));
+
+  await waitFor(() => expect(screen.getByText('confirm blew up')).toBeInTheDocument());
+  // Still on the preview step -- the summary chip is still showing, not the
+  // result step's created/updated counts.
+  expect(screen.getByText('1 to create')).toBeInTheDocument();
+});
+
+// isConflictRow's false branch: a row with neither a duplicate_match nor a
+// batch_duplicate_of is not a conflict, so the "everything will be added as
+// new" copy renders instead of a conflict heading.
+test('a plain new row with no match renders the no-conflicts copy, not a conflict heading', async () => {
+  await loadPreview([
+    row({ parsed_contact: { firstname: 'Nobody', lastname: 'Special', email: '' } }),
+  ]);
+
+  expect(
+    screen.getByText('No duplicate matches — everything below will be added as new.'),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/Resolve Conflicts/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/all conflicts resolved/i)).not.toBeInTheDocument();
+});
+
+// ImportMergeDiffSummary's empty-diff branch: a duplicate match whose
+// merge_diff carries no updated/added entries means Merge would be a no-op.
+test('a duplicate with an empty merge_diff shows the no-changes copy', async () => {
+  await loadPreview([
+    row({
+      parsed_contact: { firstname: 'Bob', lastname: 'Smith', email: 'bob@example.com' },
+      duplicate_match: dupMatch({ existing_firstname: 'Bob', existing_lastname: 'Smith' }),
+      suggested_action: 'update',
+      merge_diff: { updated: [], added: [] },
+    }),
+  ]);
+
+  expect(screen.getByText('No changes — the records already match.')).toBeInTheDocument();
+});
+
+// The bulk actions must only ever touch rows without validation errors --
+// an errored row's action is fixed and neither "Resolve all as merged" nor
+// "Skip all" may reassign it, even when its (unusual but structurally valid)
+// suggested_action differs from what the bulk action would otherwise apply.
+test('accept-all and skip-all leave rows with validation errors untouched', async () => {
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-guard',
+    rows: [
+      row({
+        parsed_contact: { firstname: 'Valid', lastname: '', email: '' },
+        suggested_action: 'add',
+      }),
+      row({
+        row_index: 1,
+        parsed_contact: { firstname: 'Broken', lastname: '', email: 'not-an-email' },
+        validation_errors: ['invalid email'],
+        suggested_action: 'update',
+      }),
+    ],
+    total_rows: 2,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 1,
+  });
+
+  renderDialog();
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  await waitFor(() => expect(screen.getByText('1 to create')).toBeInTheDocument());
+  // The errored row's fixed "update" action is already reflected in the summary.
+  expect(screen.getByText('1 to update')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: /skip all/i }));
+  // The valid row flips to skip; the errored row's "update" count is untouched.
+  expect(screen.getByText('1 to update')).toBeInTheDocument();
+  expect(screen.getByText('1 to skip')).toBeInTheDocument();
+  expect(screen.queryByText('2 to skip')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: /resolve all as merged/i }));
+  // The valid row returns to its own suggested action; the errored row is
+  // still untouched at "update".
+  expect(screen.getByText('1 to create')).toBeInTheDocument();
+  expect(screen.getByText('1 to update')).toBeInTheDocument();
+});
+
 // T56 bulk controls, renamed for T96: "Resolve all as merged" applies each
 // valid row's own suggested action (add for new, merge for duplicates, skip
 // for within-batch duplicates) in one click, and "Skip all" marks every valid
