@@ -48,10 +48,13 @@ At **rc.1**, cut a branch **`release/vX.Y.0`** from `main`. From then on:
 
 This is enforced, not just documented: **`.github/rulesets/release-branches.json`** (the
 `release-branch-protection` ruleset — see [`development/repo-governance.md`](development/repo-governance.md))
-requires **the same status checks as `main`**, plus linear history, no deletion, and no
-force-push. `backend/internal/governance.CheckReleaseBranchesMatchMain` fails the build if the
-`release/*` required-check list ever drifts from `main`'s, so "RC gates match release gates"
-(issue #446 action 7) holds by construction.
+requires **every status check `main` requires, plus the RC-only checks declared in
+`backend/internal/governance.ReleaseOnlyRequiredChecks`** (currently just the RC fix criterion,
+next section), plus linear history, no deletion, and no force-push.
+`backend/internal/governance.CheckReleaseBranchesMatchMain` fails the build if the `release/*`
+required-check list ever requires less than `main`'s plus that declared extra, or requires
+anything undeclared, so "RC gates match release gates" (issue #446 action 7) holds by
+construction.
 
 The per-PR gate workflows (`unit-tests`, `e2e-tests`, `android-tests`, `sast`, `zizmor`,
 `container-hardening`, `reproducibility`, `codeql`, `migration-tests`) run on `pull_request` into

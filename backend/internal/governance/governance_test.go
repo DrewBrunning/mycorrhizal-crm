@@ -79,28 +79,45 @@ func TestCheckMainProtectionMatchesGates(t *testing.T) {
 func TestCheckReleaseBranchesMatchMain(t *testing.T) {
 	main, _ := ParseRuleset("m", []byte(mainProtJSON)) // {Backend (Go), codecov/patch/backend}
 
-	// Identical required set -> no findings.
+	// Identical required set, no release-only checks declared -> no findings.
 	same, _ := ParseRuleset("r", []byte(`{"name":"r","target":"branch","enforcement":"active","rules":[
 	  {"type":"required_status_checks","parameters":{"required_status_checks":[
 	    {"context":"codecov/patch/backend"},{"context":"Backend (Go)"}]}},
 	  {"type":"deletion"}]}`))
-	assert.Empty(t, CheckReleaseBranchesMatchMain(same, main))
+	assert.Empty(t, CheckReleaseBranchesMatchMain(same, main, nil))
 
 	// Missing one main check -> flagged, and cites #446.
 	missing, _ := ParseRuleset("r", []byte(`{"name":"r","target":"branch","enforcement":"active","rules":[
 	  {"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"Backend (Go)"}]}}]}`))
-	f := CheckReleaseBranchesMatchMain(missing, main)
+	f := CheckReleaseBranchesMatchMain(missing, main, nil)
 	require.Len(t, f, 1)
 	assert.Contains(t, f[0], `missing required check "codecov/patch/backend"`)
 	assert.Contains(t, f[0], "#446")
 
-	// Extra check main does not have -> flagged.
+	// Extra check main does not have, and not declared release-only -> flagged.
 	extra, _ := ParseRuleset("r", []byte(`{"name":"r","target":"branch","enforcement":"active","rules":[
 	  {"type":"required_status_checks","parameters":{"required_status_checks":[
 	    {"context":"Backend (Go)"},{"context":"codecov/patch/backend"},{"context":"Ghost"}]}}]}`))
-	f = CheckReleaseBranchesMatchMain(extra, main)
+	f = CheckReleaseBranchesMatchMain(extra, main, nil)
 	require.Len(t, f, 1)
 	assert.Contains(t, f[0], `requires "Ghost"`)
+	assert.Contains(t, f[0], "not a declared release-only check")
+
+	// Same "Ghost" extra, but now declared as a release-only check -> no findings.
+	// This is the #925 shape: release-branches.json requires an RC-only check
+	// (e.g. "RC fix is traceable to a finding") that main-protection.json never
+	// has, and the declared allow-list is what makes that expected instead of
+	// drift.
+	assert.Empty(t, CheckReleaseBranchesMatchMain(extra, main, []string{"Ghost"}))
+
+	// A declared release-only check that release-branches.json does NOT
+	// actually require -> flagged, and cites #925. This is what catches the
+	// original bug: adding a context to ReleaseOnlyRequiredChecks without also
+	// adding it to release-branches.json's required_status_checks.
+	f = CheckReleaseBranchesMatchMain(same, main, []string{"RC fix is traceable to a finding"})
+	require.Len(t, f, 1)
+	assert.Contains(t, f[0], `missing required check "RC fix is traceable to a finding"`)
+	assert.Contains(t, f[0], "#925")
 }
 
 func TestCheckCosignIdentityPinned(t *testing.T) {
@@ -159,6 +176,11 @@ func TestCommittedGovernanceIsConsistent(t *testing.T) {
 	findings = append(findings, CheckMainProtectionMatchesGates(mainProt, read(".github/release-gates.json"))...)
 	findings = append(findings, CrossCheckGovernanceDoc(string(read("docs/development/repo-governance.md")), files, mainProt)...)
 	findings = append(findings, CheckCosignIdentityPinned(string(read("docs/security/release-verification.md")))...)
+
+	relBranches, fs := ParseRuleset(".github/rulesets/release-branches.json", read(".github/rulesets/release-branches.json"))
+	findings = append(findings, fs...)
+	findings = append(findings, CheckReleaseBranchesMatchMain(relBranches, mainProt, ReleaseOnlyRequiredChecks)...)
+
 	assert.Empty(t, findings)
 }
 

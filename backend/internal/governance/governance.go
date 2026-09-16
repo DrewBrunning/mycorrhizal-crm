@@ -120,14 +120,37 @@ func CheckMainProtectionMatchesGates(mainProtection Ruleset, releaseGatesJSON []
 	return out
 }
 
+// ReleaseOnlyRequiredChecks are status-check contexts that release/* branches
+// require in addition to everything main-protection.json requires -- checks
+// that only make sense in the RC context and have no main-branch counterpart
+// (RC-02, #446). CheckReleaseBranchesMatchMain treats exactly these contexts
+// as expected extras rather than drift; anything else present in
+// release-branches.json but absent from main-protection.json is still
+// flagged. Adding an entry here without also adding it to
+// release-branches.json's required_status_checks is itself a finding (issue
+// #925), so the two can never silently drift apart.
+var ReleaseOnlyRequiredChecks = []string{
+	// rc-fix.yml (RC-02, #446 action 4): every PR into release/* must trace to
+	// an rc-finding issue or an explicit rc-chore opt-out. See
+	// docs/release-candidate-process.md.
+	"RC fix is traceable to a finding",
+}
+
 // CheckReleaseBranchesMatchMain asserts the release-branch ruleset requires
-// exactly the same status checks as main-protection. This is #446 action 7 --
-// "RC gates match release gates" -- made mechanical: an RC series is cut from a
-// release/* branch, and it must be gated identically to main.
-func CheckReleaseBranchesMatchMain(releaseBranches, mainProtection Ruleset) []string {
+// every status check main-protection requires, plus exactly the declared
+// releaseOnly extras (ReleaseOnlyRequiredChecks in production use) -- no more,
+// no less. This is #446 action 7 -- "RC gates match release gates" -- made
+// mechanical: an RC series is cut from a release/* branch, so it must be
+// gated at least as strictly as main, with only the RC-specific checks
+// (like the RC fix criterion, issue #925) layered on top.
+func CheckReleaseBranchesMatchMain(releaseBranches, mainProtection Ruleset, releaseOnly []string) []string {
 	main := map[string]bool{}
 	for _, c := range RequiredContexts(mainProtection) {
 		main[c] = true
+	}
+	extra := map[string]bool{}
+	for _, c := range releaseOnly {
+		extra[c] = true
 	}
 	rel := map[string]bool{}
 	for _, c := range RequiredContexts(releaseBranches) {
@@ -139,10 +162,16 @@ func CheckReleaseBranchesMatchMain(releaseBranches, mainProtection Ruleset) []st
 			out = append(out, fmt.Sprintf("release-branches.json is missing required check %q (main-protection.json requires it -- RC gates must match release gates, #446)", c))
 		}
 	}
-	for c := range rel {
-		if !main[c] {
-			out = append(out, fmt.Sprintf("release-branches.json requires %q, which main-protection.json does not (RC gates must match release gates, #446)", c))
+	for c := range extra {
+		if !rel[c] {
+			out = append(out, fmt.Sprintf("release-branches.json is missing required check %q (declared as a release-only check -- #925)", c))
 		}
+	}
+	for c := range rel {
+		if main[c] || extra[c] {
+			continue
+		}
+		out = append(out, fmt.Sprintf("release-branches.json requires %q, which main-protection.json does not and which is not a declared release-only check (RC gates must match release gates, #446)", c))
 	}
 	sort.Strings(out)
 	return out
