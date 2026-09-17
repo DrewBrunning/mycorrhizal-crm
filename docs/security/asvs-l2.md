@@ -10,7 +10,7 @@ row, it does not know what it is changing.
 | **Standards pinned** | OWASP ASVS 4.0.3 (V1–V14), OWASP API Security Top 10 (2023) |
 | **Level** | ASVS **Level 2** (rows marked `✓` in the L2 column of the ASVS). L1 rows are included because L2 subsumes them; L3-only rows are listed per chapter as out of scope. |
 | **Last full pass** | 2026-08-26 — the ASVS L2 verification pass, issue #378. Statuses, evidence, and the level claim are recorded in `docs/security/asvs-l2-verification-report.md`; the prior mapping audit was 2026-08-23. |
-| **Level claimed** | **ASVS L2 with 26 documented exceptions** — every exception enumerated in the verification report's exception register. Not a silent downgrade: 191 rows `satisfied`, 38 `not-applicable` with reasons, 2 L3-only. |
+| **Level claimed** | **ASVS L2 with 23 documented exceptions** — every exception enumerated in the verification report's exception register. Not a silent downgrade: 194 rows `satisfied`, 38 `not-applicable` with reasons, 2 L3-only. |
 | **Scope** | Single-process Go/Gin + SQLite app, React SPA behind an nginx container, TLS terminated by an operator-supplied reverse proxy. Many cloud/microservice controls are deliberately `not-applicable` — each such row says why. |
 
 ## Status legend
@@ -27,7 +27,7 @@ grep for it below, and get a status + citation. No row is left `satisfied` witho
 
 ## Documented positions
 
-Eight deliberate, written-down decisions this project has made. They are positions, not code
+Eleven deliberate, written-down decisions this project has made. They are positions, not code
 changes; revisit each pre-1.0 or when the cited trigger happens.
 
 ### P1 — Password hashing: bcrypt, not Argon2id (NIST 800-63B §5.1.1.2)
