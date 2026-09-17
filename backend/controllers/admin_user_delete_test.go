@@ -257,3 +257,29 @@ func TestDeleteUserAttachmentFiles_SkipsInvalidStoredName(t *testing.T) {
 	_, err := os.Stat(filepath.Join(filepath.Dir(dir), "escape.txt"))
 	assert.True(t, os.IsNotExist(err), "a traversal stored name must never reach the filesystem")
 }
+
+// TestDeleteUserAttachmentFiles_LogsRemoveFailureForExistingFile covers the
+// one os.Remove branch none of the other attachment-cleanup tests reach: a
+// remove failure that is NOT "file already gone" (SkipsMissingFiles covers
+// that one). Removing a directory entry needs write permission on the
+// directory, not the file, so stripping it here is what makes os.Remove fail
+// with something other than IsNotExist.
+func TestDeleteUserAttachmentFiles_LogsRemoveFailureForExistingFile(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root bypasses directory permission checks")
+	}
+	dir := t.TempDir()
+	good, err := attachments.Save([]byte("x"), dir)
+	require.NoError(t, err)
+
+	require.NoError(t, os.Chmod(dir, 0o555))
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	c := deleteContextWithDir(dir)
+	assert.NotPanics(t, func() {
+		deleteUserAttachmentFiles(c, []string{good})
+	})
+
+	_, err = os.Stat(filepath.Join(dir, good))
+	assert.NoError(t, err, "the file must survive a failed remove")
+}

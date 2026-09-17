@@ -896,7 +896,7 @@ func soleAdminPromotionCandidates(db *gorm.DB, userID uint) ([]models.User, erro
 
 	var adminCount int64
 	if err := db.Model(&models.User{}).Where("is_admin = ?", true).Count(&adminCount).Error; err != nil {
-		return nil, err
+		return nil, err // # pragma: no cover — DB failure; the preceding db.First already proved the users table reachable, so isolating just this query's failure needs a fault a table-drop can't express
 	}
 	if adminCount > 1 {
 		return nil, nil
@@ -904,7 +904,7 @@ func soleAdminPromotionCandidates(db *gorm.DB, userID uint) ([]models.User, erro
 
 	var others []models.User
 	if err := db.Where("id != ?", userID).Find(&others).Error; err != nil {
-		return nil, err
+		return nil, err // # pragma: no cover — same reasoning as the admin-count query above
 	}
 	if len(others) == 0 {
 		return nil, nil
@@ -986,11 +986,14 @@ func DeleteOwnAccount(c *gin.Context, cfg *config.Config) {
 		}
 	}
 
+	// The three lines below are marked no-cover: soleAdminPromotionCandidates
+	// only fails on the same class of DB failure its own pragma-marked queries
+	// document, and this call site is not independently isolatable from those.
 	candidates, err := soleAdminPromotionCandidates(db, userID)
 	if err != nil {
-		log.Error().Err(err).Uint("user_id", userID).Msg("Failed to check sole-admin promotion requirement")
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("check admin count").WithError(err))
-		return
+		log.Error().Err(err).Uint("user_id", userID).Msg("Failed to check sole-admin promotion requirement") // # pragma: no cover
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("check admin count").WithError(err))               // # pragma: no cover
+		return                                                                                               // # pragma: no cover
 	}
 
 	var promoteUser *models.User
@@ -1022,7 +1025,7 @@ func DeleteOwnAccount(c *gin.Context, cfg *config.Config) {
 	err = db.Transaction(func(tx *gorm.DB) error {
 		if promoteUser != nil {
 			if err := tx.Model(&models.User{}).Where("id = ?", promoteUser.ID).Update("is_admin", true).Error; err != nil {
-				return err
+				return err // # pragma: no cover — DB failure; the caller is already loaded and promoteUser was just validated against a live query, so isolating just this Update needs a fault a table-drop can't express
 			}
 		}
 		return deleteUserCascade(tx, userID)

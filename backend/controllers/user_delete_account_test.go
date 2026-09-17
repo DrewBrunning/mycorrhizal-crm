@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
@@ -74,6 +75,29 @@ func seedDeleteAccountUser(t *testing.T, db *gorm.DB, username string, isAdmin b
 
 func deleteAccountRequest(token string, body any) *http.Request {
 	return sessionRequest("DELETE", "/account", body, token)
+}
+
+// selfDeleteRouter is deleteAccountTestEnv's bare-router counterpart — no
+// AuthMiddleware, matching admin_user_error_paths_test.go's adminRouter
+// pattern. It exists so a specific table can be dropped to fault-inject one
+// of DeleteOwnAccount's own DB calls without AuthMiddleware's unrelated
+// session lookup (which also touches the users table) getting in the way
+// first.
+func selfDeleteRouter(db *gorm.DB, cfg *config.Config, userID uint, withUserID bool) *gin.Engine {
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		if withUserID {
+			c.Set("userID", userID)
+		}
+		c.Set("cfg", *cfg)
+		c.Next()
+	})
+	router.DELETE("/account", func(c *gin.Context) {
+		DeleteOwnAccount(c, cfg)
+	})
+	return router
 }
 
 // TestDeleteOwnAccount_Succeeds is the happy path: a non-admin user (so no
@@ -363,4 +387,93 @@ func TestSoleAdminPromotionCandidates(t *testing.T) {
 		require.Len(t, candidates, 1)
 		assert.Equal(t, other.ID, candidates[0].ID)
 	})
+
+	t.Run("user lookup DB error", func(t *testing.T) {
+		db4 := dbtest.New(t)
+		u := seedDeleteAccountUser(t, db4, "canderr", false)
+		require.NoError(t, db4.Exec("DROP TABLE users").Error)
+		_, err := soleAdminPromotionCandidates(db4, u.ID)
+		assert.Error(t, err)
+	})
+}
+
+// TestDeleteOwnAccount_Unauthenticated covers currentUserID's own failure
+// path (no "userID" in context) — unreachable through the real
+// AuthMiddleware-protected router (it would already 401 before the handler
+// ran), so this uses the bare selfDeleteRouter directly, mirroring
+// TestDeleteUser_Unauthenticated's adminRouter(db, false) pattern.
+func TestDeleteOwnAccount_Unauthenticated(t *testing.T) {
+	db := dbtest.New(t)
+	cfg := &config.Config{JWTSecretKey: testJWTSecret, JWTExpiryHours: 24}
+	router := selfDeleteRouter(db, cfg, 0, false)
+
+	req := deleteAccountRequest("", map[string]string{"current_password": strongPassword})
+	w, _ := doRequest(router, req)
+	assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+}
+
+// TestDeleteOwnAccount_UserLookupError mirrors TestDeleteUser_UserLookupError
+// for the self-service path: a DB failure loading the caller's own user row
+// must 500 before any re-proof or deletion.
+func TestDeleteOwnAccount_UserLookupError(t *testing.T) {
+	db := dbtest.New(t)
+	cfg := &config.Config{JWTSecretKey: testJWTSecret, JWTExpiryHours: 24}
+	user := seedDeleteAccountUser(t, db, "lookuperr", false)
+
+	require.NoError(t, db.Exec("DROP TABLE users").Error)
+
+	router := selfDeleteRouter(db, cfg, user.ID, true)
+	req := deleteAccountRequest("", map[string]string{"current_password": strongPassword})
+	w, _ := doRequest(router, req)
+	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+}
+
+// TestDeleteOwnAccount_AttachmentPluckError mirrors
+// TestDeleteUser_ReportsPluckFailure: a DB failure capturing the caller's
+// attachment names must abort before deleting anything, and the account
+// must survive.
+func TestDeleteOwnAccount_AttachmentPluckError(t *testing.T) {
+	db := dbtest.New(t)
+	cfg := &config.Config{JWTSecretKey: testJWTSecret, JWTExpiryHours: 24}
+	user := seedDeleteAccountUser(t, db, "pluckerr", false)
+
+	require.NoError(t, db.Exec("DROP TABLE attachments").Error)
+
+	router := selfDeleteRouter(db, cfg, user.ID, true)
+	req := deleteAccountRequest("", map[string]string{"current_password": strongPassword})
+	w, _ := doRequest(router, req)
+	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+
+	var stillThere models.User
+	assert.NoError(t, db.First(&stillThere, user.ID).Error, "a Pluck failure must abort before deleting the user")
+}
+
+// TestDeleteOwnAccount_CascadeTransactionFails is the self-service
+// counterpart to TestDeleteUser_ReportsTransactionFailure: a mid-cascade
+// delete failure must roll back the whole transaction (the outer
+// db.Transaction wrapping both the optional promotion and deleteUserCascade)
+// and 500 — the account and its data survive.
+func TestDeleteOwnAccount_CascadeTransactionFails(t *testing.T) {
+	db := dbtest.New(t)
+	cfg := &config.Config{JWTSecretKey: testJWTSecret, JWTExpiryHours: 24}
+	user := seedDeleteAccountUser(t, db, "txfail", false)
+	contact := models.Contact{UserID: user.ID, Firstname: "C"}
+	require.NoError(t, db.Create(&contact).Error)
+	activity := models.Activity{UserID: user.ID, Title: "call", Type: "call", Date: time.Now()}
+	require.NoError(t, db.Create(&activity).Error)
+	require.NoError(t, db.Model(&activity).Association("Contacts").Append(&contact))
+
+	// Dropping activity_contacts makes the cascade fail partway through.
+	require.NoError(t, db.Exec("DROP TABLE activity_contacts").Error)
+
+	router := selfDeleteRouter(db, cfg, user.ID, true)
+	req := deleteAccountRequest("", map[string]string{"current_password": strongPassword})
+	w, _ := doRequest(router, req)
+	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+
+	var userCount, activityCount int64
+	require.NoError(t, db.Model(&models.User{}).Where("id = ?", user.ID).Count(&userCount).Error)
+	require.NoError(t, db.Model(&models.Activity{}).Where("user_id = ?", user.ID).Count(&activityCount).Error)
+	assert.EqualValues(t, 1, userCount, "the user must survive a rolled-back self-delete cascade")
+	assert.EqualValues(t, 1, activityCount, "activities must survive the rollback")
 }

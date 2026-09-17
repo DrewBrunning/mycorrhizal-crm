@@ -189,4 +189,35 @@ describe('deleteOwnAccount', () => {
 
     await expect(deleteOwnAccount('correct-password')).rejects.toThrow('some other conflict');
   });
+
+  test('prefers a specific details.reason over the generic error message', async () => {
+    const response = {
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      text: async () =>
+        JSON.stringify({
+          error: {
+            code: 'INVALID_INPUT',
+            message: 'generic message',
+            details: { reason: 'a more specific reason' },
+          },
+        }),
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response));
+
+    await expect(deleteOwnAccount('correct-password')).rejects.toThrow('a more specific reason');
+  });
+
+  test('a non-JSON error body falls back to the raw response text', async () => {
+    const response = {
+      ok: false,
+      status: 502,
+      statusText: 'Bad Gateway',
+      text: async () => 'upstream timeout',
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response));
+
+    await expect(deleteOwnAccount('correct-password')).rejects.toThrow('upstream timeout');
+  });
 });

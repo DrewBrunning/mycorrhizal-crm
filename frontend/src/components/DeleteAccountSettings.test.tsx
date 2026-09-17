@@ -67,12 +67,71 @@ test('the confirm button stays disabled until a password is entered', async () =
   expect(confirmButton.closest('button')).not.toBeDisabled();
 });
 
-test('shows a TOTP field only when the account has 2FA enabled', async () => {
+test('shows a TOTP field only when the account has 2FA enabled, and it accepts input', async () => {
   mockFetchByUrl({ '/users/2fa/status': () => jsonResponse({ enabled: true }) });
   renderComponent();
 
   fireEvent.click(screen.getByText('Delete my account'));
-  await screen.findByLabelText('Verification code *');
+  const totpField = await screen.findByLabelText('Verification code *');
+  fireEvent.change(totpField, { target: { value: '123456' } });
+  expect(totpField).toHaveValue('123456');
+});
+
+test('cancel closes the dialog and clears the entered password', async () => {
+  mockFetchByUrl({ '/users/2fa/status': () => jsonResponse({ enabled: false }) });
+  renderComponent();
+
+  fireEvent.click(screen.getByText('Delete my account'));
+  fireEvent.change(await screen.findByLabelText('Current password *'), {
+    target: { value: 'my-password' },
+  });
+  fireEvent.click(screen.getByText('Cancel'));
+
+  await waitFor(() =>
+    expect(screen.queryByLabelText('Current password *')).not.toBeInTheDocument(),
+  );
+
+  fireEvent.click(screen.getByText('Delete my account'));
+  expect(await screen.findByLabelText('Current password *')).toHaveValue('');
+});
+
+test('escape closes the dialog without submitting', async () => {
+  mockFetchByUrl({ '/users/2fa/status': () => jsonResponse({ enabled: false }) });
+  renderComponent();
+
+  fireEvent.click(screen.getByText('Delete my account'));
+  const passwordField = await screen.findByLabelText('Current password *');
+  fireEvent.keyDown(passwordField, { key: 'Escape', code: 'Escape' });
+
+  await waitFor(() =>
+    expect(screen.queryByLabelText('Current password *')).not.toBeInTheDocument(),
+  );
+});
+
+test('a plain rejection (e.g. wrong password) shows the error message inline', async () => {
+  mockFetchByUrl({
+    '/users/2fa/status': () => jsonResponse({ enabled: false }),
+    '/account': () =>
+      jsonResponse(
+        {
+          error: {
+            code: 'INVALID_INPUT',
+            message: 'Current password is incorrect',
+          },
+        },
+        400,
+      ),
+  });
+  renderComponent();
+
+  fireEvent.click(screen.getByText('Delete my account'));
+  fireEvent.change(await screen.findByLabelText('Current password *'), {
+    target: { value: 'wrong-password' },
+  });
+  fireEvent.click(screen.getByText('Permanently delete my account'));
+
+  await screen.findByText('Current password is incorrect');
+  expect(logoutAndRedirectMock).not.toHaveBeenCalled();
 });
 
 test('does not show a TOTP field when 2FA is disabled', async () => {
