@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { changePassword, confirmPasswordReset, requestPasswordReset } from './auth';
+import {
+  AccountDeletionRequiresPromotionError,
+  changePassword,
+  confirmPasswordReset,
+  deleteOwnAccount,
+  requestPasswordReset,
+} from './auth';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -98,5 +104,120 @@ describe('changePassword', () => {
   test('throws the parsed error message when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
     await expect(changePassword('oldpass', 'wrong')).rejects.toThrow('Invalid token');
+  });
+});
+
+describe('deleteOwnAccount', () => {
+  test('DELETEs with the password and returns the server message', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        okResponse({ message: 'Your account and all its data have been deleted.' }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await deleteOwnAccount('correct-password');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/account');
+    expect(init.method).toBe('DELETE');
+    expect(JSON.parse(init.body)).toEqual({ current_password: 'correct-password' });
+    expect(result).toBe('Your account and all its data have been deleted.');
+  });
+
+  test('includes totp_code and promote_user_id only when given', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(okResponse({ message: 'done' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await deleteOwnAccount('correct-password', '123456', 7);
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(init.body)).toEqual({
+      current_password: 'correct-password',
+      totp_code: '123456',
+      promote_user_id: 7,
+    });
+  });
+
+  test('throws the parsed error message when the response is not ok', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
+    await expect(deleteOwnAccount('wrong-password')).rejects.toThrow('Invalid token');
+  });
+
+  test('throws AccountDeletionRequiresPromotionError with the candidate list on 409', async () => {
+    const response = {
+      ok: false,
+      status: 409,
+      statusText: 'Conflict',
+      text: async () =>
+        JSON.stringify({
+          error: {
+            code: 'CONFLICT',
+            message: 'You are the only admin; choose another user to promote to admin first',
+            details: {
+              candidates: [
+                { id: 2, username: 'alice' },
+                { id: 3, username: 'bob' },
+              ],
+            },
+          },
+        }),
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response));
+
+    await expect(deleteOwnAccount('correct-password')).rejects.toSatisfy((err: unknown) => {
+      expect(err).toBeInstanceOf(AccountDeletionRequiresPromotionError);
+      const promotionErr = err as AccountDeletionRequiresPromotionError;
+      expect(promotionErr.candidates).toEqual([
+        { id: 2, username: 'alice' },
+        { id: 3, username: 'bob' },
+      ]);
+      return true;
+    });
+  });
+
+  test('a 409 with no candidates falls back to a plain error', async () => {
+    const response = {
+      ok: false,
+      status: 409,
+      statusText: 'Conflict',
+      text: async () =>
+        JSON.stringify({ error: { code: 'CONFLICT', message: 'some other conflict' } }),
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response));
+
+    await expect(deleteOwnAccount('correct-password')).rejects.toThrow('some other conflict');
+  });
+
+  test('prefers a specific details.reason over the generic error message', async () => {
+    const response = {
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      text: async () =>
+        JSON.stringify({
+          error: {
+            code: 'INVALID_INPUT',
+            message: 'generic message',
+            details: { reason: 'a more specific reason' },
+          },
+        }),
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response));
+
+    await expect(deleteOwnAccount('correct-password')).rejects.toThrow('a more specific reason');
+  });
+
+  test('a non-JSON error body falls back to the raw response text', async () => {
+    const response = {
+      ok: false,
+      status: 502,
+      statusText: 'Bad Gateway',
+      text: async () => 'upstream timeout',
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response));
+
+    await expect(deleteOwnAccount('correct-password')).rejects.toThrow('upstream timeout');
   });
 });

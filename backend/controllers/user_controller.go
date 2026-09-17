@@ -866,3 +866,202 @@ func ChangePassword(context *gin.Context, cfg *config.Config) {
 
 	context.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
 }
+
+// deleteOwnAccountInput is the DeleteOwnAccount request body. PromoteUserID
+// is only consulted when soleAdminPromotionCandidates finds it's needed —
+// omitting it otherwise is fine.
+type deleteOwnAccountInput struct {
+	CurrentPassword string `json:"current_password"`
+	TOTPCode        string `json:"totp_code"`
+	PromoteUserID   *uint  `json:"promote_user_id"`
+}
+
+// soleAdminPromotionCandidates implements issue #972's promote-then-delete
+// guard: if userID is the only admin AND other user rows exist, self-deleting
+// alone would strand them permanently (RegisterUser only re-grants admin when
+// the user table is completely empty, so this holds regardless of whether
+// registration is disabled). Returns the other user rows as eligible
+// promotion targets in that case, or nil when no promotion is needed —
+// either userID isn't the only admin, or there are no other users at all (a
+// genuinely single-user instance self-deletes freely, leaving a clean
+// zero-user instance).
+func soleAdminPromotionCandidates(db *gorm.DB, userID uint) ([]models.User, error) {
+	var user models.User
+	if err := db.First(&user, userID).Error; err != nil {
+		return nil, err
+	}
+	if !user.IsAdmin {
+		return nil, nil
+	}
+
+	var adminCount int64
+	if err := db.Model(&models.User{}).Where("is_admin = ?", true).Count(&adminCount).Error; err != nil {
+		return nil, err // # pragma: no cover — DB failure; the preceding db.First already proved the users table reachable, so isolating just this query's failure needs a fault a table-drop can't express
+	}
+	if adminCount > 1 {
+		return nil, nil
+	}
+
+	var others []models.User
+	if err := db.Where("id != ?", userID).Find(&others).Error; err != nil {
+		return nil, err // # pragma: no cover — same reasoning as the admin-count query above
+	}
+	if len(others) == 0 {
+		return nil, nil
+	}
+	return others, nil
+}
+
+// promotionRequiredError is the 409 the frontend's danger-zone dialog reacts
+// to by rendering a "choose who becomes the new admin" picker (issue #972
+// decision 1). candidates uses the same id+username shape as
+// ListUserDirectory for frontend consistency.
+func promotionRequiredError(candidates []models.User) *apperrors.AppError {
+	entries := make([]UserDirectoryEntry, len(candidates))
+	for i, u := range candidates {
+		entries[i] = UserDirectoryEntry{ID: u.ID, Username: u.Username}
+	}
+	return apperrors.ErrConflict("You are the only admin; choose another user to promote to admin before deleting your account").
+		WithDetails("candidates", entries)
+}
+
+// DeleteOwnAccount lets the authenticated caller delete their own account and
+// all their data (issue #972) — the self-service counterpart to the
+// admin-only DeleteUser, closing the gap where the sole user on a
+// single-user self-hosted instance (who is necessarily the admin) had no
+// in-product way to exercise the erasure docs/privacy.md promises. For a
+// genuinely single-user deployment wanting the whole instance gone (not just
+// this account's data while the instance keeps running), tearing down the
+// container/database directly is the more complete operator action — this
+// endpoint's job is logical erasure of one account.
+//
+// Re-proof mirrors this codebase's convention for its most sensitive
+// self-service actions: current password (ChangePassword), plus a live
+// TOTP/recovery-code proof if 2FA is enabled (DisableTwoFactor) — defense in
+// depth on the single most destructive endpoint in the app.
+//
+// See soleAdminPromotionCandidates for the sole-admin guard: when it applies,
+// the caller must name another existing user to promote to admin
+// (promote_user_id) in the same request; that user is promoted before the
+// caller's own account and data are deleted, in the same transaction.
+func DeleteOwnAccount(c *gin.Context, cfg *config.Config) {
+	if cfg.DemoMode {
+		apperrors.AbortWithError(c, apperrors.ErrForbidden("Account deletion is disabled in demo mode"))
+		return
+	}
+
+	log := logger.FromContext(c)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	db := c.MustGet("db").(*gorm.DB)
+
+	var user models.User
+	if err := db.First(&user, userID).Error; err != nil {
+		log.Error().Err(err).Uint("user_id", userID).Msg("Failed to load user for self-deletion")
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("query user").WithError(err))
+		return
+	}
+
+	var input deleteOwnAccountInput
+	if err := c.ShouldBindJSON(&input); err != nil || input.CurrentPassword == "" {
+		apperrors.AbortWithError(c, apperrors.ErrMissingField("current_password"))
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.CurrentPassword)); err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("current_password", "Current password is incorrect"))
+		return
+	}
+
+	if user.TOTPEnabled {
+		if input.TOTPCode == "" {
+			apperrors.AbortWithError(c, apperrors.ErrMissingField("totp_code"))
+			return
+		}
+		if !valid2FAProof(db, &user, input.TOTPCode, cfg.JWTSecretKey) {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("totp_code", "Invalid code. Please try again."))
+			return
+		}
+	}
+
+	// The three lines below are marked no-cover: soleAdminPromotionCandidates
+	// only fails on the same class of DB failure its own pragma-marked queries
+	// document, and this call site is not independently isolatable from those.
+	candidates, err := soleAdminPromotionCandidates(db, userID)
+	if err != nil {
+		log.Error().Err(err).Uint("user_id", userID).Msg("Failed to check sole-admin promotion requirement") // # pragma: no cover
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("check admin count").WithError(err))               // # pragma: no cover
+		return                                                                                               // # pragma: no cover
+	}
+
+	var promoteUser *models.User
+	if len(candidates) > 0 {
+		if input.PromoteUserID != nil {
+			for i := range candidates {
+				if candidates[i].ID == *input.PromoteUserID {
+					promoteUser = &candidates[i]
+					break
+				}
+			}
+		}
+		if promoteUser == nil {
+			apperrors.AbortWithError(c, promotionRequiredError(candidates))
+			return
+		}
+	}
+
+	// Capture attachment stored names before the transaction removes the
+	// rows, so their files can be cleaned from disk afterwards (mirrors
+	// DeleteUser).
+	var userAttachmentNames []string
+	if err := db.Model(&models.Attachment{}).Where("user_id = ?", userID).Pluck("stored_name", &userAttachmentNames).Error; err != nil {
+		log.Error().Err(err).Uint("user_id", userID).Msg("Failed to load attachments for self-deletion")
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("load user attachments").WithError(err))
+		return
+	}
+
+	err = db.Transaction(func(tx *gorm.DB) error {
+		if promoteUser != nil {
+			if err := tx.Model(&models.User{}).Where("id = ?", promoteUser.ID).Update("is_admin", true).Error; err != nil {
+				return err // # pragma: no cover — DB failure; the caller is already loaded and promoteUser was just validated against a live query, so isolating just this Update needs a fault a table-drop can't express
+			}
+		}
+		return deleteUserCascade(tx, userID)
+	})
+	if err != nil {
+		log.Error().Err(err).Uint("user_id", userID).Msg("Failed to delete own account")
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("delete account").WithError(err))
+		return
+	}
+
+	// Remove the user's attachment files after the transaction committed
+	// (file deletion can't be rolled back) — mirrors DeleteUser.
+	deleteUserAttachmentFiles(c, userAttachmentNames)
+
+	// Issue #972 decision 3: audit_events.user_id is NOT NULL with an
+	// ON DELETE CASCADE FK to users.id, and actor == target here, so no
+	// audit_events row can durably record this operation — recording it
+	// before the user row is gone gets cascade-deleted right along with it;
+	// recording it after hits a dangling FK and is silently dropped by the
+	// fire-and-forget audit logger. A structured server log line is the
+	// operational record instead, which is arguably correct for erasure
+	// anyway: no durable trace of this user, including audit rows about
+	// them, should remain. The same reasoning covers the promotion
+	// side-effect below.
+	if promoteUser != nil {
+		log.Info().Uint("deleted_user_id", userID).Uint("promoted_user_id", promoteUser.ID).
+			Msg("Self-service account deletion promoted another user to admin")
+	} else {
+		log.Info().Uint("deleted_user_id", userID).Msg("Self-service account deletion")
+	}
+
+	// The account is gone — clear the session cookie the same way LogoutUser
+	// does. Issue #392: Strict, matching the cookie as set at login.
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie("auth_token", "", -1, "/", cfg.CookieDomain, cfg.CookieSecure, true)
+	c.SetCookie("id_token", "", -1, "/", cfg.CookieDomain, cfg.CookieSecure, true)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Your account and all its data have been deleted"})
+}

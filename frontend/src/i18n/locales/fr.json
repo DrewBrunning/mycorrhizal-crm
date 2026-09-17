@@ -16,8 +16,8 @@
     },
     "startingUp": {
       "loading": "Chargement",
-      "checking": "Connexion au serveur\u2026",
-      "message": "Le serveur est encore en cours de démarrage \u2014 c'est normal pendant l'application d'une mise à jour. L'application se chargera automatiquement.",
+      "checking": "Connexion au serveur…",
+      "message": "Le serveur est encore en cours de démarrage — c'est normal pendant l'application d'une mise à jour. L'application se chargera automatiquement.",
       "retry": "Réessayer"
     },
     "submitSearch": "Envoyer la recherche"
@@ -1122,6 +1122,22 @@
         "copied": "Copié !",
         "done": "Terminé"
       }
+    },
+    "deleteAccount": {
+      "title": "Supprimer le compte",
+      "description": "Supprime définitivement votre compte et toutes vos données : contacts, activités, notes, rappels, tout. Cette action est irréversible.",
+      "deleteButton": "Supprimer mon compte",
+      "dialogTitle": "Supprimer votre compte ?",
+      "dialogWarning": "Cette action supprime définitivement votre compte et toutes vos données. Il n'y a pas de retour en arrière possible.",
+      "currentPasswordLabel": "Mot de passe actuel",
+      "totpCodeLabel": "Code de vérification",
+      "totpCodeHelp": "Code à 6 chiffres de votre application d'authentification.",
+      "promotionNotice": "Vous êtes le seul administrateur de cette instance et d'autres comptes existent encore. Choisissez qui deviendra le nouvel administrateur avant que votre compte puisse être supprimé.",
+      "promoteUserLabel": "Promouvoir en administrateur",
+      "confirmButton": "Supprimer définitivement mon compte",
+      "deleting": "Suppression...",
+      "error": "Nous n'avons pas pu supprimer votre compte. Veuillez réessayer.",
+      "success": "Votre compte et toutes vos données ont été supprimés."
     },
     "export": {
       "title": "Exporter les données",

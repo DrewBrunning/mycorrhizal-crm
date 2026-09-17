@@ -99,6 +99,15 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.GET("/users/enabled-contact-fields", controllers.GetEnabledContactFields)
 			protected.PATCH("/users/enabled-contact-fields", middleware.ValidateJSONMiddleware(&models.EnabledContactFieldsInput{}), controllers.UpdateEnabledContactFields)
 			protected.GET("/users/me", controllers.GetCurrentUser)
+			// Issue #972: self-service erasure. The admin-only DELETE
+			// /admin/users/:id refuses self-deletion, which left the common
+			// single-user (necessarily sole-admin) deployment with no
+			// in-product way to delete their own account, contradicting
+			// docs/privacy.md. See DeleteOwnAccount for the re-proof and
+			// sole-admin promote-then-delete guard.
+			protected.DELETE("/account", func(c *gin.Context) {
+				controllers.DeleteOwnAccount(c, cfg)
+			})
 			// T90: mark a contact as "Me". Single-purpose, follows the shape of
 			// the other /users mutation routes above.
 			protected.PATCH("/users/me/self-contact", middleware.ValidateJSONMiddleware(&models.SelfContactInput{}), controllers.UpdateSelfContact)

@@ -16,8 +16,8 @@
     },
     "startingUp": {
       "loading": "Cargando",
-      "checking": "Conectando con el servidor\u2026",
-      "message": "El servidor todavía se está iniciando \u2014 es normal mientras aplica una actualización. La aplicación se cargará automáticamente.",
+      "checking": "Conectando con el servidor…",
+      "message": "El servidor todavía se está iniciando — es normal mientras aplica una actualización. La aplicación se cargará automáticamente.",
       "retry": "Reintentar"
     },
     "submitSearch": "Enviar búsqueda"
@@ -1122,6 +1122,22 @@
         "copied": "¡Copiado!",
         "done": "Hecho"
       }
+    },
+    "deleteAccount": {
+      "title": "Eliminar cuenta",
+      "description": "Elimina permanentemente tu cuenta y todos tus datos: contactos, actividades, notas, recordatorios, todo. Esta acción no se puede deshacer.",
+      "deleteButton": "Eliminar mi cuenta",
+      "dialogTitle": "¿Eliminar tu cuenta?",
+      "dialogWarning": "Esto elimina permanentemente tu cuenta y todos tus datos. No hay forma de deshacerlo.",
+      "currentPasswordLabel": "Contraseña actual",
+      "totpCodeLabel": "Código de verificación",
+      "totpCodeHelp": "Código de 6 dígitos de tu aplicación de autenticación.",
+      "promotionNotice": "Eres el único administrador de esta instancia y todavía existen otras cuentas. Elige quién será el nuevo administrador antes de poder eliminar tu cuenta.",
+      "promoteUserLabel": "Ascender a administrador",
+      "confirmButton": "Eliminar mi cuenta de forma permanente",
+      "deleting": "Eliminando...",
+      "error": "No pudimos eliminar tu cuenta. Inténtalo de nuevo.",
+      "success": "Tu cuenta y todos tus datos han sido eliminados."
     },
     "export": {
       "title": "Exportar Datos",

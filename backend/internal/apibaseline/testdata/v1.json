@@ -2,6 +2,34 @@
   "version": 1,
   "operations": [
     {
+      "method": "DELETE",
+      "path": "/account",
+      "parameters": null,
+      "request_body": "ref:DeleteAccountInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MessageResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "403",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "GET",
       "path": "/activities",
       "parameters": [
@@ -10633,6 +10661,26 @@
           "name": "timestamp",
           "type": "string",
           "required": true
+        }
+      ]
+    },
+    {
+      "name": "DeleteAccountInput",
+      "properties": [
+        {
+          "name": "current_password",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "promote_user_id",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "totp_code",
+          "type": "string",
+          "required": false
         }
       ]
     },
