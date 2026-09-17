@@ -535,6 +535,56 @@ class ContactRepositoryImplTest {
     }
 
     @Test
+    fun `getContactIdsMissingPhoneIndex returns list-synced rows never detail-fetched`() = runTest {
+        // A plain list-page row only ever carries primaryPhone (see toCached()).
+        coEvery { apiClient.listContacts(any(), any(), any(), any()) } returns Result.success(
+            com.mycorrhizal.crm.model.network.ContactsPage(
+                contacts = listOf(summary(1, "Alice").copy(primaryPhone = "555-0100")),
+                nextCursor = "",
+            ),
+        )
+
+        repository.listContacts()
+
+        assertEquals(listOf(1), repository.getContactIdsMissingPhoneIndex(limit = 10))
+    }
+
+    @Test
+    fun `issue 1122 a detail fetch hydrates the full phone index and clears it from the backfill queue`() = runTest {
+        // Simulates the ContactPhoneIndexBackfillWorker loop end to end: a
+        // contact synced only via the list endpoint has a non-primary number
+        // that findByPhone can't match until getContact hydrates it.
+        coEvery { apiClient.listContacts(any(), any(), any(), any()) } returns Result.success(
+            com.mycorrhizal.crm.model.network.ContactsPage(
+                contacts = listOf(summary(1, "Dana White").copy(primaryPhone = "555-0100")),
+                nextCursor = "",
+            ),
+        )
+        repository.listContacts()
+        assertEquals(null, repository.findByPhone("555-0200"))
+        assertEquals(listOf(1), repository.getContactIdsMissingPhoneIndex(limit = 10))
+
+        coEvery { apiClient.getContact(1) } returns Result.success(
+            ContactRecordResponse(
+                id = 1,
+                uid = "u1",
+                card = Card(
+                    name = Name(full = "Dana White"),
+                    phones = listOf(
+                        com.mycorrhizal.crm.model.network.Phone(number = "555-0100"),
+                        com.mycorrhizal.crm.model.network.Phone(number = "555-0200"),
+                    ),
+                ),
+            ),
+        )
+
+        repository.getContact(1)
+
+        assertEquals(1, repository.findByPhone("555-0200")?.id)
+        assertTrue(repository.getContactIdsMissingPhoneIndex(limit = 10).isEmpty())
+    }
+
+    @Test
     fun `observeContacts surfaces cached summaries`() = runTest {
         db.cachedContactDao().upsertAll(
             listOf(

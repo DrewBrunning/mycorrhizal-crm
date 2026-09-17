@@ -132,4 +132,23 @@ interface CachedContactDao {
         """,
     )
     suspend fun findByEmail(email: String): CachedContact?
+
+    /**
+     * Issue #1122: ids of cached, non-deleted contacts that have a primary
+     * phone but have never had a full detail fetch (`card IS NULL`) — so their
+     * [CachedContact.phonesNormalized] only knows [CachedContact.primaryPhone]
+     * and a call/SMS from any other number they store can never match. Ordered
+     * by id so a bounded per-run consumer (see ContactPhoneIndexBackfillWorker)
+     * makes steady progress across repeated calls rather than re-picking the
+     * same rows.
+     */
+    @Query(
+        """
+        SELECT id FROM cached_contacts
+        WHERE deleted = 0 AND card IS NULL AND primaryPhone IS NOT NULL
+        ORDER BY id ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun getIdsMissingPhoneIndex(limit: Int): List<Int>
 }

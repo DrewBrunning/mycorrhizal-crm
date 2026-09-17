@@ -358,6 +358,9 @@ class ContactRepositoryImpl @Inject constructor(
             emit(dao.getById(id)?.toRecord())
         }
 
+    override suspend fun getContactIdsMissingPhoneIndex(limit: Int): List<Int> =
+        dao.getIdsMissingPhoneIndex(limit)
+
     /**
      * A list page's rows are summaries with null `card`/`crm`. Before
      * upserting, carry over the cached full detail for rows we already hold,

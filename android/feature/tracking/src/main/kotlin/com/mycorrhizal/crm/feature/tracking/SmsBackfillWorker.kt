@@ -44,32 +44,47 @@ class SmsBackfillWorker @AssistedInject constructor(
             return Result.success()
         }
 
-        val since = trackingSettings.lastSmsTimestamp()
-        val entries = SmsHistoryReader(applicationContext.contentResolver).readSentSince(since)
-        if (entries.isEmpty()) return Result.success()
+        val reader = SmsHistoryReader(applicationContext.contentResolver)
+        var since = trackingSettings.lastSmsTimestamp()
 
-        var maxTs = since
-        entries.forEach { entry ->
-            if (entry.timestampMillis > maxTs) maxTs = entry.timestampMillis
-            val number = entry.address ?: return@forEach
-            // Issue #1029: shared capture policy — an outgoing text to a number
-            // that maps to no cached contact is dropped (and counted), not
-            // staged. recordIfNew dedupes overlapping periodic + one-shot runs.
-            InteractionCapture.capture(
-                contactRepository = contactRepository,
-                pendingInteractionRepository = pendingInteractionRepository,
-                trackingSettings = trackingSettings,
-                kind = InteractionCapture.KIND_MESSAGE,
-                direction = InteractionCapture.DIR_OUTGOING,
-                number = number,
-                timestampMillis = entry.timestampMillis,
-                dedupe = true,
-            )
+        // Issue #1123: page forward through the backlog rather than taking a
+        // single newest-50 batch — readSentSince is now ASC, so each page's
+        // last row is its newest, and the watermark only ever advances to a
+        // row we actually processed. Bounded to MAX_PAGES_PER_RUN so a very
+        // large backlog (or a corrupted watermark) can't turn one run into an
+        // unbounded loop; a run that hits the cap picks up where it left off
+        // on the next periodic invocation.
+        var pages = 0
+        while (pages < MAX_PAGES_PER_RUN) {
+            val entries = reader.readSentSince(since, limit = PAGE_SIZE)
+            if (entries.isEmpty()) break
+            pages++
+
+            var maxTs = since
+            entries.forEach { entry ->
+                if (entry.timestampMillis > maxTs) maxTs = entry.timestampMillis
+                val number = entry.address ?: return@forEach
+                // Issue #1029: shared capture policy — an outgoing text to a number
+                // that maps to no cached contact is dropped (and counted), not
+                // staged. recordIfNew dedupes overlapping periodic + one-shot runs.
+                InteractionCapture.capture(
+                    contactRepository = contactRepository,
+                    pendingInteractionRepository = pendingInteractionRepository,
+                    trackingSettings = trackingSettings,
+                    kind = InteractionCapture.KIND_MESSAGE,
+                    direction = InteractionCapture.DIR_OUTGOING,
+                    number = number,
+                    timestampMillis = entry.timestampMillis,
+                    dedupe = true,
+                )
+            }
+
+            since = maxTs
+            trackingSettings.setLastSmsTimestamp(since)
+
+            if (entries.size < PAGE_SIZE) break // caught up
         }
 
-        // Advance the watermark past everything we saw so the next run is
-        // incremental (new outgoing texts only).
-        trackingSettings.setLastSmsTimestamp(maxTs)
         return Result.success()
     }
 
@@ -81,5 +96,7 @@ class SmsBackfillWorker @AssistedInject constructor(
 
     private companion object {
         const val TAG = "SmsBackfillWorker"
+        const val PAGE_SIZE = 50
+        const val MAX_PAGES_PER_RUN = 20
     }
 }

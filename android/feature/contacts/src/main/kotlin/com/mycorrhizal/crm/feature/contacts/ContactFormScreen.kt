@@ -239,13 +239,6 @@ fun ContactFormContent(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
-            value = state.nickname,
-            onValueChange = onNicknameChange,
-            label = { Text(stringResource(R.string.contact_nickname)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
 
         // M24: kind (human/animal) — the backend defaults to human; this makes it explicit.
         var kindMenuExpanded by remember { mutableStateOf(false) }
