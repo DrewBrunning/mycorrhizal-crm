@@ -6,6 +6,7 @@ import android.provider.Telephony
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -82,6 +83,32 @@ class SmsHistoryReaderTest {
         reader.readSentSince(sinceMillis = 0L, limit = 50)
 
         assertEquals("${Telephony.Sms.DATE} ASC LIMIT 50", sortOrder.captured)
+    }
+
+    @Test
+    fun `never queries the Inbox -- ADR 0019 (issue #1124) accepted gap, not a silent one`() {
+        // SmsReceiver's live broadcast is the only incoming-SMS capture path;
+        // this class's doc comment explains why it never reads the Inbox as a
+        // fallback (the broadcast and provider timestamp a message
+        // differently, and the outbox deletes synced rows, so no timestamp
+        // watermark can safely dedupe against what the broadcast already
+        // captured). ADR 0019 records the target fix -- an `_id` cursor,
+        // tracked as issue #1127 -- and accepts this gap until it ships. This
+        // pins the current behavior so a future change here has to touch the
+        // ADR rather than silently reintroducing an Inbox read.
+        val cursor = MatrixCursor(projection)
+        every {
+            contentResolver.query(Telephony.Sms.Sent.CONTENT_URI, projection, any(), any(), any())
+        } returns cursor
+
+        reader.readSentSince(sinceMillis = 0L)
+
+        verify(exactly = 0) {
+            contentResolver.query(Telephony.Sms.Inbox.CONTENT_URI, any(), any(), any(), any())
+        }
+        verify(exactly = 0) {
+            contentResolver.query(Telephony.Sms.CONTENT_URI, any(), any(), any(), any())
+        }
     }
 
     @Test
