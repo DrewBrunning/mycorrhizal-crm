@@ -562,6 +562,56 @@ func TestChangePassword_Succeeds(t *testing.T) {
 	assert.Nil(t, updated.PasswordResetRequestedAt)
 }
 
+// --- DEMO_MODE gating (issue #936: cfg.DemoMode, not os.Getenv) ----------
+
+func TestRequestPasswordReset_DemoModeDisabled(t *testing.T) {
+	cfg := config.Config{FrontendURL: "http://localhost:3000", DemoMode: true}
+
+	_, router := setupRouter()
+	router.POST("/password-reset/request", func(c *gin.Context) {
+		c.Set("validated", &models.PasswordResetRequestInput{Email: "reset@example.com"})
+		RequestPasswordReset(c, &cfg)
+	})
+
+	req, _ := http.NewRequest("POST", "/password-reset/request", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestConfirmPasswordReset_DemoModeDisabled(t *testing.T) {
+	_, router := setupRouter()
+	router.POST("/password-reset/confirm", func(c *gin.Context) {
+		c.Set("validated", &models.PasswordResetConfirmInput{Token: "irrelevant", Password: strongPasswordAlt})
+		ConfirmPasswordReset(c, &config.Config{DemoMode: true})
+	})
+
+	req, _ := http.NewRequest("POST", "/password-reset/confirm", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestChangePassword_DemoModeDisabled(t *testing.T) {
+	_, router := setupRouter()
+	router.POST("/change-password", func(c *gin.Context) {
+		c.Set("username", "irrelevant")
+		c.Set("validated", &models.ChangePasswordInput{
+			CurrentPassword: strongPassword,
+			NewPassword:     strongPasswordAnother,
+		})
+		ChangePassword(c, &config.Config{DemoMode: true})
+	})
+
+	req, _ := http.NewRequest("POST", "/change-password", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
 // --- HIBP breach check gating (issue #376) -------------------------------
 //
 // newHIBPServer builds an httptest.Server standing in for the real HIBP

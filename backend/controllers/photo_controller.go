@@ -111,7 +111,7 @@ func GetProfilePicture(c *gin.Context, cfg *config.Config) {
 
 func AddPhotoToContact(c *gin.Context, cfg *config.Config) {
 	// Check if demo mode is enabled - photo uploads are disabled in demo
-	if os.Getenv("DEMO_MODE") == "true" {
+	if cfg.DemoMode {
 		apperrors.AbortWithError(c, apperrors.ErrForbidden("Photo uploads are disabled in demo mode"))
 		return
 	}
