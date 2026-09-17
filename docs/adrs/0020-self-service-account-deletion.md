@@ -1,4 +1,4 @@
-# ADR 0019: Self-service account deletion
+# ADR 0020: Self-service account deletion
 
 - **Status:** accepted
 - **Date:** 2026-09-17
