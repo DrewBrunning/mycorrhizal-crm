@@ -557,6 +557,20 @@ method used per class of control, the four manual audits (handler scoping/IDOR, 
 found. The checklists say *what* the status is; the report says *how it was verified and when*. A
 re-verification adds a changelog row there rather than silently editing statuses.
 
+**That changelog row is also a release gate, not just a milestone one (issue #608).** `release.yml`
+refuses to push a release tag if the report's §10 carries no new row since the *previous release tag*
+— checked against `git describe --tags`, not against the milestone board. A milestone-gate closure
+(the `v0.8.x — Milestone gate` issues) does **not** automatically satisfy this: closing the gate is
+about that milestone's issues, while the release check looks at everything since the last tag,
+including anything that landed after the gate closed. **Do the §8 re-verification pass as part of
+closing each milestone gate**, not later at release-dispatch time — finding this out during an actual
+release dispatch forces a scramble (an emergency doc PR, or the `ack_asvs_current=<reason>` escape
+hatch, which is a recorded skip, not a fix). This is exactly what happened closing the `v0.8.4` gate
+(#985): the gate closed clean, but the release dispatch right after it failed on this check, because
+neither the gate nor the four commits that landed between gate-close and dispatch had added a row —
+fixed retroactively by pass 1.26 / PR #1110. If commits land between gate-closure and the actual
+release dispatch, redo the diff-review for just those before dispatching.
+
 Citations in those docs are gated, not trusted: `cd backend && go run ./cmd/citecheck` proves every
 `file:line` and test-name citation in `asvs-l2.md`/`masvs-l1.md`/`threat-model.md` still resolves and
 that no row is `satisfied` citing nothing. It runs on every PR (unfiltered by path — moving code is
