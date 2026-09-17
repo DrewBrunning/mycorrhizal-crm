@@ -66,10 +66,11 @@ title=""
 root_len=-1
 deadline=$(($(date +%s) + 15))
 while [ "$(date +%s)" -lt "$deadline" ]; do
-  title="$(curl -fsS "${base}/session/${session_id}/title" | python3 -c 'import json,sys; print(json.load(sys.stdin)["value"])')"
-  root_len="$(curl -fsS -X POST "${base}/session/${session_id}/execute/sync" -H 'Content-Type: application/json' \
-    -d '{"script":"var r = document.getElementById(\"root\"); return r ? r.innerHTML.length : -1;","args":[]}' \
-    | python3 -c 'import json,sys; print(json.load(sys.stdin)["value"])')"
+  title_resp="$(curl -fsS "${base}/session/${session_id}/title")"
+  title="$(echo "$title_resp" | python3 -c 'import json,sys; print(json.load(sys.stdin)["value"])')"
+  root_len_resp="$(curl -fsS -X POST "${base}/session/${session_id}/execute/sync" -H 'Content-Type: application/json' \
+    -d '{"script":"var r = document.getElementById(\"root\"); return r ? r.innerHTML.length : -1;","args":[]}')"
+  root_len="$(echo "$root_len_resp" | python3 -c 'import json,sys; print(json.load(sys.stdin)["value"])')"
   if [ "$title" != "Mycorrhizal CRM" ] && [ -n "$title" ] && [ "$root_len" -gt 0 ]; then
     break
   fi
