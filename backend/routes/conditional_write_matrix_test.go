@@ -293,6 +293,7 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/password-reset/request":              exempt(reasonAuth),
 		"POST /api/v1/password-reset/confirm":              exempt(reasonAuth),
 		"POST /api/v1/users/change-password":               exempt(reasonAuth),
+		"DELETE /api/v1/account":                           exempt(reasonAuth),
 		"PATCH /api/v1/users/language":                     exempt(reasonAuth),
 		"PATCH /api/v1/users/date-format":                  exempt(reasonAuth),
 		"PATCH /api/v1/users/enabled-contact-fields":       exempt(reasonAuth),

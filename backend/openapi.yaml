@@ -883,6 +883,65 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  # --- Self-service account deletion (issue #972) ---
+  /account:
+    delete:
+      summary: Delete the authenticated user's own account and all their data
+      operationId: deleteOwnAccount
+      description: >
+        The self-service counterpart to admin-only DELETE
+        /admin/users/{id}, which refuses self-deletion. Runs the same
+        cascade-delete transaction, scoped to the caller. Requires
+        current_password, plus a valid totp_code if the caller has 2FA
+        enabled. If the caller is the only admin and other user rows exist,
+        deleting alone would strand them with no admin forever, so
+        promote_user_id (naming another existing user to promote to admin
+        first) is required in that case — the response is 409 with the
+        eligible candidates until a valid one is supplied. A genuinely
+        single-user instance (no other users at all) or a caller who is not
+        the only admin deletes directly, no promotion needed. Clears the
+        session cookie on success; no audit_events row is recorded for this
+        operation (actor and target are the same row, which the FK to
+        users.id cannot outlive).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteAccountInput"
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Missing or incorrect current_password, or missing/invalid totp_code when 2FA is enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Account deletion is disabled in demo mode.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: >
+            Caller is the only admin and other users exist; error.details.candidates
+            lists the other users (id + username) eligible for promote_user_id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /users/directory:
     get:
       summary: List every other user on the instance (id + username only)
@@ -10340,6 +10399,21 @@ components:
       properties:
         current_password: { type: string }
         new_password: { type: string, minLength: 8, example: "correct-horse-battery-staple-9" }
+    DeleteAccountInput:
+      type: object
+      required: [current_password]
+      properties:
+        current_password: { type: string }
+        totp_code:
+          type: string
+          description: Required only if the caller has 2FA enabled.
+        promote_user_id:
+          type: integer
+          description: >
+            Required only when the caller is the only admin and other users
+            exist on the instance (see the 409 response) — the id of the
+            other user to promote to admin before the caller's own account
+            is deleted.
     UpdateLanguageInput:
       type: object
       required: [language]

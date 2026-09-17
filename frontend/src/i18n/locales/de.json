@@ -16,8 +16,8 @@
     },
     "startingUp": {
       "loading": "Wird geladen",
-      "checking": "Verbindung zum Server wird hergestellt \u2026",
-      "message": "Der Server startet noch \u2014 das ist normal, während ein Update angewendet wird. Die App wird automatisch geladen.",
+      "checking": "Verbindung zum Server wird hergestellt …",
+      "message": "Der Server startet noch — das ist normal, während ein Update angewendet wird. Die App wird automatisch geladen.",
       "retry": "Erneut versuchen"
     },
     "submitSearch": "Suche absenden"
@@ -1122,6 +1122,22 @@
         "copied": "Kopiert!",
         "done": "Fertig"
       }
+    },
+    "deleteAccount": {
+      "title": "Konto löschen",
+      "description": "Löscht Ihr Konto und alle Ihre Daten dauerhaft – Kontakte, Aktivitäten, Notizen, Erinnerungen, alles. Dies kann nicht widerrufen werden.",
+      "deleteButton": "Mein Konto löschen",
+      "dialogTitle": "Konto löschen?",
+      "dialogWarning": "Dies löscht Ihr Konto und alle Ihre Daten dauerhaft. Es gibt kein Zurück.",
+      "currentPasswordLabel": "Aktuelles Passwort",
+      "totpCodeLabel": "Bestätigungscode",
+      "totpCodeHelp": "6-stelliger Code aus Ihrer Authentifizierungs-App.",
+      "promotionNotice": "Sie sind der einzige Administrator dieser Instanz, und es existieren noch weitere Konten. Wählen Sie, wer neuer Administrator wird, bevor Ihr Konto gelöscht werden kann.",
+      "promoteUserLabel": "Zum Administrator befördern",
+      "confirmButton": "Mein Konto dauerhaft löschen",
+      "deleting": "Wird gelöscht...",
+      "error": "Ihr Konto konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.",
+      "success": "Ihr Konto und alle Ihre Daten wurden gelöscht."
     },
     "export": {
       "title": "Daten exportieren",

@@ -76,7 +76,7 @@ var Scopes = []Scope{
 	{
 		Name:           "controllers-delete-cascade",
 		PackageDir:     "controllers",
-		TargetFiles:    []string{"contact_controller.go", "admin_user_controller.go"},
+		TargetFiles:    []string{"contact_controller.go", "admin_user_controller.go", "user_delete_cascade.go"},
 		Efficacy:       90,
 		MutantCoverage: 90,
 		Reason: "baseline 2026-09-15 (workers=4, timeout-coefficient=30, " +
@@ -85,7 +85,14 @@ var Scopes = []Scope{
 			"files (CLAUDE.md backend trap 6): 229 killed / 0 lived / 5 not " +
 			"covered / 0 timed out (efficacy 100.0%, mcover 97.9%); floor " +
 			"set below measured to absorb CI-runner timeout variance " +
-			"(6m26s locally, all covered mutants killed)",
+			"(6m26s locally, all covered mutants killed). Issue #972 " +
+			"extracted the shared cascade body itself into " +
+			"user_delete_cascade.go (called from admin_user_controller." +
+			"go's DeleteUser, now also from user_controller.go's " +
+			"DeleteOwnAccount) and added that file here so the checklist " +
+			"this scope targets tracks where the mechanics actually " +
+			"live; a pure extraction with no behavior change, so the " +
+			"floor is carried forward rather than re-measured",
 	},
 	{
 		Name:       "services-import",

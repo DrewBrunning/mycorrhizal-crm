@@ -24,3 +24,4 @@ ticket backlog moved to GitHub Issues.
 | [0016](0016-unicode-normalization-and-search-semantics.md) | Unicode normalization and search semantics | accepted |
 | [0017](0017-server-side-session-store.md) | Server-side session records — per-device revocation and idle timeout | accepted |
 | [0018](0018-atomic-revision-compare-and-swap.md) | Atomic revision compare-and-swap for concurrent writes | accepted |
+| [0019](0019-self-service-account-deletion.md) | Self-service account deletion | accepted |

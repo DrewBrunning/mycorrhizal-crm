@@ -1150,6 +1150,22 @@
         "done": "Done"
       }
     },
+    "deleteAccount": {
+      "title": "Delete account",
+      "description": "Permanently delete your account and all your data — contacts, activities, notes, reminders, everything. This cannot be undone.",
+      "deleteButton": "Delete my account",
+      "dialogTitle": "Delete your account?",
+      "dialogWarning": "This permanently deletes your account and all your data. There is no undo.",
+      "currentPasswordLabel": "Current password",
+      "totpCodeLabel": "Verification code",
+      "totpCodeHelp": "6-digit code from your authenticator app.",
+      "promotionNotice": "You are the only admin on this instance, and other accounts still exist. Choose who becomes the new admin before your account can be deleted.",
+      "promoteUserLabel": "Promote to admin",
+      "confirmButton": "Permanently delete my account",
+      "deleting": "Deleting...",
+      "error": "We couldn't delete your account. Please try again.",
+      "success": "Your account and all its data have been deleted."
+    },
     "export": {
       "title": "Export Data",
       "description": "Download all your data as a CSV file. This includes contacts, activities, notes, reminders, and relationships. Profile photos are not included.",

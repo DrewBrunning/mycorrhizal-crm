@@ -42,6 +42,7 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -410,6 +411,81 @@ func TestDeleteCascadeCoverage_DeleteUserSweepsEveryDeclaredUserTable(t *testing
 
 	admin := seedCascadeUser(t, db, "cascade-admin")
 	target := seedCascadeUser(t, db, "cascade-target")
+	seeded := seedUserCascadeFixtures(t, db, admin, target)
+
+	// Drive the real DeleteUser handler.
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", admin.ID)
+		c.Next()
+	})
+	router.DELETE("/users/:id", DeleteUser)
+	req, _ := http.NewRequest("DELETE", "/users/"+strconv.FormatUint(uint64(target.ID), 10), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, "DeleteUser: %s", w.Body.String())
+
+	// The admin's own rows must survive — DeleteUser only sweeps the target.
+	var adminCount int64
+	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", admin.ID).Count(&adminCount).Error)
+	require.Zero(t, adminCount, "admin has no contacts seeded; target sweep must not touch other users")
+
+	assertEmptied(t, db, seeded, "after DeleteUser")
+}
+
+// TestDeleteCascadeCoverage_DeleteOwnAccountSweepsEveryDeclaredUserTable is
+// TestDeleteCascadeCoverage_DeleteUserSweepsEveryDeclaredUserTable's
+// self-service counterpart (issue #972): DeleteOwnAccount shares the exact
+// same deleteUserCascade helper as the admin-only DeleteUser, so the same
+// completeness sweep must hold when the account deletes itself, not just
+// when an admin deletes a peer. seedUserCascadeFixtures is shared with that
+// test so a table added to one sweep can never silently drift from the
+// other.
+func TestDeleteCascadeCoverage_DeleteOwnAccountSweepsEveryDeclaredUserTable(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	db := dbtest.New(t)
+	db.Logger = logger.Default.LogMode(logger.Silent)
+	t.Cleanup(func() {
+		if sqlDB, err := db.DB(); err == nil {
+			_ = sqlDB.Close()
+		}
+	})
+
+	admin := seedCascadeUser(t, db, "cascade-own-admin")
+	target := seedCascadeUser(t, db, "cascade-own-target")
+	seeded := seedUserCascadeFixtures(t, db, admin, target)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", target.ID)
+		c.Set("cfg", config.Config{})
+		c.Next()
+	})
+	router.DELETE("/account", func(c *gin.Context) {
+		DeleteOwnAccount(c, &config.Config{})
+	})
+	req := sessionRequest("DELETE", "/account", map[string]string{"current_password": strongPassword}, "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, "DeleteOwnAccount: %s", w.Body.String())
+
+	// The admin's own rows must survive — DeleteOwnAccount only sweeps the
+	// caller (target), never the admin who merely happens to co-exist.
+	var adminCount int64
+	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", admin.ID).Count(&adminCount).Error)
+	require.Zero(t, adminCount, "admin has no contacts seeded; self-delete sweep must not touch other users")
+
+	assertEmptied(t, db, seeded, "after DeleteOwnAccount")
+}
+
+// seedUserCascadeFixtures seeds one row in every table DeleteUser/
+// DeleteOwnAccount must sweep for target (plus a ContactShare naming admin as
+// the other party), and returns the seedRow list both sweep tests assert
+// against before and after their respective delete call.
+func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.User) []seedRow {
+	t.Helper()
 
 	contact := models.Contact{UserID: target.ID, Firstname: "User", Lastname: "Sweep"}
 	require.NoError(t, db.Create(&contact).Error)
@@ -531,25 +607,7 @@ func TestDeleteCascadeCoverage_DeleteUserSweepsEveryDeclaredUserTable(t *testing
 
 	assertSeeded(t, db, seeded)
 
-	// Drive the real DeleteUser handler.
-	router := gin.New()
-	router.Use(func(c *gin.Context) {
-		c.Set("db", db)
-		c.Set("userID", admin.ID)
-		c.Next()
-	})
-	router.DELETE("/users/:id", DeleteUser)
-	req, _ := http.NewRequest("DELETE", "/users/"+strconv.FormatUint(uint64(target.ID), 10), nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-	require.Equal(t, http.StatusOK, w.Code, "DeleteUser: %s", w.Body.String())
-
-	// The admin's own rows must survive — DeleteUser only sweeps the target.
-	var adminCount int64
-	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", admin.ID).Count(&adminCount).Error)
-	require.Zero(t, adminCount, "admin has no contacts seeded; target sweep must not touch other users")
-
-	assertEmptied(t, db, seeded, "after DeleteUser")
+	return seeded
 }
 
 // seedRow is one table's "must be seeded before, and emptied after, deletion".

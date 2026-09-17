@@ -16,8 +16,8 @@
     },
     "startingUp": {
       "loading": "Caricamento",
-      "checking": "Connessione al server\u2026",
-      "message": "Il server si sta ancora avviando \u2014 è normale mentre applica un aggiornamento. L'app verrà caricata automaticamente.",
+      "checking": "Connessione al server…",
+      "message": "Il server si sta ancora avviando — è normale mentre applica un aggiornamento. L'app verrà caricata automaticamente.",
       "retry": "Riprova"
     },
     "submitSearch": "Invia ricerca"
@@ -1122,6 +1122,22 @@
         "copied": "Copiato!",
         "done": "Fatto"
       }
+    },
+    "deleteAccount": {
+      "title": "Elimina account",
+      "description": "Elimina definitivamente il tuo account e tutti i tuoi dati: contatti, attività, note, promemoria, tutto. Questa azione non può essere annullata.",
+      "deleteButton": "Elimina il mio account",
+      "dialogTitle": "Eliminare il tuo account?",
+      "dialogWarning": "Questa azione elimina definitivamente il tuo account e tutti i tuoi dati. Non è possibile annullarla.",
+      "currentPasswordLabel": "Password attuale",
+      "totpCodeLabel": "Codice di verifica",
+      "totpCodeHelp": "Codice a 6 cifre dalla tua app di autenticazione.",
+      "promotionNotice": "Sei l'unico amministratore di questa istanza e esistono ancora altri account. Scegli chi diventerà il nuovo amministratore prima che il tuo account possa essere eliminato.",
+      "promoteUserLabel": "Promuovi ad amministratore",
+      "confirmButton": "Elimina definitivamente il mio account",
+      "deleting": "Eliminazione in corso...",
+      "error": "Non è stato possibile eliminare il tuo account. Riprova.",
+      "success": "Il tuo account e tutti i tuoi dati sono stati eliminati."
     },
     "export": {
       "title": "Esporta Dati",

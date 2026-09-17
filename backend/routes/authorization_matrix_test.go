@@ -267,6 +267,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/users/enabled-contact-fields":         {class: classProtected},
 		"PATCH /api/v1/users/enabled-contact-fields":       {class: classProtected},
 		"GET /api/v1/users/me":                             {class: classProtected},
+		"DELETE /api/v1/account":                           {class: classProtected},
 		"PATCH /api/v1/users/me/self-contact":              {class: classProtected},
 		"GET /api/v1/users/2fa/status":                     {class: classProtected},
 		"POST /api/v1/users/2fa/setup":                     {class: classProtected},

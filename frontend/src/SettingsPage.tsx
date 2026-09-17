@@ -65,6 +65,7 @@ import { updateDateFormat, updateLanguage, updateSelfContact } from './api/users
 import { fetchAndCacheUserInfo, isAdmin } from './auth';
 import AppDialog from './components/AppDialog';
 import BuildVersionCard from './components/BuildVersionCard';
+import DeleteAccountSettings from './components/DeleteAccountSettings';
 import ImmichSettings from './components/ImmichSettings';
 import LinkFieldTypesSettings from './components/LinkFieldTypesSettings';
 import NextcloudSettings from './components/NextcloudSettings';
@@ -963,6 +964,9 @@ export default function SettingsPage() {
 
       {/* Which build is running -- what a user quotes in a bug report. */}
       <BuildVersionCard />
+
+      {/* Issue #972: self-service account deletion, last as the danger zone. */}
+      <DeleteAccountSettings />
 
       {/* The full operational snapshot lives on its own admin page (issue
           #649); admins get a cross-link from here, non-admins never see it. */}
