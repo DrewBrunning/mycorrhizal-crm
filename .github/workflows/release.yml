@@ -730,24 +730,100 @@ jobs:
           helper='!f() { echo "username=x-access-token"; echo "password=${GH_APP_TOKEN}"; }; f'
           git -c credential.helper="$helper" push origin "refs/tags/${VERSION}"
 
-      - name: Attach release metadata to the Release
+      # docker-publish's create-release job needs [validate-tag, release-gate,
+      # build-android-apk] -- it doesn't fire right after the tag push, it
+      # fires after the slowest leg of the whole pipeline (the Android APK
+      # build) finishes. Observed real end-to-end docker-publish.yml
+      # durations: 1h20m, 1h35m, 53m, 1h17m, 1h8m. Give this 120 minutes
+      # total (healthy overhead over the ~1h35m worst case seen so far, for
+      # slow GitHub-hosted-runner days) rather than the few minutes this
+      # used to give it, which made this step fail on every real release.
+      #
+      # A single 120-minute poll on one token would just trade that bug for
+      # the one the "Re-mint GitHub App token" step above already exists to
+      # avoid: GitHub App installation tokens are hard-capped at ~1h by
+      # GitHub itself, so the token would silently expire mid-poll on most
+      # real releases (3 of the 5 durations above exceed 1h) -- `gh release
+      # view`/`gh release upload` would then fail auth on every remaining
+      # attempt, and (since that failure is swallowed by the `if`) the loop
+      # would run out the clock and print the "not visible" warning even
+      # though the Release had appeared, just not attachable with an expired
+      # token. Split the 120 minutes into three 40-minute segments instead,
+      # each starting with its own freshly-minted token, comfortably inside
+      # the 1h cap. Segment 1 reuses app-token-2, minted moments ago
+      # immediately above for "Tag and push".
+      - name: Attach release metadata to the Release (segment 1 of 3, up to 40m)
+        id: attach-1
         if: ${{ !inputs.dry_run }}
         env:
           VERSION: ${{ env.VERSION }}
           GH_TOKEN: ${{ steps.app-token-2.outputs.token }}
         run: |
           set -eu
-          # docker-publish's create-release job makes the Release from the tag
-          # we just pushed; give it a few minutes, then attach the metadata.
-          for _ in $(seq 1 30); do
+          for _ in $(seq 1 80); do
+            if gh release view "$VERSION" >/dev/null 2>&1; then
+              gh release upload "$VERSION" release-metadata.json --clobber
+              echo "Attached release-metadata.json to $VERSION."
+              echo "found=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "found=false" >> "$GITHUB_OUTPUT"
+
+      - name: Re-mint GitHub App token (segment 2 of 3 -- segment 1's token is now ~40m old)
+        id: app-token-3
+        if: ${{ !inputs.dry_run && steps.attach-1.outputs.found != 'true' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+
+      - name: Attach release metadata to the Release (segment 2 of 3, up to 40m)
+        id: attach-2
+        if: ${{ !inputs.dry_run && steps.attach-1.outputs.found != 'true' }}
+        env:
+          VERSION: ${{ env.VERSION }}
+          GH_TOKEN: ${{ steps.app-token-3.outputs.token }}
+        run: |
+          set -eu
+          for _ in $(seq 1 80); do
+            if gh release view "$VERSION" >/dev/null 2>&1; then
+              gh release upload "$VERSION" release-metadata.json --clobber
+              echo "Attached release-metadata.json to $VERSION."
+              echo "found=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "found=false" >> "$GITHUB_OUTPUT"
+
+      - name: Re-mint GitHub App token (segment 3 of 3 -- segment 2's token is now ~40m old)
+        id: app-token-4
+        if: ${{ !inputs.dry_run && steps.attach-2.outputs.found != 'true' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+
+      - name: Attach release metadata to the Release (segment 3 of 3, up to 40m)
+        if: ${{ !inputs.dry_run && steps.attach-2.outputs.found != 'true' }}
+        env:
+          VERSION: ${{ env.VERSION }}
+          GH_TOKEN: ${{ steps.app-token-4.outputs.token }}
+        run: |
+          set -eu
+          for _ in $(seq 1 80); do
             if gh release view "$VERSION" >/dev/null 2>&1; then
               gh release upload "$VERSION" release-metadata.json --clobber
               echo "Attached release-metadata.json to $VERSION."
               exit 0
             fi
-            sleep 20
+            sleep 30
           done
-          echo "::warning::Release $VERSION not visible after 10 minutes; release-metadata.json is kept as a workflow artifact only. Attach it manually once docker-publish finishes."
+          echo "::warning::Release $VERSION not visible after 120 minutes; release-metadata.json is kept as a workflow artifact only. Attach it manually once docker-publish finishes."
 
       - name: Summary
         if: ${{ !inputs.dry_run }}
