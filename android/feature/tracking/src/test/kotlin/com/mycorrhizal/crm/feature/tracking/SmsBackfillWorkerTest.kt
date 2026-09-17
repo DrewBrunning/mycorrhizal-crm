@@ -1,7 +1,12 @@
 package com.mycorrhizal.crm.feature.tracking
 
 import android.app.Application
+import android.content.ContentProvider
+import android.content.ContentValues
 import android.content.Context
+import android.database.Cursor
+import android.database.MatrixCursor
+import android.net.Uri
 import android.provider.Telephony
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.ContactRepository
@@ -21,6 +26,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import org.robolectric.fakes.RoboCursor
+import org.robolectric.shadows.ShadowContentResolver
 
 /**
  * SmsBackfillWorker builds its own SmsHistoryReader(applicationContext.contentResolver)
@@ -182,5 +188,76 @@ class SmsBackfillWorkerTest {
         worker(pendingInteractions, contacts, settings).doWork()
 
         coVerify(exactly = 0) { pendingInteractions.recordIfNew(any()) }
+    }
+
+    /**
+     * Regression test for #1123. RoboCursor/setCursor always returns the same
+     * static cursor for a URI, which can't model a real backlog where a second
+     * query (after the watermark advances) must return a *different* page —
+     * so this stubs a real ContentProvider that serves `date > since ORDER BY
+     * date ASC LIMIT n` against an in-memory table, mirroring what the real
+     * SMS provider does. Hand-verified: reverting SmsHistoryReader's sort back
+     * to `DATE DESC` makes this test fail (only the newest 50 of the 75 rows
+     * get recorded, and the oldest row is never seen).
+     */
+    private class FakeSentSmsProvider(private val data: List<Pair<String, Long>>) : ContentProvider() {
+
+        override fun onCreate() = true
+
+        override fun query(
+            uri: Uri,
+            projection: Array<out String>?,
+            selection: String?,
+            selectionArgs: Array<out String>?,
+            sortOrder: String?,
+        ): Cursor {
+            // Honors ASC/DESC from sortOrder like a real SQL provider would, so this
+            // fake is sensitive to a regression back to the old DESC query (which
+            // would return the newest `limit` rows instead of the oldest).
+            val since = selectionArgs?.firstOrNull()?.toLongOrNull() ?: 0L
+            val descending = sortOrder?.contains("DESC") == true
+            val limit = sortOrder?.substringAfterLast("LIMIT ")?.trim()?.toIntOrNull() ?: Int.MAX_VALUE
+            val matching = data.filter { it.second > since }
+            val ordered = if (descending) matching.sortedByDescending { it.second } else matching.sortedBy { it.second }
+            val page = ordered.take(limit)
+            return MatrixCursor(arrayOf(Telephony.Sms.ADDRESS, Telephony.Sms.DATE)).apply {
+                page.forEach { (address, date) -> addRow(arrayOf<Any?>(address, date)) }
+            }
+        }
+
+        override fun getType(uri: Uri): String? = null
+        override fun insert(uri: Uri, values: ContentValues?): Uri? = null
+        override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int = 0
+        override fun update(
+            uri: Uri,
+            values: ContentValues?,
+            selection: String?,
+            selectionArgs: Array<out String>?,
+        ): Int = 0
+    }
+
+    @Test
+    fun `pages through a backlog of more than one page instead of skipping the older half`() = runTest {
+        // 75 rows, oldest at 1_000L, newest at 75_000L — more than the 50-row page size.
+        val rows = (1..75).map { i -> "+1555000${i.toString().padStart(4, '0')}" to i * 1_000L }
+        val provider = FakeSentSmsProvider(rows)
+        provider.onCreate()
+        ShadowContentResolver.registerProviderInternal("sms", provider)
+
+        val pendingInteractions = mockk<PendingInteractionRepository>(relaxed = true)
+        val contacts = mockk<ContactRepository>(relaxed = true)
+        coEvery { contacts.findByPhone(any()) } returns ContactSummary(id = 1)
+        val settings = mockk<TrackingSettingsRepository>(relaxed = true)
+        coEvery { settings.smsTrackingEnabled() } returns true
+        coEvery { settings.lastSmsTimestamp() } returns 0L
+
+        worker(pendingInteractions, contacts, settings).doWork()
+
+        // Every row — including the oldest, which a DESC/newest-50 query would
+        // have permanently skipped — gets staged.
+        coVerify(exactly = 75) { pendingInteractions.recordIfNew(any()) }
+        coVerify { pendingInteractions.recordIfNew(match { it.timestampMillis == 1_000L }) }
+        coVerify { pendingInteractions.recordIfNew(match { it.timestampMillis == 75_000L }) }
+        coVerify { settings.setLastSmsTimestamp(75_000L) }
     }
 }

@@ -34,6 +34,9 @@ object TrackingWorkerScheduler {
     /** Periodic outgoing-SMS backfill. */
     const val UNIQUE_SMS_BACKFILL = "sms-backfill"
 
+    /** Periodic contact phone-index backfill (issue #1122). */
+    const val UNIQUE_CONTACT_PHONE_INDEX_BACKFILL = "contact-phone-index-backfill"
+
     /** One-shot immediate run after a call-tracking grant / phone-state event
      *  (shared with PhoneStateReceiver). */
     const val UNIQUE_CALL_LOG_SYNC = "call-log-sync"
@@ -47,6 +50,9 @@ object TrackingWorkerScheduler {
      *  by this cadence). */
     private const val CALL_LOG_CATCH_UP_MINUTES = 30L
     private const val SMS_BACKFILL_MINUTES = 15L
+
+    /** Issue #1122: low-priority, bounded-batch — 30 min is plenty. */
+    private const val CONTACT_PHONE_INDEX_BACKFILL_MINUTES = 30L
 
     fun schedulePeriodic(context: Context) {
         val workManager = WorkManager.getInstance(context)
@@ -113,6 +119,19 @@ object TrackingWorkerScheduler {
             UNIQUE_SMS_BACKFILL,
             ExistingPeriodicWorkPolicy.UPDATE,
             smsBackfill,
+        )
+
+        // Issue #1122: hydrate cached contacts' full multi-phone index in the
+        // background so a non-primary number can match without the user
+        // having opened that contact's detail screen.
+        val contactPhoneIndexBackfill = PeriodicWorkRequestBuilder<ContactPhoneIndexBackfillWorker>(
+            CONTACT_PHONE_INDEX_BACKFILL_MINUTES,
+            TimeUnit.MINUTES,
+        ).build()
+        workManager.enqueueUniquePeriodicWork(
+            UNIQUE_CONTACT_PHONE_INDEX_BACKFILL,
+            ExistingPeriodicWorkPolicy.UPDATE,
+            contactPhoneIndexBackfill,
         )
     }
 

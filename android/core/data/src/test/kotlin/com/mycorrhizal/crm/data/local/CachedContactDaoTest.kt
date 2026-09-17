@@ -318,6 +318,37 @@ class CachedContactDaoTest {
     }
 
     @Test
+    fun `getIdsMissingPhoneIndex returns only rows never detail-fetched`() = runBlocking {
+        // Issue #1122: a row with a card (a prior full detail fetch already
+        // populated the full multi-phone index) is not "missing" even though
+        // some other row hasn't been fetched yet.
+        val card = Card(name = com.mycorrhizal.crm.model.network.Name(full = "Dana"))
+        dao.upsertAll(
+            listOf(
+                testContact(1, "Alice").copy(primaryPhone = "555-0100"),
+                testContact(2, "Bob").copy(primaryPhone = "555-0200", card = card),
+                testContact(3, "No Phone"),
+                testContact(4, "Deleted").copy(primaryPhone = "555-0400", deleted = true),
+            ),
+        )
+
+        val result = dao.getIdsMissingPhoneIndex(limit = 10)
+
+        assertEquals(listOf(1), result)
+    }
+
+    @Test
+    fun `getIdsMissingPhoneIndex is bounded by limit and ordered by id`() = runBlocking {
+        dao.upsertAll(
+            (1..5).map { id -> testContact(id, "Contact $id").copy(primaryPhone = "555-000$id") },
+        )
+
+        val result = dao.getIdsMissingPhoneIndex(limit = 3)
+
+        assertEquals(listOf(1, 2, 3), result)
+    }
+
+    @Test
     fun `card and crm survive the round trip via converters`() = runBlocking {
         val card = Card(name = com.mycorrhizal.crm.model.network.Name(full = "Alice"), emails = listOf(Email(address = "a@x.com")))
         val crm = CRMEnvelope(circles = listOf("friends"))
