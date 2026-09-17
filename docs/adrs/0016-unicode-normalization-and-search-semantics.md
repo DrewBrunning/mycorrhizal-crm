@@ -51,6 +51,27 @@ stored bytes stayed whatever the client sent.
 5. **Normalization scope is display text only.** UIDs, URIs, opaque Passthrough/Localizations bytes,
    timestamps, language tags, and closed-vocabulary tokens are preserved verbatim. Normalizing a UID
    would orphan a contact's `vcard_uid` and break sync identity.
+6. **Bidi-control, zero-width, and script-confusable characters are preserved verbatim, deliberately
+   (issue #945).** `NormalizeRecord` applies NFC only; it does not strip RTL-override characters
+   (U+202E and family), zero-width characters (U+200B/U+200D/U+FEFF), or homoglyph/confusable
+   characters from the same display-text fields decision #5 scopes. This is a considered acceptance,
+   not an oversight — extending to the adversarial corpus proof points
+   (`docs/adversarial-fixtures/enc-rtl-override.vcf`, `enc-zero-width.vcf`, both tier `preserve` in
+   `backend/internal/adversarial/manifest.go`):
+   - Stripping would contradict decision #5's own "preserved verbatim" framing and ADR-0002's
+     "preserve, don't reject" policy — these fixtures are locked proof that nothing lands and then
+     silently loses bytes.
+   - No confusables/homoglyph library exists anywhere in this project's dependency graph. A fix that
+     only strips bidi-control/zero-width characters (the tractable half, via stdlib `unicode.Cf`)
+     while leaving confusable-script spoofing completely unaddressed would document a false sense of
+     completeness.
+   - **Display-spoofing defense belongs at the rendering layer, not the data layer.** The data layer's
+     job under this ADR is lossless preservation; a contact name that renders reordered or
+     visually-confusable is a frontend rendering concern (e.g. Unicode bidi isolation, or flagging
+     such characters in the UI) — not filed as a tracked issue yet, since no frontend work has been
+     scoped for it.
+
+   See `docs/security/asvs-l2.md` P9 for the ASVS-mapped record of this decision.
 
 ## Consequences
 

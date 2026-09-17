@@ -2,7 +2,11 @@ package controllers
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
+	"image"
+	"image/color"
+	"image/jpeg"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -123,6 +127,83 @@ func TestAttachmentRoundTrip(t *testing.T) {
 	require.Equal(t, http.StatusOK, del.Code)
 	_, err = os.Stat(filepath.Join(dir, att.StoredName))
 	assert.True(t, os.IsNotExist(err), "deleting an attachment must remove its file")
+}
+
+// jpegWithFakeExif builds a small valid JPEG with a synthetic APP1 segment
+// signed "Exif\x00\x00" spliced in right after the SOI marker — a stand-in
+// for a camera's GPS/serial metadata block.
+func jpegWithFakeExif(t *testing.T) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 4, 4))
+	for y := 0; y < 4; y++ {
+		for x := 0; x < 4; x++ {
+			img.Set(x, y, color.RGBA{R: uint8(x * 60), G: uint8(y * 60), B: 128, A: 255})
+		}
+	}
+	var buf bytes.Buffer
+	require.NoError(t, jpeg.Encode(&buf, img, &jpeg.Options{Quality: 90}))
+	plain := buf.Bytes()
+
+	payload := append([]byte("Exif\x00\x00"), bytes.Repeat([]byte{0xAB}, 40)...) // stand-in GPS IFD bytes
+	lenBytes := make([]byte, 2)
+	binary.BigEndian.PutUint16(lenBytes, uint16(len(payload)+2))
+
+	out := make([]byte, 0, len(plain)+len(payload)+4)
+	out = append(out, plain[:2]...) // SOI
+	out = append(out, 0xFF, 0xE1)   // APP1 marker
+	out = append(out, lenBytes...)
+	out = append(out, payload...)
+	out = append(out, plain[2:]...)
+	return out
+}
+
+// TestAttachmentUploadStripsJPEGExif is the end-to-end proof for issue #945:
+// a JPEG carrying EXIF/GPS metadata has it stripped by the time it reaches
+// disk, exercised through the real upload handler (not the stripper unit
+// tests in package attachments).
+func TestAttachmentUploadStripsJPEGExif(t *testing.T) {
+	db, router, user, _ := setupAttachmentRouter(t)
+	contact := models.Contact{UserID: user.ID, Firstname: "Ada"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	withExif := jpegWithFakeExif(t)
+	require.Contains(t, string(withExif), "Exif", "fixture sanity check: the pre-upload bytes do carry an Exif segment")
+
+	rec := uploadFile(t, router, itoa2(contact.ID), "photo.jpg", "image/jpeg", withExif)
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	att := reloadAttachment(t, db, decodeAttachment(t, rec).ID)
+
+	dl := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/attachments/"+itoa2(att.ID)+"/download", nil)
+	router.ServeHTTP(dl, req)
+	require.Equal(t, http.StatusOK, dl.Code)
+
+	assert.NotContains(t, dl.Body.String(), "Exif", "EXIF must be stripped before the file reaches disk")
+	assert.Less(t, int64(dl.Body.Len()), int64(len(withExif)), "stripped file must be smaller than the upload")
+	assert.Equal(t, int64(dl.Body.Len()), att.SizeBytes, "the recorded size must match the stored (stripped) bytes, not the upload size")
+}
+
+// TestAttachmentUploadNonImagePassesThroughUnchanged proves the EXIF-strip
+// dispatch (issue #945) only touches JPEG/PNG — a non-image attachment (and,
+// by the same dispatch, an unstripped format like HEIC) round-trips
+// byte-identical. TestAttachmentRoundTrip already pins this for PDF; this
+// makes the "only images are touched" scope boundary explicit.
+func TestAttachmentUploadNonImagePassesThroughUnchanged(t *testing.T) {
+	db, router, user, _ := setupAttachmentRouter(t)
+	contact := models.Contact{UserID: user.ID, Firstname: "Ada"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	data := []byte("just some plain text content, not an image at all")
+	rec := uploadFile(t, router, itoa2(contact.ID), "notes.txt", "text/plain", data)
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	att := reloadAttachment(t, db, decodeAttachment(t, rec).ID)
+	assert.Equal(t, int64(len(data)), att.SizeBytes)
+
+	dl := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/attachments/"+itoa2(att.ID)+"/download", nil)
+	router.ServeHTTP(dl, req)
+	require.Equal(t, http.StatusOK, dl.Code)
+	assert.Equal(t, string(data), dl.Body.String())
 }
 
 func TestAttachmentCrossUserDenied(t *testing.T) {

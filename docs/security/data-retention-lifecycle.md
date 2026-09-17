@@ -237,6 +237,11 @@ Session/JWT cookies, TOTP recovery codes, password-reset tokens, API tokens.
 - **Backups**: yes, if the operator's backup includes the photo/attachment directories — `docs/
   deployment.md`'s Backups section is explicit that a DB-only backup is *not* a complete backup for
   exactly this reason, and ships `rsync` commands for both directories alongside `make backup`.
+- **Metadata scrubbing**: JPEG/PNG attachments have EXIF/GPS metadata stripped at upload, before the
+  bytes reach disk (`attachments.StripImageMetadata`, wired in `UploadAttachment`) — a camera's GPS
+  coordinates or serial number would otherwise ride along into every download and every backup that
+  includes this directory. HEIC attachments are a known, documented gap (see `docs/security/
+  asvs-l2.md` P10); non-image attachments carry no such metadata to strip.
 
 ## 6. Full-text search index (SQLite FTS5)
 
