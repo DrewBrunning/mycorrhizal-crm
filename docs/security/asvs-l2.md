@@ -269,6 +269,83 @@ not in the room. The answer for this project is a settled position, not a deferr
 - **Revisit when:** the project's nature or funding materially changes — a hosted deployment
   mode, a sponsor, or a security-focused contributor with the time to run an independent pass.
 
+### P9 — Bidi/zero-width/confusable characters: preserved verbatim, display-spoofing defense deferred to the frontend (#945)
+
+A comprehensive adversarial review flagged that `contactmodel.NormalizeRecord`
+(`backend/contactmodel/normalize.go:31-42`) normalizes display/name text to NFC only — it does not
+strip RTL-override characters (U+202E and family) or zero-width characters (U+200B/U+200D), so a
+contact name carrying them can render reordered or masquerade as another name, and is exported
+verbatim to vCard/CSV. The two adversarial fixtures that demonstrate this
+(`backend/internal/adversarial/manifest.go:26-27`, `enc-rtl-override.vcf` / `enc-zero-width.vcf`) are
+tier `preserve`.
+
+**This is a documented acceptance, not a gap left unaddressed.** ADR-0016 decision #6 records the
+reasoning in full: stripping would contradict the "preserve, don't reject" policy those two fixtures
+pin (ADR-0002), and no confusable/homoglyph library exists in this project's dependency graph, so any
+code fix today could only cover bidi-control/zero-width characters and would leave script-confusable
+spoofing — arguably the more realistic display-spoofing vector — completely unaddressed, creating a
+false sense of completeness. Display-spoofing defense (bidi isolation, visual flagging of such
+characters) is a frontend rendering concern under this project's model, not a data-layer stripping
+decision; the data layer's job is lossless preservation.
+
+- **Status:** accepted risk. Revisit if a maintained Go confusables-detection library becomes
+  available, or if the frontend adds rendering-layer defenses that would make data-layer stripping
+  redundant to reconsider anyway.
+- **Pinned by:** `backend/internal/adversarial/bidi_confusables_decision_test.go` — proves the two fixtures
+  still import with these characters intact byte-for-byte and round-trip unchanged through export, so
+  this decision cannot silently drift.
+
+### P10 — Attachment EXIF/GPS: stripped for JPEG/PNG, HEIC is a known gap (#945)
+
+Generic contact attachments (`backend/attachments/attachments.go`) wrote uploaded bytes verbatim —
+unlike profile photos, which are incidentally scrubbed by photostore's decode/re-encode/resize
+pipeline, a generic attachment's EXIF block (camera GPS coordinates, device serial number) rode along
+unchanged into every download and every operator backup that includes the attachments directory.
+
+`attachments.StripImageMetadata` (`backend/attachments/exif_strip.go:32`), wired into
+`UploadAttachment` before the file reaches disk, now drops:
+
+- The JPEG APP1 segment(s) signed `Exif\x00\x00` only — other APPn segments (JFIF, ICC color
+  profile, IPTC, a non-Exif APP1 such as XMP) are left alone, since stripping the ICC profile would
+  visibly shift color rendering, a different problem than this issue's.
+- The PNG `eXIf` ancillary chunk only — every other chunk, including `iCCP`, is kept byte-identical.
+
+Both strippers are byte-level (no recompression, no dependency beyond stdlib) and fail open: any
+input they don't recognize as well-formed JPEG/PNG passes through unchanged rather than risk
+corrupting an upload over a best-effort scrub.
+
+**Accepted gap: HEIC attachments are not stripped**
+(`backend/attachments/exif_strip.go:24-27`, doc comment) — the vendored HEIC decoder
+(`github.com/gen2brain/heic`, used by photostore for profile photos) is decode-only with no
+re-encode path, and correct HEIC/ISOBMFF metadata editing needs real box-level parsing this project
+does not currently have. This is named, not silent; revisit if a HEIC-capable metadata-editing
+library becomes available. Non-image attachment types (PDF, etc.) carry no such metadata to strip.
+
+- **Pinned by:** `backend/attachments/exif_strip_test.go` (byte-level stripper unit tests, including
+  the ICC/XMP/non-image scope-boundary cases) and
+  `backend/controllers/attachment_real_db_test.go`'s `TestAttachmentUploadStripsJPEGExif` /
+  `TestAttachmentUploadNonImagePassesThroughUnchanged` (end-to-end through the real upload handler).
+
+### P11 — Outbound email header injection: explicit CRLF guard on `To`, defensive strip on `Subject` (#945)
+
+Every current caller of `services.SendEmail` passes only a validated `user.Email` as `To`, and only
+fixed translation-key strings as `Subject` — so header injection via CRLF was not reachable in
+practice, but the mailer itself (`backend/services/mailer.go`) had no defense-in-depth of its own: the
+raw `"To: " + msg.To` header line built in `buildSMTPMessage` had no CRLF guard, and `Subject`'s
+safety depended entirely on the stdlib `mime.QEncoding.Encode` incidentally Q-encoding any byte
+`< ' '` — an implicit reliance, not a decision this project had made.
+
+`SendEmail` (`backend/services/mailer.go:67-81`) now rejects outright (returns an error, attempts no
+channel) if `To` contains `\r` or `\n` — fail closed, since a CRLF there means a bug upstream, not a
+value worth guessing how to sanitize; this protects the raw SMTP header line and the Resend JSON path
+uniformly, rather than relying on `net/smtp`'s SMTP-only `validateLine` guard or the Resend SDK's
+unverified handling. `buildSMTPMessage` (`backend/services/mailer.go:290-300`) additionally strips
+`\r`/`\n` from `Subject` explicitly before Q-encoding it, so Subject's CRLF-safety no longer depends
+solely on stdlib's incidental behavior.
+
+- **Pinned by:** `backend/services/mailer_test.go`'s `TestSendEmail_RejectsCRLFInRecipient` and
+  `TestBuildSMTPMessage`'s `"strips CRLF from the subject..."` subtest.
+
 ---
 
 ## V1 — Architecture, Design and Threat Modeling
@@ -304,7 +381,7 @@ L3-only, out of scope: 1.11.3.
 | 1.8.1 | Sensitive data classified | satisfied | `sensitivity` field on contacts/edges + explicit class (PII in contacts; credentials in encrypted columns) |
 | 1.8.2 | Protection levels have requirements | satisfied | >normal: filtered in projection query (`backend/models/contact_record.go:116-136`) — which is what the vCard/JSContact exports, CardDAV/CalDAV, and contact shares consume — graph traversal (`backend/services/graph_traversal.go:113-115`), suggestion seeding, which reads only confirmed, non-secret edges (`backend/services/graph_suggestion_service.go:85`), briefings (`backend/controllers/briefing_controller.go:236-244`). DATA-04 (issue #444) pins the export half of this as a matrix over the TEST-02 fixture (`controllers/selective_export_matrix_test.go`) and proves the filter lives in the projection, not the callers, via CardDAV (`carddav/selective_export_sensitivity_test.go` — a surface with no opt-in plumbing at all) and the loss-report boundary (`controllers/selective_export_loss_boundary_test.go`). Scope boundary (issue #861): the protection level attaches to outward copies, not to the user's own backup — the flat CSV export is the documented exception and carries every sensitivity/status labelled by column, pinned by `controllers/export_csv_full_fidelity_test.go`; see V1.5.1 and `docs/security/data-retention-lifecycle.md` §11. |
 | 1.9.1 | Communications encrypted | satisfied | TLS at external reverse proxy (`docs/deployment.md:35`); HSTS emitted when HTTPS is configured (`backend/middleware/security_headers.go:45-47`, `backend/main.go:517`); SMTP STARTTLS/implicit TLS (`backend/services/mailer.go`, `SMTP_USE_TLS`) |
-| 1.9.2 | Peer authenticity verified | not-applicable | Single process (loopback between nginx and app); outbound calls use Go's standard TLS certificate verification (`httputil/fetch.go:94-119`, `mailer.go:230`) |
+| 1.9.2 | Peer authenticity verified | not-applicable | Single process (loopback between nginx and app); outbound calls use Go's standard TLS certificate verification (`httputil/fetch.go:94-119`, `mailer.go:240`) |
 | 1.10.1 | Source control + traceability | satisfied | Git + issues-driven commits; one branch per concern (`CLAUDE.md` Workflow) |
 | 1.11.1 | Components documented by function | satisfied | `docs/adrs/`, `docs/data-model.md`, `docs/development.md` |
 | 1.11.2 | High-value flows don't share unsynchronized state | satisfied | Signed JWT + per-request DB checks — `token_version` and the server-side session row (`backend/middleware/auth.go:141-186`, issue #866). Session state is a single SQLite table read on the same connection pool as every other query, not a separate cache to fall out of sync; the only in-memory shared state (the rate limiter) is per-key and restart-visible by design (`rate_limiter.go:46-61` — the login lockout keys on `(identifier, source-IP)` plus a per-identifier backstop, issue #867) |
@@ -419,7 +496,7 @@ L3-only, out of scope: none in this chapter (5.4 is L2).
 | 5.1.5 | URL redirects allow-listed | satisfied | No server-side open redirects; frontend navigates only hardcoded routes (`frontend/src/App.tsx:723,773-775` — `/search` folds into `/contacts` via `SearchRedirect`, and every `/login`/`/register`/`*` match redirects to the fixed `/`). OIDC login/callback redirects target only the fixed `/` (web) or the app's own `mycorrhizal://` deep link (Android) — never a client-supplied URL — and `LogoutUser`'s RP-Initiated Logout `post_logout_redirect_uri` comes from server config (`cfg.OIDC.PostLogoutRedirectURL`), not request input (`user_controller.go:324`); attacker-supplied redirect-shaped query params on the callback are pinned to have no effect (`controllers/oidc_attack_matrix_test.go`, issue #412) |
 | 5.2.1 | HTML sanitizer for WYSIWYG | not-applicable | No HTML input anywhere; notes/fields are plain text; frontend renders text only (no `dangerouslySetInnerHTML` in `frontend/src`). Issue #416 pinning: a vCard/CSV import carrying `<script>` in a free-text field round-trips as inert literal text, proven end-to-end by `services/import_sanitize_test.go` (`TestBuildContactFromRow_HTMLScriptInFreeTextField_StoredLiterallyNotStripped`) rather than resting on "no sink exists" alone. Issue #512 pinning: the same is now proven on the CardDAV reconcile path (`services/contact_sync_hostile_input_test.go` `TestReconcileContactSync_HTMLScriptInFreeTextField_StoredLiterallyNotStripped`) and the CalDAV reconcile path (`services/calendar_sync_hostile_input_test.go` `TestCalendarSync_HostileVEVENT_OversizedAndHTMLClampedNotCrashed`) — a compromised/malicious CardDAV or CalDAV server is a second untrusted ingestion point for the identical payload class. |
 | 5.2.2 | Unstructured data sanitized | satisfied | `SanitizeString` strips null/control chars (`validation.go:95-116`); length caps on every free-text field (`models/dtos.go`) — that struct-tag validation path is for direct REST create/update calls only. Issue #416 finding: the **import** paths (VCF/CSV/JSContact/Android records) never ran it — `services.ValidateImportedContact` checks only firstname/email/phone/birthday format, not length or content — so a hostile import could carry invalid UTF-8 or control characters straight into storage. Closed by `services.SanitizeImportedContact` (`services/import_service.go`), called from the shared `BuildImportRowPreview` choke point before validation: replaces invalid UTF-8 (`strings.ToValidUTF8`) and strips C0/C1 control characters (keeping tab/LF/CR), with a diagnostic per changed field. Deliberately does NOT truncate long values or strip HTML (see the function's doc comment: no legitimate-data cost to fixing bytes, but truncation/HTML-stripping would destroy real user content ADR-0002 says to preserve). Pinned by `services/import_sanitize_test.go`. Issue #512 findings (two, both closed in the same PR): (1) `reconcileContactSync` (`services/contact_sync_service.go`) — the CardDAV *client* sync path, a second untrusted ingestion point for the exact same hostile vCard bytes — never called `SanitizeImportedContact` at all; now does, on both the create and update branches. (2) A deeper bug affecting *both* that path and the original VCF import path this row already covered: `SanitizeImportedContact` only cleaned the flat `Firstname`/`Lastname` scalars, not `contact.Card.Name` — and `Contact.BeforeSave`'s `cardSetDirectly` branch (`models/contact.go`) re-derives `Firstname`/`Lastname`/`FN` from `contact.Card` on every save that follows an `ApplyRecordToContact` call (VCF/JSContact import confirm, CardDAV/CalDAV reconcile, REST create/update), silently reverting the sanitization the instant the contact was actually saved. Hand-verified real bug, not hypothetical: caught by `services/contact_sync_hostile_input_test.go`'s control-character tests initially failing against the sync-path-only fix, and independently reproduced against the pre-existing VCF path by `services/import_vcf_hostile_input_test.go` (`TestConfirmVCF_RealDB_ControlCharactersAndInvalidUTF8_StaySanitizedOnSave`). Fixed by also sanitizing `contact.Card.Name` inside `SanitizeImportedContact` (`sanitizeCardName`, `services/import_service.go`) so the flat fields and the neutral Card copy stay consistent through the re-derivation. TEST-04 (issue #432): the adversarial corpus drives the whole import side — `docs/adversarial-fixtures/` (`enc-invalid-utf8.vcf`, `enc-overlong-utf8.vcf`, `inj-control-chars.vcf`, `inj-null-byte.vcf`) with per-fixture declared tiers, asserted at adapter level by `internal/adversarial/adversarial_test.go` (`TestDeclaredTiersHold`) and through the full pipeline by `services/adversarial_import_test.go` (`TestParseVCF_ControlCharsAndInvalidUTF8_AdversarialFixtures`), so a parser regression re-introducing the raw bytes fails the corpus before any user data is at risk. |
-| 5.2.3 | SMTP injection protection | satisfied | `To` is `required,email`-validated (`models/dtos.go:303-311`); `Subject` MIME-Q-encoded (`services/mailer.go:284`); body is fixed-template |
+| 5.2.3 | SMTP injection protection | satisfied | `To` is `required,email`-validated (`models/dtos.go:303-311`) and explicitly rejected if it carries CR/LF (`services/mailer.go:67-81`, P11); `Subject` MIME-Q-encoded and CRLF-stripped (`services/mailer.go:290-300`); body is fixed-template |
 | 5.2.4 | No eval/dynamic execution | satisfied | No `eval` in Go or frontend; `eslint-plugin-security` in CI |
 | 5.2.5 | Template injection | satisfied | Email templates are fixed strings from an embedded FS; no user input in template logic (`services/email_renderer.go`) |
 | 5.2.6 | SSRF protection | satisfied | Public-IP-only dialer with DNS-rebinding pinning (`backend/httputil/safedial.go:27-47`, `ipguard.go:30-59`); pre-flight URL checks (`httputil/fetch.go:17-58`); per-service opt-in flags (webhooks/Immich/CardDAV/Seafile, `config/config.go:65-83,136-147`); tests `httputil/fetch_test.go`, `services/webhook_ssrf_test.go`, `services/webhook_ssrf_integration_test.go` (live webhook job path), `services/notification_service_test.go` (push path); semgrep gate that no new outbound client bypasses the dialer (`.semgrep/mycorrhizal-traps.yaml` rule `mycorrhizal-unguarded-outbound-dialer`, fixture `.semgrep/tests/unguarded_outbound_dialer.go`, run by `sast.yml`). The admin diagnostics sweep's integration probes (#423) honor each integration's block-private-URLs flag through the same dialer, and the endpoint is admin-gated so the probe fan-out cannot be driven unauthenticated (`backend/services/diagnostics.go:447-478` `probeIntegration`). The opt-in update-availability check (#650) routes its outbound GitHub call through the same dialer (`backend/services/update_check.go` `newUpdateCheckClient`), pinned by `services/update_check_test.go` `TestUpdateCheckClient_TransportIsSSRFGuarded`. The Monica import assistant's live-API client (#549) does the same — `monica.NewClient` builds its transport `DialContext` from `httputil.SafeDialContext` when `MONICA_BLOCK_PRIVATE_URLS` is on (`backend/monica/client.go` `NewClient`), so a user-entered instance URL cannot be used to reach an internal address; pinned by `monica/client_test.go` `TestBlockPrivateRefusesLoopback`. The OIDC provider client (INT-02, #465) is the case the semgrep gate structurally cannot see — `go-oidc` builds the HTTP client inside the library, so there is no `http.Transport` literal for the rule to match — and it was found by INT-01's manual classification (`docs/int-01-integration-classification-matrix.md`), not a mechanical check: `newOIDCHTTPClient` now wires `httputil.SafeDialContext` when `OIDC_BLOCK_PRIVATE_URLS` is on and threads that client through discovery/token/JWKS/UserInfo via `oidc.ClientContext` (`backend/services/oidc_service.go`), pinned by `services/oidc_service_test.go` `TestOIDCClient_BlocksPrivateAddressWhenEnabled` / `_AllowsLoopbackByDefault`. Default off because a LAN identity provider is a common self-hosted deployment. The per-service opt-in default assumes a trusted LAN; an internet-exposed or multi-tenant deployment must enable the whole `*_BLOCK_PRIVATE_URLS` set — the operator-facing checklist is the "SSRF hardening" row in `docs/security/deployment-baseline.md`, the engineering per-integration posture is `docs/int-01-integration-classification-matrix.md` (issue #870). Issue #951 closed the gap where that default-off posture had no boot-time signal at all: `Config.PublicExposureWarnings` (`backend/config/config.go`), wired in `main()` next to `TrustedProxyWarnings`, logs a non-fatal advisory naming every guard still off when the deployment implies public exposure (`FRONTEND_URL=https://` or `COOKIE_SECURE=true`) — advisory, not a boot failure, for the same reason the per-service default stays off: refusing to boot would break the common trusted-LAN-over-HTTPS setup. Pinned by `config/config_test.go` `TestPublicExposureWarnings_HTTPSFrontendWithGuardsOffWarns` / `_NamesOnlyTheFlagsThatAreOff` / `_NeverSurfacesAsValidationError`. |
@@ -508,7 +585,7 @@ L3-only, out of scope: 9.2.5.
 | 9.1.1 | TLS for all client connectivity, no fallback | satisfied | TLS at the external reverse proxy (`docs/deployment.md:35`); HSTS emitted when HTTPS is configured (`backend/middleware/security_headers.go:45-47`); no plaintext listener exposed |
 | 9.1.2 | Only strong ciphers | not-applicable | TLS config belongs to the operator's external proxy (Mozilla-level guidance in `docs/deployment.md`) |
 | 9.1.3 | TLS 1.2/1.3 only | not-applicable | Same — external proxy's responsibility (documented) |
-| 9.2.1 | Trusted TLS certs for outbound | satisfied | Go standard library verifies certificates on all outbound calls; SMTP pins `ServerName` on both transports — implicit TLS via `tls.DialWithDialer` (`backend/services/mailer.go:230`) and opportunistic `STARTTLS` via `client.StartTLS` (`backend/services/mailer.go:214`); both dials are timeout-bounded (`smtpDialTimeout`/`smtpDeadline`, INT-02 issue #465) |
+| 9.2.1 | Trusted TLS certs for outbound | satisfied | Go standard library verifies certificates on all outbound calls; SMTP pins `ServerName` on both transports — implicit TLS via `tls.DialWithDialer` (`backend/services/mailer.go:240`) and opportunistic `STARTTLS` via `client.StartTLS` (`backend/services/mailer.go:224`); both dials are timeout-bounded (`smtpDialTimeout`/`smtpDeadline`, INT-02 issue #465) |
 | 9.2.2 | TLS for all outbound connections | satisfied | Outbound fetches are http(s)-only (`httputil/fetch.go:17-58`); SMTP STARTTLS/TLS (`mailer.go`, `SMTP_USE_TLS`); CardDAV/WebDAV clients use https |
 | 9.2.3 | Outbound connections authenticated | satisfied | SMTP auth, CardDAV/WebDAV credentials, Immich/Seafile API keys (`services/` client packages) |
 | 9.2.4 | OCSP stapling | not-applicable | External proxy's TLS configuration |
