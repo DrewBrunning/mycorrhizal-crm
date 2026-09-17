@@ -190,6 +190,29 @@ func TestStartup_EmptyFrontendURL_FailsNamingTheVariable(t *testing.T) {
 	}
 }
 
+// Issue #934: a partially-configured OIDC (some but not all of
+// OIDC_PROVIDER_URL/OIDC_CLIENT_ID/OIDC_CLIENT_SECRET set) used to boot clean
+// with SSO silently disabled and only a log line naming the problem. An
+// operator who set two of the three believed SSO was on. It must now fail at
+// startup naming the missing variable.
+func TestStartup_PartialOIDCConfig_FailsNamingTheVariable(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds and runs the server binary; skipped under -short")
+	}
+	env := validEnv(t)
+	env["OIDC_PROVIDER_URL"] = "https://idp.example.com"
+	env["OIDC_CLIENT_ID"] = "some-client-id"
+	// OIDC_CLIENT_SECRET deliberately left unset.
+
+	out, failed := runWithEnv(t, env)
+	if !failed {
+		t.Fatalf("server did not exit non-zero with a partial OIDC config\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, "OIDC_CLIENT_SECRET") {
+		t.Fatalf("startup failure did not name the missing OIDC_CLIENT_SECRET\noutput:\n%s", out)
+	}
+}
+
 // Issue #971: a negative DELETED_RETENTION_DAYS puts the purge cutoff in the
 // future, so the job would hard-delete the entire soft-delete undo window on
 // boot. It must fail at startup naming the variable rather than arm that job.

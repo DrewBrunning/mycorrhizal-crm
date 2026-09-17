@@ -9,6 +9,7 @@ import (
 	"log"
 	"math"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -906,16 +907,55 @@ func (c *Config) Validate() []ValidationError {
 		}
 	}
 
-	// Warn if OIDC is partially configured (some vars set but not all required ones)
-	oidcVars := []string{c.OIDC.ProviderURL, c.OIDC.ClientID, c.OIDC.ClientSecret}
+	// OIDC (issue #934): a partial configuration used to boot with SSO
+	// silently disabled and only a log line naming the problem — an operator
+	// who set one or two of the three required vars believed SSO was on.
+	// Any var set at all means OIDC was intended, so an incomplete set now
+	// fails boot instead, naming exactly what's missing.
 	oidcSet := 0
-	for _, v := range oidcVars {
-		if v != "" {
+	var oidcMissing []string
+	for _, v := range []struct{ name, value string }{
+		{"OIDC_PROVIDER_URL", c.OIDC.ProviderURL},
+		{"OIDC_CLIENT_ID", c.OIDC.ClientID},
+		{"OIDC_CLIENT_SECRET", c.OIDC.ClientSecret},
+	} {
+		if v.value != "" {
 			oidcSet++
+		} else {
+			oidcMissing = append(oidcMissing, v.name)
 		}
 	}
 	if oidcSet > 0 && oidcSet < 3 {
-		log.Println("WARN: OIDC is partially configured. Set OIDC_PROVIDER_URL, OIDC_CLIENT_ID, and OIDC_CLIENT_SECRET to enable SSO.")
+		errors = append(errors, ValidationError{
+			Field:   "OIDC",
+			Message: fmt.Sprintf("OIDC is partially configured (%d of 3 required variables set). Set %s too, or unset OIDC_PROVIDER_URL/OIDC_CLIENT_ID/OIDC_CLIENT_SECRET entirely to leave SSO disabled.", oidcSet, strings.Join(oidcMissing, ", ")),
+		})
+	}
+
+	// A fully-configured OIDC provider must have a usable URL and a scope
+	// list with no empty entries — neither was ever format-checked, so a
+	// typo'd provider URL or a stray comma in OIDC_SCOPES (e.g.
+	// "openid,,email") used to boot clean and fail only at the first login
+	// attempt. Gated on oidcSet == 3, computed above from the fields
+	// themselves, rather than c.OIDC.Enabled: Enabled is only ever derived
+	// correctly by LoadConfig, and Validate must give the same answer for a
+	// Config built any other way (tests, or any future caller).
+	if oidcSet == 3 {
+		if u, err := url.Parse(c.OIDC.ProviderURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			errors = append(errors, ValidationError{
+				Field:   "OIDC_PROVIDER_URL",
+				Message: fmt.Sprintf("OIDC_PROVIDER_URL %q must be an absolute http(s) URL, e.g. https://idp.example.com/realms/main.", c.OIDC.ProviderURL),
+			})
+		}
+		for _, scope := range c.OIDC.Scopes {
+			if strings.TrimSpace(scope) == "" {
+				errors = append(errors, ValidationError{
+					Field:   "OIDC_SCOPES",
+					Message: fmt.Sprintf("OIDC_SCOPES %q contains an empty entry — check for a stray or trailing comma.", strings.Join(c.OIDC.Scopes, ",")),
+				})
+				break
+			}
+		}
 	}
 
 	// M2: the FCM service account file is parsed and fully validated by the
@@ -1051,4 +1091,62 @@ func checkDeprecatedEnvVars(lookup func(string) (string, bool), warn func(string
 			warn(fmt.Sprintf("WARN: %s is deprecated (since %s); use %s instead", name, d.Since, d.Replacement))
 		}
 	}
+}
+
+// blockPrivateURLsFlag names one SSRF-guard opt-in and its current value, for
+// PublicExposureWarnings.
+type blockPrivateURLsFlag struct {
+	env     string
+	enabled bool
+}
+
+// blockPrivateURLsFlags lists every *_BLOCK_PRIVATE_URLS-shaped opt-in
+// (INT-02, issue #465) in one place, so PublicExposureWarnings can't drift
+// from the actual set of guarded outbound clients.
+func (c *Config) blockPrivateURLsFlags() []blockPrivateURLsFlag {
+	return []blockPrivateURLsFlag{
+		{"WEBHOOK_BLOCK_PRIVATE_URLS", c.WebhookBlockPrivateURLs},
+		{"CALDAV_BLOCK_PRIVATE_URLS", c.CalDAVBlockPrivateURLs},
+		{"IMMICH_BLOCK_PRIVATE_URLS", c.ImmichBlockPrivateURLs},
+		{"PAPERLESS_BLOCK_PRIVATE_URLS", c.PaperlessBlockPrivateURLs},
+		{"SEAFILE_BLOCK_PRIVATE_URLS", c.SeafileBlockPrivateURLs},
+		{"WEBDAV_BLOCK_PRIVATE_URLS", c.WebDAVBlockPrivateURLs},
+		{"MONICA_BLOCK_PRIVATE_URLS", c.MonicaBlockPrivateURLs},
+		{"OIDC_BLOCK_PRIVATE_URLS", c.OIDC.BlockPrivateURLs},
+	}
+}
+
+// PublicExposureWarnings returns advisory boot messages about the SSRF-guard
+// posture (issue #951). Every *_BLOCK_PRIVATE_URLS flag defaults to off so a
+// trusted-LAN self-host (a webhook target or Immich/CardDAV/OIDC instance on
+// the same Docker network) keeps working with zero config — that default is
+// correct and deliberately not changed here. What this catches is the
+// combination the threat model's self-hosted boundary doesn't cover: a
+// deployment that looks reachable from outside a trusted LAN (FRONTEND_URL
+// is https://, or COOKIE_SECURE=true — the same signal Validate's
+// COOKIE_SECURE check uses) while a guard an authenticated user's input can
+// reach is still off. Advisory only, like TrustedProxyWarnings — refusing to
+// boot would break the common trusted-LAN setup this app is built for, and
+// there is no way to distinguish "public-facing" from "HTTPS on a trusted
+// LAN" with certainty from config alone.
+func (c *Config) PublicExposureWarnings() []string {
+	impliesPublic := strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.FrontendURL)), "https://") || c.CookieSecure
+	if !impliesPublic {
+		return nil
+	}
+
+	var off []string
+	for _, f := range c.blockPrivateURLsFlags() {
+		if !f.enabled {
+			off = append(off, f.env)
+		}
+	}
+	if len(off) == 0 {
+		return nil
+	}
+
+	return []string{fmt.Sprintf(
+		"FRONTEND_URL is https:// and/or COOKIE_SECURE=true, which implies this deployment may be reachable from outside a trusted LAN — but these SSRF guards are still off: %s. An authenticated user can point them at loopback, other LAN hosts, or the cloud-metadata endpoint (169.254.169.254). Set the ones that apply to true if this instance is public-facing or hosts accounts you do not personally vet; see docs/security/deployment-baseline.md.",
+		strings.Join(off, ", "),
+	)}
 }
