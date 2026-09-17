@@ -40,7 +40,13 @@ class SmsHistoryReader(private val contentResolver: ContentResolver) {
                 projection,
                 "${Telephony.Sms.DATE} > ?",
                 arrayOf(sinceMillis.toString()),
-                "${Telephony.Sms.DATE} DESC LIMIT $limit",
+                // Issue #1123: ASC, not DESC — the caller advances its watermark to
+                // the newest row *in this page*, so a DESC/newest-first order made
+                // that "newest" effectively "now" whenever more than `limit` rows
+                // existed past the watermark, permanently skipping everything older
+                // than the newest `limit`. ASC lets the caller page forward through
+                // the backlog instead.
+                "${Telephony.Sms.DATE} ASC LIMIT $limit",
             )
         } catch (e: SecurityException) {
             // Issue #721: a missing READ_SMS grant is a logged no-op, never a crash.

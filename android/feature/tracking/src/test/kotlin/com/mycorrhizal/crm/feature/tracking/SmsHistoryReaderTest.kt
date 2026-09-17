@@ -5,6 +5,7 @@ import android.database.MatrixCursor
 import android.provider.Telephony
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -65,6 +66,22 @@ class SmsHistoryReaderTest {
         val entries = reader.readSentSince(sinceMillis = 0L)
 
         assertTrue(entries.isEmpty())
+    }
+
+    @Test
+    fun `queries the Sent folder oldest-first so a caller can page forward through a backlog`() {
+        // Regression test for #1123: a DESC/newest-first query made the caller's
+        // watermark jump straight to "now" whenever more than `limit` rows existed
+        // past it, permanently skipping everything older than the newest `limit`.
+        val cursor = MatrixCursor(projection)
+        val sortOrder = slot<String>()
+        every {
+            contentResolver.query(Telephony.Sms.Sent.CONTENT_URI, projection, any(), any(), capture(sortOrder))
+        } returns cursor
+
+        reader.readSentSince(sinceMillis = 0L, limit = 50)
+
+        assertEquals("${Telephony.Sms.DATE} ASC LIMIT 50", sortOrder.captured)
     }
 
     @Test
