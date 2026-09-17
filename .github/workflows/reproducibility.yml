@@ -191,8 +191,18 @@ jobs:
         with:
           persist-credentials: false
 
+      # issue #1109: pin the BuildKit builder image by digest. Left
+      # unset, the docker-container driver this action creates pulls
+      # whatever `moby/buildkit:buildx-stable-1` currently resolves to --
+      # a floating tag, and the one build-toolchain input in this pipeline
+      # that wasn't pinned (every base image, apk package, and Action
+      # already is). docs/security/reproducible-builds.md flagged
+      # "BuildKit's own metadata" as the remaining unproven variable in a
+      # PR (#1107) whose double-build failed with no source-level cause.
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        with:
+          driver-opts: image=moby/buildkit:buildx-stable-1@sha256:28a898719c18a33f4e8000685287fa36fd0dd9560c6440227d3a732d79bb41d8 # v0.32.2
 
       - name: Build the all-in-one image twice and compare digests
         run: |
