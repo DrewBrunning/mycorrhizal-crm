@@ -123,6 +123,11 @@ func UploadAttachment(c *gin.Context, cfg *config.Config) {
 		return
 	}
 
+	// Strip EXIF/GPS metadata from JPEG/PNG uploads before they ever reach
+	// disk (issue #945) — a camera's GPS coordinates and serial number
+	// otherwise ride along into downloads and operator backups unchanged.
+	data = attachments.StripImageMetadata(data, contentType)
+
 	storedName, err := attachments.Save(data, cfg.AttachmentsDir)
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to store attachment").WithError(err))

@@ -70,6 +70,16 @@ func SendEmail(cfg config.Config, msg EmailMessage) error {
 		return nil
 	}
 
+	// Defense-in-depth against header injection (issue #945): every caller
+	// today only ever passes a validated user.Email, so a CRLF here means a
+	// bug upstream, not a value worth guessing how to sanitize. Rejecting
+	// covers both the raw "To: " header line built in buildSMTPMessage and
+	// the Resend JSON path uniformly, rather than relying on net/smtp's own
+	// validateLine (SMTP-only) or the Resend SDK's unverified handling.
+	if strings.ContainsAny(msg.To, "\r\n") {
+		return fmt.Errorf("mailer: recipient address contains CR/LF")
+	}
+
 	if !cfg.EmailEnabled() {
 		logger.Warn().Str("to", logger.MaskEmail(msg.To)).Msg("No email channel configured; email not sent")
 		return nil
@@ -278,10 +288,16 @@ func smtpHelloName() string { return "localhost" }
 
 // buildSMTPMessage assembles a minimal RFC 5322 HTML email.
 func buildSMTPMessage(from string, msg EmailMessage) []byte {
+	// mime.QEncoding.Encode already Q-encodes any byte < ' ' (so \r\n never
+	// survives into the raw header verbatim), but that's stdlib's incidental
+	// behavior, not a decision this project made — strip explicitly so
+	// Subject's CRLF-safety doesn't quietly depend on it (issue #945).
+	subject := strings.NewReplacer("\r", "", "\n", "").Replace(msg.Subject)
+
 	var b strings.Builder
 	b.WriteString("From: " + from + "\r\n")
 	b.WriteString("To: " + msg.To + "\r\n")
-	b.WriteString("Subject: " + mime.QEncoding.Encode("UTF-8", msg.Subject) + "\r\n")
+	b.WriteString("Subject: " + mime.QEncoding.Encode("UTF-8", subject) + "\r\n")
 	b.WriteString("MIME-Version: 1.0\r\n")
 	b.WriteString("Content-Type: text/html; charset=\"UTF-8\"\r\n")
 	b.WriteString("\r\n")

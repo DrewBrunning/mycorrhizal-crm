@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"mycorrhizal/config"
+	"mycorrhizal/contactmodel"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
 	"net/http"
@@ -366,6 +367,15 @@ func TestExportDataEmpty(t *testing.T) {
 	assert.Contains(t, body, "=== ACTIVITIES ===")
 	assert.Contains(t, body, "=== NOTES ===")
 	assert.Contains(t, body, "=== REMINDERS ===")
+	// Issue #970: the five new sections must always be present -- with just
+	// their header row -- even on an empty account, the same guarantee the
+	// five original sections already give.
+	assert.Contains(t, body, "=== LIFE_EVENTS ===")
+	assert.Contains(t, body, "=== GIFTS ===")
+	assert.Contains(t, body, "=== CONVERSATION_AGENDA ===")
+	assert.Contains(t, body, "=== CADENCE_POLICIES ===")
+	assert.Contains(t, body, "=== PREFERENCES ===")
+	assert.Contains(t, body, "=== REMINDER_COMPLETIONS ===")
 }
 
 func TestExportDataUserScoping(t *testing.T) {
@@ -396,6 +406,28 @@ func TestExportDataUserScoping(t *testing.T) {
 	}
 	db.Create(&contact2)
 
+	// Issue #970: one row per new section, per user -- the same scoping
+	// check the five original sections already got, extended to the five
+	// added here so a future EntityID-scoping regression on any of them is
+	// caught the same way.
+	db.Create(&models.LifeEvent{UserID: user.ID, EntityID: contact1.VCardUID, Type: "moved", Description: "MineLifeEvent"})
+	db.Create(&models.LifeEvent{UserID: otherUser.ID, EntityID: contact2.VCardUID, Type: "moved", Description: "OtherLifeEvent"})
+
+	db.Create(&models.Gift{UserID: user.ID, EntityID: contact1.VCardUID, Description: "MineGift"})
+	db.Create(&models.Gift{UserID: otherUser.ID, EntityID: contact2.VCardUID, Description: "OtherGift"})
+
+	db.Create(&models.ConversationAgenda{UserID: user.ID, EntityID: contact1.VCardUID, Content: "MineAgendaItem"})
+	db.Create(&models.ConversationAgenda{UserID: otherUser.ID, EntityID: contact2.VCardUID, Content: "OtherAgendaItem"})
+
+	db.Create(&models.CadencePolicy{UserID: user.ID, EntityID: contact1.VCardUID, TargetIntervalDays: 30})
+	db.Create(&models.CadencePolicy{UserID: otherUser.ID, EntityID: contact2.VCardUID, TargetIntervalDays: 60})
+
+	db.Create(&models.Preference{UserID: user.ID, EntityID: contact1.VCardUID, Category: models.PreferenceCategoryHobby, Value: "MineHobby", Sensitivity: models.RelationshipSensitivityNormal})
+	db.Create(&models.Preference{UserID: otherUser.ID, EntityID: contact2.VCardUID, Category: models.PreferenceCategoryHobby, Value: "OtherHobby", Sensitivity: models.RelationshipSensitivityNormal})
+
+	db.Create(&models.ReminderCompletion{UserID: user.ID, ContactID: contact1.ID, Message: "MineCompletion", CompletedAt: time.Now()})
+	db.Create(&models.ReminderCompletion{UserID: otherUser.ID, ContactID: contact2.ID, Message: "OtherCompletion", CompletedAt: time.Now()})
+
 	// Make the request
 	req, _ := http.NewRequest("GET", "/export", nil)
 	w := httptest.NewRecorder()
@@ -409,6 +441,170 @@ func TestExportDataUserScoping(t *testing.T) {
 	assert.Contains(t, body, "UserContact")
 	assert.True(t, strings.Contains(body, "UserContact"))
 	assert.False(t, strings.Contains(body, "OtherUserContact"))
+
+	for _, want := range []string{"MineLifeEvent", "MineGift", "MineAgendaItem", "MineHobby", "MineCompletion"} {
+		assert.Contains(t, body, want, "the requesting user's own %s row must be exported", want)
+	}
+	for _, forbidden := range []string{"OtherLifeEvent", "OtherGift", "OtherAgendaItem", "OtherHobby", "OtherCompletion"} {
+		assert.NotContains(t, body, forbidden, "another user's %s row must never leak into this export", forbidden)
+	}
+	assert.Contains(t, body, "30", "the requesting user's own cadence policy interval must be exported")
+}
+
+// TestExportData_ExtraSections is the primary regression test for issue
+// #970: the CSV backup silently omitted LifeEvent, Gift, ConversationAgenda,
+// CadencePolicy, ReminderCompletion, and every Preference category except
+// "food" entirely, despite being documented as holding everything. This
+// seeds one row per new section (plus a non-food Preference, since that was
+// the largest single omission) and asserts each section's banner, header
+// columns, and content -- including the two cross-reference cases
+// (LifeEvent.RelatedEntityIDs resolving to a name, and
+// ReminderCompletion.ContactID being resolved via the uint-keyed contact
+// map rather than the EntityID/VCardUID one every other new section uses).
+func TestExportData_ExtraSections(t *testing.T) {
+	db, router := setupRouter()
+
+	var user models.User
+	db.First(&user)
+
+	router.GET("/export", ExportData)
+
+	ada := models.Contact{UserID: user.ID, Firstname: "Ada", Lastname: "Lovelace"}
+	require.NoError(t, db.Create(&ada).Error)
+	bob := models.Contact{UserID: user.ID, Firstname: "Bob", Lastname: "Smith"}
+	require.NoError(t, db.Create(&bob).Error)
+
+	eventYear := 2020
+	lifeEvent := models.LifeEvent{
+		UserID:           user.ID,
+		EntityID:         ada.VCardUID,
+		Type:             models.LifeEventTypeGotARoommate,
+		Category:         models.LifeEventCategoryHomeLiving,
+		Date:             &contactmodel.PartialDate{Year: &eventYear},
+		Description:      "Moved in with Bob",
+		Source:           models.LifeEventSourceUser,
+		RelatedEntityIDs: []string{bob.VCardUID},
+		Remind:           true,
+	}
+	require.NoError(t, db.Create(&lifeEvent).Error)
+
+	giftDate := time.Date(2024, 12, 25, 0, 0, 0, 0, time.UTC)
+	gift := models.Gift{
+		UserID:      user.ID,
+		EntityID:    ada.VCardUID,
+		Status:      models.GiftStatusGiven,
+		Occasion:    "Christmas",
+		Description: "Mechanical keyboard",
+		URL:         "https://example.com/keyboard",
+		Notes:       "She mentioned wanting a quiet one",
+		Date:        &giftDate,
+		ValueCents:  8999,
+		Currency:    "USD",
+	}
+	require.NoError(t, db.Create(&gift).Error)
+
+	discussedAt := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
+	agendaItem := models.ConversationAgenda{
+		UserID:       user.ID,
+		EntityID:     ada.VCardUID,
+		Content:      "Ask about the new job",
+		ReferenceURL: "https://example.com/job-posting",
+		DiscussedAt:  &discussedAt,
+	}
+	require.NoError(t, db.Create(&agendaItem).Error)
+
+	cadencePolicy := models.CadencePolicy{
+		UserID:             user.ID,
+		EntityID:           ada.VCardUID,
+		TargetIntervalDays: 45,
+		QualifyingTypes:    []string{"call", "visit"},
+	}
+	require.NoError(t, db.Create(&cadencePolicy).Error)
+
+	lastConfirmed := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+	confidence := 0.75
+	hobbyPreference := models.Preference{
+		UserID:        user.ID,
+		EntityID:      ada.VCardUID,
+		Category:      models.PreferenceCategoryHobby,
+		Key:           "favorite",
+		Value:         "Rock climbing",
+		Notes:         "Started this year",
+		Source:        models.PreferenceSourceConversationNote,
+		Confidence:    &confidence,
+		LastConfirmed: &lastConfirmed,
+		Sensitivity:   models.RelationshipSensitivityPrivate,
+	}
+	require.NoError(t, db.Create(&hobbyPreference).Error)
+
+	completedAt := time.Date(2024, 8, 1, 9, 0, 0, 0, time.UTC)
+	completion := models.ReminderCompletion{
+		UserID:      user.ID,
+		ContactID:   ada.ID,
+		Message:     "Sent a birthday card",
+		CompletedAt: completedAt,
+	}
+	require.NoError(t, db.Create(&completion).Error)
+
+	req, _ := http.NewRequest("GET", "/export", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	body := w.Body.String()
+
+	t.Run("life events", func(t *testing.T) {
+		assert.Contains(t, body, "=== LIFE_EVENTS ===")
+		assert.Contains(t, body, "Ada Lovelace")
+		assert.Contains(t, body, models.LifeEventTypeGotARoommate)
+		assert.Contains(t, body, models.LifeEventCategoryHomeLiving)
+		assert.Contains(t, body, "2020")
+		assert.Contains(t, body, "Moved in with Bob")
+		assert.Contains(t, body, models.LifeEventSourceUser)
+		assert.Contains(t, body, "Bob Smith", "RelatedEntityIDs must resolve to the related contact's name")
+		assert.Contains(t, body, "true", "Remind must be exported")
+	})
+
+	t.Run("gifts", func(t *testing.T) {
+		assert.Contains(t, body, "=== GIFTS ===")
+		assert.Contains(t, body, models.GiftStatusGiven)
+		assert.Contains(t, body, "Christmas")
+		assert.Contains(t, body, "Mechanical keyboard")
+		assert.Contains(t, body, "https://example.com/keyboard")
+		assert.Contains(t, body, "She mentioned wanting a quiet one")
+		assert.Contains(t, body, "8999")
+		assert.Contains(t, body, "USD")
+	})
+
+	t.Run("conversation agenda", func(t *testing.T) {
+		assert.Contains(t, body, "=== CONVERSATION_AGENDA ===")
+		assert.Contains(t, body, "Ask about the new job")
+		assert.Contains(t, body, "https://example.com/job-posting")
+		assert.Contains(t, body, "2024-05-01")
+	})
+
+	t.Run("cadence policies", func(t *testing.T) {
+		assert.Contains(t, body, "=== CADENCE_POLICIES ===")
+		assert.Contains(t, body, "45")
+		assert.Contains(t, body, "call; visit")
+	})
+
+	t.Run("preferences (non-food category)", func(t *testing.T) {
+		assert.Contains(t, body, "=== PREFERENCES ===")
+		assert.Contains(t, body, models.PreferenceCategoryHobby, "a non-food preference category must now be exported")
+		assert.Contains(t, body, "Rock climbing")
+		assert.Contains(t, body, "Started this year")
+		assert.Contains(t, body, models.PreferenceSourceConversationNote)
+		assert.Contains(t, body, "0.75")
+		assert.Contains(t, body, "2024-03-01")
+		assert.Contains(t, body, models.RelationshipSensitivityPrivate, "the preference's sensitivity column must travel with it, unfiltered")
+	})
+
+	t.Run("reminder completions", func(t *testing.T) {
+		assert.Contains(t, body, "=== REMINDER_COMPLETIONS ===")
+		assert.Contains(t, body, "Sent a birthday card")
+		assert.Contains(t, body, "Ada Lovelace", "ReminderCompletion.ContactID must resolve to the contact's name via the uint-keyed map")
+	})
 }
 
 // --- ExportContactsAsVCF ---

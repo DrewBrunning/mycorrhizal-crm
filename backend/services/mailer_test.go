@@ -269,4 +269,39 @@ func TestBuildSMTPMessage(t *testing.T) {
 
 		assert.Contains(t, body, "Subject: Plain Subject\r\n")
 	})
+
+	t.Run("strips CRLF from the subject instead of relying on Q-encoding alone", func(t *testing.T) {
+		msg := EmailMessage{To: "recipient@example.com", Subject: "Hi\r\nBcc: attacker@evil.example", HTML: "<p>Hi</p>"}
+		body := string(buildSMTPMessage("sender@example.com", msg))
+
+		lines := strings.Split(body, "\r\n")
+		subjectLines := 0
+		for _, line := range lines {
+			if strings.HasPrefix(line, "Subject:") {
+				subjectLines++
+			}
+		}
+		assert.Equal(t, 1, subjectLines, "exactly one Subject: header line")
+		assert.NotContains(t, body, "\r\nBcc:", "no header must be injected via the subject")
+	})
+}
+
+// TestSendEmail_RejectsCRLFInRecipient pins issue #945: a recipient address
+// carrying CRLF is rejected before any channel is attempted, rather than
+// relying on net/smtp's SMTP-only validateLine guard or the Resend SDK's
+// unverified handling of the raw string.
+func TestSendEmail_RejectsCRLFInRecipient(t *testing.T) {
+	cfg := config.Config{
+		UseSMTP:       true,
+		SMTPHost:      "127.0.0.1",
+		SMTPPort:      1, // nothing listens here — a real attempt would fail fast anyway
+		SMTPFromEmail: "noreply@example.com",
+	}
+	err := SendEmail(cfg, EmailMessage{
+		To:      "user@example.com\r\nBcc: attacker@evil.example",
+		Subject: "hi",
+		HTML:    "<p>hi</p>",
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "CR/LF")
 }

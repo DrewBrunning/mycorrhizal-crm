@@ -6529,10 +6529,12 @@ paths:
       operationId: exportDataCsv
       description: >
         The full per-user backup as a single CSV file with section banner
-        rows (CONTACTS/RELATIONSHIPS/ACTIVITIES/NOTES/REMINDERS) and header
-        rows per section. Values are formula-injection-neutralized. This
-        endpoint does not take sections/include_sensitive params — those
-        apply only to the vCard/JSContact exports.
+        rows (CONTACTS/RELATIONSHIPS/ACTIVITIES/NOTES/REMINDERS/LIFE_EVENTS/
+        GIFTS/CONVERSATION_AGENDA/CADENCE_POLICIES/PREFERENCES/
+        REMINDER_COMPLETIONS) and header rows per section. Values are
+        formula-injection-neutralized. This endpoint does not take
+        sections/include_sensitive params — those apply only to the
+        vCard/JSContact exports.
 
 
         Because it is the caller's own backup rather than a copy handed to
