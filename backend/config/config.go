@@ -57,7 +57,6 @@ type Config struct {
 	UseResend                    bool     `cfgreg:"derived=true;desc=true when RESEND_API_KEY and RESEND_FROM_EMAIL are both set"`
 	ResendAPIKey                 string   `cfgreg:"env=RESEND_API_KEY;type=string;default=;required=false;restart=true;desc=Resend email API key"`
 	ResendFromEmail              string   `cfgreg:"env=RESEND_FROM_EMAIL;type=string;default=;required=false;restart=true;desc=Resend sender address"`
-	ResendToEmail                string   `cfgreg:"env=RESEND_TO_EMAIL;type=string;default=;required=false;restart=true;desc=Declared but not read by LoadConfig today; setting it currently has no effect"`
 	UseSMTP                      bool     `cfgreg:"derived=true;desc=true when SMTP_HOST and SMTP_FROM_EMAIL are both set"`
 	SMTPHost                     string   `cfgreg:"env=SMTP_HOST;type=string;default=;required=false;restart=true;desc=SMTP server hostname"`
 	SMTPPort                     int      `cfgreg:"env=SMTP_PORT;type=int;range=1..65535 when SMTP enabled;default=587;required=false;restart=true;desc=SMTP server port"`
