@@ -168,6 +168,17 @@ interface ContactRepository {
     fun observeContact(id: Int): Flow<ContactRecordResponse?>
 
     /**
+     * Issue #1122: ids of cached, non-deleted contacts that have a primary
+     * phone but have never had a full detail fetch — so their offline
+     * multi-number phone index only knows the primary number, and a call/SMS
+     * from any other number they store can never match locally until one of
+     * [getContact]/[createContact]/[updateContact] hydrates it. Ordered
+     * stably so a bounded caller (see ContactPhoneIndexBackfillWorker) makes
+     * steady progress rather than re-picking the same rows every run.
+     */
+    suspend fun getContactIdsMissingPhoneIndex(limit: Int): List<Int>
+
+    /**
      * 167: scan for contact-address suggestions — the addresses a contact
      * probably shares because of a confirmed parent/child, spouse, or roommate
      * edge, or household membership. Read-only and idempotent; nothing is

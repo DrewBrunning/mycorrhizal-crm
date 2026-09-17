@@ -48,7 +48,7 @@ class TrackingWorkerSchedulerTest {
     // moved to -- the workers' own doWork() behavior is covered by
     // ReminderNotificationWorkerTest/NotificationWorkersTest/CallLogSyncWorkerTest.
     @Test
-    fun `schedulePeriodic enqueues all six periodic workers`() {
+    fun `schedulePeriodic enqueues all seven periodic workers`() {
         TrackingWorkerScheduler.schedulePeriodic(context)
 
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_INTERACTION_SYNC).isNotEmpty())
@@ -58,6 +58,8 @@ class TrackingWorkerSchedulerTest {
         // Issue #721: the capture catch-ups (call-log + outgoing-SMS backfill).
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_CALL_LOG_CATCH_UP).isNotEmpty())
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_SMS_BACKFILL).isNotEmpty())
+        // Issue #1122: the contact phone-index backfill.
+        assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_CONTACT_PHONE_INDEX_BACKFILL).isNotEmpty())
     }
 
     @Test
