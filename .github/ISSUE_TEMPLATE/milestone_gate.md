@@ -21,7 +21,10 @@ Two rules make it worth having, and both are easy to erode:
      description (with a note here saying why) or filed as a follow-up issue
      with an explicit disposition. Never left silently unchecked.
 
-Replace the milestone-specific criteria below; keep the standing ones.
+Replace the milestone-specific criteria below; keep the standing ones. Fill in
+the issue-list stub with every issue number this milestone contains — that
+list is both an acceptance criterion (they're all closed) and the reference
+the rest of this template's citations draw from.
 -->
 
 ## Deliverable
@@ -34,6 +37,7 @@ Check a box only with a citation — a test, a CI run, a document, or a `file:li
 
 ## Acceptance criteria
 
+- [ ] Every issue in this milestone is closed with a citation: #___, #___, #___. <!-- list every issue number; add one bullet per issue below with the specific claim it closes, or group related issues under one bullet -->
 - [ ] (milestone-specific criterion)
 - [ ] (milestone-specific criterion)
 
@@ -58,20 +62,21 @@ genuinely does not apply to a milestone, say so here rather than dropping it.
       closes the gate — they know what the milestone contained — rather than a scheduled
       audit, which fires on a calendar and lands on someone without that context.)
 
-<!--
-RELEASE gates only (0.8.0 / 0.9.0 / 1.0.0, and any future shipping milestone)
-also carry the full re-verification criterion. A per-milestone gate does not —
-re-running the whole ASVS pass every milestone is disproportionate, while
-letting a released claim go unverified for a year is not. Uncomment for a gate
-that actually ships something:
-
-- [ ] The ASVS L2 / MASVS-L1 claim has been **re-verified against the shipped code**, not
-      inherited from an earlier milestone — cite a dated row in
-      `docs/security/asvs-l2-verification-report.md`'s changelog. §8 of that report is the
-      procedure: steps 1–2 are automated, and the four manual audits each produced
-      single-digit candidate lists on the first pass, so a re-pass is about an hour rather
-      than a rebuild. (Standing criterion, issue #378.)
--->
+- [ ] **The ASVS/MASVS re-verification changelog row is added as part of closing *this*
+      gate, not deferred to release-dispatch time** — a new dated row in
+      `docs/security/asvs-l2-verification-report.md`'s §10, following the §8 procedure. This
+      project cuts a release at every point version (`v0.8.4`, `v0.8.5`, …), not only at
+      `X.0.0` boundaries, so this applies to **every** gate, not a special "shipping
+      milestone" subset. `release.yml`'s re-verification gate (issue #608) checks against
+      the *previous release tag* (`git describe --tags`), not the milestone board, so
+      closing this gate does not by itself satisfy it — and finding that out during the
+      actual release dispatch forces a scramble (an emergency doc PR, or the recorded
+      `ack_asvs_current=<reason>` skip). Cover this milestone's issues plus anything else
+      that has landed on `main` since the last §10 row; if more commits land between this
+      gate's closure and the actual release dispatch, redo the diff-review for just those
+      before dispatching. (Standing criterion, issue #378. Added after closing the `v0.8.4`
+      gate — #985 — skipped this and the next release dispatch failed on it; fixed
+      retroactively by pass 1.26 / PR #1110, documented in CLAUDE.md by PR #1111.)
 
 ## Verify
 
@@ -79,4 +84,4 @@ Every box above is checked and carries a citation. Any criterion that cannot be 
 
 ## Notes
 
-Milestone `vX.Y.Z`. Part of the `0.6.x` → `1.0.0` hardening program; see the program index issue. Companion gates: #500 (`0.8.0`), #503 (`0.9.0`), #525 (`1.0.0`).
+Milestone `vX.Y.Z`. <!-- state its position in the current hardening sequence and link companion gates, e.g. "Nth in the 0.8.x review-hardening sequence. Companion gates: v0.8.0–v0.8.(N-1), v0.8.(N+1)–v0.8.8." --> Part of the `0.6.x` → `1.0.0` hardening program; see the program index issue.
