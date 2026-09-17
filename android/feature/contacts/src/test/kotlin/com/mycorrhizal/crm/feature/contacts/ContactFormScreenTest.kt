@@ -1,7 +1,9 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -99,6 +101,14 @@ class ContactFormScreenTest {
         setContent(onGivenNameChange = { name = it })
         composeTestRule.onNodeWithText("Given name").performTextInput("Carol")
         assertEquals("Carol", name)
+    }
+
+    @Test
+    fun `nickname field is rendered exactly once`() {
+        // Regression test for #1121: the form used to render two identical
+        // nickname OutlinedTextFields bound to the same state and callback.
+        setContent()
+        composeTestRule.onAllNodesWithText("Nickname").assertCountEquals(1)
     }
 
     @Test
