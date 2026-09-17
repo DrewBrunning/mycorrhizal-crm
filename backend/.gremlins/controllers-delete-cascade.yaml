@@ -25,6 +25,7 @@ unleash:
         - ^duplicate_controller\.go$
         - ^error_aggregation_controller\.go$
         - ^export_controller\.go$
+        - ^export_csv_extra_sections\.go$
         - ^export_loss\.go$
         - ^external_activity_controller\.go$
         - ^external_identity_controller\.go$

@@ -95,16 +95,21 @@ func seedCSVFullFidelity(t *testing.T) csvFullFidelityFixture {
 	customField("Normal Field", "normal_field", csvFidelityNormalFieldValue, models.RelationshipSensitivityNormal)
 	customField("Secret Field", "secret_field", csvFidelitySecretFieldValue, models.RelationshipSensitivitySecret)
 
-	preference := func(value, sensitivity string) {
+	preference := func(category, value, sensitivity string) {
 		t.Helper()
 		require.NoError(t, db.Create(&models.Preference{
 			UserID: user.ID, EntityID: ada.VCardUID,
-			Category: models.PreferenceCategoryFood, Key: "favorite",
+			Category: category, Key: "favorite",
 			Value: value, Source: models.PreferenceSourceUser, Sensitivity: sensitivity,
 		}).Error)
 	}
-	preference(csvFidelityNormalPreference, models.RelationshipSensitivityNormal)
-	preference(csvFidelitySecretPreference, models.RelationshipSensitivitySecret)
+	preference(models.PreferenceCategoryFood, csvFidelityNormalPreference, models.RelationshipSensitivityNormal)
+	preference(models.PreferenceCategoryFood, csvFidelitySecretPreference, models.RelationshipSensitivitySecret)
+	// Issue #970: before the fix, every Preference.Category except "food" was
+	// silently absent from the CSV entirely -- not merely filtered by
+	// sensitivity, omitted as a category. A non-food category is the
+	// regression case the food-only control above cannot catch.
+	preference(models.PreferenceCategoryHobby, csvFidelityNonFoodPreference, models.RelationshipSensitivitySecret)
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
@@ -124,6 +129,7 @@ const (
 	csvFidelitySecretFieldValue  = "top secret custom value"
 	csvFidelityNormalPreference  = "Ordinary Ramen"
 	csvFidelitySecretPreference  = "Secret Souffle"
+	csvFidelityNonFoodPreference = "Secret Stamp Collecting"
 	csvFidelityRelationshipsHead = "=== RELATIONSHIPS ==="
 )
 
@@ -180,6 +186,8 @@ func TestExportCSV_IsFullFidelityBackup_UnlikeVCard(t *testing.T) {
 		assert.Contains(t, body, csvFidelitySecretFieldValue, "a secret custom-field value belongs in the user's own backup")
 		assert.Contains(t, body, csvFidelityNormalPreference, "the normal food-preference control must be exported")
 		assert.Contains(t, body, csvFidelitySecretPreference, "a secret food preference belongs in the user's own backup")
+		assert.Contains(t, body, csvFidelityNonFoodPreference, "issue #970: a non-food preference category must be exported, not just filtered by sensitivity")
+		assert.Contains(t, body, "=== PREFERENCES ===", "issue #970: the CSV must carry a dedicated all-categories preferences section")
 	})
 
 	t.Run("vcard default-denies the same rows", func(t *testing.T) {

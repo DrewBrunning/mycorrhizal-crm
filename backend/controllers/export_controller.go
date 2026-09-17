@@ -271,16 +271,19 @@ func ExportData(c *gin.Context) {
 		abortExportError(c, log, "export:csv", "database", "Failed to fetch relationship edges for export", err)
 		return
 	}
-	type contactRef struct {
-		ID   uint
-		Name string
-	}
-	contactByVCardUID := make(map[string]contactRef, len(contacts))
+	contactByVCardUID := make(map[string]exportContactRef, len(contacts))
+	// contactByID mirrors contactByVCardUID for the one export entity keyed by
+	// Contact.ID rather than Contact.VCardUID: ReminderCompletion predates the
+	// EntityID/VCardUID convention (models/reminder.go) and still carries a
+	// plain ContactID uint.
+	contactByID := make(map[uint]exportContactRef, len(contacts))
 	for _, contact := range contacts {
-		contactByVCardUID[contact.VCardUID] = contactRef{
+		ref := exportContactRef{
 			ID:   contact.ID,
 			Name: fmt.Sprintf("%s %s", contact.Firstname, contact.Lastname),
 		}
+		contactByVCardUID[contact.VCardUID] = ref
+		contactByID[contact.ID] = ref
 	}
 
 	var activities []models.Activity
@@ -310,20 +313,75 @@ func ExportData(c *gin.Context) {
 		return
 	}
 
-	// T20a: the "Food Preference" column now sources from the structured
-	// preferences table (category=food) rather than the retired free-text
-	// Contact.FoodPreference. Deliberately includes every sensitivity — this
-	// is the user's own full personal-data backup, the same choice the
-	// relationships section below documents for RelationshipEdge.
-	var foodPreferences []models.Preference
-	if err := db.Where("user_id = ? AND category = ?", userID, models.PreferenceCategoryFood).
-		Find(&foodPreferences).Error; err != nil {
-		abortExportError(c, log, "export:csv", "database", "Failed to fetch food preferences for export", err)
+	// T20a: the "Food Preference" column on the CONTACTS section sources from
+	// the structured preferences table (category=food) rather than the
+	// retired free-text Contact.FoodPreference. Fetched across every category
+	// (not just food) so the same query also feeds the dedicated PREFERENCES
+	// section (issue #970) — every non-food category (drink/hobby/gift/
+	// dislike/media/jewelry/flowers/fragrance/color/cause/...) was previously
+	// omitted from the CSV entirely, contradicting its "full-fidelity backup"
+	// documentation. Deliberately includes every sensitivity — this is the
+	// user's own full personal-data backup, the same choice the relationships
+	// section below documents for RelationshipEdge.
+	var preferences []models.Preference
+	if err := db.Where("user_id = ?", userID).
+		Order("created_at ASC").
+		Find(&preferences).Error; err != nil {
+		abortExportError(c, log, "export:csv", "database", "Failed to fetch preferences for export", err)
 		return
 	}
-	foodByVCardUID := make(map[string][]string, len(foodPreferences))
-	for _, pref := range foodPreferences {
-		foodByVCardUID[pref.EntityID] = append(foodByVCardUID[pref.EntityID], pref.Value)
+	foodByVCardUID := make(map[string][]string, len(preferences))
+	for _, pref := range preferences {
+		if pref.Category == models.PreferenceCategoryFood {
+			foodByVCardUID[pref.EntityID] = append(foodByVCardUID[pref.EntityID], pref.Value)
+		}
+	}
+
+	// Issue #970: life events, gifts, conversation-agenda items and cadence
+	// policies are all EntityID(VCardUID)-scoped, user-authored primary data
+	// (docs/security/data-retention-lifecycle.md §1) that the CSV backup
+	// silently omitted despite being documented as holding everything.
+	var lifeEvents []models.LifeEvent
+	if err := db.Where("user_id = ?", userID).
+		Order("created_at ASC").
+		Find(&lifeEvents).Error; err != nil {
+		abortExportError(c, log, "export:csv", "database", "Failed to fetch life events for export", err)
+		return
+	}
+
+	var gifts []models.Gift
+	if err := db.Where("user_id = ?", userID).
+		Order("created_at ASC").
+		Find(&gifts).Error; err != nil {
+		abortExportError(c, log, "export:csv", "database", "Failed to fetch gifts for export", err)
+		return
+	}
+
+	var agendaItems []models.ConversationAgenda
+	if err := db.Where("user_id = ?", userID).
+		Order("created_at ASC").
+		Find(&agendaItems).Error; err != nil {
+		abortExportError(c, log, "export:csv", "database", "Failed to fetch conversation agenda items for export", err)
+		return
+	}
+
+	var cadencePolicies []models.CadencePolicy
+	if err := db.Where("user_id = ?", userID).
+		Order("created_at ASC").
+		Find(&cadencePolicies).Error; err != nil {
+		abortExportError(c, log, "export:csv", "database", "Failed to fetch cadence policies for export", err)
+		return
+	}
+
+	// ReminderCompletion predates the EntityID/VCardUID convention and is
+	// scoped by both user_id and its own plain ContactID (reminder_controller.go,
+	// timeline_controller.go) rather than a join through Reminder.
+	var reminderCompletions []models.ReminderCompletion
+	if err := db.Where("user_id = ?", userID).
+		Order("completed_at ASC").
+		Find(&reminderCompletions).Error; err != nil {
+		abortExportError(c, log, "export:csv", "database", "Failed to fetch reminder completions for export", err)
+		return
 	}
 
 	// Circle/Tag memberships (T3). These come from the real Circle/Tag
@@ -576,6 +634,14 @@ func ExportData(c *gin.Context) {
 	}
 	writer.Flush()
 
+	// Issue #970: LIFE_EVENTS/GIFTS/CONVERSATION_AGENDA/CADENCE_POLICIES/
+	// PREFERENCES/REMINDER_COMPLETIONS — see writeExportExtraSections'
+	// doc comment (export_csv_extra_sections.go).
+	if !writeExportExtraSections(c, log, &buf, writer, contactByVCardUID, contactByID,
+		lifeEvents, gifts, agendaItems, cadencePolicies, preferences, reminderCompletions) {
+		return
+	}
+
 	// Check for any CSV writer errors
 	if err := writer.Error(); err != nil {
 		abortExportError(c, log, "export:csv", "serialization", "CSV writer error", err)
@@ -598,6 +664,12 @@ func ExportData(c *gin.Context) {
 		Int("activities", len(activities)).
 		Int("notes", len(notes)).
 		Int("reminders", len(reminders)).
+		Int("life_events", len(lifeEvents)).
+		Int("gifts", len(gifts)).
+		Int("conversation_agenda", len(agendaItems)).
+		Int("cadence_policies", len(cadencePolicies)).
+		Int("preferences", len(preferences)).
+		Int("reminder_completions", len(reminderCompletions)).
 		Msg("Data export completed successfully")
 }
 
