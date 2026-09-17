@@ -19,7 +19,33 @@ import (
 // them. Callers must run this inside a transaction and pre-load the deleted
 // user's attachment stored names beforehand (deleteUserAttachmentFiles removes
 // the actual files afterward, once the transaction has committed).
+//
+// SkipHooks is deliberate, extending the reasoning DeleteOwnAccount's
+// "issue #972 decision 3" comment already applies to the top-level
+// self-delete audit event to every per-entity CRUD audit hook (Contact,
+// Note, Activity, Circle, Tag, Household, Reminder, ...) these deletes would
+// otherwise fire: audit_events.user_id is a NOT NULL FK to users.id with ON
+// DELETE CASCADE, and this transaction always ends by hard-deleting the user
+// row, so any per-entity delete-audit row would either be cascade-deleted
+// the instant that happens (if it landed earlier in this same transaction)
+// or fail its FK and be dropped by the fire-and-forget audit logger (it
+// always writes through a separate DB session — see models/audit.go's
+// auditLogger doc comment — so ordering against this transaction's commit is
+// never guaranteed). Recording it is pointless either way, and without
+// SkipHooks it isn't even harmless: several of these hooks (Circle, Tag,
+// Household, Reminder) have no soft-delete guard, so they fire once per bulk
+// Delete call here regardless of how many rows actually matched — on an
+// account with none of that entity type, they still fire with a zero-value
+// model (empty entity ID, user_id 0), which can never satisfy the FK and
+// logs a spurious warning on every single account deletion. SkipHooks
+// removes the futile write (and its log noise) at the source instead of
+// papering over it downstream; it is safe here because no model in this
+// cascade has a BeforeDelete hook, and the only BeforeSave use above
+// (promoting another user to admin in DeleteOwnAccount) runs before this
+// call, not through it.
 func deleteUserCascade(tx *gorm.DB, userID uint) error {
+	tx = tx.Session(&gorm.Session{SkipHooks: true})
+
 	// Delete attachments (N7 — hard: account gone, no tombstoning needed).
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Attachment{}).Error; err != nil {
 		return err
