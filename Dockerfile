@@ -137,7 +137,7 @@ FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec4
 # log body alone made this layer's digest differ between two otherwise
 # byte-identical builds. The log has no value in an immutable image; drop it.
 RUN apk add --no-cache \
-    ca-certificates=20260611-r0 \
+    ca-certificates=20260909-r0 \
     tzdata=2026d-r0 \
     nginx=1.30.4-r1 \
     supervisor=4.3.0-r1 \
