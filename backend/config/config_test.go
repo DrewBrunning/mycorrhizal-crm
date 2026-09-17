@@ -15,18 +15,37 @@ import (
 // individual tests can mutate just the field(s) they care about.
 func validConfig() *Config {
 	return &Config{
-		DBPath:           "test.db",
-		ReminderTime:     "12:00",
-		ReminderTimezone: "UTC",
-		FrontendURL:      "https://crm.example.com",
-		CookieSecure:     true,
-		Port:             "8080",
-		JWTSecretKey:     "a-very-long-jwt-secret-key-that-is-32-chars",
-		JWTExpiryHours:   96,
-		ReadTimeout:      15,
-		WriteTimeout:     15,
-		IdleTimeout:      60,
-		ProfilePhotoDir:  "/var/data/photos",
+		DBPath:               "test.db",
+		ReminderTime:         "12:00",
+		ReminderTimezone:     "UTC",
+		FrontendURL:          "https://crm.example.com",
+		CookieSecure:         true,
+		Port:                 "8080",
+		JWTSecretKey:         "a-very-long-jwt-secret-key-that-is-32-chars",
+		JWTExpiryHours:       96,
+		ReadTimeout:          15,
+		WriteTimeout:         15,
+		IdleTimeout:          60,
+		ProfilePhotoDir:      "/var/data/photos",
+		LogLevel:             "info",
+		GinMode:              "debug",
+		APIRateLimitBurst:    1000,
+		APIRateLimitInterval: 600 * time.Millisecond,
+		// issue #937: these fields fail Validate() outside their documented
+		// range (some floors are >0, so the zero value is invalid) — see the
+		// intRange checks in Validate().
+		CalDAVSyncIntervalHours:       6,
+		ImmichSyncIntervalHours:       6,
+		DBIntegrityCheckIntervalHours: 24,
+		DBRestoreDrillIntervalHours:   DefaultDBRestoreDrillIntervalHours,
+		AlertEvalIntervalMinutes:      15,
+		AlertSyncFailureThreshold:     3,
+		AlertNotifyFailureThreshold:   3,
+		AlertJobStaleMultiplier:       3,
+		AlertIncidentQuietHours:       6,
+		StorageWarnPercent:            DefaultStorageWarnPercent,
+		StorageCriticalPercent:        DefaultStorageCriticalPercent,
+		StorageSampleRetentionDays:    DefaultStorageSampleRetentionDays,
 	}
 }
 
@@ -77,10 +96,9 @@ func TestValidate_FrontendURLWildcard(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("GIN_MODE", tt.ginMode)
-
 			cfg := validConfig()
 			cfg.FrontendURL = "*"
+			cfg.GinMode = tt.ginMode
 			errs := cfg.Validate()
 
 			if tt.expectError {
@@ -93,20 +111,18 @@ func TestValidate_FrontendURLWildcard(t *testing.T) {
 }
 
 func TestValidate_SpecificFrontendURLAllowedInRelease(t *testing.T) {
-	t.Setenv("GIN_MODE", "release")
-
 	cfg := validConfig()
 	cfg.FrontendURL = "https://crm.example.com"
+	cfg.GinMode = "release"
 	errs := cfg.Validate()
 
 	assert.False(t, hasFieldError(errs, "FRONTEND_URL"), "a specific FRONTEND_URL should be allowed in release mode, got: %v", errs)
 }
 
 func TestValidate_EmptyFrontendURLStillRejected(t *testing.T) {
-	t.Setenv("GIN_MODE", "")
-
 	cfg := validConfig()
 	cfg.FrontendURL = ""
+	cfg.GinMode = ""
 	errs := cfg.Validate()
 
 	assert.True(t, hasFieldError(errs, "FRONTEND_URL"), "empty FRONTEND_URL should still be rejected regardless of GIN_MODE, got: %v", errs)
@@ -471,6 +487,88 @@ func TestLoadConfig_Defaults(t *testing.T) {
 	assert.Equal(t, 168, cfg.DBRestoreDrillIntervalHours)
 	assert.Equal(t, DefaultDBRestoreDrillIntervalHours, cfg.DBRestoreDrillIntervalHours)
 	assert.Equal(t, 0, cfg.DBRestoreDrillMaxDurationSeconds)
+
+	// Process-level settings (issue #936): DEMO_MODE off, LOG_LEVEL=info and
+	// GIN_MODE=debug by default, and LogPretty forced true because GIN_MODE
+	// isn't "release".
+	assert.False(t, cfg.DemoMode)
+	assert.Equal(t, "info", cfg.LogLevel)
+	assert.Equal(t, "debug", cfg.GinMode)
+	assert.True(t, cfg.LogPretty)
+}
+
+// --- Process-level settings (issue #936) ----------------------------------
+
+func TestLoadConfig_DemoModeEnv(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+	t.Setenv("DEMO_MODE", "true")
+
+	cfg := LoadConfig()
+	assert.True(t, cfg.DemoMode)
+}
+
+// LogPretty's dev-mode override (main.go used to compute this directly from
+// os.Getenv before issue #936 moved it into LoadConfig) must survive the
+// move unchanged: an explicit LOG_PRETTY is honored only in release mode;
+// any non-release GIN_MODE always forces pretty output.
+func TestLoadConfig_LogPrettyDevModeOverride(t *testing.T) {
+	baseEnv := func(t *testing.T) {
+		t.Helper()
+		t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+		t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+		t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+		t.Setenv("FRONTEND_URL", "http://localhost:5173")
+	}
+
+	tests := []struct {
+		name       string
+		ginMode    string
+		logPretty  string
+		wantPretty bool
+	}{
+		{name: "dev, LOG_PRETTY unset", ginMode: "debug", logPretty: "", wantPretty: true},
+		{name: "dev, LOG_PRETTY=false is overridden", ginMode: "debug", logPretty: "false", wantPretty: true},
+		{name: "release, LOG_PRETTY unset", ginMode: "release", logPretty: "", wantPretty: false},
+		{name: "release, LOG_PRETTY=true honored", ginMode: "release", logPretty: "true", wantPretty: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			baseEnv(t)
+			t.Setenv("GIN_MODE", tt.ginMode)
+			if tt.logPretty != "" {
+				t.Setenv("LOG_PRETTY", tt.logPretty)
+			}
+			cfg := LoadConfig()
+			assert.Equal(t, tt.wantPretty, cfg.LogPretty)
+		})
+	}
+}
+
+func TestValidate_LogLevelEnum(t *testing.T) {
+	for _, level := range []string{"debug", "info", "warn", "error", "fatal", "panic"} {
+		cfg := validConfig()
+		cfg.LogLevel = level
+		assert.False(t, hasFieldError(cfg.Validate(), "LOG_LEVEL"), "%q should be a valid log level", level)
+	}
+
+	cfg := validConfig()
+	cfg.LogLevel = "verbose"
+	assert.True(t, hasFieldError(cfg.Validate(), "LOG_LEVEL"), "an unknown log level must be rejected")
+}
+
+func TestValidate_GinModeEnum(t *testing.T) {
+	for _, mode := range []string{"debug", "release", "test"} {
+		cfg := validConfig()
+		cfg.GinMode = mode
+		assert.False(t, hasFieldError(cfg.Validate(), "GIN_MODE"), "%q should be a valid GIN_MODE", mode)
+	}
+
+	cfg := validConfig()
+	cfg.GinMode = "production"
+	assert.True(t, hasFieldError(cfg.Validate(), "GIN_MODE"), "an unknown GIN_MODE must be rejected")
 }
 
 func TestLoadConfig_RestoreDrillMaxDurationSeconds(t *testing.T) {
@@ -482,10 +580,12 @@ func TestLoadConfig_RestoreDrillMaxDurationSeconds(t *testing.T) {
 	t.Setenv("DB_RESTORE_DRILL_MAX_DURATION_SECONDS", "900")
 	assert.Equal(t, 900, LoadConfig().DBRestoreDrillMaxDurationSeconds)
 
-	// Negative is clamped to 0 (no budget) rather than refusing to boot — same
-	// posture as the ALERT_* knobs.
+	// Negative reads through unchanged (issue #937: no longer clamped in
+	// LoadConfig) and fails boot-time validation instead.
 	t.Setenv("DB_RESTORE_DRILL_MAX_DURATION_SECONDS", "-5")
-	assert.Equal(t, 0, LoadConfig().DBRestoreDrillMaxDurationSeconds)
+	cfg := LoadConfig()
+	assert.Equal(t, -5, cfg.DBRestoreDrillMaxDurationSeconds)
+	assert.True(t, hasFieldError(cfg.Validate(), "DB_RESTORE_DRILL_MAX_DURATION_SECONDS"))
 }
 
 func TestLoadConfig_StorageThresholds(t *testing.T) {
@@ -501,14 +601,20 @@ func TestLoadConfig_StorageThresholds(t *testing.T) {
 	assert.Equal(t, 95, cfg.StorageCriticalPercent)
 	assert.Equal(t, 365, cfg.StorageSampleRetentionDays)
 
-	// A critical at or below warn is meaningless — clamp to the default.
+	// A critical at or below warn is meaningless — reads through unchanged
+	// (issue #937: no longer clamped in LoadConfig) and fails validation.
 	t.Setenv("STORAGE_WARN_PERCENT", "85")
 	t.Setenv("STORAGE_CRITICAL_PERCENT", "85")
-	assert.Equal(t, 90, LoadConfig().StorageCriticalPercent)
+	cfg2 := LoadConfig()
+	assert.Equal(t, 85, cfg2.StorageCriticalPercent)
+	assert.True(t, hasFieldError(cfg2.Validate(), "STORAGE_CRITICAL_PERCENT"))
 
-	// A retention window that can't hold even a week of samples is clamped.
+	// A retention window that can't hold even a week of samples likewise
+	// reads through and fails validation instead of being clamped.
 	t.Setenv("STORAGE_SAMPLE_RETENTION_DAYS", "3")
-	assert.Equal(t, 180, LoadConfig().StorageSampleRetentionDays)
+	cfg3 := LoadConfig()
+	assert.Equal(t, 3, cfg3.StorageSampleRetentionDays)
+	assert.True(t, hasFieldError(cfg3.Validate(), "STORAGE_SAMPLE_RETENTION_DAYS"))
 }
 
 func TestLoadConfig_UpdateCheckEnabledEnv(t *testing.T) {
@@ -589,7 +695,85 @@ func TestLoadConfig_WebhookDeliveryRetentionDays(t *testing.T) {
 	assert.Equal(t, 60, cfg.WebhookDeliveryRetentionDays)
 }
 
-func TestLoadConfig_DBIntegrityCheckIntervalHoursClampedToMinimumOne(t *testing.T) {
+// --- Issue #935: type/range validation for previously-unvalidated fields --
+
+func TestValidate_CookieDomain(t *testing.T) {
+	for _, valid := range []string{"", "example.com", ".example.com", "crm.example.com", "localhost"} {
+		cfg := validConfig()
+		cfg.CookieDomain = valid
+		assert.False(t, hasFieldError(cfg.Validate(), "COOKIE_DOMAIN"), "%q should be a valid cookie domain", valid)
+	}
+
+	for _, invalid := range []string{"not a domain!!", "http://example.com", "example.com/path", "-example.com", "example..com"} {
+		cfg := validConfig()
+		cfg.CookieDomain = invalid
+		assert.True(t, hasFieldError(cfg.Validate(), "COOKIE_DOMAIN"), "%q should be rejected as an invalid cookie domain", invalid)
+	}
+}
+
+func TestValidate_APIRateLimitBurst(t *testing.T) {
+	cfg := validConfig()
+	cfg.APIRateLimitBurst = 1000
+	assert.False(t, hasFieldError(cfg.Validate(), "API_RATE_LIMIT_BURST"))
+
+	for _, invalid := range []int{0, -1} {
+		cfg := validConfig()
+		cfg.APIRateLimitBurst = invalid
+		assert.True(t, hasFieldError(cfg.Validate(), "API_RATE_LIMIT_BURST"), "burst %d must be rejected", invalid)
+	}
+}
+
+func TestValidate_APIRateLimitInterval(t *testing.T) {
+	cfg := validConfig()
+	cfg.APIRateLimitInterval = 600 * time.Millisecond
+	assert.False(t, hasFieldError(cfg.Validate(), "API_RATE_LIMIT_INTERVAL_MS"))
+
+	for _, invalid := range []time.Duration{0, -100 * time.Millisecond} {
+		cfg := validConfig()
+		cfg.APIRateLimitInterval = invalid
+		assert.True(t, hasFieldError(cfg.Validate(), "API_RATE_LIMIT_INTERVAL_MS"), "interval %s must be rejected", invalid)
+	}
+}
+
+func TestValidate_ExtraRetentionDaysFields(t *testing.T) {
+	for _, field := range []string{
+		"AUDIT_RETENTION_DAYS", "CONTACT_SHARE_RETENTION_DAYS", "SYSTEM_EVENT_RETENTION_DAYS",
+		"WEBHOOK_DELIVERY_RETENTION_DAYS", "JOB_RUN_RETENTION_DAYS",
+	} {
+		t.Run(field, func(t *testing.T) {
+			cfg := validConfig()
+			setRetentionField(cfg, field, -1)
+			assert.True(t, hasFieldError(cfg.Validate(), field), "a negative %s must be rejected", field)
+
+			cfg = validConfig()
+			setRetentionField(cfg, field, 0)
+			assert.False(t, hasFieldError(cfg.Validate(), field), "0 (disable the purge) must be accepted for %s", field)
+		})
+	}
+}
+
+// setRetentionField sets the Config field corresponding to one of the
+// retention-day env var names above, so TestValidate_ExtraRetentionDaysFields
+// can drive all five through one table instead of five near-identical tests.
+func setRetentionField(cfg *Config, field string, days int) {
+	switch field {
+	case "AUDIT_RETENTION_DAYS":
+		cfg.AuditRetentionDays = days
+	case "CONTACT_SHARE_RETENTION_DAYS":
+		cfg.ContactShareRetentionDays = days
+	case "SYSTEM_EVENT_RETENTION_DAYS":
+		cfg.SystemEventRetentionDays = days
+	case "WEBHOOK_DELIVERY_RETENTION_DAYS":
+		cfg.WebhookDeliveryRetentionDays = days
+	case "JOB_RUN_RETENTION_DAYS":
+		cfg.JobRunRetentionDays = days
+	}
+}
+
+// Issue #937: DB_INTEGRITY_CHECK_INTERVAL_HOURS/DB_RESTORE_DRILL_INTERVAL_HOURS
+// used to be silently clamped to 1 here; they now read through unchanged and
+// fail boot-time validation instead (see the fail-fast tests below).
+func TestLoadConfig_DBIntegrityCheckIntervalHoursReadsThroughForValidation(t *testing.T) {
 	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
 	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
 	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
@@ -597,10 +781,11 @@ func TestLoadConfig_DBIntegrityCheckIntervalHoursClampedToMinimumOne(t *testing.
 	t.Setenv("DB_INTEGRITY_CHECK_INTERVAL_HOURS", "0")
 
 	cfg := LoadConfig()
-	assert.Equal(t, 1, cfg.DBIntegrityCheckIntervalHours, "an interval below 1 must be clamped, not left non-positive")
+	assert.Equal(t, 0, cfg.DBIntegrityCheckIntervalHours, "no longer clamped in LoadConfig")
+	assert.True(t, hasFieldError(cfg.Validate(), "DB_INTEGRITY_CHECK_INTERVAL_HOURS"))
 }
 
-func TestLoadConfig_DBRestoreDrillIntervalHoursClampedToMinimumOne(t *testing.T) {
+func TestLoadConfig_DBRestoreDrillIntervalHoursReadsThroughForValidation(t *testing.T) {
 	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
 	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
 	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
@@ -608,7 +793,104 @@ func TestLoadConfig_DBRestoreDrillIntervalHoursClampedToMinimumOne(t *testing.T)
 	t.Setenv("DB_RESTORE_DRILL_INTERVAL_HOURS", "-5")
 
 	cfg := LoadConfig()
-	assert.Equal(t, 1, cfg.DBRestoreDrillIntervalHours, "a negative interval must be clamped, not left negative")
+	assert.Equal(t, -5, cfg.DBRestoreDrillIntervalHours, "no longer clamped in LoadConfig")
+	assert.True(t, hasFieldError(cfg.Validate(), "DB_RESTORE_DRILL_INTERVAL_HOURS"))
+}
+
+// TestValidate_FailFastIntFields is the issue #937 fail-fast gate: each of
+// these fields must (a) reject an out-of-range value and (b) reject a
+// set-but-unparseable one (via LoadConfig -> parseErrors, not Validate()
+// alone), so a typo fails boot with a named message instead of silently
+// falling back to the default.
+func TestValidate_FailFastIntFields(t *testing.T) {
+	tests := []struct {
+		field   string
+		invalid int
+	}{
+		{"CALDAV_SYNC_INTERVAL_HOURS", 0},
+		{"IMMICH_SYNC_INTERVAL_HOURS", 0},
+		{"DB_INTEGRITY_CHECK_INTERVAL_HOURS", 0},
+		{"DB_RESTORE_DRILL_INTERVAL_HOURS", 0},
+		{"DB_RESTORE_DRILL_MAX_DURATION_SECONDS", -1},
+		{"ALERT_EVAL_INTERVAL_MINUTES", 0},
+		{"ALERT_DISK_USAGE_PERCENT", 100},
+		{"ALERT_SYNC_FAILURE_THRESHOLD", 0},
+		{"ALERT_NOTIFY_FAILURE_THRESHOLD", 0},
+		{"ALERT_JOB_STALE_MULTIPLIER", 1},
+		{"ALERT_INCIDENT_QUIET_HOURS", 0},
+		{"ALERT_BACKUP_MAX_AGE_HOURS", -1},
+		{"STORAGE_WARN_PERCENT", 0},
+		{"STORAGE_SAMPLE_RETENTION_DAYS", 6},
+	}
+	for _, tt := range tests {
+		t.Run(tt.field, func(t *testing.T) {
+			cfg := validConfig()
+			setFailFastIntField(cfg, tt.field, tt.invalid)
+			assert.True(t, hasFieldError(cfg.Validate(), tt.field), "%d must be rejected for %s", tt.invalid, tt.field)
+		})
+	}
+}
+
+func TestValidate_StorageCriticalPercentMustExceedWarnPercent(t *testing.T) {
+	cfg := validConfig()
+	cfg.StorageWarnPercent = 75
+	cfg.StorageCriticalPercent = 75
+	assert.True(t, hasFieldError(cfg.Validate(), "STORAGE_CRITICAL_PERCENT"), "critical == warn must be rejected")
+
+	cfg.StorageCriticalPercent = 101
+	assert.True(t, hasFieldError(cfg.Validate(), "STORAGE_CRITICAL_PERCENT"), "critical > 100 must be rejected")
+
+	cfg.StorageCriticalPercent = 76
+	assert.False(t, hasFieldError(cfg.Validate(), "STORAGE_CRITICAL_PERCENT"))
+}
+
+func setFailFastIntField(cfg *Config, field string, v int) {
+	switch field {
+	case "CALDAV_SYNC_INTERVAL_HOURS":
+		cfg.CalDAVSyncIntervalHours = v
+	case "IMMICH_SYNC_INTERVAL_HOURS":
+		cfg.ImmichSyncIntervalHours = v
+	case "DB_INTEGRITY_CHECK_INTERVAL_HOURS":
+		cfg.DBIntegrityCheckIntervalHours = v
+	case "DB_RESTORE_DRILL_INTERVAL_HOURS":
+		cfg.DBRestoreDrillIntervalHours = v
+	case "DB_RESTORE_DRILL_MAX_DURATION_SECONDS":
+		cfg.DBRestoreDrillMaxDurationSeconds = v
+	case "ALERT_EVAL_INTERVAL_MINUTES":
+		cfg.AlertEvalIntervalMinutes = v
+	case "ALERT_DISK_USAGE_PERCENT":
+		cfg.AlertDiskUsagePercent = v
+	case "ALERT_SYNC_FAILURE_THRESHOLD":
+		cfg.AlertSyncFailureThreshold = v
+	case "ALERT_NOTIFY_FAILURE_THRESHOLD":
+		cfg.AlertNotifyFailureThreshold = v
+	case "ALERT_JOB_STALE_MULTIPLIER":
+		cfg.AlertJobStaleMultiplier = v
+	case "ALERT_INCIDENT_QUIET_HOURS":
+		cfg.AlertIncidentQuietHours = v
+	case "ALERT_BACKUP_MAX_AGE_HOURS":
+		cfg.AlertBackupMaxAgeHours = v
+	case "STORAGE_WARN_PERCENT":
+		cfg.StorageWarnPercent = v
+	case "STORAGE_SAMPLE_RETENTION_DAYS":
+		cfg.StorageSampleRetentionDays = v
+	}
+}
+
+// TestLoadConfig_FailFastFieldParseErrorSurfacesInValidate pins the
+// getIntEnvChecked wiring end to end: a set-but-unparseable value for one of
+// the issue #937 fields is collected into Config.parseErrors by LoadConfig
+// and surfaced as a named error by Validate() — not silently defaulted.
+func TestLoadConfig_FailFastFieldParseErrorSurfacesInValidate(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+	t.Setenv("ALERT_DISK_USAGE_PERCENT", "not-a-number")
+
+	cfg := LoadConfig()
+	assert.Equal(t, 90, cfg.AlertDiskUsagePercent, "an unparseable value falls back to the default")
+	assert.True(t, hasFieldError(cfg.Validate(), "ALERT_DISK_USAGE_PERCENT"), "but the parse failure itself must still fail boot")
 }
 
 func TestValidateOrPanic_ValidConfigDoesNotPanic(t *testing.T) {
@@ -757,12 +1039,10 @@ func TestEffectiveTrustedProxies(t *testing.T) {
 // that an external proxy must be listed. It must not fire in dev, and must not
 // fire when the operator configured proxies.
 func TestTrustedProxyWarnings(t *testing.T) {
-	t.Setenv("GIN_MODE", "release")
-	assert.Len(t, (&Config{}).TrustedProxyWarnings(), 1, "release + empty must warn")
-	assert.Empty(t, (&Config{TrustedProxies: []string{"10.1.2.3"}}).TrustedProxyWarnings(), "release + configured must not warn")
+	assert.Len(t, (&Config{GinMode: "release"}).TrustedProxyWarnings(), 1, "release + empty must warn")
+	assert.Empty(t, (&Config{GinMode: "release", TrustedProxies: []string{"10.1.2.3"}}).TrustedProxyWarnings(), "release + configured must not warn")
 
-	t.Setenv("GIN_MODE", "debug")
-	assert.Empty(t, (&Config{}).TrustedProxyWarnings(), "dev must not warn")
+	assert.Empty(t, (&Config{GinMode: "debug"}).TrustedProxyWarnings(), "dev must not warn")
 }
 
 func TestValidate_AttachmentsDirRelativeRejected(t *testing.T) {

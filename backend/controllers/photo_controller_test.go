@@ -471,10 +471,7 @@ func newMultipartPhotoRequest(t *testing.T, url, fieldName, filename string, dat
 }
 
 func TestAddPhotoToContact_DemoModeDisabled(t *testing.T) {
-	require.NoError(t, os.Setenv("DEMO_MODE", "true"))
-	defer os.Unsetenv("DEMO_MODE")
-
-	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
+	cfg := &config.Config{ProfilePhotoDir: t.TempDir(), DemoMode: true}
 	_, router := setupRouter()
 	router.POST("/contacts/:id/photo", func(c *gin.Context) { AddPhotoToContact(c, cfg) })
 

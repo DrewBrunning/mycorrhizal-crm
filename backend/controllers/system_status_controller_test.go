@@ -73,18 +73,36 @@ func seedAdmin(t *testing.T, db *gorm.DB) models.User {
 func validSystemStatusConfig(t *testing.T, dbPath string) config.Config {
 	t.Helper()
 	return config.Config{
-		JWTSecretKey:     "a-sufficiently-long-and-random-testing-jwt-secret-value",
-		DBPath:           dbPath,
-		ProfilePhotoDir:  t.TempDir(),
-		AttachmentsDir:   t.TempDir(),
-		FrontendURL:      "http://localhost:5173",
-		Port:             "7300",
-		ReminderTime:     "09:00",
-		ReminderTimezone: "UTC",
-		JWTExpiryHours:   96,
-		ReadTimeout:      15,
-		WriteTimeout:     15,
-		IdleTimeout:      60,
+		JWTSecretKey:         "a-sufficiently-long-and-random-testing-jwt-secret-value",
+		DBPath:               dbPath,
+		ProfilePhotoDir:      t.TempDir(),
+		AttachmentsDir:       t.TempDir(),
+		FrontendURL:          "http://localhost:5173",
+		Port:                 "7300",
+		ReminderTime:         "09:00",
+		ReminderTimezone:     "UTC",
+		JWTExpiryHours:       96,
+		ReadTimeout:          15,
+		WriteTimeout:         15,
+		IdleTimeout:          60,
+		LogLevel:             "info",
+		GinMode:              "debug",
+		APIRateLimitBurst:    1000,
+		APIRateLimitInterval: 600 * time.Millisecond,
+		// issue #937: these fields fail Validate() outside their documented
+		// range (some floors are >0, so the zero value is invalid).
+		CalDAVSyncIntervalHours:       6,
+		ImmichSyncIntervalHours:       6,
+		DBIntegrityCheckIntervalHours: 24,
+		DBRestoreDrillIntervalHours:   config.DefaultDBRestoreDrillIntervalHours,
+		AlertEvalIntervalMinutes:      15,
+		AlertSyncFailureThreshold:     3,
+		AlertNotifyFailureThreshold:   3,
+		AlertJobStaleMultiplier:       3,
+		AlertIncidentQuietHours:       6,
+		StorageWarnPercent:            config.DefaultStorageWarnPercent,
+		StorageCriticalPercent:        config.DefaultStorageCriticalPercent,
+		StorageSampleRetentionDays:    config.DefaultStorageSampleRetentionDays,
 	}
 }
 
