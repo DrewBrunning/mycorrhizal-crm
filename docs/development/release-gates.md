@@ -221,6 +221,7 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `Android macrobenchmark` | advisory | no | cold/warm/hot startup and dashboard frame timing trend; continue-on-error by design (emulator variance). | `android-tests.yml` |
 | `Reproducible image (all-in-one)` | advisory | no | double-build config + layer digest compare for the linux/amd64 image; continue-on-error until reliably green on main (REL-04, #448). | `reproducibility.yml` |
 | `Release dry-run rehearsal` | advisory | no | weekly + on-demand: dispatches release.yml with dry_run:true against the last SupportedReleases entry and fails if that dry run fails; exercises the final-release path's gate battery + fixture regeneration without cutting a release (issue #929). Not release-blocking -- a failure means the automation regressed, triaged like any other advisory gate. | `release-dry-run.yml` |
+| `Docker apk pin check` | advisory | no | nightly + on-demand: builds all three Dockerfiles with caching disabled, so a pinned Alpine apk version that upstream has pruned fails here days before it fails a release image build (the #1062/#1131 recurrence guard). Advisory because it is a time-based upstream-drift signal, not a repository change. | `docker-pin-check.yml` |
 
 <!-- release-gates:end -->
 
