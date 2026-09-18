@@ -25,16 +25,24 @@ on:
     types: [closed]
 
 permissions:
+  # Read-only at the top level (StepSecurity "Restrict permissions for
+  # GITHUB_TOKEN"); the one write scope this job needs is granted on the job
+  # itself, the same shape as test-report.yml.
   contents: read
-  # Cancel runs via the API. The token is downgraded to read-only for fork PRs
-  # (see the header); for same-repo closes and every branch delete it holds.
-  actions: write
 
 jobs:
   cancel:
     name: Cancel remaining runs for the branch
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      # Cancel runs via the API. There is no read-only way to do this, so
+      # Scorecard's Token-Permissions check flags this scope (advisory -- see
+      # docs/development/release-gates.md); the grant is necessary and
+      # job-scoped. The token is downgraded to read-only for fork PRs (see the
+      # header) -- for same-repo closes and every branch delete it holds.
+      actions: write
     # `delete` fires for tags too, and `head.ref` is only meaningful for a
     # same-repo PR. Both payload shapes are read through the same expression;
     # the absent properties evaluate falsy.
