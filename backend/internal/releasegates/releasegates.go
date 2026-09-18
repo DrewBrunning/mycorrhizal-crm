@@ -194,6 +194,57 @@ func CrossCheckDoc(reg Registry, doc string) []string {
 	return findings
 }
 
+// ComposableWorkflows returns the distinct workflow files the release
+// orchestrator must be able to call (ADR 0021, issue #1161): every workflow
+// named by a release_gate:true gate, plus every release-tier suite. Sorted and
+// de-duplicated so callers and tests have a stable order.
+func (r Registry) ComposableWorkflows() []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, g := range r.Gates {
+		if g.Workflow == "" {
+			continue
+		}
+		if g.ReleaseGate || g.Tier == "release-tier" {
+			if !seen[g.Workflow] {
+				seen[g.Workflow] = true
+				out = append(out, g.Workflow)
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// CheckCallable reports any composable workflow (ADR 0021) that does not
+// declare a top-level workflow_call trigger. read returns the workflow file's
+// text and whether it exists. Without workflow_call the release orchestrator
+// cannot compose the gate and would have to fall back to dispatch-and-poll —
+// the fragility ADR 0021 removes — so a new mandatory or release-tier gate that
+// forgets it fails here.
+func CheckCallable(reg Registry, read func(workflow string) (string, bool)) []string {
+	var findings []string
+	for _, wf := range reg.ComposableWorkflows() {
+		text, ok := read(wf)
+		if !ok {
+			// CheckWorkflows already reports missing files.
+			continue
+		}
+		callable := false
+		for _, line := range strings.Split(text, "\n") {
+			if strings.TrimSpace(line) == "workflow_call:" {
+				callable = true
+				break
+			}
+		}
+		if !callable {
+			findings = append(findings, fmt.Sprintf(
+				"gate workflow %s is not composable: it declares no top-level workflow_call trigger (ADR 0021 / issue #1161)", wf))
+		}
+	}
+	return findings
+}
+
 // ReleaseGateContexts returns the check_context of every release_gate:true gate,
 // in registry order — the list the docker-publish.yml release-gate job polls.
 func (r Registry) ReleaseGateContexts() []string {

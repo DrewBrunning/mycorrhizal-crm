@@ -54,6 +54,7 @@ on:
   schedule:
     - cron: '55 3 * * *' # 03:55 UTC nightly (consolidated nightly suite)
   workflow_dispatch:
+  workflow_call:
 
 # Branch-scoped cancellation: a force-push to an open PR cancels this
 # workflow's own still-running superseded run instead of paying for the old
@@ -61,7 +62,7 @@ on:
 # `push:main` runs never share a group (which would serialize them) and are
 # never cancelled by a PR; only `pull_request` events cancel in progress.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  group: chaos-tests-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -111,7 +112,7 @@ jobs:
     needs: changes
     # Scheduled runs and manual dispatch always run (no diff to gate on);
     # otherwise only when the harness or the driven subprocesses change.
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository
@@ -253,7 +254,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: changes
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
     env:
       # cmd/backup signs the snapshot (issue #943) with a key derived from the
       # at-rest master key; give the CLI a fixed test key.
@@ -362,7 +363,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: changes
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository
@@ -535,7 +536,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: changes
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository
@@ -738,7 +739,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: changes
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository
@@ -818,7 +819,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: changes
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository
@@ -908,7 +909,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: changes
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository
@@ -992,7 +993,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: changes
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository

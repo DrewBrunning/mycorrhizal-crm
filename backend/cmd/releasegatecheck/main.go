@@ -15,6 +15,10 @@
 //     one row per registry gate, with a matching tier and mandatory flag — so a
 //     gate cannot be added to one without the other, and a listed gate can
 //     never lack a real job.
+//  4. Every workflow the release composer must call (each release_gate:true
+//     gate and each release-tier suite) declares a top-level `workflow_call`
+//     trigger, so ADR 0021's composition is possible and a new mandatory gate
+//     cannot silently reintroduce the dispatch-and-poll path.
 //
 // Exit 0: everything lines up. Exit 1: at least one finding. Exit 2: the check
 // itself could not run.
@@ -65,10 +69,16 @@ func run(w io.Writer) int {
 		_, statErr := os.Stat(filepath.Join(root, workflowsDir, name))
 		return statErr == nil
 	})...)
+	findings = append(findings, releasegates.CheckCallable(reg, func(name string) (string, bool) {
+		// #nosec G304 -- name is a gate's declared workflow filename, and the
+		// read is confined to the .github/workflows directory.
+		b, readErr := os.ReadFile(filepath.Join(root, workflowsDir, name))
+		return string(b), readErr == nil
+	})...)
 	findings = append(findings, releasegates.CrossCheckDoc(reg, string(docBytes))...)
 
 	if len(findings) == 0 {
-		fmt.Fprintf(w, "release gates OK: %d gates, all workflows exist, doc table matches (%s)\n",
+		fmt.Fprintf(w, "release gates OK: %d gates, all workflows exist and are composable, doc table matches (%s)\n",
 			len(reg.Gates), registryFile)
 		return 0
 	}

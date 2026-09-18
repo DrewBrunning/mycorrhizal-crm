@@ -26,3 +26,4 @@ ticket backlog moved to GitHub Issues.
 | [0018](0018-atomic-revision-compare-and-swap.md) | Atomic revision compare-and-swap for concurrent writes | accepted |
 | [0019](0019-android-sms-capture-reconciliation.md) | Android SMS capture reconciliation — accept the broadcast-only gap, target an `_id` cursor | accepted |
 | [0020](0020-self-service-account-deletion.md) | Self-service account deletion | accepted |
+| [0021](0021-release-validation-composition.md) | Release validation by composition, not cross-run polling | proposed |

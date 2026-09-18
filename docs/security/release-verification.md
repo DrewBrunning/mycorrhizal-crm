@@ -138,9 +138,12 @@ bundle on the Release, source↔release correspondence below) — they cover the
 Install two CLIs:
 
 ```sh
-# cosign — signature and SBOM verification
+# cosign — signature and SBOM verification. **v3 or newer**: the release
+# pipeline signs images with cosign v3 (sigstore-go / OCI 1.1 referrers), and
+# cosign v2 does not discover those signatures — `cosign verify` reports
+# "no signatures found" against a correctly-signed release (issue #1160).
 brew install cosign            # macOS
-# or: go install github.com/sigstore/cosign/v2/cmd/cosign@latest
+# or: go install github.com/sigstore/cosign/v3/cmd/cosign@latest
 # or download a release binary: https://github.com/sigstore/cosign/releases
 
 # GitHub CLI — attestation verification

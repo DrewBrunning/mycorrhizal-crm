@@ -78,6 +78,35 @@ func TestCheckWorkflows(t *testing.T) {
 	assert.Empty(t, CheckWorkflows(reg, allWorkflowsExist))
 }
 
+func TestComposableWorkflows(t *testing.T) {
+	json := `{"gates": [
+	  {"name": "a", "workflow": "unit-tests.yml", "check_context": "a", "check_kind": "check_run", "tier": "per-pr", "mandatory": true, "release_gate": true, "criterion": "c"},
+	  {"name": "b", "workflow": "unit-tests.yml", "check_context": "b", "check_kind": "check_run", "tier": "per-pr", "mandatory": true, "release_gate": true, "criterion": "c"},
+	  {"name": "c", "workflow": "zap-dast.yml", "check_context": "z", "check_kind": "check_run", "tier": "release-tier", "mandatory": true, "release_gate": false, "criterion": "c"},
+	  {"name": "d", "workflow": "scorecard.yml", "check_context": "s", "check_kind": "check_run", "tier": "advisory", "mandatory": false, "release_gate": false, "criterion": "c"}
+	]}`
+	reg, _ := Parse([]byte(json))
+	assert.Equal(t, []string{"unit-tests.yml", "zap-dast.yml"}, reg.ComposableWorkflows())
+}
+
+func TestCheckCallable(t *testing.T) {
+	reg, _ := Parse([]byte(`{"gates": [
+	  {"name": "a", "workflow": "callable.yml", "check_context": "a", "check_kind": "check_run", "tier": "per-pr", "mandatory": true, "release_gate": true, "criterion": "c"},
+	  {"name": "b", "workflow": "not-callable.yml", "check_context": "b", "check_kind": "check_run", "tier": "release-tier", "mandatory": true, "release_gate": false, "criterion": "c"}
+	]}`))
+	files := map[string]string{
+		"callable.yml":     "on:\n  workflow_dispatch:\n  workflow_call:\n",
+		"not-callable.yml": "on:\n  push:\n    branches: [main]\n",
+	}
+	findings := CheckCallable(reg, func(w string) (string, bool) { s, ok := files[w]; return s, ok })
+	require.Len(t, findings, 1)
+	assert.Contains(t, findings[0], "not-callable.yml")
+	assert.Contains(t, findings[0], "not composable")
+
+	// A missing file is already reported by CheckWorkflows, not here.
+	assert.Empty(t, CheckCallable(reg, func(string) (string, bool) { return "", false }))
+}
+
 func TestCrossCheckDocGood(t *testing.T) {
 	reg, _ := Parse([]byte(goodJSON))
 	assert.Empty(t, CrossCheckDoc(reg, goodDoc))
@@ -133,6 +162,10 @@ func TestCommittedRegistryIsValid(t *testing.T) {
 	findings = append(findings, CheckWorkflows(reg, func(w string) bool {
 		_, statErr := os.Stat(filepath.Join(root, ".github", "workflows", w))
 		return statErr == nil
+	})...)
+	findings = append(findings, CheckCallable(reg, func(w string) (string, bool) {
+		b, readErr := os.ReadFile(filepath.Join(root, ".github", "workflows", w))
+		return string(b), readErr == nil
 	})...)
 	findings = append(findings, CrossCheckDoc(reg, string(docBytes))...)
 	assert.Empty(t, findings, "committed release-gate registry / doc is inconsistent")

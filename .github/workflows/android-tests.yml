@@ -12,6 +12,7 @@ on:
   schedule:
     - cron: '0 4 * * *' # 04:00 UTC nightly
   workflow_dispatch:
+  workflow_call:
 
 # Branch-scoped cancellation: a force-push to an open PR cancels this
 # workflow's own still-running superseded run instead of paying for the old
@@ -19,7 +20,7 @@ on:
 # `push:main` runs never share a group (which would serialize them) and are
 # never cancelled by a PR; only `pull_request` events cancel in progress.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  group: android-tests-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -62,7 +63,7 @@ jobs:
       - name: Resolve gating decision
         id: resolve
         run: |
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$EVENT_NAME" = "workflow_call" ]; then
             android=true; backend=true; openapi=true; infra=true; workflows=true
           else
             android="$ANDROID_CHANGED"; backend="$BACKEND_CHANGED"; openapi="$OPENAPI_CHANGED"
@@ -260,7 +261,7 @@ jobs:
     # Go checks in unit-tests.yml and don't re-run the emulator suite. The
     # pull_request event matches none of these branches, so a PR never
     # triggers it.
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'))
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || (github.event_name == 'push' && (needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'))
 
     steps:
       - name: Checkout repository
@@ -432,7 +433,7 @@ jobs:
     name: Android E2E (emulator, minSdk 26)
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call')
 
     steps:
       - name: Checkout repository
@@ -538,7 +539,7 @@ jobs:
     name: Android below minSdk fails clearly (API 24)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call')
 
     steps:
       - name: Checkout repository
@@ -597,7 +598,7 @@ jobs:
     timeout-minutes: 60
     continue-on-error: true
     needs: changes
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'))
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || (github.event_name == 'push' && (needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'))
 
     steps:
       - name: Checkout repository

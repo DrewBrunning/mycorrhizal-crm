@@ -20,6 +20,7 @@ on:
   # can only be invoked by an actor with write access, not by anyone who can
   # merely push a branch). Not meant for ad hoc manual runs.
   workflow_dispatch:
+  workflow_call:
 
 # Branch-scoped cancellation: a force-push to an open PR cancels this
 # workflow's own still-running superseded run instead of paying for the old
@@ -27,7 +28,7 @@ on:
 # `push:main` runs never share a group (which would serialize them) and are
 # never cancelled by a PR; only `pull_request` events cancel in progress.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  group: unit-tests-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -82,7 +83,7 @@ jobs:
       - name: Resolve gating decision
         id: resolve
         run: |
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$EVENT_NAME" = "workflow_call" ]; then
             backend=true; frontend=true; openapi=true; workflows=true; changelog=true
           else
             backend="$BACKEND_CHANGED"; frontend="$FRONTEND_CHANGED"; openapi="$OPENAPI_CHANGED"
