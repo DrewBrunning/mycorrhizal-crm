@@ -100,3 +100,38 @@
 # Scoped to this one route, not `.*`: a 40018 hit on any other route is a
 # real signal and must not be pre-accepted.
 40018 high /api/v1/auth/device/session$  # false positive: query is GORM-parameterised AND the bound value is a SHA-256 hash of the input (services.HashDeviceGrantToken), not the raw token — no payload content can reach the query; same rate-limit-driven response variance as the accepted /login entry
+
+# A third instance of the same 40018 boolean-based SQL-injection check, now on
+# the `language` parameter of POST /api/v1/register: the responses for
+# "en' AND '1'='1' -- " and "en' AND '1'='2' -- " "differed". False positive.
+#
+# Register has no dynamic SQL at all. Its only database work is
+# db.Model(&models.User{}).Count(&userCount) — no predicates, no input — and
+# db.Create(&user), which GORM compiles to a parameterised INSERT: every field,
+# including Language, is a bound value, and no request input can reach query
+# text (controllers/user_controller.go, the repo-wide "parameterised SQL only"
+# posture; docs/security/asvs-l2.md).
+#
+# What the heuristic actually sees is response variance, from two sources, none
+# of them SQL:
+#
+#   - Register carries AuthRateLimitMiddleware — the same process-wide
+#     authLimiter as /login (middleware/rate_limiter.go), a hardcoded burst of
+#     50 at one token per 500ms. The DAST compose env raises only the *API*
+#     limiter (API_RATE_LIMIT_BURST/INTERVAL), not the auth one, so ZAP's rapid
+#     back-to-back probes from one IP exhaust the auth bucket and some responses
+#     flip to 429 partway through — the same mechanism already accepted for
+#     /login and /auth/device/session.
+#   - Register's own semantics are order-dependent: the first valid body returns
+#     201 (and grants admin on an empty user table), every later one returns 409
+#     ErrAlreadyExists, while an injected `language` fails the
+#     oneof=en de it es fr validator with a 400. So the same parameter can
+#     produce three different status/body pairs depending on sequence, which is
+#     exactly the kind of "the data returned changed" signal 40018 looks for.
+#
+# ZAP's evidence field is empty, confidence is Medium (not High), and systemic
+# is False — the same signature as the two accepted entries above.
+#
+# Scoped to this one route, not `.*`: a 40018 hit on any other route is a real
+# signal and must not be pre-accepted.
+40018 high /api/v1/register$  # false positive: register has no dynamic SQL (db.Model(...).Count with no predicates + a GORM-parameterised Create); 40018's boolean heuristic trips on the shared authLimiter flipping probes to 429 plus register's 201/409/400 ordering variance, not SQL
