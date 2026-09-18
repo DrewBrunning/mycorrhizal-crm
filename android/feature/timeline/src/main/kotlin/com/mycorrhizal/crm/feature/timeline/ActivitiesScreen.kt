@@ -152,10 +152,14 @@ fun ActivitiesScreenContent(
                 ) {
                     when {
                         state.isLoading && state.activities.isEmpty() -> LoadingSkeleton()
-                        state.activities.isEmpty() && state.error == null ->
-                            EmptyState(message = stringResource(if (hasFilters) R.string.activities_no_results else R.string.activities_empty))
+                        // The error/errorRes branch must precede the generic empty
+                        // branch: the missing-contact-id state sets errorRes with
+                        // error == null, so the empty branch used to swallow it and
+                        // show "No activities yet" instead of the real cause.
                         state.activities.isEmpty() && (state.errorRes != null || state.error != null) ->
                             EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
+                        state.activities.isEmpty() && state.error == null ->
+                            EmptyState(message = stringResource(if (hasFilters) R.string.activities_no_results else R.string.activities_empty))
                         else -> {
                             LazyColumn(modifier = Modifier.fillMaxSize()) {
                                 items(state.activities, key = { it.id }) { activity ->

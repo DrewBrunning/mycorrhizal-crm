@@ -75,18 +75,19 @@ class ActivitiesScreenTest {
     }
 
     @Test
-    fun `shows the missing-id resource message when no contact id resolved`() {
-        // The `errorRes` branch: branch 2 (`error == null`) preempts it, so the
-        // resource path only runs with a non-null string error alongside it.
+    fun `shows the missing-id message when the contact id did not resolve`() {
+        // Regression: the missing-contact-id state sets errorRes with
+        // error == null. If the generic empty branch is ordered first it wins
+        // and hides the real cause behind "No activities yet".
         setContent(
             ActivitiesUiState(
                 contactId = 0,
                 activities = emptyList(),
                 errorRes = R.string.activity_error_missing_id,
-                error = "boom",
             ),
         )
         composeTestRule.onNodeWithText("Missing contact id").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No activities yet").assertDoesNotExist()
     }
 
     @Test
