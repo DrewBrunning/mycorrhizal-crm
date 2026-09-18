@@ -1,4 +1,4 @@
-import { type BrowserContext, chromium, type FullConfig } from '@playwright/test';
+import { type APIRequestContext, type FullConfig, request } from '@playwright/test';
 import { toContactRecordInput } from '../src/api/contacts';
 
 export const APP_ORIGIN = 'http://localhost:7300';
@@ -58,15 +58,21 @@ async function globalSetup(_config: FullConfig) {
   // Register test user (ignore if already exists)
   await registerTestUser();
 
-  // Use a browser context to login and make authenticated API calls
-  // (login now uses httpOnly cookies instead of returning a token)
-  const browser = await chromium.launch();
-  const context = await browser.newContext({ baseURL: APP_ORIGIN });
+  // Seed through a standalone APIRequestContext, not a launched browser. Login
+  // sets httpOnly cookies instead of returning a token, and APIRequestContext
+  // has its own cookie jar, so this still carries the session across requests
+  // -- but it needs NO browser binary. That matters because globalSetup runs
+  // for every project, including the `webkit`-only smoke job, which installs
+  // WebKit alone: a chromium.launch() here made that job fail before its own
+  // test started ("Executable doesn't exist ... chrome-headless-shell") unless
+  // the shared browser cache happened to already hold chromium. Keeping the
+  // seeding engine-agnostic is what lets a single-engine job be hermetic.
+  const api = await request.newContext({ baseURL: APP_ORIGIN });
 
   try {
-    await loginAndCreateContacts(context);
+    await loginAndCreateContacts(api);
   } finally {
-    await browser.close();
+    await api.dispose();
   }
 
   console.log('Test environment ready!');
@@ -137,11 +143,11 @@ async function registerTestUser(): Promise<void> {
   }
 }
 
-async function loginAndCreateContacts(context: BrowserContext): Promise<void> {
+async function loginAndCreateContacts(api: APIRequestContext): Promise<void> {
   console.log('Logging in test user...');
 
-  // Login via API — cookies are set automatically on the browser context
-  const loginResponse = await context.request.post(`${API_BASE_URL}/login`, {
+  // Login via API — cookies are set automatically on the request context
+  const loginResponse = await api.post(`${API_BASE_URL}/login`, {
     data: {
       identifier: TEST_USER.username,
       password: TEST_USER.password,
@@ -161,7 +167,7 @@ async function loginAndCreateContacts(context: BrowserContext): Promise<void> {
   console.log('Logged in successfully');
 
   // Remove data left behind by previous runs so the suite starts clean
-  await cleanupLeftoverTestData(context);
+  await cleanupLeftoverTestData(api);
 
   // Ensure each sample contact exists exactly once (idempotent upsert by name).
   console.log('Ensuring sample contacts exist...');
@@ -169,7 +175,7 @@ async function loginAndCreateContacts(context: BrowserContext): Promise<void> {
   for (const contact of SAMPLE_CONTACTS) {
     try {
       const search = `${contact.firstname} ${contact.lastname}`;
-      const lookup = await context.request.get(
+      const lookup = await api.get(
         `${API_BASE_URL}/contacts?search=${encodeURIComponent(search)}&limit=1`,
       );
       if (lookup.ok()) {
@@ -184,7 +190,7 @@ async function loginAndCreateContacts(context: BrowserContext): Promise<void> {
         }
       }
 
-      const response = await context.request.post(`${API_BASE_URL}/contacts`, {
+      const response = await api.post(`${API_BASE_URL}/contacts`, {
         data: toContactRecordInput(contact),
       });
 
@@ -205,9 +211,9 @@ async function loginAndCreateContacts(context: BrowserContext): Promise<void> {
 // Deletes contacts created by previous E2E runs.
 export const E2E_CONTACT_PREFIX = 'E2EFixture';
 
-async function cleanupLeftoverTestData(context: BrowserContext): Promise<void> {
+async function cleanupLeftoverTestData(api: APIRequestContext): Promise<void> {
   try {
-    const response = await context.request.get(
+    const response = await api.get(
       `${API_BASE_URL}/contacts?search=${encodeURIComponent(E2E_CONTACT_PREFIX)}&limit=200`,
     );
     if (!response.ok()) return;
@@ -218,7 +224,7 @@ async function cleanupLeftoverTestData(context: BrowserContext): Promise<void> {
     );
 
     for (const contact of stale) {
-      await context.request.delete(`${API_BASE_URL}/contacts/${contact.id}`).catch(() => {});
+      await api.delete(`${API_BASE_URL}/contacts/${contact.id}`).catch(() => {});
     }
 
     if (stale.length > 0) {
