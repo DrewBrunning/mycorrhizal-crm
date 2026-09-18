@@ -693,13 +693,34 @@ jobs:
       # produced by the step above and also kept as a 30-day workflow artifact
       # below) must additionally be a release asset, or every release scores
       # as unsigned no matter what else we sign. .sigstore.json is a
-      # recognized suffix. Same pinned action + zizmor annotation as the APK
-      # attach above.
-      - name: Attach APK cosign signature to GitHub Release # zizmor: ignore[superfluous-actions]
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
-        with:
-          tag_name: ${{ env.RELEASE_TAG }}
-          files: ${{ runner.temp }}/mycorrhizal-apk.sigstore.json
+      # recognized suffix.
+      #
+      # `gh release upload --clobber` + retry, not
+      # softprops/action-gh-release (#1147): for v0.8.6 the action hit
+      # GitHub's server-side "Error creating asset temp dir" (HTTP 500) on
+      # this exact file, and because `build-and-push` `needs:` this job (#527)
+      # that single transient upload failure skipped every image build and
+      # published a Release with no container images. gh release upload is
+      # the same idiom `verify-release-assets` already uses; the Release
+      # necessarily exists by here (the APK attach above creates it). The
+      # "Assert APK assets landed" step below remains the hard #527 gate.
+      - name: Attach APK cosign signature to GitHub Release
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          bundle="$RUNNER_TEMP/mycorrhizal-apk.sigstore.json"
+          for attempt in $(seq 1 5); do
+            if gh release upload "$RELEASE_TAG" "$bundle" --clobber; then
+              echo "Attached $(basename "$bundle") to $RELEASE_TAG."
+              exit 0
+            fi
+            echo "::warning::gh release upload failed (attempt ${attempt}/5); retrying in 15s..."
+            sleep 15
+          done
+          echo "::error::Could not attach mycorrhizal-apk.sigstore.json to $RELEASE_TAG after 5 attempts."
+          exit 1
 
       - name: Upload APK cosign signature + certificate
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -710,8 +731,8 @@ jobs:
           retention-days: 30
 
       # REL-03 / issue #527: asset upload is a separate operation that can fail
-      # independently of the build (action-gh-release can exit 0 without the
-      # file landing). Assert the two APK assets are actually on the Release.
+      # independently of the build (the upload can fail while the build is
+      # green). Assert the two APK assets are actually on the Release.
       - name: Assert APK assets landed on the Release
         env:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
