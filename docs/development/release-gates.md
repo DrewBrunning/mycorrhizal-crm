@@ -107,6 +107,19 @@ Four mechanisms, in order of when they fire:
      shared with the identical poll in `release.yml` (below) and pinned by
      `.github/scripts/tests/release-gate-decide.test.sh`, so the two pollers cannot drift back
      apart on this.
+     **"Missing" means the gate's *workflow* shows nothing in flight.** GitHub Actions
+     creates no check-run for a `needs:`-gated fan-in job until its dependencies conclude, so
+     `Backend (Go)` — the coverage fan-in over `backend-checks` + every `backend-tests` leg —
+     has no check-run while those legs are still running. On a busy `push: main` that can
+     outlast the deadline (many workflows queued at once), which would otherwise read as the
+     structural absence above and block a release that is merely early
+     ([#1150](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1150)). Both pollers
+     therefore build their per-gate state with
+     [`.github/scripts/release-gate-state.sh`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/scripts/release-gate-state.sh)
+     (pinned by `.github/scripts/tests/release-gate-state.test.sh`): a gate with no check-run
+     yet but a non-completed run of its owning workflow on this commit reports that run's
+     status (`queued`/`in_progress`) — timing — while a *completed* run with no check-run for
+     the gate still reports `missing`, preserving the #913 guard.
 4. **The `needs:` graph** — the `release-internal` gates enforce themselves: `build-and-push`
    `needs: build-android-apk`, `create-release` `needs: build-android-apk`, everything
    `needs: release-gate`. `verify-release-assets` is the final belt-and-suspenders check that
@@ -184,7 +197,7 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `Migration Tests` | per-pr | yes | every supported-release upgrade leg, adjacent hop, and down round-trip passes. Per-leg check names make polling impractical; the release commit only adds a frozen schema dump, which schema-fixture-gate verifies, and the push:main run covers the chain. | `migration-tests.yml` |
 | `Go binary reproducible` | per-pr | yes | two builds from different paths are byte-identical (REL-04). Runs on the release commit's push:main; not in the ruleset. | `reproducibility.yml` |
 | `validate-tag` | release-internal | yes | the pushed tag matches the versioning-policy pattern (REL-01, backend/internal/versionpolicy). Blocks every downstream job. | `docker-publish.yml` |
-| `release-gate` | release-internal | yes | dispatches each mandatory release_gate:true gate's workflow for an RC tag (#543 — a final release already got them via push:main); no mandatory gate is observed FAILED on the release commit; all-green passes; at the 75-minute deadline a gate that never reported a check-run at all is a hard block (#913), while a gate that started but is still running is a warning and publication proceeds. A workflow_dispatch run with a non-empty override_reason skips the poll and records the override with the actor. | `docker-publish.yml` |
+| `release-gate` | release-internal | yes | dispatches each mandatory release_gate:true gate's workflow for an RC tag (#543 — a final release already got them via push:main); no mandatory gate is observed FAILED on the release commit; all-green passes; at the 75-minute deadline a gate that never reported a check-run at all is a hard block (#913), while a gate that started but is still running is a warning and publication proceeds (a needs:-gated fan-in job with no check-run yet but an owning workflow run in flight counts as running, not missing — #1150). A workflow_dispatch run with a non-empty override_reason skips the poll and records the override with the actor. | `docker-publish.yml` |
 | `schema-fixture-gate` | release-internal | yes | a committed backend/database/testdata/schemas/<tag>.sql exists for a mycorrhizal-supported-series tag (MIG-01, #436/#529). | `docker-publish.yml` |
 | `build-and-push` | release-internal | yes | the multi-arch images build and push; each digest gets a cosign keyless signature, an SBOM, and SLSA build provenance. | `docker-publish.yml` |
 | `build-android-apk` | release-internal | yes | the release APK assembles, is keystore-signed, `apksigner verify` passes (and matches ANDROID_SIGNING_CERT_SHA256 when set), its versionCode equals the computed value and is > 1, a GH build-provenance attestation + a cosign bundle are produced and attached to the Release, and its sha256 subject is exported for the SLSA generator. | `docker-publish.yml` |

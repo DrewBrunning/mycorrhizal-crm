@@ -63,7 +63,12 @@ Notes:
 
 - `cmd/audit-verify` is the tamper-evidence check for the hash-chained audit log
   ([#381](https://github.com/DrewBrunning/mycorrhizal-crm/issues/381)). Run it *first* — once you
-  restore or rotate, you can no longer prove what the log said at the time of the incident.
+  restore or rotate, you can no longer prove what the log said at the time of the incident. Since
+  [#952](https://github.com/DrewBrunning/mycorrhizal-crm/issues/952) the same verification also runs
+  automatically on the scheduled integrity-check cadence (daily by default), recording an
+  `operational_check_result` and firing `db.integrity_check_failed` with `kind: "audit_chain"` on a
+  break — so a tampered chain should already have paged you; the manual run is the on-record evidence,
+  not the only detection.
 - `GET /api/v1/audit/export` gives a CSV of **the calling user's own** audit events, not the whole
   instance. For an instance-wide record, the database snapshot from step 1 is the artifact.
 - Move every `evidence-*` file off the host. If the host itself is suspect, treat everything on it as

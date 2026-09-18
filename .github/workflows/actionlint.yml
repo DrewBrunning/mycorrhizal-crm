@@ -97,7 +97,7 @@ jobs:
       # block in reference-clients-e2e.yml, one level removed from anything
       # actionlint's own shellcheck pass can see into.
       - name: Shellcheck repo scripts
-        run: shellcheck .github/scripts/run-fuzz-targets.sh .github/scripts/tests/run-fuzz-targets.test.sh .github/scripts/min-browser-check.sh .github/scripts/assert-below-min-sdk-install.sh .github/scripts/release-gate-decide.sh .github/scripts/tests/release-gate-decide.test.sh .github/scripts/release-register-decide.sh .github/scripts/tests/release-register-decide.test.sh .github/scripts/release-validate-decide.sh .github/scripts/tests/release-validate-decide.test.sh .github/scripts/reference-client-davx5/run.sh
+        run: shellcheck .github/scripts/run-fuzz-targets.sh .github/scripts/tests/run-fuzz-targets.test.sh .github/scripts/min-browser-check.sh .github/scripts/assert-below-min-sdk-install.sh .github/scripts/release-gate-decide.sh .github/scripts/tests/release-gate-decide.test.sh .github/scripts/release-gate-state.sh .github/scripts/tests/release-gate-state.test.sh .github/scripts/release-register-decide.sh .github/scripts/tests/release-register-decide.test.sh .github/scripts/release-validate-decide.sh .github/scripts/tests/release-validate-decide.test.sh .github/scripts/reference-client-davx5/run.sh
 
       # Issue #712: exercise the fuzz runner's hardening against a stubbed
       # `go` binary (pass / deadline-race / crash / seed-replay), asserting
@@ -116,6 +116,14 @@ jobs:
       # hard block at the deadline, not a silent warn-and-publish.
       - name: Test release-gate decision script
         run: bash .github/scripts/tests/release-gate-decide.test.sh
+
+      # Issue #1150: pins the shared state classification both pollers use --
+      # in particular that a needs:-gated fan-in gate ("Backend (Go)") with no
+      # check-run yet but an owning workflow run in flight is pending, not the
+      # hard-block "missing", while a *completed* workflow with no check-run
+      # for the gate stays missing (#913 preserved).
+      - name: Test release-gate state builder
+        run: bash .github/scripts/tests/release-gate-state.test.sh
 
       # Issue #929: pins the release.yml registration bug fix -- a dry run
       # rehearsing an already-shipped version must decide SKIP, not append a

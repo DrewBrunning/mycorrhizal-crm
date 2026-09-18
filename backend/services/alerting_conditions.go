@@ -253,17 +253,19 @@ func integrationsCondition(h SubsystemHealth, cfg config.Config) alertConditionR
 
 // dbIntegrityCondition reads the persisted DB-integrity-check outcomes
 // directly: neither pass emits a system_event, so ComputeSubsystemHealth
-// cannot see them. Both the storage-level PRAGMA pass (issue #273) and the
-// application-level data-invariant pass (issue #460) feed this one "Database
+// cannot see them. The storage-level PRAGMA pass (issue #273), the
+// application-level data-invariant pass (issue #460) and the audit
+// hash-chain tamper-evidence pass (issue #952) all feed this one "Database
 // integrity" alert — an operator wants a single page whether the disk is
-// failing or the data has a logical hole; the detail says which.
+// failing, the data has a logical hole, or the append-only audit trail has
+// been tampered with; the detail says which.
 func dbIntegrityCondition(db *gorm.DB) alertConditionResult {
 	r := alertConditionResult{key: alertConditionKeyDBIntegrity, title: "Database integrity"}
 	// Find, not First: a not-yet-run check is the common case and must not log
 	// a "record not found" every evaluation (subsystem_health.go's idiom).
 	var rows []models.OperationalCheckResult
 	if err := db.Where("check_name IN ?",
-		[]string{models.JobNameDBIntegrityCheck, models.CheckNameDataIntegrity}).
+		[]string{models.JobNameDBIntegrityCheck, models.CheckNameDataIntegrity, models.CheckNameAuditChain}).
 		Find(&rows).Error; err != nil {
 		logger.Error().Err(err).Msg("alerting: failed to read db-integrity check result")
 		return r
@@ -274,8 +276,11 @@ func dbIntegrityCondition(db *gorm.DB) alertConditionResult {
 			continue
 		}
 		label := "storage"
-		if row.CheckName == models.CheckNameDataIntegrity {
+		switch row.CheckName {
+		case models.CheckNameDataIntegrity:
 			label = "data"
+		case models.CheckNameAuditChain:
+			label = "audit_chain"
 		}
 		msg := label + " " + row.Status
 		if row.Detail != "" {
