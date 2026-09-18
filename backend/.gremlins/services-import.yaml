@@ -69,6 +69,7 @@ unleash:
         - ^twofactor_replay\.go$
         - ^unicode_nfc_backfill\.go$
         - ^update_check\.go$
+        - ^user_quota\.go$
         - ^user_service\.go$
         - ^vcard21_normalize\.go$
         - ^webdav_client\.go$

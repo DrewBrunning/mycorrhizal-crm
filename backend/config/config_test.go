@@ -617,6 +617,31 @@ func TestLoadConfig_StorageThresholds(t *testing.T) {
 	assert.True(t, hasFieldError(cfg3.Validate(), "STORAGE_SAMPLE_RETENTION_DAYS"))
 }
 
+// TestLoadConfig_PerUserQuotas pins the opt-in default (all zero = unlimited)
+// and that each variable is read into its own field (issue #950).
+func TestLoadConfig_PerUserQuotas(t *testing.T) {
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+
+	// Unset means disabled — the shipped default for existing deployments.
+	def := LoadConfig()
+	assert.Zero(t, def.PerUserContactLimit)
+	assert.Zero(t, def.PerUserNoteLimit)
+	assert.Zero(t, def.PerUserRelationshipEdgeLimit)
+	assert.Zero(t, def.PerUserAttachmentQuotaMB)
+
+	t.Setenv("PER_USER_CONTACT_LIMIT", "1000")
+	t.Setenv("PER_USER_NOTE_LIMIT", "5000")
+	t.Setenv("PER_USER_RELATIONSHIP_EDGE_LIMIT", "750")
+	t.Setenv("PER_USER_ATTACHMENT_QUOTA_MB", "250")
+	cfg := LoadConfig()
+	assert.Equal(t, 1000, cfg.PerUserContactLimit)
+	assert.Equal(t, 5000, cfg.PerUserNoteLimit)
+	assert.Equal(t, 750, cfg.PerUserRelationshipEdgeLimit)
+	assert.Equal(t, 250, cfg.PerUserAttachmentQuotaMB)
+	assert.False(t, hasFieldError(cfg.Validate(), "PER_USER_CONTACT_LIMIT"))
+}
+
 func TestLoadConfig_UpdateCheckEnabledEnv(t *testing.T) {
 	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
 	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
@@ -821,6 +846,10 @@ func TestValidate_FailFastIntFields(t *testing.T) {
 		{"ALERT_BACKUP_MAX_AGE_HOURS", -1},
 		{"STORAGE_WARN_PERCENT", 0},
 		{"STORAGE_SAMPLE_RETENTION_DAYS", 6},
+		{"PER_USER_CONTACT_LIMIT", -1},
+		{"PER_USER_NOTE_LIMIT", -1},
+		{"PER_USER_RELATIONSHIP_EDGE_LIMIT", -1},
+		{"PER_USER_ATTACHMENT_QUOTA_MB", -1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.field, func(t *testing.T) {
@@ -874,6 +903,14 @@ func setFailFastIntField(cfg *Config, field string, v int) {
 		cfg.StorageWarnPercent = v
 	case "STORAGE_SAMPLE_RETENTION_DAYS":
 		cfg.StorageSampleRetentionDays = v
+	case "PER_USER_CONTACT_LIMIT":
+		cfg.PerUserContactLimit = v
+	case "PER_USER_NOTE_LIMIT":
+		cfg.PerUserNoteLimit = v
+	case "PER_USER_RELATIONSHIP_EDGE_LIMIT":
+		cfg.PerUserRelationshipEdgeLimit = v
+	case "PER_USER_ATTACHMENT_QUOTA_MB":
+		cfg.PerUserAttachmentQuotaMB = v
 	}
 }
 

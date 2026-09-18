@@ -61,6 +61,13 @@ func CreateContact(c *gin.Context) {
 		return
 	}
 
+	// Opt-in per-user quota (issue #950): refuse before any write once the
+	// user's live-contact count has reached the operator's limit.
+	if err := services.UserQuotaFromConfig(currentConfig(c)).CheckContactCreate(db, userID); err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+
 	// Get validated input from validation middleware., this
 	// is the new nested Card/CRM shape (models.ContactRecordInput), not the
 	// old flat models.ContactInput.

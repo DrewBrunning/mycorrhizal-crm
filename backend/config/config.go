@@ -89,6 +89,20 @@ type Config struct {
 	IdempotencyKeyRetentionHours int      `cfgreg:"env=IDEMPOTENCY_KEY_RETENTION_HOURS;type=int;range=any integer, <=0 disables;default=24;required=false;restart=true;desc=Hours idempotency_keys rows survive before the TTL purge removes them"`
 	SessionIdleTimeoutHours      int      `cfgreg:"env=SESSION_IDLE_TIMEOUT_HOURS;type=int;range=0 (disabled) or 1..JWT_EXPIRY_HOURS;default=12;required=false;restart=true;desc=Hours a session may sit unused before AuthMiddleware rejects it"`
 
+	// Per-user resource quotas (issue #950, ASVS V12.1.3). Opt-in: 0 (the
+	// default) means unlimited, preserving today's behavior for existing
+	// deployments; when set, the matching create path refuses with 507
+	// Insufficient Storage once the user already holds the limit, so one
+	// account (or a compromised session) cannot fill the operator's disk/DB one
+	// request at a time. Accounting is strictly per user — one user's usage
+	// never counts against another's (docs/security/threat-model.md
+	// "Multi-user instances"). Quotas count live rows only; a soft-deleted row
+	// is not charged against the quota (it is the user's undo window).
+	PerUserContactLimit          int `cfgreg:"env=PER_USER_CONTACT_LIMIT;type=int;range=>=0, 0 disables the quota, invalid value refuses to boot;default=0;required=false;restart=true;desc=Maximum live contacts a single user may hold (0 = unlimited)"`
+	PerUserNoteLimit             int `cfgreg:"env=PER_USER_NOTE_LIMIT;type=int;range=>=0, 0 disables the quota, invalid value refuses to boot;default=0;required=false;restart=true;desc=Maximum live notes a single user may hold (0 = unlimited)"`
+	PerUserRelationshipEdgeLimit int `cfgreg:"env=PER_USER_RELATIONSHIP_EDGE_LIMIT;type=int;range=>=0, 0 disables the quota, invalid value refuses to boot;default=0;required=false;restart=true;desc=Maximum live relationship edges a single user may hold (0 = unlimited)"`
+	PerUserAttachmentQuotaMB     int `cfgreg:"env=PER_USER_ATTACHMENT_QUOTA_MB;type=int;range=>=0, 0 disables the quota, invalid value refuses to boot;default=0;required=false;restart=true;desc=Maximum attachment bytes a single user may store, in MiB (0 = unlimited)"`
+
 	// General-API rate limiting, per client IP. Configurable because the
 	// hardcoded values had already been raised once to stop a full Playwright
 	// run exhausting the bucket, and because a deployment where several
@@ -305,6 +319,10 @@ func LoadConfig() *Config {
 		JobRunRetentionDays:           getIntEnv("JOB_RUN_RETENTION_DAYS", 30),
 		IdempotencyKeyRetentionHours:  getIntEnv("IDEMPOTENCY_KEY_RETENTION_HOURS", 24),
 		SessionIdleTimeoutHours:       getIntEnv("SESSION_IDLE_TIMEOUT_HOURS", 12),
+		PerUserContactLimit:           checkedInt("PER_USER_CONTACT_LIMIT", 0),
+		PerUserNoteLimit:              checkedInt("PER_USER_NOTE_LIMIT", 0),
+		PerUserRelationshipEdgeLimit:  checkedInt("PER_USER_RELATIONSHIP_EDGE_LIMIT", 0),
+		PerUserAttachmentQuotaMB:      checkedInt("PER_USER_ATTACHMENT_QUOTA_MB", 0),
 		APIRateLimitInterval:          time.Duration(getIntEnv("API_RATE_LIMIT_INTERVAL_MS", 600)) * time.Millisecond,
 		APIRateLimitBurst:             getIntEnv("API_RATE_LIMIT_BURST", 1000),
 		AuthSprayEnabled:              getBoolEnv("AUTH_SPRAY_ENABLED", true),
@@ -1147,6 +1165,13 @@ func (c *Config) Validate() []ValidationError {
 	intRange("ALERT_BACKUP_MAX_AGE_HOURS", c.AlertBackupMaxAgeHours, 0, -1, "0 (use 2x the restore-drill interval) or positive")
 	intRange("STORAGE_WARN_PERCENT", c.StorageWarnPercent, 1, 99, "between 1 and 99")
 	intRange("STORAGE_SAMPLE_RETENTION_DAYS", c.StorageSampleRetentionDays, 7, -1, "at least 7")
+	// Per-user resource quotas (issue #950). Negative is meaningless (a quota
+	// below zero could never be met), so it fails boot rather than silently
+	// behaving like 0/unlimited.
+	intRange("PER_USER_CONTACT_LIMIT", c.PerUserContactLimit, 0, -1, "0 (unlimited) or positive")
+	intRange("PER_USER_NOTE_LIMIT", c.PerUserNoteLimit, 0, -1, "0 (unlimited) or positive")
+	intRange("PER_USER_RELATIONSHIP_EDGE_LIMIT", c.PerUserRelationshipEdgeLimit, 0, -1, "0 (unlimited) or positive")
+	intRange("PER_USER_ATTACHMENT_QUOTA_MB", c.PerUserAttachmentQuotaMB, 0, -1, "0 (unlimited) or positive")
 
 	// STORAGE_CRITICAL_PERCENT is checked against STORAGE_WARN_PERCENT's own
 	// (already-validated-above) value, not a fixed floor, so it doesn't fit
