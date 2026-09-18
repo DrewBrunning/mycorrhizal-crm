@@ -151,9 +151,18 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    # Up to ~2h: step 8 waits on the slow release-tier suites (ZAP DAST,
-    # min-version matrix, the large-dataset migration job) before the tag.
-    timeout-minutes: 120
+    # 6h -- GitHub's per-job maximum, and deliberately above the sum of this
+    # job's own sequential deadlines, because 120 minutes was not: the
+    # mandatory-gate poll (step 3) can run 75m, the release-tier wait (step 8)
+    # another 75m, and the metadata-attach tail (three 40m segments) another
+    # 120m -- worst case 270m plus the registration/metadata steps. A job whose
+    # budget is shorter than that is killed mid-tail: the resumed v0.9.0-rc.1
+    # cut (run 35388160404) was cancelled by the 120-minute cap at 121 minutes,
+    # after the tag had been pushed but before docker-publish created the
+    # Release, so release-metadata.json never attached (issue #953's artifact).
+    # The tag is pushed before the tail, so the release itself is safe either
+    # way; this cap only decides whether the metadata lands.
+    timeout-minutes: 360
     permissions:
       contents: read
       # Read the check-runs / statuses on the release commit for the mandatory

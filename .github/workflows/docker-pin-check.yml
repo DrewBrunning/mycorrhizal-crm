@@ -1,0 +1,73 @@
+name: Docker image build (cache-busted)
+
+# Recurrence guard for the pinned-Alpine-package class (issues #1062, #1131).
+#
+# The Dockerfiles pin every apk package to an exact `=version-rN` for
+# reproducibility (REL-04, docs/security/reproducible-builds.md). Alpine prunes
+# superseded package versions from its mirrors, so a pin goes stale with no
+# repository change at all. The `apk add` layer is then only re-evaluated when
+# BuildKit has no cached copy of it -- and every per-PR/tag image build
+# (docker-build-check.yml, e2e-tests.yml, android-tests.yml,
+# docker-publish.yml) reads a warm GHA cache. So a pruned pin builds fine from
+# cache on every PR and fails only on a cold build, which is exactly when it
+# broke a release: `ca-certificates=20260611-r0` passed every PR and then failed
+# v0.8.5's build-and-push and min-version-tests' Docker Compose leg.
+#
+# This job builds all three Dockerfiles with caching disabled on a schedule, so
+# a pin Alpine has pruned fails here days before it would fail a release. It is
+# deliberately a separate workflow rather than a `--no-cache` mode on
+# docker-build-check.yml: a cache-busted build is far too slow for every PR, and
+# the failure mode is time passing, not a diff -- there is nothing to path-gate
+# on. The same guard belongs on a schedule because the repository does not
+# change when a package is pruned.
+on:
+  schedule:
+    - cron: '15 4 * * *' # 04:15 UTC nightly, trailing the consolidated suite
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }} (no cache)
+    runs-on: ubuntu-latest
+    # The all-in-one image is the slowest (Go + Vite + runtime stages); 45m
+    # matches docker-publish.yml's Android APK budget and leaves ample headroom.
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend image
+            context: ./backend
+            file: ./backend/Dockerfile
+          - name: frontend image
+            context: ./frontend
+            file: ./frontend/Dockerfile
+          - name: all-in-one image
+            context: .
+            file: ./Dockerfile
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Build ${{ matrix.name }} with caching disabled
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          push: false
+          # The point of this job: never reuse a cached `apk add` layer, so a
+          # pinned version Alpine no longer serves fails here instead of at
+          # release time.
+          no-cache: true

@@ -406,6 +406,16 @@
       "mandatory": false,
       "release_gate": false,
       "criterion": "weekly + on-demand: dispatches release.yml with dry_run:true against the last SupportedReleases entry and fails if that dry run fails; exercises the final-release path's gate battery + fixture regeneration without cutting a release (issue #929). Not release-blocking -- a failure means the automation regressed, triaged like any other advisory gate."
+    },
+    {
+      "name": "Docker apk pin check",
+      "workflow": "docker-pin-check.yml",
+      "check_context": null,
+      "check_kind": "check_run",
+      "tier": "advisory",
+      "mandatory": false,
+      "release_gate": false,
+      "criterion": "nightly + on-demand: builds all three Dockerfiles with caching disabled, so a pinned Alpine apk version that upstream has pruned fails here days before it fails a release image build (the #1062/#1131 recurrence guard). Advisory because it is a time-based upstream-drift signal, not a repository change."
     }
   ]
 }
