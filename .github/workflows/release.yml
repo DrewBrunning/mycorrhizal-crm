@@ -170,17 +170,6 @@ jobs:
       # asvs-l2-verification-report.md sec 9 (privileged-CI-credential row).
       actions: write
     steps:
-      - name: Mint GitHub App token
-        id: app-token
-        if: ${{ !inputs.dry_run }}
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          app-id: ${{ vars.RELEASE_APP_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-          # Least privilege: the minted token can push the fixture commit and
-          # the tag, nothing else -- even if the App is granted more.
-          permission-contents: write
-
       - name: Checkout the release ref
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -723,6 +712,25 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       # --- Step 7: commit + push the fixture (final release only) ---------
+      # Mint the App token HERE, not at the top of the job. The mandatory-gate
+      # poll (step 3) and the registration steps can consume the full 75-minute
+      # deadline; a GitHub App installation token lives only ~1 hour, so a
+      # token minted before them is already dead by "Push main". Confirmed
+      # failing for real: the resumed v0.8.7 cut (run 35381018703) passed the
+      # gate poll at 19:51 and died on "Push main" with "Invalid username or
+      # token ... Password authentication is not supported for Git
+      # operations", the token minted at 18:36 having expired.
+      - name: Mint GitHub App token (fresh -- for the fixture push)
+        id: app-token
+        if: ${{ !inputs.dry_run && env.IS_RC != 'true' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          # Least privilege: the minted token can push the fixture commit and
+          # the tag, nothing else -- even if the App is granted more.
+          permission-contents: write
+
       - name: Commit the schema fixture
         if: ${{ !inputs.dry_run && env.IS_RC != 'true' }}
         env:
@@ -829,15 +837,15 @@ jobs:
             sleep 90
           done
 
-      # GitHub App installation tokens are short-lived (~1h). The original
-      # mint (step "Mint GitHub App token", above) is used for "Push main"
-      # right after it, but by the time we get here the release-tier wait
-      # just above can easily have run 30-75 minutes -- confirmed failing
-      # for real: a v0.7.0-rc.1 cut whose release-tier wait took ~61 minutes
-      # hit "remote: Invalid username or token" / "fatal: Authentication
-      # failed" on the tag push, the token having expired mid-wait. Re-mint
-      # immediately before the two steps that still need to push/call the
-      # API, rather than reuse the now-possibly-stale original token.
+      # GitHub App installation tokens are short-lived (~1h). The fixture-push
+      # mint above is fresh for "Push main", but by the time we get here the
+      # release-tier wait just above can easily have run 30-75 minutes --
+      # confirmed failing for real: a v0.7.0-rc.1 cut whose release-tier wait
+      # took ~61 minutes hit "remote: Invalid username or token" / "fatal:
+      # Authentication failed" on the tag push, the token having expired
+      # mid-wait. Re-mint immediately before the two steps that still need to
+      # push/call the API, rather than reuse the now-possibly-stale fixture-push
+      # token.
       - name: Re-mint GitHub App token (release-tier wait may have expired the first one)
         id: app-token-2
         if: ${{ !inputs.dry_run }}
