@@ -39,6 +39,7 @@ The name comes from mycorrhiza, the symbiotic network fungi form with plant root
 - [Security checklist (OWASP ASVS L2 + API Security Top 10)](security/asvs-l2.md)
 - [Deployment security baseline (operator security boundary)](security/deployment-baseline.md)
 - [Incident response & credential rotation runbook](security/incident-response.md)
+- [Security stewardship cadence — rotation intervals, key custody, and periodic reviews (#955, #956)](security/security-cadence.md)
 - [Disaster recovery boundaries (what recovery guarantees exist, and where they stop)](operations/disaster-recovery.md)
 - [Migration recovery runbook](operations/migration-recovery.md)
 - [Rebuilding the full-text search index](operations/search-index.md)

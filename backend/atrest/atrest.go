@@ -320,6 +320,54 @@ func loadOrCreateDEK(db *gorm.DB, kek []byte) ([]byte, error) {
 	}
 }
 
+// KeyMaterialTimes is the age metadata of the persisted wrapped-DEK row: when
+// the DEK was first created and when the master key wrapping it was last
+// rotated (zero when it never has been). It is read-only metadata for the
+// operator-facing key-age check (issue #955); no key material is exposed.
+type KeyMaterialTimes struct {
+	CreatedAt time.Time
+	RotatedAt time.Time
+}
+
+// LastChanged returns the later of CreatedAt and RotatedAt — the effective age
+// of the key material, since rotating the master key replaces the KEK without
+// touching the DEK.
+func (k KeyMaterialTimes) LastChanged() time.Time {
+	if k.RotatedAt.After(k.CreatedAt) {
+		return k.RotatedAt
+	}
+	return k.CreatedAt
+}
+
+// ReadKeyMaterialTimes reads the wrapped-DEK row's timestamps. db must be
+// non-nil. ok is false when no wrapped DEK row exists yet (encryption has never
+// been armed on this database), which is not an error. A row whose created_at
+// is NULL is treated as absent (the migration declares it NOT NULL, so this
+// only guards a hand-edited database).
+func ReadKeyMaterialTimes(db *gorm.DB) (KeyMaterialTimes, bool, error) {
+	if db == nil {
+		return KeyMaterialTimes{}, false, errors.New("atrest: key material times require a db handle")
+	}
+	type row struct {
+		CreatedAt *time.Time `gorm:"column:created_at"`
+		RotatedAt *time.Time `gorm:"column:rotated_at"`
+	}
+	var r row
+	if err := db.Table("data_encryption_keys").
+		Select("created_at, rotated_at").
+		Where("key_id = ?", keyID).Limit(1).Scan(&r).Error; err != nil {
+		return KeyMaterialTimes{}, false, fmt.Errorf("atrest: read data_encryption_keys timestamps: %w", err)
+	}
+	if r.CreatedAt == nil {
+		return KeyMaterialTimes{}, false, nil
+	}
+	out := KeyMaterialTimes{CreatedAt: r.CreatedAt.UTC()}
+	if r.RotatedAt != nil {
+		out.RotatedAt = r.RotatedAt.UTC()
+	}
+	return out, true, nil
+}
+
 // VerifyBackupDecryptable reports whether a (restored) database's wrapped DEK
 // unwraps under the given master key, without arming the global engine or
 // creating anything. It is the restore-side counterpart to Initialize: a
@@ -388,7 +436,11 @@ func RotateMasterKey(db *gorm.DB, oldKEK, newKEK []byte) error {
 	if err != nil {
 		return fmt.Errorf("atrest: rotate rewrap: %w", err)
 	}
-	if err := db.Table("data_encryption_keys").Where("key_id = ?", keyID).Update("wrapped_dek", wrapped).Error; err != nil {
+	if err := db.Table("data_encryption_keys").Where("key_id = ?", keyID).
+		Updates(map[string]interface{}{
+			"wrapped_dek": wrapped,
+			"rotated_at":  time.Now().UTC(),
+		}).Error; err != nil {
 		return fmt.Errorf("atrest: rotate persist: %w", err)
 	}
 	// Update the in-memory key material so a running server keeps working.

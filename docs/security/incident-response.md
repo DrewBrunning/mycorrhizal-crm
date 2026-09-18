@@ -8,7 +8,7 @@ time — so it is commands and decisions, not background reading.
 |---|---|
 | **Last updated** | 2026-08-27 (issue [#509](https://github.com/DrewBrunning/mycorrhizal-crm/issues/509)) |
 | **Scope** | A self-hosted single instance (the shipped all-in-one image). Contain, assess, rotate, recover, notify — plus a per-credential rotation reference. |
-| **Companion docs** | `docs/deployment.md` (backup/restore/upgrade *procedures*), `docs/operations/migration-recovery.md` (the migration-specific recovery chapter — issue #440), `docs/security/threat-model.md` (assets/actors), `docs/security/deployment-baseline.md` (operator boundary), `docs/security/data-retention-lifecycle.md` (what lives where, for how long). Disaster-recovery boundaries — every recovery scenario, its RPO/RTO, and what is not recoverable — are `docs/operations/disaster-recovery.md` (BACKUP-03, issue [#455](https://github.com/DrewBrunning/mycorrhizal-crm/issues/455)). |
+| **Companion docs** | `docs/security/security-cadence.md` (issue [#955](https://github.com/DrewBrunning/mycorrhizal-crm/issues/955) — the rotation *intervals*, the register of when each was last performed, and the Android signing-keystore custody/backup posture; this page is the procedure you run when one comes due), `docs/deployment.md` (backup/restore/upgrade *procedures*), `docs/operations/migration-recovery.md` (the migration-specific recovery chapter — issue #440), `docs/security/threat-model.md` (assets/actors), `docs/security/deployment-baseline.md` (operator boundary), `docs/security/data-retention-lifecycle.md` (what lives where, for how long). Disaster-recovery boundaries — every recovery scenario, its RPO/RTO, and what is not recoverable — are `docs/operations/disaster-recovery.md` (BACKUP-03, issue [#455](https://github.com/DrewBrunning/mycorrhizal-crm/issues/455)). |
 | **Verified** | The rotation procedures below were exercised against a real build on 2026-08-27 — see [What this was verified against](#what-this-was-verified-against). |
 
 ## Using this under stress
@@ -91,9 +91,15 @@ a session cookie from an admin login.
 ## Credential & key rotation reference
 
 Each procedure states what the secret protects, its blast radius **up front**, the commands, and how
-to verify. Rotations are ordered by how much they hurt.
+to verify. Rotations are ordered by how much they hurt. The **recommended rotation interval** for
+each root secret — and the register of when each was last performed — is
+[the security stewardship cadence](security-cadence.md) (issue #955). Rotate *earlier* whenever a
+suspected leak, a maintainer/operator change, or a compromised host says to; the interval is only
+the ceiling for a healthy deployment.
 
 ### `JWT_SECRET_KEY`
+
+**Rotation interval:** annually (see [the cadence register](security-cadence.md#the-register)).
 
 **Protects:** the signature on every session JWT and every 2FA-challenge JWT; and, as an HKDF root,
 the AES key that encrypts every stored integration credential (CardDAV/CalDAV passwords, Gotify/
@@ -167,6 +173,10 @@ Then: tell users to log in again and re-enter integration credentials; have 2FA 
 reset them.
 
 ### `DATA_ENCRYPTION_KEY` (at-rest field-encryption master key)
+
+**Rotation interval:** annually (see [the cadence register](security-cadence.md#the-register)).
+`GET /api/v1/admin/diagnostics` reports this instance's key-material age as its `at_rest_key` row
+(issue #955), so a deployment that misses the register still has an in-product signal.
 
 **Protects:** wraps the single data-encryption key (DEK) that AES-256-GCM-encrypts the sensitive
 non-searchable columns at rest ([#380](https://github.com/DrewBrunning/mycorrhizal-crm/issues/380)).
