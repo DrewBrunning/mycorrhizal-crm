@@ -22,7 +22,9 @@ name: Release
 # What a run does, in order (an RC skips 4, 5, 7 and the ASVS row of 3):
 #
 #   1. validates the version string, that no such tag exists, and (final only)
-#      that it is not already registered in SupportedReleases;
+#      whether it is already registered in SupportedReleases -- registered but
+#      untagged means an interrupted release and is RESUMED, not refused
+#      (issue #1142); a tag that already exists is still a hard refusal;
 #   2. VERIFIES REPOSITORY STATE -- the checkout is the true tip of the `ref`;
 #   3. runs the MANDATORY GATE BATTERY and refuses to go further on any failure:
 #        - `go run ./cmd/citecheck` (security-doc citations resolve; issue #608);
@@ -87,14 +89,25 @@ name: Release
 #   - the App added to main's branch-protection / ruleset bypass list (and to
 #     any v* tag ruleset's bypass list), so it can push the commit and the tag.
 #
+# Re-entrant / resumable (issue #1142): re-dispatching the same version is the
+# recovery path for every failure before the tag exists. The fixture
+# registration is idempotent (release-register-decide.sh returns SKIP when
+# already present), the fixture commit is a no-op when it already landed, the
+# release commit is the checked-out tip (so a fix merged to main since the
+# interrupted attempt is included in the release), and the full mandatory gate
+# battery + release-tier suites re-run before the tag.
+#
 # Failure modes:
 #   - steps 1-6 fail  -> nothing was pushed; fix and re-dispatch.
-#   - (final) main pushed, step 8 or the tag push fails -> the fixture commit is
-#     on main; re-push just the tag, or dispatch docker-publish.yml with its
-#     `tag` input. Do NOT re-dispatch this workflow -- it refuses an existing
-#     tag. (An RC pushes nothing before the tag, so this window does not exist.)
+#   - (final) fixture pushed, step 8 or the tag push fails -> the fixture commit
+#     is on main; fix on main and re-dispatch this workflow. It RESUMES at the
+#     new tip (already-registered + untagged is now a warning, not a refusal)
+#     and tags that commit. (An RC pushes nothing before the tag, so this
+#     window does not exist there.)
 #   - tag pushed, docker-publish.yml fails -> recover the images via
-#     docker-publish.yml -> Run workflow -> `tag` input.
+#     docker-publish.yml -> Run workflow -> `tag` input. Do NOT re-dispatch this
+#     workflow for an already-tagged version -- it refuses an existing tag
+#     rather than move a released one.
 
 on:
   workflow_dispatch:
@@ -199,24 +212,49 @@ jobs:
             IS_RC=false
           fi
           echo "IS_RC=$IS_RC" >> "$GITHUB_ENV"
-          if git rev-parse "refs/tags/$VERSION" >/dev/null 2>&1; then
-            if [ "$DRY_RUN" = "true" ]; then
-              echo "::warning::Tag $VERSION already exists -- allowed for a dry run (no tag is pushed)."
-            else
+
+          # Facts for the resume decision below. fetch-depth: 0 in the checkout
+          # makes an existing tag visible here. SupportedReleases only ever
+          # records final releases (you never upgrade *from* an RC), so that
+          # lookup is final-only.
+          tag_exists=false
+          if git rev-parse "refs/tags/$VERSION" >/dev/null 2>&1; then tag_exists=true; fi
+          registered=false
+          if [ "$IS_RC" != "true" ] && grep -qF "{Tag: \"$VERSION\"," backend/internal/schemafixture/releases.go; then registered=true; fi
+
+          # Issue #1142: one decision point, tested in
+          # .github/scripts/tests/release-validate-decide.test.sh. A version
+          # that is already registered but has no tag can only be an
+          # interrupted final release (step 7 pushed its fixture commit, step 8
+          # or the tag push then failed) -- RESUME the release at the
+          # checked-out tip instead of refusing, so "fix on main and
+          # re-dispatch" actually works. A tag that already exists still
+          # hard-fails: a released tag is never moved.
+          decision="$(.github/scripts/release-validate-decide.sh "$IS_RC" "$DRY_RUN" "$tag_exists" "$registered")"
+          case "$decision" in
+            FAIL_TAG_EXISTS)
               echo "::error::Tag $VERSION already exists; pick a version that has not shipped."
               exit 1
-            fi
-          fi
-          # SupportedReleases only ever records final releases (you never
-          # upgrade *from* an RC), so this check is final-only.
-          if [ "$IS_RC" != "true" ] && grep -qF "{Tag: \"$VERSION\"," backend/internal/schemafixture/releases.go; then
-            if [ "$DRY_RUN" = "true" ]; then
-              echo "::warning::$VERSION is already registered in SupportedReleases -- allowed for a dry run."
-            else
-              echo "::error::$VERSION is already registered in SupportedReleases."
+              ;;
+            RESUME)
+              echo "::warning::$VERSION is already registered in SupportedReleases and has no tag yet -- resuming the interrupted release at the checked-out tip."
+              echo "RESUME=true" >> "$GITHUB_ENV"
+              ;;
+            PROCEED)
+              # Dry runs downgrade the two checks to warnings (issue #929: the
+              # rehearsal targets the last shipped version deliberately).
+              if [ "$DRY_RUN" = "true" ] && [ "$tag_exists" = "true" ]; then
+                echo "::warning::Tag $VERSION already exists -- allowed for a dry run (no tag is pushed)."
+              fi
+              if [ "$DRY_RUN" = "true" ] && [ "$registered" = "true" ]; then
+                echo "::warning::$VERSION is already registered in SupportedReleases -- allowed for a dry run."
+              fi
+              ;;
+            *)
+              echo "::error::release-validate-decide.sh returned an unrecognized decision: ${decision}"
               exit 1
-            fi
-          fi
+              ;;
+          esac
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
       # --- Step 2: repository state ------------------------------------------
@@ -545,6 +583,7 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run }}
           MANDATORY_GATES: ${{ env.MANDATORY_GATES }}
           ASVS_REVERIFICATION: ${{ env.ASVS_REVERIFICATION }}
+          RESUME: ${{ env.RESUME }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -eu
@@ -557,6 +596,7 @@ jobs:
             --arg workflow_run "$RUN_URL" \
             --arg cut_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --argjson dry_run "${DRY_RUN:-false}" \
+            --argjson resumed "${RESUME:-false}" \
             --arg mandatory_gates "${MANDATORY_GATES:-unknown}" \
             --arg asvs_reverification "${ASVS_REVERIFICATION:-n/a (rc)}" \
             '{
@@ -568,6 +608,7 @@ jobs:
               workflow_run: $workflow_run,
               cut_at: $cut_at,
               dry_run: $dry_run,
+              resumed: $resumed,
               gates: {
                 citecheck: "pass",
                 releasegatecheck: "pass",
@@ -606,8 +647,18 @@ jobs:
         if: ${{ !inputs.dry_run && env.IS_RC != 'true' }}
         env:
           VERSION: ${{ env.VERSION }}
+          REGISTRATION: ${{ env.REGISTRATION }}
         run: |
           set -eu
+          # Idempotent (issue #1142): a resumed release reaches here with
+          # REGISTRATION=SKIP -- the fixture commit is already on main. Leave
+          # RELEASE_COMMIT at the checked-out tip set by "Verify repository
+          # state": that tip carries the fix that made the earlier attempt
+          # fail, and is what the tag should point at.
+          if [ "$REGISTRATION" = "SKIP" ]; then
+            echo "$VERSION is already registered; nothing to commit. Release commit remains $(git rev-parse --short HEAD)."
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add backend/internal/schemafixture/releases.go backend/database/testdata/schemas/"$VERSION".sql
@@ -620,6 +671,9 @@ jobs:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           set -eu
+          # No-op on a resume: RELEASE_COMMIT is the checked-out tip of main,
+          # which "Verify repository state" already confirmed equals
+          # origin/main, and the commit step above added nothing.
           # Ephemeral credential helper for the push only. ${GH_APP_TOKEN} must
           # expand at git-helper runtime, not when this script is parsed.
           # shellcheck disable=SC2016
@@ -833,6 +887,7 @@ jobs:
           RC: ${{ env.IS_RC }}
           REF: ${{ inputs.ref }}
           RELEASE_COMMIT: ${{ env.RELEASE_COMMIT }}
+          RESUME: ${{ env.RESUME }}
         run: |
           set -eu
           {
@@ -850,6 +905,9 @@ jobs:
               echo "- \`backend/database/testdata/schemas/${VERSION}.sql\` committed to \`main\` ($(git rev-parse --short HEAD))"
               echo "- every mandatory gate + release-tier suite green (or deadline-warned) before the tag"
               echo "- tag \`${VERSION}\` pushed to that commit"
+              if [ "${RESUME:-false}" = "true" ]; then
+                echo "- **resumed** an interrupted attempt: the fixture was already registered, so no new commit was made; the gates + release-tier suites were re-run at the checked-out tip before tagging"
+              fi
             fi
             echo
             echo "\`docker-publish.yml\` is now building + signing the images and APK, minting SBOMs + SLSA provenance + SHA256SUMS, and creating the GitHub Release:"
