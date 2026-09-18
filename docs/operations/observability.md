@@ -263,7 +263,7 @@ raise is delivered, an ongoing incident stays silent again (the storm guarantee 
 | `sync:contact_sync` / `sync:calendar_sync` | the subsystem is `failing` with ≥ `ALERT_SYNC_FAILURE_THRESHOLD` consecutive failures | it reports healthy |
 | `notifications` | the `notification` subsystem is `failing` with ≥ `ALERT_NOTIFY_FAILURE_THRESHOLD` consecutive failures | it reports healthy |
 | `integrations` | the `webhook` subsystem is `failing` and its last failure is within `ALERT_INCIDENT_QUIET_HOURS` | no new `integration_failed` for that window (the webhook subsystem emits no success token — [#422](https://github.com/DrewBrunning/mycorrhizal-crm/issues/422)) |
-| `db_integrity` | the last scheduled `PRAGMA integrity_check` result is `failed` / `error` | it flips back to `ok` |
+| `db_integrity` | the last scheduled integrity result is `failed` / `error` — the storage `PRAGMA` pass, the data-invariant pass, or (issue [#952](https://github.com/DrewBrunning/mycorrhizal-crm/issues/952)) the audit hash-chain tamper-evidence pass | it flips back to `ok` |
 | `disk_space` | the filesystem holding the DB is ≥ `ALERT_DISK_USAGE_PERCENT` full | usage drops 5 points below the threshold (hysteresis) |
 | `job_stopped` | any config-enabled scheduled job's last **successful** completion is older than its interval × `ALERT_JOB_STALE_MULTIPLIER` | every watched job is fresh again |
 | `auth_spray` | the instance-wide failed-auth velocity signal is in an incident — ≥ `AUTH_SPRAY_FAILURE_THRESHOLD` failures across ≥ `AUTH_SPRAY_IDENTIFIER_THRESHOLD` **distinct identifiers** within `AUTH_SPRAY_WINDOW_SECONDS` (issue [#940](https://github.com/DrewBrunning/mycorrhizal-crm/issues/940)) | no new spray for the incident hold (≥ 2 × `ALERT_EVAL_INTERVAL_MINUTES`) |

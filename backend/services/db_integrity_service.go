@@ -153,10 +153,10 @@ func checkDBIntegrity(db *gorm.DB) (ok bool, detail string, err error) {
 
 // CheckDBIntegrityScheduled is the scheduled job entry point (issue #273 for
 // the storage pass, issue #460 for the data pass, issue #462 for the FTS
-// consistency pass). Job-lock guarded (the T19 pattern) so a multi-instance
-// deploy or a rapid restart doesn't re-run it back to back. All three passes
-// run under the one lock, on the one schedule and config gate, but record and
-// alert distinctly.
+// consistency pass, issue #952 for the audit hash-chain pass). Job-lock guarded
+// (the T19 pattern) so a multi-instance deploy or a rapid restart doesn't re-run
+// it back to back. All four passes run under the one lock, on the one schedule
+// and config gate, but record and alert distinctly.
 func CheckDBIntegrityScheduled(db *gorm.DB, cfg config.Config) {
 	ctx := logger.JobContext(models.JobNameDBIntegrityCheck)
 	if !cfg.DBIntegrityCheckEnabled {
@@ -179,6 +179,7 @@ func CheckDBIntegrityScheduled(db *gorm.DB, cfg config.Config) {
 
 	runStorageIntegrityPass(ctx, db, cfg)
 	runDataIntegrityPass(ctx, db, cfg)
+	runAuditChainPass(ctx, db, cfg)
 
 	// SEARCH-02 (issue #462): the derived FTS index gets its own consistency
 	// pass, folded into this job rather than a third schedule. It is a meaning
@@ -256,6 +257,47 @@ func summarizeIntegrityFindings(findings []IntegrityFinding) string {
 		parts = append(parts, fmt.Sprintf("%s x%d", f.Check, f.Count))
 	}
 	return strings.Join(parts, "; ")
+}
+
+// runAuditChainPass is the tamper-evidence pass (issue #952): it recomputes the
+// audit hash chain (models.VerifyAuditChain) on the same schedule and config
+// gate as the storage/data/search passes. The chain is tamper-EVIDENT by
+// construction, but a detection that only ever runs when an operator invokes
+// cmd/audit-verify between incidents provides no detection at all — this closes
+// that gap by checking it on a cadence and firing the existing
+// db.integrity_check_failed channel (kind "audit_chain") on a gap. A broken
+// chain is a security incident, so the payload carries the first gap's event id
+// and message; the alert evaluator's "Database integrity" condition reads the
+// recorded result too, so a subscriber that only watches alert.raised still
+// pages.
+func runAuditChainPass(ctx context.Context, db *gorm.DB, cfg config.Config) {
+	gaps, err := models.VerifyAuditChain(db)
+	if err != nil {
+		logger.Ctx(ctx).Error().Err(err).Msg("audit chain check: verification could not run")
+		RecordOperationalCheckResult(db, models.CheckNameAuditChain, models.OpCheckStatusError, err.Error())
+		triggerWebhooksForAllUsers(ctx, db, cfg, EventDBIntegrityCheckFailed, map[string]interface{}{
+			"kind":  "audit_chain",
+			"error": err.Error(),
+		})
+		return
+	}
+	if len(gaps) > 0 {
+		// VerifyAuditChain returns only the first gap: the chain is invalid from
+		// that row onward, so later rows are downstream of the same break.
+		gap := gaps[0]
+		detail := fmt.Sprintf("event %d: %s", gap.EventID, gap.Message)
+		logger.Ctx(ctx).Error().Str("detail", detail).
+			Msg("audit chain check: BROKEN — an audit row was edited, deleted, inserted, or reordered")
+		RecordOperationalCheckResult(db, models.CheckNameAuditChain, models.OpCheckStatusFailed, detail)
+		triggerWebhooksForAllUsers(ctx, db, cfg, EventDBIntegrityCheckFailed, map[string]interface{}{
+			"kind":     "audit_chain",
+			"event_id": gap.EventID,
+			"detail":   detail,
+		})
+		return
+	}
+	RecordOperationalCheckResult(db, models.CheckNameAuditChain, models.OpCheckStatusOK, "")
+	logger.Ctx(ctx).Info().Msg("audit chain check: hash chain intact")
 }
 
 // OpCheckSearchIndexConsistency is the operational-check-result name for the

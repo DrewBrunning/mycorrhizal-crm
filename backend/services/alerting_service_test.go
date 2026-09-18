@@ -308,6 +308,31 @@ func TestEvaluateAlerts(t *testing.T) {
 		assert.False(t, rec.alerts[0].firing)
 	})
 
+	t.Run("audit_chain failure feeds the same DB-integrity alert", func(t *testing.T) {
+		reset(t)
+		baseline(t)
+
+		// Storage and data passes clean, but the scheduled audit-hash-chain
+		// tamper-evidence pass (issue #952) found a break — one alert, and its
+		// detail names the audit chain.
+		RecordOperationalCheckResult(db, models.JobNameDBIntegrityCheck, models.OpCheckStatusOK, "")
+		RecordOperationalCheckResult(db, models.CheckNameDataIntegrity, models.OpCheckStatusOK, "")
+		RecordOperationalCheckResult(db, models.CheckNameAuditChain, models.OpCheckStatusFailed,
+			"event 1: hash mismatch (content was modified after recording)")
+		RunAlertEvaluation(ctx, db, cfg)
+		require.Len(t, rec.alerts, 1)
+		assert.Equal(t, alertConditionKeyDBIntegrity, rec.alerts[0].conditionKey)
+		assert.True(t, rec.alerts[0].firing)
+		assert.Contains(t, rec.alerts[0].detail, "audit_chain")
+
+		// A re-linked chain clears the alert.
+		rec.reset()
+		RecordOperationalCheckResult(db, models.CheckNameAuditChain, models.OpCheckStatusOK, "")
+		RunAlertEvaluation(ctx, db, cfg)
+		require.Len(t, rec.alerts, 1)
+		assert.False(t, rec.alerts[0].firing)
+	})
+
 	t.Run("ALERTING_ENABLED=false is a no-op", func(t *testing.T) {
 		reset(t)
 		off := cfg

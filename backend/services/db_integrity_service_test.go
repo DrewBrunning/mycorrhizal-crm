@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -565,4 +566,204 @@ func TestCheckDBIntegrityScheduled_SearchErrorFiresWebhook(t *testing.T) {
 
 	require.Eventually(t, searchDeliveryFound, 3*time.Second, 10*time.Millisecond,
 		"a search-index check error must fire the failure webhook with the check name and error")
+}
+
+// ---------------------------------------------------------------------------
+// Issue #952 — the scheduled integrity job verifies the audit hash chain.
+// ---------------------------------------------------------------------------
+
+// seedValidAuditChain inserts n audit rows directly and backfills the hash
+// chain, reproducing the shape the real recorder builds (and what the startup
+// backfill produces). Returns the row ids, oldest first.
+func seedValidAuditChain(t *testing.T, db *gorm.DB, userID uint, n int) []uint {
+	t.Helper()
+	ids := make([]uint, 0, n)
+	for i := 0; i < n; i++ {
+		e := models.AuditEvent{
+			EntityType: models.AuditEntityAuth,
+			EntityID:   fmt.Sprintf("user-%d", i),
+			Operation:  models.AuditOpLogin,
+			UserID:     userID,
+			CreatedAt:  time.Now().UTC(),
+		}
+		require.NoError(t, db.Create(&e).Error)
+		ids = append(ids, e.ID)
+	}
+	require.NoError(t, models.RecomputeAuditChain(db))
+	gaps, err := models.VerifyAuditChain(db)
+	require.NoError(t, err)
+	require.Empty(t, gaps, "the seeded chain must verify clean")
+	return ids
+}
+
+// tamperAuditRow edits a row's content the way an attacker with raw DB access
+// would: drop the append-only trigger, UPDATE, restore the trigger. The models
+// chain tests use the identical shape.
+func tamperAuditRow(t *testing.T, db *gorm.DB, id uint) {
+	t.Helper()
+	require.NoError(t, db.Exec("DROP TRIGGER IF EXISTS audit_events_no_update").Error)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	_, err = sqlDB.Exec("UPDATE audit_events SET entity_id = 'tampered' WHERE id = ?", id)
+	require.NoError(t, err)
+	require.NoError(t, db.Exec("CREATE TRIGGER audit_events_no_update BEFORE UPDATE ON audit_events BEGIN SELECT RAISE(ABORT, 'audit_events is append-only: UPDATE is not allowed'); END").Error)
+}
+
+// TestCheckDBIntegrityScheduled_AuditChainCleanRecordsOK pins the clean path:
+// an intact chain records an ok operational-check-result under the audit-chain
+// name, distinct from the storage pass.
+func TestCheckDBIntegrityScheduled_AuditChainCleanRecordsOK(t *testing.T) {
+	db := dbtest.New(t)
+	user := models.User{Username: "audit-chain-ok", Password: "password123!A", Email: "audit-chain-ok@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	seedValidAuditChain(t, db, user.ID, 3)
+
+	cfg := config.Config{DBIntegrityCheckEnabled: true, DBIntegrityCheckIntervalHours: 24}
+	require.NotPanics(t, func() { CheckDBIntegrityScheduled(db, cfg) })
+
+	var row models.OperationalCheckResult
+	require.NoError(t, db.Where("check_name = ?", models.CheckNameAuditChain).First(&row).Error)
+	assert.Equal(t, models.OpCheckStatusOK, row.Status)
+	assert.Empty(t, row.Detail)
+}
+
+// TestCheckDBIntegrityScheduled_DetectsTamperedAuditChain is the issue #952
+// core: a chain broken between incidents — a row edited after recording — is
+// caught by the scheduled job, not only by a manual `make audit-verify`.
+func TestCheckDBIntegrityScheduled_DetectsTamperedAuditChain(t *testing.T) {
+	db := dbtest.New(t)
+	user := models.User{Username: "audit-chain-tamper", Password: "password123!A", Email: "audit-chain-tamper@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	ids := seedValidAuditChain(t, db, user.ID, 3)
+	tamperAuditRow(t, db, ids[0])
+
+	cfg := config.Config{DBIntegrityCheckEnabled: true, DBIntegrityCheckIntervalHours: 24}
+	require.NotPanics(t, func() { CheckDBIntegrityScheduled(db, cfg) })
+
+	var row models.OperationalCheckResult
+	require.NoError(t, db.Where("check_name = ?", models.CheckNameAuditChain).First(&row).Error)
+	assert.Equal(t, models.OpCheckStatusFailed, row.Status)
+	assert.Contains(t, row.Detail, "hash mismatch")
+	assert.Contains(t, row.Detail, fmt.Sprintf("event %d", ids[0]))
+
+	// The storage pragma pass is untouched by the tamper and still records ok.
+	var storage models.OperationalCheckResult
+	require.NoError(t, db.Where("check_name = ?", models.JobNameDBIntegrityCheck).First(&storage).Error)
+	assert.Equal(t, models.OpCheckStatusOK, storage.Status)
+}
+
+// TestCheckDBIntegrityScheduled_AuditChainGapFiresWebhook pins the alerting
+// half: a broken chain fires the existing db.integrity_check_failed channel
+// with kind "audit_chain" and the first gap's event id, so an operator wired to
+// that event is paged without running the CLI.
+func TestCheckDBIntegrityScheduled_AuditChainGapFiresWebhook(t *testing.T) {
+	db := dbtest.New(t)
+	user := models.User{Username: "audit-chain-hook", Password: "password123!A", Email: "audit-chain-hook@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	ids := seedValidAuditChain(t, db, user.ID, 3)
+	tamperAuditRow(t, db, ids[0])
+
+	var mu sync.Mutex
+	var bodies [][]byte
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		bodies = append(bodies, body)
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	require.NoError(t, db.Create(&models.Webhook{
+		UserID: user.ID, Name: "alerts", URL: server.URL,
+		Events: []string{EventDBIntegrityCheckFailed}, Secret: "s", IsActive: true,
+	}).Error)
+
+	cfg := config.Config{DBIntegrityCheckEnabled: true, DBIntegrityCheckIntervalHours: 24}
+	require.NotPanics(t, func() { CheckDBIntegrityScheduled(db, cfg) })
+
+	type deliveredEnvelope struct {
+		Event string `json:"event"`
+		Data  struct {
+			Kind    string `json:"kind"`
+			EventID uint   `json:"event_id"`
+			Detail  string `json:"detail"`
+		} `json:"data"`
+	}
+	auditDeliveryFound := func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		for _, body := range bodies {
+			var env deliveredEnvelope
+			if json.Unmarshal(body, &env) == nil &&
+				env.Event == EventDBIntegrityCheckFailed &&
+				env.Data.Kind == "audit_chain" &&
+				env.Data.EventID == ids[0] &&
+				env.Data.Detail != "" {
+				return true
+			}
+		}
+		return false
+	}
+	require.Eventually(t, auditDeliveryFound, 3*time.Second, 10*time.Millisecond,
+		"a broken audit chain must fire the failure webhook with kind audit_chain and the gap event id")
+}
+
+// TestCheckDBIntegrityScheduled_AuditChainErrorFiresWebhook pins the error
+// branch (issue #921's shape, applied to the new pass): a check that cannot run
+// at all — here the audit table is gone — must alert too, not just write a row.
+func TestCheckDBIntegrityScheduled_AuditChainErrorFiresWebhook(t *testing.T) {
+	db := dbtest.New(t)
+	user := models.User{Username: "audit-chain-err", Password: "password123!A", Email: "audit-chain-err@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	var mu sync.Mutex
+	var bodies [][]byte
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		bodies = append(bodies, body)
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	require.NoError(t, db.Create(&models.Webhook{
+		UserID: user.ID, Name: "alerts", URL: server.URL,
+		Events: []string{EventDBIntegrityCheckFailed}, Secret: "s", IsActive: true,
+	}).Error)
+
+	// Dropping the table makes VerifyAuditChain fail to read, exercising the
+	// error branch specifically. It also fails the data pass, so assert on the
+	// payload's kind rather than on delivery count.
+	require.NoError(t, db.Exec("DROP TABLE audit_events").Error)
+
+	cfg := config.Config{DBIntegrityCheckEnabled: true, DBIntegrityCheckIntervalHours: 24}
+	require.NotPanics(t, func() { CheckDBIntegrityScheduled(db, cfg) })
+
+	var row models.OperationalCheckResult
+	require.NoError(t, db.Where("check_name = ?", models.CheckNameAuditChain).First(&row).Error)
+	assert.Equal(t, models.OpCheckStatusError, row.Status)
+
+	type deliveredEnvelope struct {
+		Event string `json:"event"`
+		Data  struct {
+			Kind  string `json:"kind"`
+			Error string `json:"error"`
+		} `json:"data"`
+	}
+	auditErrorFound := func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		for _, body := range bodies {
+			var env deliveredEnvelope
+			if json.Unmarshal(body, &env) == nil &&
+				env.Event == EventDBIntegrityCheckFailed &&
+				env.Data.Kind == "audit_chain" &&
+				env.Data.Error != "" {
+				return true
+			}
+		}
+		return false
+	}
+	require.Eventually(t, auditErrorFound, 3*time.Second, 10*time.Millisecond,
+		"an audit-chain check error must fire the failure webhook with kind audit_chain and the error")
 }
