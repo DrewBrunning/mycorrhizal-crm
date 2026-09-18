@@ -26,6 +26,15 @@ const (
 	// gate, but records its outcome under this distinct name so an operator
 	// can tell "the disk is failing" from "the data has a logical hole".
 	CheckNameDataIntegrity = "data_integrity_check"
+
+	// CheckNameAuditChain is the tamper-evidence pass (issue #952): it recomputes
+	// the audit hash chain (VerifyAuditChain) on the same schedule and config
+	// gate as the storage/data passes, so an edited, deleted, inserted, or
+	// reordered audit row is detected between incidents rather than only when an
+	// operator runs `make audit-verify` by hand. Records under its own name so a
+	// broken chain is distinguishable from storage corruption and a data
+	// invariant violation.
+	CheckNameAuditChain = "audit_chain_check"
 )
 
 // OperationalCheckResult holds the most recent outcome of one named
