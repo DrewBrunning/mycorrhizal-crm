@@ -1,5 +1,7 @@
 package com.mycorrhizal.crm.feature.settings
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -7,9 +9,15 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import com.mycorrhizal.crm.domain.repository.ApiTokenRepository
 import com.mycorrhizal.crm.model.network.ApiToken
 import com.mycorrhizal.crm.model.network.ApiTokenCreateResponse
+import com.mycorrhizal.crm.model.network.RevokeAllApiTokensResponse
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.mockk
+import kotlinx.coroutines.awaitCancellation
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -33,6 +41,89 @@ class ApiTokensScreenTest {
         revokedAt: String? = null,
         expiresAt: String? = null,
     ) = ApiToken(id = id, name = name, createdAt = "2026-01-01T00:00:00Z", scope = scope, revokedAt = revokedAt, expiresAt = expiresAt)
+
+    // --- Top-level ApiTokensScreen: the RefreshableContent wrapper + its
+    // loading/empty/populated branches only execute when the real screen is
+    // mounted against a real ViewModel, so these mirror CirclesScreenTest's
+    // construction (mocked repository, no Hilt).
+
+    private fun setScreen(viewModel: ApiTokensViewModel) {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ApiTokensScreen(onBack = {}, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+    }
+
+    private fun spinnerIsShown() {
+        composeTestRule
+            .onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+            .assertExists()
+    }
+
+    @Test
+    fun `top-level screen shows a spinner while the initial load is in flight`() {
+        val repository = mockk<ApiTokenRepository>()
+        coEvery { repository.list() } coAnswers { awaitCancellation() }
+
+        setScreen(ApiTokensViewModel(repository))
+
+        spinnerIsShown()
+        composeTestRule.onNodeWithText("No API tokens yet").assertDoesNotExist()
+    }
+
+    @Test
+    fun `top-level screen shows the empty state when no tokens exist`() {
+        val repository = mockk<ApiTokenRepository>()
+        coEvery { repository.list() } returns Result.success(emptyList())
+
+        setScreen(ApiTokensViewModel(repository))
+
+        composeTestRule.onNodeWithText("No API tokens yet").assertIsDisplayed()
+    }
+
+    @Test
+    fun `top-level screen renders the token list`() {
+        val repository = mockk<ApiTokenRepository>()
+        coEvery { repository.list() } returns Result.success(listOf(token(1, name = "Deploy token")))
+
+        setScreen(ApiTokensViewModel(repository))
+
+        composeTestRule.onNodeWithText("Deploy token").assertIsDisplayed()
+    }
+
+    @Test
+    fun `top-level screen shows an action error above a populated list`() {
+        val repository = mockk<ApiTokenRepository>()
+        coEvery { repository.list() } returnsMany listOf(
+            Result.success(listOf(token(1, name = "Deploy token"))),
+            Result.failure(ApiError.Server(500, "boom")),
+        )
+        val viewModel = ApiTokensViewModel(repository)
+        setScreen(viewModel)
+
+        composeTestRule.runOnIdle { viewModel.load() }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Deploy token").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Server error (500)").assertIsDisplayed()
+    }
+
+    @Test
+    fun `top-level screen shows the revoke-all count above the list`() {
+        val repository = mockk<ApiTokenRepository>()
+        coEvery { repository.list() } returns Result.success(listOf(token(1, name = "Deploy token")))
+        coEvery { repository.revokeAll() } returns Result.success(RevokeAllApiTokensResponse(revoked = 2))
+        val viewModel = ApiTokensViewModel(repository)
+        setScreen(viewModel)
+
+        composeTestRule.runOnIdle { viewModel.revokeAll() }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Deploy token").assertIsDisplayed()
+        composeTestRule.onNodeWithText("2 tokens revoked").assertIsDisplayed()
+    }
 
     @Test
     fun `an active token row shows its scope and status with rotate and revoke actions`() {

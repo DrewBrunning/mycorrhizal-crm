@@ -1,5 +1,7 @@
 package com.mycorrhizal.crm.feature.settings
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOn
@@ -10,10 +12,15 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import com.mycorrhizal.crm.domain.repository.WebhookRepository
 import com.mycorrhizal.crm.model.network.Webhook
 import com.mycorrhizal.crm.model.network.WebhookDelivery
 import com.mycorrhizal.crm.model.network.WebhookInput
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.mockk
+import kotlinx.coroutines.awaitCancellation
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -30,6 +37,108 @@ class WebhooksScreenTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
+
+    private fun webhook(id: Int, name: String = "Hook $id") = Webhook(
+        id = id,
+        name = name,
+        url = "https://example.com/$id",
+        events = listOf("contact.created"),
+        isActive = true,
+    )
+
+    // --- Top-level WebhooksScreen: the RefreshableContent wrapper + its
+    // loading/empty/populated branches only execute when the real screen is
+    // mounted against a real ViewModel (mocked repository, no Hilt).
+
+    private fun setScreen(viewModel: WebhooksViewModel) {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                WebhooksScreen(onBack = {}, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+    }
+
+    @Test
+    fun `top-level screen shows a spinner while the initial load is in flight`() {
+        val repository = mockk<WebhookRepository>()
+        coEvery { repository.list() } coAnswers { awaitCancellation() }
+
+        setScreen(WebhooksViewModel(repository))
+
+        composeTestRule
+            .onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+            .assertExists()
+        composeTestRule.onNodeWithText("No webhooks configured yet.").assertDoesNotExist()
+    }
+
+    @Test
+    fun `top-level screen shows the empty state when no webhooks exist`() {
+        val repository = mockk<WebhookRepository>()
+        coEvery { repository.list() } returns Result.success(emptyList())
+
+        setScreen(WebhooksViewModel(repository))
+
+        composeTestRule.onNodeWithText("No webhooks configured yet.").assertIsDisplayed()
+    }
+
+    @Test
+    fun `top-level screen renders the webhook list and description`() {
+        val repository = mockk<WebhookRepository>()
+        coEvery { repository.list() } returns Result.success(listOf(webhook(1, name = "Hook A")))
+
+        setScreen(WebhooksViewModel(repository))
+
+        composeTestRule.onNodeWithText("Receive HTTP POST notifications when events occur in your CRM.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Hook A").assertIsDisplayed()
+    }
+
+    @Test
+    fun `top-level screen shows an action error above a populated list`() {
+        val repository = mockk<WebhookRepository>()
+        coEvery { repository.list() } returns Result.success(listOf(webhook(1, name = "Hook A")))
+        coEvery { repository.test(1) } returns Result.failure(ApiError.Server(500, "boom"))
+        val viewModel = WebhooksViewModel(repository)
+        setScreen(viewModel)
+
+        composeTestRule.runOnIdle { viewModel.test(webhook(1, name = "Hook A")) }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Hook A").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Server error (500)").assertIsDisplayed()
+    }
+
+    @Test
+    fun `top-level screen shows the test-delivered message above a populated list`() {
+        val repository = mockk<WebhookRepository>()
+        coEvery { repository.list() } returns Result.success(listOf(webhook(1, name = "Hook A")))
+        coEvery { repository.test(1) } returns Result.success(
+            WebhookDelivery(id = 10, webhookId = 1, eventType = "test", statusCode = 200),
+        )
+        val viewModel = WebhooksViewModel(repository)
+        setScreen(viewModel)
+
+        composeTestRule.runOnIdle { viewModel.test(webhook(1, name = "Hook A")) }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Test delivered (200)").assertIsDisplayed()
+    }
+
+    // Lines 195-197: the row's `onEdit` lambda only runs when the real
+    // top-level screen is mounted and its Edit action is clicked. The direct
+    // WebhookRow test below supplies its own onEdit, so it never reaches this.
+    @Test
+    fun `top-level screen opens the editor when a row's edit action is clicked`() {
+        val repository = mockk<WebhookRepository>()
+        coEvery { repository.list() } returns Result.success(listOf(webhook(1, name = "Hook A")))
+        setScreen(WebhooksViewModel(repository))
+
+        composeTestRule.onNodeWithContentDescription("Edit Hook A").performClick()
+        composeTestRule.waitForIdle()
+
+        // The editor dialog's title only appears once the row's edit lambda ran.
+        composeTestRule.onNodeWithText("Edit").assertIsDisplayed()
+    }
 
     @Test
     fun `shows a webhook row with test edit and delete actions`() {

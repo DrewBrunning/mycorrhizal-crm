@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -18,12 +19,14 @@ import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Household
 import com.mycorrhizal.crm.model.network.HouseholdMember
 import com.mycorrhizal.crm.model.network.HouseholdTypes
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -217,5 +220,27 @@ class HouseholdDetailScreenTest {
             .assertIsDisplayed()
         composeTestRule.onNodeWithText(str(R.string.action_add))
             .assertIsNotEnabled()
+    }
+
+    @Test
+    fun `a failed load renders the inline error message`() {
+        val householdRepository = mockk<HouseholdRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { householdRepository.getWithMembers("h1") } returns Result.failure(
+            ApiError.Client(500, "boom"),
+        )
+        val vm = HouseholdDetailViewModel(
+            householdRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("householdId" to "h1")),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme { HouseholdDetailScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm) }
+        }
+        composeTestRule.waitForIdle()
+
+        assertTrue(
+            composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty(),
+        )
     }
 }

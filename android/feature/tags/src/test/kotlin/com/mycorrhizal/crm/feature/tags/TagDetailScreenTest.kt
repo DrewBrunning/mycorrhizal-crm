@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -16,12 +17,15 @@ import com.mycorrhizal.crm.domain.repository.TagDetail
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.ContactTag
 import com.mycorrhizal.crm.model.network.Tag
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -143,5 +147,33 @@ class TagDetailScreenTest {
 
         coVerify(exactly = 1) { repository.addContact("t1", "uid-new") }
         composeTestRule.onNodeWithText("uid-new").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an initial load renders the loading skeleton`() {
+        val gate = CompletableDeferred<Result<TagDetail>>()
+        val repository = mockk<TagRepository>()
+        coEvery { repository.getWithContacts("t1") } coAnswers { gate.await() }
+        val vm = TagDetailViewModel(repository, SavedStateHandle(mapOf("tagId" to "t1")))
+        composeTestRule.setContent {
+            MycorrhizalTheme { TagDetailScreen(onBack = {}, viewModel = vm) }
+        }
+
+        composeTestRule.onNodeWithContentDescription(str(R.string.a11y_state_loading)).assertIsDisplayed()
+    }
+
+    @Test
+    fun `a failed load with no contacts renders the error text`() {
+        val repository = mockk<TagRepository>()
+        coEvery { repository.getWithContacts("t1") } returns
+            Result.failure(ApiError.Client(500, "boom"))
+        val vm = TagDetailViewModel(repository, SavedStateHandle(mapOf("tagId" to "t1")))
+        composeTestRule.setContent {
+            MycorrhizalTheme { TagDetailScreen(onBack = {}, viewModel = vm) }
+        }
+
+        // The error is both the body Text and the transient snackbar, so assert
+        // on the collection rather than a single node.
+        assertTrue(composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty())
     }
 }

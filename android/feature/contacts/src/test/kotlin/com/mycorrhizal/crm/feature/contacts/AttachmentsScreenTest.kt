@@ -2,11 +2,17 @@ package com.mycorrhizal.crm.feature.contacts
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.mycorrhizal.crm.domain.repository.AttachmentRepository
+import com.mycorrhizal.crm.model.network.AttachmentListResponse
 import com.mycorrhizal.crm.model.network.ContactAttachment
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -115,5 +121,27 @@ class AttachmentsScreenTest {
         // add-attachment node still exists (disabled) — assert no double handling.
         assertTrue(added == 0)
         assertNull(opened)
+    }
+
+    // The top-level screen (not AttachmentsScreenContent) is what wires
+    // `onRefresh = viewModel::load`; holding the list call in flight also
+    // exercises the initial-load spinner branch.
+    @Test
+    fun `top-level screen shows the loading spinner while the list is in flight`() {
+        val repository = mockk<AttachmentRepository>()
+        val gate = CompletableDeferred<Result<AttachmentListResponse>>()
+        coEvery { repository.list(1) } coAnswers { gate.await() }
+        val viewModel = AttachmentsViewModel(repository)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                AttachmentsScreen(contactId = 1, onBack = {}, viewModel = viewModel)
+            }
+        }
+
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithTag("attachments-loading").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag("attachments-loading").assertIsDisplayed()
     }
 }
