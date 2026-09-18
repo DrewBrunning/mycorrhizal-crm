@@ -72,8 +72,11 @@ is the operator-facing summary:
   blocking **"Update required"** screen at the next login and cannot proceed
   until updated — it does not fail mid-sync or corrupt anything. There is
   currently **no floor declared** (the supported combinations table in the
-  policy has a single row: every released client works with every released
-  server), so today an upgrade needs no app update.
+  policy has a single row covering servers `v0.6.0` and later: every released
+  client works with every released server in that range), so today an upgrade
+  needs no app update. Servers below `v0.6.0` are outside that range in both
+  directions — the app refuses them and the backend will not migrate them in
+  place.
 - **What to do when the release notes say otherwise.** The only case an
   operator acts on is a server release whose notes declare a new client floor —
   a MAINT-02 breaking change that ships through the deprecation process, never
