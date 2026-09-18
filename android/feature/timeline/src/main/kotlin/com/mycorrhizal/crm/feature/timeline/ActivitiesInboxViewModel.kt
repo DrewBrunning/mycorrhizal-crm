@@ -23,6 +23,8 @@ data class ActivitiesInboxUiState(
     val nextCursor: String? = null,
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
+    /** Id of the activity currently being deleted, so the row can show a spinner. */
+    val deletingId: Int? = null,
     val error: String? = null,
 )
 
@@ -78,5 +80,22 @@ class ActivitiesInboxViewModel @Inject constructor(
 
     fun onErrorShown() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    fun delete(id: Int) {
+        if (_uiState.value.deletingId != null) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(deletingId = id, error = null) }
+            activityRepository.delete(id).foldApiError(
+                onSuccess = {
+                    _uiState.update { state ->
+                        state.copy(deletingId = null, activities = state.activities.filterNot { it.id == id })
+                    }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(deletingId = null, error = error.displayMessage) }
+                },
+            )
+        }
     }
 }

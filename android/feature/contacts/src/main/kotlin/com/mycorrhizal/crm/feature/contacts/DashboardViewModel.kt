@@ -46,7 +46,12 @@ data class DashboardUiState(
     val dismissingSuggestionId: String? = null,
     /** The signed-in user's `date_format` preference; falls back to "eu" when absent. */
     val dateFormat: String? = null,
-)
+) {
+    /** True when at least one widget has data, so a refresh keeps the list on screen. */
+    val hasContent: Boolean
+        get() = birthdays.isNotEmpty() || upcomingReminders.isNotEmpty() || randomContacts.isNotEmpty() ||
+            overdueCadences.isNotEmpty() || favorites.isNotEmpty() || reachOutSuggestions.isNotEmpty()
+}
 
 /**
  * M10 — the M3 dashboard composite consumer. One

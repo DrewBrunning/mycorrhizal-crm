@@ -63,6 +63,7 @@ import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -160,44 +161,50 @@ fun AuditScreen(
             )
 
             Box(modifier = Modifier.fillMaxSize()) {
-                when {
-                    state.isLoading && state.events.isEmpty() ->
-                        LoadingSkeleton(modifier = Modifier.testTag("audit-loading"))
+                RefreshableContent(
+                    isRefreshing = state.isLoading && state.events.isNotEmpty(),
+                    onRefresh = viewModel::load,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    when {
+                        state.isLoading && state.events.isEmpty() ->
+                            LoadingSkeleton(modifier = Modifier.testTag("audit-loading"))
 
-                    state.events.isEmpty() && loadError != null ->
-                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                            Text(
-                                text = loadError,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.align(Alignment.Center),
-                            )
-                        }
-
-                    state.events.isEmpty() ->
-                        EmptyState(
-                            message = stringResource(
-                                if (hasFilters) R.string.audit_empty
-                                else R.string.audit_empty_no_filters
-                            ),
-                            icon = {
-                                Icon(
-                                    Icons.Outlined.History,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        state.events.isEmpty() && loadError != null ->
+                            Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                                Text(
+                                    text = loadError,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.align(Alignment.Center),
                                 )
-                            },
-                        )
+                            }
 
-                    else -> AuditEventList(
-                        events = state.events,
-                        contactsByUid = state.contactsByUid,
-                        canUndo = !state.isUndoing,
-                        onUndoClick = { pendingUndo = it },
-                        onOpenContact = onOpenContact,
-                        canLoadMore = state.canLoadMore,
-                        isLoadingMore = state.isLoading,
-                        onLoadMore = viewModel::loadMore,
-                    )
+                        state.events.isEmpty() ->
+                            EmptyState(
+                                message = stringResource(
+                                    if (hasFilters) R.string.audit_empty
+                                    else R.string.audit_empty_no_filters
+                                ),
+                                icon = {
+                                    Icon(
+                                        Icons.Outlined.History,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                            )
+
+                        else -> AuditEventList(
+                            events = state.events,
+                            contactsByUid = state.contactsByUid,
+                            canUndo = !state.isUndoing,
+                            onUndoClick = { pendingUndo = it },
+                            onOpenContact = onOpenContact,
+                            canLoadMore = state.canLoadMore,
+                            isLoadingMore = state.isLoading,
+                            onLoadMore = viewModel::loadMore,
+                        )
+                    }
                 }
             }
         }

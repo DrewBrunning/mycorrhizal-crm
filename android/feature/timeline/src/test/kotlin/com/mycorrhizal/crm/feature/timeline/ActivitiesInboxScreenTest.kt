@@ -2,9 +2,12 @@ package com.mycorrhizal.crm.feature.timeline
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
@@ -32,6 +35,8 @@ class ActivitiesInboxScreenTest {
         onActivityClick: (Int) -> Unit = {},
         onContactClick: (Int) -> Unit = {},
         onLoadMore: () -> Unit = {},
+        onDelete: (Int) -> Unit = {},
+        onRefresh: () -> Unit = {},
         darkTheme: Boolean = false,
     ) {
         composeTestRule.setContent {
@@ -41,6 +46,8 @@ class ActivitiesInboxScreenTest {
                     onActivityClick = onActivityClick,
                     onContactClick = onContactClick,
                     onLoadMore = onLoadMore,
+                    onDelete = onDelete,
+                    onRefresh = onRefresh,
                 )
             }
         }
@@ -109,6 +116,42 @@ class ActivitiesInboxScreenTest {
     fun `shows a loading skeleton while loading`() {
         setContent(ActivitiesInboxUiState(isLoading = true))
         composeTestRule.onNodeWithTag("activities-inbox-loading").assertIsDisplayed()
+    }
+
+    @Test
+    fun `delete asks first -- tapping delete shows a confirmation and does not call onDelete`() {
+        var deletedId: Int? = null
+        setContent(
+            ActivitiesInboxUiState(isLoading = false, activities = listOf(Activity(id = 7, title = "Coffee"))),
+            onDelete = { deletedId = it },
+        )
+        composeTestRule.onNodeWithContentDescription("Delete Coffee").performClick()
+        composeTestRule.onNodeWithText("Delete activity?").assertIsDisplayed()
+        assertEquals(null, deletedId)
+    }
+
+    @Test
+    fun `confirming the delete dialog calls onDelete with the activity id`() {
+        var deletedId: Int? = null
+        setContent(
+            ActivitiesInboxUiState(isLoading = false, activities = listOf(Activity(id = 7, title = "Coffee"))),
+            onDelete = { deletedId = it },
+        )
+        composeTestRule.onNodeWithContentDescription("Delete Coffee").performClick()
+        composeTestRule.onNodeWithText("Delete").performClick()
+        assertEquals(7, deletedId)
+    }
+
+    @Test
+    fun `pulling down on the list invokes onRefresh`() {
+        var refreshCalls = 0
+        setContent(
+            ActivitiesInboxUiState(isLoading = false, activities = listOf(Activity(id = 1, title = "Coffee"))),
+            onRefresh = { refreshCalls++ },
+        )
+        composeTestRule.onNodeWithTag("activities-inbox-list").performTouchInput { swipeDown() }
+        composeTestRule.waitForIdle()
+        assertEquals(1, refreshCalls)
     }
 
     // --- Issue #214: Compose semantics a11y sweep (the axe-core analog) -----

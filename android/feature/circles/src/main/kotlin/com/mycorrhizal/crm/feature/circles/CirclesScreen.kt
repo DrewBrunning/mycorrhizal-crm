@@ -47,6 +47,7 @@ import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,26 +91,32 @@ fun CirclesScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                state.isLoading -> LoadingSkeleton()
-                state.circles.isEmpty() && state.error == null ->
-                    EmptyState(message = stringResource(R.string.circles_empty))
-                state.circles.isEmpty() && state.error != null -> {
-                    Text(
-                        text = state.error.orEmpty(),
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-                }
-                else -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(state.circles, key = { it.id }) { circle ->
-                            CircleListItem(
-                                circle = circle,
-                                onClick = { onOpenCircle(circle.id) },
-                                onRename = { name -> viewModel.rename(circle.id, name) },
-                                onDelete = { viewModel.delete(circle.id) },
-                            )
+            RefreshableContent(
+                isRefreshing = state.isLoading && state.circles.isNotEmpty(),
+                onRefresh = viewModel::load,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    state.isLoading && state.circles.isEmpty() -> LoadingSkeleton()
+                    state.circles.isEmpty() && state.error == null ->
+                        EmptyState(message = stringResource(R.string.circles_empty))
+                    state.circles.isEmpty() && state.error != null -> {
+                        Text(
+                            text = state.error.orEmpty(),
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    }
+                    else -> {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(state.circles, key = { it.id }) { circle ->
+                                CircleListItem(
+                                    circle = circle,
+                                    onClick = { onOpenCircle(circle.id) },
+                                    onRename = { name -> viewModel.rename(circle.id, name) },
+                                    onDelete = { viewModel.delete(circle.id) },
+                                )
+                            }
                         }
                     }
                 }

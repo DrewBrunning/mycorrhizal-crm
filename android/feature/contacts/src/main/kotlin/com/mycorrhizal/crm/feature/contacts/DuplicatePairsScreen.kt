@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -50,6 +51,7 @@ import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.DuplicatePair
 import com.mycorrhizal.crm.model.network.DuplicateReasons
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 
 /**
  * T93 duplicate review (web's "Review duplicates" surface): lists the scan's
@@ -117,8 +119,14 @@ fun DuplicatePairsScreenContent(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            RefreshableContent(
+                isRefreshing = uiState.isLoading && uiState.pairs.isNotEmpty(),
+                onRefresh = onLoad,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    when {
                 uiState.isLoading && uiState.pairs.isEmpty() -> {
                     CircularProgressIndicator(
                         modifier = Modifier
@@ -178,6 +186,8 @@ fun DuplicatePairsScreenContent(
                     }
                 }
             }
+            }
+        }
         }
     }
 

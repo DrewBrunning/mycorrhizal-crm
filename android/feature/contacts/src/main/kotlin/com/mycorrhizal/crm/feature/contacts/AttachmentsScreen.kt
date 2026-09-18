@@ -55,6 +55,7 @@ import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.ContactAttachment
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -120,6 +121,7 @@ fun AttachmentsScreen(
         onDelete = viewModel::delete,
         onErrorShown = viewModel::onErrorShown,
         onDownloadHandled = viewModel::onDownloadHandled,
+        onRefresh = viewModel::load,
     )
 }
 
@@ -139,6 +141,7 @@ fun AttachmentsScreenContent(
     onDelete: (ContactAttachment) -> Unit = {},
     onErrorShown: () -> Unit = {},
     onDownloadHandled: () -> Unit = {},
+    onRefresh: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -184,41 +187,47 @@ fun AttachmentsScreenContent(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                uiState.isLoading && uiState.attachments.isEmpty() -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center).testTag("attachments-loading"),
-                    )
-                }
-                uiState.attachments.isEmpty() && uiState.error == null -> {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.attachments_empty),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.testTag("attachments-empty"),
+            RefreshableContent(
+                isRefreshing = uiState.isLoading && uiState.attachments.isNotEmpty(),
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    uiState.isLoading && uiState.attachments.isEmpty() -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center).testTag("attachments-loading"),
                         )
-                        TextButton(onClick = onAddClick) {
-                            Text(stringResource(R.string.attachments_upload))
+                    }
+                    uiState.attachments.isEmpty() && uiState.error == null -> {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.attachments_empty),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.testTag("attachments-empty"),
+                            )
+                            TextButton(onClick = onAddClick) {
+                                Text(stringResource(R.string.attachments_upload))
+                            }
                         }
                     }
-                }
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize().testTag("attachments-list"),
-                        contentPadding = PaddingValues(vertical = 8.dp),
-                    ) {
-                        items(uiState.attachments, key = { it.id }) { attachment ->
-                            AttachmentRow(
-                                attachment = attachment,
-                                downloading = uiState.downloadingId == attachment.id,
-                                deleting = uiState.deletingId == attachment.id,
-                                onOpen = { onDownload(attachment) },
-                                onDelete = { pendingDelete = attachment },
-                            )
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize().testTag("attachments-list"),
+                            contentPadding = PaddingValues(vertical = 8.dp),
+                        ) {
+                            items(uiState.attachments, key = { it.id }) { attachment ->
+                                AttachmentRow(
+                                    attachment = attachment,
+                                    downloading = uiState.downloadingId == attachment.id,
+                                    deleting = uiState.deletingId == attachment.id,
+                                    onOpen = { onDownload(attachment) },
+                                    onDelete = { pendingDelete = attachment },
+                                )
+                            }
                         }
                     }
                 }

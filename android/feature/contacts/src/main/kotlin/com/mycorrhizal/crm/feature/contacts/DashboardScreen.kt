@@ -75,6 +75,7 @@ import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.theme.LocalWarningColors
 import java.time.Instant
 import java.time.LocalDate
@@ -142,16 +143,22 @@ fun DashboardScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                state.isLoading -> LoadingSkeleton()
-                state.error != null -> DashboardErrorState(state.error!!, onRetry = viewModel::load)
-                else -> DashboardContent(
-                    state = state,
-                    dateFormat = state.dateFormat ?: DateFormat.EU,
-                    onOpenContact = onOpenContact,
-                    onCompleteReminder = viewModel::completeReminder,
-                    onDismissReachOutSuggestion = viewModel::dismissReachOutSuggestion,
-                )
+            RefreshableContent(
+                isRefreshing = state.isLoading && state.hasContent,
+                onRefresh = viewModel::load,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    state.isLoading && !state.hasContent -> LoadingSkeleton()
+                    state.error != null -> DashboardErrorState(state.error!!, onRetry = viewModel::load)
+                    else -> DashboardContent(
+                        state = state,
+                        dateFormat = state.dateFormat ?: DateFormat.EU,
+                        onOpenContact = onOpenContact,
+                        onCompleteReminder = viewModel::completeReminder,
+                        onDismissReachOutSuggestion = viewModel::dismissReachOutSuggestion,
+                    )
+                }
             }
         }
     }

@@ -54,6 +54,7 @@ import com.mycorrhizal.crm.model.network.GraphChain
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 
 /**
  * M14: the ego-centric network list over `GET /graph/connections` (the design
@@ -87,6 +88,7 @@ fun NetworkScreen(
         onSearchContacts = viewModel::searchContacts,
         onSelectFrom = viewModel::selectFrom,
         onErrorShown = viewModel::onErrorShown,
+        onRefresh = viewModel::load,
     )
 }
 
@@ -108,6 +110,7 @@ fun NetworkScreenContent(
     onSearchContacts: (String) -> Unit,
     onSelectFrom: (ContactSummary) -> Unit,
     onErrorShown: () -> Unit,
+    onRefresh: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -188,21 +191,27 @@ fun NetworkScreenContent(
                     onCircleSelect = onCircleSelect,
                 )
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    when {
-                        uiState.isLoading -> LoadingSkeleton()
-                        uiState.groupedChains.isEmpty() && uiState.error == null ->
-                            EmptyState(message = stringResource(R.string.network_empty))
-                        uiState.groupedChains.isEmpty() && uiState.error != null -> {
-                            Text(
-                                text = uiState.error.orEmpty(),
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.align(Alignment.Center),
+                    RefreshableContent(
+                        isRefreshing = uiState.isLoading && uiState.allChains.isNotEmpty(),
+                        onRefresh = onRefresh,
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        when {
+                            uiState.isLoading && uiState.allChains.isEmpty() -> LoadingSkeleton()
+                            uiState.groupedChains.isEmpty() && uiState.error == null ->
+                                EmptyState(message = stringResource(R.string.network_empty))
+                            uiState.groupedChains.isEmpty() && uiState.error != null -> {
+                                Text(
+                                    text = uiState.error.orEmpty(),
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.align(Alignment.Center),
+                                )
+                            }
+                            else -> NetworkList(
+                                uiState = uiState,
+                                onOpenContact = onOpenContact,
                             )
                         }
-                        else -> NetworkList(
-                            uiState = uiState,
-                            onOpenContact = onOpenContact,
-                        )
                     }
                 }
             }

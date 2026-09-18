@@ -56,6 +56,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -122,52 +123,55 @@ fun ApiTokensScreen(
             }
         },
     ) { padding ->
-        if (state.isLoading && state.tokens.isEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                CircularProgressIndicator()
-            }
-        } else if (state.tokens.isEmpty()) {
-            EmptyState(
-                message = stringResource(R.string.settings_api_tokens_empty),
-                modifier = Modifier.padding(padding),
-            )
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                if (state.error != null) {
-                    item {
-                        Text(
-                            text = state.error.orEmpty(),
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
-                                .semantics { liveRegion = LiveRegionMode.Assertive },
+        RefreshableContent(
+            isRefreshing = state.isLoading && state.tokens.isNotEmpty(),
+            onRefresh = viewModel::load,
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) {
+            if (state.isLoading && state.tokens.isEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (state.tokens.isEmpty()) {
+                EmptyState(message = stringResource(R.string.settings_api_tokens_empty))
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    if (state.error != null) {
+                        item {
+                            Text(
+                                text = state.error.orEmpty(),
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                                    .semantics { liveRegion = LiveRegionMode.Assertive },
+                            )
+                        }
+                    }
+                    state.revokedAllCount?.let { count ->
+                        item {
+                            Text(
+                                text = stringResource(R.string.settings_api_tokens_revoke_all_success, count),
+                                color = MaterialTheme.colorScheme.tertiary,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
+                    items(state.tokens, key = { it.id }) { token ->
+                        ApiTokenRow(
+                            token = token,
+                            rotating = state.rotatingId == token.id,
+                            revoking = state.revokingId == token.id,
+                            rotateSupported = advancedTokensSupported,
+                            onRotate = { rotatingToken = token },
+                            onRevoke = { revokingToken = token },
                         )
                     }
-                }
-                state.revokedAllCount?.let { count ->
-                    item {
-                        Text(
-                            text = stringResource(R.string.settings_api_tokens_revoke_all_success, count),
-                            color = MaterialTheme.colorScheme.tertiary,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                        )
-                    }
-                }
-                items(state.tokens, key = { it.id }) { token ->
-                    ApiTokenRow(
-                        token = token,
-                        rotating = state.rotatingId == token.id,
-                        revoking = state.revokingId == token.id,
-                        rotateSupported = advancedTokensSupported,
-                        onRotate = { rotatingToken = token },
-                        onRevoke = { revokingToken = token },
-                    )
                 }
             }
         }

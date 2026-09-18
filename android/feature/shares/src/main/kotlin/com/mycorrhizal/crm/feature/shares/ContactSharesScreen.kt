@@ -43,6 +43,7 @@ import com.mycorrhizal.crm.model.network.ContactShareStatuses
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 
 /**
  * M15: the standalone contact-shares screen (mirrors web's ContactSharesPage)
@@ -97,38 +98,44 @@ fun ContactSharesScreen(
             }
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 val list = if (state.selectedTab == SharesTab.INCOMING) state.incoming else state.outgoing
-                when {
-                    state.isLoading -> LoadingSkeleton()
-                    list.isEmpty() && state.error == null -> EmptyState(
-                        message = stringResource(
-                            if (state.selectedTab == SharesTab.INCOMING) {
-                                R.string.shares_incoming_empty
-                            } else {
-                                R.string.shares_outgoing_empty
-                            },
-                        ),
-                    )
-                    list.isEmpty() && state.error != null -> {
-                        Text(
-                            text = state.error.orEmpty(),
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.align(Alignment.Center),
+                RefreshableContent(
+                    isRefreshing = state.isLoading && list.isNotEmpty(),
+                    onRefresh = viewModel::load,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    when {
+                        state.isLoading && list.isEmpty() -> LoadingSkeleton()
+                        list.isEmpty() && state.error == null -> EmptyState(
+                            message = stringResource(
+                                if (state.selectedTab == SharesTab.INCOMING) {
+                                    R.string.shares_incoming_empty
+                                } else {
+                                    R.string.shares_outgoing_empty
+                                },
+                            ),
                         )
-                    }
-                    else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
-                            items(list, key = { it.id }) { share ->
-                                val outgoing = state.selectedTab == SharesTab.OUTGOING
-                                ShareRow(
-                                    share = share,
-                                    otherUsername = state.usernames[
-                                        (if (outgoing) share.toUserId else share.fromUserId).toString()
-                                    ],
-                                    outgoing = outgoing,
-                                    accepting = state.acceptingShare?.id == share.id,
-                                    onAccept = { viewModel.openAccept(share) },
-                                    onDecline = { viewModel.requestDecline(share) },
-                                )
+                        list.isEmpty() && state.error != null -> {
+                            Text(
+                                text = state.error.orEmpty(),
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.align(Alignment.Center),
+                            )
+                        }
+                        else -> {
+                            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                                items(list, key = { it.id }) { share ->
+                                    val outgoing = state.selectedTab == SharesTab.OUTGOING
+                                    ShareRow(
+                                        share = share,
+                                        otherUsername = state.usernames[
+                                            (if (outgoing) share.toUserId else share.fromUserId).toString()
+                                        ],
+                                        outgoing = outgoing,
+                                        accepting = state.acceptingShare?.id == share.id,
+                                        onAccept = { viewModel.openAccept(share) },
+                                        onDecline = { viewModel.requestDecline(share) },
+                                    )
+                                }
                             }
                         }
                     }
