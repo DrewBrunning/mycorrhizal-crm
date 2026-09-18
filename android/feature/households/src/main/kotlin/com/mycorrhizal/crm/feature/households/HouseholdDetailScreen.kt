@@ -57,6 +57,7 @@ import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -142,32 +143,38 @@ fun HouseholdDetailScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                state.isLoading -> LoadingSkeleton()
-                state.members.isEmpty() && errorMessage == null ->
-                    EmptyState(message = stringResource(R.string.households_members_empty))
-                state.members.isEmpty() && errorMessage != null -> {
-                    Text(
-                        text = errorMessage,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-                }
-                else -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(state.members, key = { it.id }) { member ->
-                            val resolved = state.contactsByUid[member.memberVCardUid]
-                            HouseholdMemberRow(
-                                member = member,
-                                displayName = displayNameFor(resolved)
-                                    ?: stringResource(R.string.households_member_unknown),
-                                resolvedContactId = resolved?.takeIf { it.id != 0 }?.id,
-                                removing = state.removingUid == member.memberVCardUid,
-                                updatingRole = state.updatingRoleUid == member.memberVCardUid,
-                                onRoleChange = { role -> viewModel.updateMemberRole(member.memberVCardUid, role) },
-                                onNavigateToContact = onNavigateToContact,
-                                onRemove = { viewModel.removeMember(member.memberVCardUid) },
-                            )
+            RefreshableContent(
+                isRefreshing = state.isLoading && state.members.isNotEmpty(),
+                onRefresh = viewModel::load,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    state.isLoading && state.members.isEmpty() -> LoadingSkeleton()
+                    state.members.isEmpty() && errorMessage == null ->
+                        EmptyState(message = stringResource(R.string.households_members_empty))
+                    state.members.isEmpty() && errorMessage != null -> {
+                        Text(
+                            text = errorMessage,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    }
+                    else -> {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(state.members, key = { it.id }) { member ->
+                                val resolved = state.contactsByUid[member.memberVCardUid]
+                                HouseholdMemberRow(
+                                    member = member,
+                                    displayName = displayNameFor(resolved)
+                                        ?: stringResource(R.string.households_member_unknown),
+                                    resolvedContactId = resolved?.takeIf { it.id != 0 }?.id,
+                                    removing = state.removingUid == member.memberVCardUid,
+                                    updatingRole = state.updatingRoleUid == member.memberVCardUid,
+                                    onRoleChange = { role -> viewModel.updateMemberRole(member.memberVCardUid, role) },
+                                    onNavigateToContact = onNavigateToContact,
+                                    onRemove = { viewModel.removeMember(member.memberVCardUid) },
+                                )
+                            }
                         }
                     }
                 }

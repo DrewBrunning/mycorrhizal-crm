@@ -10,9 +10,13 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.mycorrhizal.crm.domain.repository.NoteRepository
+import com.mycorrhizal.crm.domain.repository.UnfiledNotesPage
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -52,6 +56,12 @@ class NotesInboxScreenTest {
     fun `shows the empty state when there are no unfiled notes`() {
         setContent(NotesInboxUiState(isLoading = false, notes = emptyList()))
         composeTestRule.onNodeWithText("No notes yet").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an empty list with an error renders the error message`() {
+        setContent(NotesInboxUiState(isLoading = false, notes = emptyList(), error = "boom"))
+        composeTestRule.onNodeWithText("boom").assertIsDisplayed()
     }
 
     @Test
@@ -137,5 +147,33 @@ class NotesInboxScreenTest {
         setContent(populatedState(), darkTheme = true)
 
         composeTestRule.assertAccessibleSemantics()
+    }
+
+    // --- Top-level NotesInboxScreen against a real ViewModel -----------------
+    //
+    // `onRefresh = viewModel::load` (line 65) is only evaluated when the real
+    // top-level screen wires a real ViewModel; the content tests above pass
+    // their own callbacks. Construct the VM directly (mockk repository, no Hilt
+    // container) as NotesInboxViewModelTest does.
+    @Test
+    fun `top-level screen renders the view model's unfiled notes`() {
+        val repository = mockk<NoteRepository>()
+        coEvery { repository.listUnfiled() } returns Result.success(
+            UnfiledNotesPage(
+                notes = listOf(Note(id = 3, content = "Buy milk")),
+                nextCursor = null,
+                total = 1,
+            ),
+        )
+        val viewModel = NotesInboxViewModel(repository)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                NotesInboxScreen(onNoteClick = {}, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Buy milk").assertIsDisplayed()
     }
 }

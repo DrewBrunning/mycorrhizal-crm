@@ -1,14 +1,25 @@
 package com.mycorrhizal.crm.feature.users
 
+import android.content.Context
+import androidx.annotation.StringRes
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.UserManagementRepository
 import com.mycorrhizal.crm.model.network.AdminUser
 import com.mycorrhizal.crm.model.network.AdminUsersListResponse
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.testing.a11y.assertNoDuplicateContentDescriptions
+import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.awaitCancellation
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,6 +40,9 @@ class UsersScreenTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
+
+    private fun str(@StringRes res: Int, vararg args: Any): String =
+        ApplicationProvider.getApplicationContext<Context>().getString(res, *args)
 
     private fun setScreen(darkTheme: Boolean) {
         val repository = mockk<UserManagementRepository>()
@@ -71,5 +85,58 @@ class UsersScreenTest {
         setScreen(darkTheme = false)
 
         composeTestRule.assertNoDuplicateContentDescriptions()
+    }
+
+    // --- Top-level screen loading/empty/edit branches ----------------------
+
+    private fun setScreen(viewModel: UsersViewModel) {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                UsersScreen(onBack = {}, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+    }
+
+    @Test
+    fun `a spinner renders while the initial load is in flight`() {
+        val repository = mockk<UserManagementRepository>()
+        coEvery { repository.list(any(), any()) } coAnswers { awaitCancellation() }
+
+        setScreen(UsersViewModel(repository))
+
+        composeTestRule
+            .onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+            .assertExists()
+    }
+
+    @Test
+    fun `an empty list renders the empty state`() {
+        val repository = mockk<UserManagementRepository>()
+        coEvery { repository.list(any(), any()) } returns Result.success(
+            AdminUsersListResponse(users = emptyList(), total = 0),
+        )
+
+        setScreen(UsersViewModel(repository))
+
+        composeTestRule.onNodeWithText(str(R.string.users_empty)).assertIsDisplayed()
+    }
+
+    @Test
+    fun `tapping a row's edit action opens the editor for that user`() {
+        val repository = mockk<UserManagementRepository>()
+        coEvery { repository.list(any(), any()) } returns Result.success(
+            AdminUsersListResponse(
+                users = listOf(AdminUser(id = 1, username = "alice", email = "alice@example.com", isAdmin = true)),
+                total = 1,
+            ),
+        )
+
+        setScreen(UsersViewModel(repository))
+
+        composeTestRule.onNodeWithContentDescription(str(R.string.users_edit_named, "alice")).performClick()
+
+        composeTestRule.onNodeWithText(str(R.string.users_edit)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.users_password_hint)).assertIsDisplayed()
     }
 }

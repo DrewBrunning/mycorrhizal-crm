@@ -1,17 +1,27 @@
 package com.mycorrhizal.crm.feature.tags
 
+import android.content.Context
+import androidx.annotation.StringRes
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Tag
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.testing.a11y.assertNoDuplicateContentDescriptions
+import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,6 +42,21 @@ class TagsScreenTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
+
+    private fun str(@StringRes res: Int, vararg args: Any): String =
+        ApplicationProvider.getApplicationContext<Context>().getString(res, *args)
+
+    private fun setScreen(result: Result<List<Tag>>) {
+        val repository = mockk<TagRepository>()
+        coEvery { repository.list(any(), any()) } returns result
+        val viewModel = TagsViewModel(repository)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                TagsScreen(onOpenTag = {}, viewModel = viewModel)
+            }
+        }
+    }
 
     private fun setScreen(darkTheme: Boolean) {
         val repository = mockk<TagRepository>()
@@ -88,5 +113,37 @@ class TagsScreenTest {
         // so TalkBack's heading navigation skipped this dialog entirely.
         composeTestRule.onNodeWithText("Rename tag")
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+
+    @Test
+    fun `an initial load renders the loading skeleton`() {
+        val gate = CompletableDeferred<Result<List<Tag>>>()
+        val repository = mockk<TagRepository>()
+        coEvery { repository.list(any(), any()) } coAnswers { gate.await() }
+        val viewModel = TagsViewModel(repository)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                TagsScreen(onOpenTag = {}, viewModel = viewModel)
+            }
+        }
+
+        composeTestRule.onNodeWithContentDescription(str(R.string.a11y_state_loading)).assertIsDisplayed()
+    }
+
+    @Test
+    fun `an empty list renders the empty state`() {
+        setScreen(Result.success(emptyList()))
+
+        composeTestRule.onNodeWithText(str(R.string.tags_empty)).assertIsDisplayed()
+    }
+
+    @Test
+    fun `a failed load with an empty list renders the error text`() {
+        setScreen(Result.failure(ApiError.Client(500, "boom")))
+
+        // The error is both the body Text and the transient snackbar, so assert
+        // on the collection rather than a single node.
+        assertTrue(composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty())
     }
 }

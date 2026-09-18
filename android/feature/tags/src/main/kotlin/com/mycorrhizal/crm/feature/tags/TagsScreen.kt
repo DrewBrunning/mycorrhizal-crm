@@ -48,6 +48,7 @@ import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,26 +92,32 @@ fun TagsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                state.isLoading -> LoadingSkeleton()
-                state.tags.isEmpty() && state.error == null ->
-                    EmptyState(message = stringResource(R.string.tags_empty))
-                state.tags.isEmpty() && state.error != null -> {
-                    Text(
-                        text = state.error.orEmpty(),
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-                }
-                else -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(state.tags, key = { it.id }) { tag ->
-                            TagListItem(
-                                tag = tag,
-                                onClick = { onOpenTag(tag.id) },
-                                onRename = { name -> viewModel.rename(tag.id, name) },
-                                onDelete = { viewModel.delete(tag.id) },
-                            )
+            RefreshableContent(
+                isRefreshing = state.isLoading && state.tags.isNotEmpty(),
+                onRefresh = viewModel::load,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    state.isLoading && state.tags.isEmpty() -> LoadingSkeleton()
+                    state.tags.isEmpty() && state.error == null ->
+                        EmptyState(message = stringResource(R.string.tags_empty))
+                    state.tags.isEmpty() && state.error != null -> {
+                        Text(
+                            text = state.error.orEmpty(),
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    }
+                    else -> {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(state.tags, key = { it.id }) { tag ->
+                                TagListItem(
+                                    tag = tag,
+                                    onClick = { onOpenTag(tag.id) },
+                                    onRename = { name -> viewModel.rename(tag.id, name) },
+                                    onDelete = { viewModel.delete(tag.id) },
+                                )
+                            }
                         }
                     }
                 }

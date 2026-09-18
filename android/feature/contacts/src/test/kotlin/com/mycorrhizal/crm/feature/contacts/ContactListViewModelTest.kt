@@ -70,6 +70,29 @@ class ContactListViewModelTest {
     }
 
     @Test
+    fun `refresh keeps the current rows visible while reloading`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository, _) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(ContactSummary(id = 1, fn = "Alice")))
+        advanceUntilIdle()
+
+        // Suspend the reload so the in-flight state is observable.
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } coAnswers {
+            delay(1_000)
+            Result.success(page(ContactSummary(id = 1, fn = "Alice"), ContactSummary(id = 2, fn = "Bob")))
+        }
+        viewModel.refresh()
+        runCurrent()
+
+        val inFlight = viewModel.uiState.value
+        assertTrue(inFlight.isLoading)
+        assertEquals(1, inFlight.contacts.size)
+
+        advanceUntilIdle()
+        assertEquals(2, viewModel.uiState.value.contacts.size)
+    }
+
+    @Test
     fun `initial load triggers the change-feed sync exactly once`() = runTest(mainDispatcherRule.testDispatcher) {
         // Issue #959: opening the list is where the offline mirror reconciles
         // with the server's tombstones. A future refactor that drops this call

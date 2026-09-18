@@ -8,14 +8,22 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.lifecycle.SavedStateHandle
+import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.GraphRepository
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.GraphChain
 import com.mycorrhizal.crm.model.network.GraphChainStep
+import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -309,5 +317,55 @@ class NetworkScreenTest {
         setContent(populatedState(), showMenu = true, darkTheme = true)
 
         composeTestRule.assertAccessibleSemantics()
+    }
+
+    // --- Top-level NetworkScreen against a real ViewModel: the
+    // RefreshableContent onRefresh wrapper (line 91) and the inline error
+    // branch only execute when the real screen wires the VM's callbacks.
+
+    private fun viewModel(
+        connections: Result<GraphConnectionsResponse>,
+    ): NetworkViewModel {
+        val graphRepository = mockk<GraphRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
+        coEvery { graphRepository.selfContactVCardUid() } returns Result.success("uid-self")
+        coEvery { contactRepository.resolveByUid(listOf("uid-self")) } returns Result.success(
+            mapOf("uid-self" to ContactSummary(id = 1, uid = "uid-self", firstname = "Alice")),
+        )
+        coEvery { graphRepository.getConnections("uid-self", 2, null) } returns connections
+        return NetworkViewModel(graphRepository, contactRepository, SavedStateHandle())
+    }
+
+    @Test
+    fun `top-level screen renders the view model's chains`() {
+        val vm = viewModel(
+            Result.success(
+                GraphConnectionsResponse(
+                    chains = listOf(
+                        chain(10, "t1", "Carol", depth = 1, steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))),
+                    ),
+                ),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme { NetworkScreen(viewModel = vm) }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Carol").assertIsDisplayed()
+    }
+
+    @Test
+    fun `top-level screen renders the inline error when the traversal fails`() {
+        val vm = viewModel(Result.failure(ApiError.Client(500, "boom")))
+        composeTestRule.setContent {
+            MycorrhizalTheme { NetworkScreen(viewModel = vm) }
+        }
+        composeTestRule.waitForIdle()
+
+        assertTrue(
+            composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty(),
+        )
     }
 }

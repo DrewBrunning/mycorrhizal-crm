@@ -55,6 +55,7 @@ import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.theme.LocalWarningColors
 import com.mycorrhizal.crm.ui.R
 
@@ -79,6 +80,7 @@ fun RemindersScreen(
         onEditReminder = onEditReminder,
         onComplete = viewModel::complete,
         onDelete = viewModel::delete,
+        onRefresh = viewModel::load,
         onErrorShown = viewModel::onErrorShown,
     )
 }
@@ -92,6 +94,7 @@ fun RemindersScreenContent(
     onEditReminder: (Int) -> Unit = {},
     onComplete: (Int) -> Unit = {},
     onDelete: (Int) -> Unit = {},
+    onRefresh: () -> Unit = {},
     onErrorShown: () -> Unit = {},
 ) {
     val state = uiState
@@ -125,24 +128,30 @@ fun RemindersScreenContent(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                state.isLoading -> LoadingSkeleton()
-                state.reminders.isEmpty() && state.error == null ->
-                    EmptyState(message = stringResource(R.string.reminders_empty))
-                state.reminders.isEmpty() && (state.errorRes != null || state.error != null) ->
-                    EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
-                else -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(state.reminders, key = { it.id }) { reminder ->
-                            ReminderListItem(
-                                reminder = reminder,
-                                dateFormat = state.dateFormat,
-                                onClick = { onEditReminder(reminder.id) },
-                                onComplete = { onComplete(reminder.id) },
-                                onDelete = { pendingDelete = reminder },
-                                isCompleting = state.completingId == reminder.id,
-                                isDeleting = state.deletingId == reminder.id,
-                            )
+            RefreshableContent(
+                isRefreshing = state.isLoading && state.reminders.isNotEmpty(),
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    state.isLoading && state.reminders.isEmpty() -> LoadingSkeleton()
+                    state.reminders.isEmpty() && state.error == null ->
+                        EmptyState(message = stringResource(R.string.reminders_empty))
+                    state.reminders.isEmpty() && (state.errorRes != null || state.error != null) ->
+                        EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
+                    else -> {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(state.reminders, key = { it.id }) { reminder ->
+                                ReminderListItem(
+                                    reminder = reminder,
+                                    dateFormat = state.dateFormat,
+                                    onClick = { onEditReminder(reminder.id) },
+                                    onComplete = { onComplete(reminder.id) },
+                                    onDelete = { pendingDelete = reminder },
+                                    isCompleting = state.completingId == reminder.id,
+                                    isDeleting = state.deletingId == reminder.id,
+                                )
+                            }
                         }
                     }
                 }

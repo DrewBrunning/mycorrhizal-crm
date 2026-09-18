@@ -6,10 +6,14 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import com.mycorrhizal.crm.domain.repository.CalendarSubscriptionRepository
+import com.mycorrhizal.crm.domain.repository.ContactSubscriptionRepository
 import com.mycorrhizal.crm.model.network.CalendarSubscription
 import com.mycorrhizal.crm.model.network.CalendarSyncResult
 import com.mycorrhizal.crm.model.network.ContactSubscription
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -395,5 +399,29 @@ class CalendarSyncScreenTest {
         composeTestRule.onNodeWithText("Delete").performClick()
 
         assertEquals(calendar, deleted)
+    }
+
+    // --- Top-level CalendarSyncScreen: mounts the real screen so the
+    // `onRefresh = viewModel::load` wiring inside CalendarSyncContent executes
+    // against a real ViewModel (mocked repositories, no Hilt).
+
+    @Test
+    fun `the top-level screen renders calendars with the real view model`() {
+        val calendarRepository = mockk<CalendarSubscriptionRepository>()
+        val contactSubscriptionRepository = mockk<ContactSubscriptionRepository>()
+        coEvery { calendarRepository.list() } returns Result.success(
+            listOf(CalendarSubscription(id = 1, name = "Personal", url = "https://example.com/a.ics")),
+        )
+        coEvery { contactSubscriptionRepository.list() } returns Result.success(emptyList())
+        val viewModel = CalendarSyncViewModel(calendarRepository, contactSubscriptionRepository)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                CalendarSyncScreen(onBack = {}, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Personal").assertIsDisplayed()
     }
 }

@@ -56,6 +56,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -81,6 +82,7 @@ fun CalendarSyncScreen(
         onSync = viewModel::sync,
         onSave = viewModel::save,
         onDelete = viewModel::delete,
+        onRefresh = viewModel::load,
     )
 }
 
@@ -98,6 +100,7 @@ internal fun CalendarSyncContent(
     onSync: (CalendarSubscription) -> Unit,
     onSave: (CalendarSubscriptionInput, Int?) -> Unit,
     onDelete: (CalendarSubscription) -> Unit,
+    onRefresh: () -> Unit = {},
 ) {
     var editorOpen by remember { mutableStateOf(false) }
     var editingCalendar by remember { mutableStateOf<CalendarSubscription?>(null) }
@@ -131,95 +134,98 @@ internal fun CalendarSyncContent(
             }
         },
     ) { padding ->
-        if (state.isLoading && state.isEmpty) {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                CircularProgressIndicator()
-            }
-        } else if (state.isEmpty) {
-            EmptyState(
-                message = stringResource(R.string.settings_calendar_sync_empty),
-                modifier = Modifier.padding(padding),
-            )
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                item {
-                    Text(
-                        text = stringResource(R.string.settings_calendar_sync_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
+        RefreshableContent(
+            isRefreshing = state.isLoading && !state.isEmpty,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) {
+            if (state.isLoading && state.isEmpty) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    CircularProgressIndicator()
                 }
-                if (state.error != null) {
+            } else if (state.isEmpty) {
+                EmptyState(message = stringResource(R.string.settings_calendar_sync_empty))
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
                     item {
                         Text(
-                            text = state.error.orEmpty(),
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
-                                .semantics { liveRegion = LiveRegionMode.Assertive },
-                        )
-                    }
-                }
-                state.lastSyncResult?.let { result ->
-                    item {
-                        Text(
-                            text = stringResource(
-                                R.string.settings_calendar_sync_sync_success,
-                                result.created,
-                                result.updated,
-                                result.skipped,
-                            ),
-                            color = MaterialTheme.colorScheme.tertiary,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                        )
-                    }
-                }
-                if (state.calendars.isEmpty()) {
-                    item {
-                        Text(
-                            text = stringResource(R.string.settings_calendar_sync_empty),
+                            text = stringResource(R.string.settings_calendar_sync_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         )
                     }
-                }
-                items(state.calendars, key = { "cal-${it.id}" }) { calendar ->
-                    CalendarSubscriptionRow(
-                        calendar = calendar,
-                        syncing = state.syncingIds.contains(calendar.id),
-                        onSync = { onSync(calendar) },
-                        onEdit = {
-                            editingCalendar = calendar
-                            editorOpen = true
-                        },
-                        onDelete = { deletingCalendar = calendar },
-                    )
-                }
-                if (state.contactSubscriptions.isNotEmpty()) {
-                    item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
-                    item {
-                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                    if (state.error != null) {
+                        item {
                             Text(
-                                text = stringResource(R.string.settings_contact_sync_title),
-                                style = MaterialTheme.typography.titleSmall,
-                            )
-                            Text(
-                                text = stringResource(R.string.settings_contact_sync_description),
+                                text = state.error.orEmpty(),
+                                color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                                    .semantics { liveRegion = LiveRegionMode.Assertive },
                             )
                         }
                     }
-                    items(state.contactSubscriptions, key = { "contact-${it.id}" }) { subscription ->
-                        ContactSubscriptionRow(subscription = subscription)
+                    state.lastSyncResult?.let { result ->
+                        item {
+                            Text(
+                                text = stringResource(
+                                    R.string.settings_calendar_sync_sync_success,
+                                    result.created,
+                                    result.updated,
+                                    result.skipped,
+                                ),
+                                color = MaterialTheme.colorScheme.tertiary,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
+                    if (state.calendars.isEmpty()) {
+                        item {
+                            Text(
+                                text = stringResource(R.string.settings_calendar_sync_empty),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            )
+                        }
+                    }
+                    items(state.calendars, key = { "cal-${it.id}" }) { calendar ->
+                        CalendarSubscriptionRow(
+                            calendar = calendar,
+                            syncing = state.syncingIds.contains(calendar.id),
+                            onSync = { onSync(calendar) },
+                            onEdit = {
+                                editingCalendar = calendar
+                                editorOpen = true
+                            },
+                            onDelete = { deletingCalendar = calendar },
+                        )
+                    }
+                    if (state.contactSubscriptions.isNotEmpty()) {
+                        item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+                        item {
+                            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                                Text(
+                                    text = stringResource(R.string.settings_contact_sync_title),
+                                    style = MaterialTheme.typography.titleSmall,
+                                )
+                                Text(
+                                    text = stringResource(R.string.settings_contact_sync_description),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        items(state.contactSubscriptions, key = { "contact-${it.id}" }) { subscription ->
+                            ContactSubscriptionRow(subscription = subscription)
+                        }
                     }
                 }
             }

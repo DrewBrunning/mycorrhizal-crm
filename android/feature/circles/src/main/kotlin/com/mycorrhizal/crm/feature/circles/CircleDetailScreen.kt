@@ -43,6 +43,7 @@ import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -109,25 +110,31 @@ fun CircleDetailScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                state.isLoading -> LoadingSkeleton()
-                state.members.isEmpty() && errorMessage == null ->
-                    EmptyState(message = stringResource(R.string.circles_members_empty))
-                state.members.isEmpty() && errorMessage != null -> {
-                    Text(
-                        text = errorMessage,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-                }
-                else -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(state.members, key = { it.id }) { member ->
-                            MemberRow(
-                                member = member,
-                                removing = state.removingUid == member.memberVCardUid,
-                                onRemove = { viewModel.removeMember(member.memberVCardUid) },
-                            )
+            RefreshableContent(
+                isRefreshing = state.isLoading && state.members.isNotEmpty(),
+                onRefresh = viewModel::load,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    state.isLoading && state.members.isEmpty() -> LoadingSkeleton()
+                    state.members.isEmpty() && errorMessage == null ->
+                        EmptyState(message = stringResource(R.string.circles_members_empty))
+                    state.members.isEmpty() && errorMessage != null -> {
+                        Text(
+                            text = errorMessage,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    }
+                    else -> {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(state.members, key = { it.id }) { member ->
+                                MemberRow(
+                                    member = member,
+                                    removing = state.removingUid == member.memberVCardUid,
+                                    onRemove = { viewModel.removeMember(member.memberVCardUid) },
+                                )
+                            }
                         }
                     }
                 }

@@ -6,11 +6,14 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.lifecycle.SavedStateHandle
+import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.model.network.BriefingActivity
 import com.mycorrhizal.crm.model.network.BriefingCadence
 import com.mycorrhizal.crm.model.network.BriefingCadenceHealth
@@ -23,7 +26,14 @@ import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.RelationshipEdge
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.util.DateFormat
+import com.mycorrhizal.crm.network.ApiClient
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.emptyFlow
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -247,5 +257,69 @@ class PrepViewScreenTest {
         // heading semantics.
         composeTestRule.onNodeWithText("Alice Wonder")
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+}
+
+/**
+ * Mounts the real top-level [PrepViewScreen] (Scaffold + [RefreshableContent]
+ * + the loading/error/content `when`) against a [PrepViewModel] built on a
+ * mocked [ApiClient]. The class above drives [PrepViewContent] directly, so it
+ * never exercised the StateFlow wiring or the error/loading states.
+ */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+class PrepViewScreenStateTest {
+
+    @get:Rule
+    val composeTestRule = createComposeRule()
+
+    private fun newViewModel(apiClient: ApiClient, contactId: Int = 7): PrepViewModel {
+        val authRepository = mockk<AuthRepository>()
+        every { authRepository.observeSession() } returns emptyFlow()
+        return PrepViewModel(apiClient, authRepository, SavedStateHandle(mapOf("contactId" to contactId)))
+    }
+
+    private fun setScreen(viewModel: PrepViewModel) {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                PrepViewScreen(onBack = {}, onOpenContact = {}, viewModel = viewModel)
+            }
+        }
+    }
+
+    @Test
+    fun `loading state renders the skeleton while the briefing is in flight`() {
+        val apiClient = mockk<ApiClient>()
+        val gate = CompletableDeferred<Result<ContactBriefing>>()
+        coEvery { apiClient.getBriefing(7) } coAnswers { gate.await() }
+
+        setScreen(newViewModel(apiClient))
+
+        composeTestRule.onNodeWithContentDescription("Loading").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
+    @Test
+    fun `error state renders the message and a retry action`() {
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.getBriefing(7) } returns Result.failure(ApiError.Server(500, "boom"))
+
+        setScreen(newViewModel(apiClient))
+
+        composeTestRule.onNodeWithText("Server error (500)").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
+    }
+
+    @Test
+    fun `populated state renders the briefing content`() {
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.getBriefing(7) } returns Result.success(
+            ContactBriefing(contactId = 7, uid = "u7", name = "Alice Wonder"),
+        )
+
+        setScreen(newViewModel(apiClient))
+
+        composeTestRule.onNodeWithText("Alice Wonder").assertIsDisplayed()
     }
 }

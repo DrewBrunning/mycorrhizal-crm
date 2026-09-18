@@ -94,4 +94,41 @@ class ActivitiesInboxViewModelTest {
         // Only the initial load() call — loadMore() short-circuited on a null cursor.
         coVerify(exactly = 1) { activityRepository.listAll(cursor = null, limit = null) }
     }
+
+    @Test
+    fun `delete removes the activity from the list on success`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { activityRepository.listAll() } returns Result.success(
+            ActivitiesPage(
+                activitiesRaw = listOf(Activity(id = 1, title = "One"), Activity(id = 2, title = "Two")),
+                nextCursor = null,
+            ),
+        )
+        coEvery { activityRepository.delete(1) } returns Result.success(Unit)
+
+        val vm = ActivitiesInboxViewModel(activityRepository)
+        advanceUntilIdle()
+        vm.delete(1)
+        advanceUntilIdle()
+
+        assertEquals(listOf(2), vm.uiState.value.activities.map { it.id })
+        assertNull(vm.uiState.value.deletingId)
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `a failed delete keeps the row and surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { activityRepository.listAll() } returns Result.success(
+            ActivitiesPage(activitiesRaw = listOf(Activity(id = 1, title = "One")), nextCursor = null),
+        )
+        coEvery { activityRepository.delete(1) } returns Result.failure(ApiError.Client(500, "delete failed"))
+
+        val vm = ActivitiesInboxViewModel(activityRepository)
+        advanceUntilIdle()
+        vm.delete(1)
+        advanceUntilIdle()
+
+        assertEquals(listOf(1), vm.uiState.value.activities.map { it.id })
+        assertNull(vm.uiState.value.deletingId)
+        assertEquals("delete failed", vm.uiState.value.error)
+    }
 }

@@ -54,6 +54,7 @@ import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 import com.mycorrhizal.crm.ui.R
 
@@ -100,20 +101,26 @@ fun PrepViewScreen(
         },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                state.isLoading -> LoadingSkeleton()
-                state.error != null || state.briefing == null ->
-                    PrepErrorState(
-                        message = state.error ?: stringResource(R.string.prep_not_found),
-                        onRetry = viewModel::load,
+            RefreshableContent(
+                isRefreshing = state.isLoading && state.briefing != null,
+                onRefresh = viewModel::load,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    state.isLoading && state.briefing == null -> LoadingSkeleton()
+                    state.error != null || state.briefing == null ->
+                        PrepErrorState(
+                            message = state.error ?: stringResource(R.string.prep_not_found),
+                            onRetry = viewModel::load,
+                        )
+                    else -> PrepViewContent(
+                        briefing = state.briefing!!,
+                        // The session's date_format, like ContactDetailScreen threads
+                        // for its birthday rows; "eu" is the app-wide default.
+                        dateFormat = state.dateFormat ?: DateFormat.EU,
+                        onOpenContact = onOpenContact,
                     )
-                else -> PrepViewContent(
-                    briefing = state.briefing!!,
-                    // The session's date_format, like ContactDetailScreen threads
-                    // for its birthday rows; "eu" is the app-wide default.
-                    dateFormat = state.dateFormat ?: DateFormat.EU,
-                    onOpenContact = onOpenContact,
-                )
+                }
             }
         }
     }

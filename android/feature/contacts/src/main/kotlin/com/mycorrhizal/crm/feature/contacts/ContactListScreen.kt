@@ -92,6 +92,7 @@ import com.mycorrhizal.crm.model.network.SearchResult
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -152,6 +153,7 @@ fun ContactListScreen(
         onReviewDuplicates = onReviewDuplicates,
         onErrorShown = viewModel::onErrorShown,
         onLoadMore = viewModel::loadNextPage,
+        onRefresh = viewModel::refresh,
     )
 }
 
@@ -181,6 +183,7 @@ fun ContactListScreenContent(
     onReviewDuplicates: () -> Unit = {},
     onErrorShown: () -> Unit = {},
     onLoadMore: () -> Unit = {},
+    onRefresh: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     var search by rememberSaveable { mutableStateOf(uiState.searchQuery) }
@@ -344,67 +347,73 @@ fun ContactListScreenContent(
             // T87: the notes/activities section trails every state (loading/empty/error/
             // populated) as the LazyColumn's last item, so it's reachable regardless of
             // whether the contact list itself has rows — the two result sets are independent.
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().testTag("contact-list"),
+            RefreshableContent(
+                isRefreshing = uiState.isLoading && uiState.contacts.isNotEmpty(),
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxSize(),
             ) {
-                when {
-                    uiState.isLoading -> item {
-                        LoadingSkeleton(modifier = Modifier.testTag("contact-list-loading"))
-                    }
-                    uiState.contacts.isEmpty() && uiState.error == null -> item {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.fillMaxWidth().padding(24.dp),
-                        ) {
-                            EmptyState(message = stringResource(R.string.contacts_empty))
-                            Button(onClick = onImportContacts) {
-                                Text(stringResource(R.string.import_title))
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize().testTag("contact-list"),
+                ) {
+                    when {
+                        uiState.isLoading && uiState.contacts.isEmpty() -> item {
+                            LoadingSkeleton(modifier = Modifier.testTag("contact-list-loading"))
+                        }
+                        uiState.contacts.isEmpty() && uiState.error == null -> item {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                            ) {
+                                EmptyState(message = stringResource(R.string.contacts_empty))
+                                Button(onClick = onImportContacts) {
+                                    Text(stringResource(R.string.import_title))
+                                }
                             }
                         }
-                    }
-                    uiState.contacts.isEmpty() && uiState.error != null -> item {
-                        Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
-                            Text(
-                                text = uiState.error.orEmpty(),
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.align(Alignment.Center),
-                            )
+                        uiState.contacts.isEmpty() && uiState.error != null -> item {
+                            Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+                                Text(
+                                    text = uiState.error.orEmpty(),
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.align(Alignment.Center),
+                                )
+                            }
                         }
-                    }
-                    else -> {
-                        items(uiState.contacts, key = { it.id }) { contact ->
-                            ContactListItem(
-                                contact = contact,
-                                selected = contact.id in uiState.selected,
-                                selectMode = selectMode,
-                                onToggleFavorite = { onToggleFavorite(contact) },
-                                onClick = {
-                                    if (selectMode) onToggleSelection(contact.id) else onContactClick(contact.id)
-                                },
-                                onLongClick = {
-                                    selectMode = true
-                                    onToggleSelection(contact.id)
-                                },
-                            )
-                        }
-                        if (uiState.pagination.isLoadingMore) {
-                            item {
-                                Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(32.dp).align(Alignment.Center),
-                                    )
+                        else -> {
+                            items(uiState.contacts, key = { it.id }) { contact ->
+                                ContactListItem(
+                                    contact = contact,
+                                    selected = contact.id in uiState.selected,
+                                    selectMode = selectMode,
+                                    onToggleFavorite = { onToggleFavorite(contact) },
+                                    onClick = {
+                                        if (selectMode) onToggleSelection(contact.id) else onContactClick(contact.id)
+                                    },
+                                    onLongClick = {
+                                        selectMode = true
+                                        onToggleSelection(contact.id)
+                                    },
+                                )
+                            }
+                            if (uiState.pagination.isLoadingMore) {
+                                item {
+                                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(32.dp).align(Alignment.Center),
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                item {
-                    SearchNotesActivitiesSection(
-                        query = uiState.searchQuery,
-                        searchResult = uiState.searchResult,
-                        onContactClick = onContactClick,
-                    )
+                    item {
+                        SearchNotesActivitiesSection(
+                            query = uiState.searchQuery,
+                            searchResult = uiState.searchResult,
+                            onContactClick = onContactClick,
+                        )
+                    }
                 }
             }
         }

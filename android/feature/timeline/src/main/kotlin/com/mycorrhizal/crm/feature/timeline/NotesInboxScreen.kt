@@ -37,6 +37,7 @@ import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 
 /**
  * M9 item 1: the "Notes" drawer entry — a contact-agnostic view of the N4 unfiled-notes queue
@@ -61,6 +62,7 @@ fun NotesInboxScreen(
         onMenuClick = onMenuClick,
         onNoteClick = onNoteClick,
         onLoadMore = viewModel::loadMore,
+        onRefresh = viewModel::load,
         onErrorShown = viewModel::onErrorShown,
     )
 }
@@ -77,6 +79,7 @@ fun NotesInboxScreenContent(
     onMenuClick: (() -> Unit)? = {},
     onNoteClick: (Int) -> Unit = {},
     onLoadMore: () -> Unit = {},
+    onRefresh: () -> Unit = {},
     onErrorShown: () -> Unit = {},
 ) {
     val state = uiState
@@ -115,22 +118,29 @@ fun NotesInboxScreenContent(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                state.isLoading -> LoadingSkeleton(modifier = Modifier.testTag("notes-inbox-loading"))
-                state.notes.isEmpty() && state.error == null ->
-                    EmptyState(message = stringResource(R.string.notes_empty))
-                state.notes.isEmpty() && state.error != null ->
-                    EmptyState(state.error.orEmpty())
-                else -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize().testTag("notes-inbox-list")) {
-                        items(state.notes, key = { it.id }) { note ->
-                            InboxNoteRow(note = note, onClick = { onNoteClick(note.id) })
-                        }
-                        if (!state.nextCursor.isNullOrEmpty()) {
-                            item {
-                                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                    Button(onClick = onLoadMore, enabled = !state.isLoadingMore) {
-                                        Text(stringResource(R.string.action_load_more))
+            RefreshableContent(
+                isRefreshing = state.isLoading && state.notes.isNotEmpty(),
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    state.isLoading && state.notes.isEmpty() ->
+                        LoadingSkeleton(modifier = Modifier.testTag("notes-inbox-loading"))
+                    state.notes.isEmpty() && state.error == null ->
+                        EmptyState(message = stringResource(R.string.notes_empty))
+                    state.notes.isEmpty() && state.error != null ->
+                        EmptyState(state.error.orEmpty())
+                    else -> {
+                        LazyColumn(modifier = Modifier.fillMaxSize().testTag("notes-inbox-list")) {
+                            items(state.notes, key = { it.id }) { note ->
+                                InboxNoteRow(note = note, onClick = { onNoteClick(note.id) })
+                            }
+                            if (!state.nextCursor.isNullOrEmpty()) {
+                                item {
+                                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                        Button(onClick = onLoadMore, enabled = !state.isLoadingMore) {
+                                            Text(stringResource(R.string.action_load_more))
+                                        }
                                     }
                                 }
                             }

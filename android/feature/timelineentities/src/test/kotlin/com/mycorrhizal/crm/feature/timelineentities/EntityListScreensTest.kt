@@ -18,15 +18,29 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
+import androidx.lifecycle.SavedStateHandle
+import com.mycorrhizal.crm.domain.repository.ActivityRepository
+import com.mycorrhizal.crm.domain.repository.ContactActivitiesPage
+import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
+import com.mycorrhizal.crm.domain.repository.GiftRepository
+import com.mycorrhizal.crm.domain.repository.LifeEventRepository
+import com.mycorrhizal.crm.domain.repository.PreferenceRepository
+import com.mycorrhizal.crm.model.network.Card
+import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ConversationAgenda
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftStatuses
 import com.mycorrhizal.crm.model.network.LifeEvent
+import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.model.network.PreferenceSensitivities
 import com.mycorrhizal.crm.model.registry.PreferenceSection
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -810,5 +824,169 @@ class MarkDiscussedDialogTest {
         composeTestRule.onNodeWithText("Discuss").performClick()
 
         assertEquals(8, confirmed)
+    }
+}
+
+/**
+ * Mounts each top-level entity screen (the real `EntityListScaffold` +
+ * ViewModel wiring, including `onRefresh = viewModel::load`) rather than the
+ * leaf dialogs/rows the classes above exercise. The ViewModels are built
+ * against mocked repositories exactly the way [LifeEventsViewModelTest] etc.
+ * do, so no Hilt container is needed.
+ */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+class EntityListScreensTopLevelTest {
+
+    @get:Rule
+    val composeTestRule = createComposeRule()
+
+    private val uid = "11111111-1111-1111-1111-111111111111"
+
+    private fun stubContact(contacts: ContactRepository) {
+        coEvery { contacts.getContact(5) } returns Result.success(
+            ContactRecordResponse(id = 5, card = Card(uid = uid, name = Name(full = "Dana White"))),
+        )
+    }
+
+    // A failed entity load drives the shared scaffold's error branch
+    // (EntityListScreens.kt `uiState.items.isEmpty() && errorMessage != null`).
+    @Test
+    fun `a failed entity load renders the shared scaffold error branch`() {
+        val repo = mockk<LifeEventRepository>()
+        val contacts = mockk<ContactRepository>()
+        stubContact(contacts)
+        coEvery { repo.listForContact(uid) } returns Result.failure(ApiError.Server(500, "boom"))
+        val vm = LifeEventsViewModel(repo, contacts, SavedStateHandle(mapOf("contactId" to 5)))
+
+        composeTestRule.setContent {
+            MycorrhizalTheme { LifeEventsScreen(onBack = {}, viewModel = vm) }
+        }
+
+        // The error text renders in the list body (the snackbar may render the
+        // same message too, so match any occurrence).
+        assertTrue(
+            composeTestRule.onAllNodesWithText("Server error (500)").fetchSemanticsNodes().isNotEmpty(),
+        )
+        composeTestRule.onNodeWithContentDescription("New life event").assertIsDisplayed()
+    }
+
+    // LifeEventsScreen wires `onRefresh = viewModel::load` (line 653).
+    @Test
+    fun `life events screen renders the loaded list`() {
+        val repo = mockk<LifeEventRepository>()
+        val contacts = mockk<ContactRepository>()
+        stubContact(contacts)
+        coEvery { repo.listForContact(uid) } returns Result.success(
+            listOf(LifeEvent(id = "e1", entityId = uid, type = "moved", description = "Moved to Madison")),
+        )
+        val vm = LifeEventsViewModel(repo, contacts, SavedStateHandle(mapOf("contactId" to 5)))
+
+        composeTestRule.setContent {
+            MycorrhizalTheme { LifeEventsScreen(onBack = {}, viewModel = vm) }
+        }
+
+        composeTestRule.onNodeWithText("Moved to Madison", substring = true).assertIsDisplayed()
+    }
+
+    // GiftsScreen wires `onRefresh = viewModel::load` (line 952) and is the
+    // entity whose rows carry a URL, so this exercises the scaffold's
+    // item.url Text + open-link IconButton branch (lines 240-251).
+    @Test
+    fun `gifts screen renders a row with its url and open link`() {
+        val giftRepo = mockk<GiftRepository>()
+        val lifeRepo = mockk<LifeEventRepository>()
+        val activityRepo = mockk<ActivityRepository>()
+        val prefRepo = mockk<PreferenceRepository>()
+        val contacts = mockk<ContactRepository>()
+        stubContact(contacts)
+        coEvery { giftRepo.listForContact(uid) } returns Result.success(
+            listOf(
+                Gift(
+                    id = "g1",
+                    entityId = uid,
+                    description = "Socks",
+                    url = "https://example.com/socks",
+                ),
+            ),
+        )
+        coEvery { lifeRepo.listForContact(uid) } returns Result.success(emptyList())
+        coEvery { activityRepo.listForContact(5, any(), any(), any(), any(), any()) } returns
+            Result.success(ContactActivitiesPage(activities = emptyList(), nextCursor = null))
+        coEvery { prefRepo.listForContact(uid) } returns Result.success(emptyList())
+        val vm = GiftsViewModel(
+            giftRepo,
+            lifeRepo,
+            activityRepo,
+            prefRepo,
+            contacts,
+            SavedStateHandle(mapOf("contactId" to 5)),
+        )
+
+        composeTestRule.setContent {
+            MycorrhizalTheme { GiftsScreen(onBack = {}, viewModel = vm) }
+        }
+
+        composeTestRule.onNodeWithText("Socks").assertIsDisplayed()
+        composeTestRule.onNodeWithText("https://example.com/socks").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Open link").assertIsDisplayed()
+
+        // Tapping the open-link button runs the scaffold's uriHandler.openUri
+        // branch (Robolectric records the ACTION_VIEW intent, no viewer needed).
+        composeTestRule.onNodeWithContentDescription("Open link").performClick()
+    }
+
+    // PreferencesScreen wires `onRefresh = viewModel::load` (line 1256).
+    @Test
+    fun `preferences screen renders the grouped list`() {
+        val repo = mockk<PreferenceRepository>()
+        val contacts = mockk<ContactRepository>()
+        stubContact(contacts)
+        coEvery { repo.listForContact(uid) } returns Result.success(
+            listOf(Preference(id = "p1", entityId = uid, category = "food", key = "allergy", value = "peanuts")),
+        )
+        val vm = PreferencesViewModel(repo, contacts, SavedStateHandle(mapOf("contactId" to 5)))
+
+        composeTestRule.setContent {
+            MycorrhizalTheme { PreferencesScreen(onBack = {}, viewModel = vm) }
+        }
+
+        composeTestRule.onNodeWithText("peanuts").assertIsDisplayed()
+    }
+
+    // ConversationAgendaScreen wires `onRefresh = viewModel::load` (line 1684);
+    // its rows also carry a reference URL.
+    @Test
+    fun `agenda screen renders content and reference url`() {
+        val repo = mockk<ConversationAgendaRepository>()
+        val activityRepo = mockk<ActivityRepository>()
+        val contacts = mockk<ContactRepository>()
+        stubContact(contacts)
+        coEvery { repo.listForContact(uid) } returns Result.success(
+            listOf(
+                ConversationAgenda(
+                    id = "a1",
+                    entityId = uid,
+                    content = "Ask about the move",
+                    referenceUrl = "https://example.com/listing",
+                ),
+            ),
+        )
+        coEvery { activityRepo.listForContact(5, any(), any(), any(), any(), any()) } returns
+            Result.success(ContactActivitiesPage(activities = emptyList(), nextCursor = null))
+        val vm = ConversationAgendaViewModel(
+            repo,
+            activityRepo,
+            contacts,
+            SavedStateHandle(mapOf("contactId" to 5)),
+        )
+
+        composeTestRule.setContent {
+            MycorrhizalTheme { ConversationAgendaScreen(onBack = {}, viewModel = vm) }
+        }
+
+        composeTestRule.onNodeWithText("Ask about the move").assertIsDisplayed()
+        composeTestRule.onNodeWithText("https://example.com/listing").assertIsDisplayed()
     }
 }

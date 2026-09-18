@@ -116,6 +116,17 @@ class DashboardViewModelTest {
         }
 
     @Test
+    fun `hasContent is false for the default state and true when any widget has data`() {
+        assertFalse(DashboardUiState().hasContent)
+        assertTrue(DashboardUiState(birthdays = listOf(Birthday(name = "Alice"))).hasContent)
+        assertTrue(DashboardUiState(upcomingReminders = listOf(DashboardReminder(id = 1))).hasContent)
+        assertTrue(DashboardUiState(randomContacts = listOf(DashboardRandomContact(id = 1))).hasContent)
+        assertTrue(DashboardUiState(overdueCadences = listOf(OverdueCadence())).hasContent)
+        assertTrue(DashboardUiState(favorites = listOf(DashboardRandomContact(id = 1))).hasContent)
+        assertTrue(DashboardUiState(reachOutSuggestions = listOf(ReachOutSuggestion(id = "s1"))).hasContent)
+    }
+
+    @Test
     fun `a dashboard fetch failure surfaces the error`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val (viewModel, apiClient, _) = newViewModel()

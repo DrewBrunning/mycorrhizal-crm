@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -18,12 +19,15 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleMember
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -138,5 +142,36 @@ class CircleDetailScreenTest {
 
         coVerify(exactly = 1) { circleRepository.addMember("c1", "uid-new") }
         composeTestRule.onNodeWithText("uid-new").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an initial load renders the loading skeleton`() {
+        val circleRepository = mockk<CircleRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        val gate = CompletableDeferred<Result<CircleDetail>>()
+        coEvery { circleRepository.getWithMembers("c1") } coAnswers { gate.await() }
+        val vm = CircleDetailViewModel(circleRepository, contactRepository, SavedStateHandle(mapOf("circleId" to "c1")))
+        composeTestRule.setContent {
+            MycorrhizalTheme { CircleDetailScreen(onBack = {}, viewModel = vm) }
+        }
+
+        composeTestRule.onNodeWithContentDescription(str(R.string.a11y_state_loading)).assertIsDisplayed()
+    }
+
+    @Test
+    fun `a failed load with no members renders the error text`() {
+        val circleRepository = mockk<CircleRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { circleRepository.getWithMembers("c1") } returns
+            Result.failure(ApiError.Client(500, "boom"))
+        coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
+        val vm = CircleDetailViewModel(circleRepository, contactRepository, SavedStateHandle(mapOf("circleId" to "c1")))
+        composeTestRule.setContent {
+            MycorrhizalTheme { CircleDetailScreen(onBack = {}, viewModel = vm) }
+        }
+
+        // The error is both the body Text and the transient snackbar, so assert
+        // on the collection rather than a single node.
+        assertTrue(composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty())
     }
 }

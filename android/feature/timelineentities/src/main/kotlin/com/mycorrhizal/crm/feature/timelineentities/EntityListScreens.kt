@@ -80,6 +80,7 @@ import com.mycorrhizal.crm.model.util.Validators
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
 import java.math.BigDecimal
 
@@ -132,6 +133,7 @@ internal fun EntityListScaffold(
     // normal composable and must be laid out in-flow with the scaffold, not stacked
     // as an overlapping sibling of it (that overlap was a real bug — review-pass fix).
     header: (@Composable () -> Unit)? = null,
+    onRefresh: () -> Unit = {},
     dialog: @Composable () -> Unit,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -163,104 +165,110 @@ internal fun EntityListScaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // #347: the header (GiftsScreen's clothing-sizes + gift-preferences
-            // shopping-notes panel) lives inside the LazyColumn as a leading
-            // item so it scrolls with the list — a tall expanded panel can no
-            // longer push rows below the fold of a non-scrollable layout. Same
-            // class of fix as ContactListScreen's SearchNotesActivitiesSection,
-            // which is also a LazyColumn item rather than a fixed sibling above
-            // it. Every state (loading/empty/error/populated) is an item too,
-            // so the header stays reachable regardless of list contents.
-            val uriHandler = LocalUriHandler.current
-            LazyColumn(modifier = Modifier.fillMaxSize().testTag("entity-list")) {
-                if (header != null) {
-                    item(key = "scaffold-header") { header() }
-                }
-                when {
-                    uiState.isLoading -> item {
-                        LoadingSkeleton()
+            RefreshableContent(
+                isRefreshing = uiState.isLoading && uiState.items.isNotEmpty(),
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                // #347: the header (GiftsScreen's clothing-sizes + gift-preferences
+                // shopping-notes panel) lives inside the LazyColumn as a leading
+                // item so it scrolls with the list — a tall expanded panel can no
+                // longer push rows below the fold of a non-scrollable layout. Same
+                // class of fix as ContactListScreen's SearchNotesActivitiesSection,
+                // which is also a LazyColumn item rather than a fixed sibling above
+                // it. Every state (loading/empty/error/populated) is an item too,
+                // so the header stays reachable regardless of list contents.
+                val uriHandler = LocalUriHandler.current
+                LazyColumn(modifier = Modifier.fillMaxSize().testTag("entity-list")) {
+                    if (header != null) {
+                        item(key = "scaffold-header") { header() }
                     }
-                    uiState.items.isEmpty() && errorMessage == null -> item {
-                        EmptyState(message = stringResource(R.string.entities_empty))
-                    }
-                    uiState.items.isEmpty() && errorMessage != null -> item {
-                        Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
-                            Text(
-                                text = errorMessage,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.align(Alignment.Center),
-                            )
+                    when {
+                        uiState.isLoading && uiState.items.isEmpty() -> item {
+                            LoadingSkeleton()
                         }
-                    }
-                    else -> {
-                        // M18: flatten section headers into the row stream so the
-                        // generic scaffold can render grouped lists (preferences,
-                        // agenda) without per-entity list implementations.
-                        val rows = sectionRows(uiState.items, sectionLabel != null)
-                        items(rows, key = { it.key }) { row ->
-                            when (row) {
-                                is SectionRow.Header -> {
-                                    Text(
-                                        text = sectionLabel?.invoke(row.sectionKey).orEmpty(),
-                                        style = MaterialTheme.typography.titleSmall,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                    )
-                                }
-                                is SectionRow.Item -> {
-                                    val item = row.item
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable(onClick = { onItemClick(item.id) })
-                                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    ) {
-                                        if (rowContent != null) {
-                                            Box(modifier = Modifier.weight(1f)) {
-                                                rowContent(item)
-                                            }
-                                        } else {
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(
-                                                    text = item.label,
-                                                    style = MaterialTheme.typography.bodyLarge,
-                                                    maxLines = 2,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                )
-                                                if (!item.url.isNullOrBlank()) {
+                        uiState.items.isEmpty() && errorMessage == null -> item {
+                            EmptyState(message = stringResource(R.string.entities_empty))
+                        }
+                        uiState.items.isEmpty() && errorMessage != null -> item {
+                            Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+                                Text(
+                                    text = errorMessage,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.align(Alignment.Center),
+                                )
+                            }
+                        }
+                        else -> {
+                            // M18: flatten section headers into the row stream so the
+                            // generic scaffold can render grouped lists (preferences,
+                            // agenda) without per-entity list implementations.
+                            val rows = sectionRows(uiState.items, sectionLabel != null)
+                            items(rows, key = { it.key }) { row ->
+                                when (row) {
+                                    is SectionRow.Header -> {
+                                        Text(
+                                            text = sectionLabel?.invoke(row.sectionKey).orEmpty(),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                        )
+                                    }
+                                    is SectionRow.Item -> {
+                                        val item = row.item
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable(onClick = { onItemClick(item.id) })
+                                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        ) {
+                                            if (rowContent != null) {
+                                                Box(modifier = Modifier.weight(1f)) {
+                                                    rowContent(item)
+                                                }
+                                            } else {
+                                                Column(modifier = Modifier.weight(1f)) {
                                                     Text(
-                                                        text = item.url,
-                                                        style = MaterialTheme.typography.bodyMedium,
-                                                        color = MaterialTheme.colorScheme.primary,
-                                                        maxLines = 1,
+                                                        text = item.label,
+                                                        style = MaterialTheme.typography.bodyLarge,
+                                                        maxLines = 2,
                                                         overflow = TextOverflow.Ellipsis,
+                                                    )
+                                                    if (!item.url.isNullOrBlank()) {
+                                                        Text(
+                                                            text = item.url,
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            color = MaterialTheme.colorScheme.primary,
+                                                            maxLines = 1,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            if (!item.url.isNullOrBlank()) {
+                                                IconButton(onClick = { uriHandler.openUri(item.url) }) {
+                                                    Icon(
+                                                        Icons.Outlined.OpenInNew,
+                                                        contentDescription = stringResource(R.string.cd_open_link),
+                                                        tint = MaterialTheme.colorScheme.primary,
                                                     )
                                                 }
                                             }
-                                        }
-                                        if (!item.url.isNullOrBlank()) {
-                                            IconButton(onClick = { uriHandler.openUri(item.url) }) {
+                                            extraAction?.invoke(item)
+                                            IconButton(
+                                                onClick = { pendingDeleteId = item.id },
+                                                enabled = uiState.deletingId != item.id,
+                                            ) {
+                                                // #205: the row-action label carries
+                                                // the item's label so TalkBack doesn't
+                                                // read a bare "Delete" on every row.
                                                 Icon(
-                                                    Icons.Outlined.OpenInNew,
-                                                    contentDescription = stringResource(R.string.cd_open_link),
-                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    Icons.Outlined.Delete,
+                                                    contentDescription = stringResource(R.string.entities_delete_named, item.label),
                                                 )
                                             }
-                                        }
-                                        extraAction?.invoke(item)
-                                        IconButton(
-                                            onClick = { pendingDeleteId = item.id },
-                                            enabled = uiState.deletingId != item.id,
-                                        ) {
-                                            // #205: the row-action label carries
-                                            // the item's label so TalkBack doesn't
-                                            // read a bare "Delete" on every row.
-                                            Icon(
-                                                Icons.Outlined.Delete,
-                                                contentDescription = stringResource(R.string.entities_delete_named, item.label),
-                                            )
                                         }
                                     }
                                 }
@@ -642,6 +650,7 @@ fun LifeEventsScreen(
         onDelete = viewModel::delete,
         onErrorShown = viewModel::onErrorShown,
         onBack = onBack,
+        onRefresh = viewModel::load,
     ) {
         if (showAdd || editingItem != null) {
             LaunchedEffect(editingItem) { viewModel.onDialogOpened(editingItem) }
@@ -940,6 +949,7 @@ fun GiftsScreen(
         onDelete = viewModel::delete,
         onErrorShown = viewModel::onErrorShown,
         onBack = onBack,
+        onRefresh = viewModel::load,
         extraAction = { item ->
             val gift = viewModel.findById(item.id)
             if (gift != null && gift.status != GiftStatuses.GIVEN && gift.status != GiftStatuses.RECEIVED) {
@@ -1243,6 +1253,7 @@ fun PreferencesScreen(
         onDelete = viewModel::delete,
         onErrorShown = viewModel::onErrorShown,
         onBack = onBack,
+        onRefresh = viewModel::load,
         sectionLabel = { section -> stringResource(preferenceSectionLabelRes(section)) },
         // #386: rich preference rows (category + key + value + notes +
         // sensitivity) instead of the scaffold's flat label, matching web's
@@ -1670,6 +1681,7 @@ fun ConversationAgendaScreen(
         onDelete = viewModel::delete,
         onErrorShown = viewModel::onErrorShown,
         onBack = onBack,
+        onRefresh = viewModel::load,
         sectionLabel = { section ->
             if (section == "discussed") {
                 stringResource(R.string.agenda_section_discussed)

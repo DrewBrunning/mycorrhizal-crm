@@ -145,10 +145,12 @@ class ContactListViewModel @Inject constructor(
      * last-write-wins idiom [onSearchQueryChange] already uses for `searchJob`) means the UI
      * always converges to the most recently requested filters instead of silently stalling.
      */
-    fun loadContacts() {
+    fun loadContacts(keepItems: Boolean = false) {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, contacts = emptyList()) }
+            _uiState.update {
+                it.copy(isLoading = true, error = null, contacts = if (keepItems) it.contacts else emptyList())
+            }
             val page = contactRepository.listContacts(
                 cursor = null,
                 limit = _uiState.value.pagination.limit,
@@ -199,6 +201,9 @@ class ContactListViewModel @Inject constructor(
             )
         }
     }
+
+    /** Pull-to-refresh: reloads the first page while keeping the current rows visible. */
+    fun refresh() = loadContacts(keepItems = true)
 
     fun loadNextPage() {
         val state = _uiState.value
