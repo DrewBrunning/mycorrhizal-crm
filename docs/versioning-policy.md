@@ -177,10 +177,13 @@ Two floors are expressed as versions and therefore depend on this policy:
   [upgrade compatibility](upgrade-compatibility.md) (issue #529). The floor
   moves only at a MAJOR bump, which is itself a breaking change.
 - **Client/server compatibility floor.** The Android app declares the oldest
-  server it will talk to; a server may declare the oldest client it accepts.
-  Neither has a floor above "every released version" today. Canonical
-  statement: [client/server compatibility policy](client-compatibility-policy.md)
-  (ANDROID-01, issue #478).
+  server it will talk to — `v0.6.0`, the same version as the supported-upgrade
+  floor above, so the client's server baseline and the backend migration floor
+  cannot drift. A server may declare the oldest client it accepts via
+  `MIN_CLIENT_VERSION`; no such *client* floor has ever been raised, so against
+  every released server at or above `v0.6.0` every released client still works.
+  Canonical statement: [client/server compatibility
+  policy](client-compatibility-policy.md) (ANDROID-01, issue #478).
 
 ## Stray and unconstrained tags
 
