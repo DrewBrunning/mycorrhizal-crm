@@ -145,7 +145,7 @@ It prints an advisory (and still exits `0`) for each `deprecated` row whose
 explicitly removed*. Lag is allowed — a removal is a deliberate act — but it is
 surfaced, not silent.
 
-`go run ./cmd/deprecations` runs in the `Security-doc citations` job of
+`go run ./cmd/deprecations` runs in the `Docs & security-doc citations` job of
 `.github/workflows/unit-tests.yml`, beside the `citecheck` and `depexceptions`
 freshness gates, so it executes on every backend PR and on the nightly
 full-suite run — an over-window entry surfaces within a day even with no PR

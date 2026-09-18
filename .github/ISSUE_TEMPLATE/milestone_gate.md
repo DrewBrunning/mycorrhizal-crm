@@ -46,9 +46,9 @@ Check a box only with a citation — a test, a CI run, a document, or a `file:li
 Carried by every gate. Do not delete them when adapting this template — if one
 genuinely does not apply to a milestone, say so here rather than dropping it.
 
-> **Security-doc citations are no longer a per-milestone checkbox.** As of issue #608 the
+> **The `Docs & security-doc citations` gate is no longer a per-milestone checkbox.** As of issue #608 the
 > `citecheck` gate is enforced in three places with no human in the loop: the per-PR
-> `Security-doc citations` job, the `release_gate: true` poll on the release commit, and a
+> `Docs & security-doc citations` job, the `release_gate: true` poll on the release commit, and a
 > direct `go run ./cmd/citecheck` hard step in the REL-06 release workflow (`release.yml`).
 > The obligation has one home — the release process — so this gate does not restate it. See
 > `docs/security/asvs-l2-verification-report.md` §8–§9.
@@ -76,7 +76,7 @@ genuinely does not apply to a milestone, say so here rather than dropping it.
       gate's closure and the actual release dispatch, redo the diff-review for just those
       before dispatching. (Standing criterion, issue #378. Added after closing the `v0.8.4`
       gate — #985 — skipped this and the next release dispatch failed on it; fixed
-      retroactively by pass 1.26 / PR #1110, documented in CLAUDE.md by PR #1111.)
+      retroactively by pass 1.27 / PR #1110, documented in CLAUDE.md by PR #1111.)
 
 ## Verify
 
