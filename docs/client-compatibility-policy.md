@@ -220,15 +220,25 @@ the server?", published alongside the
 itself requires to run; this table states what it requires of the clients
 talking to it.
 
+The matrix's lower bound is `v0.6.0`. Below it the range is not "an old server
+that still works" — the Android app refuses any server under its `v0.6.0`
+baseline with the blocking "server needs an upgrade" screen (see "Newer client,
+older server" above), and the server itself refuses to migrate a pre-`v0.6.0`
+database (the same `v0.6.0` floor; [upgrade compatibility](upgrade-compatibility.md),
+issue #529). So the compatibility promise is a promise for servers **at or
+above `v0.6.0`**, not for every server tag that was ever pushed.
+
 | Server version range | Minimum client version (`min_client_version`) | Notes |
 |---|---|---|
-| All releases through the current `v0.6.x` line | *(none declared)* | No floor has ever been raised. Every released Android build and every web client remain compatible with every released server version, per the default posture above. |
+| **`v0.6.0` and later** | *(none declared)* | No *client* floor has ever been raised: every released Android build and every web client remain compatible with every released server in this range, per the default posture above. The app's own `v0.6.0` server baseline is a client-declared floor in the *other* direction (see "Newer client, older server") and is not a `min_client_version`. |
 
-A row is added here **only** when a floor actually moves, in the same change
-that moves it (see "Moving the floor," requirement 4). Until then this table
-having a single "no floor declared" row is not a placeholder — it is a
-faithful, actionable statement of the current, real policy: nothing has ever
-required a client to update to keep working.
+A row is added here **only** when a server-side client floor actually moves,
+in the same change that moves it (see "Moving the floor," requirement 4).
+Until then this table having a single "no floor declared" row is not a
+placeholder — it is a faithful, actionable statement of the current, real
+policy: no server release has ever required a client to update to keep working,
+and the only floor in the picture is the app's own `v0.6.0` *server* baseline
+stated above.
 
 ## How to verify this policy is being followed
 
