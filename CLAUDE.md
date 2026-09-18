@@ -551,7 +551,8 @@ project, no security budget).
 
 **What the project actually claims, and when it was last checked, is
 `docs/security/asvs-l2-verification-report.md`** (issue #378) — the dated verification pass over both
-checklists: the level claim (**ASVS L2 with 31 documented exceptions**, **MASVS-L1 with 1**), the
+checklists: the level claim (**ASVS L2 with 23 documented exceptions**, **MASVS-L1 with 1**, both
+**self-assessed** — see the report §6, not a third-party audit), the
 method used per class of control, the four manual audits (handler scoping/IDOR, cookie flags, crypto
 + unauthenticated routes, error-path leakage), the enumerated exception register, and what each pass
 found. The checklists say *what* the status is; the report says *how it was verified and when*. A
@@ -568,7 +569,7 @@ release dispatch forces a scramble (an emergency doc PR, or the `ack_asvs_curren
 hatch, which is a recorded skip, not a fix). This is exactly what happened closing the `v0.8.4` gate
 (#985): the gate closed clean, but the release dispatch right after it failed on this check, because
 neither the gate nor the four commits that landed between gate-close and dispatch had added a row —
-fixed retroactively by pass 1.26 / PR #1110. If commits land between gate-closure and the actual
+fixed retroactively by pass 1.27 / PR #1110. If commits land between gate-closure and the actual
 release dispatch, redo the diff-review for just those before dispatching.
 
 Citations in those docs are gated, not trusted: `cd backend && go run ./cmd/citecheck` proves every
