@@ -16,6 +16,7 @@ func TestAssembleNoContributions(t *testing.T) {
 
 	assert.Equal(t, "## Upgrade notes\n\n"+NoUpgradeActionRequired+"\n", got)
 	assert.NotContains(t, got, "## Breaking changes")
+	assert.NotContains(t, got, "## Security-relevant changes")
 }
 
 func TestAssembleEmpty(t *testing.T) {
@@ -60,6 +61,45 @@ func TestAssembleHarvestsBreakingChanges(t *testing.T) {
 	assert.Contains(t, got, "## Breaking changes\n\n**[#900](https://github.com/o/r/pull/900)** — `GET /api/v1/foo` now returns 404")
 	// Upgrade notes section comes before Breaking changes.
 	assert.Less(t, strings.Index(got, "## Upgrade notes"), strings.Index(got, "## Breaking changes"))
+}
+
+func TestAssembleHarvestsSecurityRelevantChanges(t *testing.T) {
+	prs := []PR{
+		{
+			Number: 953, URL: "https://github.com/o/r/pull/953",
+			Body: "## Summary\n\nAdds a guard.\n\n## Security-relevant changes\n\n`WEBHOOK_BLOCK_PRIVATE_URLS` now blocks loopback addresses too; a self-hosted receiver on `127.0.0.1` must be allowlisted.\n\n## Testing\n\nunit\n",
+		},
+		{Number: 954, URL: "https://github.com/o/r/pull/954", Body: "## Summary\n\nNo security surface.\n"},
+	}
+
+	got := Assemble(prs)
+
+	assert.Contains(t, got, "## Security-relevant changes\n\n**[#953](https://github.com/o/r/pull/953)** — `WEBHOOK_BLOCK_PRIVATE_URLS` now blocks loopback")
+	// The surrounding sections must not leak in.
+	assert.NotContains(t, got, "Adds a guard")
+	assert.NotContains(t, got, "unit")
+	// Security-relevant changes come after Upgrade notes and before Breaking changes.
+	assert.Less(t, strings.Index(got, "## Upgrade notes"), strings.Index(got, "## Security-relevant changes"))
+}
+
+func TestAssembleSecuritySectionOrder(t *testing.T) {
+	prs := []PR{
+		{
+			Number: 1,
+			Body:   "## Upgrade notes\n\nDo a thing.\n\n## Security-relevant changes\n\nA guard changed.\n\n## Breaking changes\n\nAn endpoint moved.\n",
+		},
+	}
+
+	got := Assemble(prs)
+
+	up := strings.Index(got, "## Upgrade notes")
+	sec := strings.Index(got, "## Security-relevant changes")
+	brk := strings.Index(got, "## Breaking changes")
+	require.NotEqual(t, -1, up)
+	require.NotEqual(t, -1, sec)
+	require.NotEqual(t, -1, brk)
+	assert.Less(t, up, sec)
+	assert.Less(t, sec, brk)
 }
 
 func TestAssembleFallsBackToNumberWithoutURL(t *testing.T) {

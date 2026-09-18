@@ -27,10 +27,14 @@ notes**, assembled from two sources:
    (`generate_release_notes`), turned into labelled sections by
    `.github/release.yml`. One section per category, populated from the labels on
    the pull requests merged since the previous release.
-2. **Operator notes** — an **Upgrade notes** section, and a **Breaking changes**
-   section when applicable, **hand-written in each pull request's description**
-   and harvested at release time by `cmd/releasenotes` into the top of the
-   release body.
+2. **Operator notes** — an **Upgrade notes** section, a **Security-relevant
+   changes** section when a change affects the security posture, and a
+   **Breaking changes** section when applicable, **hand-written in each pull
+   request's description** and harvested at release time by `cmd/releasenotes`
+   into the top of the release body. Security-relevant changes are their own
+   section (not folded into the upgrade notes) so a new default-off guard, a
+   changed floor, or a new required config cannot be missed among feature notes
+   (issue #953).
 
 The generated list answers *what changed*; only a human can answer *what an
 operator must do about it*, which is why part 2 is never generated from a diff.
@@ -74,11 +78,21 @@ A PR needs an `## Upgrade notes` block in its description when it does any of:
 Add `## Breaking changes` as well when the change is breaking under
 [`breaking-change-policy.md`](breaking-change-policy.md).
 
+A PR adds a `## Security-relevant changes` block when it changes the security
+posture in a way an operator should notice — a new guard or a changed default,
+a raised version floor, a new required configuration value, a new
+authentication path or trust boundary. It complements the `security` label
+(the generated *what changed* half) with the operator-facing *what this means
+for you* half; a change that adds a new security-relevant surface also needs a
+per-release delta row ([`adversarial-deltas.md`](security/adversarial-deltas.md),
+issue #953).
+
 If a PR touches one of the tracked paths (`backend/database/migrations/**`,
 `backend/config/config.go`, `.env.example`) but genuinely needs no operator
 note, put `no-changelog: <reason>` in the PR description. The `changelog-note`
-CI job fails a PR that touches those paths with neither an `## Upgrade notes` /
-`## Breaking changes` heading nor a `no-changelog:` line.
+CI job fails a PR that touches those paths with none of an `## Upgrade notes` /
+`## Security-relevant changes` / `## Breaking changes` heading and no
+`no-changelog:` line.
 
 Everything else — internal refactors, test-only changes, most bug fixes — needs
 nothing beyond the right label.
@@ -131,10 +145,11 @@ one hop anyway.
   `backend/internal/releasenotes` (`RequiredCategories`);
   `TestReleaseConfigHasRequiredCategories` fails the build if a section is
   dropped or the `*` catch-all loses its label.
-- `cmd/releasenotes` (harvest + assembly) is covered by
-  `backend/internal/releasenotes` unit tests.
+- `cmd/releasenotes` (harvest + assembly, including the **Security-relevant
+  changes** section) is covered by `backend/internal/releasenotes` unit tests.
 - `changelog-note` in `.github/workflows/unit-tests.yml` enforces the
-  operator-note requirement on every pull request.
+  operator-note requirement on every pull request; its accepted heading set is
+  the three operator sections above.
 
 These run in the normal `go test ./...` and CI, so the policy cannot drift from
 the tooling without a red build.

@@ -326,3 +326,7 @@ must remain host-only rather than prefix-locked while plain-HTTP LAN deployments
 - A design change that adds a new trust boundary (a new integration, a new sync direction, a new client)
   updates this doc in the same PR — the same "living document" convention `asvs-l2.md` already holds
   itself to.
+- A release that adds a security-relevant surface also records a per-release delta in
+  [`adversarial-deltas.md`](adversarial-deltas.md), and the release workflow gates on it (issue #953):
+  the milestone adversarial passes (#500, #502) are one-time events, so this is the per-release
+  backstop for a new surface *class* none of the §9 mechanical checks anticipated.
