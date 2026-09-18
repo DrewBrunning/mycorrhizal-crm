@@ -693,14 +693,17 @@ func firstToolchainCommand(block string) string {
 // operatorFloors is the operator-visible subset of the supported-runtime-matrix
 // table. Each floor's token must appear in the engineering matrix and (in the
 // given or alternative phrasing) in the operator page; moving a floor means
-// updating both documents or this table fails.
+// updating both documents or this table fails. The Docker Engine floor is not
+// in this token table: a whole-page Contains would be satisfied by any stray
+// mention of the number (issue #941 — the operator page stated `>= 22.0` in its
+// Docker row while a note elsewhere said `23.0`, and the old check passed). It
+// is pinned structurally by dockerEngineRowFloor instead.
 var operatorFloors = []struct {
 	label  string
 	matrix string
 	page   string
 	alt    string
 }{
-	{"Docker Engine minimum", "23.0", "23.0", ""},
 	{"Docker Compose", "Compose V2", "Compose V2", "Compose v2"},
 	{"Browser floor (Chrome/Edge/Firefox)", "111", "111", ">=111"},
 	{"Browser floor (Safari/iOS)", "16.4", "16.4", ""},
@@ -734,6 +737,58 @@ func checkSupportedVersionsDrift(root string) []string {
 		if !inPage {
 			findings = append(findings, fmt.Sprintf("supported-versions drift: docs/supported-versions.md does not state %q (%s), which the engineering matrix does — update the operator page (issue #486)", f.page, f.label))
 		}
+	}
+	findings = append(findings, checkDockerEngineFloor(mt, pt)...)
+	return findings
+}
+
+// Docker Engine is the one floor that is a `>=`-prefixed semver, so it can be
+// pinned structurally: read the `>=<version>` token out of the **Docker
+// Engine** row of each document and require them to agree, and require the
+// operator row to state exactly one. A plain token Contains (the operatorFloors
+// mechanism) is not enough — it is satisfied by any mention of the number
+// anywhere on the page, which is exactly how issue #941 slipped through.
+var (
+	dockerEngineRowRe  = mustCompile(`(?m)^.*\*\*Docker Engine\*\*.*$`)
+	dockerFloorTokenRe = mustCompile(`>=\s*(\d+(?:\.\d+)*)`)
+)
+
+// dockerEngineRowFloor returns the floor tokens stated with `>=` in the
+// **Docker Engine** table row of text, or nil when there is no such row.
+func dockerEngineRowFloor(text string) []string {
+	row := dockerEngineRowRe.FindString(text)
+	if row == "" {
+		return nil
+	}
+	var floors []string
+	for _, m := range dockerFloorTokenRe.FindAllStringSubmatch(row, -1) {
+		floors = append(floors, m[1])
+	}
+	return floors
+}
+
+// checkDockerEngineFloor pins the operator page's Docker Engine row to the
+// engineering matrix's (issue #941). It flags a missing row on either side, a
+// row stating more than one competing `>= NN.N` floor, and a mismatch between
+// the two.
+func checkDockerEngineFloor(matrix, page string) []string {
+	matrixFloors := dockerEngineRowFloor(matrix)
+	pageFloors := dockerEngineRowFloor(page)
+	var findings []string
+	if len(matrixFloors) == 0 {
+		findings = append(findings, "supported-versions drift: engineering matrix has no **Docker Engine** row stating a `>= <version>` floor — update the matrix (issue #486)")
+	}
+	if len(pageFloors) == 0 {
+		findings = append(findings, "supported-versions drift: docs/supported-versions.md has no **Docker Engine** row stating a `>= <version>` floor — update the operator page (issue #486)")
+	}
+	if len(pageFloors) > 1 {
+		findings = append(findings, fmt.Sprintf("supported-versions drift: docs/supported-versions.md Docker Engine row states more than one competing floor (%s) — state exactly one (issue #941)", strings.Join(pageFloors, ", ")))
+	}
+	if len(matrixFloors) > 1 {
+		findings = append(findings, fmt.Sprintf("supported-versions drift: engineering matrix Docker Engine row states more than one competing floor (%s) — state exactly one (issue #941)", strings.Join(matrixFloors, ", ")))
+	}
+	if len(matrixFloors) >= 1 && len(pageFloors) >= 1 && pageFloors[0] != matrixFloors[0] {
+		findings = append(findings, fmt.Sprintf("supported-versions drift: docs/supported-versions.md Docker Engine row does not state the matrix's floor %q (it states %q) — update the operator page (issue #486)", matrixFloors[0], pageFloors[0]))
 	}
 	return findings
 }

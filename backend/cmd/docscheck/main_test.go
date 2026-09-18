@@ -129,6 +129,10 @@ func fixtureTree(t *testing.T) string {
 		matrix += fmt.Sprintf("| %s | %s |\n", f.label, f.matrix)
 		page += fmt.Sprintf("%s: %s\n", f.label, f.page)
 	}
+	// Docker Engine is pinned by its table row, not the token table above
+	// (issue #941), so the fixture carries a real row on each side.
+	matrix += "| **Docker Engine** | `>=23.0` | why |\n"
+	page += "| **Docker Engine** | `>= 23.0` | why |\n"
 	write(t, root, "docs/development/supported-runtime-matrix.md", matrix)
 	write(t, root, "docs/supported-versions.md", page)
 
@@ -427,6 +431,87 @@ func TestCheckCommandBlocksAnnotationVariants(t *testing.T) {
 	if findings := checkCommandBlocks(newRoot(doc)); len(findings) > 0 {
 		t.Errorf("doc-level declaration should license blocks below it: %v", findings)
 	}
+}
+
+func TestDockerEngineRowFloor(t *testing.T) {
+	cases := []struct {
+		name string
+		text string
+		want string
+	}{
+		{
+			"matrix row",
+			"| **Docker Engine** | `>=23.0` | why |\n",
+			"23.0",
+		},
+		{
+			"operator row with a space",
+			"| **Docker Engine** | `>= 23.0` | 23.0 is when Compose V2 landed |\n",
+			"23.0",
+		},
+		{
+			"no row",
+			"| **Docker Compose** | V2 |\n",
+			"",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			floors := dockerEngineRowFloor(c.text)
+			if c.want == "" {
+				if len(floors) != 0 {
+					t.Fatalf("want no floors, got %v", floors)
+				}
+				return
+			}
+			if len(floors) != 1 || floors[0] != c.want {
+				t.Fatalf("dockerEngineRowFloor(%q) = %v, want [%s]", c.text, floors, c.want)
+			}
+		})
+	}
+}
+
+// TestDockerEngineFloorRegression is the issue #941 regression: the operator
+// page stated `>= 22.0` in its Docker Engine row while the matrix and a note
+// elsewhere said 23.0, and the old token Contains check passed. The structural
+// row check must catch the mismatch, a competing second floor, and a missing
+// row on either side.
+func TestDockerEngineFloorRegression(t *testing.T) {
+	matrix := "# matrix\n\n| **Docker Engine** | `>=23.0` | why |\n"
+	page := "# page\n\n| **Docker Engine** | `>= 23.0` | why |\n"
+
+	t.Run("matching passes", func(t *testing.T) {
+		if got := checkDockerEngineFloor(matrix, page); len(got) != 0 {
+			t.Fatalf("matching Docker rows should not be flagged: %v", got)
+		}
+	})
+	t.Run("wrong floor is caught even with the right number in prose", func(t *testing.T) {
+		// The 23.0 note is exactly the decoy that defeated the old check.
+		badPage := "# page\n\n23.0 is when Compose V2 landed.\n\n| **Docker Engine** | `>= 22.0` | why |\n"
+		got := strings.Join(checkDockerEngineFloor(matrix, badPage), "\n")
+		if !strings.Contains(got, "does not state the matrix's floor") {
+			t.Fatalf("expected a Docker floor mismatch finding, got: %s", got)
+		}
+	})
+	t.Run("competing floors are rejected", func(t *testing.T) {
+		badPage := "# page\n\n| **Docker Engine** | `>= 22.0` and `>= 23.0` | why |\n"
+		got := strings.Join(checkDockerEngineFloor(matrix, badPage), "\n")
+		if !strings.Contains(got, "more than one competing floor") {
+			t.Fatalf("expected a competing-floor finding, got: %s", got)
+		}
+	})
+	t.Run("missing page row is rejected", func(t *testing.T) {
+		got := strings.Join(checkDockerEngineFloor(matrix, "# page\n\nno docker row\n"), "\n")
+		if !strings.Contains(got, "has no **Docker Engine** row") {
+			t.Fatalf("expected a missing-row finding, got: %s", got)
+		}
+	})
+	t.Run("missing matrix row is rejected", func(t *testing.T) {
+		got := strings.Join(checkDockerEngineFloor("# matrix\n\nno docker row\n", page), "\n")
+		if !strings.Contains(got, "engineering matrix has no **Docker Engine** row") {
+			t.Fatalf("expected a missing-matrix-row finding, got: %s", got)
+		}
+	})
 }
 
 func TestSupportedVersionsDriftMatrixMissingToken(t *testing.T) {
