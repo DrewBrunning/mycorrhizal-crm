@@ -43,6 +43,7 @@ on:
   # cutting a release candidate (an RC-fix push to release/* does not trigger
   # push:main).
   workflow_dispatch:
+  workflow_call:
 
 # Branch-scoped cancellation: a force-push to an open PR cancels this
 # workflow's own still-running superseded run instead of paying for the old
@@ -50,7 +51,7 @@ on:
 # `push:main` runs never share a group (which would serialize them) and are
 # never cancelled by a PR; only `pull_request` events cancel in progress.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  group: schemathesis-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -110,7 +111,7 @@ jobs:
     # gate on — the schedule is the deep pass). The openapi.yaml lives outside
     # backend/, so openapi is listed explicitly; infra covers the compose/image
     # the scan boots.
-    if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.backend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
 
     env:
       # Per-operation example budget, tiered by trigger (rapid's RAPID_CHECKS

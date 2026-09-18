@@ -30,6 +30,7 @@ on:
   schedule:
     - cron: '45 3 * * *' # 03:45 UTC nightly (consolidated nightly suite)
   workflow_dispatch:
+  workflow_call:
 
 # Branch-scoped cancellation: a force-push to an open PR cancels this
 # workflow's own still-running superseded run instead of paying for the old
@@ -37,7 +38,7 @@ on:
 # `push:main` runs never share a group (which would serialize them) and are
 # never cancelled by a PR; only `pull_request` events cancel in progress.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  group: reference-clients-e2e-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -81,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs: changes
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.reference-clients == 'true' || needs.changes.outputs.workflows == 'true'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.reference-clients == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository
@@ -166,7 +167,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: changes
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.reference-clients == 'true' || needs.changes.outputs.workflows == 'true'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.reference-clients == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository

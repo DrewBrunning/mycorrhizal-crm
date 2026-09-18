@@ -60,6 +60,7 @@ on:
   # (deliberately -- see unit-tests.yml's workflow_dispatch comment for why
   # not a `push: release/**` trigger). Not meant for ad hoc manual runs.
   workflow_dispatch:
+  workflow_call:
 
 # Branch-scoped cancellation: a force-push to an open PR cancels this
 # workflow's own still-running superseded run instead of paying for the old
@@ -67,7 +68,7 @@ on:
 # `push:main` runs never share a group (which would serialize them) and are
 # never cancelled by a PR; only `pull_request` events cancel in progress.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  group: container-hardening-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -102,7 +103,7 @@ jobs:
       - name: Resolve gating decision
         id: resolve
         run: |
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$EVENT_NAME" = "workflow_call" ]; then
             infra=true; workflows=true
           else
             infra="$INFRA_CHANGED"; workflows="$WORKFLOWS_CHANGED"
