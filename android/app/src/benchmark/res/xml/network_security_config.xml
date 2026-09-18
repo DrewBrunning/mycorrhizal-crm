@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Benchmark-build override of the production network security config (the
+    main file lives in src/main/res/xml/). The `benchmark` build type is
+    release-shaped (R8 + resource shrinking, non-debuggable, profileable) and
+    inherits src/main's config, which forbids cleartext unconditionally. The
+    `:macrobenchmark` DashboardRenderBenchmark scenario logs into the same
+    plain-HTTP `docker-compose.test.yml` backend the instrumented E2E suite
+    uses (issue #263), so this override adds the same loopback cleartext
+    carve-out the debug source set already has for `10.0.2.2` / `127.0.0.1` /
+    `localhost`. Without it the app's login request is blocked by
+    CleartextNotPermittedException, the dashboard never renders, and the
+    scenario fails with "dashboard did not load" (issue #263's dashboard
+    scenario never actually exercised the app against the backend).
+
+    The `benchmark` build type is never distributed: only the non-gating
+    `android-macrobenchmark` CI job assembles and installs it. The GitHub
+    Release APK is the `release` variant, which still uses src/main's
+    system-CA-only, cleartext-forbidden config. Keep the two in sync if the
+    loopback carve-out ever changes.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Android emulator: the host machine's loopback. -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- Physical device: `adb reverse tcp:7300 tcp:7300` tunnels the
+             host's loopback onto the device's own 127.0.0.1. -->
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>
