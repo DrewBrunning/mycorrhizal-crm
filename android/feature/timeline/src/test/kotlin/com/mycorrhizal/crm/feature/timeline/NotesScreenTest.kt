@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import com.mycorrhizal.crm.ui.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -56,6 +57,22 @@ class NotesScreenTest {
     fun `shows empty state when no notes`() {
         setContent(NotesUiState(contactId = 5, notes = emptyList()))
         composeTestRule.onNodeWithText("No notes yet").assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows the missing-id message when the contact id did not resolve`() {
+        // Regression: the generic empty branch used to match before the
+        // errorRes branch (errorRes is set with error == null), hiding the
+        // real cause behind "No notes yet".
+        setContent(
+            NotesUiState(
+                contactId = 0,
+                notes = emptyList(),
+                errorRes = R.string.note_error_missing_id,
+            ),
+        )
+        composeTestRule.onNodeWithText("Missing contact id").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No notes yet").assertDoesNotExist()
     }
 
     @Test

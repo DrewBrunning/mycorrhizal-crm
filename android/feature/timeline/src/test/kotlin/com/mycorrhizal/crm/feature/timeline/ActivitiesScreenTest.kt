@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import com.mycorrhizal.crm.ui.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -60,6 +61,22 @@ class ActivitiesScreenTest {
     fun `shows empty state when no activities`() {
         setContent(ActivitiesUiState(contactId = 5, activities = emptyList()))
         composeTestRule.onNodeWithText("No activities yet").assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows the missing-id message when the contact id did not resolve`() {
+        // Regression: the generic empty branch used to match before the
+        // errorRes branch (errorRes is set with error == null), hiding the
+        // real cause behind "No activities yet".
+        setContent(
+            ActivitiesUiState(
+                contactId = 0,
+                activities = emptyList(),
+                errorRes = R.string.activity_error_missing_id,
+            ),
+        )
+        composeTestRule.onNodeWithText("Missing contact id").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No activities yet").assertDoesNotExist()
     }
 
     @Test

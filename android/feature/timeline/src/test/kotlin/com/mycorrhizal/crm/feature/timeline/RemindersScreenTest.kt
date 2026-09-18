@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import com.mycorrhizal.crm.ui.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -54,6 +55,22 @@ class RemindersScreenTest {
     fun `shows empty state when no reminders`() {
         setContent(RemindersUiState(contactId = 5, reminders = emptyList()))
         composeTestRule.onNodeWithText("No reminders yet").assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows the missing-id message when the contact id did not resolve`() {
+        // Regression: the generic empty branch used to match before the
+        // errorRes branch (errorRes is set with error == null), hiding the
+        // real cause behind "No reminders yet".
+        setContent(
+            RemindersUiState(
+                contactId = 0,
+                reminders = emptyList(),
+                errorRes = R.string.reminder_error_missing_id,
+            ),
+        )
+        composeTestRule.onNodeWithText("Missing contact id").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No reminders yet").assertDoesNotExist()
     }
 
     @Test

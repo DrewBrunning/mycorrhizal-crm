@@ -140,10 +140,14 @@ fun NotesScreenContent(
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
                     state.isLoading -> LoadingSkeleton()
-                    state.notes.isEmpty() && state.error == null ->
-                        EmptyState(message = stringResource(if (hasFilters) R.string.notes_no_results else R.string.notes_empty))
+                    // The error/errorRes branch must precede the generic empty
+                    // branch: the missing-contact-id state sets errorRes with
+                    // error == null, so the empty branch used to swallow it and
+                    // show "No notes yet" instead of the real cause.
                     state.notes.isEmpty() && (state.errorRes != null || state.error != null) ->
                         EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
+                    state.notes.isEmpty() && state.error == null ->
+                        EmptyState(message = stringResource(if (hasFilters) R.string.notes_no_results else R.string.notes_empty))
                     else -> {
                         LazyColumn(modifier = Modifier.fillMaxSize()) {
                             items(state.notes, key = { it.id }) { note ->

@@ -127,10 +127,14 @@ fun RemindersScreenContent(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.isLoading -> LoadingSkeleton()
-                state.reminders.isEmpty() && state.error == null ->
-                    EmptyState(message = stringResource(R.string.reminders_empty))
+                // The error/errorRes branch must precede the generic empty
+                // branch: the missing-contact-id state sets errorRes with
+                // error == null, so the empty branch used to swallow it and
+                // show "No reminders yet" instead of the real cause.
                 state.reminders.isEmpty() && (state.errorRes != null || state.error != null) ->
                     EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
+                state.reminders.isEmpty() && state.error == null ->
+                    EmptyState(message = stringResource(R.string.reminders_empty))
                 else -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(state.reminders, key = { it.id }) { reminder ->
