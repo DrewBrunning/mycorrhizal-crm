@@ -26,7 +26,7 @@ for the `go run` command above.
 |---|---|
 | **per-pr** | Fast enough for every pull request. Blocks merge via the `main-protection` ruleset, and is **re-checked on the release commit** by the `release-gate` job (for the subset marked `release_gate` in the JSON). |
 | **release-internal** | A job inside `docker-publish.yml`. Enforced by that workflow's `needs:` graph — if it fails, no release, no images, no APK. |
-| **release-tier** | Too slow for every PR (nightly / `push: main` / on-dispatch). The [REL-06 release workflow (#499)](https://github.com/DrewBrunning/mycorrhizal-crm/issues/499), `release.yml`, triggers the ones with no `push: main` trigger (`min-version-tests`, `zap-dast`) and waits on every release-tier run for the fixture commit before it pushes the tag — an observed failure means the tag is never pushed, a 75-minute deadline with a run still going is a `::warning::` and the tag proceeds. |
+| **release-tier** | Too slow for every PR (nightly / `push: main` / on-dispatch). The [REL-06 release workflow (#499)](https://github.com/DrewBrunning/mycorrhizal-crm/issues/499), `release.yml`, triggers the ones with no `push: main` trigger (`min-version-tests`, `zap-dast`) and waits on every release-tier run for the release commit before it pushes the tag — an observed failure means the tag is never pushed, a 75-minute deadline with a run still going is a `::warning::` and the tag proceeds. Because a failure at this stage leaves the fixture commit on `main` with no tag, `release.yml` is re-entrant there: re-dispatching the same version resumes at the new `main` tip ([#1142](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1142)). |
 | **advisory** | Runs and is visible, but a failure does not block a release. A regression is triaged, not gating. |
 
 ## How publication is blocked
@@ -45,7 +45,10 @@ Four mechanisms, in order of when they fire:
    changelog must carry a new row since the previous release tag, unless the dispatch supplied
    `ack_asvs_current` with a reason. After the fixture commit it triggers and waits on the
    release-tier suites (above). Any failure means no tag is pushed, so `docker-publish.yml`
-   never starts. `dry_run: true` runs this whole battery and stops before any write, and is
+   never starts — and because the fixture commit may already be on `main` when that happens,
+   re-dispatching the same version resumes at the new `main` tip rather than refusing
+   ([#1142](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1142)). `dry_run: true` runs
+   this whole battery and stops before any write, and is
    exercised automatically — not just documented — by `release-dry-run.yml` (weekly + on demand,
    issue #929), which dispatches it against the last shipped release and fails if the rehearsal
    fails.

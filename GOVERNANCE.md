@@ -40,6 +40,14 @@ The maintainer is responsible for:
   status checks, secrets, and collaborator access.
 - Keeping the security documentation
   ([`docs/security/`](docs/security/)) and this governance file accurate.
+- Performing the recurring security-stewardship obligations in
+  [`docs/security/security-cadence.md`](docs/security/security-cadence.md)
+  (issues [#955](https://github.com/DrewBrunning/mycorrhizal-crm/issues/955) /
+  [#956](https://github.com/DrewBrunning/mycorrhizal-crm/issues/956)): root-secret
+  rotation, the Android signing-keystore custody check, the annual re-review of
+  the access table below, and the support-window/EOL review. The register there
+  records when each was last done; `.github/workflows/security-cadence.yml`
+  raises the overdue alarm monthly.
 
 ### Contributor
 
@@ -65,12 +73,24 @@ Dependabot.
 |---|---|---|
 | GitHub repository admin (`DrewBrunning/mycorrhizal-crm`) | Maintainer | Sole admin; no other users or teams with write access. |
 | `main` branch-protection / ruleset bypass | Maintainer; the release GitHub App | The App (`RELEASE_APP_ID` / `RELEASE_APP_PRIVATE_KEY`) is on the bypass list only so a release tag push can trigger `docker-publish.yml`; it is used by one `workflow_dispatch`-only workflow and has no PR-triggered path. See [`docs/security/release-verification.md`](docs/security/release-verification.md). |
-| Actions secrets: release App private key, Android `SIGNING_*` keystore secrets, `RESEND`/SMTP and other integration credentials used only by CI | Maintainer | Set and rotated by the maintainer. Image and SBOM signing is keyless (GitHub OIDC → Sigstore); there is no long-lived cosign private key. |
+| Actions secrets: release App private key, Android `SIGNING_*` keystore secrets, `RESEND`/SMTP and other integration credentials used only by CI | Maintainer | Set and rotated by the maintainer on the intervals in [`docs/security/security-cadence.md`](docs/security/security-cadence.md). Image and SBOM signing is keyless (GitHub OIDC → Sigstore); there is no long-lived cosign private key. The Android signing keystore is the exception that is **not** rotated on a schedule — custody and an offline backup are the control, because replacing it breaks in-place upgrade; see that page's "Android signing-keystore custody and backup". |
 | Production deployment host (the maintainer's own server running a tagged release) | Maintainer | Not project infrastructure; operator-owned, per [`docs/security/threat-model.md`](docs/security/threat-model.md) → "The self-hosted boundary". |
 | External project accounts: OpenSSF Best Practices / Baseline (project 14433), Codecov, OpenSSF Scorecard | Maintainer | Read-only badges; write access is the maintainer's GitHub identity. |
 
 If anyone else is granted any of the above, this table and the roles section
 are updated in the same pull request.
+
+**This table is also re-confirmed on a schedule, not only when access changes**
+(issue #956). A solo project can go a long time with no access change at all, so
+"nobody edited the table" is not evidence the list is still complete. The annual
+`access_list_review` entry in
+[`docs/security/security-cadence.md`](docs/security/security-cadence.md)
+re-reads the live GitHub collaborators, the ruleset bypass list, and the App
+installations against the table above, and the
+[`security-cadence` workflow](.github/workflows/security-cadence.yml) raises an
+alarm if a year passes without that confirmation. Re-confirmation is recorded by
+updating the register's date, not by editing this table (which already needs no
+change).
 
 ## Legal sign-off
 

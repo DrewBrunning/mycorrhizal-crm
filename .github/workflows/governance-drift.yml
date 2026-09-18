@@ -167,6 +167,22 @@ jobs:
           img="ghcr.io/${repo}:${tag#v}"
           echo "Latest release: $tag -> $img"
 
+          # #1147: a missing image and a wrong signing identity are different
+          # failures and need different fixes. The latest release can exist
+          # with no image at all -- its docker-publish run failed before
+          # build-and-push (e.g. the #527 APK gate), so the Release carries no
+          # container images. Verify the tag resolves in the registry first;
+          # the old code fed it straight to `cosign verify`, which failed and
+          # blamed the identity regexp for a registry 404.
+          if ! docker buildx imagetools inspect "$img" >/dev/null 2>&1; then
+            echo "::error::Latest release $tag has no published image at $img (registry lookup failed) -- this is a missing/unpublished image, not a cosign identity mismatch."
+            { echo "### :x: No published image for \`$tag\`"; echo '```';
+              echo "$img does not resolve in the registry.";
+              echo '```';
+              echo "The latest GitHub Release (\`$tag\`) exists but its container image does not. That is a different failure from a signature-identity mismatch: inspect the \`docker-publish.yml\` run for \`$tag\` -- a failed APK job skips \`build-and-push\` per #527, so the Release is published with no images. See docs/security/release-verification.md."; } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
           digest="$(cosign triangulate --type digest "$img" 2>/dev/null || true)"
           [ -z "$digest" ] && digest="$img"
 
