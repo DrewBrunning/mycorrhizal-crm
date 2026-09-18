@@ -9,6 +9,7 @@ import (
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
+	"mycorrhizal/services"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -127,6 +128,13 @@ func UploadAttachment(c *gin.Context, cfg *config.Config) {
 	// disk (issue #945) — a camera's GPS coordinates and serial number
 	// otherwise ride along into downloads and operator backups unchanged.
 	data = attachments.StripImageMetadata(data, contentType)
+
+	// Opt-in per-user storage quota (issue #950): preflight before the file
+	// touches disk so a refused upload leaves nothing behind.
+	if err := services.UserQuotaFromConfig(*cfg).CheckAttachmentUpload(db, userID, int64(len(data))); err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
 
 	storedName, err := attachments.Save(data, cfg.AttachmentsDir)
 	if err != nil {

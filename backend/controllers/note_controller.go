@@ -30,6 +30,13 @@ func CreateNote(c *gin.Context) {
 		return
 	}
 
+	// Opt-in per-user quota (issue #950): refuse before any write once the
+	// user's live-note count has reached the operator's limit.
+	if err := services.UserQuotaFromConfig(currentConfig(c)).CheckNoteCreate(db, userID); err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+
 	// Find the contact by the ID
 	var contact models.Contact
 	if err := db.Where("user_id = ?", userID).First(&contact, contactID).Error; err != nil {
@@ -71,6 +78,13 @@ func CreateUnassignedNote(c *gin.Context) {
 
 	userID, ok := currentUserID(c)
 	if !ok {
+		return
+	}
+
+	// Opt-in per-user quota (issue #950): refuse before any write once the
+	// user's live-note count has reached the operator's limit.
+	if err := services.UserQuotaFromConfig(currentConfig(c)).CheckNoteCreate(db, userID); err != nil {
+		apperrors.AbortWithError(c, err)
 		return
 	}
 

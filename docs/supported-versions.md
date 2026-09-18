@@ -150,6 +150,16 @@ accepting an account on someone else's instance:
   filtered snapshot addressed to another user, who accepts or declines. It is
   always sender-initiated, and `private` / `secret` items are included only on
   explicit opt-in (issue #555).
+- **One account cannot exhaust another's budget.** Per-user resource quotas
+  (`PER_USER_CONTACT_LIMIT`, `PER_USER_NOTE_LIMIT`,
+  `PER_USER_RELATIONSHIP_EDGE_LIMIT`, `PER_USER_ATTACHMENT_QUOTA_MB`; issue
+  #950) are opt-in — `0`, the default, means unlimited — and account strictly
+  per user, so being at your limit never refuses a peer's create. When set, the
+  matching create is refused with `507 Insufficient Storage` before anything is
+  written. The cross-user half is pinned by
+  `backend/services/user_quota_test.go` and
+  `backend/controllers/user_quota_enforcement_test.go`; the config surface is in
+  [`docs/configuration-reference.md`](configuration-reference.md).
 
 ### What is per-user versus per-instance
 
@@ -183,11 +193,14 @@ Admins can also create accounts directly from the admin panel
 **Intended scale.** Mycorrhizal CRM is designed for a **small group of
 operator-vetted accounts** — a household, or a handful of people the operator
 knows and chooses to host. The isolation guarantee protects against accident and
-curiosity between people who broadly trust each other; the resource limits
-(issue #415) are calibrated for that, not for defending a shared instance
-against its own account holders. Running an instance open to arbitrary strangers
-is possible — the guarantee still holds and is still tested — but it puts the
-operator in the position of data controller for people they have never met (see
+curiosity between people who broadly trust each other; the per-request resource
+limits (issue #415) and the opt-in cumulative per-user quotas (issue #950) are
+calibrated for that. The quotas are the lever an operator running a shared
+instance has against one account slowly filling the disk: set `PER_USER_*` above
+and describe the budget to your users before they hit it. Running an instance
+open to arbitrary strangers is possible — the guarantee still holds and is
+still tested — but it puts the operator in the position of data controller for
+people they have never met (see
 [Privacy](privacy.md)). **For any instance with more than one user, run with
 `DISABLE_REGISTRATION=true`** and create each account deliberately from the
 admin panel. Such an instance should also enable the app-layer SSRF guard (the

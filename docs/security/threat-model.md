@@ -10,7 +10,7 @@ exist, and is it more or kept longer than needed?".
 
 | | |
 |---|---|
-| **Last updated** | 2026-09-18 (issue [#377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/377); gating decision 3 revised by issue [#507](https://github.com/DrewBrunning/mycorrhizal-crm/issues/507); self-hosted boundary given a concrete operator checklist by issue [#417](https://github.com/DrewBrunning/mycorrhizal-crm/issues/417); backup immutability / ransomware resistance resolved by issue [#505](https://github.com/DrewBrunning/mycorrhizal-crm/issues/505); backup-store authenticity resolved by signed manifests, issue [#943](https://github.com/DrewBrunning/mycorrhizal-crm/issues/943); operational/environmental-failure actor group added by issue [#930](https://github.com/DrewBrunning/mycorrhizal-crm/issues/930); sync-gap, SHA-pin, cosign-identity, governance-cadence and import-evidence claim drift corrected by issue [#931](https://github.com/DrewBrunning/mycorrhizal-crm/issues/931)) |
+| **Last updated** | 2026-09-18 (issue [#377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/377); gating decision 3 revised by issue [#507](https://github.com/DrewBrunning/mycorrhizal-crm/issues/507); self-hosted boundary given a concrete operator checklist by issue [#417](https://github.com/DrewBrunning/mycorrhizal-crm/issues/417); backup immutability / ransomware resistance resolved by issue [#505](https://github.com/DrewBrunning/mycorrhizal-crm/issues/505); backup-store authenticity resolved by signed manifests, issue [#943](https://github.com/DrewBrunning/mycorrhizal-crm/issues/943); operational/environmental-failure actor group added by issue [#930](https://github.com/DrewBrunning/mycorrhizal-crm/issues/930); sync-gap, SHA-pin, cosign-identity, governance-cadence and import-evidence claim drift corrected by issue [#931](https://github.com/DrewBrunning/mycorrhizal-crm/issues/931); the multi-user instance boundary and per-user resource quotas stated by issue [#950](https://github.com/DrewBrunning/mycorrhizal-crm/issues/950)) |
 | **Scope** | Backend (Go/Gin + SQLite), frontend (React SPA), Android client, CardDAV/CalDAV sync, self-hosted deployment. |
 | **Companion docs** | `docs/security/asvs-l2.md` (backend/frontend/deployment controls, OWASP ASVS 4.0.3 + API Top 10), `docs/security/masvs-l1.md` (Android client controls, OWASP MASVS 1.5.0) |
 
@@ -41,6 +41,40 @@ section derives from it:
   the application does not secure (host OS, Docker daemon, reverse proxy, TLS certs, DNS, firewall,
   host filesystem, external backup storage, host admins, host compromise) — this section states the
   assumption once; that doc is the checklist an operator actually runs against.
+
+## Multi-user instances
+
+**Multi-user-per-instance is a supported `1.0.0` configuration** (issue
+[#558](https://github.com/DrewBrunning/mycorrhizal-crm/issues/558)): one deployment hosts several
+independent accounts. The self-hosted boundary above says the operator owns the host; it does **not**
+collapse those accounts into one trust domain. Within the application, user A is an adversary to user
+B's data and budget, and the boundary between them is enforced and tested like any other:
+
+- **Data isolation.** Every table carries `user_id` (graph entities are keyed by a contact UID and
+  resolved with both clauses), every request is scoped to the authenticated user, and the every-route
+  × six-persona matrix (`backend/routes/authorization_matrix_test.go`, issue #371) plus
+  `backend/cmd/bolacheck` fail CI on an unscoped route. The admin role can administer accounts but
+  cannot read another user's content (issue #371).
+- **Resource isolation.** Opt-in per-user quotas (issue #950) bound the cumulative contacts, notes,
+  relationship edges and attachment bytes one account can create, so a peer cannot fill the
+  operator's disk one request at a time the way a single-operator deployment's owner could. Each
+  check counts only the acting user's live rows (`backend/services/user_quota.go`, the
+  `PER_USER_*` variables in `backend/config/config.go`), and the cross-user non-interference is
+  pinned by `backend/services/user_quota_test.go` and
+  `backend/controllers/user_quota_enforcement_test.go`. One budget genuinely cannot be split: the
+  SQLite database's single writer and the scheduler's per-tick work, which iterates all users — which
+  is why the intended scale is a small, operator-vetted group (`docs/supported-versions.md`
+  "Intended scale"), not an open sign-up instance.
+- **Per-user job isolation.** Background work (cadence, CardDAV/CalDAV sync, Immich, reach-out
+  scanning, reminders) iterates every user and scopes each user's slice by `user_id`; a failure on
+  one user's integration records its own sync-health/delivery state and emits its own event rather
+  than stopping the tick for the others (`docs/int-01-integration-classification-matrix.md`).
+
+**The 1.0 plan** (issue #950): the opt-in quota landed on the REST create paths. Extending the same
+`services.UserQuota` checks to the bulk-ingestion paths (CSV/VCF/JSContact import confirm,
+CardDAV/CalDAV reconcile) and adding a user-count dimension to the capacity profiles (#468/#498) are
+tracked follow-ups, not silently assumed done. Until they land, a bulk path is bounded per request
+(import row caps, export caps, disk preflight) rather than against the cumulative quota.
 
 ## Assets
 
@@ -83,6 +117,7 @@ Each actor sits on a boundary, is neutralized by a control, and is verified by a
 |---|---|---|---|
 | Unauthenticated network attacker | browser→API | authz middleware, TLS, rate limiting, security headers | `asvs-l2.md` V2, V9, V14.4; issues #371/#551, #373, #374, #368, #369 |
 | Authenticated ordinary user (BOLA/IDOR) | API | `user_id`/`VCardUID` scoping | `asvs-l2.md` V4.2.1/API1; exhaustive route × six-persona matrix, issue #371/#551 |
+| Peer user on a shared instance (cross-user resource exhaustion) | API→DB | Opt-in per-user resource quotas at create (`services/user_quota.go`, the `PER_USER_*` variables) count only the acting user's live rows; one account at its limit never refuses a peer | issue #950 — `services/user_quota_test.go` (`TestUserQuota_IsolationBetweenUsers`), `controllers/user_quota_enforcement_test.go` (`TestCreateContact_QuotaAndIsolation`) |
 | Compromised authenticated session | browser→API | `TokenVersion` revocation, httpOnly cookie, CSRF mitigation | `asvs-l2.md` V3.3.3, V4.2.2; issues #372, #392, #419 |
 | Rogue admin escalating against a peer admin | API | admin role changes and account deletion are self-service only — `UpdateUser` refuses to demote another admin, `DeleteUser` refuses to delete any admin; last-admin guards keep the instance non-empty | `asvs-l2.md` V4.1.3; issue #871 — `controllers/admin_user_controller_test.go`, `controllers/admin_user_delete_test.go`, `controllers/auth_audit_events_test.go` |
 | Malicious/misconfigured CardDAV client | sync→API | CardDAV Basic auth, per-user collections | `asvs-l2.md` API5; issue #566 — `backend/routes/authorization_matrix_credentials_test.go` extends the persona matrix to a CardDAV/CalDAV Basic-auth credential (401 on every `/api/v1/*` route; DAV surface reaches only its own collections) and a `carddav`-scoped API token (403 on every REST route), with the same completeness guard |
