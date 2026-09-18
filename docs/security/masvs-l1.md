@@ -10,8 +10,8 @@ here; if it cannot point at a row, it does not know what it is changing.
 |---|---|
 | **Standards pinned** | OWASP MASVS 1.5.0, chapters V2–V7 (the `MSTG-*` control IDs). MASVS 2.0 renamed these one-to-one to `MASVS-*` (V2–V7); the L1 rows below are the same either way. |
 | **Level** | **MASVS-L1** (rows marked `x` in the L1 column). L2- and R-only rows are listed per chapter as out of scope. |
-| **Last full pass** | 2026-08-26 — the MASVS-L1 verification pass, issue #378, recorded alongside the ASVS pass in `docs/security/asvs-l2-verification-report.md`. Prior pass 2026-08-25 (issue #507: MASVS-L2 resilience re-evaluation — see Documented positions). |
-| **Level claimed** | **MASVS-L1 with 1 documented exception** (STORAGE-5, the login screen's keyboard options). STORAGE-9 and PLATFORM-9 are L2 controls satisfied as a bonus, not a level claim — see P6. |
+| **Last full pass** | 2026-09-18 — the MASVS-L1 verification pass (#2), superseding the 2026-08-26 pass (#1, issue #378), recorded alongside the ASVS pass in `docs/security/asvs-l2-verification-report.md`. Prior pass 2026-08-25 (issue #507: MASVS-L2 resilience re-evaluation — see Documented positions). |
+| **Level claimed** | **MASVS-L1 with 1 documented exception**, self-assessed — see the [verification report](asvs-l2-verification-report.md) §6; this is not an independent third-party audit. The exception is STORAGE-5, the login screen's keyboard options. STORAGE-9 and PLATFORM-9 are L2 controls satisfied as a bonus, not a level claim — see P6. |
 | **Scope** | The Android client (`android/`): Kotlin + Jetpack Compose, Hilt, OkHttp, Room, DataStore, `androidx.security:crypto`. The server it talks to is covered by `asvs-l2.md`; MSTG-AUTH rows therefore cite the *client-side* contract and point at the backend for enforcement. |
 
 ## Status legend
@@ -117,7 +117,7 @@ pinned by three new JVM tests in `RoomCacheEncryptionTest.kt` (`overwriteFile re
 but keeps the file length`, `overwriteFile on an empty file does not throw and leaves it empty`,
 `overwriteFile handles content larger than its internal buffer`), hand-verified to fail against the
 pre-fix code. STORAGE-1 stays `satisfied` — on a now-true basis, not a status flip, since the row
-was never marked `partial` for this — see `asvs-l2-verification-report.md` pass 1.25.
+was never marked `partial` for this — see `asvs-l2-verification-report.md` pass 1.26.
 
 Deliberate test carve-out: the Robolectric JVM unit tests run the migration/DAO logic against the
 plain framework SQLite factory because SQLCipher's `libsqlcipher.so` is an Android-native binary

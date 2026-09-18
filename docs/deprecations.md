@@ -12,7 +12,7 @@ signal — never as a follow-up. A row moves to `status: removed` in the change
 that removes the thing.
 
 `cd backend && go run ./cmd/deprecations` validates this file on every backend
-PR (the `Security-doc citations` job of `.github/workflows/unit-tests.yml`) and
+PR (the `Docs & security-doc citations` job of `.github/workflows/unit-tests.yml`) and
 fails the build on a malformed row, a window shorter than 90 days, an
 `earliest-removal` that is not a strictly later minor than `deprecated-in`, a
 `deprecated` row with no replacement, or a `removed` row whose removal predates

@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -597,5 +599,92 @@ func TestCryptoSurface_SkipsTestFiles(t *testing.T) {
 	})
 	if code != 0 {
 		t.Fatalf("a test-only crypto importer must not fail the surface gate:\n%s", out)
+	}
+}
+
+// --- verification-report consistency (issue #939) ---------------------------
+
+// countStatuses totals parsed control rows by status.
+func countStatuses(rows []controlRow) map[string]int {
+	counts := map[string]int{}
+	for _, r := range rows {
+		counts[r.status]++
+	}
+	return counts
+}
+
+// readReportFile reads a repo-relative file as a string, failing the test if it
+// cannot be read.
+func readReportFile(t *testing.T, root, rel string) string {
+	t.Helper()
+	body, err := readRepoFile(root, rel)
+	if err != nil {
+		t.Fatalf("reading %s: %v", rel, err)
+	}
+	return string(body)
+}
+
+// declaredCount extracts capture group `group` from the first match of `re` in
+// body, failing the test when the pattern is absent — a reworded claim must not
+// silently stop being gated.
+func declaredCount(t *testing.T, body, re string, group int, where string) int {
+	t.Helper()
+	m := regexp.MustCompile(re).FindStringSubmatch(body)
+	if m == nil {
+		t.Fatalf("%s: count pattern %q not found — the claim it guards was reworded without updating the gate", where, re)
+	}
+	n, err := strconv.Atoi(m[group])
+	if err != nil {
+		t.Fatalf("%s: %q is not an integer: %v", where, m[group], err)
+	}
+	return n
+}
+
+// TestVerificationReportClaimsMatchCensus is issue #939's two-way gate: every
+// place a level claim or an exception count is stated must equal the count
+// parsed from the checklists themselves. It fails when a control flips status
+// without the docs being updated, and when a doc is edited to a count the
+// checklists do not support — the drift that accumulated between Pass #1 and
+// Pass #2 (#932), where the report's own header/claim/census said 26/191/186
+// while §7 and a fresh citecheck said 23/194. The report's §7 count and the
+// level claim in both checklists and in CLAUDE.md are all compared to the one
+// parsed TOTAL, so the census can no longer "cannot drift" by assertion.
+func TestVerificationReportClaimsMatchCensus(t *testing.T) {
+	root, err := findRepoRoot(mustGetwd(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	asvs := countStatuses(parseControlRows(strings.Split(readReportFile(t, root, "docs/security/asvs-l2.md"), "\n")))
+	masvs := countStatuses(parseControlRows(strings.Split(readReportFile(t, root, "docs/security/masvs-l1.md"), "\n")))
+	report := readReportFile(t, root, "docs/security/asvs-l2-verification-report.md")
+	asvsHeader := readReportFile(t, root, "docs/security/asvs-l2.md")
+	masvsHeader := readReportFile(t, root, "docs/security/masvs-l1.md")
+	claude := readReportFile(t, root, "CLAUDE.md")
+
+	checks := []struct {
+		where string
+		body  string
+		re    string
+		group int
+		want  int
+		what  string
+	}{
+		{"asvs-l2.md Level claimed", asvsHeader, `ASVS L2 with (\d+) documented exceptions`, 1, asvs["partial"], "ASVS partial"},
+		{"masvs-l1.md Level claimed", masvsHeader, `MASVS-L1 with (\d+) documented exception`, 1, masvs["partial"], "MASVS partial"},
+		{"report claim", report, `ASVS Level 2, with (\d+) documented exceptions`, 1, asvs["partial"], "ASVS partial"},
+		{"report §7 heading", report, "The (\\d+) ASVS `partial` rows", 1, asvs["partial"], "ASVS partial"},
+		{"report claim satisfied count", report, `(\d+) of \d+ ASVS control rows are ` + "`satisfied`", 1, asvs["satisfied"], "ASVS satisfied"},
+		{"report claim partial count", report, `\*\*(\d+) are ` + "`partial`" + `\*\*`, 1, asvs["partial"], "ASVS partial"},
+		{"report census ASVS total satisfied", report, `\*\*ASVS total\*\* \| \*\*(\d+)\*\* \|`, 1, asvs["satisfied"], "ASVS satisfied"},
+		{"report census ASVS total partial", report, `\*\*ASVS total\*\* \| \*\*\d+\*\* \| \*\*(\d+)\*\* \|`, 1, asvs["partial"], "ASVS partial"},
+		{"report census ASVS total not-applicable", report, `\*\*ASVS total\*\* \| \*\*\d+\*\* \| \*\*\d+\*\* \| \*\*(\d+)\*\* \|`, 1, asvs["not-applicable"], "ASVS not-applicable"},
+		{"report census MASVS total partial", report, `\*\*MASVS total\*\* \| \*\*\d+\*\* \| \*\*(\d+)\*\* \|`, 1, masvs["partial"], "MASVS partial"},
+		{"CLAUDE.md level claim", claude, `ASVS L2 with (\d+) documented exceptions`, 1, asvs["partial"], "ASVS partial"},
+	}
+	for _, c := range checks {
+		if got := declaredCount(t, c.body, c.re, c.group, c.where); got != c.want {
+			t.Errorf("%s states %s = %d, but the checklists parse to %d", c.where, c.what, got, c.want)
+		}
 	}
 }
