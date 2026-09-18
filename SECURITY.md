@@ -41,8 +41,23 @@ long-term-support branches. Only the **latest tagged release** receives
 security fixes; previous tags are not backported to. Users are expected to
 upgrade to the latest release to receive security fixes.
 
-Once the project reaches a 1.0/stable milestone, this policy will be
-revisited to define a real support window.
+**The support window at 1.0** (the policy is defined now and enforced from the
+`1.0.0` tag, issue #956):
+
+- Every `1.x` release is supported for **12 months from the next minor
+  release**; the supported set is therefore the newest minor plus the prior
+  minor while it is inside that window.
+- A release that falls outside the window is **end-of-life** — no security
+  fixes, no migration support. The supported set is stated on the release page
+  and in [`docs/supported-versions.md`](docs/supported-versions.md).
+- Security fixes are authored on `main` and **cherry-picked** onto the
+  still-supported `release/vX.Y.0` branch(es) before tagging; a fix that cannot
+  be cherry-picked cleanly is re-implemented on the older branch and called out
+  in the advisory.
+- Which tags cross EOL is reviewed annually as part of the
+  [security stewardship cadence](docs/security/security-cadence.md); the
+  pre-1.0 statement above is reviewed on the same cadence so it cannot quietly
+  become stale.
 
 ## Scope
 
@@ -75,5 +90,8 @@ pull request, and pins its Go toolchain and container base images. See
 - [`docs/security/incident-response.md`](docs/security/incident-response.md) — operator runbook for
   responding to a suspected compromise: containment, credential/key rotation procedures, and
   scenario playbooks.
+- [`docs/security/security-cadence.md`](docs/security/security-cadence.md) — the rotation intervals
+  for the root secrets, the register of when each was last performed, the Android signing-keystore
+  custody/backup posture, and the annual access-list and support-window reviews (issues #955, #956).
 - [`GOVERNANCE.md`](GOVERNANCE.md) — project roles and the list of members with access to
   sensitive resources (repository admin, release-signing secrets, deployment host).

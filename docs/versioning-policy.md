@@ -185,6 +185,15 @@ Two floors are expressed as versions and therefore depend on this policy:
   Canonical statement: [client/server compatibility
   policy](client-compatibility-policy.md) (ANDROID-01, issue #478).
 
+**The floors are not a support window.** They say which old versions can still
+upgrade or still connect; they do not say how long a released version receives
+fixes. That is a separate promise, defined at `1.0.0` (issue #956): each `1.x`
+release is supported for 12 months from the next minor release, and a release
+outside that window is end-of-life with no backports. The policy and the annual
+EOL review live in [the security stewardship
+cadence](security/security-cadence.md); until `1.0.0` only the latest tag is
+supported ([`SECURITY.md`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/SECURITY.md)).
+
 ## Stray and unconstrained tags
 
 The repository inherited a `v1.7.0` tag from upstream meerkat-crm in some local

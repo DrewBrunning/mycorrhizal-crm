@@ -11,12 +11,14 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/atrest"
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 // validDiagnosticsConfig returns a config that passes config.Validate() and
@@ -85,11 +87,11 @@ func TestRunDiagnosticsHealthyInstall(t *testing.T) {
 	assert.Equal(t, "ok", d.Summary.Status)
 	assert.Zero(t, d.Summary.Errors)
 	assert.Zero(t, d.Summary.Warnings)
-	// 5 config/db/migrations/filesystem/backup + 1 data_integrity + 4
-	// notifications + 6 integrations + 4 disk/background-jobs/search-index/
-	// version = 20 rows, all ok.
-	assert.Equal(t, 20, d.Summary.OK)
-	assert.Len(t, d.Checks, 20)
+	// 5 config/db/migrations/filesystem/backup + data_integrity + at_rest_key
+	// (2) + 4 notifications + 6 integrations + 4 disk/background-jobs/
+	// search-index/version = 21 rows, all ok.
+	assert.Equal(t, 21, d.Summary.OK)
+	assert.Len(t, d.Checks, 21)
 	assert.Equal(t, DiagStatusOK, findCheck(t, d, "data_integrity").Status)
 
 	for _, c := range d.Checks {
@@ -478,10 +480,10 @@ func TestRunDiagnosticsNilDB(t *testing.T) {
 	assert.Equal(t, DiagStatusError, dbCheck.Status)
 	assert.Equal(t, "error", d.Summary.Status)
 	// A nil db must not break the remaining checks: config/database/migrations/
-	// filesystem/backup (5) + data_integrity (1) + one folded notifications
-	// check + carddav/caldav (2) + disk_space/background_jobs/search_index/
-	// version (4) = 13 rows.
-	assert.Len(t, d.Checks, 13)
+	// filesystem/backup (5) + data_integrity/at_rest_key (2) + one folded
+	// notifications check + carddav/caldav (2) + disk_space/background_jobs/
+	// search_index/version (4) = 14 rows.
+	assert.Len(t, d.Checks, 14)
 	assert.Equal(t, DiagStatusWarning, findCheck(t, d, "data_integrity").Status)
 }
 
@@ -529,5 +531,59 @@ func TestRunDiagnosticsDataIntegrity(t *testing.T) {
 		c := findCheck(t, RunDiagnostics(context.Background(), db, cfg), "data_integrity")
 		assert.Equal(t, DiagStatusOK, c.Status)
 		assert.Contains(t, c.Message, "disabled")
+	})
+}
+
+// TestDiagnosticsAtRestKey covers issue #955's in-product age visibility: the
+// at-rest key-material age surfaces as its own row, an old key warns, and a
+// recent master-key rotation (rotated_at) resets the age even though the DEK's
+// created_at is old.
+func TestDiagnosticsAtRestKey(t *testing.T) {
+	insertKeyRow := func(t *testing.T, db *gorm.DB, created, rotated interface{}) {
+		t.Helper()
+		require.NoError(t, db.Table("data_encryption_keys").Create(map[string]interface{}{
+			"key_id":      "main",
+			"wrapped_dek": []byte{1, 2, 3},
+			"created_at":  created,
+			"rotated_at":  rotated,
+		}).Error)
+	}
+
+	t.Run("no row is ok", func(t *testing.T) {
+		c := diagnosticsAtRestKey(dbtest.New(t))
+		assert.Equal(t, DiagStatusOK, c.Status)
+		assert.Contains(t, c.Message, "no wrapped at-rest key")
+	})
+
+	t.Run("recent is ok", func(t *testing.T) {
+		db := dbtest.New(t)
+		insertKeyRow(t, db, time.Now().UTC().Add(-10*24*time.Hour), nil)
+		c := diagnosticsAtRestKey(db)
+		assert.Equal(t, DiagStatusOK, c.Status)
+	})
+
+	t.Run("past the interval is a warning", func(t *testing.T) {
+		db := dbtest.New(t)
+		insertKeyRow(t, db, time.Now().UTC().Add(-800*24*time.Hour), nil)
+		c := diagnosticsAtRestKey(db)
+		require.Equal(t, DiagStatusWarning, c.Status)
+		assert.Contains(t, c.Message, "security-cadence.md")
+	})
+
+	t.Run("a recent rotation resets an old DEK's age", func(t *testing.T) {
+		db := dbtest.New(t)
+		insertKeyRow(t, db, time.Now().UTC().Add(-800*24*time.Hour), time.Now().UTC().Add(-3*24*time.Hour))
+		c := diagnosticsAtRestKey(db)
+		assert.Equal(t, DiagStatusOK, c.Status, c.Message)
+	})
+
+	t.Run("never rotated falls back to created_at", func(t *testing.T) {
+		db := dbtest.New(t)
+		insertKeyRow(t, db, time.Now().UTC().Add(-800*24*time.Hour), nil)
+		times, ok, err := atrest.ReadKeyMaterialTimes(db)
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.True(t, times.RotatedAt.IsZero())
+		assert.True(t, times.LastChanged().Equal(times.CreatedAt))
 	})
 }
