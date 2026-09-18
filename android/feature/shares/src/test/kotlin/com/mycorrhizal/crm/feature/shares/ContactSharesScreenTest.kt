@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.shares
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -12,11 +13,13 @@ import com.mycorrhizal.crm.model.network.ContactShareStatuses
 import com.mycorrhizal.crm.model.network.ContactSharesPage
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportRowPreview
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -126,6 +129,46 @@ class ContactSharesScreenTest {
 
         composeTestRule.onNodeWithText("Review shared contact").assertIsDisplayed()
         composeTestRule.onNodeWithText("Add as new contact").assertIsDisplayed()
+    }
+
+    @Test
+    fun `empty incoming tab shows the incoming empty-state message`() {
+        coEvery { repository.listIncoming(any(), any()) } returns Result.success(ContactSharesPage())
+        coEvery { repository.listOutgoing(any(), any()) } returns Result.success(ContactSharesPage())
+
+        screen()
+
+        composeTestRule.onNodeWithText("No incoming shares.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("You haven't shared any contacts yet.").assertDoesNotExist()
+    }
+
+    @Test
+    fun `empty outgoing tab shows the outgoing empty-state message`() {
+        coEvery { repository.listIncoming(any(), any()) } returns Result.success(ContactSharesPage())
+        coEvery { repository.listOutgoing(any(), any()) } returns Result.success(ContactSharesPage())
+
+        screen()
+
+        composeTestRule.onNodeWithText("Outgoing").performClick()
+
+        composeTestRule.onNodeWithText("You haven't shared any contacts yet.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No incoming shares.").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a failed load with an empty list renders the error text`() {
+        coEvery { repository.listIncoming(any(), any()) } returns Result.failure(ApiError.Client(500, "boom"))
+        coEvery { repository.listOutgoing(any(), any()) } returns Result.failure(ApiError.Client(500, "boom"))
+
+        screen()
+
+        // The empty-list error path renders the message as *both* the persistent
+        // body Text and the transient snackbar, so two nodes prove the body Text
+        // branch (line 117-123) ran — the snackbar alone would be a false pass.
+        assertTrue(
+            "expected the body error Text plus the snackbar",
+            composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().size >= 2,
+        )
     }
 
     // --- Issue #214: Compose semantics a11y sweep (the axe-core analog) -----

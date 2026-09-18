@@ -70,6 +70,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -216,41 +217,47 @@ fun SystemEventsScreen(
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
-                when {
-                    state.isLoading && state.events.isEmpty() ->
-                        LoadingSkeleton(modifier = Modifier.testTag("sysevents-loading"))
+                RefreshableContent(
+                    isRefreshing = state.isLoading && state.events.isNotEmpty(),
+                    onRefresh = viewModel::load,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    when {
+                        state.isLoading && state.events.isEmpty() ->
+                            LoadingSkeleton(modifier = Modifier.testTag("sysevents-loading"))
 
-                    state.events.isEmpty() && loadError != null ->
-                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                            Text(
-                                text = loadError,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.align(Alignment.Center),
-                            )
-                        }
-
-                    state.events.isEmpty() ->
-                        EmptyState(
-                            message = stringResource(
-                                if (hasFilters) R.string.sysevents_empty
-                                else R.string.sysevents_empty_no_filters
-                            ),
-                            icon = {
-                                Icon(
-                                    Icons.Outlined.MonitorHeart,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        state.events.isEmpty() && loadError != null ->
+                            Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                                Text(
+                                    text = loadError,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.align(Alignment.Center),
                                 )
-                            },
-                        )
+                            }
 
-                    else -> SystemEventList(
-                        events = state.events,
-                        canLoadMore = state.canLoadMore,
-                        isLoadingMore = state.isLoading,
-                        onLoadMore = viewModel::loadMore,
-                        onRowClick = { selected = it },
-                    )
+                        state.events.isEmpty() ->
+                            EmptyState(
+                                message = stringResource(
+                                    if (hasFilters) R.string.sysevents_empty
+                                    else R.string.sysevents_empty_no_filters
+                                ),
+                                icon = {
+                                    Icon(
+                                        Icons.Outlined.MonitorHeart,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                            )
+
+                        else -> SystemEventList(
+                            events = state.events,
+                            canLoadMore = state.canLoadMore,
+                            isLoadingMore = state.isLoading,
+                            onLoadMore = viewModel::loadMore,
+                            onRowClick = { selected = it },
+                        )
+                    }
                 }
             }
         }

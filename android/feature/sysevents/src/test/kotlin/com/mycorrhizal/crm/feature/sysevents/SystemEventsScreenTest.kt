@@ -1,19 +1,34 @@
 package com.mycorrhizal.crm.feature.sysevents
 
+import android.content.Context
+import androidx.annotation.StringRes
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.test.core.app.ApplicationProvider
+import com.mycorrhizal.crm.domain.repository.SystemEventRepository
+import com.mycorrhizal.crm.model.network.ErrorAggregationResponse
 import com.mycorrhizal.crm.model.network.ErrorBucket
 import com.mycorrhizal.crm.model.network.JobRunHealth
+import com.mycorrhizal.crm.model.network.JobRunHealthResponse
 import com.mycorrhizal.crm.model.network.SubsystemHealth
+import com.mycorrhizal.crm.model.network.SubsystemHealthResponse
 import com.mycorrhizal.crm.model.network.SystemEvent
+import com.mycorrhizal.crm.model.network.SystemEventsResponse
+import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,6 +44,40 @@ class SystemEventsScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
+    private val repository = mockk<SystemEventRepository>()
+
+    private fun str(@StringRes res: Int, vararg args: Any): String =
+        ApplicationProvider.getApplicationContext<Context>().getString(res, *args)
+
+    /** The three best-effort monitor panels — stubbed empty so only the timeline matters. */
+    private fun stubPanels() {
+        coEvery { repository.subsystemHealth() } returns Result.success(SubsystemHealthResponse())
+        coEvery { repository.errorAggregation(any()) } returns Result.success(ErrorAggregationResponse())
+        coEvery { repository.jobRunHealth() } returns Result.success(JobRunHealthResponse())
+    }
+
+    private fun stubList(response: SystemEventsResponse) {
+        coEvery {
+            repository.list(
+                component = any(),
+                severity = any(),
+                eventType = any(),
+                correlationId = any(),
+                ids = any(),
+                limit = any(),
+            )
+        } returns Result.success(response)
+    }
+
+    private fun screen() {
+        val viewModel = SystemEventsViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SystemEventsScreen(onBack = {}, viewModel = viewModel)
+            }
+        }
+    }
+
     private fun event(id: Long, type: String, correlation: String = "chain-A") = SystemEvent(
         id = id,
         occurredAt = "2026-08-27T10:00:00Z",
@@ -37,6 +86,81 @@ class SystemEventsScreenTest {
         component = "contact_sync",
         correlationId = correlation,
     )
+
+    @Test
+    fun `an initial load renders the loading skeleton`() {
+        stubPanels()
+        val gate = CompletableDeferred<Result<SystemEventsResponse>>()
+        coEvery {
+            repository.list(
+                component = any(),
+                severity = any(),
+                eventType = any(),
+                correlationId = any(),
+                ids = any(),
+                limit = any(),
+            )
+        } coAnswers { gate.await() }
+
+        screen()
+
+        composeTestRule.onNodeWithTag("sysevents-loading").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a failed load with an empty timeline renders the error text`() {
+        stubPanels()
+        coEvery {
+            repository.list(
+                component = any(),
+                severity = any(),
+                eventType = any(),
+                correlationId = any(),
+                ids = any(),
+                limit = any(),
+            )
+        } returns Result.failure(ApiError.Client(500, "boom"))
+
+        screen()
+
+        assertTrue(composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty())
+    }
+
+    @Test
+    fun `an empty timeline renders the no-filter empty state`() {
+        stubPanels()
+        stubList(SystemEventsResponse())
+
+        screen()
+
+        composeTestRule.onNodeWithText(str(R.string.sysevents_empty_no_filters)).assertIsDisplayed()
+    }
+
+    @Test
+    fun `an empty filtered timeline renders the filtered empty state`() {
+        stubPanels()
+        stubList(SystemEventsResponse())
+        val viewModel = SystemEventsViewModel(repository)
+        viewModel.applyComponent("scheduler")
+
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SystemEventsScreen(onBack = {}, viewModel = viewModel)
+            }
+        }
+
+        composeTestRule.onNodeWithText(str(R.string.sysevents_empty)).assertIsDisplayed()
+    }
+
+    @Test
+    fun `a populated timeline renders the event list`() {
+        stubPanels()
+        stubList(SystemEventsResponse(systemEvents = listOf(event(1, "sync_failed"))))
+
+        screen()
+
+        composeTestRule.onNodeWithTag("sysevents-list").assertIsDisplayed()
+    }
 
     @Test
     fun `rows render the localized event-type label and open on click`() {

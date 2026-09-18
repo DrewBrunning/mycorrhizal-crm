@@ -19,12 +19,14 @@ import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.RelationshipEdge
 import com.mycorrhizal.crm.model.network.RelationshipEdgeStatuses
 import com.mycorrhizal.crm.model.network.RelationshipEdgeTypes
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -180,5 +182,57 @@ class RelationshipsScreenTest {
 
         composeTestRule.onNodeWithText(str(R.string.relationships_new))
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun `a failed edge load renders the inline error message`() {
+        val edgeRepository = mockk<RelationshipEdgeRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { contactRepository.getContact(5) } returns Result.success(
+            ContactRecordResponse(id = 5, card = Card(uid = "u-viewed")),
+        )
+        coEvery { edgeRepository.listForContact("u-viewed", null, null) } returns Result.failure(
+            ApiError.Client(500, "boom"),
+        )
+        val vm = RelationshipsViewModel(
+            edgeRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("contactId" to 5)),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme { RelationshipsScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm) }
+        }
+        composeTestRule.waitForIdle()
+
+        assertTrue(
+            composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty(),
+        )
+    }
+
+    @Test
+    fun `a suggested section with no confirmed edges renders without the separator`() {
+        // The divider is only composed when a confirmed edge precedes the
+        // suggested section; with suggested-only edges the alternative
+        // (empty) branch of that guard runs.
+        setScreen(
+            edges = listOf(
+                RelationshipEdge(
+                    id = "e2",
+                    sourceId = "u-viewed",
+                    targetId = "u-bob",
+                    type = RelationshipEdgeTypes.SPOUSE_OF,
+                    status = RelationshipEdgeStatuses.SUGGESTED,
+                ),
+            ),
+            resolve = mapOf(
+                "u-bob" to ContactSummary(id = 10, uid = "u-bob", firstname = "Bob"),
+            ),
+        )
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Bob").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText(str(R.string.relationships_suggested_section))
+            .assertCountEquals(2)
+        composeTestRule.onNodeWithText(str(R.string.relationships_accept)).assertIsDisplayed()
     }
 }

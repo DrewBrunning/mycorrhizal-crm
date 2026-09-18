@@ -7,9 +7,14 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.lifecycle.SavedStateHandle
+import com.mycorrhizal.crm.domain.repository.ContactNotesPage
+import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.model.network.Note
-import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -60,10 +65,16 @@ class NotesScreenTest {
     }
 
     @Test
+    fun `shows a no-results message when filters are active`() {
+        setContent(NotesUiState(contactId = 5, notes = emptyList(), searchQuery = "zzz"))
+        composeTestRule.onNodeWithText("No notes match your filters").assertIsDisplayed()
+    }
+
+    @Test
     fun `shows the missing-id message when the contact id did not resolve`() {
-        // Regression: the generic empty branch used to match before the
-        // errorRes branch (errorRes is set with error == null), hiding the
-        // real cause behind "No notes yet".
+        // Regression: the missing-contact-id state sets errorRes with
+        // error == null. If the generic empty branch is ordered first it wins
+        // and hides the real cause behind "No notes yet".
         setContent(
             NotesUiState(
                 contactId = 0,
@@ -73,12 +84,6 @@ class NotesScreenTest {
         )
         composeTestRule.onNodeWithText("Missing contact id").assertIsDisplayed()
         composeTestRule.onNodeWithText("No notes yet").assertDoesNotExist()
-    }
-
-    @Test
-    fun `shows a no-results message when filters are active`() {
-        setContent(NotesUiState(contactId = 5, notes = emptyList(), searchQuery = "zzz"))
-        composeTestRule.onNodeWithText("No notes match your filters").assertIsDisplayed()
     }
 
     @Test
@@ -192,5 +197,37 @@ class NotesScreenTest {
         )
         composeTestRule.onNodeWithText("Load more").performClick()
         assertEquals(1, loadMoreCalls)
+    }
+
+    // --- Top-level NotesScreen against a real ViewModel ----------------------
+    //
+    // `onRefresh = viewModel::load` (line 77) is only evaluated when the real
+    // top-level screen wires a real ViewModel; the content tests above pass
+    // their own callbacks. Construct the VM directly (mockk repository, no Hilt
+    // container) as NotesViewModelTest does.
+    @Test
+    fun `top-level screen renders the view model's notes`() {
+        val repository = mockk<NoteRepository>()
+        coEvery { repository.listForContact(1, null, null, null, null, null) } returns Result.success(
+            ContactNotesPage(
+                notes = listOf(Note(id = 3, content = "Loves climbing")),
+                nextCursor = null,
+            ),
+        )
+        val viewModel = NotesViewModel(repository, SavedStateHandle(mapOf("contactId" to 1)))
+
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                NotesScreen(
+                    onBack = {},
+                    onCreateNote = {},
+                    onEditNote = {},
+                    viewModel = viewModel,
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Loves climbing").assertIsDisplayed()
     }
 }

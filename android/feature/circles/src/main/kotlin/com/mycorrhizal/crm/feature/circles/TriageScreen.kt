@@ -37,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 
 /**
  * M26: the circle/tag-triage screen (web's CircleTagTriagePage). One-time
@@ -72,24 +73,30 @@ fun TriageScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                state.isLoading -> LoadingSkeleton()
-                state.done -> DoneContent(state = state, onBack = onBack)
-                state.items.isEmpty() && state.error == null ->
-                    EmptyState(message = stringResource(R.string.triage_empty))
-                state.items.isEmpty() && state.error != null -> {
-                    Text(
-                        text = state.error.orEmpty(),
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center),
+            RefreshableContent(
+                isRefreshing = state.isLoading && state.items.isNotEmpty(),
+                onRefresh = viewModel::load,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    state.isLoading && state.items.isEmpty() -> LoadingSkeleton()
+                    state.done -> DoneContent(state = state, onBack = onBack)
+                    state.items.isEmpty() && state.error == null ->
+                        EmptyState(message = stringResource(R.string.triage_empty))
+                    state.items.isEmpty() && state.error != null -> {
+                        Text(
+                            text = state.error.orEmpty(),
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    }
+                    else -> ClassifyContent(
+                        state = state,
+                        onSetClassification = viewModel::setClassification,
+                        onSetName = viewModel::setName,
+                        onApply = viewModel::apply,
                     )
                 }
-                else -> ClassifyContent(
-                    state = state,
-                    onSetClassification = viewModel::setClassification,
-                    onSetName = viewModel::setName,
-                    onApply = viewModel::apply,
-                )
             }
         }
     }

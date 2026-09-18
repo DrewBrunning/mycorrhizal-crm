@@ -7,10 +7,15 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.lifecycle.SavedStateHandle
+import com.mycorrhizal.crm.domain.repository.ActivityRepository
+import com.mycorrhizal.crm.domain.repository.ContactActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ContactFlat
-import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -64,10 +69,16 @@ class ActivitiesScreenTest {
     }
 
     @Test
+    fun `shows a no-results message when filters are active`() {
+        setContent(ActivitiesUiState(contactId = 5, activities = emptyList(), fromDate = "2026-08-01"))
+        composeTestRule.onNodeWithText("No activities match your filters").assertIsDisplayed()
+    }
+
+    @Test
     fun `shows the missing-id message when the contact id did not resolve`() {
-        // Regression: the generic empty branch used to match before the
-        // errorRes branch (errorRes is set with error == null), hiding the
-        // real cause behind "No activities yet".
+        // Regression: the missing-contact-id state sets errorRes with
+        // error == null. If the generic empty branch is ordered first it wins
+        // and hides the real cause behind "No activities yet".
         setContent(
             ActivitiesUiState(
                 contactId = 0,
@@ -77,12 +88,6 @@ class ActivitiesScreenTest {
         )
         composeTestRule.onNodeWithText("Missing contact id").assertIsDisplayed()
         composeTestRule.onNodeWithText("No activities yet").assertDoesNotExist()
-    }
-
-    @Test
-    fun `shows a no-results message when filters are active`() {
-        setContent(ActivitiesUiState(contactId = 5, activities = emptyList(), fromDate = "2026-08-01"))
-        composeTestRule.onNodeWithText("No activities match your filters").assertIsDisplayed()
     }
 
     @Test
@@ -212,5 +217,38 @@ class ActivitiesScreenTest {
         )
         composeTestRule.onNodeWithText("Load more").performClick()
         assertEquals(1, loadMoreCalls)
+    }
+
+    // --- Top-level ActivitiesScreen against a real ViewModel -----------------
+    //
+    // `onRefresh = viewModel::load` (line 80) is only evaluated when the real
+    // top-level screen wires a real ViewModel; the content tests above pass
+    // their own callbacks instead. Construct the VM directly (mockk repository,
+    // no Hilt container) as ActivitiesViewModelTest does.
+    @Test
+    fun `top-level screen renders the view model's activities`() {
+        val repository = mockk<ActivityRepository>()
+        coEvery { repository.listForContact(1, null, null, null, null, null) } returns Result.success(
+            ContactActivitiesPage(
+                activities = listOf(Activity(id = 1, title = "Coffee with Dana")),
+                nextCursor = null,
+            ),
+        )
+        val viewModel = ActivitiesViewModel(repository, SavedStateHandle(mapOf("contactId" to 1)))
+
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ActivitiesScreen(
+                    onBack = {},
+                    onCreateActivity = {},
+                    onEditActivity = {},
+                    onContactClick = {},
+                    viewModel = viewModel,
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Coffee with Dana").assertIsDisplayed()
     }
 }

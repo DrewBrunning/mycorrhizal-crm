@@ -10,7 +10,7 @@ exist, and is it more or kept longer than needed?".
 
 | | |
 |---|---|
-| **Last updated** | 2026-09-12 (issue [#377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/377); gating decision 3 revised by issue [#507](https://github.com/DrewBrunning/mycorrhizal-crm/issues/507); self-hosted boundary given a concrete operator checklist by issue [#417](https://github.com/DrewBrunning/mycorrhizal-crm/issues/417); backup immutability / ransomware resistance resolved by issue [#505](https://github.com/DrewBrunning/mycorrhizal-crm/issues/505); backup-store authenticity resolved by signed manifests, issue [#943](https://github.com/DrewBrunning/mycorrhizal-crm/issues/943)) |
+| **Last updated** | 2026-09-18 (issue [#377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/377); gating decision 3 revised by issue [#507](https://github.com/DrewBrunning/mycorrhizal-crm/issues/507); self-hosted boundary given a concrete operator checklist by issue [#417](https://github.com/DrewBrunning/mycorrhizal-crm/issues/417); backup immutability / ransomware resistance resolved by issue [#505](https://github.com/DrewBrunning/mycorrhizal-crm/issues/505); backup-store authenticity resolved by signed manifests, issue [#943](https://github.com/DrewBrunning/mycorrhizal-crm/issues/943); operational/environmental-failure actor group added by issue [#930](https://github.com/DrewBrunning/mycorrhizal-crm/issues/930); sync-gap, SHA-pin, cosign-identity, governance-cadence and import-evidence claim drift corrected by issue [#931](https://github.com/DrewBrunning/mycorrhizal-crm/issues/931)) |
 | **Scope** | Backend (Go/Gin + SQLite), frontend (React SPA), Android client, CardDAV/CalDAV sync, self-hosted deployment. |
 | **Companion docs** | `docs/security/asvs-l2.md` (backend/frontend/deployment controls, OWASP ASVS 4.0.3 + API Top 10), `docs/security/masvs-l1.md` (Android client controls, OWASP MASVS 1.5.0) |
 
@@ -86,7 +86,7 @@ Each actor sits on a boundary, is neutralized by a control, and is verified by a
 | Compromised authenticated session | browser→API | `TokenVersion` revocation, httpOnly cookie, CSRF mitigation | `asvs-l2.md` V3.3.3, V4.2.2; issues #372, #392, #419 |
 | Rogue admin escalating against a peer admin | API | admin role changes and account deletion are self-service only — `UpdateUser` refuses to demote another admin, `DeleteUser` refuses to delete any admin; last-admin guards keep the instance non-empty | `asvs-l2.md` V4.1.3; issue #871 — `controllers/admin_user_controller_test.go`, `controllers/admin_user_delete_test.go`, `controllers/auth_audit_events_test.go` |
 | Malicious/misconfigured CardDAV client | sync→API | CardDAV Basic auth, per-user collections | `asvs-l2.md` API5; issue #566 — `backend/routes/authorization_matrix_credentials_test.go` extends the persona matrix to a CardDAV/CalDAV Basic-auth credential (401 on every `/api/v1/*` route; DAV surface reaches only its own collections) and a `carddav`-scoped API token (403 on every REST route), with the same completeness guard |
-| Malicious imported vCard/JSContact | import parser→DB | parser validation, fuzzing, hostile-input neutralization | issues #375, #376, `controllers/hostile_input_e2e_test.go` |
+| Malicious imported vCard/JSContact | import parser→DB | parser validation, fuzzing, hostile-input neutralization | issues #375, #376 — the parser fuzzers (`vcard3/fuzz_test.go`, `vcard4/fuzz_test.go`, `jscontact/fuzz_test.go`), the adversarial import suite (`services/adversarial_import_test.go`), and the TEST-04 corpus under `internal/adversarial/fixtures/`; `controllers/hostile_input_e2e_test.go` covers the adjacent photo-decompression and CSV-formula vectors, not vCard/JSContact parsing |
 | Malicious attachment | →filesystem | magic-byte validation, randomized names, SSRF-safe proxy | issue #375, `asvs-l2.md` V12.2.1/V12.3.2 |
 | Malicious API client | →API | token scopes, rate limiting | issues #371/#551, #413, #415; `carddav`-scope vs `full`-scope REST enforcement pinned by `backend/routes/authorization_matrix_credentials_test.go` (issue #566) |
 | Compromised external integration | →integrations | SSRF dialer, fail-secure | `asvs-l2.md` V5.2.6/API7; issues #373, #465, #366 |
@@ -95,9 +95,46 @@ Each actor sits on a boundary, is neutralized by a control, and is verified by a
 | Obtains a backup | →backups | encrypted columns are field-level AES-256-GCM (the unwrap key is operator env, never in the backup), so a stolen backup alone yields only ciphertext + hashes + the FTS-plaintext set; restore security + retention documented (issue #420) | issue #420 (confidentiality/retention documented and verified by the restore drill); issue #505 (immutability: write-new-only in the app pinned by `backend/database/backup_immutability_test.go`, off-host architecture against a compromised host documented in `docs/deployment.md`) |
 | Can write to (tamper with) the backup store | →backups | The store is a distinct trust boundary: `make backup` writes a detached HMAC-SHA256 manifest beside each snapshot, keyed by the at-rest master key with domain separation, and `make backup-verify` fails closed on a missing or invalid signature (legacy unsigned sets need the explicit `BACKUP_ALLOW_UNSIGNED=1` opt-out), so a store-only attacker without the key cannot substitute a snapshot or silently strip its manifest | issue #943 — `backend/database/backup_signature_test.go` (`TestSignBackupThenVerify`, `TestVerifyBackupSignatureRejectsTamperedSnapshot`, `TestVerifyBackupSignatureRejectsSwappedManifest`), `backend/cmd/backupverify/main_test.go` (`TestRunUnsignedSetFailsUnlessExplicitlyAllowed`, `TestRunTamperedManifestFailsClosed`) |
 | Obtains JWT/API credentials | →session | secret strength validation, `TokenVersion`, token expiry/revocation | `asvs-l2.md` V1.6.1, V3.3.3; issues #393, #372, #413, #411 |
-| Malicious data via CardDAV/CalDAV sync (reconcile path) | integrations→DB | parser validation on reconcile, same bar as import | **gap** — tracked in open issue [#512](https://github.com/DrewBrunning/mycorrhizal-crm/issues/512); the import assistant (#375) neutralizes hostile input, the sync reconcile path does not yet have equivalent E2E coverage |
+| Malicious data via CardDAV/CalDAV sync (reconcile path) | integrations→DB | parser validation on reconcile, same bar as import | issue [#512](https://github.com/DrewBrunning/mycorrhizal-crm/issues/512) (closed 2026-08-26) — `services/contact_sync_hostile_input_test.go` and `services/calendar_sync_hostile_input_test.go` pin that a hostile remote update is sanitized, that duplicate/oversized input is rejected without corrupting local state, and that a secret-sensitivity field value and its relationship edge survive a hostile remote overwrite |
 | Lost/stolen Android device | device→local DB | SQLCipher-encrypted Room mirror, Keystore-backed session token, logout purge | `masvs-l1.md` STORAGE-1/P4, issue #385 |
 | Compromised CI/CD pipeline (malicious Action, untrusted-PR injection, forged publish trust) | source→release | SHA-pinned Actions, no `pull_request_target`, least-privilege per-job tokens, OIDC-only signing, workflow-pinned cosign identity, reproducibility as divergence detection | [The CI/CD pipeline as a trust boundary](#the-cicd-pipeline-as-a-trust-boundary) below; issues #508, #513; `docs/development/release-gates.md`, `docs/development/repo-governance.md` |
+
+## Operational / environmental failure (non-adversarial actors)
+
+The Actors × trust boundaries table above models *attackers*. Issue **#500**'s catastrophic-scenario
+list is dominated by failures that are not adversarial at all — killed processes, full disks, disk
+rot, version skew, unreachable services — and those had no row to anchor a "did we prove this?" question
+to (issue **#930**). They are modeled here in the same shape: what fails, which boundary it crosses, the
+control that keeps the outcome *defined* (recovered, or failed closed with local data intact), and where
+that is pinned.
+
+| Failure | Boundary | Control | Verification |
+|---|---|---|---|
+| Process crash / interrupted startup / crash loop | →DB (schema change, before the listener binds) | Migrations run before the HTTP listener, so a kill leaves exactly one of four well-defined states (schema untouched / dirty / clean-intermediate / clean-latest); a dirty schema refuses every later start rather than force-clearing; a restart loop cannot make it worse (each refusal is not a write, and the pre-migration backup is reused, not rewritten) | `docs/operations/migration-recovery.md` "Interrupted startup"; `database/interrupted_startup_test.go`; `docs/development/fault-injection.md` catalog (`database.migration.statement`, `database.migration.before_batch`); chaos job `startup-interruption-kill-points` |
+| Disk exhaustion (`ENOSPC`) | →DB, filesystem, backup | `diskspace.Require` preflight *degrades* to a clear refusal before any write, and every write path keeps its own fail-closed backstop — no partial file, never a corrupt database | `docs/development/capacity-under-constraint.md` §Disk exhaustion; `internal/diskspace/diskspace.go`; chaos jobs `disk-full-backup`, `disk-full-write`, `disk-full-fts-rebuild`, `large-migration-disk-full` |
+| Storage corruption (disk rot, torn write, bad restore) | →DB | A startup integrity probe fails closed **before** the pre-migration backup and before any migration with a typed `ErrDatabaseCorrupt`; a populated database whose version row vanished refuses with `ErrPopulatedVersionlessDatabase` instead of replaying `000001`; `cmd/doctor -repair` refuses on a corrupt input rather than running its destructive repair | `database/startup_integrity.go`; `database/startup_integrity_test.go`; `database/versionless_populated_test.go`; `cmd/doctor/main.go`; `docs/operations/disaster-recovery.md` "Scenario: database corruption" |
+| Failed import (partial or corrupt ingest) | →DB | The import confirm runs in one transaction and fails closed: every row rolls back, the session stays unconsumed, and a retry after the fault clears applies cleanly — no silent partial state; Meerkat/Monica source imports are one transaction too | `docs/development/fault-injection.md` catalog (`services.import.confirm`, `services.import.source`); `services/import_fault_injection_test.go`; `services/capacity_fault_injection_test.go` |
+| Incomplete, tampered or lost backup | →backups | Every snapshot carries a detached HMAC-SHA256 manifest keyed by the at-rest master key; `make backup-verify` fails closed on a missing/invalid signature (legacy sets need an explicit opt-out); a weekly restore drill round-trips row counts, and cross-version restores are tested at scale | `docs/operations/disaster-recovery.md` "Scenario: a corrupted or incomplete backup"; `database/backup_signature_test.go`; `database/backup_preflight_test.go`; `internal/schemafixture` |
+| Version skew (client/server, schema/binary, below-floor DB) | →browser/Android, DB | The client-version floor refuses a below-floor client `403 CLIENT_NOT_SUPPORTED` before any credential work; a database migrated by a newer binary refuses to start (schema ahead of binary); a below-floor database refuses with a two-step message naming `v0.6.0` rather than a best-effort hop | `middleware/client_version.go`; `routes/session_minting_route_gate_test.go`; `docs/operations/migration-recovery.md` "Schema ahead of the binary" + "Below the floor"; `docs/upgrade-compatibility.md` |
+| Bad / broken release (honest failure, not compromise) | →deployment | Rollback is a first-class path: the pre-migration backup is the rollback point and the schema-ahead check keeps a rolled-back binary from touching the newer schema; the release gates, RC promotion, and post-publish smoke make a broken artifact hard to publish | `docs/operations/migration-recovery.md` "Rolling back a bad release (N+1 → N)"; `docs/security/release-verification.md`; `docs/development/release-gates.md` |
+| Network partition / unreachable integration | →integrations | Failure is *defined and observable*: the run records failure, releases its lock, leaves local data intact, advances sync-health/delivery state, and emits a `sync_failed`/`integration_failed` event; transient vs permanent is classified in one shared table; a failed notification or webhook send is retried or recorded, never silently dropped or double-sent | `docs/development/fault-injection.md` catalog; `services/sync_failure_behavior_test.go`; `services/delivery_failure_behavior_test.go`; `docs/int-01-integration-classification-matrix.md` |
+| Concurrent modification / write contention | →DB | `_txlock=immediate` takes the write lock up front so `busy_timeout` actually retries (a deferred upgrade fails instantly); conditional CAS writes guard read-modify-write races; integrity stays clean under concurrent writers | `database/concurrent_write_test.go`; `docs/development/capacity-under-constraint.md` "Slow storage / lock contention" |
+| Corrupt derived state (FTS index, graph/suggestions) | →derived stores | Derived stores are rebuildable from source; the FTS rebuild runs in one transaction so a fault rolls back to the previously-good index, and a consistency checker reports drift | `services/search_service.go`; `cmd/backfill-search-index/main.go`; `services/capacity_fault_injection_test.go` |
+
+### The #500 scenarios, each mapped to a row
+
+| #500 scenario | Owning row above |
+|---|---|
+| Interrupted migration | Process crash / interrupted startup (and Disk exhaustion) |
+| Failed import/restore | Failed import; Incomplete, tampered or lost backup |
+| Concurrent modification | Concurrent modification / write contention |
+| Corrupt derived state | Corrupt derived state |
+| Lost integration | Network partition / unreachable integration |
+| Bad release | Bad / broken release |
+| Client/server version mismatch | Version skew |
+| Disk exhaustion | Disk exhaustion |
+| DB corruption | Storage corruption |
+| Partial network failure | Network partition / unreachable integration |
 
 ## Controls → threat mapping
 
@@ -114,6 +151,10 @@ checklists), this maps each actor class above to the *chapter* that answers it i
 - **Data-at-rest (stolen disk/backup, lost device)** → `asvs-l2.md` V6 (Stored Cryptography), V8 (Data
   Protection); `masvs-l1.md` V2 (Data Storage and Privacy), V3 (Cryptography).
 - **Misconfiguration / deployment** → `asvs-l2.md` V14 (Configuration), V1.14 (Architecture).
+- **Operational / environmental failure (not an attacker)** → the [Operational / environmental
+  failure](#operational--environmental-failure-non-adversarial-actors) section above;
+  `docs/operations/migration-recovery.md`, `docs/operations/disaster-recovery.md`,
+  `docs/development/fault-injection.md`, `docs/development/capacity-under-constraint.md`.
 - **CI/CD pipeline as the attacker** → the section immediately below (#513).
 
 ## The CI/CD pipeline as a trust boundary
@@ -138,8 +179,8 @@ touching the app's own attack surface. This is the cell #377's boundary matrix l
 | Component | Trusted for | If compromised | Containment + detection |
 |---|---|---|---|
 | GitHub platform (Actions, GHCR, rulesets) | Running workflows honestly, enforcing branch/tag rulesets | Total — nothing below matters | Out of scope; the whole model assumes GitHub is honest, same as any GitHub-hosted project |
-| Third-party Actions | Doing only what their pinned commit does | Arbitrary code in a job with that job's token scope | **Every** `uses:` is pinned to a full commit SHA (Dependabot bumps SHA+comment together); `zizmor` lints the workflows; a compromised low-priv job still has only `contents: read` |
-| GHCR / the image registry | Serving the digest we pushed | A swapped image | cosign signature over the **digest** (not the tag); buildkit + GitHub SLSA provenance; `governance-drift.yml` re-verifies the latest release nightly |
+| Third-party Actions | Doing only what their pinned ref does | Arbitrary code in a job with that job's token scope | **Every** `uses:` is pinned to a full commit SHA (Dependabot bumps SHA+comment together) **except one documented, permanent exception**: `docker-publish.yml` calls the SLSA generator at the `slsa-github-generator@v2.1.0` tag, because the trusted-builder model requires the generator to resolve its own ref to establish the builder identity in the provenance — a hash pin breaks the artifact that job produces. The exception is suppressed inline with a reason (`zizmor: ignore[unpinned-uses]`), accepted in `docs/dependency-upgrade-policy.md`, and version bumps are a deliberate tag change; `zizmor` still lints every other workflow, and a compromised low-priv job still has only `contents: read` |
+| GHCR / the image registry | Serving the digest we pushed | A swapped image | cosign signature over the **digest** (not the tag); buildkit + GitHub SLSA provenance; `governance-drift.yml` re-verifies the latest release **weekly** (`cron: '20 6 * * 1'`, not nightly), and its sibling `ruleset-drift` job skips with an explicit `::warning::` when the optional `GOVERNANCE_READ_TOKEN` is unset |
 | Sigstore (Fulcio CA, Rekor log) | Issuing a cert only to the real OIDC identity, logging every signature | Forged signatures that still name our identity | The identity is **workflow-pinned** (below); Rekor inclusion proof is part of `cosign verify` |
 | Go proxy / npm registry / Gradle | Serving the exact versions the lockfiles name | A poisoned dependency | Lockfiles + `go.sum` hashes; Dependabot + Dependency Review + Grype/Trivy; toolchain + base-image pins; COMPAT-03 ([#474](https://github.com/DrewBrunning/mycorrhizal-crm/issues/474)) governs abandoned-dep / name-squat response |
 
@@ -158,8 +199,9 @@ touching the app's own attack surface. This is the cell #377's boundary matrix l
   token used by one `workflow_dispatch`-only workflow with no PR path.
 - **Forged publish trust.** `docs/security/release-verification.md`'s `cosign verify` commands
   pin `--certificate-identity-regexp` to
-  `.github/workflows/docker-publish.yml@refs/tags/v*` (images/APK) or `syft-sbom.yml@refs/heads/main`
-  (main-branch SBOM). A compromised low-privilege workflow that somehow obtained `id-token:
+  `.github/workflows/(docker-publish|promote-rc)\.yml@refs/tags/v*` (images/APK — a normal
+  release or a promoted RC) or `syft-sbom.yml@refs/heads/main` (main-branch SBOM). A compromised
+  low-privilege workflow that somehow obtained `id-token:
   write` would get a Fulcio cert naming *its own* path — which no longer matches. `#513`'s
   `governance-drift.yml` runs `cosign verify` against the latest real release with the exact
   documented regexp, so a drift between the doc and the pipeline's identity is caught.
@@ -280,11 +322,7 @@ must remain host-only rather than prefix-locked while plain-HTTP LAN deployments
   (root detection, certificate pinning), two reversed (screenshot prevention, tapjacking protection).
 - `asvs-l2.md`'s V1.1.2, V1.1.4, and V6.1.1 rows cite this doc instead of re-deriving trust-boundary or
   threat-modeling detail.
-- Of the two gaps found while drafting this doc, one remains open: sync-path hostile input (issue #512).
-  The CardDAV/API-token persona gap in the authorization matrix (issue #566) is closed —
-  `backend/routes/authorization_matrix_credentials_test.go` now covers the CardDAV Basic-auth and
-  `carddav`/`full`-scoped API-token personas, and its row above cites the test. If #512 closes, update
-  its row in the Actors × trust boundaries table above.
+- Both gaps found while drafting this doc are now closed: sync-path hostile input (issue [#512](https://github.com/DrewBrunning/mycorrhizal-crm/issues/512), 2026-08-26) is pinned by `services/contact_sync_hostile_input_test.go` and `services/calendar_sync_hostile_input_test.go` and cited in the Actors × trust boundaries row above; the CardDAV/API-token persona gap in the authorization matrix (issue [#566](https://github.com/DrewBrunning/mycorrhizal-crm/issues/566)) is closed by `backend/routes/authorization_matrix_credentials_test.go`.
 - A design change that adds a new trust boundary (a new integration, a new sync direction, a new client)
   updates this doc in the same PR — the same "living document" convention `asvs-l2.md` already holds
   itself to.

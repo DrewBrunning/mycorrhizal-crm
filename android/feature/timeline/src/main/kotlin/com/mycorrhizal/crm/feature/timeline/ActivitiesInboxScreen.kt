@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,12 +25,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -42,6 +47,7 @@ import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 
 /**
  * M9 item 1: the "Activities" drawer entry — every activity across every contact (matching web's
@@ -66,6 +72,8 @@ fun ActivitiesInboxScreen(
         onActivityClick = onActivityClick,
         onContactClick = onContactClick,
         onLoadMore = viewModel::loadMore,
+        onDelete = viewModel::delete,
+        onRefresh = viewModel::load,
         onErrorShown = viewModel::onErrorShown,
     )
 }
@@ -84,10 +92,13 @@ fun ActivitiesInboxScreenContent(
     onActivityClick: (Int) -> Unit = {},
     onContactClick: (Int) -> Unit = {},
     onLoadMore: () -> Unit = {},
+    onDelete: (Int) -> Unit = {},
+    onRefresh: () -> Unit = {},
     onErrorShown: () -> Unit = {},
 ) {
     val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
+    var pendingDelete by remember { mutableStateOf<Activity?>(null) }
 
     Scaffold(
         topBar = {
@@ -113,26 +124,35 @@ fun ActivitiesInboxScreenContent(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                state.isLoading -> LoadingSkeleton(modifier = Modifier.testTag("activities-inbox-loading"))
-                state.activities.isEmpty() && state.error == null ->
-                    EmptyState(message = stringResource(R.string.activities_empty))
-                state.activities.isEmpty() && state.error != null ->
-                    EmptyState(state.error.orEmpty())
-                else -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize().testTag("activities-inbox-list")) {
-                        items(state.activities, key = { it.id }) { activity ->
-                            InboxActivityRow(
-                                activity = activity,
-                                onClick = { onActivityClick(activity.id) },
-                                onContactClick = onContactClick,
-                            )
-                        }
-                        if (!state.nextCursor.isNullOrEmpty()) {
-                            item {
-                                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                    Button(onClick = onLoadMore, enabled = !state.isLoadingMore) {
-                                        Text(stringResource(R.string.action_load_more))
+            RefreshableContent(
+                isRefreshing = state.isLoading && state.activities.isNotEmpty(),
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    state.isLoading && state.activities.isEmpty() ->
+                        LoadingSkeleton(modifier = Modifier.testTag("activities-inbox-loading"))
+                    state.activities.isEmpty() && state.error == null ->
+                        EmptyState(message = stringResource(R.string.activities_empty))
+                    state.activities.isEmpty() && state.error != null ->
+                        EmptyState(state.error.orEmpty())
+                    else -> {
+                        LazyColumn(modifier = Modifier.fillMaxSize().testTag("activities-inbox-list")) {
+                            items(state.activities, key = { it.id }) { activity ->
+                                InboxActivityRow(
+                                    activity = activity,
+                                    onClick = { onActivityClick(activity.id) },
+                                    onContactClick = onContactClick,
+                                    onDelete = { pendingDelete = activity },
+                                    isDeleting = state.deletingId == activity.id,
+                                )
+                            }
+                            if (!state.nextCursor.isNullOrEmpty()) {
+                                item {
+                                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                        Button(onClick = onLoadMore, enabled = !state.isLoadingMore) {
+                                            Text(stringResource(R.string.action_load_more))
+                                        }
                                     }
                                 }
                             }
@@ -141,6 +161,27 @@ fun ActivitiesInboxScreenContent(
                 }
             }
         }
+    }
+
+    pendingDelete?.let { activity ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text(stringResource(R.string.activities_delete_title)) },
+            text = { Text(stringResource(R.string.activities_delete_confirm, activity.title.orEmpty().take(80))) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDelete(activity.id)
+                    pendingDelete = null
+                }) {
+                    Text(stringResource(R.string.action_delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
     }
 
     val listError = state.error
@@ -157,43 +198,54 @@ private fun InboxActivityRow(
     activity: Activity,
     onClick: () -> Unit,
     onContactClick: (Int) -> Unit,
+    onDelete: () -> Unit,
+    isDeleting: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    Row(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(activity.title.orEmpty(), style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        val subtitle = listOfNotNull(
-            activity.type?.takeIf { it.isNotBlank() },
-            activity.location?.takeIf { it.isNotBlank() },
-            activity.date?.take(10),
-        ).joinToString(" · ")
-        if (subtitle.isNotBlank()) {
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        val contacts = activity.contacts.orEmpty()
-        if (contacts.isNotEmpty()) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.padding(top = 6.dp),
-            ) {
-                contacts.forEach { contact: ContactFlat ->
-                    AssistChip(
-                        onClick = { onContactClick(contact.id) },
-                        label = { Text(contact.displayName) },
-                        // #214: AssistChip's default height (32dp) is below the 48dp touch
-                        // target minimum (WCAG 2.5.8) — the semantics node's reported size
-                        // is the chip's own measured bounds, so (unlike a real device's
-                        // separate touch-dispatch expansion) only a real height constraint
-                        // changes what accessibility services see; minimumInteractiveComponentSize
-                        // reserves layout space only, it does not change reported bounds.
-                        modifier = Modifier.heightIn(min = 48.dp),
-                    )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(activity.title.orEmpty(), style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val subtitle = listOfNotNull(
+                activity.type?.takeIf { it.isNotBlank() },
+                activity.location?.takeIf { it.isNotBlank() },
+                activity.date?.take(10),
+            ).joinToString(" · ")
+            if (subtitle.isNotBlank()) {
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            val contacts = activity.contacts.orEmpty()
+            if (contacts.isNotEmpty()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(top = 6.dp),
+                ) {
+                    contacts.forEach { contact: ContactFlat ->
+                        AssistChip(
+                            onClick = { onContactClick(contact.id) },
+                            label = { Text(contact.displayName) },
+                            // #214: AssistChip's default height (32dp) is below the 48dp touch
+                            // target minimum (WCAG 2.5.8) — the semantics node's reported size
+                            // is the chip's own measured bounds, so (unlike a real device's
+                            // separate touch-dispatch expansion) only a real height constraint
+                            // changes what accessibility services see; minimumInteractiveComponentSize
+                            // reserves layout space only, it does not change reported bounds.
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        )
+                    }
                 }
             }
+        }
+        AccessibleIconButton(onClick = onDelete, enabled = !isDeleting) {
+            Icon(
+                Icons.Outlined.Delete,
+                contentDescription = stringResource(R.string.activities_delete_named, activity.title.orEmpty()),
+            )
         }
     }
 }

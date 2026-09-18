@@ -57,6 +57,7 @@ import com.mycorrhizal.crm.model.network.AdminUserUpdateInput
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -110,23 +111,29 @@ fun UsersScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                state.isLoading && state.users.isEmpty() -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-                state.users.isEmpty() ->
-                    EmptyState(message = stringResource(R.string.users_empty))
-                else -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(state.users, key = { it.id }) { user ->
-                            UserRow(
-                                user = user,
-                                onEdit = {
-                                    editingUser = user
-                                    editorOpen = true
-                                },
-                                onDelete = { deletingUser = user },
-                            )
+            RefreshableContent(
+                isRefreshing = state.isLoading && state.users.isNotEmpty(),
+                onRefresh = viewModel::load,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    state.isLoading && state.users.isEmpty() -> {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    }
+                    state.users.isEmpty() ->
+                        EmptyState(message = stringResource(R.string.users_empty))
+                    else -> {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(state.users, key = { it.id }) { user ->
+                                UserRow(
+                                    user = user,
+                                    onEdit = {
+                                        editingUser = user
+                                        editorOpen = true
+                                    },
+                                    onDelete = { deletingUser = user },
+                                )
+                            }
                         }
                     }
                 }

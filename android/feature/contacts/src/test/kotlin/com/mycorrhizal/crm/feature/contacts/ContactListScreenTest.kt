@@ -9,6 +9,8 @@ import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -17,13 +19,23 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
+import com.mycorrhizal.crm.domain.repository.CircleRepository
+import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.ContactsPage
+import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.SearchActivityHit
 import com.mycorrhizal.crm.model.network.SearchNoteHit
 import com.mycorrhizal.crm.model.network.SearchResult
+import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.mockk
+import kotlinx.coroutines.flow.emptyFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -507,6 +519,59 @@ class ContactListScreenTest {
         composeTestRule.onNodeWithContentDescription("Menu").assertDoesNotExist()
     }
 
+    // The first-load error branch renders in the list body (and, being a
+    // snackbar-eligible error too, may appear a second time).
+    @Test
+    fun `a failed load renders the error branch`() {
+        setContent(
+            ContactListUiState(isLoading = false, contacts = emptyList(), error = "Load failed"),
+        )
+
+        assertTrue(
+            composeTestRule.onAllNodesWithText("Load failed").fetchSemanticsNodes().isNotEmpty(),
+        )
+    }
+
+    // M9 infinite scroll: the populated branch's trailing loading-more item
+    // composes alongside the row while the next page is in flight.
+    @Test
+    fun `a page in flight renders the loading-more spinner`() {
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(ContactSummary(id = 1, fn = "Alice", firstname = "Alice")),
+                pagination = PaginationState(isLoadingMore = true),
+            ),
+        )
+
+        composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
+    }
+
+    // #214: a long-press on a row enters select mode and toggles that row's
+    // selection, without navigating to the detail page.
+    @Test
+    fun `long-pressing a contact enters select mode and selects it`() {
+        var toggledId: Int? = null
+        var navigatedId: Int? = null
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")),
+            ),
+            onToggleSelection = { toggledId = it },
+            onContactClick = { navigatedId = it },
+        )
+
+        composeTestRule.onNodeWithText("Alice").performTouchInput { longClick() }
+
+        // The screen chrome flipped to select mode; the stateless test doesn't
+        // own the selection set, so it still reads 0 selected.
+        composeTestRule.onNodeWithTag("select-all").assertIsDisplayed()
+        composeTestRule.onNodeWithText("0 selected").assertIsDisplayed()
+        assertEquals(1, toggledId)
+        assertEquals(null, navigatedId)
+    }
+
     // --- Issue #214: Compose semantics a11y sweep (the axe-core analog) -----
 
     private fun populatedListState() = ContactListUiState(
@@ -540,5 +605,52 @@ class ContactListScreenTest {
         setContent(populatedListState(), darkTheme = true)
 
         composeTestRule.assertAccessibleSemantics()
+    }
+
+    // --- Top-level ContactListScreen against a real ViewModel -----------------
+    //
+    // `onRefresh = viewModel::refresh` (line 156) is only evaluated when the
+    // real top-level screen wires a real ViewModel — the stateless content
+    // tests above pass their own callbacks, so the ViewModel reference is
+    // never reached there. Construct the VM directly (mockk repositories, no
+    // Hilt container) the same way ContactListViewModelTest does.
+    @Test
+    fun `top-level screen renders the view model's contacts and wires refresh`() {
+        val repository = mockk<ContactRepository>()
+        coEvery { repository.observeContacts() } returns emptyFlow()
+        coEvery { repository.searchLocal(any()) } returns emptyList()
+        coEvery { repository.syncContacts() } returns Result.success(Unit)
+        coEvery { repository.listContacts(any(), any(), any(), any(), any(), any(), any()) } returns
+            Result.success(
+                ContactsPage(
+                    contacts = listOf(ContactSummary(id = 1, fn = "Alice", firstname = "Alice")),
+                    nextCursor = null,
+                    limit = 50,
+                    sync = null,
+                ),
+            )
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.search(any(), any(), any()) } returns Result.success(SearchResult())
+        val circleRepository = mockk<CircleRepository>()
+        coEvery { circleRepository.list() } returns Result.success(emptyList())
+        val bulkRepository = mockk<BulkOperationRepository>()
+        val tagRepository = mockk<TagRepository>()
+        coEvery { tagRepository.list() } returns Result.success(emptyList())
+        val viewModel = ContactListViewModel(
+            repository,
+            apiClient,
+            circleRepository,
+            bulkRepository,
+            tagRepository,
+        )
+
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListScreen(onContactClick = {}, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
     }
 }

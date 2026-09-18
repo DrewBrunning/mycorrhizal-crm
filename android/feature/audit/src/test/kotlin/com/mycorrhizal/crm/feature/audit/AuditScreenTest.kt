@@ -16,6 +16,7 @@ import com.mycorrhizal.crm.model.network.AuditEntityTypes
 import com.mycorrhizal.crm.model.network.AuditEventsResponse
 import com.mycorrhizal.crm.model.network.AuditOperations
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
@@ -234,6 +235,35 @@ class AuditScreenTest {
         // enabled from the *input* value, before the 350ms debounce applies.
         composeTestRule.onNodeWithTag("audit-entity-id").performTextInput("uid-9")
         composeTestRule.onNodeWithTag("audit-clear-filters").assertIsEnabled()
+    }
+
+    @Test
+    fun `an in-flight initial load shows the loading skeleton`() {
+        val auditRepository = mockk<AuditRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        // Gate the list fetch so the initial-load skeleton stays on screen.
+        val gate = kotlinx.coroutines.CompletableDeferred<Result<AuditEventsResponse>>()
+        coEvery { auditRepository.list(entityType = any(), entityId = any(), limit = any()) } coAnswers {
+            gate.await()
+        }
+
+        setScreen(auditRepository, contactRepository)
+
+        composeTestRule.onNodeWithTag("audit-loading").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an empty list with a failed load renders the inline error text`() {
+        val auditRepository = mockk<AuditRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { auditRepository.list(entityType = any(), entityId = any(), limit = any()) } returns
+            Result.failure(ApiError.Client(500, "boom"))
+
+        setScreen(auditRepository, contactRepository)
+
+        // Empty list + error → the persistent inline error, not a snackbar
+        // (the toast path is gated on a non-empty list).
+        composeTestRule.onNodeWithText("boom").assertIsDisplayed()
     }
 
     // --- Issue #214: Compose semantics a11y sweep (the axe-core analog) -----

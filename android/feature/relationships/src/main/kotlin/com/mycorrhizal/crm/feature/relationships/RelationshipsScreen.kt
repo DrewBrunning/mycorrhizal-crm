@@ -63,6 +63,7 @@ import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,53 +118,59 @@ fun RelationshipsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                state.isLoading -> LoadingSkeleton()
-                state.edges.isEmpty() && errorMessage == null ->
-                    EmptyState(message = stringResource(R.string.relationships_empty))
-                state.edges.isEmpty() && errorMessage != null -> {
-                    Text(
-                        text = errorMessage,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-                }
-                else -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(state.confirmedEdges, key = { it.id }) { edge ->
-                            RelationshipEdgeRow(
-                                edge = edge,
-                                displayName = displayName(edge),
-                                resolvedContactId = state.contactsByUid[otherPartyId(edge, state.contactVCardUid)]?.id,
-                                viewedUid = state.contactVCardUid,
-                                onNavigateToContact = onNavigateToContact,
-                                onEdit = { showDialogFor = edge },
-                                onDelete = { pendingDelete = edge },
-                            )
-                        }
-                        if (state.suggestedEdges.isNotEmpty()) {
-                            item {
-                                if (state.confirmedEdges.isNotEmpty()) {
-                                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                                }
-                                Text(
-                                    text = stringResource(R.string.relationships_suggested_section),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                                )
-                            }
-                            items(state.suggestedEdges, key = { it.id }) { edge ->
+            RefreshableContent(
+                isRefreshing = state.isLoading && state.edges.isNotEmpty(),
+                onRefresh = viewModel::load,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    state.isLoading && state.edges.isEmpty() -> LoadingSkeleton()
+                    state.edges.isEmpty() && errorMessage == null ->
+                        EmptyState(message = stringResource(R.string.relationships_empty))
+                    state.edges.isEmpty() && errorMessage != null -> {
+                        Text(
+                            text = errorMessage,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    }
+                    else -> {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(state.confirmedEdges, key = { it.id }) { edge ->
                                 RelationshipEdgeRow(
                                     edge = edge,
                                     displayName = displayName(edge),
                                     resolvedContactId = state.contactsByUid[otherPartyId(edge, state.contactVCardUid)]?.id,
                                     viewedUid = state.contactVCardUid,
                                     onNavigateToContact = onNavigateToContact,
-                                    accepting = state.acceptingId == edge.id,
-                                    onAccept = { viewModel.accept(edge.id) },
-                                    onReject = { pendingReject = edge },
+                                    onEdit = { showDialogFor = edge },
+                                    onDelete = { pendingDelete = edge },
                                 )
+                            }
+                            if (state.suggestedEdges.isNotEmpty()) {
+                                item {
+                                    if (state.confirmedEdges.isNotEmpty()) {
+                                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                                    }
+                                    Text(
+                                        text = stringResource(R.string.relationships_suggested_section),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                    )
+                                }
+                                items(state.suggestedEdges, key = { it.id }) { edge ->
+                                    RelationshipEdgeRow(
+                                        edge = edge,
+                                        displayName = displayName(edge),
+                                        resolvedContactId = state.contactsByUid[otherPartyId(edge, state.contactVCardUid)]?.id,
+                                        viewedUid = state.contactVCardUid,
+                                        onNavigateToContact = onNavigateToContact,
+                                        accepting = state.acceptingId == edge.id,
+                                        onAccept = { viewModel.accept(edge.id) },
+                                        onReject = { pendingReject = edge },
+                                    )
+                                }
                             }
                         }
                     }

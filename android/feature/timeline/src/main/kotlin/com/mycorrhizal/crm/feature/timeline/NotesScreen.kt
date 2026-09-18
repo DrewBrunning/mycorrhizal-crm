@@ -46,6 +46,7 @@ import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
 
 /**
@@ -73,6 +74,7 @@ fun NotesScreen(
         onToDateChange = viewModel::onToDateChange,
         onLoadMore = viewModel::loadMore,
         onDelete = viewModel::delete,
+        onRefresh = viewModel::load,
         onErrorShown = viewModel::onErrorShown,
     )
 }
@@ -93,6 +95,7 @@ fun NotesScreenContent(
     onToDateChange: (String) -> Unit = {},
     onLoadMore: () -> Unit = {},
     onDelete: (Int) -> Unit = {},
+    onRefresh: () -> Unit = {},
     onErrorShown: () -> Unit = {},
 ) {
     val state = uiState
@@ -138,31 +141,37 @@ fun NotesScreenContent(
                 searchLabelRes = R.string.notes_search,
             )
             Box(modifier = Modifier.fillMaxSize()) {
-                when {
-                    state.isLoading -> LoadingSkeleton()
-                    // The error/errorRes branch must precede the generic empty
-                    // branch: the missing-contact-id state sets errorRes with
-                    // error == null, so the empty branch used to swallow it and
-                    // show "No notes yet" instead of the real cause.
-                    state.notes.isEmpty() && (state.errorRes != null || state.error != null) ->
-                        EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
-                    state.notes.isEmpty() && state.error == null ->
-                        EmptyState(message = stringResource(if (hasFilters) R.string.notes_no_results else R.string.notes_empty))
-                    else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
-                            items(state.notes, key = { it.id }) { note ->
-                                NoteListItem(
-                                    note = note,
-                                    onClick = { onEditNote(note.id) },
-                                    onDelete = { pendingDelete = note },
-                                    isDeleting = state.deletingId == note.id,
-                                )
-                            }
-                            if (!state.nextCursor.isNullOrEmpty()) {
-                                item {
-                                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                        Button(onClick = onLoadMore, enabled = !state.isLoadingMore) {
-                                            Text(stringResource(R.string.action_load_more))
+                RefreshableContent(
+                    isRefreshing = state.isLoading && state.notes.isNotEmpty(),
+                    onRefresh = onRefresh,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    when {
+                        state.isLoading && state.notes.isEmpty() -> LoadingSkeleton()
+                        // The error/errorRes branch must precede the generic empty
+                        // branch: the missing-contact-id state sets errorRes with
+                        // error == null, so the empty branch used to swallow it and
+                        // show "No notes yet" instead of the real cause.
+                        state.notes.isEmpty() && (state.errorRes != null || state.error != null) ->
+                            EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
+                        state.notes.isEmpty() && state.error == null ->
+                            EmptyState(message = stringResource(if (hasFilters) R.string.notes_no_results else R.string.notes_empty))
+                        else -> {
+                            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                                items(state.notes, key = { it.id }) { note ->
+                                    NoteListItem(
+                                        note = note,
+                                        onClick = { onEditNote(note.id) },
+                                        onDelete = { pendingDelete = note },
+                                        isDeleting = state.deletingId == note.id,
+                                    )
+                                }
+                                if (!state.nextCursor.isNullOrEmpty()) {
+                                    item {
+                                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                            Button(onClick = onLoadMore, enabled = !state.isLoadingMore) {
+                                                Text(stringResource(R.string.action_load_more))
+                                            }
                                         }
                                     }
                                 }

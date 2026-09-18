@@ -6,10 +6,18 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.lifecycle.SavedStateHandle
+import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.ReminderRepository
+import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
-import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -59,9 +67,9 @@ class RemindersScreenTest {
 
     @Test
     fun `shows the missing-id message when the contact id did not resolve`() {
-        // Regression: the generic empty branch used to match before the
-        // errorRes branch (errorRes is set with error == null), hiding the
-        // real cause behind "No reminders yet".
+        // Regression: the missing-contact-id state sets errorRes with
+        // error == null. If the generic empty branch is ordered first it wins
+        // and hides the real cause behind "No reminders yet".
         setContent(
             RemindersUiState(
                 contactId = 0,
@@ -256,5 +264,40 @@ class RemindersScreenTest {
             // Default EU format renders "10 August 2026".
         )
         composeTestRule.onNodeWithText("10 August 2026").assertIsDisplayed()
+    }
+
+    // --- Top-level RemindersScreen against a real ViewModel ------------------
+    //
+    // `onRefresh = viewModel::load` (line 83) is only evaluated when the real
+    // top-level screen wires a real ViewModel; the content tests above pass
+    // their own callbacks. Construct the VM directly (mockk repositories, no
+    // Hilt container) as RemindersViewModelTest does.
+    @Test
+    fun `top-level screen renders the view model's reminders`() {
+        val reminderRepository = mockk<ReminderRepository>()
+        coEvery { reminderRepository.listForContact(1) } returns Result.success(
+            listOf(Reminder(id = 1, message = "Call Dana")),
+        )
+        val authRepository = mockk<AuthRepository>()
+        every { authRepository.observeSession() } returns flowOf(SessionState())
+        val viewModel = RemindersViewModel(
+            reminderRepository,
+            authRepository,
+            SavedStateHandle(mapOf("contactId" to 1)),
+        )
+
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                RemindersScreen(
+                    onBack = {},
+                    onCreateReminder = {},
+                    onEditReminder = {},
+                    viewModel = viewModel,
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Call Dana").assertIsDisplayed()
     }
 }

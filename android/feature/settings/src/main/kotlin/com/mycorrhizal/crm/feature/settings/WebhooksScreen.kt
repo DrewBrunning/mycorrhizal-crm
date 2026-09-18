@@ -54,6 +54,7 @@ import com.mycorrhizal.crm.model.network.WebhookInput
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 
 /**
  * Webhook events, hand-mirrored from the backend's `oneof` validator
@@ -136,65 +137,68 @@ fun WebhooksScreen(
             }
         },
     ) { padding ->
-        if (state.isLoading && state.webhooks.isEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-            ) {
-                CircularProgressIndicator()
-            }
-        } else if (state.webhooks.isEmpty()) {
-            EmptyState(
-                message = stringResource(R.string.settings_webhooks_empty),
-                modifier = Modifier.padding(padding),
-            )
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                item {
-                    Text(
-                        text = stringResource(R.string.settings_webhooks_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
+        RefreshableContent(
+            isRefreshing = state.isLoading && state.webhooks.isNotEmpty(),
+            onRefresh = viewModel::load,
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) {
+            if (state.isLoading && state.webhooks.isEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                ) {
+                    CircularProgressIndicator()
                 }
-                if (state.error != null) {
+            } else if (state.webhooks.isEmpty()) {
+                EmptyState(message = stringResource(R.string.settings_webhooks_empty))
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
                     item {
                         Text(
-                            text = state.error.orEmpty(),
-                            color = MaterialTheme.colorScheme.error,
+                            text = stringResource(R.string.settings_webhooks_description),
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
-                                .semantics { liveRegion = LiveRegionMode.Assertive },
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         )
                     }
-                }
-                if (state.message != null) {
-                    item {
-                        Text(
-                            text = stringResource(R.string.settings_webhooks_test_success, state.message.orEmpty()),
-                            color = MaterialTheme.colorScheme.tertiary,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    if (state.error != null) {
+                        item {
+                            Text(
+                                text = state.error.orEmpty(),
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                                    .semantics { liveRegion = LiveRegionMode.Assertive },
+                            )
+                        }
+                    }
+                    if (state.message != null) {
+                        item {
+                            Text(
+                                text = stringResource(R.string.settings_webhooks_test_success, state.message.orEmpty()),
+                                color = MaterialTheme.colorScheme.tertiary,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
+                    items(state.webhooks, key = { it.id }) { webhook ->
+                        WebhookRow(
+                            webhook = webhook,
+                            testing = state.testingIds.contains(webhook.id),
+                            expanded = state.expandedIds.contains(webhook.id),
+                            deliveries = state.deliveries[webhook.id].orEmpty(),
+                            onTest = { viewModel.test(webhook) },
+                            onEdit = {
+                                editingWebhook = webhook
+                                editorOpen = true
+                            },
+                            onDelete = { deletingWebhook = webhook },
+                            onToggleDeliveries = { viewModel.toggleDeliveries(webhook.id) },
                         )
                     }
-                }
-                items(state.webhooks, key = { it.id }) { webhook ->
-                    WebhookRow(
-                        webhook = webhook,
-                        testing = state.testingIds.contains(webhook.id),
-                        expanded = state.expandedIds.contains(webhook.id),
-                        deliveries = state.deliveries[webhook.id].orEmpty(),
-                        onTest = { viewModel.test(webhook) },
-                        onEdit = {
-                            editingWebhook = webhook
-                            editorOpen = true
-                        },
-                        onDelete = { deletingWebhook = webhook },
-                        onToggleDeliveries = { viewModel.toggleDeliveries(webhook.id) },
-                    )
                 }
             }
         }

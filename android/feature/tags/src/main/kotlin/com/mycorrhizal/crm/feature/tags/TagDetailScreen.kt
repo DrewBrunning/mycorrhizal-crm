@@ -43,6 +43,7 @@ import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,25 +87,31 @@ fun TagDetailScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                state.isLoading -> LoadingSkeleton()
-                state.contacts.isEmpty() && errorMessage == null ->
-                    EmptyState(message = stringResource(R.string.tags_contacts_empty))
-                state.contacts.isEmpty() && errorMessage != null -> {
-                    Text(
-                        text = errorMessage,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-                }
-                else -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(state.contacts, key = { it.id }) { tagging ->
-                            TaggedContactRow(
-                                tagging = tagging,
-                                removing = state.removingUid == tagging.contactVCardUid,
-                                onRemove = { viewModel.removeContact(tagging.contactVCardUid) },
-                            )
+            RefreshableContent(
+                isRefreshing = state.isLoading && state.contacts.isNotEmpty(),
+                onRefresh = viewModel::load,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    state.isLoading && state.contacts.isEmpty() -> LoadingSkeleton()
+                    state.contacts.isEmpty() && errorMessage == null ->
+                        EmptyState(message = stringResource(R.string.tags_contacts_empty))
+                    state.contacts.isEmpty() && errorMessage != null -> {
+                        Text(
+                            text = errorMessage,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    }
+                    else -> {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(state.contacts, key = { it.id }) { tagging ->
+                                TaggedContactRow(
+                                    tagging = tagging,
+                                    removing = state.removingUid == tagging.contactVCardUid,
+                                    onRemove = { viewModel.removeContact(tagging.contactVCardUid) },
+                                )
+                            }
                         }
                     }
                 }

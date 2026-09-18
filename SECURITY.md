@@ -67,9 +67,11 @@ pull request, and pins its Go toolchain and container base images. See
   actors, and the written record of every deliberate security trade-off this project has made (e.g.
   why data-at-rest encryption has a plaintext-search exception, why the Android app targets MASVS-L1).
 - [`docs/security/asvs-l2.md`](docs/security/asvs-l2.md) — OWASP ASVS 4.0.3 (L2) + API Security Top 10
-  control checklist for the backend, frontend, and deployment.
+  control checklist for the backend, frontend, and deployment. The level claim is **self-assessed**
+  (see the [verification report](docs/security/asvs-l2-verification-report.md) §6), not a
+  commissioned third-party audit.
 - [`docs/security/masvs-l1.md`](docs/security/masvs-l1.md) — OWASP MASVS 1.5.0 (L1) control checklist
-  for the Android client.
+  for the Android client, likewise self-assessed.
 - [`docs/security/incident-response.md`](docs/security/incident-response.md) — operator runbook for
   responding to a suspected compromise: containment, credential/key rotation procedures, and
   scenario playbooks.

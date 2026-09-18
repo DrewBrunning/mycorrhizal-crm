@@ -2,13 +2,20 @@ package com.mycorrhizal.crm.feature.timeline
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import com.mycorrhizal.crm.domain.repository.ActivityRepository
+import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -32,6 +39,8 @@ class ActivitiesInboxScreenTest {
         onActivityClick: (Int) -> Unit = {},
         onContactClick: (Int) -> Unit = {},
         onLoadMore: () -> Unit = {},
+        onDelete: (Int) -> Unit = {},
+        onRefresh: () -> Unit = {},
         darkTheme: Boolean = false,
     ) {
         composeTestRule.setContent {
@@ -41,6 +50,8 @@ class ActivitiesInboxScreenTest {
                     onActivityClick = onActivityClick,
                     onContactClick = onContactClick,
                     onLoadMore = onLoadMore,
+                    onDelete = onDelete,
+                    onRefresh = onRefresh,
                 )
             }
         }
@@ -50,6 +61,31 @@ class ActivitiesInboxScreenTest {
     fun `shows the empty state when there are no activities`() {
         setContent(ActivitiesInboxUiState(isLoading = false, activities = emptyList()))
         composeTestRule.onNodeWithText("No activities yet").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an empty list with an error renders the error message`() {
+        setContent(ActivitiesInboxUiState(isLoading = false, activities = emptyList(), error = "boom"))
+        composeTestRule.onNodeWithText("boom").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an activity row renders its type, location, and date subtitle`() {
+        setContent(
+            ActivitiesInboxUiState(
+                isLoading = false,
+                activities = listOf(
+                    Activity(
+                        id = 1,
+                        title = "Coffee with Dana",
+                        type = "visit",
+                        location = "Berlin",
+                        date = "2026-08-14T10:00:00Z",
+                    ),
+                ),
+            ),
+        )
+        composeTestRule.onNodeWithText("visit · Berlin · 2026-08-14").assertIsDisplayed()
     }
 
     @Test
@@ -111,6 +147,42 @@ class ActivitiesInboxScreenTest {
         composeTestRule.onNodeWithTag("activities-inbox-loading").assertIsDisplayed()
     }
 
+    @Test
+    fun `delete asks first -- tapping delete shows a confirmation and does not call onDelete`() {
+        var deletedId: Int? = null
+        setContent(
+            ActivitiesInboxUiState(isLoading = false, activities = listOf(Activity(id = 7, title = "Coffee"))),
+            onDelete = { deletedId = it },
+        )
+        composeTestRule.onNodeWithContentDescription("Delete Coffee").performClick()
+        composeTestRule.onNodeWithText("Delete activity?").assertIsDisplayed()
+        assertEquals(null, deletedId)
+    }
+
+    @Test
+    fun `confirming the delete dialog calls onDelete with the activity id`() {
+        var deletedId: Int? = null
+        setContent(
+            ActivitiesInboxUiState(isLoading = false, activities = listOf(Activity(id = 7, title = "Coffee"))),
+            onDelete = { deletedId = it },
+        )
+        composeTestRule.onNodeWithContentDescription("Delete Coffee").performClick()
+        composeTestRule.onNodeWithText("Delete").performClick()
+        assertEquals(7, deletedId)
+    }
+
+    @Test
+    fun `pulling down on the list invokes onRefresh`() {
+        var refreshCalls = 0
+        setContent(
+            ActivitiesInboxUiState(isLoading = false, activities = listOf(Activity(id = 1, title = "Coffee"))),
+            onRefresh = { refreshCalls++ },
+        )
+        composeTestRule.onNodeWithTag("activities-inbox-list").performTouchInput { swipeDown() }
+        composeTestRule.waitForIdle()
+        assertEquals(1, refreshCalls)
+    }
+
     // --- Issue #214: Compose semantics a11y sweep (the axe-core analog) -----
 
     private fun populatedState() = ActivitiesInboxUiState(
@@ -132,5 +204,35 @@ class ActivitiesInboxScreenTest {
         setContent(populatedState(), darkTheme = true)
 
         composeTestRule.assertAccessibleSemantics()
+    }
+
+    // --- Top-level ActivitiesInboxScreen against a real ViewModel ------------
+    //
+    // `onDelete = viewModel::delete` / `onRefresh = viewModel::load` (lines
+    // 75-76) are only evaluated when the real top-level screen wires a real
+    // ViewModel; the stateless content tests above supply their own lambdas.
+    @Test
+    fun `top-level screen renders the view model's activities`() {
+        val repository = mockk<ActivityRepository>()
+        coEvery { repository.listAll() } returns Result.success(
+            ActivitiesPage(
+                activitiesRaw = listOf(Activity(id = 1, title = "Coffee with Dana")),
+                nextCursor = null,
+            ),
+        )
+        val viewModel = ActivitiesInboxViewModel(repository)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ActivitiesInboxScreen(
+                    onActivityClick = {},
+                    onContactClick = {},
+                    viewModel = viewModel,
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Coffee with Dana").assertIsDisplayed()
     }
 }

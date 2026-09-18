@@ -47,6 +47,7 @@ import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.R
 
 /**
@@ -76,6 +77,7 @@ fun ActivitiesScreen(
         onToDateChange = viewModel::onToDateChange,
         onLoadMore = viewModel::loadMore,
         onDelete = viewModel::delete,
+        onRefresh = viewModel::load,
         onErrorShown = viewModel::onErrorShown,
     )
 }
@@ -97,6 +99,7 @@ fun ActivitiesScreenContent(
     onToDateChange: (String) -> Unit = {},
     onLoadMore: () -> Unit = {},
     onDelete: (Int) -> Unit = {},
+    onRefresh: () -> Unit = {},
     onErrorShown: () -> Unit = {},
 ) {
     val state = uiState
@@ -142,32 +145,38 @@ fun ActivitiesScreenContent(
                 searchLabelRes = R.string.activities_search,
             )
             Box(modifier = Modifier.fillMaxSize()) {
-                when {
-                    state.isLoading -> LoadingSkeleton()
-                    // The error/errorRes branch must precede the generic empty
-                    // branch: the missing-contact-id state sets errorRes with
-                    // error == null, so the empty branch used to swallow it and
-                    // show "No activities yet" instead of the real cause.
-                    state.activities.isEmpty() && (state.errorRes != null || state.error != null) ->
-                        EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
-                    state.activities.isEmpty() && state.error == null ->
-                        EmptyState(message = stringResource(if (hasFilters) R.string.activities_no_results else R.string.activities_empty))
-                    else -> {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
-                            items(state.activities, key = { it.id }) { activity ->
-                                ActivityListItem(
-                                    activity = activity,
-                                    onClick = { onEditActivity(activity.id) },
-                                    onContactClick = onContactClick,
-                                    onDelete = { pendingDelete = activity },
-                                    isDeleting = state.deletingId == activity.id,
-                                )
-                            }
-                            if (!state.nextCursor.isNullOrEmpty()) {
-                                item {
-                                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                        Button(onClick = onLoadMore, enabled = !state.isLoadingMore) {
-                                            Text(stringResource(R.string.action_load_more))
+                RefreshableContent(
+                    isRefreshing = state.isLoading && state.activities.isNotEmpty(),
+                    onRefresh = onRefresh,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    when {
+                        state.isLoading && state.activities.isEmpty() -> LoadingSkeleton()
+                        // The error/errorRes branch must precede the generic empty
+                        // branch: the missing-contact-id state sets errorRes with
+                        // error == null, so the empty branch used to swallow it and
+                        // show "No activities yet" instead of the real cause.
+                        state.activities.isEmpty() && (state.errorRes != null || state.error != null) ->
+                            EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
+                        state.activities.isEmpty() && state.error == null ->
+                            EmptyState(message = stringResource(if (hasFilters) R.string.activities_no_results else R.string.activities_empty))
+                        else -> {
+                            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                                items(state.activities, key = { it.id }) { activity ->
+                                    ActivityListItem(
+                                        activity = activity,
+                                        onClick = { onEditActivity(activity.id) },
+                                        onContactClick = onContactClick,
+                                        onDelete = { pendingDelete = activity },
+                                        isDeleting = state.deletingId == activity.id,
+                                    )
+                                }
+                                if (!state.nextCursor.isNullOrEmpty()) {
+                                    item {
+                                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                            Button(onClick = onLoadMore, enabled = !state.isLoadingMore) {
+                                                Text(stringResource(R.string.action_load_more))
+                                            }
                                         }
                                     }
                                 }

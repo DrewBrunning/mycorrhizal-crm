@@ -9,8 +9,8 @@ row, it does not know what it is changing.
 |---|---|
 | **Standards pinned** | OWASP ASVS 4.0.3 (V1–V14), OWASP API Security Top 10 (2023) |
 | **Level** | ASVS **Level 2** (rows marked `✓` in the L2 column of the ASVS). L1 rows are included because L2 subsumes them; L3-only rows are listed per chapter as out of scope. |
-| **Last full pass** | 2026-08-26 — the ASVS L2 verification pass, issue #378. Statuses, evidence, and the level claim are recorded in `docs/security/asvs-l2-verification-report.md`; the prior mapping audit was 2026-08-23. |
-| **Level claimed** | **ASVS L2 with 23 documented exceptions** — every exception enumerated in the verification report's exception register. Not a silent downgrade: 194 rows `satisfied`, 38 `not-applicable` with reasons, 2 L3-only. |
+| **Last full pass** | 2026-09-18 — the ASVS L2 verification pass (#2), superseding the 2026-08-26 pass (#1, issue #378). Statuses, evidence, and the level claim are recorded in `docs/security/asvs-l2-verification-report.md`; the prior mapping audit was 2026-08-23. |
+| **Level claimed** | **ASVS L2 with 23 documented exceptions**, self-assessed — see the [verification report](asvs-l2-verification-report.md) §6; this is not an independent third-party audit. Every exception is enumerated in the verification report's exception register. Not a silent downgrade: 194 rows `satisfied`, 38 `not-applicable` with reasons, 2 L3-only. |
 | **Scope** | Single-process Go/Gin + SQLite app, React SPA behind an nginx container, TLS terminated by an operator-supplied reverse proxy. Many cloud/microservice controls are deliberately `not-applicable` — each such row says why. |
 
 ## Status legend
@@ -253,7 +253,7 @@ not in the room. The answer for this project is a settled position, not a deferr
 - **Every finding from both agents was filed and dispositioned.** Confirmed findings became
   issues #861–#874, plus #876 and #877 found while verifying the reports against source; all
   are closed, each fix landing with a regression test and the ASVS row updated in-commit
-  (verification-report §10 passes 1.11–1.15). Two non-"fix it" dispositions are recorded
+  (verification-report §10 passes 1.11–1.16). Two non-"fix it" dispositions are recorded
   explicitly: #861 (the full-fidelity CSV backup withholds nothing *by design* — a
   documentation claim was wrong, not the code; see P-note at 1.5.1) and #873 (a
   previously-accepted `partial` on TOTP single-use, now closed).
