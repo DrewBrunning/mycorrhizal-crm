@@ -30,10 +30,13 @@ It:
 2. **runs the mandatory gate battery and refuses to go further on any failure** —
    `go run ./cmd/citecheck` (security-doc citations resolve, issue #608); `go run
    ./cmd/releasegatecheck` (the gate registry is coherent); a deterministic poll of every
-   `release_gate: true` context in `.github/release-gates.json` on the commit `main` is at; and
+   `release_gate: true` context in `.github/release-gates.json` on the commit `main` is at;
    the ASVS/MASVS re-verification obligation — `docs/security/asvs-l2-verification-report.md`'s
    §10 changelog must carry a new row since the previous release tag, unless `ack_asvs_current`
-   was supplied;
+   was supplied; and the per-release adversarial-delta obligation — a release whose diff touched
+   a security-relevant surface class (a route, a migration, an outbound client, an authentication
+   path) must have a matching row in `docs/security/adversarial-deltas.md`, unless
+   `ack_adversarial_delta` was supplied (issue #953);
 3. registers the release in `backend/internal/schemafixture/releases.go` (skipped when the
    version is already registered — a dry run rehearsing the last shipped version, or a
    *resumed* release whose fixture commit already landed; see below) and regenerates the
@@ -43,8 +46,11 @@ It:
    append-only migration chain must reproduce byte-identical either way (issue #929);
 4. runs the schemafixture + genschema + releaselist test gates;
 5. writes `release-metadata.json` (version, migration version, **source revision**, workflow-run
-   URL, dry-run flag, resumed flag, gate results) — kept as a workflow artifact and, on a real
-   run, attached to the GitHub Release;
+   URL, dry-run flag, resumed flag, gate results, and the **residual-risk** statement — the open
+   accept-with-reason items across the project's justified ignore lists, the open
+   dependency-advisory exceptions and how soon each expires, and the ASVS/MASVS
+   documented-exception counts (issue #953) — kept as a workflow artifact and, on a real run,
+   attached to the GitHub Release;
 6. commits those two files to `main` and pushes `main` (a no-op on a resumed release, whose
    fixture commit is already on `main`);
 7. triggers the release-tier suites (for a final release, the two with no `push:main` trigger —
@@ -119,7 +125,7 @@ are a deliberate, reviewed tag change.
 | Android release APK | cosign keyless co-signature (additive, does not replace keystore signing) | Independent Sigstore-backed verifier on top of the GitHub attestation; what Scorecard's `Signed-Releases` check counts for the 8/10 tier | No — attached to the Release as `mycorrhizal-apk.sigstore.json` (a copy is also kept as a 30-day workflow artifact) |
 | Android release APK | SLSA build provenance from the `slsa-github-generator` reusable workflow (`apk-provenance` job) | A verifiable in-toto SLSA statement over the APK's sha256, signed keyless; what Scorecard's `Signed-Releases` check counts for the **10/10** tier | No — attached to the Release as `mycorrhizal-apk.intoto.jsonl` |
 | All release assets | `SHA256SUMS` — a plain `sha256sum` manifest over every asset on the Release, generated last by `verify-release-assets` | One file to check the integrity of everything you downloaded from the Release | No — attached to the Release as `SHA256SUMS` |
-| The release run itself | `release-metadata.json` — version, migration version, source revision, dry-run/resumed flags, gate results | Which commit `release.yml` cut the release from and which gates it verified | No — attached to the Release (also a 90-day workflow artifact) |
+| The release run itself | `release-metadata.json` — version, migration version, source revision, dry-run/resumed flags, gate results, and the residual-risk statement (open accept items, dependency-exception expiry, ASVS/MASVS exception counts) | Which commit `release.yml` cut the release from, which gates it verified, and what was accepted on the way (issue #953) | No — attached to the Release (also a 90-day workflow artifact) |
 
 The one "expires" row is a workflow *run* artifact (`actions/upload-artifact`), not a GitHub
 Release asset — it is only downloadable from the specific `docker-publish.yml` run's Actions

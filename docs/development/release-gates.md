@@ -40,10 +40,14 @@ Four mechanisms, in order of when they fire:
    `release.yml`, is the single human action that cuts a release. Before it commits the schema
    fixture or pushes anything it runs the mandatory gate battery: `go run ./cmd/citecheck` and
    `go run ./cmd/releasegatecheck` directly; a deterministic poll of every `release_gate: true`
-   context on the commit `main` is at; and the ASVS/MASVS re-verification obligation
+   context on the commit `main` is at; the ASVS/MASVS re-verification obligation
    ([#608](https://github.com/DrewBrunning/mycorrhizal-crm/issues/608)) — the report's §10
    changelog must carry a new row since the previous release tag, unless the dispatch supplied
-   `ack_asvs_current` with a reason. After the fixture commit it triggers and waits on the
+   `ack_asvs_current` with a reason; and the per-release adversarial-delta obligation
+   ([#953](https://github.com/DrewBrunning/mycorrhizal-crm/issues/953)) — a release whose diff
+   touched a security-relevant surface class must have a matching row in
+   `docs/security/adversarial-deltas.md`, unless the dispatch supplied `ack_adversarial_delta`
+   with a reason. After the fixture commit it triggers and waits on the
    release-tier suites (above). Any failure means no tag is pushed, so `docker-publish.yml`
    never starts — and because the fixture commit may already be on `main` when that happens,
    re-dispatching the same version resumes at the new `main` tip rather than refusing

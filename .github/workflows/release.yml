@@ -19,7 +19,8 @@ name: Release
 # Promotion (RC -> final, same artifact by digest) is promote-rc.yml.
 # Full policy: docs/release-candidate-process.md.
 #
-# What a run does, in order (an RC skips 4, 5, 7 and the ASVS row of 3):
+# What a run does, in order (an RC skips 4, 5, 7 and the ASVS/adversarial-delta
+# rows of 3):
 #
 #   1. validates the version string, that no such tag exists, and (final only)
 #      whether it is already registered in SupportedReleases -- registered but
@@ -35,14 +36,20 @@ name: Release
 #        - the ASVS/MASVS claim carries a re-verification changelog row since
 #          the previous release, or the dispatch supplied `ack_asvs_current`
 #          with a reason (issue #608, asvs-l2-verification-report.md sec 8/9);
+#        - a release that touched a security-relevant surface class has a
+#          recorded per-release adversarial delta, or the dispatch supplied
+#          `ack_adversarial_delta` with a reason (issue #953,
+#          docs/security/adversarial-deltas.md);
 #   4. appends {Tag: <version>, Version: <highest migration in the tree>} to
 #      backend/internal/schemafixture/releases.go and regenerates the schema
 #      dumps (`go run ./cmd/genschema`), asserting the frozen append-only chain
 #      still regenerates byte-identical and only <version>.sql is new;
 #   5. runs the schemafixture + genschema + releaselist test gates;
 #   6. writes release-metadata.json (version, migration version, source
-#      revision, gate results) -- kept as a workflow artifact and, on a real
-#      run, attached to the GitHub Release;
+#      revision, gate results, and the residual-risk statement -- open
+#      accept-with-reason items, dependency-exception expiry, ASVS/MASVS
+#      exception counts, issue #953) -- kept as a workflow artifact and, on a
+#      real run, attached to the GitHub Release;
 #   7. (final only) commits releases.go + the new dump directly to `ref` and
 #      pushes it;
 #   8. triggers + waits on the release-tier suites -- for a final release the
@@ -128,6 +135,11 @@ on:
         default: false
       ack_asvs_current:
         description: 'Reason the ASVS/MASVS claim is current without a new re-verification row (leave blank to require the row)'
+        required: false
+        type: string
+        default: ''
+      ack_adversarial_delta:
+        description: 'Reason to proceed without a recorded per-release adversarial delta for added surface (leave blank to require it)'
         required: false
         type: string
         default: ''
@@ -476,6 +488,56 @@ jobs:
           echo "::error::$report has no new section-10 changelog row since $prev. Re-verify per section 8 and add the row, or re-dispatch with ack_asvs_current=<reason>."
           exit 1
 
+      - name: Gate - per-release adversarial delta
+        if: ${{ env.IS_RC != 'true' }}
+        env:
+          ACK_ADVERSARIAL_DELTA: ${{ inputs.ack_adversarial_delta }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          VERSION: ${{ env.VERSION }}
+        run: |
+          set -eu
+          ledger="docs/security/adversarial-deltas.md"
+          prev="$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD 2>/dev/null || true)"
+          if [ -z "$prev" ]; then
+            echo "No previous release tag found -- treating the current ledger as the baseline."
+            echo "ADVERSARIAL_DELTA=baseline" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "Previous release: $prev"
+          # Feed cmd/adversarialdelta the paths changed since the previous tag.
+          # It classifies any security-relevant surface class they touch and
+          # requires $ledger to hold a row for this release naming each class it
+          # touched. A release that touched no recognised class passes with
+          # nothing to record. This is the per-release backstop for a new
+          # surface class none of §9's per-class checks anticipated (#953).
+          set +e
+          out="$(git diff --name-only "${prev}..HEAD" | (cd backend && go run ./cmd/adversarialdelta -release "$VERSION" -ack "$ACK_ADVERSARIAL_DELTA"))"
+          rc=$?
+          set -e
+          printf '%s\n' "$out"
+          if [ "$rc" -eq 0 ]; then
+            if printf '%s' "$out" | grep -q '::warning::'; then
+              echo "ADVERSARIAL_DELTA=acked" >> "$GITHUB_ENV"
+            elif printf '%s' "$out" | grep -q 'records the new surface'; then
+              echo "ADVERSARIAL_DELTA=row-present" >> "$GITHUB_ENV"
+            else
+              echo "ADVERSARIAL_DELTA=no-surface" >> "$GITHUB_ENV"
+            fi
+            exit 0
+          fi
+          # A dry run rehearses the path; it does not release memory. A missing
+          # ledger row while the register is being populated must not make the
+          # weekly rehearsal red for a version that is not being cut, so a dry
+          # run records the would-block as a warning and continues. A real
+          # release fails hard.
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "::warning::Adversarial-delta gate would block a real release of $VERSION; dry run continues. See $ledger."
+            echo "ADVERSARIAL_DELTA=would-block" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "::error::Adversarial-delta gate failed. Record the delta in $ledger, or re-dispatch with ack_adversarial_delta=<reason>."
+          exit 1
+
       # --- Step 4: register + regenerate the schema fixture ---------------
       # Final-release only. An RC ships the same schema the final will, and no
       # in-place upgrade is ever supported *from* an RC, so the fixture is
@@ -590,10 +652,17 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run }}
           MANDATORY_GATES: ${{ env.MANDATORY_GATES }}
           ASVS_REVERIFICATION: ${{ env.ASVS_REVERIFICATION }}
+          ADVERSARIAL_DELTA: ${{ env.ADVERSARIAL_DELTA }}
           RESUME: ${{ env.RESUME }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -eu
+          # The residual-risk statement (#953): the open accept-with-reason
+          # items, the dependency-advisory exceptions still open, and the
+          # ASVS/MASVS documented-exception counts. release-metadata.json says
+          # which gates passed; this says what was accepted on the way.
+          residual_file="${RUNNER_TEMP:-/tmp}/residual-risk.json"
+          (cd backend && go run ./cmd/residualrisk -out "$residual_file")
           jq -n \
             --arg version "$VERSION" \
             --argjson migration_version "$MIGRATION_VERSION" \
@@ -606,6 +675,8 @@ jobs:
             --argjson resumed "${RESUME:-false}" \
             --arg mandatory_gates "${MANDATORY_GATES:-unknown}" \
             --arg asvs_reverification "${ASVS_REVERIFICATION:-n/a (rc)}" \
+            --arg adversarial_delta "${ADVERSARIAL_DELTA:-n/a (rc)}" \
+            --slurpfile residual "$residual_file" \
             '{
               version: $version,
               rc: $rc,
@@ -620,8 +691,10 @@ jobs:
                 citecheck: "pass",
                 releasegatecheck: "pass",
                 mandatory_gates: $mandatory_gates,
-                asvs_reverification: $asvs_reverification
-              }
+                asvs_reverification: $asvs_reverification,
+                adversarial_delta: $adversarial_delta
+              },
+              residual_risk: $residual[0]
             }' | tee release-metadata.json
           {
             echo "### Release metadata"

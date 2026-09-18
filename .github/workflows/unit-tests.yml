@@ -207,10 +207,11 @@ jobs:
   # REL-05 (issue #449): a PR that touches an operator-visible surface
   # (`changelog-relevant` in .github/filters.yaml — schema migrations, the
   # config surface, .env.example) must carry an `## Upgrade notes` /
-  # `## Breaking changes` block in its description, so cmd/releasenotes can
-  # harvest it into the release notes, or an explicit `no-changelog: <reason>`.
-  # Pull-request only (there is no PR body on a push); a skipped job reports
-  # success so it can be a required check. Policy: docs/changelog-policy.md.
+  # `## Security-relevant changes` / `## Breaking changes` block in its
+  # description, so cmd/releasenotes can harvest it into the release notes, or
+  # an explicit `no-changelog: <reason>`. Pull-request only (there is no PR body
+  # on a push); a skipped job reports success so it can be a required check.
+  # Policy: docs/changelog-policy.md.
   changelog-note:
     name: Changelog note for operator-visible change
     runs-on: ubuntu-latest
@@ -226,15 +227,15 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           set -eu
-          if printf '%s' "$PR_BODY" | grep -qiE '^#{1,6}[[:space:]]+(upgrade notes|breaking changes)[[:space:]]*$'; then
-            echo "Found an Upgrade notes / Breaking changes block."
+          if printf '%s' "$PR_BODY" | grep -qiE '^#{1,6}[[:space:]]+(upgrade notes|security-relevant changes|breaking changes)[[:space:]]*$'; then
+            echo "Found an operator-notes block (Upgrade notes / Security-relevant changes / Breaking changes)."
             exit 0
           fi
           if printf '%s' "$PR_BODY" | grep -qiE 'no-changelog:[[:space:]]*\S'; then
             echo "Found a 'no-changelog: <reason>' opt-out."
             exit 0
           fi
-          echo "::error::This PR changes an operator-visible surface (a migration, the config surface, or .env.example) but its description has no '## Upgrade notes' block and no 'no-changelog: <reason>' line. See docs/changelog-policy.md."
+          echo "::error::This PR changes an operator-visible surface (a migration, the config surface, or .env.example) but its description has no operator-notes block (## Upgrade notes / ## Security-relevant changes / ## Breaking changes) and no 'no-changelog: <reason>' line. See docs/changelog-policy.md."
           exit 1
 
   # Issue #630: the backend test suite is split into parallel legs
