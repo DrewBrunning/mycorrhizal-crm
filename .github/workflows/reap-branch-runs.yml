@@ -1,0 +1,92 @@
+name: Reap branch runs
+
+# GitHub does not cancel a branch's in-flight workflow runs when its pull
+# request closes or the branch is deleted. Per-PR `concurrency` (see the
+# `cancel-in-progress` groups on the pull_request workflows) only cancels a run
+# when a *new* run enters the same group, so the last run for a merged or
+# abandoned branch keeps going to completion. This reaper cancels the
+# remainder by hand.
+#
+# `pull_request: closed` covers merge/abandon; `delete` covers a branch deleted
+# on its own (and fires again after a merge when the head branch is
+# auto-deleted -- harmless, the second pass finds nothing in flight).
+#
+# Fork PRs: on `pull_request` from a fork the GITHUB_TOKEN is downgraded to
+# read-only, so `actions: write` is ignored and the merge half cannot run for
+# those. That is deliberate on top of the permission limit -- `head.ref` in a
+# fork payload names a branch in the *fork*, which could collide with a
+# same-named branch here and cancel the wrong runs, so the job refuses to act
+# on a PR whose head repo is not this repository. The `delete` half is a
+# repository event and always has write.
+
+on:
+  delete:
+  pull_request:
+    types: [closed]
+
+permissions:
+  # Read-only at the top level (StepSecurity "Restrict permissions for
+  # GITHUB_TOKEN"); the one write scope this job needs is granted on the job
+  # itself, the same shape as test-report.yml.
+  contents: read
+
+jobs:
+  cancel:
+    name: Cancel remaining runs for the branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      # Cancel runs via the API. There is no read-only way to do this, so
+      # Scorecard's Token-Permissions check flags this scope (advisory -- see
+      # docs/development/release-gates.md); the grant is necessary and
+      # job-scoped. The token is downgraded to read-only for fork PRs (see the
+      # header) -- for same-repo closes and every branch delete it holds.
+      actions: write
+    # `delete` fires for tags too, and `head.ref` is only meaningful for a
+    # same-repo PR. Both payload shapes are read through the same expression;
+    # the absent properties evaluate falsy.
+    if: >-
+      (github.event_name == 'delete' && github.event.ref_type == 'branch') ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+
+    steps:
+      - name: Cancel non-completed runs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # There is no checkout here, and `gh` resolves the repository from the
+          # git remote -- it does NOT read GITHUB_REPOSITORY -- so point it at
+          # this repo explicitly.
+          GH_REPO: ${{ github.repository }}
+          # delete carries the full ref (refs/heads/<branch>); the PR payload
+          # carries the bare head ref. Passed via env, never inline, so
+          # zizmor's template-injection audit has nothing to flag.
+          REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.event.ref }}
+        run: |
+          set -euo pipefail
+
+          branch="${REF#refs/heads/}"
+          if [ -z "$branch" ]; then
+            echo "No branch resolved from the event payload; nothing to do."
+            exit 0
+          fi
+          echo "Reaping runs for branch: ${branch}"
+
+          ids="$(gh run list --branch "$branch" --limit 100 \
+            --json databaseId,status \
+            --jq '.[] | select(.status != "completed") | .databaseId')"
+          if [ -z "$ids" ]; then
+            echo "No in-flight runs."
+            exit 0
+          fi
+
+          while IFS= read -r id; do
+            [ -n "$id" ] || continue
+            # A run can finish between the list and the cancel; that is a
+            # benign race, so a failed cancel is not a job failure.
+            echo "Cancelling run ${id}"
+            gh run cancel "$id" || echo "  (already gone)"
+          done <<< "$ids"
+
+          echo "Done."
