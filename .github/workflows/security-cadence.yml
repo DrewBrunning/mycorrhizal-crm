@@ -1,0 +1,83 @@
+name: Security stewardship cadence
+
+# Issues #955 / #956. Root secrets (JWT, at-rest master key, release App key,
+# Android signing keystore) and the recurring access-list / support-window
+# reviews have procedures and a written policy, but no calendar trigger: a
+# healthy deployment could keep the same root secret for years and no one would
+# be prompted to notice. docs/security/security-cadence.md is the register;
+# backend/cmd/securitycadence measures each entry against its interval.
+#
+# This is a reminder, not a rotator or a re-verification. It does not read any
+# secret and cannot know whether the recorded last_done date is true — updating
+# that cell when the work is done is the human discipline. A run goes red on the
+# monthly schedule (so GitHub notifies) and emits a warning annotation naming
+# every overdue obligation and the register.
+#
+# It is deliberately NOT a required check and NOT in
+# .github/release-gates.json: an overdue rotation must never block a fix or a
+# release. It is not on `continue-on-error` either (the #916 lesson: a standing
+# alarm with no failing exit path can never actually alarm).
+
+on:
+  schedule:
+    - cron: '0 8 1 * *' # 08:00 UTC on the 1st of every month
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-cadence
+  cancel-in-progress: false
+
+jobs:
+  cadence:
+    name: Security stewardship obligations are current
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # cmd/securitycadence exits 1 when an obligation is overdue, 2 when the
+      # register is malformed or a required obligation is missing. Both are
+      # surfaced distinctly — an overdue rotation is the point of this job, a
+      # broken register is a defect that needs fixing.
+      - name: Check the security-stewardship cadence
+        working-directory: backend
+        run: |
+          set +e
+          output="$(go run ./cmd/securitycadence 2>&1)"
+          code=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$code" -eq 0 ]; then
+            exit 0
+          fi
+          if [ "$code" -ne 1 ]; then
+            echo "::error title=securitycadence could not evaluate the register::exit $code — docs/security/security-cadence.md did not parse or is missing a required obligation; fix the register before trusting its silence."
+            exit 1
+          fi
+          echo "::warning title=Security-stewardship obligation overdue::At least one root-secret rotation or periodic review in docs/security/security-cadence.md is past its interval."
+          {
+            echo "## :warning: Security-stewardship obligation overdue"
+            echo
+            echo "One or more entries in \`docs/security/security-cadence.md\` are past their interval."
+            echo
+            echo '```'
+            printf '%s\n' "$output"
+            echo '```'
+            echo
+            echo "Do the overdue work (the register links the procedure), update its \`last_done\` cell, and open a PR. Issues #955 / #956."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1

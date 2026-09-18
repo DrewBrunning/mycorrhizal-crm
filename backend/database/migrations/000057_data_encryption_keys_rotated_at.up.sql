@@ -1,0 +1,13 @@
+-- At-rest key-age visibility (issue #955).
+--
+-- The at-rest envelope (000033) stores the wrapped DEK plus its `created_at`,
+-- but rotating the master key (cmd/rotate-at-rest-key -> atrest.RotateMasterKey)
+-- only rewrites `wrapped_dek`; `created_at` records when the DEK was first made
+-- and never moves. A diagnostics check that reported "key created 2 years ago"
+-- after a recent master-key rotation would be actively misleading.
+--
+--   * rotated_at -- when the master key (KEK) that wraps the DEK was last
+--     rotated. NULL means "never rotated since the DEK was created", so a reader
+--     falls back to created_at. No backfill is needed: the fallback is the
+--     correct age for every existing row.
+ALTER TABLE data_encryption_keys ADD COLUMN rotated_at DATETIME;

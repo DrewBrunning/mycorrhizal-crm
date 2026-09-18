@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"mycorrhizal/atrest"
 	"mycorrhizal/buildinfo"
 	"mycorrhizal/config"
 	"mycorrhizal/httputil"
@@ -106,6 +107,7 @@ func RunDiagnostics(ctx context.Context, db *gorm.DB, cfg config.Config) Diagnos
 		diagnosticsFilesystem(cfg),
 		diagnosticsBackup(db, cfg),
 		diagnosticsDataIntegrity(db, cfg),
+		diagnosticsAtRestKey(db),
 	)
 	out.Checks = append(out.Checks, diagnosticsNotifications(ctx, db, cfg)...)
 	out.Checks = append(out.Checks, diagnosticsIntegrations(ctx, db, cfg)...)
@@ -326,6 +328,46 @@ func diagnosticsDataIntegrity(db *gorm.DB, cfg config.Config) DiagnosticCheck {
 	default:
 		return DiagnosticCheck{Name: "data_integrity", Status: DiagStatusWarning, Message: d.Reason}
 	}
+}
+
+// atRestKeyRotationInterval is the ceiling for at-rest key-material age
+// surfaced by diagnosticsAtRestKey. It mirrors the `data_encryption_key`
+// interval in docs/security/security-cadence.md; the register is the canonical
+// policy and this constant is the in-process equivalent (a running server
+// cannot read a repo doc).
+const atRestKeyRotationInterval = 365 * 24 * time.Hour
+
+// diagnosticsAtRestKey reports how old this instance's at-rest key material is
+// (issue #955) — the operator-facing half of the rotation cadence. Before this,
+// a deployment could keep one master key forever with no in-product signal at
+// all. An unconfigured/unarmed database (no wrapped-DEK row) is ok, not a
+// warning; a key past the annual interval is a warning pointing at the
+// register. The message carries only dates and an age, never key material.
+func diagnosticsAtRestKey(db *gorm.DB) DiagnosticCheck {
+	if db == nil {
+		return DiagnosticCheck{Name: "at_rest_key", Status: DiagStatusWarning, Message: "cannot read at-rest key state"}
+	}
+	times, ok, err := atrest.ReadKeyMaterialTimes(db)
+	if err != nil {
+		logger.Error().Err(err).Msg("diagnostics: cannot read at-rest key timestamps")
+		return DiagnosticCheck{Name: "at_rest_key", Status: DiagStatusWarning, Message: "cannot read at-rest key state"}
+	}
+	if !ok {
+		return DiagnosticCheck{Name: "at_rest_key", Status: DiagStatusOK, Message: "no wrapped at-rest key stored yet"}
+	}
+	changed := times.LastChanged()
+	age := time.Since(changed)
+	if age < 0 {
+		age = 0
+	}
+	days := int(age.Hours() / 24)
+	if age > atRestKeyRotationInterval {
+		return DiagnosticCheck{Name: "at_rest_key", Status: DiagStatusWarning,
+			Message: fmt.Sprintf("at-rest key material is %d days old (last changed %s); rotate per docs/security/security-cadence.md",
+				days, changed.Format("2006-01-02"))}
+	}
+	return DiagnosticCheck{Name: "at_rest_key", Status: DiagStatusOK,
+		Message: fmt.Sprintf("at-rest key material last changed %s (%d days ago)", changed.Format("2006-01-02"), days)}
 }
 
 // diagnosticsNotifications reuses ComputeNotificationChannelHealth (#422) and

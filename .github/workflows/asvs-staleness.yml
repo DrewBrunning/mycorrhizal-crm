@@ -1,0 +1,84 @@
+name: ASVS attestation staleness
+
+# Issue #949. The ASVS/MASVS re-verification obligation is release-triggered
+# only: release.yml refuses to push a tag unless
+# docs/security/asvs-l2-verification-report.md's §10 changelog carries a new row
+# since the previous release tag (issue #608). If the release cadence stalls,
+# that published security claim ages with no warning at all — the exact failure
+# the report's §9 names (the v0.6.1 → 1.0.0 span).
+#
+# This is the missing calendar backstop: a weekly advisory job that alarms when
+# the newest dated line of the report (its header `| **Date** |` row or any §10
+# changelog row) is older than 90 days, pointing at §8's procedure. It does NOT
+# re-verify anything — the report's §9 deliberately keeps the full re-pass a
+# release obligation; this only answers "has anyone touched it lately".
+#
+# Advisory means what release-gates.json means by it: not a required check and
+# not a release gate, so it never blocks a merge or a publication. It is not
+# put on `continue-on-error` (the #916 lesson: a standing alarm with no failing
+# exit path can never actually alarm) — a stale run goes red on the schedule so
+# GitHub notifies, and emits a `::warning::` + step summary naming the fix.
+
+on:
+  schedule:
+    - cron: '0 7 * * 1' # 07:00 UTC every Monday
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: asvs-staleness
+  cancel-in-progress: false
+
+jobs:
+  staleness:
+    name: ASVS/MASVS attestation freshness
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # cmd/asvsstale exits 1 when the newest attestation date is older than
+      # the window, 2 when it cannot evaluate the report at all. Both are
+      # surfaced distinctly — a stale claim is the point of this job, a parse
+      # failure is a broken gate that needs fixing.
+      - name: Check attestation freshness
+        working-directory: backend
+        run: |
+          set +e
+          output="$(go run ./cmd/asvsstale -max-age-days 90 2>&1)"
+          code=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$code" -eq 0 ]; then
+            exit 0
+          fi
+          if [ "$code" -ne 1 ]; then
+            echo "::error title=asvsstale could not evaluate the report::exit $code — the report did not parse; fix the check before trusting its silence."
+            exit 1
+          fi
+          echo "::warning title=ASVS/MASVS attestation is stale::The verification report is older than 90 days. Re-verify per its section 8 and add a section 10 changelog row."
+          {
+            echo "## :warning: ASVS/MASVS attestation is stale"
+            echo
+            echo "No header or §10 changelog date in \`docs/security/asvs-l2-verification-report.md\` is within the last 90 days."
+            echo
+            echo '```'
+            printf '%s\n' "$output"
+            echo '```'
+            echo
+            echo "Re-verify per the report's §8 procedure and add a §10 changelog row, then re-run this job. Issue #949."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1

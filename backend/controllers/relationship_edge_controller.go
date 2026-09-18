@@ -47,7 +47,7 @@ func thinContactIsPet(edgeType string, isSource bool) bool {
 // by mutating the struct field directly — BeforeSave re-derives
 // Card/CRM/Passthrough from the flat fields on Create and would discard a
 // direct field mutation (CLAUDE.md backend trap 2).
-func resolveRelationshipEndpoint(tx *gorm.DB, userID uint, fieldName, id string, thin *models.ThinContactInput, edgeType string, isSource bool) (string, *apperrors.AppError) {
+func resolveRelationshipEndpoint(tx *gorm.DB, userID uint, fieldName, id string, thin *models.ThinContactInput, edgeType string, isSource bool, quota services.UserQuota) (string, *apperrors.AppError) {
 	switch {
 	case id != "" && thin != nil:
 		return "", apperrors.ErrInvalidInput(fieldName, "specify either an existing contact id or a new contact, not both")
@@ -61,6 +61,12 @@ func resolveRelationshipEndpoint(tx *gorm.DB, userID uint, fieldName, id string,
 		}
 		return contact.VCardUID, nil
 	case thin != nil:
+		// A thin contact is still a Contact row, so it must not be a way
+		// around PER_USER_CONTACT_LIMIT (issue #950). Checked inside the
+		// transaction so both endpoints are counted together.
+		if aerr := quota.CheckContactCreate(tx, userID); aerr != nil {
+			return "", aerr
+		}
 		contact := models.Contact{UserID: userID, Firstname: thin.Name, Gender: thin.Gender, Birthday: thin.Birthday}
 		if thinContactIsPet(edgeType, isSource) {
 			// Round-trip through the neutral Record so the kind rides the
@@ -87,18 +93,18 @@ func resolveRelationshipEndpoint(tx *gorm.DB, userID uint, fieldName, id string,
 // UpdateRelationshipEdge. edge.UserID/Status/Source/Confidence must already
 // be set by the caller before calling this (create: fresh values; update:
 // the pre-loaded row's existing values, left untouched).
-func applyRelationshipEdgeInput(db *gorm.DB, userID uint, edge *models.RelationshipEdge, input *models.RelationshipEdgeInput) error {
+func applyRelationshipEdgeInput(db *gorm.DB, userID uint, edge *models.RelationshipEdge, input *models.RelationshipEdgeInput, quota services.UserQuota) error {
 	sensitivity := input.Sensitivity
 	if sensitivity == "" {
 		sensitivity = models.RelationshipSensitivityNormal
 	}
 
 	return db.Transaction(func(tx *gorm.DB) error {
-		sourceID, aerr := resolveRelationshipEndpoint(tx, userID, "source_id", input.SourceID, input.SourceThin, input.Type, true)
+		sourceID, aerr := resolveRelationshipEndpoint(tx, userID, "source_id", input.SourceID, input.SourceThin, input.Type, true, quota)
 		if aerr != nil {
 			return aerr
 		}
-		targetID, aerr := resolveRelationshipEndpoint(tx, userID, "target_id", input.TargetID, input.TargetThin, input.Type, false)
+		targetID, aerr := resolveRelationshipEndpoint(tx, userID, "target_id", input.TargetID, input.TargetThin, input.Type, false, quota)
 		if aerr != nil {
 			return aerr
 		}
@@ -204,13 +210,22 @@ func CreateRelationshipEdge(c *gin.Context) {
 
 	db := c.MustGet("db").(*gorm.DB)
 
+	// Opt-in per-user quota (issue #950): the edge row itself, and any thin
+	// contact an endpoint creates, must both fit. The edge check runs before
+	// the transaction; the thin-contact check runs inside it.
+	quota := services.UserQuotaFromConfig(currentConfig(c))
+	if err := quota.CheckRelationshipEdgeCreate(db, userID); err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+
 	edge := models.RelationshipEdge{
 		UserID:     userID,
 		Source:     models.RelationshipSourceUserConfirmed,
 		Confidence: 1.0,
 		Status:     models.RelationshipStatusConfirmed,
 	}
-	if err := applyRelationshipEdgeInput(db, userID, &edge, input); err != nil {
+	if err := applyRelationshipEdgeInput(db, userID, &edge, input, quota); err != nil {
 		abortRelationshipEdgeError(c, err, "Failed to save relationship edge")
 		return
 	}
@@ -345,7 +360,7 @@ func UpdateRelationshipEdge(c *gin.Context) {
 		return
 	}
 
-	if err := applyRelationshipEdgeInput(db, userID, &edge, input); err != nil {
+	if err := applyRelationshipEdgeInput(db, userID, &edge, input, services.UserQuotaFromConfig(currentConfig(c))); err != nil {
 		abortRelationshipEdgeError(c, err, "Failed to update relationship edge")
 		return
 	}
