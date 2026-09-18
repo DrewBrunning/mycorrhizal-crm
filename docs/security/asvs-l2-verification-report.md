@@ -578,6 +578,15 @@ would get skipped; letting a published claim go unverified from v0.6.1 through 1
 this tier exists to prevent. #525 had no security criterion at all before this pass — it would have
 shipped the 1.0.0 stability contract on a claim last checked thousands of commits earlier.
 
+**The blind spot that leaves — and its calendar backstop (issue #949).** Every mechanism above is
+event-triggered, so if the release cadence stalls the published claim ages with no warning at all —
+the v0.6.1 → 1.0.0 span this section exists to prevent, one stalled cadence away from repeating.
+A weekly advisory job (`.github/workflows/asvs-staleness.yml`, backed by `backend/cmd/asvsstale`)
+alarms when this report's newest header or §10 date is older than 90 days and points back at §8.
+It is a staleness *reminder*, deliberately not a re-pass: §9's closing argument holds that a full
+calendar audit would fire on the wrong trigger and be closed with "looked, seemed fine", so the
+re-verification itself stays a release obligation.
+
 One thing about that model is worth being honest about: **none of the three cadences sees
 genuinely new surface.** They prove existing claims still hold; they cannot notice that something
 was added that *deserves* a row. What covers what today:
