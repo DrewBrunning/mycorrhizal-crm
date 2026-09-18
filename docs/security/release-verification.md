@@ -35,21 +35,25 @@ It:
    §10 changelog must carry a new row since the previous release tag, unless `ack_asvs_current`
    was supplied;
 3. registers the release in `backend/internal/schemafixture/releases.go` (skipped when the
-   version is already registered — only reachable via a dry run rehearsing the last shipped
-   version) and regenerates the committed schema dumps (`cmd/genschema`), asserting either exactly
-   one new dump (a version not yet registered) or, when registration was skipped, that regenerating
-   from the unchanged set reproduces every dump byte-identical — the frozen, append-only migration
-   chain must reproduce byte-identical either way (issue #929);
+   version is already registered — a dry run rehearsing the last shipped version, or a
+   *resumed* release whose fixture commit already landed; see below) and regenerates the
+   committed schema dumps (`cmd/genschema`), asserting either
+   exactly one new dump (a version not yet registered) or, when registration was skipped, that
+   regenerating from the unchanged set reproduces every dump byte-identical — the frozen,
+   append-only migration chain must reproduce byte-identical either way (issue #929);
 4. runs the schemafixture + genschema + releaselist test gates;
 5. writes `release-metadata.json` (version, migration version, **source revision**, workflow-run
-   URL, dry-run flag, gate results) — kept as a workflow artifact and, on a real run, attached
-   to the GitHub Release;
-6. commits those two files to `main` and pushes `main`;
+   URL, dry-run flag, resumed flag, gate results) — kept as a workflow artifact and, on a real
+   run, attached to the GitHub Release;
+6. commits those two files to `main` and pushes `main` (a no-op on a resumed release, whose
+   fixture commit is already on `main`);
 7. triggers the release-tier suites (for a final release, the two with no `push:main` trigger —
    `min-version-tests`, `zap-dast`; for an RC, all of them) and waits on **every** release-tier
    run for the release commit — an observed failure means the tag is never pushed; a 75-minute
    deadline with a run still going is a `::warning::` and the tag proceeds;
-8. pushes a **lightweight** tag at the fixture commit.
+8. pushes a **lightweight** tag at the release commit — the fixture commit for a fresh run, or
+   the checked-out tip for a resumed one (which carries whatever fix unblocked the earlier
+   attempt).
 
 The tag push triggers `docker-publish.yml`, which builds and signs everything listed below and
 creates the GitHub Release. That hand-off works only because the push uses a **GitHub App token**
@@ -62,8 +66,14 @@ Because the tag points at a real commit on `main` (the one carrying the dump), t
 `schema-fixture-gate` in `docker-publish.yml` passes and source↔release correspondence (below)
 is exact — there is no post-review "move the tag" step.
 
-If `docker-publish.yml` fails after the tag is pushed, re-run it from its own **Run workflow**
-button with the `tag` input; do not re-dispatch `release.yml` (it refuses an existing tag).
+**The workflow is re-entrant before the tag exists (issue #1142).** If a run fails after step 6
+(the fixture commit is on `main`) but before the tag is pushed — the common case being a release-tier
+suite that fails in step 7 — fix the cause on `main` and re-dispatch `release.yml` with the same
+version. Step 1 sees the version already registered with no tag and *resumes* instead of refusing;
+there is nothing to re-commit, the release commit becomes the new tip of `main` (so the fix is in the
+release), and the full mandatory gate battery and release-tier suites re-run before the tag. Once a
+tag exists, `release.yml` still refuses it (a released tag is never moved): if `docker-publish.yml`
+fails after the tag is pushed, re-run it from its own **Run workflow** button with the `tag` input.
 
 ### Release candidates and promotion (RC-02)
 
@@ -109,7 +119,7 @@ are a deliberate, reviewed tag change.
 | Android release APK | cosign keyless co-signature (additive, does not replace keystore signing) | Independent Sigstore-backed verifier on top of the GitHub attestation; what Scorecard's `Signed-Releases` check counts for the 8/10 tier | No — attached to the Release as `mycorrhizal-apk.sigstore.json` (a copy is also kept as a 30-day workflow artifact) |
 | Android release APK | SLSA build provenance from the `slsa-github-generator` reusable workflow (`apk-provenance` job) | A verifiable in-toto SLSA statement over the APK's sha256, signed keyless; what Scorecard's `Signed-Releases` check counts for the **10/10** tier | No — attached to the Release as `mycorrhizal-apk.intoto.jsonl` |
 | All release assets | `SHA256SUMS` — a plain `sha256sum` manifest over every asset on the Release, generated last by `verify-release-assets` | One file to check the integrity of everything you downloaded from the Release | No — attached to the Release as `SHA256SUMS` |
-| The release run itself | `release-metadata.json` — version, migration version, source revision, gate results | Which commit `release.yml` cut the release from and which gates it verified | No — attached to the Release (also a 90-day workflow artifact) |
+| The release run itself | `release-metadata.json` — version, migration version, source revision, dry-run/resumed flags, gate results | Which commit `release.yml` cut the release from and which gates it verified | No — attached to the Release (also a 90-day workflow artifact) |
 
 The one "expires" row is a workflow *run* artifact (`actions/upload-artifact`), not a GitHub
 Release asset — it is only downloadable from the specific `docker-publish.yml` run's Actions
