@@ -119,12 +119,46 @@ uncovered.
 - **Project coverage** — the `codecov/project` status stays informational
   (always green) by design.
 - **Pushes to `main`** — `only_pulls: true`.
-- **PRs with no changed covered lines** — a docs-only or workflow-only change
-  has nothing to gate.
+- **PRs with no changed covered lines** — a test-only or workflow-only change
+  still triggers a suite, so Codecov receives a report and posts all three
+  statuses (with the unaffected areas carried forward); there is simply
+  nothing to gate on that PR. A *coverage-measured* line is not required for
+  the statuses to appear.
 - **PRs that touch an area whose tests are path-gated off** — the flag carries
   forward (`carryforward: true` in `codecov.yml`) and unaffected areas are not
   re-measured; that area's status is simply not re-evaluated (a mixed PR can
   still fail on the one area it actually regressed).
+
+### The no-upload case (issue #1188)
+
+The one case the rules above do **not** cover is a PR that triggers *none* of
+the coverage-uploading suites, so no report reaches Codecov at all: a
+documentation-only change (`docs/**` maps to nothing in
+`.github/filters.yaml`, so every `Detect Changes` output is false), an
+infra-only one (the root `Dockerfile`, `docker/**`), or `codecov.yml` itself.
+Codecov then creates no `codecov/patch/*` check run, and the three **required**
+contexts sit at "Expected — waiting for status to be reported" indefinitely —
+the PR can only merge through a bypass. (Verified on #1187, docs-only: zero
+codecov check runs.) This is unrelated to whether the change has covered
+lines: a *test-only* PR runs a suite, uploads, and gets all three statuses.
+
+Two mechanisms close it, deliberately overlapping:
+
+1. **`codecov.yml` sets `coverage.status.default_rules.flag_coverage_not_uploaded_behavior: pass`** —
+   a status whose flag had no newly-uploaded coverage reports success instead
+   of being withheld. This is the Codecov-side fix and covers every no-upload
+   PR, including Dependabot's.
+2. **The `codecov-patch-stub` job in `unit-tests.yml`** — when none of
+   `backend`/`frontend`/`android`/`openapi`/`workflows` changed, it posts a
+   success commit status for each area directly, the same "always run, always
+   report" shape `reproducibility.yml` uses for the byte-reproducibility check
+   (issues #264/#448). It is the deterministic backstop, and the only one that
+   works for the maintainer's own PRs independent of Codecov behavior; it is
+   skipped for fork/Dependabot PRs, whose `GITHUB_TOKEN` is read-only.
+
+   `cmd/codecovcheck` (issue #1188) asserts the job's `PATCH_AREAS` equals
+   `codecov.yml`'s `coverage.status.patch` keys, so adding a fourth area
+   without arming the stub fails CI rather than stranding its context.
 
 ## Override path
 

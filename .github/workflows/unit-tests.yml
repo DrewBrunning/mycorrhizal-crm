@@ -53,6 +53,7 @@ jobs:
     outputs:
       backend: ${{ steps.resolve.outputs.backend }}
       frontend: ${{ steps.resolve.outputs.frontend }}
+      android: ${{ steps.resolve.outputs.android }}
       openapi: ${{ steps.resolve.outputs.openapi }}
       workflows: ${{ steps.resolve.outputs.workflows }}
       changelog-relevant: ${{ steps.resolve.outputs.changelog-relevant }}
@@ -87,14 +88,15 @@ jobs:
         id: resolve
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$EVENT_NAME" = "workflow_call" ]; then
-            backend=true; frontend=true; openapi=true; workflows=true; changelog=true
+            backend=true; frontend=true; android=true; openapi=true; workflows=true; changelog=true
           else
-            backend="$BACKEND_CHANGED"; frontend="$FRONTEND_CHANGED"; openapi="$OPENAPI_CHANGED"
-            workflows="$WORKFLOWS_CHANGED"; changelog="$CHANGELOG_RELEVANT"
+            backend="$BACKEND_CHANGED"; frontend="$FRONTEND_CHANGED"; android="$ANDROID_CHANGED"
+            openapi="$OPENAPI_CHANGED"; workflows="$WORKFLOWS_CHANGED"; changelog="$CHANGELOG_RELEVANT"
           fi
           {
             echo "backend=$backend"
             echo "frontend=$frontend"
+            echo "android=$android"
             echo "openapi=$openapi"
             echo "workflows=$workflows"
             echo "changelog-relevant=$changelog"
@@ -103,6 +105,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           BACKEND_CHANGED: ${{ steps.filter.outputs.backend }}
           FRONTEND_CHANGED: ${{ steps.filter.outputs.frontend }}
+          ANDROID_CHANGED: ${{ steps.filter.outputs.android }}
           OPENAPI_CHANGED: ${{ steps.filter.outputs.openapi }}
           WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
           CHANGELOG_RELEVANT: ${{ steps.filter.outputs.changelog-relevant }}
@@ -250,6 +253,66 @@ jobs:
           fi
           echo "::error::This PR changes an operator-visible surface (a migration, the config surface, or .env.example) but its description has no operator-notes block (## Upgrade notes / ## Security-relevant changes / ## Breaking changes) and no 'no-changelog: <reason>' line. See docs/changelog-policy.md."
           exit 1
+
+  # Issue #1188: Codecov only creates its `codecov/patch/<area>` check runs
+  # once it has received a coverage upload for the commit. On a PR whose
+  # changed paths trigger none of the coverage-uploading suites -- a
+  # documentation-only change (`docs/**` maps to nothing in
+  # .github/filters.yaml, so every `changes` output below is false), an
+  # infra-only one (the root Dockerfile, `docker/**`), codecov.yml itself --
+  # no report is uploaded for any flag, Codecov posts nothing at all, and the
+  # three required `codecov/patch/*` contexts sit at "Expected -- waiting for
+  # status to be reported" forever (observed on #1187, docs-only: zero
+  # codecov check runs; a docs-only PR can then only merge through a bypass).
+  #
+  # This job closes that gap the same way reproducibility.yml's go-binary job
+  # does for the byte-reproducibility check (#264/#448): it always runs on a
+  # PR and always reports. When no suite will upload coverage it posts a
+  # success commit status for each area, which is exactly the verdict Codecov
+  # would reach for a commit it never sees. It is the same-repo backstop for
+  # codecov.yml's `flag_coverage_not_uploaded_behavior: pass`, which covers
+  # the Dependabot PRs whose read-only GITHUB_TOKEN makes this job unable to
+  # post (the `head.repo.full_name` guard below).
+  #
+  # PATCH_AREAS must equal codecov.yml's coverage.status.patch keys;
+  # cmd/codecovcheck fails if the two drift, so adding a fourth patch area
+  # without adding it here is caught rather than silently stranded.
+  codecov-patch-stub:
+    name: Codecov patch no-op
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: changes
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      needs.changes.outputs.backend != 'true' &&
+      needs.changes.outputs.frontend != 'true' &&
+      needs.changes.outputs.android != 'true' &&
+      needs.changes.outputs.openapi != 'true' &&
+      needs.changes.outputs.workflows != 'true'
+    permissions:
+      contents: read
+      # Post the codecov/patch/* commit statuses. There is no read-only way to
+      # do this; the grant is job-scoped and needed only on the no-upload path.
+      statuses: write
+    steps:
+      - name: Post a success status for every unmeasured codecov area
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PATCH_AREAS: backend frontend android
+        run: |
+          set -euo pipefail
+          for area in $PATCH_AREAS; do
+            echo "codecov/patch/${area}: no coverage was uploaded for this commit; posting success (issue #1188)"
+            gh api --method POST "repos/${GH_REPO}/statuses/${SHA}" \
+              -f state=success \
+              -f context="codecov/patch/${area}" \
+              -f description="No coverage upload for this commit -- nothing to gate (issue #1188)" \
+              -f target_url="${RUN_URL}" >/dev/null
+          done
 
   # Issue #630: the backend test suite is split into parallel legs
   # (`backend-tests` matrix) so `controllers` and `services` — each ~20 min

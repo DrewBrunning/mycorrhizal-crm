@@ -33,6 +33,12 @@ func TestRunSuccessMessageShape(t *testing.T) {
 
 const fixtureDoc = "<!-- codecov-patch-status:begin -->\n\n```yaml\ncoverage:\n  status:\n    patch:\n      backend:\n        target: 95%\n        threshold: 5%\n        flags: [backend]\n        only_pulls: true\n```\n\n<!-- codecov-patch-status:end -->\n"
 
+// fixtureStubWorkflow is a minimal unit-tests.yml carrying the issue #1188
+// codecov-patch-stub job that codecovcheck also reads.
+func fixtureStubWorkflow(areas string) string {
+	return "jobs:\n  codecov-patch-stub:\n    steps:\n      - name: Post\n        env:\n          PATCH_AREAS: " + areas + "\n        run: echo\n"
+}
+
 // TestRunAtReportsTargetDrift exercises the "target changed without a
 // matching doc change" finding end to end through runAt, the same fixture
 // pattern cmd/governancecheck's test uses.
@@ -57,6 +63,7 @@ ignore:
   - "b/**"
 `)
 	write("docs/development/coverage.md", fixtureDoc)
+	write(".github/workflows/unit-tests.yml", fixtureStubWorkflow("backend"))
 
 	var out bytes.Buffer
 	code := runAt(&out, root)
@@ -93,7 +100,36 @@ ignore:
   - "a/**"
 `)
 	write("docs/development/coverage.md", fixtureDoc)
+	write(".github/workflows/unit-tests.yml", fixtureStubWorkflow("backend"))
 
 	var out bytes.Buffer
 	require.Equal(t, 0, runAt(&out, root))
+}
+
+// TestRunAtReportsStubDrift exercises the issue #1188 finding end to end: a
+// codecov.yml patch area the codecov-patch-stub job does not post for would
+// be stranded on a PR that uploads no coverage.
+func TestRunAtReportsStubDrift(t *testing.T) {
+	root := t.TempDir()
+	write := func(rel, body string) {
+		p := filepath.Join(root, rel)
+		require.NoError(t, os.MkdirAll(filepath.Dir(p), 0o755))
+		require.NoError(t, os.WriteFile(p, []byte(body), 0o644))
+	}
+	write("codecov.yml", `coverage:
+  status:
+    patch:
+      backend:
+        target: 95%
+        threshold: 5%
+        flags: [backend]
+        only_pulls: true
+`)
+	write("docs/development/coverage.md", fixtureDoc)
+	// Stub omits "backend" -- exactly the stranding drift.
+	write(".github/workflows/unit-tests.yml", fixtureStubWorkflow("frontend"))
+
+	var out bytes.Buffer
+	require.Equal(t, 1, runAt(&out, root))
+	assert.Contains(t, out.String(), "codecov-patch-stub's PATCH_AREAS does not list it")
 }

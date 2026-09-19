@@ -57,6 +57,17 @@ codecov:
 
 coverage:
   status:
+    # Issue #1188: on a PR that triggers none of the coverage-uploading suites
+    # (docs-only, infra-only, codecov.yml itself, ...) no report is uploaded
+    # for any flag and Codecov posts no codecov/patch/<area> check at all,
+    # stranding the three required statuses at "Expected -- waiting for status
+    # to be reported" forever. `pass` makes a status whose flag had no newly
+    # uploaded coverage report success instead of being withheld. The
+    # deterministic same-repo complement is the `codecov-patch-stub` job in
+    # unit-tests.yml; this setting is what covers Dependabot PRs, whose
+    # read-only GITHUB_TOKEN stops that job from posting.
+    default_rules:
+      flag_coverage_not_uploaded_behavior: pass
     project:
       default:
         informational: true
