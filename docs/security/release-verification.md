@@ -57,12 +57,15 @@ is exact — there is no post-review "move the tag" step.
 
 **The workflow is re-entrant before the tag exists (issue #1142).** If a run fails after the
 schema fixture is committed but before the tag is pushed — the common case being a composed gate that
-fails — fix the cause on `main` and re-dispatch `release.yml` with the same version. `preflight` sees
-the version already registered with no tag and *resumes* instead of refusing; the release commit
-becomes the checked-out tip of `main` (so the fix is in the release) and the full composed battery
-re-runs before the tag. Once a tag exists, `release.yml` still refuses it (a released tag is never
-moved): if `docker-publish.yml` fails after the tag is pushed, re-run it from its own **Run workflow**
-button with the `tag` input.
+fails — fix the cause on `main` and re-dispatch `release.yml` with the same version. `preflight`
+consults the durable **release-readiness artifact** the previous attempt uploaded (issue #1164) and,
+when one exists with no tag, *resumes* instead of refusing; the release commit becomes the checked-out
+tip of `main` (so the fix is in the release) and the full composed battery re-runs before the tag. If
+the artifact has aged out (90-day retention), the permanent git registration is the backstop, and the
+two are cross-checked fail-closed: an artifact that records the fixture as registered while
+`SupportedReleases` disagrees refuses the cut. Once a tag exists, `release.yml` still refuses it (a
+released tag is never moved): if `docker-publish.yml` fails after the tag is pushed, re-run it from
+its own **Run workflow** button with the `tag` input.
 
 ### Release candidates and promotion (RC-02)
 
@@ -109,6 +112,7 @@ are a deliberate, reviewed tag change.
 | Android release APK | SLSA build provenance from the `slsa-github-generator` reusable workflow (`apk-provenance` job) | A verifiable in-toto SLSA statement over the APK's sha256, signed keyless; what Scorecard's `Signed-Releases` check counts for the **10/10** tier | No — attached to the Release as `mycorrhizal-apk.intoto.jsonl` |
 | All release assets | `SHA256SUMS` — a plain `sha256sum` manifest over every asset on the Release, generated last by `verify-release-assets` | One file to check the integrity of everything you downloaded from the Release | No — attached to the Release as `SHA256SUMS` |
 | The release run itself | `release-metadata.json` — version, migration version, source revision, dry-run/resumed flags, gate results, and the residual-risk statement (open accept items, dependency-exception expiry, ASVS/MASVS exception counts) | Which commit `release.yml` cut the release from, which gates it verified, and what was accepted on the way (issue #953) | No — attached to the Release (also a 90-day workflow artifact) |
+| The candidate decision | `release-readiness.json` — version, source commit/ref, migration version, per-gate results, `fixture_registered`, the two ASVS/adversarial acknowledgement reasons, and the residual-risk statement (issue #1164) | What `release.yml`'s composed `validate` battery recorded before it tagged; the durable state a re-dispatch resumes from | No — attached to the Release by `docker-publish.yml` (also a 90-day workflow artifact) |
 
 The one "expires" row is a workflow *run* artifact (`actions/upload-artifact`), not a GitHub
 Release asset — it is only downloadable from the specific `docker-publish.yml` run's Actions

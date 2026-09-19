@@ -122,6 +122,8 @@ jobs:
     environment: release
     permissions:
       contents: write
+      # Read the release-readiness artifact (ADR 0021, issue #1164).
+      actions: read
 
     # Only on a real tag push. A manual run is for recovering images when the
     # release already exists -- re-running it would regenerate the notes and
@@ -293,6 +295,29 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           gh release upload "$RELEASE_TAG" release-metadata.json --clobber
+
+      # ADR 0021 (issue #1164): attach the release-readiness record too. It is
+      # produced by release.yml (the workflow that owns the candidate decision);
+      # a tag pushed by hand or by a recovery dispatch has none, so this warns
+      # and skips rather than failing. `gh api` needs actions: read (granted on
+      # this job).
+      - name: Attach the release-readiness record (if any)
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          name="release-readiness-${RELEASE_TAG}"
+          art_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${name}" \
+                      --jq '[.artifacts[] | select(.expired==false)] | sort_by(.created_at) | last | .id // empty' 2>/dev/null || true)"
+          if [ -z "$art_id" ]; then
+            echo "::warning::No release-readiness artifact for ${RELEASE_TAG} (tag not cut by release.yml, or it expired); skipping."
+            exit 0
+          fi
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${art_id}/zip" > "${RUNNER_TEMP}/readiness.zip"
+          unzip -o -q "${RUNNER_TEMP}/readiness.zip" -d "${RUNNER_TEMP}/readiness"
+          gh release upload "$RELEASE_TAG" "${RUNNER_TEMP}/readiness/release-readiness.json" --clobber
 
   # Builds the same signed release APK android-apk-build.yml's manual "release"
   # variant produces, and attaches it to this tag's GitHub Release so Obtainium

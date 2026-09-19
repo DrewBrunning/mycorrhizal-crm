@@ -147,3 +147,50 @@ jobs:
     uses: ./.github/workflows/zap-dast.yml
     permissions:
       contents: read
+
+  # ADR 0021 (issue #1164): the per-gate result record. Runs `always()` so it
+  # still reports when a composed gate failed, and uploads a small JSON the
+  # release run (same run graph) downloads and folds into the durable
+  # release-readiness artifact. Kept read-only; artifact upload uses the
+  # Actions runtime token, not GITHUB_TOKEN.
+  results:
+    if: always()
+    needs:
+      - unit-tests
+      - e2e-tests
+      - android-tests
+      - sast
+      - zizmor
+      - container-hardening
+      - min-version-tests
+      - migration-tests
+      - carddav-e2e
+      - chaos-tests
+      - schemathesis
+      - differential-e2e
+      - reference-clients-e2e
+      - zap-dast
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Collect per-gate results
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          set -eu
+          printf '%s' "$NEEDS" | jq 'with_entries(.value = .value.result)' > release-gate-results.json
+          cat release-gate-results.json
+          {
+            echo "### Composed gate results"
+            echo '```json'
+            cat release-gate-results.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload per-gate results (for the readiness artifact)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-gate-results
+          path: release-gate-results.json
+          retention-days: 5
