@@ -84,6 +84,11 @@ jobs:
       contents: read
       pull-requests: read
       actions: read
+      # Required by the SARIF-uploading scan jobs release-validate.yml
+      # composes; GitHub validates nested-job permissions statically against
+      # every caller in the chain. The upload step itself is skipped when
+      # composed (github.event_name == 'workflow_call').
+      security-events: write
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 

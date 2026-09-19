@@ -290,11 +290,12 @@ jobs:
   # workflows the per-PR/schedule paths run, not a second definition. This
   # replaces the dispatch-and-poll steps that used to live in this job.
   #
-  # The gate scope is read-only: contents/pull-requests read and actions read
-  # (cache introspection). The SARIF-uploading scans skip their upload when
-  # composed, so no write scope is granted to a reusable-workflow caller
-  # (OWASP/OpenSSF Token-Permissions). Recorded in
-  # asvs-l2-verification-report.md §9.
+  # The gate scope is read-only apart from the one scope the SARIF-uploading
+  # scan jobs declare: `security-events: write`. GitHub validates nested-job
+  # permissions statically against every caller in the reusable-workflow
+  # chain, so this job must grant it too, even though the upload step is
+  # skipped when composed. Everything else is contents/pull-requests/actions
+  # read. Recorded in asvs-l2-verification-report.md §9.
   validate:
     needs: preflight
     uses: ./.github/workflows/release-validate.yml
@@ -302,6 +303,7 @@ jobs:
       contents: read
       pull-requests: read
       actions: read
+      security-events: write
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
