@@ -193,6 +193,84 @@ func CheckIgnoreEntriesJustified(data []byte) []string {
 	return findings
 }
 
+// stubWorkflow is the shape of .github/workflows/unit-tests.yml that
+// ExtractStubAreas reads: only the codecov-patch-stub job's step env matters.
+type stubWorkflow struct {
+	Jobs map[string]struct {
+		Steps []struct {
+			Env map[string]string `yaml:"env"`
+		} `yaml:"steps"`
+	} `yaml:"jobs"`
+}
+
+// ExtractStubAreas pulls the PATCH_AREAS env of the `codecov-patch-stub`
+// job's status-posting step out of .github/workflows/unit-tests.yml. That
+// job (issue #1188) posts a success status for every area Codecov will not
+// measure on a PR that uploads no coverage; its list must equal codecov.yml's
+// coverage.status.patch keys, so a new patch area can't be added without also
+// arming the stub (and vice versa). The second return is any finding.
+func ExtractStubAreas(workflow []byte) ([]string, []string) {
+	var wf stubWorkflow
+	if err := yaml.Unmarshal(workflow, &wf); err != nil {
+		return nil, []string{fmt.Sprintf(".github/workflows/unit-tests.yml does not parse as YAML: %v", err)}
+	}
+	job, ok := wf.Jobs["codecov-patch-stub"]
+	if !ok {
+		return nil, []string{".github/workflows/unit-tests.yml has no jobs.codecov-patch-stub job (issue #1188)"}
+	}
+	for _, step := range job.Steps {
+		if areas, ok := step.Env["PATCH_AREAS"]; ok {
+			fields := strings.Fields(areas)
+			if len(fields) == 0 {
+				return nil, []string{"codecov-patch-stub's PATCH_AREAS env is empty (issue #1188)"}
+			}
+			return fields, nil
+		}
+	}
+	return nil, []string{"codecov-patch-stub has no step with a PATCH_AREAS env (issue #1188)"}
+}
+
+// CrossCheckStubAreas asserts the codecov-patch-stub job posts a status for
+// exactly codecov.yml's patch areas. A codecov.yml area missing from the stub
+// is the bug this guards: that area's required context would be stranded on a
+// PR with no upload. An area listed in the stub but not in codecov.yml is the
+// reverse drift.
+func CrossCheckStubAreas(codecovAreas map[string]PatchArea, stubAreas []string) []string {
+	var findings []string
+	stub := map[string]bool{}
+	for _, a := range stubAreas {
+		if stub[a] {
+			findings = append(findings, fmt.Sprintf("codecov-patch-stub PATCH_AREAS lists %q twice (issue #1188)", a))
+		}
+		stub[a] = true
+	}
+
+	names := map[string]bool{}
+	for n := range codecovAreas {
+		names[n] = true
+	}
+	for n := range stub {
+		names[n] = true
+	}
+	sorted := make([]string, 0, len(names))
+	for n := range names {
+		sorted = append(sorted, n)
+	}
+	sort.Strings(sorted)
+
+	for _, n := range sorted {
+		_, inCV := codecovAreas[n]
+		_, inStub := stub[n]
+		switch {
+		case inCV && !inStub:
+			findings = append(findings, fmt.Sprintf("codecov.yml has patch area %q but codecov-patch-stub's PATCH_AREAS does not list it -- codecov/patch/%s would be stranded on a PR that uploads no coverage (issue #1188)", n, n))
+		case !inCV && inStub:
+			findings = append(findings, fmt.Sprintf("codecov-patch-stub's PATCH_AREAS lists %q, which codecov.yml has no patch area for (issue #1188)", n))
+		}
+	}
+	return findings
+}
+
 // findIgnoreSequence walks a top-level mapping node for the "ignore" key and
 // returns its sequence value node, or nil if absent.
 func findIgnoreSequence(mapping *yaml.Node) *yaml.Node {

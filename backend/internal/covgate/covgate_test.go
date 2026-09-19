@@ -87,6 +87,51 @@ func TestCrossCheckPatchAreas(t *testing.T) {
 	assert.Contains(t, f[0], `documents patch area "android", which codecov.yml does not have`)
 }
 
+func TestExtractStubAreas(t *testing.T) {
+	areas, f := ExtractStubAreas([]byte("jobs:\n  codecov-patch-stub:\n    steps:\n      - env:\n          PATCH_AREAS: backend frontend android\n        run: echo\n"))
+	require.Empty(t, f)
+	assert.Equal(t, []string{"backend", "frontend", "android"}, areas)
+
+	_, f = ExtractStubAreas([]byte("jobs:\n  other:\n    steps: []\n"))
+	require.Len(t, f, 1)
+	assert.Contains(t, f[0], "no jobs.codecov-patch-stub job")
+
+	_, f = ExtractStubAreas([]byte("jobs:\n  codecov-patch-stub:\n    steps:\n      - run: echo\n"))
+	require.Len(t, f, 1)
+	assert.Contains(t, f[0], "no step with a PATCH_AREAS env")
+
+	_, f = ExtractStubAreas([]byte("not: [valid"))
+	require.Len(t, f, 1)
+	assert.Contains(t, f[0], "does not parse as YAML")
+}
+
+func TestCrossCheckStubAreas(t *testing.T) {
+	codecov := map[string]PatchArea{
+		"backend":  {Target: "95%"},
+		"frontend": {Target: "90%"},
+		"android":  {Target: "80%"},
+	}
+	assert.Empty(t, CrossCheckStubAreas(codecov, []string{"backend", "frontend", "android"}))
+
+	// A codecov.yml area missing from the stub: its required context would be
+	// stranded on a no-upload PR (issue #1188).
+	f := CrossCheckStubAreas(codecov, []string{"backend", "frontend"})
+	require.Len(t, f, 1)
+	assert.Contains(t, f[0], `"android"`)
+	assert.Contains(t, f[0], "does not list it")
+
+	// An area in the stub that codecov.yml does not define.
+	f = CrossCheckStubAreas(codecov, []string{"backend", "frontend", "android", "ios"})
+	require.Len(t, f, 1)
+	assert.Contains(t, f[0], `"ios"`)
+	assert.Contains(t, f[0], "no patch area for")
+
+	// A duplicate entry in the stub.
+	f = CrossCheckStubAreas(codecov, []string{"backend", "backend", "frontend", "android"})
+	require.Len(t, f, 1)
+	assert.Contains(t, f[0], "lists \"backend\" twice")
+}
+
 func TestExtractDocPatchStatusBlock(t *testing.T) {
 	doc := "prose\n<!-- codecov-patch-status:begin -->\n```yaml\ncoverage:\n  status:\n    patch:\n      backend:\n        target: 95%\n```\n<!-- codecov-patch-status:end -->\nmore prose\n"
 	block, f := ExtractDocPatchStatusBlock(doc)
@@ -145,6 +190,8 @@ func TestCommittedCodecovYAMLIsConsistent(t *testing.T) {
 	require.NoError(t, err)
 	docBytes, err := os.ReadFile(filepath.Join(root, "docs/development/coverage.md"))
 	require.NoError(t, err)
+	workflowBytes, err := os.ReadFile(filepath.Join(root, ".github/workflows/unit-tests.yml"))
+	require.NoError(t, err)
 
 	codecovAreas, f := ParsePatchAreas(codecovBytes, "codecov.yml")
 	require.Empty(t, f)
@@ -152,9 +199,12 @@ func TestCommittedCodecovYAMLIsConsistent(t *testing.T) {
 	require.Empty(t, f)
 	docAreas, f := ParsePatchAreas([]byte(docBlock), "docs/development/coverage.md")
 	require.Empty(t, f)
+	stubAreas, f := ExtractStubAreas(workflowBytes)
+	require.Empty(t, f)
 
 	assert.Empty(t, CrossCheckPatchAreas(codecovAreas, docAreas))
 	assert.Empty(t, CheckIgnoreEntriesJustified(codecovBytes))
+	assert.Empty(t, CrossCheckStubAreas(codecovAreas, stubAreas))
 
 	// Hand-verify: a target drift the doc doesn't reflect must be caught.
 	mutatedAreas := map[string]PatchArea{}

@@ -14,6 +14,11 @@
 //  2. Every entry in codecov.yml's ignore: list must carry a justifying `#`
 //     comment (docs/development/coverage.md's Override path already asks
 //     for this in prose; this makes it mechanical).
+//  3. The `codecov-patch-stub` job in .github/workflows/unit-tests.yml
+//     (issue #1188) must post a success status for exactly codecov.yml's
+//     patch areas, so adding an area to one without the other can't strand
+//     its required codecov/patch/<area> context on a PR that uploads no
+//     coverage.
 //
 // Exit 0: consistent. Exit 1: at least one finding. Exit 2: could not run.
 package main
@@ -29,8 +34,9 @@ import (
 )
 
 const (
-	codecovFile = "codecov.yml"
-	docFile     = "docs/development/coverage.md"
+	codecovFile  = "codecov.yml"
+	docFile      = "docs/development/coverage.md"
+	workflowFile = ".github/workflows/unit-tests.yml"
 )
 
 func main() {
@@ -80,8 +86,25 @@ func runAt(w io.Writer, root string) int {
 
 	findings = append(findings, covgate.CheckIgnoreEntriesJustified(codecovBytes)...)
 
+	// 3. Issue #1188: the `codecov-patch-stub` job in unit-tests.yml posts a
+	//    success status for every area Codecov will not measure (a PR that
+	//    uploads no coverage at all). Its PATCH_AREAS must be exactly
+	//    codecov.yml's patch areas, or a newly-added area's required context
+	//    is silently stranded the next time such a PR appears.
+	// #nosec G304 -- root is findRepoRoot's output (or a test temp dir), the leaf is a constant
+	workflowBytes, err := os.ReadFile(filepath.Join(root, workflowFile))
+	if err != nil {
+		fmt.Fprintln(w, "cannot read "+workflowFile+": "+err.Error())
+		return 2
+	}
+	stubAreas, f := covgate.ExtractStubAreas(workflowBytes)
+	findings = append(findings, f...)
+	if len(f) == 0 && codecovAreas != nil {
+		findings = append(findings, covgate.CrossCheckStubAreas(codecovAreas, stubAreas)...)
+	}
+
 	if len(findings) == 0 {
-		fmt.Fprintf(w, "codecov.yml OK: patch-status targets match %s, every ignore: entry is justified\n", docFile)
+		fmt.Fprintf(w, "codecov.yml OK: patch-status targets match %s, every ignore: entry is justified, the codecov-patch-stub areas match\n", docFile)
 		return 0
 	}
 	sort.Strings(findings)

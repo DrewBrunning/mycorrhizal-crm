@@ -28,6 +28,11 @@
 # an embedded copy of, not narrative documentation, so it must gate the
 # backend suite too (issue #977).
 #
+# A docs-only (or other no-upload) PR trips none of the coverage-uploading
+# filters, so Codecov posts no codecov/patch/* check and the required
+# contexts would be stranded -- unit-tests.yml's `codecov-patch-stub` job
+# posts them instead (issue #1188).
+#
 # License-compliance gates (issue #361). These are narrower than the area
 # filters above: they only fire when the dependency *manifest* changes, so a
 # source-only edit doesn't pay for dependency resolution + a license scan.
