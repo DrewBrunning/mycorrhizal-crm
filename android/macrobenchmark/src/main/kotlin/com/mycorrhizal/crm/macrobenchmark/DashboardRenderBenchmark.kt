@@ -19,7 +19,9 @@ import org.junit.runner.RunWith
  * the `docker-compose.test.yml` backend (same one the instrumented E2E suite
  * uses), waits for the dashboard, then scrolls the feed top-to-bottom and back
  * while frames are measured, so a recomposition regression in that composite
- * shows up as a jank trend.
+ * shows up as a jank trend. [SeedBackend.seedDashboard] populates that feed
+ * first — without it the dashboard renders only empty states, which fit on
+ * screen and give the scroll nothing to measure (issue #1179).
  *
  * `setupBlock` re-launches the activity each iteration; the persisted session
  * means only the first iteration actually walks the login UI.
@@ -32,7 +34,7 @@ class DashboardRenderBenchmark {
 
     @Test
     fun scrollDashboard() {
-        SeedBackend.ensureSeedUser()
+        SeedBackend.seedDashboard()
 
         benchmarkRule.measureRepeated(
             packageName = BenchmarkConfig.TARGET_PACKAGE,

@@ -14,12 +14,17 @@ internal object DashboardActions {
 
     private const val SCROLL_STEPS = 3
 
+    /** Generous: [LoginActions.ensureOnDashboard] normally waits the feed up
+     *  already, so this only covers the residual load race under CI
+     *  contention. */
+    private const val FEED_TIMEOUT_MS = 15_000L
+
     fun scrollFeed(device: UiDevice) {
         // The dashboard is a single LazyColumn — the one scrollable container on
         // screen once the app-bar title is up. `testTagsAsResourceId` is not
         // enabled app-wide, so match on the scrollable role rather than a res-id.
         val feed = checkNotNull(
-            device.wait(Until.findObject(By.scrollable(true)), 5_000),
+            device.wait(Until.findObject(By.scrollable(true)), FEED_TIMEOUT_MS),
         ) { "dashboard scroll container not found" }
 
         // Keep gestures clear of the system bars / app bar.
