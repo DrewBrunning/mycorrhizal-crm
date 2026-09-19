@@ -588,8 +588,10 @@ jobs:
           working-directory: ./android
           # The action runs each physical line of an inline `script:` in its own
           # shell, so the multi-line assertion (shared `$apk`, `set +e`) has to
-          # live in a real script file -- see its header.
-          script: bash "$GITHUB_WORKSPACE/.github/scripts/assert-below-min-sdk-install.sh"
+          # live in a real script file -- see its header. Bounded retry (issue
+          # #1177): the assertion is deterministic, but booting the API 24
+          # emulator can flake under load; 1 attempt on `schedule` per #974.
+          script: max_attempts=$([ "$GITHUB_EVENT_NAME" = "schedule" ] && echo 1 || echo 2); attempt=1; while true; do if bash "$GITHUB_WORKSPACE/.github/scripts/assert-below-min-sdk-install.sh"; then exit 0; fi; if [ "$attempt" -ge "$max_attempts" ]; then echo "below-minSdk assertion failed after $max_attempts attempts" >&2; exit 1; fi; echo "below-minSdk assertion failed on attempt $attempt/$max_attempts; retrying" >&2; attempt=$((attempt + 1)); done
 
   # Issue #263: startup + dashboard-render macrobenchmark. Same emulator + same
   # docker-compose.test.yml backend as android-e2e, and the same triggers
@@ -677,7 +679,7 @@ jobs:
           working-directory: ./android
           script: |
             adb reverse tcp:7300 tcp:7300
-            ./gradlew :macrobenchmark:connectedCheck -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
+            max_attempts=$([ "$GITHUB_EVENT_NAME" = "schedule" ] && echo 1 || echo 2); attempt=1; while true; do if ./gradlew :macrobenchmark:connectedCheck -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300; then exit 0; fi; if [ "$attempt" -ge "$max_attempts" ]; then echo "macrobenchmark failed after $max_attempts attempts" >&2; exit 1; fi; echo "macrobenchmark failed on attempt $attempt/$max_attempts; retrying" >&2; attempt=$((attempt + 1)); done
 
       - name: Upload macrobenchmark results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

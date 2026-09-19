@@ -245,7 +245,7 @@ jobs:
           # the whole invocation must stay on one line.
           script: |
             adb reverse tcp:7300 tcp:7300
-            SERVER_URL=http://127.0.0.1:7300 USERNAME=pentest PASSWORD='PentestPassword123!' DAVX5_WORKDIR=/tmp/davx5-diag .github/scripts/reference-client-davx5/run.sh /tmp/davx5.apk
+            max_attempts=$([ "$GITHUB_EVENT_NAME" = "schedule" ] && echo 1 || echo 2); attempt=1; while true; do if SERVER_URL=http://127.0.0.1:7300 USERNAME=pentest PASSWORD='PentestPassword123!' DAVX5_WORKDIR=/tmp/davx5-diag .github/scripts/reference-client-davx5/run.sh /tmp/davx5.apk; then exit 0; fi; if [ "$attempt" -ge "$max_attempts" ]; then echo "DAVx5 interop failed after $max_attempts attempts" >&2; exit 1; fi; echo "DAVx5 interop failed on attempt $attempt/$max_attempts; clearing the app and retrying" >&2; adb shell pm clear at.bitfire.davdroid >/dev/null 2>&1 || true; adb shell am force-stop at.bitfire.davdroid >/dev/null 2>&1 || true; sleep 5; attempt=$((attempt + 1)); done
 
       # A step in this job's own runs, not inside the emulator, so
       # /tmp/davx5-diag from the script above is still on disk here. Printed

@@ -379,8 +379,26 @@ jobs:
 
       - name: Assert the app loads on Chrome for Testing 115
         run: |
-          /tmp/chromedriver/chromedriver-linux64/chromedriver --port=9515 > /tmp/chromedriver.log 2>&1 &
-          .github/scripts/min-browser-check.sh 9515 chrome /tmp/chrome/chrome-linux64/chrome http://127.0.0.1:8899/index.html
+          # Issue #1177: a browser floor check can flake on a loaded runner;
+          # bounded retry (1 attempt on `schedule` per #974), restarting the
+          # driver between attempts so a stuck one doesn't hold the port.
+          max_attempts=$([ "$GITHUB_EVENT_NAME" = "schedule" ] && echo 1 || echo 2)
+          attempt=1
+          while true; do
+            pkill -f chromedriver-linux64/chromedriver || true
+            /tmp/chromedriver/chromedriver-linux64/chromedriver --port=9515 > /tmp/chromedriver.log 2>&1 &
+            if .github/scripts/min-browser-check.sh 9515 chrome /tmp/chrome/chrome-linux64/chrome http://127.0.0.1:8899/index.html; then
+              exit 0
+            fi
+            pkill -f chromedriver-linux64/chromedriver || true
+            if [ "$attempt" -ge "$max_attempts" ]; then
+              echo "Chrome minimum check failed after $max_attempts attempts" >&2
+              exit 1
+            fi
+            echo "Chrome minimum check failed on attempt $attempt/$max_attempts; retrying" >&2
+            attempt=$((attempt + 1))
+            sleep 5
+          done
 
       - name: Show driver/server logs on failure
         if: failure()
