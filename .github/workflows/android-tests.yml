@@ -353,10 +353,19 @@ jobs:
       # Issue #268: the connected suite is retried once on failure (the
       # org.gradle.test-retry plugin only covers JVM `Test` tasks, not AGP's
       # connected tasks, so this is the "equivalent" for instrumented E2E).
-      # When a retry is triggered the failing attempt's JUnit XML is preserved
-      # under app/build/flaky-attempt-*/ (uploaded below) — if the retry then
-      # passes, those files are the flake signal to triage.
+      #
+      # Two attempts, each a FRESH emulator boot. A retry loop inside `script`
+      # re-runs on the same booted emulator, which does not recover once it has
+      # started ANR'ing (the DAVx5 leg proved that: both flow attempts failed
+      # against one degraded emulator). A second emulator-runner step gives the
+      # retry a clean VM. Attempt 1 is continue-on-error except on `schedule`
+      # (#974: the nightly run must hard-fail, not stay green behind a retry);
+      # attempt 2 runs only when attempt 1 failed and we are not on `schedule`.
+      # When attempt 1 fails, its JUnit XML is preserved under
+      # app/build/flaky-attempt-1/ (uploaded below) as the flake signal.
       - name: Run instrumented E2E tests
+        id: android-e2e-attempt-1
+        continue-on-error: ${{ github.event_name != 'schedule' }}
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 35
@@ -364,23 +373,40 @@ jobs:
           arch: x86_64
           profile: pixel_6
           working-directory: ./android
+          disable-animations: true
           # Script lines run as individual sh -c commands (parseScript splits on
-          # newlines), so the retry loop below is a single line — no backslash
-          # line continuations. :app-scoped: a bare `connectedDebugAndroidTest`
+          # newlines); :app-scoped because a bare `connectedDebugAndroidTest`
           # would expand to every module, including libraries with no
           # instrumented tests whose connected tasks fail.
-          #
-          # Issue #974: max_attempts is 1 (no retry) on the nightly `schedule`
-          # run — GITHUB_EVENT_NAME is a default Actions env var, inherited by
-          # every sh -c the action spawns, not a script-local variable, so it
-          # survives the per-line-shell split. Without this, a flaky
-          # instrumented test could pass on retry every night forever with no
-          # run ever hard-failing on it.
           script: |
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
             adb reverse tcp:7302 tcp:7302
-            max_attempts=$([ "$GITHUB_EVENT_NAME" = "schedule" ] && echo 1 || echo 2); attempt=1; while true; do if ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300; then exit 0; fi; if [ "$attempt" -ge "$max_attempts" ]; then echo "connectedDebugAndroidTest failed after $max_attempts attempts" >&2; exit 1; fi; echo "connectedDebugAndroidTest failed on attempt $attempt/$max_attempts; preserving failing results and retrying"; mkdir -p "app/build/flaky-attempt-$attempt"; cp app/build/outputs/androidTest-results/connected/*.xml "app/build/flaky-attempt-$attempt/" 2>/dev/null || true; attempt=$((attempt + 1)); done
+            ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
+
+      - name: Preserve attempt-1 instrumented results (flake triage)
+        if: steps.android-e2e-attempt-1.outcome == 'failure'
+        working-directory: android
+        run: |
+          mkdir -p app/build/flaky-attempt-1
+          cp app/build/outputs/androidTest-results/connected/*.xml app/build/flaky-attempt-1/ 2>/dev/null || true
+
+      - name: Run instrumented E2E tests (retry, fresh emulator)
+        id: android-e2e-attempt-2
+        if: ${{ steps.android-e2e-attempt-1.outcome == 'failure' && github.event_name != 'schedule' }}
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          working-directory: ./android
+          disable-animations: true
+          script: |
+            adb reverse tcp:7300 tcp:7300
+            adb reverse tcp:7301 tcp:7301
+            adb reverse tcp:7302 tcp:7302
+            ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
 
       # Issue #268: if the suite passed but only after a retry, the preserved
       # flaky-attempt-* XMLs are the flake signal (the final connected run
@@ -498,9 +524,12 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # Issue #974: same non-retried nightly leg as android-e2e above —
-      # max_attempts is 1 on the `schedule` run.
+      # Two attempts, each a FRESH emulator boot (see android-e2e above).
+      # Attempt 1 is continue-on-error except on `schedule` (#974); attempt 2
+      # runs only when attempt 1 failed and we are not on `schedule`.
       - name: Run instrumented E2E tests (API 26)
+        id: android-e2e-min-sdk-attempt-1
+        continue-on-error: ${{ github.event_name != 'schedule' }}
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 26
@@ -508,11 +537,36 @@ jobs:
           arch: x86_64
           profile: pixel_6
           working-directory: ./android
+          disable-animations: true
           script: |
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
             adb reverse tcp:7302 tcp:7302
-            max_attempts=$([ "$GITHUB_EVENT_NAME" = "schedule" ] && echo 1 || echo 2); attempt=1; while true; do if ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300; then exit 0; fi; if [ "$attempt" -ge "$max_attempts" ]; then echo "connectedDebugAndroidTest failed after $max_attempts attempts" >&2; exit 1; fi; echo "connectedDebugAndroidTest failed on attempt $attempt/$max_attempts; preserving failing results and retrying"; mkdir -p "app/build/flaky-attempt-$attempt"; cp app/build/outputs/androidTest-results/connected/*.xml "app/build/flaky-attempt-$attempt/" 2>/dev/null || true; attempt=$((attempt + 1)); done
+            ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
+
+      - name: Preserve attempt-1 instrumented results (API 26, flake triage)
+        if: steps.android-e2e-min-sdk-attempt-1.outcome == 'failure'
+        working-directory: android
+        run: |
+          mkdir -p app/build/flaky-attempt-1
+          cp app/build/outputs/androidTest-results/connected/*.xml app/build/flaky-attempt-1/ 2>/dev/null || true
+
+      - name: Run instrumented E2E tests (API 26, retry, fresh emulator)
+        id: android-e2e-min-sdk-attempt-2
+        if: ${{ steps.android-e2e-min-sdk-attempt-1.outcome == 'failure' && github.event_name != 'schedule' }}
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 26
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          working-directory: ./android
+          disable-animations: true
+          script: |
+            adb reverse tcp:7300 tcp:7300
+            adb reverse tcp:7301 tcp:7301
+            adb reverse tcp:7302 tcp:7302
+            ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
 
       - name: Upload E2E results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -579,6 +633,8 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Assert install fails clearly on an API 24 device (below minSdk 26)
+        id: below-minsdk-attempt-1
+        continue-on-error: ${{ github.event_name != 'schedule' }}
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 24
@@ -586,12 +642,27 @@ jobs:
           arch: x86_64
           profile: pixel_6
           working-directory: ./android
+          disable-animations: true
+          # Two attempts, fresh emulator each (issue #1177): the assertion is
+          # deterministic, but booting the API 24 emulator can flake under load.
+          # Attempt 1 is continue-on-error except on `schedule` (#974).
           # The action runs each physical line of an inline `script:` in its own
-          # shell, so the multi-line assertion (shared `$apk`, `set +e`) has to
-          # live in a real script file -- see its header. Bounded retry (issue
-          # #1177): the assertion is deterministic, but booting the API 24
-          # emulator can flake under load; 1 attempt on `schedule` per #974.
-          script: max_attempts=$([ "$GITHUB_EVENT_NAME" = "schedule" ] && echo 1 || echo 2); attempt=1; while true; do if bash "$GITHUB_WORKSPACE/.github/scripts/assert-below-min-sdk-install.sh"; then exit 0; fi; if [ "$attempt" -ge "$max_attempts" ]; then echo "below-minSdk assertion failed after $max_attempts attempts" >&2; exit 1; fi; echo "below-minSdk assertion failed on attempt $attempt/$max_attempts; retrying" >&2; attempt=$((attempt + 1)); done
+          # shell, so the multi-line assertion (shared `$apk`, `set +e`) lives in
+          # a real script file -- see its header.
+          script: bash "$GITHUB_WORKSPACE/.github/scripts/assert-below-min-sdk-install.sh"
+
+      - name: Assert install fails clearly on an API 24 device (retry, fresh emulator)
+        id: below-minsdk-attempt-2
+        if: ${{ steps.below-minsdk-attempt-1.outcome == 'failure' && github.event_name != 'schedule' }}
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 24
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          working-directory: ./android
+          disable-animations: true
+          script: bash "$GITHUB_WORKSPACE/.github/scripts/assert-below-min-sdk-install.sh"
 
   # Issue #263: startup + dashboard-render macrobenchmark. Same emulator + same
   # docker-compose.test.yml backend as android-e2e, and the same triggers
@@ -669,7 +740,11 @@ jobs:
       # an emulator's numbers are still a useful relative trend and this job
       # never gates on them. The dashboard scenario reads the backend via
       # adb-reversed 127.0.0.1:7300.
+      # Two attempts, fresh emulator each (issue #1177). The job is advisory
+      # (`continue-on-error` above), so the retry just improves the trend
+      # signal; attempt 2 runs only when attempt 1 failed.
       - name: Run macrobenchmark
+        id: macrobenchmark-attempt-1
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 35
@@ -677,9 +752,25 @@ jobs:
           arch: x86_64
           profile: pixel_6
           working-directory: ./android
+          disable-animations: true
           script: |
             adb reverse tcp:7300 tcp:7300
-            max_attempts=$([ "$GITHUB_EVENT_NAME" = "schedule" ] && echo 1 || echo 2); attempt=1; while true; do if ./gradlew :macrobenchmark:connectedCheck -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300; then exit 0; fi; if [ "$attempt" -ge "$max_attempts" ]; then echo "macrobenchmark failed after $max_attempts attempts" >&2; exit 1; fi; echo "macrobenchmark failed on attempt $attempt/$max_attempts; retrying" >&2; attempt=$((attempt + 1)); done
+            ./gradlew :macrobenchmark:connectedCheck -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
+
+      - name: Run macrobenchmark (retry, fresh emulator)
+        id: macrobenchmark-attempt-2
+        if: ${{ steps.macrobenchmark-attempt-1.outcome == 'failure' }}
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          working-directory: ./android
+          disable-animations: true
+          script: |
+            adb reverse tcp:7300 tcp:7300
+            ./gradlew :macrobenchmark:connectedCheck -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
 
       - name: Upload macrobenchmark results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
