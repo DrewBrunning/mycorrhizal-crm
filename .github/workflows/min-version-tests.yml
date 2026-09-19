@@ -58,7 +58,13 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # The floor job runs the whole `go test ./...` suite; under the composed
+    # release run's load that is slow, and internal/schemafixture alone can
+    # take >10m (migration-tests.yml already runs that package with
+    # -timeout=25m). Give the per-binary timeout real headroom and the job
+    # room above it (issue #1177's follow-up: the RC2 floor leg timed out at
+    # the 10m default, not on a hang).
+    timeout-minutes: 45
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -84,7 +90,7 @@ jobs:
           go version
           go build ./...
           go vet ./...
-          go test ./...
+          go test -timeout 25m ./...
 
   go-below-minimum:
     name: Go below minimum fails clearly (1.25.5)
