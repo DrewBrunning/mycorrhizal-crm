@@ -249,6 +249,7 @@ func ownSeed(t *testing.T, db *gorm.DB) ownFixtures {
 func (h *ownHarness) req(method, path, body string) (int, string) {
 	h.t.Helper()
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
+	req.RemoteAddr = uniqueTestClientIP() + ":1234"
 	req.Header.Set("Content-Type", "application/json")
 	if h.token != "" {
 		req.Header.Set("Authorization", "Bearer "+h.token)
@@ -616,8 +617,9 @@ func TestBodyOwnershipMatrix(t *testing.T) {
 		ReminderTimezone: "UTC",
 	}
 
-	// Shared IP-keyed bucket, same concern as the sibling matrices: raise the
-	// burst so a 429 never masquerades as an authorization verdict.
+	// Same shared IP-keyed bucket concern as the sibling matrices: each request
+	// carries its own source IP (uniqueTestClientIP), but raise the burst
+	// anyway so a 429 never masquerades as an authorization verdict.
 	middleware.ConfigureAPIRateLimiter(time.Microsecond, 1_000_000)
 
 	fx := ownSeed(t, db)

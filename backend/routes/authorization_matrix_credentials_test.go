@@ -87,6 +87,7 @@ func dispatchBasic(router http.Handler, method, path, username, password string)
 	if err != nil {
 		return 0, ""
 	}
+	req.RemoteAddr = uniqueTestClientIP() + ":1234"
 	req.SetBasicAuth(username, password)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -124,8 +125,9 @@ func TestAuthorizationMatrixNonJWTCredentials(t *testing.T) {
 	}
 
 	// Same shared IP-keyed bucket concern as the sibling test: this issues a
-	// few hundred requests from one httptest IP. Raise the burst so a 429
-	// never masquerades as an authorization verdict.
+	// few hundred requests. Each now carries its own source IP
+	// (uniqueTestClientIP), but raise the burst anyway so a 429 never
+	// masquerades as an authorization verdict.
 	middleware.ConfigureAPIRateLimiter(time.Microsecond, 1_000_000)
 
 	// owner: the account the full-token and the cookie-JWT belong to, and the
@@ -431,6 +433,7 @@ func dispatchNoAuth(router http.Handler, method, path string) (int, string) {
 	if err != nil {
 		return 0, ""
 	}
+	req.RemoteAddr = uniqueTestClientIP() + ":1234"
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	return w.Code, w.Body.String()

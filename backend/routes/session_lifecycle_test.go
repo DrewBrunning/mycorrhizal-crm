@@ -152,6 +152,7 @@ const probePath = "/api/v1/users/2fa/status"
 func probe(t *testing.T, router http.Handler, token string) int {
 	t.Helper()
 	req, _ := http.NewRequest(http.MethodGet, probePath, nil)
+	req.RemoteAddr = uniqueTestClientIP() + ":1234"
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
@@ -170,6 +171,7 @@ func doJSON(t *testing.T, router http.Handler, method, path, token string, body 
 	}
 	req, err := http.NewRequest(method, path, bytes.NewReader(raw))
 	require.NoError(t, err)
+	req.RemoteAddr = uniqueTestClientIP() + ":1234"
 	req.Header.Set("Content-Type", "application/json")
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -317,6 +319,7 @@ func TestSessionLifecycle_LogoutRevokesThisDeviceOnly(t *testing.T) {
 
 	// /logout reads the sid from the auth_token *cookie*, not a bearer header.
 	req, _ := http.NewRequest(http.MethodPost, "/api/v1/logout", nil)
+	req.RemoteAddr = uniqueTestClientIP() + ":1234"
 	req.AddCookie(&http.Cookie{Name: "auth_token", Value: deviceA})
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)

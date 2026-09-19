@@ -1,8 +1,10 @@
 package routes
 
 import (
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"mycorrhizal/config"
@@ -13,6 +15,24 @@ import (
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
+
+// testClientIPSeq hands out a distinct client IP to every request this
+// package's tests issue. The auth rate limiter (middleware/rate_limiter.go) is
+// a process-wide bucket keyed by client IP, and gin's ClientIP() returns ""
+// for a request whose RemoteAddr is empty — which http.NewRequest leaves it —
+// so all such requests share a single bucket regardless of any
+// X-Forwarded-For they carry. A test that mints many sessions then exhausts
+// the shared burst and the next test gets a spurious 429 (issue #1186). Giving
+// every request its own source IP puts it in its own bucket, so an outcome
+// never depends on how many auth requests earlier tests made.
+var testClientIPSeq atomic.Uint32
+
+// uniqueTestClientIP returns a fresh, never-reused client IP for one test
+// request. Assign it to req.RemoteAddr (with a port) before ServeHTTP.
+func uniqueTestClientIP() string {
+	n := testClientIPSeq.Add(1)
+	return net.IPv4(10, byte(n>>16), byte(n>>8), byte(n)).String()
+}
 
 func testConfig() *config.Config {
 	return &config.Config{

@@ -647,10 +647,10 @@ func TestAuthorizationMatrix(t *testing.T) {
 		ReminderTimezone: "UTC",
 	}
 
-	// The general-API rate limiter is a shared process-global bucket keyed by
-	// client IP; every httptest request shares one IP, and this test issues
-	// ~1500 requests. Raise the burst so rate limiting never turns an authz
-	// verdict into a spurious 429.
+	// The general-API rate limiter is a process-global bucket keyed by client
+	// IP, and this test issues ~1500 requests. Each now carries its own source
+	// IP (uniqueTestClientIP), but raise the burst anyway so rate limiting can
+	// never turn an authz verdict into a spurious 429.
 	middleware.ConfigureAPIRateLimiter(time.Microsecond, 1_000_000)
 
 	// --- seed actors --------------------------------------------------------
@@ -763,6 +763,7 @@ func dispatch(router http.Handler, method, path, token string) int {
 	if err != nil {
 		return 0
 	}
+	req.RemoteAddr = uniqueTestClientIP() + ":1234"
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}

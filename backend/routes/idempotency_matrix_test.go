@@ -329,6 +329,7 @@ func TestIdempotencyMatrix_KeyedCreateReplaysThroughRealRouter(t *testing.T) {
 
 	post := func() *httptest.ResponseRecorder {
 		req, _ := http.NewRequest("POST", "/api/v1/contacts", bytes.NewReader(body))
+		req.RemoteAddr = uniqueTestClientIP() + ":1234"
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Idempotency-Key", "contact-create-key-1")
