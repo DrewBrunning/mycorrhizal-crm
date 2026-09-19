@@ -21,6 +21,7 @@ internal object LoginActions {
 
     private const val LOGIN_SCREEN_TIMEOUT_MS = 20_000L
     private const val DASHBOARD_TIMEOUT_MS = 45_000L
+    private const val DASHBOARD_FEED_TIMEOUT_MS = 45_000L
 
     /**
      * No-op if the dashboard is already showing (later benchmark iterations
@@ -30,6 +31,7 @@ internal object LoginActions {
      */
     fun ensureOnDashboard(device: UiDevice) {
         if (device.wait(Until.hasObject(By.text(BenchmarkConfig.DASHBOARD_TITLE)), 3_000) == true) {
+            waitForFeed(device)
             return
         }
 
@@ -45,9 +47,18 @@ internal object LoginActions {
         fields[1].replaceText(BenchmarkConfig.SEED_USERNAME)
         fields[2].replaceText(BenchmarkConfig.SEED_PASSWORD)
 
-        // Dismiss the IME so it cannot cover the button, then submit.
+        // Dismiss the IME so it cannot cover the button, then submit. Wait for
+        // the button rather than a single `findObject`: the accessibility tree
+        // is briefly unstable while the IME window is torn down, and a
+        // no-retry lookup there is exactly the "'Sign in' button vanished"
+        // flake this replaced.
         device.pressBack()
-        checkNotNull(device.findObject(By.text(SIGN_IN))) { "'$SIGN_IN' button vanished" }.click()
+        val signIn = checkNotNull(
+            device.wait(Until.findObject(By.text(SIGN_IN)), LOGIN_SCREEN_TIMEOUT_MS),
+        ) { "'$SIGN_IN' button did not reappear after dismissing the keyboard" }
+        // Let the IME-dismissal relayout settle before tapping coordinates.
+        device.waitForIdle()
+        signIn.click()
 
         check(
             device.wait(
@@ -59,6 +70,21 @@ internal object LoginActions {
                 "${DASHBOARD_TIMEOUT_MS}ms of sign-in"
         }
         device.waitForIdle()
+        waitForFeed(device)
+    }
+
+    /**
+     * Blocks until the dashboard's feed is actually scrollable. The app-bar
+     * title goes up as soon as the dashboard screen composes, while the widgets
+     * are still the loading skeleton (which is not a scroll container) — so
+     * `DashboardActions.scrollFeed`'s own 5s lookup used to race the load. The
+     * seeded feed (see [SeedBackend]) overflows the viewport, so the single
+     * dashboard `LazyColumn` reports scrollable once it renders.
+     */
+    private fun waitForFeed(device: UiDevice) {
+        checkNotNull(device.wait(Until.findObject(By.scrollable(true)), DASHBOARD_FEED_TIMEOUT_MS)) {
+            "dashboard feed did not render within ${DASHBOARD_FEED_TIMEOUT_MS}ms"
+        }
     }
 
     private fun UiObject2.replaceText(value: String) {
