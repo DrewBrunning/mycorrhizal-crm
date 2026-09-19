@@ -135,3 +135,25 @@
 # Scoped to this one route, not `.*`: a 40018 hit on any other route is a real
 # signal and must not be pre-accepted.
 40018 high /api/v1/register$  # false positive: register has no dynamic SQL (db.Model(...).Count with no predicates + a GORM-parameterised Create); 40018's boolean heuristic trips on the shared authLimiter flipping probes to 429 plus register's 201/409/400 ordering variance, not SQL
+
+# A fourth instance of the same 40018 boolean-based SQL-injection check, now on
+# the `password` parameter of POST /api/v1/check-password-strength: the
+# responses for the "1=1" and "1=2" payload variants "differed". False positive,
+# and the strongest case of the four.
+#
+# This endpoint has NO database access at all. controllers.CheckPasswordStrength
+# (backend/controllers/user_controller.go:331) binds a single `password` field
+# and calls middleware.EvaluatePasswordStrength
+# (backend/middleware/password_strength.go), which computes entropy, a 0-4
+# score and feedback as pure functions of the string — no GORM, no session, no
+# credentials. The route is classified "stateless zxcvbn utility" in
+# routes/session_minting_route_gate_test.go:102. Different payloads therefore
+# produce genuinely different scores/feedback by design, which is exactly the
+# response variance 40018's boolean heuristic misreads as SQL.
+#
+# ZAP's evidence field is empty, confidence is Medium (not High), and systemic
+# is False — the same signature as the three accepted entries above.
+#
+# Scoped to this one route, not `.*`: a 40018 hit on any other route is a real
+# signal and must not be pre-accepted.
+40018 high /api/v1/check-password-strength$  # false positive: stateless zxcvbn utility with no database access (CheckPasswordStrength -> EvaluatePasswordStrength, a pure function of the password); 40018's boolean heuristic misreads the score/feedback variance as SQL
