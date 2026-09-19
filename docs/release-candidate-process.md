@@ -59,8 +59,9 @@ construction.
 The per-PR gate workflows (`unit-tests`, `e2e-tests`, `android-tests`, `sast`, `zizmor`,
 `container-hardening`, `reproducibility`, `codeql`, `migration-tests`) run on `pull_request` into
 `release/**`, so an RC-fix PR is gated identically to a `main` PR. The slow **release-tier**
-suites are not per-PR on `main` and are not per-PR here either — `release.yml` dispatches and
-awaits all of them when it cuts each RC (they carry `workflow_dispatch`).
+suites are not per-PR on `main` and are not per-PR here either — `release.yml`'s `validate` job
+composes and awaits all of them (through the reusable `release-validate.yml`, ADR 0021) when it cuts
+each RC, in the same run graph rather than by dispatching and polling.
 
 ## What qualifies as an RC fix — the merge criterion
 
@@ -114,8 +115,8 @@ Then run **`promote-rc.yml`** with `rc_tag: vX.Y.Z-rc.N`.
 | Tag format gate (`validate-tag`) | ✅ | ✅ (pattern accepts `-rc.N`) |
 | `citecheck` (security-doc citations) | ✅ hard | ✅ hard |
 | `releasegatecheck` (gate registry coherent) | ✅ | ✅ |
-| Mandatory `release_gate: true` checks green on the commit | ✅ | ✅ |
-| Release-tier suites triggered + awaited | ✅ | ✅ (against `release/*`) |
+| Mandatory `release_gate: true` checks composed + green on the commit | ✅ | ✅ |
+| Release-tier suites composed + awaited | ✅ | ✅ (against `release/*`) |
 | `docker-publish.yml` `release-gate` + all `release-internal` jobs | ✅ | ✅ (identical) |
 | SLSA provenance + `SHA256SUMS` on the Release | ✅ | ✅ |
 | Schema-fixture registration (`SupportedReleases` + dump) | ✅ at tag time | ⏸ deferred to promotion — an RC ships the same schema, and no upgrade is supported *from* an RC |

@@ -5,9 +5,10 @@
 // other half — the open accept-with-reason items across the project's
 // justified ignore lists, the dependency-advisory exceptions that are still
 // open (and how soon each expires), and the current ASVS/MASVS
-// documented-exception counts. release.yml runs it while assembling
-// release-metadata.json and merges the JSON under a `residual_risk` key, so a
-// reader of a release artifact has the accepted residual in one place.
+// documented-exception counts. docker-publish.yml's create-release runs it
+// while assembling release-metadata.json and merges the JSON under a
+// `residual_risk` key, so a reader of a release artifact has the accepted
+// residual in one place (ADR 0021, issue #1163 -- moved there from release.yml).
 //
 // It is a pure reader: it adds no policy and owns no number the repository
 // does not already record.

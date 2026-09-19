@@ -1,0 +1,149 @@
+name: Release validation
+
+# ADR 0021 (issue #1162): the single composition of every gate a release must
+# pass. This reusable workflow is *the* definition of "is this commit
+# releasable" — `release.yml` calls it before tagging and
+# `docker-publish.yml`'s release-gate calls it before publishing, so the two
+# cannot drift into two different gate lists.
+#
+# It composes, with real `needs:` dependencies, the exact check workflows the
+# per-PR ruleset already requires (the `release_gate: true` gates in
+# .github/release-gates.json) plus the release-tier suites. No check is
+# re-implemented here: each `uses:` names the same workflow the per-PR/schedule
+# path runs, and `releasegatecheck` fails if any of them loses `workflow_call`.
+#
+# Called with `release_tier: true` (the default and the only value a release
+# uses), the release-tier suites are composed too. `release_tier: false` exists
+# for a caller that only wants the mandatory per-PR battery; nothing uses it
+# today, but it keeps the split explicit rather than implied by the caller.
+on:
+  workflow_call:
+    inputs:
+      release_tier:
+        description: 'Also compose the release-tier suites (a release gate must; a lighter caller need not).'
+        required: false
+        type: boolean
+        default: true
+    # The only non-automatic secret any member check needs. Passed explicitly
+    # rather than `secrets: inherit` — least privilege, and zizmor's
+    # secrets-inherit audit is a hard-gate finding. `GITHUB_TOKEN` is automatic
+    # and always available to a called workflow.
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+
+# Top level is read-only (OWASP/OpenSSF Token-Permissions: a workflow's
+# GITHUB_TOKEN defaults to least privilege, and write scopes are declared only
+# at the job that needs them -- the highest-scoring shape, per Scorecard's
+# Token-Permissions check).
+#
+# A called workflow cannot exceed its caller's permissions, and GitHub
+# validates that statically for the whole reusable-workflow chain -- so a
+# scope a nested job declares must be granted at *every* calling job above it.
+# The SARIF-uploading scans (sast, zizmor, container-hardening) declare
+# `security-events: write` on their scanning jobs, so the three call-jobs here
+# grant it too, and so do the two jobs that call this workflow (release.yml's
+# `validate` and docker-publish.yml's `release-gate`). The upload *steps* are
+# still gated on `github.event_name != 'workflow_call'`, so the scope is inert
+# in a composed run; only each scan's native push/PR/schedule run exercises it.
+# Recorded in asvs-l2-verification-report.md §9.
+permissions:
+  contents: read
+
+jobs:
+  # --- mandatory per-PR gates (release_gate: true) ------------------------
+  unit-tests:
+    uses: ./.github/workflows/unit-tests.yml
+    permissions:
+      contents: read
+      pull-requests: read
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  e2e-tests:
+    uses: ./.github/workflows/e2e-tests.yml
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+  android-tests:
+    uses: ./.github/workflows/android-tests.yml
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  sast:
+    uses: ./.github/workflows/sast.yml
+    permissions:
+      contents: read
+      pull-requests: read
+      # sast.yml's mobsfscan/semgrep jobs declare it for their SARIF upload;
+      # GitHub rejects a nested over-request, so the caller grants it (the
+      # upload step itself is skipped when composed).
+      security-events: write
+  zizmor:
+    uses: ./.github/workflows/zizmor.yml
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+      security-events: write
+  container-hardening:
+    uses: ./.github/workflows/container-hardening.yml
+    permissions:
+      contents: read
+      pull-requests: read
+      security-events: write
+
+  # --- release-tier suites -------------------------------------------------
+  # android-tests above already carries the "Android E2E (emulator, minSdk 26)"
+  # release-tier gate, so it is not called twice.
+  min-version-tests:
+    if: inputs.release_tier
+    uses: ./.github/workflows/min-version-tests.yml
+    permissions:
+      contents: read
+  migration-tests:
+    if: inputs.release_tier
+    uses: ./.github/workflows/migration-tests.yml
+    permissions:
+      contents: read
+      pull-requests: read
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  carddav-e2e:
+    if: inputs.release_tier
+    uses: ./.github/workflows/carddav-e2e.yml
+    permissions:
+      contents: read
+      pull-requests: read
+  chaos-tests:
+    if: inputs.release_tier
+    uses: ./.github/workflows/chaos-tests.yml
+    permissions:
+      contents: read
+      pull-requests: read
+  schemathesis:
+    if: inputs.release_tier
+    uses: ./.github/workflows/schemathesis.yml
+    permissions:
+      contents: read
+      pull-requests: read
+  differential-e2e:
+    if: inputs.release_tier
+    uses: ./.github/workflows/differential-e2e.yml
+    permissions:
+      contents: read
+      pull-requests: read
+  reference-clients-e2e:
+    if: inputs.release_tier
+    uses: ./.github/workflows/reference-clients-e2e.yml
+    permissions:
+      contents: read
+      pull-requests: read
+  zap-dast:
+    if: inputs.release_tier
+    uses: ./.github/workflows/zap-dast.yml
+    permissions:
+      contents: read

@@ -185,7 +185,7 @@ jobs:
           trivyignores: '.trivyignore'
 
       - name: Upload Trivy misconfig results to GitHub Security tab
-        if: always()
+        if: always() && github.event_name != 'workflow_call'
         uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
           sarif_file: 'trivy-config-results.sarif'
@@ -208,7 +208,7 @@ jobs:
           trivyignores: '.trivyignore'
 
       - name: Upload Trivy secret-scan results to GitHub Security tab
-        if: always()
+        if: always() && github.event_name != 'workflow_call'
         uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
           sarif_file: 'trivy-secret-results.sarif'

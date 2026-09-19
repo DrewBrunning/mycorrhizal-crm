@@ -18,7 +18,8 @@
 //  4. Every workflow the release composer must call (each release_gate:true
 //     gate and each release-tier suite) declares a top-level `workflow_call`
 //     trigger, so ADR 0021's composition is possible and a new mandatory gate
-//     cannot silently reintroduce the dispatch-and-poll path.
+//     cannot silently reintroduce the dispatch-and-poll path; and the composer
+//     (`release-validate.yml`) calls exactly that set — no omission, no extra.
 //
 // Exit 0: everything lines up. Exit 1: at least one finding. Exit 2: the check
 // itself could not run.
@@ -38,6 +39,7 @@ const (
 	registryFile = ".github/release-gates.json"
 	docFile      = "docs/development/release-gates.md"
 	workflowsDir = ".github/workflows"
+	composerFile = ".github/workflows/release-validate.yml"
 )
 
 func main() {
@@ -75,10 +77,17 @@ func run(w io.Writer) int {
 		b, readErr := os.ReadFile(filepath.Join(root, workflowsDir, name))
 		return string(b), readErr == nil
 	})...)
+	// #nosec G304 -- constant leaf under the repository root
+	composerBytes, err := os.ReadFile(filepath.Join(root, composerFile))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "releasegatecheck: read", composerFile, err)
+		return 2
+	}
+	findings = append(findings, releasegates.CheckComposer(reg, string(composerBytes))...)
 	findings = append(findings, releasegates.CrossCheckDoc(reg, string(docBytes))...)
 
 	if len(findings) == 0 {
-		fmt.Fprintf(w, "release gates OK: %d gates, all workflows exist and are composable, doc table matches (%s)\n",
+		fmt.Fprintf(w, "release gates OK: %d gates, all workflows exist and are composable, the composer covers them exactly, doc table matches (%s)\n",
 			len(reg.Gates), registryFile)
 		return 0
 	}

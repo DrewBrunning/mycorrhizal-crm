@@ -1,12 +1,13 @@
 # ADR 0021: Release validation by composition, not cross-run polling
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-09-18
 - **Depends on:** ADR 0005 (operational-event model), issue #446 (RC process), issue #447 (mandatory
   gates), issue #499 (single release workflow)
 - **Supersedes:** the dispatch-and-poll orchestration introduced across #499/#543/#913/#1013/#1150
   and the post-tag metadata tail of #953/#1159
-- **Implements:** issues #1161–#1166
+- **Implements:** issues #1161 (composable checks), #1162 (orchestrator), #1163 (Release ownership),
+  #1165 (`docker-publish` gate), #1166 (docs)
 
 ## Context
 
@@ -122,11 +123,18 @@ readiness artifact — never an upstream poll of a not-yet-existing downstream o
 ### 5. Credentials are minted at the point of use, per owner
 
 Every App-token mint moves to immediately before its single write, and each workflow holds only the
-permissions of its own jobs. The release job's permissions expand to the union of the **check**
-workflows it composes (all read-only except `security-events: write` for SARIF uploads); the publish
-workflow's `packages`/`id-token`/`attestations` writes stay scoped to publish and are never granted
-to the release job. This is recorded in the `asvs-l2-verification-report.md` §9 privileged-CI-credential
-row in the same change.
+permissions of its own jobs. The release composer is read-only at the **top level**, with write
+scopes declared only on the job that needs them (Scorecard's highest-scoring Token-Permissions
+shape). GitHub validates nested-job permissions statically across the whole reusable-workflow chain,
+so a scope a member check declares must be granted at every calling job above it: the three
+SARIF-uploading scans (`sast`, `container-hardening`, `zizmor`) keep their job-level
+`security-events: write`, and the call-jobs in `release-validate.yml` plus the two jobs that call it
+(`release.yml`'s `validate`, `docker-publish.yml`'s `release-gate`) grant it so the chain validates.
+The upload *step* in each scan is still gated on `github.event_name != 'workflow_call'`, so the
+scope is inert in a composed run; the upload only happens in each scan's native push/PR/schedule
+run. The publish workflow's `packages`/`id-token`/`attestations` writes stay scoped to publish and
+are never granted to the release job. This is recorded in the `asvs-l2-verification-report.md` §9
+privileged-CI-credential row in the same change.
 
 ### 6. One release at a time
 
@@ -135,8 +143,8 @@ the readiness artifact and the tag can never race.
 
 ## Consequences
 
-- **Deleted:** the dispatch-and-poll code in `release.yml`/`docker-publish.yml`, and
-  `.github/scripts/release-gate-state.sh` / `release-gate-decide.sh` plus their tests. The special
+- **Deleted:** the dispatch-and-poll code in `release.yml`/`docker-publish.yml`, and the release-gate
+  state/decide shell scripts plus their tests. The special
   cases #913/#1013/#1150 stop existing as code because they stop existing as a problem.
 - **Deleted:** the three 40-minute metadata-attach segments, the extra App-token re-mints, and the
   360-minute job timeout (#1159's stopgap can be lowered once the tail is gone).
@@ -148,7 +156,8 @@ the readiness artifact and the tag can never race.
   signing chain; `min-version-tests`/`zap-dast` remaining release-tier.
 - **Cost / limits:**
   - Reusable workflows nest at most **4 levels**, and a called workflow's `permissions` cannot exceed
-    the caller's — hence Decision 5's split.
+    the caller's — hence Decision 5's top-level-read-only composer, with the SARIF `security-events:
+    write` grant propagated to every calling job and the upload step itself gated off when composed.
   - A composed check runs *inside the caller's run*, so the release run's job count grows; that is
     the point (it is now one observable graph) and the 6-hour job ceiling is no longer load-bearing.
   - The GitHub App token is still required to push a tag that triggers `docker-publish.yml`.

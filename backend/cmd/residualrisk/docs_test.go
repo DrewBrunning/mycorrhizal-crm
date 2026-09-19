@@ -30,18 +30,24 @@ func findRepoFile(t *testing.T, rel string) string {
 }
 
 // TestReleaseWorkflowEmitsResidualRisk pins issue #953. The residual-risk
-// statement is only part of the release artifact if release.yml runs the
-// command and merges its JSON under the documented key; without this pin,
-// deleting either half would leave the command orphaned and the artifact
-// silently missing what it promises.
+// statement is only part of the release artifact if the workflow assembling
+// release-metadata.json runs the command and merges its JSON under the
+// documented key; without this pin, deleting either half would leave the
+// command orphaned and the artifact silently missing what it promises.
+//
+// That workflow is docker-publish.yml's create-release, which owns the Release
+// and every asset on it (ADR 0021, issue #1163). The statement used to live in
+// release.yml; the pin follows the producer, not a filename that no longer
+// assembles the artifact.
 func TestReleaseWorkflowEmitsResidualRisk(t *testing.T) {
-	body, err := os.ReadFile(findRepoFile(t, ".github/workflows/release.yml"))
+	const rel = ".github/workflows/docker-publish.yml"
+	body, err := os.ReadFile(findRepoFile(t, rel))
 	if err != nil {
-		t.Fatalf("reading release.yml: %v", err)
+		t.Fatalf("reading %s: %v", rel, err)
 	}
 	for _, want := range []string{"cmd/residualrisk", "residual_risk"} {
 		if !bytes.Contains(body, []byte(want)) {
-			t.Errorf("release.yml must reference %q so release-metadata.json carries the residual-risk statement (issue #953)", want)
+			t.Errorf("%s must reference %q so release-metadata.json carries the residual-risk statement (issue #953)", rel, want)
 		}
 	}
 	// TestMainExitEndToEnd also reads every declared source from the real repo,
