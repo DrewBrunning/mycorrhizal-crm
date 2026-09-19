@@ -185,13 +185,11 @@ func TestSchedulerContention_ManyUsersOneWriter(t *testing.T) {
 var errLockBusy = errors.New("database is locked (5) (SQLITE_BUSY)")
 
 // isLockBusy reports whether err is SQLite's lock-busy backstop — the error
-// openDSN's busy_timeout produces when a writer waited the whole budget.
+// openDSN's busy_timeout produces when a writer waited the whole budget. It
+// delegates to the production detection (job_lock.go, issue #1176) so there is
+// a single busy-matcher behind both the CI retry harness and the lock retry.
 func isLockBusy(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "database is locked") || strings.Contains(msg, "sqlite_busy")
+	return isSQLiteBusy(err)
 }
 
 // retryLockBusyOnce runs attempt and retries it exactly once if — and only if
