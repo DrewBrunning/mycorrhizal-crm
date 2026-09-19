@@ -64,6 +64,7 @@ var SupportedReleases = []Release{
 	{Tag: "v0.8.6", Version: 56},
 	{Tag: "v0.8.7", Version: 56},
 	{Tag: "v0.8.8", Version: 57},
+	{Tag: "v0.9.0", Version: 57},
 }
 
 // DumpFile returns the committed schema-dump filename for a release, e.g.
