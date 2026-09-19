@@ -24,42 +24,25 @@ re-verification row is absent — recorded, not silent). `release-dry-run.yml` d
 `dry_run: true` against the last shipped version weekly and on demand, so this rehearsal is
 actually run by CI rather than only documented (issue #929).
 
-It:
+It, in three jobs (ADR 0021, [composition](../adrs/0021-release-validation-composition.md)):
 
-1. **verifies repository state** — the checkout is the exact tip of `origin/<ref>`;
-2. **runs the mandatory gate battery and refuses to go further on any failure** —
-   `go run ./cmd/citecheck` (security-doc citations resolve, issue #608); `go run
-   ./cmd/releasegatecheck` (the gate registry is coherent); a deterministic poll of every
-   `release_gate: true` context in `.github/release-gates.json` on the commit `main` is at;
-   the ASVS/MASVS re-verification obligation — `docs/security/asvs-l2-verification-report.md`'s
-   §10 changelog must carry a new row since the previous release tag, unless `ack_asvs_current`
-   was supplied; and the per-release adversarial-delta obligation — a release whose diff touched
-   a security-relevant surface class (a route, a migration, an outbound client, an authentication
-   path) must have a matching row in `docs/security/adversarial-deltas.md`, unless
-   `ack_adversarial_delta` was supplied (issue #953);
-3. registers the release in `backend/internal/schemafixture/releases.go` (skipped when the
-   version is already registered — a dry run rehearsing the last shipped version, or a
-   *resumed* release whose fixture commit already landed; see below) and regenerates the
-   committed schema dumps (`cmd/genschema`), asserting either
-   exactly one new dump (a version not yet registered) or, when registration was skipped, that
-   regenerating from the unchanged set reproduces every dump byte-identical — the frozen,
-   append-only migration chain must reproduce byte-identical either way (issue #929);
-4. runs the schemafixture + genschema + releaselist test gates;
-5. writes `release-metadata.json` (version, migration version, **source revision**, workflow-run
-   URL, dry-run flag, resumed flag, gate results, and the **residual-risk** statement — the open
-   accept-with-reason items across the project's justified ignore lists, the open
-   dependency-advisory exceptions and how soon each expires, and the ASVS/MASVS
-   documented-exception counts (issue #953) — kept as a workflow artifact and, on a real run,
-   attached to the GitHub Release;
-6. commits those two files to `main` and pushes `main` (a no-op on a resumed release, whose
-   fixture commit is already on `main`);
-7. triggers the release-tier suites (for a final release, the two with no `push:main` trigger —
-   `min-version-tests`, `zap-dast`; for an RC, all of them) and waits on **every** release-tier
-   run for the release commit — an observed failure means the tag is never pushed; a 75-minute
-   deadline with a run still going is a `::warning::` and the tag proceeds;
-8. pushes a **lightweight** tag at the release commit — the fixture commit for a fresh run, or
-   the checked-out tip for a resumed one (which carries whatever fix unblocked the earlier
-   attempt).
+1. **`preflight`** — validates the version string, that no such tag exists (a registered-but-untagged
+   version is *resumed*, issue #1142), that the checkout is the true tip of `ref`, and runs
+   `go run ./cmd/citecheck` and `go run ./cmd/releasegatecheck`.
+2. **`validate`** — calls the reusable
+   [`release-validate.yml`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/workflows/release-validate.yml),
+   which **composes every gate** — the `release_gate: true` per-PR checks and the release-tier suites —
+   as the same workflow files the per-PR/`push: main`/schedule paths run, with real `needs:`
+   dependencies. There is no polling. It also enforces the ASVS/MASVS re-verification row (issue #608)
+   and the per-release adversarial delta (issue #953) for a final release, each with a recorded
+   `ack_*` dispatch escape.
+3. **`release`** — regenerates and commits the schema fixture (final only; an RC skips it, see below),
+   runs the schemafixture/genschema/releaselist test gates, and pushes the tag with a GitHub App
+   token. `dry_run: true` runs all of the above except the commit/push/tag.
+
+`create-release` in `docker-publish.yml` then owns the GitHub Release and **every asset on it** —
+including `release-metadata.json` (ADR 0021, issue #1163), which is regenerated from the tagged tree
+there. No workflow waits for a Release another workflow creates.
 
 The tag push triggers `docker-publish.yml`, which builds and signs everything listed below and
 creates the GitHub Release. That hand-off works only because the push uses a **GitHub App token**
@@ -72,23 +55,23 @@ Because the tag points at a real commit on `main` (the one carrying the dump), t
 `schema-fixture-gate` in `docker-publish.yml` passes and source↔release correspondence (below)
 is exact — there is no post-review "move the tag" step.
 
-**The workflow is re-entrant before the tag exists (issue #1142).** If a run fails after step 6
-(the fixture commit is on `main`) but before the tag is pushed — the common case being a release-tier
-suite that fails in step 7 — fix the cause on `main` and re-dispatch `release.yml` with the same
-version. Step 1 sees the version already registered with no tag and *resumes* instead of refusing;
-there is nothing to re-commit, the release commit becomes the new tip of `main` (so the fix is in the
-release), and the full mandatory gate battery and release-tier suites re-run before the tag. Once a
-tag exists, `release.yml` still refuses it (a released tag is never moved): if `docker-publish.yml`
-fails after the tag is pushed, re-run it from its own **Run workflow** button with the `tag` input.
+**The workflow is re-entrant before the tag exists (issue #1142).** If a run fails after the
+schema fixture is committed but before the tag is pushed — the common case being a composed gate that
+fails — fix the cause on `main` and re-dispatch `release.yml` with the same version. `preflight` sees
+the version already registered with no tag and *resumes* instead of refusing; the release commit
+becomes the checked-out tip of `main` (so the fix is in the release) and the full composed battery
+re-runs before the tag. Once a tag exists, `release.yml` still refuses it (a released tag is never
+moved): if `docker-publish.yml` fails after the tag is pushed, re-run it from its own **Run workflow**
+button with the `tag` input.
 
 ### Release candidates and promotion (RC-02)
 
 An `-rc.N` version is a **release candidate** (full policy:
-[`docs/release-candidate-process.md`](../release-candidate-process.md)). `release.yml` runs the
-same gate battery for it, but skips steps 3–4 and 6 (the schema fixture is registered at
-promotion, not per-RC) and the ASVS §10-row gate (a final-release obligation). `docker-publish.yml`
-marks the RC's GitHub Release a **pre-release** and never `make_latest`, keeping it off the in-app
-update check (`/releases/latest` excludes pre-releases) and Obtainium.
+[`docs/release-candidate-process.md`](../release-candidate-process.md)). `release.yml` composes the
+same gate battery for it, but skips the schema-fixture registration (registered at promotion, not
+per-RC) and the ASVS §10-row gate (a final-release obligation). `docker-publish.yml` marks the RC's
+GitHub Release a **pre-release** and never `make_latest`, keeping it off the in-app update check
+(`/releases/latest` excludes pre-releases) and Obtainium.
 
 **Promotion** (`promote-rc.yml`, `workflow_dispatch`, input `rc_tag`) ships the *tested* artifact,
 not a rebuild: it re-tags the RC's container images **by digest**, copies every Release asset

@@ -35,105 +35,45 @@ for the `go run` command above.
 
 Four mechanisms, in order of when they fire:
 
-1. **Merge time** — the `main-protection` branch ruleset requires the per-PR check contexts, so
-   a failing gate cannot reach `main` in the first place (the merge-time counterpart is
+1. **Merge time** — the `main-protection` branch ruleset requires the per-PR check contexts, so a
+   failing gate cannot reach `main` in the first place (the merge-time counterpart is
    [#508](https://github.com/DrewBrunning/mycorrhizal-crm/issues/508)).
-2. **Cut time** — the [REL-06 workflow (#499)](https://github.com/DrewBrunning/mycorrhizal-crm/issues/499),
-   `release.yml`, is the single human action that cuts a release. Before it commits the schema
-   fixture or pushes anything it runs the mandatory gate battery: `go run ./cmd/citecheck` and
-   `go run ./cmd/releasegatecheck` directly; a deterministic poll of every `release_gate: true`
-   context on the commit `main` is at; the ASVS/MASVS re-verification obligation
-   ([#608](https://github.com/DrewBrunning/mycorrhizal-crm/issues/608)) — the report's §10
-   changelog must carry a new row since the previous release tag, unless the dispatch supplied
-   `ack_asvs_current` with a reason; and the per-release adversarial-delta obligation
-   ([#953](https://github.com/DrewBrunning/mycorrhizal-crm/issues/953)) — a release whose diff
-   touched a security-relevant surface class must have a matching row in
-   `docs/security/adversarial-deltas.md`, unless the dispatch supplied `ack_adversarial_delta`
-   with a reason. After the fixture commit it triggers and waits on the
-   release-tier suites (above). Any failure means no tag is pushed, so `docker-publish.yml`
-   never starts — and because the fixture commit may already be on `main` when that happens,
-   re-dispatching the same version resumes at the new `main` tip rather than refusing
-   ([#1142](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1142)). `dry_run: true` runs
-   this whole battery and stops before any write, and is
-   exercised automatically — not just documented — by `release-dry-run.yml` (weekly + on demand,
-   issue #929), which dispatches it against the last shipped release and fails if the rehearsal
-   fails.
 
-   **Dispatch, not just poll, for the mandatory per-PR gates**
-   ([#543](https://github.com/DrewBrunning/mycorrhizal-crm/issues/543)): a real RC cut found
-   every one of the 9 `release_gate: true` per-PR checks sitting at `missing` — not slow,
-   structurally absent — for the entire deadline. Root cause: `unit-tests.yml`, `e2e-tests.yml`,
-   `android-tests.yml`, `sast.yml`, `zizmor.yml`, and `container-hardening.yml` trigger on
-   `push: branches: [main]` only, never `release/**` (deliberately — a `push: release/**`
-   trigger would give cache-write access to anyone who can push the branch, exactly what
-   zizmor's cache-poisoning audit exists to catch). A final release (cut from `main`) already
-   gets a real `push:main`-triggered run of each on the exact release commit; an RC (cut from
-   `release/vX.Y.0`) never does. So before polling, this step now dispatches each mandatory
-   gate's workflow via `workflow_dispatch` against the release ref — skipping the dispatch only
-   when `push:main` already covers it — the same shape as the release-tier suites just above.
-   Each of those six workflows' path-gating (`changes` job) forces every area `true` on a
-   `workflow_dispatch` event, so the dispatched run actually exercises everything rather than
-   skipping for lack of a diff to gate on. The poll deadline moved from 30 to 75 minutes to
-   match: dispatched runs need real time now that they're genuinely executing (`Android
-   (Gradle)` alone budgets 40 minutes). Each dispatch's timestamp is recorded and, when reading
-   back check-run state, a gate ignores any check-run that started before its own most recent
-   dispatch this run (issue #1013) — re-dispatching the same workflow+ref more than once against
-   one commit (a retry while debugging, a re-run) leaves multiple check-runs sharing a name on
-   that commit, and an older one can read back `cancelled` (superseded by the workflow's own
-   `concurrency:` group) while the fresh dispatch is still in flight; without the cutoff that
-   stale conclusion looks like this run's result and hard-fails the gate before the new dispatch
-   ever gets a chance to complete.
-3. **Publication time** — `docker-publish.yml`'s **`release-gate`** job is the first thing that
-   runs on a tag push. Same dispatch-before-poll shape as cut time: a final release's mandatory
-   gates already ran via `push:main`, so this job dispatches them only for an RC tag, then polls
-   the release commit's check-runs and commit statuses for every gate marked `release_gate: true`.
-   The semantics are deliberately asymmetric:
-   - an **observed** `failure` / `cancelled` / `timed_out` / `action_required` on a mandatory
-     gate is a **hard block** — `create-release`, `build-and-push`, `build-android-apk`, and
-     `schema-fixture-gate` all `needs:` this job, so nothing publishes;
-   - **all gates green** (`success` / `neutral` / `skipped` — a path-skipped suite reports
-     success by design, #264) → pass;
-   - the **75-minute deadline** (was 60; see the #543 note above) is where "still not
-     reporting" splits into two outcomes that used to be conflated
-     ([#913](https://github.com/DrewBrunning/mycorrhizal-crm/issues/913) — REL-03 finding F3,
-     the highest-severity finding of the #502 independent review): a gate that **never
-     reported a check-run/commit-status at all on this commit** ("missing" — a disabled or
-     renamed workflow, a filter regression that skips the job entirely, a failed dispatch) is
-     a **hard block**, same as an observed failure; only a gate that **did start** and is
-     genuinely still running (`queued`/`in_progress`) gets a loud `::warning::` and lets
-     publication **proceed**. GitHub check timing (a slow fuzz leg, an aggregation job that
-     has not run yet) is not a quality signal — but the total absence of a check-run is,
-     because "no failure observed" and "never verified" are not the same claim. The
-     missing-vs-pending decision is made by
-     [`.github/scripts/release-gate-decide.sh`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/scripts/release-gate-decide.sh),
-     shared with the identical poll in `release.yml` (below) and pinned by
-     `.github/scripts/tests/release-gate-decide.test.sh`, so the two pollers cannot drift back
-     apart on this.
-     **"Missing" means the gate's *workflow* shows nothing in flight.** GitHub Actions
-     creates no check-run for a `needs:`-gated fan-in job until its dependencies conclude, so
-     `Backend (Go)` — the coverage fan-in over `backend-checks` + every `backend-tests` leg —
-     has no check-run while those legs are still running. On a busy `push: main` that can
-     outlast the deadline (many workflows queued at once), which would otherwise read as the
-     structural absence above and block a release that is merely early
-     ([#1150](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1150)). Both pollers
-     therefore build their per-gate state with
-     [`.github/scripts/release-gate-state.sh`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/scripts/release-gate-state.sh)
-     (pinned by `.github/scripts/tests/release-gate-state.test.sh`): a gate with no check-run
-     yet but a non-completed run of its owning workflow on this commit reports that run's
-     status (`queued`/`in_progress`) — timing — while a *completed* run with no check-run for
-     the gate still reports `missing`, preserving the #913 guard.
+2. **Cut time** — [`release.yml`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/workflows/release.yml)
+   (REL-06, #499) is the single human action that cuts a release. Its `preflight` job runs
+   `go run ./cmd/citecheck` and `go run ./cmd/releasegatecheck` directly; its `validate` job then
+   **composes every gate** through the reusable
+   [`release-validate.yml`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/workflows/release-validate.yml)
+   — the `release_gate: true` per-PR checks and the release-tier suites are invoked with `needs:`
+   dependencies as the *same workflow files* the per-PR/`push: main`/schedule paths run, so there is
+   one definition of each check and nothing to poll (ADR 0021, issue #1162). A failure stops the run
+   before the tag. Two release-only obligations are enforced in the `release` job before the tag: the
+   ASVS/MASVS re-verification changelog row ([#608](https://github.com/DrewBrunning/mycorrhizal-crm/issues/608))
+   and the per-release adversarial delta ([#953](https://github.com/DrewBrunning/mycorrhizal-crm/issues/953)),
+   each with a recorded `ack_*` dispatch escape. `dry_run: true` runs the whole battery and the
+   fixture regeneration but makes no commit, push, or tag, and is exercised weekly by
+   `release-dry-run.yml` ([#929](https://github.com/DrewBrunning/mycorrhizal-crm/issues/929)).
+
+3. **Publication time** — `docker-publish.yml`'s **`release-gate`** job calls the *same*
+   `release-validate.yml` before anything publishes (ADR 0021, issue #1165). Because the tag-triggered
+   path and the cut-time path compose one workflow, they cannot drift. `create-release`,
+   `build-android-apk`, and `schema-fixture-gate` `needs:` the gate (or the sibling
+   `release-gate-override` job), so a failed gate blocks publication. The **only** way past it is to
+   run `docker-publish.yml` from the Actions tab (**Run workflow**) with a non-empty
+   **`override_reason`**; the gate is skipped, `release-gate-override` records
+   `RELEASE GATE OVERRIDDEN by <actor>: <reason>` to the run summary, and publication proceeds —
+   explicit, logged, attributed. A tag **push** has no override path.
+
 4. **The `needs:` graph** — the `release-internal` gates enforce themselves: `build-and-push`
-   `needs: build-android-apk`, `create-release` `needs: build-android-apk`, everything
-   `needs: release-gate`. `verify-release-assets` is the final belt-and-suspenders check that
-   the APK and its cosign bundle actually landed on the Release and every image tag resolves.
+   `needs: schema-fixture-gate` + `build-android-apk`, `create-release` `needs: build-android-apk`,
+   `verify-release-assets` is the final belt-and-suspenders check that the APK, its cosign bundle,
+   the SLSA provenance, `release-metadata.json` and `SHA256SUMS` actually landed on the Release and
+   every image tag resolves.
 
-## Override policy
-
-The **only** way past a failed `release-gate` is to run `docker-publish.yml` from the Actions
-tab (**Run workflow**) with a non-empty **`override_reason`** input. The job then skips the poll
-and writes `RELEASE GATE OVERRIDDEN by <actor>: <reason>` to the run summary — explicit, logged,
-and attributed. A tag **push** has no override path at all. Nothing is ever a silently skipped
-job.
+**No gate is polled.** ADR 0021 replaced the dispatch-and-poll layer (and its
+`release-gate-state.sh` / `release-gate-decide.sh` special cases for missing check-runs, stale
+re-dispatches, and `needs:`-gated fan-in jobs) with `workflow_call` composition. See
+[ADR 0021](../adrs/0021-release-validation-composition.md) for why.
 
 ## The Android decision (issue #527)
 
@@ -195,11 +135,11 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `codecov/patch/frontend` | per-pr | yes | changed TypeScript lines are >= 90% covered. Merge-time only. | `unit-tests.yml` |
 | `codecov/patch/android` | per-pr | yes | changed Kotlin lines are >= 80% covered. Merge-time only. | `android-tests.yml` |
 | `Detect Changes` | per-pr | yes | the shared path-filter job completes; always green (structural). Required so path-skipped suites can be required checks (#264). | `unit-tests.yml` |
-| `Docs & security-doc citations` | per-pr | yes | citecheck + depexceptions + deprecations + docscheck + releasegatecheck all exit 0. Runs on every PR and nightly. `release_gate: true` — polled on the release commit, and `release.yml` also runs `citecheck` directly as a hard gate (#608). | `unit-tests.yml` |
+| `Docs & security-doc citations` | per-pr | yes | citecheck + depexceptions + deprecations + docscheck + releasegatecheck all exit 0. Runs on every PR and nightly. `release_gate: true` — composed by the release gate and re-asserted at cut time, where `release.yml` also runs `citecheck` directly as a hard gate (#608). | `unit-tests.yml` |
 | `Migration Tests` | per-pr | yes | every supported-release upgrade leg, adjacent hop, and down round-trip passes. Per-leg check names make polling impractical; the release commit only adds a frozen schema dump, which schema-fixture-gate verifies, and the push:main run covers the chain. | `migration-tests.yml` |
 | `Go binary reproducible` | per-pr | yes | two builds from different paths are byte-identical (REL-04). Runs on the release commit's push:main; not in the ruleset. | `reproducibility.yml` |
 | `validate-tag` | release-internal | yes | the pushed tag matches the versioning-policy pattern (REL-01, backend/internal/versionpolicy). Blocks every downstream job. | `docker-publish.yml` |
-| `release-gate` | release-internal | yes | dispatches each mandatory release_gate:true gate's workflow for an RC tag (#543 — a final release already got them via push:main); no mandatory gate is observed FAILED on the release commit; all-green passes; at the 75-minute deadline a gate that never reported a check-run at all is a hard block (#913), while a gate that started but is still running is a warning and publication proceeds (a needs:-gated fan-in job with no check-run yet but an owning workflow run in flight counts as running, not missing — #1150). A workflow_dispatch run with a non-empty override_reason skips the poll and records the override with the actor. | `docker-publish.yml` |
+| `release-gate` | release-internal | yes | calls the reusable `release-validate.yml` and blocks publication unless it passes: every `release_gate:true` per-PR check and every release-tier suite is composed with `needs:` (ADR 0021, issue #1165), so the tag-triggered path cannot drift from `release.yml`'s cut-time composition. A `workflow_dispatch` run with a non-empty `override_reason` skips the composed gate and the sibling `release-gate-override` job records the override with the actor. | `docker-publish.yml` |
 | `schema-fixture-gate` | release-internal | yes | a committed backend/database/testdata/schemas/<tag>.sql exists for a mycorrhizal-supported-series tag (MIG-01, #436/#529). | `docker-publish.yml` |
 | `build-and-push` | release-internal | yes | the multi-arch images build and push; each digest gets a cosign keyless signature, an SBOM, and SLSA build provenance. | `docker-publish.yml` |
 | `build-android-apk` | release-internal | yes | the release APK assembles, is keystore-signed, `apksigner verify` passes (and matches ANDROID_SIGNING_CERT_SHA256 when set), its versionCode equals the computed value and is > 1, a GH build-provenance attestation + a cosign bundle are produced and attached to the Release, and its sha256 subject is exported for the SLSA generator. | `docker-publish.yml` |

@@ -135,7 +135,7 @@
       "tier": "per-pr",
       "mandatory": true,
       "release_gate": true,
-      "criterion": "citecheck + depexceptions + deprecations + docscheck + releasegatecheck all exit 0. Runs on every PR and nightly, is polled on the release commit by the release-gate job, and the REL-06 workflow (release.yml) additionally runs `go run ./cmd/citecheck` directly as a hard gate (issue #608)."
+      "criterion": "citecheck + depexceptions + deprecations + docscheck + releasegatecheck all exit 0. Runs on every PR and nightly, is composed by the release-gate job (release-validate.yml), and the REL-06 workflow (release.yml) additionally runs `go run ./cmd/citecheck` directly as a hard gate (issue #608)."
     },
     {
       "name": "Migration Tests",
@@ -175,7 +175,7 @@
       "tier": "release-internal",
       "mandatory": true,
       "release_gate": false,
-      "criterion": "no mandatory release_gate:true gate is observed FAILED on the release commit; all-green passes; a 60-minute deadline with a gate still not reporting is a warning and publication proceeds (the deterministic trigger-and-wait is #499). A workflow_dispatch run with a non-empty override_reason skips the poll and records the override with the actor."
+      "criterion": "calls the reusable release-validate.yml and blocks publication unless it passes: every release_gate:true per-PR check and every release-tier suite is composed with `needs:` (ADR 0021, issue #1165), so the tag-triggered path cannot drift from release.yml's cut-time composition. A workflow_dispatch run with a non-empty override_reason skips the composed gate; the sibling release-gate-override job records the override with the actor."
     },
     {
       "name": "schema-fixture-gate",

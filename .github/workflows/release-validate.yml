@@ -1,0 +1,93 @@
+name: Release validation
+
+# ADR 0021 (issue #1162): the single composition of every gate a release must
+# pass. This reusable workflow is *the* definition of "is this commit
+# releasable" — `release.yml` calls it before tagging and
+# `docker-publish.yml`'s release-gate calls it before publishing, so the two
+# cannot drift into two different gate lists.
+#
+# It composes, with real `needs:` dependencies, the exact check workflows the
+# per-PR ruleset already requires (the `release_gate: true` gates in
+# .github/release-gates.json) plus the release-tier suites. No check is
+# re-implemented here: each `uses:` names the same workflow the per-PR/schedule
+# path runs, and `releasegatecheck` fails if any of them loses `workflow_call`.
+#
+# Called with `release_tier: true` (the default and the only value a release
+# uses), the release-tier suites are composed too. `release_tier: false` exists
+# for a caller that only wants the mandatory per-PR battery; nothing uses it
+# today, but it keeps the split explicit rather than implied by the caller.
+on:
+  workflow_call:
+    inputs:
+      release_tier:
+        description: 'Also compose the release-tier suites (a release gate must; a lighter caller need not).'
+        required: false
+        type: boolean
+        default: true
+    # The only non-automatic secret any member check needs. Passed explicitly
+    # rather than `secrets: inherit` — least privilege, and zizmor's
+    # secrets-inherit audit is a hard-gate finding. `GITHUB_TOKEN` is automatic
+    # and always available to a called workflow.
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+
+# The union of the member checks' scopes. A called workflow cannot exceed its
+# caller's permissions, so the calling job must grant this set; all members are
+# contents:read except `security-events: write` (SARIF upload in sast,
+# container-hardening, zizmor) and `actions: read` (e2e/android cache
+# introspection). Recorded in asvs-l2-verification-report.md §9.
+permissions:
+  contents: read
+  pull-requests: read
+  security-events: write
+  actions: read
+
+jobs:
+  # --- mandatory per-PR gates (release_gate: true) ------------------------
+  unit-tests:
+    uses: ./.github/workflows/unit-tests.yml
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  e2e-tests:
+    uses: ./.github/workflows/e2e-tests.yml
+  android-tests:
+    uses: ./.github/workflows/android-tests.yml
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  sast:
+    uses: ./.github/workflows/sast.yml
+  zizmor:
+    uses: ./.github/workflows/zizmor.yml
+  container-hardening:
+    uses: ./.github/workflows/container-hardening.yml
+
+  # --- release-tier suites -------------------------------------------------
+  # android-tests above already carries the "Android E2E (emulator, minSdk 26)"
+  # release-tier gate, so it is not called twice.
+  min-version-tests:
+    if: inputs.release_tier
+    uses: ./.github/workflows/min-version-tests.yml
+  migration-tests:
+    if: inputs.release_tier
+    uses: ./.github/workflows/migration-tests.yml
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  carddav-e2e:
+    if: inputs.release_tier
+    uses: ./.github/workflows/carddav-e2e.yml
+  chaos-tests:
+    if: inputs.release_tier
+    uses: ./.github/workflows/chaos-tests.yml
+  schemathesis:
+    if: inputs.release_tier
+    uses: ./.github/workflows/schemathesis.yml
+  differential-e2e:
+    if: inputs.release_tier
+    uses: ./.github/workflows/differential-e2e.yml
+  reference-clients-e2e:
+    if: inputs.release_tier
+    uses: ./.github/workflows/reference-clients-e2e.yml
+  zap-dast:
+    if: inputs.release_tier
+    uses: ./.github/workflows/zap-dast.yml

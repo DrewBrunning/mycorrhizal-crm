@@ -1,12 +1,13 @@
 # ADR 0021: Release validation by composition, not cross-run polling
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-09-18
 - **Depends on:** ADR 0005 (operational-event model), issue #446 (RC process), issue #447 (mandatory
   gates), issue #499 (single release workflow)
 - **Supersedes:** the dispatch-and-poll orchestration introduced across #499/#543/#913/#1013/#1150
   and the post-tag metadata tail of #953/#1159
-- **Implements:** issues #1161–#1166
+- **Implements:** issues #1161 (composable checks), #1162 (orchestrator), #1163 (Release ownership),
+  #1165 (`docker-publish` gate), #1166 (docs)
 
 ## Context
 
@@ -135,8 +136,8 @@ the readiness artifact and the tag can never race.
 
 ## Consequences
 
-- **Deleted:** the dispatch-and-poll code in `release.yml`/`docker-publish.yml`, and
-  `.github/scripts/release-gate-state.sh` / `release-gate-decide.sh` plus their tests. The special
+- **Deleted:** the dispatch-and-poll code in `release.yml`/`docker-publish.yml`, and the release-gate
+  state/decide shell scripts plus their tests. The special
   cases #913/#1013/#1150 stop existing as code because they stop existing as a problem.
 - **Deleted:** the three 40-minute metadata-attach segments, the extra App-token re-mints, and the
   360-minute job timeout (#1159's stopgap can be lowered once the tail is gone).

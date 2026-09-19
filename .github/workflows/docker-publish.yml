@@ -67,212 +67,51 @@ jobs:
           fi
           echo "Tag '$RELEASE_TAG' is a valid release tag."
 
-  # REL-03 (issue #447): the publication-time enforcement. Nothing else in this
-  # workflow runs until this job passes. It polls the release commit's
-  # check-runs for every gate marked `release_gate: true` in
-  # .github/release-gates.json and fails -- blocking every publish job that
-  # `needs:` it -- if any concluded failure/cancelled/timed-out, or if they do
-  # not all conclude inside the timeout. A `workflow_dispatch` run with a
-  # non-empty `override_reason` skips the poll and records the override.
-  # Rationale + the full gate list: docs/development/release-gates.md.
+  # REL-03 (issue #447): publication-time enforcement, now by composition
+  # (ADR 0021, issue #1165). Nothing else in this workflow runs until this
+  # passes. It calls the same reusable `release-validate.yml` that release.yml
+  # calls before tagging, so "is this commit releasable" has exactly one
+  # definition and the two cannot drift. A `workflow_dispatch` run with a
+  # non-empty `override_reason` skips the gate and records the override in the
+  # sibling `release-gate-override` job; the jobs that need this gate accept
+  # either outcome. Rationale + the full gate list:
+  # docs/development/release-gates.md.
   release-gate:
-    runs-on: ubuntu-latest
     needs: validate-tag
+    if: ${{ inputs.override_reason == '' }}
+    uses: ./.github/workflows/release-validate.yml
     permissions:
       contents: read
-      checks: read
-      statuses: read
-      # actions: write to `gh workflow run` the mandatory gates for an RC tag
-      # (issue #543) -- release/** never gets a push-triggered run of them,
-      # deliberately (see the dispatch step's own comment). Scoped to this
-      # workflow_dispatch/tag-push-only job with no PR path.
-      actions: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ env.RELEASE_TAG }}
-          persist-credentials: false
+      pull-requests: read
+      security-events: write
+      actions: read
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Enforce mandatory gates on the release commit
+  # The explicit, logged, attributed way past a failed gate (REL-03). Runs only
+  # when an operator supplied an `override_reason` on a workflow_dispatch; it
+  # records who bypassed the gate and why.
+  release-gate-override:
+    needs: validate-tag
+    if: ${{ inputs.override_reason != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Record the operator override
         env:
-          RELEASE_TAG: ${{ env.RELEASE_TAG }}
           OVERRIDE_REASON: ${{ inputs.override_reason }}
-          EVENT_NAME: ${{ github.event_name }}
           ACTOR: ${{ github.actor }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -eu
-          sha="$(git rev-parse HEAD)"
-          echo "Release commit: $sha ($RELEASE_TAG)"
-
-          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ -n "$OVERRIDE_REASON" ]; then
-            msg="RELEASE GATE OVERRIDDEN by ${ACTOR}: ${OVERRIDE_REASON}"
-            echo "::warning::${msg}"
-            echo "### :warning: ${msg}" >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-
-          mapfile -t want < <(jq -r '.gates[] | select(.release_gate == true) | .check_context' .github/release-gates.json)
-          if [ "${#want[@]}" -eq 0 ]; then
-            echo "::error::.github/release-gates.json has no release_gate:true gates -- refusing to publish a release with nothing gating it."
-            exit 1
-          fi
-          printf 'Polling %d mandatory gate(s):\n' "${#want[@]}"
-          printf '  - %s\n' "${want[@]}"
-          want_json="$(printf '%s\n' "${want[@]}" | jq -R . | jq -s .)"
-
-          # Issue #543: an RC tag (release/vX.Y.0) has no path to ever
-          # trigger these mandatory per-PR gate workflows for real --
-          # confirmed on a real RC cut, every one of the 9 gates sat at
-          # "missing" (never started, not merely slow) for the entire
-          # deadline. Root cause: these workflows trigger on `push: branches:
-          # [main]` only, never `release/**` -- deliberately, since a `push:
-          # release/**` trigger would give cache-write access to anyone who
-          # can push the branch, which is exactly what zizmor's
-          # cache-poisoning audit exists to catch. A final release tag was
-          # cut from main, so push:main already ran these for real on this
-          # exact commit; only an RC tag needs the explicit dispatch.
-          declare -A wf_since=()
-          if ! printf '%s' "$RELEASE_TAG" | grep -qE -- '-rc\.[0-9]+$'; then
-            echo "Final release tag -- mandatory gates already ran via push:main on ${sha}."
-          else
-            mapfile -t gate_wfs < <(jq -r '.gates[] | select(.release_gate == true) | .workflow' .github/release-gates.json | sort -u)
-            for wf in "${gate_wfs[@]}"; do
-              ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-              echo "  ${wf}: dispatching on ${RELEASE_TAG} (ignoring any check-run started before ${ts})"
-              gh workflow run "$wf" --ref "$RELEASE_TAG"
-              wf_since["$wf"]="$ts"
-            done
-          fi
-
-          # issue #1013: re-dispatching the same workflow+ref more than once
-          # against this exact commit (a re-run while debugging, a retry --
-          # this repo's own release/v0.7.0 cut history did exactly this)
-          # leaves multiple check-runs sharing one name on the commit, and an
-          # older one can be `cancelled` (superseded by the workflow's own
-          # concurrency group) while the fresh dispatch is still running.
-          # Observed for real: "CIS container hardening scan" read back
-          # completed/cancelled from a stale 13:08 attempt and hard-failed
-          # the gate immediately, seconds after a fresh dispatch that did not
-          # finish (success) until 13:24 -- the poll never got a chance to
-          # wait for it. Record each dispatch's timestamp and, below, ignore
-          # any check-run for that gate that started before its own
-          # workflow's most recent dispatch this run. Empty for the
-          # final-tag path above (no dispatch happens there, so no cutoff --
-          # push:main's single real check-run is trusted as before).
-          since_json='{}'
-          for wf in "${!wf_since[@]}"; do
-            since_json="$(jq -c --arg wf "$wf" --arg ts "${wf_since[$wf]}" '. + {($wf): $ts}' <<<"$since_json")"
-          done
-          since_json="$(jq -c --argjson wf_since "$since_json" '
-            [.gates[] | select(.release_gate == true) | select(.workflow as $w | $wf_since | has($w)) | {(.check_context): $wf_since[.workflow]}] | add // {}
-          ' .github/release-gates.json)"
-
-          # Enforcement semantics (deliberately asymmetric, see
-          # docs/development/release-gates.md):
-          #  - an observed failure/cancelled/timed_out/action_required on a
-          #    mandatory gate is a HARD BLOCK -- this is #447's core promise;
-          #  - all gates green -> pass;
-          #  - the deadline with a gate that never reported a check-run at
-          #    all ("missing" -- distinct from one that started and is just
-          #    slow) -> ALSO a hard block (issue #913, REL-03 finding F3:
-          #    absence on the release commit is a structural signal --
-          #    disabled/renamed workflow, a filter regression, a failed
-          #    dispatch -- not noise, and treating it the same as "still
-          #    running" made "no failure observed" silently equivalent to
-          #    "verified");
-          #  - the deadline with something that DID start but has not
-          #    concluded -> a loud WARNING, and publish proceeds. GitHub
-          #    check timing (a slow fuzz leg, an aggregation job that has
-          #    not run yet) is not a quality signal, but its absence is.
-          #    75 minutes (was 60) since dispatched runs now need real time
-          #    -- Android (Gradle) alone has a 40-minute timeout-minutes
-          #    budget -- matching the analogous poll in release.yml.
-          #  - the deadline with an aggregation/fan-in job that has genuinely
-          #    not run yet (GitHub creates no check-run for a needs:-gated job
-          #    until its dependencies conclude) is also timing, not absence:
-          #    the state builder consults the gate's owning workflow run and
-          #    reports queued/in_progress while one is in flight (issue #1150).
-          # The state classification and the missing-vs-pending decision are
-          # shared with that release.yml poll via
-          # .github/scripts/release-gate-state.sh and
-          # .github/scripts/release-gate-decide.sh (tested in
-          # .github/scripts/tests/) so the two pollers cannot drift apart on
-          # this again.
-          # $runs / $statuses / $workflow-runs can be several hundred KB on
-          # this repo (dozens of workflows, matrix legs) -- passing that
-          # through --argjson on the command line hits the exec argv-size limit
-          # (observed failing on a real ubuntu-latest runner well under the 2MB
-          # getconf ARG_MAX, presumably compounded by envp). The state builder
-          # routes them through --slurpfile instead, which reads via open(2),
-          # not argv.
-          runs_file="$(mktemp)"
-          statuses_file="$(mktemp)"
-          wfruns_file="$(mktemp)"
-          deadline=$(( $(date +%s) + 75 * 60 ))
-          while :; do
-            gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${sha}/check-runs" --jq '.check_runs' | jq -s 'add' > "$runs_file"
-            gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${sha}/status" --jq '[.statuses[] | {name: .context, status: "completed", conclusion: (if .state=="success" then "success" elif .state=="pending" then "" else .state end)}]' | jq -s 'add' > "$statuses_file"
-            gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${sha}&per_page=100" --jq '.workflow_runs' | jq -s 'add' > "$wfruns_file"
-            state="$(.github/scripts/release-gate-state.sh "$want_json" "$since_json" "$runs_file" "$statuses_file" "$wfruns_file" .github/release-gates.json)"
-
-            deadline_reached=false
-            [ "$(date +%s)" -ge "$deadline" ] && deadline_reached=true
-            decision_out="$(printf '%s' "$state" | .github/scripts/release-gate-decide.sh "$deadline_reached")"
-            decision="$(printf '%s\n' "$decision_out" | head -1)"
-            names="$(printf '%s\n' "$decision_out" | tail -n +2)"
-
-            case "$decision" in
-              FAIL_OBSERVED)
-                echo "::error::Mandatory release gate(s) FAILED on ${sha} -- refusing to publish:"
-                printf '%s' "$state" | jq -r '.[] | "  \(.name): \(.status)/\(.conclusion)"'
-                printf '%s\n' "$names" | sed 's/^/::error::failed gate: /'
-                exit 1
-                ;;
-              PASS)
-                echo "All ${#want[@]} mandatory gates passed on ${sha}."
-                {
-                  echo "### Release gate: all ${#want[@]} mandatory gates green on \`${sha}\`"
-                  printf '%s' "$state" | jq -r '.[] | "- `\(.name)`: \(.conclusion)"'
-                } >> "$GITHUB_STEP_SUMMARY"
-                exit 0
-                ;;
-              FAIL_MISSING)
-                echo "::error::Mandatory release gate(s) on ${sha} NEVER reported a check-run after the 75-minute deadline -- this is absence, not a slow check, and is refused rather than silently published:"
-                printf '%s' "$state" | jq -r '.[] | "  \(.name): \(.status)/\(.conclusion)"'
-                printf '%s\n' "$names" | sed 's/^/::error::missing gate: /'
-                {
-                  echo "### :x: Release gate: deadline reached, gate(s) never reported -- publish refused"
-                  printf '%s' "$state" | jq -r '.[] | "- `\(.name)`: \(.status)/\(.conclusion)"'
-                  echo ""
-                  echo "Use \`workflow_dispatch\` with a non-empty \`override_reason\` to bypass if this absence is expected."
-                } >> "$GITHUB_STEP_SUMMARY"
-                exit 1
-                ;;
-              WARN_PASS)
-                echo "::warning::Release gate: 75-minute deadline reached with gate(s) still running (none missing). No FAILED gate was observed, so publication proceeds -- verify these manually:"
-                printf '%s' "$state" | jq -r '.[] | "  \(.name): \(.status)/\(.conclusion)"'
-                {
-                  echo "### :warning: Release gate: deadline reached, no failure observed, published anyway"
-                  printf '%s' "$state" | jq -r '.[] | "- `\(.name)`: \(.status)/\(.conclusion)"'
-                } >> "$GITHUB_STEP_SUMMARY"
-                exit 0
-                ;;
-              POLL)
-                echo "Not concluded yet: $(printf '%s' "$names" | tr '\n' ',' | sed 's/,$//'); re-checking in 60s..."
-                sleep 60
-                ;;
-              *)
-                echo "::error::release-gate-decide.sh returned an unrecognized decision: ${decision}"
-                exit 1
-                ;;
-            esac
-          done
+          msg="RELEASE GATE OVERRIDDEN by ${ACTOR}: ${OVERRIDE_REASON}"
+          echo "::warning::${msg}"
+          echo "### :warning: ${msg}" >> "$GITHUB_STEP_SUMMARY"
 
   create-release:
     runs-on: ubuntu-latest
-    needs: [validate-tag, release-gate, build-android-apk]
+    needs: [validate-tag, release-gate, release-gate-override, build-android-apk]
     # #508: the protected `release` environment. Add required reviewers to it
     # (Settings -> Environments -> release) to gate publication behind a human;
     # until then it is a no-op. See docs/development/repo-governance.md.
@@ -283,7 +122,9 @@ jobs:
     # Only on a real tag push. A manual run is for recovering images when the
     # release already exists -- re-running it would regenerate the notes and
     # append a second copy of the Docker Images block over whatever is there.
-    if: github.event_name == 'push'
+    # `always()` + the explicit result check let it proceed when either the
+    # composed gate passed or an operator recorded an override (ADR 0021 / #1165).
+    if: ${{ always() && github.event_name == 'push' && (needs.release-gate.result == 'success' || needs.release-gate-override.result == 'success') }}
 
     steps:
       - name: Checkout repository
@@ -399,6 +240,56 @@ jobs:
             ${{ steps.images.outputs.frontend }}
             ```
 
+      # ADR 0021 (issue #1163): the workflow that owns the Release owns every
+      # asset on it, including release-metadata.json. Moving this here from
+      # release.yml removes the forward dependency where that workflow waited
+      # (in three 40-minute, token-re-minting segments) for a Release this one
+      # had not created yet -- the tail that #1158/#1159 patched around. The
+      # residual-risk statement is regenerated from the tagged tree, so there is
+      # one producer and no cross-run artifact fetch.
+      - name: Emit and attach release metadata
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          migver=""
+          for f in backend/database/migrations/[0-9]*_*.up.sql; do
+            [ -f "$f" ] || continue
+            n="${f##*/}"; n="${n%%_*}"; n=$((10#$n))
+            if [ -z "$migver" ] || [ "$n" -gt "$migver" ]; then migver="$n"; fi
+          done
+          residual="${RUNNER_TEMP:-/tmp}/residual-risk.json"
+          (cd backend && go run ./cmd/residualrisk -out "$residual")
+          rc=false
+          case "$RELEASE_TAG" in *-rc.*) rc=true ;; esac
+          jq -n \
+            --arg version "$RELEASE_TAG" \
+            --argjson migration_version "${migver:-0}" \
+            --arg source_revision "$(git rev-parse HEAD)" \
+            --arg workflow_run "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --arg cut_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --argjson rc "$rc" \
+            --slurpfile residual "$residual" \
+            '{
+              version: $version,
+              rc: $rc,
+              migration_version: $migration_version,
+              source_revision: $source_revision,
+              workflow_run: $workflow_run,
+              cut_at: $cut_at,
+              gates: { release_validation: "passed (release-validate.yml composition)" },
+              residual_risk: $residual[0]
+            }' | tee release-metadata.json
+          {
+            echo "### Release metadata"
+            echo '```json'
+            cat release-metadata.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          gh release upload "$RELEASE_TAG" release-metadata.json --clobber
+
   # Builds the same signed release APK android-apk-build.yml's manual "release"
   # variant produces, and attaches it to this tag's GitHub Release so Obtainium
   # (which polls Releases for an APK asset) picks it up as an update. No `needs`
@@ -425,7 +316,11 @@ jobs:
     # decoupling; rationale in docs/development/release-gates.md ("The Android
     # decision"). `needs: release-gate` so it does not build for a commit whose
     # mandatory gates failed.
-    needs: [validate-tag, release-gate]
+    needs: [validate-tag, release-gate, release-gate-override]
+    # Proceed when the composed gate passed, or when an operator recorded an
+    # override (ADR 0021 / #1165). `always()` is required because one of the two
+    # gate jobs is always skipped.
+    if: ${{ always() && (needs.release-gate.result == 'success' || needs.release-gate-override.result == 'success') }}
     # #508: same protected `release` environment as create-release / build-and-push.
     environment: release
     timeout-minutes: 45
@@ -818,7 +713,9 @@ jobs:
   # never tested. That must fail the publish, not be noticed later.
   schema-fixture-gate:
     runs-on: ubuntu-latest
-    needs: [validate-tag, release-gate]
+    needs: [validate-tag, release-gate, release-gate-override]
+    # Composed gate passed, or an operator recorded an override (ADR 0021 / #1165).
+    if: ${{ always() && (needs.release-gate.result == 'success' || needs.release-gate-override.result == 'success') }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1350,7 +1247,7 @@ jobs:
 
           assets="$(gh release view "$RELEASE_TAG" --json assets --jq '[.assets[].name] | join(" ")')"
           echo "Release assets: $assets"
-          for want in app-release.apk mycorrhizal-apk.sigstore.json mycorrhizal-apk.intoto.jsonl SHA256SUMS; do
+          for want in app-release.apk mycorrhizal-apk.sigstore.json mycorrhizal-apk.intoto.jsonl release-metadata.json SHA256SUMS; do
             case " $assets " in
               *" $want "*) echo "  ok: $want" ;;
               *) echo "::error::Release $RELEASE_TAG is missing asset '$want'."; fail=1 ;;
