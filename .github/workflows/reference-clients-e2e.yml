@@ -232,20 +232,45 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      # Two attempts, each a FRESH emulator boot. A single booted emulator that
+      # has started ANR'ing does not recover within the job -- re-running the
+      # flow on it (the first attempt at this fix) just re-failed both times,
+      # because the emulator itself stays degraded. So the retry has to start a
+      # clean emulator, which is a second emulator-runner step, not a loop
+      # inside `script`. Attempt 1 is continue-on-error except on `schedule`
+      # (#974: the nightly run must hard-fail, not stay green behind a retry);
+      # attempt 2 runs only when attempt 1 failed and we are not on `schedule`.
       - name: Run DAVx5 against our server
+        id: davx5-attempt-1
+        continue-on-error: ${{ github.event_name != 'schedule' }}
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 35
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          disable-animations: true
           # Each physical line of `script` runs as its own separate `sh -c`
           # invocation (no shared shell state across lines, so a trailing
           # `\` continuation is a literal "\" command, not a line join) —
           # the whole invocation must stay on one line.
           script: |
             adb reverse tcp:7300 tcp:7300
-            max_attempts=$([ "$GITHUB_EVENT_NAME" = "schedule" ] && echo 1 || echo 2); attempt=1; while true; do if SERVER_URL=http://127.0.0.1:7300 USERNAME=pentest PASSWORD='PentestPassword123!' DAVX5_WORKDIR=/tmp/davx5-diag .github/scripts/reference-client-davx5/run.sh /tmp/davx5.apk; then exit 0; fi; if [ "$attempt" -ge "$max_attempts" ]; then echo "DAVx5 interop failed after $max_attempts attempts" >&2; exit 1; fi; echo "DAVx5 interop failed on attempt $attempt/$max_attempts; clearing the app and retrying" >&2; adb shell pm clear at.bitfire.davdroid >/dev/null 2>&1 || true; adb shell am force-stop at.bitfire.davdroid >/dev/null 2>&1 || true; sleep 5; attempt=$((attempt + 1)); done
+            SERVER_URL=http://127.0.0.1:7300 USERNAME=pentest PASSWORD='PentestPassword123!' DAVX5_WORKDIR=/tmp/davx5-diag .github/scripts/reference-client-davx5/run.sh /tmp/davx5.apk
+
+      - name: Run DAVx5 against our server (retry, fresh emulator)
+        id: davx5-attempt-2
+        if: ${{ steps.davx5-attempt-1.outcome == 'failure' && github.event_name != 'schedule' }}
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            adb reverse tcp:7300 tcp:7300
+            SERVER_URL=http://127.0.0.1:7300 USERNAME=pentest PASSWORD='PentestPassword123!' DAVX5_WORKDIR=/tmp/davx5-diag .github/scripts/reference-client-davx5/run.sh /tmp/davx5.apk
 
       # A step in this job's own runs, not inside the emulator, so
       # /tmp/davx5-diag from the script above is still on disk here. Printed
