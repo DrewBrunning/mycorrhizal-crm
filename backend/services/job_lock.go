@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"mycorrhizal/logger"
@@ -60,6 +61,55 @@ func JobCatchupWindow(period time.Duration) time.Duration {
 // outcome outside the rolled-back transaction.
 var errJobRanTooRecently = errors.New("job ran too recently")
 
+// The job-lock transactions are the one write where "give up and leave it
+// locked" is the worst outcome (issue #1176): a transient SQLITE_BUSY on the
+// release leaves the row's locked_at set, so the next scheduled run is
+// suppressed until the stale-lock window reclaims it. _txlock=immediate +
+// busy_timeout(5000) (CLAUDE.md trap #9) make a contended write retry on the
+// busy handler, but the budget is wall-clock — a whole-process stall longer
+// than 5s can still surface a busy even though the lock was never saturated.
+// A short bounded retry absorbs exactly that transient case; a busy that
+// survives every attempt is genuine sustained contention and is surfaced.
+const (
+	jobLockBusyMaxAttempts = 5
+	jobLockBusyBackoff     = 25 * time.Millisecond
+)
+
+// isSQLiteBusy reports whether err is SQLite's lock-busy backstop — the error
+// openDSN's busy_timeout produces once a writer has queued the whole budget
+// without acquiring the write lock ("database is locked (5) (SQLITE_BUSY)").
+// The driver reports it as a plain string, so this matches on the message
+// rather than a typed code (same check the errors middleware and the #797 CI
+// harness use).
+func isSQLiteBusy(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "database is locked") || strings.Contains(msg, "sqlite_busy")
+}
+
+// retryJobLockOnBusy runs op, retrying only when it fails with SQLite's
+// lock-busy backstop. A busy means the failed transaction rolled back and
+// persisted nothing, so re-running it is safe and idempotent; the retry is
+// bounded (jobLockBusyMaxAttempts) with exponential backoff (base
+// jobLockBusyBackoff) so a sustained lock is reported to the caller rather
+// than retried forever. Any other error — including errJobRanTooRecently and
+// "job locked by another instance" — is returned immediately.
+func retryJobLockOnBusy(op func() error) error {
+	backoff := jobLockBusyBackoff
+	for attempt := 1; ; attempt++ {
+		err := op()
+		if !isSQLiteBusy(err) || attempt >= jobLockBusyMaxAttempts {
+			return err
+		}
+		logger.Warn().Err(err).Int("attempt", attempt).Dur("backoff", backoff).
+			Msg("Job lock transaction hit SQLITE_BUSY; retrying")
+		time.Sleep(backoff)
+		backoff *= 2
+	}
+}
+
 // getInstanceID returns a unique identifier for this server instance.
 func getInstanceID() string {
 	hostname, err := os.Hostname()
@@ -84,72 +134,74 @@ func acquireJobLock(db *gorm.DB, jobName string, minInterval time.Duration) (boo
 	instanceID := getInstanceID()
 	lockTimeout := 5 * time.Minute // Consider locks stale after 5 minutes
 
-	err := db.Transaction(func(tx *gorm.DB) error {
-		var job models.JobExecution
+	err := retryJobLockOnBusy(func() error {
+		return db.Transaction(func(tx *gorm.DB) error {
+			var job models.JobExecution
 
-		lookupErr := tx.Where("job_name = ?", jobName).First(&job).Error
-		if lookupErr != nil && lookupErr != gorm.ErrRecordNotFound {
-			return lookupErr
-		}
-
-		if lookupErr == gorm.ErrRecordNotFound {
-			job = models.JobExecution{
-				JobName:     jobName,
-				LastRunAt:   now,
-				LockedAt:    &now,
-				LockedBy:    instanceID,
-				LastOutcome: models.JobOutcomeRunning,
+			lookupErr := tx.Where("job_name = ?", jobName).First(&job).Error
+			if lookupErr != nil && lookupErr != gorm.ErrRecordNotFound {
+				return lookupErr
 			}
-			if err := tx.Create(&job).Error; err != nil {
-				return err
+
+			if lookupErr == gorm.ErrRecordNotFound {
+				job = models.JobExecution{
+					JobName:     jobName,
+					LastRunAt:   now,
+					LockedAt:    &now,
+					LockedBy:    instanceID,
+					LastOutcome: models.JobOutcomeRunning,
+				}
+				if err := tx.Create(&job).Error; err != nil {
+					return err
+				}
+				logger.Info().Str("job", jobName).Str("instance", instanceID).Msg("Acquired job lock (first run)")
+				return nil
 			}
-			logger.Info().Str("job", jobName).Str("instance", instanceID).Msg("Acquired job lock (first run)")
-			return nil
-		}
 
-		timeSinceLastRun := now.Sub(job.LastRunAt)
-		if timeSinceLastRun < minInterval {
-			logger.Info().
-				Str("job", jobName).
-				Dur("since_last_run", timeSinceLastRun).
-				Dur("min_interval", minInterval).
-				Msg("Skipping job - ran too recently")
-			return errJobRanTooRecently
-		}
-
-		// Another instance holding a fresh lock wins.
-		if job.LockedAt != nil {
-			lockAge := now.Sub(*job.LockedAt)
-			if lockAge < lockTimeout && job.LockedBy != instanceID {
+			timeSinceLastRun := now.Sub(job.LastRunAt)
+			if timeSinceLastRun < minInterval {
 				logger.Info().
 					Str("job", jobName).
-					Str("locked_by", job.LockedBy).
-					Dur("lock_age", lockAge).
-					Msg("Skipping job - locked by another instance")
-				return fmt.Errorf("job locked by another instance")
+					Dur("since_last_run", timeSinceLastRun).
+					Dur("min_interval", minInterval).
+					Msg("Skipping job - ran too recently")
+				return errJobRanTooRecently
 			}
-			if lockAge >= lockTimeout {
-				logger.Warn().
-					Str("job", jobName).
-					Str("previous_instance", job.LockedBy).
-					Dur("lock_age", lockAge).
-					Msg("Taking over stale lock")
+
+			// Another instance holding a fresh lock wins.
+			if job.LockedAt != nil {
+				lockAge := now.Sub(*job.LockedAt)
+				if lockAge < lockTimeout && job.LockedBy != instanceID {
+					logger.Info().
+						Str("job", jobName).
+						Str("locked_by", job.LockedBy).
+						Dur("lock_age", lockAge).
+						Msg("Skipping job - locked by another instance")
+					return fmt.Errorf("job locked by another instance")
+				}
+				if lockAge >= lockTimeout {
+					logger.Warn().
+						Str("job", jobName).
+						Str("previous_instance", job.LockedBy).
+						Dur("lock_age", lockAge).
+						Msg("Taking over stale lock")
+				}
 			}
-		}
 
-		job.LockedAt = &now
-		job.LockedBy = instanceID
-		if timeSinceLastRun >= 2*minInterval {
-			job.LastOutcome = models.JobOutcomeCaughtUp
-		} else {
-			job.LastOutcome = models.JobOutcomeRunning
-		}
-		if err := tx.Save(&job).Error; err != nil {
-			return err
-		}
+			job.LockedAt = &now
+			job.LockedBy = instanceID
+			if timeSinceLastRun >= 2*minInterval {
+				job.LastOutcome = models.JobOutcomeCaughtUp
+			} else {
+				job.LastOutcome = models.JobOutcomeRunning
+			}
+			if err := tx.Save(&job).Error; err != nil {
+				return err
+			}
 
-		logger.Info().Str("job", jobName).Str("instance", instanceID).Msg("Acquired job lock")
-		return nil
+			logger.Info().Str("job", jobName).Str("instance", instanceID).Msg("Acquired job lock")
+			return nil
+		})
 	})
 
 	if errors.Is(err, errJobRanTooRecently) {
@@ -171,33 +223,35 @@ func releaseJobLock(db *gorm.DB, jobName string, success bool) error {
 	now := time.Now()
 	instanceID := getInstanceID()
 
-	return db.Transaction(func(tx *gorm.DB) error {
-		var job models.JobExecution
-		if err := tx.Where("job_name = ?", jobName).First(&job).Error; err != nil {
-			return err
-		}
-
-		if job.LockedBy != instanceID {
-			logger.Warn().
-				Str("job", jobName).
-				Str("expected", instanceID).
-				Str("actual", job.LockedBy).
-				Msg("Lock was taken by another instance")
-			return nil
-		}
-
-		if success {
-			job.LastRunAt = now
-			if job.LastOutcome == models.JobOutcomeRunning || job.LastOutcome == "" {
-				job.LastOutcome = models.JobOutcomeRan
+	return retryJobLockOnBusy(func() error {
+		return db.Transaction(func(tx *gorm.DB) error {
+			var job models.JobExecution
+			if err := tx.Where("job_name = ?", jobName).First(&job).Error; err != nil {
+				return err
 			}
-			// A caught_up marker is deliberately preserved.
-		} else {
-			job.LastOutcome = models.JobOutcomeFailed
-		}
-		job.LockedAt = nil
-		job.LockedBy = ""
 
-		return tx.Save(&job).Error
+			if job.LockedBy != instanceID {
+				logger.Warn().
+					Str("job", jobName).
+					Str("expected", instanceID).
+					Str("actual", job.LockedBy).
+					Msg("Lock was taken by another instance")
+				return nil
+			}
+
+			if success {
+				job.LastRunAt = now
+				if job.LastOutcome == models.JobOutcomeRunning || job.LastOutcome == "" {
+					job.LastOutcome = models.JobOutcomeRan
+				}
+				// A caught_up marker is deliberately preserved.
+			} else {
+				job.LastOutcome = models.JobOutcomeFailed
+			}
+			job.LockedAt = nil
+			job.LockedBy = ""
+
+			return tx.Save(&job).Error
+		})
 	})
 }
