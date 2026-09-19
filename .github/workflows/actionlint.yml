@@ -106,7 +106,7 @@ jobs:
       # block in reference-clients-e2e.yml, one level removed from anything
       # actionlint's own shellcheck pass can see into.
       - name: Shellcheck repo scripts
-        run: shellcheck .github/scripts/run-fuzz-targets.sh .github/scripts/tests/run-fuzz-targets.test.sh .github/scripts/min-browser-check.sh .github/scripts/assert-below-min-sdk-install.sh .github/scripts/release-register-decide.sh .github/scripts/tests/release-register-decide.test.sh .github/scripts/release-validate-decide.sh .github/scripts/tests/release-validate-decide.test.sh .github/scripts/reference-client-davx5/run.sh
+        run: shellcheck .github/scripts/run-fuzz-targets.sh .github/scripts/tests/run-fuzz-targets.test.sh .github/scripts/min-browser-check.sh .github/scripts/assert-below-min-sdk-install.sh .github/scripts/release-register-decide.sh .github/scripts/tests/release-register-decide.test.sh .github/scripts/reference-client-davx5/run.sh
 
       # Issue #712: exercise the fuzz runner's hardening against a stubbed
       # `go` binary (pass / deadline-race / crash / seed-replay), asserting
@@ -125,10 +125,3 @@ jobs:
       - name: Test release-register decision script
         run: bash .github/scripts/tests/release-register-decide.test.sh
 
-      # Issue #1142: pins `release.yml`'s re-entrancy fix -- a final release
-      # whose fixture commit is already on main but whose tag was never pushed
-      # (the tag push failed) must decide RESUME, so "fix on main and
-      # re-dispatch" recovers the release instead of dying at validation; an
-      # existing tag must still hard-fail.
-      - name: Test release-validate decision script
-        run: bash .github/scripts/tests/release-validate-decide.test.sh

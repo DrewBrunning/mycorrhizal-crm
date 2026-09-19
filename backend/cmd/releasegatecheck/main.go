@@ -33,6 +33,7 @@ import (
 	"sort"
 
 	"mycorrhizal/internal/releasegates"
+	"mycorrhizal/internal/releaseworkflow"
 )
 
 const (
@@ -84,6 +85,13 @@ func run(w io.Writer) int {
 		return 2
 	}
 	findings = append(findings, releasegates.CheckComposer(reg, string(composerBytes))...)
+	// #nosec G304 -- constant leaf under the repository root
+	releaseBytes, err := os.ReadFile(filepath.Join(root, workflowsDir, "release.yml"))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "releasegatecheck: read release.yml", err)
+		return 2
+	}
+	findings = append(findings, releaseworkflow.CheckRelease(string(releaseBytes))...)
 	findings = append(findings, releasegates.CrossCheckDoc(reg, string(docBytes))...)
 
 	if len(findings) == 0 {

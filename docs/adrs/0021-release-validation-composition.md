@@ -7,7 +7,7 @@
 - **Supersedes:** the dispatch-and-poll orchestration introduced across #499/#543/#913/#1013/#1150
   and the post-tag metadata tail of #953/#1159
 - **Implements:** issues #1161 (composable checks), #1162 (orchestrator), #1163 (Release ownership),
-  #1165 (`docker-publish` gate), #1166 (docs)
+  #1164 (release-readiness record), #1165 (`docker-publish` gate), #1166 (docs)
 
 ## Context
 
