@@ -332,7 +332,11 @@ log "Selecting 'Login with URL and user name' and continuing"
 # default-selected radio option once this screen is up, but tap it
 # explicitly so this script doesn't depend on that default surviving a
 # DAVx5 update.
-wait_for "Login with URL and user name" 20
+# 60 attempts, not 20: the intro carousel and this screen arrive slowly on an
+# emulator that is itself competing for a busy host (the RC2 flake was a Pixel
+# Launcher ANR here -- issue #1174). wait_for dismisses the ANR and keeps
+# polling, so the extra headroom is free on a healthy run.
+wait_for "Login with URL and user name" 60
 tap "Login with URL and user name"
 tap "Continue"
 
