@@ -241,28 +241,79 @@ export function uniqueDigits(length = 10): string {
 // both mutating /users/enabled-contact-fields with no coordination) is a
 // cross-file, cross-worker race.
 const USER_SETTINGS_LOCK_DIR = path.join(os.tmpdir(), 'mycorrhizal-e2e-user-settings.lock');
-const USER_SETTINGS_LOCK_STALE_MS = 45_000;
+const USER_SETTINGS_LOCK_OWNER_PREFIX = 'owner-';
+// Issue #1177: a holder is only "stale" when its owning process is actually
+// gone (or the lock is implausibly old, covering a pid reused after a crash).
+// A live but slow holder is NEVER robbed. RC2's dateFormats flake was exactly
+// that: under the composed run's load a holder exceeded the old flat 45s
+// window, the other worker broke the lock, reset the shared user's settings,
+// and the assertion read the reset value. The age window is now only a
+// backstop for a missing owner marker / a reused pid.
+const USER_SETTINGS_LOCK_STALE_MS = 5 * 60_000;
+const USER_SETTINGS_LOCK_ACQUIRE_TIMEOUT_MS = 5 * 60_000;
 
-async function acquireUserSettingsLock(timeoutMs = 60_000): Promise<void> {
+// The holder records its pid as a *subdirectory* name (`owner-<pid>`), an
+// atomic `mkdir` rather than a write to a predictable path in the shared temp
+// dir (CodeQL js/insecure-temporary-file, CWE-377: the old `writeFileSync`
+// owner file tripped it).
+function readLockOwnerPid(): number | null {
+  try {
+    for (const name of fs.readdirSync(USER_SETTINGS_LOCK_DIR)) {
+      const match = /^owner-(\d+)$/.exec(name);
+      if (match) return Number.parseInt(match[1], 10);
+    }
+  } catch {
+    // Lock dir gone; the caller's EEXIST branch treats that as breakable.
+  }
+  return null;
+}
+
+// True when the current holder is gone (or the lock is implausibly old and its
+// owner can no longer be trusted), so breaking it is safe.
+function lockHolderIsGone(): boolean {
+  try {
+    const stat = fs.statSync(USER_SETTINGS_LOCK_DIR);
+    if (Date.now() - stat.mtimeMs > USER_SETTINGS_LOCK_STALE_MS) return true;
+  } catch {
+    // Lock dir vanished -- nothing to break; the caller retries mkdir.
+    return true;
+  }
+
+  // A live owner pid means the holder is still working, however slow it is.
+  const pid = readLockOwnerPid();
+  if (pid !== null && pid > 0) {
+    try {
+      process.kill(pid, 0); // signal 0 = existence check
+      return false; // alive
+    } catch (err: unknown) {
+      return (err as NodeJS.ErrnoException).code === 'ESRCH';
+    }
+  }
+  // Owner marker not created yet (a holder between the two mkdirs): treat as
+  // live and let the age backstop above decide.
+  return false;
+}
+
+async function acquireUserSettingsLock(
+  timeoutMs = USER_SETTINGS_LOCK_ACQUIRE_TIMEOUT_MS,
+): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     try {
       fs.mkdirSync(USER_SETTINGS_LOCK_DIR);
+      // Record the owner so another worker can tell a live-slow holder from a
+      // crashed one (issue #1177).
+      fs.mkdirSync(
+        path.join(USER_SETTINGS_LOCK_DIR, `${USER_SETTINGS_LOCK_OWNER_PREFIX}${process.pid}`),
+      );
       return;
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
 
-      // Break a lock abandoned by a crashed test/process rather than hang
-      // every later test forever.
-      try {
-        const stat = fs.statSync(USER_SETTINGS_LOCK_DIR);
-        if (Date.now() - stat.mtimeMs > USER_SETTINGS_LOCK_STALE_MS) {
-          fs.rmSync(USER_SETTINGS_LOCK_DIR, { recursive: true, force: true });
-          continue;
-        }
-      } catch {
-        // Lock dir vanished between the failed mkdir and this check -- the
-        // holder just released it. Retry the mkdir immediately.
+      // Break a lock whose holder is gone (or implausibly old) rather than
+      // hang every later test forever, but never rob a live holder.
+      if (lockHolderIsGone()) {
+        fs.rmSync(USER_SETTINGS_LOCK_DIR, { recursive: true, force: true });
         continue;
       }
 

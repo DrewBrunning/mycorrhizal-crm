@@ -188,6 +188,11 @@ jobs:
           # nightly full-suite schedule only, not on every PR. The light @perf
           # specs (route-stubbed) run unconditionally with the rest of the suite.
           RUN_PERF_HEAVY: ${{ github.event_name == 'schedule' && '1' || '' }}
+          # Issue #1177: the release composer (workflow_call) runs this suite
+          # under heavy load, where two workers racing the shared test user's
+          # settings is what flaked RC2. Pin to one worker there; the per-PR
+          # and push paths keep the config's 2.
+          PLAYWRIGHT_WORKERS: ${{ github.event_name == 'workflow_call' && '1' || '' }}
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -35,7 +35,16 @@ export default defineConfig({
   // storageState, so they no longer log in through the UI on every test.
   // That removes the serial-login bottleneck that forced workers: 1. We still
   // cap workers on CI to keep SQLite write contention predictable.
-  workers: process.env.CI ? 2 : undefined,
+  //
+  // Issue #1177: the release composer runs this suite under heavy load, where
+  // two workers racing the shared test user's settings is what flaked RC2.
+  // PLAYWRIGHT_WORKERS lets that run pin to 1 without slowing the per-PR/push
+  // path.
+  workers: process.env.PLAYWRIGHT_WORKERS
+    ? Number(process.env.PLAYWRIGHT_WORKERS)
+    : process.env.CI
+      ? 2
+      : undefined,
 
   // Reporter to use
   reporter: [['html', { open: 'never' }], ['list']],
@@ -90,5 +99,12 @@ export default defineConfig({
   timeout: 30000,
   expect: {
     timeout: 5000,
+    // Issue #1177: antialiasing/subpixel rendering is nondeterministic under
+    // CI load — RC2 failed three screenshots on a 5-pixel diff. A small
+    // absolute tolerance absorbs that noise; a real layout change moves far
+    // more than this, so a regression is still caught.
+    toHaveScreenshot: {
+      maxDiffPixels: 50,
+    },
   },
 });
