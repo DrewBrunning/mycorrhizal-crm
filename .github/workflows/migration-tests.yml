@@ -160,6 +160,11 @@ jobs:
       # One release's failure must not cancel the others — full signal from
       # every release on every run.
       fail-fast: false
+      # Cap the fan-out: this matrix is one leg per supported release (~22
+      # today), and a release cut composes every suite at once. Unbounded, it
+      # oversubscribes the account's runners and starves the emulator jobs
+      # beside it, which then flake (issue #1174).
+      max-parallel: 4
       matrix:
         include: ${{ fromJSON(needs.release-matrix.outputs.matrix) }}
 

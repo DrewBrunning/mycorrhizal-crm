@@ -67,6 +67,11 @@ jobs:
       actions: read
   android-tests:
     uses: ./.github/workflows/android-tests.yml
+    # Skip its non-gating advisory jobs (the macrobenchmark) during a release
+    # cut, so it does not add another emulator to an already-contended run
+    # (issue #1174). It still runs on its own schedule/dispatch.
+    with:
+      release_compose: true
     permissions:
       contents: read
       pull-requests: read
@@ -138,6 +143,10 @@ jobs:
       pull-requests: read
   reference-clients-e2e:
     if: inputs.release_tier
+    # Serialize the emulator-heavy suites: the DAVx5 leg and android-tests'
+    # emulator jobs must not compete for nested-virtualization capacity, which
+    # is what produced the RC2 launcher-ANR flake (issue #1174).
+    needs: android-tests
     uses: ./.github/workflows/reference-clients-e2e.yml
     permissions:
       contents: read
