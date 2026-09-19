@@ -107,6 +107,36 @@ func TestCheckCallable(t *testing.T) {
 	assert.Empty(t, CheckCallable(reg, func(string) (string, bool) { return "", false }))
 }
 
+func TestComposerWorkflowsAndCheck(t *testing.T) {
+	reg, _ := Parse([]byte(`{"gates": [
+	  {"name": "a", "workflow": "unit-tests.yml", "check_context": "a", "check_kind": "check_run", "tier": "per-pr", "mandatory": true, "release_gate": true, "criterion": "c"},
+	  {"name": "b", "workflow": "zap-dast.yml", "check_context": "b", "check_kind": "check_run", "tier": "release-tier", "mandatory": true, "release_gate": false, "criterion": "c"}
+	]}`))
+	composer := `jobs:
+  unit-tests:
+    uses: ./.github/workflows/unit-tests.yml
+  zap-dast:
+    uses: ./.github/workflows/zap-dast.yml
+`
+	assert.Equal(t, []string{"unit-tests.yml", "zap-dast.yml"}, ComposerWorkflows(composer))
+	assert.Empty(t, CheckComposer(reg, composer))
+
+	// Omitting a gate is a finding.
+	missing := `jobs:
+  unit-tests:
+    uses: ./.github/workflows/unit-tests.yml
+`
+	f := CheckComposer(reg, missing)
+	require.Len(t, f, 1)
+	assert.Contains(t, f[0], "does not compose zap-dast.yml")
+
+	// Composing a non-gate workflow is a finding too.
+	extra := composer + "  scorecard:\n    uses: ./.github/workflows/scorecard.yml\n"
+	f = CheckComposer(reg, extra)
+	require.Len(t, f, 1)
+	assert.Contains(t, f[0], "composes scorecard.yml")
+}
+
 func TestCrossCheckDocGood(t *testing.T) {
 	reg, _ := Parse([]byte(goodJSON))
 	assert.Empty(t, CrossCheckDoc(reg, goodDoc))
@@ -167,6 +197,9 @@ func TestCommittedRegistryIsValid(t *testing.T) {
 		b, readErr := os.ReadFile(filepath.Join(root, ".github", "workflows", w))
 		return string(b), readErr == nil
 	})...)
+	composerBytes, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "release-validate.yml"))
+	require.NoError(t, err)
+	findings = append(findings, CheckComposer(reg, string(composerBytes))...)
 	findings = append(findings, CrossCheckDoc(reg, string(docBytes))...)
 	assert.Empty(t, findings, "committed release-gate registry / doc is inconsistent")
 

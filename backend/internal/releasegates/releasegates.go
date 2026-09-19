@@ -245,6 +245,54 @@ func CheckCallable(reg Registry, read func(workflow string) (string, bool)) []st
 	return findings
 }
 
+// composerUseRE matches a `uses: ./.github/workflows/<file>` call in a composer
+// workflow.
+var composerUseRE = regexp.MustCompile(`(?m)^\s*uses:\s*\./\.github/workflows/([A-Za-z0-9_.-]+)\s*$`)
+
+// ComposerWorkflows returns the workflow files a composer invokes via
+// `uses: ./.github/workflows/<file>`, de-duplicated and sorted.
+func ComposerWorkflows(composerText string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, m := range composerUseRE.FindAllStringSubmatch(composerText, -1) {
+		if !seen[m[1]] {
+			seen[m[1]] = true
+			out = append(out, m[1])
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// CheckComposer reports any composable gate workflow (ADR 0021) the composer
+// does not call, and any workflow it calls that is not a composable gate. This
+// makes the on-release orchestrator's `needs:` graph provably cover exactly the
+// release_gate:true and release-tier gates (issue #1166): the set cannot drift
+// from the registry in either direction.
+func CheckComposer(reg Registry, composerText string) []string {
+	want := reg.ComposableWorkflows()
+	wantSet := map[string]bool{}
+	for _, w := range want {
+		wantSet[w] = true
+	}
+	gotSet := map[string]bool{}
+	var findings []string
+	for _, w := range ComposerWorkflows(composerText) {
+		gotSet[w] = true
+		if !wantSet[w] {
+			findings = append(findings, fmt.Sprintf(
+				"release-validate.yml composes %s, which is not a release_gate:true or release-tier gate workflow (ADR 0021 / issue #1166)", w))
+		}
+	}
+	for _, w := range want {
+		if !gotSet[w] {
+			findings = append(findings, fmt.Sprintf(
+				"release-validate.yml does not compose %s, but a release_gate:true/release-tier gate requires it (ADR 0021 / issue #1166)", w))
+		}
+	}
+	return findings
+}
+
 // ReleaseGateContexts returns the check_context of every release_gate:true gate,
 // in registry order — the list the docker-publish.yml release-gate job polls.
 func (r Registry) ReleaseGateContexts() []string {

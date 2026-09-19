@@ -15,9 +15,11 @@ The machine-readable twin is [`.github/release-gates.json`](https://github.com/D
 `cd backend && go run ./cmd/releasegatecheck` (a `Docs & security-doc citations` step, every PR)
 fails the build if the JSON is malformed, if any gate names a workflow that does not exist, or if
 this table and the JSON disagree. It also asserts every workflow a `release_gate:true` or
-release-tier gate names is **composable** (declares `workflow_call`), so the release orchestrator of
-[ADR 0021](../adrs/0021-release-validation-composition.md) can compose it instead of
-dispatch-and-poll. The `release-gate` job in `docker-publish.yml` reads the same JSON.
+release-tier gate names is **composable** (declares `workflow_call`) **and that the composer
+`release-validate.yml` calls exactly that set** — no omission, no extra — so the release
+orchestrator of [ADR 0021](../adrs/0021-release-validation-composition.md) cannot drift from the
+registry and needs no dispatch-and-poll. The `release-gate` job in `docker-publish.yml` reads the
+same JSON.
 
 This page is contributor- and maintainer-facing; it assumes a repo checkout and the Go toolchain
 for the `go run` command above.
