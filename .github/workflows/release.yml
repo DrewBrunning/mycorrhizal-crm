@@ -290,9 +290,10 @@ jobs:
   # workflows the per-PR/schedule paths run, not a second definition. This
   # replaces the dispatch-and-poll steps that used to live in this job.
   #
-  # The gate scope (contents/pull-requests read, security-events write for
-  # SARIF, actions read for cache introspection) is the union its member checks
-  # need; the release job below keeps contents:read only. Recorded in
+  # The gate scope is read-only: contents/pull-requests read and actions read
+  # (cache introspection). The SARIF-uploading scans skip their upload when
+  # composed, so no write scope is granted to a reusable-workflow caller
+  # (OWASP/OpenSSF Token-Permissions). Recorded in
   # asvs-l2-verification-report.md §9.
   validate:
     needs: preflight
@@ -300,7 +301,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-      security-events: write
       actions: read
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

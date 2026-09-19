@@ -83,7 +83,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-      security-events: write
       actions: read
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

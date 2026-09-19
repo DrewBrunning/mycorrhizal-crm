@@ -123,11 +123,13 @@ readiness artifact — never an upstream poll of a not-yet-existing downstream o
 ### 5. Credentials are minted at the point of use, per owner
 
 Every App-token mint moves to immediately before its single write, and each workflow holds only the
-permissions of its own jobs. The release job's permissions expand to the union of the **check**
-workflows it composes (all read-only except `security-events: write` for SARIF uploads); the publish
-workflow's `packages`/`id-token`/`attestations` writes stay scoped to publish and are never granted
-to the release job. This is recorded in the `asvs-l2-verification-report.md` §9 privileged-CI-credential
-row in the same change.
+permissions of its own jobs. The release composer is granted **read scopes only** — a job that calls
+a reusable workflow must not hand it write scopes it does not need. The SARIF-uploading scans
+(`sast`, `container-hardening`, `zizmor`) therefore skip their upload step when composed
+(`if: github.event_name != 'workflow_call'`); the upload still happens in each scan's native
+push/PR/schedule run. The publish workflow's `packages`/`id-token`/`attestations` writes stay scoped
+to publish and are never granted to the release job. This is recorded in the
+`asvs-l2-verification-report.md` §9 privileged-CI-credential row in the same change.
 
 ### 6. One release at a time
 
@@ -149,7 +151,7 @@ the readiness artifact and the tag can never race.
   signing chain; `min-version-tests`/`zap-dast` remaining release-tier.
 - **Cost / limits:**
   - Reusable workflows nest at most **4 levels**, and a called workflow's `permissions` cannot exceed
-    the caller's — hence Decision 5's split.
+    the caller's — hence Decision 5's read-only composer and the SARIF-upload guard.
   - A composed check runs *inside the caller's run*, so the release run's job count grows; that is
     the point (it is now one observable graph) and the 6-hour job ceiling is no longer load-bearing.
   - The GitHub App token is still required to push a tag that triggers `docker-publish.yml`.

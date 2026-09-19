@@ -130,7 +130,10 @@ jobs:
         run: uvx --from 'mobsfscan==1.0.0' --with 'semgrep==1.172.0' mobsfscan --type android --sarif --output results.sarif .
 
       - name: Upload SARIF to code scanning
-        if: always()
+        # ADR 0021: a composed run (workflow_call) does not hold
+        # security-events: write, so it skips the SARIF upload; the native
+        # push/PR/schedule run of this workflow still uploads.
+        if: always() && github.event_name != 'workflow_call'
         uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
           sarif_file: android/results.sarif
@@ -199,7 +202,10 @@ jobs:
         run: uvx --from 'semgrep==1.172.0' semgrep --config .semgrep/mycorrhizal-traps.yaml --sarif --output results.sarif --error .
 
       - name: Upload SARIF to code scanning
-        if: always()
+        # ADR 0021: a composed run (workflow_call) does not hold
+        # security-events: write, so it skips the SARIF upload; the native
+        # push/PR/schedule run of this workflow still uploads.
+        if: always() && github.event_name != 'workflow_call'
         uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
           sarif_file: backend/results.sarif
