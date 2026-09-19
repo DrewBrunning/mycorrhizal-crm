@@ -64,10 +64,10 @@ func TestDeviceGrantRoutes_EnrollThenExchangeThroughLiveRouter(t *testing.T) {
 	})
 	RegisterRoutes(router, cfg, db, nil)
 
-	// Distinct X-Forwarded-For values put each request in its own process-global
-	// rate-limiter bucket, so another test in this package cannot pre-throttle
-	// these two calls into a spurious 429.
-	enroll := postJSONWithBearer(t, router, "/api/v1/auth/device/grants", `{"label":"route-e2e"}`, bearer, "198.51.100.10")
+	// Each request gets its own source IP via the helper (see
+	// uniqueTestClientIP), so another test in this package cannot
+	// pre-throttle these two calls into a spurious 429.
+	enroll := postJSONWithBearer(t, router, "/api/v1/auth/device/grants", `{"label":"route-e2e"}`, bearer)
 	require.Equal(t, http.StatusCreated, enroll.Code, enroll.Body.String())
 
 	var created models.DeviceGrantCreateResponse
@@ -78,21 +78,19 @@ func TestDeviceGrantRoutes_EnrollThenExchangeThroughLiveRouter(t *testing.T) {
 	// Possession of the grant exchanges for a fresh session — the public,
 	// rate-limited route. A 200 here proves the body survived the middleware
 	// chain and the token was actually looked up.
-	exchanged := postJSONWithBearer(t, router, "/api/v1/auth/device/session", `{"device_token":"`+created.Token+`"}`, "", "198.51.100.11")
+	exchanged := postJSONWithBearer(t, router, "/api/v1/auth/device/session", `{"device_token":"`+created.Token+`"}`, "")
 	require.Equal(t, http.StatusOK, exchanged.Code, exchanged.Body.String())
 	require.Contains(t, exchanged.Header().Get("Set-Cookie"), "auth_token=")
 }
 
-func postJSONWithBearer(t *testing.T, router http.Handler, path, body, bearer, forwardedFor string) *httptest.ResponseRecorder {
+func postJSONWithBearer(t *testing.T, router http.Handler, path, body, bearer string) *httptest.ResponseRecorder {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodPost, path, bytes.NewReader([]byte(body)))
 	require.NoError(t, err)
+	req.RemoteAddr = uniqueTestClientIP() + ":1234"
 	req.Header.Set("Content-Type", "application/json")
 	if bearer != "" {
 		req.Header.Set("Authorization", "Bearer "+bearer)
-	}
-	if forwardedFor != "" {
-		req.Header.Set("X-Forwarded-For", forwardedFor)
 	}
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)

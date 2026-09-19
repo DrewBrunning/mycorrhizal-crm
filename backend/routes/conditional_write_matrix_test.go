@@ -417,6 +417,7 @@ func TestConditionalWriteMatrix(t *testing.T) {
 			}
 			req, err := http.NewRequest(method, row.probe, bodyReader)
 			require.NoError(t, err)
+			req.RemoteAddr = uniqueTestClientIP() + ":1234"
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("Authorization", "Bearer "+token)
 			// A revision guaranteed never to be current.

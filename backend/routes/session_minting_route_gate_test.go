@@ -33,7 +33,6 @@ package routes
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -217,17 +216,16 @@ func TestSessionMintingRoutesGate_FloorEnforcedThroughLiveRouter(t *testing.T) {
 	})
 	RegisterRoutes(router, cfg, db, nil)
 
-	// Each request carries a distinct X-Forwarded-For so it lands in its own
-	// auth-rate-limiter bucket — the limiter is a process-global keyed by
-	// client IP and other tests in this package share it, so a fixed IP could
-	// arrive already throttled and turn a floor verdict into a spurious 429.
-	var reqNo int
+	// Each request gets its own source IP (see uniqueTestClientIP) so it lands
+	// in its own auth-rate-limiter bucket — the limiter is a process-global
+	// keyed by client IP and other tests in this package share it, so a fixed
+	// IP could arrive already throttled and turn a floor verdict into a
+	// spurious 429.
 	belowFloor := func(method, path string) *httptest.ResponseRecorder {
-		reqNo++
 		req, _ := http.NewRequest(method, path, bytes.NewReader([]byte("{}")))
+		req.RemoteAddr = uniqueTestClientIP() + ":1234"
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set(middleware.ClientVersionHeader, "0.5.0")
-		req.Header.Set("X-Forwarded-For", fmt.Sprintf("198.51.100.%d", reqNo))
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 		return w
