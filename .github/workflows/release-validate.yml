@@ -46,6 +46,14 @@ on:
 # `validate` and docker-publish.yml's `release-gate`). The upload *steps* are
 # still gated on `github.event_name != 'workflow_call'`, so the scope is inert
 # in a composed run; only each scan's native push/PR/schedule run exercises it.
+#
+# `unit-tests.yml`'s `codecov-patch-stub` job (issue #1188) declares a second
+# such scope, `statuses: write`, to post the `codecov/patch/*` commit statuses
+# a PR that uploads no coverage would otherwise leave stranded at "Expected";
+# GitHub rejects a nested over-request, so the `unit-tests` call-job below
+# grants it too, and so do the two callers above. That job's own `if:` requires
+# `github.event_name == 'pull_request'`, so it is skipped in a composed run and
+# the scope is inert there -- the same shape as the SARIF uploads.
 # Recorded in asvs-l2-verification-report.md §9.
 permissions:
   contents: read
@@ -57,6 +65,12 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      # unit-tests.yml's `codecov-patch-stub` job declares this to post the
+      # codecov/patch/* statuses a no-upload PR would otherwise strand (issue
+      # #1188); GitHub rejects a nested over-request, so the caller grants it.
+      # The job is skipped when composed (its `if:` requires a pull_request
+      # event), so the scope is inert in a release run.
+      statuses: write
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
   e2e-tests:
