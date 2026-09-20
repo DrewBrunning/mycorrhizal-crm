@@ -89,6 +89,10 @@ jobs:
       # every caller in the chain. The upload step itself is skipped when
       # composed (github.event_name == 'workflow_call').
       security-events: write
+      # Required by unit-tests.yml's `codecov-patch-stub` job (issue #1188),
+      # the other nested write scope the chain declares; the job is likewise
+      # skipped when composed.
+      statuses: write
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 

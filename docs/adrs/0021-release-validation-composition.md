@@ -132,9 +132,16 @@ SARIF-uploading scans (`sast`, `container-hardening`, `zizmor`) keep their job-l
 (`release.yml`'s `validate`, `docker-publish.yml`'s `release-gate`) grant it so the chain validates.
 The upload *step* in each scan is still gated on `github.event_name != 'workflow_call'`, so the
 scope is inert in a composed run; the upload only happens in each scan's native push/PR/schedule
-run. The publish workflow's `packages`/`id-token`/`attestations` writes stay scoped to publish and
-are never granted to the release job. This is recorded in the `asvs-l2-verification-report.md` §9
-privileged-CI-credential row in the same change.
+run. A second nested write scope joined by #1188 — `unit-tests.yml`'s `codecov-patch-stub` job's
+`statuses: write`, to post the `codecov/patch/*` statuses a PR that uploads no coverage would
+otherwise leave stranded — is granted the same way (the `unit-tests` call-job plus both callers),
+and is likewise inert when composed because that job's `if:` requires a `pull_request` event. (It
+was added without the caller grants and surfaced only when a Release was dispatched, which is the
+failure mode this rule exists to prevent: a standalone PR run of the member workflow never
+exercises the nested-permission check.) The publish workflow's
+`packages`/`id-token`/`attestations` writes stay scoped to publish and
+are never granted to the release job. Both accommodations are recorded in the
+`asvs-l2-verification-report.md` §9 privileged-CI-credential row.
 
 ### 6. One release at a time
 
