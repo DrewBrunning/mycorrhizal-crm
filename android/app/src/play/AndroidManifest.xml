@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Issue #1200: the Google Play distribution flavor does not offer the opt-in
+  call/SMS activity-logging feature. Google Play restricts READ_SMS /
+  RECEIVE_SMS / READ_CALL_LOG to an app that is the user's default dialer/SMS
+  handler, so requesting them would get the app rejected.
+
+  The merge removes the permissions the feature needs and the components that
+  implement it. The `obtainium` (gold standard) and `foss` (F-Droid) flavors
+  keep all of it; their merged manifests are the main one unchanged.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Call-log capture. -->
+    <uses-permission
+        android:name="android.permission.READ_CALL_LOG"
+        tools:node="remove"
+        tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
+    <uses-permission
+        android:name="android.permission.READ_PHONE_STATE"
+        tools:node="remove"
+        tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
+
+    <!-- Message capture. -->
+    <uses-permission
+        android:name="android.permission.RECEIVE_SMS"
+        tools:node="remove"
+        tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
+    <uses-permission
+        android:name="android.permission.READ_SMS"
+        tools:node="remove"
+        tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
+
+    <!-- The quick-capture overlay exists only to prompt for a just-finished
+         call/text, so its permissions go with the feature. -->
+    <uses-permission
+        android:name="android.permission.SYSTEM_ALERT_WINDOW"
+        tools:node="remove"
+        tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE"
+        tools:node="remove"
+        tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"
+        tools:node="remove"
+        tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
+
+    <application>
+        <!-- The foreground service that watches phone state for the overlay. -->
+        <service
+            android:name="com.mycorrhizal.crm.feature.tracking.CallDetectionService"
+            tools:node="remove" />
+        <!-- The two capture broadcast receivers. -->
+        <receiver
+            android:name="com.mycorrhizal.crm.feature.tracking.PhoneStateReceiver"
+            tools:node="remove" />
+        <receiver
+            android:name="com.mycorrhizal.crm.feature.tracking.SmsReceiver"
+            tools:node="remove" />
+    </application>
+
+</manifest>

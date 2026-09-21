@@ -226,9 +226,11 @@ jobs:
       # Issue #1133: assemble the obtainium (gold-standard) and foss (F-Droid)
       # debug variants — the latter proves the Firebase-free flavor builds
       # end to end, which is the F-Droid inclusion-policy precondition.
-      - name: Assemble debug APKs (obtainium + foss)
+      # Issue #1200: play too, so its restricted-permission carve-out is built
+      # and asserted below.
+      - name: Assemble debug APKs (obtainium + foss + play)
         working-directory: android
-        run: ./gradlew :app:assembleObtainiumDebug :app:assembleFossDebug
+        run: ./gradlew :app:assembleObtainiumDebug :app:assembleFossDebug :app:assemblePlayDebug
 
       # Issue #1133: the F-Droid inclusion policy precondition is that the FOSS
       # APK carries no proprietary Firebase/Google Play Services code. Assert it
@@ -259,6 +261,40 @@ jobs:
             echo "::error::$obtainium carries no Firebase/GMS reference -- FCM was dropped from the obtainium/play flavors."
             exit 1
           fi
+
+      # Issue #1200: the play build must not request the permissions Google Play
+      # restricts to default dialer/SMS apps. Assert it on the built APK, and
+      # assert obtainium still declares them, so the carve-out can neither miss
+      # the play flavor nor silently strip the capture feature from the build
+      # that actually ships.
+      - name: Play APK omits restricted call/SMS permissions
+        working-directory: android
+        run: |
+          aapt2="$(find "${ANDROID_HOME}/build-tools" -name aapt2 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$aapt2" ]; then
+            echo "::error::aapt2 not found under ${ANDROID_HOME}/build-tools"
+            exit 1
+          fi
+          perms() {
+            "$aapt2" dump badging "$1" \
+              | grep -oE "uses-permission: name='[^']+'" \
+              | sed "s/.*name='//;s/'//" | sort -u
+          }
+          play="app/build/outputs/apk/play/debug/app-play-debug.apk"
+          obtainium="app/build/outputs/apk/obtainium/debug/app-obtainium-debug.apk"
+          restricted="android.permission.READ_CALL_LOG android.permission.READ_PHONE_STATE android.permission.RECEIVE_SMS android.permission.READ_SMS"
+          echo "play permissions:"; perms "$play"
+          for p in $restricted; do
+            if perms "$play" | grep -qx "$p"; then
+              echo "::error::play APK requests restricted permission $p; Play restricts it to default dialer/SMS apps."
+              exit 1
+            fi
+            if ! perms "$obtainium" | grep -qx "$p"; then
+              echo "::error::obtainium APK lost $p -- the call/SMS capture feature must stay in the shipping build."
+              exit 1
+            fi
+          done
+          echo "OK: play omits the restricted permissions; obtainium keeps them."
 
       - name: Upload coverage report
         if: always()

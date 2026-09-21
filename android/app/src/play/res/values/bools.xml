@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Issue #1200: overrides core/ui's library default (true) so the play flavor's
+  Settings screen hides the call/SMS capture toggles and the scheduler never
+  enqueues their catch-up workers. The manifest overlay removes the
+  permissions and components the feature needs.
+-->
+<resources>
+    <bool name="call_sms_tracking_available">false</bool>
+</resources>

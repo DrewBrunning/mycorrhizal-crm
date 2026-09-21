@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Issue #1200: whether this distribution build offers the opt-in call/SMS
+  activity logging feature. False only in the `play` flavor (Google Play
+  restricts READ_SMS/RECEIVE_SMS/READ_CALL_LOG to default dialer/SMS apps),
+  whose manifest overlay removes the permissions and components. The
+  `obtainium` and `foss` builds keep the feature.
+
+  Defined here (a library default of true) so library modules can reference it
+  at compile time; `app/src/play/res/values/bools.xml` overrides it to false.
+-->
+<resources>
+    <bool name="call_sms_tracking_available">true</bool>
+</resources>
