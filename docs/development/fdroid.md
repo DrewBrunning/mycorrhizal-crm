@@ -109,7 +109,8 @@ refuses to update an app with an APK signed by a different key, so the F-Droid
 APK cannot update over — nor be updated by — the project-signed GitHub
 Release/Obtainium APK. Moving between channels requires an uninstall/reinstall.
 This is inherent to publishing the same `applicationId` through multiple
-stores. The `play` flavor shares this constraint (Google Play App Signing).
+stores. The `play` flavor shares this constraint (Google Play App Signing). The
+user-facing statement is the [Android app page](../android-app.md).
 
 ## The `play` flavor
 

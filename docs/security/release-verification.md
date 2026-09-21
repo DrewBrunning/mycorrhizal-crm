@@ -241,6 +241,31 @@ verify app-obtainium-release.apk` if you want to confirm it yourself); it's what
 built with the same signing key as every prior release, so an update can't be substituted by
 someone without that key.
 
+## Android distribution channels and signing keys
+
+The GitHub Release carries **one** Android artifact: the `obtainium` APK (the gold-standard
+self-hosted build). The same source tree also builds two other distribution variants (ADR 0022), and
+**each channel signs with a different key**:
+
+| Channel | Artifact | Who signs it | Update path |
+|---|---|---|---|
+| GitHub Releases / [Obtainium](https://obtainium.imranr.dev/) | `app-obtainium-release.apk` | the project's release keystore (the `SIGNING_*` secrets) | Obtainium, in place |
+| [F-Droid](https://f-droid.org/) | the `foss` APK, built on F-Droid's own build server | F-Droid's key | the official F-Droid client |
+| Google Play | the `play` AAB (`:app:bundlePlayRelease`) | the project upload key, then **Google Play App Signing** | the Play client |
+
+Android refuses to update an installed app with an artifact signed by a different key, so **switching
+channels requires an uninstall/reinstall** — all three variants deliberately keep `applicationId =
+com.mycorrhizal.crm`. This is covered for users on the [Android app page](../android-app.md).
+
+The Play AAB is **not** a GitHub Release asset or a release gate. `android-aab-build.yml` (manual
+dispatch) builds and signs it with the same `SIGNING_*` upload key, so it can be uploaded to Play
+Console for internal/closed testing. It is deliberately separate from `docker-publish.yml`, so a
+Play-specific signing or upload problem cannot block the Docker release; wiring the AAB into the
+release pipeline with provenance is tracked as issue #1206. Because Play App Signing re-signs the
+published APK with Google's own app-signing key, the upload key's fingerprint is *not* the one a
+user's install carries — verify Play installs through the Play client, not against
+`ANDROID_SIGNING_CERT_SHA256`.
+
 ## Verifying the SHA256SUMS manifest
 
 Every Release carries a `SHA256SUMS` file listing the sha256 of every other asset. After

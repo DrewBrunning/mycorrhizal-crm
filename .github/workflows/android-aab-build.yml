@@ -1,0 +1,228 @@
+name: Android AAB Build
+
+# Build a signed Android App Bundle for an arbitrary ref on demand, so a Play
+# Console upload (internal/closed testing) can be exercised without a local
+# toolchain. Pick the ref and flavor from the Actions tab -> "Run workflow".
+#
+# Issue #1201: Google Play requires the AAB format, and the release pipeline
+# (`docker-publish.yml`) only produces `:app:assembleObtainiumRelease` APKs for
+# the GitHub Release. This workflow is deliberately separate from the release
+# pipeline: a Play-specific signing/upload problem must not block the Docker
+# release. Wiring the AAB into the release (with release-grade versions and
+# attestation) is tracked as issue #1206; this workflow is the manual,
+# testable path until then.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to build: branch, tag, or commit SHA'
+        required: true
+        default: 'main'
+        type: string
+      variant:
+        description: 'Build variant (debug bundles are self-signed and installable; release needs the signing secrets)'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+      # Issue #1133: which distribution channel to bundle. `play` is the
+      # Google Play build (issue #1201); `obtainium` and `foss` are offered so
+      # an AAB can be produced for any flavor, but only `play` is submitted.
+      distribution:
+        description: 'Distribution flavor to bundle'
+        required: true
+        default: 'play'
+        type: choice
+        options:
+          - play
+          - obtainium
+          - foss
+
+env:
+  # The app has no local.properties, so the SDK path must come from the
+  # workflow environment. GitHub-hosted ubuntu runners install the SDK at this
+  # location and set ANDROID_HOME to it; state it explicitly since nothing in
+  # the repo does. Same knob as android-apk-build.yml.
+  ANDROID_HOME: /usr/local/lib/android/sdk
+
+permissions:
+  contents: read
+
+jobs:
+  build-aab:
+    permissions:
+      contents: read
+    name: Build AAB
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Same rationale as android-apk-build.yml: build the requested ref,
+          # not the branch the workflow was launched from, and fetch history so
+          # an arbitrary commit SHA resolves.
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+          # zizmor (issue #358): nothing here pushes, and a persisted
+          # credential could leak into a published artifact.
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      - name: Set up JDK
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      # Same gate as android-apk-build.yml, run first so a broken ref fails
+      # here instead of producing a bad bundle. :app's unit tests are
+      # flavor-qualified, so the requested distribution is added explicitly.
+      - name: Unit + integration tests (incl. Robolectric)
+        working-directory: android
+        env:
+          DIST: ${{ inputs.distribution }}
+        run: ./gradlew testDebugUnitTest ":app:test${DIST^}DebugUnitTest"
+
+      - name: Lint
+        working-directory: android
+        env:
+          DIST: ${{ inputs.distribution }}
+        run: ./gradlew lintDebug ":app:lint${DIST^}Debug"
+
+      # Release bundles are not uploadable without a real signature. The
+      # keystore never enters the repo; it is stored as a base64 secret and
+      # materialized on the runner, exactly as android-apk-build.yml and
+      # docker-publish.yml do. All four SIGNING_* names are required together.
+      - name: Materialize release keystore
+        if: inputs.variant == 'release'
+        id: keystore
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          missing=""
+          for var in SIGNING_KEYSTORE_BASE64 SIGNING_STORE_PASSWORD SIGNING_KEY_ALIAS SIGNING_KEY_PASSWORD; do
+            if [ -z "${!var}" ]; then
+              missing="$missing $var"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Release build requested but signing secrets are incomplete. Missing:$missing"
+            echo "::error::All four signing secrets must be set (SIGNING_KEYSTORE_BASE64, SIGNING_STORE_PASSWORD, SIGNING_KEY_ALIAS, SIGNING_KEY_PASSWORD), or pick the debug variant."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP"
+          printf '%s' "$SIGNING_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/keystore.jks"
+          echo "store_file=$RUNNER_TEMP/keystore.jks" >> "$GITHUB_OUTPUT"
+
+      # Same tester-version convention as android-apk-build.yml: no
+      # -PMYCORRHIZAL_VERSION_* would fall back to versionCode 1 / 0.1.0, so
+      # use the run number -- deliberately BELOW a real release's 1000 +
+      # run_number, so a test bundle can never shadow a published release.
+      # Release-grade versioning is issue #1206's job.
+      - name: Compute tester version
+        if: inputs.variant == 'release'
+        id: tester-version
+        run: |
+          short="$(git rev-parse --short HEAD)"
+          {
+            echo "name=0.0.0-dev+${short}"
+            echo "code=${GITHUB_RUN_NUMBER}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Bundle debug AAB
+        if: inputs.variant == 'debug'
+        working-directory: android
+        env:
+          DIST: ${{ inputs.distribution }}
+        run: ./gradlew ":app:bundle${DIST^}Debug"
+
+      - name: Bundle release AAB
+        if: inputs.variant == 'release'
+        working-directory: android
+        env:
+          DIST: ${{ inputs.distribution }}
+          SIGNING_STORE_FILE: ${{ steps.keystore.outputs.store_file }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          MYCORRHIZAL_VERSION_NAME: ${{ steps.tester-version.outputs.name }}
+          MYCORRHIZAL_VERSION_CODE: ${{ steps.tester-version.outputs.code }}
+        run: |
+          ./gradlew ":app:bundle${DIST^}Release" \
+            -PMYCORRHIZAL_VERSION_NAME="$MYCORRHIZAL_VERSION_NAME" \
+            -PMYCORRHIZAL_VERSION_CODE="$MYCORRHIZAL_VERSION_CODE"
+
+      # Locate the bundle rather than hardcoding AGP's nested output path; the
+      # path has moved before (issue #1133) and a glob that silently matches
+      # nothing would let an unsigned/absent bundle through.
+      - name: Locate AAB
+        id: locate
+        env:
+          DIST: ${{ inputs.distribution }}
+          VARIANT: ${{ inputs.variant }}
+        run: |
+          aab="$(find android/app/build/outputs/bundle -name '*.aab' -print -quit)"
+          if [ -z "$aab" ]; then
+            echo "::error::No .aab found under android/app/build/outputs/bundle for flavor ${DIST} / variant ${VARIANT}."
+            find android/app/build/outputs -maxdepth 4 -type d 2>/dev/null || true
+            exit 1
+          fi
+          echo "Found $aab"
+          echo "path=$aab" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Android App Bundle"
+            echo
+            echo "- Path: \`$aab\`"
+            echo "- Flavor: \`$DIST\` / \`$VARIANT\`"
+            echo "- sha256: \`$(sha256sum "$aab" | cut -d' ' -f1)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # A release bundle is signed with the project's upload key (jarsigner
+      # v1, not apksigner -- apksigner is for APKs). Fail before upload if it
+      # is not, mirroring the APK job's "verify the actual output" stance.
+      #
+      # `jarsigner -verify` exits 0 for BOTH a signed and an unsigned bundle
+      # (and `-strict` rejects the self-signed chain the release keystore
+      # legitimately has), so the verdict is the "jar verified." line, not the
+      # exit code.
+      - name: Verify AAB signature
+        if: inputs.variant == 'release'
+        env:
+          AAB: ${{ steps.locate.outputs.path }}
+        run: |
+          set -eu
+          out="$(jarsigner -verify "$AAB" 2>&1 || true)"
+          printf '%s\n' "$out"
+          if ! printf '%s' "$out" | grep -q "jar verified"; then
+            echo "::error::$AAB is not validly signed -- Play Console would reject the upload." >&2
+            echo "::error::Common cause: for this PKCS12 keystore, SIGNING_KEY_PASSWORD must EQUAL SIGNING_STORE_PASSWORD." >&2
+            exit 1
+          fi
+          echo "$AAB is validly signed (upload key)."
+
+      - name: Compute artifact name
+        id: artifact-name
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          safe="${REF//\//-}"
+          echo "name=mycorrhizal-crm-${{ inputs.distribution }}-${{ inputs.variant }}-aab-${safe}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.artifact-name.outputs.name }}
+          path: ${{ steps.locate.outputs.path }}
+          if-no-files-found: error

@@ -78,7 +78,8 @@ metadata entry — without them every F-Droid release would ship as the plugin's
 Each channel signs with a different key (the project's keystore for Obtainium, F-Droid's for F-Droid,
 Google's for Play), and Android refuses to update an installed app with an APK signed by another key.
 **Switching channels requires uninstall/reinstall.** This is inherent to distributing the same
-`applicationId` through multiple stores; it is not a bug, and it is documented for users. All three
+`applicationId` through multiple stores; it is not a bug, and it is documented for users on the
+[Android app page](../android-app.md). All three
 flavors deliberately keep `applicationId = com.mycorrhizal.crm` so the F-Droid recipe and any future
 Play listing target the canonical package.
 
