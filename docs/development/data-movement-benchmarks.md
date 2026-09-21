@@ -137,7 +137,7 @@ length of their one persistence / cascade transaction.
 Migration at startup is measured in depth by **issue #495** — the per-release
 upgrade matrix at 2,010 contacts in `internal/schemafixture`, and its resource
 envelope (`docs/development/scale-testing.md`). PERF-03's gated
-`TestDataMovementAtScale` additionally runs a `v0.6.0 → current` upgrade on the
+`TestDataMovementAtScale` additionally runs an upgrade-floor `→ current` path on the
 PERF-01 large dataset through the same sampler as the operations above and
 asserts its peak heap stays bounded (a table rebuild must not load the table).
 The number is logged by that test, not committed — migration wall-clock is the

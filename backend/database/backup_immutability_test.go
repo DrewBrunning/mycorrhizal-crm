@@ -183,7 +183,7 @@ func TestBackupImmutability_FailedSnapshotTouchesNothingElse(t *testing.T) {
 // filename does match that glob.
 func TestBackupImmutability_PreMigrationRollbackPointSurvivesRoutineRotation(t *testing.T) {
 	t.Parallel()
-	require.Greater(t, mustLatestVersion(t), SupportedUpgradeFloorVersion, "need a pending migration to snapshot")
+	requireMigrationAboveFloor(t, 0)
 
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "mycorrhizal.db")

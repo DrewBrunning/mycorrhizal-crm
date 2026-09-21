@@ -78,7 +78,7 @@ func TestBackupSnapshot_DoesNotBlockWhenStatfsUnreadable(t *testing.T) {
 }
 
 func TestInitDB_PreMigrationBackupFailsClosedOnFullDisk(t *testing.T) {
-	require.Greater(t, mustLatestVersion(t), SupportedUpgradeFloorVersion)
+	requireMigrationAboveFloor(t, 0)
 
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "live.db")

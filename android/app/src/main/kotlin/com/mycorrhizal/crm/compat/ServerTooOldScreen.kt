@@ -26,7 +26,7 @@ import com.mycorrhizal.crm.ui.R
 
 /**
  * Issue #692: the blocking gate shown when the configured server reports a
- * version older than this app's baseline (0.6.0) — the whole authenticated
+ * version older than this app's baseline (1.0.0) — the whole authenticated
  * surface expects that API contract, so instead of letting every screen fail,
  * the app refuses to show UI and asks the operator to upgrade the server. It
  * names the server URL and the versions so the operator can act.

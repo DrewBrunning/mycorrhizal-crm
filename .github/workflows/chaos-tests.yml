@@ -365,6 +365,14 @@ jobs:
     needs: changes
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
 
+    env:
+      # The floor moved to v1.0.0 (= the current latest, issue #1170), so a
+      # version-31 floor database is sub-floor. This job's purpose is the
+      # migration/interruption behavior, not the floor refusal, so it runs the
+      # chain through the documented one-time bridge until a later release adds
+      # a migration above the floor.
+      MYCORRHIZAL_ALLOW_SUB_FLOOR_MIGRATION: "1"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -537,6 +545,14 @@ jobs:
     timeout-minutes: 20
     needs: changes
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+
+    env:
+      # The floor moved to v1.0.0 (= the current latest, issue #1170), so a
+      # version-31 floor database is sub-floor. This job's purpose is the
+      # migration/interruption behavior, not the floor refusal, so it runs the
+      # chain through the documented one-time bridge until a later release adds
+      # a migration above the floor.
+      MYCORRHIZAL_ALLOW_SUB_FLOOR_MIGRATION: "1"
 
     steps:
       - name: Checkout repository
@@ -910,6 +926,14 @@ jobs:
     timeout-minutes: 15
     needs: changes
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
+
+    env:
+      # The floor moved to v1.0.0 (= the current latest, issue #1170), so a
+      # version-31 floor database is sub-floor. This job's purpose is the
+      # migration/interruption behavior, not the floor refusal, so it runs the
+      # chain through the documented one-time bridge until a later release adds
+      # a migration above the floor.
+      MYCORRHIZAL_ALLOW_SUB_FLOOR_MIGRATION: "1"
 
     steps:
       - name: Checkout repository

@@ -168,8 +168,9 @@ is the flagged break the release notes and approval process must cover.
 
 The supported-upgrade floor (`docs/upgrade-compatibility.md`, issue #529) is
 part of this policy's covered surfaces: **raising the floor** (moving the
-minimum supported version from `v0.6.0` to something later) is a breaking
-change under the "raises a supported-version minimum" category, so it requires
-a major version and the process above. The floor's own post-`1.0` rule — any
-`1.x` upgrade from any earlier `1.x`, and from the final `0.9.x` — is the
-upgrade side of the same stability contract this page states for the API.
+minimum supported version) is a breaking change under the "raises a
+supported-version minimum" category, so it requires a major version and the
+process above. The floor moved from `v0.6.0` to `v1.0.0` at the 1.0 major
+under exactly this rule (issue #1170). The floor's own post-`1.0` rule — any
+`1.x` upgrade from any earlier `1.x` — is the upgrade side of the same
+stability contract this page states for the API.

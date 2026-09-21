@@ -14,19 +14,24 @@ re-derive it.
 
 ## The supported range
 
-**In-place upgrade is supported from `v0.6.0` and later.**
+**In-place upgrade is supported from `v1.0.0` and later.**
 
-- `v0.6.0` is the floor. It is the last release before the hardening series
-  began, and every release at or above it is covered by a committed schema
-  fixture (see "How upgrades are tested" below).
-- **Version-skipping within the range is supported.** `v0.6.0 → current`
-  directly must work, not only `v0.6.0 → v0.6.1 → …`. Self-hosted operators
+- `v1.0.0` is the floor. It is the 1.0 major release, and every release at or
+  above it is covered by a committed schema fixture (see "How upgrades are
+  tested" below). The floor moved from `v0.6.0` to `v1.0.0` at the 1.0 major
+  (issue #1170): a major version is the only point the supported-upgrade floor
+  moves. **The v0.x line is no longer a supported in-place-upgrade source.** A
+  database still on a v0.x schema must go through the
+  [below-the-floor two-step](#two-step-upgrade-for-a-pre-floor-instance), or the
+  documented one-time bridge where that applies.
+- **Version-skipping within the range is supported.** `v1.0.0 → current`
+  directly must work, not only `v1.0.0 → v1.0.1 → …`. Self-hosted operators
   skip versions routinely.
-- **Post-`1.0`:** any `1.x` upgrade from any earlier `1.x`, and from the final
-  `0.9.x`. The floor moves only at a major version — which is itself a
-  breaking change under [MAINT-02](breaking-change-policy.md): raising a
-  supported-version minimum requires the major version and process that page
-  describes. The upgrade floor is a covered surface of that policy.
+- **Post-`1.0`:** any `1.x` upgrade from any earlier `1.x`.
+  The floor moves only at a major version — which is itself a breaking change
+  under [MAINT-02](breaking-change-policy.md): raising a supported-version
+  minimum requires the major version and process that page describes. The
+  upgrade floor is a covered surface of that policy.
 - **Downgrade is unsupported.** Rolling back means installing the previous
   version and restoring the pre-upgrade backup (see below).
 
@@ -72,11 +77,11 @@ is the operator-facing summary:
   blocking **"Update required"** screen at the next login and cannot proceed
   until updated — it does not fail mid-sync or corrupt anything. There is
   currently **no floor declared** (the supported combinations table in the
-  policy has a single row covering servers `v0.6.0` and later: every released
+  policy has a single row covering servers `v1.0.0` and later: every released
   client works with every released server in that range), so today an upgrade
-  needs no app update. Servers below `v0.6.0` are outside that range in both
-  directions — the app refuses them and the backend will not migrate them in
-  place.
+  needs no app update. Servers below `v1.0.0` are outside that range in both
+  directions — the app refuses them (its declared server baseline is `v1.0.0`)
+  and the backend will not migrate them in place.
 - **What to do when the release notes say otherwise.** The only case an
   operator acts on is a server release whose notes declare a new client floor —
   a MAINT-02 breaking change that ships through the deprecation process, never
@@ -86,7 +91,11 @@ is the operator-facing summary:
   or disables features the older server does not have (see the policy's
   "newer client, older server" section).
 
-### Known defect — upgrading into v0.6.1–v0.6.8 with existing audit history
+### Historical defect — upgrading into v0.6.1–v0.6.8 with existing audit history
+
+This defect predates the `v1.0.0` floor and is retained for operators who were
+on that upgrade path **before** the floor moved; the path itself is no longer a
+supported one.
 
 **Affected:** a direct upgrade from **≤ v0.6.0** to any of **v0.6.1 – v0.6.8**
 on an instance that has ever written an audit event with a `before_snapshot`
@@ -117,11 +126,11 @@ boot and let startup recreate it.
 
 ## What happens below the floor
 
-A database whose schema predates `v0.6.0` **refuses to migrate**. This is a
+A database whose schema predates `v1.0.0` **refuses to migrate**. This is a
 deliberate, loud refusal — never a partial migration, never a crash, never a
 best-effort single hop:
 
-- The server prints a message naming `v0.6.0` as the required intermediate and
+- The server prints a message naming `v1.0.0` as the required intermediate and
   exits (the `Failed to initialize database` fatal log line).
 - `cmd/migrate up` prints the same message and exits nonzero.
 - Nothing is written to the database; the version is untouched and the database
@@ -130,9 +139,9 @@ best-effort single hop:
 The exact message:
 
 ```
-database schema version 30 predates the supported upgrade floor (v0.6.0, migration 31).
-In-place upgrade is supported only from v0.6.0 and later; this version refuses to migrate a pre-floor database.
-Upgrade this instance to v0.6.0 first, then run this version again — see docs/upgrade-compatibility.md.
+database schema version 30 predates the supported upgrade floor (v1.0.0, migration 57).
+In-place upgrade is supported only from v1.0.0 and later; this version refuses to migrate a pre-floor database.
+Upgrade this instance to v1.0.0 first, then run this version again — see docs/upgrade-compatibility.md.
 ```
 
 ### Two-step upgrade for a pre-floor instance
@@ -140,16 +149,15 @@ Upgrade this instance to v0.6.0 first, then run this version again — see docs/
 1. Back up the database and the file directories (`docs/deployment.md` →
    Backups — the three-piece backup: database, `PROFILE_PHOTO_DIR`,
    `ATTACHMENTS_DIR`).
-2. Deploy the `v0.6.0` release (image `ghcr.io/<org>/mycorrhizal-crm:0.6.0` —
+2. Deploy the `v1.0.0` release (image `ghcr.io/<org>/mycorrhizal-crm:1.0.0` —
    the published tag drops the leading `v` — or equivalent). Its startup
-   migrations move the database to the `v0.6.0` schema
-   (`000031`).
+   migrations move the database to the `v1.0.0` schema (`000057`).
 3. Verify it boots and serves.
 4. Deploy the current release. It now sees a database at or above the floor and
    continues normally.
 
-This is a **documented two-step, not a supported single hop**: only `v0.6.0`
-(and later) is guaranteed to read the pre-floor schema and preserve its data.
+This is a **documented two-step, not a supported single hop**: only `v1.0.0`
+(and later) is guaranteed to read the pre-`v1.0.0` schema and preserve its data.
 
 ## The one-time `v0.2.0-alpha-candidate` bridge
 
@@ -169,7 +177,7 @@ documented bridge**, not a standing support promise:
 4. If the copy is clean, run the same step against the real database.
 
 The bridge exists because the two-step path above depends on producing the
-`v0.6.0` binary's exact startup migration run against a real database; if that
+`v1.0.0` binary's exact startup migration run against a real database; if that
 cannot be reproduced, the env var is the fallback. It is exercised in CI by
 `database.TestFullChainMigrationPreservesRealData` (which asserts the refusal,
 then runs the full chain through the override and asserts the seed data
@@ -194,7 +202,7 @@ that snapshot is the only rollback point.
 
 | State | Behavior | Operator action |
 |---|---|---|
-| Sub-floor schema (below `000031`) | **Refuse**, print the two-step message above, exit | Two-step through `v0.6.0`, or the documented bridge — see the [below-the-floor section](operations/migration-recovery.md#below-the-floor) |
+| Sub-floor schema (below `000057`) | **Refuse**, print the two-step message above, exit | Two-step through `v1.0.0`, or the documented bridge — see the [below-the-floor section](operations/migration-recovery.md#below-the-floor) |
 | Dirty schema | **Refuse** (`ErrDirtyMigration`): a migration started and did not finish, so the schema state is unknown | Restore the pre-migration backup and start again — see the [dirty-schema section](operations/migration-recovery.md#dirty-schema). Only after verifying the schema actually matches the named version, `make migrate-force` (prompted, operator-only) — never automatic |
 | Schema ahead of the binary | **Refuse** (`ErrSchemaAheadOfBinary`): the database knows migrations this binary does not, meaning a rollback is in progress | Deploy a binary that knows the newer migration, or restore the backup taken before the newer release ran — see the [ahead-of-the-binary section](operations/migration-recovery.md#schema-ahead-of-the-binary) |
 | Pre-migration backup target unwritable | **Refuse** (`ErrPreMigrationBackupFailed`): pending migrations exist but the mandatory snapshot could not be written; the database is untouched | Make the backup directory writable, or set `MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` to a writable path, then start again — see [The pre-migration backup](operations/migration-recovery.md#the-pre-migration-backup) |
@@ -262,26 +270,28 @@ database by any refusal.
   release at or above the floor lives in
   `backend/database/testdata/schemas/` (see that directory's README). Each is
   generated from the embedded migration chain (frozen and append-only) and
-  populated at test time from the canonical TEST-02 manifest.
+  populated at test time from the canonical TEST-02 manifest. The pre-`v1.0.0`
+  dumps (`v0.6.0`–`v0.9.0`) remain committed as frozen historical artifacts —
+  the chain is append-only and a historical schema never changes retroactively —
+  but they are outside the supported matrix.
 - **Chain upgrades (MIG-02, issue #437):** `internal/schemafixture`'s upgrade
-  tests run every adjacent hop (`v0.6.0 → v0.6.1 → … → current`) and the
-  longest supported skip (`v0.6.0 → current`) against real migrated fixture
-  databases, asserting row counts and search consistency survive. The
-  migration-tests CI workflow matrixes one job per supported release
-  (`v0.6.0 → current`, `v0.6.1 → current`, …) — the legs are derived from
-  `schemafixture.SupportedReleases` (`cmd/releaselist`), not hand-listed, so a
-  release added by `release.yml` is covered without a workflow edit. Each
-  migrates its fixture through `database.InitDB` (the path the server boots
-  through) and asserts the final version and row counts, plus a down-direction
-  job that round-trips every migration up → down → up against a populated
-  fixture and gates on every migration shipping its `.down.sql`. A new release
-  without a fixture fails CI (the completeness test plus the docker-publish
-  gate).
+  tests run every adjacent hop within the supported range and the longest
+  supported skip (`v1.0.0 → current`) against real migrated fixture databases,
+  asserting row counts and search consistency survive. The migration-tests CI
+  workflow matrixes one job per supported release (`v1.0.0 → current`, `v1.0.1
+  → current`, …) — the legs are derived from `schemafixture.SupportedReleases`
+  (`cmd/releaselist`), not hand-listed, so a release added by `release.yml` is
+  covered without a workflow edit. Each migrates its fixture through
+  `database.InitDB` (the path the server boots through) and asserts the final
+  version and row counts, plus a down-direction job that round-trips every
+  migration up → down → up against a populated fixture and gates on every
+  migration shipping its `.down.sql`. A new release without a fixture fails CI
+  (the completeness test plus the docker-publish gate).
 - **Full-stack upgrades (DEPLOY-02, issue #451):**
   `internal/schemafixture`'s `deploy02_test.go` upgrades a real three-piece
   install — the database file beside real `PROFILE_PHOTO_DIR` /
   `ATTACHMENTS_DIR` directories, the shape a Docker volume actually holds —
-  IN PLACE through `database.InitDB` for every supported release (the v0.6.0
+  IN PLACE through `database.InitDB` for every supported release (the `v1.0.0`
   case is the longest skip), and validates the whole install rather than the
   database alone: row counts and the MIG-03 semantic content survive, every
   live attachment/photo row still resolves to a real file after the in-place
@@ -317,7 +327,7 @@ database by any refusal.
 
 ## Document consistency
 
-The floor (`v0.6.0`, migration `000031`) is defined in
+The floor (`v1.0.0`, migration `000057`) is defined in
 `backend/database/migrate.go` (`SupportedUpgradeFloorVersion` /
 `SupportedUpgradeFloorTag`) and re-exported by `internal/schemafixture`.
 `schemafixture.TestDocsStateTheFloor` asserts this document still names both,

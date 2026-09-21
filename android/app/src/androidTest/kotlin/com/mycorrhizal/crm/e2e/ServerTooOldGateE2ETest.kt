@@ -25,14 +25,14 @@ import org.junit.runner.RunWith
  * upgrade" gate ([com.mycorrhizal.crm.compat.ServerTooOldScreen]) fires when a
  * configured server's /health reports a version older than this app's
  * baseline ([com.mycorrhizal.crm.domain.compat.ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION],
- * 0.6.0). No released server is actually below that floor — v0.6.0 IS the
- * floor, chosen because it's the oldest server this app supports — so there
- * is no real historical image to boot for this case the way
- * [OldServerCompatibilityE2ETest] boots a real v0.6.0. A minimal in-process
- * HTTP stub serving a synthetic below-floor /health response is the real
- * equivalent: this drives the actual app, the actual network stack and the
- * actual [ServerTooOldScreen] composable against a real HTTP response, only
- * the response body is synthetic rather than a live backend's.
+ * 1.0.0 since issue #1170). The baseline moves only at a major and no released
+ * server is actually below it right now, so there is no real historical image
+ * to boot for this case the way [OldServerCompatibilityE2ETest] boots a real
+ * v1.0.0. A minimal in-process HTTP stub serving a synthetic below-floor
+ * /health response is the real equivalent: this drives the actual app, the
+ * actual network stack and the actual [ServerTooOldScreen] composable against
+ * a real HTTP response, only the response body is synthetic rather than a live
+ * backend's.
  *
  * The gate logic itself is covered at the unit level
  * (ServerCapabilitiesTest, CompatibilityOutcomeTest, ServerTooOldScreenTest);
@@ -85,7 +85,7 @@ class ServerTooOldGateE2ETest {
 
         // Configuring the below-baseline server URL raises the pre-login
         // gate: /health (resolved on URL change) reports a version below
-        // this app's 0.6.0 baseline, so the auth form is swapped for the
+        // this app's 1.0.0 baseline, so the auth form is swapped for the
         // blocking screen instead of authenticating against a contract this
         // app does not implement.
         replaceTextInField("Server URL", serverUrl)
@@ -150,10 +150,10 @@ class ServerTooOldGateE2ETest {
     private companion object {
         /** Mirrors [com.mycorrhizal.crm.domain.compat.ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION]
          *  as a literal — the required-version half of the rendered message. */
-        const val BASELINE_VERSION = "0.6.0"
+        const val BASELINE_VERSION = "1.0.0"
 
         /** A version below [BASELINE_VERSION] — the synthetic server's
-         *  reported version. */
-        const val BELOW_FLOOR_VERSION = "0.5.9"
+         *  reported version (the retired 0.9.x line). */
+        const val BELOW_FLOOR_VERSION = "0.9.0"
     }
 }

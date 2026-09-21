@@ -3,11 +3,12 @@ package com.mycorrhizal.crm.domain.compat
 import com.mycorrhizal.crm.model.AppVersion
 
 /**
- * The v0.6.0 baseline floor shared by every baseline [ServerFeature] and by the
+ * The v1.0.0 baseline floor shared by every baseline [ServerFeature] and by the
  * "server too old" gate ([ServerCapabilities.isServerSupported]). Matches the
- * backend's migration floor: the oldest server this app will talk to.
+ * backend's migration floor: the oldest server this app will talk to. Raised
+ * from v0.6.0 at the 1.0.0 major release (issue #1170).
  */
-private val SERVER_BASELINE: AppVersion = AppVersion(0, 6, 0)
+private val SERVER_BASELINE: AppVersion = AppVersion(1, 0, 0)
 
 /**
  * The exhaustive registry of server-backed capabilities this app can present
@@ -22,19 +23,20 @@ private val SERVER_BASELINE: AppVersion = AppVersion(0, 6, 0)
  * ## How a floor is chosen
  *
  * A floor is the FIRST server release whose route table shipped the endpoints a
- * capability needs — derived from the git tags (v0.6.0 … v0.6.9) rather than
- * invented. The whole authenticated surface shares one baseline,
- * [ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION] (0.6.0), because the route
- * table is effectively unchanged across the v0.6.0–v0.6.9 line: a server below
- * the baseline is refused outright (the "server too old" gate), and a server at
- * or above it supports everything on the baseline. Only capabilities whose
- * endpoints arrived after v0.6.0 carry a higher floor:
+ * capability needs — derived from the git tags rather than invented. The whole
+ * authenticated surface shares one baseline,
+ * [ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION] (v1.0.0): a server below the
+ * baseline is refused outright (the "server too old" gate), and every
+ * capability that exists at all ships by the baseline, so a supported server
+ * provides everything.
  *
- *  - [SYSTEM_EVENTS]       — /admin/system-events* first shipped in v0.6.2
- *  - [AUDIT_EXPORT]        — /audit/export first shipped in v0.6.1
- *  - [API_TOKENS_ADVANCED] — /api-tokens/revoke-all + /:id/rotate in v0.6.1
- *  - [DEVICE_GRANT_SIGNIN] — /auth/device/session + /auth/device/grants* are
- *    newer than every released tag (they ship in the v0.6.10 cycle)
+ * The per-capability floors below are historical: each names the v0.x release
+ * whose route table first shipped the endpoints (e.g. /admin/system-events* in
+ * v0.6.2, /audit/export in v0.6.1, device grants in v0.6.10). Every one of them
+ * is below the v1.0.0 baseline, so the baseline gate dominates and none of them
+ * hides anything on a supported server. They survive as the map a future floor
+ * raise edits: a capability added after v1.0.0 gets a floor above the baseline,
+ * which is the only case [ServerCapabilities.isSupported] can act on.
  *
  * Raising a floor (moving a capability onto a newer server) is a MAINT-02
  * breaking-change event and needs a recorded rationale, exactly like the
@@ -48,7 +50,7 @@ private val SERVER_BASELINE: AppVersion = AppVersion(0, 6, 0)
  */
 enum class ServerFeature(val minServerVersion: AppVersion) {
 
-    // --- The v0.6.0 baseline (the oldest server this app will talk to) ---
+    // --- The v1.0.0 baseline (the oldest server this app will talk to) ---
 
     /** Contact list/detail/create/edit/delete and the flat list contract. */
     CONTACTS(SERVER_BASELINE),

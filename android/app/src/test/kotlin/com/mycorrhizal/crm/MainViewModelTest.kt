@@ -145,7 +145,7 @@ class MainViewModelTest {
         val flow = MutableStateFlow(SessionState())
         val sessionManager = sessionManager(flow)
         val repo = compatibilityRepository(
-            Result.success(ServerHealth(version = "0.6.10", apiContractVersion = "v1")),
+            Result.success(ServerHealth(version = "1.0.0", apiContractVersion = "v1")),
         )
 
         val viewModel = vm(sessionManager, repo)
@@ -156,7 +156,7 @@ class MainViewModelTest {
 
         assertEquals(CompatibilityGate.NotRequired, viewModel.compatibilityGate.value)
         assertNull(viewModel.serverOutdatedNoticeVersion.value)
-        assertEquals(AppVersion(0, 6, 10), viewModel.serverVersion.value)
+        assertEquals(AppVersion(1, 0, 0), viewModel.serverVersion.value)
     }
 
     @Test
@@ -270,7 +270,7 @@ class MainViewModelTest {
         advanceUntilIdle()
         assertEquals(CompatibilityGate.ForceUpdate("0.9.0"), viewModel.compatibilityGate.value)
 
-        result = Result.success(ServerHealth(version = "0.6.10", apiContractVersion = "v1"))
+        result = Result.success(ServerHealth(version = "1.0.0", apiContractVersion = "v1"))
         flow.value = SessionState(serverUrl = "https://new.example.com")
         advanceUntilIdle()
 

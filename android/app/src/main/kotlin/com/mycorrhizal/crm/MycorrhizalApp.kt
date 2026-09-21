@@ -448,7 +448,7 @@ fun MycorrhizalApp(
  * Issue #528/#692: the compatibility gates are threaded through the same
  * decision. They are checked BEFORE everything else, including the logged-out
  * auth tree: a required force-update (this build below the server's floor) and
- * a server-too-old (server below this app's 0.6.0 baseline) are blocking
+ * a server-too-old (server below this app's 1.0.0 baseline) are blocking
  * surfaces that render no session data, so there is nothing for the device's
  * local gate to protect on them — and the auth screen is not worth showing
  * against a server that will refuse it.

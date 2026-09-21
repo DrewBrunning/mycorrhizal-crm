@@ -1,12 +1,10 @@
 package com.mycorrhizal.crm.e2e
 
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -25,35 +23,33 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Issue #914: no test ever booted an OLD server, so the client-degrades and
- * the server-refused claims in docs/client-compatibility-policy.md rested on
- * the version-gate *logic* being unit-tested (ServerCapabilitiesTest,
- * CompatibilityOutcomeTest) plus a belief that a real v0.6.0 server's
- * responses still parse the way that logic assumes. Nothing ever proved that
- * belief against an actual v0.6.0 binary.
+ * Issue #914: no test ever booted a real *baseline* server, so the "a released
+ * server at the floor still authenticates and serves the app" claim in
+ * docs/client-compatibility-policy.md rested on the version-gate *logic* being
+ * unit-tested (ServerCapabilitiesTest, CompatibilityOutcomeTest) plus a belief
+ * that a real floor server's responses still parse the way that logic assumes.
+ * Nothing ever proved that belief against an actual release binary.
  *
  * This test targets a THIRD backend instance (docker-compose.compat-test.yml,
- * port 7302), the pinned historical image `ghcr.io/drewbrunning/mycorrhizal-crm:0.6.0`
- * — the real release at this app's migration floor
- * ([com.mycorrhizal.crm.domain.compat.ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION]),
- * not a synthetic stub. It only exists in the CI legs that start it
- * (android-e2e / android-e2e-min-sdk), so the test skips when it is not
- * reachable — a local run without that third backend is not a failure. The
- * companion synthetic-response case (a server reporting a version BELOW the
- * baseline, the blocking "server needs an upgrade" gate) is
- * [ServerTooOldGateE2ETest] — a real pre-0.6.0 server does not exist to boot
- * (v0.6.0 IS the floor), so that case is a stubbed /health instead.
+ * port 7302), the pinned release image
+ * `ghcr.io/drewbrunning/mycorrhizal-crm:1.0.0` — the real release at this
+ * app's migration floor
+ * ([com.mycorrhizal.crm.domain.compat.ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION];
+ * raised from v0.6.0 at the 1.0 major, issue #1170) — not a synthetic stub. It
+ * only exists in the CI legs that start it (android-e2e / android-e2e-min-sdk),
+ * so the test skips when it is not reachable — a local run without that third
+ * backend is not a failure. The companion synthetic-response case (a server
+ * reporting a version BELOW the baseline, the blocking "server needs an
+ * upgrade" gate) is [ServerTooOldGateE2ETest] — the newest below-baseline
+ * server is the retired v0.9.x line, which is not worth pinning, so that case
+ * is a stubbed /health instead.
  *
- * Two things this proves that no unit test can:
- *  1. A real v0.6.0 server is AT the baseline, not below it — login succeeds
- *     and the app reaches the dashboard rather than the "server too old" gate
- *     mis-firing on the boundary version itself.
- *  2. A capability whose floor is above 0.6.0 —
- *     [com.mycorrhizal.crm.domain.compat.ServerFeature.API_TOKENS_ADVANCED]
- *     (v0.6.1+, rotate + revoke-all) — is actually hidden against this real
- *     server's actual /health response, not just against a
- *     hand-constructed [com.mycorrhizal.crm.model.network.ServerHealth] in a
- *     Robolectric test.
+ * What this proves that no unit test can: a real server AT the baseline is not
+ * refused — login succeeds and the app reaches the dashboard rather than the
+ * "server too old" gate misfiring on the boundary version itself — and a
+ * baseline capability (the API Tokens screen) loads against the real server's
+ * actual /health response rather than a hand-constructed
+ * [com.mycorrhizal.crm.model.network.ServerHealth] in a Robolectric test.
  *
  * The non-blocking "server could be upgraded" notice
  * (issue #528's [CompatibilityGate] third state) is deliberately NOT exercised
@@ -87,7 +83,7 @@ class OldServerCompatibilityE2ETest {
     }
 
     @Test
-    fun realV060Server_authenticatesAndHidesPost060ApiTokenFeatures() {
+    fun realV100Server_authenticatesAndServesBaselineSurface() {
         waitForText("Sign in")
         replaceTextInField("Server URL", OLD_SERVER_URL)
         replaceTextInField("Username or email", E2eConfig.SEED_USERNAME)
@@ -95,12 +91,13 @@ class OldServerCompatibilityE2ETest {
         compose.onNode(hasText("Password") and hasSetTextAction()).performTextInput(E2eConfig.SEED_PASSWORD)
         compose.onNodeWithText("Sign in").performClick()
 
-        // The real v0.6.0 baseline server is AT the floor, not below it: the
+        // The real v1.0.0 baseline server is AT the floor, not below it: the
         // "server too old" gate must not fire, and the app must reach the
         // dashboard exactly as it would against the current test backend.
         waitForText("Dashboard")
 
-        // Navigate Settings -> API Tokens.
+        // Navigate Settings -> API Tokens — a baseline capability the real
+        // floor server must serve.
         clickContentDescription("Menu")
         waitForText("Settings")
         onLastText("Settings").performClick()
@@ -110,10 +107,6 @@ class OldServerCompatibilityE2ETest {
         // The screen loaded against the real server (empty token list — a
         // fresh per-container seed user).
         waitForText("No API tokens yet")
-
-        // API_TOKENS_ADVANCED (rotate + revoke-all, v0.6.1+) is hidden: this
-        // real server's own /health reports "0.6.0", below that floor.
-        compose.onAllNodesWithContentDescription("Revoke All").assertCountEquals(0)
     }
 
     // --- minimal shared helpers (mirrors E2eBaseTest / ForceUpdateGateE2ETest) ---
@@ -150,7 +143,7 @@ class OldServerCompatibilityE2ETest {
     }
 
     private companion object {
-        /** The dedicated pinned-v0.6.0 backend started by android-e2e's CI
+        /** The dedicated pinned-v1.0.0 backend started by android-e2e's CI
          *  legs (see docker-compose.compat-test.yml) — reached via adb
          *  reverse like the suite's other backends. */
         const val OLD_SERVER_URL = "http://127.0.0.1:7302"

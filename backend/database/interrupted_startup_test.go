@@ -82,9 +82,8 @@ func closeInitDB(t *testing.T, dbPath string) func() {
 // and the latest — the "between two migrations" clean stopping point.
 func midChainVersion(t *testing.T) uint {
 	t.Helper()
+	requireMigrationAboveFloor(t, 1)
 	latest := mustLatestVersion(t)
-	require.Greater(t, latest, SupportedUpgradeFloorVersion+1,
-		"DEPLOY-03 between-migrations needs at least two migrations above the floor")
 	return SupportedUpgradeFloorVersion + (latest-SupportedUpgradeFloorVersion)/2
 }
 
@@ -93,6 +92,7 @@ func midChainVersion(t *testing.T) uint {
 // signature, assert the signature, restart via InitDB, and assert the declared
 // outcome plus that the user row survived.
 func TestInterruptedStartupKillPoints(t *testing.T) {
+	requireMigrationAboveFloor(t, 0)
 	latest := mustLatestVersion(t)
 
 	t.Run("before_migrations", func(t *testing.T) {
@@ -226,6 +226,7 @@ func TestInterruptedStartupKillPoints(t *testing.T) {
 // defined state as one kill — not a deeper one. Both the dirty (during) and the
 // clean-intermediate (between) signatures are exercised.
 func TestInterruptedStartupCrashLoopConverges(t *testing.T) {
+	requireMigrationAboveFloor(t, 0)
 	latest := mustLatestVersion(t)
 
 	t.Run("dirty_signature_stays_put_across_restarts", func(t *testing.T) {
@@ -290,6 +291,7 @@ func TestInterruptedStartupCrashLoopConverges(t *testing.T) {
 // must survive the interruption AND a crash loop (reused, not rewritten each
 // restart), and must be a restorable recovery point.
 func TestInterruptedStartupPreMigrationBackupSurvivesAndRestores(t *testing.T) {
+	requireMigrationAboveFloor(t, 0)
 	faults.Reset()
 	t.Cleanup(faults.Reset)
 	latest := mustLatestVersion(t)
@@ -358,6 +360,7 @@ func TestInterruptedStartupPreMigrationBackupSurvivesAndRestores(t *testing.T) {
 // file exercises. The DB-01 deep checker (mycorrhizal doctor, issue #460) is
 // not built yet; when it lands its check slots in beside IntegrityCheck here.
 func TestInterruptedStartupIntegrityHoldsAfterEveryRecovery(t *testing.T) {
+	requireMigrationAboveFloor(t, 0)
 	faults.Reset()
 	t.Cleanup(faults.Reset)
 	latest := mustLatestVersion(t)

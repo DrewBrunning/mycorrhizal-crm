@@ -79,7 +79,7 @@ func TestUpgradeEachAdjacentHop(t *testing.T) {
 	})
 }
 
-// TestUpgradeLongestSkip is issue #529's headline upgrade shape: a v0.6.0
+// TestUpgradeLongestSkip is issue #529's headline upgrade shape: a v1.0.0
 // fixture upgraded DIRECTLY to the current schema (the path a real operator
 // takes after ignoring updates) — through the production entry point, not the
 // stepwise migrator — with data intact.
@@ -108,7 +108,7 @@ func TestUpgradeLongestSkip(t *testing.T) {
 	after := tableCounts(t, db)
 	for table, want := range before {
 		assert.Equalf(t, want, after[table],
-			"the v0.6.0 -> current skip must preserve %s row counts", table)
+			"the v1.0.0 -> current skip must preserve %s row counts", table)
 	}
 }
 
@@ -116,6 +116,7 @@ func TestUpgradeLongestSkip(t *testing.T) {
 // pre-upgrade contacts after the upgrade": after the longest skip, the FTS
 // index must still resolve a contact that was loaded into the fixture.
 func TestUpgradeLeavesSearchConsistent(t *testing.T) {
+	requirePendingMigrationAboveFloor(t)
 	f := Load(t, SupportedReleases[0])
 	gina := f.Dataset.Contacts["gina"]
 

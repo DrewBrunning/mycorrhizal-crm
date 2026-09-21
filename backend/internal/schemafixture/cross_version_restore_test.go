@@ -112,7 +112,7 @@ func seedFilePieces(t *testing.T, f *Fixture) seededFilePieces {
 
 	// Photos: stamp a filename onto the first two live contacts and write the
 	// file. The value goes into contacts.photo (a column present since well
-	// before the v0.6.0 floor), so a restore that drops the photo directory
+	// before the v1.0.0 floor), so a restore that drops the photo directory
 	// leaves these rows pointing at nothing — which is exactly what the
 	// hand-verify in the ticket breaks on.
 	var contactIDs []uint

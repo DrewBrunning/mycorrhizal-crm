@@ -28,7 +28,7 @@ three you are in:
 
 | Boot log says… | State | Section |
 |---|---|---|
-| `database schema version N predates the supported upgrade floor (v0.6.0, migration 31)` | Below the floor | [Below the floor](#below-the-floor) |
+| `database schema version N predates the supported upgrade floor (v1.0.0, migration 57)` | Below the floor | [Below the floor](#below-the-floor) |
 | `database is in a dirty migration state at version N: … Refusing to start (fail-closed). Restore the pre-migration backup and start again …` | Dirty schema | [Dirty schema](#dirty-schema) |
 | `database schema version N is ahead of this binary (latest known migration M): … Deploy a binary that knows migration N (or newer) and start again, or restore the backup taken before the newer release ran …` | Schema ahead of the binary | [Schema ahead of the binary](#schema-ahead-of-the-binary) |
 
@@ -162,7 +162,9 @@ database opened by an N binary — *is* detected and refused
 
 **Applies to:** an instance upgraded from **≤ v0.6.0** into **v0.6.1 – v0.6.8**
 that already had audit history. **Fixed in v0.6.9** — a `v0.6.0 → v0.6.9`
-upgrade does not hit this. See `docs/upgrade-compatibility.md` → "Known defect".
+upgrade does not hit this. This is a historical defect from before the floor
+moved to `v1.0.0` (issue #1170); see `docs/upgrade-compatibility.md` →
+"Historical defect".
 
 **What it is.** Migrations apply and commit, then the backend exits at startup
 with
@@ -270,14 +272,16 @@ silent-corruption class as the dirty-force bug, so the server refuses (MIG-04).
 ## Below the floor
 
 **What it is.** The database's schema predates the supported upgrade floor
-(`v0.6.0`, migration `000031`). The server refuses to migrate it best-effort;
-the message names `v0.6.0` as the required intermediate.
+(`v1.0.0`, migration `000057`). The server refuses to migrate it best-effort;
+the message names `v1.0.0` as the required intermediate. (The floor moved from
+`v0.6.0` to `v1.0.0` at the 1.0 major, issue #1170, so a database on any v0.x
+schema is now below it.)
 
 **Recovery** — the documented two-step (from `docs/upgrade-compatibility.md`):
 
 1. Back up the database and the two file directories.
-2. Deploy the `v0.6.0` release. Its startup migrations move the database to the
-   `v0.6.0` schema (`000031`).
+2. Deploy the `v1.0.0` release. Its startup migrations move the database to the
+   `v1.0.0` schema (`000057`).
 3. Verify it boots and serves.
 4. Deploy the current release. It now sees a database at or above the floor and
    continues normally.
@@ -392,7 +396,7 @@ above — not from memory:
 |---|---|---|---|
 | Dirty schema | Start a migration and kill the process mid-run (SIGKILL, or the TEST-06 fault-injection harness's `migration-kill` scenario), or set `UPDATE schema_migrations SET dirty = 1` | The [Dirty schema](#dirty-schema) restore | The restored database reports `integrity_check=ok`, the expected version, `dirty=false`, and `/health/ready` is `ready` |
 | Ahead of the binary | Point an older binary at a database migrated by a newer one (e.g. a schema dump from `backend/database/testdata/schemas/` at a higher version) | The [Schema ahead of the binary](#schema-ahead-of-the-binary) reinstall or restore | Same as above |
-| Below the floor | Point the current binary at a `v0.5.x`-schema database | The [Below the floor](#below-the-floor) two-step | The refusal message names `v0.6.0`, and the two-step lands at the current schema |
+| Below the floor | Point the current binary at a `v0.5.x`-schema database | The [Below the floor](#below-the-floor) two-step | The refusal message names `v1.0.0`, and the two-step lands at the current schema |
 | Interrupted startup | Park `make migrate-up` at a fault seam and SIGKILL it (`MYCORRHIZAL_FAULTS=database.migration.before_batch:pause:120s` for "before any migration"; `database.migration.statement:pause:120s` for "during"), or stop the container mid-`docker compose up` | The matching row in [Interrupted startup](#interrupted-startup) | `dbinspect` shows the state that section predicts for the kill point, and a plain restart (or the named recovery for the dirty case) lands clean at the latest version with `/health/ready` `ready` |
 | Bad-release rollback (N+1 → N) | Upgrade a real three-piece install in place (the mandatory pre-migration backup, [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530), fires during this step) | [Rolling back a bad release](#rolling-back-a-bad-release-n1--n): stop N+1, deploy N, restore the pre-migration snapshot + the two file directories | The restored (not-further-migrated) instance passes the same real-workflow check as [After recovery](#after-recovery) — `dbinspect` reports the PRE-upgrade version and `integrity_check=ok`, every live attachment/photo row resolves to a real file, and a pre-existing account can actually log in, search, read/edit a contact, and export |
 

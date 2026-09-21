@@ -111,5 +111,5 @@ Read directly from the environment outside `config.LoadConfig` (issue #936) — 
 
 | Variable | Type | Default | Required | Restart required | Range / enum | Description | Why outside Config |
 |---|---|---|---|---|---|---|---|
-| `MYCORRHIZAL_ALLOW_SUB_FLOOR_MIGRATION` | bool | false | no | yes | true to enable; any other value (including unset) leaves it off | One-time bridge allowing a pre-v0.6.0 database to migrate (issue #529) | read by database.InitDB during migration bootstrap, before config.LoadConfig runs — see docs/upgrade-compatibility.md |
+| `MYCORRHIZAL_ALLOW_SUB_FLOOR_MIGRATION` | bool | false | no | yes | true to enable; any other value (including unset) leaves it off | One-time bridge allowing a pre-v1.0.0 database to migrate (issue #529) | read by database.InitDB during migration bootstrap, before config.LoadConfig runs — see docs/upgrade-compatibility.md |
 | `MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` | string | a 'pre-migration' sibling directory of SQLITE_DB_PATH | no | yes | directory path | Where the automatic pre-migration backup snapshot is written (issue #530) | read by database.preMigrationBackupDir during migration bootstrap, before config.LoadConfig runs |

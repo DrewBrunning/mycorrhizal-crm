@@ -2,8 +2,9 @@ name: Migration Tests
 
 # Issue #437 (MIG-02): every supported historical migration path runs in CI,
 # with each supported-release fixture as a NAMED matrix entry so a failure
-# names the release that broke. The supported set is v0.6.0 and later (issue
-# #529); the fixtures come from MIG-01 (issue #436, internal/schemafixture).
+# names the release that broke. The supported set is v1.0.0 and later (issue
+# #529; raised from v0.6.0 at the 1.0 major, issue #1170); the fixtures come
+# from MIG-01 (issue #436, internal/schemafixture).
 #
 # Shapes that run here:
 #
@@ -17,10 +18,10 @@ name: Migration Tests
 #     CURRENT schema through database.InitDB — the exact path the server boots
 #     through, not a reconstructed migration call — asserting the final version
 #     and that every table's row count survived (a migration that drops a table
-#     exits zero, so exit status alone proves nothing). The v0.6.0 entry IS the
-#     longest supported skip (v0.6.0 -> current), run through the whole chain
+#     exits zero, so exit status alone proves nothing). The v1.0.0 entry IS the
+#     longest supported skip (v1.0.0 -> current), run through the whole chain
 #     at once. One job per release, one subtest per release.
-#   - adjacent-hops: v0.6.N -> v0.6.N+1, one migration or a few — catches a
+#   - adjacent-hops: one release -> the next, one migration or a few — catches a
 #     broken individual migration and names the exact release hop.
 #   - down-direction: every migration in the chain round-trips up -> down -> up
 #     against a POPULATED fixture (an empty-schema round trip proves nothing,
@@ -408,8 +409,8 @@ jobs:
           # Fail-safe: the tests are env-gated, so a typo'd variable would
           # silently skip them and the job would pass vacuously. Assert the
           # longest-skip subtest actually ran and none were skipped.
-          if ! grep -q -- "--- PASS: TestLargeDatasetUpgradeToCurrent/v0.6.0 " <<<"$out"; then
-            echo "::error::expected large-dataset subtest v0.6.0 did not run (MYCORRHIZAL_LARGE_TESTS not honored?)"
+          if ! grep -q -- "--- PASS: TestLargeDatasetUpgradeToCurrent/v1.0.0 " <<<"$out"; then
+            echo "::error::expected large-dataset subtest v1.0.0 did not run (MYCORRHIZAL_LARGE_TESTS not honored?)"
             exit 1
           fi
           if grep -q -- "--- SKIP: TestLargeDatasetUpgradeToCurrent" <<<"$out"; then

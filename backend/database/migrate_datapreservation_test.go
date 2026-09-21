@@ -28,8 +28,8 @@ import (
 //
 // Under the floor policy the v0.2.0-alpha-candidate snapshot is a SUB-FLOOR
 // database: the normal startup path must refuse to migrate it (asserted
-// first, naming v0.6.0 as the required intermediate), and the full chain runs
-// only through the documented one-time bridge override — exactly what the
+// first, naming the supported-upgrade floor as the required intermediate), and
+// the full chain runs only through the documented one-time bridge override — exactly what the
 // maintainer's own v0.2.0-alpha-candidate deployment procedure
 // (docs/upgrade-compatibility.md) uses. This test therefore: (1) applies
 // exactly the migrations that existed at v0.2.0-alpha-candidate
@@ -65,17 +65,18 @@ func TestFullChainMigrationPreservesRealData(t *testing.T) {
 	require.NoError(t, sqlDB.Close())
 
 	// Issue #529: a sub-floor database refuses to migrate on startup, naming
-	// v0.6.0 as the required intermediate — never a partial migration, never
+	// the supported-upgrade floor as the required intermediate — never a partial migration, never
 	// a best-effort single hop.
 	_, err = InitDB(dbPath)
 	require.Error(t, err, "a v0.2.0-alpha-candidate database must refuse to migrate")
 	var subFloor *ErrSubFloorMigration
 	require.ErrorAs(t, err, &subFloor)
 	assert.EqualValues(t, 8, subFloor.Version)
-	assert.Contains(t, err.Error(), "v0.6.0", "the refusal must name v0.6.0 as the required intermediate")
+	assert.Contains(t, err.Error(), SupportedUpgradeFloorTag,
+		"the refusal must name the supported-upgrade floor as the required intermediate")
 
 	// The one-time bridge (docs/upgrade-compatibility.md): the documented
-	// override lets the full chain run in one binary when the v0.6.0
+	// override lets the full chain run in one binary when the floor
 	// intermediate cannot be produced. The production entry point applies
 	// every migration from 000008 to HEAD, then opens the GORM connection the
 	// rest of the app uses.
@@ -92,7 +93,7 @@ func TestFullChainMigrationPreservesRealData(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ok)
 	assert.False(t, dirty)
-	assert.GreaterOrEqual(t, version, uint(31), "the full current migration chain must have applied on top of the seed")
+	assert.GreaterOrEqual(t, version, SupportedUpgradeFloorVersion, "the full current migration chain must have applied on top of the seed")
 
 	// Contacts: three total, two still visible through GORM's default
 	// soft-delete scope, Carol only visible with Unscoped(). A lingering

@@ -222,9 +222,18 @@ func TestMigrationAtScaleResourceEnvelope(t *testing.T) {
 	_, err = largedata.Populate(src, base, largedata.Typical)
 	require.NoError(t, err)
 
-	const v060 = 31 // schemafixture.SupportedReleases[0].Version
-	floor := filepath.Join(t.TempDir(), "mig-v060.db")
-	require.NoError(t, schemafixture.TransplantDataToVersion(src, v060, floor))
+	// The upgrade floor is the oldest supported in-place-upgrade source. Right
+	// after a major release it IS the newest schema (issue #1170 raised it to
+	// v1.0.0, migration 57, the current latest), so there is no pending
+	// migration to measure; skip until a later release adds one.
+	floorVersion := database.SupportedUpgradeFloorVersion
+	latest, err := database.LatestMigrationVersion()
+	require.NoError(t, err)
+	if floorVersion >= latest {
+		t.Skipf("upgrade floor %d is the newest migration %d — no pending migration to measure", floorVersion, latest)
+	}
+	floor := filepath.Join(t.TempDir(), "mig-floor.db")
+	require.NoError(t, schemafixture.TransplantDataToVersion(src, floorVersion, floor))
 
 	sample, err := sampleResources([]string{floor}, nil, func() (int, int64, error) {
 		if err := database.MigrateUp(floor); err != nil {
@@ -234,7 +243,7 @@ func TestMigrationAtScaleResourceEnvelope(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	t.Logf("migration v0.6.0→current (typical, 900 contacts): duration=%s peak-heap=%s peak-extra-disk=%s",
+	t.Logf("migration floor-v%d→current (typical, 900 contacts): duration=%s peak-heap=%s peak-extra-disk=%s", floorVersion,
 		humanDuration(sample.DurationNanos), humanBytes(sample.PeakHeapBytes), humanBytes(sample.PeakExtraDiskBytes))
 	assert.Less(t, sample.PeakHeapBytes, int64(64<<20),
 		"migration peak heap should not scale with the table size — a table rebuild must stream, not load")
