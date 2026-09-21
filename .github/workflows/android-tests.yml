@@ -7,8 +7,9 @@ on:
     branches: [main, "release/**"]
   # Issue #578, B5: the instrumented E2E job (android-e2e) moved OFF the PR
   # path — it stays on push:main and now also sweeps every night + on demand.
-  # The `test` job (Robolectric + detekt + lint + assembleDebug) remains the
-  # fast PR gate. See the android-e2e job's header for the trade-off.
+  # The `test` job (Robolectric + detekt + lint + flavor-qualified
+  # assembleDebug) remains the fast PR gate. See the android-e2e job's header
+  # for the trade-off.
   schedule:
     - cron: '0 4 * * *' # 04:00 UTC nightly
   workflow_dispatch:
@@ -98,7 +99,7 @@ jobs:
       contents: read
     name: Android (Gradle)
     runs-on: ubuntu-latest
-    # The job runs the full Robolectric suite + jacoco + lint + assembleDebug;
+    # The job runs the full Robolectric suite + jacoco + lint + flavor-qualified assembleDebug;
     # typical time is ~26-30m, and a slightly slow runner has hit the 30m cap
     # (cancelled mid-assemble). 40m keeps the bound meaningful while giving the
     # variance headroom so a flaky timeout doesn't fail the required check.
@@ -154,9 +155,15 @@ jobs:
             exit 1
           fi
 
+      # Issue #1133: `testDebugUnitTest` now only matches the unflavored
+      # library modules — :app's unit tests are flavor-qualified. Run the
+      # gold-standard `obtainium` flavor (what coverage and the release use)
+      # plus `foss` (the F-Droid variant must actually compile and pass its
+      # FCM-free Hilt graph/tests). `play` is source-identical to `obtainium`
+      # today and is exercised by the APK-build workflow instead.
       - name: Unit + integration tests (incl. Robolectric)
         working-directory: android
-        run: ./gradlew testDebugUnitTest
+        run: ./gradlew testDebugUnitTest :app:testObtainiumDebugUnitTest :app:testFossDebugUnitTest
 
       # Issue #268: the test-retry plugin (configured in build-logic) reruns a
       # failed Robolectric test once in CI. Gradle retains the failed attempt
@@ -201,7 +208,7 @@ jobs:
 
       - name: Lint
         working-directory: android
-        run: ./gradlew lintDebug
+        run: ./gradlew lintDebug :app:lintObtainiumDebug :app:lintFossDebug
 
       # Issue #358: detekt is the Kotlin correctness/smell analyzer (dead
       # code, over-broad exception handling, declaration/file mismatches) that
@@ -216,9 +223,42 @@ jobs:
         working-directory: android
         run: ./gradlew detekt
 
-      - name: Assemble debug APK
+      # Issue #1133: assemble the obtainium (gold-standard) and foss (F-Droid)
+      # debug variants — the latter proves the Firebase-free flavor builds
+      # end to end, which is the F-Droid inclusion-policy precondition.
+      - name: Assemble debug APKs (obtainium + foss)
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: ./gradlew :app:assembleObtainiumDebug :app:assembleFossDebug
+
+      # Issue #1133: the F-Droid inclusion policy precondition is that the FOSS
+      # APK carries no proprietary Firebase/Google Play Services code. Assert it
+      # on the built artifact — a dependency added to an unfavored `implementation`
+      # block would otherwise pull Firebase back into `foss` silently. The
+      # obtainium APK is checked for the opposite, so the check cannot pass by
+      # FCM having been dropped from the project entirely.
+      - name: FOSS APK is Firebase-free; obtainium APK keeps FCM
+        working-directory: android
+        run: |
+          count_gms() {
+            local apk="$1"
+            for d in $(unzip -Z1 "$apk" | grep -E '^classes[0-9]*\.dex$'); do
+              unzip -p "$apk" "$d"
+            done | strings | grep -icE 'com/google/firebase|com/google/android/gms' || true
+          }
+          foss="app/build/outputs/apk/foss/debug/app-foss-debug.apk"
+          obtainium="app/build/outputs/apk/obtainium/debug/app-obtainium-debug.apk"
+          foss_hits="$(count_gms "$foss")"
+          obtainium_hits="$(count_gms "$obtainium")"
+          echo "foss Firebase/GMS references: $foss_hits (must be 0)"
+          echo "obtainium Firebase/GMS references: $obtainium_hits (must be > 0)"
+          if [ "$foss_hits" -ne 0 ]; then
+            echo "::error::$foss contains $foss_hits Firebase/GMS references; F-Droid forbids them."
+            exit 1
+          fi
+          if [ "$obtainium_hits" -eq 0 ]; then
+            echo "::error::$obtainium carries no Firebase/GMS reference -- FCM was dropped from the obtainium/play flavors."
+            exit 1
+          fi
 
       - name: Upload coverage report
         if: always()
@@ -237,7 +277,7 @@ jobs:
         with:
           name: android-unit-test-results
           path: |
-            android/**/build/test-results/testDebugUnitTest/TEST-*.xml
+            android/**/build/test-results/test*UnitTest/TEST-*.xml
             android/**/build/reports/tests/
           retention-days: 7
 
@@ -375,14 +415,15 @@ jobs:
           working-directory: ./android
           disable-animations: true
           # Script lines run as individual sh -c commands (parseScript splits on
-          # newlines); :app-scoped because a bare `connectedDebugAndroidTest`
-          # would expand to every module, including libraries with no
-          # instrumented tests whose connected tasks fail.
+          # newlines); :app-scoped and flavor-qualified (issue #1133) because a
+          # bare `connectedDebugAndroidTest` would expand to every module,
+          # including libraries with no instrumented tests whose connected
+          # tasks fail, and :app no longer has an unflavored debug variant.
           script: |
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
             adb reverse tcp:7302 tcp:7302
-            ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
+            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
 
       - name: Preserve attempt-1 instrumented results (flake triage)
         if: steps.android-e2e-attempt-1.outcome == 'failure'
@@ -406,7 +447,7 @@ jobs:
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
             adb reverse tcp:7302 tcp:7302
-            ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
+            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
 
       # Issue #268: if the suite passed but only after a retry, the preserved
       # flaky-attempt-* XMLs are the flake signal (the final connected run
@@ -542,7 +583,7 @@ jobs:
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
             adb reverse tcp:7302 tcp:7302
-            ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
+            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
 
       - name: Preserve attempt-1 instrumented results (API 26, flake triage)
         if: steps.android-e2e-min-sdk-attempt-1.outcome == 'failure'
@@ -566,7 +607,7 @@ jobs:
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
             adb reverse tcp:7302 tcp:7302
-            ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
+            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
 
       - name: Upload E2E results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -624,7 +665,7 @@ jobs:
 
       - name: Assemble debug APK
         working-directory: android
-        run: ./gradlew :app:assembleDebug
+        run: ./gradlew :app:assembleObtainiumDebug
 
       - name: Enable KVM
         run: |

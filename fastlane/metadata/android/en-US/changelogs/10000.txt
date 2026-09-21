@@ -1,0 +1,5 @@
+Initial F-Droid release.
+
+The F-Droid build carries no Firebase or Google Play Services code;
+reminder notifications are delivered by the app's own on-device
+WorkManager polling.

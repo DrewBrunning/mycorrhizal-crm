@@ -127,6 +127,12 @@ import, circles, tags, households, relationships and the network graph, the time
 gifts, preferences, agenda), reminders, cadence, contact sharing, the audit trail, push
 notifications, and per-user settings.
 
+The same source builds three distribution variants (see [ADR 0022](docs/adrs/0022-distribution-variants.md)):
+the **obtainium** build attached to each GitHub Release (the gold standard, updated in place by
+[Obtainium](https://obtainium.imranr.dev/)), the **foss** build for F-Droid (no Firebase or Google
+Play Services), and a **play** build for Google Play. Each store signs with a different key, so moving
+between channels means uninstalling and reinstalling.
+
 ---
 
 ## Notifications

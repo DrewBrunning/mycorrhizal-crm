@@ -400,11 +400,11 @@ jobs:
       # fails here instead of shipping a bad APK on the release.
       - name: Unit + integration tests (incl. Robolectric)
         working-directory: android
-        run: ./gradlew testDebugUnitTest
+        run: ./gradlew testDebugUnitTest :app:testObtainiumDebugUnitTest
 
       - name: Lint
         working-directory: android
-        run: ./gradlew lintDebug
+        run: ./gradlew lintDebug :app:lintObtainiumDebug
 
       # Same as android-apk-build.yml's "Materialize release keystore" step --
       # keep them in sync if either changes.
@@ -470,7 +470,7 @@ jobs:
         # non-computed input here, and it is maintainer-chosen (zizmor
         # template-injection).
         run: |
-          ./gradlew assembleRelease \
+          ./gradlew :app:assembleObtainiumRelease \
             -PMYCORRHIZAL_VERSION_NAME="$MYCORRHIZAL_VERSION_NAME" \
             -PMYCORRHIZAL_VERSION_CODE="$MYCORRHIZAL_VERSION_CODE"
 
@@ -485,7 +485,7 @@ jobs:
           EXPECTED_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
         run: |
           set -eu
-          apk="android/app/build/outputs/apk/release/app-release.apk"
+          apk="android/app/build/outputs/apk/obtainium/release/app-obtainium-release.apk"
           apksigner="$(find "$ANDROID_HOME"/build-tools -name apksigner 2>/dev/null | sort -V | tail -1)"
           if [ -z "$apksigner" ]; then
             echo "::error::apksigner not found under $ANDROID_HOME/build-tools"
@@ -525,7 +525,7 @@ jobs:
           MYCORRHIZAL_VERSION_CODE: ${{ steps.version.outputs.code }}
         run: |
           set -eu
-          apk="android/app/build/outputs/apk/release/app-release.apk"
+          apk="android/app/build/outputs/apk/obtainium/release/app-obtainium-release.apk"
           aapt2="$(find "$ANDROID_HOME"/build-tools -name aapt2 2>/dev/null | sort -V | tail -1)"
           got="$("$aapt2" dump badging "$apk" | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")"
           echo "APK versionCode=$got, expected=$MYCORRHIZAL_VERSION_CODE"
@@ -547,8 +547,8 @@ jobs:
         id: apk-hash
         run: |
           set -eu
-          cd android/app/build/outputs/apk/release
-          echo "hashes=$(sha256sum app-release.apk | base64 -w0)" >> "$GITHUB_OUTPUT"
+          cd android/app/build/outputs/apk/obtainium/release
+          echo "hashes=$(sha256sum app-obtainium-release.apk | base64 -w0)" >> "$GITHUB_OUTPUT"
 
       # No body/generate_release_notes here -- this only uploads the asset, and
       # deliberately leaves whatever create-release wrote untouched regardless
@@ -559,7 +559,7 @@ jobs:
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ env.RELEASE_TAG }}
-          files: android/app/build/outputs/apk/release/*.apk
+          files: android/app/build/outputs/apk/obtainium/release/*.apk
 
       # SLSA build provenance for the APK, as a GitHub-native attestation.
       # GitHub digest-matches the attested subject against the release asset
@@ -579,7 +579,7 @@ jobs:
       - name: Attest the release APK (build provenance)
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: android/app/build/outputs/apk/release/*.apk
+          subject-path: android/app/build/outputs/apk/obtainium/release/*.apk
 
       # Issue #578, B3: cosign co-signature on the release APK — additive
       # ONLY. It does NOT replace the SIGNING_* keystore signing above, which
@@ -616,7 +616,7 @@ jobs:
         run: |
           cosign sign-blob --yes \
             --bundle "$RUNNER_TEMP/mycorrhizal-apk.sigstore.json" \
-            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/apk/obtainium/release/app-obtainium-release.apk
 
       # OSSF Scorecard's Signed-Releases check counts a release as "signed"
       # only when it has a release ASSET whose filename carries a recognized
@@ -675,7 +675,7 @@ jobs:
           set -eu
           assets="$(gh release view "$RELEASE_TAG" --json assets --jq '[.assets[].name] | join(" ")')"
           echo "Release assets: $assets"
-          for want in app-release.apk mycorrhizal-apk.sigstore.json; do
+          for want in app-obtainium-release.apk mycorrhizal-apk.sigstore.json; do
             case " $assets " in
               *" $want "*) echo "  ok: $want" ;;
               *) echo "::error::Expected release asset '$want' is missing from $RELEASE_TAG."; exit 1 ;;
@@ -1292,7 +1292,7 @@ jobs:
 
           assets="$(gh release view "$RELEASE_TAG" --json assets --jq '[.assets[].name] | join(" ")')"
           echo "Release assets: $assets"
-          for want in app-release.apk mycorrhizal-apk.sigstore.json mycorrhizal-apk.intoto.jsonl release-metadata.json SHA256SUMS; do
+          for want in app-obtainium-release.apk mycorrhizal-apk.sigstore.json mycorrhizal-apk.intoto.jsonl release-metadata.json SHA256SUMS; do
             case " $assets " in
               *" $want "*) echo "  ok: $want" ;;
               *) echo "::error::Release $RELEASE_TAG is missing asset '$want'."; fail=1 ;;

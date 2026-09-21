@@ -53,6 +53,12 @@ android {
         targetSdk = 37
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        // Issue #1133: :app has a `distribution` flavor dimension
+        // (obtainium/play/foss). This test module is not flavored, so it must
+        // pick one explicitly — the gold-standard `obtainium` build, which is
+        // what local/CI macrobenchmarking has always measured.
+        missingDimensionStrategy("distribution", "obtainium")
+
         // androidx.benchmark reads `suppressErrors` as an *instrumentation
         // runner argument*, not a Gradle property — passing it as
         // `-Pandroidx.benchmark.suppressErrors=…` (missing the

@@ -19,6 +19,18 @@ on:
         options:
           - debug
           - release
+      # Issue #1133: which distribution channel to build. `obtainium` is the
+      # gold-standard self-hosted build attached to GitHub Releases; `foss` is
+      # the F-Droid variant (no Firebase/GMS); `play` is the Google Play build.
+      distribution:
+        description: 'Distribution flavor to build'
+        required: true
+        default: 'obtainium'
+        type: choice
+        options:
+          - obtainium
+          - foss
+          - play
 
 env:
   # The app has no local.properties, so the SDK path must come from the
@@ -67,14 +79,19 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
       # Same gate as android-tests.yml, run first so a broken ref fails here
-      # instead of producing a bad APK.
+      # instead of producing a bad APK. Issue #1133: :app's unit tests are
+      # flavor-qualified, so the requested distribution is added explicitly.
       - name: Unit + integration tests (incl. Robolectric)
         working-directory: android
-        run: ./gradlew testDebugUnitTest
+        env:
+          DIST: ${{ inputs.distribution }}
+        run: ./gradlew testDebugUnitTest ":app:test${DIST^}DebugUnitTest"
 
       - name: Lint
         working-directory: android
-        run: ./gradlew lintDebug
+        env:
+          DIST: ${{ inputs.distribution }}
+        run: ./gradlew lintDebug ":app:lint${DIST^}Debug"
 
       # Release APKs are not installable without a real signature. The keystore
       # itself never enters the repo; it is stored as a base64 secret and
@@ -109,7 +126,9 @@ jobs:
       - name: Assemble debug APK
         if: inputs.variant == 'debug'
         working-directory: android
-        run: ./gradlew assembleDebug
+        env:
+          DIST: ${{ inputs.distribution }}
+        run: ./gradlew ":app:assemble${DIST^}Debug"
 
       # REL-03 / issue #527: stamp the tester build too. Without any
       # -PMYCORRHIZAL_VERSION_* the plugin falls back to versionCode = 1 /
@@ -132,6 +151,7 @@ jobs:
         if: inputs.variant == 'release'
         working-directory: android
         env:
+          DIST: ${{ inputs.distribution }}
           SIGNING_STORE_FILE: ${{ steps.keystore.outputs.store_file }}
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
@@ -139,7 +159,7 @@ jobs:
           MYCORRHIZAL_VERSION_NAME: ${{ steps.tester-version.outputs.name }}
           MYCORRHIZAL_VERSION_CODE: ${{ steps.tester-version.outputs.code }}
         run: |
-          ./gradlew assembleRelease \
+          ./gradlew ":app:assemble${DIST^}Release" \
             -PMYCORRHIZAL_VERSION_NAME="$MYCORRHIZAL_VERSION_NAME" \
             -PMYCORRHIZAL_VERSION_CODE="$MYCORRHIZAL_VERSION_CODE"
 
@@ -151,11 +171,12 @@ jobs:
           REF: ${{ inputs.ref }}
         run: |
           safe="${REF//\//-}"
-          echo "name=mycorrhizal-crm-${{ inputs.variant }}-${safe}" >> "$GITHUB_OUTPUT"
+          echo "name=mycorrhizal-crm-${{ inputs.distribution }}-${{ inputs.variant }}-${safe}" >> "$GITHUB_OUTPUT"
 
+      # Issue #1133: AGP 9 nests APK outputs as apk/<flavor>/<buildType>/.
       - name: Upload APK artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ steps.artifact-name.outputs.name }}
-          path: android/app/build/outputs/apk/${{ inputs.variant }}/*.apk
+          path: android/app/build/outputs/apk/${{ inputs.distribution }}/${{ inputs.variant }}/*.apk
           if-no-files-found: error

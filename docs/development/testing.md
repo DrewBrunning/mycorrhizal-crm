@@ -30,13 +30,13 @@ orthogonal mechanism; this page is about *which layer a test belongs to*, not
 |---|---|---|---|---|---|
 | Backend unit | Pure logic, no DB: parsing, temporal math, relationship-type inversion, cadence, validation | Persistence, GORM hooks, route wiring | `*_test.go` co-located per package | `go test ./...` | `backend-tests` legs + `backend-checks` / `backend` |
 | DB/integration | Everything that touches the **real migrated schema**: hooks, flat-field derivation, delete semantics, ownership scoping, transactions, sync/backup/import services | Pure logic; JSON contract; format bytes | any `*_test.go` using `dbtest.New` or `database.InitDB(t.TempDir())` | `go test ./...` | `backend-tests` legs / `backend` |
-| API contract | Route↔`openapi.yaml` drift, request-body binding, response DTO shapes, captured-response fixtures | Business logic, persistence, UI | `backend/openapi*_test.go`, `testdata/contract-fixtures/` | `go test ./...`, `npx vitest run`, `./gradlew testDebugUnitTest` | `openapi` (+ `schemathesis.yml`) |
+| API contract | Route↔`openapi.yaml` drift, request-body binding, response DTO shapes, captured-response fixtures | Business logic, persistence, UI | `backend/openapi*_test.go`, `testdata/contract-fixtures/` | `go test ./...`, `npx vitest run`, `./gradlew testDebugUnitTest :app:testObtainiumDebugUnitTest` | `openapi` (+ `schemathesis.yml`) |
 | Import/export interop | vCard 3/4, JSContact, CSV, iCal/CalDAV against the RFC golden fixtures; round-trip semantics | Neutral-model logic, persistence | `backend/{vcard3,vcard4,jscontact,correspondence}/`, `internal/rfctest/`, `docs/golden-fixtures/` | `go test ./...` | `backend-tests`/`backend-checks` (fuzz) / `backend` |
 | Migration | Schema evolution: up/down pairs, version/dirty tracking, data preservation, interrupted-migration recovery | Current-schema app behavior; deploy sequencing | `backend/database/migrations/`, `backend/database/migrate_*_test.go` | `go test ./...` | `backend-tests` (`rest` leg) / `backend` |
 | Frontend unit | Component state/rendering, hooks, i18n key parity, contract-fixture parsing (vitest) | Real network, end-to-end flows | `frontend/src/**/*.test.ts(x)`, `frontend/viteConfig.test.ts` | `npx vitest run` + `npx tsc --noEmit` | `frontend` job / `frontend` |
-| Android unit/Robolectric | View models, editors, screens, network parsing, offline/local-DB logic | Emulator/device flows, real backend | `android/**/src/test/` | `./gradlew testDebugUnitTest` | `test` job / `android` |
+| Android unit/Robolectric | View models, editors, screens, network parsing, offline/local-DB logic | Emulator/device flows, real backend | `android/**/src/test/` | `./gradlew testDebugUnitTest :app:testObtainiumDebugUnitTest :app:testFossDebugUnitTest` | `test` job / `android` |
 | E2E web | Complete user flows through the **shipped** artifact (image + compose + nginx + backend) | Anything reachable in a lower layer | `frontend/e2e/` | `npx playwright test` | `e2e` job / `frontend`+`openapi`+`infra` |
-| E2E Android | Real app on emulator against the real backend; the Playwright analog | JVM-testable logic | `android/app/src/androidTest/` | `:app:connectedDebugAndroidTest` (see README-developer.md) | `android-e2e` job / `android`+`openapi`+`infra` |
+| E2E Android | Real app on emulator against the real backend; the Playwright analog | JVM-testable logic | `android/app/src/androidTest/` | `:app:connectedObtainiumDebugAndroidTest` (see README-developer.md) | `android-e2e` job / `android`+`openapi`+`infra` |
 | Release/install smoke | Clean install from nothing; misconfiguration diagnostics; startup ordering | Anything presupposing a working install | `backend/cmd/deploysmoke/`, `backend/config/startup_smoke_test.go`, `.github/workflows/deploy-smoke.yml` | `go test ./cmd/deploysmoke/... ./config/...`; `go run ./cmd/deploysmoke` against a fresh `docker compose up` | `deploy-smoke` job / `infra` |
 | Post-publish smoke | The published GHCR image (by digest) boots and serves the same real workflow | A from-source build (that's the row above); pre-publish gating (nothing here can block a tag already pushed) | `docker-compose.published-smoke.yml`, `.github/workflows/docker-publish.yml` (`post-publish-smoke` job) | `MYCORRHIZAL_IMAGE=<ref>@<digest> docker compose -f docker-compose.published-smoke.yml up -d --wait`; `go run ./cmd/deploysmoke` | `post-publish-smoke` job, every tag push |
 | Performance/load | N+1/query-count regressions, benchmark bodies, concurrent-write smoke vs the deployed artifact, scale (planned) | Correctness (that's the pyramid) | `backend/**/benchmark` tests, `backend/cmd/loadsmoke` | `go test -bench . -benchtime=1x`, `go run ./cmd/loadsmoke` | `backend-checks` + e2e `loadsmoke` step |
@@ -106,7 +106,7 @@ Detail and the hard-won traps for each layer follow.
     issue #369) and the deterministic cross-account BOLA sweep (`cmd/bolacheck`).
 - **Must not be used for** business logic, persistence, or UI behavior.
 - **Runs via** `go test ./...` (drift tests), `npx vitest run` + `./gradlew
-  testDebugUnitTest` (fixture consumers), and the `schemathesis.yml` workflow
+  testDebugUnitTest` plus :app’s flavor-qualified tests (fixture consumers), and the `schemathesis.yml` workflow
   (fuzz). The live counterpart is `frontend/e2e/apiContract.spec.ts`.
 
 ### Import/export interop
@@ -187,8 +187,8 @@ Detail and the hard-won traps for each layer follow.
   all on the JVM via Robolectric.
 - **Must not be used for** real device/emulator flows (instrumented) or a real
   backend.
-- **Runs via** `./gradlew testDebugUnitTest`; CI `android-tests.yml` `test` job
-  (also runs detekt, `lintDebug`, `assembleDebug`, and the aggregated JaCoCo
+- **Runs via** `./gradlew testDebugUnitTest :app:testObtainiumDebugUnitTest`; CI `android-tests.yml` `test` job
+  (also runs detekt, flavor-qualified `lintDebug`/debug assembles, and the aggregated JaCoCo
   report).
 - **Known gap, filed:** `SmsReceiver` is untestable under the current Hilt
   whole-app-graph test component — issue #327.
@@ -200,7 +200,7 @@ Detail and the hard-won traps for each layer follow.
   archive/delete + audit undo (issues #212, #238). This replaced the old manual
   Pixel 8a gate; runbook in `README-developer.md`.
 - **Must not be used for** JVM-testable logic.
-- **Runs via** `./gradlew :app:connectedDebugAndroidTest` (emulator), or
+- **Runs via** `./gradlew :app:connectedObtainiumDebugAndroidTest` (emulator), or
   `adb reverse tcp:7300 tcp:7300` + the same with
   `-Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300`
   on a physical device. CI `android-tests.yml` `android-e2e` job is deliberately

@@ -27,11 +27,11 @@ dependencies {
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.kotlinx.coroutines.play.services)
-    // M5 §5a (issue #152): FCM push client. The SDK compiles without a
-    // google-services.json; FcmAvailability gates everything at runtime so a
-    // Firebase-less build degrades to the WorkManager polling workers.
-    implementation(libs.firebase.messaging)
+    // Issue #1133: no Firebase/GMS dependency here. FCM is a distribution
+    // variant concern (see the ADR and :app's src/fcm), so this module — and
+    // therefore every variant, including the F-Droid FOSS one — compiles with
+    // no proprietary push SDK. FcmAvailability/FcmTokenSource are interfaces;
+    // the flavor-specific implementations are bound in :app.
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

@@ -1,0 +1,73 @@
+# F-Droid build recipe for Mycorrhizal (com.mycorrhizal.crm)
+#
+# This is the metadata entry that belongs in the `fdroiddata` repository
+# (https://gitlab.com/fdroid/fdroiddata) as
+# `metadata/com.mycorrhizal.crm.yml`. It is kept here so the recipe is
+# reviewable in the same PR as the build it describes; the canonical copy
+# lives in fdroiddata once the merge request is accepted.
+#
+# See docs/development/fdroid.md for the submission runbook, and
+# docs/adrs/0022-distribution-variants.md for why the `foss` flavor exists.
+#
+# Before opening the merge request:
+#   * replace `commit` with the full 40-character hash of the tagged release
+#     (the tag itself is not accepted);
+#   * bump versionName/versionCode and CurrentVersion/CurrentVersionCode to
+#     match that release, keeping the two in lockstep with the `gradleprops`;
+#   * add a `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
+
+Categories:
+  - Contacts
+  - Productivity
+License: MIT
+AuthorName: Drew Brunning
+WebSite: https://github.com/DrewBrunning/mycorrhizal-crm
+SourceCode: https://github.com/DrewBrunning/mycorrhizal-crm
+IssueTracker: https://github.com/DrewBrunning/mycorrhizal-crm/issues
+Changelog: https://github.com/DrewBrunning/mycorrhizal-crm/releases
+
+AutoName: Mycorrhizal
+
+RepoType: git
+Repo: https://github.com/DrewBrunning/mycorrhizal-crm.git
+
+Builds:
+  - versionName: 1.0.0
+    versionCode: 10000
+    commit: <full 40-char commit hash of the release tag>
+    subdir: android
+    gradle:
+      # The F-Droid variant: no Firebase/Google Play Services on the classpath.
+      # Invoking the task explicitly (rather than `yes`) is what stops the
+      # build server from assembling a Firebase-carrying flavor.
+      - assembleFossRelease
+    gradleprops:
+      # The APK manifest's version must match the metadata entry above, and the
+      # convention plugin's static fallback is versionCode 1 / versionName
+      # 0.1.0 -- so both must be passed explicitly.
+      - MYCORRHIZAL_VERSION_NAME=1.0.0
+      - MYCORRHIZAL_VERSION_CODE=10000
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: 1.0.0
+CurrentVersionCode: 10000
+
+MaintainerNotes: |-
+  Android client for a self-hosted personal CRM backend. The app is useless
+  without a server the user runs themselves; there is no default or hosted
+  backend endpoint.
+
+  This build intentionally excludes Firebase/FCM and Google Play Services
+  (proprietary), per F-Droid's inclusion policy. FCM is only a latency
+  fast-path in this project; reminder notifications fall back to the app's own
+  WorkManager polling workers, which are the sole push path on the FOSS
+  variant. The implementation lives in android/app/src/fcm (obtainium/play)
+  and android/app/src/foss (this flavor); see ADR 0022.
+
+  Versioning: versionCode/versionName are supplied via the MYCORRHIZAL_VERSION_*
+  gradle properties above, because F-Droid verifies the built manifest against
+  this metadata entry. Keep them in lockstep on every release.
+
+  Fastlane metadata (icon, descriptions, changelogs, feature graphic) lives at
+  fastlane/metadata/android/en-US in the source repository.

@@ -1,0 +1,31 @@
+Mycorrhizal is the Android client for a self-hosted personal relationship
+manager. You run the backend on your own server; the app talks only to it.
+Nothing is sent to a third party, and there is no account to create with us.
+
+Your contacts are kept in a neutral contact model, so the same data can be
+imported from and exported to the formats you already use.
+
+Features:
+
+* Contacts with multiple names, phone numbers, email addresses, postal
+  addresses, URLs, birthdays, and personal information, plus notes, photos,
+  and tags.
+* Relationships between people, and circles for the groups they belong to.
+* A timeline of life events, activities, and reminders per contact.
+* Reach-out cadence: pick how often you want to stay in touch, and the app
+  reminds you when someone is due.
+* Encryption and local app lock: optional biometric unlock on the device,
+  with a single-root encrypted offline mirror so the app keeps working
+  without a connection.
+* CardDAV and CalDAV sync, so your phone's built-in contacts and calendar
+  apps can use the same data.
+* Optional, opt-in call and SMS activity logging (never the message body),
+  processed on your own server.
+* Two-factor authentication and per-device sessions, with recovery codes.
+
+This build is the F-Droid variant: it contains no Firebase or Google Play
+Services code. Reminder notifications are delivered by the app's own
+on-device scheduler.
+
+Mycorrhizal is free and open source software (MIT). A backend is required;
+see the project's website for deployment instructions.

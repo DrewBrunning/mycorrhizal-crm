@@ -45,7 +45,7 @@
       "tier": "per-pr",
       "mandatory": true,
       "release_gate": true,
-      "criterion": "`testDebugUnitTest`, `lintDebug`, `detekt`, and `assembleDebug` all pass."
+      "criterion": "`testDebugUnitTest` (libraries) plus the flavor-qualified `:app:testObtainiumDebugUnitTest`/`:app:testFossDebugUnitTest`, `lintDebug` plus `:app:lint{Obtainium,Foss}Debug`, `detekt`, and the flavor-qualified debug assembles all pass."
     },
     {
       "name": "Android E2E (emulator)",
@@ -225,7 +225,7 @@
       "tier": "release-internal",
       "mandatory": true,
       "release_gate": false,
-      "criterion": "attaches mycorrhizal-apk.intoto.jsonl and a SHA256SUMS manifest to the Release, then asserts the Release carries app-release.apk, mycorrhizal-apk.sigstore.json, mycorrhizal-apk.intoto.jsonl and SHA256SUMS, and every published image tag resolves in the registry."
+      "criterion": "attaches mycorrhizal-apk.intoto.jsonl and a SHA256SUMS manifest to the Release, then asserts the Release carries app-obtainium-release.apk, mycorrhizal-apk.sigstore.json, mycorrhizal-apk.intoto.jsonl and SHA256SUMS, and every published image tag resolves in the registry."
     },
     {
       "name": "Test minimum supported versions",
