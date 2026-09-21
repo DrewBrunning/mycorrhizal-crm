@@ -22,6 +22,7 @@ The name comes from mycorrhiza, the symbiotic network fungi form with plant root
 - [GitHub Repository](https://github.com/DrewBrunning/mycorrhizal-crm)
 - [Privacy & data minimization](privacy.md)
 - [Supported versions — what this runs on, "supported" tiers, and the multi-user deployment shape](supported-versions.md)
+- [Android app — install channels, signing keys, and channel switching](android-app.md)
 - [Integrations — ownership, diagnostics, and what breaks if one is down](integration-ownership.md)
 - [Upgrade compatibility & supported-upgrade floor](upgrade-compatibility.md)
 - [Service-worker updates & the recovery page](service-worker-updates.md)

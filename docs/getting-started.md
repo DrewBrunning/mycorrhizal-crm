@@ -11,7 +11,9 @@ nav_order: 2
 
 Mycorrhizal CRM runs on Linux (`x86_64` or `arm64`) under Docker (Engine
 `>= 23.0` with Compose V2). Browsers: a current Chrome/Edge/Firefox, or
-Safari/iOS `16.4+`. The Android app requires Android 8.0+ (`minSdk 26`). The
+Safari/iOS `16.4+`. The Android app requires Android 8.0+ (`minSdk 26`) and a
+server at or above the client-compatibility floor ([the Android app](android-app.md)
+covers the install channels). The
 database directory **must be on local disk** — never a network filesystem.
 See [Supported versions](supported-versions.html) for the full statement,
 including what "supported" means and what happens on an unsupported version.
@@ -73,6 +75,12 @@ When running Mycorrhizal CRM you can access the application under the specified 
 To get started you need to register a user. The first user will automatically receive administrator rights and therefore be able to access the admin panel in the settings menu.
 
 If you plan to host other people on this instance, read [Supported versions → The deployment shape](supported-versions.html#the-deployment-shape) first: it states the cross-user isolation guarantee, what an admin can and cannot see, and why a multi-user instance should run with `DISABLE_REGISTRATION=true`.
+
+### Android app
+
+The Android client ships through GitHub Releases (updated by Obtainium), F-Droid, and — in progress —
+Google Play. See [the Android app page](android-app.md) for the channels, which key signs each one,
+and the uninstall/reinstall constraint when switching between them.
 
 ## Backup
 
