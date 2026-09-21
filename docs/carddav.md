@@ -49,6 +49,37 @@ Android does not include a native CardDAV client. You will need a third-party ap
 - **Discovery not working**: Some clients require the full CardDAV URL instead of relying on auto-discovery. Try entering `https://your-server.com/carddav/` directly as the server URL.
 - **Locked out**: After multiple failed login attempts, your account may be temporarily locked. Wait a few minutes and try again, or reset your password via the web interface.
 
-# Limitations
+## Interoperability limitations
 
-- **Sync-token** is not implemented since not yet supported by go-webdav. Clients therefore have to fall back to propfind with depth 1 and compare locally.
+This is the operator-facing statement of what the CardDAV/CalDAV interoperability
+claim does and does not cover. The engineering evidence — the per-client manual
+matrix, the divergence registers for each reference server, and the reference
+implementations the automated legs run against — lives in the development docs
+([reference-client-matrix.md](development/reference-client-matrix.md) and
+[testing.md](development/testing.md)).
+
+- **One address book by design.** The server exposes a single address book per
+  user. A client that tries to create a second one (`MKCOL`) is refused with
+  `403` — the interop-correct "single address book" answer, not a server error.
+- **No CardDAV `sync-token`.** go-webdav does not implement it, so clients fall
+  back to a `PROPFIND` of depth 1 and compare locally. Incremental sync
+  therefore costs a full listing of the collection.
+- **CalDAV is read-only.** A client subscribes to a calendar of activities and
+  life events; it never writes back.
+- **`address-data` version negotiation is not supported on the client side.**
+  Our outbound CardDAV client (used by remote address-book subscriptions)
+  cannot request a vCard version, so against SabreDAV-based servers (Baikal,
+  Nextcloud) a full refetch receives vCard 3.0 re-serializations. The
+  per-server divergence registers in
+  [testing.md](development/testing.md) pin exactly what each server does.
+- **Automated client coverage is provision + pull.** The automated DAVx5 leg
+  covers account setup and pulling the canonical pathological fixture; push,
+  incremental re-sync, and an explicit version-negotiation assertion are not
+  yet automated. Apple Contacts (macOS/iOS) and Thunderbird are out of scope
+  for the automated claim — no CI-drivable harness exists for either. See
+  [reference-client-matrix.md](development/reference-client-matrix.md).
+- **Field-level fidelity is governed by the DATA-01 matrix.** Which canonical
+  fields survive a round trip through each format — and which are unsupported
+  or lossy — is stated per field in the
+  [field compatibility matrix](data-01-field-compatibility-matrix.md) and
+  surfaced to the user as export-loss reports (DATA-02).
