@@ -8,11 +8,18 @@
   With no google-services.json the Firebase runtime never initializes and the
   service is simply never invoked, leaving the WorkManager polling workers as
   the sole push path.
+
+  allowBackup="false" repeats the value the merged app manifest already sets
+  (app/src/main/AndroidManifest.xml). It is spelled out here because mobsfscan
+  audits each source manifest standalone and cannot see the merge, so an
+  overlay without the explicit flag raises
+  android_manifest_missing_explicit_allow_backup (code-scanning alert #277).
+  Mirrors :macrobenchmark's manifest.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <application>
+    <application android:allowBackup="false">
         <service
             android:name="com.mycorrhizal.crm.push.MyFirebaseMessagingService"
             android:exported="false"
