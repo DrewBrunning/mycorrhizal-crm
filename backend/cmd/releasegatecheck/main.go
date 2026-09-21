@@ -92,6 +92,13 @@ func run(w io.Writer) int {
 		return 2
 	}
 	findings = append(findings, releaseworkflow.CheckRelease(string(releaseBytes))...)
+	// #nosec G304 -- constant leaf under the repository root
+	promoteBytes, err := os.ReadFile(filepath.Join(root, workflowsDir, "promote-rc.yml"))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "releasegatecheck: read promote-rc.yml", err)
+		return 2
+	}
+	findings = append(findings, releaseworkflow.CheckPromote(string(promoteBytes))...)
 	findings = append(findings, releasegates.CrossCheckDoc(reg, string(docBytes))...)
 
 	if len(findings) == 0 {

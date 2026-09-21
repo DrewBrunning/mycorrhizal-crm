@@ -116,9 +116,17 @@ The workflow that creates an object owns everything attached to it:
   and `release-metadata.json`. `release.yml` ends at the tag and never waits for a Release.
 - `release.yml` **owns the candidate decision** — validate, compose the gates, regenerate the schema
   fixture, write the readiness artifact, tag.
+- `promote-rc.yml` **owns the RC→final promotion** — it copies the RC's artifacts, registers the
+  schema fixture, merges the release branch, and pushes the final tag (issue #446).
 
 Where a staged flow is unavoidable, each stage triggers the *next* on a completion event carrying the
 readiness artifact — never an upstream poll of a not-yet-existing downstream object.
+
+The two final-release-only obligations (the ASVS §10 re-verification row and the per-release
+adversarial delta, #953) are deliberately skipped on an RC cut but cannot be skipped forever, so
+`promote-rc.yml` runs them against the RC commit before it pushes the final tag. The gate logic lives
+once, in `.github/scripts/release-obligations.sh`; `release.yml`'s final path and `promote-rc.yml`
+both call it, and `cmd/releasegatecheck` fails if either stops (issue #1195).
 
 ### 5. Credentials are minted at the point of use, per owner
 
