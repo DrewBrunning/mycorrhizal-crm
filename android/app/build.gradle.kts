@@ -10,6 +10,13 @@ plugins {
 // no configured FirebaseApp at runtime, which flips the FCM path to the
 // polling-worker fallback (see feature:tracking's FcmAvailability). The plugin
 // must be applied before the `android {}` block, hence this top-of-file apply.
+//
+// Issue #1133: this plugin has no per-flavor switch, so it is deliberately
+// never applied in F-Droid's checkout (which ships no google-services.json).
+// A developer who does have one present gets it processed for every flavor,
+// including `foss` — that is a local convenience, not a shipped build; the
+// FOSS APK is built by F-Droid without the file and therefore without the
+// plugin, and it carries no Firebase dependency either way.
 if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
 }
@@ -37,8 +44,48 @@ android {
     defaultConfig {
         // Issue #238: instrumented end-to-end tests (app/src/androidTest) drive
         // the real app against the docker-compose.test.yml backend on an
-        // emulator/device via `./gradlew connectedDebugAndroidTest`.
+        // emulator/device via `./gradlew :app:connectedObtainiumDebugAndroidTest`.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // Issue #1133: three distribution flavors, one per release channel. The
+    // dimension is declared on :app only — the library modules stay
+    // flavor-free, and all proprietary push code lives in the `obtainium`/`play`
+    // source sets here. See docs/adrs/0022-distribution-variants.md.
+    //
+    //   obtainium — the gold-standard self-hosted build shipped as a GitHub
+    //               Release APK and updated by Obtainium. FCM present (optional
+    //               at runtime; needs an external google-services.json).
+    //   play      — Google Play build. FCM present, same feature set as
+    //               obtainium today; its own source set so Play-only additions
+    //               (in-app updates, Play Integrity) have somewhere to land.
+    //   foss      — F-Droid build. No Firebase/GMS; reminder push comes solely
+    //               from the WorkManager polling workers. This is the only
+    //               variant F-Droid's build server is asked to build.
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("obtainium") { dimension = "distribution" }
+        create("play") { dimension = "distribution" }
+        create("foss") { dimension = "distribution" }
+    }
+
+    sourceSets {
+        // The Firebase-backed push implementation is shared by obtainium and
+        // play only (src/foss binds a no-op instead). Sharing the directory
+        // keeps one copy of MyFirebaseMessagingService/FirebaseFcmTokenSource
+        // rather than two identical flavor trees.
+        getByName("obtainium") {
+            kotlin.srcDir("src/fcm/kotlin")
+            manifest.srcFile("src/fcm/AndroidManifest.xml")
+        }
+        getByName("play") {
+            kotlin.srcDir("src/fcm/kotlin")
+            manifest.srcFile("src/fcm/AndroidManifest.xml")
+        }
+        // The FCM service test compiles against RemoteMessage, so it exists
+        // only for the two FCM flavors.
+        getByName("testObtainium").kotlin.srcDir("src/fcmTest/kotlin")
+        getByName("testPlay").kotlin.srcDir("src/fcmTest/kotlin")
     }
 
     signingConfigs {
@@ -173,4 +220,14 @@ dependencies {
     // response — no real server is below this app's own migration floor to
     // boot for that case (see the test's doc comment).
     androidTestImplementation(libs.mockwebserver)
+
+    // Issue #1133: the proprietary push SDK, obtainium and play only. The
+    // foss (F-Droid) flavor has neither dependency, so no Firebase/GMS class
+    // can end up in that APK (F-Droid's inclusion policy forbids them).
+    // kotlinx-coroutines-play-services is only needed to bridge the FCM token
+    // Task into a suspend fun in FirebaseFcmTokenSource.
+    "obtainiumImplementation"(libs.firebase.messaging)
+    "obtainiumImplementation"(libs.kotlinx.coroutines.play.services)
+    "playImplementation"(libs.firebase.messaging)
+    "playImplementation"(libs.kotlinx.coroutines.play.services)
 }

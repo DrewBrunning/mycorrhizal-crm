@@ -13,10 +13,12 @@
 # one process.
 set -euo pipefail
 
-apk_dir="${GITHUB_WORKSPACE:-.}/android/app/build/outputs/apk/debug"
+# Issue #1133: AGP nests APK outputs as apk/<flavor>/<buildType>/; the job
+# assembles the gold-standard obtainium debug variant.
+apk_dir="${GITHUB_WORKSPACE:-.}/android/app/build/outputs/apk/obtainium/debug"
 apk="$(find "$apk_dir" -name '*.apk' | head -n1)"
 if [ -z "$apk" ]; then
-  echo "::error::no debug APK under $apk_dir -- did :app:assembleDebug run?"
+  echo "::error::no debug APK under $apk_dir -- did :app:assembleObtainiumDebug run?"
   exit 1
 fi
 echo "Installing $apk on an API 24 (below minSdk 26) emulator..."

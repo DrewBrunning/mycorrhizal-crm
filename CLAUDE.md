@@ -237,7 +237,7 @@ link or the tool fails on the PR.
 Android instrumented E2E (issue #238): the suite in `android/app/src/androidTest` drives the real app
 against the real `docker-compose.test.yml` backend on an emulator/device — login → list → detail →
 edit, favorites (issue #212), archive/delete + audit undo. Emulator: `cd android && ./gradlew
-:app:connectedDebugAndroidTest`. Physical device (Pixel 8a): `adb reverse tcp:7300 tcp:7300` first,
+:app:connectedObtainiumDebugAndroidTest` (issue #1133 flavor-qualified). Physical device (Pixel 8a): `adb reverse tcp:7300 tcp:7300` first,
 then the same with `-Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300`.
 Full runbook in `README-developer.md`. CI runs it via the `android-e2e` job in `android-tests.yml`.
 This replaces the old "on-device verification on the Pixel 8a" *manual* gate — those flows now have

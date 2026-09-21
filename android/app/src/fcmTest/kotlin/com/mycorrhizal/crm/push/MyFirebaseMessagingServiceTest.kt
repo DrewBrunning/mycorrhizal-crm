@@ -1,10 +1,13 @@
-package com.mycorrhizal.crm.feature.tracking
+package com.mycorrhizal.crm.push
 
 import android.app.Application
 import android.app.NotificationManager
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.google.firebase.messaging.RemoteMessage
+import com.mycorrhizal.crm.feature.tracking.AlertNotificationIds
+import com.mycorrhizal.crm.feature.tracking.DeviceRegistrationManager
+import com.mycorrhizal.crm.feature.tracking.PushNotificationDispatcher
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -30,6 +33,10 @@ import org.robolectric.annotation.Config
  * matches the class's own doc comment: in-foreground delivery is exactly the
  * case where the system does NOT auto-populate a notification and
  * onMessageReceived must post one itself.
+ *
+ * Issue #1133: this test lives in `src/fcmTest`, included only by the
+ * `obtainium` and `play` unit-test variants, because the class under test (and
+ * RemoteMessage) is absent from the `foss` variant.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)

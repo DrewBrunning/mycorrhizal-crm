@@ -29,8 +29,10 @@
 #     dialog state machines) sometimes hit genuinely fiddly async/race
 #     branches (see useContacts.ts's stale-response guard) that cost
 #     disproportionate effort for a marginal branch.
-#   - android (target 80%, threshold 15%): JaCoCo only instruments
-#     testDebugUnitTest (see AndroidConfig.kt's configureJacoco), so anything
+#   - android (target 80%, threshold 15%): JaCoCo only instruments the
+#     debug unit tests (libraries' testDebugUnitTest plus the app's coverage
+#     flavor :app:testObtainiumDebugUnitTest — see AndroidConfig.kt's
+#     configureJacoco), so anything
 #     that only runs under the instrumented E2E suite (issue #238) is
 #     invisible to it. The clean-cut case — hand-written Hilt DI wiring
 #     (`*Module` classes: one-line @Provides/@Binds delegations with no
@@ -131,7 +133,8 @@ ignore:
   # the diff gate from faulting its lines.
   - "android/macrobenchmark/**"
   # Issue #722 local auth / fully biometric login. JaCoCo only instruments
-  # `testDebugUnitTest`; these Android files are structurally unexercisable on
+  # debug unit tests (libraries' `testDebugUnitTest`; the app's coverage flavor
+  # `:app:testObtainiumDebugUnitTest`); these Android files are structurally unexercisable on
   # the JVM (no AndroidKeyStore, no BiometricPrompt, no Hilt application host,
   # no live BiometricManager), so their changed lines can never be covered by
   # a unit test. Each is pinned by source-scan guard tests and/or the

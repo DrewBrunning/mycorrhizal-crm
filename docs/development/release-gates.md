@@ -85,7 +85,7 @@ signing or build failure blocks the entire release — Docker images included. T
 reverses the earlier "a signing problem here shouldn't block the Docker images" decoupling:
 `v0.7.0`'s premise is that a release is one artifact set, and the Android client is part of it.
 
-`build-android-apk` now, after `assembleRelease`:
+`build-android-apk` now, after `:app:assembleObtainiumRelease`:
 
 - runs **`apksigner verify --print-certs`** and fails if the APK is not signed (v2/v3 scheme).
   When the repo variable **`ANDROID_SIGNING_CERT_SHA256`** is set, it also asserts the signer
@@ -95,7 +95,7 @@ reverses the earlier "a signing problem here shouldn't block the Docker images" 
   (`1000 + GITHUB_RUN_NUMBER`, strictly increasing per [the versioning policy](../versioning-policy.md))
   and is `> 1` — a light pin on the plugin's override wiring so an in-place upgrade keeps
   working. It does not install anything.
-- asserts `app-release.apk` and `mycorrhizal-apk.sigstore.json` are present on the Release.
+- asserts `app-obtainium-release.apk` and `mycorrhizal-apk.sigstore.json` are present on the Release.
 
 **Known gap, accepted (issue #994):** no gate here, or anywhere in CI, drives the
 release-signed/R8-minified APK through an instrumented test, and none installs release N then
@@ -114,7 +114,7 @@ suite already proves directly. Disposition: accept, not built — see the "E2E A
 tracked.
 
 **PKCS12 keystore note:** `SIGNING_KEY_PASSWORD` **must equal** `SIGNING_STORE_PASSWORD` for this
-keystore. A mismatch fails `assembleRelease` with an opaque padding error, not a clear message.
+keystore. A mismatch fails `:app:assembleObtainiumRelease` with an opaque padding error, not a clear message.
 
 ## The gates
 
@@ -128,7 +128,7 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `Backend (Go)` | per-pr | yes | go build + go vet + gofmt clean and `go test ./... -race` passes; no package exceeds its -timeout. | `unit-tests.yml` |
 | `Frontend (Vitest)` | per-pr | yes | `tsc --noEmit` and `vitest run` both pass. | `unit-tests.yml` |
 | `Run E2E Tests` | per-pr | yes | the route-stubbed Playwright suite (including @perf specs) passes. | `e2e-tests.yml` |
-| `Android (Gradle)` | per-pr | yes | `testDebugUnitTest`, `lintDebug`, `detekt`, and `assembleDebug` all pass. | `android-tests.yml` |
+| `Android (Gradle)` | per-pr | yes | `testDebugUnitTest` (libraries) plus the flavor-qualified `:app:testObtainiumDebugUnitTest`/`:app:testFossDebugUnitTest`, `lintDebug` plus `:app:lint{Obtainium,Foss}Debug`, `detekt`, and the flavor-qualified debug assembles all pass. | `android-tests.yml` |
 | `Android E2E (emulator)` | per-pr | yes | the instrumented suite passes against the docker-compose.test.yml backend on an API-35 emulator. | `android-tests.yml` |
 | `Android scan (mobsfscan)` | per-pr | yes | mobsfscan reports no new high-severity finding on the Android sources. | `sast.yml` |
 | `Scan workflows (zizmor)` | per-pr | yes | zizmor exits 0 — no finding above what zizmor.yml's ignore list accepts. | `zizmor.yml` |
@@ -146,7 +146,7 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `build-and-push` | release-internal | yes | the multi-arch images build and push; each digest gets a cosign keyless signature, an SBOM, and SLSA build provenance. | `docker-publish.yml` |
 | `build-android-apk` | release-internal | yes | the release APK assembles, is keystore-signed, `apksigner verify` passes (and matches ANDROID_SIGNING_CERT_SHA256 when set), its versionCode equals the computed value and is > 1, a GH build-provenance attestation + a cosign bundle are produced and attached to the Release, and its sha256 subject is exported for the SLSA generator. | `docker-publish.yml` |
 | `apk-provenance` | release-internal | yes | the `slsa-github-generator` reusable workflow signs the APK subject and emits `mycorrhizal-apk.intoto.jsonl` (SLSA build provenance) as a workflow artifact (issue #355). | `docker-publish.yml` |
-| `verify-release-assets` | release-internal | yes | attaches `mycorrhizal-apk.intoto.jsonl` and a `SHA256SUMS` manifest to the Release, then asserts the Release carries `app-release.apk`, `mycorrhizal-apk.sigstore.json`, `mycorrhizal-apk.intoto.jsonl` and `SHA256SUMS`, and every published image tag resolves in the registry. | `docker-publish.yml` |
+| `verify-release-assets` | release-internal | yes | attaches `mycorrhizal-apk.intoto.jsonl` and a `SHA256SUMS` manifest to the Release, then asserts the Release carries `app-obtainium-release.apk`, `mycorrhizal-apk.sigstore.json`, `mycorrhizal-apk.intoto.jsonl` and `SHA256SUMS`, and every published image tag resolves in the registry. | `docker-publish.yml` |
 | `Test minimum supported versions` | release-tier | yes | the app builds and the suite passes against each declared minimum runtime (COMPAT-02, #473). | `min-version-tests.yml` |
 | `Android E2E (emulator, minSdk 26)` | release-tier | yes | the same instrumented suite as `Android E2E (emulator)` passes against the docker-compose.test.yml backend on an API-26 emulator — the declared minSdk floor (COMPAT-02, #473). Runs on push:main, nightly, and dispatch so the floor is exercised pre-tag, not just a number in a build file (issue #927). | `android-tests.yml` |
 | `Migration at scale (large dataset)` | release-tier | yes | with MYCORRHIZAL_LARGE_TESTS=1, every supported release migrates to current at ~134x the canonical manifest with row counts and integrity intact (#495). | `migration-tests.yml` |

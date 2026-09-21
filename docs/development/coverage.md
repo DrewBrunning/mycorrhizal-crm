@@ -75,10 +75,11 @@ each area (2026-09-04 review, prompted by legitimate PRs failing the old flat
   real behavior (hooks, dialog state machines) sometimes hit genuinely fiddly
   async/race branches (e.g. `useContacts.ts`'s stale-response guard) for a
   disproportionate cost per marginal branch.
-- **Android** is loosest because JaCoCo here only instruments
-  `testDebugUnitTest` (see `AndroidConfig.kt`'s `configureJacoco` doc
-  comment) — code exercised only by the instrumented E2E suite (issue #238)
-  is structurally invisible to it. The clean-cut cases — hand-written Hilt DI
+- **Android** is loosest because JaCoCo here only instruments debug unit
+  tests — the unflavored `testDebugUnitTest` for libraries and the coverage
+  flavor `:app:testObtainiumDebugUnitTest` for the app (see `AndroidConfig.kt`'s
+  `configureJacoco` doc comment) — code exercised only by the instrumented E2E
+  suite (issue #238) is structurally invisible to it. The clean-cut cases — hand-written Hilt DI
   wiring (`*Module` classes: one-line `@Provides`/`@Binds` delegations with
   no branch) and Activity/Application framework-lifecycle callback bodies
   (their real logic is already factored into separately-covered pure
@@ -189,8 +190,9 @@ deliberately untested. In order of preference:
    at the JaCoCo report level rather than in `codecov.yml` — used for whole
    *categories* of hand-written framework glue (Hilt DI modules,
    Activity/Application lifecycle callback bodies) that JaCoCo's
-   `testDebugUnitTest`-only instrumentation structurally cannot see, alongside
-   the codegen it already excluded.
+   debug-unit-test-only instrumentation (libraries' `testDebugUnitTest` plus
+   the app's coverage flavor `:app:testObtainiumDebugUnitTest`) structurally
+   cannot see, alongside the codegen it already excluded.
 
    `cmd/codecovcheck` (issue #979) enforces the "with a justifying comment"
    part mechanically: every entry in `codecov.yml`'s `ignore:` list must have

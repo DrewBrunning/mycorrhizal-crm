@@ -199,13 +199,13 @@ commit — cross-check it against the tag as described below.
 
 ## Verifying the Android release APK
 
-Download `app-release.apk` from the release's GitHub Release page
+Download `app-obtainium-release.apk` from the release's GitHub Release page
 (`https://github.com/DrewBrunning/mycorrhizal-crm/releases/tag/<TAG>`).
 
 **1. SLSA build provenance** (works for every release, indefinitely):
 
 ```sh
-gh attestation verify app-release.apk -R DrewBrunning/mycorrhizal-crm
+gh attestation verify app-obtainium-release.apk -R DrewBrunning/mycorrhizal-crm
 ```
 
 The Release page itself also shows a "Verified" badge next to the asset when this attestation is
@@ -222,7 +222,7 @@ cosign verify-blob \
   --bundle mycorrhizal-apk.sigstore.json \
   --certificate-identity-regexp '^https://github\.com/DrewBrunning/mycorrhizal-crm/\.github/workflows/(docker-publish|promote-rc)\.yml@refs/tags/v' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  app-release.apk
+  app-obtainium-release.apk
 ```
 
 **3. SLSA in-toto provenance** (`mycorrhizal-apk.intoto.jsonl`, attached to the Release): a real
@@ -230,14 +230,14 @@ SLSA statement produced by the `slsa-framework/slsa-github-generator` reusable w
 renamed attestation. Verify the APK against it with [`slsa-verifier`](https://github.com/slsa-framework/slsa-verifier):
 
 ```sh
-slsa-verifier verify-artifact app-release.apk \
+slsa-verifier verify-artifact app-obtainium-release.apk \
   --provenance-path mycorrhizal-apk.intoto.jsonl \
   --source-uri github.com/DrewBrunning/mycorrhizal-crm
 ```
 
 **4. Installability** — the keystore signature that actually lets Android install/upgrade the
 APK is separate from all of the above and is checked automatically by the OS (or by `apksigner
-verify app-release.apk` if you want to confirm it yourself); it's what proves this release was
+verify app-obtainium-release.apk` if you want to confirm it yourself); it's what proves this release was
 built with the same signing key as every prior release, so an update can't be substituted by
 someone without that key.
 

@@ -45,11 +45,19 @@ subprojects {
         return@subprojects
     }
 
-    val lockableClasspaths = setOf(
-        "releaseCompileClasspath", "releaseRuntimeClasspath",
-    )
+    // Suffix match, not an exact set: :app has a `distribution` flavor
+    // dimension (issue #1133), so its release classpaths are
+    // `obtainiumRelease*`/`fossRelease*`/`playRelease*` rather than the
+    // unflavored `release*`. Each flavor gets its own lock entries — they are
+    // genuinely different graphs (`foss` carries no Firebase) — while the
+    // library modules keep matching the unflavored names. Both spellings end in
+    // `eleaseRuntimeClasspath`/`eleaseCompileClasspath` (the build type is
+    // lowercase at the start of an unflavored name and mid-camelCase, hence
+    // capitalized, in a flavored one).
+    fun isLockedClasspath(name: String): Boolean =
+        name.endsWith("eleaseCompileClasspath") || name.endsWith("eleaseRuntimeClasspath")
 
-    configurations.matching { it.name in lockableClasspaths }.configureEach {
+    configurations.matching { isLockedClasspath(it.name) }.configureEach {
         resolutionStrategy.activateDependencyLocking()
     }
 
@@ -85,7 +93,7 @@ subprojects {
     // not a real dependency problem.
     fun resolveExternalArtifacts() {
         configurations
-            .filter { it.isCanBeResolved && it.name in lockableClasspaths }
+            .filter { it.isCanBeResolved && isLockedClasspath(it.name) }
             .forEach { config ->
                 config.incoming.artifactView {
                     componentFilter { id -> id !is ProjectComponentIdentifier }

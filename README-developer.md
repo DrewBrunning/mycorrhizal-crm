@@ -74,14 +74,14 @@
 - **Emulator (one command):**
   ```bash
   cd android
-  ./gradlew :app:connectedDebugAndroidTest
+  ./gradlew :app:connectedObtainiumDebugAndroidTest
   ```
   The suite defaults to `http://10.0.2.2:7300` (the emulator's host-loopback alias), which the debug build's cleartext allowlist permits.
 - **Physical device (Pixel 8a):** the device cannot reach `10.0.2.2`, so tunnel the host backend onto the device's own loopback and point the suite at it:
   ```bash
   adb reverse tcp:7300 tcp:7300
   cd android
-  ./gradlew :app:connectedDebugAndroidTest \
+  ./gradlew :app:connectedObtainiumDebugAndroidTest \
     -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
   ```
   This is exactly what the CI job does. Any `serverUrl` instrumentation arg overrides the default.
@@ -103,11 +103,11 @@
   ```bash
   docker compose -f docker-compose.test.yml up -d --build
   adb reverse tcp:7300 tcp:7300
-  cd android && ./gradlew :app:installDebug
+  cd android && ./gradlew :app:installObtainiumDebug
   ```
   Then in the app: log in → Settings → flip "Log calls as activities" on → grant → make/receive a call to a known contact → it appears on that contact's activity feed. Repeat for "Log messages as activities" with a text. Deny the dialog → the toggle snaps back off with a rationale; revoke the permission in system settings and re-enter Settings → the toggle renders off, not "on".
 - The unit/Robolectric suite covers the permission state machine (`SettingsViewModelTest`), the grant-gated workers (`CallLogSyncWorkerTest`, `SmsBackfillWorkerTest`), the readers' missing-grant no-op (`CallLogReaderTest`, `SmsHistoryReaderTest`), and the scheduler additions (`TrackingWorkerSchedulerTest`). `TrackingPermissionsE2eTest` exercises the real toggle → flag → catch-up wiring on the harness.
-- Distribution note: this app ships **only via F-Droid/Obtainium** — the Play Store restricted-permissions policy for `READ_SMS`/`READ_CALL_LOG` is deliberately out of scope; a future Play build would be a separate feature-stripped flavor and must not compromise this build.
+- Distribution note (issue #1133): the app now builds three distribution flavors from one source tree — `obtainium` (the gold-standard GitHub Release/Obtainium build), `foss` (F-Droid; no Firebase/GMS), and `play` (Google Play). See [docs/adrs/0022-distribution-variants.md](docs/adrs/0022-distribution-variants.md) and the [F-Droid submission runbook](docs/development/fdroid.md). **Known gap on `play`:** it currently carries the same `READ_SMS`/`READ_CALL_LOG` tracking permissions as the other flavors, which Google Play restricts to default dialer/SMS apps — a Play-Store-eligible build would need those features feature-gated out, tracked as follow-up work. The `obtainium`/`foss` builds are unaffected and remain the releases this project actually ships.
 
 **Android Room migration tests (issue #480)**
 - `android/core/data`'s `AppDatabase` (`version = CURRENT_VERSION`, `Migrations.kt`) now exports its schema JSON to `android/core/data/schemas/` on every compile (`exportSchema = true`, wired via `room.schemaLocation` in `core/data/build.gradle.kts`); commit the JSON diff alongside any migration you add. There's no schema JSON below version 16 — `AppDatabase`'s doc comment explains why and what that means for testing.
@@ -116,7 +116,7 @@
   - `PendingInteractionsSurviveMigrationTest` — the dedicated, thorough check that `pending_interactions` (the not-yet-synced outbox, the whole reason these migrations are hand-written instead of relying on `fallbackToDestructiveMigration`) survives the full v13→current chain in every field combination the entity supports.
   - `MigrationVersionCoverageTest` — the regression guard: fails if any version pair from `EARLIEST_KNOWN_VERSION` to `CURRENT_VERSION` has neither a registered migration nor an explicit entry in `ACCEPTED_DESTRUCTIVE_GAPS`. Hand-verify it by commenting out an entry in `REGISTERED_MIGRATIONS` and confirming this test fails, then restore it.
   - `DestructiveFallbackTest` — proves the destructive fallback fires (and the app recovers cleanly) for a version gap outside that covered range, and does *not* fire across the real registered chain.
-- `app/src/androidTest/.../storage/RoomMigrationEncryptedTest` is the real-device counterpart: the JVM suite above runs against the plain framework SQLite factory (SQLCipher's native lib can't load on the JVM — same carve-out as `RoomCacheEncryptionTest`), so this instrumented test drives the same v13→current migration chain against a real SQLCipher-encrypted file. Runs as part of `./gradlew :app:connectedDebugAndroidTest` (see the Android E2E section above for emulator/device setup) — no separate command.
+- `app/src/androidTest/.../storage/RoomMigrationEncryptedTest` is the real-device counterpart: the JVM suite above runs against the plain framework SQLite factory (SQLCipher's native lib can't load on the JVM — same carve-out as `RoomCacheEncryptionTest`), so this instrumented test drives the same v13→current migration chain against a real SQLCipher-encrypted file. Runs as part of `./gradlew :app:connectedObtainiumDebugAndroidTest` (see the Android E2E section above for emulator/device setup) — no separate command.
 
 **Android macrobenchmark (issue #263)**
 - The `:macrobenchmark` module ([android/macrobenchmark](android/macrobenchmark)) measures app **cold / warm / hot startup** (`StartupBenchmark`, time-to-first-frame) and **dashboard render** (`DashboardRenderBenchmark`, `FrameTimingMetric` while scrolling the feed that one `/dashboard` call populates). It is a trend signal + local dev tool — **CI never gates on the numbers** (emulator timing variance); turning them into budgets is a separate follow-up.

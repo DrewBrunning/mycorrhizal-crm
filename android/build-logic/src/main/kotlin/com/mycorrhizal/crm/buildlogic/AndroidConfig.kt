@@ -193,6 +193,26 @@ internal fun Project.configureAndroidTestCommon() {
 
 private const val JACOCO_TOOL_VERSION = "0.8.12"
 
+/**
+ * Issue #1133: coverage is collected from exactly one build of a module — the
+ * `obtainium` flavor where a module has the `distribution` dimension (`:app`),
+ * otherwise the plain `debug` build type. The other flavors exist to be built
+ * and tested, not to be measured a second and third time; folding their
+ * variant-mangled classes into one JaCoCo report would double-count by class
+ * name. (Kotlin renames `internal` members per variant module name, e.g.
+ * `performEnroll$app_obtainiumDebug`, so only a variant's own instrumented
+ * class tree is a valid classpath entry for its tests.)
+ */
+private val COVERAGE_VARIANT_GLOBS = arrayOf("**/obtainiumDebug/**", "**/debug/**")
+private val COVERAGE_EXEC_GLOBS = arrayOf(
+    "jacoco/testObtainiumDebugUnitTest.exec",
+    "jacoco/testDebugUnitTest.exec",
+)
+private val COVERAGE_UNIT_TEST_TASKS = setOf(
+    "testObtainiumDebugUnitTest",
+    "testDebugUnitTest",
+)
+
 // Issue #251: visibility only, no threshold/gate — a separate ticket tracks
 // enforcing coverage. Applied to every module (app + library) via
 // configureAndroidCommon so `./gradlew jacocoTestReport` at the root reports
@@ -270,10 +290,26 @@ internal fun Project.configureJacoco() {
     val instrumentedDir = layout.buildDirectory.dir("jacoco/instrumented")
     val instrumentTask = tasks.register("jacocoInstrumentDebug") {
         group = "verification"
-        description = "Offline-instruments debug classes for Robolectric coverage."
-        val javaClasses = fileTree(layout.buildDirectory.dir("intermediates/javac/debug"))
-        val kotlinClasses = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug"))
-        dependsOn(tasks.matching { it.name in setOf("compileDebugKotlin", "compileDebugJavaWithJavac") })
+        description = "Offline-instruments every debug variant's classes for Robolectric coverage."
+        // The `obtainiumDebug` variant for a flavored module (:app, issue
+        // #1133) and the plain `debug` for the unflavored libraries — the two
+        // variants coverage is collected from, so the F-Droid/Play variants
+        // don't pay for offline instrumentation. Each variant is written to
+        // its own subtree (`instrumented/<variant>/…`, see below): Kotlin
+        // mangles `internal` members with the variant-specific module name
+        // (`performEnroll$app_fossDebug`), so the flavor trees are NOT
+        // interchangeable and must not be flattened together.
+        val javaClasses = fileTree(layout.buildDirectory.dir("intermediates/javac")) {
+            include("**/obtainiumDebug/**", "**/debug/**")
+        }
+        val kotlinClasses = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes")) {
+            include("**/obtainiumDebug/**", "**/debug/**")
+        }
+        // Depend on every debug variant's compiler: the tree roots are shared
+        // (`tmp/kotlin-classes`, `intermediates/javac`), so even though the
+        // includes select only obtainiumDebug/debug, Gradle requires the
+        // producer edge for every flavor it can see under that root.
+        dependsOn(tasks.matching { it.name.matches(Regex("compile.*Debug.*(Kotlin|JavaWithJavac)")) })
         inputs.files(javaClasses, kotlinClasses)
         outputs.dir(instrumentedDir)
         doLast {
@@ -285,13 +321,25 @@ internal fun Project.configureJacoco() {
             classTree.visit(object : FileVisitor {
                 override fun visitDir(dirDetails: FileVisitDetails) {}
                 override fun visitFile(fileDetails: FileVisitDetails) {
-                    if (fileDetails.name.endsWith(".class")) {
-                        val target = File(dest, fileDetails.relativePath.pathString)
+                    // Keep the leading `<variant>` segment as a subtree and
+                    // strip it only from the path written inside that subtree:
+                    // `obtainiumDebug/com/...` -> `instrumented/obtainiumDebug/
+                    // com/...`. Each variant's test task prepends its own
+                    // subtree, so the mangled internal names never cross
+                    // flavors. The `slash > 0` guard skips a class sitting
+                    // directly at the tree root (no real one is, but writing
+                    // to the dest dir itself would fail loudly).
+                    val rel = fileDetails.relativePath.pathString
+                    val slash = rel.indexOf('/')
+                    if (fileDetails.name.endsWith(".class") && slash > 0) {
+                        val variant = rel.substring(0, slash)
+                        val inner = rel.substring(slash + 1)
+                        val target = File(File(dest, variant), inner)
                         target.parentFile.mkdirs()
                         target.writeBytes(
                             instrumenter.instrument(
                                 fileDetails.file.readBytes(),
-                                fileDetails.relativePath.pathString,
+                                inner,
                             ),
                         )
                     }
@@ -302,17 +350,21 @@ internal fun Project.configureJacoco() {
 
     // Offline instrumentation replaces the on-the-fly agent: disable the agent
     // (otherwise plain-JVM classes would be instrumented twice) and point the
-    // offline runtime at the same exec file the report reads.
-    tasks.withType<Test>().matching { it.name == "testDebugUnitTest" }.configureEach {
+    // offline runtime at the same exec file the report reads. The regex covers
+    // the unflavored `testDebugUnitTest` and every flavored
+    // `testObtainiumDebugUnitTest`/`testFossDebugUnitTest`/... that :app's
+    // distribution dimension creates (issue #1133). The instrumented classpath
+    // is prepended in configureCrossModuleCoverage's projectsEvaluated hook,
+    // not here — AGP overwrites `classpath` after the convention plugin applies.
+    tasks.withType<Test>().matching { it.name.matches(Regex("test.*DebugUnitTest")) }.configureEach {
         dependsOn(instrumentTask)
         extensions.configure<JacocoTaskExtension> {
             isEnabled = false
         }
-        classpath = files(instrumentedDir) + classpath
-        systemProperty(
-            "jacoco-agent.destfile",
-            layout.buildDirectory.file("jacoco/testDebugUnitTest.exec").get().asFile.absolutePath,
-        )
+        // One exec file per variant — they must not overwrite each other, and
+        // the report merges the coverage variants.
+        val execFile = layout.buildDirectory.file("jacoco/${name}.exec")
+        systemProperty("jacoco-agent.destfile", execFile.get().asFile.absolutePath)
         // Issue #342/#357: the exec file is written by the forked test JVM's
         // offline JaCoCo runtime as a side effect, not by a task action, so it
         // was invisible to the build cache. A module whose tests were served
@@ -320,7 +372,7 @@ internal fun Project.configureJacoco() {
         // aggregated report merged only the re-run modules' data and Codecov
         // collapsed to ~5%. Declaring it as an (optional) output makes a
         // FROM-CACHE restore bring the exec file back too.
-        outputs.file(layout.buildDirectory.file("jacoco/testDebugUnitTest.exec")).optional()
+        outputs.file(execFile).optional()
     }
 
     dependencies {
@@ -329,24 +381,29 @@ internal fun Project.configureJacoco() {
 
     tasks.register<JacocoReport>("jacocoTestReport") {
         group = "verification"
-        description = "Generates a code coverage report from testDebugUnitTest."
-        dependsOn("testDebugUnitTest")
+        description = "Generates a code coverage report from the module's coverage debug unit tests."
+        // Only the coverage variants (issue #1133): `obtainiumDebug` for a
+        // flavored module, plain `debug` for a library. Running the FOSS/Play
+        // unit tests for their own sake is CI's job, not the report's.
+        dependsOn(tasks.matching { it.name in COVERAGE_UNIT_TEST_TASKS })
 
         reports {
             xml.required.set(true)
             html.required.set(true)
         }
 
-        val javaClasses = fileTree(layout.buildDirectory.dir("intermediates/javac/debug")) {
+        val javaClasses = fileTree(layout.buildDirectory.dir("intermediates/javac")) {
+            include(*COVERAGE_VARIANT_GLOBS)
             exclude(JACOCO_EXCLUDES)
         }
-        val kotlinClasses = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+        val kotlinClasses = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes")) {
+            include(*COVERAGE_VARIANT_GLOBS)
             exclude(JACOCO_EXCLUDES)
         }
         classDirectories.setFrom(files(javaClasses, kotlinClasses))
         sourceDirectories.setFrom(files("src/main/java", "src/main/kotlin"))
         executionData.setFrom(
-            fileTree(layout.buildDirectory.get()) { include("jacoco/testDebugUnitTest.exec") },
+            fileTree(layout.buildDirectory.get()) { include(*COVERAGE_EXEC_GLOBS) },
         )
     }
 
@@ -412,23 +469,43 @@ private fun Project.configureCrossModuleCoverage() {
             modules.filter { mod in forward.getValue(it) }.toSet()
         }
 
+        // A module can have several debug unit-test tasks (:app's
+        // distribution flavors), so match them all rather than the one
+        // unflavored name.
+        fun Project.debugUnitTestTasks() = tasks.withType(Test::class.java)
+            .matching { it.name.matches(Regex("test.*DebugUnitTest")) }
+
         modules.forEach { mod ->
-            val testTask = mod.tasks.findByName("testDebugUnitTest") as? Test
-            if (testTask != null) {
+            val testTasks = mod.debugUnitTestTasks()
+            if (testTasks.isNotEmpty()) {
                 val deps = forward.getValue(mod)
-                // The module's OWN instrumented classes must be prepended HERE
-                // (projectsEvaluated), not in configureJacoco: AGP finalizes the
-                // test task's classpath after the convention plugin applies, so
-                // the `classpath = files(instrumentedDir) + classpath` made
-                // during plugin apply is silently overwritten and the module's
-                // own classes run un-instrumented — 0% self coverage while its
-                // dependencies (prepended below) still record. Own classes go
-                // first so they win over any non-instrumented copy.
-                val ownInstrumented = mod.layout.buildDirectory.dir("jacoco/instrumented").get().asFile
-                val depDirs = deps.map { it.layout.buildDirectory.dir("jacoco/instrumented").get().asFile }
-                testTask.classpath = mod.files(listOf(ownInstrumented) + depDirs) + testTask.classpath
-                deps.forEach { dep ->
-                    dep.tasks.findByName("jacocoInstrumentDebug")?.let { testTask.dependsOn(it) }
+                val depInstrumentTasks = deps.mapNotNull { it.tasks.findByName("jacocoInstrumentDebug") }
+                testTasks.configureEach {
+                    // The module's OWN instrumented classes must be prepended
+                    // HERE (projectsEvaluated), not in configureJacoco: AGP
+                    // finalizes the test task's classpath after the convention
+                    // plugin applies, so an earlier prepend is silently
+                    // overwritten and the module's own classes run
+                    // un-instrumented — 0% self coverage while its
+                    // dependencies (prepended below) still record. Own classes
+                    // go first so they win over any non-instrumented copy.
+                    //
+                    // Each variant has its own `instrumented/<variant>` subtree
+                    // (Kotlin's per-variant internal-name mangling); a
+                    // dependency may only have the unflavored `debug` subtree,
+                    // and a non-existent classpath entry is simply ignored, so
+                    // both are prepended.
+                    val variant = name.removePrefix("test").removeSuffix("UnitTest")
+                        .replaceFirstChar { it.lowercaseChar() }
+                    val own = mod.layout.buildDirectory.dir("jacoco/instrumented/$variant").get().asFile
+                    val depDirs = deps.flatMap { d ->
+                        listOf(
+                            d.layout.buildDirectory.dir("jacoco/instrumented/$variant").get().asFile,
+                            d.layout.buildDirectory.dir("jacoco/instrumented/debug").get().asFile,
+                        )
+                    }
+                    classpath = mod.files(listOf(own) + depDirs) + classpath
+                    dependsOn(depInstrumentTasks)
                 }
             }
 
@@ -438,12 +515,12 @@ private fun Project.configureCrossModuleCoverage() {
                 report.executionData.setFrom(
                     contributors.map { c ->
                         c.fileTree(c.layout.buildDirectory.get().asFile) {
-                            include("jacoco/testDebugUnitTest.exec")
+                            include(*COVERAGE_EXEC_GLOBS)
                         }
                     },
                 )
                 contributors.forEach { c ->
-                    c.tasks.findByName("testDebugUnitTest")?.let { report.dependsOn(it) }
+                    c.tasks.matching { it.name in COVERAGE_UNIT_TEST_TASKS }.forEach { report.dependsOn(it) }
                 }
             }
         }
@@ -460,7 +537,7 @@ private fun Project.configureCrossModuleCoverage() {
         rootProject.tasks.register<JacocoReport>("jacocoTestReportAggregated") {
             group = "verification"
             description = "Merges every module's offline-instrumented exec data into one JaCoCo XML/HTML report."
-            dependsOn(modules.mapNotNull { it.tasks.findByName("testDebugUnitTest") })
+            dependsOn(modules.map { mod -> mod.tasks.matching { it.name in COVERAGE_UNIT_TEST_TASKS } })
 
             reports {
                 xml.required.set(true)
@@ -470,10 +547,12 @@ private fun Project.configureCrossModuleCoverage() {
             classDirectories.setFrom(
                 modules.flatMap { mod ->
                     listOf(
-                        mod.fileTree(mod.layout.buildDirectory.dir("intermediates/javac/debug")) {
+                        mod.fileTree(mod.layout.buildDirectory.dir("intermediates/javac")) {
+                            include(*COVERAGE_VARIANT_GLOBS)
                             exclude(JACOCO_EXCLUDES)
                         },
-                        mod.fileTree(mod.layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+                        mod.fileTree(mod.layout.buildDirectory.dir("tmp/kotlin-classes")) {
+                            include(*COVERAGE_VARIANT_GLOBS)
                             exclude(JACOCO_EXCLUDES)
                         },
                     )
@@ -487,7 +566,7 @@ private fun Project.configureCrossModuleCoverage() {
             executionData.setFrom(
                 modules.map { mod ->
                     mod.fileTree(mod.layout.buildDirectory.get()) {
-                        include("jacoco/testDebugUnitTest.exec")
+                        include(*COVERAGE_EXEC_GLOBS)
                     }
                 },
             )

@@ -176,7 +176,11 @@ jobs:
         # --no-build-cache: forces real compilation. setup-gradle restores ~/.gradle,
         #   and a FROM-CACHE Kotlin compile skips the compiler entirely, so the tracer
         #   extracts nothing.
-        run: ./gradlew --no-daemon --no-build-cache assembleDebug
+        # Issue #1133: :app is flavor-qualified; build the gold-standard
+        # obtainium debug variant (libraries' debug builds are pulled in as
+        # dependencies). The FOSS/Play trees are near-identical source, so one
+        # flavor is enough for the taint analysis this job performs.
+        run: ./gradlew --no-daemon --no-build-cache :app:assembleObtainiumDebug
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0

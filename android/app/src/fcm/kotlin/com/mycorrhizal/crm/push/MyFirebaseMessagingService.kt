@@ -1,14 +1,17 @@
-package com.mycorrhizal.crm.feature.tracking
+package com.mycorrhizal.crm.push
 
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import com.mycorrhizal.crm.feature.tracking.DeviceRegistrationManager
+import com.mycorrhizal.crm.feature.tracking.PushMessageParser
+import com.mycorrhizal.crm.feature.tracking.PushNotificationDispatcher
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * M5 §5a (issue #152): the FCM entry point. The server pushes reminder
@@ -16,6 +19,11 @@ import javax.inject.Inject
  * posts on the local channel with the deep-link content intent and the
  * (reminder_id, due_at) idempotent notification id — the same id the polling
  * worker targets, so the poll boundary collapses to one notification.
+ *
+ * Issue #1133: this class lives in `:app`'s `src/fcm` source set, shared by the
+ * `obtainium` and `play` distribution flavors only — the F-Droid (`foss`)
+ * flavor neither compiles it nor carries the Firebase SDK. It is registered in
+ * `src/fcm/AndroidManifest.xml` for exactly those two flavors.
  *
  * The WorkManager polling workers are untouched: this service short-circuits
  * the common case and degrades to a no-op when Firebase is unavailable, keeping
