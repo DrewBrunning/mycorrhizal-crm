@@ -8,6 +8,13 @@
   The merge removes the permissions the feature needs and the components that
   implement it. The `obtainium` (gold standard) and `foss` (F-Droid) flavors
   keep all of it; their merged manifests are the main one unchanged.
+
+  allowBackup="false" repeats the value the merged app manifest already sets
+  (app/src/main/AndroidManifest.xml). It is spelled out on every flavor
+  overlay because mobsfscan audits each source manifest standalone and cannot
+  see the merge, so an overlay without the explicit flag raises
+  android_manifest_missing_explicit_allow_backup (code-scanning alert 279).
+  Mirrors :macrobenchmark's manifest.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
@@ -47,7 +54,7 @@
         tools:node="remove"
         tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
 
-    <application>
+    <application android:allowBackup="false">
         <!-- The foreground service that watches phone state for the overlay. -->
         <service
             android:name="com.mycorrhizal.crm.feature.tracking.CallDetectionService"

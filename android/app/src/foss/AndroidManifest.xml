@@ -9,11 +9,18 @@
   The FCM service (and its Kotlin implementation) is included by the
   `obtainium` and `play` flavors; see app/build.gradle.kts's sourceSets and
   docs/adrs/0022-distribution-variants.md.
+
+  allowBackup="false" repeats the value the merged app manifest already sets
+  (app/src/main/AndroidManifest.xml). It is spelled out on every flavor
+  overlay because mobsfscan audits each source manifest standalone and cannot
+  see the merge, so an overlay without the explicit flag raises
+  android_manifest_missing_explicit_allow_backup (code-scanning alert 278).
+  Mirrors :macrobenchmark's manifest.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <application>
+    <application android:allowBackup="false">
         <!-- MissingClass: the class is deliberately absent from this flavor;
              the node exists only to remove the main manifest's declaration. -->
         <service
