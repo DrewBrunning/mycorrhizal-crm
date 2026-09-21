@@ -53,7 +53,7 @@ updates:
     cooldown:
       default-days: 7
     ignore:
-      # Issue #914: docker-compose.compat-test.yml pins this to v0.6.0
+      # Issue #914: docker-compose.compat-test.yml pins this to v1.0.0
       # deliberately — it is the compat E2E's real migration-floor server,
       # not a dependency to keep current. Bumping it would silently defeat
       # the test it exists for.

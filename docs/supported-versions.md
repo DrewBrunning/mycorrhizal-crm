@@ -91,7 +91,7 @@ Each row fails differently; none is silent-wrong where this project can help it:
   `INSTALL_FAILED_OLDER_SDK`.
 - **Database on a network filesystem.** The startup warning names the
   filesystem; see the storage constraint above.
-- **A database below the migration floor (`v0.6.0`).** The server refuses to
+- **A database below the migration floor (`v1.0.0`).** The server refuses to
   migrate on startup with a two-step instruction — never a best-effort single
   hop. See [Upgrade compatibility](upgrade-compatibility.md).
 - **Building from source on an unsupported toolchain.** `go` refuses per
@@ -230,8 +230,10 @@ How long a given runtime version stays supported after a newer one appears:
   (MAINT-01, issue #490). A runtime minimum is never raised in the same release
   it is first announced in.
 - **The database upgrade floor moves only at a major version.** Post-`1.0`, any
-  `1.x` upgrades from any earlier `1.x` and from the final `0.9.x`; a floor
-  above that needs the next major. See [Upgrade compatibility](upgrade-compatibility.md).
+  `1.x` upgrades from any earlier `1.x`; a floor above that needs the next
+  major. The floor moved from `v0.6.0` to `v1.0.0` at the 1.0 major (issue
+  #1170), so `0.9.x` is no longer a supported in-place-upgrade source. See
+  [Upgrade compatibility](upgrade-compatibility.md).
 - **Client floors are a separate policy.** Whether a given server version still
   accepts your (older) web client or Android app is the client/server
   compatibility policy's question, not this page's — see [Client/server

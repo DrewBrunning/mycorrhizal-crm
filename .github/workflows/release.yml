@@ -372,38 +372,17 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
+      # The two final-release-only obligations live in one shared script so
+      # promote-rc.yml runs the same definition at promotion (issue #1195).
+      # Both are `if: is_rc != true` here; promote-rc.yml runs them
+      # unconditionally before it pushes the final tag.
       - name: Gate - ASVS/MASVS re-verification obligation
         if: ${{ env.IS_RC != 'true' }}
         env:
           ACK_ASVS_CURRENT: ${{ inputs.ack_asvs_current }}
         run: |
           set -eu
-          report="docs/security/asvs-l2-verification-report.md"
-          prev="$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD 2>/dev/null || true)"
-          if [ -z "$prev" ]; then
-            echo "No previous release tag found -- treating the current report as the baseline."
-            echo "ASVS_REVERIFICATION=baseline" >> "$GITHUB_ENV"
-            exit 0
-          fi
-          echo "Previous release: $prev"
-          # A re-verification pass adds a row to the report's section 10
-          # changelog: `| N.N | DATE | ... |`. Require at least one such added
-          # line since the previous release tag.
-          added="$(git diff "${prev}..HEAD" -- "$report" | grep -cE '^\+\|[[:space:]]*[0-9]+\.[0-9]+[[:space:]]*\|' || true)"
-          if [ "$added" -gt 0 ]; then
-            echo "$report carries $added new changelog row(s) since $prev."
-            echo "ASVS_REVERIFICATION=row-present" >> "$GITHUB_ENV"
-            exit 0
-          fi
-          if [ -n "$ACK_ASVS_CURRENT" ]; then
-            msg="ASVS re-verification row absent; dispatcher acknowledged current: ${ACK_ASVS_CURRENT}"
-            echo "::warning::${msg}"
-            echo "### :warning: ${msg}" >> "$GITHUB_STEP_SUMMARY"
-            echo "ASVS_REVERIFICATION=acked: ${ACK_ASVS_CURRENT}" >> "$GITHUB_ENV"
-            exit 0
-          fi
-          echo "::error::$report has no new section-10 changelog row since $prev. Re-verify per section 8 and add the row, or re-dispatch with ack_asvs_current=<reason>."
-          exit 1
+          bash .github/scripts/release-obligations.sh asvs --ack "${ACK_ASVS_CURRENT:-}"
 
       - name: Gate - per-release adversarial delta
         if: ${{ env.IS_RC != 'true' }}
@@ -413,47 +392,11 @@ jobs:
           VERSION: ${{ env.VERSION }}
         run: |
           set -eu
-          ledger="docs/security/adversarial-deltas.md"
-          prev="$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD 2>/dev/null || true)"
-          if [ -z "$prev" ]; then
-            echo "No previous release tag found -- treating the current ledger as the baseline."
-            echo "ADVERSARIAL_DELTA=baseline" >> "$GITHUB_ENV"
-            exit 0
-          fi
-          echo "Previous release: $prev"
-          # Feed cmd/adversarialdelta the paths changed since the previous tag.
-          # It classifies any security-relevant surface class they touch and
-          # requires $ledger to hold a row for this release naming each class it
-          # touched. A release that touched no recognised class passes with
-          # nothing to record. This is the per-release backstop for a new
-          # surface class none of §9's per-class checks anticipated (#953).
-          set +e
-          out="$(git diff --name-only "${prev}..HEAD" | (cd backend && go run ./cmd/adversarialdelta -release "$VERSION" -ack "$ACK_ADVERSARIAL_DELTA"))"
-          rc=$?
-          set -e
-          printf '%s\n' "$out"
-          if [ "$rc" -eq 0 ]; then
-            if printf '%s' "$out" | grep -q '::warning::'; then
-              echo "ADVERSARIAL_DELTA=acked" >> "$GITHUB_ENV"
-            elif printf '%s' "$out" | grep -q 'records the new surface'; then
-              echo "ADVERSARIAL_DELTA=row-present" >> "$GITHUB_ENV"
-            else
-              echo "ADVERSARIAL_DELTA=no-surface" >> "$GITHUB_ENV"
-            fi
-            exit 0
-          fi
-          # A dry run rehearses the path; it does not release memory. A missing
-          # ledger row while the register is being populated must not make the
-          # weekly rehearsal red for a version that is not being cut, so a dry
-          # run records the would-block as a warning and continues. A real
-          # release fails hard.
           if [ "$DRY_RUN" = "true" ]; then
-            echo "::warning::Adversarial-delta gate would block a real release of $VERSION; dry run continues. See $ledger."
-            echo "ADVERSARIAL_DELTA=would-block" >> "$GITHUB_ENV"
-            exit 0
+            bash .github/scripts/release-obligations.sh adversarial --release "$VERSION" --ack "${ACK_ADVERSARIAL_DELTA:-}" --dry-run
+          else
+            bash .github/scripts/release-obligations.sh adversarial --release "$VERSION" --ack "${ACK_ADVERSARIAL_DELTA:-}"
           fi
-          echo "::error::Adversarial-delta gate failed. Record the delta in $ledger, or re-dispatch with ack_adversarial_delta=<reason>."
-          exit 1
 
       # --- Step 4: register + regenerate the schema fixture ---------------
       # Final-release only. An RC ships the same schema the final will, and no

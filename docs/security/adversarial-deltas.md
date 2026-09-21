@@ -53,9 +53,20 @@ route gate; see §9 of the verification report). This gate is the per-release
 backstop for a *new class* none of them anticipated, and a release that added
 one should extend the table above in the same change.
 
+Both this gate and the ASVS row check are skipped on an **RC cut**: an RC ships
+the same tree as the final, and neither obligation is about the candidate. The
+deferral target is promotion, so `.github/workflows/promote-rc.yml` runs both
+gates against the RC commit, before it pushes the final tag — otherwise a
+release cut as an RC and promoted (the normal path since `v0.9.0`) would never
+have either enforced. The gate logic lives once, in
+`.github/scripts/release-obligations.sh`, which both `release.yml`'s final path
+and `promote-rc.yml` call (issue #1195); the invariant that both invoke it is
+checked by `cmd/releasegatecheck`.
+
 A release can be dispatched past the gate with a recorded acknowledgement
 reason (the same escape shape as the ASVS row gate); the reason is recorded in
-`release-metadata.json`, not swallowed.
+`release-metadata.json` for a direct final cut, or `promotion-metadata.json` for
+a promoted RC, not swallowed.
 
 ## Ledger
 
@@ -71,7 +82,7 @@ rows nobody reviewed would be worse than an explicit empty start.
 
 | Release | Date | Surface | Coverage |
 |---|---|---|---|
-| *(no rows yet)* | | | |
+| v1.0.0 | 2026-09-21 | route | The `v0.9.0 → v1.0.0` diff changed only test files under `backend/routes/` (the authorization, credential, ownership, conditional-write, idempotency and session matrices) — **no new route**. The `route` class is deliberately path-based and over-inclusive. Covered by `backend/routes/authorization_matrix_test.go` and the session-minting route gate; backfilled here because the gate was skipped for this RC-derived final (issue #1195). |
 
 When the gate reports a touched surface class, add a row like:
 

@@ -106,7 +106,7 @@ jobs:
       # block in reference-clients-e2e.yml, one level removed from anything
       # actionlint's own shellcheck pass can see into.
       - name: Shellcheck repo scripts
-        run: shellcheck .github/scripts/run-fuzz-targets.sh .github/scripts/tests/run-fuzz-targets.test.sh .github/scripts/min-browser-check.sh .github/scripts/assert-below-min-sdk-install.sh .github/scripts/release-register-decide.sh .github/scripts/tests/release-register-decide.test.sh .github/scripts/reference-client-davx5/run.sh
+        run: shellcheck .github/scripts/run-fuzz-targets.sh .github/scripts/tests/run-fuzz-targets.test.sh .github/scripts/min-browser-check.sh .github/scripts/assert-below-min-sdk-install.sh .github/scripts/release-register-decide.sh .github/scripts/tests/release-register-decide.test.sh .github/scripts/release-obligations.sh .github/scripts/tests/release-obligations.test.sh .github/scripts/reference-client-davx5/run.sh
 
       # Issue #712: exercise the fuzz runner's hardening against a stubbed
       # `go` binary (pass / deadline-race / crash / seed-replay), asserting
@@ -124,4 +124,10 @@ jobs:
       # assertion downstream every time).
       - name: Test release-register decision script
         run: bash .github/scripts/tests/release-register-decide.test.sh
+
+      # Issue #1195: pins the shared final-release-only gate script both
+      # release.yml's final path and promote-rc.yml invoke -- row/ack decisions,
+      # dry-run downgrade, and the usage-error exit codes.
+      - name: Test release-obligations gate script
+        run: bash .github/scripts/tests/release-obligations.test.sh
 

@@ -22,11 +22,12 @@ class ServerCapabilitiesTest {
 
     @Test
     fun `a server at or above a feature floor supports it`() {
-        // 0.6.10 server supports everything shipped by any released tag.
-        val newest = v(0, 6, 10)
+        // Every capability ships by the v1.0.0 baseline, so a 1.0.0 server
+        // supports the whole registry.
+        val newest = v(1, 0, 0)
         ServerFeature.entries.forEach { feature ->
             assertTrue(
-                "server 0.6.10 must support ${feature.name}",
+                "server 1.0.0 must support ${feature.name}",
                 ServerCapabilities.isSupported(newest, feature),
             )
         }
@@ -34,12 +35,12 @@ class ServerCapabilitiesTest {
 
     @Test
     fun `baseline features are supported by any server at or above the baseline`() {
-        val baselineServer = v(0, 6, 0)
+        val baselineServer = v(1, 0, 0)
         ServerFeature.entries
             .filter { it.minServerVersion == ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION }
             .forEach { feature ->
                 assertTrue(
-                    "server 0.6.0 must support baseline ${feature.name}",
+                    "server 1.0.0 must support baseline ${feature.name}",
                     ServerCapabilities.isSupported(baselineServer, feature),
                 )
             }
@@ -72,15 +73,16 @@ class ServerCapabilitiesTest {
 
     @Test
     fun `a server at or above the baseline is supported`() {
-        assertTrue(ServerCapabilities.isServerSupported(v(0, 6, 0)))
-        assertTrue(ServerCapabilities.isServerSupported(v(0, 6, 10)))
         assertTrue(ServerCapabilities.isServerSupported(v(1, 0, 0)))
+        assertTrue(ServerCapabilities.isServerSupported(v(1, 0, 1)))
+        assertTrue(ServerCapabilities.isServerSupported(v(2, 0, 0)))
     }
 
     @Test
     fun `a server below the baseline is refused`() {
+        assertFalse(ServerCapabilities.isServerSupported(v(0, 9, 0)))
+        assertFalse(ServerCapabilities.isServerSupported(v(0, 6, 10)))
         assertFalse(ServerCapabilities.isServerSupported(v(0, 5, 9)))
-        assertFalse(ServerCapabilities.isServerSupported(v(0, 5, 0)))
         assertFalse(ServerCapabilities.isServerSupported(v(0, 0, 1)))
     }
 
@@ -88,30 +90,31 @@ class ServerCapabilitiesTest {
     // released server versions ----------------------------------------------
 
     @Test
-    fun `no feature floor is below the baseline`() {
+    fun `every feature floor ships at or before the baseline`() {
+        // The v1.0.0 baseline (issue #1170) is the oldest server this app talks
+        // to, and every capability in the registry shipped by then, so every
+        // floor is <= the baseline. A floor ABOVE the baseline would be the
+        // only way isSupported hides anything on a supported server.
         ServerFeature.entries.forEach { feature ->
             assertTrue(
-                "floor of ${feature.name} must be >= the 0.6.0 baseline",
-                feature.minServerVersion >= ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION,
+                "floor of ${feature.name} must be <= the 1.0.0 baseline",
+                feature.minServerVersion <= ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION,
             )
         }
     }
 
     @Test
-    fun `a released v0_6_9 server supports every feature except device-grant`() {
-        // Ground truth from the git tags: everything the route table shipped by
-        // v0.6.9 is available to this app; only the device-grant endpoints (the
-        // v0.6.10 cycle) postdate the newest release.
-        val server = v(0, 6, 9)
+    fun `a released v1_0_0 server supports every feature`() {
+        // Ground truth from the git tags: every capability the registry names
+        // shipped by v1.0.0 (the device-grant endpoints in the v0.6.10 cycle
+        // were the newest before it), so the baseline server provides all of
+        // them.
+        val server = v(1, 0, 0)
         ServerFeature.entries.forEach { feature ->
-            if (feature == ServerFeature.DEVICE_GRANT_SIGNIN) {
-                assertFalse(ServerCapabilities.isSupported(server, feature))
-            } else {
-                assertTrue(
-                    "server 0.6.9 must support ${feature.name}",
-                    ServerCapabilities.isSupported(server, feature),
-                )
-            }
+            assertTrue(
+                "server 1.0.0 must support ${feature.name}",
+                ServerCapabilities.isSupported(server, feature),
+            )
         }
     }
 }

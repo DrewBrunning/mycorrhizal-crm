@@ -91,7 +91,13 @@ func TestMigrateDownRollsBackExactlyOneMigration(t *testing.T) {
 
 	// The baseline schema — and therefore the user's data — must survive a
 	// single rollback. Under m.Down() these tables were gone.
-	db, err := InitDB(dbPath)
+	//
+	// OpenMigratedFile, not InitDB: rolling one migration back from the tip
+	// lands below the supported-upgrade floor whenever the floor IS the tip
+	// (the state right after a major release, issue #1170), and InitDB would
+	// correctly refuse it. This test is about the schema surviving the
+	// one-step down, not about the below-floor database being servable.
+	db, err := OpenMigratedFile(dbPath)
 	require.NoError(t, err)
 	defer func() {
 		sqlDB, err := db.DB()
@@ -1761,7 +1767,7 @@ func TestMigrationFailureIdentifiesMigrationAndRecordsEvent(t *testing.T) {
 	// Walk back from the tip to the last migration that creates a table (a
 	// table to drop and re-create with a conflicting schema).
 	var target uint
-	for v := latest; v >= 1; v-- {
+	for v := latest; v > SupportedUpgradeFloorVersion; v-- {
 		name := migrationFileForVersion(v)
 		if name == "" {
 			continue
@@ -1771,7 +1777,9 @@ func TestMigrationFailureIdentifiesMigrationAndRecordsEvent(t *testing.T) {
 			break
 		}
 	}
-	require.NotZero(t, target, "no migration in the chain creates a table to sabotage")
+	if target == 0 {
+		t.Skipf("no table-creating migration above the upgrade floor %d to sabotage", SupportedUpgradeFloorVersion)
+	}
 	name := migrationFileForVersion(target)
 	table := firstCreateTable(t, name)
 	require.NotEmpty(t, table)

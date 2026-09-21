@@ -152,10 +152,12 @@ Detail and the hard-won traps for each layer follow.
     a backfill, not a silent clean removal (`migrate_datapreservation_test.go`);
   - interrupted-migration behavior and failure diagnostics (v0.6.4, #436/#437/#438).
   - **Historical migration paths (MIG-01 #436 + MIG-02 #437, v0.6.4):** one
-    schema-only dump per supported release (floor `v0.6.0`, issue #529),
-    populated at test time from the TEST-02 manifest; the CI migration-tests
-    workflow then matrixes one job per release through `database.InitDB`
-    (`v0.6.0 → current` as the longest skip), round-trips every migration
+    schema-only dump per supported release (floor `v1.0.0`, issue #529; raised
+    from `v0.6.0` at the 1.0 major, issue #1170 — pre-`v1.0.0` dumps remain as
+    frozen historical artifacts), populated at test time from the TEST-02
+    manifest; the CI migration-tests workflow then matrixes one job per release
+    through `database.InitDB` (`v1.0.0 → current` as the longest skip),
+    round-trips every migration
     up → down → up against a populated fixture, and gates on every migration
     shipping its `.down.sql`. A release without a dump fails CI.
 - **Must not be used for** current-schema application behavior (DB/integration)

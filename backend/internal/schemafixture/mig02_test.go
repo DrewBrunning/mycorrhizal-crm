@@ -26,8 +26,8 @@ import (
 //
 // Each release is a NAMED subtest so the CI matrix can run one release per
 // job (`-run TestUpgradeFixtureToCurrent/v0.6.1`) and a failure names the
-// release that broke. The v0.6.0 entry IS the longest supported skip
-// (v0.6.0 -> current, issue #529) — a single additional matrix entry that is
+// release that broke. The v1.0.0 entry IS the longest supported skip
+// (v1.0.0 -> current, issue #529) — a single additional matrix entry that is
 // the higher-value shape, run here through the whole chain at once.
 func TestUpgradeFixtureToCurrent(t *testing.T) {
 	latest, err := database.LatestMigrationVersion()

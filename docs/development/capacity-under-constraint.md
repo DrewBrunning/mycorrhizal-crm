@@ -142,7 +142,7 @@ measurements and the chaos-job comments.
 |---|---|
 | Online backup (`VACUUM INTO` / `make backup`) | **≥ 1× the `.db` size** (a full compacted second copy) + ~10% or 16 MiB headroom. The preflight (`database.backupSpaceEstimate`) asks for exactly this; below it, `make backup` refuses with `ErrInsufficientSpace`. |
 | Pre-migration backup (issue #530, taken automatically on every upgrade) | Same as backup, at `MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` (default: a `pre-migration/` sibling of the DB). If it cannot be written the **upgrade refuses** — fail-closed is correct. |
-| Startup migration (transient WAL / table-rebuild growth) | **Peak additional disk** on top of the `.db`: ~16 MB at 10 k contacts, ~33 MB at 20 k, **~184 MB at 100 k** (`v0.6.0 → current`; every shorter path is cheaper). |
+| Startup migration (transient WAL / table-rebuild growth) | **Peak additional disk** on top of the `.db`: ~16 MB at 10 k contacts, ~33 MB at 20 k, **~184 MB at 100 k** (recorded for the old `v0.6.0 → current` path before the floor moved to `v1.0.0`; every shorter path is cheaper). |
 | Bulk import | Roughly `staged rows × 8 KiB + 32 MiB` — the `preflightImportDiskSpace` estimate. Below it the confirm returns `507 Insufficient Storage` with the session left intact for a retry. |
 
 **Rule of thumb:** a deployment should keep free space ≥

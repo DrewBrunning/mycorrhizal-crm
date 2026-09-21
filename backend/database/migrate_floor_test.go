@@ -29,9 +29,9 @@ func subFloorDB(t *testing.T, steps int) string {
 }
 
 // TestSubFloorDatabaseRefusesToMigrate is issue #529 action 4: a database
-// whose schema predates the v0.6.0 floor must refuse to migrate and name
-// v0.6.0 as the required intermediate — not run a partial migration, not
-// crash. Version 30 is the last sub-floor release (v0.5.9).
+// whose schema predates the v1.0.0 floor must refuse to migrate and name
+// v1.0.0 as the required intermediate — not run a partial migration, not
+// crash. Version 30 is a sub-floor release (v0.5.9), far below the floor.
 func TestSubFloorDatabaseRefusesToMigrate(t *testing.T) {
 	t.Parallel()
 	dbPath := subFloorDB(t, 30)
@@ -49,8 +49,8 @@ func TestSubFloorDatabaseRefusesToMigrate(t *testing.T) {
 	assert.EqualValues(t, 30, subFloor.Version)
 
 	msg := err.Error()
-	assert.Contains(t, msg, "v0.6.0", "the refusal must name the required intermediate release")
-	assert.Contains(t, msg, "Upgrade this instance to v0.6.0 first", "the refusal must carry the two-step instruction")
+	assert.Contains(t, msg, SupportedUpgradeFloorTag, "the refusal must name the required intermediate release")
+	assert.Contains(t, msg, "Upgrade this instance to "+SupportedUpgradeFloorTag+" first", "the refusal must carry the two-step instruction")
 
 	versionAfter, dirty, okAfter, err := MigrationVersion(dbPath)
 	require.NoError(t, err)
@@ -61,8 +61,9 @@ func TestSubFloorDatabaseRefusesToMigrate(t *testing.T) {
 
 // TestSubFloorRefusalHoldsForEveryPreFloorVersion makes the refusal monotone
 // across the whole pre-floor range: v0.2.0-alpha-candidate (000008) through
-// the last sub-floor release (v0.5.9, 000030) all refuse rather than migrate
-// best-effort.
+// v0.5.9 (000030) all refuse rather than migrate best-effort. Every version
+// before the v1.0.0 floor (migration 57) is sub-floor, so low versions are the
+// stable choice here regardless of where the floor has moved to.
 func TestSubFloorRefusalHoldsForEveryPreFloorVersion(t *testing.T) {
 	t.Parallel()
 	for _, version := range []uint{8, 15, 22, 30} {
@@ -133,7 +134,7 @@ func TestDirtySubFloorDatabaseRefusesToMigrate(t *testing.T) {
 // TestBridgeOverrideMigratesSubFloor pins the one-time bridge escape hatch
 // (issue #529 action 5): the documented env var is the ONLY way a pre-floor
 // database can be migrated in one binary, and it is exactly what the v0.2.0
-// bridge procedure (docs/upgrade-compatibility.md) sets when the v0.6.0
+// bridge procedure (docs/upgrade-compatibility.md) sets when the v1.0.0
 // intermediate binary cannot be produced. Default is refuse; the override is
 // explicit and logged, never silent.
 func TestBridgeOverrideMigratesSubFloor(t *testing.T) {
@@ -162,9 +163,9 @@ func TestErrSubFloorMigrationIsStableSentinel(t *testing.T) {
 	t.Parallel()
 	err := &ErrSubFloorMigration{Version: 30}
 	msg := err.Error()
-	assert.Contains(t, msg, "predates the supported upgrade floor (v0.6.0, migration 31)")
-	assert.Contains(t, msg, "In-place upgrade is supported only from v0.6.0 and later")
-	assert.Contains(t, msg, "Upgrade this instance to v0.6.0 first")
+	assert.Contains(t, msg, fmt.Sprintf("predates the supported upgrade floor (%s, migration %d)", SupportedUpgradeFloorTag, SupportedUpgradeFloorVersion))
+	assert.Contains(t, msg, "In-place upgrade is supported only from "+SupportedUpgradeFloorTag+" and later")
+	assert.Contains(t, msg, "Upgrade this instance to "+SupportedUpgradeFloorTag+" first")
 	assert.Contains(t, msg, "docs/upgrade-compatibility.md")
 	// A value that IS at or above the floor is never constructed — the guard
 	// returns nil for those — but the sentinel must still be comparable.

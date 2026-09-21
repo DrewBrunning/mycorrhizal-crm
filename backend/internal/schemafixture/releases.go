@@ -33,38 +33,21 @@ type Release struct {
 }
 
 // SupportedReleases is the upgrade test matrix's release set (issue #529):
-// every release at or above the v0.6.0 floor, in release order. The v0.6.0
-// floor is deliberate — it is the last release before the hardening series
-// began, and everything at or above it has a committed schema dump here.
+// every release at or above the supported-upgrade floor, in release order.
+//
+// The floor moves only at a MAJOR release (docs/versioning-policy.md). It was
+// v0.6.0 (migration 31) through the v0.x line, and issue #1170 raised it to
+// v1.0.0 (migration 57) at the 1.0.0 major — so the v0.6.0-v0.9.0 releases are
+// no longer supported upgrade sources and are not in this matrix. Their frozen
+// schema dumps remain committed under backend/database/testdata/schemas/ as
+// historical artifacts (the chain is append-only; a historical schema never
+// changes retroactively), but they are outside the supported range.
 //
 // When a new release ships, add it here AND commit its dump (run
 // `go run ./cmd/genschema` from backend/, see the schemas README). The
 // completeness test (TestEverySupportedReleaseHasADump) and the
 // docker-publish.yml release gate both fail until the dump exists.
 var SupportedReleases = []Release{
-	{Tag: "v0.6.0", Version: 31},
-	{Tag: "v0.6.1", Version: 36},
-	{Tag: "v0.6.2", Version: 43},
-	{Tag: "v0.6.3", Version: 44},
-	{Tag: "v0.6.4", Version: 45},
-	{Tag: "v0.6.5", Version: 46},
-	{Tag: "v0.6.6", Version: 46},
-	{Tag: "v0.6.7", Version: 48},
-	{Tag: "v0.6.8", Version: 48},
-	{Tag: "v0.6.9", Version: 50},
-	{Tag: "v0.6.10", Version: 51},
-	{Tag: "v0.6.11", Version: 52},
-	{Tag: "v0.6.12", Version: 54},
-	{Tag: "v0.7.0", Version: 54},
-	{Tag: "v0.8.1", Version: 56},
-	{Tag: "v0.8.2", Version: 56},
-	{Tag: "v0.8.3", Version: 56},
-	{Tag: "v0.8.4", Version: 56},
-	{Tag: "v0.8.5", Version: 56},
-	{Tag: "v0.8.6", Version: 56},
-	{Tag: "v0.8.7", Version: 56},
-	{Tag: "v0.8.8", Version: 57},
-	{Tag: "v0.9.0", Version: 57},
 	{Tag: "v1.0.0", Version: 57},
 }
 

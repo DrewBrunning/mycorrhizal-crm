@@ -741,10 +741,11 @@ jobs:
 
   # Issue #436 / #529: the "new release without a schema fixture fails CI"
   # gate. The upgrade test matrix (MIG-01 fixtures, internal/schemafixture) is
-  # bounded by the v0.6.0 floor and requires a committed per-release schema
-  # dump under backend/database/testdata/schemas/. A release tag that ships a
+  # bounded by the v1.0.0 floor (raised from v0.6.0 at the 1.0 major, issue
+  # #1170) and requires a committed per-release schema dump under
+  # backend/database/testdata/schemas/. A release tag that ships a
   # mycorrhizal-supported-series schema (squashed baseline present, version at
-  # or above v0.6.0) but has no dump would publish an upgrade path that CI has
+  # or above v1.0.0) but has no dump would publish an upgrade path that CI has
   # never tested. That must fail the publish, not be noticed later.
   schema-fixture-gate:
     runs-on: ubuntu-latest
@@ -773,8 +774,8 @@ jobs:
           # final will, and no in-place upgrade is ever supported *from* an RC,
           # so an `-rc.` tag carries no fixture -- the final one is registered
           # at promotion (promote-rc.yml). Without this exemption the RC's run
-          # fails here (v1.0.0-rc.1 is above the v0.6.0 floor and the schemas
-          # dir exists, so the gate would demand v1.0.0-rc.1.sql).
+          # fails here (an RC whose final is at or above the floor carries the
+          # schemas dir, so the gate would demand the RC's own dump).
           if printf '%s' "$RELEASE_TAG" | grep -qE -- '-rc\.[0-9]+$'; then
             echo "$RELEASE_TAG is a release candidate; the final schema fixture is registered at promotion. Fixture gate not applicable."
             exit 0
@@ -783,7 +784,7 @@ jobs:
             echo "Not a mycorrhizal supported-series release ($RELEASE_TAG); fixture gate not applicable."
             exit 0
           fi
-          floor="v0.6.0"
+          floor="v1.0.0"
           oldest="$(printf '%s\n%s\n' "$floor" "$RELEASE_TAG" | sort -V | head -1)"
           if [ "$oldest" != "$floor" ]; then
             echo "Release $RELEASE_TAG is below the $floor floor; fixture gate not required (two-step upgrade applies)."

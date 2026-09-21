@@ -48,7 +48,7 @@ const (
 	// NoUpgradeActionRequired is the standing text when no PR in the range
 	// carried an upgrade note. It still ships, so every release answers the
 	// "does this upgrade need anything of me?" question explicitly.
-	NoUpgradeActionRequired = "None — no action required for an instance already on ≥ v0.6.0."
+	NoUpgradeActionRequired = "None — no action required for an instance already on ≥ v1.0.0."
 )
 
 // headingRe matches a Markdown ATX heading, capturing the hashes and the text.

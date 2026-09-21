@@ -11,18 +11,19 @@
 # not collide with the main test backend's container/volume names.
 #
 # Issue #914: a THIRD backend, on port 7302, pinned to the real
-# `ghcr.io/drewbrunning/mycorrhizal-crm:0.6.0` release image — this app's
+# `ghcr.io/drewbrunning/mycorrhizal-crm:1.0.0` release image — this app's
 # actual migration/compatibility floor
-# (ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION), not a rebuild of current
-# main with a spoofed version. Before this, every client-facing compatibility
-# workflow (this file included) only ever booted the freshly-built `latest`
-# image, so the "a real old server still works, and post-baseline features are
-# hidden against it" claims in docs/client-compatibility-policy.md had no
-# end-to-end evidence. OldServerCompatibilityE2ETest drives the real app
+# (ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION; raised from v0.6.0 at the
+# 1.0 major, issue #1170), not a rebuild of current main with a spoofed
+# version. Before this, every client-facing compatibility workflow (this file
+# included) only ever booted the freshly-built `latest` image, so the "a real
+# baseline server still works" claim in docs/client-compatibility-policy.md had
+# no end-to-end evidence. OldServerCompatibilityE2ETest drives the real app
 # against THIS instance. There is deliberately no fourth backend for a
-# BELOW-baseline server: v0.6.0 IS the floor, so no older release exists to
-# pin — that case (the blocking "server needs an upgrade" gate) is covered by
-# ServerTooOldGateE2ETest's synthetic /health response instead.
+# BELOW-baseline server: the floor moves only at a major, the newest
+# below-baseline server is the retired v0.9.x line, and that case (the blocking
+# "server needs an upgrade" gate) is covered by ServerTooOldGateE2ETest's
+# synthetic /health response instead.
 #
 # The pinned tag must never move — it is the floor, not "the latest patch of
 # the floor line" (see the docker-ecosystem `ignore` entry in
@@ -65,10 +66,10 @@ services:
       start_period: 5s
 
   mycorrhizal-old-server:
-    # Pinned deliberately — this IS the v0.6.0 migration floor
+    # Pinned deliberately — this IS the v1.0.0 migration floor
     # (ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION), not "whatever the
-    # 0.6.x line currently points at". Do not bump this tag.
-    image: ghcr.io/drewbrunning/mycorrhizal-crm:0.6.0
+    # 1.0.x line currently points at". Do not bump this tag.
+    image: ghcr.io/drewbrunning/mycorrhizal-crm:1.0.0
     container_name: mycorrhizal-old-server-test
     environment:
       - SQLITE_DB_PATH=/app/data/old-server.db
@@ -87,9 +88,7 @@ services:
     ports:
       - "7302:8080"
     healthcheck:
-      # v0.6.0 predates the /health/live liveness split (that route 404s on
-      # this image) — the plain /health endpoint has existed since it did.
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health/live"]
       interval: 2s
       timeout: 5s
       retries: 15

@@ -437,7 +437,7 @@ func TestSkippedMigrationFailureLeavesDirtyAndSchemaAtPreviousVersion(t *testing
 	require.NoError(t, err)
 
 	var target uint
-	for v := latest; v >= 1; v-- {
+	for v := latest; v > SupportedUpgradeFloorVersion; v-- {
 		name := migrationFileForVersion(v)
 		if name == "" {
 			continue
@@ -447,7 +447,9 @@ func TestSkippedMigrationFailureLeavesDirtyAndSchemaAtPreviousVersion(t *testing
 			break
 		}
 	}
-	require.NotZero(t, target, "no migration in the chain creates a table to sabotage")
+	if target == 0 {
+		t.Skipf("no table-creating migration above the upgrade floor %d to sabotage", SupportedUpgradeFloorVersion)
+	}
 	table := firstCreateTable(t, migrationFileForVersion(target))
 	require.NotEmpty(t, table)
 
@@ -485,7 +487,7 @@ func TestSkippedMigrationFailureLeavesDirtyAndSchemaAtPreviousVersion(t *testing
 // dirty database refuses to start, restoring the pre-migration backup (issue
 // #530's recovery point — BackupSnapshot / docs/deployment.md → Restore) and
 // restarting must succeed. It walks the operator's real sequence: a healthy
-// database at the upgrade floor (v0.6.0, the oldest version an in-place
+// database at the upgrade floor (v1.0.0, the oldest version an in-place
 // upgrade may start from — see checkSupportedUpgradeFloor) with live data →
 // the pre-migration backup is taken → the upgrade to the next version is
 // interrupted (the commit-to-clean-mark crash signature, exactly what the
@@ -498,7 +500,7 @@ func TestDirtyRefusalRecoversByRestoringPreMigrationBackup(t *testing.T) {
 	t.Parallel()
 	latest, err := LatestMigrationVersion()
 	require.NoError(t, err)
-	require.Greater(t, latest, SupportedUpgradeFloorVersion+1, "this test needs a migration beyond the interrupted pair")
+	requireMigrationAboveFloor(t, 1)
 
 	at := SupportedUpgradeFloorVersion
 	dir := t.TempDir()

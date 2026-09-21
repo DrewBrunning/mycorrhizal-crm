@@ -47,7 +47,7 @@ What is checkable at runtime, and what happens when the floor isn't met:
   deliberately **advisory, not fatal** (see the function's doc comment): this is a corruption
   *risk*, not a certainty, and real production data already exists on deployments this check has
   never run against. Refusing to boot could brick a currently-working instance with no escape
-  hatch; a v0.6.0-upgrade-floor-style hard refusal was considered and rejected for that reason.
+  hatch; a v1.0.0-upgrade-floor-style hard refusal was considered and rejected for that reason.
 - **Node/Yarn** — `frontend/.yarnrc`'s `engine-strict true` makes `yarn install` refuse outright
   on a Node/Yarn outside `engines`, both locally and in CI (`actions/setup-node`'s
   `node-version-file: frontend/package.json` reads the same `engines.node` value, so CI always

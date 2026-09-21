@@ -293,16 +293,19 @@ func closeMigrator(m *migrate.Migrate) {
 }
 
 // SupportedUpgradeFloorVersion is the migration version of the oldest release
-// supported for in-place upgrade (issue #529): v0.6.0, whose schema is
-// migrations 000001-000031. Everything at or above it is covered by the
+// supported for in-place upgrade (issue #529): v1.0.0, whose schema is
+// migrations 000001-000057. The floor was v0.6.0 (migration 31) through the
+// v0.x line; it moved to v1.0.0 at the 1.0.0 major release (issue #1170),
+// because a major version is the only point the supported-upgrade floor moves
+// (docs/versioning-policy.md). Everything at or above it is covered by the
 // schema-fixture set (internal/schemafixture). A database whose applied
 // version is below this refuses to migrate (see checkSupportedUpgradeFloor):
-// the policy is "upgrade to v0.6.0 first, then continue" as a documented
+// the policy is "upgrade to v1.0.0 first, then continue" as a documented
 // two-step, never a best-effort single hop.
-const SupportedUpgradeFloorVersion uint = 31
+const SupportedUpgradeFloorVersion uint = 57
 
 // SupportedUpgradeFloorTag is the release tag that defined the floor.
-const SupportedUpgradeFloorTag = "v0.6.0"
+const SupportedUpgradeFloorTag = "v1.0.0"
 
 // faultMigrationBeforeBatch is the failure-injection seam for the "before any
 // migration begins" window (DEPLOY-03, issue #452). It fires in
@@ -449,11 +452,11 @@ func applicationTables(db *sql.DB) ([]string, error) {
 
 // subFloorMigrationEnvVar is the documented escape hatch for the one-time
 // sub-floor bridge (issue #529 action 5, docs/upgrade-compatibility.md). The
-// normal path is a two-step upgrade through a v0.6.0 release binary, which
+// normal path is a two-step upgrade through a v1.0.0 release binary, which
 // never needs this; the bridge exists so the maintainer's own
 // v0.2.0-alpha-candidate deployment (and the chain-preservation regression
 // test that exercises it) can run the full chain in one binary when the
-// v0.6.0 intermediate cannot be produced. Setting it is a deliberate,
+// v1.0.0 intermediate cannot be produced. Setting it is a deliberate,
 // logged decision, never silent.
 const subFloorMigrationEnvVar = "MYCORRHIZAL_ALLOW_SUB_FLOOR_MIGRATION"
 
@@ -464,10 +467,10 @@ func subFloorMigrationAllowed() bool {
 }
 
 // checkSupportedUpgradeFloor refuses to migrate a database whose schema
-// predates the v0.6.0 floor (issue #529 action 4). A fresh database (no
+// predates the v1.0.0 floor (issue #529 action 4). A fresh database (no
 // schema_migrations row, version 0) is not a sub-floor database and always
 // passes. A CLEAN sub-floor database is a real pre-floor deployment and returns
-// an ErrSubFloorMigration that names v0.6.0 as the required intermediate — a
+// an ErrSubFloorMigration that names v1.0.0 as the required intermediate — a
 // partial migration or a crash is the alternative the policy explicitly
 // rejects. A DIRTY sub-floor database never reaches this check: the dirty
 // refusal (checkMigrationPreflight) fires first, because a dirty flag means the
@@ -480,7 +483,7 @@ func checkSupportedUpgradeFloor(version uint) error {
 		logger.Warn().
 			Str(logger.FieldComponent, "migration").
 			Uint("version", version).
-			Msg("ALLOW_SUB_FLOOR_MIGRATION is set: migrating a pre-v0.6.0 database. This is the documented one-time bridge (docs/upgrade-compatibility.md), not a supported upgrade path.")
+			Msg("ALLOW_SUB_FLOOR_MIGRATION is set: migrating a pre-v1.0.0 database. This is the documented one-time bridge (docs/upgrade-compatibility.md), not a supported upgrade path.")
 		return nil
 	}
 	return &ErrSubFloorMigration{Version: version}
@@ -494,7 +497,7 @@ func checkSupportedUpgradeFloor(version uint) error {
 //  2. a database ahead of the binary (state 2) — the database knows migrations
 //     this binary does not, meaning a rollback is in progress. Refuse.
 //  3. a sub-floor database (state 3, issue #529) — predates the supported
-//     upgrade floor. Refuse, naming the v0.6.0 intermediate.
+//     upgrade floor. Refuse, naming the v1.0.0 intermediate.
 //
 // Each returns its own typed error so health/readiness and the diagnostics run
 // can report WHICH state an install is in rather than a generic boot failure.

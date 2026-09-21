@@ -138,6 +138,7 @@ func TestInjectedMigrationFaultFailsClosedAndRecovers(t *testing.T) {
 // migration_failed event row is persisted, and that the fail-closed refusal
 // (dirty -> refuse) plus the operator-only force still recover cleanly.
 func TestInjectedMigrationFaultMidFlightRecordsEvent(t *testing.T) {
+	requireMigrationAboveFloor(t, 0)
 	faults.Reset()
 	t.Cleanup(faults.Reset)
 

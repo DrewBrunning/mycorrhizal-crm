@@ -9,6 +9,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// requireMigrationAboveFloor skips a test that needs at least margin pending
+// migrations above the supported-upgrade floor. The floor moves only at a
+// major release (docs/versioning-policy.md), and immediately after one the
+// floor IS the newest schema — issue #1170 raised it to v1.0.0 (migration 57),
+// which is also the latest migration, so no pending upgrade exists to
+// exercise. Tests that need a real from->to hop skip until the next release
+// adds a migration; then latest > floor and they run again. The mirror of
+// rollback_drill_test.go's own floor==current skip.
+func requireMigrationAboveFloor(t *testing.T, margin uint) {
+	t.Helper()
+	latest := mustLatestVersion(t)
+	if latest <= SupportedUpgradeFloorVersion+margin {
+		t.Skipf("upgrade floor %d is not at least %d migration(s) behind latest %d — no pending upgrade to exercise",
+			SupportedUpgradeFloorVersion, margin+1, latest)
+	}
+}
+
 // TestOpenMigratedFileOpensWithoutMigrating covers OpenMigratedFile: a file
 // that InitDB already migrated opens through the standard pragma DSN without
 // re-running migrations, and a bogus path fails cleanly.

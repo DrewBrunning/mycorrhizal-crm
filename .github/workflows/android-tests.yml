@@ -362,11 +362,11 @@ jobs:
       # MIN_CLIENT_VERSION set above the debug APK's versionName. Only
       # ForceUpdateGateE2ETest talks to it; the rest of the suite keeps using
       # the floor-less 7300 instance (the policy's default posture).
-      # Issue #914: a third backend (port 7302), pinned to the real v0.6.0
-      # release image — this app's actual migration floor, not a stub.
-      # OldServerCompatibilityE2ETest / ServerTooOldGateE2ETest talk to it
-      # (the latter stubs its OWN below-floor response; only the real-server
-      # test needs this container up).
+      # Issue #914: a third backend (port 7302), pinned to the real v1.0.0
+      # release image — this app's actual migration floor since the 1.0 major
+      # (issue #1170), not a stub. OldServerCompatibilityE2ETest talks to it;
+      # ServerTooOldGateE2ETest stubs its OWN below-floor response and needs
+      # no real container.
       - name: Start compatibility backends (issues #528, #914)
         run: |
           docker compose -p mycorrhizal-compat -f docker-compose.compat-test.yml up -d
