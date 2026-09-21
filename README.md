@@ -130,8 +130,10 @@ notifications, and per-user settings.
 The same source builds three distribution variants (see [ADR 0022](docs/adrs/0022-distribution-variants.md)):
 the **obtainium** build attached to each GitHub Release (the gold standard, updated in place by
 [Obtainium](https://obtainium.imranr.dev/)), the **foss** build for F-Droid (no Firebase or Google
-Play Services), and a **play** build for Google Play. Each store signs with a different key, so moving
-between channels means uninstalling and reinstalling.
+Play Services), and a **play** build for Google Play (which omits the opt-in call/SMS activity
+logging the other two offer, because Google Play restricts those permissions to default dialer/SMS
+apps). Each store signs with a different key, so moving between channels means uninstalling and
+reinstalling.
 
 ---
 
