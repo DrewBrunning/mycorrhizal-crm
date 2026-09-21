@@ -3,7 +3,8 @@
 // issue #529).
 //
 // The dumps live under backend/database/testdata/schemas/ — one schema-only
-// SQL file per supported release (v0.6.0 and later), frozen: a historical
+// SQL file per supported release (v1.0.0 and later; the floor moved from
+// v0.6.0 at the 1.0 major, issue #1170), frozen: a historical
 // schema never changes retroactively. They are generated from the current
 // embedded migration chain, which is frozen and append-only, so migrations
 // 000001..N are byte-identical to what the tagged release shipped.

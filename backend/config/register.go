@@ -208,7 +208,7 @@ var OutOfConfigVars = []OutOfConfigVar{
 		Required:   false,
 		Restart:    true,
 		Range:      "true to enable; any other value (including unset) leaves it off",
-		Desc:       "One-time bridge allowing a pre-v0.6.0 database to migrate (issue #529)",
+		Desc:       "One-time bridge allowing a pre-v1.0.0 database to migrate (issue #529)",
 		WhyOutside: "read by database.InitDB during migration bootstrap, before config.LoadConfig runs — see docs/upgrade-compatibility.md",
 	},
 	{

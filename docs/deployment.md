@@ -165,8 +165,8 @@ below. It is retained under your control: the app never deletes it. Keep the
 your rollback points.
 
 **Read `docs/upgrade-compatibility.md` before upgrading.** It is the canonical
-supported-upgrade statement: in-place upgrade is supported from `v0.6.0`
-(later), version-skipping within the range is supported, a database below the
+supported-upgrade statement: in-place upgrade is supported from `v1.0.0`
+and later, version-skipping within the range is supported, a database below the
 floor refuses to migrate with a two-step instruction, and downgrade is
 unsupported (rollback = previous version + pre-upgrade backup restore).
 
@@ -574,7 +574,7 @@ set already on the host:
 |---|---|---|
 | Copy the `.db` snapshot into place | seconds (~450 MB file copy) | file size |
 | `rsync` the photo + attachment directories | minutes, set by directory size — the file directories can dwarf the `.db` at scale (BACKUP-02) | operator storage |
-| Startup migration after restore | **~6.5 s** (v0.6.0 → current, 100k contacts) | `scale-testing.md` → "Recorded resource requirements" |
+| Startup migration after restore | **~6.5 s** (longest recorded path at 100k contacts) | `scale-testing.md` → "Recorded resource requirements" |
 | `PRAGMA integrity_check` + `/health/ready` verification | seconds | `TestLargeDatasetBackupRestoresAtScale` |
 
 **Stated RTO: under 30 minutes** at MVP scale. The dominant terms are the human steps (stop, swap

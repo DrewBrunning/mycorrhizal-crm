@@ -102,14 +102,14 @@ nothing beyond the right label.
 `cmd/releasenotes` always emits an **Upgrade notes** section. When no PR in the
 range contributed one, it emits:
 
-> None — no action required for an instance already on ≥ v0.6.0.
+> None — no action required for an instance already on ≥ v1.0.0.
 
 So every release states the operator position explicitly rather than by
 omission.
 
 ## Skip-version upgrades
 
-Self-hosted operators skip versions — `v0.6.0 → current` directly is supported
+Self-hosted operators skip versions — `v1.0.0 → current` directly is supported
 ([`upgrade-compatibility.md`](upgrade-compatibility.md), issue #529). Because
 every release body carries an **Upgrade notes** section, the accumulated
 operator actions across a range are read release-by-release down the
@@ -132,7 +132,8 @@ finding*, becomes checkable rather than aspirational.
 
 ## Where the record begins
 
-`v0.6.0` — the [supported-upgrade floor](upgrade-compatibility.md) (issue #529).
+`v0.6.0` — the [supported-upgrade floor](upgrade-compatibility.md) when this
+policy landed (issue #529; the floor is now `v1.0.0`, issue #1170).
 Releases from `v0.6.0` onward carry an **Upgrade notes** section (the
 `v0.6.0`–`v0.6.12` releases were backfilled with one when this policy landed).
 Earlier releases have generated notes only; reconstructing twenty pre-floor

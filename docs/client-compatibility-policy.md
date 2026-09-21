@@ -109,17 +109,20 @@ the server-side floor enforcement at auth described in "Server-side floor
 enforcement" below. The client has a hard baseline under which degradation is
 not attempted at all:
 
-- **A server below the app's v0.6.0 baseline is refused outright.** The whole
-  authenticated surface expects the v0.6.0 API contract (the same floor as the
+- **A server below the app's v1.0.0 baseline is refused outright.** The whole
+  authenticated surface expects the v1.0.0 API contract (the same floor as the
   backend's database migration floor), so instead of failing on every screen the
   app renders a blocking "server needs an upgrade" screen. This is deliberately
   *not* the three-state check's fail-open case: it only fires when /health is
   reachable and reports an old-but-parseable version, so an unreachable or
   unparseable server still fails open.
 - **Between the baseline and the current release**, capabilities whose endpoints
-  arrived after v0.6.0 are hidden when the connected server predates them (the
-  per-feature `minServerVersion` floors in the registry), so a newer client
-  degrades gracefully rather than offering actions that would 404.
+  arrived after the baseline are hidden when the connected server predates them
+  (the per-feature `minServerVersion` floors in the registry), so a newer client
+  degrades gracefully rather than offering actions that would 404. Every
+  capability that exists today shipped by the `v1.0.0` baseline (issue #1170),
+  so no per-feature floor is above it and the baseline gate is what refuses any
+  older server.
 
 ## Server-side floor enforcement
 
@@ -220,24 +223,25 @@ the server?", published alongside the
 itself requires to run; this table states what it requires of the clients
 talking to it.
 
-The matrix's lower bound is `v0.6.0`. Below it the range is not "an old server
-that still works" — the Android app refuses any server under its `v0.6.0`
+The matrix's lower bound is `v1.0.0`. Below it the range is not "an old server
+that still works" — the Android app refuses any server under its `v1.0.0`
 baseline with the blocking "server needs an upgrade" screen (see "Newer client,
-older server" above), and the server itself refuses to migrate a pre-`v0.6.0`
-database (the same `v0.6.0` floor; [upgrade compatibility](upgrade-compatibility.md),
-issue #529). So the compatibility promise is a promise for servers **at or
-above `v0.6.0`**, not for every server tag that was ever pushed.
+older server" above), and the server itself refuses to migrate a pre-`v1.0.0`
+database (the same `v1.0.0` floor; [upgrade compatibility](upgrade-compatibility.md),
+issue #529; the floor moved from `v0.6.0` at the 1.0 major, issue #1170). So the
+compatibility promise is a promise for servers **at or above `v1.0.0`**, not for
+every server tag that was ever pushed.
 
 | Server version range | Minimum client version (`min_client_version`) | Notes |
 |---|---|---|
-| **`v0.6.0` and later** | *(none declared)* | No *client* floor has ever been raised: every released Android build and every web client remain compatible with every released server in this range, per the default posture above. The app's own `v0.6.0` server baseline is a client-declared floor in the *other* direction (see "Newer client, older server") and is not a `min_client_version`. |
+| **`v1.0.0` and later** | *(none declared)* | No *client* floor has ever been raised: every released Android build and every web client remain compatible with every released server in this range, per the default posture above. The app's own `v1.0.0` server baseline is a client-declared floor in the *other* direction (see "Newer client, older server") and is not a `min_client_version`. |
 
 A row is added here **only** when a server-side client floor actually moves,
 in the same change that moves it (see "Moving the floor," requirement 4).
 Until then this table having a single "no floor declared" row is not a
 placeholder — it is a faithful, actionable statement of the current, real
 policy: no server release has ever required a client to update to keep working,
-and the only floor in the picture is the app's own `v0.6.0` *server* baseline
+and the only floor in the picture is the app's own `v1.0.0` *server* baseline
 stated above.
 
 ## How to verify this policy is being followed
@@ -254,7 +258,7 @@ stated above.
   session exists (issue #692): once a below-floor server's URL is configured
   the gate appears without attempting an authentication the server would
   refuse. Issue #692's server-too-old gate (a reachable server below the
-  app's v0.6.0 baseline) is not a fourth compatibility state — it is the
+  app's v1.0.0 baseline) is not a fourth compatibility state — it is the
   baseline floor's refusal, and it is equally fail-open against an unreachable
   or unparseable /health.
 - A newer client against an older server degrades the specific feature the
@@ -266,15 +270,15 @@ stated above.
   the authoritative backstop for a client that skips its own check.
 - `/health` unreachable or returning a malformed body leaves both clients
   fully functional (fail open).
-- Issue #914: the degrade-against-an-older-server and
-  refuse-a-below-baseline-server claims above are proven against a real old
-  server, not only against the version-gate logic in isolation. Android's
-  `OldServerCompatibilityE2ETest` drives the real app against the pinned real
-  `ghcr.io/drewbrunning/mycorrhizal-crm:0.6.0` release image (this app's
-  actual migration floor) and asserts login still succeeds and a
-  post-baseline feature (`ServerFeature.API_TOKENS_ADVANCED`) is hidden;
-  `ServerTooOldGateE2ETest` covers the below-baseline case, which has no real
-  older release to boot (v0.6.0 IS the floor) and so stubs a synthetic
+- Issue #914: the connect-to-a-real-baseline-server claim above is proven
+  against a real server, not only against the version-gate logic in isolation.
+  Android's `OldServerCompatibilityE2ETest` drives the real app against the
+  pinned real `ghcr.io/drewbrunning/mycorrhizal-crm:1.0.0` release image (this
+  app's actual migration floor it must still authenticate against) and asserts
+  login succeeds and the baseline surface loads;
+  `ServerTooOldGateE2ETest` covers the below-baseline refusal, which has no real
+  older release to boot (the baseline moves only at a major, so the newest
+  below-baseline server is the retired `v0.9.x` line) and so stubs a synthetic
   below-floor `/health` response instead. Both live in
   `docker-compose.compat-test.yml` / `android-tests.yml`, alongside the
   existing issue #528 `ForceUpdateGateE2ETest`.

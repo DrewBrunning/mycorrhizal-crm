@@ -12,7 +12,7 @@ import org.junit.Test
 // needs a client newer than a still-supported server).
 class CompatibilityOutcomeTest {
 
-    private val clientNewer = "0.6.10"
+    private val clientNewer = "1.1.0"
 
     @Test
     fun `null server fails open to compatible with no version`() {
@@ -37,11 +37,11 @@ class CompatibilityOutcomeTest {
     fun `a compatible supported server passes with its version exposed`() {
         val outcome = resolveCompatibilityOutcome(
             clientVersionName = "0.6.0",
-            server = ServerHealth(version = "0.6.10"),
+            server = ServerHealth(version = "1.0.0"),
         )
         assertEquals(CompatibilityGate.NotRequired, outcome.gate)
         assertNull(outcome.noticeVersion)
-        assertEquals(AppVersion(0, 6, 10), outcome.serverVersion)
+        assertEquals(AppVersion(1, 0, 0), outcome.serverVersion)
     }
 
     @Test
@@ -69,11 +69,11 @@ class CompatibilityOutcomeTest {
     fun `a newer client on a supported-but-older server raises the notice`() {
         val outcome = resolveCompatibilityOutcome(
             clientVersionName = clientNewer,
-            server = ServerHealth(version = "0.6.5"),
+            server = ServerHealth(version = "1.0.0"),
         )
         assertEquals(CompatibilityGate.NotRequired, outcome.gate)
-        assertEquals("0.6.5", outcome.noticeVersion)
-        assertEquals(AppVersion(0, 6, 5), outcome.serverVersion)
+        assertEquals("1.0.0", outcome.noticeVersion)
+        assertEquals(AppVersion(1, 0, 0), outcome.serverVersion)
     }
 
     @Test

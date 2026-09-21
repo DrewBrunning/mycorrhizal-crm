@@ -51,9 +51,10 @@ Two things are *not* waived pre-1.0:
   data. A migration that loses data is breaking regardless of version
   (CLAUDE.md: "breaking *data* is a different, higher bar"). This is independent
   of the SemVer component being bumped.
-- **The supported-upgrade floor.** In-place upgrade is supported from `v0.6.0`
+- **The supported-upgrade floor.** In-place upgrade is supported from `v1.0.0`
   and later, version-skipping included — see
-  [upgrade compatibility](upgrade-compatibility.md) (issue #529).
+  [upgrade compatibility](upgrade-compatibility.md) (issue #529; the floor moved
+  from `v0.6.0` at the 1.0 major, issue #1170).
 
 The `/api/v1` compatibility promise — no removals, renames, or narrowing within
 a major line — begins at `1.0.0`. See the breaking-change policy for its exact
@@ -172,16 +173,17 @@ The runtime assertion that release *N+1*'s APK actually installs over release
 
 Two floors are expressed as versions and therefore depend on this policy:
 
-- **Supported-upgrade floor — `v0.6.0`.** In-place upgrade is supported from
+- **Supported-upgrade floor — `v1.0.0`.** In-place upgrade is supported from
   here; below it the server refuses to migrate. Canonical statement:
   [upgrade compatibility](upgrade-compatibility.md) (issue #529). The floor
-  moves only at a MAJOR bump, which is itself a breaking change.
+  moves only at a MAJOR bump, which is itself a breaking change — it moved from
+  `v0.6.0` to `v1.0.0` at the 1.0 major (issue #1170).
 - **Client/server compatibility floor.** The Android app declares the oldest
-  server it will talk to — `v0.6.0`, the same version as the supported-upgrade
+  server it will talk to — `v1.0.0`, the same version as the supported-upgrade
   floor above, so the client's server baseline and the backend migration floor
   cannot drift. A server may declare the oldest client it accepts via
   `MIN_CLIENT_VERSION`; no such *client* floor has ever been raised, so against
-  every released server at or above `v0.6.0` every released client still works.
+  every released server at or above `v1.0.0` every released client still works.
   Canonical statement: [client/server compatibility
   policy](client-compatibility-policy.md) (ANDROID-01, issue #478).
 

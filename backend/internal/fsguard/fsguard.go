@@ -70,7 +70,7 @@ func (w *Warning) String() string {
 // It returns nil — no warning — when the filesystem is local, unrecognized,
 // or its type could not be determined at all (statfs failure, non-Linux
 // build). This is deliberately advisory rather than fatal: unlike the
-// v0.6.0 upgrade-floor check, this is a *risk* signal, not a certainty of
+// v1.0.0 upgrade-floor check, this is a *risk* signal, not a certainty of
 // corruption, and refusing to boot could brick an already-running
 // self-hosted instance with real production data on its next restart. A
 // clear startup log line is the "fail clearly, not subtly" behavior this

@@ -15,7 +15,7 @@ points at it rather than restating them.
 |---|---|
 | **Scope** | A self-hosted single instance — the shipped all-in-one Docker image. There is no replica and no failover; recovery means **restore**. See [The single-instance reality](#the-single-instance-reality). |
 | **Companion docs** | `docs/deployment.md` → Backups (the authoritative backup/restore/verify *procedures* — the three-piece backup, `make backup`, `make backup-verify`, Restore); `docs/operations/migration-recovery.md` (MIG-05, issue [#440](https://github.com/DrewBrunning/mycorrhizal-crm/issues/440) — the migration-specific chapter: dirty schema, schema ahead of the binary, sub-floor, rolling back a bad release); `docs/security/incident-response.md` (issue [#509](https://github.com/DrewBrunning/mycorrhizal-crm/issues/509) — containment and credential/key rotation for a *compromise*, as opposed to a *loss*); `docs/upgrade-compatibility.md` (issue [#529](https://github.com/DrewBrunning/mycorrhizal-crm/issues/529) — the supported-upgrade range and the refusal states); `docs/security/data-retention-lifecycle.md` §10 (what a backup contains and how long copies of each data type survive). |
-| **Policy anchors** | Upgrade floor is `v0.6.0` (issue [#529](https://github.com/DrewBrunning/mycorrhizal-crm/issues/529)). Downgrade is unsupported; rollback is **install the previous version, restore the pre-upgrade backup**, and the upgrade path takes that backup automatically and fail-closed (issue [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530)). Three fail-closed migration refusal states (MIG-04, issue [#439](https://github.com/DrewBrunning/mycorrhizal-crm/issues/439)) plus the pre-migration-backup gate (issue [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530)). `make backup` owns the database snapshot; the operator owns the photo/attachment directories (BACKUP-02, issue [#454](https://github.com/DrewBrunning/mycorrhizal-crm/issues/454)). |
+| **Policy anchors** | Upgrade floor is `v1.0.0` (issue [#529](https://github.com/DrewBrunning/mycorrhizal-crm/issues/529); raised from `v0.6.0` at the 1.0 major, issue [#1170](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1170)). Downgrade is unsupported; rollback is **install the previous version, restore the pre-upgrade backup**, and the upgrade path takes that backup automatically and fail-closed (issue [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530)). Three fail-closed migration refusal states (MIG-04, issue [#439](https://github.com/DrewBrunning/mycorrhizal-crm/issues/439)) plus the pre-migration-backup gate (issue [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530)). `make backup` owns the database snapshot; the operator owns the photo/attachment directories (BACKUP-02, issue [#454](https://github.com/DrewBrunning/mycorrhizal-crm/issues/454)). |
 
 ## The single-instance reality
 
@@ -72,8 +72,8 @@ is almost entirely **outside** the application:
    files, not rows, and are not compressed by the backup).
 3. **Startup migration**, if the snapshot predates the running binary — measured
    at seconds even for large databases (`docs/development/scale-testing.md`:
-   `v0.6.0 → current` at ~100k contacts is ~6.5 s; the longest supported skip at
-   2,010 contacts is ~0.15 s).
+   the floor → current path at ~100k contacts is seconds; the longest
+   supported skip is cheap).
 4. **Verify** — [Verifying a recovered instance](#verifying-a-recovered-instance).
    Minutes.
 

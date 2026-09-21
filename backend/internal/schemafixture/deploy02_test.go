@@ -49,7 +49,7 @@ import (
 //     search (the FTS index must still be consistent), read + edit a contact,
 //     and export (issue #451 action 3).
 //
-// The v0.6.0 subtest IS the longest supported skip (v0.6.0 -> current, issue
+// The v1.0.0 subtest IS the longest supported skip (v1.0.0 -> current, issue
 // #529 action 4), run through database.InitDB at once.
 //
 // Hand-verify (issue #451 "How to verify" / CLAUDE.md): a migration that drops
@@ -434,8 +434,8 @@ func exerciseUpgradedApp(t *testing.T, db *gorm.DB, username string, liveID uint
 }
 
 // TestFullInstallUpgradeRefusesSubFloorDatabase is issue #451 action 6: a
-// database below the #529 floor (v0.6.0 / migration 31) must REFUSE to upgrade
-// with the two-step ErrSubFloorMigration naming v0.6.0 — never a best-effort
+// database below the #529 floor (v1.0.0 / migration 57) must REFUSE to upgrade
+// with the two-step ErrSubFloorMigration naming v1.0.0 — never a best-effort
 // single hop — and leave the database untouched. The database-package MIG-04
 // tests (issues #439/#546) are the primary coverage; this pins it on the
 // InitDB full-install path DEPLOY-02 owns.

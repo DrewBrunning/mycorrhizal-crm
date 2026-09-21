@@ -42,7 +42,7 @@ func seedUser(t *testing.T, dbPath, username string) {
 }
 
 // floorDBWithUser builds a clean database at the supported upgrade floor
-// (v0.6.0) holding one user — the state a real instance is in the moment before
+// (v1.0.0) holding one user — the state a real instance is in the moment before
 // an in-place upgrade.
 func floorDBWithUser(t *testing.T, dbPath string) {
 	t.Helper()
@@ -60,7 +60,7 @@ func preMigrationSnapshots(t *testing.T, dir string) []string {
 func TestInitDB_TakesVerifiedPreMigrationBackup(t *testing.T) {
 	t.Parallel()
 	latest := mustLatestVersion(t)
-	require.Greater(t, latest, SupportedUpgradeFloorVersion, "need at least one migration above the floor")
+	requireMigrationAboveFloor(t, 0)
 
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "live.db")
@@ -105,7 +105,7 @@ func TestInitDB_TakesVerifiedPreMigrationBackup(t *testing.T) {
 func TestMigrateUp_TakesPreMigrationBackup(t *testing.T) {
 	t.Parallel()
 	latest := mustLatestVersion(t)
-	require.Greater(t, latest, SupportedUpgradeFloorVersion)
+	requireMigrationAboveFloor(t, 0)
 
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "live.db")
@@ -120,7 +120,7 @@ func TestMigrateUp_TakesPreMigrationBackup(t *testing.T) {
 }
 
 func TestInitDB_FailsClosedWhenBackupTargetUnwritable(t *testing.T) {
-	require.Greater(t, mustLatestVersion(t), SupportedUpgradeFloorVersion)
+	requireMigrationAboveFloor(t, 0)
 
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "live.db")
@@ -164,7 +164,7 @@ func TestInitDB_FreshDatabaseTakesNoBackup(t *testing.T) {
 
 func TestInitDB_UpToDateDatabaseTakesNoNewBackup(t *testing.T) {
 	t.Parallel()
-	require.Greater(t, mustLatestVersion(t), SupportedUpgradeFloorVersion)
+	requireMigrationAboveFloor(t, 0)
 
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "live.db")
@@ -188,8 +188,7 @@ func TestInitDB_UpToDateDatabaseTakesNoNewBackup(t *testing.T) {
 
 func TestInitDB_DirtyDatabaseIsRefusedNotBackedUp(t *testing.T) {
 	t.Parallel()
-	latest := mustLatestVersion(t)
-	require.Greater(t, latest, SupportedUpgradeFloorVersion+1, "need a migration beyond the interrupted pair")
+	requireMigrationAboveFloor(t, 1)
 
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "live.db")
@@ -244,7 +243,7 @@ func TestInitDB_SubFloorBridgeStillSnapshots(t *testing.T) {
 func TestTakePreMigrationBackup_IdempotentPerHop(t *testing.T) {
 	t.Parallel()
 	latest := mustLatestVersion(t)
-	require.Greater(t, latest, SupportedUpgradeFloorVersion)
+	requireMigrationAboveFloor(t, 0)
 
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "live.db")
@@ -264,7 +263,7 @@ func TestTakePreMigrationBackup_IdempotentPerHop(t *testing.T) {
 func TestTakePreMigrationBackup_IgnoresCorruptLeftoverSnapshot(t *testing.T) {
 	t.Parallel()
 	latest := mustLatestVersion(t)
-	require.Greater(t, latest, SupportedUpgradeFloorVersion)
+	requireMigrationAboveFloor(t, 0)
 
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "live.db")

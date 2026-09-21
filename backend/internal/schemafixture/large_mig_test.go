@@ -79,8 +79,8 @@ func buildLargeFixture(t *testing.T, release Release) string {
 // canonical pathological manifest, including 75 soft-deleted contacts and 75
 // vcard-uid-recreating pairs — migrates to the current schema through
 // database.InitDB with every table's row count surviving, a clean flag, the
-// current version, and PRAGMA integrity_check ok. The v0.6.0 entry is the
-// longest supported skip (v0.6.0 -> current) on the large dataset.
+// current version, and PRAGMA integrity_check ok. The v1.0.0 entry is the
+// longest supported skip (v1.0.0 -> current) on the large dataset.
 func TestLargeDatasetUpgradeToCurrent(t *testing.T) {
 	latest, err := database.LatestMigrationVersion()
 	require.NoError(t, err)
@@ -105,12 +105,29 @@ func TestLargeDatasetUpgradeToCurrent(t *testing.T) {
 	}
 }
 
+// requirePendingMigrationAboveFloor skips a large-dataset test when the
+// supported-upgrade floor is already the newest schema, so there is no pending
+// migration to exercise — the case immediately after a major release, which is
+// what issue #1170's v1.0.0 floor is. The mirror of the database package's
+// requireMigrationAboveFloor. Once a later release adds a migration, latest >
+// floor and the test runs again.
+func requirePendingMigrationAboveFloor(t *testing.T) {
+	t.Helper()
+	latest, err := database.LatestMigrationVersion()
+	require.NoError(t, err)
+	if database.SupportedUpgradeFloorVersion >= latest {
+		t.Skipf("upgrade floor %d is the newest migration %d — no pending upgrade to exercise",
+			database.SupportedUpgradeFloorVersion, latest)
+	}
+}
+
 // TestLargeDatasetUpgradeEmitsProgress pins issue #495 action 6 ("emit
 // progress") on the large dataset itself: an operator watching a long upgrade
 // must see per-migration heartbeat lines, not silence until the whole batch
 // finishes.
 func TestLargeDatasetUpgradeEmitsProgress(t *testing.T) {
-	floor := SupportedReleases[0] // v0.6.0, the longest skip
+	requirePendingMigrationAboveFloor(t)
+	floor := SupportedReleases[0] // the oldest supported release, the longest skip
 	path := buildLargeFixture(t, floor)
 
 	buf := captureLogsAt(t, zerolog.InfoLevel)
@@ -134,6 +151,7 @@ func TestLargeDatasetUpgradeEmitsProgress(t *testing.T) {
 // split-harness rule it can be expressed as an error across an existing
 // interface.
 func TestLargeDatasetInterruptedMigrationFailsClosed(t *testing.T) {
+	requirePendingMigrationAboveFloor(t)
 	faults.Reset()
 	t.Cleanup(faults.Reset)
 

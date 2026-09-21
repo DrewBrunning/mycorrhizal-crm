@@ -18,15 +18,16 @@ import com.mycorrhizal.crm.model.AppVersion
  * ## The baseline
  *
  * [MIN_SUPPORTED_SERVER_VERSION] is the oldest server this app will talk to
- * (0.6.0, matching the backend's migration floor). A server that reports an
+ * (1.0.0, matching the backend's migration floor; raised from 0.6.0 at the
+ * 1.0.0 major release, issue #1170). A server that reports an
  * older-but-parseable version makes the whole authenticated surface unusable,
  * which is the "server too old" blocking gate in the root — see
  * [isServerSupported].
  */
 object ServerCapabilities {
 
-    /** The oldest server release this app supports (issue #692). */
-    val MIN_SUPPORTED_SERVER_VERSION: AppVersion = AppVersion(0, 6, 0)
+    /** The oldest server release this app supports (issue #692; raised to 1.0.0 by issue #1170). */
+    val MIN_SUPPORTED_SERVER_VERSION: AppVersion = AppVersion(1, 0, 0)
 
     /**
      * True when [server] is at or above [feature.minServerVersion]. A null

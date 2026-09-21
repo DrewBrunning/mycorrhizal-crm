@@ -42,8 +42,8 @@ sealed interface CompatibilityGate {
     data class ForceUpdate(val requiredVersion: String) : CompatibilityGate
 
     /**
-     * The server reports an older-than-baseline version (below 0.6.0, issue
-     * #692): this app's whole authenticated surface expects the v0.6.0 API
+     * The server reports an older-than-baseline version (below 1.0.0, issue
+     * #692): this app's whole authenticated surface expects the v1.0.0 API
      * contract, so the app refuses to show any UI and asks the operator to
      * upgrade the server instead of failing on every screen.
      */
@@ -222,7 +222,7 @@ internal data class CompatibilityOutcome(
  * never strand the user on a stale blocking screen.
  *
  * The "server too old" rule (issue #692): a server whose version parses to
- * something below the 0.6.0 baseline blocks the whole tree
+ * something below the 1.0.0 baseline blocks the whole tree
  * ([CompatibilityGate.ServerTooOld]) instead of degrading feature-by-feature —
  * every baseline capability expects that contract.
  */

@@ -213,9 +213,9 @@ func TestFilterShadowTables(t *testing.T) {
 // timestamp creeping into the header), which would make the reproducibility
 // test vacuous.
 func TestDumpHeaderIsDeterministic(t *testing.T) {
-	a, err := GenerateDump(FloorVersion, "v0.6.0")
+	a, err := GenerateDump(FloorVersion, FloorTag)
 	require.NoError(t, err)
-	b, err := GenerateDump(FloorVersion, "v0.6.0")
+	b, err := GenerateDump(FloorVersion, FloorTag)
 	require.NoError(t, err)
 	assert.Equal(t, a, b, "regenerating the same dump must be byte-identical")
 }

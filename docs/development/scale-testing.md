@@ -77,7 +77,9 @@ cd backend
 go run ./cmd/migratebench seed --contacts 100000 --db /tmp/current.db
 
 # 2. checkpoint: copy its rows into a database whose schema is exactly a
-#    historical migration version (v0.6.0 = 31, the longest supported skip).
+#    historical migration version. v0.6.0 = 31 was the longest supported skip
+#    before the floor moved to v1.0.0 = 57 (issue #1170); once a release after
+#    v1.0.0 adds a migration, use the floor's version here instead.
 go run ./cmd/migratebench checkpoint --db /tmp/current.db --version 31 --out /tmp/floor.db
 
 # 3. measure: migrate that database to the current schema, sampling peak RSS
@@ -124,7 +126,7 @@ methodology above is the reproducibility contract.
 
 | Path | Contacts | Migration duration | Peak RSS | Peak additional disk | Final DB size |
 |---|---|---|---|---|---|
-| v0.6.0 → current (longest skip) | 2,010 | ~0.15 s | ~30 MB | ~0.6 MB | ~10 MB |
+| v0.6.0 → current (longest skip, recorded pre-1.0 floor move) | 2,010 | ~0.15 s | ~30 MB | ~0.6 MB | ~10 MB |
 | v0.6.0 → current | 10,005 | ~0.6 s | ~32 MB | ~16 MB | ~46 MB |
 | v0.6.0 → current | 20,010 | ~1.2 s | ~32 MB | ~33 MB | ~91 MB |
 | v0.6.0 → current | 100,005 | ~6.5 s | ~35 MB | **~184 MB** | ~450 MB |
@@ -152,9 +154,9 @@ Notes:
 - Peak additional disk is the transient WAL/table-rebuild growth, and it is
   where disk-constrained deployments exhaust storage. A deployment should size
   its disk for `final size + peak additional disk`, not the final size alone.
-- Every supported path (v0.6.1/0.6.2/0.6.3 → current) is strictly cheaper than
-  the v0.6.0 longest skip on the same data; the CI large-dataset job runs all
-  four and asserts the same invariants (row counts + integrity).
+- Every shorter supported path is strictly cheaper than the longest skip on the
+  same data; the CI large-dataset job runs every supported release and asserts
+  the same invariants (row counts + integrity).
 
 ## Resource exhaustion (issue #498 coordination)
 
