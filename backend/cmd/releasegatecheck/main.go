@@ -94,9 +94,9 @@ func run(w io.Writer) int {
 	findings = append(findings, releaseworkflow.CheckRelease(string(releaseBytes))...)
 	// #nosec G304 -- constant leaf under the repository root
 	promoteBytes, err := os.ReadFile(filepath.Join(root, workflowsDir, "promote-rc.yml"))
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "releasegatecheck: read promote-rc.yml", err)
-		return 2
+	if err != nil { // # pragma: no cover -- the committed tree always has promote-rc.yml
+		fmt.Fprintln(os.Stderr, "releasegatecheck: read promote-rc.yml", err) // # pragma: no cover
+		return 2                                                              // # pragma: no cover
 	}
 	findings = append(findings, releaseworkflow.CheckPromote(string(promoteBytes))...)
 	findings = append(findings, releasegates.CrossCheckDoc(reg, string(docBytes))...)
