@@ -6,6 +6,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.mycorrhizal.crm.ui.R
 import java.util.concurrent.TimeUnit
 
 /**
@@ -20,6 +21,10 @@ import java.util.concurrent.TimeUnit
  * one-shot catch-ups ([enqueueCallLogCatchUp], [enqueueSmsBackfill]) are the
  * immediate runs the Settings toggle issues on a fresh permission grant, under
  * names distinct from the periodic chains so the two never cancel each other.
+ *
+ * Issue #1200: in a distribution build without the capture feature (the play
+ * flavor) the two capture chains are not enqueued at all; see
+ * [schedulePeriodic]'s `callSmsCaptureAvailable`.
  */
 object TrackingWorkerScheduler {
 
@@ -54,7 +59,14 @@ object TrackingWorkerScheduler {
     /** Issue #1122: low-priority, bounded-batch — 30 min is plenty. */
     private const val CONTACT_PHONE_INDEX_BACKFILL_MINUTES = 30L
 
-    fun schedulePeriodic(context: Context) {
+    fun schedulePeriodic(
+        context: Context,
+        // Issue #1200: the play flavor omits the call/SMS capture feature
+        // (Google Play restricts its permissions), so its two catch-up chains
+        // are never enqueued there. The default reads the same merged bool
+        // resource the injected CallSmsTrackingCapability reads.
+        callSmsCaptureAvailable: Boolean = context.resources.getBoolean(R.bool.call_sms_tracking_available),
+    ) {
         val workManager = WorkManager.getInstance(context)
 
         // Sync pending interactions every 15 min (WorkManager minimum interval).
@@ -100,26 +112,29 @@ object TrackingWorkerScheduler {
             birthdayCheck,
         )
 
-        // Issue #721: capture catch-ups (see the class doc).
-        val callLogCatchUp = PeriodicWorkRequestBuilder<CallLogSyncWorker>(
-            CALL_LOG_CATCH_UP_MINUTES,
-            TimeUnit.MINUTES,
-        ).build()
-        workManager.enqueueUniquePeriodicWork(
-            UNIQUE_CALL_LOG_CATCH_UP,
-            ExistingPeriodicWorkPolicy.UPDATE,
-            callLogCatchUp,
-        )
+        // Issue #721: capture catch-ups (see the class doc). Issue #1200: only
+        // where the distribution build offers the capture feature at all.
+        if (callSmsCaptureAvailable) {
+            val callLogCatchUp = PeriodicWorkRequestBuilder<CallLogSyncWorker>(
+                CALL_LOG_CATCH_UP_MINUTES,
+                TimeUnit.MINUTES,
+            ).build()
+            workManager.enqueueUniquePeriodicWork(
+                UNIQUE_CALL_LOG_CATCH_UP,
+                ExistingPeriodicWorkPolicy.UPDATE,
+                callLogCatchUp,
+            )
 
-        val smsBackfill = PeriodicWorkRequestBuilder<SmsBackfillWorker>(
-            SMS_BACKFILL_MINUTES,
-            TimeUnit.MINUTES,
-        ).build()
-        workManager.enqueueUniquePeriodicWork(
-            UNIQUE_SMS_BACKFILL,
-            ExistingPeriodicWorkPolicy.UPDATE,
-            smsBackfill,
-        )
+            val smsBackfill = PeriodicWorkRequestBuilder<SmsBackfillWorker>(
+                SMS_BACKFILL_MINUTES,
+                TimeUnit.MINUTES,
+            ).build()
+            workManager.enqueueUniquePeriodicWork(
+                UNIQUE_SMS_BACKFILL,
+                ExistingPeriodicWorkPolicy.UPDATE,
+                smsBackfill,
+            )
+        }
 
         // Issue #1122: hydrate cached contacts' full multi-phone index in the
         // background so a non-primary number can match without the user

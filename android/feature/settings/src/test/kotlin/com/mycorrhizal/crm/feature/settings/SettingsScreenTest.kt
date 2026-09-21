@@ -69,6 +69,47 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun `hides the call and SMS capture toggles in a build without the feature`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(callSmsTrackingAvailable = false),
+                    onLogout = {},
+                )
+            }
+        }
+
+        // Issue #1200: the play build omits the whole capture feature.
+        composeTestRule.onNodeWithText("Log calls as activities").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Log messages as activities").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Log unknown numbers too").assertDoesNotExist()
+        composeTestRule
+            .onNodeWithText("Call and message logging is not available in this build.")
+            .performScrollTo()
+            .assertIsDisplayed()
+        // Notifications are unrelated to capture and stay available.
+        composeTestRule.onNodeWithText("Show notifications").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows the call and SMS capture toggles in a build with the feature`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(callSmsTrackingAvailable = true),
+                    onLogout = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Log calls as activities").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Log messages as activities").performScrollTo().assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText("Call and message logging is not available in this build.")
+            .assertDoesNotExist()
+    }
+
+    @Test
     fun `logout button invokes the callback after confirmation`() {
         var loggedOut = false
         composeTestRule.setContent {
@@ -298,6 +339,7 @@ class SettingsScreenTest {
         val localAuthSettings = mockk<LocalAuthSettingsRepository>()
         val localAuthCapabilities = mockk<LocalAuthCapabilities>()
         val deviceGrantManager = mockk<DeviceGrantManager>()
+        val callSmsTrackingCapability = mockk<com.mycorrhizal.crm.feature.tracking.CallSmsTrackingCapability>()
         val appContext = mockk<Context>(relaxed = true)
         coEvery { trackingSettings.callTrackingEnabled() } returns false
         coEvery { trackingSettings.smsTrackingEnabled() } returns false
@@ -308,6 +350,7 @@ class SettingsScreenTest {
         every { localAuthSettings.autoLockDelay() } returns MutableStateFlow(AutoLockDelay.DEFAULT)
         every { localAuthSettings.biometricEnrollmentStatus() } returns MutableStateFlow(BiometricEnrollmentStatus.UNASKED)
         every { localAuthCapabilities.canEnableLocalAuth() } returns true
+        every { callSmsTrackingCapability.isAvailable() } returns true
         every { permissionChecker.isGranted(any()) } returns false
         every { authRepository.observeSession() } returns MutableStateFlow(
             SessionState(serverUrl = "https://crm.example.com", username = "alice", isAdmin = true, language = "en"),
@@ -322,6 +365,7 @@ class SettingsScreenTest {
             deviceGrantManager,
             permissionChecker,
             catchUpScheduler,
+            callSmsTrackingCapability,
             appContext,
         )
 

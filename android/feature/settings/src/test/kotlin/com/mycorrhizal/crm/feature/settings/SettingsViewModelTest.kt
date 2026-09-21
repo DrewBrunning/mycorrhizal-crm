@@ -10,6 +10,7 @@ import com.mycorrhizal.crm.domain.repository.LocalAuthCapabilities
 import com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
+import com.mycorrhizal.crm.feature.tracking.CallSmsTrackingCapability
 import com.mycorrhizal.crm.feature.tracking.PermissionChecker
 import com.mycorrhizal.crm.feature.tracking.TrackingCatchUpScheduler
 import com.mycorrhizal.crm.feature.tracking.TrackingPermissions
@@ -45,6 +46,7 @@ class SettingsViewModelTest {
     private val localAuthSettings = mockk<LocalAuthSettingsRepository>()
     private val localAuthCapabilities = mockk<LocalAuthCapabilities>()
     private val deviceGrantManager = mockk<DeviceGrantManager>()
+    private val callSmsTrackingCapability = mockk<CallSmsTrackingCapability>()
     private val appContext = mockk<Context>(relaxed = true)
 
     /** A factory defaulting to "no tracking permissions granted, nothing stored". */
@@ -57,6 +59,7 @@ class SettingsViewModelTest {
         smsGranted: Boolean = false,
         includeUnknown: Boolean = false,
         filteredCount: Int = 0,
+        callSmsAvailable: Boolean = true,
     ): SettingsViewModel {
         coEvery { trackingSettings.callTrackingEnabled() } returns callStored
         coEvery { trackingSettings.smsTrackingEnabled() } returns smsStored
@@ -72,6 +75,7 @@ class SettingsViewModelTest {
         every { localAuthSettings.autoLockDelay() } returns MutableStateFlow(AutoLockDelay.DEFAULT)
         every { localAuthSettings.biometricEnrollmentStatus() } returns MutableStateFlow(BiometricEnrollmentStatus.UNASKED)
         every { localAuthCapabilities.canEnableLocalAuth() } returns true
+        every { callSmsTrackingCapability.isAvailable() } returns callSmsAvailable
         every { permissionChecker.isGranted(any()) } returns false
         every {
             permissionChecker.isGranted(TrackingPermissions.READ_CALL_LOG)
@@ -94,6 +98,7 @@ class SettingsViewModelTest {
             deviceGrantManager,
             permissionChecker,
             catchUpScheduler,
+            callSmsTrackingCapability,
             appContext,
         )
     }
@@ -434,6 +439,52 @@ class SettingsViewModelTest {
 
             assertFalse(vm.uiState.value.callTrackingEnabled)
             coVerify { trackingSettings.setCallTrackingEnabled(false) }
+        }
+
+    // --- Issue #1200: distribution builds without the call/SMS capture feature ---
+
+    @Test
+    fun `the capture feature is reported unavailable when the build omits it`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel(callSmsAvailable = false)
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.callSmsTrackingAvailable)
+            // Even a stored "on" flag from a prior build cannot make it render on.
+            assertFalse(vm.uiState.value.callTrackingEnabled)
+            assertFalse(vm.uiState.value.smsTrackingEnabled)
+        }
+
+    @Test
+    fun `enabling call tracking is inert when the build omits the feature`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel(callSmsAvailable = false, callGranted = true)
+            advanceUntilIdle()
+
+            vm.setCallTrackingEnabled(true)
+            advanceUntilIdle()
+
+            // No permission request, no persisted flag, no capture catch-up —
+            // the toggle is hidden, so this is only the defensive guard.
+            assertNull(vm.uiState.value.pendingPermissionRequest)
+            assertFalse(vm.uiState.value.callTrackingEnabled)
+            coVerify(exactly = 0) { trackingSettings.setCallTrackingEnabled(true) }
+            verify(exactly = 0) { catchUpScheduler.enqueueCallLogCatchUp() }
+        }
+
+    @Test
+    fun `enabling SMS tracking is inert when the build omits the feature`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel(callSmsAvailable = false, smsGranted = true)
+            advanceUntilIdle()
+
+            vm.setSmsTrackingEnabled(true)
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.pendingPermissionRequest)
+            assertFalse(vm.uiState.value.smsTrackingEnabled)
+            coVerify(exactly = 0) { trackingSettings.setSmsTrackingEnabled(true) }
+            verify(exactly = 0) { catchUpScheduler.enqueueSmsBackfill() }
         }
 
     // --- M25 ---

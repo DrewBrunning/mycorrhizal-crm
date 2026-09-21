@@ -37,7 +37,7 @@ app's per-flavor source sets, so no other module ever sees a Firebase type.
 | Flavor | Channel | Firebase/GMS | Tracking permissions | Who signs it |
 |---|---|---|---|---|
 | `obtainium` | GitHub Releases, updated by Obtainium | yes (optional at runtime) | present | the project's release keystore |
-| `play` | Google Play | yes | present *(see gap)* | Google Play App Signing / project keystore |
+| `play` | Google Play | yes | **omitted** (issue #1200) | Google Play App Signing / project keystore |
 | `foss` | F-Droid | **no** | present | F-Droid's key |
 
 `obtainium` is the gold standard: it is what the release workflow builds, what the instrumented E2E
@@ -53,7 +53,9 @@ variant F-Droid's build server is ever asked to build.
   dependency, so every variant inherits a FOSS-clean module graph.
 - `:app`'s `src/fcm/` source set — included by `obtainium` and `play` only — holds the Firebase-backed
   implementations (`FirebaseFcmAvailability`, `FirebaseFcmTokenSource`, `MyFirebaseMessagingService`)
-  and their Hilt module (`FcmPushModule`), plus the manifest entry for the FCM service.
+  and their Hilt module (`FcmPushModule`). The FCM service is declared in the **main** manifest and
+  removed for `foss` by `src/foss/AndroidManifest.xml` (a declared service whose superclass is absent
+  from that variant's classpath must not survive the merge).
 - `:app`'s `src/foss/` holds `FossPushModule`: an availability seam that is permanently `false` and a
   token source that throws if ever reached (it is not — `DeviceRegistrationManager` checks availability
   first). The FOSS APK therefore carries no Firebase or GMS class, and reminder push is delivered
@@ -92,10 +94,13 @@ Play listing target the canonical package.
   (`obtainiumDebug` where flavored, else `debug`). Kotlin mangles `internal` members with the
   variant-specific module name (`performEnroll$app_fossDebug`), so flavor class trees are not
   interchangeable and must not be merged into one coverage report.
-- **Known gap — the `play` flavor is not yet Play-Store-eligible.** It carries `READ_SMS`,
-  `RECEIVE_SMS`, and `READ_CALL_LOG`, which Google Play restricts to default dialer/SMS apps. Making
-  `play` submittable means feature-gating call/SMS capture out of that variant, which is a substantial
-  follow-up, not part of this decision. Shipping `play` today would be rejected on those permissions.
+- **The `play` flavor omits the call/SMS capture feature (issue #1200).** Google Play restricts
+  `READ_SMS`/`RECEIVE_SMS`/`READ_CALL_LOG` to default dialer/SMS apps, so `play` removes those
+  permissions and the capture components/permissions from its merged manifest
+  (`app/src/play/AndroidManifest.xml`), hides the capture toggles in Settings, and never enqueues the
+  capture workers — all driven by the `call_sms_tracking_available` resource it overrides to false.
+  `obtainium` and `foss` keep the full feature. The Google Play *submission* itself is tracked
+  separately (AAB, Play App Signing, listing, policy review).
 
 ## Alternatives considered
 

@@ -111,9 +111,14 @@ Release/Obtainium APK. Moving between channels requires an uninstall/reinstall.
 This is inherent to publishing the same `applicationId` through multiple
 stores. The `play` flavor shares this constraint (Google Play App Signing).
 
-## Known gap: the `play` flavor
+## The `play` flavor
 
-The `play` flavor is scaffolded but **not yet Play-Store-eligible**: it carries
-`READ_SMS`, `RECEIVE_SMS`, and `READ_CALL_LOG`, which Google Play restricts to
-default dialer/SMS apps. Stripping call/SMS capture from that variant is a
-follow-up; the `obtainium` and `foss` builds are unaffected. See ADR 0022.
+The `play` flavor omits the call/SMS capture feature entirely (issue #1200):
+Google Play restricts `READ_SMS`/`RECEIVE_SMS`/`READ_CALL_LOG` to default
+dialer/SMS apps, so `app/src/play/AndroidManifest.xml` removes those
+permissions (and the capture components) from its merged manifest,
+`app/src/play/res/values/bools.xml` sets `call_sms_tracking_available` false so
+Settings hides the toggles and the capture workers are never enqueued, and CI
+asserts the built play APK omits the restricted permissions while `obtainium`
+keeps them. This affects only `play`; `obtainium` and `foss` are unchanged.
+The Google Play submission itself is tracked separately. See ADR 0022.

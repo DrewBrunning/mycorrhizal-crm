@@ -15,6 +15,7 @@ import com.mycorrhizal.crm.domain.repository.LocalAuthCapabilities
 import com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
+import com.mycorrhizal.crm.feature.tracking.CallSmsTrackingCapability
 import com.mycorrhizal.crm.feature.tracking.PermissionChecker
 import com.mycorrhizal.crm.feature.tracking.TrackingCatchUpScheduler
 import com.mycorrhizal.crm.feature.tracking.TrackingPermissions
@@ -50,6 +51,13 @@ data class SettingsUiState(
     val isLoggingOut: Boolean = false,
     val callTrackingEnabled: Boolean = false,
     val smsTrackingEnabled: Boolean = false,
+    /**
+     * Issue #1200: whether this build offers the call/SMS capture feature at
+     * all. False in the play flavor (Google Play restricts its permissions);
+     * the screen then hides the two capture toggles and the unknown-numbers
+     * option instead of offering a switch that cannot work.
+     */
+    val callSmsTrackingAvailable: Boolean = true,
     val notificationsEnabled: Boolean = true,
     /**
      * Issue #1029: stage interactions whose number matches no cached contact
@@ -106,6 +114,10 @@ class SettingsViewModel @Inject constructor(
     private val deviceGrantManager: DeviceGrantManager,
     private val permissionChecker: PermissionChecker,
     private val catchUpScheduler: TrackingCatchUpScheduler,
+    // Issue #1200: false in the play flavor, whose build omits the entire
+    // call/SMS capture feature — the toggles are hidden rather than shown
+    // broken, and the setters are inert.
+    private val callSmsTrackingCapability: CallSmsTrackingCapability,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
@@ -177,6 +189,7 @@ class SettingsViewModel @Inject constructor(
 
             _uiState.update {
                 it.copy(
+                    callSmsTrackingAvailable = callSmsTrackingCapability.isAvailable(),
                     callTrackingEnabled = callStored && callGranted,
                     smsTrackingEnabled = smsStored && smsGranted,
                     notificationsEnabled = trackingSettings.notificationsEnabled(),
@@ -199,6 +212,9 @@ class SettingsViewModel @Inject constructor(
      * itself stays off until [onPermissionRequestResult] reports the grant).
      */
     fun setCallTrackingEnabled(enabled: Boolean) {
+        // Issue #1200: no-op in a build without the capture feature (the UI
+        // hides the toggle, so this is only a defensive guard).
+        if (!callSmsTrackingCapability.isAvailable()) return
         if (_uiState.value.pendingPermissionRequest != null && enabled) return
         if (!enabled) {
             // A disable wins over an in-flight request *for the same feature*:
@@ -234,6 +250,7 @@ class SettingsViewModel @Inject constructor(
      * RECEIVE_SMS grant set.
      */
     fun setSmsTrackingEnabled(enabled: Boolean) {
+        if (!callSmsTrackingCapability.isAvailable()) return
         if (_uiState.value.pendingPermissionRequest != null && enabled) return
         if (!enabled) {
             _uiState.update {

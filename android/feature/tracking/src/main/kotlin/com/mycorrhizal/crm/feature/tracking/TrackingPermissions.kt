@@ -7,10 +7,13 @@ import android.Manifest
  *
  * These are the single source of truth for the permission sets — the Settings
  * screen requests exactly one of these arrays when a toggle is turned on, and
- * the capture workers gate on the same grants before touching a provider. The
- * distribution constraint (F-Droid/Obtainium only, no Play policy) lets the
- * app use READ_SMS/READ_CALL_LOG freely; a Play-friendly build would be a
- * separate, feature-stripped flavor and must not change these arrays.
+ * the capture workers gate on the same grants before touching a provider.
+ *
+ * Issue #1200: the `play` flavor does not offer the capture feature at all, so
+ * it removes these permissions from its merged manifest and hides the toggles
+ * (`CallSmsTrackingCapability`). That is a build-level exclusion, deliberately
+ * NOT a change to these arrays — `obtainium` and `foss` keep requesting
+ * exactly these sets.
  */
 object TrackingPermissions {
 
