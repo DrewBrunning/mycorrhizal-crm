@@ -99,11 +99,22 @@
                 android:value="Shows the quick-capture interaction overlay for a short window after a phone call ends when call tracking is enabled" />
         </service>
 
-        <!-- M5 §5a (issue #152): the FCM push entry point (MyFirebaseMessagingService)
-             is declared in src/fcm/AndroidManifest.xml, which only the obtainium
-             and play distribution flavors include (issue #1133). The foss
-             (F-Droid) variant carries no Firebase SDK, so it must not declare
-             a service whose superclass does not exist on its classpath. -->
+        <!-- M5 §5a (issue #152): the FCM push entry point. Declared here and
+             included by the obtainium and play flavors; the foss (F-Droid)
+             variant carries no Firebase SDK, so src/foss/AndroidManifest.xml
+             removes it — a service whose superclass is not on that variant's
+             classpath must not be declared (issue #1133). With no
+             google-services.json the Firebase runtime never initializes and
+             the service is simply never invoked, leaving the WorkManager
+             polling workers as the sole push path. -->
+        <service
+            android:name="com.mycorrhizal.crm.push.MyFirebaseMessagingService"
+            android:exported="false"
+            tools:ignore="Instantiatable,MissingClass">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
 
         <!-- Phase 4 tracking receivers (§6.3). -->
         <receiver

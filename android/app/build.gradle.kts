@@ -74,14 +74,14 @@ android {
         // play only (src/foss binds a no-op instead). Sharing the directory
         // keeps one copy of MyFirebaseMessagingService/FirebaseFcmTokenSource
         // rather than two identical flavor trees.
-        getByName("obtainium") {
-            kotlin.srcDir("src/fcm/kotlin")
-            manifest.srcFile("src/fcm/AndroidManifest.xml")
-        }
-        getByName("play") {
-            kotlin.srcDir("src/fcm/kotlin")
-            manifest.srcFile("src/fcm/AndroidManifest.xml")
-        }
+        //
+        // Only Kotlin is remapped, deliberately: overriding the source set's
+        // `manifest.srcFile` would replace its default `src/<flavor>/AndroidManifest.xml`,
+        // and both obtainium and play need to keep their own flavor manifest
+        // (play's is the issue #1200 permission carve-out). The FCM service is
+        // declared in the main manifest and removed by `src/foss` instead.
+        getByName("obtainium").kotlin.srcDir("src/fcm/kotlin")
+        getByName("play").kotlin.srcDir("src/fcm/kotlin")
         // The FCM service test compiles against RemoteMessage, so it exists
         // only for the two FCM flavors.
         getByName("testObtainium").kotlin.srcDir("src/fcmTest/kotlin")

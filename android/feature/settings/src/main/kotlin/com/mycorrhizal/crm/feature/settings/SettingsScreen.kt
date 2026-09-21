@@ -545,34 +545,49 @@ fun SettingsContent(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.semantics { heading() },
         )
-        ToggleRow(
-            label = stringResource(R.string.settings_call_tracking),
-            checked = state.callTrackingEnabled,
-            onCheckedChange = onCallTrackingChange,
-        )
-        ToggleRow(
-            label = stringResource(R.string.settings_sms_tracking),
-            checked = state.smsTrackingEnabled,
-            onCheckedChange = onSmsTrackingChange,
-        )
+        // Issue #1200: the call/SMS capture toggles (and the unknown-numbers
+        // option, which only makes sense with capture on) exist only in builds
+        // that declare and hold the capture permissions. The play flavor omits
+        // them — showing a switch that can never work would be worse than
+        // explaining the absence.
+        if (state.callSmsTrackingAvailable) {
+            ToggleRow(
+                label = stringResource(R.string.settings_call_tracking),
+                checked = state.callTrackingEnabled,
+                onCheckedChange = onCallTrackingChange,
+            )
+            ToggleRow(
+                label = stringResource(R.string.settings_sms_tracking),
+                checked = state.smsTrackingEnabled,
+                onCheckedChange = onSmsTrackingChange,
+            )
+        } else {
+            Text(
+                text = stringResource(R.string.settings_call_sms_unavailable),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         ToggleRow(
             label = stringResource(R.string.settings_notifications),
             checked = state.notificationsEnabled,
             onCheckedChange = onNotificationsChange,
         )
-        // Issue #1029: by default only interactions whose number maps to a
-        // contact are logged; this opts back into logging unknown numbers too.
-        ToggleRow(
-            label = stringResource(R.string.settings_include_unknown_numbers),
-            checked = state.includeUnknownNumbers,
-            onCheckedChange = onIncludeUnknownChange,
-        )
-        if (state.filteredUnknownCount > 0) {
-            Text(
-                text = stringResource(R.string.settings_filtered_unknown_count, state.filteredUnknownCount),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        if (state.callSmsTrackingAvailable) {
+            // Issue #1029: by default only interactions whose number maps to a
+            // contact are logged; this opts back into logging unknown numbers too.
+            ToggleRow(
+                label = stringResource(R.string.settings_include_unknown_numbers),
+                checked = state.includeUnknownNumbers,
+                onCheckedChange = onIncludeUnknownChange,
             )
+            if (state.filteredUnknownCount > 0) {
+                Text(
+                    text = stringResource(R.string.settings_filtered_unknown_count, state.filteredUnknownCount),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
 
         // M25: channels surfaces.

@@ -657,6 +657,7 @@
     <!-- Issue #1029: known-contacts-only capture filter + its local diagnostics counter. -->
     <string name="settings_include_unknown_numbers">Registra anche i numeri sconosciuti</string>
     <string name="settings_filtered_unknown_count">Numeri sconosciuti filtrati: %1$d</string>
+    <string name="settings_call_sms_unavailable">La registrazione di chiamate e messaggi non è disponibile in questa versione.</string>
     <!-- Issue #721: runtime-permission flow for the tracking toggles. -->
     <string name="settings_permission_rationale_title">Autorizzazione necessaria</string>
     <string name="settings_call_permission_rationale">Il monitoraggio delle chiamate registra le chiamate come attività, il che richiede l\'accesso al registro chiamate e allo stato del telefono. Concedi l\'autorizzazione per attivarlo.</string>

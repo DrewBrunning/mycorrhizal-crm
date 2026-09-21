@@ -32,4 +32,12 @@ abstract class TrackingModule {
     abstract fun bindTrackingCatchUpScheduler(
         impl: TrackingCatchUpSchedulerImpl,
     ): TrackingCatchUpScheduler
+
+    // Issue #1200: the distribution capability that gates the call/SMS capture
+    // feature (false in the play flavor). A resource read in production, a
+    // fun interface so tests can pin either build's behavior.
+    @Binds
+    abstract fun bindCallSmsTrackingCapability(
+        impl: ResourceCallSmsTrackingCapability,
+    ): CallSmsTrackingCapability
 }

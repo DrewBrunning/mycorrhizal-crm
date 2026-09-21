@@ -62,6 +62,22 @@ class TrackingWorkerSchedulerTest {
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_CONTACT_PHONE_INDEX_BACKFILL).isNotEmpty())
     }
 
+    // Issue #1200: the play flavor has no call/SMS capture feature, so its two
+    // catch-up chains must not be enqueued at all. The non-capture workers are
+    // unaffected.
+    @Test
+    fun `schedulePeriodic skips the capture catch-ups when the build omits the feature`() {
+        TrackingWorkerScheduler.schedulePeriodic(context, callSmsCaptureAvailable = false)
+
+        assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_INTERACTION_SYNC).isNotEmpty())
+        assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_REMINDER_CHECK).isNotEmpty())
+        assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_CADENCE_CHECK).isNotEmpty())
+        assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_BIRTHDAY_CHECK).isNotEmpty())
+        assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_CONTACT_PHONE_INDEX_BACKFILL).isNotEmpty())
+        assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_CALL_LOG_CATCH_UP).isEmpty())
+        assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_SMS_BACKFILL).isEmpty())
+    }
+
     @Test
     fun `schedulePeriodic is idempotent -- calling it twice does not duplicate work`() {
         TrackingWorkerScheduler.schedulePeriodic(context)
