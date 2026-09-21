@@ -120,15 +120,23 @@ Then run **`promote-rc.yml`** with `rc_tag: vX.Y.Z-rc.N`.
 | `docker-publish.yml` `release-gate` + all `release-internal` jobs | ✅ | ✅ (identical) |
 | SLSA provenance + `SHA256SUMS` on the Release | ✅ | ✅ |
 | Schema-fixture registration (`SupportedReleases` + dump) | ✅ at tag time | ⏸ deferred to promotion — an RC ships the same schema, and no upgrade is supported *from* an RC |
-| ASVS/MASVS §10 re-verification changelog row | ✅ required | ⏸ final-release obligation — the RC still runs `citecheck`; the dated row lands before promotion |
+| ASVS/MASVS §10 re-verification changelog row | ✅ required | ⏸ deferred to promotion — enforced there by `promote-rc.yml` before the tag (issue #1195); the RC still runs `citecheck` |
+| Per-release adversarial delta (`#953`) | ✅ required | ⏸ deferred to promotion — enforced there by `promote-rc.yml` before the tag (issue #1195) |
 | GitHub Release marked pre-release / not `make_latest` | ❌ | ✅ |
 
-Only the last three rows differ, and each is a deliberate, documented exception.
+Only the schema-fixture and pre-release rows differ functionally; the two
+release-only obligations are deferred from the RC cut to promotion, and
+promotion now enforces them (issue #1195).
 
 ## Promotion — the same artifact ships
 
-`promote-rc.yml` (`workflow_dispatch`, input `rc_tag`) **copies; it never rebuilds**:
+`promote-rc.yml` (`workflow_dispatch`, inputs `rc_tag` and the optional
+`ack_asvs_current` / `ack_adversarial_delta`) **copies; it never rebuilds**:
 
+- before any mutation, it runs the two final-release-only obligations — the
+  ASVS §10 row and the per-release adversarial delta — against the RC commit,
+  both from the shared `.github/scripts/release-obligations.sh`; a failure
+  aborts with the final tag unpushed (issue #1195);
 - the three container images are re-tagged **by digest**
   (`docker buildx imagetools create`), so `ghcr.io/…:1.0.0` and `ghcr.io/…:1.0.0-rc.N` resolve
   to byte-identical manifests, plus an additional `cosign` signature carrying the
@@ -140,8 +148,9 @@ Only the last three rows differ, and each is a deliberate, documented exception.
 - the final schema fixture is registered against the RC's tree, and `release/vX.Y.0` is merged
   back into `main`;
 - **`promotion-metadata.json`** records `digest_rc == digest_final` for every image — the
-  machine-checkable proof that promotion copied rather than rebuilt. `promote-rc.yml` fails if
-  any digest differs.
+  machine-checkable proof that promotion copied rather than rebuilt — plus any recorded
+  `ack_asvs_current` / `ack_adversarial_delta` escape. `promote-rc.yml` fails if any digest
+  differs.
 
 [`security/reproducible-builds.md`](security/reproducible-builds.md) (REL-04) is the *backstop* —
 if a digest ever does differ, reproducibility is how you tell whether the difference is benign —

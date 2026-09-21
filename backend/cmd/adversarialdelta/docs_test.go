@@ -31,18 +31,43 @@ func findRepoFile(t *testing.T, rel string) string {
 	}
 }
 
-// TestReleaseWorkflowRunsTheDeltaGate pins issue #953. The per-release
-// adversarial-delta obligation is only real if release.yml actually invokes the
-// gate against the ledger; without this pin, deleting the step would leave the
-// ledger/doc in place and silently unenforced.
+// TestReleaseWorkflowRunsTheDeltaGate pins issues #953 and #1195. The
+// per-release adversarial-delta obligation is only real if a release path
+// actually invokes the gate against the ledger; without this pin, deleting the
+// wiring would leave the ledger/doc in place and silently unenforced. The gate
+// command lives once in the shared release-obligations.sh (issue #1195), which
+// release.yml's final path and promote-rc.yml's promotion both call, so all
+// three files must keep referencing it.
 func TestReleaseWorkflowRunsTheDeltaGate(t *testing.T) {
-	body, err := os.ReadFile(findRepoFile(t, ".github/workflows/release.yml"))
-	if err != nil {
-		t.Fatalf("reading release.yml: %v", err)
+	cases := []struct {
+		path string
+		want []string
+	}{
+		{
+			// The one definition of the gate command.
+			".github/scripts/release-obligations.sh",
+			[]string{"cmd/adversarialdelta", "adversarial-deltas.md", "-ack"},
+		},
+		{
+			// release.yml's final-release path.
+			".github/workflows/release.yml",
+			[]string{"release-obligations.sh adversarial", "ack_adversarial_delta"},
+		},
+		{
+			// The RC-promotion path release.yml defers to (issue #1195).
+			".github/workflows/promote-rc.yml",
+			[]string{"release-obligations.sh adversarial", "ack_adversarial_delta"},
+		},
 	}
-	for _, want := range []string{"cmd/adversarialdelta", "adversarial-deltas.md", "ack_adversarial_delta"} {
-		if !bytes.Contains(body, []byte(want)) {
-			t.Errorf("release.yml must reference %q so the per-release adversarial delta stays a gate (issue #953)", want)
+	for _, tc := range cases {
+		body, err := os.ReadFile(findRepoFile(t, tc.path))
+		if err != nil {
+			t.Fatalf("reading %s: %v", tc.path, err)
+		}
+		for _, want := range tc.want {
+			if !bytes.Contains(body, []byte(want)) {
+				t.Errorf("%s must reference %q so the per-release adversarial delta stays a gate (issues #953, #1195)", tc.path, want)
+			}
 		}
 	}
 }

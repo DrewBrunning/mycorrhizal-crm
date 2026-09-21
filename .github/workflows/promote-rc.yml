@@ -31,6 +31,16 @@ on:
         description: 'The release-candidate tag to promote, e.g. v1.0.0-rc.3'
         required: true
         type: string
+      ack_asvs_current:
+        description: 'Reason the ASVS/MASVS claim is current without a new re-verification row (leave blank to require the row)'
+        required: false
+        type: string
+        default: ''
+      ack_adversarial_delta:
+        description: 'Reason to proceed without a recorded per-release adversarial delta for added surface (leave blank to require it)'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -110,6 +120,33 @@ jobs:
             echo "RC_SHA=${rc_sha}"
           } >> "$GITHUB_ENV"
           echo "Promoting ${RC_TAG} ($rc_sha) -> ${final}."
+
+      # issue #1195: release.yml skips these two final-release-only
+      # obligations for an RC (`if: is_rc != true`) and relies on promotion to
+      # run them. Run them here, against the RC commit -- the tree the final
+      # tag will point at -- BEFORE any mutation (image re-tag, fixture
+      # registration, main merge), so a failure aborts with the final tag
+      # unpushed. The shared script is the single definition release.yml's
+      # final path also calls.
+      - name: Check out the RC commit for the release-only obligations
+        env:
+          RC_SHA: ${{ env.RC_SHA }}
+        run: git checkout --detach "$RC_SHA"
+
+      - name: Gate - ASVS/MASVS re-verification obligation
+        env:
+          ACK_ASVS_CURRENT: ${{ inputs.ack_asvs_current }}
+        run: |
+          set -eu
+          bash .github/scripts/release-obligations.sh asvs --ack "${ACK_ASVS_CURRENT:-}"
+
+      - name: Gate - per-release adversarial delta
+        env:
+          ACK_ADVERSARIAL_DELTA: ${{ inputs.ack_adversarial_delta }}
+          FINAL_TAG: ${{ env.FINAL_TAG }}
+        run: |
+          set -eu
+          bash .github/scripts/release-obligations.sh adversarial --release "$FINAL_TAG" --ack "${ACK_ADVERSARIAL_DELTA:-}"
 
       - name: Log in to GHCR
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -344,6 +381,8 @@ jobs:
           FINAL_TAG: ${{ env.FINAL_TAG }}
           RC_SHA: ${{ env.RC_SHA }}
           FINAL_SHA: ${{ env.FINAL_SHA }}
+          ACK_ASVS: ${{ inputs.ack_asvs_current }}
+          ACK_ADV: ${{ inputs.ack_adversarial_delta }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -358,9 +397,12 @@ jobs:
             --arg rc_sha "$RC_SHA" --arg final_sha "$FINAL_SHA" \
             --arg promoted_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg workflow_run "$RUN_URL" \
+            --arg ack_asvs "$ACK_ASVS" \
+            --arg ack_adv "$ACK_ADV" \
             --argjson images "$(cat /tmp/promotion-images.json)" \
             '{rc_tag:$rc_tag, final_tag:$final_tag, rc_sha:$rc_sha, final_sha:$final_sha,
               promoted_at:$promoted_at, workflow_run:$workflow_run, images:$images,
+              ack_asvs_current:$ack_asvs, ack_adversarial_delta:$ack_adv,
               rebuilt:false}' | tee promotion-metadata.json
 
           gh release upload "$FINAL_TAG" promotion-metadata.json --clobber
