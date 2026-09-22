@@ -63,6 +63,7 @@ import com.mycorrhizal.crm.data.repository.UserManagementRepositoryImpl
 import com.mycorrhizal.crm.data.repository.WebhookRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ApiTokenRepositoryImpl
 import com.mycorrhizal.crm.data.repository.LocalAuthSettingsRepositoryImpl
+import com.mycorrhizal.crm.data.repository.FieldDefinitionRepositoryImpl
 import com.mycorrhizal.crm.data.session.AppLockController
 import com.mycorrhizal.crm.data.session.DefaultAppLockController
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
@@ -113,6 +114,7 @@ import com.mycorrhizal.crm.domain.repository.ApiTokenRepository
 import com.mycorrhizal.crm.domain.repository.UserManagementRepository
 import com.mycorrhizal.crm.domain.repository.LocalAuthCapabilities
 import com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
+import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.NetworkFactory
@@ -432,6 +434,10 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindPreferenceRepository(impl: PreferenceRepositoryImpl): PreferenceRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindFieldDefinitionRepository(impl: FieldDefinitionRepositoryImpl): FieldDefinitionRepository
 
     @Binds
     @Singleton

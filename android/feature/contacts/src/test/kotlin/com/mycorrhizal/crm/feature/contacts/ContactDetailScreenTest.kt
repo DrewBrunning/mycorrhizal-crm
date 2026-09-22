@@ -9,12 +9,19 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.isToggleable
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import com.mycorrhizal.crm.model.network.Anniversary
 import com.mycorrhizal.crm.model.network.AnniversaryDate
 import com.mycorrhizal.crm.model.network.Card
@@ -36,6 +43,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -378,8 +386,10 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("Coffee order: Latte").assertIsDisplayed()
-        scrollTo("Favorite number: 7").assertIsDisplayed()
+        scrollTo("Coffee order").assertIsDisplayed()
+        scrollTo("Latte").assertIsDisplayed()
+        scrollTo("Favorite number").assertIsDisplayed()
+        scrollTo("7").assertIsDisplayed()
     }
 
     @Test
@@ -395,9 +405,8 @@ class ContactDetailScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithTag("contact-detail-list")
-            .performScrollToNode(hasText("Coffee order: —"))
-            .assertIsDisplayed()
+        scrollTo("Coffee order").assertIsDisplayed()
+        scrollTo("—").assertIsDisplayed()
     }
 
     @Test
@@ -441,9 +450,286 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("VIP: true").assertIsDisplayed()
-        scrollTo("Milk options: oat; almond").assertIsDisplayed()
+        scrollTo("VIP").assertIsDisplayed()
+        scrollTo("true").assertIsDisplayed()
+        scrollTo("Milk options").assertIsDisplayed()
+        scrollTo("oat; almond").assertIsDisplayed()
     }
+
+    // --- Issue #830: per-contact custom-field value editing ---
+
+    @Test
+    fun `tapping the pencil reveals a text editor for a string field`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
+                    fieldValuesByDefinitionId = mapOf("d1" to "Latte"),
+                )
+            }
+        }
+
+        scrollTo("Coffee order")
+        composeTestRule.onNodeWithContentDescription("Edit Coffee order").performClick()
+
+        scrollTo("Value").assertIsDisplayed()
+        scrollTo("Save").assertIsDisplayed()
+        scrollTo("Cancel").assertIsDisplayed()
+    }
+
+    @Test
+    fun `editing and saving a string field invokes onSaveFieldValue with the typed wire value`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        var savedDefinitionId: String? = null
+        var savedValue: Any? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
+                    fieldValuesByDefinitionId = mapOf("d1" to "Latte"),
+                    onSaveFieldValue = { id, value -> savedDefinitionId = id; savedValue = value },
+                )
+            }
+        }
+
+        scrollTo("Coffee order")
+        composeTestRule.onNodeWithContentDescription("Edit Coffee order").performClick()
+        scrollTo("Latte")
+        composeTestRule.onNodeWithText("Latte").performTextReplacement("Macchiato")
+        scrollTo("Save")
+        composeTestRule.onNodeWithText("Save").performClick()
+
+        assertEquals("d1", savedDefinitionId)
+        assertEquals("Macchiato", savedValue)
+    }
+
+    @Test
+    fun `clearing a field's editor and saving passes null, not an empty string`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        var savedValue: Any? = "not yet called"
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
+                    fieldValuesByDefinitionId = mapOf("d1" to "Latte"),
+                    onSaveFieldValue = { _, value -> savedValue = value },
+                )
+            }
+        }
+
+        scrollTo("Coffee order")
+        composeTestRule.onNodeWithContentDescription("Edit Coffee order").performClick()
+        scrollTo("Latte")
+        composeTestRule.onNodeWithText("Latte").performTextReplacement("")
+        scrollTo("Save")
+        composeTestRule.onNodeWithText("Save").performClick()
+
+        assertEquals(null, savedValue)
+    }
+
+    @Test
+    fun `cancel discards the edit and reverts the displayed text`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        var saveCalled = false
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
+                    fieldValuesByDefinitionId = mapOf("d1" to "Latte"),
+                    onSaveFieldValue = { _, _ -> saveCalled = true },
+                )
+            }
+        }
+
+        scrollTo("Coffee order")
+        composeTestRule.onNodeWithContentDescription("Edit Coffee order").performClick()
+        scrollTo("Latte")
+        composeTestRule.onNodeWithText("Latte").performTextInput("XYZ")
+        scrollTo("Cancel")
+        composeTestRule.onNodeWithText("Cancel").performClick()
+
+        scrollTo("Latte").assertIsDisplayed()
+        assertFalse(saveCalled)
+    }
+
+    @Test
+    fun `saving equals true disables the Save button and shows a progress indicator`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
+                    fieldValuesByDefinitionId = mapOf("d1" to "Latte"),
+                    savingFieldDefinitionId = "d1",
+                )
+            }
+        }
+
+        scrollTo("Coffee order")
+        composeTestRule.onNodeWithContentDescription("Edit Coffee order").performClick()
+
+        composeTestRule.onNodeWithText("Save").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `a boolean field's editor is a switch`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "VIP", type = "boolean")),
+                    fieldValuesByDefinitionId = mapOf("d1" to true),
+                )
+            }
+        }
+
+        scrollTo("VIP")
+        composeTestRule.onNodeWithContentDescription("Edit VIP").performClick()
+
+        composeTestRule.onNode(isToggleable()).assertIsDisplayed()
+    }
+
+    @Test
+    fun `an enum field's editor is a dropdown that saves the chosen option`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        var savedValue: Any? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(
+                        FieldDefinition(
+                            id = "d1",
+                            label = "Milk",
+                            type = "enum",
+                            constraints = FieldConstraints(values = listOf("Oat", "Almond")),
+                        ),
+                    ),
+                    fieldValuesByDefinitionId = mapOf("d1" to "Oat"),
+                    onSaveFieldValue = { _, value -> savedValue = value },
+                )
+            }
+        }
+
+        scrollTo("Milk")
+        composeTestRule.onNodeWithContentDescription("Edit Milk").performClick()
+        scrollTo("Oat")
+        composeTestRule.onNodeWithText("Oat").performClick()
+        // The dropdown's options render in a Popup, outside the "contact-detail-list" scrollable
+        // container, so they're found directly rather than via scrollTo.
+        composeTestRule.onNodeWithText("Almond").performClick()
+        scrollTo("Save")
+        composeTestRule.onNodeWithText("Save").performClick()
+
+        assertEquals("Almond", savedValue)
+    }
+
+    @Test
+    fun `a multi field's editor supports adding, editing and removing rows`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        var savedValue: Any? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(
+                        FieldDefinition(
+                            id = "d1",
+                            label = "Milk options",
+                            type = "string",
+                            constraints = FieldConstraints(multi = true),
+                        ),
+                    ),
+                    fieldValuesByDefinitionId = mapOf("d1" to listOf("oat")),
+                    onSaveFieldValue = { _, value -> savedValue = value },
+                )
+            }
+        }
+
+        scrollTo("Milk options")
+        composeTestRule.onNodeWithContentDescription("Edit Milk options").performClick()
+        scrollTo("Add")
+        composeTestRule.onNodeWithText("Add").performClick()
+        // Every row's field shares the label "Value" — after Add there are two: the existing
+        // "oat" row and the new empty one, in visual order, so index 1 is the new row.
+        composeTestRule.onAllNodesWithText("Value")[1].performTextInput("almond")
+        scrollTo("Save")
+        composeTestRule.onNodeWithText("Save").performClick()
+
+        assertEquals(listOf("oat", "almond"), savedValue)
+    }
+
+    @Test
+    fun `a multi field row can be removed, dropping it from the saved list`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        var savedValue: Any? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(
+                        FieldDefinition(
+                            id = "d1",
+                            label = "Milk options",
+                            type = "string",
+                            constraints = FieldConstraints(multi = true),
+                        ),
+                    ),
+                    fieldValuesByDefinitionId = mapOf("d1" to listOf("oat", "almond")),
+                    onSaveFieldValue = { _, value -> savedValue = value },
+                )
+            }
+        }
+
+        scrollTo("Milk options")
+        composeTestRule.onNodeWithContentDescription("Edit Milk options").performClick()
+        scrollTo("oat")
+        composeTestRule.onAllNodesWithContentDescription("Delete").onFirst().performClick()
+        scrollTo("Save")
+        composeTestRule.onNodeWithText("Save").performClick()
+
+        assertEquals(listOf("almond"), savedValue)
+    }
+
+    private fun assertScalarEditorRendersForType(type: String) {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Field", type = type)),
+                    fieldValuesByDefinitionId = mapOf("d1" to "value"),
+                )
+            }
+        }
+
+        scrollTo("Field")
+        composeTestRule.onNodeWithContentDescription("Edit Field").performClick()
+        scrollTo("Value")
+        composeTestRule.onNodeWithText("Value").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a number field renders a text editor when opened`() = assertScalarEditorRendersForType("number")
+
+    @Test
+    fun `a text field renders a text editor when opened`() = assertScalarEditorRendersForType("text")
+
+    @Test
+    fun `an email field renders a text editor when opened`() = assertScalarEditorRendersForType("email")
+
+    @Test
+    fun `a phone field renders a text editor when opened`() = assertScalarEditorRendersForType("phone")
+
+    @Test
+    fun `a uri field renders a text editor when opened`() = assertScalarEditorRendersForType("uri")
 
     // --- M24: inline circle/tag editors ---
 

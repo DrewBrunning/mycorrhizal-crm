@@ -98,6 +98,8 @@ fun SettingsScreen(
     onCircleTagTriage: () -> Unit = {},
     // T104 + data suggestions: the Data review surface and its trigger.
     onData: () -> Unit = {},
+    // Issue #830: the custom field-definition management screen.
+    onManageCustomFields: () -> Unit = {},
     // Issue #348: admin user management.
     onManageUsers: () -> Unit = {},
     // Issue #424: the operational-event timeline.
@@ -210,6 +212,7 @@ fun SettingsScreen(
             onImmichSettings = onImmichSettings,
             onCircleTagTriage = onCircleTagTriage,
             onData = onData,
+            onManageCustomFields = onManageCustomFields,
             onManageUsers = onManageUsers,
             onSystemEvents = onSystemEvents,
             onLanguageChange = viewModel::updateLanguage,
@@ -259,6 +262,7 @@ fun SettingsContent(
     onImmichSettings: () -> Unit = {},
     onCircleTagTriage: () -> Unit = {},
     onData: () -> Unit = {},
+    onManageCustomFields: () -> Unit = {},
     onManageUsers: () -> Unit = {},
     onSystemEvents: () -> Unit = {},
     onLanguageChange: (String) -> Unit = {},
@@ -525,6 +529,8 @@ fun SettingsContent(
             modifier = Modifier.semantics { heading() },
         )
         NavigationRow(stringResource(R.string.settings_data_review), onClick = onData)
+        // Issue #830: create/edit/delete custom field definitions.
+        NavigationRow(stringResource(R.string.settings_custom_fields_title), onClick = onManageCustomFields)
 
         // Issue #348: admin-only user management, reachable only when the
         // session is an admin (the backend also 403s every admin route for

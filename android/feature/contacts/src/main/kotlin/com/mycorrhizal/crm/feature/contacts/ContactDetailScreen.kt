@@ -47,24 +47,32 @@ import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.Videocam
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -82,6 +90,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -116,7 +125,11 @@ import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.ReminderCompletion
 import com.mycorrhizal.crm.model.network.Tag
+import com.mycorrhizal.crm.model.network.editorToWireValue
 import com.mycorrhizal.crm.model.network.fieldValueDisplay
+import com.mycorrhizal.crm.model.network.isEditorValueEmpty
+import com.mycorrhizal.crm.model.network.isMulti
+import com.mycorrhizal.crm.model.network.wireToEditorValue
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.LocalServerUrl
@@ -574,6 +587,8 @@ fun ContactDetailScreen(
                     dateFormat = state.dateFormat,
                     fieldDefinitions = state.fieldDefinitions,
                     fieldValuesByDefinitionId = state.fieldValuesByDefinitionId,
+                    savingFieldDefinitionId = state.savingFieldDefinitionId,
+                    onSaveFieldValue = viewModel::saveFieldValue,
                     allCircles = state.allCircles,
                     contactCircles = state.contactCircles,
                     allTags = state.allTags,
@@ -916,9 +931,12 @@ fun ContactDetailContent(
     deviceLookupKey: String? = null,
     /** The signed-in user's `date_format` preference; falls back to "eu" when absent. */
     dateFormat: String? = null,
-    /** T84 (read-only slice): the user's custom field definitions and this contact's values. */
+    /** The user's custom field definitions and this contact's values (issue #830: editable). */
     fieldDefinitions: List<FieldDefinition> = emptyList(),
     fieldValuesByDefinitionId: Map<String, Any?> = emptyMap(),
+    /** The one field definition currently being saved, or null — see ContactDetailViewModel. */
+    savingFieldDefinitionId: String? = null,
+    onSaveFieldValue: (String, Any?) -> Unit = { _, _ -> },
     // M24: inline circle/tag editors. `all*` back the add menus, `contact*` are the currently
     // applied memberships derived from the join rows.
     allCircles: List<Circle> = emptyList(),
@@ -1159,19 +1177,20 @@ fun ContactDetailContent(
                 )
             }
         }
-        // T84 (read-only slice): one row per definition, iterated over the definitions list
-        // rather than the values map — this is what makes a value whose definition was deleted
-        // since it was set (definitions and values are fetched independently and can disagree)
-        // simply unreachable rather than something that needs a special-case skip.
+        // One row per definition, iterated over the definitions list rather than the values map
+        // — this is what makes a value whose definition was deleted since it was set
+        // (definitions and values are fetched independently and can disagree) simply
+        // unreachable rather than something that needs a special-case skip.
         if (fieldDefinitions.isNotEmpty()) {
             item {
                 SectionCard(stringResource(R.string.contact_custom_fields)) {
                     fieldDefinitions.forEach { definition ->
-                        val value = fieldValuesByDefinitionId[definition.id]
-                        // "—" mirrors the web app's own hardcoded no-value placeholder
-                        // (CustomFieldValueRow.tsx) — a punctuation glyph, not translated text.
-                        val display = fieldValueDisplay(definition, value).ifBlank { "—" }
-                        InfoRow("${definition.label.orEmpty()}: $display")
+                        CustomFieldValueRow(
+                            definition = definition,
+                            value = fieldValuesByDefinitionId[definition.id],
+                            saving = savingFieldDefinitionId == definition.id,
+                            onSave = { newValue -> onSaveFieldValue(definition.id, newValue) },
+                        )
                     }
                 }
             }
@@ -1407,6 +1426,228 @@ private fun InfoRow(text: String) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
     )
+}
+
+/**
+ * Issue #830: one custom-field row on the contact detail page — a read-only display of the
+ * current value plus a pencil-toggled inline editor, direct port of web's `CustomFieldValueRow`
+ * (`frontend/src/components/CustomFieldValueRow.tsx`). [onSave] receives the raw wire value to
+ * send (or null to remove this definition's value) — the empty-check and editor→wire conversion
+ * happen here, mirroring `CustomFieldValueRow.tsx`'s own `handleSave`.
+ */
+@Composable
+private fun CustomFieldValueRow(
+    definition: FieldDefinition,
+    value: Any?,
+    saving: Boolean,
+    onSave: (Any?) -> Unit,
+) {
+    var editing by remember(definition.id) { mutableStateOf(false) }
+    var editorValue by remember(definition.id, value) { mutableStateOf(wireToEditorValue(definition, value)) }
+
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = definition.label.orEmpty(),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f),
+            )
+            if (!editing) {
+                AccessibleIconButton(
+                    onClick = {
+                        editorValue = wireToEditorValue(definition, value)
+                        editing = true
+                    },
+                ) {
+                    Icon(
+                        Icons.Outlined.Edit,
+                        contentDescription = stringResource(
+                            R.string.contact_custom_field_edit_named,
+                            definition.label.orEmpty(),
+                        ),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+        }
+        if (editing) {
+            CustomFieldValueEditor(definition = definition, value = editorValue, onChange = { editorValue = it })
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(
+                    onClick = {
+                        editorValue = wireToEditorValue(definition, value)
+                        editing = false
+                    },
+                    enabled = !saving,
+                ) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+                Button(
+                    onClick = {
+                        val next = if (isEditorValueEmpty(definition, editorValue)) {
+                            null
+                        } else {
+                            editorToWireValue(definition, editorValue)
+                        }
+                        onSave(next)
+                        editing = false
+                    },
+                    enabled = !saving,
+                ) {
+                    if (saving) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp).padding(end = 8.dp))
+                    }
+                    Text(stringResource(R.string.action_save))
+                }
+            }
+        } else {
+            // "—" mirrors the web app's own hardcoded no-value placeholder
+            // (CustomFieldValueRow.tsx) — a punctuation glyph, not translated text.
+            val display = fieldValueDisplay(definition, value).ifBlank { "—" }
+            Text(
+                text = display,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (display == "—") MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
+}
+
+/**
+ * Issue #830: the per-[FieldDefinition.type] input, direct port of web's `FieldValueEditor`
+ * (`frontend/src/components/FieldValueEditor.tsx`). [value] is editor state (see
+ * [wireToEditorValue]'s doc comment), not a raw wire value — a `String` for every scalar type
+ * except boolean (`Boolean`) and multi (`List<String>`).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CustomFieldValueEditor(
+    definition: FieldDefinition,
+    value: Any,
+    onChange: (Any) -> Unit,
+) {
+    if (isMulti(definition)) {
+        val rows = (value as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+        Column {
+            rows.forEachIndexed { index, row ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        CustomFieldScalarEditor(
+                            definition = definition,
+                            value = row,
+                            onChange = { next ->
+                                onChange(rows.toMutableList().also { it[index] = next.toString() })
+                            },
+                        )
+                    }
+                    AccessibleIconButton(
+                        onClick = { onChange(rows.toMutableList().also { it.removeAt(index) }) },
+                    ) {
+                        Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
+                    }
+                }
+            }
+            TextButton(onClick = { onChange(rows + "") }) {
+                Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
+                Text(stringResource(R.string.action_add))
+            }
+        }
+    } else {
+        CustomFieldScalarEditor(definition = definition, value = value as? String ?: "", onChange = onChange)
+    }
+}
+
+/** One scalar (non-multi) editor for [definition]'s type — boolean/enum get dedicated controls,
+ *  every other type is a plain [OutlinedTextField] with a type-appropriate keyboard, mirroring
+ *  web's own choice to keep date/datetime/uri/email/phone as plain typed text fields. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CustomFieldScalarEditor(
+    definition: FieldDefinition,
+    value: String,
+    onChange: (Any) -> Unit,
+) {
+    when (definition.type) {
+        "boolean" -> {
+            val checked = value == "true"
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = checked, onCheckedChange = { onChange(it) })
+                Text(stringResource(R.string.contact_custom_field_value_label))
+            }
+        }
+        "enum" -> {
+            var expanded by remember { mutableStateOf(false) }
+            val options = definition.constraints?.values.orEmpty()
+            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.contact_custom_field_value_label)) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                )
+                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    options.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option) },
+                            onClick = { onChange(option); expanded = false },
+                        )
+                    }
+                }
+            }
+        }
+        "number" -> OutlinedTextField(
+            value = value,
+            onValueChange = onChange,
+            label = { Text(stringResource(R.string.contact_custom_field_value_label)) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        "text" -> OutlinedTextField(
+            value = value,
+            onValueChange = onChange,
+            label = { Text(stringResource(R.string.contact_custom_field_value_label)) },
+            minLines = 2,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        "email" -> OutlinedTextField(
+            value = value,
+            onValueChange = onChange,
+            label = { Text(stringResource(R.string.contact_custom_field_value_label)) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        "phone" -> OutlinedTextField(
+            value = value,
+            onValueChange = onChange,
+            label = { Text(stringResource(R.string.contact_custom_field_value_label)) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        "uri" -> OutlinedTextField(
+            value = value,
+            onValueChange = onChange,
+            label = { Text(stringResource(R.string.contact_custom_field_value_label)) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        else -> OutlinedTextField(
+            value = value,
+            onValueChange = onChange,
+            label = { Text(stringResource(R.string.contact_custom_field_value_label)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 @Composable

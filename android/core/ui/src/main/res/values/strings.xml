@@ -150,6 +150,8 @@
     <string name="contact_circles">Circles</string>
     <string name="contact_tags">Tags</string>
     <string name="contact_custom_fields">Custom fields</string>
+    <string name="contact_custom_field_edit_named">Edit %1$s</string>
+    <string name="contact_custom_field_value_label">Value</string>
     <string name="contact_edit">Edit contact</string>
     <string name="contact_birthday_label">Birthday: %1$s</string>
     <!-- M24: top-level detail actions -->
@@ -869,6 +871,47 @@
     <string name="tags_contact_vcard_uid">Contact VCard UID</string>
     <string name="tags_empty">No tags yet</string>
     <string name="tags_contacts_empty">No contacts tagged</string>
+
+    <!-- Custom field definitions (issue #830) -->
+    <string name="settings_custom_fields_title">Custom fields</string>
+    <string name="settings_custom_fields_empty">No custom fields yet</string>
+    <string name="settings_custom_fields_new_title">New custom field</string>
+    <string name="settings_custom_fields_edit_title">Edit custom field</string>
+    <string name="settings_custom_fields_delete_title">Delete custom field?</string>
+    <string name="settings_custom_fields_delete_confirm">Delete “%1$s”? This also removes its saved values.</string>
+    <string name="settings_custom_fields_delete_named">Delete %1$s</string>
+    <string name="settings_custom_fields_edit_named">Edit %1$s</string>
+    <string name="settings_custom_fields_label">Label</string>
+    <string name="settings_custom_fields_key">Key</string>
+    <string name="settings_custom_fields_key_hint">The stable machine name; cannot be changed after creation.</string>
+    <string name="settings_custom_fields_type">Type</string>
+    <string name="settings_custom_fields_multi">Allow multiple values</string>
+    <string name="settings_custom_fields_min">Minimum</string>
+    <string name="settings_custom_fields_max">Maximum</string>
+    <string name="settings_custom_fields_max_length">Max length</string>
+    <string name="settings_custom_fields_pattern">Pattern</string>
+    <string name="settings_custom_fields_enum_values">Allowed values</string>
+    <string name="settings_custom_fields_add_value">Add value</string>
+    <string name="settings_custom_fields_remove_value">Remove value</string>
+    <string name="settings_custom_fields_projection">Standards projection</string>
+    <string name="settings_custom_fields_projection_internal">Internal only</string>
+    <string name="settings_custom_fields_projection_vcard">vCard extension</string>
+    <string name="settings_custom_fields_vcard_name">vCard property name</string>
+    <string name="settings_custom_fields_sensitivity">Sensitivity</string>
+    <string name="settings_custom_fields_error_label_required">Label is required</string>
+    <string name="settings_custom_fields_error_key_required">Key is required</string>
+    <string name="settings_custom_fields_error_enum_required">At least one allowed value is required</string>
+    <string name="settings_custom_fields_error_vcard_name_required">vCard property name is required</string>
+    <string name="custom_field_type_string">Text (short)</string>
+    <string name="custom_field_type_text">Text (long)</string>
+    <string name="custom_field_type_number">Number</string>
+    <string name="custom_field_type_boolean">Yes/No</string>
+    <string name="custom_field_type_date">Date</string>
+    <string name="custom_field_type_datetime">Date &amp; time</string>
+    <string name="custom_field_type_uri">Link</string>
+    <string name="custom_field_type_email">Email</string>
+    <string name="custom_field_type_phone">Phone</string>
+    <string name="custom_field_type_enum">Choice</string>
     <string name="tags_error_missing_id">Missing tag id</string>
 
     <!-- Households -->

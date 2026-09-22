@@ -70,6 +70,9 @@ import com.mycorrhizal.crm.model.network.CreateActivityResponse
 import com.mycorrhizal.crm.model.network.CreateCircleResponse
 import com.mycorrhizal.crm.model.network.CreateContactResponse
 import com.mycorrhizal.crm.model.network.CreateConversationAgendaResponse
+import com.mycorrhizal.crm.model.network.CreateFieldDefinitionResponse
+import com.mycorrhizal.crm.model.network.FieldDefinition
+import com.mycorrhizal.crm.model.network.FieldDefinitionInput
 import com.mycorrhizal.crm.model.network.FieldDefinitionsResponse
 import com.mycorrhizal.crm.model.network.CreateGiftResponse
 import com.mycorrhizal.crm.model.network.CreateHouseholdResponse
@@ -931,6 +934,37 @@ class ApiClient(
         }
     }
 
+    /** GET /api/v1/field-definitions/{id} (issue #830) — raw FieldDefinition; prefills the edit form. */
+    suspend fun getFieldDefinition(id: String): Result<FieldDefinition> =
+        executeGet("$PLACEHOLDER_ORIGIN$FIELD_DEFINITIONS_PATH/$id") { _, body ->
+            moshi.adapter(FieldDefinition::class.java).fromJson(body)
+        }
+
+    /**
+     * POST /api/v1/field-definitions (issue #830) — wrapped `{ message, field_definition }`,
+     * unwrapped here. 409 (ALREADY_EXISTS) on a duplicate (user, key) pair — see
+     * field_definition_controller.go's CreateFieldDefinition — surfaces as-is via the normal
+     * ApiError path, no special-casing needed.
+     */
+    suspend fun createFieldDefinition(input: FieldDefinitionInput): Result<FieldDefinition> =
+        executePost(FIELD_DEFINITIONS_PATH, input) { _, body ->
+            moshi.adapter(CreateFieldDefinitionResponse::class.java).fromJson(body)?.fieldDefinition
+        }
+
+    /**
+     * PUT /api/v1/field-definitions/{id} (issue #830) — raw FieldDefinition response. [input]'s
+     * key is accepted but silently ignored server-side (UpdateFieldDefinition's own doc comment);
+     * the UI disables the key field when editing rather than relying on this.
+     */
+    suspend fun updateFieldDefinition(id: String, input: FieldDefinitionInput): Result<FieldDefinition> =
+        executePut("$PLACEHOLDER_ORIGIN$FIELD_DEFINITIONS_PATH/$id", input) { _, body ->
+            moshi.adapter(FieldDefinition::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/field-definitions/{id} (issue #830) — FieldValues cascade server-side. */
+    suspend fun deleteFieldDefinition(id: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$FIELD_DEFINITIONS_PATH/$id")
+
     /** GET /api/v1/contacts/{id}/field-values (T84). */
     suspend fun listContactFieldValues(contactId: Int): Result<ContactFieldValuesResponse> =
         executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/field-values") { _, body ->
@@ -938,9 +972,10 @@ class ApiClient(
         }
 
     /**
-     * PUT /api/v1/contacts/{id}/field-values (T84) — full-replace; see
-     * [ContactFieldValuesInput]'s doc comment. No UI calls this yet (T84 ships the read-only
-     * slice); it exists for the round-trip test and so the write path isn't a second ticket.
+     * PUT /api/v1/contacts/{id}/field-values (T84; UI caller added by issue #830) — full-replace;
+     * see [ContactFieldValuesInput]'s doc comment. Called by ContactDetailViewModel.saveFieldValue,
+     * which always resends the complete value set (a partial payload would delete every other
+     * definition's value on this contact).
      */
     suspend fun replaceContactFieldValues(
         contactId: Int,

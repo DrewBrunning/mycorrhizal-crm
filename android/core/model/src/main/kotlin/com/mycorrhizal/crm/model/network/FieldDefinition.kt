@@ -106,6 +106,90 @@ data class ContactFieldValuesInput(
 )
 
 /**
+ * POST/PUT /field-definitions request body (issue #830) — mirrors `backend/models/dtos.go`'s
+ * `FieldDefinitionInput` exactly. [key] is required on create but ignored (never re-assigned) by
+ * `UpdateFieldDefinition` server-side — the create/edit form disables the key field when editing
+ * rather than relying on the server to reject a change.
+ */
+@JsonClass(generateAdapter = true)
+data class FieldDefinitionInput(
+    val label: String,
+    val key: String,
+    val target: String? = null,
+    val type: String,
+    val constraints: FieldConstraints? = null,
+    val projection: String? = null,
+    val sensitivity: String? = null,
+)
+
+/** POST /field-definitions response — wrapped `{ message, field_definition }`, unlike
+ *  Get/Update's raw-object responses (see `field_definition_controller.go`'s CreateFieldDefinition). */
+@JsonClass(generateAdapter = true)
+data class CreateFieldDefinitionResponse(
+    val message: String? = null,
+    @Json(name = "field_definition") val fieldDefinition: FieldDefinition? = null,
+)
+
+/** Whether [definition] is a multi-valued (list-of-scalar) field — `FieldConstraints.Multi`. */
+fun isMulti(definition: FieldDefinition): Boolean = definition.constraints?.multi == true
+
+/**
+ * The empty/"no value yet" editor state for [definition] — an empty string for a scalar,
+ * `false` for boolean, an empty list for multi. Mirrors web's `emptyEditorValue`
+ * (`frontend/src/api/fieldDefinitions.ts`).
+ */
+fun emptyEditorValue(definition: FieldDefinition): Any = when {
+    isMulti(definition) -> emptyList<String>()
+    definition.type == "boolean" -> false
+    else -> ""
+}
+
+/**
+ * True when [editor] (editor-state shape, not a raw wire value) represents "no value" and
+ * should be omitted from the save payload entirely rather than sent. Mirrors web's
+ * `isEditorValueEmpty`. A multi list is empty when it has no non-blank rows; boolean is never
+ * "empty" (false is a real value, matching [fieldValueDisplay]'s own boolean-is-always-set
+ * rendering); every other scalar is empty exactly when its string editor state is blank.
+ */
+fun isEditorValueEmpty(definition: FieldDefinition, editor: Any?): Boolean = when {
+    isMulti(definition) -> (editor as? List<*>).orEmpty().all { (it as? String).isNullOrBlank() }
+    definition.type == "boolean" -> false
+    else -> (editor as? String).isNullOrBlank()
+}
+
+/**
+ * Converts a raw wire [value] (as decoded from JSON — `Double`/`Boolean`/`String`/`List<*>`, or
+ * null when the contact has no value for [definition] yet) into editor state: a `String` for
+ * every scalar type except boolean, `Boolean` for boolean, `List<String>` for multi. Mirrors
+ * web's `wireToEditorValue`.
+ */
+fun wireToEditorValue(definition: FieldDefinition, value: Any?): Any = when {
+    isMulti(definition) -> (value as? List<*>)?.map { scalarWireToEditorString(it) } ?: emptyList<String>()
+    definition.type == "boolean" -> value == true
+    else -> scalarWireToEditorString(value)
+}
+
+/**
+ * Converts editor state (see [wireToEditorValue]) back into a raw wire value ready for
+ * `FieldValueInput.value` — a `Double` for number, `Boolean` for boolean, `String` otherwise, or
+ * a `List<Any?>` of those for multi. Mirrors web's `editorToWireValue`. Callers should check
+ * [isEditorValueEmpty] first and send `null` (omit the definition from the payload) instead of
+ * calling this for an empty editor value.
+ */
+fun editorToWireValue(definition: FieldDefinition, editor: Any?): Any? = when {
+    isMulti(definition) -> (editor as? List<*>).orEmpty().map { scalarEditorToWireValue(definition, it) }
+    else -> scalarEditorToWireValue(definition, editor)
+}
+
+private fun scalarEditorToWireValue(definition: FieldDefinition, editor: Any?): Any? = when (definition.type) {
+    "number" -> (editor as? String)?.toDoubleOrNull()
+    "boolean" -> editor == true
+    else -> editor as? String ?: ""
+}
+
+private fun scalarWireToEditorString(value: Any?): String = scalarValueDisplay(value)
+
+/**
  * Human-readable rendering of a [FieldValue.value], mirroring web's `fieldValueToDisplay`
  * (`frontend/src/api/fieldDefinitions.ts`) so the same value reads the same way on both
  * platforms. A `multi` field joins with "; ", matching the CSV export's own separator.

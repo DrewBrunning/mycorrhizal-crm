@@ -8,6 +8,7 @@ import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
+import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
 import com.mycorrhizal.crm.domain.repository.ImmichRepository
 import com.mycorrhizal.crm.domain.repository.NextcloudRepository
 import com.mycorrhizal.crm.domain.repository.PaperlessRepository
@@ -16,8 +17,10 @@ import com.mycorrhizal.crm.domain.repository.SeafileRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
 import com.mycorrhizal.crm.model.network.ExternalIdentity
 import com.mycorrhizal.crm.model.network.FieldDefinition
+import com.mycorrhizal.crm.model.network.FieldValueInput
 import com.mycorrhizal.crm.model.network.ImmichAssetSummary
 import com.mycorrhizal.crm.model.network.ImmichPerson
 import com.mycorrhizal.crm.model.network.ImmichPersonSummary
@@ -28,7 +31,6 @@ import com.mycorrhizal.crm.model.network.SeafileLibrary
 import com.mycorrhizal.crm.model.network.SeafileLinkRequest
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.network.WebDAVItem
-import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
@@ -49,16 +51,20 @@ data class ContactDetailUiState(
     /** The signed-in user's `date_format` preference (see `SessionState`); null until loaded. */
     val dateFormat: String? = null,
     /**
-     * T84 (read-only slice): the user's custom field definitions and this contact's values for
-     * them, keyed by `FieldDefinition.id`. Fetched separately from the contact and from each
-     * other — a value's definition may no longer exist (deleted since the value was set); such
-     * values are silently skipped at render time rather than crashing, since the two lists are
-     * never fetched atomically. A fetch failure for either just leaves it empty; this is an
-     * optional enhancement to the contact record, not core data, so it never blocks or errors
-     * the screen.
+     * The user's custom field definitions and this contact's values for them, keyed by
+     * `FieldDefinition.id`. Fetched separately from the contact and from each other — a value's
+     * definition may no longer exist (deleted since the value was set); such values are silently
+     * skipped at render time rather than crashing, since the two lists are never fetched
+     * atomically. A fetch failure for either just leaves it empty; this is an optional
+     * enhancement to the contact record, not core data, so it never blocks or errors the screen.
+     * T84 shipped this read-only; issue #830 added [saveFieldValue] as the write path.
      */
     val fieldDefinitions: List<FieldDefinition> = emptyList(),
     val fieldValuesByDefinitionId: Map<String, Any?> = emptyMap(),
+    /** The one `FieldDefinition.id` currently being saved, or null — guards against a second
+     *  concurrent [ContactDetailViewModel.saveFieldValue] call racing the first (each save is a
+     *  full-replace PUT of the whole value set). */
+    val savingFieldDefinitionId: String? = null,
     // M24: inline circle/tag editors. `contactCircles`/`contactTags` are derived from the
     // CircleMember/ContactTag join rows (the contact payload only carries the legacy flat
     // `crm.circles` names and no tags at all); `allCircles`/`allTags` back the add menus. A
@@ -136,11 +142,11 @@ class ContactDetailViewModel @Inject constructor(
     private val contactRepository: ContactRepository,
     private val reminderRepository: ReminderRepository,
     private val authRepository: AuthRepository,
-    // T84: custom field definitions/values are cross-cutting (definitions are per-user, not
-    // per-contact) and read-only here, so ApiClient is injected directly rather than adding a
-    // repository for a slice with no write path yet — same precedent as DashboardViewModel and
-    // T87's ContactListViewModel.
-    private val apiClient: ApiClient,
+    // T84 shipped read-only custom-field display via a direct ApiClient dependency; issue #830
+    // adds the write path (create/edit/delete definitions elsewhere, per-contact value editing
+    // here) and moves this onto the shared FieldDefinitionRepository so the Settings management
+    // screens and this ViewModel don't duplicate the wire-format handling.
+    private val fieldDefinitionRepository: FieldDefinitionRepository,
     // M24: the inline circle/tag editors write through the repositories (so the Room mirrors
     // stay in sync) and read the join-row derivations they expose.
     private val circleRepository: CircleRepository,
@@ -233,24 +239,59 @@ class ContactDetailViewModel @Inject constructor(
     }
 
     /**
-     * T84 (read-only slice): fetched independently of the contact record and of each other, and
-     * never surfaces its own error — see [ContactDetailUiState.fieldDefinitions]' doc comment
-     * for why a failure here silently leaves the section empty rather than erroring the screen.
+     * Fetched independently of the contact record and of each other, and never surfaces its own
+     * error — see [ContactDetailUiState.fieldDefinitions]' doc comment for why a failure here
+     * silently leaves the section empty rather than erroring the screen.
      */
     private fun loadCustomFields() {
         viewModelScope.launch {
-            apiClient.listFieldDefinitions().foldApiError(
-                onSuccess = { response -> _uiState.update { it.copy(fieldDefinitions = response.definitions) } },
+            fieldDefinitionRepository.list().foldApiError(
+                onSuccess = { defs -> _uiState.update { it.copy(fieldDefinitions = defs) } },
                 onError = {},
             )
         }
         viewModelScope.launch {
-            apiClient.listContactFieldValues(contactId).foldApiError(
-                onSuccess = { response ->
-                    val byDefinitionId = response.values.associate { it.fieldDefinitionId to it.value }
+            fieldDefinitionRepository.contactValues(contactId).foldApiError(
+                onSuccess = { values ->
+                    val byDefinitionId = values.associate { it.fieldDefinitionId to it.value }
                     _uiState.update { it.copy(fieldValuesByDefinitionId = byDefinitionId) }
                 },
                 onError = {},
+            )
+        }
+    }
+
+    /**
+     * Inline per-contact custom-field value edit (issue #830, the write-path follow-up to T84's
+     * read-only slice). Reads the current full value set from state, upserts (or, when
+     * [newValue] is null, removes) the one changed definition, and resends the **complete** set
+     * via the full-replace PUT — see [ContactFieldValuesInput]'s doc comment for why a partial
+     * payload would delete every other definition's value on this contact. A null [newValue] is
+     * OMITTED from the payload rather than sent as JSON null: `FieldValueInput.value` is
+     * `validate:"required"` server-side, so "remove" must mean "absent," matching web's
+     * `CustomFieldValueRow`'s own "null signals remove this definition's value" contract.
+     */
+    fun saveFieldValue(definitionId: String, newValue: Any?) {
+        if (_uiState.value.savingFieldDefinitionId != null) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(savingFieldDefinitionId = definitionId, error = null) }
+            val current = _uiState.value.fieldValuesByDefinitionId
+            val next = if (newValue == null) current - definitionId else current + (definitionId to newValue)
+            val input = ContactFieldValuesInput(
+                fieldValues = next.map { (id, value) -> FieldValueInput(fieldDefinitionId = id, value = value) },
+            )
+            fieldDefinitionRepository.replaceContactValues(contactId, input).foldApiError(
+                onSuccess = { values ->
+                    _uiState.update {
+                        it.copy(
+                            savingFieldDefinitionId = null,
+                            fieldValuesByDefinitionId = values.associate { v -> v.fieldDefinitionId to v.value },
+                        )
+                    }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(savingFieldDefinitionId = null, error = error.displayMessage) }
+                },
             )
         }
     }
