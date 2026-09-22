@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderCompletion
@@ -154,5 +155,56 @@ class TimelineSectionTest {
         }
         composeTestRule.onNodeWithContentDescription("Undo completion").performClick()
         assertEquals(5, undone)
+    }
+
+    // --- Issue #836: external activities ---
+
+    @Test
+    fun `a photo-appearance external activity renders its title and from-system subtitle`() {
+        val items = listOf(
+            TimelineItem.ExternalActivityItem(
+                ExternalActivity(
+                    id = "a1",
+                    entityId = "u5",
+                    sourceSystem = "immich",
+                    type = "photo-appearance",
+                    payload = mapOf("person_name" to "Alice"),
+                ),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                TimelineSection(
+                    items = items,
+                    onEditActivity = {},
+                    onEditNote = {},
+                    onEditReminder = {},
+                    onCompleteReminder = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("Photo appearance").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Alice (via immich)").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an unrecognized external activity type falls back to a generic title`() {
+        val items = listOf(
+            TimelineItem.ExternalActivityItem(
+                ExternalActivity(id = "a1", entityId = "u5", sourceSystem = "immich", type = "media-watched"),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                TimelineSection(
+                    items = items,
+                    onEditActivity = {},
+                    onEditNote = {},
+                    onEditReminder = {},
+                    onCompleteReminder = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("External event: media-watched").assertIsDisplayed()
     }
 }

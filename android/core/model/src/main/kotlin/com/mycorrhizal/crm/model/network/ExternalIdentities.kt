@@ -39,6 +39,38 @@ data class ExternalIdentitiesPage(
     val sync: SyncInfo? = null,
 )
 
+/**
+ * The generic ExternalActivity substrate (issue #836): "something happened in
+ * that external system", linkable into a contact's timeline (e.g. Immich's
+ * `photo-appearance`). [payload] is an open JSON summary (e.g. `person_name`,
+ * `asset_id`) — nullable/defaulted like every field here, since the backend's
+ * `Payload` field is `omitempty` and can be entirely absent from the JSON.
+ */
+@JsonClass(generateAdapter = true)
+data class ExternalActivity(
+    val id: String = "",
+    @Json(name = "created_at") val createdAt: String? = null,
+    @Json(name = "updated_at") val updatedAt: String? = null,
+    @Json(name = "entity_id") val entityId: String = "",
+    @Json(name = "source_system") val sourceSystem: String? = null,
+    @Json(name = "external_id") val externalId: String = "",
+    val type: String? = null,
+    @Json(name = "occurred_at") val occurredAt: String? = null,
+    val payload: Map<String, Any?>? = null,
+    val provenance: String? = null,
+    @Json(name = "sync_state") val syncState: String? = null,
+)
+
+/** GET /external-activities — cursor-paginated, full_resync (total kept). */
+@JsonClass(generateAdapter = true)
+data class ExternalActivitiesPage(
+    @Json(name = "external_activities") val externalActivities: List<ExternalActivity> = emptyList(),
+    val total: Int = 0,
+    @Json(name = "next_cursor") val nextCursor: String? = null,
+    val limit: Int = 0,
+    val sync: SyncInfo? = null,
+)
+
 // ---------------------------------------------------------------------------
 // Immich — the first concrete integration on the substrate (T15/T16). All
 // calls go through the backend, never straight to Immich (the API key stays

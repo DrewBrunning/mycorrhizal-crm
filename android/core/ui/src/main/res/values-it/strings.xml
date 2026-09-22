@@ -220,6 +220,7 @@
     <string name="immich_unlink">Scollega</string>
     <string name="immich_unlink_title">Scollega persona Immich</string>
     <string name="immich_unlink_confirm">Scollegare questa persona Immich? La cronologia delle foto verrà conservata.</string>
+    <string name="immich_sync_now">Sincronizza ora</string>
     <string name="immich_person_search_title">Collega una persona Immich</string>
     <string name="immich_person_search_placeholder">Cerca per nome</string>
     <string name="immich_person_search_no_matches">Nessuna persona corrispondente</string>
@@ -813,6 +814,9 @@
     <string name="cd_activity">Attività</string>
     <string name="cd_note">Nota</string>
     <string name="cd_reminder">Promemoria</string>
+    <string name="timeline_external_activity_photo_appearance">Comparsa in foto</string>
+    <string name="timeline_external_activity_unknown">Evento esterno: %1$s</string>
+    <string name="timeline_external_activity_from_system">%1$s (via %2$s)</string>
 
 
     <!-- Circles -->

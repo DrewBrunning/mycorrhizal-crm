@@ -46,6 +46,7 @@ import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -117,6 +118,7 @@ import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
 import com.mycorrhizal.crm.model.network.Email
+import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.ExternalIdentity
 import com.mycorrhizal.crm.model.network.ExternalSystems
 import com.mycorrhizal.crm.model.network.FieldDefinition
@@ -649,6 +651,10 @@ fun ContactDetailScreen(
                     immichSummary = state.immichSummary,
                     onDeleteExternalIdentity = { pendingExternalLinkDelete = it },
                     onUnlinkImmich = { pendingImmichUnlink = true },
+                    // Issue #836: sync-now has no confirmation dialog (web parity).
+                    immichSyncing = state.immichSyncing,
+                    onSyncImmich = viewModel::syncImmich,
+                    externalActivities = state.externalActivities,
                     // Issue #236: the "Add link" entry points, gated per system.
                     paperlessConfigured = state.paperlessConfigured,
                     seafileConfigured = state.seafileConfigured,
@@ -1018,6 +1024,11 @@ fun ContactDetailContent(
     immichSummary: ImmichPersonSummary? = null,
     onDeleteExternalIdentity: (ExternalIdentity) -> Unit = {},
     onUnlinkImmich: () -> Unit = {},
+    // Issue #836: the Immich "sync now" trigger and the ExternalActivity
+    // events merged into the unified timeline below.
+    immichSyncing: Boolean = false,
+    onSyncImmich: () -> Unit = {},
+    externalActivities: List<ExternalActivity> = emptyList(),
     // Issue #236: whether each file/document integration is configured — gates
     // its "Add link" row below, mirroring web's FileLinksPanel.
     paperlessConfigured: Boolean = false,
@@ -1346,6 +1357,8 @@ fun ContactDetailContent(
                                 summary = immichSummary,
                                 contactUid = contact.uid,
                                 onUnlink = onUnlinkImmich,
+                                syncing = immichSyncing,
+                                onSync = onSyncImmich,
                             )
                         } else {
                             GenericExternalLinkRow(identity, onDelete = { onDeleteExternalIdentity(identity) })
@@ -1368,7 +1381,7 @@ fun ContactDetailContent(
             // newest-first (Phase 2 item 10). Tapping a row routes to its edit form.
             SectionTitle(stringResource(R.string.contact_timeline))
             TimelineSection(
-                items = contact.toTimelineItems(completions),
+                items = contact.toTimelineItems(completions, externalActivities),
                 onEditActivity = onEditActivity,
                 onEditNote = onEditNote,
                 onEditReminder = onEditReminder,
@@ -2261,6 +2274,8 @@ private fun ImmichLinkRow(
     summary: ImmichPersonSummary?,
     contactUid: String?,
     onUnlink: () -> Unit,
+    syncing: Boolean = false,
+    onSync: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val serverOrigin = LocalServerUrl.current
@@ -2296,6 +2311,21 @@ private fun ImmichLinkRow(
                 Icon(
                     Icons.Outlined.OpenInNew,
                     contentDescription = stringResource(R.string.cd_open_link),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        AccessibleIconButton(
+            onClick = onSync,
+            enabled = !syncing,
+            modifier = Modifier.testTag("immich-sync-button"),
+        ) {
+            if (syncing) {
+                CircularProgressIndicator(modifier = Modifier.padding(4.dp), strokeWidth = 2.dp)
+            } else {
+                Icon(
+                    Icons.Outlined.Sync,
+                    contentDescription = stringResource(R.string.immich_sync_now),
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }

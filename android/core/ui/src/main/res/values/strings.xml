@@ -225,6 +225,7 @@
     <string name="immich_unlink">Unlink</string>
     <string name="immich_unlink_title">Unlink Immich person</string>
     <string name="immich_unlink_confirm">Unlink this Immich person? Its photo history will be kept.</string>
+    <string name="immich_sync_now">Sync now</string>
     <string name="immich_person_search_title">Link an Immich person</string>
     <string name="immich_person_search_placeholder">Search by name</string>
     <string name="immich_person_search_no_matches">No matching people</string>
@@ -824,6 +825,9 @@
     <string name="cd_activity">Activity</string>
     <string name="cd_note">Note</string>
     <string name="cd_reminder">Reminder</string>
+    <string name="timeline_external_activity_photo_appearance">Photo appearance</string>
+    <string name="timeline_external_activity_unknown">External event: %1$s</string>
+    <string name="timeline_external_activity_from_system">%1$s (via %2$s)</string>
 
     <!-- Circles -->
     <string name="circles_title">Circles</string>

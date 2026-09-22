@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.domain.repository
 
+import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.ExternalIdentity
 import com.mycorrhizal.crm.model.network.ImmichAssetSummary
 import com.mycorrhizal.crm.model.network.ImmichConfigInput
@@ -36,6 +37,18 @@ interface ExternalIdentityRepository {
 
     /** DELETE /external-identities/:id — removes a link (hard delete). */
     suspend fun delete(id: String): Result<Unit>
+}
+
+/**
+ * Read-only access to the ExternalActivity substrate (issue #836) for one
+ * contact: "something happened in an external system" (Immich's
+ * `photo-appearance`, ...). System-agnostic like [ExternalIdentityRepository]
+ * — same online-only rationale (edge-shaped, full_resync per contact, no
+ * Room mirror).
+ */
+interface ExternalActivityRepository {
+    /** GET /external-activities?contact_id=<entityId> — the contact's events, newest-first. */
+    suspend fun listForContact(entityId: String): Result<List<ExternalActivity>>
 }
 
 /**
@@ -82,6 +95,9 @@ interface ImmichRepository {
 
     /** POST /immich/test-connection — a diagnosed failure is a success-with-`ok:false`. */
     suspend fun testConnection(): Result<ImmichConnectionTestResult>
+
+    /** POST /immich/sync — the manual "sync now" trigger (issue #836). */
+    suspend fun syncNow(): Result<Unit>
 }
 
 /**

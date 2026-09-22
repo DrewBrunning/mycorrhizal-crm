@@ -7,6 +7,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -30,6 +31,7 @@ import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
 import com.mycorrhizal.crm.model.network.Email
+import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.ExternalIdentity
 import com.mycorrhizal.crm.model.network.ExternalSystems
 import com.mycorrhizal.crm.model.network.FieldConstraints
@@ -1119,6 +1121,83 @@ class ContactDetailScreenTest {
         scrollTo("Alice")
         composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
         scrollTo("7 photos").assertIsDisplayed()
+    }
+
+    // --- Issue #836: Immich sync-now + external-activities timeline ---------
+
+    @Test
+    fun `the immich sync button fires the sync callback`() {
+        val contact = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        var synced = false
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    externalIdentities = listOf(
+                        ExternalIdentity(id = "i1", entityId = "u5", system = ExternalSystems.IMMICH, externalId = "p1"),
+                    ),
+                    immichSummary = ImmichPersonSummary(personName = "Alice", photoCount = 7),
+                    onSyncImmich = { synced = true },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("immich-sync-button"))
+        composeTestRule.onNodeWithTag("immich-sync-button").performClick()
+
+        assertTrue(synced)
+    }
+
+    @Test
+    fun `the immich sync button is disabled while syncing`() {
+        val contact = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    externalIdentities = listOf(
+                        ExternalIdentity(id = "i1", entityId = "u5", system = ExternalSystems.IMMICH, externalId = "p1"),
+                    ),
+                    immichSummary = ImmichPersonSummary(personName = "Alice", photoCount = 7),
+                    immichSyncing = true,
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("immich-sync-button"))
+        composeTestRule.onNodeWithTag("immich-sync-button").assertIsNotEnabled()
+        // While syncing, the icon swaps for a progress indicator, so the
+        // "Sync now" content description is gone too.
+        composeTestRule.onNodeWithContentDescription("Sync now").assertDoesNotExist()
+    }
+
+    @Test
+    fun `an external activity renders on the timeline`() {
+        val contact = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    externalActivities = listOf(
+                        ExternalActivity(
+                            id = "a1",
+                            entityId = "u5",
+                            sourceSystem = "immich",
+                            externalId = "asset-1",
+                            type = "photo-appearance",
+                            occurredAt = "2026-08-01T10:00:00Z",
+                            payload = mapOf("person_name" to "Bob"),
+                        ),
+                    ),
+                )
+            }
+        }
+
+        scrollTo("Photo appearance")
+        composeTestRule.onNodeWithText("Photo appearance").assertIsDisplayed()
+        scrollTo("Bob (via immich)").assertIsDisplayed()
     }
 
     @Test

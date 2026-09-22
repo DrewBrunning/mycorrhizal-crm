@@ -101,6 +101,7 @@ import com.mycorrhizal.crm.model.network.DuplicateDismissalInput
 import com.mycorrhizal.crm.model.network.DuplicatePairsResponse
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsInput
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsResponse
+import com.mycorrhizal.crm.model.network.ExternalActivitiesPage
 import com.mycorrhizal.crm.model.network.ExternalIdentitiesPage
 import com.mycorrhizal.crm.model.network.ImmichAssetsResponse
 import com.mycorrhizal.crm.model.network.ImmichAssetSummary
@@ -1555,6 +1556,16 @@ class ApiClient(
     suspend fun deleteExternalIdentity(id: String): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$EXTERNAL_IDENTITIES_PATH/$id")
 
+    /** GET /api/v1/external-activities?contact_id=… — cursor-paginated, full_resync (issue #836). */
+    suspend fun listExternalActivities(contactId: String, limit: Int = 100): Result<ExternalActivitiesPage> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$EXTERNAL_ACTIVITIES_PATH".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("contact_id", contactId)
+        urlBuilder.addQueryParameter("limit", limit.toString())
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(ExternalActivitiesPage::class.java).fromJson(body)
+        }
+    }
+
     /** GET /api/v1/immich/config — `has_api_key` gates the Immich UI entry points. */
     suspend fun getImmichConfig(): Result<ImmichConfigResponse> =
         executeGet("$PLACEHOLDER_ORIGIN$IMMICH_PATH/config") { _, body ->
@@ -1620,6 +1631,10 @@ class ApiClient(
         executePostEmpty("$IMMICH_PATH/test-connection") { _, body ->
             moshi.adapter(ImmichConnectionTestResult::class.java).fromJson(body)
         }
+
+    /** POST /api/v1/immich/sync — the manual "sync now" trigger (issue #836); response body ignored. */
+    suspend fun syncImmichNow(): Result<Unit> =
+        executePostEmpty("$IMMICH_PATH/sync") { _, _ -> Unit }
 
     /** GET /api/v1/paperless/config — `has_api_token` gates the Paperless UI entry points. */
     suspend fun getPaperlessConfig(): Result<PaperlessConfigResponse> =
@@ -2488,6 +2503,7 @@ class ApiClient(
         private const val ADMIN_JOB_RUNS_HEALTH_PATH = "$API_V1/admin/job-runs/health"
         private const val GRAPH_CONNECTIONS_PATH = "$API_V1/graph/connections"
         private const val EXTERNAL_IDENTITIES_PATH = "$API_V1/external-identities"
+        private const val EXTERNAL_ACTIVITIES_PATH = "$API_V1/external-activities"
         private const val IMMICH_PATH = "$API_V1/immich"
         private const val PAPERLESS_PATH = "$API_V1/paperless"
         private const val SEAFILE_PATH = "$API_V1/seafile"
