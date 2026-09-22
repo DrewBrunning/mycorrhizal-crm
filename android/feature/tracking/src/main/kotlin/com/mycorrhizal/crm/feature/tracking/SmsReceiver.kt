@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 class SmsReceiver private constructor(
     private val dependencyProvider: (Context) -> SmsDependencies,
     private val parseSms: (Intent) -> SmsEntry?,
+    private val findInboxId: (Context, String, Long) -> Long?,
     private val dispatcher: CoroutineDispatcher,
 ) : BroadcastReceiver() {
 
@@ -38,6 +39,7 @@ class SmsReceiver private constructor(
     constructor() : this(
         dependencyProvider = ::resolveSmsReceiverDependencies,
         parseSms = SmsReader::parseFromExtras,
+        findInboxId = ::findInboxIdForReceiver,
         dispatcher = Dispatchers.IO,
     )
 
@@ -48,6 +50,7 @@ class SmsReceiver private constructor(
         trackingSettings: TrackingSettingsRepository,
         dispatcher: CoroutineDispatcher,
         parseSms: (Intent) -> SmsEntry?,
+        findInboxId: (Context, String, Long) -> Long? = { _, _, _ -> null },
     ) : this(
         dependencyProvider = {
             SmsDependencies(
@@ -57,6 +60,7 @@ class SmsReceiver private constructor(
             )
         },
         parseSms = parseSms,
+        findInboxId = findInboxId,
         dispatcher = dispatcher,
     )
 
@@ -81,6 +85,23 @@ class SmsReceiver private constructor(
                 timestampMillis = sms.timestampMillis,
                 dedupe = false,
             )
+            // ADR 0019 / issue #1127: record the Inbox _id this broadcast just
+            // handled so the reconciliation worker's cursor never re-reads (and
+            // double-logs) it. Done unconditionally after capture, regardless of
+            // whether the row was staged or filtered — the cursor tracks "the
+            // broadcast has already seen this row," not "this row was staged";
+            // gating on STAGED would make every filtered/unknown-number text get
+            // re-evaluated (and double-counted) by every reconciliation run.
+            val address = sms.address
+            if (address != null) {
+                val inboxId = findInboxId(context.applicationContext, address, sms.timestampMillis)
+                if (inboxId != null) {
+                    val current = deps.trackingSettings.lastSmsInboxId() ?: 0L
+                    if (inboxId > current) {
+                        deps.trackingSettings.setLastSmsInboxId(inboxId)
+                    }
+                }
+            }
         }
     }
 
@@ -99,6 +120,15 @@ internal data class SmsDependencies(
     val contactRepository: ContactRepository,
     val trackingSettings: TrackingSettingsRepository,
 )
+
+/**
+ * Production default for [SmsReceiver]'s `findInboxId` seam (ADR 0019 / issue
+ * #1127). Unlike [resolveSmsReceiverDependencies] this needs only a [Context]
+ * and its [android.content.ContentResolver] — no Hilt component — so it is
+ * fully testable directly via Robolectric and is NOT excluded from coverage.
+ */
+private fun findInboxIdForReceiver(context: Context, address: String, dateMillis: Long): Long? =
+    SmsInboxReader(context.applicationContext.contentResolver).findId(address, dateMillis)
 
 // Production-only: resolves the real repositories from the app's Hilt entry
 // point for the manifest-instantiated receiver. Structurally untestable — it

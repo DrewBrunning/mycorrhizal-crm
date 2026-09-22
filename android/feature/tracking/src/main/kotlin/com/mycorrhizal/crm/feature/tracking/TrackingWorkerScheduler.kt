@@ -13,17 +13,20 @@ import java.util.concurrent.TimeUnit
  * Enqueues the periodic Phase-4 workers (§6.4). Idempotent — safe to call
  * from BootReceiver, the app entry point, and the Settings toggles.
  *
- * Issue #721 adds the two capture catch-ups to the periodic set: call-log sync
+ * Issue #721 adds the capture catch-ups to the periodic set: call-log sync
  * (the call itself is normally staged by PhoneStateReceiver's one-shot, but a
  * periodic catch-up is the recovery path for broadcasts that never fired) and
- * SMS backfill (the only way outgoing texts are ever observed). Both are
- * cheap no-ops when the corresponding opt-in or OS grant is missing. The
- * one-shot catch-ups ([enqueueCallLogCatchUp], [enqueueSmsBackfill]) are the
- * immediate runs the Settings toggle issues on a fresh permission grant, under
- * names distinct from the periodic chains so the two never cancel each other.
+ * SMS backfill (the only way outgoing texts are ever observed). ADR 0019 /
+ * issue #1127 adds a third: SMS Inbox reconciliation, the recovery path for a
+ * missed *incoming*-SMS broadcast (SmsReceiver already handles the live
+ * case). All three are cheap no-ops when the corresponding opt-in or OS grant
+ * is missing. The one-shot catch-ups ([enqueueCallLogCatchUp],
+ * [enqueueSmsBackfill]) are the immediate runs the Settings toggle issues on
+ * a fresh permission grant, under names distinct from the periodic chains so
+ * the two never cancel each other.
  *
  * Issue #1200: in a distribution build without the capture feature (the play
- * flavor) the two capture chains are not enqueued at all; see
+ * flavor) none of the three capture chains are enqueued at all; see
  * [schedulePeriodic]'s `callSmsCaptureAvailable`.
  */
 object TrackingWorkerScheduler {
@@ -38,6 +41,9 @@ object TrackingWorkerScheduler {
 
     /** Periodic outgoing-SMS backfill. */
     const val UNIQUE_SMS_BACKFILL = "sms-backfill"
+
+    /** Periodic incoming-SMS Inbox reconciliation (ADR 0019, issue #1127). */
+    const val UNIQUE_SMS_INBOX_RECONCILIATION = "sms-inbox-reconciliation"
 
     /** Periodic contact phone-index backfill (issue #1122). */
     const val UNIQUE_CONTACT_PHONE_INDEX_BACKFILL = "contact-phone-index-backfill"
@@ -55,6 +61,12 @@ object TrackingWorkerScheduler {
      *  by this cadence). */
     private const val CALL_LOG_CATCH_UP_MINUTES = 30L
     private const val SMS_BACKFILL_MINUTES = 15L
+
+    /** ADR 0019 / issue #1127: like the call-log catch-up, this is a recovery
+     *  net behind an already-live path (SmsReceiver's broadcast), not the sole
+     *  observation path the way SMS backfill is — so it shares the call-log
+     *  catch-up's 30-min cadence rather than the 15-min floor. */
+    private const val SMS_INBOX_RECONCILIATION_MINUTES = 30L
 
     /** Issue #1122: low-priority, bounded-batch — 30 min is plenty. */
     private const val CONTACT_PHONE_INDEX_BACKFILL_MINUTES = 30L
@@ -133,6 +145,16 @@ object TrackingWorkerScheduler {
                 UNIQUE_SMS_BACKFILL,
                 ExistingPeriodicWorkPolicy.UPDATE,
                 smsBackfill,
+            )
+
+            val smsInboxReconciliation = PeriodicWorkRequestBuilder<SmsInboxReconciliationWorker>(
+                SMS_INBOX_RECONCILIATION_MINUTES,
+                TimeUnit.MINUTES,
+            ).build()
+            workManager.enqueueUniquePeriodicWork(
+                UNIQUE_SMS_INBOX_RECONCILIATION,
+                ExistingPeriodicWorkPolicy.UPDATE,
+                smsInboxReconciliation,
             )
         }
 

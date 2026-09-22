@@ -102,6 +102,21 @@ class TrackingSettingsRepositoryImplTest {
         assertNull(repository.lastInteractionSyncAt())
     }
 
+    // ADR 0019 / issue #1127: the SMS Inbox reconciliation cursor. Combined
+    // into one test (rather than a separate "defaults to null" test) so the
+    // null-default assertion can't be perturbed by another test method's
+    // write to this same key running first — mirrors why
+    // `lastInteractionSyncAt is null when never synced` above is safe: no
+    // other test in this class touches this key.
+    @Test
+    fun `lastSmsInboxId is null until set, then persists`() = runTest {
+        assertNull(repository.lastSmsInboxId())
+
+        repository.setLastSmsInboxId(42L)
+
+        assertEquals(42L, repository.lastSmsInboxId())
+    }
+
     // --- Issue #1029: capture-policy escape hatch + dropped-count ----------
 
     @Test
