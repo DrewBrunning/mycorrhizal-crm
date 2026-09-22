@@ -309,6 +309,23 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun `contact field settings row invokes its navigation callback`() {
+        var opened = false
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(),
+                    onContactFieldSettings = { opened = true },
+                    onLogout = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Contact field settings").performScrollTo().performClick()
+        assertTrue(opened)
+    }
+
+    @Test
     fun `top-level settings no longer offers the duplicate suggest relationships action`() {
         composeTestRule.setContent {
             MycorrhizalTheme {

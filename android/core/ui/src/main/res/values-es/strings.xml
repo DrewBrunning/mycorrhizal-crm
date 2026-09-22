@@ -145,6 +145,15 @@
     <string name="contact_organization">Organización</string>
     <string name="contact_personal_info">Información personal</string>
     <string name="contact_online_services">Servicios en línea</string>
+    <!-- Issue #832: fields with no prior Android UI -->
+    <string name="contact_gender">Género</string>
+    <string name="contact_speak_to_as">Cómo dirigirse</string>
+    <string name="contact_pronouns">Pronombres</string>
+    <string name="contact_grammatical_gender">Género gramatical</string>
+    <string name="contact_keywords">Palabras clave</string>
+    <string name="contact_preferred_languages">Idiomas preferidos</string>
+    <string name="contact_anniversaries">Aniversarios</string>
+    <string name="contact_anniversary">Aniversario</string>
     <string name="contact_circles">Círculos</string>
     <string name="contact_tags">Etiquetas</string>
     <string name="contact_custom_fields">Campos personalizados</string>
@@ -276,6 +285,17 @@
     <string name="contact_personal_info_kind_expertise">Experiencia</string>
     <string name="contact_personal_info_kind_hobby">Pasatiempo</string>
     <string name="contact_personal_info_kind_interest">Interés</string>
+    <!-- Issue #832: SpeakToAs.grammaticalGenders[].value enum -->
+    <string name="contact_gramgender_animate">Animado</string>
+    <string name="contact_gramgender_common">Común</string>
+    <string name="contact_gramgender_feminine">Femenino</string>
+    <string name="contact_gramgender_inanimate">Inanimado</string>
+    <string name="contact_gramgender_masculine">Masculino</string>
+    <string name="contact_gramgender_neuter">Neutro</string>
+    <!-- Issue #832: Card.anniversaries[].kind enum -->
+    <string name="contact_anniversary_kind_birth">Nacimiento</string>
+    <string name="contact_anniversary_kind_death">Fallecimiento</string>
+    <string name="contact_anniversary_kind_wedding">Boda</string>
     <!-- M7: nuevas secciones del formulario -->
     <string name="contact_department">Departamento</string>
     <string name="contact_job_titles">Cargos</string>
@@ -866,6 +886,15 @@
     <string name="tags_contacts_empty">Ningún contacto etiquetado</string>
 
     <!-- Custom field definitions (issue #830) -->
+    <!-- Contact field settings (issue #832, web parity) -->
+    <string name="settings_contact_fields_title">Configuración de campos de contacto</string>
+    <string name="settings_contact_fields_description">Elige qué campos de contacto aparecen al ver o editar un contacto.</string>
+    <string name="settings_contact_fields_group_communication">Comunicación</string>
+    <string name="settings_contact_fields_group_name">Nombre</string>
+    <string name="settings_contact_fields_group_work">Trabajo</string>
+    <string name="settings_contact_fields_group_personal">Personal</string>
+    <string name="settings_contact_fields_group_mycorrhizal">Mycorrhizal</string>
+
     <string name="settings_custom_fields_title">Campos personalizados</string>
     <string name="settings_custom_fields_empty">Aún no hay campos personalizados</string>
     <string name="settings_custom_fields_new_title">Nuevo campo personalizado</string>

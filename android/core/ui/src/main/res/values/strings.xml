@@ -147,6 +147,15 @@
     <string name="contact_organization">Organization</string>
     <string name="contact_personal_info">Personal information</string>
     <string name="contact_online_services">Online services</string>
+    <!-- Issue #832: fields with no prior Android UI -->
+    <string name="contact_gender">Gender</string>
+    <string name="contact_speak_to_as">Speak to as</string>
+    <string name="contact_pronouns">Pronouns</string>
+    <string name="contact_grammatical_gender">Grammatical gender</string>
+    <string name="contact_keywords">Keywords</string>
+    <string name="contact_preferred_languages">Preferred languages</string>
+    <string name="contact_anniversaries">Anniversaries</string>
+    <string name="contact_anniversary">Anniversary</string>
     <string name="contact_circles">Circles</string>
     <string name="contact_tags">Tags</string>
     <string name="contact_custom_fields">Custom fields</string>
@@ -281,6 +290,17 @@
     <string name="contact_personal_info_kind_expertise">Expertise</string>
     <string name="contact_personal_info_kind_hobby">Hobby</string>
     <string name="contact_personal_info_kind_interest">Interest</string>
+    <!-- Issue #832: SpeakToAs.grammaticalGenders[].value enum -->
+    <string name="contact_gramgender_animate">Animate</string>
+    <string name="contact_gramgender_common">Common</string>
+    <string name="contact_gramgender_feminine">Feminine</string>
+    <string name="contact_gramgender_inanimate">Inanimate</string>
+    <string name="contact_gramgender_masculine">Masculine</string>
+    <string name="contact_gramgender_neuter">Neuter</string>
+    <!-- Issue #832: Card.anniversaries[].kind enum -->
+    <string name="contact_anniversary_kind_birth">Birth</string>
+    <string name="contact_anniversary_kind_death">Death</string>
+    <string name="contact_anniversary_kind_wedding">Wedding</string>
     <!-- M7: new form sections -->
     <string name="contact_department">Department</string>
     <string name="contact_job_titles">Job titles</string>
@@ -875,6 +895,15 @@
     <string name="tags_contact_vcard_uid">Contact VCard UID</string>
     <string name="tags_empty">No tags yet</string>
     <string name="tags_contacts_empty">No contacts tagged</string>
+
+    <!-- Contact field settings (issue #832, web parity) -->
+    <string name="settings_contact_fields_title">Contact field settings</string>
+    <string name="settings_contact_fields_description">Choose which contact fields appear when viewing or editing a contact.</string>
+    <string name="settings_contact_fields_group_communication">Communication</string>
+    <string name="settings_contact_fields_group_name">Name</string>
+    <string name="settings_contact_fields_group_work">Work</string>
+    <string name="settings_contact_fields_group_personal">Personal</string>
+    <string name="settings_contact_fields_group_mycorrhizal">Mycorrhizal</string>
 
     <!-- Custom field definitions (issue #830) -->
     <string name="settings_custom_fields_title">Custom fields</string>

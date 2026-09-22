@@ -120,6 +120,7 @@ import com.mycorrhizal.crm.feature.imports.ImportContactsScreen
 import com.mycorrhizal.crm.feature.imports.VcfImportScreen
 import com.mycorrhizal.crm.feature.network.NetworkScreen
 import com.mycorrhizal.crm.feature.relationships.RelationshipsScreen
+import com.mycorrhizal.crm.feature.settings.ContactFieldSettingsScreen
 import com.mycorrhizal.crm.feature.settings.CustomLinkActionsScreen
 import com.mycorrhizal.crm.feature.settings.DataScreen
 import com.mycorrhizal.crm.feature.settings.FieldDefinitionFormScreen
@@ -1213,6 +1214,8 @@ private fun AppNavGraph(
                 onData = { navController.navigate("data") },
                 // Issue #830: the custom field-definition management screen.
                 onManageCustomFields = { navController.navigate("custom-field-definitions") },
+                // Issue #832: the enabled-contact-fields toggle screen.
+                onContactFieldSettings = { navController.navigate("contact-field-settings") },
                 // Issue #348: admin user management.
                 onManageUsers = { navController.navigate("admin/users") },
                 // Issue #424: the operational-event timeline.
@@ -1286,6 +1289,12 @@ private fun AppNavGraph(
         // Issue #236: the Immich connection-config settings screen.
         composable("immich-settings") {
             ImmichSettingsScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+        // Issue #832: per-field show/edit toggles for the contact detail/form screens.
+        composable("contact-field-settings") {
+            ContactFieldSettingsScreen(
                 onBack = { navController.popBackStack() },
             )
         }
