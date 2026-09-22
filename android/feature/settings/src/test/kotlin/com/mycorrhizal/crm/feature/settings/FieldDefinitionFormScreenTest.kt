@@ -4,10 +4,19 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
+import androidx.lifecycle.SavedStateHandle
+import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
+import com.mycorrhizal.crm.model.network.FieldDefinition
+import com.mycorrhizal.crm.model.network.FieldDefinitionInput
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -132,5 +141,87 @@ class FieldDefinitionFormScreenTest {
         composeTestRule.onNodeWithText("Number").performClick()
 
         assertEquals("number", chosen)
+    }
+
+    // --- The real top-level FieldDefinitionFormScreen (ViewModel + nav + snackbar wiring) ---
+
+    private fun setScreen(
+        fieldDefinitionId: String? = null,
+        onBack: () -> Unit = {},
+        onSaved: () -> Unit = {},
+    ): FieldDefinitionRepository {
+        val repository = mockk<FieldDefinitionRepository>()
+        if (fieldDefinitionId != null) {
+            coEvery { repository.get(fieldDefinitionId) } returns Result.success(
+                FieldDefinition(id = fieldDefinitionId, label = "Coffee order", key = "coffee_order", type = "string"),
+            )
+        }
+        val savedStateHandle = if (fieldDefinitionId != null) {
+            SavedStateHandle(mapOf("fieldDefinitionId" to fieldDefinitionId))
+        } else {
+            SavedStateHandle()
+        }
+        val viewModel = FieldDefinitionFormViewModel(repository, savedStateHandle)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                FieldDefinitionFormScreen(onSaved = onSaved, onBack = onBack, viewModel = viewModel)
+            }
+        }
+        return repository
+    }
+
+    @Test
+    fun `the create screen shows the new-field title`() {
+        setScreen()
+
+        composeTestRule.onNodeWithText("New custom field").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the edit screen loads the existing definition and shows the edit title`() {
+        setScreen(fieldDefinitionId = "d1")
+
+        composeTestRule.onNodeWithText("Edit custom field").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Coffee order").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `tapping back invokes onBack`() {
+        var backCalled = false
+        setScreen(onBack = { backCalled = true })
+
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+
+        assertEquals(true, backCalled)
+    }
+
+    @Test
+    fun `a successful save invokes onSaved`() {
+        var savedCalled = false
+        val repository = setScreen(onSaved = { savedCalled = true })
+        coEvery { repository.create(any()) } returns Result.success(
+            FieldDefinition(id = "d1", label = "Coffee order", key = "coffee_order", type = "string"),
+        )
+
+        composeTestRule.onNodeWithText("Label").performScrollTo().performTextInput("Coffee order")
+        composeTestRule.onNodeWithText("Key").performScrollTo().performTextInput("coffee_order")
+        composeTestRule.onNodeWithText("Create").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals(true, savedCalled)
+    }
+
+    @Test
+    fun `a save failure surfaces the error as a snackbar without invoking onSaved`() {
+        var savedCalled = false
+        val repository = setScreen(onSaved = { savedCalled = true })
+        coEvery { repository.create(any()) } returns Result.failure(ApiError.Client(409, "already exists"))
+
+        composeTestRule.onNodeWithText("Label").performScrollTo().performTextInput("Coffee order")
+        composeTestRule.onNodeWithText("Key").performScrollTo().performTextInput("coffee_order")
+        composeTestRule.onNodeWithText("Create").performScrollTo().performClick()
+
+        composeTestRule.onNodeWithText("already exists").assertIsDisplayed()
+        assertEquals(false, savedCalled)
     }
 }

@@ -222,4 +222,140 @@ class FieldDefinitionFormViewModelTest {
         vm.removeEnumValue(0)
         assertEquals(listOf("Espresso"), vm.uiState.value.enumValues)
     }
+
+    @Test
+    fun `a successful enum save builds a non-empty values constraint`() = runTest(mainDispatcherRule.testDispatcher) {
+        val slot = slot<FieldDefinitionInput>()
+        coEvery { repository.create(capture(slot)) } returns Result.success(
+            FieldDefinition(id = "d1", label = "Milk", key = "milk", type = "enum"),
+        )
+
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        vm.onLabelChange("Milk")
+        vm.onKeyChange("milk")
+        vm.onTypeChange("enum")
+        vm.addEnumValue()
+        vm.addEnumValue()
+        vm.updateEnumValue(0, "Oat")
+        vm.updateEnumValue(1, "Almond")
+        vm.save()
+        advanceUntilIdle()
+
+        assertEquals(FieldDefinitionFormEvent.Saved, vm.events.value)
+        assertEquals(listOf("Oat", "Almond"), slot.captured.constraints?.values)
+    }
+
+    @Test
+    fun `a successful vcard-projection save builds the vcard-X- prefixed projection string`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val slot = slot<FieldDefinitionInput>()
+            coEvery { repository.create(capture(slot)) } returns Result.success(
+                FieldDefinition(id = "d1", label = "Coffee order", key = "coffee_order", type = "string"),
+            )
+
+            val vm = createViewModel()
+            advanceUntilIdle()
+
+            vm.onLabelChange("Coffee order")
+            vm.onKeyChange("coffee_order")
+            vm.onProjectionModeChange("vcard")
+            vm.onVcardNameChange("COFFEE")
+            vm.save()
+            advanceUntilIdle()
+
+            assertEquals(FieldDefinitionFormEvent.Saved, vm.events.value)
+            assertEquals("vcard:X-COFFEE", slot.captured.projection)
+        }
+
+    @Test
+    fun `loadExisting failure surfaces the error and leaves the form in create-mode defaults`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.get("d1") } returns Result.failure(ApiError.Client(500, "boom"))
+
+            val vm = editViewModel()
+            advanceUntilIdle()
+
+            assertEquals("boom", vm.uiState.value.error)
+            assertFalse(vm.uiState.value.isLoading)
+            assertTrue(vm.uiState.value.isEdit) // the id from SavedStateHandle is unaffected by the load failure
+        }
+
+    @Test
+    fun `an edit-mode min constraint keeps a real decimal rather than truncating`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.get("d1") } returns Result.success(
+                FieldDefinition(
+                    id = "d1",
+                    label = "Rating",
+                    key = "rating",
+                    type = "number",
+                    constraints = FieldConstraints(min = 1.5, max = 10.0),
+                ),
+            )
+
+            val vm = editViewModel()
+            advanceUntilIdle()
+
+            assertEquals("1.5", vm.uiState.value.min)
+            assertEquals("10", vm.uiState.value.max) // a whole number drops the trailing .0
+        }
+
+    @Test
+    fun `the remaining field setters update their own state slice`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        vm.onMultiChange(true)
+        assertTrue(vm.uiState.value.multi)
+
+        vm.onMaxLengthChange("100")
+        assertEquals("100", vm.uiState.value.maxLength)
+
+        vm.onPatternChange("^[a-z]+$")
+        assertEquals("^[a-z]+$", vm.uiState.value.pattern)
+
+        vm.onVcardNameChange("CUSTOM")
+        assertEquals("CUSTOM", vm.uiState.value.vcardName)
+
+        vm.onSensitivityChange("secret")
+        assertEquals("secret", vm.uiState.value.sensitivity)
+    }
+
+    @Test
+    fun `onErrorShown clears both the resource and string error`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        vm.onLabelChange("")
+        vm.save()
+        advanceUntilIdle()
+        assertEquals(R.string.settings_custom_fields_error_label_required, vm.uiState.value.errorRes)
+
+        vm.onErrorShown()
+
+        assertNull(vm.uiState.value.errorRes)
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `onEventShown clears the Saved event`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { repository.create(any()) } returns Result.success(
+            FieldDefinition(id = "d1", label = "Coffee order", key = "coffee_order", type = "string"),
+        )
+
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        vm.onLabelChange("Coffee order")
+        vm.onKeyChange("coffee_order")
+        vm.save()
+        advanceUntilIdle()
+        assertEquals(FieldDefinitionFormEvent.Saved, vm.events.value)
+
+        vm.onEventShown()
+
+        assertNull(vm.events.value)
+    }
 }
