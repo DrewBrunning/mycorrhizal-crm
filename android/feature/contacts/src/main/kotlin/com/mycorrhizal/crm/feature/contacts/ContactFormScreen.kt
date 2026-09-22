@@ -123,6 +123,7 @@ fun ContactFormScreen(
                 onSuffixChange = viewModel::onSuffixChange,
                 onNicknameChange = viewModel::onNicknameChange,
                 onKindChange = viewModel::onKindChange,
+                onCardKindChange = viewModel::onCardKindChange,
                 onLanguageChange = viewModel::onLanguageChange,
                 onEmailsChange = viewModel::onEmailsChange,
                 onPhonesChange = viewModel::onPhonesChange,
@@ -173,6 +174,7 @@ fun ContactFormContent(
     onSuffixChange: (String) -> Unit = {},
     onNicknameChange: (String) -> Unit,
     onKindChange: (String) -> Unit = {},
+    onCardKindChange: (String) -> Unit = {},
     onLanguageChange: (String) -> Unit = {},
     onEmailsChange: (List<Email>) -> Unit,
     onPhonesChange: (List<Phone>) -> Unit,
@@ -279,7 +281,10 @@ fun ContactFormContent(
         }
 
         // M24: kind (human/animal) — the backend defaults to human; this makes it explicit.
-        if (ContactFieldKey.CARD_KIND in enabled) {
+        // Deliberately never gated: web never lists crm.kind in contactFields.ts, same
+        // always-shown treatment as givenName/surname (a prior pass gated this by mistake —
+        // ContactFieldKey.CARD_KIND is a different field, see below).
+        run {
             var kindMenuExpanded by remember { mutableStateOf(false) }
             Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
@@ -318,6 +323,18 @@ fun ContactFormContent(
                     )
                 }
             }
+        }
+
+        // Issue #832: Card.kind (RFC 9553 §2.1.4) — the real `cardKind` toggle key. An
+        // edit-only field on web too (no detail-screen counterpart there either).
+        if (ContactFieldKey.CARD_KIND in enabled) {
+            com.mycorrhizal.crm.ui.components.TypeDropdown(
+                current = state.cardKind.ifBlank { null },
+                options = com.mycorrhizal.crm.ui.components.CARD_KIND_OPTIONS,
+                onTypeChange = { onCardKindChange(it.orEmpty()) },
+                modifier = Modifier.fillMaxWidth(),
+                label = stringResource(R.string.contact_card_kind_label),
+            )
         }
 
         // M24: default language tag (web's LanguageField is a full picker; a text field is the

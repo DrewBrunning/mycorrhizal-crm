@@ -301,6 +301,14 @@
     <string name="contact_anniversary_kind_birth">Birth</string>
     <string name="contact_anniversary_kind_death">Death</string>
     <string name="contact_anniversary_kind_wedding">Wedding</string>
+    <!-- Issue #832: Card.kind enum (RFC 9553 §2.1.4) — distinct from crm.kind (human/animal) -->
+    <string name="contact_card_kind_label">Card kind</string>
+    <string name="contact_card_kind_individual">Individual</string>
+    <string name="contact_card_kind_group">Group</string>
+    <string name="contact_card_kind_org">Organization</string>
+    <string name="contact_card_kind_location">Location</string>
+    <string name="contact_card_kind_application">Application</string>
+    <string name="contact_card_kind_device">Device</string>
     <!-- M7: new form sections -->
     <string name="contact_department">Department</string>
     <string name="contact_job_titles">Job titles</string>

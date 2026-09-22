@@ -42,6 +42,7 @@ class ContactFormScreenTest {
         onGrammaticalGendersChange: (List<com.mycorrhizal.crm.model.network.GrammaticalGender>) -> Unit = {},
         onKeywordsChange: (List<String>) -> Unit = {},
         onAnniversariesChange: (List<com.mycorrhizal.crm.model.network.Anniversary>) -> Unit = {},
+        onCardKindChange: (String) -> Unit = {},
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -61,6 +62,7 @@ class ContactFormScreenTest {
                     onPersonalInfoChange = {},
                     onBirthdayChange = {},
                     onCardNotesChange = onCardNotesChange,
+                    onCardKindChange = onCardKindChange,
                     onGenderChange = onGenderChange,
                     onPreferredLanguagesChange = onPreferredLanguagesChange,
                     onPronounsChange = onPronounsChange,
@@ -95,6 +97,7 @@ class ContactFormScreenTest {
         composeTestRule.onNodeWithText("Surname").assertIsDisplayed()
         composeTestRule.onNodeWithText("Prefix").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Kind").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Card kind").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Language").performScrollTo().assertIsDisplayed()
         // M7: the previously read-only/invisible field groups now have editors.
         composeTestRule.onNodeWithText("Address").performScrollTo().assertIsDisplayed()
@@ -276,6 +279,41 @@ class ContactFormScreenTest {
         setContent(state = ContactFormState(enabledFields = emptySet()))
         composeTestRule.onNodeWithText("Given name").assertIsDisplayed()
         composeTestRule.onNodeWithText("Surname").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the human-animal kind dropdown is never gated either`() {
+        // crm.kind has no ContactFieldKey on web — same always-shown rule as
+        // givenName/surname. A prior pass wired ContactFieldKey.CARD_KIND to this
+        // dropdown by mistake; that key now correctly gates a separate field (below).
+        setContent(state = ContactFormState(enabledFields = emptySet()))
+        composeTestRule.onNodeWithText("Kind").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the real cardKind dropdown is gated and distinct from the kind dropdown`() {
+        setContent(
+            state = ContactFormState(enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.CARD_KIND),
+        )
+        composeTestRule.onNodeWithText("Card kind").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `the cardKind dropdown does not render when its key is disabled`() {
+        setContent(state = ContactFormState(enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS))
+        composeTestRule.onNodeWithText("Card kind").assertDoesNotExist()
+    }
+
+    @Test
+    fun `selecting a cardKind option forwards its token`() {
+        var cardKind: String? = null
+        setContent(
+            state = ContactFormState(enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.CARD_KIND),
+            onCardKindChange = { cardKind = it },
+        )
+        composeTestRule.onNodeWithText("Card kind").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Organization").performClick()
+        assertEquals("org", cardKind)
     }
 
     @Test

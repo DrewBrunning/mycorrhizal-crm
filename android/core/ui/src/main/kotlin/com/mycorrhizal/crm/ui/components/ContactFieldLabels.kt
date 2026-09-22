@@ -40,7 +40,7 @@ fun contactFieldLabel(key: ContactFieldKey): String = when (key) {
     ContactFieldKey.KEYWORDS -> stringResource(R.string.contact_keywords)
     ContactFieldKey.CARD_NOTES -> stringResource(R.string.contact_notes)
     ContactFieldKey.PREFERRED_LANGUAGES -> stringResource(R.string.contact_preferred_languages)
-    ContactFieldKey.CARD_KIND -> stringResource(R.string.contact_kind)
+    ContactFieldKey.CARD_KIND -> stringResource(R.string.contact_card_kind_label)
     ContactFieldKey.LANGUAGE -> stringResource(R.string.contact_language)
 }
 

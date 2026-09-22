@@ -65,7 +65,15 @@ enum class ContactFieldGroup {
     MYCORRHIZAL,
 }
 
-/** Each key's group, in the same section a web toggle for it appears under. */
+/**
+ * Each key's group, in the same section a web toggle for it appears under —
+ * copied field-for-field from web's `CONTACT_FIELDS` array, not derived by
+ * guessing at a "sensible" grouping. Several of these are counterintuitive
+ * (`gender`/`birthday`/`anniversaries` are `personal`, not `name`;
+ * `how_we_met`/`contact_information` are `mycorrhizal` but `work_information`
+ * is `work`) — a prior pass here got 8 of these wrong by working from a
+ * research summary instead of `frontend/src/contactFields.ts` itself.
+ */
 val CONTACT_FIELD_GROUP: Map<ContactFieldKey, ContactFieldGroup> = mapOf(
     ContactFieldKey.EMAILS to ContactFieldGroup.COMMUNICATION,
     ContactFieldKey.PHONES to ContactFieldGroup.COMMUNICATION,
@@ -74,26 +82,26 @@ val CONTACT_FIELD_GROUP: Map<ContactFieldKey, ContactFieldGroup> = mapOf(
     ContactFieldKey.IMPP_ADDRESSES to ContactFieldGroup.COMMUNICATION,
     ContactFieldKey.SOCIAL_PROFILES to ContactFieldGroup.COMMUNICATION,
     ContactFieldKey.OTHER_ONLINE_SERVICES to ContactFieldGroup.COMMUNICATION,
-    ContactFieldKey.NICKNAME to ContactFieldGroup.NAME,
-    ContactFieldKey.GENDER to ContactFieldGroup.NAME,
-    ContactFieldKey.BIRTHDAY to ContactFieldGroup.NAME,
-    ContactFieldKey.ANNIVERSARY to ContactFieldGroup.NAME,
-    ContactFieldKey.ANNIVERSARIES to ContactFieldGroup.NAME,
     ContactFieldKey.PREFIX to ContactFieldGroup.NAME,
     ContactFieldKey.MIDDLE_NAME to ContactFieldGroup.NAME,
     ContactFieldKey.SUFFIX to ContactFieldGroup.NAME,
+    ContactFieldKey.NICKNAME to ContactFieldGroup.NAME,
     ContactFieldKey.ORGANIZATIONS to ContactFieldGroup.WORK,
     ContactFieldKey.TITLES to ContactFieldGroup.WORK,
-    ContactFieldKey.HOW_WE_MET to ContactFieldGroup.WORK,
     ContactFieldKey.WORK_INFORMATION to ContactFieldGroup.WORK,
-    ContactFieldKey.CONTACT_INFORMATION to ContactFieldGroup.WORK,
+    ContactFieldKey.GENDER to ContactFieldGroup.PERSONAL,
+    ContactFieldKey.BIRTHDAY to ContactFieldGroup.PERSONAL,
+    ContactFieldKey.ANNIVERSARY to ContactFieldGroup.PERSONAL,
+    ContactFieldKey.ANNIVERSARIES to ContactFieldGroup.PERSONAL,
     ContactFieldKey.SPEAK_TO_AS to ContactFieldGroup.PERSONAL,
     ContactFieldKey.PERSONAL_INFO to ContactFieldGroup.PERSONAL,
     ContactFieldKey.KEYWORDS to ContactFieldGroup.PERSONAL,
     ContactFieldKey.CARD_NOTES to ContactFieldGroup.PERSONAL,
     ContactFieldKey.PREFERRED_LANGUAGES to ContactFieldGroup.PERSONAL,
-    ContactFieldKey.CARD_KIND to ContactFieldGroup.MYCORRHIZAL,
-    ContactFieldKey.LANGUAGE to ContactFieldGroup.MYCORRHIZAL,
+    ContactFieldKey.CARD_KIND to ContactFieldGroup.PERSONAL,
+    ContactFieldKey.LANGUAGE to ContactFieldGroup.PERSONAL,
+    ContactFieldKey.HOW_WE_MET to ContactFieldGroup.MYCORRHIZAL,
+    ContactFieldKey.CONTACT_INFORMATION to ContactFieldGroup.MYCORRHIZAL,
 )
 
 /** Section render order — mirrors web's `CONTACT_FIELD_GROUPS` array order. */

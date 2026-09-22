@@ -1293,6 +1293,56 @@ class ContactFormViewModelTest {
     }
 
     @Test
+    fun `cardKind round-trips distinctly from crm kind`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"))), kind = "org"),
+            crm = CRMEnvelope(kind = "human"),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        assertEquals("org", vm.uiState.value.cardKind)
+        assertEquals("human", vm.uiState.value.kind)
+
+        vm.onCardKindChange("device")
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify {
+            contactRepository.updateContact(
+                5,
+                match<ContactRecordInput> { input -> input.card?.kind == "device" && input.crm?.kind == "human" },
+            )
+        }
+    }
+
+    @Test
+    fun `selecting None for cardKind clears it, unlike the preserve-on-blank text fields`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(
+                id = 5,
+                card = Card(name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"))), kind = "org"),
+            )
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+            coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+
+            val vm = createViewModel(5)
+            advanceUntilIdle()
+            assertEquals("org", vm.uiState.value.cardKind)
+
+            vm.onCardKindChange("") // "None" selected
+            vm.save()
+            advanceUntilIdle()
+
+            coVerify {
+                contactRepository.updateContact(5, match<ContactRecordInput> { it.card?.kind == null })
+            }
+        }
+
+    @Test
     fun `enabledFields resolves from the session and re-emits on change`() = runTest(mainDispatcherRule.testDispatcher) {
         val vm = createViewModel()
         // Re-stub after creation, before advanceUntilIdle — createViewModel()'s own default

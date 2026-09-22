@@ -70,6 +70,14 @@ val GRAMMATICAL_GENDER_OPTIONS = listOf("animate", "common", "feminine", "inanim
 /** Issue #832: `Card.anniversaries[].kind` enum. */
 val ANNIVERSARY_KIND_OPTIONS = listOf("birth", "death", "wedding")
 
+/**
+ * Issue #832: RFC 9553 §2.1.4 `Card.kind` enum — distinct from the envelope-side
+ * `crm.kind` (human|animal, never gated, see `ContactFormState.kind`). This is
+ * the actual `cardKind` toggle key; a prior pass wired that key to the
+ * human/animal dropdown by mistake.
+ */
+val CARD_KIND_OPTIONS = listOf("individual", "group", "org", "location", "application", "device")
+
 /** Localized label for a type-option token; unrecognized tokens render verbatim. */
 @Composable
 fun typeOptionLabel(token: String): String = when (token) {
@@ -96,6 +104,12 @@ fun typeOptionLabel(token: String): String = when (token) {
     "birth" -> stringResource(R.string.contact_anniversary_kind_birth)
     "death" -> stringResource(R.string.contact_anniversary_kind_death)
     "wedding" -> stringResource(R.string.contact_anniversary_kind_wedding)
+    "individual" -> stringResource(R.string.contact_card_kind_individual)
+    "group" -> stringResource(R.string.contact_card_kind_group)
+    "org" -> stringResource(R.string.contact_card_kind_org)
+    "location" -> stringResource(R.string.contact_card_kind_location)
+    "application" -> stringResource(R.string.contact_card_kind_application)
+    "device" -> stringResource(R.string.contact_card_kind_device)
     else -> token
 }
 
@@ -470,7 +484,9 @@ private fun <T> MultiValueRow(
 /**
  * A read-only type/label dropdown (home/work/cell/…). Selecting a standard
  * option stores its token; a loaded token not in [options] (free-text custom
- * labels round-trip via CardDAV X-ABLabel) renders verbatim.
+ * labels round-trip via CardDAV X-ABLabel) renders verbatim. [label] defaults
+ * to the generic "Type" caption [MultiValueRow] uses; a standalone top-level
+ * field (e.g. Card.kind) passes its own field name instead.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -479,6 +495,7 @@ fun TypeDropdown(
     options: List<String>,
     onTypeChange: (String?) -> Unit,
     modifier: Modifier = Modifier,
+    label: String = stringResource(R.string.contact_field_type),
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
@@ -490,7 +507,7 @@ fun TypeDropdown(
             value = current?.takeIf { it.isNotBlank() }?.let { typeOptionLabel(it) }.orEmpty(),
             onValueChange = {},
             readOnly = true,
-            label = { Text(stringResource(R.string.contact_field_type)) },
+            label = { Text(label) },
             singleLine = true,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier

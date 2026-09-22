@@ -75,8 +75,15 @@ data class ContactFormState(
     val suffix: String = "",
     val nickname: String = "",
     // M24: envelope-side entity kind (human|animal) — the backend default is human, matching
-    // web's AddContactDialog.
+    // web's AddContactDialog. Deliberately never gated by a ContactFieldKey — web never lists
+    // it in contactFields.ts, same always-shown treatment as givenName/surname.
     val kind: String = KIND_HUMAN,
+    // Issue #832: Card.kind (RFC 9553 §2.1.4: individual/group/org/location/application/device)
+    // — the real `cardKind` toggle key, distinct from [kind] above (crm.kind, human/animal).
+    // Blank means "no kind set"; unlike the free-text preserve-on-blank fields below, this is a
+    // controlled dropdown with an explicit "None" option, so blank is a deliberate clear, not
+    // "untouched" (see toInput).
+    val cardKind: String = "",
     // M24: the card's default language tag; defaults to the device locale on create, mirroring
     // web's defaultLanguage() (i18n.language).
     val language: String = "",
@@ -155,6 +162,10 @@ data class ContactFormState(
 
         val card = baseCard.copy(
             language = language.ifBlank { baseCard.language },
+            // Issue #832: a controlled dropdown, not a text field — an explicit "None"
+            // selection is a deliberate clear, so this does NOT preserve-on-blank the way
+            // howWeMet/workInformation/contactInformation below do.
+            kind = cardKind.ifBlank { null },
             name = mergeName(baseCard.name),
             nicknames = if (nickname.isNotBlank()) {
                 (baseCard.nicknames.orEmpty().let { existing ->
@@ -477,6 +488,7 @@ class ContactFormViewModel @Inject constructor(
     fun onSuffixChange(value: String) = _uiState.update { it.copy(suffix = value) }
     fun onNicknameChange(value: String) = _uiState.update { it.copy(nickname = value) }
     fun onKindChange(value: String) = _uiState.update { it.copy(kind = value) }
+    fun onCardKindChange(value: String) = _uiState.update { it.copy(cardKind = value) }
     fun onLanguageChange(value: String) = _uiState.update { it.copy(language = value) }
     // M7: each multi-value list takes the whole edited list from MultiValueEditor. The
     // editor only ever `.copy()`s the exact object at an index (never reconstructs), so
@@ -601,6 +613,7 @@ class ContactFormViewModel @Inject constructor(
         val suffix = name?.components?.firstOrNull { it.kind == "generation" }?.value ?: ""
         val nickname = card?.nicknames?.firstOrNull()?.name ?: ""
         val kind = record.crm?.kind ?: ContactFormState.KIND_HUMAN
+        val cardKind = card?.kind.orEmpty()
         val language = card?.language.orEmpty()
         // T81: load the entries as-is — no narrowing to a scalar — so id/contexts/pref/
         // features/label survive whatever the form saves next, even though the form only
@@ -635,6 +648,7 @@ class ContactFormViewModel @Inject constructor(
             suffix = suffix,
             nickname = nickname,
             kind = kind,
+            cardKind = cardKind,
             language = language,
             emails = emails,
             phones = phones,
