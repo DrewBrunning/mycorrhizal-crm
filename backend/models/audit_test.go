@@ -1,13 +1,16 @@
 package models
 
 import (
+	"bytes"
 	"encoding/json"
 	"strconv"
 	"testing"
 	"time"
 
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/logger"
 
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -167,6 +170,42 @@ func TestAudit_UpdateEventStoresBeforeSnapshot(t *testing.T) {
 	var before Contact
 	require.NoError(t, json.Unmarshal([]byte(event.BeforeSnapshot), &before))
 	assert.Equal(t, "Before", before.Firstname, "the before snapshot must capture the pre-update firstname")
+}
+
+// TestAudit_BeforeSnapshotQueryFailureIsLogged pins the fix for a silent
+// swallow: auditBeforeSave's pre-update re-query used to drop any error on
+// the floor, leaving state.before == "" with no trace — indistinguishable
+// from a legitimate "no prior state". A transient failure there (a
+// busy-timeout under real contention; a bogus/stale entityID here, which
+// exercises the identical err != nil branch) must now be logged so it can't
+// masquerade as a normal update and silently starve a before-snapshot
+// consumer like reach-out detection.
+func TestAudit_BeforeSnapshotQueryFailureIsLogged(t *testing.T) {
+	db := newAuditTestDB(t)
+	user := User{Username: "auditsnapfail", Password: "password123!A", Email: "auditsnapfail@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	contact := Contact{UserID: user.ID, Firstname: "Before"}
+	require.NoError(t, db.Create(&contact).Error)
+	AuditFlush()
+
+	buf := &bytes.Buffer{}
+	oldLogger := logger.Logger
+	oldLevel := zerolog.GlobalLevel()
+	logger.Logger = zerolog.New(buf)
+	zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	t.Cleanup(func() {
+		logger.Logger = oldLogger
+		zerolog.SetGlobalLevel(oldLevel)
+	})
+
+	tx := db.Session(&gorm.Session{})
+	auditBeforeSave[Contact](tx, AuditEntityContact, contact.ID+999999, false)
+
+	state, ok := tx.Statement.Context.Value(auditStateKey).(*auditState)
+	require.True(t, ok)
+	assert.Empty(t, state.before, "a failed re-query must still leave before empty, not a stale/wrong snapshot")
+	assert.Contains(t, buf.String(), "audit: failed to load pre-update state for before-snapshot")
+	assert.Contains(t, buf.String(), `"entity_type":"contact"`)
 }
 
 // TestAudit_HookFailureDoesNotRollBackTheRealWrite verifies the fire-and-forget
