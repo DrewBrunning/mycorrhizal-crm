@@ -32,12 +32,20 @@ import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.mycorrhizal.crm.model.network.Anniversary
+import com.mycorrhizal.crm.model.network.AnniversaryDate
 import com.mycorrhizal.crm.model.network.Email
+import com.mycorrhizal.crm.model.network.GrammaticalGender
+import com.mycorrhizal.crm.model.network.LanguagePref
 import com.mycorrhizal.crm.model.network.OnlineService
+import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.PersonalInfo
 import com.mycorrhizal.crm.model.network.Phone
+import com.mycorrhizal.crm.model.network.Pronouns
 import com.mycorrhizal.crm.model.network.Resource
 import com.mycorrhizal.crm.model.network.Title
+import com.mycorrhizal.crm.model.util.formatForEdit
+import com.mycorrhizal.crm.model.util.parsePartialDateForEdit
 import com.mycorrhizal.crm.ui.R
 
 // ---------------------------------------------------------------------------
@@ -56,6 +64,12 @@ val CONTEXT_OPTIONS = listOf("private", "work", "school", "billing", "delivery")
 val TITLE_KIND_OPTIONS = listOf("title", "role")
 val PERSONAL_INFO_KIND_OPTIONS = listOf("expertise", "hobby", "interest")
 
+/** Issue #832: RFC 9553 `SpeakToAs.grammaticalGenders[].value` enum. */
+val GRAMMATICAL_GENDER_OPTIONS = listOf("animate", "common", "feminine", "inanimate", "masculine", "neuter")
+
+/** Issue #832: `Card.anniversaries[].kind` enum. */
+val ANNIVERSARY_KIND_OPTIONS = listOf("birth", "death", "wedding")
+
 /** Localized label for a type-option token; unrecognized tokens render verbatim. */
 @Composable
 fun typeOptionLabel(token: String): String = when (token) {
@@ -73,6 +87,15 @@ fun typeOptionLabel(token: String): String = when (token) {
     "expertise" -> stringResource(R.string.contact_personal_info_kind_expertise)
     "hobby" -> stringResource(R.string.contact_personal_info_kind_hobby)
     "interest" -> stringResource(R.string.contact_personal_info_kind_interest)
+    "animate" -> stringResource(R.string.contact_gramgender_animate)
+    "common" -> stringResource(R.string.contact_gramgender_common)
+    "feminine" -> stringResource(R.string.contact_gramgender_feminine)
+    "inanimate" -> stringResource(R.string.contact_gramgender_inanimate)
+    "masculine" -> stringResource(R.string.contact_gramgender_masculine)
+    "neuter" -> stringResource(R.string.contact_gramgender_neuter)
+    "birth" -> stringResource(R.string.contact_anniversary_kind_birth)
+    "death" -> stringResource(R.string.contact_anniversary_kind_death)
+    "wedding" -> stringResource(R.string.contact_anniversary_kind_wedding)
     else -> token
 }
 
@@ -215,6 +238,75 @@ object PersonalInfoSpec : MultiValueSpec<PersonalInfo> {
     override fun withPref(item: PersonalInfo, pref: Int?) = item
     override fun blank() = PersonalInfo(kind = "hobby", value = "")
     override val typeOptions = PERSONAL_INFO_KIND_OPTIONS
+    override val keyboardType = KeyboardType.Text
+    override val supportsPref = false
+}
+
+/** Issue #832: `Card.preferredLanguages[]` — nearly identical shape to [EmailSpec]. */
+object LanguagePrefSpec : MultiValueSpec<LanguagePref> {
+    override fun value(item: LanguagePref) = item.language.orEmpty()
+    override fun withValue(item: LanguagePref, value: String) = item.copy(language = value)
+    override fun type(item: LanguagePref) = item.contexts?.firstOrNull()
+    override fun withType(item: LanguagePref, type: String?) = item.copy(contexts = replaceFirstContext(item.contexts, type))
+    override fun pref(item: LanguagePref) = item.pref
+    override fun withPref(item: LanguagePref, pref: Int?) = item.copy(pref = pref)
+    override fun blank() = LanguagePref(language = "")
+    override val typeOptions = CONTEXT_OPTIONS
+    override val keyboardType = KeyboardType.Text
+}
+
+/** Issue #832: `SpeakToAs.pronouns[]` — same shape as [EmailSpec], free-text pronouns value. */
+object PronounsSpec : MultiValueSpec<Pronouns> {
+    override fun value(item: Pronouns) = item.pronouns.orEmpty()
+    override fun withValue(item: Pronouns, value: String) = item.copy(pronouns = value)
+    override fun type(item: Pronouns) = item.contexts?.firstOrNull()
+    override fun withType(item: Pronouns, type: String?) = item.copy(contexts = replaceFirstContext(item.contexts, type))
+    override fun pref(item: Pronouns) = item.pref
+    override fun withPref(item: Pronouns, pref: Int?) = item.copy(pref = pref)
+    override fun blank() = Pronouns(pronouns = "")
+    override val typeOptions = CONTEXT_OPTIONS
+    override val keyboardType = KeyboardType.Text
+}
+
+/**
+ * Issue #832: `SpeakToAs.grammaticalGenders[]` — the two editable fields are
+ * swapped relative to every other spec: the free-text "value" field edits
+ * [GrammaticalGender.language] (a BCP-47 tag), and the type dropdown edits
+ * [GrammaticalGender.value] (the animate/common/feminine/… enum) rather than
+ * a `contexts[0]`.
+ */
+object GrammaticalGenderSpec : MultiValueSpec<GrammaticalGender> {
+    override fun value(item: GrammaticalGender) = item.language.orEmpty()
+    override fun withValue(item: GrammaticalGender, value: String) = item.copy(language = value)
+    override fun type(item: GrammaticalGender) = item.value
+    override fun withType(item: GrammaticalGender, type: String?) = item.copy(value = type)
+    override fun pref(item: GrammaticalGender) = null
+    override fun withPref(item: GrammaticalGender, pref: Int?) = item
+    override fun blank() = GrammaticalGender(value = "common")
+    override val typeOptions = GRAMMATICAL_GENDER_OPTIONS
+    override val keyboardType = KeyboardType.Text
+    override val supportsPref = false
+}
+
+/**
+ * Issue #832: `Card.anniversaries[]`, filtered by the caller to non-`birth`
+ * entries — the existing scalar `birthday` field keeps owning `kind=="birth"`
+ * (see [ContactFormState.mergeBirthday]); this editor is for everything else
+ * (wedding/death/extra births beyond the one quick-entry field). The value
+ * field is the same round-trip date mask the birthday field has always used
+ * (`PartialDate.formatForEdit`/`parsePartialDateForEdit`), not a date picker
+ * — neither platform has one.
+ */
+object AnniversarySpec : MultiValueSpec<Anniversary> {
+    override fun value(item: Anniversary) = item.date?.partial?.formatForEdit().orEmpty()
+    override fun withValue(item: Anniversary, value: String) =
+        item.copy(date = AnniversaryDate(partial = parsePartialDateForEdit(value)))
+    override fun type(item: Anniversary) = item.kind
+    override fun withType(item: Anniversary, type: String?) = item.copy(kind = type)
+    override fun pref(item: Anniversary) = null
+    override fun withPref(item: Anniversary, pref: Int?) = item
+    override fun blank() = Anniversary(kind = "wedding", date = AnniversaryDate(partial = PartialDate()))
+    override val typeOptions = ANNIVERSARY_KIND_OPTIONS
     override val keyboardType = KeyboardType.Text
     override val supportsPref = false
 }
