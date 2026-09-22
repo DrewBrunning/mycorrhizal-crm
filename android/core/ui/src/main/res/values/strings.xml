@@ -1414,6 +1414,66 @@
     <string name="import_vcf_error_too_large">File is too large. Maximum size is 50MB.</string>
     <string name="import_vcf_error_invalid_file">Couldn\'t read that file. Choose a .vcf file.</string>
 
+    <!-- CSV file import (issue #834) -->
+    <string name="import_csv_entry">Import from a CSV file</string>
+    <string name="import_csv_title">Import CSV file</string>
+    <string name="import_csv_pick">Select a .csv file</string>
+    <string name="import_csv_pick_hint">Choose a .csv file exported from another app or service.</string>
+    <string name="import_csv_error_too_large">File is too large. Maximum size is 20MB.</string>
+    <string name="import_csv_error_invalid_file">Couldn\'t read that file. Choose a .csv file.</string>
+    <string name="import_csv_mapping_hint">Map each column to a contact field (%1$d rows).</string>
+    <string name="import_csv_mapping_ignore">-- Ignore --</string>
+    <string name="import_csv_mapping_continue">Continue</string>
+
+    <!-- CSV column-mapping field labels (issue #834) — mirrors frontend/src/api/import.ts's CONTACT_FIELD_LABELS -->
+    <string name="import_field_firstname">First Name</string>
+    <string name="import_field_lastname">Last Name</string>
+    <string name="import_field_middle_name">Middle Name</string>
+    <string name="import_field_prefix">Name Prefix</string>
+    <string name="import_field_suffix">Name Suffix</string>
+    <string name="import_field_nickname">Nickname</string>
+    <string name="import_field_gender">Gender</string>
+    <string name="import_field_birthday">Birthday</string>
+    <string name="import_field_anniversary">Anniversary</string>
+    <string name="import_field_email">Email</string>
+    <string name="import_field_email_label">Email – Type</string>
+    <string name="import_field_phone">Phone</string>
+    <string name="import_field_phone_label">Phone – Type</string>
+    <string name="import_field_address_street">Address – Street</string>
+    <string name="import_field_address_city">Address – City</string>
+    <string name="import_field_address_region">Address – Region/State</string>
+    <string name="import_field_address_postal">Address – Postal Code</string>
+    <string name="import_field_address_country">Address – Country</string>
+    <string name="import_field_address_label">Address – Type</string>
+    <string name="import_field_url">Website</string>
+    <string name="import_field_url_label">Website – Type</string>
+    <string name="import_field_impp">IM / Social</string>
+    <string name="import_field_impp_label">IM / Social – Type</string>
+    <string name="import_field_organization">Organization</string>
+    <string name="import_field_department">Department</string>
+    <string name="import_field_job_title">Job Title</string>
+    <string name="import_field_role">Role</string>
+    <string name="import_field_how_we_met">How We Met</string>
+    <string name="import_field_work_information">Work Information</string>
+    <string name="import_field_contact_information">Contact Information</string>
+    <string name="import_field_circles">Circles</string>
+    <string name="import_field_tags">Tags</string>
+
+    <!-- Import history (web parity, issue #651 / #834) -->
+    <string name="import_history_entry">Import history</string>
+    <string name="import_history_title">Import history</string>
+    <string name="import_history_empty">No imports yet.</string>
+    <string name="import_history_col_created">Created</string>
+    <string name="import_history_col_updated">Updated</string>
+    <string name="import_history_col_skipped">Skipped</string>
+    <string name="import_history_col_errors">Errors</string>
+    <string name="import_history_format_csv">CSV</string>
+    <string name="import_history_format_vcf">VCF</string>
+    <string name="import_history_format_jscontact">JSContact</string>
+    <string name="import_history_format_records">Device contacts</string>
+    <string name="import_history_format_monica">Monica</string>
+    <string name="import_history_format_meerkat">Meerkat</string>
+
     <!-- Audit trail (M16) -->
     <string name="nav_audit">Audit log</string>
     <string name="audit_title">Audit log</string>

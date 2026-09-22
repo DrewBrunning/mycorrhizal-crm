@@ -1406,6 +1406,66 @@
     <string name="import_vcf_error_too_large">Datei ist zu groß. Maximale Größe ist 50MB.</string>
     <string name="import_vcf_error_invalid_file">Datei konnte nicht gelesen werden. Wählen Sie eine .vcf-Datei.</string>
 
+    <!-- CSV file import (issue #834) -->
+    <string name="import_csv_entry">Aus CSV-Datei importieren</string>
+    <string name="import_csv_title">CSV-Datei importieren</string>
+    <string name="import_csv_pick">CSV-Datei auswählen</string>
+    <string name="import_csv_pick_hint">Wählen Sie eine .csv-Datei, die aus einer anderen App oder einem Dienst exportiert wurde.</string>
+    <string name="import_csv_error_too_large">Datei ist zu groß. Maximale Größe ist 20MB.</string>
+    <string name="import_csv_error_invalid_file">Datei konnte nicht gelesen werden. Wählen Sie eine .csv-Datei.</string>
+    <string name="import_csv_mapping_hint">Ordnen Sie jede Spalte einem Kontaktfeld zu (%1$d Zeilen).</string>
+    <string name="import_csv_mapping_ignore">-- Ignorieren --</string>
+    <string name="import_csv_mapping_continue">Weiter</string>
+
+    <!-- CSV-Spaltenzuordnung: Feldbezeichnungen (issue #834) -->
+    <string name="import_field_firstname">Vorname</string>
+    <string name="import_field_lastname">Nachname</string>
+    <string name="import_field_middle_name">Zweiter Vorname</string>
+    <string name="import_field_prefix">Namenspräfix</string>
+    <string name="import_field_suffix">Namenssuffix</string>
+    <string name="import_field_nickname">Spitzname</string>
+    <string name="import_field_gender">Geschlecht</string>
+    <string name="import_field_birthday">Geburtstag</string>
+    <string name="import_field_anniversary">Jahrestag</string>
+    <string name="import_field_email">E-Mail</string>
+    <string name="import_field_email_label">E-Mail – Typ</string>
+    <string name="import_field_phone">Telefon</string>
+    <string name="import_field_phone_label">Telefon – Typ</string>
+    <string name="import_field_address_street">Adresse – Straße</string>
+    <string name="import_field_address_city">Adresse – Stadt</string>
+    <string name="import_field_address_region">Adresse – Region/Bundesland</string>
+    <string name="import_field_address_postal">Adresse – Postleitzahl</string>
+    <string name="import_field_address_country">Adresse – Land</string>
+    <string name="import_field_address_label">Adresse – Typ</string>
+    <string name="import_field_url">Website</string>
+    <string name="import_field_url_label">Website – Typ</string>
+    <string name="import_field_impp">IM / Soziale Medien</string>
+    <string name="import_field_impp_label">IM / Soziale Medien – Typ</string>
+    <string name="import_field_organization">Organisation</string>
+    <string name="import_field_department">Abteilung</string>
+    <string name="import_field_job_title">Berufsbezeichnung</string>
+    <string name="import_field_role">Rolle</string>
+    <string name="import_field_how_we_met">Wie wir uns kennengelernt haben</string>
+    <string name="import_field_work_information">Arbeitsinformationen</string>
+    <string name="import_field_contact_information">Kontaktinformationen</string>
+    <string name="import_field_circles">Kreise</string>
+    <string name="import_field_tags">Schlagwörter</string>
+
+    <!-- Import-Verlauf (Web-Parität, issue #651 / #834) -->
+    <string name="import_history_entry">Importverlauf</string>
+    <string name="import_history_title">Importverlauf</string>
+    <string name="import_history_empty">Noch keine Importe.</string>
+    <string name="import_history_col_created">Erstellt</string>
+    <string name="import_history_col_updated">Aktualisiert</string>
+    <string name="import_history_col_skipped">Übersprungen</string>
+    <string name="import_history_col_errors">Fehler</string>
+    <string name="import_history_format_csv">CSV</string>
+    <string name="import_history_format_vcf">VCF</string>
+    <string name="import_history_format_jscontact">JSContact</string>
+    <string name="import_history_format_records">Gerätekontakte</string>
+    <string name="import_history_format_monica">Monica</string>
+    <string name="import_history_format_meerkat">Meerkat</string>
+
     <!-- Audit trail (M16) -->
     <string name="nav_audit">Audit-Protokoll</string>
     <string name="audit_title">Audit-Protokoll</string>

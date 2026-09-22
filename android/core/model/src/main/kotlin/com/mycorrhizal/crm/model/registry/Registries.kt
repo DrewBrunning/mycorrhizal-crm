@@ -16,6 +16,25 @@ package com.mycorrhizal.crm.model.registry
 // it goes stale, is the drift hazard trap 4 exists to warn about. Add new
 // relationship tokens to RelationshipEdgeTypes.
 
+/**
+ * Issue #834: the CSV import column-mapping dropdown's target-field
+ * vocabulary. Mirrors backend `models.ImportableContactFields` and
+ * `frontend/src/api/import.ts`'s `IMPORTABLE_CONTACT_FIELDS` by hand — no
+ * dynamic type-list endpoint (CLAUDE.md frontend trap #4).
+ */
+object ImportableContactFields {
+    val ALL = listOf(
+        "firstname", "lastname", "middle_name", "prefix", "suffix", "nickname", "gender",
+        "birthday", "anniversary",
+        "email", "email_label", "phone", "phone_label",
+        "address_street", "address_city", "address_region", "address_postal", "address_country", "address_label",
+        "url", "url_label", "impp", "impp_label",
+        "organization", "department", "job_title", "role",
+        "how_we_met", "work_information", "contact_information",
+        "circles", "tags",
+    )
+}
+
 object LifeEventCategory {
     const val HOME_LIVING = "home_living"
     const val HEALTH_WELLNESS = "health_wellness"

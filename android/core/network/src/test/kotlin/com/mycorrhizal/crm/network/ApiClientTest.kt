@@ -2654,6 +2654,86 @@ class ApiClientTest {
         assertTrue(body.contains("\"action\":\"update\""))
     }
 
+    // Issue #834: previewCsvImport was previously (mis)typed to take an
+    // ImportConfirmRequest ({session_id, actions}) — the backend's
+    // /contacts/import/preview route validates {session_id, mappings} and
+    // would have 400'd on the very first real call. Pins the corrected
+    // ImportPreviewRequest shape.
+    @Test
+    fun `previewCsvImport posts session id and column mappings to the preview path`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"session_id": "session-1", "rows": [{"row_index": 0, "suggested_action": "add"}],
+                        "total_rows": 1, "valid_rows": 1, "duplicate_count": 0, "error_count": 0}""",
+                ),
+        )
+
+        val result = client.previewCsvImport(
+            com.mycorrhizal.crm.model.network.ImportPreviewRequest(
+                sessionId = "session-1",
+                mappings = listOf(
+                    com.mycorrhizal.crm.model.network.ColumnMapping(csvColumn = "Name", contactField = "firstname", group = 0),
+                ),
+            ),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals("session-1", result.getOrThrow().sessionId)
+        assertEquals(1, result.getOrThrow().rows.size)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/import/preview", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"session_id\":\"session-1\""))
+        assertTrue(body.contains("\"mappings\""))
+        assertTrue(body.contains("\"csv_column\":\"Name\""))
+        assertTrue(body.contains("\"contact_field\":\"firstname\""))
+        assertFalse(body.contains("\"actions\""))
+    }
+
+    // Issue #834 (web parity, issue #651): GET /contacts/import/history existed with zero
+    // Android caller before this ticket wired an import-history screen to it.
+    @Test
+    fun `getImportHistory gets the history path and parses the run list newest first`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """[
+                        {"id": 2, "format": "csv", "total_processed": 4, "created": 3, "updated": 1, "skipped": 0, "error_count": 0, "created_at": "2026-09-20T12:00:00Z"},
+                        {"id": 1, "format": "vcf", "total_processed": 3, "created": 1, "updated": 0, "skipped": 2, "error_count": 1, "created_at": "2026-09-19T12:00:00Z"}
+                    ]""",
+                ),
+        )
+
+        val result = client.getImportHistory()
+
+        assertTrue(result.isSuccess)
+        val runs = result.getOrThrow()
+        assertEquals(2, runs.size)
+        assertEquals(2L, runs[0].id)
+        assertEquals("csv", runs[0].format)
+        assertEquals(3, runs[0].created)
+        assertEquals(1, runs[1].errorCount)
+
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/contacts/import/history", request.path)
+    }
+
+    @Test
+    fun `getImportHistory parses an empty history as an empty list`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("[]"))
+
+        val result = client.getImportHistory()
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().isEmpty())
+    }
+
     // --- M12: cadence policies (5 new client methods) ---
 
     @Test

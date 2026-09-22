@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
@@ -52,6 +53,9 @@ fun ImportContactsScreen(
     onMenuClick: (() -> Unit)? = {},
     onImported: () -> Unit = {},
     onImportVcf: () -> Unit = {},
+    // Issue #834: CSV-file import + import history, sibling entry points to onImportVcf.
+    onImportCsv: () -> Unit = {},
+    onImportHistory: () -> Unit = {},
     viewModel: ImportContactsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -71,6 +75,12 @@ fun ImportContactsScreen(
                 },
                 title = {
                     Text(stringResource(R.string.import_title), style = MaterialTheme.typography.titleLarge)
+                },
+                actions = {
+                    // Issue #834: web parity for the persisted import-run history (issue #651).
+                    AccessibleIconButton(onClick = onImportHistory) {
+                        Icon(Icons.Outlined.History, contentDescription = stringResource(R.string.import_history_entry))
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -135,6 +145,14 @@ fun ImportContactsScreen(
                     ) {
                         Icon(Icons.Outlined.FileUpload, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                         Text(stringResource(R.string.import_vcf_entry))
+                    }
+                    // Issue #834: CSV-file import — the client methods existed with zero UI caller.
+                    TextButton(
+                        onClick = onImportCsv,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    ) {
+                        Icon(Icons.Outlined.FileUpload, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                        Text(stringResource(R.string.import_csv_entry))
                     }
                     LazyColumn(modifier = Modifier.weight(1f)) {
                         items(state.contacts, key = { it.device.contactId }) { candidate ->
