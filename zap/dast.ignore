@@ -157,3 +157,31 @@
 # Scoped to this one route, not `.*`: a 40018 hit on any other route is a real
 # signal and must not be pre-accepted.
 40018 high /api/v1/check-password-strength$  # false positive: stateless zxcvbn utility with no database access (CheckPasswordStrength -> EvaluatePasswordStrength, a pure function of the password); 40018's boolean heuristic misreads the score/feedback variance as SQL
+
+# Plugin 6 (Path Traversal) flagged the `password` parameter of
+# POST /api/v1/register: uri http://localhost:7300/api/v1/register, attack
+# `/register`, evidence empty, confidence Low. False positive.
+#
+# Register has no filesystem or path handling at all. The handler binds a JSON
+# body (username, password, email, language), evaluates the password's strength,
+# hashes it with bcrypt, and does one GORM-parameterised Create (plus a
+# predicate-free Count for the first-user-is-admin rule). No request input
+# reaches a path, a filename, a URL or a command; there is no sink a traversal
+# payload could reach.
+#
+# Plugin 6's heuristic is response-variance based, the same mechanism already
+# accepted for the four 40018 entries above: register carries
+# AuthRateLimitMiddleware (the process-wide authLimiter; the DAST compose env
+# raises only API_RATE_LIMIT_BURST/INTERVAL, not the auth bucket), so ZAP's
+# rapid back-to-back probes from one IP flip some responses 400/201 -> 429
+# partway through, and register's own 201 (first valid body) / 409 (already
+# exists) / 400 (validator) ordering variance makes the "data returned changed"
+# signal look meaningful. ZAP's evidence field is empty and confidence is Low —
+# the same signature as the accepted entries above. It is also intermittent:
+# nothing on this route changed between the last clean nightly and the run that
+# reported it.
+#
+# Scoped to this one route, not `.*`: a plugin-6 hit on any other route is a
+# real signal and must not be pre-accepted.
+6 high /api/v1/register$  # false positive: register has no filesystem/path handling (bcrypt-hashed password + a GORM-parameterised Create); plugin 6's variance heuristic trips on the authLimiter flipping probes to 429 plus register's 201/409/400 ordering, not a traversal
+
