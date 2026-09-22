@@ -25,6 +25,13 @@ data class SessionState(
      * no contact is currently marked.
      */
     val selfContactVCardUid: String? = null,
+    /**
+     * Issue #832 (web parity): the caller's stored `enabled_contact_fields`
+     * list — null means never configured. Contact detail/form screens must
+     * resolve this via `ContactFieldKey.resolveEnabledFields` rather than
+     * reading it raw.
+     */
+    val enabledContactFields: List<String>? = null,
 )
 
 /**
@@ -117,6 +124,24 @@ interface AuthRepository {
      * 404s otherwise).
      */
     suspend fun updateSelfContact(vcardUid: String?): Result<Unit>
+
+    /**
+     * GET /users/enabled-contact-fields (issue #832 Android parity) — the raw
+     * stored value ("Contact field settings" screen), NOT merged into the
+     * session (pure read, mirrors [fetchCurrentUser]). Null means the user
+     * has never configured this; callers must resolve it via
+     * `resolveEnabledFields` rather than treating null/empty the same way.
+     */
+    suspend fun getEnabledContactFields(): Result<List<String>?>
+
+    /**
+     * PATCH /users/enabled-contact-fields (issue #832 Android parity) — the
+     * same route web's ContactFieldSettings uses. Updates the in-session
+     * profile so `observeSession()` re-emits for the contact detail/form
+     * screens (mirrors [updateLanguage] / [updateDateFormat]). Returns the
+     * server's echoed-back list on success.
+     */
+    suspend fun updateEnabledContactFields(fields: List<String>): Result<List<String>>
 
     /**
      * POST /users/change-password. On success the server bumps TokenVersion,

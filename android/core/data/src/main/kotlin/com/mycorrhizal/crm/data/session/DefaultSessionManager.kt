@@ -73,6 +73,7 @@ class DefaultSessionManager(
             isAdmin = profile.isAdmin,
             language = profile.language ?: current.language,
             dateFormat = profile.dateFormat ?: current.dateFormat,
+            enabledContactFields = profile.enabledContactFields ?: current.enabledContactFields,
         )
     }
 

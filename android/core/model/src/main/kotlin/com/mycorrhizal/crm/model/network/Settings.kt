@@ -51,6 +51,30 @@ data class MessageResponse(
     val message: String? = null,
 )
 
+/**
+ * PATCH /users/enabled-contact-fields request body (issue #832, web parity with
+ * `frontend/src/api/users.ts`'s `updateEnabledContactFields`). Always a concrete
+ * (possibly empty) list — Android never sends `fields: null`, since null is
+ * reserved for "never configured, apply client defaults" and is only ever
+ * something the server returns, never something a client explicitly requests.
+ */
+@JsonClass(generateAdapter = true)
+data class EnabledContactFieldsInput(
+    val fields: List<String>,
+)
+
+/**
+ * GET /users/enabled-contact-fields response, and the shape of the same field
+ * on the PATCH 200 body (Moshi ignores the PATCH response's extra `message`
+ * key, same as every other endpoint here). Null means the user has never
+ * configured this — see `ContactFieldKey.resolveEnabledFields`, which callers
+ * must run this through rather than treating null/empty the same way.
+ */
+@JsonClass(generateAdapter = true)
+data class EnabledContactFieldsResponse(
+    @Json(name = "enabled_contact_fields") val enabledContactFields: List<String>? = null,
+)
+
 /** Notification-channel test endpoints accept `ntfy | gotify | push` — never `email`. */
 val ALL_TEST_CHANNELS: List<String> = listOf("ntfy", "gotify", "push")
 

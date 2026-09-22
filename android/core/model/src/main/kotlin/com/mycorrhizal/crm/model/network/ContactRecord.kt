@@ -110,6 +110,16 @@ data class CRMEnvelope(
     @Json(name = "how_we_met") val howWeMet: String? = null,
     @Json(name = "work_information") val workInformation: String? = null,
     @Json(name = "contact_information") val contactInformation: String? = null,
+    /**
+     * Issue #832: free-text CRM gender (issue #515), distinct from the
+     * standardized `speakToAs`/grammatical-gender/pronouns concept — see the
+     * extensive comment at `backend/models/contact_record.go:417-448`. A
+     * legacy top-level `gender` also exists on the wire for backward compat,
+     * but `crm.gender` wins when both are present
+     * (`backend/models/contact_record_reverse.go:106-107`), so this is the
+     * field the form must write to.
+     */
+    val gender: String? = null,
 )
 
 /** Unmapped data preserved verbatim (passthrough). */
