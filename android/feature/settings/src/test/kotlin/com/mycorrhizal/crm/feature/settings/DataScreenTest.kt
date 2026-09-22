@@ -13,6 +13,7 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -38,11 +39,11 @@ class DataScreenTest {
     private val relationshipEdgeRepository = mockk<RelationshipEdgeRepository>()
     private val exportRepository = mockk<ExportRepository>()
 
-    private fun setScreen() {
+    private fun setScreen(onCustomExport: () -> Unit = {}) {
         val viewModel = DataViewModel(contactRepository, relationshipEdgeRepository, exportRepository)
         composeTestRule.setContent {
             MycorrhizalTheme {
-                DataScreen(onBack = {}, viewModel = viewModel)
+                DataScreen(onBack = {}, onCustomExport = onCustomExport, viewModel = viewModel)
             }
         }
     }
@@ -88,5 +89,15 @@ class DataScreenTest {
         composeTestRule.waitForIdle()
 
         coVerify { exportRepository.exportDataCsv() }
+    }
+
+    @Test
+    fun `tapping custom export navigates to the field picker`() {
+        var navigated = false
+        setScreen(onCustomExport = { navigated = true })
+
+        composeTestRule.onNodeWithText("Custom export…").performScrollTo().performClick()
+
+        assertTrue(navigated)
     }
 }

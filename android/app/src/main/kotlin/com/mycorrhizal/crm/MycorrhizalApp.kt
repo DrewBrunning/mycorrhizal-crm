@@ -121,6 +121,7 @@ import com.mycorrhizal.crm.feature.imports.VcfImportScreen
 import com.mycorrhizal.crm.feature.network.NetworkScreen
 import com.mycorrhizal.crm.feature.relationships.RelationshipsScreen
 import com.mycorrhizal.crm.feature.settings.ContactFieldSettingsScreen
+import com.mycorrhizal.crm.feature.settings.CustomExportScreen
 import com.mycorrhizal.crm.feature.settings.CustomLinkActionsScreen
 import com.mycorrhizal.crm.feature.settings.DataScreen
 import com.mycorrhizal.crm.feature.settings.FieldDefinitionFormScreen
@@ -1241,6 +1242,14 @@ private fun AppNavGraph(
         // T104 + address suggestions: the "propose data" review screen.
         composable("data") {
             DataScreen(
+                onBack = { navController.popBackStack() },
+                onCustomExport = { navController.navigate("data/custom-export") },
+            )
+        }
+        // Issue #835 (T9 selective-export Android parity, web's
+        // ExportFieldPickerDialog): pick sections + include-sensitive for one export.
+        composable("data/custom-export") {
+            CustomExportScreen(
                 onBack = { navController.popBackStack() },
             )
         }

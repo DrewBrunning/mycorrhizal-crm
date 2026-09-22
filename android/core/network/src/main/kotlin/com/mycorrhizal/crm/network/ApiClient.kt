@@ -71,6 +71,7 @@ import com.mycorrhizal.crm.model.network.CreateCircleResponse
 import com.mycorrhizal.crm.model.network.CreateContactResponse
 import com.mycorrhizal.crm.model.network.CreateConversationAgendaResponse
 import com.mycorrhizal.crm.model.network.CreateFieldDefinitionResponse
+import com.mycorrhizal.crm.model.network.ExportLossPreflightResponse
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.FieldDefinitionInput
 import com.mycorrhizal.crm.model.network.FieldDefinitionsResponse
@@ -868,13 +869,25 @@ class ApiClient(
     /**
      * GET /api/v1/export/vcf — every contact as one .vcf file (web's "Export
      * vCard" full-dataset action). Same endpoint as [exportContactVcf]; the
-     * absence of `vcard_uid` widens it to the whole address book. Honors the
-     * backend's default field selection (all sections, private/secret
-     * sensitivity excluded). Returns the raw file bytes.
+     * absence of `vcard_uid` widens it to the whole address book. With
+     * [sections] null, honors the backend's default field selection (all
+     * sections, private/secret sensitivity excluded) — issue #835 adds the T9
+     * selective-export params: [sections] is comma-joined into a single
+     * `sections` query param (the backend's `c.Query("sections")` reads only
+     * the first occurrence of a repeated key, so this — not one `sections`
+     * param per value — is the form that actually narrows the export), and
+     * [includeSensitive] sets `include_sensitive=true`. Returns the raw file
+     * bytes.
      */
-    suspend fun exportAllContactsVcf(version: Int? = null): Result<ByteArray> {
+    suspend fun exportAllContactsVcf(
+        version: Int? = null,
+        sections: List<String>? = null,
+        includeSensitive: Boolean = false,
+    ): Result<ByteArray> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$EXPORT_VCF_PATH".toHttpUrl().newBuilder()
         if (version == 3) urlBuilder.addQueryParameter("version", "3")
+        if (sections != null) urlBuilder.addQueryParameter("sections", sections.joinToString(","))
+        if (includeSensitive) urlBuilder.addQueryParameter("include_sensitive", "true")
         return executeGetBytes(urlBuilder.build().toString())
     }
 
@@ -888,10 +901,39 @@ class ApiClient(
 
     /**
      * GET /api/v1/export/jscontact — every contact as a JSContact (RFC 9553)
-     * JSON array document. Returns the raw file bytes.
+     * JSON array document. See [exportAllContactsVcf] for the [sections]/
+     * [includeSensitive] param contract (issue #835). Returns the raw file
+     * bytes.
      */
-    suspend fun exportAllContactsJsContact(): Result<ByteArray> =
-        executeGetBytes("$PLACEHOLDER_ORIGIN$EXPORT_JSCONTACT_PATH")
+    suspend fun exportAllContactsJsContact(
+        sections: List<String>? = null,
+        includeSensitive: Boolean = false,
+    ): Result<ByteArray> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$EXPORT_JSCONTACT_PATH".toHttpUrl().newBuilder()
+        if (sections != null) urlBuilder.addQueryParameter("sections", sections.joinToString(","))
+        if (includeSensitive) urlBuilder.addQueryParameter("include_sensitive", "true")
+        return executeGetBytes(urlBuilder.build().toString())
+    }
+
+    /**
+     * GET /api/v1/export/preflight (DATA-02, issue #442; Android parity issue
+     * #835) — what an export with the given params would lose, computed
+     * without producing the file. [format] is one of `vcard4`/`vcard3`/
+     * `jscontact` (see `PREFLIGHT_FORMAT` in web's api/export.ts).
+     */
+    suspend fun exportPreflight(
+        format: String,
+        sections: List<String>,
+        includeSensitive: Boolean,
+    ): Result<ExportLossPreflightResponse> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$EXPORT_PREFLIGHT_PATH".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("format", format)
+        urlBuilder.addQueryParameter("sections", sections.joinToString(","))
+        if (includeSensitive) urlBuilder.addQueryParameter("include_sensitive", "true")
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(ExportLossPreflightResponse::class.java).fromJson(body)
+        }
+    }
 
     /**
      * GET /api/v1/audit/export — the caller's full audit trail as CSV (every
@@ -2434,6 +2476,7 @@ class ApiClient(
         private const val EXPORT_VCF_PATH = "$API_V1/export/vcf"
         private const val EXPORT_PATH = "$API_V1/export"
         private const val EXPORT_JSCONTACT_PATH = "$API_V1/export/jscontact"
+        private const val EXPORT_PREFLIGHT_PATH = "$API_V1/export/preflight"
         private const val ATTACHMENTS_PATH = "$API_V1/attachments"
         private const val CONTACT_SHARES_PATH = "$API_V1/contact-shares"
         private const val AUDIT_PATH = "$API_V1/audit"

@@ -66,6 +66,14 @@ enum class DataExportKind(val fileName: String, val mimeType: String) {
     VCF4("mycorrhizal-contacts.vcf", "text/vcard"),
     JSCONTACT("mycorrhizal-contacts.jscontact.json", "application/json"),
     AUDIT_CSV("mycorrhizal-audit.csv", "text/csv"),
+
+    // Issue #835 (T9 field-picker Android parity): the same three formats,
+    // produced by CustomExportViewModel with a user-chosen section selection
+    // instead of the backend's all-sections default. Reuses this enum (and
+    // the DataExport/shareExportFile plumbing) rather than a parallel type.
+    CUSTOM_VCF4("mycorrhizal-contacts-custom.vcf", "text/vcard"),
+    CUSTOM_VCF3("mycorrhizal-contacts-custom-v3.vcf", "text/vcard"),
+    CUSTOM_JSCONTACT("mycorrhizal-contacts-custom.jscontact.json", "application/json"),
 }
 
 @HiltViewModel
@@ -162,7 +170,9 @@ class DataViewModel @Inject constructor(
      * Fetches one full-dataset export as bytes and exposes it as a one-shot
      * [DataUiState.exported] for the screen to write out and share. Which
      * repository call runs is a pure function of [kind]; re-entrancy is
-     * guarded by [DataUiState.isExporting].
+     * guarded by [DataUiState.isExporting]. The `CUSTOM_*` kinds are produced
+     * only by [CustomExportViewModel] (issue #835) and never passed here —
+     * [DataScreen] only ever calls this with the five fixed-selection kinds.
      */
     fun export(kind: DataExportKind) {
         if (_uiState.value.isExporting) return
@@ -173,6 +183,8 @@ class DataViewModel @Inject constructor(
             DataExportKind.VCF4 -> { { exportRepository.exportContactsVcf(null) } }
             DataExportKind.JSCONTACT -> exportRepository::exportContactsJsContact
             DataExportKind.AUDIT_CSV -> exportRepository::exportAuditLogCsv
+            DataExportKind.CUSTOM_VCF4, DataExportKind.CUSTOM_VCF3, DataExportKind.CUSTOM_JSCONTACT ->
+                error("DataViewModel.export() does not handle $kind — use CustomExportViewModel")
         }
         viewModelScope.launch {
             fetch().foldApiError(
