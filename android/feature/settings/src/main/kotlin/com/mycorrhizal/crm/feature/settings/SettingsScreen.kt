@@ -100,6 +100,8 @@ fun SettingsScreen(
     onData: () -> Unit = {},
     // Issue #830: the custom field-definition management screen.
     onManageCustomFields: () -> Unit = {},
+    // Issue #832: the enabled-contact-fields toggle screen.
+    onContactFieldSettings: () -> Unit = {},
     // Issue #348: admin user management.
     onManageUsers: () -> Unit = {},
     // Issue #424: the operational-event timeline.
@@ -213,6 +215,7 @@ fun SettingsScreen(
             onCircleTagTriage = onCircleTagTriage,
             onData = onData,
             onManageCustomFields = onManageCustomFields,
+            onContactFieldSettings = onContactFieldSettings,
             onManageUsers = onManageUsers,
             onSystemEvents = onSystemEvents,
             onLanguageChange = viewModel::updateLanguage,
@@ -263,6 +266,7 @@ fun SettingsContent(
     onCircleTagTriage: () -> Unit = {},
     onData: () -> Unit = {},
     onManageCustomFields: () -> Unit = {},
+    onContactFieldSettings: () -> Unit = {},
     onManageUsers: () -> Unit = {},
     onSystemEvents: () -> Unit = {},
     onLanguageChange: (String) -> Unit = {},
@@ -531,6 +535,8 @@ fun SettingsContent(
         NavigationRow(stringResource(R.string.settings_data_review), onClick = onData)
         // Issue #830: create/edit/delete custom field definitions.
         NavigationRow(stringResource(R.string.settings_custom_fields_title), onClick = onManageCustomFields)
+        // Issue #832: per-field show/edit toggles for the contact detail/form screens.
+        NavigationRow(stringResource(R.string.settings_contact_fields_title), onClick = onContactFieldSettings)
 
         // Issue #348: admin-only user management, reachable only when the
         // session is an admin (the backend also 403s every admin route for

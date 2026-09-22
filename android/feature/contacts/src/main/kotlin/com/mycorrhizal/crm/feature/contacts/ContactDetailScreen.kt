@@ -113,7 +113,9 @@ import coil3.compose.AsyncImage
 import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.Circle
+import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
 import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.ExternalIdentity
 import com.mycorrhizal.crm.model.network.ExternalSystems
@@ -607,6 +609,7 @@ fun ContactDetailScreen(
                     headerContentAlpha = 1f - collapseProgress,
                     deviceLookupKey = state.deviceLookupKey,
                     dateFormat = state.dateFormat,
+                    enabledFields = state.enabledFields,
                     fieldDefinitions = state.fieldDefinitions,
                     fieldValuesByDefinitionId = state.fieldValuesByDefinitionId,
                     savingFieldDefinitionId = state.savingFieldDefinitionId,
@@ -955,6 +958,13 @@ fun ContactDetailContent(
     deviceLookupKey: String? = null,
     /** The signed-in user's `date_format` preference; falls back to "eu" when absent. */
     dateFormat: String? = null,
+    /**
+     * Issue #832 (web parity): the settings screen's enabled-fields toggle set. Every
+     * gated section below checks `key in enabledFields` before rendering. Defaults to
+     * [DEFAULT_ENABLED_CONTACT_FIELDS] so a caller that doesn't pass this (tests, previews)
+     * sees the same fields Android showed before this feature existed.
+     */
+    enabledFields: Set<ContactFieldKey> = DEFAULT_ENABLED_CONTACT_FIELDS,
     /** The user's custom field definitions and this contact's values (issue #830: editable). */
     fieldDefinitions: List<FieldDefinition> = emptyList(),
     fieldValuesByDefinitionId: Map<String, Any?> = emptyMap(),
@@ -1093,14 +1103,14 @@ fun ContactDetailContent(
                 }
                 val nickname = card?.nicknames?.firstOrNull()?.name
                 val birthday = card?.anniversaries?.firstOrNull { it.kind == "birth" }?.date?.partial
-                if (nickname != null) {
+                if (nickname != null && ContactFieldKey.NICKNAME in enabledFields) {
                     Text(
                         text = "\"$nickname\"",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                if (birthday != null) {
+                if (birthday != null && ContactFieldKey.BIRTHDAY in enabledFields) {
                     Text(
                         text = stringResource(
                             R.string.contact_birthday_label,
@@ -1110,9 +1120,42 @@ fun ContactDetailContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                // Issue #832: crm.gender — free text, shown alongside nickname/birthday
+                // rather than in its own SectionCard (matches web's compact header treatment).
+                val gender = contact.crm?.gender
+                if (!gender.isNullOrBlank() && ContactFieldKey.GENDER in enabledFields) {
+                    Text(
+                        text = gender,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
-        if (!card?.personalInfo.isNullOrEmpty()) {
+        // Issue #832: every anniversary beyond the header's quick birth entry
+        // (wedding/death/extra births) — see ContactFormViewModel.mergeAnniversaries.
+        val otherAnniversaries = card?.anniversaries.orEmpty().filter { it.kind != "birth" }
+        if (otherAnniversaries.isNotEmpty() && ContactFieldKey.ANNIVERSARIES in enabledFields) {
+            item {
+                SectionCard(stringResource(R.string.contact_anniversaries)) {
+                    otherAnniversaries.forEach { anniversary ->
+                        val date = anniversary.date?.partial?.display(dateFormat ?: DateFormat.EU).orEmpty()
+                        InfoRow("${anniversary.kind.orEmpty()}: $date")
+                    }
+                }
+            }
+        }
+        val pronouns = card?.speakToAs?.pronouns.orEmpty()
+        val grammaticalGenders = card?.speakToAs?.grammaticalGenders.orEmpty()
+        if ((pronouns.isNotEmpty() || grammaticalGenders.isNotEmpty()) && ContactFieldKey.SPEAK_TO_AS in enabledFields) {
+            item {
+                SectionCard(stringResource(R.string.contact_speak_to_as)) {
+                    pronouns.forEach { p -> p.pronouns?.let { InfoRow(it) } }
+                    grammaticalGenders.forEach { g -> g.value?.let { InfoRow(it) } }
+                }
+            }
+        }
+        if (!card?.personalInfo.isNullOrEmpty() && ContactFieldKey.PERSONAL_INFO in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_personal_info)) {
                     card?.personalInfo?.forEach { info ->
@@ -1121,30 +1164,49 @@ fun ContactDetailContent(
                 }
             }
         }
-        if (!card?.phones.isNullOrEmpty()) {
+        if (!card?.keywords.isNullOrEmpty() && ContactFieldKey.KEYWORDS in enabledFields) {
+            item {
+                SectionCard(stringResource(R.string.contact_keywords)) {
+                    InfoRow(card?.keywords.orEmpty().joinToString(", "))
+                }
+            }
+        }
+        if (!card?.preferredLanguages.isNullOrEmpty() && ContactFieldKey.PREFERRED_LANGUAGES in enabledFields) {
+            item {
+                SectionCard(stringResource(R.string.contact_preferred_languages)) {
+                    card?.preferredLanguages?.forEach { pref -> pref.language?.let { InfoRow(it) } }
+                }
+            }
+        }
+        if (!card?.phones.isNullOrEmpty() && ContactFieldKey.PHONES in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_phone)) {
                     card?.phones?.forEach { PhoneRow(it) }
                 }
             }
         }
-        if (!card?.addresses.isNullOrEmpty()) {
+        if (!card?.addresses.isNullOrEmpty() && ContactFieldKey.ADDRESSES in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_address)) {
                     card?.addresses?.forEach { AddressRow(it) }
                 }
             }
         }
-        if (!card?.emails.isNullOrEmpty()) {
+        if (!card?.emails.isNullOrEmpty() && ContactFieldKey.EMAILS in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_email)) {
                     card?.emails?.forEach { EmailRow(it) }
                 }
             }
         }
-        val onlineServices = (card?.imppAddresses.orEmpty() +
-            card?.socialProfiles.orEmpty() +
-            card?.otherOnlineServices.orEmpty())
+        // Issue #832: each sub-list is gated independently before concatenation — this is
+        // one merged UI section for three separate ContactFieldKeys, so disabling e.g.
+        // socialProfiles must not hide impp/otherOnlineServices entries.
+        val onlineServices = (
+            (if (ContactFieldKey.IMPP_ADDRESSES in enabledFields) card?.imppAddresses.orEmpty() else emptyList()) +
+                (if (ContactFieldKey.SOCIAL_PROFILES in enabledFields) card?.socialProfiles.orEmpty() else emptyList()) +
+                (if (ContactFieldKey.OTHER_ONLINE_SERVICES in enabledFields) card?.otherOnlineServices.orEmpty() else emptyList())
+            )
         if (onlineServices.isNotEmpty()) {
             item {
                 SectionCard(stringResource(R.string.contact_online_services)) {
@@ -1152,7 +1214,7 @@ fun ContactDetailContent(
                 }
             }
         }
-        if (!card?.links.isNullOrEmpty()) {
+        if (!card?.links.isNullOrEmpty() && ContactFieldKey.LINKS in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_links)) {
                 card?.links?.forEach { link ->
@@ -1166,7 +1228,7 @@ fun ContactDetailContent(
                 }
             }
         }
-        if (!card?.organizations.isNullOrEmpty()) {
+        if (!card?.organizations.isNullOrEmpty() && ContactFieldKey.ORGANIZATIONS in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_organization)) {
                     card?.organizations?.forEach { org ->
@@ -1175,7 +1237,41 @@ fun ContactDetailContent(
                 }
             }
         }
-        if (!card?.notes.isNullOrEmpty()) {
+        // Issue #832: titles/how_we_met/work_information/contact_information had form
+        // editors but no detail display at all before this — a pre-existing Android/web
+        // gap, now closed alongside the toggle mechanism.
+        if (!card?.titles.isNullOrEmpty() && ContactFieldKey.TITLES in enabledFields) {
+            item {
+                SectionCard(stringResource(R.string.contact_job_titles)) {
+                    card?.titles?.forEach { title -> title.name?.let { InfoRow(it) } }
+                }
+            }
+        }
+        val workInformation = contact.crm?.workInformation
+        if (!workInformation.isNullOrBlank() && ContactFieldKey.WORK_INFORMATION in enabledFields) {
+            item {
+                SectionCard(stringResource(R.string.contact_work_information)) {
+                    InfoRow(workInformation)
+                }
+            }
+        }
+        val howWeMet = contact.crm?.howWeMet
+        if (!howWeMet.isNullOrBlank() && ContactFieldKey.HOW_WE_MET in enabledFields) {
+            item {
+                SectionCard(stringResource(R.string.contact_how_we_met)) {
+                    InfoRow(howWeMet)
+                }
+            }
+        }
+        val contactInformation = contact.crm?.contactInformation
+        if (!contactInformation.isNullOrBlank() && ContactFieldKey.CONTACT_INFORMATION in enabledFields) {
+            item {
+                SectionCard(stringResource(R.string.contact_contact_information)) {
+                    InfoRow(contactInformation)
+                }
+            }
+        }
+        if (!card?.notes.isNullOrEmpty() && ContactFieldKey.CARD_NOTES in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_notes)) {
                     card?.notes?.forEach { note ->

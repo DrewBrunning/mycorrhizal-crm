@@ -210,6 +210,24 @@ class AuthRepositoryImpl @Inject constructor(
         return Result.success(Unit)
     }
 
+    override suspend fun getEnabledContactFields(): Result<List<String>?> {
+        val result = apiClient.getEnabledContactFields()
+        val response = result.getOrElse { return Result.failure(it.toApiError()) }
+        return Result.success(response.enabledContactFields)
+    }
+
+    override suspend fun updateEnabledContactFields(fields: List<String>): Result<List<String>> {
+        val result = apiClient.updateEnabledContactFields(fields)
+        val response = result.getOrElse { return Result.failure(it.toApiError()) }
+        // The PATCH response's list is always concrete (possibly empty), never
+        // null, so setProfile's `profile.X ?: current.X` merge is safe here —
+        // unlike selfContactVCardUid, there is no "clear to null" case to
+        // worry about; see AuthRepository.updateEnabledContactFields's doc.
+        val stored = response.enabledContactFields.orEmpty()
+        sessionManager.setProfile(SessionState(enabledContactFields = stored))
+        return Result.success(stored)
+    }
+
     override suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit> {
         val result = apiClient.changePassword(currentPassword, newPassword)
         return result.fold(
@@ -276,6 +294,7 @@ class AuthRepositoryImpl @Inject constructor(
                 language = profile.language,
                 dateFormat = profile.dateFormat,
                 selfContactVCardUid = profile.selfContactVCardUid,
+                enabledContactFields = profile.enabledContactFields,
             ),
         )
     }

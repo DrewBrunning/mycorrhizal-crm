@@ -98,6 +98,8 @@ import com.mycorrhizal.crm.model.network.DeviceRegistrationInput
 import com.mycorrhizal.crm.model.network.DeviceRegistrationsResponse
 import com.mycorrhizal.crm.model.network.DuplicateDismissalInput
 import com.mycorrhizal.crm.model.network.DuplicatePairsResponse
+import com.mycorrhizal.crm.model.network.EnabledContactFieldsInput
+import com.mycorrhizal.crm.model.network.EnabledContactFieldsResponse
 import com.mycorrhizal.crm.model.network.ExternalIdentitiesPage
 import com.mycorrhizal.crm.model.network.ImmichAssetsResponse
 import com.mycorrhizal.crm.model.network.ImmichAssetSummary
@@ -422,6 +424,31 @@ class ApiClient(
     suspend fun updateSelfContact(vcardUid: String?): Result<MessageResponse> =
         executePatch("$PLACEHOLDER_ORIGIN$ME_PATH/self-contact", SelfContactRequest(vcardUid)) { _, body ->
             moshi.adapter(MessageResponse::class.java).fromJson(body)
+        }
+
+    /**
+     * GET /api/v1/users/enabled-contact-fields (issue #832 Android parity) —
+     * the fields the "Contact field settings" screen has enabled. Null means
+     * the user has never configured this; callers must run the result through
+     * `resolveEnabledFields` rather than treating null/empty the same way.
+     */
+    suspend fun getEnabledContactFields(): Result<EnabledContactFieldsResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$USERS_PATH/enabled-contact-fields") { _, body ->
+            moshi.adapter(EnabledContactFieldsResponse::class.java).fromJson(body)
+        }
+
+    /**
+     * PATCH /api/v1/users/enabled-contact-fields (issue #832 Android parity)
+     * — the same route web's ContactFieldSettings uses. [fields] is always a
+     * concrete (possibly empty) list; the response echoes back the stored
+     * list, never null.
+     */
+    suspend fun updateEnabledContactFields(fields: List<String>): Result<EnabledContactFieldsResponse> =
+        executePatch(
+            "$PLACEHOLDER_ORIGIN$USERS_PATH/enabled-contact-fields",
+            EnabledContactFieldsInput(fields),
+        ) { _, body ->
+            moshi.adapter(EnabledContactFieldsResponse::class.java).fromJson(body)
         }
 
     /**

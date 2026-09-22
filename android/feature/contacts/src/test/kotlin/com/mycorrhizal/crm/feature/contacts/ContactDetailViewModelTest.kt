@@ -67,10 +67,17 @@ class ContactDetailViewModelTest {
         id: Int,
         dateFormat: String? = null,
         selfContactVCardUid: String? = null,
+        enabledContactFields: List<String>? = null,
     ): ContactDetailViewModel {
         coEvery { contactRepository.getDeviceLookupKey(any()) } returns null
         every { authRepository.observeSession() } returns
-            flowOf(SessionState(dateFormat = dateFormat, selfContactVCardUid = selfContactVCardUid))
+            flowOf(
+                SessionState(
+                    dateFormat = dateFormat,
+                    selfContactVCardUid = selfContactVCardUid,
+                    enabledContactFields = enabledContactFields,
+                ),
+            )
         coEvery { fieldDefinitionRepository.list() } returns Result.success(emptyList())
         coEvery { fieldDefinitionRepository.contactValues(any()) } returns Result.success(emptyList())
         stubMemberships()
@@ -493,6 +500,46 @@ class ContactDetailViewModelTest {
 
         assertFalse(vm.uiState.value.contact?.isFavorite!!)
         assertEquals("Server error (500)", vm.uiState.value.error)
+    }
+
+    // --- Issue #832: Contact field settings (web parity) ---
+
+    @Test
+    fun `state resolves a never-configured session value to the default enabled set`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+            val vm = viewModel(5, enabledContactFields = null)
+            advanceUntilIdle()
+
+            assertEquals(com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS, vm.uiState.value.enabledFields)
+        }
+
+    @Test
+    fun `state resolves an explicit empty session value to no fields enabled`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+            val vm = viewModel(5, enabledContactFields = emptyList())
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.enabledFields.isEmpty())
+        }
+
+    @Test
+    fun `state resolves a populated session value to the matching keys`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5, enabledContactFields = listOf("emails", "keywords"))
+        advanceUntilIdle()
+
+        assertEquals(
+            setOf(com.mycorrhizal.crm.model.network.ContactFieldKey.EMAILS, com.mycorrhizal.crm.model.network.ContactFieldKey.KEYWORDS),
+            vm.uiState.value.enabledFields,
+        )
     }
 
     // --- T90 / issue #831: "Mark as Me" self-contact pointer (web parity) ---

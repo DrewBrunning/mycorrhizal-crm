@@ -48,6 +48,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.model.network.Circle
+import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.Tag
@@ -122,6 +123,7 @@ fun ContactFormScreen(
                 onSuffixChange = viewModel::onSuffixChange,
                 onNicknameChange = viewModel::onNicknameChange,
                 onKindChange = viewModel::onKindChange,
+                onCardKindChange = viewModel::onCardKindChange,
                 onLanguageChange = viewModel::onLanguageChange,
                 onEmailsChange = viewModel::onEmailsChange,
                 onPhonesChange = viewModel::onPhonesChange,
@@ -138,7 +140,13 @@ fun ContactFormScreen(
                 onWorkInformationChange = viewModel::onWorkInformationChange,
                 onContactInformationChange = viewModel::onContactInformationChange,
                 onBirthdayChange = viewModel::onBirthdayChange,
-                onNotesChange = viewModel::onNotesChange,
+                onCardNotesChange = viewModel::onCardNotesChange,
+                onGenderChange = viewModel::onGenderChange,
+                onPreferredLanguagesChange = viewModel::onPreferredLanguagesChange,
+                onPronounsChange = viewModel::onPronounsChange,
+                onGrammaticalGendersChange = viewModel::onGrammaticalGendersChange,
+                onKeywordsChange = viewModel::onKeywordsChange,
+                onAnniversariesChange = viewModel::onAnniversariesChange,
                 onCircleToggle = viewModel::onCircleToggle,
                 onTagToggle = viewModel::onTagToggle,
                 onSave = viewModel::save,
@@ -166,6 +174,7 @@ fun ContactFormContent(
     onSuffixChange: (String) -> Unit = {},
     onNicknameChange: (String) -> Unit,
     onKindChange: (String) -> Unit = {},
+    onCardKindChange: (String) -> Unit = {},
     onLanguageChange: (String) -> Unit = {},
     onEmailsChange: (List<Email>) -> Unit,
     onPhonesChange: (List<Phone>) -> Unit,
@@ -182,7 +191,14 @@ fun ContactFormContent(
     onWorkInformationChange: (String) -> Unit = {},
     onContactInformationChange: (String) -> Unit = {},
     onBirthdayChange: (String) -> Unit,
-    onNotesChange: (String) -> Unit,
+    onCardNotesChange: (List<com.mycorrhizal.crm.model.network.CardNote>) -> Unit = {},
+    // Issue #832: fields with no prior Android UI.
+    onGenderChange: (String) -> Unit = {},
+    onPreferredLanguagesChange: (List<com.mycorrhizal.crm.model.network.LanguagePref>) -> Unit = {},
+    onPronounsChange: (List<com.mycorrhizal.crm.model.network.Pronouns>) -> Unit = {},
+    onGrammaticalGendersChange: (List<com.mycorrhizal.crm.model.network.GrammaticalGender>) -> Unit = {},
+    onKeywordsChange: (List<String>) -> Unit = {},
+    onAnniversariesChange: (List<com.mycorrhizal.crm.model.network.Anniversary>) -> Unit = {},
     onCircleToggle: (String) -> Unit = {},
     onTagToggle: (String) -> Unit = {},
     onSave: () -> Unit,
@@ -195,15 +211,22 @@ fun ContactFormContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // Issue #832: which fields the settings screen has enabled — every gated block
+        // below checks `ContactFieldKey.X in enabled`. givenName/surname are never gated
+        // (matches web).
+        val enabled = state.enabledFields
+
         SectionLabel(stringResource(R.string.contact_name_section))
         // T115: the name fields advertise their ContentType so the Android
         // Autofill service can offer a fill (Google/device address book).
-        AutofillOutlinedTextField(
-            value = state.prefix,
-            onValueChange = onPrefixChange,
-            label = stringResource(R.string.contact_prefix),
-            contentType = ContentType.PersonNamePrefix,
-        )
+        if (ContactFieldKey.PREFIX in enabled) {
+            AutofillOutlinedTextField(
+                value = state.prefix,
+                onValueChange = onPrefixChange,
+                label = stringResource(R.string.contact_prefix),
+                contentType = ContentType.PersonNamePrefix,
+            )
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AutofillOutlinedTextField(
                 value = state.givenName,
@@ -220,198 +243,316 @@ fun ContactFormContent(
                 modifier = Modifier.weight(1f),
             )
         }
-        AutofillOutlinedTextField(
-            value = state.middleName,
-            onValueChange = onMiddleNameChange,
-            label = stringResource(R.string.contact_middle_name),
-            contentType = ContentType.PersonMiddleName,
-        )
-        AutofillOutlinedTextField(
-            value = state.suffix,
-            onValueChange = onSuffixChange,
-            label = stringResource(R.string.contact_suffix),
-            contentType = ContentType.PersonNameSuffix,
-        )
-        OutlinedTextField(
-            value = state.nickname,
-            onValueChange = onNicknameChange,
-            label = { Text(stringResource(R.string.contact_nickname)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        if (ContactFieldKey.MIDDLE_NAME in enabled) {
+            AutofillOutlinedTextField(
+                value = state.middleName,
+                onValueChange = onMiddleNameChange,
+                label = stringResource(R.string.contact_middle_name),
+                contentType = ContentType.PersonMiddleName,
+            )
+        }
+        if (ContactFieldKey.SUFFIX in enabled) {
+            AutofillOutlinedTextField(
+                value = state.suffix,
+                onValueChange = onSuffixChange,
+                label = stringResource(R.string.contact_suffix),
+                contentType = ContentType.PersonNameSuffix,
+            )
+        }
+        if (ContactFieldKey.NICKNAME in enabled) {
+            OutlinedTextField(
+                value = state.nickname,
+                onValueChange = onNicknameChange,
+                label = { Text(stringResource(R.string.contact_nickname)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        // Issue #832: crm.gender — free text, distinct from the standardized
+        // speakToAs/grammatical-gender/pronouns concept below.
+        if (ContactFieldKey.GENDER in enabled) {
+            OutlinedTextField(
+                value = state.gender,
+                onValueChange = onGenderChange,
+                label = { Text(stringResource(R.string.contact_gender)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
         // M24: kind (human/animal) — the backend defaults to human; this makes it explicit.
-        var kindMenuExpanded by remember { mutableStateOf(false) }
-        Box(modifier = Modifier.fillMaxWidth()) {
-            OutlinedTextField(
-                value = if (state.kind == ContactFormState.KIND_ANIMAL) {
-                    stringResource(R.string.contact_kind_animal)
-                } else {
-                    stringResource(R.string.contact_kind_human)
-                },
-                onValueChange = {},
-                readOnly = true,
-                label = { Text(stringResource(R.string.contact_kind)) },
-                modifier = Modifier.fillMaxWidth(),
-                trailingIcon = {
-                    IconButton(onClick = { kindMenuExpanded = true }) {
-                        Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = null)
-                    }
-                },
-            )
-            DropdownMenu(
-                expanded = kindMenuExpanded,
-                onDismissRequest = { kindMenuExpanded = false },
-            ) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.contact_kind_human)) },
-                    onClick = {
-                        kindMenuExpanded = false
-                        onKindChange(ContactFormState.KIND_HUMAN)
+        // Deliberately never gated: web never lists crm.kind in contactFields.ts, same
+        // always-shown treatment as givenName/surname (a prior pass gated this by mistake —
+        // ContactFieldKey.CARD_KIND is a different field, see below).
+        run {
+            var kindMenuExpanded by remember { mutableStateOf(false) }
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = if (state.kind == ContactFormState.KIND_ANIMAL) {
+                        stringResource(R.string.contact_kind_animal)
+                    } else {
+                        stringResource(R.string.contact_kind_human)
+                    },
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.contact_kind)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        IconButton(onClick = { kindMenuExpanded = true }) {
+                            Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = null)
+                        }
                     },
                 )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.contact_kind_animal)) },
-                    onClick = {
-                        kindMenuExpanded = false
-                        onKindChange(ContactFormState.KIND_ANIMAL)
-                    },
-                )
+                DropdownMenu(
+                    expanded = kindMenuExpanded,
+                    onDismissRequest = { kindMenuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.contact_kind_human)) },
+                        onClick = {
+                            kindMenuExpanded = false
+                            onKindChange(ContactFormState.KIND_HUMAN)
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.contact_kind_animal)) },
+                        onClick = {
+                            kindMenuExpanded = false
+                            onKindChange(ContactFormState.KIND_ANIMAL)
+                        },
+                    )
+                }
             }
+        }
+
+        // Issue #832: Card.kind (RFC 9553 §2.1.4) — the real `cardKind` toggle key. An
+        // edit-only field on web too (no detail-screen counterpart there either).
+        if (ContactFieldKey.CARD_KIND in enabled) {
+            com.mycorrhizal.crm.ui.components.TypeDropdown(
+                current = state.cardKind.ifBlank { null },
+                options = com.mycorrhizal.crm.ui.components.CARD_KIND_OPTIONS,
+                onTypeChange = { onCardKindChange(it.orEmpty()) },
+                modifier = Modifier.fillMaxWidth(),
+                label = stringResource(R.string.contact_card_kind_label),
+            )
         }
 
         // M24: default language tag (web's LanguageField is a full picker; a text field is the
         // pragmatic mobile equivalent — the backend stores any RFC 9554 tag unvalidated).
-        OutlinedTextField(
-            value = state.language,
-            onValueChange = onLanguageChange,
-            label = { Text(stringResource(R.string.contact_language)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        if (ContactFieldKey.LANGUAGE in enabled) {
+            OutlinedTextField(
+                value = state.language,
+                onValueChange = onLanguageChange,
+                label = { Text(stringResource(R.string.contact_language)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
-        MultiValueEditor(
-            items = state.emails,
-            spec = EmailSpec,
-            onChange = onEmailsChange,
-            label = stringResource(R.string.contact_email),
-        )
+        if (ContactFieldKey.EMAILS in enabled) {
+            MultiValueEditor(
+                items = state.emails,
+                spec = EmailSpec,
+                onChange = onEmailsChange,
+                label = stringResource(R.string.contact_email),
+            )
+        }
 
-        MultiValueEditor(
-            items = state.phones,
-            spec = PhoneSpec,
-            onChange = onPhonesChange,
-            label = stringResource(R.string.contact_phone),
-        )
+        if (ContactFieldKey.PHONES in enabled) {
+            MultiValueEditor(
+                items = state.phones,
+                spec = PhoneSpec,
+                onChange = onPhonesChange,
+                label = stringResource(R.string.contact_phone),
+            )
+        }
 
         // M7 Tier 1: addresses get their own editor (components[], not a scalar).
-        SectionLabel(stringResource(R.string.contact_address))
-        AddressEditor(
-            addresses = state.addresses,
-            onChange = onAddressesChange,
-        )
+        if (ContactFieldKey.ADDRESSES in enabled) {
+            SectionLabel(stringResource(R.string.contact_address))
+            AddressEditor(
+                addresses = state.addresses,
+                onChange = onAddressesChange,
+            )
+        }
 
         // M7 Tier 1: organization + department are plain fields (web parity — only the
         // first organization is surfaced), edited onto organizations[0] on save.
-        SectionLabel(stringResource(R.string.contact_organization))
-        OutlinedTextField(
-            value = state.organizationName,
-            onValueChange = onOrganizationNameChange,
-            label = { Text(stringResource(R.string.contact_organization)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            value = state.department,
-            onValueChange = onDepartmentChange,
-            label = { Text(stringResource(R.string.contact_department)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        if (ContactFieldKey.ORGANIZATIONS in enabled) {
+            SectionLabel(stringResource(R.string.contact_organization))
+            OutlinedTextField(
+                value = state.organizationName,
+                onValueChange = onOrganizationNameChange,
+                label = { Text(stringResource(R.string.contact_organization)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = state.department,
+                onValueChange = onDepartmentChange,
+                label = { Text(stringResource(R.string.contact_department)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
-        MultiValueEditor(
-            items = state.titles,
-            spec = TitleSpec,
-            onChange = onTitlesChange,
-            label = stringResource(R.string.contact_job_titles),
-        )
+        if (ContactFieldKey.TITLES in enabled) {
+            MultiValueEditor(
+                items = state.titles,
+                spec = TitleSpec,
+                onChange = onTitlesChange,
+                label = stringResource(R.string.contact_job_titles),
+            )
+        }
 
         // M7 Tier 1: online services. The detail screen resolves handles via `service`
         // (MobileLinkRegistry) — the editor's spec edits the uri and label only, so a
         // loaded row's `service` rides along untouched and the resolved chips keep working.
-        SectionLabel(stringResource(R.string.contact_online_services))
-        MultiValueEditor(
-            items = state.imppAddresses,
-            spec = OnlineServiceSpec,
-            onChange = onImppChange,
-            label = stringResource(R.string.contact_impps),
-        )
-        MultiValueEditor(
-            items = state.socialProfiles,
-            spec = OnlineServiceSpec,
-            onChange = onSocialChange,
-            label = stringResource(R.string.contact_social_profiles),
-        )
-        MultiValueEditor(
-            items = state.otherOnlineServices,
-            spec = OnlineServiceSpec,
-            onChange = onOtherServicesChange,
-            label = stringResource(R.string.contact_other_online_services),
-        )
+        if (ContactFieldKey.IMPP_ADDRESSES in enabled ||
+            ContactFieldKey.SOCIAL_PROFILES in enabled ||
+            ContactFieldKey.OTHER_ONLINE_SERVICES in enabled
+        ) {
+            SectionLabel(stringResource(R.string.contact_online_services))
+        }
+        if (ContactFieldKey.IMPP_ADDRESSES in enabled) {
+            MultiValueEditor(
+                items = state.imppAddresses,
+                spec = OnlineServiceSpec,
+                onChange = onImppChange,
+                label = stringResource(R.string.contact_impps),
+            )
+        }
+        if (ContactFieldKey.SOCIAL_PROFILES in enabled) {
+            MultiValueEditor(
+                items = state.socialProfiles,
+                spec = OnlineServiceSpec,
+                onChange = onSocialChange,
+                label = stringResource(R.string.contact_social_profiles),
+            )
+        }
+        if (ContactFieldKey.OTHER_ONLINE_SERVICES in enabled) {
+            MultiValueEditor(
+                items = state.otherOnlineServices,
+                spec = OnlineServiceSpec,
+                onChange = onOtherServicesChange,
+                label = stringResource(R.string.contact_other_online_services),
+            )
+        }
 
-        MultiValueEditor(
-            items = state.links,
-            spec = LinkSpec,
-            onChange = onLinksChange,
-            label = stringResource(R.string.contact_links),
-        )
+        if (ContactFieldKey.LINKS in enabled) {
+            MultiValueEditor(
+                items = state.links,
+                spec = LinkSpec,
+                onChange = onLinksChange,
+                label = stringResource(R.string.contact_links),
+            )
+        }
 
-        MultiValueEditor(
-            items = state.personalInfo,
-            spec = PersonalInfoSpec,
-            onChange = onPersonalInfoChange,
-            label = stringResource(R.string.contact_personal_info),
-        )
+        // Issue #832: RFC 9553 speakToAs — pronouns and grammatical gender are two
+        // independent lists nested under the same Card.speakToAs object.
+        if (ContactFieldKey.SPEAK_TO_AS in enabled) {
+            SectionLabel(stringResource(R.string.contact_speak_to_as))
+            MultiValueEditor(
+                items = state.pronouns,
+                spec = com.mycorrhizal.crm.ui.components.PronounsSpec,
+                onChange = onPronounsChange,
+                label = stringResource(R.string.contact_pronouns),
+            )
+            MultiValueEditor(
+                items = state.grammaticalGenders,
+                spec = com.mycorrhizal.crm.ui.components.GrammaticalGenderSpec,
+                onChange = onGrammaticalGendersChange,
+                label = stringResource(R.string.contact_grammatical_gender),
+            )
+        }
 
-        OutlinedTextField(
-            value = state.birthday,
-            onValueChange = onBirthdayChange,
-            label = { Text(stringResource(R.string.contact_birthday)) },
-            placeholder = { Text(stringResource(R.string.contact_birthday_hint)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        if (ContactFieldKey.PERSONAL_INFO in enabled) {
+            MultiValueEditor(
+                items = state.personalInfo,
+                spec = PersonalInfoSpec,
+                onChange = onPersonalInfoChange,
+                label = stringResource(R.string.contact_personal_info),
+            )
+        }
+
+        // Issue #832: bare string list — chips, not MultiValueEditor (no type/pref concept).
+        if (ContactFieldKey.KEYWORDS in enabled) {
+            com.mycorrhizal.crm.ui.components.ChipListEditor(
+                items = state.keywords,
+                onChange = onKeywordsChange,
+                label = stringResource(R.string.contact_keywords),
+            )
+        }
+
+        if (ContactFieldKey.PREFERRED_LANGUAGES in enabled) {
+            MultiValueEditor(
+                items = state.preferredLanguages,
+                spec = com.mycorrhizal.crm.ui.components.LanguagePrefSpec,
+                onChange = onPreferredLanguagesChange,
+                label = stringResource(R.string.contact_preferred_languages),
+            )
+        }
+
+        if (ContactFieldKey.BIRTHDAY in enabled) {
+            OutlinedTextField(
+                value = state.birthday,
+                onValueChange = onBirthdayChange,
+                label = { Text(stringResource(R.string.contact_birthday)) },
+                placeholder = { Text(stringResource(R.string.contact_birthday_hint)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        // Issue #832: every anniversary beyond the quick birth entry above
+        // (wedding/death/extra births) — mergeAnniversaries reassembles both
+        // into one array on save.
+        if (ContactFieldKey.ANNIVERSARIES in enabled) {
+            MultiValueEditor(
+                items = state.anniversaries,
+                spec = com.mycorrhizal.crm.ui.components.AnniversarySpec,
+                onChange = onAnniversariesChange,
+                label = stringResource(R.string.contact_anniversaries),
+            )
+        }
 
         // M7 Tier 3: CRM-envelope strings that appeared in neither the old form nor detail.
-        OutlinedTextField(
-            value = state.howWeMet,
-            onValueChange = onHowWeMetChange,
-            label = { Text(stringResource(R.string.contact_how_we_met)) },
-            minLines = 2,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            value = state.workInformation,
-            onValueChange = onWorkInformationChange,
-            label = { Text(stringResource(R.string.contact_work_information)) },
-            minLines = 2,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            value = state.contactInformation,
-            onValueChange = onContactInformationChange,
-            label = { Text(stringResource(R.string.contact_contact_information)) },
-            minLines = 2,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        if (ContactFieldKey.HOW_WE_MET in enabled) {
+            OutlinedTextField(
+                value = state.howWeMet,
+                onValueChange = onHowWeMetChange,
+                label = { Text(stringResource(R.string.contact_how_we_met)) },
+                minLines = 2,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (ContactFieldKey.WORK_INFORMATION in enabled) {
+            OutlinedTextField(
+                value = state.workInformation,
+                onValueChange = onWorkInformationChange,
+                label = { Text(stringResource(R.string.contact_work_information)) },
+                minLines = 2,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (ContactFieldKey.CONTACT_INFORMATION in enabled) {
+            OutlinedTextField(
+                value = state.contactInformation,
+                onValueChange = onContactInformationChange,
+                label = { Text(stringResource(R.string.contact_contact_information)) },
+                minLines = 2,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
-        OutlinedTextField(
-            value = state.notes,
-            onValueChange = onNotesChange,
-            label = { Text(stringResource(R.string.nav_notes)) },
-            minLines = 3,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        // Issue #832: full Card.notes list (was a single implicit slot before).
+        if (ContactFieldKey.CARD_NOTES in enabled) {
+            com.mycorrhizal.crm.ui.components.CardNotesEditor(
+                items = state.cardNotes,
+                onChange = onCardNotesChange,
+                label = stringResource(R.string.contact_notes),
+            )
+        }
 
         // M24: circles — an autocomplete of existing circles, not the old free-text
         // comma-separated field. Selected circles become real CircleMember rows on save.

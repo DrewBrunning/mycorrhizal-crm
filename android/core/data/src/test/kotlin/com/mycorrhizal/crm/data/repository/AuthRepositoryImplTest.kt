@@ -5,6 +5,7 @@ import com.mycorrhizal.crm.data.session.FakeSessionPrefsStorage
 import com.mycorrhizal.crm.data.session.FakeTokenStorage
 import com.mycorrhizal.crm.domain.repository.LoginOutcome
 import com.mycorrhizal.crm.domain.repository.SessionState
+import com.mycorrhizal.crm.model.network.EnabledContactFieldsResponse
 import com.mycorrhizal.crm.model.network.MessageResponse
 import com.mycorrhizal.crm.model.network.TwoFactorConfirmResponse
 import com.mycorrhizal.crm.model.network.UserProfile
@@ -320,6 +321,90 @@ class AuthRepositoryImplTest {
         assertTrue(result.isFailure)
         assertEquals("Not found", (result.exceptionOrNull() as ApiError).displayMessage)
         assertEquals("uid-1", h.sessionManager.observeSession().first().selfContactVCardUid)
+    }
+
+    // --- Issue #832: Contact field settings (Android parity) ---
+
+    @Test
+    fun `getEnabledContactFields returns the raw stored list without touching the session`() = runTest {
+        val h = Harness()
+        h.sessionManager.setSession("https://crm.example.com", "jwt", SessionState(enabledContactFields = null))
+        coEvery { h.apiClient.getEnabledContactFields() } returns Result.success(
+            EnabledContactFieldsResponse(enabledContactFields = listOf("emails", "phones")),
+        )
+
+        val result = h.repository.getEnabledContactFields()
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf("emails", "phones"), result.getOrThrow())
+        // A pure read — unlike updateEnabledContactFields, it must not merge into the session.
+        assertNull(h.sessionManager.observeSession().first().enabledContactFields)
+    }
+
+    @Test
+    fun `getEnabledContactFields returns null when the user has never configured it`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.getEnabledContactFields() } returns Result.success(
+            EnabledContactFieldsResponse(enabledContactFields = null),
+        )
+
+        val result = h.repository.getEnabledContactFields()
+
+        assertTrue(result.isSuccess)
+        assertNull(result.getOrThrow())
+    }
+
+    @Test
+    fun `updateEnabledContactFields patches the server and stores the echoed list in the session`() = runTest {
+        val h = Harness()
+        h.sessionManager.setSession("https://crm.example.com", "jwt", SessionState(enabledContactFields = null))
+        coEvery { h.apiClient.updateEnabledContactFields(listOf("emails", "gender")) } returns Result.success(
+            EnabledContactFieldsResponse(enabledContactFields = listOf("emails", "gender")),
+        )
+
+        val result = h.repository.updateEnabledContactFields(listOf("emails", "gender"))
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf("emails", "gender"), result.getOrThrow())
+        coVerify { h.apiClient.updateEnabledContactFields(listOf("emails", "gender")) }
+        assertEquals(listOf("emails", "gender"), h.sessionManager.observeSession().first().enabledContactFields)
+    }
+
+    @Test
+    fun `updateEnabledContactFields with an empty list overwrites a previously populated session value`() = runTest {
+        val h = Harness()
+        h.sessionManager.setSession(
+            "https://crm.example.com",
+            "jwt",
+            SessionState(enabledContactFields = listOf("emails", "phones")),
+        )
+        coEvery { h.apiClient.updateEnabledContactFields(emptyList()) } returns Result.success(
+            EnabledContactFieldsResponse(enabledContactFields = emptyList()),
+        )
+
+        val result = h.repository.updateEnabledContactFields(emptyList())
+
+        assertTrue(result.isSuccess)
+        assertEquals(emptyList<String>(), result.getOrThrow())
+        assertEquals(emptyList<String>(), h.sessionManager.observeSession().first().enabledContactFields)
+    }
+
+    @Test
+    fun `updateEnabledContactFields propagates a server failure and leaves the session untouched`() = runTest {
+        val h = Harness()
+        h.sessionManager.setSession(
+            "https://crm.example.com",
+            "jwt",
+            SessionState(enabledContactFields = listOf("emails")),
+        )
+        coEvery { h.apiClient.updateEnabledContactFields(listOf("phones")) } returns Result.failure(
+            ApiError.Client(500, "Server error"),
+        )
+
+        val result = h.repository.updateEnabledContactFields(listOf("phones"))
+
+        assertTrue(result.isFailure)
+        assertEquals(listOf("emails"), h.sessionManager.observeSession().first().enabledContactFields)
     }
 
     @Test

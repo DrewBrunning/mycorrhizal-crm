@@ -27,17 +27,23 @@ import com.mycorrhizal.crm.model.network.AnniversaryDate
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.CRMEnvelope
+import com.mycorrhizal.crm.model.network.ContactFieldKey
+import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
 import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.ExternalIdentity
 import com.mycorrhizal.crm.model.network.ExternalSystems
 import com.mycorrhizal.crm.model.network.FieldConstraints
 import com.mycorrhizal.crm.model.network.FieldDefinition
+import com.mycorrhizal.crm.model.network.GrammaticalGender
 import com.mycorrhizal.crm.model.network.ImmichPersonSummary
+import com.mycorrhizal.crm.model.network.LanguagePref
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.PartialDate
+import com.mycorrhizal.crm.model.network.Pronouns
 import com.mycorrhizal.crm.model.network.Resource
+import com.mycorrhizal.crm.model.network.SpeakToAs
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.every
 import io.mockk.mockk
@@ -65,7 +71,11 @@ class ContactDetailScreenTest {
     private fun setContent(state: ContactDetailUiState) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                ContactDetailContent(contact = state.contact!!)
+                ContactDetailContent(
+                    contact = state.contact!!,
+                    dateFormat = state.dateFormat,
+                    enabledFields = state.enabledFields,
+                )
             }
         }
     }
@@ -320,7 +330,7 @@ class ContactDetailScreenTest {
                 links = listOf(Resource(uri = "https://example.com/profile", label = "Website")),
             ),
         )
-        setContent(ContactDetailUiState(contact = contact))
+        setContent(ContactDetailUiState(contact = contact, enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.LINKS))
 
         composeTestRule.onNodeWithTag("contact-detail-list")
             .performScrollToNode(hasContentDescription("Open link"))
@@ -369,6 +379,209 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("Birthday: June 15, 1990").assertIsDisplayed()
     }
 
+    // --- Issue #832: fields with no prior Android UI ---
+
+    @Test
+    fun `gender renders in the header alongside nickname and birthday`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana White")),
+            crm = CRMEnvelope(gender = "non-binary"),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact)
+            }
+        }
+        composeTestRule.onNodeWithText("non-binary").assertIsDisplayed()
+    }
+
+    @Test
+    fun `speak to as section shows pronouns and grammatical gender`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                speakToAs = SpeakToAs(
+                    pronouns = listOf(Pronouns(pronouns = "they/them")),
+                    grammaticalGenders = listOf(GrammaticalGender(value = "common", language = "en")),
+                ),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact)
+            }
+        }
+        composeTestRule.onNodeWithText("Speak to as").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("they/them").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("common").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `speak to as section is absent when both lists are empty`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact)
+            }
+        }
+        composeTestRule.onNodeWithText("Speak to as").assertDoesNotExist()
+    }
+
+    @Test
+    fun `keywords render as a single joined row`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana White"), keywords = listOf("hiking", "climbing")),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact, enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.KEYWORDS)
+            }
+        }
+        composeTestRule.onNodeWithText("Keywords").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("hiking, climbing").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `preferred languages render each entry's language`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana White"), preferredLanguages = listOf(LanguagePref(language = "en"))),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact, enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.PREFERRED_LANGUAGES)
+            }
+        }
+        composeTestRule.onNodeWithText("Preferred languages").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("en").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `anniversaries beyond birth render in their own section, separate from the header birthday`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                anniversaries = listOf(
+                    Anniversary(kind = "birth", date = AnniversaryDate(partial = PartialDate(year = 1990, month = 6, day = 15))),
+                    Anniversary(kind = "wedding", date = AnniversaryDate(partial = PartialDate(year = 2020, month = 6, day = 1))),
+                ),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact, enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.ANNIVERSARIES)
+            }
+        }
+        composeTestRule.onNodeWithText("Birthday: 15 June 1990").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Anniversaries").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("wedding: 1 June 2020").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `anniversaries section is absent when only the birth entry exists`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                anniversaries = listOf(
+                    Anniversary(kind = "birth", date = AnniversaryDate(partial = PartialDate(year = 1990, month = 6, day = 15))),
+                ),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact)
+            }
+        }
+        composeTestRule.onNodeWithText("Anniversaries").assertDoesNotExist()
+    }
+
+    // --- Issue #832: detail-screen sections for fields that only ever had a form editor ---
+
+    @Test
+    fun `titles section renders each title's name`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                titles = listOf(com.mycorrhizal.crm.model.network.Title(name = "Reporter", kind = "title")),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.TITLES,
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("Job titles").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Reporter").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `titles section is absent when the key is disabled, even with data present`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                titles = listOf(com.mycorrhizal.crm.model.network.Title(name = "Reporter", kind = "title")),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact, enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS)
+            }
+        }
+        composeTestRule.onNodeWithText("Job titles").assertDoesNotExist()
+    }
+
+    @Test
+    fun `how we met, work information and contact information each render in their own section`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana White")),
+            crm = CRMEnvelope(
+                howWeMet = "At the climbing gym",
+                workInformation = "Full-stack at Acme",
+                contactInformation = "Prefers email",
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact)
+            }
+        }
+        composeTestRule.onNodeWithText("How we met").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("At the climbing gym").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Work information").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Full-stack at Acme").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Additional contact information").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Prefers email").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `work information section is absent when its key is disabled`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana White")),
+            crm = CRMEnvelope(workInformation = "Full-stack at Acme"),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS - ContactFieldKey.WORK_INFORMATION,
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("Full-stack at Acme").assertDoesNotExist()
+    }
+
     @Test
     fun `online service row renders service name and handle`() {
         val contact = ContactRecordResponse(
@@ -380,7 +593,7 @@ class ContactDetailScreenTest {
                 ),
             ),
         )
-        setContent(ContactDetailUiState(contact = contact))
+        setContent(ContactDetailUiState(contact = contact, enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.IMPP_ADDRESSES))
 
         composeTestRule.onNodeWithTag("contact-detail-list")
             .performScrollToNode(hasText("Signal"))

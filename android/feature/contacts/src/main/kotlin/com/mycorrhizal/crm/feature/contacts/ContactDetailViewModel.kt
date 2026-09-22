@@ -16,8 +16,10 @@ import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.domain.repository.SeafileRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Circle
+import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
+import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
 import com.mycorrhizal.crm.model.network.ExternalIdentity
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.FieldValueInput
@@ -26,6 +28,7 @@ import com.mycorrhizal.crm.model.network.ImmichPerson
 import com.mycorrhizal.crm.model.network.ImmichPersonSummary
 import com.mycorrhizal.crm.model.network.PaperlessDocument
 import com.mycorrhizal.crm.model.network.ReminderCompletion
+import com.mycorrhizal.crm.model.network.resolveEnabledFields
 import com.mycorrhizal.crm.model.network.SeafileItem
 import com.mycorrhizal.crm.model.network.SeafileLibrary
 import com.mycorrhizal.crm.model.network.SeafileLinkRequest
@@ -57,6 +60,13 @@ data class ContactDetailUiState(
      * contact is currently marked.
      */
     val selfContactVCardUid: String? = null,
+    /**
+     * Issue #832 (web parity): which extended contact fields the settings screen has
+     * enabled. Resolved from `SessionState.enabledContactFields` via `resolveEnabledFields`
+     * (never read raw — null there means "never configured", which resolves to the default
+     * set, not to nothing). Detail sections check `key in enabledFields` before rendering.
+     */
+    val enabledFields: Set<ContactFieldKey> = DEFAULT_ENABLED_CONTACT_FIELDS,
     /**
      * The user's custom field definitions and this contact's values for them, keyed by
      * `FieldDefinition.id`. Fetched separately from the contact and from each other — a value's
@@ -185,7 +195,11 @@ class ContactDetailViewModel @Inject constructor(
         viewModelScope.launch {
             authRepository.observeSession().collect { session ->
                 _uiState.update {
-                    it.copy(dateFormat = session.dateFormat, selfContactVCardUid = session.selfContactVCardUid)
+                    it.copy(
+                        dateFormat = session.dateFormat,
+                        selfContactVCardUid = session.selfContactVCardUid,
+                        enabledFields = resolveEnabledFields(session.enabledContactFields),
+                    )
                 }
             }
         }

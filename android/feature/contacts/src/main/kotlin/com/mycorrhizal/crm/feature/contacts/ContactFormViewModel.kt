@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
@@ -26,9 +27,17 @@ import com.mycorrhizal.crm.model.network.Resource
 import com.mycorrhizal.crm.model.network.Title
 import com.mycorrhizal.crm.model.network.Anniversary
 import com.mycorrhizal.crm.model.network.AnniversaryDate
-import com.mycorrhizal.crm.model.network.PartialDate
+import com.mycorrhizal.crm.model.network.ContactFieldKey
+import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
+import com.mycorrhizal.crm.model.network.GrammaticalGender
+import com.mycorrhizal.crm.model.network.LanguagePref
+import com.mycorrhizal.crm.model.network.Pronouns
+import com.mycorrhizal.crm.model.network.resolveEnabledFields
+import com.mycorrhizal.crm.model.network.SpeakToAs
 import com.mycorrhizal.crm.model.network.CardNote
 import com.mycorrhizal.crm.model.network.Tag
+import com.mycorrhizal.crm.model.util.formatForEdit
+import com.mycorrhizal.crm.model.util.parsePartialDateForEdit
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
@@ -66,8 +75,15 @@ data class ContactFormState(
     val suffix: String = "",
     val nickname: String = "",
     // M24: envelope-side entity kind (human|animal) — the backend default is human, matching
-    // web's AddContactDialog.
+    // web's AddContactDialog. Deliberately never gated by a ContactFieldKey — web never lists
+    // it in contactFields.ts, same always-shown treatment as givenName/surname.
     val kind: String = KIND_HUMAN,
+    // Issue #832: Card.kind (RFC 9553 §2.1.4: individual/group/org/location/application/device)
+    // — the real `cardKind` toggle key, distinct from [kind] above (crm.kind, human/animal).
+    // Blank means "no kind set"; unlike the free-text preserve-on-blank fields below, this is a
+    // controlled dropdown with an explicit "None" option, so blank is a deliberate clear, not
+    // "untouched" (see toInput).
+    val cardKind: String = "",
     // M24: the card's default language tag; defaults to the device locale on create, mirroring
     // web's defaultLanguage() (i18n.language).
     val language: String = "",
@@ -93,7 +109,17 @@ data class ContactFormState(
     val links: List<Resource> = emptyList(),
     val personalInfo: List<PersonalInfo> = emptyList(),
     val birthday: String = "",
-    val notes: String = "",
+    // Issue #832: fields with no prior Android UI. `anniversaries` holds every
+    // non-`birth` entry (wedding/death/extra births) — `birthday` above keeps
+    // owning the `kind=="birth"` entry via mergeAnniversaries; the two lists
+    // are merged back together on save.
+    val gender: String = "",
+    val preferredLanguages: List<LanguagePref> = emptyList(),
+    val pronouns: List<Pronouns> = emptyList(),
+    val grammaticalGenders: List<GrammaticalGender> = emptyList(),
+    val keywords: List<String> = emptyList(),
+    val anniversaries: List<Anniversary> = emptyList(),
+    val cardNotes: List<CardNote> = listOf(CardNote(note = "")),
     // M24: selected circle/tag names. In edit mode these initialize from the join-row
     // derivations (circlesForContact/tagsForContact), not the legacy flat `crm.circles`.
     val circles: List<String> = emptyList(),
@@ -104,6 +130,9 @@ data class ContactFormState(
     val contactInformation: String = "",
     val allCircles: List<Circle> = emptyList(),
     val allTags: List<Tag> = emptyList(),
+    // Issue #832 (web parity): which fields the settings screen has enabled. Resolved from
+    // SessionState via resolveEnabledFields — see ContactDetailUiState.enabledFields's doc.
+    val enabledFields: Set<ContactFieldKey> = DEFAULT_ENABLED_CONTACT_FIELDS,
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     @StringRes val errorRes: Int? = null,
@@ -133,6 +162,10 @@ data class ContactFormState(
 
         val card = baseCard.copy(
             language = language.ifBlank { baseCard.language },
+            // Issue #832: a controlled dropdown, not a text field — an explicit "None"
+            // selection is a deliberate clear, so this does NOT preserve-on-blank the way
+            // howWeMet/workInformation/contactInformation below do.
+            kind = cardKind.ifBlank { null },
             name = mergeName(baseCard.name),
             nicknames = if (nickname.isNotBlank()) {
                 (baseCard.nicknames.orEmpty().let { existing ->
@@ -184,13 +217,17 @@ data class ContactFormState(
                 val value = info.value?.trim()
                 if (value.isNullOrBlank()) null else info.copy(value = value)
             }.ifEmpty { null },
-            anniversaries = mergeBirthday(baseCard.anniversaries, birthday),
-            notes = if (notes.isNotBlank()) {
-                val note = CardNote(note = notes.trim())
-                baseCard.notes.orEmpty().let { if (it.isEmpty()) listOf(note) else listOf(note) + it.drop(1) }
-            } else {
-                baseCard.notes
-            },
+            anniversaries = mergeAnniversaries(baseCard.anniversaries, birthday, anniversaries),
+            speakToAs = mergeSpeakToAs(baseCard.speakToAs),
+            preferredLanguages = preferredLanguages.mapNotNull { pref ->
+                val language = pref.language?.trim()
+                if (language.isNullOrBlank()) null else pref.copy(language = language)
+            }.ifEmpty { null },
+            keywords = keywords.map { it.trim() }.filter { it.isNotBlank() }.distinct().ifEmpty { null },
+            notes = cardNotes.mapNotNull { note ->
+                val text = note.note?.trim()
+                if (text.isNullOrBlank()) null else note.copy(note = text)
+            }.ifEmpty { null },
         )
         val crm = baseCrm.copy(
             kind = kind.ifBlank { baseCrm.kind },
@@ -201,6 +238,10 @@ data class ContactFormState(
             // birthday/nickname — a blank field keeps the loaded value rather than clearing it.
             howWeMet = howWeMet.trim().ifBlank { baseCrm.howWeMet },
             workInformation = workInformation.trim().ifBlank { baseCrm.workInformation },
+            // Issue #832: crm.gender wins over the legacy top-level `gender` on the backend
+            // (contact_record_reverse.go), so this — not ContactRecordInput.gender — is the
+            // field an edit must write to. Preserve-on-blank, matching howWeMet/workInformation.
+            gender = gender.trim().ifBlank { baseCrm.gender },
             contactInformation = contactInformation.trim().ifBlank { baseCrm.contactInformation },
         )
         return ContactRecordInput(
@@ -246,28 +287,57 @@ data class ContactFormState(
         )
     }
 
-    /** Set/keep the birth anniversary: a blank form field preserves the base
-     *  (so year-only partials aren't silently deleted), a filled one replaces
-     *  it while keeping non-birth anniversaries. */
-    private fun mergeBirthday(base: List<Anniversary>?, birthday: String): List<Anniversary>? {
-        if (birthday.isBlank()) return base
-        val (year, month, day) = parseBirthday(birthday)
-        val birth = Anniversary(
-            kind = "birth",
-            date = AnniversaryDate(partial = PartialDate(year = year, month = month, day = day)),
-        )
-        val others = base.orEmpty().filter { it.kind != "birth" }
-        return others + birth
+    /**
+     * Rebuild the full anniversaries array from the birth scalar field plus
+     * the (issue #832) general list editor's non-birth entries. A blank
+     * [birthday] preserves whatever `birth` entry [base] already had (so a
+     * year-only partial isn't silently deleted); a filled one replaces it.
+     * [editedOthers] is the general editor's current state — already the
+     * real loaded objects (`id`/`place` ride along via `.copy()`, same as
+     * every other MultiValueEditor-backed list) — so an anniversary the user
+     * never touched round-trips unchanged, and a row left blank is dropped,
+     * matching every other list field's "empty row = not sent" convention.
+     */
+    private fun mergeAnniversaries(
+        base: List<Anniversary>?,
+        birthday: String,
+        editedOthers: List<Anniversary>,
+    ): List<Anniversary>? {
+        val trimmedOthers = editedOthers.filter { it.date.hasEditableDate() }
+        val birth = if (birthday.isBlank()) {
+            base.orEmpty().firstOrNull { it.kind == "birth" }
+        } else {
+            Anniversary(kind = "birth", date = AnniversaryDate(partial = parsePartialDateForEdit(birthday)))
+        }
+        return (trimmedOthers + listOfNotNull(birth)).ifEmpty { null }
     }
 
-    private fun parseBirthday(value: String): Triple<Int?, Int?, Int?> {
-        val clean = value.trim()
-        if (clean.startsWith("--")) {
-            val parts = clean.substring(2).split("-")
-            return Triple(null, parts.getOrNull(0)?.toIntOrNull(), parts.getOrNull(1)?.toIntOrNull())
+    private fun AnniversaryDate?.hasEditableDate(): Boolean {
+        val partial = this?.partial
+        val hasPartial = partial != null && (partial.year != null || partial.hasMonthDay)
+        return hasPartial || !this?.timestamp.isNullOrBlank()
+    }
+
+    /**
+     * Assemble `speakToAs` from the two (issue #832) list editors. Both
+     * default-empty when the base has none, matching every other optional
+     * Card group; a fully-empty result collapses to null so an untouched
+     * contact's `speakToAs` stays absent rather than becoming `{}`.
+     */
+    private fun mergeSpeakToAs(base: SpeakToAs?): SpeakToAs? {
+        val trimmedPronouns = pronouns.mapNotNull { p ->
+            val text = p.pronouns?.trim()
+            if (text.isNullOrBlank()) null else p.copy(pronouns = text)
         }
-        val parts = clean.split("-")
-        return Triple(parts.getOrNull(0)?.toIntOrNull(), parts.getOrNull(1)?.toIntOrNull(), parts.getOrNull(2)?.toIntOrNull())
+        val trimmedGenders = grammaticalGenders.mapNotNull { g ->
+            val language = g.language?.trim()
+            if (language.isNullOrBlank()) null else g.copy(language = language)
+        }
+        if (trimmedPronouns.isEmpty() && trimmedGenders.isEmpty()) return null
+        return (base ?: SpeakToAs()).copy(
+            pronouns = trimmedPronouns.ifEmpty { null },
+            grammaticalGenders = trimmedGenders.ifEmpty { null },
+        )
     }
 
     /**
@@ -318,6 +388,9 @@ class ContactFormViewModel @Inject constructor(
     // memberships via the join-row sub-resources, like web's AddContactDialog.
     private val circleRepository: CircleRepository,
     private val tagRepository: TagRepository,
+    // Issue #832: the enabled-contact-fields toggle set, same session-observing pattern
+    // as ContactDetailViewModel.
+    private val authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -344,6 +417,11 @@ class ContactFormViewModel @Inject constructor(
             _uiState.update { it.copy(language = defaultLanguage()) }
         }
         loadOptions()
+        viewModelScope.launch {
+            authRepository.observeSession().collect { session ->
+                _uiState.update { it.copy(enabledFields = resolveEnabledFields(session.enabledContactFields)) }
+            }
+        }
     }
 
     /** Load the existing circles/tags that back the add menus (create + edit). */
@@ -410,6 +488,7 @@ class ContactFormViewModel @Inject constructor(
     fun onSuffixChange(value: String) = _uiState.update { it.copy(suffix = value) }
     fun onNicknameChange(value: String) = _uiState.update { it.copy(nickname = value) }
     fun onKindChange(value: String) = _uiState.update { it.copy(kind = value) }
+    fun onCardKindChange(value: String) = _uiState.update { it.copy(cardKind = value) }
     fun onLanguageChange(value: String) = _uiState.update { it.copy(language = value) }
     // M7: each multi-value list takes the whole edited list from MultiValueEditor. The
     // editor only ever `.copy()`s the exact object at an index (never reconstructs), so
@@ -431,7 +510,14 @@ class ContactFormViewModel @Inject constructor(
     fun onWorkInformationChange(value: String) = _uiState.update { it.copy(workInformation = value) }
     fun onContactInformationChange(value: String) = _uiState.update { it.copy(contactInformation = value) }
     fun onBirthdayChange(value: String) = _uiState.update { it.copy(birthday = value) }
-    fun onNotesChange(value: String) = _uiState.update { it.copy(notes = value) }
+    fun onCardNotesChange(value: List<CardNote>) = _uiState.update { it.copy(cardNotes = value) }
+    // Issue #832: fields with no prior Android UI.
+    fun onGenderChange(value: String) = _uiState.update { it.copy(gender = value) }
+    fun onPreferredLanguagesChange(value: List<LanguagePref>) = _uiState.update { it.copy(preferredLanguages = value) }
+    fun onPronounsChange(value: List<Pronouns>) = _uiState.update { it.copy(pronouns = value) }
+    fun onGrammaticalGendersChange(value: List<GrammaticalGender>) = _uiState.update { it.copy(grammaticalGenders = value) }
+    fun onKeywordsChange(value: List<String>) = _uiState.update { it.copy(keywords = value) }
+    fun onAnniversariesChange(value: List<Anniversary>) = _uiState.update { it.copy(anniversaries = value) }
 
     /** M24: toggle a circle on/off the selection by name (deduped against what's already on). */
     fun onCircleToggle(name: String) = _uiState.update {
@@ -527,6 +613,7 @@ class ContactFormViewModel @Inject constructor(
         val suffix = name?.components?.firstOrNull { it.kind == "generation" }?.value ?: ""
         val nickname = card?.nicknames?.firstOrNull()?.name ?: ""
         val kind = record.crm?.kind ?: ContactFormState.KIND_HUMAN
+        val cardKind = card?.kind.orEmpty()
         val language = card?.language.orEmpty()
         // T81: load the entries as-is — no narrowing to a scalar — so id/contexts/pref/
         // features/label survive whatever the form saves next, even though the form only
@@ -545,10 +632,12 @@ class ContactFormViewModel @Inject constructor(
         val otherOnlineServices = card?.otherOnlineServices.orEmpty()
         val links = card?.links.orEmpty()
         val personalInfo = card?.personalInfo.orEmpty()
-        val birthday = card?.anniversaries?.firstOrNull { it.kind == "birth" }?.date?.partial?.let {
-            formatPartialDate(it)
-        } ?: ""
-        val notes = card?.notes?.firstOrNull()?.note ?: ""
+        val birthday = card?.anniversaries?.firstOrNull { it.kind == "birth" }?.date?.partial?.formatForEdit() ?: ""
+        // Issue #832: every non-birth entry, loaded as the real objects (same
+        // T81 contract as titles/personalInfo/etc.) — mergeAnniversaries
+        // reassembles this alongside the birth scalar on save.
+        val anniversaries = card?.anniversaries.orEmpty().filter { it.kind != "birth" }
+        val cardNotes = card?.notes?.ifEmpty { null } ?: listOf(CardNote(note = ""))
         // M24: circles/tags are seeded asynchronously from the join-row derivations
         // (loadMemberships), not from the stale flat `crm.circles`.
         return copy(
@@ -559,6 +648,7 @@ class ContactFormViewModel @Inject constructor(
             suffix = suffix,
             nickname = nickname,
             kind = kind,
+            cardKind = cardKind,
             language = language,
             emails = emails,
             phones = phones,
@@ -572,21 +662,18 @@ class ContactFormViewModel @Inject constructor(
             links = links,
             personalInfo = personalInfo,
             birthday = birthday,
-            notes = notes,
+            cardNotes = cardNotes,
             howWeMet = record.crm?.howWeMet.orEmpty(),
             workInformation = record.crm?.workInformation.orEmpty(),
             contactInformation = record.crm?.contactInformation.orEmpty(),
+            // Issue #832: fields with no prior Android UI.
+            gender = record.crm?.gender.orEmpty(),
+            preferredLanguages = card?.preferredLanguages.orEmpty(),
+            pronouns = card?.speakToAs?.pronouns.orEmpty(),
+            grammaticalGenders = card?.speakToAs?.grammaticalGenders.orEmpty(),
+            keywords = card?.keywords.orEmpty(),
+            anniversaries = anniversaries,
         )
-    }
-
-    /** Format a partial date for the input field; yearless (`--MM-DD`) and full
-     *  round-trip exactly, year-only/month-only partials render blank (and are
-     *  preserved on save by [ContactFormState.toInput]'s merge). */
-    private fun formatPartialDate(p: PartialDate): String {
-        val month = p.month?.toString()?.padStart(2, '0')
-        val day = p.day?.toString()?.padStart(2, '0')
-        if (month == null || day == null) return ""
-        return if (p.year == null) "--$month-$day" else "${p.year}-$month-$day"
     }
 
     companion object {

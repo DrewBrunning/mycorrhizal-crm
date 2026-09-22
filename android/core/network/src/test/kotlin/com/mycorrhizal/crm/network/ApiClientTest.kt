@@ -3082,6 +3082,82 @@ class ApiClientTest {
         assertEquals(404, (error as ApiError.Client).code)
     }
 
+    // --- Issue #832: Contact field settings (Android parity) ---
+
+    @Test
+    fun `get enabled contact fields parses a null list as never configured`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"enabled_contact_fields": null}"""),
+        )
+
+        val result = client.getEnabledContactFields()
+
+        assertTrue(result.isSuccess)
+        assertNull(result.getOrThrow().enabledContactFields)
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/users/enabled-contact-fields", request.path)
+    }
+
+    @Test
+    fun `get enabled contact fields parses an explicit empty list distinctly from null`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"enabled_contact_fields": []}"""),
+        )
+
+        val result = client.getEnabledContactFields()
+
+        assertTrue(result.isSuccess)
+        assertEquals(emptyList<String>(), result.getOrThrow().enabledContactFields)
+    }
+
+    @Test
+    fun `get enabled contact fields parses a populated list`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setBody("""{"enabled_contact_fields": ["emails", "phones", "speakToAs"]}"""),
+        )
+
+        val result = client.getEnabledContactFields()
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf("emails", "phones", "speakToAs"), result.getOrThrow().enabledContactFields)
+    }
+
+    @Test
+    fun `update enabled contact fields sends a PATCH with the fields array and parses the echoed list`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setBody(
+                    """{"message": "Enabled contact fields updated successfully", "enabled_contact_fields": ["emails", "gender"]}""",
+                ),
+        )
+
+        val result = client.updateEnabledContactFields(listOf("emails", "gender"))
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf("emails", "gender"), result.getOrThrow().enabledContactFields)
+        val request = server.takeRequest()
+        assertEquals("PATCH", request.method)
+        assertEquals("/api/v1/users/enabled-contact-fields", request.path)
+        assertTrue(request.body.readUtf8().contains("\"fields\":[\"emails\",\"gender\"]"))
+    }
+
+    @Test
+    fun `update enabled contact fields with an empty list sends an explicit empty array, not an omitted field`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setBody("""{"message": "Enabled contact fields updated successfully", "enabled_contact_fields": []}"""),
+        )
+
+        val result = client.updateEnabledContactFields(emptyList())
+
+        assertTrue(result.isSuccess)
+        assertEquals(emptyList<String>(), result.getOrThrow().enabledContactFields)
+        val request = server.takeRequest()
+        assertTrue(request.body.readUtf8().contains("\"fields\":[]"))
+    }
+
     @Test
     fun `change password posts current and new password and parses the message`() = runBlocking {
         server.enqueue(

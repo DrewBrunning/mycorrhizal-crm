@@ -145,6 +145,15 @@
     <string name="contact_organization">Organizzazione</string>
     <string name="contact_personal_info">Informazioni personali</string>
     <string name="contact_online_services">Servizi online</string>
+    <!-- Issue #832: fields with no prior Android UI -->
+    <string name="contact_gender">Genere</string>
+    <string name="contact_speak_to_as">Come rivolgersi</string>
+    <string name="contact_pronouns">Pronomi</string>
+    <string name="contact_grammatical_gender">Genere grammaticale</string>
+    <string name="contact_keywords">Parole chiave</string>
+    <string name="contact_preferred_languages">Lingue preferite</string>
+    <string name="contact_anniversaries">Anniversari</string>
+    <string name="contact_anniversary">Anniversario</string>
     <string name="contact_circles">Cerchie</string>
     <string name="contact_tags">Etichette</string>
     <string name="contact_custom_fields">Campi personalizzati</string>
@@ -276,6 +285,25 @@
     <string name="contact_personal_info_kind_expertise">Competenza</string>
     <string name="contact_personal_info_kind_hobby">Hobby</string>
     <string name="contact_personal_info_kind_interest">Interesse</string>
+    <!-- Issue #832: SpeakToAs.grammaticalGenders[].value enum -->
+    <string name="contact_gramgender_animate">Animato</string>
+    <string name="contact_gramgender_common">Comune</string>
+    <string name="contact_gramgender_feminine">Femminile</string>
+    <string name="contact_gramgender_inanimate">Inanimato</string>
+    <string name="contact_gramgender_masculine">Maschile</string>
+    <string name="contact_gramgender_neuter">Neutro</string>
+    <!-- Issue #832: Card.anniversaries[].kind enum -->
+    <string name="contact_anniversary_kind_birth">Nascita</string>
+    <string name="contact_anniversary_kind_death">Decesso</string>
+    <string name="contact_anniversary_kind_wedding">Matrimonio</string>
+    <!-- Issue #832: Card.kind enum (RFC 9553 §2.1.4) — distinct from crm.kind (human/animal) -->
+    <string name="contact_card_kind_label">Tipo di scheda</string>
+    <string name="contact_card_kind_individual">Individuo</string>
+    <string name="contact_card_kind_group">Gruppo</string>
+    <string name="contact_card_kind_org">Organizzazione</string>
+    <string name="contact_card_kind_location">Luogo</string>
+    <string name="contact_card_kind_application">Applicazione</string>
+    <string name="contact_card_kind_device">Dispositivo</string>
     <!-- M7: nuove sezioni del modulo -->
     <string name="contact_department">Dipartimento</string>
     <string name="contact_job_titles">Qualifiche</string>
@@ -866,6 +894,15 @@
     <string name="tags_contacts_empty">Nessun contatto etichettato</string>
 
     <!-- Custom field definitions (issue #830) -->
+    <!-- Contact field settings (issue #832, web parity) -->
+    <string name="settings_contact_fields_title">Impostazioni campi contatto</string>
+    <string name="settings_contact_fields_description">Scegli quali campi del contatto compaiono durante la visualizzazione o la modifica di un contatto.</string>
+    <string name="settings_contact_fields_group_communication">Comunicazione</string>
+    <string name="settings_contact_fields_group_name">Nome</string>
+    <string name="settings_contact_fields_group_work">Lavoro</string>
+    <string name="settings_contact_fields_group_personal">Personale</string>
+    <string name="settings_contact_fields_group_mycorrhizal">Mycorrhizal</string>
+
     <string name="settings_custom_fields_title">Campi personalizzati</string>
     <string name="settings_custom_fields_empty">Nessun campo personalizzato</string>
     <string name="settings_custom_fields_new_title">Nuovo campo personalizzato</string>

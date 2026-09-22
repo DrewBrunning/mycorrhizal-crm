@@ -6,6 +6,7 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
+import com.mycorrhizal.crm.model.network.CardNote
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
@@ -52,6 +53,7 @@ class ContactFormViewModelTest {
     private val contactRepository = mockk<ContactRepository>()
     private val circleRepository = mockk<CircleRepository>()
     private val tagRepository = mockk<TagRepository>()
+    private val authRepository = mockk<com.mycorrhizal.crm.domain.repository.AuthRepository>()
 
     private fun createViewModel(id: Int? = null): ContactFormViewModel {
         // Default stubs so the init option-loader / membership-derivation coroutines never
@@ -62,10 +64,16 @@ class ContactFormViewModelTest {
         coEvery { tagRepository.list(any(), any()) } returns Result.success(emptyList())
         coEvery { circleRepository.circlesForContact(any()) } returns Result.success(emptyList())
         coEvery { tagRepository.tagsForContact(any()) } returns Result.success(emptyList())
+        // Issue #832: no toggle configured — the form sees the default enabled set,
+        // same as the pre-#832 behavior every existing test in this file assumes.
+        io.mockk.every { authRepository.observeSession() } returns kotlinx.coroutines.flow.flowOf(
+            com.mycorrhizal.crm.domain.repository.SessionState(),
+        )
         return ContactFormViewModel(
             contactRepository,
             circleRepository,
             tagRepository,
+            authRepository,
             if (id == null) SavedStateHandle() else SavedStateHandle(mapOf("contactId" to id)),
         )
     }
@@ -1018,6 +1026,338 @@ class ContactFormViewModelTest {
                 },
             )
         }
+    }
+
+    // --- Issue #832: fields with no prior Android UI ---
+
+    @Test
+    fun `gender loads from crm gender, not the legacy top-level field`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(
+            id = 5,
+            gender = "stale-legacy-value",
+            card = Card(name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana")))),
+            crm = CRMEnvelope(gender = "non-binary"),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+
+        assertEquals("non-binary", vm.uiState.value.gender)
+    }
+
+    @Test
+    fun `editing gender writes to crm gender so it wins over the legacy top-level field on the backend`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(
+                id = 5,
+                card = Card(name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana")))),
+                crm = CRMEnvelope(gender = "non-binary"),
+            )
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+            coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+
+            val vm = createViewModel(5)
+            advanceUntilIdle()
+
+            vm.onGenderChange("genderfluid")
+            vm.save()
+            advanceUntilIdle()
+
+            coVerify {
+                contactRepository.updateContact(5, match<ContactRecordInput> { it.crm?.gender == "genderfluid" })
+            }
+        }
+
+    @Test
+    fun `blank gender preserves the loaded value on save`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana")))),
+            crm = CRMEnvelope(gender = "non-binary"),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        vm.onGenderChange("") // untouched
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify {
+            contactRepository.updateContact(5, match<ContactRecordInput> { it.crm?.gender == "non-binary" })
+        }
+    }
+
+    @Test
+    fun `preferred languages round-trip with their context and pref`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"))),
+                preferredLanguages = listOf(
+                    com.mycorrhizal.crm.model.network.LanguagePref(id = "lp1", language = "en", contexts = listOf("work"), pref = 1),
+                ),
+            ),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        assertEquals(listOf(com.mycorrhizal.crm.model.network.LanguagePref(id = "lp1", language = "en", contexts = listOf("work"), pref = 1)), vm.uiState.value.preferredLanguages)
+
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify {
+            contactRepository.updateContact(
+                5,
+                match<ContactRecordInput> { input ->
+                    val pref = input.card?.preferredLanguages?.firstOrNull()
+                    pref?.id == "lp1" && pref.language == "en" && pref.contexts == listOf("work") && pref.pref == 1
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `speakToAs pronouns and grammatical genders round-trip independently`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"))),
+                speakToAs = com.mycorrhizal.crm.model.network.SpeakToAs(
+                    pronouns = listOf(com.mycorrhizal.crm.model.network.Pronouns(id = "p1", pronouns = "they/them")),
+                    grammaticalGenders = listOf(com.mycorrhizal.crm.model.network.GrammaticalGender(id = "g1", value = "common", language = "en")),
+                ),
+            ),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        assertEquals("they/them", vm.uiState.value.pronouns.single().pronouns)
+        assertEquals("common", vm.uiState.value.grammaticalGenders.single().value)
+
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify {
+            contactRepository.updateContact(
+                5,
+                match<ContactRecordInput> { input ->
+                    val speakToAs = input.card?.speakToAs
+                    speakToAs?.pronouns?.firstOrNull()?.id == "p1" &&
+                        speakToAs.pronouns?.firstOrNull()?.pronouns == "they/them" &&
+                        speakToAs.grammaticalGenders?.firstOrNull()?.id == "g1" &&
+                        speakToAs.grammaticalGenders?.firstOrNull()?.value == "common"
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `keywords are trimmed deduplicated and dropped when blank`() = runTest(mainDispatcherRule.testDispatcher) {
+        val created = ContactRecordResponse(id = 9, card = Card(name = Name(full = "Carol")))
+        coEvery { contactRepository.createContact(any()) } returns Result.success(created)
+
+        val vm = createViewModel()
+        vm.onGivenNameChange("Carol")
+        vm.onKeywordsChange(listOf(" hiking ", "hiking", "", "  ", "climbing"))
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify {
+            contactRepository.createContact(
+                match<ContactRecordInput> { it.card?.keywords == listOf("hiking", "climbing") },
+            )
+        }
+    }
+
+    @Test
+    fun `card notes list round-trips and a blank row is dropped on save`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"))),
+                notes = listOf(
+                    CardNote(id = "n1", note = "met at conf"),
+                    CardNote(id = "n2", note = "loves coffee"),
+                ),
+            ),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        assertEquals(2, vm.uiState.value.cardNotes.size)
+
+        // Blank out the second note and append a genuinely new (blank) row — both should
+        // be absent from the saved list; the untouched first note keeps its id.
+        vm.onCardNotesChange(
+            listOf(
+                vm.uiState.value.cardNotes[0],
+                vm.uiState.value.cardNotes[1].copy(note = "  "),
+                CardNote(note = ""),
+            ),
+        )
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify {
+            contactRepository.updateContact(
+                5,
+                match<ContactRecordInput> { input ->
+                    input.card?.notes == listOf(CardNote(id = "n1", note = "met at conf"))
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `the anniversaries list editor and the birthday scalar coexist without clobbering each other`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(
+                id = 5,
+                card = Card(
+                    name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"))),
+                    anniversaries = listOf(
+                        com.mycorrhizal.crm.model.network.Anniversary(
+                            kind = "birth",
+                            date = com.mycorrhizal.crm.model.network.AnniversaryDate(
+                                partial = com.mycorrhizal.crm.model.network.PartialDate(year = 1990, month = 6, day = 15),
+                            ),
+                        ),
+                        com.mycorrhizal.crm.model.network.Anniversary(
+                            id = "a1",
+                            kind = "wedding",
+                            date = com.mycorrhizal.crm.model.network.AnniversaryDate(
+                                partial = com.mycorrhizal.crm.model.network.PartialDate(year = 2020, month = 6, day = 1),
+                            ),
+                        ),
+                    ),
+                ),
+            )
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+            coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+
+            val vm = createViewModel(5)
+            advanceUntilIdle()
+            // The birth entry stays on the scalar field; the wedding entry loads into the
+            // general list — never both, and never neither.
+            assertEquals("1990-06-15", vm.uiState.value.birthday)
+            assertEquals(listOf("wedding"), vm.uiState.value.anniversaries.map { it.kind })
+            assertEquals("a1", vm.uiState.value.anniversaries.single().id)
+
+            // Editing the birthday scalar must not drop the untouched wedding anniversary.
+            vm.onBirthdayChange("1990-07-04")
+            vm.save()
+            advanceUntilIdle()
+
+            coVerify {
+                contactRepository.updateContact(
+                    5,
+                    match<ContactRecordInput> { input ->
+                        val anniversaries = input.card?.anniversaries.orEmpty()
+                        val birth = anniversaries.firstOrNull { it.kind == "birth" }
+                        val wedding = anniversaries.firstOrNull { it.kind == "wedding" }
+                        birth?.date?.partial?.month == 7 && birth.date?.partial?.day == 4 &&
+                            wedding?.id == "a1" && wedding.date?.partial?.year == 2020
+                    },
+                )
+            }
+        }
+
+    @Test
+    fun `a blank row in the anniversaries list editor is dropped on save`() = runTest(mainDispatcherRule.testDispatcher) {
+        val created = ContactRecordResponse(id = 9, card = Card(name = Name(full = "Carol")))
+        coEvery { contactRepository.createContact(any()) } returns Result.success(created)
+
+        val vm = createViewModel()
+        vm.onGivenNameChange("Carol")
+        vm.onAnniversariesChange(
+            listOf(com.mycorrhizal.crm.model.network.Anniversary(kind = "wedding", date = com.mycorrhizal.crm.model.network.AnniversaryDate(partial = com.mycorrhizal.crm.model.network.PartialDate()))),
+        )
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify {
+            contactRepository.createContact(
+                match<ContactRecordInput> { it.card?.anniversaries.isNullOrEmpty() },
+            )
+        }
+    }
+
+    @Test
+    fun `cardKind round-trips distinctly from crm kind`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"))), kind = "org"),
+            crm = CRMEnvelope(kind = "human"),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        assertEquals("org", vm.uiState.value.cardKind)
+        assertEquals("human", vm.uiState.value.kind)
+
+        vm.onCardKindChange("device")
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify {
+            contactRepository.updateContact(
+                5,
+                match<ContactRecordInput> { input -> input.card?.kind == "device" && input.crm?.kind == "human" },
+            )
+        }
+    }
+
+    @Test
+    fun `selecting None for cardKind clears it, unlike the preserve-on-blank text fields`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(
+                id = 5,
+                card = Card(name = Name(full = "Dana", components = listOf(com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"))), kind = "org"),
+            )
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+            coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+
+            val vm = createViewModel(5)
+            advanceUntilIdle()
+            assertEquals("org", vm.uiState.value.cardKind)
+
+            vm.onCardKindChange("") // "None" selected
+            vm.save()
+            advanceUntilIdle()
+
+            coVerify {
+                contactRepository.updateContact(5, match<ContactRecordInput> { it.card?.kind == null })
+            }
+        }
+
+    @Test
+    fun `enabledFields resolves from the session and re-emits on change`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = createViewModel()
+        // Re-stub after creation, before advanceUntilIdle — createViewModel()'s own default
+        // stub (flowOf(SessionState())) would otherwise win (mockk last-registered-wins), but
+        // the ViewModel's init coroutine that actually calls observeSession() hasn't run yet.
+        val sessionFlow = kotlinx.coroutines.flow.MutableStateFlow(com.mycorrhizal.crm.domain.repository.SessionState())
+        io.mockk.every { authRepository.observeSession() } returns sessionFlow
+        advanceUntilIdle()
+
+        assertEquals(com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS, vm.uiState.value.enabledFields)
+
+        sessionFlow.value = com.mycorrhizal.crm.domain.repository.SessionState(enabledContactFields = listOf("emails"))
+        advanceUntilIdle()
+
+        assertEquals(setOf(com.mycorrhizal.crm.model.network.ContactFieldKey.EMAILS), vm.uiState.value.enabledFields)
     }
 
     @Test
