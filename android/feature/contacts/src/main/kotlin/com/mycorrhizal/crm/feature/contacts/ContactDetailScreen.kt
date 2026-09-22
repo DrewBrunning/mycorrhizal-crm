@@ -1237,6 +1237,40 @@ fun ContactDetailContent(
                 }
             }
         }
+        // Issue #832: titles/how_we_met/work_information/contact_information had form
+        // editors but no detail display at all before this — a pre-existing Android/web
+        // gap, now closed alongside the toggle mechanism.
+        if (!card?.titles.isNullOrEmpty() && ContactFieldKey.TITLES in enabledFields) {
+            item {
+                SectionCard(stringResource(R.string.contact_job_titles)) {
+                    card?.titles?.forEach { title -> title.name?.let { InfoRow(it) } }
+                }
+            }
+        }
+        val workInformation = contact.crm?.workInformation
+        if (!workInformation.isNullOrBlank() && ContactFieldKey.WORK_INFORMATION in enabledFields) {
+            item {
+                SectionCard(stringResource(R.string.contact_work_information)) {
+                    InfoRow(workInformation)
+                }
+            }
+        }
+        val howWeMet = contact.crm?.howWeMet
+        if (!howWeMet.isNullOrBlank() && ContactFieldKey.HOW_WE_MET in enabledFields) {
+            item {
+                SectionCard(stringResource(R.string.contact_how_we_met)) {
+                    InfoRow(howWeMet)
+                }
+            }
+        }
+        val contactInformation = contact.crm?.contactInformation
+        if (!contactInformation.isNullOrBlank() && ContactFieldKey.CONTACT_INFORMATION in enabledFields) {
+            item {
+                SectionCard(stringResource(R.string.contact_contact_information)) {
+                    InfoRow(contactInformation)
+                }
+            }
+        }
         if (!card?.notes.isNullOrEmpty() && ContactFieldKey.CARD_NOTES in enabledFields) {
             item {
                 SectionCard(stringResource(R.string.contact_notes)) {

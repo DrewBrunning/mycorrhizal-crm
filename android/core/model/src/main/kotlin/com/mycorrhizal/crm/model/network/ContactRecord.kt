@@ -83,10 +83,20 @@ data class Card(
         get() {
             // Prefer given + surname components (the web's nameComponentValue
             // pattern) — `full` is often only the given name for CRM contacts.
+            // Issue #832: prefix/middle/suffix ride along when present, matching
+            // web's getContactDisplayName exactly — deliberately NOT gated by
+            // their ContactFieldKeys. Web bakes these into the shared display
+            // name unconditionally (the toggle only hides the quick-edit input,
+            // not existing data), so hiding them here on a toggle flip would be
+            // a new Android-only inconsistency, not parity.
             val components = name?.components.orEmpty()
+            val prefix = components.firstOrNull { it.kind == "title" }?.value.orEmpty()
             val given = components.firstOrNull { it.kind == "given" }?.value.orEmpty()
+            val middle = components.firstOrNull { it.kind == "given2" }?.value.orEmpty()
             val surname = components.firstOrNull { it.kind == "surname" }?.value.orEmpty()
-            val joined = listOfNotNull(given, surname).joinToString(" ").trim()
+            val suffix = components.firstOrNull { it.kind == "generation" }?.value.orEmpty()
+            val joined = listOf(prefix, given, middle, surname, suffix)
+                .map { it.trim() }.filter { it.isNotBlank() }.joinToString(" ")
             if (joined.isNotBlank()) return joined
             return name?.full?.takeIf { it.isNotBlank() } ?: "Contact"
         }

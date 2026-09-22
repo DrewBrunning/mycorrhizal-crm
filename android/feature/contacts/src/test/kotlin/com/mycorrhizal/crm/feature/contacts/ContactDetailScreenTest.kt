@@ -500,6 +500,88 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("Anniversaries").assertDoesNotExist()
     }
 
+    // --- Issue #832: detail-screen sections for fields that only ever had a form editor ---
+
+    @Test
+    fun `titles section renders each title's name`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                titles = listOf(com.mycorrhizal.crm.model.network.Title(name = "Reporter", kind = "title")),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.TITLES,
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("Job titles").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Reporter").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `titles section is absent when the key is disabled, even with data present`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                titles = listOf(com.mycorrhizal.crm.model.network.Title(name = "Reporter", kind = "title")),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact, enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS)
+            }
+        }
+        composeTestRule.onNodeWithText("Job titles").assertDoesNotExist()
+    }
+
+    @Test
+    fun `how we met, work information and contact information each render in their own section`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana White")),
+            crm = CRMEnvelope(
+                howWeMet = "At the climbing gym",
+                workInformation = "Full-stack at Acme",
+                contactInformation = "Prefers email",
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact)
+            }
+        }
+        composeTestRule.onNodeWithText("How we met").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("At the climbing gym").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Work information").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Full-stack at Acme").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Additional contact information").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Prefers email").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `work information section is absent when its key is disabled`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana White")),
+            crm = CRMEnvelope(workInformation = "Full-stack at Acme"),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS - ContactFieldKey.WORK_INFORMATION,
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("Full-stack at Acme").assertDoesNotExist()
+    }
+
     @Test
     fun `online service row renders service name and handle`() {
         val contact = ContactRecordResponse(
