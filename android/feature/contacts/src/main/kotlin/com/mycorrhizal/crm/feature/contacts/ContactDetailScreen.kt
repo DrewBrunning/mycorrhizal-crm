@@ -206,6 +206,10 @@ fun ContactDetailScreen(
     viewModel: ContactDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // T90 / issue #831: web parity — the header "You" badge and the
+    // mark/unmark-as-me menu item both key off whether this contact IS the
+    // caller's self-contact pointer.
+    val isMe = state.contact?.uid != null && state.contact?.uid == state.selfContactVCardUid
 
     // Reload when returning from the edit form so the detail shows saved changes.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -503,6 +507,24 @@ fun ContactDetailScreen(
                                         },
                                     )
                                 }
+                                if (!contact.archived) {
+                                    // T90 / issue #831: web parity for Mark as Me / Unmark
+                                    // as Me — hidden for an archived contact, matching the
+                                    // stay-in-touch item just below it.
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                stringResource(
+                                                    if (isMe) R.string.contact_unmark_as_me else R.string.contact_mark_as_me,
+                                                ),
+                                            )
+                                        },
+                                        onClick = {
+                                            menuExpanded = false
+                                            viewModel.toggleMe()
+                                        },
+                                    )
+                                }
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.contact_export_vcf4)) },
                                     onClick = {
@@ -618,6 +640,8 @@ fun ContactDetailScreen(
                     onUploadProfilePicture = onUploadProfilePicture,
                     // Issue #212: the header star toggle (web #173).
                     onToggleFavorite = viewModel::toggleFavorite,
+                    // T90 / issue #831: the header "You" badge (web parity).
+                    isMe = isMe,
                     externalIdentities = state.externalIdentities,
                     immichSummary = state.immichSummary,
                     onDeleteExternalIdentity = { pendingExternalLinkDelete = it },
@@ -974,6 +998,9 @@ fun ContactDetailContent(
     // Issue #212: the header star toggle (web #173) — optimistic in the
     // ViewModel with a rollback on failure.
     onToggleFavorite: () -> Unit = {},
+    // T90 / issue #831: whether this contact is the caller's self-contact
+    // pointer — drives the header "You" badge (web parity).
+    isMe: Boolean = false,
     // Issue #220: the External Links panel (ExternalIdentity substrate). The
     // Immich link renders as a rich row (thumbnail, person name, photo count)
     // via [immichSummary]; other systems render generically.
@@ -1036,6 +1063,16 @@ fun ContactDetailContent(
                         textAlign = TextAlign.Center,
                         modifier = Modifier.semantics { heading() },
                     )
+                    if (isMe) {
+                        // T90 / issue #831: being yourself is not a status condition —
+                        // a neutral, non-interactive chip (web ContactHeader parity).
+                        AssistChip(
+                            onClick = {},
+                            enabled = false,
+                            label = { Text(stringResource(R.string.contact_you_badge)) },
+                            modifier = Modifier.testTag("you-badge"),
+                        )
+                    }
                     // Issue #212: the always-visible star toggle, mirroring web
                     // ContactHeader — optimistic flip + rollback in the
                     // ViewModel so the star never silently disagrees with the DB.

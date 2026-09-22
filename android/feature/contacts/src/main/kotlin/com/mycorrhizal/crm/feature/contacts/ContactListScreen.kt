@@ -386,6 +386,10 @@ fun ContactListScreenContent(
                                     contact = contact,
                                     selected = contact.id in uiState.selected,
                                     selectMode = selectMode,
+                                    // T90 / issue #831: web parity — the "You" badge on the
+                                    // row for the caller's self-contact.
+                                    isMe = uiState.selfContactVCardUid != null &&
+                                        contact.uid == uiState.selfContactVCardUid,
                                     onToggleFavorite = { onToggleFavorite(contact) },
                                     onClick = {
                                         if (selectMode) onToggleSelection(contact.id) else onContactClick(contact.id)
@@ -737,6 +741,9 @@ fun ContactListItem(
     modifier: Modifier = Modifier,
     selected: Boolean = false,
     selectMode: Boolean = false,
+    // T90 / issue #831: whether this row is the caller's self-contact
+    // pointer — drives the "You" badge (web parity).
+    isMe: Boolean = false,
     // Issue #212: the per-row favorite toggle (web #173). Tapping the star
     // must never navigate into the detail page — the nested clickable's own
     // handler consumes the tap before the row's combinedClickable sees it
@@ -806,12 +813,25 @@ fun ContactListItem(
             size = 40.dp,
         )
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = contact.displayName,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = contact.displayName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (isMe) {
+                    // T90 / issue #831: being yourself is not a status condition —
+                    // a neutral, non-interactive chip (web ContactHeader parity).
+                    AssistChip(
+                        onClick = {},
+                        enabled = false,
+                        label = { Text(stringResource(R.string.contact_you_badge)) },
+                        modifier = Modifier.testTag("you-badge-${contact.id}"),
+                    )
+                }
+            }
             val subtitle = listOfNotNull(contact.primaryEmail, contact.primaryPhone)
                 .joinToString(" · ")
             if (subtitle.isNotBlank()) {

@@ -195,6 +195,7 @@ import com.mycorrhizal.crm.model.network.ApiTokenCreateResponse
 import com.mycorrhizal.crm.model.network.ApiTokenInput
 import com.mycorrhizal.crm.model.network.ApiTokensResponse
 import com.mycorrhizal.crm.model.network.RevokeAllApiTokensResponse
+import com.mycorrhizal.crm.model.network.SelfContactRequest
 import com.mycorrhizal.crm.model.network.UpdateDateFormatRequest
 import com.mycorrhizal.crm.model.network.UpdateLanguageRequest
 import com.mycorrhizal.crm.model.network.Webhook
@@ -408,6 +409,18 @@ class ApiClient(
     /** PATCH /api/v1/users/date-format — the same route web's SettingsPage uses. */
     suspend fun updateDateFormat(dateFormat: String): Result<MessageResponse> =
         executePatch("$PLACEHOLDER_ORIGIN$USERS_PATH/date-format", UpdateDateFormatRequest(dateFormat)) { _, body ->
+            moshi.adapter(MessageResponse::class.java).fromJson(body)
+        }
+
+    /**
+     * PATCH /api/v1/users/me/self-contact (T90, issue #831 Android parity) —
+     * sets the caller's "Me" contact pointer to [vcardUid], the same route
+     * web's Mark as Me / Unmark as Me uses. A null [vcardUid] clears the
+     * pointer; a non-null one must resolve to a non-deleted contact the
+     * caller owns (the server 404s otherwise).
+     */
+    suspend fun updateSelfContact(vcardUid: String?): Result<MessageResponse> =
+        executePatch("$PLACEHOLDER_ORIGIN$ME_PATH/self-contact", SelfContactRequest(vcardUid)) { _, body ->
             moshi.adapter(MessageResponse::class.java).fromJson(body)
         }
 

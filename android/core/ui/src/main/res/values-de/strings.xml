@@ -156,6 +156,9 @@
     <string name="contact_actions_menu">Kontaktaktionen</string>
     <string name="contact_archive">Archivieren</string>
     <string name="contact_unarchive">Archiv aufheben</string>
+    <string name="contact_mark_as_me">Das bin ich</string>
+    <string name="contact_unmark_as_me">Das bin nicht ich</string>
+    <string name="contact_you_badge">Sie</string>
     <string name="contact_export_vcf4">Als vCard 4.0 exportieren</string>
     <string name="contact_export_vcf3">Als vCard 3.0 exportieren</string>
     <string name="contact_stay_in_touch">In Kontakt bleiben</string>

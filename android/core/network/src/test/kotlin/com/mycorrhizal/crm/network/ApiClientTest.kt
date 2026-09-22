@@ -3031,6 +3031,57 @@ class ApiClientTest {
         assertTrue(request.body.readUtf8().contains("\"date_format\":\"us\""))
     }
 
+    // --- T90 / issue #831: Mark as Me / Unmark as Me (Android parity) ---
+
+    @Test
+    fun `update self contact sends a PATCH to the self-contact route with the vcard uid`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setBody("""{"message": "Self contact updated", "self_contact_vcard_uid": "uid-1"}"""),
+        )
+
+        val result = client.updateSelfContact("uid-1")
+
+        assertTrue(result.isSuccess)
+        assertEquals("Self contact updated", result.getOrThrow().message)
+        val request = server.takeRequest()
+        assertEquals("PATCH", request.method)
+        assertEquals("/api/v1/users/me/self-contact", request.path)
+        assertTrue(request.body.readUtf8().contains("\"vcard_uid\":\"uid-1\""))
+    }
+
+    @Test
+    fun `update self contact with null omits vcard_uid so the server clears the pointer`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setBody("""{"message": "Self contact cleared", "self_contact_vcard_uid": null}"""),
+        )
+
+        val result = client.updateSelfContact(null)
+
+        assertTrue(result.isSuccess)
+        assertEquals("Self contact cleared", result.getOrThrow().message)
+        val request = server.takeRequest()
+        assertEquals("PATCH", request.method)
+        assertEquals("/api/v1/users/me/self-contact", request.path)
+        assertFalse(request.body.readUtf8().contains("vcard_uid"))
+    }
+
+    @Test
+    fun `update self contact maps a 404 unknown contact to a Client error`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(404)
+                .setBody("""{"error":{"code":"NOT_FOUND","message":"Contact not found","details":{"vcard_uid":"ghost"}}}"""),
+        )
+
+        val result = client.updateSelfContact("ghost")
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(404, (error as ApiError.Client).code)
+    }
+
     @Test
     fun `change password posts current and new password and parses the message`() = runBlocking {
         server.enqueue(

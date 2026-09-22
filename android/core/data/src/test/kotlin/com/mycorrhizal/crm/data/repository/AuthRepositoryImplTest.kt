@@ -276,6 +276,52 @@ class AuthRepositoryImplTest {
         assertEquals("us", h.sessionManager.observeSession().first().dateFormat)
     }
 
+    // --- T90 / issue #831: Mark as Me / Unmark as Me (Android parity) ---
+
+    @Test
+    fun `updateSelfContact patches the server and overwrites the pointer in the session`() = runTest {
+        val h = Harness()
+        h.sessionManager.setSession("https://crm.example.com", "jwt", SessionState(selfContactVCardUid = null))
+        coEvery { h.apiClient.updateSelfContact("uid-1") } returns Result.success(
+            MessageResponse(message = "Self contact updated"),
+        )
+
+        val result = h.repository.updateSelfContact("uid-1")
+
+        assertTrue(result.isSuccess)
+        coVerify { h.apiClient.updateSelfContact("uid-1") }
+        assertEquals("uid-1", h.sessionManager.observeSession().first().selfContactVCardUid)
+    }
+
+    @Test
+    fun `updateSelfContact with null clears the pointer even though setProfile would have kept it`() = runTest {
+        val h = Harness()
+        h.sessionManager.setSession("https://crm.example.com", "jwt", SessionState(selfContactVCardUid = "uid-1"))
+        coEvery { h.apiClient.updateSelfContact(null) } returns Result.success(
+            MessageResponse(message = "Self contact cleared"),
+        )
+
+        val result = h.repository.updateSelfContact(null)
+
+        assertTrue(result.isSuccess)
+        assertNull(h.sessionManager.observeSession().first().selfContactVCardUid)
+    }
+
+    @Test
+    fun `updateSelfContact propagates a server rejection and leaves the session untouched`() = runTest {
+        val h = Harness()
+        h.sessionManager.setSession("https://crm.example.com", "jwt", SessionState(selfContactVCardUid = "uid-1"))
+        coEvery { h.apiClient.updateSelfContact("ghost") } returns Result.failure(
+            ApiError.Client(404, "Contact not found"),
+        )
+
+        val result = h.repository.updateSelfContact("ghost")
+
+        assertTrue(result.isFailure)
+        assertEquals("Not found", (result.exceptionOrNull() as ApiError).displayMessage)
+        assertEquals("uid-1", h.sessionManager.observeSession().first().selfContactVCardUid)
+    }
+
     @Test
     fun `changePassword delegates to the api client`() = runTest {
         val h = Harness()

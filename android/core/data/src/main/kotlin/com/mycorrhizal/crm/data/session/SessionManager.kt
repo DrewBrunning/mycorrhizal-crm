@@ -96,6 +96,16 @@ interface SessionManager : TokenProvider, BaseUrlProvider {
     suspend fun setProfile(profile: SessionState)
 
     /**
+     * Set the caller's "Me" contact pointer (T90, issue #831 Android parity)
+     * in the session, replacing it outright rather than merging through
+     * [setProfile] — unlike language/dateFormat, a null value here IS a
+     * legitimate target state (the pointer cleared), so [setProfile]'s
+     * "null means unchanged" merge semantics would make clearing it
+     * impossible.
+     */
+    suspend fun setSelfContactVCardUid(vcardUid: String?)
+
+    /**
      * Replace the stored bearer token in place, keeping the rest of the
      * session (server URL + profile) untouched. Used when the server re-issues
      * the session token after a token_version bump (2FA confirm/disable) so

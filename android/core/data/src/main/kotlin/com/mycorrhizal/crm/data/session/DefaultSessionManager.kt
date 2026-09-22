@@ -76,6 +76,10 @@ class DefaultSessionManager(
         )
     }
 
+    override suspend fun setSelfContactVCardUid(vcardUid: String?) {
+        sessionState.value = sessionState.value.copy(selfContactVCardUid = vcardUid)
+    }
+
     override suspend fun setToken(token: String) {
         cachedToken = token
         tokenStorage.save(token)

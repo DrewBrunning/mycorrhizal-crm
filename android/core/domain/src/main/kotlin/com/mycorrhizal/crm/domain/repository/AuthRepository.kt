@@ -18,6 +18,13 @@ data class SessionState(
     val isAdmin: Boolean = false,
     val language: String? = null,
     val dateFormat: String? = null,
+    /**
+     * The caller's "Me" contact pointer (T90, `users.self_contact_vcard_uid`)
+     * — web parity for issue #831: drives the "You" badge and the
+     * mark/unmark-as-me menu item everywhere a contact is shown. Null means
+     * no contact is currently marked.
+     */
+    val selfContactVCardUid: String? = null,
 )
 
 /**
@@ -100,6 +107,16 @@ interface AuthRepository {
 
     /** PATCH the server date-format pref and update the in-session profile so `observeSession()` re-emits. */
     suspend fun updateDateFormat(dateFormat: String): Result<Unit>
+
+    /**
+     * PATCH /users/me/self-contact (T90, issue #831 Android parity) — sets or
+     * clears the caller's "Me" contact pointer, and updates the in-session
+     * profile so `observeSession()` re-emits (mirrors [updateLanguage] /
+     * [updateDateFormat]). A null [vcardUid] clears the pointer; a non-null
+     * one must resolve to a non-deleted contact the caller owns (the server
+     * 404s otherwise).
+     */
+    suspend fun updateSelfContact(vcardUid: String?): Result<Unit>
 
     /**
      * POST /users/change-password. On success the server bumps TokenVersion,

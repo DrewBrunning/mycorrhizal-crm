@@ -32,6 +32,19 @@ data class ChangePasswordRequest(
     @Json(name = "new_password") val newPassword: String,
 )
 
+/**
+ * PATCH /users/me/self-contact request body (T90, issue #831 Android parity
+ * with web's Mark as Me / Unmark as Me). A null [vcardUid] clears the
+ * pointer — Moshi omits a null field rather than writing `"vcard_uid":null`
+ * (its default `serializeNulls` is off), and the backend's non-pointer
+ * `SelfContactInput.VCardUID` treats an absent key the same as an empty
+ * string, so both land on the same "clear" outcome.
+ */
+@JsonClass(generateAdapter = true)
+data class SelfContactRequest(
+    @Json(name = "vcard_uid") val vcardUid: String?,
+)
+
 /** Generic `{ message: "…" }` envelope used by the PATCH/POST user endpoints. */
 @JsonClass(generateAdapter = true)
 data class MessageResponse(
