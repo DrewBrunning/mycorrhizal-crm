@@ -148,6 +148,8 @@
     <string name="contact_circles">Kreise</string>
     <string name="contact_tags">Tags</string>
     <string name="contact_custom_fields">Benutzerdefinierte Felder</string>
+    <string name="contact_custom_field_edit_named">%1$s bearbeiten</string>
+    <string name="contact_custom_field_value_label">Wert</string>
     <string name="contact_edit">Kontakt bearbeiten</string>
     <string name="contact_birthday_label">Geburtstag: %1$s</string>
     <!-- M24: Top-Level-Kontaktaktionen -->
@@ -859,6 +861,47 @@
     <string name="tags_contact_vcard_uid">Kontakt-VCard-UID</string>
     <string name="tags_empty">Noch keine Tags</string>
     <string name="tags_contacts_empty">Keine getaggten Kontakte</string>
+
+    <!-- Custom field definitions (issue #830) -->
+    <string name="settings_custom_fields_title">Benutzerdefinierte Felder</string>
+    <string name="settings_custom_fields_empty">Noch keine benutzerdefinierten Felder</string>
+    <string name="settings_custom_fields_new_title">Neues benutzerdefiniertes Feld</string>
+    <string name="settings_custom_fields_edit_title">Benutzerdefiniertes Feld bearbeiten</string>
+    <string name="settings_custom_fields_delete_title">Benutzerdefiniertes Feld löschen?</string>
+    <string name="settings_custom_fields_delete_confirm">„%1$s“ löschen? Dies entfernt auch die gespeicherten Werte.</string>
+    <string name="settings_custom_fields_delete_named">%1$s löschen</string>
+    <string name="settings_custom_fields_edit_named">%1$s bearbeiten</string>
+    <string name="settings_custom_fields_label">Beschriftung</string>
+    <string name="settings_custom_fields_key">Schlüssel</string>
+    <string name="settings_custom_fields_key_hint">Der feste technische Name; kann nach dem Erstellen nicht mehr geändert werden.</string>
+    <string name="settings_custom_fields_type">Typ</string>
+    <string name="settings_custom_fields_multi">Mehrere Werte zulassen</string>
+    <string name="settings_custom_fields_min">Minimum</string>
+    <string name="settings_custom_fields_max">Maximum</string>
+    <string name="settings_custom_fields_max_length">Maximale Länge</string>
+    <string name="settings_custom_fields_pattern">Muster</string>
+    <string name="settings_custom_fields_enum_values">Zulässige Werte</string>
+    <string name="settings_custom_fields_add_value">Wert hinzufügen</string>
+    <string name="settings_custom_fields_remove_value">Wert entfernen</string>
+    <string name="settings_custom_fields_projection">Standards-Projektion</string>
+    <string name="settings_custom_fields_projection_internal">Nur intern</string>
+    <string name="settings_custom_fields_projection_vcard">vCard-Erweiterung</string>
+    <string name="settings_custom_fields_vcard_name">vCard-Eigenschaftsname</string>
+    <string name="settings_custom_fields_sensitivity">Vertraulichkeit</string>
+    <string name="settings_custom_fields_error_label_required">Beschriftung ist erforderlich</string>
+    <string name="settings_custom_fields_error_key_required">Schlüssel ist erforderlich</string>
+    <string name="settings_custom_fields_error_enum_required">Mindestens ein zulässiger Wert ist erforderlich</string>
+    <string name="settings_custom_fields_error_vcard_name_required">vCard-Eigenschaftsname ist erforderlich</string>
+    <string name="custom_field_type_string">Text (kurz)</string>
+    <string name="custom_field_type_text">Text (lang)</string>
+    <string name="custom_field_type_number">Zahl</string>
+    <string name="custom_field_type_boolean">Ja/Nein</string>
+    <string name="custom_field_type_date">Datum</string>
+    <string name="custom_field_type_datetime">Datum &amp; Uhrzeit</string>
+    <string name="custom_field_type_uri">Link</string>
+    <string name="custom_field_type_email">E-Mail</string>
+    <string name="custom_field_type_phone">Telefon</string>
+    <string name="custom_field_type_enum">Auswahl</string>
     <string name="tags_error_missing_id">Fehlende Tag-ID</string>
 
 

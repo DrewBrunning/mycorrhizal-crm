@@ -12,9 +12,13 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.isToggleable
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import com.mycorrhizal.crm.model.network.Anniversary
 import com.mycorrhizal.crm.model.network.AnniversaryDate
 import com.mycorrhizal.crm.model.network.Card
@@ -36,6 +40,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -378,8 +383,10 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("Coffee order: Latte").assertIsDisplayed()
-        scrollTo("Favorite number: 7").assertIsDisplayed()
+        scrollTo("Coffee order").assertIsDisplayed()
+        scrollTo("Latte").assertIsDisplayed()
+        scrollTo("Favorite number").assertIsDisplayed()
+        scrollTo("7").assertIsDisplayed()
     }
 
     @Test
@@ -395,9 +402,8 @@ class ContactDetailScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithTag("contact-detail-list")
-            .performScrollToNode(hasText("Coffee order: —"))
-            .assertIsDisplayed()
+        scrollTo("Coffee order").assertIsDisplayed()
+        scrollTo("—").assertIsDisplayed()
     }
 
     @Test
@@ -441,8 +447,125 @@ class ContactDetailScreenTest {
             }
         }
 
-        scrollTo("VIP: true").assertIsDisplayed()
-        scrollTo("Milk options: oat; almond").assertIsDisplayed()
+        scrollTo("VIP").assertIsDisplayed()
+        scrollTo("true").assertIsDisplayed()
+        scrollTo("Milk options").assertIsDisplayed()
+        scrollTo("oat; almond").assertIsDisplayed()
+    }
+
+    // --- Issue #830: per-contact custom-field value editing ---
+
+    @Test
+    fun `tapping the pencil reveals a text editor for a string field`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
+                    fieldValuesByDefinitionId = mapOf("d1" to "Latte"),
+                )
+            }
+        }
+
+        scrollTo("Coffee order")
+        composeTestRule.onNodeWithContentDescription("Edit Coffee order").performClick()
+
+        scrollTo("Value").assertIsDisplayed()
+        scrollTo("Save").assertIsDisplayed()
+        scrollTo("Cancel").assertIsDisplayed()
+    }
+
+    @Test
+    fun `editing and saving a string field invokes onSaveFieldValue with the typed wire value`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        var savedDefinitionId: String? = null
+        var savedValue: Any? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
+                    fieldValuesByDefinitionId = mapOf("d1" to "Latte"),
+                    onSaveFieldValue = { id, value -> savedDefinitionId = id; savedValue = value },
+                )
+            }
+        }
+
+        scrollTo("Coffee order")
+        composeTestRule.onNodeWithContentDescription("Edit Coffee order").performClick()
+        scrollTo("Latte")
+        composeTestRule.onNodeWithText("Latte").performTextReplacement("Macchiato")
+        scrollTo("Save")
+        composeTestRule.onNodeWithText("Save").performClick()
+
+        assertEquals("d1", savedDefinitionId)
+        assertEquals("Macchiato", savedValue)
+    }
+
+    @Test
+    fun `cancel discards the edit and reverts the displayed text`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        var saveCalled = false
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
+                    fieldValuesByDefinitionId = mapOf("d1" to "Latte"),
+                    onSaveFieldValue = { _, _ -> saveCalled = true },
+                )
+            }
+        }
+
+        scrollTo("Coffee order")
+        composeTestRule.onNodeWithContentDescription("Edit Coffee order").performClick()
+        scrollTo("Latte")
+        composeTestRule.onNodeWithText("Latte").performTextInput("XYZ")
+        scrollTo("Cancel")
+        composeTestRule.onNodeWithText("Cancel").performClick()
+
+        scrollTo("Latte").assertIsDisplayed()
+        assertFalse(saveCalled)
+    }
+
+    @Test
+    fun `saving equals true disables the Save button and shows a progress indicator`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
+                    fieldValuesByDefinitionId = mapOf("d1" to "Latte"),
+                    savingFieldDefinitionId = "d1",
+                )
+            }
+        }
+
+        scrollTo("Coffee order")
+        composeTestRule.onNodeWithContentDescription("Edit Coffee order").performClick()
+
+        composeTestRule.onNodeWithText("Save").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `a boolean field's editor is a switch`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "VIP", type = "boolean")),
+                    fieldValuesByDefinitionId = mapOf("d1" to true),
+                )
+            }
+        }
+
+        scrollTo("VIP")
+        composeTestRule.onNodeWithContentDescription("Edit VIP").performClick()
+
+        composeTestRule.onNode(isToggleable()).assertIsDisplayed()
     }
 
     // --- M24: inline circle/tag editors ---

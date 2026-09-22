@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
+import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
 import com.mycorrhizal.crm.domain.repository.ImmichRepository
 import com.mycorrhizal.crm.domain.repository.NextcloudRepository
 import com.mycorrhizal.crm.domain.repository.PaperlessRepository
@@ -12,12 +13,12 @@ import com.mycorrhizal.crm.domain.repository.SeafileRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Card
-import com.mycorrhizal.crm.model.network.ContactFieldValuesResponse
+import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ExternalIdentity
 import com.mycorrhizal.crm.model.network.FieldDefinition
-import com.mycorrhizal.crm.model.network.FieldDefinitionsResponse
 import com.mycorrhizal.crm.model.network.FieldValue
+import com.mycorrhizal.crm.model.network.FieldValueInput
 import com.mycorrhizal.crm.model.network.ImmichPerson
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.PaperlessDocument
@@ -25,7 +26,6 @@ import com.mycorrhizal.crm.model.network.SeafileItem
 import com.mycorrhizal.crm.model.network.SeafileLibrary
 import com.mycorrhizal.crm.model.network.SeafileLinkRequest
 import com.mycorrhizal.crm.model.network.WebDAVItem
-import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.ui.R
@@ -34,6 +34,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -53,7 +54,7 @@ class ContactDetailViewModelTest {
     private val contactRepository = mockk<ContactRepository>()
     private val reminderRepository = mockk<ReminderRepository>()
     private val authRepository = mockk<AuthRepository>()
-    private val apiClient = mockk<ApiClient>()
+    private val fieldDefinitionRepository = mockk<FieldDefinitionRepository>()
     private val circleRepository = mockk<CircleRepository>()
     private val tagRepository = mockk<TagRepository>()
     private val externalIdentityRepository = mockk<ExternalIdentityRepository>()
@@ -65,8 +66,8 @@ class ContactDetailViewModelTest {
     private fun viewModel(id: Int, dateFormat: String? = null): ContactDetailViewModel {
         coEvery { contactRepository.getDeviceLookupKey(any()) } returns null
         every { authRepository.observeSession() } returns flowOf(SessionState(dateFormat = dateFormat))
-        coEvery { apiClient.listFieldDefinitions(any()) } returns Result.success(FieldDefinitionsResponse())
-        coEvery { apiClient.listContactFieldValues(any()) } returns Result.success(ContactFieldValuesResponse())
+        coEvery { fieldDefinitionRepository.list() } returns Result.success(emptyList())
+        coEvery { fieldDefinitionRepository.contactValues(any()) } returns Result.success(emptyList())
         stubMemberships()
         stubCompletions()
         stubExternalLinks()
@@ -74,7 +75,7 @@ class ContactDetailViewModelTest {
             contactRepository,
             reminderRepository,
             authRepository,
-            apiClient,
+            fieldDefinitionRepository,
             circleRepository,
             tagRepository,
             externalIdentityRepository,
@@ -143,8 +144,8 @@ class ContactDetailViewModelTest {
         coEvery { contactRepository.getContact(9) } returns Result.success(record)
         coEvery { contactRepository.getDeviceLookupKey(9) } returns null
         every { authRepository.observeSession() } returns flowOf(SessionState())
-        coEvery { apiClient.listFieldDefinitions(any()) } returns Result.success(FieldDefinitionsResponse())
-        coEvery { apiClient.listContactFieldValues(any()) } returns Result.success(ContactFieldValuesResponse())
+        coEvery { fieldDefinitionRepository.list() } returns Result.success(emptyList())
+        coEvery { fieldDefinitionRepository.contactValues(any()) } returns Result.success(emptyList())
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
         stubExternalLinks()
 
@@ -152,7 +153,7 @@ class ContactDetailViewModelTest {
             contactRepository,
             reminderRepository,
             authRepository,
-            apiClient,
+            fieldDefinitionRepository,
             circleRepository,
             tagRepository,
             externalIdentityRepository,
@@ -258,17 +259,17 @@ class ContactDetailViewModelTest {
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.getDeviceLookupKey(5) } returns null
         every { authRepository.observeSession() } returns flowOf(SessionState())
-        coEvery { apiClient.listFieldDefinitions(any()) } returns Result.success(
-            FieldDefinitionsResponse(fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string"))),
+        coEvery { fieldDefinitionRepository.list() } returns Result.success(
+            listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
         )
-        coEvery { apiClient.listContactFieldValues(5) } returns Result.success(
-            ContactFieldValuesResponse(fieldValues = listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte"))),
+        coEvery { fieldDefinitionRepository.contactValues(5) } returns Result.success(
+            listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte")),
         )
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
         stubExternalLinks()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, externalIdentityRepository, immichRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -283,13 +284,13 @@ class ContactDetailViewModelTest {
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.getDeviceLookupKey(5) } returns null
         every { authRepository.observeSession() } returns flowOf(SessionState())
-        coEvery { apiClient.listFieldDefinitions(any()) } returns Result.failure(ApiError.Server(500, "boom"))
-        coEvery { apiClient.listContactFieldValues(5) } returns Result.success(ContactFieldValuesResponse())
+        coEvery { fieldDefinitionRepository.list() } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery { fieldDefinitionRepository.contactValues(5) } returns Result.success(emptyList())
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
         stubExternalLinks()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, externalIdentityRepository, immichRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -304,15 +305,15 @@ class ContactDetailViewModelTest {
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.getDeviceLookupKey(5) } returns null
         every { authRepository.observeSession() } returns flowOf(SessionState())
-        coEvery { apiClient.listFieldDefinitions(any()) } returns Result.success(
-            FieldDefinitionsResponse(fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string"))),
+        coEvery { fieldDefinitionRepository.list() } returns Result.success(
+            listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
         )
-        coEvery { apiClient.listContactFieldValues(5) } returns Result.failure(ApiError.Network(java.io.IOException("offline")))
+        coEvery { fieldDefinitionRepository.contactValues(5) } returns Result.failure(ApiError.Network(java.io.IOException("offline")))
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
         stubExternalLinks()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, externalIdentityRepository, immichRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -333,15 +334,15 @@ class ContactDetailViewModelTest {
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
         coEvery { contactRepository.getDeviceLookupKey(5) } returns null
         every { authRepository.observeSession() } returns flowOf(SessionState())
-        coEvery { apiClient.listFieldDefinitions(any()) } returns Result.success(FieldDefinitionsResponse()) // zero definitions
-        coEvery { apiClient.listContactFieldValues(5) } returns Result.success(
-            ContactFieldValuesResponse(fieldValues = listOf(FieldValue(id = 1, fieldDefinitionId = "deleted-def", value = "orphaned"))),
+        coEvery { fieldDefinitionRepository.list() } returns Result.success(emptyList()) // zero definitions
+        coEvery { fieldDefinitionRepository.contactValues(5) } returns Result.success(
+            listOf(FieldValue(id = 1, fieldDefinitionId = "deleted-def", value = "orphaned")),
         )
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
         stubExternalLinks()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, externalIdentityRepository, immichRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -1352,4 +1353,109 @@ class ContactDetailViewModelTest {
 
         assertEquals("Already linked", vm.uiState.value.error)
     }
+
+    // --- Issue #830: saveFieldValue (per-contact custom-field value editing) ---
+
+    @Test
+    fun `saveFieldValue upserts the definition into the existing set and sends the full replace`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+            val vm = viewModel(5)
+            // Overrides the helper's default any()-matched empty-list stub — must be set after
+            // viewModel(5) so this more specific stub wins for the id-5 call load() is about to make.
+            coEvery { fieldDefinitionRepository.contactValues(5) } returns Result.success(
+                listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte")),
+            )
+            advanceUntilIdle()
+            assertEquals("Latte", vm.uiState.value.fieldValuesByDefinitionId["d1"])
+
+            val slot = slot<ContactFieldValuesInput>()
+            coEvery { fieldDefinitionRepository.replaceContactValues(5, capture(slot)) } returns Result.success(
+                listOf(
+                    FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte"),
+                    FieldValue(id = 2, fieldDefinitionId = "d2", value = "M"),
+                ),
+            )
+
+            vm.saveFieldValue("d2", "M")
+            advanceUntilIdle()
+
+            val sent = slot.captured.fieldValues.associate { it.fieldDefinitionId to it.value }
+            assertEquals(mapOf("d1" to "Latte", "d2" to "M"), sent)
+            assertEquals("M", vm.uiState.value.fieldValuesByDefinitionId["d2"])
+            assertNull(vm.uiState.value.savingFieldDefinitionId)
+        }
+
+    @Test
+    fun `saveFieldValue with a null value omits the definition from the payload instead of sending null`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+            coEvery { fieldDefinitionRepository.contactValues(5) } returns Result.success(
+                listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte")),
+            )
+
+            val vm = viewModel(5)
+            advanceUntilIdle()
+
+            val slot = slot<ContactFieldValuesInput>()
+            coEvery { fieldDefinitionRepository.replaceContactValues(5, capture(slot)) } returns Result.success(emptyList())
+
+            vm.saveFieldValue("d1", null)
+            advanceUntilIdle()
+
+            assertTrue(slot.captured.fieldValues.none { it.fieldDefinitionId == "d1" })
+            assertTrue(vm.uiState.value.fieldValuesByDefinitionId.isEmpty())
+        }
+
+    @Test
+    fun `saveFieldValue ignores a second call while the first is in flight`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        val gate = CompletableDeferred<Unit>()
+        coEvery { fieldDefinitionRepository.replaceContactValues(5, any()) } coAnswers {
+            gate.await()
+            Result.success(listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte")))
+        }
+
+        vm.saveFieldValue("d1", "Latte")
+        advanceUntilIdle() // savingFieldDefinitionId flips to "d1" and the coroutine suspends on the gate
+        assertEquals("d1", vm.uiState.value.savingFieldDefinitionId)
+
+        vm.saveFieldValue("d2", "M") // a second call while the first is still in flight must be a no-op
+
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { fieldDefinitionRepository.replaceContactValues(5, any()) }
+    }
+
+    @Test
+    fun `saveFieldValue failure surfaces the error and clears savingFieldDefinitionId without mutating values`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+            val vm = viewModel(5)
+            coEvery { fieldDefinitionRepository.contactValues(5) } returns Result.success(
+                listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte")),
+            )
+            advanceUntilIdle()
+
+            coEvery { fieldDefinitionRepository.replaceContactValues(5, any()) } returns
+                Result.failure(ApiError.Client(500, "boom"))
+
+            vm.saveFieldValue("d1", "Espresso")
+            advanceUntilIdle()
+
+            assertEquals("boom", vm.uiState.value.error)
+            assertNull(vm.uiState.value.savingFieldDefinitionId)
+            assertEquals("Latte", vm.uiState.value.fieldValuesByDefinitionId["d1"])
+        }
 }

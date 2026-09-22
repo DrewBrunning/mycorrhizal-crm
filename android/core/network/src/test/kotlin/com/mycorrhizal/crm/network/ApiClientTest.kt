@@ -2324,6 +2324,119 @@ class ApiClientTest {
     }
 
     @Test
+    fun `getFieldDefinition parses the raw response`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {"id": "d1", "label": "Coffee order", "key": "coffee_order", "target": "contact",
+                 "type": "string", "projection": "internal-only", "sensitivity": "normal",
+                 "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z"}
+                """.trimIndent(),
+            ),
+        )
+
+        val result = client.getFieldDefinition("d1")
+
+        assertTrue(result.isSuccess)
+        assertEquals("Coffee order", result.getOrThrow().label)
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/field-definitions/d1", request.path)
+    }
+
+    @Test
+    fun `createFieldDefinition sends a POST body and unwraps the wrapped response`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(201).setBody(
+                """
+                {"message": "Field definition created successfully",
+                 "field_definition": {"id": "d1", "label": "Coffee order", "key": "coffee_order",
+                 "target": "contact", "type": "string", "projection": "internal-only", "sensitivity": "normal"}}
+                """.trimIndent(),
+            ),
+        )
+
+        val result = client.createFieldDefinition(
+            com.mycorrhizal.crm.model.network.FieldDefinitionInput(
+                label = "Coffee order",
+                key = "coffee_order",
+                type = "string",
+            ),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals("d1", result.getOrThrow().id)
+        assertEquals("Coffee order", result.getOrThrow().label)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/field-definitions", request.path)
+        assertTrue(request.body.readUtf8().contains("\"key\":\"coffee_order\""))
+    }
+
+    @Test
+    fun `createFieldDefinition surfaces the duplicate-key conflict`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(409)
+                .setBody("""{"error":{"code":"ALREADY_EXISTS","message":"Field definition already exists","details":{"key":"coffee_order"}}}"""),
+        )
+
+        val result = client.createFieldDefinition(
+            com.mycorrhizal.crm.model.network.FieldDefinitionInput(
+                label = "Coffee order",
+                key = "coffee_order",
+                type = "string",
+            ),
+        )
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(409, (error as ApiError.Client).code)
+    }
+
+    @Test
+    fun `updateFieldDefinition sends a PUT and parses the raw response`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {"id": "d1", "label": "Coffee order (renamed)", "key": "coffee_order", "target": "contact",
+                 "type": "string", "projection": "internal-only", "sensitivity": "normal"}
+                """.trimIndent(),
+            ),
+        )
+
+        val result = client.updateFieldDefinition(
+            "d1",
+            com.mycorrhizal.crm.model.network.FieldDefinitionInput(
+                label = "Coffee order (renamed)",
+                key = "coffee_order",
+                type = "string",
+            ),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals("Coffee order (renamed)", result.getOrThrow().label)
+        val request = server.takeRequest()
+        assertEquals("PUT", request.method)
+        assertEquals("/api/v1/field-definitions/d1", request.path)
+    }
+
+    @Test
+    fun `deleteFieldDefinition sends a DELETE`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message": "Field definition deleted"}"""),
+        )
+
+        val result = client.deleteFieldDefinition("d1")
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/field-definitions/d1", request.path)
+    }
+
+    @Test
     fun `update relationship edge sends a PUT and parses the raw edge`() = runBlocking {
         server.enqueue(
             MockResponse()

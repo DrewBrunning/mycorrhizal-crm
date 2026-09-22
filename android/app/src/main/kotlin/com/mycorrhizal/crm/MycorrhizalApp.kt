@@ -122,6 +122,8 @@ import com.mycorrhizal.crm.feature.network.NetworkScreen
 import com.mycorrhizal.crm.feature.relationships.RelationshipsScreen
 import com.mycorrhizal.crm.feature.settings.CustomLinkActionsScreen
 import com.mycorrhizal.crm.feature.settings.DataScreen
+import com.mycorrhizal.crm.feature.settings.FieldDefinitionFormScreen
+import com.mycorrhizal.crm.feature.settings.FieldDefinitionsScreen
 import com.mycorrhizal.crm.feature.settings.ImmichSettingsScreen
 import com.mycorrhizal.crm.feature.settings.NotificationChannelsScreen
 import com.mycorrhizal.crm.feature.settings.SettingsScreen
@@ -1209,6 +1211,8 @@ private fun AppNavGraph(
                 onCircleTagTriage = { navController.navigate("circle-tag-triage") },
                 // T104 + address suggestions: the Data review surface.
                 onData = { navController.navigate("data") },
+                // Issue #830: the custom field-definition management screen.
+                onManageCustomFields = { navController.navigate("custom-field-definitions") },
                 // Issue #348: admin user management.
                 onManageUsers = { navController.navigate("admin/users") },
                 // Issue #424: the operational-event timeline.
@@ -1282,6 +1286,29 @@ private fun AppNavGraph(
         // Issue #236: the Immich connection-config settings screen.
         composable("immich-settings") {
             ImmichSettingsScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+        // Issue #830: the custom field-definition management screens.
+        composable("custom-field-definitions") {
+            FieldDefinitionsScreen(
+                onBack = { navController.popBackStack() },
+                onCreate = { navController.navigate("custom-field-definitions/new") },
+                onEdit = { id -> navController.navigate("custom-field-definitions/$id/edit") },
+            )
+        }
+        composable("custom-field-definitions/new") {
+            FieldDefinitionFormScreen(
+                onSaved = { navController.popBackStack() },
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = "custom-field-definitions/{fieldDefinitionId}/edit",
+            arguments = listOf(navArgument("fieldDefinitionId") { type = NavType.StringType }),
+        ) {
+            FieldDefinitionFormScreen(
+                onSaved = { navController.popBackStack() },
                 onBack = { navController.popBackStack() },
             )
         }
