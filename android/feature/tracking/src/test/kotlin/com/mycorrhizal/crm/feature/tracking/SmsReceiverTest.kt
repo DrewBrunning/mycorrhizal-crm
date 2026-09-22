@@ -16,6 +16,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -45,12 +46,14 @@ class SmsReceiverTest {
         contacts: ContactRepository = mockk(relaxed = true),
         settings: TrackingSettingsRepository = mockk(relaxed = true),
         parseSms: (Intent) -> SmsEntry? = { null },
+        findInboxId: (Context, String, Long) -> Long? = { _, _, _ -> null },
     ) = SmsReceiver(
         pendingInteractionRepository = pendingInteractions,
         contactRepository = contacts,
         trackingSettings = settings,
         dispatcher = StandardTestDispatcher(scope.testScheduler),
         parseSms = parseSms,
+        findInboxId = findInboxId,
     )
 
     @Test
@@ -268,5 +271,128 @@ class SmsReceiverTest {
         coVerify(exactly = 0) { contacts.findByPhone(any()) }
         coVerify(exactly = 0) { pending.record(any()) }
         coVerify(exactly = 1) { settings.incrementFilteredUnknownCount() }
+    }
+
+    // --- ADR 0019 / issue #1127: the Inbox _id cursor -----------------------
+
+    @Test
+    fun `a found inbox id above the current cursor advances it`() = runTest {
+        val pending = mockk<PendingInteractionRepository>(relaxed = true)
+        val contacts = mockk<ContactRepository>(relaxed = true)
+        val settings = mockk<TrackingSettingsRepository>(relaxed = true)
+        coEvery { settings.smsTrackingEnabled() } returns true
+        coEvery { contacts.findByPhone("+15551234567") } returns ContactSummary(id = 9)
+        coEvery { settings.lastSmsInboxId() } returns 10L
+        val receiver = buildReceiver(
+            this,
+            pending,
+            contacts,
+            settings,
+            parseSms = { SmsEntry(address = "+15551234567", body = "hello", timestampMillis = 1234L) },
+            findInboxId = { _, address, dateMillis ->
+                if (address == "+15551234567" && dateMillis == 1234L) 15L else null
+            },
+        )
+
+        receiver.onReceive(context, smsIntent())
+        testScheduler.advanceUntilIdle()
+
+        coVerify(exactly = 1) { settings.setLastSmsInboxId(15L) }
+    }
+
+    @Test
+    fun `a found inbox id at or below the current cursor does not regress it`() = runTest {
+        val pending = mockk<PendingInteractionRepository>(relaxed = true)
+        val contacts = mockk<ContactRepository>(relaxed = true)
+        val settings = mockk<TrackingSettingsRepository>(relaxed = true)
+        coEvery { settings.smsTrackingEnabled() } returns true
+        coEvery { contacts.findByPhone("+15551234567") } returns ContactSummary(id = 9)
+        coEvery { settings.lastSmsInboxId() } returns 20L
+        val receiver = buildReceiver(
+            this,
+            pending,
+            contacts,
+            settings,
+            parseSms = { SmsEntry(address = "+15551234567", body = "hello", timestampMillis = 1234L) },
+            findInboxId = { _, _, _ -> 20L },
+        )
+
+        receiver.onReceive(context, smsIntent())
+        testScheduler.advanceUntilIdle()
+
+        coVerify(exactly = 0) { settings.setLastSmsInboxId(any()) }
+    }
+
+    @Test
+    fun `a failed inbox id lookup leaves the cursor untouched`() = runTest {
+        val pending = mockk<PendingInteractionRepository>(relaxed = true)
+        val contacts = mockk<ContactRepository>(relaxed = true)
+        val settings = mockk<TrackingSettingsRepository>(relaxed = true)
+        coEvery { settings.smsTrackingEnabled() } returns true
+        coEvery { contacts.findByPhone("+15551234567") } returns ContactSummary(id = 9)
+        val receiver = buildReceiver(
+            this,
+            pending,
+            contacts,
+            settings,
+            parseSms = { SmsEntry(address = "+15551234567", body = "hello", timestampMillis = 1234L) },
+            findInboxId = { _, _, _ -> null },
+        )
+
+        receiver.onReceive(context, smsIntent())
+        testScheduler.advanceUntilIdle()
+
+        coVerify(exactly = 0) { settings.setLastSmsInboxId(any()) }
+    }
+
+    @Test
+    fun `a null-address SMS never triggers an inbox id lookup`() = runTest {
+        val pending = mockk<PendingInteractionRepository>(relaxed = true)
+        val contacts = mockk<ContactRepository>(relaxed = true)
+        val settings = mockk<TrackingSettingsRepository>(relaxed = true)
+        coEvery { settings.smsTrackingEnabled() } returns true
+        var lookupInvoked = false
+        val receiver = buildReceiver(
+            this,
+            pending,
+            contacts,
+            settings,
+            parseSms = { SmsEntry(address = null, body = "hello", timestampMillis = 5555L) },
+            findInboxId = { _, _, _ -> lookupInvoked = true; null },
+        )
+
+        receiver.onReceive(context, smsIntent())
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(!lookupInvoked)
+        coVerify(exactly = 0) { settings.setLastSmsInboxId(any()) }
+    }
+
+    @Test
+    fun `the cursor advances even when the message is filtered as unmatched`() = runTest {
+        // The cursor tracks "the broadcast has already seen this Inbox row,"
+        // not "this row was staged" -- otherwise every filtered/unknown-number
+        // text would be re-evaluated (and double-counted) by every
+        // reconciliation run.
+        val pending = mockk<PendingInteractionRepository>(relaxed = true)
+        val contacts = mockk<ContactRepository>(relaxed = true)
+        val settings = mockk<TrackingSettingsRepository>(relaxed = true)
+        coEvery { settings.smsTrackingEnabled() } returns true
+        coEvery { contacts.findByPhone("+15551234567") } returns null
+        coEvery { settings.lastSmsInboxId() } returns 0L
+        val receiver = buildReceiver(
+            this,
+            pending,
+            contacts,
+            settings,
+            parseSms = { SmsEntry(address = "+15551234567", body = "hello", timestampMillis = 1234L) },
+            findInboxId = { _, _, _ -> 7L },
+        )
+
+        receiver.onReceive(context, smsIntent())
+        testScheduler.advanceUntilIdle()
+
+        coVerify(exactly = 1) { settings.incrementFilteredUnknownCount() }
+        coVerify(exactly = 1) { settings.setLastSmsInboxId(7L) }
     }
 }

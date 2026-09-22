@@ -29,6 +29,7 @@ class TrackingSettingsRepositoryImpl @Inject constructor(
     private val lastCallLogTs = longPreferencesKey("last_call_log_timestamp")
     private val lastSmsTs = longPreferencesKey("last_sms_timestamp")
     private val lastSyncAt = longPreferencesKey("last_interaction_sync_at")
+    private val lastSmsInboxIdKey = longPreferencesKey("last_sms_inbox_id")
 
     override suspend fun callTrackingEnabled(): Boolean =
         context.trackingDataStore.data.first()[callTracking] ?: false
@@ -67,6 +68,13 @@ class TrackingSettingsRepositoryImpl @Inject constructor(
 
     override suspend fun lastInteractionSyncAt(): Long? =
         context.trackingDataStore.data.first()[lastSyncAt]
+
+    override suspend fun lastSmsInboxId(): Long? =
+        context.trackingDataStore.data.first()[lastSmsInboxIdKey]
+
+    override suspend fun setLastSmsInboxId(id: Long) {
+        context.trackingDataStore.edit { it[lastSmsInboxIdKey] = id }
+    }
 
     override suspend fun includeUnknownNumbers(): Boolean =
         context.trackingDataStore.data.first()[includeUnknown] ?: false

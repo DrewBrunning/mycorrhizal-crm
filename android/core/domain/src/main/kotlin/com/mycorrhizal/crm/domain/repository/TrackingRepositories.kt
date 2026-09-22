@@ -104,6 +104,18 @@ interface TrackingSettingsRepository {
     suspend fun lastInteractionSyncAt(): Long?
 
     /**
+     * ADR 0019 / issue #1127: the highest `Telephony.Sms.Inbox._ID` the SMS
+     * reconciliation worker (or the broadcast receiver, after each capture)
+     * has processed. Null means neither has ever run — distinct from `_id` 0,
+     * which would otherwise be indistinguishable from "unset" on a Long.
+     * Cursor-based (not timestamp-based) by design: it needs no dedupe target
+     * to survive in the outbox, because the cursor itself is the record of
+     * what has already been handled.
+     */
+    suspend fun lastSmsInboxId(): Long?
+    suspend fun setLastSmsInboxId(id: Long)
+
+    /**
      * Issue #1029: the capture-policy escape hatch. When false (the default),
      * the automatic capture paths (incoming SMS, sent-SMS backfill, call log)
      * stage an interaction only when its number resolves to a cached contact;

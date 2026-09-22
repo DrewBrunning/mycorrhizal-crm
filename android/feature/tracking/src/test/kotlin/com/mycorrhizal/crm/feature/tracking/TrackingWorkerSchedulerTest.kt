@@ -48,7 +48,7 @@ class TrackingWorkerSchedulerTest {
     // moved to -- the workers' own doWork() behavior is covered by
     // ReminderNotificationWorkerTest/NotificationWorkersTest/CallLogSyncWorkerTest.
     @Test
-    fun `schedulePeriodic enqueues all seven periodic workers`() {
+    fun `schedulePeriodic enqueues all eight periodic workers`() {
         TrackingWorkerScheduler.schedulePeriodic(context)
 
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_INTERACTION_SYNC).isNotEmpty())
@@ -58,13 +58,15 @@ class TrackingWorkerSchedulerTest {
         // Issue #721: the capture catch-ups (call-log + outgoing-SMS backfill).
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_CALL_LOG_CATCH_UP).isNotEmpty())
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_SMS_BACKFILL).isNotEmpty())
+        // ADR 0019 / issue #1127: incoming-SMS Inbox reconciliation.
+        assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_SMS_INBOX_RECONCILIATION).isNotEmpty())
         // Issue #1122: the contact phone-index backfill.
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_CONTACT_PHONE_INDEX_BACKFILL).isNotEmpty())
     }
 
-    // Issue #1200: the play flavor has no call/SMS capture feature, so its two
-    // catch-up chains must not be enqueued at all. The non-capture workers are
-    // unaffected.
+    // Issue #1200: the play flavor has no call/SMS capture feature, so none of
+    // its three catch-up chains must be enqueued at all. The non-capture
+    // workers are unaffected.
     @Test
     fun `schedulePeriodic skips the capture catch-ups when the build omits the feature`() {
         TrackingWorkerScheduler.schedulePeriodic(context, callSmsCaptureAvailable = false)
@@ -76,6 +78,7 @@ class TrackingWorkerSchedulerTest {
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_CONTACT_PHONE_INDEX_BACKFILL).isNotEmpty())
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_CALL_LOG_CATCH_UP).isEmpty())
         assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_SMS_BACKFILL).isEmpty())
+        assertTrue(uniqueWorkState(TrackingWorkerScheduler.UNIQUE_SMS_INBOX_RECONCILIATION).isEmpty())
     }
 
     @Test

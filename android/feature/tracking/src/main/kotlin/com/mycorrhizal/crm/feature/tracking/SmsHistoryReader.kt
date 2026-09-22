@@ -16,12 +16,15 @@ data class SmsHistoryEntry(
  * broadcast another app can register for — so outgoing texts are captured by
  * periodically reading the Sent folder and are gated on the READ_SMS grant.
  *
- * The reader deliberately never touches the Inbox: incoming SMS are owned by
+ * This reader deliberately never touches the Inbox: incoming SMS are owned by
  * the broadcast path, and the broadcast + provider timestamp a message
  * differently (PDU header vs provider row date) while the outbox deletes rows
  * once synced — so no watermark or exact-match dedupe can reliably stop a
- * provider Inbox read from double-logging a message the broadcast already
- * captured. Keeping one writer per folder makes duplicates impossible.
+ * *timestamp-based* provider Inbox read from double-logging a message the
+ * broadcast already captured. Keeping one writer per folder makes duplicates
+ * impossible. [SmsInboxReader] reads the Inbox separately, under ADR 0019 /
+ * issue #1127 — its `_id` cursor sidesteps the clock-mismatch problem this
+ * class avoids by not touching the Inbox at all.
  *
  * Only the sender address + timestamp are kept — never the message body
  * (§6.2 privacy boundary).
