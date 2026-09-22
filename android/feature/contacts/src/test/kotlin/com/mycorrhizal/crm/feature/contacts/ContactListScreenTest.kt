@@ -20,10 +20,12 @@ import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactsPage
+import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactSummary
@@ -34,8 +36,10 @@ import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -116,6 +120,38 @@ class ContactListScreenTest {
         )
         composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
         composeTestRule.onNodeWithText("Bob").assertIsDisplayed()
+    }
+
+    // --- T90 / issue #831: "You" badge on the marked contact's row (web parity) ---
+
+    @Test
+    fun `the you badge shows only on the row matching the self contact pointer`() {
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(
+                    ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice"),
+                    ContactSummary(id = 2, uid = "u2", fn = "Bob", firstname = "Bob"),
+                ),
+                selfContactVCardUid = "u1",
+            ),
+        )
+
+        composeTestRule.onNodeWithTag("you-badge-1").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("you-badge-2").assertDoesNotExist()
+    }
+
+    @Test
+    fun `no you badge shows when nothing is marked`() {
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")),
+                selfContactVCardUid = null,
+            ),
+        )
+
+        composeTestRule.onNodeWithTag("you-badge-1").assertDoesNotExist()
     }
 
     @Test
@@ -636,12 +672,15 @@ class ContactListScreenTest {
         val bulkRepository = mockk<BulkOperationRepository>()
         val tagRepository = mockk<TagRepository>()
         coEvery { tagRepository.list() } returns Result.success(emptyList())
+        val authRepository = mockk<AuthRepository>()
+        every { authRepository.observeSession() } returns flowOf(SessionState())
         val viewModel = ContactListViewModel(
             repository,
             apiClient,
             circleRepository,
             bulkRepository,
             tagRepository,
+            authRepository,
         )
 
         composeTestRule.setContent {

@@ -200,6 +200,16 @@ class AuthRepositoryImpl @Inject constructor(
         return Result.success(Unit)
     }
 
+    override suspend fun updateSelfContact(vcardUid: String?): Result<Unit> {
+        val result = apiClient.updateSelfContact(vcardUid)
+        result.getOrElse { return Result.failure(it.toApiError()) }
+        // setProfile's merge treats a null field as "unchanged" — wrong here,
+        // since clearing the pointer (null) is a real target state, not an
+        // absent one. setSelfContactVCardUid always overwrites.
+        sessionManager.setSelfContactVCardUid(vcardUid)
+        return Result.success(Unit)
+    }
+
     override suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit> {
         val result = apiClient.changePassword(currentPassword, newPassword)
         return result.fold(
@@ -265,6 +275,7 @@ class AuthRepositoryImpl @Inject constructor(
                 isAdmin = profile.isAdmin,
                 language = profile.language,
                 dateFormat = profile.dateFormat,
+                selfContactVCardUid = profile.selfContactVCardUid,
             ),
         )
     }

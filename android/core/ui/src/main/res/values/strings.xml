@@ -158,6 +158,10 @@
     <string name="contact_actions_menu">Contact actions</string>
     <string name="contact_archive">Archive</string>
     <string name="contact_unarchive">Unarchive</string>
+    <!-- T90 / issue #831: web parity for Mark as Me / Unmark as Me and the "You" badge. -->
+    <string name="contact_mark_as_me">This is me</string>
+    <string name="contact_unmark_as_me">This isn\'t me</string>
+    <string name="contact_you_badge">You</string>
     <string name="contact_export_vcf4">Export vCard 4.0</string>
     <string name="contact_export_vcf3">Export vCard 3.0</string>
     <string name="contact_stay_in_touch">Stay in touch</string>

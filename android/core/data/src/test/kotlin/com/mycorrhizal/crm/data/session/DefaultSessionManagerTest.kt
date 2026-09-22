@@ -251,6 +251,21 @@ class DefaultSessionManagerTest {
         assertEquals("alice", state.username)
     }
 
+    // T90 / issue #831: setSelfContactVCardUid always overwrites (unlike
+    // setProfile's null-keeps-current merge), because clearing the pointer
+    // to null IS a legitimate target state here.
+    @Test
+    fun `setSelfContactVCardUid overwrites the pointer, including clearing it to null`() = runTest {
+        val (manager, _) = manager()
+        manager.setSession("https://crm.example.com", "jwt", SessionState(selfContactVCardUid = "uid-1"))
+
+        manager.setSelfContactVCardUid("uid-2")
+        assertEquals("uid-2", manager.observeSession().first().selfContactVCardUid)
+
+        manager.setSelfContactVCardUid(null)
+        assertNull(manager.observeSession().first().selfContactVCardUid)
+    }
+
     // Issue #814: a token_version bump (2FA confirm/disable) re-issues the
     // session as a fresh bearer token. setToken swaps it in place — the
     // session stays logged in and the server URL/profile are untouched.

@@ -1,10 +1,12 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import app.cash.turbine.test
+import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactsPage
+import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.BulkOperationResult
 import com.mycorrhizal.crm.model.network.Circle
@@ -16,9 +18,11 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -37,22 +41,37 @@ class ContactListViewModelTest {
     private fun page(vararg contacts: ContactSummary, nextCursor: String? = null): ContactsPage =
         ContactsPage(contacts = contacts.toList(), nextCursor = nextCursor, limit = 50, sync = null)
 
+    /** [newViewModel]'s return value: the four collaborators tests commonly need. Kotlin
+     *  destructuring only calls as many componentN() as the call site names, so existing
+     *  `val (viewModel, contactRepository, _) = newViewModel()` sites are unaffected by
+     *  [authRepository] having been added here. */
+    private data class ListVmFixture(
+        val viewModel: ContactListViewModel,
+        val contactRepository: ContactRepository,
+        val apiClient: ApiClient,
+        val authRepository: AuthRepository,
+    )
+
     /** Fresh repository + ApiClient mocks and ViewModel; stubs the cache stream the VM collects
-     *  on init, defaults /search to an empty (never-called-in-most-tests) result, and stubs the
-     *  M23 circle/tag list loads so the dropdown/picker state is deterministic. */
-    private fun newViewModel(): Triple<ContactListViewModel, ContactRepository, ApiClient> {
+     *  on init, defaults /search to an empty (never-called-in-most-tests) result, stubs the
+     *  M23 circle/tag list loads so the dropdown/picker state is deterministic, and stubs the
+     *  T90/#831 session stream with [selfContactVCardUid] (null by default — no contact marked). */
+    private fun newViewModel(selfContactVCardUid: String? = null): ListVmFixture {
         val repo = mockk<ContactRepository>()
         val apiClient = mockk<ApiClient>()
         val circleRepository = mockk<CircleRepository>()
         val bulkRepository = mockk<BulkOperationRepository>()
         val tagRepository = mockk<TagRepository>()
+        val authRepository = mockk<AuthRepository>()
         coEvery { repo.observeContacts() } returns emptyFlow()
         coEvery { repo.searchLocal(any()) } returns emptyList()
         coEvery { repo.syncContacts() } returns Result.success(Unit)
         coEvery { apiClient.search(any(), any(), any()) } returns Result.success(SearchResult())
         coEvery { circleRepository.list() } returns Result.success(emptyList())
         coEvery { tagRepository.list() } returns Result.success(emptyList())
-        return Triple(ContactListViewModel(repo, apiClient, circleRepository, bulkRepository, tagRepository), repo, apiClient)
+        every { authRepository.observeSession() } returns flowOf(SessionState(selfContactVCardUid = selfContactVCardUid))
+        val viewModel = ContactListViewModel(repo, apiClient, circleRepository, bulkRepository, tagRepository, authRepository)
+        return ListVmFixture(viewModel, repo, apiClient, authRepository)
     }
 
     @Test
@@ -537,6 +556,30 @@ class ContactListViewModelTest {
         assertEquals("Server error (500)", viewModel.uiState.value.error)
     }
 
+    // --- T90 / issue #831: "Mark as Me" self-contact pointer (web parity) ---
+
+    @Test
+    fun `state exposes the self contact vcard uid from the session`() = runTest(mainDispatcherRule.testDispatcher) {
+        val fixture = newViewModel(selfContactVCardUid = "u1")
+        coEvery { fixture.contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice")))
+
+        advanceUntilIdle()
+
+        assertEquals("u1", fixture.viewModel.uiState.value.selfContactVCardUid)
+    }
+
+    @Test
+    fun `state has no self contact vcard uid when none is marked`() = runTest(mainDispatcherRule.testDispatcher) {
+        val fixture = newViewModel(selfContactVCardUid = null)
+        coEvery { fixture.contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice")))
+
+        advanceUntilIdle()
+
+        assertNull(fixture.viewModel.uiState.value.selfContactVCardUid)
+    }
+
     @Test
     fun `unfavoriting under the favorites filter removes the row`() = runTest(mainDispatcherRule.testDispatcher) {
         val (viewModel, contactRepository) = newViewModel()
@@ -673,7 +716,9 @@ class ContactListViewModelTest {
         coEvery { circleRepository.list() } returns Result.success(emptyList())
         val tagRepository = mockk<TagRepository>()
         coEvery { tagRepository.list() } returns Result.success(emptyList())
-        val vm = ContactListViewModel(contactRepository, apiClient, circleRepository, bulkRepository, tagRepository)
+        val authRepository = mockk<AuthRepository>()
+        every { authRepository.observeSession() } returns flowOf(SessionState())
+        val vm = ContactListViewModel(contactRepository, apiClient, circleRepository, bulkRepository, tagRepository, authRepository)
 
         advanceUntilIdle()
         vm.toggleSelection(1)
@@ -700,7 +745,9 @@ class ContactListViewModelTest {
         coEvery { circleRepository.list() } returns Result.success(emptyList())
         val tagRepository = mockk<TagRepository>()
         coEvery { tagRepository.list() } returns Result.success(emptyList())
-        val vm = ContactListViewModel(contactRepository, apiClient, circleRepository, bulkRepository, tagRepository)
+        val authRepository = mockk<AuthRepository>()
+        every { authRepository.observeSession() } returns flowOf(SessionState())
+        val vm = ContactListViewModel(contactRepository, apiClient, circleRepository, bulkRepository, tagRepository, authRepository)
 
         advanceUntilIdle()
         vm.toggleSelection(1)

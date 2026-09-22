@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.feature.contacts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
@@ -60,6 +61,12 @@ data class ContactListUiState(
     // narrow the same row set the list already queries.
     val includeFavorites: Boolean = false,
     val tags: List<Tag> = emptyList(),
+    /**
+     * The signed-in user's "Me" contact pointer (T90, `SessionState.selfContactVCardUid`) —
+     * web parity for issue #831. Compared against each row's uid to render the "You" badge;
+     * null until the session emits it or when no contact is currently marked.
+     */
+    val selfContactVCardUid: String? = null,
     /** Selected contact ids for inline bulk actions. Cleared whenever the visible set changes. */
     val selected: Set<Int> = emptySet(),
     val isBulkRunning: Boolean = false,
@@ -83,6 +90,8 @@ class ContactListViewModel @Inject constructor(
     private val circleRepository: CircleRepository,
     private val bulkOperationRepository: BulkOperationRepository,
     private val tagRepository: TagRepository,
+    // T90 / issue #831: web parity for the "You" badge on the marked contact's row.
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ContactListUiState())
@@ -107,6 +116,11 @@ class ContactListViewModel @Inject constructor(
                 _uiState.update {
                     if (it.contacts.isEmpty() && !hasActiveFilter(it)) it.copy(contacts = cached) else it
                 }
+            }
+        }
+        viewModelScope.launch {
+            authRepository.observeSession().collect { session ->
+                _uiState.update { it.copy(selfContactVCardUid = session.selfContactVCardUid) }
             }
         }
         loadCircles()

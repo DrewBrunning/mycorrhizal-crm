@@ -51,6 +51,13 @@ data class ContactDetailUiState(
     /** The signed-in user's `date_format` preference (see `SessionState`); null until loaded. */
     val dateFormat: String? = null,
     /**
+     * The signed-in user's "Me" contact pointer (T90, `SessionState.selfContactVCardUid`) —
+     * web parity for issue #831. Compared against [contact]'s uid to drive the header "You"
+     * badge and the mark/unmark-as-me menu item; null until the session emits it or when no
+     * contact is currently marked.
+     */
+    val selfContactVCardUid: String? = null,
+    /**
      * The user's custom field definitions and this contact's values for them, keyed by
      * `FieldDefinition.id`. Fetched separately from the contact and from each other — a value's
      * definition may no longer exist (deleted since the value was set); such values are silently
@@ -177,7 +184,9 @@ class ContactDetailViewModel @Inject constructor(
         load()
         viewModelScope.launch {
             authRepository.observeSession().collect { session ->
-                _uiState.update { it.copy(dateFormat = session.dateFormat) }
+                _uiState.update {
+                    it.copy(dateFormat = session.dateFormat, selfContactVCardUid = session.selfContactVCardUid)
+                }
             }
         }
     }
@@ -754,6 +763,33 @@ class ContactDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(contact = it.contact?.copy(isFavorite = wasFavorite), error = error.displayMessage)
                     }
+                },
+            )
+        }
+    }
+
+    // --- T90 / issue #831: "Mark as Me" self-contact pointer (web parity) ---
+
+    /**
+     * Set/clear the caller's "Me" contact pointer for this contact, mirroring
+     * web `ContactDetailPage.handleToggleMe`. Unlike [toggleFavorite], the
+     * source of truth ([ContactDetailUiState.selfContactVCardUid]) lives in
+     * `SessionState`, not local optimistic state — [AuthRepository] updates
+     * it on success, so the next `observeSession()` emission (collected in
+     * [init]) updates this screen and every other screen showing a "You"
+     * badge, not just this one. A failure leaves the pointer untouched and
+     * surfaces through the existing error/snackbar path.
+     */
+    fun toggleMe() {
+        val uid = _uiState.value.contact?.uid ?: return
+        if (_uiState.value.isMutating) return
+        val newUid = if (_uiState.value.selfContactVCardUid == uid) null else uid
+        viewModelScope.launch {
+            _uiState.update { it.copy(isMutating = true, error = null) }
+            authRepository.updateSelfContact(newUid).foldApiError(
+                onSuccess = { _uiState.update { it.copy(isMutating = false) } },
+                onError = { error ->
+                    _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
                 },
             )
         }

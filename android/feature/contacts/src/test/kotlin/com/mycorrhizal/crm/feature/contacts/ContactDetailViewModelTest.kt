@@ -63,9 +63,14 @@ class ContactDetailViewModelTest {
     private val seafileRepository = mockk<SeafileRepository>()
     private val nextcloudRepository = mockk<NextcloudRepository>()
 
-    private fun viewModel(id: Int, dateFormat: String? = null): ContactDetailViewModel {
+    private fun viewModel(
+        id: Int,
+        dateFormat: String? = null,
+        selfContactVCardUid: String? = null,
+    ): ContactDetailViewModel {
         coEvery { contactRepository.getDeviceLookupKey(any()) } returns null
-        every { authRepository.observeSession() } returns flowOf(SessionState(dateFormat = dateFormat))
+        every { authRepository.observeSession() } returns
+            flowOf(SessionState(dateFormat = dateFormat, selfContactVCardUid = selfContactVCardUid))
         coEvery { fieldDefinitionRepository.list() } returns Result.success(emptyList())
         coEvery { fieldDefinitionRepository.contactValues(any()) } returns Result.success(emptyList())
         stubMemberships()
@@ -488,6 +493,80 @@ class ContactDetailViewModelTest {
 
         assertFalse(vm.uiState.value.contact?.isFavorite!!)
         assertEquals("Server error (500)", vm.uiState.value.error)
+    }
+
+    // --- T90 / issue #831: "Mark as Me" self-contact pointer (web parity) ---
+
+    @Test
+    fun `state exposes the self contact vcard uid from the session`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5, selfContactVCardUid = "u5")
+        advanceUntilIdle()
+
+        assertEquals("u5", vm.uiState.value.selfContactVCardUid)
+    }
+
+    @Test
+    fun `toggleMe marks the contact as me by sending its own uid`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { authRepository.updateSelfContact("u5") } returns Result.success(Unit)
+
+        // No self contact set yet — this contact isn't the pointer.
+        val vm = viewModel(5, selfContactVCardUid = null)
+        advanceUntilIdle()
+
+        vm.toggleMe()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { authRepository.updateSelfContact("u5") }
+        assertEquals(null, vm.uiState.value.error)
+        assertFalse(vm.uiState.value.isMutating)
+    }
+
+    @Test
+    fun `toggleMe unmarks the contact by sending a null uid`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { authRepository.updateSelfContact(null) } returns Result.success(Unit)
+
+        // This contact IS already the pointer.
+        val vm = viewModel(5, selfContactVCardUid = "u5")
+        advanceUntilIdle()
+
+        vm.toggleMe()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { authRepository.updateSelfContact(null) }
+    }
+
+    @Test
+    fun `toggleMe surfaces an error on failure`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { authRepository.updateSelfContact("u5") } returns Result.failure(ApiError.Server(500, "boom"))
+
+        val vm = viewModel(5, selfContactVCardUid = null)
+        advanceUntilIdle()
+
+        vm.toggleMe()
+        advanceUntilIdle()
+
+        assertEquals("Server error (500)", vm.uiState.value.error)
+        assertFalse(vm.uiState.value.isMutating)
+    }
+
+    @Test
+    fun `toggleMe is a no-op without a loaded contact`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = viewModel(0)
+        advanceUntilIdle()
+
+        vm.toggleMe()
+        advanceUntilIdle()
+
+        io.mockk.coVerify(exactly = 0) { authRepository.updateSelfContact(any()) }
     }
 
     @Test

@@ -41,6 +41,7 @@ import com.mycorrhizal.crm.model.network.Resource
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -129,6 +130,34 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithContentDescription("Mark Dana White as favorite").performClick()
 
         assertEquals(1, toggles)
+    }
+
+    // --- T90 / issue #831: "You" badge + Mark as Me (web parity) ------------
+
+    @Test
+    fun `you badge shows when isMe is true`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
+                    isMe = true,
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("you-badge").assertIsDisplayed()
+    }
+
+    @Test
+    fun `you badge is absent when isMe is false`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
+                    isMe = false,
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("you-badge").assertDoesNotExist()
     }
 
     @Test
@@ -968,6 +997,49 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("Share contact").performClick()
 
         assertEquals("uid-5", sharedUid)
+    }
+
+    // --- T90 / issue #831: Mark as Me / Unmark as Me in the action menu (web parity) ---
+
+    @Test
+    fun `mark as me in the action menu invokes toggleMe`() {
+        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
+        every { viewModel.uiState } returns MutableStateFlow(
+            ContactDetailUiState(contact = contact, selfContactVCardUid = null),
+        )
+        every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailScreen(onBack = {}, onShareContact = {}, viewModel = viewModel)
+            }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Contact actions").performClick()
+        composeTestRule.onNodeWithText("This is me").performClick()
+
+        verify { viewModel.toggleMe() }
+    }
+
+    @Test
+    fun `action menu shows unmark as me when this contact is already the self contact`() {
+        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
+        every { viewModel.uiState } returns MutableStateFlow(
+            ContactDetailUiState(contact = contact, selfContactVCardUid = "uid-5"),
+        )
+        every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailScreen(onBack = {}, onShareContact = {}, viewModel = viewModel)
+            }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Contact actions").performClick()
+
+        composeTestRule.onNodeWithText("This isn't me").assertIsDisplayed()
     }
 
     @Test
