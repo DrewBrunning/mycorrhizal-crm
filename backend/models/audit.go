@@ -271,10 +271,19 @@ func auditBeforeSave[T any](tx *gorm.DB, entityType string, entityID any, isNew 
 	state := &auditState{isNew: isNew}
 	if !isNew {
 		var old T
-		if err := tx.Session(&gorm.Session{NewDB: true}).Where("id = ?", entityID).First(&old).Error; err == nil {
-			if raw, err := redactedJSONForAudit(&old); err == nil {
-				state.before = raw
-			}
+		if err := tx.Session(&gorm.Session{NewDB: true}).Where("id = ?", entityID).First(&old).Error; err != nil {
+			// A failed re-query (busy-timeout, transient I/O) must not pass
+			// silently: it leaves state.before == "", which auditAfterSave
+			// then persists as a genuine "no prior state" update event —
+			// indistinguishable from a create — and any consumer relying on
+			// that before-snapshot (e.g. reach-out detection) silently sees
+			// no change at all. Logging surfaces that gap instead of letting
+			// it masquerade as normal.
+			logger.Warn().Err(err).
+				Str("entity_type", entityType).Any("entity_id", entityID).
+				Msg("audit: failed to load pre-update state for before-snapshot")
+		} else if raw, err := redactedJSONForAudit(&old); err == nil {
+			state.before = raw
 		}
 	}
 	tx.Statement.Context = context.WithValue(tx.Statement.Context, auditStateKey, state)
