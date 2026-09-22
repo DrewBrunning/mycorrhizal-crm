@@ -688,6 +688,58 @@
     <string name="immich_settings_remove_title">Remove Immich connection</string>
     <string name="immich_settings_remove_confirm">Remove the Immich connection? Linked photos will no longer be shown.</string>
 
+    <!-- Settings: Paperless-ngx connection config (issue #833, web parity with
+         PaperlessSettings.tsx) — the document-picker flow (#236) already exists;
+         this is the missing configuration surface it depends on. -->
+    <string name="settings_paperless_title">Paperless-ngx</string>
+    <string name="paperless_settings_description">Connect a self-hosted Paperless-ngx instance to link contacts to documents (contracts, scans, forms). The API token is stored encrypted and is only used to read from your own server.</string>
+    <string name="paperless_settings_base_url">Base URL</string>
+    <string name="paperless_settings_api_token">API Token</string>
+    <string name="paperless_settings_api_token_hint_existing">A token is already stored. Leave the field empty to keep it.</string>
+    <string name="paperless_settings_api_token_hint_new">Paste the API token from your Paperless instance (Settings → API token).</string>
+    <string name="paperless_settings_test">Test connection</string>
+    <string name="paperless_settings_testing">Testing…</string>
+    <string name="paperless_settings_test_success">Connection test succeeded</string>
+    <string name="paperless_settings_test_failed">Test failed: %1$s</string>
+    <string name="paperless_settings_remove">Remove connection</string>
+    <string name="paperless_settings_remove_title">Remove Paperless connection</string>
+    <string name="paperless_settings_remove_confirm">Remove the Paperless connection? Linked contacts keep their existing document links.</string>
+
+    <!-- Settings: Seafile connection config (issue #833, web parity with
+         SeafileSettings.tsx) — the file-picker flow (#236) already exists; this
+         is the missing configuration surface it depends on. -->
+    <string name="settings_seafile_title">Seafile</string>
+    <string name="seafile_settings_description">Connect a self-hosted Seafile server to link contacts to files and folders in your libraries. The API token is stored encrypted and is only used to read from your own server.</string>
+    <string name="seafile_settings_base_url">Server URL</string>
+    <string name="seafile_settings_api_token">API Token</string>
+    <string name="seafile_settings_api_token_hint_existing">A token is already stored. Leave the field empty to keep it.</string>
+    <string name="seafile_settings_api_token_hint_new">Paste the API token from your Seafile account (Avatar → Settings → API Token).</string>
+    <string name="seafile_settings_test">Test connection</string>
+    <string name="seafile_settings_testing">Testing…</string>
+    <string name="seafile_settings_test_success">Connection test succeeded</string>
+    <string name="seafile_settings_test_failed">Test failed: %1$s</string>
+    <string name="seafile_settings_remove">Remove connection</string>
+    <string name="seafile_settings_remove_title">Remove Seafile connection</string>
+    <string name="seafile_settings_remove_confirm">Remove the Seafile connection? Linked contacts keep their existing file links.</string>
+
+    <!-- Settings: Nextcloud/ownCloud (WebDAV) connection config (issue #833, web
+         parity with NextcloudSettings.tsx) — the file-picker flow (#236) already
+         exists; this is the missing configuration surface it depends on. -->
+    <string name="settings_nextcloud_title">Nextcloud / ownCloud</string>
+    <string name="nextcloud_settings_description">Connect a self-hosted Nextcloud or ownCloud instance (over WebDAV) to link contacts to files and folders. The app password is stored encrypted and is only used to read from your own server. Only an app password is accepted — never your account password.</string>
+    <string name="nextcloud_settings_base_url">Server URL</string>
+    <string name="nextcloud_settings_username">Username</string>
+    <string name="nextcloud_settings_app_password">App Password</string>
+    <string name="nextcloud_settings_app_password_hint_existing">An app password is already stored. Leave the field empty to keep it.</string>
+    <string name="nextcloud_settings_app_password_hint_new">Create an app password in your instance (Personal settings → Security → App passwords) and paste it here.</string>
+    <string name="nextcloud_settings_test">Test connection</string>
+    <string name="nextcloud_settings_testing">Testing…</string>
+    <string name="nextcloud_settings_test_success">Connection test succeeded</string>
+    <string name="nextcloud_settings_test_failed">Test failed: %1$s</string>
+    <string name="nextcloud_settings_remove">Remove connection</string>
+    <string name="nextcloud_settings_remove_title">Remove Nextcloud connection</string>
+    <string name="nextcloud_settings_remove_confirm">Remove the Nextcloud connection? Linked contacts keep their existing file links.</string>
+
     <string name="settings_save">Save</string>
     <string name="settings_ok">OK</string>
 

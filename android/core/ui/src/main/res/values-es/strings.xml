@@ -661,6 +661,52 @@
     <string name="immich_settings_remove_title">Quitar la conexión con Immich</string>
     <string name="immich_settings_remove_confirm">¿Quitar la conexión con Immich? Las fotos vinculadas dejarán de mostrarse.</string>
 
+    <!-- Ajustes: configuración de la conexión Paperless-ngx (issue #833). -->
+    <string name="settings_paperless_title">Paperless-ngx</string>
+    <string name="paperless_settings_description">Conecta una instancia de Paperless-ngx autoalojada para enlazar contactos con documentos (contratos, escaneos, formularios). El token de API se almacena cifrado y solo se usa para leer de tu propio servidor.</string>
+    <string name="paperless_settings_base_url">URL base</string>
+    <string name="paperless_settings_api_token">Token de API</string>
+    <string name="paperless_settings_api_token_hint_existing">Ya hay un token almacenado. Deja el campo vacío para conservarlo.</string>
+    <string name="paperless_settings_api_token_hint_new">Pega el token de API de tu instancia de Paperless (Configuración → Token de API).</string>
+    <string name="paperless_settings_test">Probar conexión</string>
+    <string name="paperless_settings_testing">Probando…</string>
+    <string name="paperless_settings_test_success">La prueba de conexión se realizó correctamente</string>
+    <string name="paperless_settings_test_failed">Prueba fallida: %1$s</string>
+    <string name="paperless_settings_remove">Quitar conexión</string>
+    <string name="paperless_settings_remove_title">Quitar la conexión con Paperless</string>
+    <string name="paperless_settings_remove_confirm">¿Quitar la conexión con Paperless? Los contactos enlazados conservan sus enlaces de documentos.</string>
+
+    <!-- Ajustes: configuración de la conexión Seafile (issue #833). -->
+    <string name="settings_seafile_title">Seafile</string>
+    <string name="seafile_settings_description">Conecta un servidor Seafile autoalojado para enlazar contactos con archivos y carpetas de tus bibliotecas. El token de API se almacena cifrado y solo se usa para leer de tu propio servidor.</string>
+    <string name="seafile_settings_base_url">URL del servidor</string>
+    <string name="seafile_settings_api_token">Token de API</string>
+    <string name="seafile_settings_api_token_hint_existing">Ya hay un token almacenado. Deja el campo vacío para conservarlo.</string>
+    <string name="seafile_settings_api_token_hint_new">Pega el token de API de tu cuenta de Seafile (Avatar → Configuración → Token de API).</string>
+    <string name="seafile_settings_test">Probar conexión</string>
+    <string name="seafile_settings_testing">Probando…</string>
+    <string name="seafile_settings_test_success">La prueba de conexión se realizó correctamente</string>
+    <string name="seafile_settings_test_failed">Prueba fallida: %1$s</string>
+    <string name="seafile_settings_remove">Quitar conexión</string>
+    <string name="seafile_settings_remove_title">Quitar la conexión con Seafile</string>
+    <string name="seafile_settings_remove_confirm">¿Quitar la conexión con Seafile? Los contactos enlazados conservan sus enlaces de archivos.</string>
+
+    <!-- Ajustes: configuración de la conexión Nextcloud/ownCloud (issue #833). -->
+    <string name="settings_nextcloud_title">Nextcloud / ownCloud</string>
+    <string name="nextcloud_settings_description">Conecta una instancia de Nextcloud u ownCloud autoalojada (mediante WebDAV) para enlazar contactos con archivos y carpetas. La contraseña de aplicación se almacena cifrada y solo se usa para leer de tu propio servidor. Solo se acepta una contraseña de aplicación, nunca la contraseña de tu cuenta.</string>
+    <string name="nextcloud_settings_base_url">URL del servidor</string>
+    <string name="nextcloud_settings_username">Nombre de usuario</string>
+    <string name="nextcloud_settings_app_password">Contraseña de aplicación</string>
+    <string name="nextcloud_settings_app_password_hint_existing">Ya hay una contraseña de aplicación almacenada. Deja el campo vacío para conservarla.</string>
+    <string name="nextcloud_settings_app_password_hint_new">Crea una contraseña de aplicación en tu instancia (Configuración personal → Seguridad → Contraseñas de aplicación) y pégala aquí.</string>
+    <string name="nextcloud_settings_test">Probar conexión</string>
+    <string name="nextcloud_settings_testing">Probando…</string>
+    <string name="nextcloud_settings_test_success">La prueba de conexión se realizó correctamente</string>
+    <string name="nextcloud_settings_test_failed">Prueba fallida: %1$s</string>
+    <string name="nextcloud_settings_remove">Quitar conexión</string>
+    <string name="nextcloud_settings_remove_title">Quitar la conexión con Nextcloud</string>
+    <string name="nextcloud_settings_remove_confirm">¿Quitar la conexión con Nextcloud? Los contactos enlazados conservan sus enlaces de archivos.</string>
+
     <string name="settings_save">Guardar</string>
     <string name="settings_ok">Aceptar</string>
 

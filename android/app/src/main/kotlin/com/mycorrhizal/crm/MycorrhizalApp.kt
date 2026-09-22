@@ -127,7 +127,10 @@ import com.mycorrhizal.crm.feature.settings.DataScreen
 import com.mycorrhizal.crm.feature.settings.FieldDefinitionFormScreen
 import com.mycorrhizal.crm.feature.settings.FieldDefinitionsScreen
 import com.mycorrhizal.crm.feature.settings.ImmichSettingsScreen
+import com.mycorrhizal.crm.feature.settings.NextcloudSettingsScreen
 import com.mycorrhizal.crm.feature.settings.NotificationChannelsScreen
+import com.mycorrhizal.crm.feature.settings.PaperlessSettingsScreen
+import com.mycorrhizal.crm.feature.settings.SeafileSettingsScreen
 import com.mycorrhizal.crm.feature.settings.SettingsScreen
 import com.mycorrhizal.crm.feature.settings.TwoFactorScreen
 import com.mycorrhizal.crm.feature.settings.ApiTokensScreen
@@ -1209,6 +1212,10 @@ private fun AppNavGraph(
                 onTwoFactor = { navController.navigate("two-factor") },
                 onNotificationChannels = { navController.navigate("notification-channels") },
                 onImmichSettings = { navController.navigate("immich-settings") },
+                // Issue #833: the Paperless/Seafile/Nextcloud connection-config settings screens.
+                onPaperlessSettings = { navController.navigate("paperless-settings") },
+                onSeafileSettings = { navController.navigate("seafile-settings") },
+                onNextcloudSettings = { navController.navigate("nextcloud-settings") },
                 // M26: the one-time legacy circle/tag cleanup tool.
                 onCircleTagTriage = { navController.navigate("circle-tag-triage") },
                 // T104 + address suggestions: the Data review surface.
@@ -1298,6 +1305,22 @@ private fun AppNavGraph(
         // Issue #236: the Immich connection-config settings screen.
         composable("immich-settings") {
             ImmichSettingsScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+        // Issue #833: the Paperless/Seafile/Nextcloud connection-config settings screens.
+        composable("paperless-settings") {
+            PaperlessSettingsScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable("seafile-settings") {
+            SeafileSettingsScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable("nextcloud-settings") {
+            NextcloudSettingsScreen(
                 onBack = { navController.popBackStack() },
             )
         }

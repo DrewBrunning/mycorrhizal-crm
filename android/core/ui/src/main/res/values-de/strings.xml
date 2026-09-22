@@ -661,6 +661,52 @@
     <string name="immich_settings_remove_title">Immich-Verbindung entfernen</string>
     <string name="immich_settings_remove_confirm">Immich-Verbindung entfernen? Verknüpfte Fotos werden nicht mehr angezeigt.</string>
 
+    <!-- Einstellungen: Paperless-ngx-Verbindungskonfiguration (Issue #833). -->
+    <string name="settings_paperless_title">Paperless-ngx</string>
+    <string name="paperless_settings_description">Verbinde eine selbst gehostete Paperless-ngx-Instanz, um Kontakte mit Dokumenten (Verträge, Scans, Formulare) zu verknüpfen. Das API-Token wird verschlüsselt gespeichert und nur zum Lesen von deinem eigenen Server verwendet.</string>
+    <string name="paperless_settings_base_url">Basis-URL</string>
+    <string name="paperless_settings_api_token">API-Token</string>
+    <string name="paperless_settings_api_token_hint_existing">Es ist bereits ein Token gespeichert. Lasse das Feld leer, um es zu behalten.</string>
+    <string name="paperless_settings_api_token_hint_new">Füge das API-Token deiner Paperless-Instanz ein (Einstellungen → API-Token).</string>
+    <string name="paperless_settings_test">Verbindung testen</string>
+    <string name="paperless_settings_testing">Wird getestet…</string>
+    <string name="paperless_settings_test_success">Verbindungstest erfolgreich</string>
+    <string name="paperless_settings_test_failed">Test fehlgeschlagen: %1$s</string>
+    <string name="paperless_settings_remove">Verbindung entfernen</string>
+    <string name="paperless_settings_remove_title">Paperless-Verbindung entfernen</string>
+    <string name="paperless_settings_remove_confirm">Paperless-Verbindung entfernen? Verknüpfte Kontakte behalten ihre vorhandenen Dokumentverknüpfungen.</string>
+
+    <!-- Einstellungen: Seafile-Verbindungskonfiguration (Issue #833). -->
+    <string name="settings_seafile_title">Seafile</string>
+    <string name="seafile_settings_description">Verbinde einen selbst gehosteten Seafile-Server, um Kontakte mit Dateien und Ordnern in deinen Bibliotheken zu verknüpfen. Das API-Token wird verschlüsselt gespeichert und nur zum Lesen von deinem eigenen Server verwendet.</string>
+    <string name="seafile_settings_base_url">Server-URL</string>
+    <string name="seafile_settings_api_token">API-Token</string>
+    <string name="seafile_settings_api_token_hint_existing">Es ist bereits ein Token gespeichert. Lasse das Feld leer, um es zu behalten.</string>
+    <string name="seafile_settings_api_token_hint_new">Füge das API-Token deines Seafile-Kontos ein (Avatar → Einstellungen → API-Token).</string>
+    <string name="seafile_settings_test">Verbindung testen</string>
+    <string name="seafile_settings_testing">Wird getestet…</string>
+    <string name="seafile_settings_test_success">Verbindungstest erfolgreich</string>
+    <string name="seafile_settings_test_failed">Test fehlgeschlagen: %1$s</string>
+    <string name="seafile_settings_remove">Verbindung entfernen</string>
+    <string name="seafile_settings_remove_title">Seafile-Verbindung entfernen</string>
+    <string name="seafile_settings_remove_confirm">Seafile-Verbindung entfernen? Verknüpfte Kontakte behalten ihre vorhandenen Dateiverknüpfungen.</string>
+
+    <!-- Einstellungen: Nextcloud/ownCloud-Verbindungskonfiguration (Issue #833). -->
+    <string name="settings_nextcloud_title">Nextcloud / ownCloud</string>
+    <string name="nextcloud_settings_description">Verbinde eine selbst gehostete Nextcloud- oder ownCloud-Instanz (über WebDAV), um Kontakte mit Dateien und Ordnern zu verknüpfen. Das App-Passwort wird verschlüsselt gespeichert und nur zum Lesen von deinem eigenen Server verwendet. Es wird nur ein App-Passwort akzeptiert – niemals dein Kontopasswort.</string>
+    <string name="nextcloud_settings_base_url">Server-URL</string>
+    <string name="nextcloud_settings_username">Benutzername</string>
+    <string name="nextcloud_settings_app_password">App-Passwort</string>
+    <string name="nextcloud_settings_app_password_hint_existing">Es ist bereits ein App-Passwort gespeichert. Lasse das Feld leer, um es zu behalten.</string>
+    <string name="nextcloud_settings_app_password_hint_new">Erstelle ein App-Passwort in deiner Instanz (Persönliche Einstellungen → Sicherheit → App-Passwörter) und füge es hier ein.</string>
+    <string name="nextcloud_settings_test">Verbindung testen</string>
+    <string name="nextcloud_settings_testing">Wird getestet…</string>
+    <string name="nextcloud_settings_test_success">Verbindungstest erfolgreich</string>
+    <string name="nextcloud_settings_test_failed">Test fehlgeschlagen: %1$s</string>
+    <string name="nextcloud_settings_remove">Verbindung entfernen</string>
+    <string name="nextcloud_settings_remove_title">Nextcloud-Verbindung entfernen</string>
+    <string name="nextcloud_settings_remove_confirm">Nextcloud-Verbindung entfernen? Verknüpfte Kontakte behalten ihre vorhandenen Dateiverknüpfungen.</string>
+
     <string name="settings_save">Speichern</string>
     <string name="settings_ok">OK</string>
 

@@ -95,6 +95,10 @@ fun SettingsScreen(
     onNotificationChannels: () -> Unit = {},
     // Issue #236: the Immich connection-config settings screen.
     onImmichSettings: () -> Unit = {},
+    // Issue #833: the Paperless/Seafile/Nextcloud connection-config settings screens.
+    onPaperlessSettings: () -> Unit = {},
+    onSeafileSettings: () -> Unit = {},
+    onNextcloudSettings: () -> Unit = {},
     onCircleTagTriage: () -> Unit = {},
     // T104 + data suggestions: the Data review surface and its trigger.
     onData: () -> Unit = {},
@@ -212,6 +216,9 @@ fun SettingsScreen(
             onTwoFactor = onTwoFactor,
             onNotificationChannels = onNotificationChannels,
             onImmichSettings = onImmichSettings,
+            onPaperlessSettings = onPaperlessSettings,
+            onSeafileSettings = onSeafileSettings,
+            onNextcloudSettings = onNextcloudSettings,
             onCircleTagTriage = onCircleTagTriage,
             onData = onData,
             onManageCustomFields = onManageCustomFields,
@@ -263,6 +270,9 @@ fun SettingsContent(
     onTwoFactor: () -> Unit = {},
     onNotificationChannels: () -> Unit = {},
     onImmichSettings: () -> Unit = {},
+    onPaperlessSettings: () -> Unit = {},
+    onSeafileSettings: () -> Unit = {},
+    onNextcloudSettings: () -> Unit = {},
     onCircleTagTriage: () -> Unit = {},
     onData: () -> Unit = {},
     onManageCustomFields: () -> Unit = {},
@@ -611,6 +621,10 @@ fun SettingsContent(
         NavigationRow(stringResource(R.string.settings_notifications_title), onClick = onNotificationChannels)
         // Issue #236: the Immich connection-config settings screen.
         NavigationRow(stringResource(R.string.settings_immich_title), onClick = onImmichSettings)
+        // Issue #833: the Paperless/Seafile/Nextcloud connection-config settings screens.
+        NavigationRow(stringResource(R.string.settings_paperless_title), onClick = onPaperlessSettings)
+        NavigationRow(stringResource(R.string.settings_seafile_title), onClick = onSeafileSettings)
+        NavigationRow(stringResource(R.string.settings_nextcloud_title), onClick = onNextcloudSettings)
 
         // M26: one-time legacy circle/tag cleanup.
         NavigationRow(stringResource(R.string.settings_circle_tag_triage), onClick = onCircleTagTriage)
