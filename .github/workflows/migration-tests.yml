@@ -558,9 +558,20 @@ jobs:
           # ".../CommittedBaselineIsCurrent") even when the top-level test
           # FAILed — which is exactly how this step kept reporting green
           # through #795/#796's real, ongoing failure.
-          for want in "TestDataMovementAtScale " "TestMigrationAtScaleResourceEnvelope "; do
-            if ! grep -q -- "--- PASS: $want" <<<"$out"; then
-              echo "::error::PERF-03 check '$want' did not run (MYCORRHIZAL_LARGE_TESTS not honored?)"
-              exit 1
-            fi
-          done
+          if ! grep -q -- "--- PASS: TestDataMovementAtScale " <<<"$out"; then
+            echo "::error::PERF-03 check 'TestDataMovementAtScale ' did not run (MYCORRHIZAL_LARGE_TESTS not honored?)"
+            exit 1
+          fi
+          # TestMigrationAtScaleResourceEnvelope measures a migration ABOVE the
+          # supported-upgrade floor. Right after a major the floor IS the newest
+          # migration, so there is nothing to measure and the test skips by
+          # design with a named reason (issue #1170: floor v1.0.0 == migration
+          # 57) — not because the variable was unset. Accept that documented
+          # skip; any other absence (including a skip for another reason) is
+          # still a fail-safe miss. When a later release adds a migration above
+          # the floor, the PASS branch takes over again with no edit here.
+          if ! grep -q -- "--- PASS: TestMigrationAtScaleResourceEnvelope " <<<"$out" \
+             && ! grep -q -- "no pending migration to measure" <<<"$out"; then
+            echo "::error::PERF-03 check 'TestMigrationAtScaleResourceEnvelope ' did not run and did not skip for the floor==latest reason (MYCORRHIZAL_LARGE_TESTS not honored?)"
+            exit 1
+          fi
