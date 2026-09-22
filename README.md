@@ -199,7 +199,7 @@ Contributions are welcome. See
 how to get set up and what a PR needs to be merged.
 
 ### Bugs and feature requests
-This application is currently in beta. Bugs are expected in testing, but are hopefully few and far-between. Please submit issues via GitHub.
+Please submit issues via GitHub. Templates are set up for bugs, feature requests, and security reporting.
 
 ### Development
 To set up this repository for development, follow these steps:
