@@ -4812,6 +4812,58 @@ class ApiClientTest {
         assertEquals("/api/v1/audit/export", server.takeRequest().path)
     }
 
+    // --- Issue #835: T9 selective-export params (Android parity) ---
+
+    @Test
+    fun `exportAllContactsVcf sends comma-joined sections and include_sensitive`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("BEGIN:VCARD"))
+
+        val result = client.exportAllContactsVcf(
+            version = 3,
+            sections = listOf("emails", "phones"),
+            includeSensitive = true,
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals(
+            "/api/v1/export/vcf?version=3&sections=emails%2Cphones&include_sensitive=true",
+            server.takeRequest().path,
+        )
+    }
+
+    @Test
+    fun `exportAllContactsJsContact sends comma-joined sections without include_sensitive when false`() =
+        runBlocking {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("[]"))
+
+            val result = client.exportAllContactsJsContact(sections = listOf("notes"), includeSensitive = false)
+
+            assertTrue(result.isSuccess)
+            assertEquals("/api/v1/export/jscontact?sections=notes", server.takeRequest().path)
+        }
+
+    @Test
+    fun `exportPreflight sends format, sections, and include_sensitive and decodes the response`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"format":"vcard4","contact_count":2,"diagnostics":[{"format":"vcard4","contact_id":1,"contact_name":"Alice","vcard_uid":"a-uid","severity":"warn","concept":"custom_field","bucket":"unsupported","reason":"no home","message":"lost"}]}""",
+            ),
+        )
+
+        val result = client.exportPreflight("vcard4", listOf("custom_fields"), true)
+
+        assertTrue(result.isSuccess)
+        val response = result.getOrThrow()
+        assertEquals("vcard4", response.format)
+        assertEquals(2, response.contactCount)
+        assertEquals(1, response.diagnostics.size)
+        assertEquals("Alice", response.diagnostics[0].contactName)
+        assertEquals(
+            "/api/v1/export/preflight?format=vcard4&sections=custom_fields&include_sensitive=true",
+            server.takeRequest().path,
+        )
+    }
+
     // --- Issue #965: Android OIDC native-return exchange ---
 
     @Test

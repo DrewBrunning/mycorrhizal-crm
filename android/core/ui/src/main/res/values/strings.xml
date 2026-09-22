@@ -1352,6 +1352,26 @@
     <string name="data_export_jscontact">Export JSContact</string>
     <string name="data_export_audit">Export audit log</string>
     <string name="data_export_share_title">Share export</string>
+    <string name="data_export_custom">Custom export…</string>
+
+    <!-- Custom export field/sensitivity picker (T9 Android parity, issue #835).
+         Reuses ShareFieldSections' section tokens and the shares_reveal_*/
+         shares_fields_label/a11y_share_field_locked strings (the same T9 picker
+         ShareContactScreen already uses). -->
+    <string name="data_custom_export_title">Export Contacts — Choose Fields</string>
+    <string name="data_custom_export_description">Choose which fields to include. Name and UID are always exported.</string>
+    <string name="data_custom_export_format">Format</string>
+    <string name="data_custom_export_format_vcf4">vCard 4.0 (.vcf)</string>
+    <string name="data_custom_export_format_vcf3">vCard 3.0 (.vcf)</string>
+    <string name="data_custom_export_format_jscontact">JSContact (.json)</string>
+    <string name="data_custom_export_button">Export</string>
+    <string name="data_custom_export_exporting">Exporting…</string>
+    <string name="data_custom_export_error">Failed to export contacts. Please try again.</string>
+    <string name="data_custom_export_preview_button">Preview what this export would lose</string>
+    <string name="data_custom_export_preview_checking">Checking…</string>
+    <string name="data_custom_export_preview_title">Export preview</string>
+    <string name="data_custom_export_preview_empty">No fields would be lost with this selection.</string>
+    <string name="data_custom_export_preview_close">Close</string>
 
     <!-- Import (T57) -->
     <string name="import_title">Import contacts</string>

@@ -1346,6 +1346,22 @@
     <string name="data_export_jscontact">JSContact exportieren</string>
     <string name="data_export_audit">Auditprotokoll exportieren</string>
     <string name="data_export_share_title">Export teilen</string>
+    <string name="data_export_custom">Benutzerdefinierter Export…</string>
+
+    <string name="data_custom_export_title">Kontakte exportieren — Felder auswählen</string>
+    <string name="data_custom_export_description">Wählen Sie aus, welche Felder enthalten sein sollen. Name und UID werden immer exportiert.</string>
+    <string name="data_custom_export_format">Format</string>
+    <string name="data_custom_export_format_vcf4">vCard 4.0 (.vcf)</string>
+    <string name="data_custom_export_format_vcf3">vCard 3.0 (.vcf)</string>
+    <string name="data_custom_export_format_jscontact">JSContact (.json)</string>
+    <string name="data_custom_export_button">Exportieren</string>
+    <string name="data_custom_export_exporting">Exportiere…</string>
+    <string name="data_custom_export_error">Kontakte konnten nicht exportiert werden. Bitte versuchen Sie es erneut.</string>
+    <string name="data_custom_export_preview_button">Vorschau: Was bei diesem Export verloren geht</string>
+    <string name="data_custom_export_preview_checking">Wird geprüft…</string>
+    <string name="data_custom_export_preview_title">Exportvorschau</string>
+    <string name="data_custom_export_preview_empty">Bei dieser Auswahl geht nichts verloren.</string>
+    <string name="data_custom_export_preview_close">Schließen</string>
 
 
 
