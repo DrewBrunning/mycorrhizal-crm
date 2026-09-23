@@ -147,3 +147,38 @@ func contactDisplayNameFlat(contact *models.Contact) string {
 	}
 	return name
 }
+
+// GetGiftShoppingList is "who still needs a gift" (ADR 0024 part 5, issue
+// #387, ticket #1226): every active Kind="gift" obligation due within
+// `days`, joined against Gift to show whether this cycle's gift already has
+// a linked idea/purchase.
+func GetGiftShoppingList(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	days := 30
+	if raw := c.Query("days"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || (parsed != 30 && parsed != 90) {
+			apperrors.AbortWithError(c, apperrors.ErrValidation("days must be 30 or 90"))
+			return
+		}
+		days = parsed
+	}
+	includeSensitive := c.Query("include_sensitive") == "true"
+
+	now := reminderNow(c)
+	items, err := services.GetGiftShoppingList(db, userID, now, days, includeSensitive)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve gift shopping list").WithError(err))
+		return
+	}
+	if items == nil {
+		items = []models.GiftShoppingItem{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"gift_shopping_list": items, "days": days})
+}

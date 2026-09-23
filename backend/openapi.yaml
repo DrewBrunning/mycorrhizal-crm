@@ -6188,6 +6188,49 @@ paths:
             text/csv:
               schema: { type: string }
 
+  /occasion-obligations/gift-shopping-list:
+    get:
+      summary: Gift shopping list ("who still needs a gift")
+      operationId: getGiftShoppingList
+      description: >
+        Every active Kind="gift" OccasionObligation due within `days`,
+        joined against Gift to report whether this cycle's gift already has
+        a linked idea/purchase (ADR 0024 part 5, issue #387).
+      parameters:
+        - name: days
+          in: query
+          description: Window size in days. Only 30 (default) or 90 are accepted.
+          schema: { type: integer, enum: [30, 90], default: 30 }
+        - name: include_sensitive
+          in: query
+          description: Include occasion obligations above normal sensitivity.
+          schema: { type: boolean, default: false }
+      responses:
+        "400":
+          description: Invalid days value.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The gift shopping list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gift_shopping_list:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/GiftShoppingItem"
+                  days: { type: integer }
+
   # --- CadencePolicies (T19) ---
   /cadence-policies/overdue:
     get:
@@ -12809,6 +12852,19 @@ components:
         kind:
           type: string
           description: OccasionObligation.Kind (card/gift/invite), source=obligation rows only.
+
+    GiftShoppingItem:
+      type: object
+      description: One row of the /occasion-obligations/gift-shopping-list aggregate (ADR 0024, issue #387).
+      properties:
+        contact_id: { type: integer }
+        contact_name: { type: string }
+        obligation_id: { type: string, format: uuid }
+        label: { type: string }
+        date: { type: string, format: date }
+        days_until: { type: integer }
+        status: { type: string, enum: [needed, idea, purchased, given, received] }
+        linked_gift_id: { type: string, format: uuid }
 
     # --- CadencePolicies (T19) ---
     CadencePolicy:

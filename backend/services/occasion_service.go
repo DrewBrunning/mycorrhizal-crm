@@ -220,3 +220,117 @@ func contactsByVCardUID[T any](db *gorm.DB, userID uint, rows []T, entityIDFn fu
 	}
 	return out, nil
 }
+
+// giftMatchWindowDays bounds how far back a Gift record can be from "now"
+// and still count as "this cycle's gift" for GetGiftShoppingList's status
+// heuristic — roughly 11 months, so a gift from the last time this occasion
+// came around (just under a year ago) doesn't count as "already handled" for
+// the upcoming one. Documented as a heuristic, not exact: Gift carries no
+// OccasionObligationID link (a future decision, out of scope here), so this
+// is a best-effort date-proximity match, not a hard reference.
+const giftMatchWindowDays = 330
+
+// GetGiftShoppingList returns every active Kind="gift" OccasionObligation
+// due within `days`, joined against Gift to report whether this cycle's
+// gift already has a linked idea/purchase (ADR 0024, issue #387, ticket
+// #1226). Status resolution: a Gift row for the same contact is treated as
+// "this cycle's gift" when (a) the obligation names a LinkedLifeEventID and
+// the Gift's own LifeEventID matches it, or (b) failing that, the Gift's
+// Date (or CreatedAt for an undated idea) falls within the last
+// giftMatchWindowDays of now. No match -> Status "needed".
+func GetGiftShoppingList(db *gorm.DB, userID uint, now time.Time, days int, includeSensitive bool) ([]models.GiftShoppingItem, error) {
+	query := db.Where("user_id = ? AND active = ? AND kind = ? AND anchor_month IS NOT NULL AND anchor_day IS NOT NULL",
+		userID, true, models.OccasionObligationKindGift)
+	if !includeSensitive {
+		query = query.Where("sensitivity = ?", models.RelationshipSensitivityNormal)
+	}
+	var obligations []models.OccasionObligation
+	if err := query.Find(&obligations).Error; err != nil {
+		return nil, fmt.Errorf("failed to retrieve gift obligations: %w", err)
+	}
+	if len(obligations) == 0 {
+		return []models.GiftShoppingItem{}, nil
+	}
+
+	contactByUID, err := contactsByVCardUID(db, userID, obligations, func(o models.OccasionObligation) string { return o.EntityID })
+	if err != nil {
+		return nil, err
+	}
+
+	var gifts []models.Gift
+	if err := db.Where("user_id = ?", userID).Find(&gifts).Error; err != nil {
+		return nil, fmt.Errorf("failed to retrieve gifts for shopping list: %w", err)
+	}
+	giftsByEntity := make(map[string][]models.Gift, len(gifts))
+	for _, g := range gifts {
+		giftsByEntity[g.EntityID] = append(giftsByEntity[g.EntityID], g)
+	}
+
+	windowStart := now.AddDate(0, 0, -giftMatchWindowDays)
+
+	var out []models.GiftShoppingItem
+	for _, obligation := range obligations {
+		contact, found := contactByUID[obligation.EntityID]
+		if !found {
+			continue
+		}
+		daysUntil, date, ok := resolveAnnualOccurrence(*obligation.AnchorMonth, *obligation.AnchorDay, now)
+		if !ok || daysUntil > days {
+			continue
+		}
+
+		status := "needed"
+		linkedGiftID := ""
+		if matched, found := matchGiftForObligation(giftsByEntity[obligation.EntityID], obligation, windowStart, now); found {
+			status = matched.Status
+			linkedGiftID = matched.ID
+		}
+
+		out = append(out, models.GiftShoppingItem{
+			ContactID: contact.ID, ContactName: contactDisplayName(&contact),
+			ObligationID: obligation.ID, Label: obligation.Label,
+			Date: date, DaysUntil: daysUntil,
+			Status: status, LinkedGiftID: linkedGiftID,
+		})
+	}
+
+	slices.SortFunc(out, func(a, b models.GiftShoppingItem) int {
+		if a.DaysUntil != b.DaysUntil {
+			return a.DaysUntil - b.DaysUntil
+		}
+		return int(a.ContactID) - int(b.ContactID)
+	})
+
+	return out, nil
+}
+
+// matchGiftForObligation applies GetGiftShoppingList's status heuristic
+// (doc comment above) over one contact's gifts, preferring a
+// LinkedLifeEventID match and falling back to the most recent gift inside
+// the date window.
+func matchGiftForObligation(candidates []models.Gift, obligation models.OccasionObligation, windowStart, now time.Time) (models.Gift, bool) {
+	if obligation.LinkedLifeEventID != "" {
+		for _, g := range candidates {
+			if g.LifeEventID == obligation.LinkedLifeEventID {
+				return g, true
+			}
+		}
+	}
+
+	var best models.Gift
+	var bestTime time.Time
+	found := false
+	for _, g := range candidates {
+		ref := g.CreatedAt
+		if g.Date != nil {
+			ref = *g.Date
+		}
+		if ref.Before(windowStart) || ref.After(now) {
+			continue
+		}
+		if !found || ref.After(bestTime) {
+			best, bestTime, found = g, ref, true
+		}
+	}
+	return best, found
+}
