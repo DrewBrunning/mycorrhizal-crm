@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.EventNote
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.StickyNote2
 import androidx.compose.material3.Icon
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.ui.R
 
 /**
@@ -72,6 +74,7 @@ fun TimelineSection(
                     message = item.completion.message.orEmpty(),
                     onUndo = { onUndoCompletion(item.completion.id) },
                 )
+                is TimelineItem.ExternalActivityItem -> TimelineExternalActivityRow(item.activity)
             }
         }
     }
@@ -182,5 +185,32 @@ private fun TimelineCompletionRow(
                 )
             }
         },
+    )
+}
+
+/**
+ * Issue #836: an ExternalActivity row (e.g. Immich's `photo-appearance`).
+ * Not clickable or editable, matching web — this substrate has no edit
+ * affordance. Title/subtitle mirror web's ContactTimeline row exactly.
+ */
+@Composable
+private fun TimelineExternalActivityRow(activity: ExternalActivity) {
+    val personName = (activity.payload?.get("person_name") as? String)
+        ?: (activity.payload?.get("name") as? String)
+        ?: activity.sourceSystem.orEmpty()
+    val title = if (activity.type == "photo-appearance") {
+        stringResource(R.string.timeline_external_activity_photo_appearance)
+    } else {
+        stringResource(R.string.timeline_external_activity_unknown, activity.type.orEmpty())
+    }
+    TimelineRowBase(
+        icon = { Icon(Icons.Outlined.Link, contentDescription = null) },
+        title = title,
+        subtitle = stringResource(
+            R.string.timeline_external_activity_from_system,
+            personName,
+            activity.sourceSystem.orEmpty(),
+        ),
+        onClick = {},
     )
 }

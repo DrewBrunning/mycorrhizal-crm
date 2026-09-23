@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.ExternalActivityRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
 import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
 import com.mycorrhizal.crm.domain.repository.ImmichRepository
@@ -20,6 +21,7 @@ import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
 import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
+import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.ExternalIdentity
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.FieldValueInput
@@ -115,6 +117,13 @@ data class ContactDetailUiState(
     val immichConfigured: Boolean = false,
     /** True while an external-link mutation (delete/unlink) is in flight. */
     val isExternalLinkMutating: Boolean = false,
+    // Issue #836: the contact's ExternalActivity events (e.g. Immich
+    // photo-appearances), merged into the unified timeline. A fetch failure
+    // silently leaves it empty, like [externalIdentities]. [immichSyncing]
+    // is deliberately separate from [isExternalLinkMutating] — web keeps
+    // sync-now's in-flight state independent of delete/unlink.
+    val externalActivities: List<ExternalActivity> = emptyList(),
+    val immichSyncing: Boolean = false,
     // The Immich "choose from Immich" photo flow: people for the link step,
     // recent assets for the browse step.
     val immichPeople: List<ImmichPerson> = emptyList(),
@@ -172,6 +181,9 @@ class ContactDetailViewModel @Inject constructor(
     // Immich "choose from Immich" profile-photo flow. Both are online-only.
     private val externalIdentityRepository: ExternalIdentityRepository,
     private val immichRepository: ImmichRepository,
+    // Issue #836: the ExternalActivity substrate feeding the contact timeline
+    // (Immich sync-now events, e.g. photo-appearance).
+    private val externalActivityRepository: ExternalActivityRepository,
     // Issue #236: the Paperless/Seafile/Nextcloud create/link pickers.
     private val paperlessRepository: PaperlessRepository,
     private val seafileRepository: SeafileRepository,
@@ -396,6 +408,12 @@ class ContactDetailViewModel @Inject constructor(
                 onError = {},
             )
         }
+        viewModelScope.launch {
+            externalActivityRepository.listForContact(uid).foldApiError(
+                onSuccess = { activities -> _uiState.update { it.copy(externalActivities = activities) } },
+                onError = {},
+            )
+        }
         loadImmichSummary(uid)
     }
 
@@ -441,6 +459,30 @@ class ContactDetailViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isExternalLinkMutating = false, error = error.displayMessage) }
+                },
+            )
+        }
+    }
+
+    /**
+     * Issue #836: the manual "sync now" trigger. Guarded by its own
+     * [ContactDetailUiState.immichSyncing] flag, not [isExternalLinkMutating]
+     * — web keeps sync's in-flight state independent of delete/unlink. On
+     * success, reloads the whole panel (identities, Immich summary, and
+     * external activities) like web's post-sync refresh.
+     */
+    fun syncImmich() {
+        val contact = _uiState.value.contact ?: return
+        if (_uiState.value.immichSyncing) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(immichSyncing = true, error = null) }
+            immichRepository.syncNow().foldApiError(
+                onSuccess = {
+                    _uiState.update { it.copy(immichSyncing = false) }
+                    loadExternalLinks(contact)
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(immichSyncing = false, error = error.displayMessage) }
                 },
             )
         }

@@ -1,10 +1,12 @@
 package com.mycorrhizal.crm.data.repository
 
+import com.mycorrhizal.crm.domain.repository.ExternalActivityRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
 import com.mycorrhizal.crm.domain.repository.ImmichRepository
 import com.mycorrhizal.crm.domain.repository.NextcloudRepository
 import com.mycorrhizal.crm.domain.repository.PaperlessRepository
 import com.mycorrhizal.crm.domain.repository.SeafileRepository
+import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.ExternalIdentity
 import com.mycorrhizal.crm.model.network.ImmichAssetSummary
 import com.mycorrhizal.crm.model.network.ImmichConfigInput
@@ -46,6 +48,18 @@ class ExternalIdentityRepositoryImpl @Inject constructor(
         apiClient.deleteExternalIdentity(id)
 }
 
+/**
+ * Online-only access to the ExternalActivity substrate (issue #836) — see the
+ * interface's doc comment for why there is no Room mirror.
+ */
+class ExternalActivityRepositoryImpl @Inject constructor(
+    private val apiClient: ApiClient,
+) : ExternalActivityRepository {
+
+    override suspend fun listForContact(entityId: String): Result<List<ExternalActivity>> =
+        apiClient.listExternalActivities(entityId).map { it.externalActivities }
+}
+
 /** Online-only Immich integration — delegates straight to the ApiClient. */
 class ImmichRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
@@ -83,6 +97,8 @@ class ImmichRepositoryImpl @Inject constructor(
     override suspend fun deleteConfig(): Result<Unit> = apiClient.deleteImmichConfig()
 
     override suspend fun testConnection(): Result<ImmichConnectionTestResult> = apiClient.testImmichConnection()
+
+    override suspend fun syncNow(): Result<Unit> = apiClient.syncImmichNow()
 }
 
 /** Online-only Paperless-ngx integration (issue #236) — delegates straight to the ApiClient. */

@@ -220,6 +220,7 @@
     <string name="immich_unlink">Dissocier</string>
     <string name="immich_unlink_title">Dissocier la personne Immich</string>
     <string name="immich_unlink_confirm">Dissocier cette personne Immich ? Son historique de photos sera conservé.</string>
+    <string name="immich_sync_now">Synchroniser maintenant</string>
     <string name="immich_person_search_title">Lier une personne Immich</string>
     <string name="immich_person_search_placeholder">Rechercher par nom</string>
     <string name="immich_person_search_no_matches">Aucune personne correspondante</string>
@@ -813,6 +814,9 @@
     <string name="cd_activity">Activité</string>
     <string name="cd_note">Note</string>
     <string name="cd_reminder">Rappel</string>
+    <string name="timeline_external_activity_photo_appearance">Apparition photo</string>
+    <string name="timeline_external_activity_unknown">Événement externe : %1$s</string>
+    <string name="timeline_external_activity_from_system">%1$s (via %2$s)</string>
 
 
     <!-- Circles -->

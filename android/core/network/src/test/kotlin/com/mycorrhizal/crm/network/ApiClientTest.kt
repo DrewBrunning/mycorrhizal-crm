@@ -554,6 +554,60 @@ class ApiClientTest {
         assertEquals("/api/v1/external-identities/i1", request.path)
     }
 
+    // --- Issue #836: external activities + Immich sync-now ---
+
+    @Test
+    fun `list external activities sends the contact filter and parses the page`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "external_activities": [
+                        {
+                          "id": "a1",
+                          "entity_id": "u5",
+                          "source_system": "immich",
+                          "external_id": "asset-1",
+                          "type": "photo-appearance",
+                          "occurred_at": "2026-08-01T10:00:00Z",
+                          "payload": {"person_name": "Alice", "asset_id": "asset-1"}
+                        }
+                      ],
+                      "total": 1,
+                      "next_cursor": "",
+                      "limit": 100
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.listExternalActivities("u5")
+
+        assertTrue(result.isSuccess)
+        val page = result.getOrThrow()
+        assertEquals(1, page.externalActivities.size)
+        assertEquals("photo-appearance", page.externalActivities[0].type)
+        assertEquals("Alice", page.externalActivities[0].payload?.get("person_name"))
+        assertEquals(1, page.total)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/external-activities?contact_id=u5&limit=100", request.path)
+    }
+
+    @Test
+    fun `sync immich now sends a bare POST`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message": "Immich sync completed"}"""))
+
+        val result = client.syncImmichNow()
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/immich/sync", request.path)
+    }
+
     @Test
     fun `immich config parses has_api_key`() = runBlocking {
         server.enqueue(

@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.Reminder
@@ -138,6 +139,55 @@ class TimelineItemsTest {
         )
 
         val keys = contact.toTimelineItems(completions).map { it.key }
+
+        assertEquals(2, keys.distinct().size)
+    }
+
+    // --- Issue #836: external activities ---
+
+    @Test
+    fun `external activities merge into the timeline sorted by occurred_at`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana White")),
+            notes = listOf(Note(id = 1, content = "Old note", date = "2026-08-01T10:00:00Z")),
+        )
+        val externalActivities = listOf(
+            ExternalActivity(id = "a1", entityId = "u5", type = "photo-appearance", occurredAt = "2026-08-05T10:00:00Z"),
+        )
+
+        val items = contact.toTimelineItems(externalActivities = externalActivities)
+
+        assertEquals(2, items.size)
+        assertTrue(items[0] is TimelineItem.ExternalActivityItem)
+        assertEquals("a1", (items[0] as TimelineItem.ExternalActivityItem).activity.id)
+        assertTrue(items[1] is TimelineItem.NoteItem)
+    }
+
+    @Test
+    fun `an external activity without occurred_at falls back to created_at`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        val externalActivities = listOf(
+            ExternalActivity(id = "a1", entityId = "u5", type = "photo-appearance", createdAt = "2026-08-02T10:00:00Z"),
+        )
+
+        val items = contact.toTimelineItems(externalActivities = externalActivities)
+
+        assertEquals("2026-08-02T10:00:00Z", items.first().date)
+    }
+
+    @Test
+    fun `external activity keys are unique and don't collide with same-id rows of other types`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana White")),
+            notes = listOf(Note(id = 7, content = "Note", date = "2026-08-01T10:00:00Z")),
+        )
+        val externalActivities = listOf(
+            ExternalActivity(id = "7", entityId = "u5", type = "photo-appearance", occurredAt = "2026-08-02T10:00:00Z"),
+        )
+
+        val keys = contact.toTimelineItems(externalActivities = externalActivities).map { it.key }
 
         assertEquals(2, keys.distinct().size)
     }
