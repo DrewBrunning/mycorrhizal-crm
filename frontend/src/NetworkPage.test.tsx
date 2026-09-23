@@ -53,14 +53,17 @@ vi.mock('./hooks/useGraph', () => ({
   useGraph: () => mockUseGraphResult,
 }));
 
+const mockUseCirclesResult = {
+  circles: [
+    { id: 'circle-1', name: 'Family', created_at: '', updated_at: '' },
+    { id: 'circle-2', name: 'Work', created_at: '', updated_at: '' },
+  ],
+  circleNamesByUid: new Map<string, string[]>(),
+  loading: false,
+};
+
 vi.mock('./hooks/useCircles', () => ({
-  useCircles: () => ({
-    circles: [
-      { id: 'circle-1', name: 'Family', created_at: '', updated_at: '' },
-      { id: 'circle-2', name: 'Work', created_at: '', updated_at: '' },
-    ],
-    circleNamesByUid: new Map<string, string[]>(),
-  }),
+  useCircles: () => mockUseCirclesResult,
 }));
 
 const mockActivity: Activity = {
@@ -108,6 +111,7 @@ beforeEach(() => {
   deleteActivity.mockReset().mockResolvedValue(undefined);
   getAllContacts.mockReset().mockResolvedValue([]);
   mockUseGraphResult.error = null;
+  mockUseCirclesResult.loading = false;
 });
 
 afterEach(() => {
@@ -276,4 +280,65 @@ test('toggling a filter switch persists the new value to localStorage', async ()
   await waitFor(() => {
     expect(localStorage.getItem('network-show-relationships')).toBe('false');
   });
+});
+
+test('the selected circle is restored from localStorage on load', async () => {
+  localStorage.setItem('network-selected-circle', 'Work');
+
+  await renderPage();
+
+  await waitFor(() => {
+    expect(screen.getByTestId('selected-circle').textContent).toBe('Work');
+  });
+});
+
+test('choosing a circle persists it to localStorage', async () => {
+  await renderPage();
+
+  fireEvent.mouseDown(screen.getByLabelText('Filter by Circle'));
+  fireEvent.click(screen.getByRole('option', { name: 'Family' }));
+
+  await waitFor(() => {
+    expect(localStorage.getItem('network-selected-circle')).toBe('Family');
+  });
+});
+
+test('a persisted circle that no longer exists is dropped once circles finish loading, not before', async () => {
+  localStorage.setItem('network-selected-circle', 'Deleted Circle');
+  mockUseCirclesResult.loading = true;
+
+  const { default: NetworkPage } = await import('./NetworkPage');
+  const { rerender } = render(
+    <MemoryRouter>
+      <NetworkPage />
+    </MemoryRouter>,
+  );
+
+  // Still loading circles -- the stale value must not be wiped out yet.
+  expect(screen.getByTestId('selected-circle').textContent).toBe('Deleted Circle');
+  expect(localStorage.getItem('network-selected-circle')).toBe('Deleted Circle');
+
+  mockUseCirclesResult.loading = false;
+  rerender(
+    <MemoryRouter>
+      <NetworkPage />
+    </MemoryRouter>,
+  );
+
+  await waitFor(() => {
+    expect(screen.getByTestId('selected-circle').textContent).toBe('');
+  });
+  expect(localStorage.getItem('network-selected-circle')).toBe('');
+});
+
+test('a persisted circle that still exists survives once circles finish loading', async () => {
+  localStorage.setItem('network-selected-circle', 'Family');
+  mockUseCirclesResult.loading = false;
+
+  await renderPage();
+
+  await waitFor(() => {
+    expect(screen.getByTestId('selected-circle').textContent).toBe('Family');
+  });
+  expect(localStorage.getItem('network-selected-circle')).toBe('Family');
 });
