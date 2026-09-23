@@ -188,8 +188,13 @@ func TestGetContactsList_QueryCountIsBounded(t *testing.T) {
 
 // TestGetGraph_QueryCountIsBounded pins the network graph endpoint over a
 // populated account (200 contacts, 50 edges, 100 multi-contact activities):
-// contacts + edges + activities + the activity preload's join and IN queries
-// — a constant, never one query per activity/edge.
+// contacts + edges + activities + the activity preload's join and IN queries,
+// plus (issue #383) services.ComputeAllContactScores's own fixed set of bulk
+// queries (its own contacts select, cadence policies, last-qualifying-
+// interaction, rolling frequency, self-contact lookup, pending reach-out —
+// direct-edge/graph-traversal queries are skipped here since this test's
+// user has no SelfContactVCardUID set) — a constant, never one query per
+// activity/edge/contact regardless of which branch runs.
 func TestGetGraph_QueryCountIsBounded(t *testing.T) {
 	db, router, counter, userID := setupCountingRouter(t)
 	router.GET("/graph", GetGraph)
@@ -225,7 +230,7 @@ func TestGetGraph_QueryCountIsBounded(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code)
 	count := counter.Count()
 	t.Logf("graph issued %d queries", count)
-	assert.LessOrEqual(t, int(count), 7,
+	assert.LessOrEqual(t, int(count), 12,
 		"network graph must stay a small constant number of queries regardless of contact/edge/activity count")
 }
 

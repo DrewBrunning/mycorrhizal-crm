@@ -1597,6 +1597,21 @@
     "panLeft": "Sposta a sinistra",
     "panRight": "Sposta a destra"
   },
+  "contactScore": {
+    "badge": {
+      "moss": "Sana",
+      "chanterelle": "Richiede attenzione",
+      "russula": "Trascurata"
+    },
+    "popoverTitle": "Dettaglio della salute della relazione",
+    "facets": {
+      "recency": "Recenza",
+      "frequency": "Frequenza",
+      "closeness": "Vicinanza",
+      "reachOut": "Disponibilità al contatto",
+      "lastUpdated": "Aggiornamento del profilo"
+    }
+  },
   "relationships": {
     "title": "Rapporti",
     "addRelationship": "Aggiungi Rapporto",

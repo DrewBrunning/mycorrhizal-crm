@@ -1936,6 +1936,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /contacts/{id}/score:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: Get a contact's relationship health score breakdown (issue #383)
+      operationId: getContactScore
+      description: >
+        The explainable facet breakdown behind the health-score badge (moss/
+        chanterelle/russula): recency, frequency, closeness, reach-out, and
+        last-updated, each with its own 0-100 value, weight, and plain-
+        language reason. Pure aggregation, read-only, never cached. A secret-
+        sensitivity relationship edge never influences the closeness facet —
+        see ADR-0023.
+      responses:
+        "200":
+          description: The score breakdown.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactScoreResponse"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /contacts/{id}/detail:
     parameters:
       - name: id
@@ -10824,6 +10853,34 @@ components:
         upcoming_dates:
           type: array
           items: { $ref: "#/components/schemas/BriefingUpcomingDate" }
+    ContactScoreResponse:
+      type: object
+      description: >
+        The explainable relationship-health-score breakdown (GET
+        /contacts/{id}/score, issue #383, ADR-0023). score is 0-100; band is
+        one of moss/chanterelle/russula. Every facet's weight is included so
+        the five always sum to 100.
+      properties:
+        contact_id: { type: integer }
+        score: { type: integer }
+        band: { type: string, enum: [moss, chanterelle, russula] }
+        recency:
+          $ref: "#/components/schemas/ContactScoreFacet"
+        frequency:
+          $ref: "#/components/schemas/ContactScoreFacet"
+        closeness:
+          $ref: "#/components/schemas/ContactScoreFacet"
+        reach_out:
+          $ref: "#/components/schemas/ContactScoreFacet"
+        last_updated:
+          $ref: "#/components/schemas/ContactScoreFacet"
+    ContactScoreFacet:
+      type: object
+      description: One weighted facet's 0-100 sub-score, weight, and plain-language reason.
+      properties:
+        value: { type: number }
+        weight: { type: number }
+        reason: { type: string }
     BriefingActivity:
       type: object
       description: Slim projection of an Activity shown as the briefing's "last interaction".
@@ -12940,6 +12997,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/GraphChainStep"
+        health_score: { type: integer, nullable: true, description: "Issue #383 relationship health score, 0-100." }
+        health_band: { type: string, enum: [moss, chanterelle, russula] }
     GraphChainStep:
       type: object
       properties:
@@ -13016,6 +13075,8 @@ components:
         circles:
           type: array
           items: { type: string }
+        health_score: { type: integer, nullable: true, description: "Issue #383 relationship health score, 0-100. Contact nodes only." }
+        health_band: { type: string, enum: [moss, chanterelle, russula] }
     GraphEdge:
       type: object
       properties:

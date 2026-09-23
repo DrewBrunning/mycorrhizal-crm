@@ -20,6 +20,7 @@ import ForceGraph2D from 'react-force-graph-2d';
 import { useTranslation } from 'react-i18next';
 import type { GraphData, GraphEdge, GraphNode } from '../types/graph';
 import { exceedsGraphRenderBudget } from '../utils/graphBudget';
+import { healthBandColor } from '../utils/healthBand';
 import { computeFilteredGraphData } from '../utils/networkGraphData';
 
 interface NetworkGraphProps {
@@ -172,7 +173,12 @@ export default function NetworkGraph({
       ctx.beginPath();
       ctx.arc(node.x || 0, node.y || 0, size, 0, 2 * Math.PI);
       if (isContact) {
-        ctx.fillStyle = nodeColor;
+        // Issue #383/ADR-0023: color contact nodes by relationship health
+        // band when the backend has supplied one, falling back to the old
+        // uniform nodeColor for activity/circle-adjacent nodes with no band
+        // (old cached graph data, or a contact score that hasn't been
+        // computed yet).
+        ctx.fillStyle = healthBandColor(node.health_band, theme) ?? nodeColor;
       } else if (isActivity) {
         ctx.fillStyle = activityNodeColor;
       } else {
@@ -211,7 +217,11 @@ export default function NetworkGraph({
       bgColor,
       textColor,
       centeredNodeId,
-      theme.palette.primary.light,
+      // Issue #383: healthBandColor takes the whole theme object (it reads
+      // success/warning/error.main internally), so eslint's exhaustive-deps
+      // wants `theme` itself here rather than the individual palette leaves
+      // this callback used to reference directly.
+      theme,
     ],
   );
 

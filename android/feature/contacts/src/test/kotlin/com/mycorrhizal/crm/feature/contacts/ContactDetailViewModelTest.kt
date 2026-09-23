@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.contacts
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.ContactScoreRepository
 import com.mycorrhizal.crm.domain.repository.ExternalActivityRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
 import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
@@ -16,6 +17,7 @@ import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.ContactScoreResponse
 import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.ExternalIdentity
 import com.mycorrhizal.crm.model.network.FieldDefinition
@@ -65,6 +67,7 @@ class ContactDetailViewModelTest {
     private val paperlessRepository = mockk<PaperlessRepository>()
     private val seafileRepository = mockk<SeafileRepository>()
     private val nextcloudRepository = mockk<NextcloudRepository>()
+    private val contactScoreRepository = mockk<ContactScoreRepository>()
 
     private fun viewModel(
         id: Int,
@@ -86,6 +89,7 @@ class ContactDetailViewModelTest {
         stubMemberships()
         stubCompletions()
         stubExternalLinks()
+        stubScore()
         return ContactDetailViewModel(
             contactRepository,
             reminderRepository,
@@ -99,6 +103,7 @@ class ContactDetailViewModelTest {
             paperlessRepository,
             seafileRepository,
             nextcloudRepository,
+            contactScoreRepository,
             SavedStateHandle(mapOf("contactId" to id)),
         )
     }
@@ -129,6 +134,17 @@ class ContactDetailViewModelTest {
     /** M20: default stub for the completion-timeline load (run on every load()). */
     private fun stubCompletions() {
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
+    }
+
+    /**
+     * Issue #383 (ADR-0023): default stub for the relationship health score
+     * load (run on every load()) — a fetch failure everywhere else in this
+     * test class simply leaves [ContactDetailUiState.score] null, so tests
+     * that don't care about the score default to a successful fetch here.
+     */
+    private fun stubScore() {
+        coEvery { contactScoreRepository.getScore(any()) } returns
+            Result.success(ContactScoreResponse(score = 72, band = "moss"))
     }
 
     @Test
@@ -165,6 +181,7 @@ class ContactDetailViewModelTest {
         coEvery { fieldDefinitionRepository.contactValues(any()) } returns Result.success(emptyList())
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
         stubExternalLinks()
+        stubScore()
 
         val vm = ContactDetailViewModel(
             contactRepository,
@@ -179,6 +196,7 @@ class ContactDetailViewModelTest {
             paperlessRepository,
             seafileRepository,
             nextcloudRepository,
+            contactScoreRepository,
             SavedStateHandle(mapOf("contactId" to "9")),
         )
         advanceUntilIdle()
@@ -286,8 +304,9 @@ class ContactDetailViewModelTest {
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
         stubExternalLinks()
+        stubScore()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -307,8 +326,9 @@ class ContactDetailViewModelTest {
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
         stubExternalLinks()
+        stubScore()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -330,8 +350,9 @@ class ContactDetailViewModelTest {
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
         stubExternalLinks()
+        stubScore()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -359,8 +380,9 @@ class ContactDetailViewModelTest {
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
         stubExternalLinks()
+        stubScore()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -1679,4 +1701,52 @@ class ContactDetailViewModelTest {
             assertNull(vm.uiState.value.savingFieldDefinitionId)
             assertEquals("Latte", vm.uiState.value.fieldValuesByDefinitionId["d1"])
         }
+
+    // --- Issue #383 (ADR-0023): relationship health score ---
+
+    @Test
+    fun `score loads into state alongside the contact`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        // Re-stub after viewModel(5) — its own stubScore() default (any())
+        // would otherwise win over a specific stub declared before it, since
+        // mockk resolves overlapping matchers by declaration order.
+        coEvery { contactScoreRepository.getScore(5) } returns Result.success(
+            ContactScoreResponse(contactId = 5, score = 42, band = "russula"),
+        )
+        advanceUntilIdle()
+
+        val score = vm.uiState.value.score
+        assertEquals(42, score?.score)
+        assertEquals("russula", score?.band)
+        coVerify { contactScoreRepository.getScore(5) }
+    }
+
+    @Test
+    fun `a score fetch failure leaves score null without failing the contact load`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+            val vm = viewModel(5)
+            // Re-stub after viewModel(5) — see the note in the success test above.
+            coEvery { contactScoreRepository.getScore(5) } returns Result.failure(ApiError.Client(404, "not found"))
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertEquals("Dana White", state.contact?.card?.name?.full)
+            assertNull(state.error) // the score failure must not surface as the screen's error
+            assertNull(state.score)
+        }
+
+    @Test
+    fun `score is never fetched for the missing-contact-id case`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = viewModel(0)
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.score)
+        coVerify(exactly = 0) { contactScoreRepository.getScore(any()) }
+    }
 }

@@ -41,6 +41,7 @@ import com.mycorrhizal.crm.data.repository.PaperlessRepositoryImpl
 import com.mycorrhizal.crm.data.repository.SeafileRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ServerCompatibilityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ContactScoreRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactShareRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ConversationAgendaRepositoryImpl
 import com.mycorrhizal.crm.data.repository.GiftRepositoryImpl
@@ -95,6 +96,7 @@ import com.mycorrhizal.crm.domain.repository.PaperlessRepository
 import com.mycorrhizal.crm.domain.repository.SeafileRepository
 import com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.ContactScoreRepository
 import com.mycorrhizal.crm.domain.repository.ContactShareRepository
 import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
 import com.mycorrhizal.crm.domain.repository.GiftRepository
@@ -432,6 +434,10 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindGraphRepository(impl: GraphRepositoryImpl): GraphRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindContactScoreRepository(impl: ContactScoreRepositoryImpl): ContactScoreRepository
 
     @Binds
     @Singleton

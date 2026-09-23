@@ -91,8 +91,13 @@ func (p *CadencePolicy) AfterDelete(tx *gorm.DB) error {
 //  2. The policy's QualifyingTypes filter — when non-empty, the activity's
 //     Type must be listed; when empty, every default-qualifying type passes.
 //
-// This is the ONLY consumer of Activity.Qualifying() (T19's explicit
-// instruction: "use it, don't reimplement").
+// This was originally the ONLY consumer of Activity.Qualifying() (T19's
+// explicit instruction: "use it, don't reimplement"); the relationship
+// health score (issue #383, services/contact_score_service.go) is a second
+// real caller, feeding a synthetic zero-value CadencePolicy for a contact
+// with no real one — QualifyingTypes being empty reduces Qualifies() to
+// plain Activity.Qualifying(), so this is still "use it, don't reimplement",
+// just through a policy the contact didn't actually create.
 func (p *CadencePolicy) Qualifies(a *Activity) bool {
 	if !a.Qualifying() {
 		return false

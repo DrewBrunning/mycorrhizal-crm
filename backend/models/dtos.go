@@ -386,6 +386,12 @@ type GraphNode struct {
 	Type           string `json:"type"`                      // "contact" or "activity"
 	Label          string `json:"label"`                     // Display name or activity title
 	PhotoThumbnail string `json:"photo_thumbnail,omitempty"` // Profile picture for contacts (base64)
+	// HealthScore/HealthBand are the relationship health score (issue #383,
+	// ADR-0023) — set only for contact nodes, omitted for activity nodes.
+	// Populated in bulk by services.ComputeAllContactScores, never computed
+	// per-node.
+	HealthScore *int   `json:"health_score,omitempty"`
+	HealthBand  string `json:"health_band,omitempty"`
 }
 
 // GraphEdge represents an edge in the network visualization
@@ -424,6 +430,14 @@ type GraphChain struct {
 	TargetName     string           `json:"target_name"`
 	Depth          int              `json:"depth"`
 	Steps          []GraphChainStep `json:"steps"`
+	// HealthScore/HealthBand are the target contact's relationship health
+	// score (issue #383, ADR-0023). This is the ONLY health-score-bearing
+	// field Android's ego-network screen ever sees — it has no canvas graph
+	// and never calls GET /graph, only GET /graph/connections (this
+	// response) — so this decoration is mandatory, not a nice-to-have
+	// mirror of GraphNode's.
+	HealthScore *int   `json:"health_score,omitempty"`
+	HealthBand  string `json:"health_band,omitempty"`
 }
 
 // GraphConnectionsResponse is the API response for GET /graph/connections.

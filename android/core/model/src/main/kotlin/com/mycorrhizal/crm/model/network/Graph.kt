@@ -26,7 +26,15 @@ data class GraphConnectionsResponse(
     val chainsOrEmpty: List<GraphChain> get() = chains ?: emptyList()
 }
 
-/** One reachable contact: its [depth] in hops and the [steps] walked to it. */
+/**
+ * One reachable contact: its [depth] in hops and the [steps] walked to it.
+ *
+ * [healthScore]/[healthBand] (issue #383, ADR-0023) are the target contact's
+ * server-computed relationship health score/band — optional because the
+ * backend omits them for a degraded step (`targetId == 0`, see
+ * [displayName]'s doc comment) or when the target has no computable score.
+ * Android never recomputes these locally; they render exactly as returned.
+ */
 @JsonClass(generateAdapter = true)
 data class GraphChain(
     @Json(name = "target_id") val targetId: Int = 0,
@@ -34,6 +42,8 @@ data class GraphChain(
     @Json(name = "target_name") val targetName: String = "",
     val depth: Int = 0,
     val steps: List<GraphChainStep>? = null,
+    @Json(name = "health_score") val healthScore: Int? = null,
+    @Json(name = "health_band") val healthBand: String? = null,
 ) {
     val stepsOrEmpty: List<GraphChainStep> get() = steps ?: emptyList()
 

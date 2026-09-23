@@ -3215,6 +3215,27 @@
     },
     {
       "method": "GET",
+      "path": "/contacts/{id}/score",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:ContactScoreResponse"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/contacts/{id}/timeline",
       "parameters": [
         {
@@ -9818,6 +9839,76 @@
       ]
     },
     {
+      "name": "ContactScoreFacet",
+      "properties": [
+        {
+          "name": "reason",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "weight",
+          "type": "number",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "ContactScoreResponse",
+      "properties": [
+        {
+          "name": "band",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "moss",
+            "chanterelle",
+            "russula"
+          ]
+        },
+        {
+          "name": "closeness",
+          "type": "ref:ContactScoreFacet",
+          "required": false
+        },
+        {
+          "name": "contact_id",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "frequency",
+          "type": "ref:ContactScoreFacet",
+          "required": false
+        },
+        {
+          "name": "last_updated",
+          "type": "ref:ContactScoreFacet",
+          "required": false
+        },
+        {
+          "name": "reach_out",
+          "type": "ref:ContactScoreFacet",
+          "required": false
+        },
+        {
+          "name": "recency",
+          "type": "ref:ContactScoreFacet",
+          "required": false
+        },
+        {
+          "name": "score",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
       "name": "ContactShare",
       "properties": [
         {
@@ -11838,6 +11929,21 @@
           "required": false
         },
         {
+          "name": "health_band",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "moss",
+            "chanterelle",
+            "russula"
+          ]
+        },
+        {
+          "name": "health_score",
+          "type": "integer",
+          "required": false
+        },
+        {
           "name": "steps",
           "type": "array\u003cobject\u003e",
           "required": false
@@ -11939,6 +12045,21 @@
         {
           "name": "circles",
           "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
+          "name": "health_band",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "moss",
+            "chanterelle",
+            "russula"
+          ]
+        },
+        {
+          "name": "health_score",
+          "type": "integer",
           "required": false
         },
         {

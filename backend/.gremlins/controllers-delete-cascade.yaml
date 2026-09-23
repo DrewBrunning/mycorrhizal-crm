@@ -15,6 +15,7 @@ unleash:
         - ^circle_controller\.go$
         - ^contact_detail_controller\.go$
         - ^contact_merge_controller\.go$
+        - ^contact_score_controller\.go$
         - ^contact_share_controller\.go$
         - ^contact_subscription_controller\.go$
         - ^conversation_agenda_controller\.go$

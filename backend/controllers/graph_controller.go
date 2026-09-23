@@ -57,6 +57,15 @@ func GetGraph(c *gin.Context) {
 	// Build nodes array
 	nodes := make([]models.GraphNode, 0, len(contacts)+len(activities))
 
+	// Relationship health score (issue #383), computed once in bulk — never
+	// per-node. A scoring failure degrades the graph to its pre-#383
+	// uncolored shape rather than 500ing the whole graph, since coloring is
+	// an enhancement, not core graph data.
+	scores, scoreErr := services.ComputeAllContactScores(db, userID, reminderNow(c))
+	if scoreErr != nil {
+		scores = nil
+	}
+
 	// Add contact nodes, tracking VCardUID -> node ID so RelationshipEdge
 	// rows (which reference contacts by VCardUID, not the numeric ID this
 	// graph's node-ID scheme uses) can be resolved below.
@@ -68,12 +77,18 @@ func GetGraph(c *gin.Context) {
 		}
 		nodeID := fmt.Sprintf("c-%d", contact.ID)
 		nodeIDByVCardUID[contact.VCardUID] = nodeID
-		nodes = append(nodes, models.GraphNode{
+		node := models.GraphNode{
 			ID:             nodeID,
 			Type:           "contact",
 			Label:          label,
 			PhotoThumbnail: contact.PhotoThumbnail,
-		})
+		}
+		if result, ok := scores[contact.ID]; ok {
+			score := result.Score
+			node.HealthScore = &score
+			node.HealthBand = result.Band
+		}
+		nodes = append(nodes, node)
 	}
 
 	// Add activity nodes (only for activities with 2+ contacts)
@@ -191,6 +206,23 @@ func GetGraphConnections(c *gin.Context) {
 	fromName := strings.TrimSpace(fromContact.Firstname + " " + fromContact.Lastname)
 	if fromName == "" {
 		fromName = "Unknown"
+	}
+
+	// Decorate each chain's target with the relationship health score
+	// (issue #383). This is Android's ONLY health-score-bearing surface —
+	// it has no canvas graph and never calls GET /graph — so this
+	// decoration is mandatory, not a mirror of GetGraph's for web's
+	// benefit. Closeness is always relative to the caller's own
+	// self-contact (services.ComputeAllContactScores), independent of
+	// whatever `from` this traversal was anchored at.
+	if scores, err := services.ComputeAllContactScores(db, userID, reminderNow(c)); err == nil {
+		for i := range chains {
+			if result, ok := scores[chains[i].TargetID]; ok {
+				score := result.Score
+				chains[i].HealthScore = &score
+				chains[i].HealthBand = result.Band
+			}
+		}
 	}
 
 	c.JSON(http.StatusOK, models.GraphConnectionsResponse{

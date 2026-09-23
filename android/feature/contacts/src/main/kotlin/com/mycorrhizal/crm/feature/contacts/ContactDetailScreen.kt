@@ -116,6 +116,8 @@ import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.ContactScoreFacet
+import com.mycorrhizal.crm.model.network.ContactScoreResponse
 import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
 import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.ExternalActivity
@@ -139,6 +141,7 @@ import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.LocalServerUrl
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.HealthScoreBadge
 import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
@@ -152,6 +155,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import kotlin.math.roundToInt
 
 private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int =
     android.graphics.Color.argb(
@@ -647,6 +651,8 @@ fun ContactDetailScreen(
                     onToggleFavorite = viewModel::toggleFavorite,
                     // T90 / issue #831: the header "You" badge (web parity).
                     isMe = isMe,
+                    // Issue #383 (ADR-0023): the relationship health score badge.
+                    score = state.score,
                     externalIdentities = state.externalIdentities,
                     immichSummary = state.immichSummary,
                     onDeleteExternalIdentity = { pendingExternalLinkDelete = it },
@@ -1037,8 +1043,19 @@ fun ContactDetailContent(
     onAddPaperlessLink: () -> Unit = {},
     onAddSeafileLink: () -> Unit = {},
     onAddNextcloudLink: () -> Unit = {},
+    // Issue #383 (ADR-0023): the relationship health score header badge. Null
+    // (loading, fetch failure, or a contact with no computable score) simply
+    // omits the badge — never errors the screen (ContactScoreRepository's own
+    // doc comment: server-computed, nothing to mirror or retry locally here).
+    score: ContactScoreResponse? = null,
 ) {
     val card = contact.card
+    // Issue #383: local dialog visibility only — the data itself lives in
+    // ContactDetailUiState.score, loaded once by the ViewModel and passed in
+    // as [score]. Kept local (rather than hoisted to ContactDetailScreen like
+    // the delete/archive confirmations) since opening/closing this dialog has
+    // no side effect to drive through the ViewModel.
+    var showScoreDetails by remember { mutableStateOf(false) }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -1092,6 +1109,15 @@ fun ContactDetailContent(
                             enabled = false,
                             label = { Text(stringResource(R.string.contact_you_badge)) },
                             modifier = Modifier.testTag("you-badge"),
+                        )
+                    }
+                    // Issue #383 (ADR-0023): the relationship health score badge.
+                    // Absent (null) score simply omits the badge.
+                    if (score != null) {
+                        HealthScoreBadge(
+                            score = score.score,
+                            band = score.band,
+                            onClick = { showScoreDetails = true },
                         )
                     }
                     // Issue #212: the always-visible star toggle, mirroring web
@@ -1517,6 +1543,61 @@ fun ContactDetailContent(
             )
         }
         item { Box(modifier = Modifier.size(32.dp)) }
+    }
+
+    // Issue #383 (ADR-0023): the facet breakdown behind the header badge —
+    // the score is never a black box. Every facet renders verbatim from the
+    // server response; nothing here is recomputed on-device.
+    if (showScoreDetails && score != null) {
+        AlertDialog(
+            onDismissRequest = { showScoreDetails = false },
+            title = { Text(stringResource(R.string.health_score_dialog_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ScoreFacetRow(stringResource(R.string.health_score_facet_recency), score.recency)
+                    ScoreFacetRow(stringResource(R.string.health_score_facet_frequency), score.frequency)
+                    ScoreFacetRow(stringResource(R.string.health_score_facet_closeness), score.closeness)
+                    ScoreFacetRow(stringResource(R.string.health_score_facet_reach_out), score.reachOut)
+                    ScoreFacetRow(stringResource(R.string.health_score_facet_last_updated), score.lastUpdated)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showScoreDetails = false }) {
+                    Text(stringResource(R.string.action_close))
+                }
+            },
+        )
+    }
+}
+
+/**
+ * One weighted facet row in the [ContactDetailContent] score-breakdown
+ * dialog: its label, its 0-100 sub-score + weight, and its plain-language
+ * [ContactScoreFacet.reason] — all read verbatim from the server response.
+ */
+@Composable
+private fun ScoreFacetRow(label: String, facet: ContactScoreFacet) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(text = label, style = MaterialTheme.typography.titleSmall)
+            Text(
+                text = stringResource(
+                    R.string.health_score_facet_value,
+                    facet.value.roundToInt(),
+                    facet.weight.roundToInt(),
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            text = facet.reason,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
