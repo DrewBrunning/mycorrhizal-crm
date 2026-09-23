@@ -876,7 +876,7 @@ jobs:
       # (issue #639).
       - name: Upload coverage to Codecov
         if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
-        uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4 # v7.1.0
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: backend/coverage.out
@@ -967,7 +967,7 @@ jobs:
       # Issue #294: see the backend job's identical step for why
       # fail_ci_if_error is false.
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4 # v7.1.0
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: frontend/coverage/lcov.info
