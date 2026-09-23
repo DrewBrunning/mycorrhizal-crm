@@ -105,6 +105,7 @@ type LifeEventInput struct {
 	Type             string                    `json:"type,omitempty"`
 	Category         string                    `json:"category,omitempty" validate:"omitempty,life_event_category"`
 	Date             *contactmodel.PartialDate `json:"date,omitempty"`
+	EndDate          *contactmodel.PartialDate `json:"end_date,omitempty"`
 	Description      string                    `json:"description,omitempty" validate:"max=2000"`
 	Source           string                    `json:"source,omitempty" validate:"omitempty,oneof=user imported ai-suggested"`
 	RelatedEntityIDs []string                  `json:"related_entity_ids,omitempty"`

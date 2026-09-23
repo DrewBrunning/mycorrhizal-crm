@@ -153,8 +153,11 @@ func TestCheckSearchIndexConsistency_SoftDeletedAndArchivedAreNotDivergence(t *t
 	require.NoError(t, db.Model(&models.Contact{}).Where("id = ?", cs[0].ID).Update("archived", true).Error)
 
 	// A row inserted already-soft-deleted (a bulk import / hand-written
-	// migration): the AFTER INSERT trigger has no deleted_at guard, so it
-	// lands in the index. That is acceptable under the contract.
+	// migration): since migration 000059 the AFTER INSERT trigger carries the
+	// same `deleted_at IS NULL` guard as the AFTER UPDATE trigger and the
+	// backfill, so it does NOT land in the index. Either state is acceptable
+	// under the consistency contract; the guard is what keeps a soft-deleted
+	// row from being searchable after a restore (DEPLOY-02).
 	require.NoError(t, db.Exec(
 		`INSERT INTO contacts (user_id, firstname, lastname, created_at, updated_at, deleted_at)
 		 VALUES (?, 'Ghosted', 'Import', ?, ?, ?)`,
@@ -163,7 +166,7 @@ func TestCheckSearchIndexConsistency_SoftDeletedAndArchivedAreNotDivergence(t *t
 	require.NoError(t, db.Raw(`SELECT id FROM contacts WHERE firstname = 'Ghosted'`).Scan(&ghostID).Error)
 	var inIndex int64
 	require.NoError(t, db.Raw(`SELECT count(*) FROM contacts_fts WHERE rowid = ?`, ghostID).Scan(&inIndex).Error)
-	require.Equal(t, int64(1), inIndex, "sanity: the AFTER INSERT trigger indexed the already-soft-deleted row")
+	require.Equal(t, int64(0), inIndex, "the AFTER INSERT trigger must not index an already-soft-deleted row (migration 000059)")
 
 	// Also soft-delete a normal contact the ordinary way (AFTER UPDATE
 	// trigger drops it) — the index no longer has it, and that is fine.

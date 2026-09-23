@@ -511,6 +511,8 @@
       "pobox": "PO Box",
       "apartment": "Apartment / Suite",
       "floor": "Floor",
+      "periodFrom": "Lived here from (year)",
+      "periodTo": "Until (year)",
       "additionalFields": "Additional fields"
     },
     "reviewDuplicates": "Review duplicates"
@@ -688,6 +690,10 @@
     "dateYear": "Year",
     "dateMonth": "Month",
     "dateDay": "Day",
+    "endDate": "End (optional)",
+    "endDateYear": "End year",
+    "endDateMonth": "End month",
+    "endDateDay": "End day",
     "description": "Description",
     "relatedEntities": "Related to",
     "searchContacts": "Search contacts…",

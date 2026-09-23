@@ -9,6 +9,7 @@ import {
   partialDateDisplay,
   partialDateHasMonthDay,
   partialDateIsYearOnly,
+  partialDateRangeDisplay,
   updateLifeEvent,
 } from './lifeEvents';
 
@@ -213,6 +214,24 @@ describe('partialDateDisplay', () => {
 
   test('returns an empty string when the date is missing', () => {
     expect(partialDateDisplay(undefined)).toBe('');
+  });
+});
+
+describe('partialDateRangeDisplay', () => {
+  test('joins start and end with an en dash', () => {
+    expect(partialDateRangeDisplay({ year: 2019 }, { year: 2024 })).toBe('2019 – 2024');
+  });
+
+  test('renders just the start when there is no end', () => {
+    expect(partialDateRangeDisplay({ year: 2019 }, undefined)).toBe('2019');
+  });
+
+  test('marks an open start', () => {
+    expect(partialDateRangeDisplay(undefined, { year: 2024 })).toBe('– 2024');
+  });
+
+  test('is empty when neither endpoint exists', () => {
+    expect(partialDateRangeDisplay(undefined, undefined)).toBe('');
   });
 });
 

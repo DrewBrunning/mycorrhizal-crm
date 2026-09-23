@@ -12290,6 +12290,8 @@ components:
           description: "T36: nullable on the wire. Only backfilled (migration 000011) for pre-existing rows whose type mapped onto one of the original seven LifeEventType* constants; otherwise absent/uncategorized."
         date:
           $ref: "#/components/schemas/PartialDate"
+        end_date:
+          $ref: "#/components/schemas/PartialDate"
         description: { type: string, maxLength: 2000 }
         source: { type: string, enum: [user, imported, ai-suggested] }
         related_entity_ids:
@@ -12316,6 +12318,8 @@ components:
           type: string
           enum: [home_living, health_wellness, work_education, travel_experiences, family_relationships]
         date:
+          $ref: "#/components/schemas/PartialDate"
+        end_date:
           $ref: "#/components/schemas/PartialDate"
         description: { type: string, maxLength: 2000 }
         source: { type: string, enum: [user, imported, ai-suggested] }
@@ -13578,6 +13582,16 @@ components:
             sibling `gender` field on the contact DTOs remains for backward
             compat; when both are present, crm.gender wins (it is the
             authoritative copy).
+        periods:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntryPeriod"
+          description: >
+            ADR 0025: start/end ranges for Card entries (addresses, employers,
+            titles). A period's entry_id must resolve to an entry of the same
+            kind on the submitted card, or the request is rejected 400. No RFC
+            home exists, so file exports drop these by design (reported as
+            crm.periods); the CSV export carries them.
     Passthrough:
       type: object
       description: Unmapped data preserved verbatim (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md).
@@ -13617,6 +13631,31 @@ components:
         partial:
           $ref: "#/components/schemas/PartialDate"
         timestamp: { type: string, format: date-time, nullable: true }
+    TemporalRange:
+      type: object
+      description: >
+        ADR 0025: a CRM-only start/end period for a value that is true over an
+        interval. Endpoints are partial calendar dates (no time, no zone);
+        either may be absent (open-ended), but both absent is rejected. It has
+        no RFC 9553/9554/9555 home, so it lives in CRMEnvelope and is dropped
+        from vCard/JSContact file export (named loss, crm.periods).
+      properties:
+        start:
+          $ref: "#/components/schemas/PartialDate"
+        end:
+          $ref: "#/components/schemas/PartialDate"
+    EntryPeriod:
+      type: object
+      required: [kind, entry_id, range]
+      description: >
+        ADR 0025: one TemporalRange attached to one Card entry by its neutral
+        element ID (JSContact map key / vCard PROP-ID). kind names which Card
+        collection entry_id indexes.
+      properties:
+        kind: { type: string, example: address }
+        entry_id: { type: string }
+        range:
+          $ref: "#/components/schemas/TemporalRange"
     Anniversary:
       type: object
       required: [kind, date]

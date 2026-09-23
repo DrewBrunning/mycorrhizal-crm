@@ -1,6 +1,7 @@
 package schemafixture
 
 import (
+	"fmt"
 	"testing"
 
 	"mycorrhizal/database"
@@ -44,11 +45,10 @@ func migrateFixtureTo(t *testing.T, f *Fixture, target uint) *gorm.DB {
 	assert.EqualValues(t, target, version)
 	assert.False(t, dirty)
 
-	after := tableCounts(t, db)
-	for table, want := range before {
-		assert.Equalf(t, want, after[table],
-			"upgrading %s -> version %d must preserve %s row counts", f.Release.Tag, target, table)
-	}
+	// assertRowCountsPreserved (not a raw loop): migrationDiagnosticTables
+	// legitimately gain rows during a real migration run (system_events), so
+	// they are excluded from the user-data preservation check.
+	assertRowCountsPreserved(t, fmt.Sprintf("%s -> version %d", f.Release.Tag, target), before, tableCounts(t, db))
 	return db
 }
 
@@ -105,11 +105,11 @@ func TestUpgradeLongestSkip(t *testing.T) {
 	assert.EqualValues(t, latest, version, "the longest supported skip must land on the current schema")
 	assert.False(t, dirty)
 
-	after := tableCounts(t, db)
-	for table, want := range before {
-		assert.Equalf(t, want, after[table],
-			"the v1.0.0 -> current skip must preserve %s row counts", table)
-	}
+	// assertRowCountsPreserved (not a raw loop): the production InitDB entry
+	// point records a pre-migration backup event and a migration_completed
+	// event into system_events, so that operational table is excluded while
+	// every user-data table must survive exactly.
+	assertRowCountsPreserved(t, "the v1.0.0 -> current skip", before, tableCounts(t, db))
 }
 
 // TestUpgradeLeavesSearchConsistent mirrors DEPLOY-02's "search returns

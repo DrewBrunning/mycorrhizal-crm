@@ -1007,6 +1007,7 @@ export default function ContactDetailPage() {
             type: editingLifeEvent.type,
             category: editingLifeEvent.category,
             date: editingLifeEvent.date,
+            endDate: editingLifeEvent.end_date,
             description: editingLifeEvent.description,
             relatedEntityIds: editingLifeEvent.related_entity_ids,
             remind: editingLifeEvent.remind,
@@ -1037,6 +1038,7 @@ export default function ContactDetailPage() {
       type: data.type,
       category: data.category,
       date: data.date,
+      end_date: data.endDate,
       description: data.description,
       related_entity_ids: data.relatedEntityIds,
       remind: data.remind,
@@ -1416,13 +1418,13 @@ export default function ContactDetailPage() {
   };
 
   // Persist multi-valued / structured field updates (emails, phones, addresses, links, imppAddresses)
-  const handleUpdateCard = async (patch: Partial<CardModel>) => {
+  const handleUpdateCard = async (patch: Partial<CardModel>, crmPatch?: Partial<CRMEnvelope>) => {
     if (!record) return;
     try {
       const updated = await updateContactRecord(id!, {
         gender: record.gender,
         card: { ...record.card, ...patch },
-        crm: record.crm,
+        crm: { ...record.crm, ...crmPatch },
       });
       setRecord(updated);
       // The backend mirrors a wedding-anniversary change into a married

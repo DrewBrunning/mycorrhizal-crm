@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
+  addressesToCardAndPeriods,
   type CardAddress,
+  type CardEntryPeriod,
   cardAddressesToValues,
   cardEmailsToValues,
   cardPhonesToValues,
@@ -276,6 +278,85 @@ describe('address conversion', () => {
     expect(values[0].timeZone).toBe('America/Chicago');
     expect(values[0].pref).toBe(1);
     expect(valuesToCardAddresses(values)).toEqual(card);
+  });
+
+  test('ADR 0025: surfaces a period attached to an address by its element ID', () => {
+    const card: CardAddress[] = [
+      { id: 'addr-1', components: [{ kind: 'name', value: '1 Main St' }] },
+    ];
+    const periods: CardEntryPeriod[] = [
+      {
+        kind: 'address',
+        entry_id: 'addr-1',
+        range: { start: { year: 2019 }, end: { year: 2024 } },
+      },
+    ];
+    const values = cardAddressesToValues(card, periods);
+    expect(values[0].id).toBe('addr-1');
+    expect(values[0].periodStartYear).toBe('2019');
+    expect(values[0].periodEndYear).toBe('2024');
+    // A period for a different entry must not leak onto this address.
+    const other = cardAddressesToValues(card, [
+      { kind: 'address', entry_id: 'other', range: { start: { year: 2000 } } },
+    ]);
+    expect(other[0].periodStartYear).toBeUndefined();
+  });
+
+  test('ADR 0025: addressesToCardAndPeriods round-trips an address period', () => {
+    const { addresses, periods } = addressesToCardAndPeriods([
+      {
+        id: 'addr-1',
+        type: 'home',
+        street: '1 Main St',
+        city: '',
+        region: '',
+        postal: '',
+        country: '',
+        periodStartYear: '2019',
+        periodEndYear: '2024',
+      },
+    ]);
+    expect(addresses[0].id).toBe('addr-1');
+    expect(periods).toEqual([
+      {
+        kind: 'address',
+        entry_id: 'addr-1',
+        range: { start: { year: 2019 }, end: { year: 2024 } },
+      },
+    ]);
+  });
+
+  test('ADR 0025: assigns a stable id to a new address that carries a period', () => {
+    const { addresses, periods } = addressesToCardAndPeriods([
+      {
+        type: 'home',
+        street: '9 New Rd',
+        city: '',
+        region: '',
+        postal: '',
+        country: '',
+        periodStartYear: '2020',
+      },
+    ]);
+    expect(addresses[0].id).toBeTruthy();
+    expect(periods[0].entry_id).toBe(addresses[0].id);
+    expect(periods[0].range).toEqual({ start: { year: 2020 } });
+  });
+
+  test('ADR 0025: no period fields means no periods, and an existing id survives', () => {
+    const { addresses, periods } = addressesToCardAndPeriods([
+      {
+        id: 'addr-9',
+        type: 'home',
+        street: '2 Elm St',
+        city: '',
+        region: '',
+        postal: '',
+        country: '',
+      },
+    ]);
+    expect(addresses[0].id).toBe('addr-9');
+    expect(periods).toEqual([]);
   });
 });
 

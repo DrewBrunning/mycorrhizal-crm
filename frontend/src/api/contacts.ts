@@ -16,6 +16,14 @@ export interface ContactValue {
 
 export interface ContactAddress {
   type: string;
+  // ADR 0025: the entry's neutral element ID (JSContact map key / vCard
+  // PROP-ID), preserved through the editing round trip so a period can be
+  // attached to this exact address.
+  id?: string;
+  // ADR 0025: editing convenience for the address's retention period. The UI
+  // edits whole years; the wire carries the full PartialDate via crm.periods.
+  periodStartYear?: string;
+  periodEndYear?: string;
   street: string;
   city: string;
   region: string;
@@ -324,11 +332,27 @@ export interface Card {
 // (services/household_service.go's classifyMember), so it must stay in sync
 // with the backend's accepted tokens — there is no dynamic type-list endpoint
 // (see CLAUDE.md frontend trap #4).
+// ADR 0025: a CRM-only start/end period for a Card entry, attached by the
+// entry's neutral element ID. Backend mirror: contactmodel.TemporalRange /
+// EntryPeriod. No RFC 9553/9554/9555 home, so the file exports drop these by
+// design (the CSV carries them).
+export interface CardTemporalRange {
+  start?: CardPartialDate;
+  end?: CardPartialDate;
+}
+
+export interface CardEntryPeriod {
+  kind: string;
+  entry_id: string;
+  range: CardTemporalRange;
+}
+
 export interface CRMEnvelope {
   kind?: string;
   how_we_met?: string;
   work_information?: string;
   contact_information?: string;
+  periods?: CardEntryPeriod[];
   // Issue #515: the CRM's free-text gender field moved into the neutral
   // envelope (crm.gender) so it round-trips through the Record; the legacy
   // top-level `gender` sibling on the wire DTO remains for backward compat.
@@ -621,7 +645,10 @@ const ADDRESS_CONTEXT_TO_TYPE: Record<string, string> = {
   delivery: 'delivery',
 };
 
-export function cardAddressesToValues(addresses: CardAddress[] | undefined): ContactAddress[] {
+export function cardAddressesToValues(
+  addresses: CardAddress[] | undefined,
+  periods?: CardEntryPeriod[],
+): ContactAddress[] {
   return (addresses || []).map((a) => {
     const comps = a.components || [];
     const find = (kind: string) => comps.find((c) => c.kind === kind)?.value || '';
@@ -640,7 +667,12 @@ export function cardAddressesToValues(addresses: CardAddress[] | undefined): Con
       'floor',
     ]);
     const passthrough = comps.filter((c) => !knownKinds.has(c.kind));
+    const period = periods?.find((p) => p.kind === 'address' && p.entry_id === a.id);
     return {
+      id: a.id,
+      periodStartYear:
+        period?.range?.start?.year != null ? String(period.range.start.year) : undefined,
+      periodEndYear: period?.range?.end?.year != null ? String(period.range.end.year) : undefined,
       type: a.contexts?.[0] ? (ADDRESS_CONTEXT_TO_TYPE[a.contexts[0]] ?? a.contexts[0]) : '',
       street: find('name') || find('number'),
       city: find('locality'),
@@ -659,39 +691,89 @@ export function cardAddressesToValues(addresses: CardAddress[] | undefined): Con
   });
 }
 export function valuesToCardAddresses(values: ContactAddress[]): CardAddress[] {
-  return values
-    .filter(
-      (a) =>
-        a.street.trim() ||
-        a.city.trim() ||
-        a.region.trim() ||
-        a.postal.trim() ||
-        a.country.trim() ||
-        a.pobox?.trim() ||
-        a.apartment?.trim() ||
-        a.floor?.trim(),
-    )
-    .map((a) => {
-      const components: CardAddressComponent[] = [];
-      if (a.street) components.push({ kind: 'name', value: a.street });
-      if (a.pobox) components.push({ kind: 'postOfficeBox', value: a.pobox });
-      if (a.apartment) components.push({ kind: 'apartment', value: a.apartment });
-      if (a.floor) components.push({ kind: 'floor', value: a.floor });
-      if (a.city) components.push({ kind: 'locality', value: a.city });
-      if (a.region) components.push({ kind: 'region', value: a.region });
-      if (a.postal) components.push({ kind: 'postcode', value: a.postal });
-      if (a.country) components.push({ kind: 'country', value: a.country });
-      // Re-emit passthrough components that were preserved from the original address
-      if (a.passthrough) components.push(...a.passthrough);
-      return {
-        components,
-        contexts: a.type ? [a.type] : undefined,
-        coordinates: a.coordinates,
-        timeZone: a.timeZone,
-        pref: a.pref,
-        full: a.full,
-      };
+  return values.filter(isNonEmptyAddress).map((a) => {
+    const card = cardAddressFromFlat(a);
+    return a.id ? { ...card, id: a.id } : card;
+  });
+}
+
+// A client-assigned card element ID (ADR 0025): the JSContact map key / vCard
+// PROP-ID a period references. crypto.randomUUID needs a secure context
+// (https/localhost); the fallback keeps the editor usable elsewhere.
+function newCardEntryID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function isNonEmptyAddress(a: ContactAddress): boolean {
+  return Boolean(
+    a.street.trim() ||
+      a.city.trim() ||
+      a.region.trim() ||
+      a.postal.trim() ||
+      a.country.trim() ||
+      a.pobox?.trim() ||
+      a.apartment?.trim() ||
+      a.floor?.trim(),
+  );
+}
+
+// ADR 0025: the address editor's single save path. It converts the flat rows
+// to Card.Addresses AND derives crm.periods from the same filtered set, so the
+// two can never disagree about which rows exist. An address that carries a
+// period but no ID (a freshly added row) gets a client-assigned UUID — the
+// same identity a JSContact map key / vCard PROP-ID would carry — so the
+// period has something stable to reference.
+export function addressesToCardAndPeriods(values: ContactAddress[]): {
+  addresses: CardAddress[];
+  periods: CardEntryPeriod[];
+} {
+  const kept = values.filter(isNonEmptyAddress);
+  const addresses = kept.map((a) => {
+    const id = a.id ?? (a.periodStartYear || a.periodEndYear ? newCardEntryID() : undefined);
+    const card = cardAddressFromFlat(a);
+    return id ? { ...card, id } : card;
+  });
+  const periods: CardEntryPeriod[] = [];
+  kept.forEach((a, i) => {
+    const id = addresses[i].id;
+    if (!id) return;
+    const startYear = a.periodStartYear ? parseInt(a.periodStartYear, 10) : undefined;
+    const endYear = a.periodEndYear ? parseInt(a.periodEndYear, 10) : undefined;
+    if (startYear == null && endYear == null) return;
+    periods.push({
+      kind: 'address',
+      entry_id: id,
+      range: {
+        ...(startYear != null ? { start: { year: startYear } } : {}),
+        ...(endYear != null ? { end: { year: endYear } } : {}),
+      },
     });
+  });
+  return { addresses, periods };
+}
+
+function cardAddressFromFlat(a: ContactAddress): CardAddress {
+  const components: CardAddressComponent[] = [];
+  if (a.street) components.push({ kind: 'name', value: a.street });
+  if (a.pobox) components.push({ kind: 'postOfficeBox', value: a.pobox });
+  if (a.apartment) components.push({ kind: 'apartment', value: a.apartment });
+  if (a.floor) components.push({ kind: 'floor', value: a.floor });
+  if (a.city) components.push({ kind: 'locality', value: a.city });
+  if (a.region) components.push({ kind: 'region', value: a.region });
+  if (a.postal) components.push({ kind: 'postcode', value: a.postal });
+  if (a.country) components.push({ kind: 'country', value: a.country });
+  if (a.passthrough) components.push(...a.passthrough);
+  return {
+    components,
+    contexts: a.type ? [a.type] : undefined,
+    coordinates: a.coordinates,
+    timeZone: a.timeZone,
+    pref: a.pref,
+    full: a.full,
+  };
 }
 
 export function getAnniversaryField(

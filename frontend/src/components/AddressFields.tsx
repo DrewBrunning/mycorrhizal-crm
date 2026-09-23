@@ -195,6 +195,29 @@ export default function AddressFields({ label, value, onChange }: AddressFieldsP
                     onChange={(e) => updateAddr(index, { country: e.target.value })}
                   />
                 </Stack>
+                {/* ADR 0025: the period this address was lived at — an
+                    optional open-ended year range ("2019 to 2024"). The wire
+                    carries the full PartialDate; the editor edits whole years. */}
+                <Stack direction="row" spacing={1}>
+                  <TextField
+                    label={t('contacts.addressFields.periodFrom')}
+                    type="number"
+                    size="small"
+                    fullWidth
+                    value={addr.periodStartYear || ''}
+                    onChange={(e) => updateAddr(index, { periodStartYear: e.target.value })}
+                    slotProps={{ htmlInput: { min: 1900, max: 2100 } }}
+                  />
+                  <TextField
+                    label={t('contacts.addressFields.periodTo')}
+                    type="number"
+                    size="small"
+                    fullWidth
+                    value={addr.periodEndYear || ''}
+                    onChange={(e) => updateAddr(index, { periodEndYear: e.target.value })}
+                    slotProps={{ htmlInput: { min: 1900, max: 2100 } }}
+                  />
+                </Stack>
               </Stack>
             </Paper>
           );

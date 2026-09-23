@@ -140,6 +140,14 @@ type LifeEvent struct {
 	// non-leap year); a year-only value has no annual occurrence.
 	Date *contactmodel.PartialDate `gorm:"type:text;serializer:json" json:"date,omitempty"`
 
+	// EndDate, when set, turns Date (the start/anchor) into a span: "worked at
+	// Acme 2019-2024". Same PartialDate shape and no-zone rule as Date
+	// (docs/adrs/0025-temporal-periods.md). Nil = a point in time, which is
+	// what every pre-0023 row is (migration 000058 leaves it NULL). Reminders
+	// and annual recurrence anchor on Date, never on EndDate — "started this
+	// job" is the anniversary, "left" is not.
+	EndDate *contactmodel.PartialDate `gorm:"column:end_date;type:text;serializer:json" json:"end_date,omitempty"`
+
 	Description string `gorm:"serializer:encrypted" json:"description,omitempty" validate:"max=2000"`
 
 	Source string `json:"source,omitempty" validate:"omitempty,oneof=user imported ai-suggested"`

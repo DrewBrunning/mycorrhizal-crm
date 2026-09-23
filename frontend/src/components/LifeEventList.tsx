@@ -4,7 +4,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import { Box, Chip, IconButton, Paper, Tooltip, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import type { Contact } from '../api/contacts';
-import { type LifeEvent, partialDateDisplay } from '../api/lifeEvents';
+import { type LifeEvent, partialDateRangeDisplay } from '../api/lifeEvents';
 
 interface LifeEventListProps {
   events: LifeEvent[];
@@ -75,7 +75,11 @@ export default function LifeEventList({
                     size="small"
                   />
                 )}
-                <Chip label={partialDateDisplay(event.date)} size="small" variant="outlined" />
+                <Chip
+                  label={partialDateRangeDisplay(event.date, event.end_date)}
+                  size="small"
+                  variant="outlined"
+                />
                 {event.remind && (
                   <Tooltip title={t('lifeEvent.remindTooltip')}>
                     <Chip label={t('lifeEvent.remind')} size="small" />

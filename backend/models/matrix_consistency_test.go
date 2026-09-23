@@ -27,6 +27,11 @@ func TestEnvelopeLossConceptsAlignWithMatrix(t *testing.T) {
 			HowWeMet:           "x",
 			WorkInformation:    "x",
 			ContactInformation: "x",
+			Periods: []contactmodel.EntryPeriod{{
+				Kind:    contactmodel.PeriodKindAddress,
+				EntryID: "a1",
+				Range:   contactmodel.TemporalRange{Start: &contactmodel.PartialDate{Year: intPtr(2019)}},
+			}},
 		},
 	}
 	var diagConcepts []string

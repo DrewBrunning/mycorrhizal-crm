@@ -98,6 +98,8 @@ export interface LifeEvent {
   type: string;
   category?: string;
   date?: PartialDate;
+  // ADR 0025: when present, turns `date` (the start/anchor) into a span.
+  end_date?: PartialDate;
   description?: string;
   source?: string;
   related_entity_ids?: string[];
@@ -146,6 +148,7 @@ export interface LifeEventInputData {
   type: string;
   category?: string;
   date?: PartialDate;
+  end_date?: PartialDate;
   description?: string;
   source?: string;
   related_entity_ids?: string[];
@@ -190,6 +193,16 @@ export function partialDateDisplay(date?: PartialDate): string {
   if (m && d) return `${m}/${d}`;
   if (m) return `${m}/??`;
   return '';
+}
+
+// ADR 0025: render an optional start/end span ("2019 – 2024"). An open end is
+// "2019 –"; an end with no start is "– 2024"; no end is just the start.
+export function partialDateRangeDisplay(date?: PartialDate, endDate?: PartialDate): string {
+  const start = partialDateDisplay(date);
+  const end = partialDateDisplay(endDate);
+  if (!end) return start;
+  if (!start) return `– ${end}`;
+  return `${start} – ${end}`;
 }
 
 export function partialDateHasMonthDay(date?: PartialDate): boolean {

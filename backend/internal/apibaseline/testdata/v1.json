@@ -8147,6 +8147,11 @@
           "required": false
         },
         {
+          "name": "periods",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
           "name": "work_information",
           "type": "string",
           "required": false
@@ -8953,6 +8958,11 @@
         {
           "name": "description",
           "type": "string",
+          "required": false
+        },
+        {
+          "name": "end_date",
+          "type": "ref:PartialDate",
           "required": false
         },
         {
@@ -11168,6 +11178,26 @@
       ]
     },
     {
+      "name": "EntryPeriod",
+      "properties": [
+        {
+          "name": "entry_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "range",
+          "type": "ref:TemporalRange",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "Error",
       "properties": [
         {
@@ -13119,6 +13149,11 @@
           "required": false
         },
         {
+          "name": "end_date",
+          "type": "ref:PartialDate",
+          "required": false
+        },
+        {
           "name": "entity_id",
           "type": "string",
           "required": false
@@ -13188,6 +13223,11 @@
         {
           "name": "description",
           "type": "string",
+          "required": false
+        },
+        {
+          "name": "end_date",
+          "type": "ref:PartialDate",
           "required": false
         },
         {
@@ -16091,6 +16131,21 @@
           "name": "name",
           "type": "string",
           "required": true
+        }
+      ]
+    },
+    {
+      "name": "TemporalRange",
+      "properties": [
+        {
+          "name": "end",
+          "type": "ref:PartialDate",
+          "required": false
+        },
+        {
+          "name": "start",
+          "type": "ref:PartialDate",
+          "required": false
         }
       ]
     },
