@@ -19,6 +19,18 @@ data class ImportUploadResponse(
     @Json(name = "sample_data") val sampleData: List<List<String>> = emptyList(),
 )
 
+/**
+ * Request body for `POST /contacts/import/preview` (CSV). Mirrors backend
+ * `models.ImportPreviewRequest` and web's `getImportPreview(sessionId,
+ * mappings)` — NOT [ImportConfirmRequest]'s `{session_id, actions}` shape,
+ * which is a different endpoint's request.
+ */
+@JsonClass(generateAdapter = true)
+data class ImportPreviewRequest(
+    @Json(name = "session_id") val sessionId: String,
+    val mappings: List<ColumnMapping>,
+)
+
 @JsonClass(generateAdapter = true)
 data class DuplicateMatch(
     @Json(name = "existing_contact_id") val existingContactId: Long = 0,
@@ -102,4 +114,21 @@ data class ImportResult(
     val updated: Int = 0,
     val skipped: Int = 0,
     val errors: List<String> = emptyList(),
+)
+
+/**
+ * One persisted import outcome (issue #651), returned newest-first by
+ * `GET /contacts/import/history`. Mirrors backend `models.ImportRun` and
+ * `frontend/src/api/import.ts`'s `ImportRun` field-for-field.
+ */
+@JsonClass(generateAdapter = true)
+data class ImportRun(
+    val id: Long = 0,
+    val format: String = "",
+    @Json(name = "total_processed") val totalProcessed: Int = 0,
+    val created: Int = 0,
+    val updated: Int = 0,
+    val skipped: Int = 0,
+    @Json(name = "error_count") val errorCount: Int = 0,
+    @Json(name = "created_at") val createdAt: String? = null,
 )

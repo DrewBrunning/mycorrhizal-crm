@@ -1410,6 +1410,66 @@
     <string name="import_vcf_error_too_large">Le fichier est trop volumineux. La taille maximale est de 50 Mo.</string>
     <string name="import_vcf_error_invalid_file">Impossible de lire ce fichier. Choisissez un fichier .vcf.</string>
 
+    <!-- Importation de fichier CSV (issue #834) -->
+    <string name="import_csv_entry">Importer depuis un fichier CSV</string>
+    <string name="import_csv_title">Importer un fichier CSV</string>
+    <string name="import_csv_pick">Sélectionner un fichier .csv</string>
+    <string name="import_csv_pick_hint">Choisissez un fichier .csv exporté depuis une autre application ou un autre service.</string>
+    <string name="import_csv_error_too_large">Le fichier est trop volumineux. La taille maximale est de 20 Mo.</string>
+    <string name="import_csv_error_invalid_file">Impossible de lire ce fichier. Choisissez un fichier .csv.</string>
+    <string name="import_csv_mapping_hint">Associez chaque colonne à un champ de contact (%1$d lignes).</string>
+    <string name="import_csv_mapping_ignore">-- Ignorer --</string>
+    <string name="import_csv_mapping_continue">Continuer</string>
+
+    <!-- Étiquettes de champ pour la correspondance des colonnes CSV (issue #834) -->
+    <string name="import_field_firstname">Prénom</string>
+    <string name="import_field_lastname">Nom de Famille</string>
+    <string name="import_field_middle_name">Deuxième Prénom</string>
+    <string name="import_field_prefix">Préfixe du Nom</string>
+    <string name="import_field_suffix">Suffixe du Nom</string>
+    <string name="import_field_nickname">Surnom</string>
+    <string name="import_field_gender">Genre</string>
+    <string name="import_field_birthday">Anniversaire</string>
+    <string name="import_field_anniversary">Anniversaire de Mariage</string>
+    <string name="import_field_email">E-mail</string>
+    <string name="import_field_email_label">E-mail – Type</string>
+    <string name="import_field_phone">Téléphone</string>
+    <string name="import_field_phone_label">Téléphone – Type</string>
+    <string name="import_field_address_street">Adresse – Rue</string>
+    <string name="import_field_address_city">Adresse – Ville</string>
+    <string name="import_field_address_region">Adresse – Région</string>
+    <string name="import_field_address_postal">Adresse – Code Postal</string>
+    <string name="import_field_address_country">Adresse – Pays</string>
+    <string name="import_field_address_label">Adresse – Type</string>
+    <string name="import_field_url">Site web</string>
+    <string name="import_field_url_label">Site web – Type</string>
+    <string name="import_field_impp">MI / Réseaux sociaux</string>
+    <string name="import_field_impp_label">MI / Réseaux sociaux – Type</string>
+    <string name="import_field_organization">Organisation</string>
+    <string name="import_field_department">Service</string>
+    <string name="import_field_job_title">Intitulé du Poste</string>
+    <string name="import_field_role">Rôle</string>
+    <string name="import_field_how_we_met">Comment Nous Nous Sommes Rencontrés</string>
+    <string name="import_field_work_information">Informations Professionnelles</string>
+    <string name="import_field_contact_information">Informations de Contact</string>
+    <string name="import_field_circles">Cercles</string>
+    <string name="import_field_tags">Étiquettes</string>
+
+    <!-- Historique des importations (parité web, issue #651 / #834) -->
+    <string name="import_history_entry">Historique des importations</string>
+    <string name="import_history_title">Historique des importations</string>
+    <string name="import_history_empty">Aucune importation pour le moment.</string>
+    <string name="import_history_col_created">Créés</string>
+    <string name="import_history_col_updated">Mis à jour</string>
+    <string name="import_history_col_skipped">Ignorés</string>
+    <string name="import_history_col_errors">Erreurs</string>
+    <string name="import_history_format_csv">CSV</string>
+    <string name="import_history_format_vcf">VCF</string>
+    <string name="import_history_format_jscontact">JSContact</string>
+    <string name="import_history_format_records">Contacts de l\'appareil</string>
+    <string name="import_history_format_monica">Monica</string>
+    <string name="import_history_format_meerkat">Meerkat</string>
+
     <!-- Audit trail (M16) -->
     <string name="nav_audit">Journal d\'audit</string>
     <string name="audit_title">Journal d\'audit</string>

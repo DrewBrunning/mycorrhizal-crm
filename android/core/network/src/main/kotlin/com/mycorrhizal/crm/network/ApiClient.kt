@@ -144,9 +144,11 @@ import com.mycorrhizal.crm.model.network.HouseholdMember
 import com.mycorrhizal.crm.model.network.HouseholdMemberInput
 import com.mycorrhizal.crm.model.network.HouseholdsPage
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
+import com.mycorrhizal.crm.model.network.ImportPreviewRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportRecordsRequest
 import com.mycorrhizal.crm.model.network.ImportResult
+import com.mycorrhizal.crm.model.network.ImportRun
 import com.mycorrhizal.crm.model.network.ImportUploadResponse
 import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.LifeEventInput
@@ -1947,7 +1949,7 @@ class ApiClient(
             moshi.adapter(ImportPreviewResponse::class.java).fromJson(body)
         }
 
-    suspend fun previewCsvImport(request: ImportConfirmRequest): Result<ImportPreviewResponse> =
+    suspend fun previewCsvImport(request: ImportPreviewRequest): Result<ImportPreviewResponse> =
         executePost("$CONTACTS_PATH/import/preview", request) { _, body ->
             moshi.adapter(ImportPreviewResponse::class.java).fromJson(body)
         }
@@ -1974,6 +1976,18 @@ class ApiClient(
     suspend fun uploadImportRecords(records: List<ContactRecordInput>): Result<ImportPreviewResponse> =
         executePost("$CONTACTS_PATH/import/records", ImportRecordsRequest(records)) { _, body ->
             moshi.adapter(ImportPreviewResponse::class.java).fromJson(body)
+        }
+
+    /**
+     * GET /api/v1/contacts/import/history (issue #651) — the caller's recent
+     * import outcomes, newest first, as a bare JSON array (never null, even
+     * when empty). Issue #834's first Android caller.
+     */
+    suspend fun getImportHistory(): Result<List<ImportRun>> =
+        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/import/history") { _, body ->
+            moshi.adapter<List<ImportRun>>(
+                com.squareup.moshi.Types.newParameterizedType(List::class.java, ImportRun::class.java),
+            ).fromJson(body)
         }
 
     // M15: contact sharing (P1) — the backend endpoints have served web since

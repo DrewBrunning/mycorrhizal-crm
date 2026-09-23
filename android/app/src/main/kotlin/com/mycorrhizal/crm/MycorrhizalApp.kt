@@ -116,7 +116,9 @@ import com.mycorrhizal.crm.feature.contacts.MergeContactsScreen
 import com.mycorrhizal.crm.feature.circles.TriageScreen
 import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdsScreen
+import com.mycorrhizal.crm.feature.imports.CsvImportScreen
 import com.mycorrhizal.crm.feature.imports.ImportContactsScreen
+import com.mycorrhizal.crm.feature.imports.ImportHistoryScreen
 import com.mycorrhizal.crm.feature.imports.VcfImportScreen
 import com.mycorrhizal.crm.feature.network.NetworkScreen
 import com.mycorrhizal.crm.feature.relationships.RelationshipsScreen
@@ -878,6 +880,8 @@ private fun AppNavGraph(
                 onMenuClick = menu,
                 onImported = {},
                 onImportVcf = { navController.navigate("import/vcf") },
+                onImportCsv = { navController.navigate("import/csv") },
+                onImportHistory = { navController.navigate("import/history") },
             )
         }
         // M9 item 4: VCF-file import — a sibling path to this screen's device-contacts one.
@@ -885,6 +889,19 @@ private fun AppNavGraph(
             VcfImportScreen(
                 onBack = { navController.popBackStack() },
                 onDone = { navController.popBackStack() },
+            )
+        }
+        // Issue #834: CSV-file import — web parity, a second sibling path.
+        composable("import/csv") {
+            CsvImportScreen(
+                onBack = { navController.popBackStack() },
+                onDone = { navController.popBackStack() },
+            )
+        }
+        // Issue #834 (web parity, issue #651): the persisted import-run history.
+        composable("import/history") {
+            ImportHistoryScreen(
+                onBack = { navController.popBackStack() },
             )
         }
         composable(
