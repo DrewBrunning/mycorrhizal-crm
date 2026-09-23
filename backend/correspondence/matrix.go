@@ -145,6 +145,10 @@ var noHomeFields = []NoHomeField{
 		Note: "legacy column superseded as a data source by circle_members (T2/T3); never serialized",
 	},
 	{
+		Key: "crm.periods", Field: "Periods", Home: "CRMEnvelope.Periods", LossReport: true,
+		Note: "start/end ranges for addresses/employers/titles (ADR 0025); no RFC 9553/9554/9555 home, so never serialized to a contact file",
+	},
+	{
 		Key: "crm.archived", Field: "Archived", Home: "none (Contact.Archived flat column)", LossReport: false,
 		Note: "CRM-local flag; deliberately never exported (ADR-0002 audit rule 4)",
 	},

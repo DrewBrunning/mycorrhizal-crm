@@ -414,7 +414,7 @@ func ExportData(c *gin.Context) {
 	contactHeaders := []string{
 		"ID", "Firstname", "Lastname", "Nickname", "Gender", "Email", "Phone",
 		"Birthday", "Address", "How We Met", "Food Preference", "Work Information",
-		"Contact Information", "Circles", "Tags", "Created At", "Updated At",
+		"Contact Information", "Circles", "Tags", "Periods", "Created At", "Updated At",
 	}
 	// Custom-field headers come from the v2 definitions' Labels (user-
 	// authored, so the header row gets the same csvSafe treatment as the data
@@ -444,6 +444,7 @@ func ExportData(c *gin.Context) {
 			contact.ContactInformation,
 			strings.Join(circlesByVCardUID[contact.VCardUID], "; "),
 			strings.Join(tagsByVCardUID[contact.VCardUID], "; "),
+			formatExportPeriods(contact.CRM.Periods),
 			contact.CreatedAt.Format(time.RFC3339),
 			contact.UpdatedAt.Format(time.RFC3339),
 		}

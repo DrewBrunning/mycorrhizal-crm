@@ -411,6 +411,8 @@
       "pobox": "Postfach",
       "apartment": "Wohnung / Suite",
       "floor": "Etage",
+      "periodFrom": "Hier gewohnt ab (Jahr)",
+      "periodTo": "Bis (Jahr)",
       "additionalFields": "Weitere Felder"
     },
     "anniversaries": "Jahrestage",
@@ -688,6 +690,16 @@
     "dateYear": "Jahr",
     "dateMonth": "Monat",
     "dateDay": "Tag",
+    "endDate": "Ende (optional)",
+    "endDateYear": "Endjahr",
+    "endDateMonth": "Endmonat",
+    "endDateDay": "Endtag",
+    "suggestions": {
+      "title": "Vorgeschlagene Lebensereignisse",
+      "prompt": "Du hast einen Zeitraum erfasst – ein „{{event}}“-Ereignis für {{when}} hinzufügen?",
+      "add": "Hinzufügen",
+      "dismiss": "Verwerfen"
+    },
     "description": "Beschreibung",
     "relatedEntities": "Im Zusammenhang mit",
     "searchContacts": "Kontakte suchen…",

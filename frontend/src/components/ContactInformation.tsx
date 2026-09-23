@@ -30,6 +30,7 @@ import {
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  addressesToCardAndPeriods,
   type CardAnniversary,
   type CardLanguagePref,
   type Card as CardModel,
@@ -48,7 +49,6 @@ import {
   getAnniversaryField,
   getOrganizationFields,
   getTitleField,
-  valuesToCardAddresses,
   valuesToCardEmails,
   valuesToCardLinks,
   valuesToCardPhones,
@@ -96,7 +96,10 @@ interface ContactInformationProps {
   onEditCancel: () => void;
   onEditSave: (field: string) => void;
   onEditValueChange: (value: string) => void;
-  onUpdateCard: (patch: Partial<CardModel>) => Promise<void>;
+  // crmPatch is optional and only used by fields whose edit also touches the
+  // CRM envelope (ADR 0025 address periods); every other caller passes card
+  // fields alone and the envelope is echoed back unchanged.
+  onUpdateCard: (patch: Partial<CardModel>, crmPatch?: Partial<CRMEnvelope>) => Promise<void>;
   enabledFields?: Set<ContactFieldKey>;
   // Custom fields (v2, T6/T7)
   fieldDefinitions?: FieldDefinition[];
@@ -965,13 +968,16 @@ export default function ContactInformation({
             <EditableArrayField<ContactAddress[]>
               icon={<HomeIcon sx={iconSx} />}
               label={t('contactDetail.address')}
-              value={cardAddressesToValues(card.addresses)}
+              value={cardAddressesToValues(card.addresses, crm.periods)}
               cloneValue={cloneValues}
               renderDisplay={renderAddressList}
               renderEditor={(draft, setDraft) => (
                 <AddressFields label={t('contacts.address')} value={draft} onChange={setDraft} />
               )}
-              onSave={(draft) => onUpdateCard({ addresses: valuesToCardAddresses(draft) })}
+              onSave={(draft) => {
+                const { addresses, periods } = addressesToCardAndPeriods(draft);
+                return onUpdateCard({ addresses }, { periods });
+              }}
             />
           )}
 

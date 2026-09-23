@@ -52,6 +52,18 @@ func getContactIDByVCardUID(db *gorm.DB, userID uint, vcardUID string) (*uint, e
 	return &contact.ID, nil
 }
 
+// validateLifeEventRange rejects an end date that precedes the event's start
+// date, compared at the coarsest precision the two share
+// (docs/adrs/0025-temporal-periods.md). Partial dates have no total order
+// (ADR 0015 Rule 3), so a pair that cannot be compared is not an error; a
+// nil/open end is always fine. Returns nil when the range is valid.
+func validateLifeEventRange(start, end *contactmodel.PartialDate) *apperrors.AppError {
+	if (contactmodel.TemporalRange{Start: start, End: end}).Reversed() {
+		return apperrors.ErrInvalidInput("end_date", "end date precedes the start date")
+	}
+	return nil
+}
+
 // eventHasMonthDay returns true when the PartialDate has both month and day
 // populated, which is required for yearly recurrence (T5b).
 func eventHasMonthDay(d *contactmodel.PartialDate) bool {
@@ -157,6 +169,11 @@ func CreateLifeEvent(c *gin.Context) {
 		return
 	}
 
+	if rangeErr := validateLifeEventRange(input.Date, input.EndDate); rangeErr != nil {
+		apperrors.AbortWithError(c, rangeErr)
+		return
+	}
+
 	cfg := currentConfig(c)
 	loc := cfg.GetReminderLocation()
 	now := time.Now().In(loc)
@@ -169,6 +186,7 @@ func CreateLifeEvent(c *gin.Context) {
 			Type:             input.Type,
 			Category:         input.Category,
 			Date:             input.Date,
+			EndDate:          input.EndDate,
 			Description:      input.Description,
 			Source:           input.Source,
 			RelatedEntityIDs: input.RelatedEntityIDs,
@@ -345,6 +363,11 @@ func UpdateLifeEvent(c *gin.Context) {
 		return
 	}
 
+	if rangeErr := validateLifeEventRange(input.Date, input.EndDate); rangeErr != nil {
+		apperrors.AbortWithError(c, rangeErr)
+		return
+	}
+
 	cfg := currentConfig(c)
 	loc := cfg.GetReminderLocation()
 	now := time.Now().In(loc)
@@ -353,6 +376,7 @@ func UpdateLifeEvent(c *gin.Context) {
 	event.Type = input.Type
 	event.Category = input.Category
 	event.Date = input.Date
+	event.EndDate = input.EndDate
 	event.Description = input.Description
 	event.Source = input.Source
 	event.RelatedEntityIDs = input.RelatedEntityIDs

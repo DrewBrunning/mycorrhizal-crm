@@ -41,6 +41,7 @@ unleash:
         - ^job_lock\.go$
         - ^job_run_health\.go$
         - ^job_run_purge_service\.go$
+        - ^life_event_suggestion_service\.go$
         - ^mailer\.go$
         - ^notification_health\.go$
         - ^notification_service\.go$

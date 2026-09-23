@@ -475,12 +475,14 @@ func TestExportData_ExtraSections(t *testing.T) {
 	require.NoError(t, db.Create(&bob).Error)
 
 	eventYear := 2020
+	eventEndYear := 2024
 	lifeEvent := models.LifeEvent{
 		UserID:           user.ID,
 		EntityID:         ada.VCardUID,
 		Type:             models.LifeEventTypeGotARoommate,
 		Category:         models.LifeEventCategoryHomeLiving,
 		Date:             &contactmodel.PartialDate{Year: &eventYear},
+		EndDate:          &contactmodel.PartialDate{Year: &eventEndYear},
 		Description:      "Moved in with Bob",
 		Source:           models.LifeEventSourceUser,
 		RelatedEntityIDs: []string{bob.VCardUID},
@@ -546,6 +548,24 @@ func TestExportData_ExtraSections(t *testing.T) {
 	}
 	require.NoError(t, db.Create(&completion).Error)
 
+	// ADR 0025: a period on an address must survive into the full-fidelity CSV.
+	periodStart, periodEnd := 2019, 2024
+	periodContact := models.Contact{UserID: user.ID}
+	models.ApplyRecordToContact(&periodContact, &contactmodel.Record{
+		Card: contactmodel.Card{
+			Name:      &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Grace"}}},
+			Addresses: []contactmodel.Address{{ID: "addr-1", Full: "1 Main St"}},
+		},
+		Envelope: contactmodel.CRMEnvelope{Periods: []contactmodel.EntryPeriod{{
+			Kind: contactmodel.PeriodKindAddress, EntryID: "addr-1",
+			Range: contactmodel.TemporalRange{
+				Start: &contactmodel.PartialDate{Year: &periodStart},
+				End:   &contactmodel.PartialDate{Year: &periodEnd},
+			},
+		}}},
+	}, "")
+	require.NoError(t, db.Create(&periodContact).Error)
+
 	req, _ := http.NewRequest("GET", "/export", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -563,6 +583,13 @@ func TestExportData_ExtraSections(t *testing.T) {
 		assert.Contains(t, body, models.LifeEventSourceUser)
 		assert.Contains(t, body, "Bob Smith", "RelatedEntityIDs must resolve to the related contact's name")
 		assert.Contains(t, body, "true", "Remind must be exported")
+		assert.Contains(t, body, "End Date", "ADR 0025: the life events section must carry the end-date column")
+	})
+
+	t.Run("temporal periods", func(t *testing.T) {
+		assert.Contains(t, body, "Periods", "the contacts section must carry the periods column")
+		assert.Contains(t, body, "address:addr-1:2019..2024",
+			"ADR 0025: a contact's address period must survive into the full-fidelity CSV")
 	})
 
 	t.Run("gifts", func(t *testing.T) {

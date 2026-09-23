@@ -407,3 +407,109 @@ func TestEventHasMonthDayRejectsInvalidDates(t *testing.T) {
 	mar15 := &contactmodel.PartialDate{Month: intPtr(3), Day: intPtr(15)}
 	assert.True(t, eventHasMonthDay(mar15), "March 15 is valid")
 }
+
+// ADR 0025: a life event may carry an end date, turning its start into a span.
+func TestCreateLifeEventWithEndDate(t *testing.T) {
+	db, router := setupRouter()
+	router.POST("/life-events", middleware.ValidateJSONMiddleware(&models.LifeEventInput{}), CreateLifeEvent)
+
+	var user models.User
+	db.First(&user)
+	contact := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	db.Create(&contact)
+
+	payload := models.LifeEventInput{
+		EntityID: contact.VCardUID,
+		Type:     models.LifeEventTypeJobChange,
+		Date:     &contactmodel.PartialDate{Year: intPtr(2019), Month: intPtr(4)},
+		EndDate:  &contactmodel.PartialDate{Year: intPtr(2024)},
+	}
+	jsonValue, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("POST", "/life-events", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusCreated, w.Code)
+
+	var reloaded models.LifeEvent
+	require.NoError(t, db.Where("entity_id = ?", contact.VCardUID).First(&reloaded).Error)
+	require.NotNil(t, reloaded.EndDate, "end date must persist across a real migrated schema")
+	require.NotNil(t, reloaded.EndDate.Year)
+	assert.Equal(t, 2024, *reloaded.EndDate.Year)
+}
+
+// ADR 0025: an end date that precedes the start at shared precision is a 400,
+// not a silent write. Partial dates carry no total order, so a year-less pair
+// is not an error (and is exercised through the helper directly below).
+func TestCreateLifeEventRejectsReversedRange(t *testing.T) {
+	db, router := setupRouter()
+	router.POST("/life-events", middleware.ValidateJSONMiddleware(&models.LifeEventInput{}), CreateLifeEvent)
+
+	var user models.User
+	db.First(&user)
+	contact := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	db.Create(&contact)
+
+	payload := models.LifeEventInput{
+		EntityID: contact.VCardUID,
+		Type:     models.LifeEventTypeJobChange,
+		Date:     &contactmodel.PartialDate{Year: intPtr(2024)},
+		EndDate:  &contactmodel.PartialDate{Year: intPtr(2019)},
+	}
+	jsonValue, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("POST", "/life-events", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	var count int64
+	db.Model(&models.LifeEvent{}).Count(&count)
+	assert.Zero(t, count, "a reversed range must not create a row")
+}
+
+func TestValidateLifeEventRange(t *testing.T) {
+	y := func(v int) *contactmodel.PartialDate { return &contactmodel.PartialDate{Year: intPtr(v)} }
+	// Open ends are valid.
+	assert.Nil(t, validateLifeEventRange(y(2019), nil))
+	assert.Nil(t, validateLifeEventRange(nil, y(2019)))
+	// Non-comparable (year-less vs year) is not an error.
+	assert.Nil(t, validateLifeEventRange(&contactmodel.PartialDate{Month: intPtr(12)}, &contactmodel.PartialDate{Month: intPtr(1)}))
+	// A year-only start after a full end is still comparable at year precision.
+	assert.NotNil(t, validateLifeEventRange(y(2024), &contactmodel.PartialDate{Year: intPtr(2019), Month: intPtr(6)}))
+}
+
+// ADR 0025: updating the end date (and clearing it) round-trips.
+func TestUpdateLifeEventEndDate(t *testing.T) {
+	db, router := setupRouter()
+	router.PUT("/life-events/:id", middleware.ValidateJSONMiddleware(&models.LifeEventInput{}), UpdateLifeEvent)
+
+	var user models.User
+	db.First(&user)
+	contact := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	db.Create(&contact)
+	event := models.LifeEvent{
+		UserID: user.ID, EntityID: contact.VCardUID, Type: models.LifeEventTypeJobChange,
+		Date: &contactmodel.PartialDate{Year: intPtr(2019)},
+	}
+	db.Create(&event)
+
+	payload := models.LifeEventInput{
+		EntityID: contact.VCardUID,
+		Type:     models.LifeEventTypeJobChange,
+		Date:     &contactmodel.PartialDate{Year: intPtr(2019)},
+		EndDate:  &contactmodel.PartialDate{Year: intPtr(2024)},
+	}
+	jsonValue, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("PUT", "/life-events/"+event.ID, bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var reloaded models.LifeEvent
+	require.NoError(t, db.Where("id = ?", event.ID).First(&reloaded).Error)
+	require.NotNil(t, reloaded.EndDate)
+	assert.Equal(t, 2024, *reloaded.EndDate.Year)
+}

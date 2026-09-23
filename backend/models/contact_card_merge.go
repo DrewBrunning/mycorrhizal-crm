@@ -82,10 +82,11 @@ import (
 //     vCard/JSContact properties live only on the loaded column), and taken
 //     from fresh otherwise (a caller that set VCardExtra deliberately).
 func mergeRecordFromFlat(loaded, fresh contactmodel.Record) contactmodel.Record {
+	mergedCard := mergeCardWithFlat(loaded.Card, fresh.Card)
 	merged := contactmodel.Record{
 		UID:  fresh.UID,
 		ETag: fresh.ETag,
-		Card: mergeCardWithFlat(loaded.Card, fresh.Card),
+		Card: mergedCard,
 		Envelope: contactmodel.CRMEnvelope{
 			// Kind has no flat-field home — it lives only in the crm JSON
 			// column, set via ApplyRecordToContact (T27). Preserve it.
@@ -100,6 +101,14 @@ func mergeRecordFromFlat(loaded, fresh contactmodel.Record) contactmodel.Record 
 			WorkInformation:    fresh.Envelope.WorkInformation,
 			ContactInformation: fresh.Envelope.ContactInformation,
 			Gender:             fresh.Envelope.Gender,
+			// Periods have no flat-field home (no RFC home either — ADR
+			// 0023), so the flat path cannot express them and fresh never has
+			// any. Preserve the loaded periods whose Card entry still exists
+			// in the merged Card; an entry the flat caller deleted takes its
+			// period with it rather than leaving a dangling reference. This is
+			// the same "loaded is authoritative for what flat cannot express"
+			// rule the rest of the merge follows.
+			Periods: loaded.Envelope.PruneOrphanPeriods(mergedCard),
 		},
 	}
 	if reflect.DeepEqual(fresh.Passthrough, contactmodel.Passthrough{}) {

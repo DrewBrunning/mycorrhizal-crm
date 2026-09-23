@@ -30,3 +30,4 @@ ticket backlog moved to GitHub Issues.
 | [0022](0022-distribution-variants.md) | Distribution variants — obtainium, foss, and play | accepted |
 | [0023](0023-relationship-health-score.md) | Relationship health score (facets, weights, thresholds) | accepted |
 | [0024](0024-occasions.md) | Occasions — recurring card/gift/invite obligations | accepted |
+| [0025](0025-temporal-periods.md) | Temporal periods — start/end ranges for addresses and employment | accepted |

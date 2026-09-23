@@ -141,6 +141,7 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"PUT /field-definitions/{id}":             bindingFor(models.FieldDefinitionInput{}),
 	"POST /life-events":                       bindingFor(models.LifeEventInput{}),
 	"PUT /life-events/{id}":                   bindingFor(models.LifeEventInput{}),
+	"POST /life-event-suggestions/resolve":    bindingFor(models.LifeEventSuggestionResolutionInput{}),
 	"POST /conversation-agenda":               bindingFor(models.ConversationAgendaInput{}),
 	"PUT /conversation-agenda/{id}":           bindingFor(models.ConversationAgendaInput{}),
 	"PATCH /conversation-agenda/{id}/discuss": bindingFor(models.ConversationAgendaDiscussInput{}),

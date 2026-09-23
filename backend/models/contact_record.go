@@ -504,6 +504,16 @@ func EnvelopeExportLossDiagnostics(rec *contactmodel.Record) []contactmodel.Diag
 			Message:  "CRM-only field has no home in this export format and is dropped from the file",
 		})
 	}
+	// Periods (ADR 0025) are the same shape of loss: no RFC 9553/9554/9555
+	// home exists for an address/employer/title date range, so a file export
+	// drops them by design and must say so by name.
+	if len(env.Periods) > 0 {
+		diags = append(diags, contactmodel.Diagnostic{
+			Severity: "warn",
+			Concept:  "crm.periods",
+			Message:  "CRM-only field has no home in this export format and is dropped from the file",
+		})
+	}
 	return diags
 }
 

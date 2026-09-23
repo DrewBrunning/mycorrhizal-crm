@@ -16,18 +16,19 @@ import (
 // # The index contract (what a divergence is, and is not)
 //
 // The FTS index is derived data maintained by SQL triggers (migrations
-// 000007/000010/000020). Its contract is deliberately narrower than "mirrors
-// the base table", so a naive base-vs-index diff would produce constant false
-// positives:
+// 000007/000010/000020; migration 000059 gave the AFTER INSERT triggers the
+// same `deleted_at IS NULL` guard the AFTER UPDATE triggers already had). Its
+// contract is deliberately narrower than "mirrors the base table", so a naive
+// base-vs-index diff would produce constant false positives:
 //
 //   - The index is NOT authoritative on deletion or archive state. A
 //     soft-deleted or archived base row may or may not sit in the index
-//     depending on which write path touched it — the AFTER UPDATE trigger
-//     drops a row on soft-delete, but the AFTER INSERT trigger has no
-//     deleted_at guard, so a row inserted already-soft-deleted (a bulk import,
-//     a hand-written migration) stays. Both are acceptable: search correctness
-//     for those rows is guaranteed by the outer query's own `archived` filter
-//     and GORM's soft-delete scope, never by index contents
+//     depending on which write path touched it — the triggers now skip
+//     soft-deleted rows on both insert and update, but a row archived after it
+//     was indexed, or any index state left by a historical write, is still
+//     tolerated. Both are acceptable: search correctness for those rows is
+//     guaranteed by the outer query's own `archived` filter and GORM's
+//     soft-delete scope, never by index contents
 //     (controllers/contact_controller.go, the applyContactSearch subquery).
 //     So this check only ever compares the index against **live**
 //     (deleted_at IS NULL) base rows, and never reports a soft-deleted or

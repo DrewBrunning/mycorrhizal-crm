@@ -473,6 +473,11 @@ func TestEnvelopeExportLossDiagnostics(t *testing.T) {
 			HowWeMet:           "Conference",
 			WorkInformation:    "Remote",
 			ContactInformation: "Prefers email",
+			Periods: []contactmodel.EntryPeriod{{
+				Kind:    contactmodel.PeriodKindAddress,
+				EntryID: "a1",
+				Range:   contactmodel.TemporalRange{Start: &contactmodel.PartialDate{Year: intPtr(2019)}},
+			}},
 		},
 	}
 	diags := EnvelopeExportLossDiagnostics(rec)
@@ -483,7 +488,7 @@ func TestEnvelopeExportLossDiagnostics(t *testing.T) {
 		}
 		got[d.Concept] = true
 	}
-	for _, want := range []string{"crm.gender", "crm.circles", "crm.how_we_met", "crm.work_information", "crm.contact_information"} {
+	for _, want := range []string{"crm.gender", "crm.circles", "crm.how_we_met", "crm.work_information", "crm.contact_information", "crm.periods"} {
 		if !got[want] {
 			t.Errorf("missing diagnostic for %s (a populated envelope field must be named, never silently dropped)", want)
 		}
