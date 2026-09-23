@@ -1,0 +1,86 @@
+{
+  "note": "Relationship health score tunables (issue #383, ADR-0023). Hand-authored, not generated — mirrors backend/internal/perfbench/testdata/budgets.json's pattern: every number carries a mandatory reason, changing a number is a deliberate reviewed edit. Loaded/validated by backend/internal/scoring.LoadConfig at every call site (services.ComputeAllContactScores); config.go's validate() also drift-checks this file's closeness_tiers against the live relationship_type_registry.go.",
+  "weights": [
+    {
+      "facet": "recency",
+      "weight": 35,
+      "reason": "Time since the last qualifying interaction is the single strongest, least gameable signal of relationship health — weighted highest."
+    },
+    {
+      "facet": "frequency",
+      "weight": 20,
+      "reason": "A single recent interaction after a long gap shouldn't look identical to a steadily-maintained relationship; frequency catches that."
+    },
+    {
+      "facet": "closeness",
+      "weight": 20,
+      "reason": "Structural distance (relationship type / hop count) sets expectations — a stranger and a spouse shouldn't be judged by the same bar — but it's not itself a maintenance signal, so it's weighted equal to frequency, not higher."
+    },
+    {
+      "facet": "reach_out",
+      "weight": 15,
+      "reason": "A pending, unreviewed reach-out suggestion is a real but narrow warning signal (org/title/address change only) — enough to matter, not enough to dominate."
+    },
+    {
+      "facet": "last_updated",
+      "weight": 10,
+      "reason": "Record-editing activity is a weak proxy for relationship health (editing a phone number isn't interacting with someone) — lowest weight, deliberately capped influence (see ADR-0023's documented gaming-vector note)."
+    }
+  ],
+  "thresholds": {
+    "moss_min": 70,
+    "chanterelle_min": 40,
+    "reason": "moss >= 70, chanterelle 40-69, russula < 40. Roughly even thirds of the scale, with chanterelle the widest band since 'drifting' covers more real situations than either extreme."
+  },
+  "closeness_tiers": {
+    "spouse_of": { "tier": "immediate", "reason": "Immediate family/partnership." },
+    "child_of": { "tier": "immediate", "reason": "Immediate family." },
+    "parent_of": { "tier": "immediate", "reason": "Immediate family." },
+    "sibling_of": { "tier": "close", "reason": "Close family, typically less contact-dependent than immediate household ties." },
+    "partner_of": { "tier": "close", "reason": "Unmarried romantic partner — as close as spouse_of but kept a separate tier since the registry itself treats it as a distinct, non-projecting type." },
+    "friend_of": { "tier": "close", "reason": "Core social relationship this app is built around maintaining." },
+    "coworker_of": { "tier": "casual", "reason": "Regular but typically context-bound contact." },
+    "roommate_of": { "tier": "casual", "reason": "Regular proximity, not necessarily emotional closeness." },
+    "mentor_of": { "tier": "casual", "reason": "Meaningful but typically lower-cadence relationship." },
+    "mentee_of": { "tier": "casual", "reason": "Meaningful but typically lower-cadence relationship." },
+    "co_parent_of": { "tier": "casual", "reason": "Significant coordination relationship, not necessarily personal closeness." },
+    "owned_by": { "tier": "distant", "reason": "Pet-ownership structural edge, not a person-to-person closeness signal." },
+    "owns": { "tier": "distant", "reason": "Pet-ownership structural edge, not a person-to-person closeness signal." },
+    "related_to": { "tier": "distant", "reason": "Deliberately vague fallback token (migration/legacy data) — no closeness can be inferred from it." }
+  },
+  "tier_definitions": {
+    "immediate": { "weight": 100, "default_interval_days": 14, "reason": "Immediate family/household — short expected check-in window." },
+    "close": { "weight": 85, "default_interval_days": 30, "reason": "Close friends/partners — monthly is a reasonable default cadence." },
+    "casual": { "weight": 65, "default_interval_days": 45, "reason": "Coworkers/roommates/mentors — lower-frequency but still-expected contact." },
+    "distant": { "weight": 45, "default_interval_days": 60, "reason": "Structural but low-closeness edges (pets, unspecified legacy relations)." }
+  },
+  "unknown_closeness": {
+    "weight": 50,
+    "default_interval_days": 90,
+    "reason": "No self-contact set, or the contact isn't reachable in the graph at all — genuinely unknown, not 'distant': a flat midpoint that neither rewards nor penalizes the common case of a user who has never wired themselves into the relationship graph (see ADR-0023 — this is expected to be the most common branch in practice). The 90-day default interval is deliberately the longest of any tier, since there's no basis to expect frequent contact."
+  },
+  "recency": {
+    "no_interaction_value": 45,
+    "overdue_ratio_cap": 2.0,
+    "reason": "no_interaction_value=45 is deliberately in the chanterelle band but well above 0 — a contact with zero recorded history isn't proven neglected, but shouldn't score as healthy either; it is a fixed constant, not derived from the target interval, so a same-day-created contact doesn't coincidentally match '1 day overdue'. overdue_ratio_cap=2.0 means a contact exactly at its target interval scores 50 (midpoint) and one at double the interval bottoms out at 0."
+  },
+  "frequency": {
+    "window_days": 180,
+    "reason": "A 6-month trailing window is long enough to smooth out a single recent interaction after a long gap, short enough to still reflect current behavior rather than a relationship's entire history."
+  },
+  "closeness": {
+    "hop_base_weight": 60,
+    "hop_decay_per_hop": 15,
+    "hop_floor": 20,
+    "reason": "A structural 2-hop path (e.g. your spouse's friend) starts at 60 — below the closest direct tiers but clearly above 'unknown' — and decays 15 per additional hop, floored at 20 so a very distant but still-structurally-connected contact never reads as fully unknown."
+  },
+  "reach_out": {
+    "pending_value": 30,
+    "reason": "Deliberately in the russula band on its own — an unreviewed suggestion is a concrete, actionable warning, not a mild ding — but the 15-point weight still lets strong Recency/Frequency/Closeness outweigh it rather than veto the score outright."
+  },
+  "last_updated": {
+    "window_days": 180,
+    "floor": 30,
+    "reason": "Same 6-month window as frequency for consistency. Floor of 30 (not 0) keeps this the weakest possible drag on the total score, matching its lowest-of-five weight — editing a contact record is at most weak evidence of engagement."
+  }
+}
