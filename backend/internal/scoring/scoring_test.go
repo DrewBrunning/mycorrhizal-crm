@@ -37,8 +37,10 @@ func TestValidate_RejectsMisconfiguration(t *testing.T) {
 			return c
 		},
 		"negative weight": func(c Config) Config {
+			// -1 + 21 offset on Recency keeps the sum at exactly 100, so this
+			// (not the sum check) is what trips.
 			c.WeightFrequency = -1
-			c.WeightRecency += 1 // keep the sum at 100 so only this check trips
+			c.WeightRecency += 21
 			return c
 		},
 		"zero unknown closeness interval": func(c Config) Config {
@@ -59,6 +61,92 @@ func TestValidate_RejectsMisconfiguration(t *testing.T) {
 		},
 		"affinity type wrongly tiered": func(c Config) Config {
 			c.RelationCloseness["conflicts_with"] = RelationCloseness{Weight: 50, DefaultIntervalDays: 30}
+			return c
+		},
+		"weight over 100": func(c Config) Config {
+			// +81 on Frequency, -81 offset on Recency keeps the sum at
+			// exactly 100. Recency necessarily goes negative too (the other
+			// four weights can't absorb an 81-point increase on their own),
+			// but that only means either weight can trip this same check —
+			// still proves validate rejects an out-of-[0,100] weight.
+			c.WeightFrequency = 101
+			c.WeightRecency -= 81
+			return c
+		},
+		"moss_min over 100": func(c Config) Config {
+			c.MossMin = 101
+			return c
+		},
+		"unknown closeness weight negative": func(c Config) Config {
+			c.UnknownClosenessWeight = -1
+			return c
+		},
+		"unknown closeness weight over 100": func(c Config) Config {
+			c.UnknownClosenessWeight = 101
+			return c
+		},
+		"recency no_interaction_value negative": func(c Config) Config {
+			c.RecencyNoInteractionValue = -1
+			return c
+		},
+		"recency no_interaction_value over 100": func(c Config) Config {
+			c.RecencyNoInteractionValue = 101
+			return c
+		},
+		"recency overdue_ratio_cap zero": func(c Config) Config {
+			c.RecencyOverdueRatioCap = 0
+			return c
+		},
+		"negative frequency window": func(c Config) Config {
+			c.FrequencyWindowDays = -1
+			return c
+		},
+		"closeness hop_base_weight negative": func(c Config) Config {
+			c.ClosenessHopBaseWeight = -1
+			return c
+		},
+		"closeness hop_base_weight over 100": func(c Config) Config {
+			c.ClosenessHopBaseWeight = 101
+			return c
+		},
+		"closeness hop_decay_per_hop negative": func(c Config) Config {
+			c.ClosenessHopDecayPerHop = -1
+			return c
+		},
+		"closeness hop_floor negative": func(c Config) Config {
+			c.ClosenessHopFloor = -1
+			return c
+		},
+		"reach_out pending_value negative": func(c Config) Config {
+			c.ReachOutPendingValue = -1
+			return c
+		},
+		"reach_out pending_value over 100": func(c Config) Config {
+			c.ReachOutPendingValue = 101
+			return c
+		},
+		"negative last_updated window": func(c Config) Config {
+			c.LastUpdatedWindowDays = -1
+			return c
+		},
+		"last_updated floor negative": func(c Config) Config {
+			c.LastUpdatedFloor = -1
+			return c
+		},
+		"last_updated floor over 100": func(c Config) Config {
+			c.LastUpdatedFloor = 101
+			return c
+		},
+		"relation closeness tier weight negative": func(c Config) Config {
+			c.RelationCloseness["friend_of"] = RelationCloseness{Weight: -1, DefaultIntervalDays: 30}
+			return c
+		},
+		"relation closeness tier weight over 100": func(c Config) Config {
+			c.RelationCloseness["friend_of"] = RelationCloseness{Weight: 101, DefaultIntervalDays: 30}
+			return c
+		},
+		"relation closeness tier interval zero": func(c Config) Config {
+			c.RelationCloseness["friend_of"] = RelationCloseness{Weight: 50, DefaultIntervalDays: 0}
 			return c
 		},
 	}
@@ -96,6 +184,63 @@ func TestParseConfig_RejectsUndefinedTier(t *testing.T) {
 	}`)
 	_, err := parseConfig(raw)
 	assert.ErrorContains(t, err, "undefined tier")
+}
+
+// TestParseConfig_RejectsMalformedJSON proves parseConfig's own json.Unmarshal
+// error path (distinct from a well-formed-but-invalid doc, which the other
+// parseConfig/validate tests cover).
+func TestParseConfig_RejectsMalformedJSON(t *testing.T) {
+	_, err := parseConfig([]byte(`{not valid json`))
+	assert.ErrorContains(t, err, "parsing config")
+}
+
+// TestParseConfig_RejectsUnknownWeightFacet proves flatten's own
+// switch-default error path for a weights[].facet typo.
+func TestParseConfig_RejectsUnknownWeightFacet(t *testing.T) {
+	raw := []byte(`{
+		"weights": [
+			{"facet":"typo","weight":100}
+		],
+		"thresholds": {"moss_min":70,"chanterelle_min":40},
+		"closeness_tiers": {},
+		"tier_definitions": {},
+		"unknown_closeness": {"weight":50,"default_interval_days":90},
+		"recency": {"no_interaction_value":45,"overdue_ratio_cap":2},
+		"frequency": {"window_days":180},
+		"closeness": {"hop_base_weight":60,"hop_decay_per_hop":15,"hop_floor":20},
+		"reach_out": {"pending_value":30},
+		"last_updated": {"window_days":180,"floor":30}
+	}`)
+	_, err := parseConfig(raw)
+	assert.ErrorContains(t, err, "unknown weight facet")
+}
+
+// TestParseConfig_PropagatesValidateError proves parseConfig's own
+// validate() error-propagation branch: a doc that parses and flattens fine
+// but fails a validate() range check (weights summing to 90, not 100) must
+// surface that error through parseConfig, not just through calling
+// validate() directly (scoring_test.go's other tests all do that).
+func TestParseConfig_PropagatesValidateError(t *testing.T) {
+	raw := []byte(`{
+		"weights": [
+			{"facet":"recency","weight":90},
+			{"facet":"frequency","weight":0},
+			{"facet":"closeness","weight":0},
+			{"facet":"reach_out","weight":0},
+			{"facet":"last_updated","weight":0}
+		],
+		"thresholds": {"moss_min":70,"chanterelle_min":40},
+		"closeness_tiers": {},
+		"tier_definitions": {},
+		"unknown_closeness": {"weight":50,"default_interval_days":90},
+		"recency": {"no_interaction_value":45,"overdue_ratio_cap":2},
+		"frequency": {"window_days":180},
+		"closeness": {"hop_base_weight":60,"hop_decay_per_hop":15,"hop_floor":20},
+		"reach_out": {"pending_value":30},
+		"last_updated": {"window_days":180,"floor":30}
+	}`)
+	_, err := parseConfig(raw)
+	assert.ErrorContains(t, err, "must sum to 100")
 }
 
 // defaultConfigForTest returns the real committed config — the facet-math

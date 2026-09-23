@@ -8,6 +8,7 @@ import (
 	"mycorrhizal/internal/scoring"
 	"mycorrhizal/models"
 
+	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -315,4 +316,164 @@ func TestComputeContactScore_FrequencyWindowBoundary(t *testing.T) {
 	// Only the in-window interaction should count.
 	expectedRatio := 1.0 / (float64(cfg.FrequencyWindowDays) / float64(cfg.UnknownClosenessIntervalDays))
 	assert.InDelta(t, 100*expectedRatio, result.Frequency.Value, 1.0)
+}
+
+// TestComputeContactScore_DirectEdgeReversedDirectionStillResolves proves
+// directRelationTypesByEntityID's "other" resolution works when the edge
+// points AT the self-contact (contact -> self) rather than away from it
+// (self -> contact) -- every other test in this file only exercises the
+// self-as-source direction.
+func TestComputeContactScore_DirectEdgeReversedDirectionStillResolves(t *testing.T) {
+	db := setupContactScoreTestDB(t)
+	user := createScoreTestUser(t, db, "score-reverseedge")
+	self := createScoreTestContact(t, db, user.ID, "Self")
+	parent := createScoreTestContact(t, db, user.ID, "Parent")
+	setSelfContact(t, db, user.ID, self.VCardUID)
+	// parent -> self (child_of), the reverse of every other test's
+	// self -> contact direction.
+	createScoreTestEdge(t, db, user.ID, parent.VCardUID, self.VCardUID, "parent_of", models.RelationshipSensitivityNormal)
+
+	cfg, err := scoring.LoadConfig()
+	require.NoError(t, err)
+
+	result, err := ComputeContactScore(db, user.ID, &parent, time.Now())
+	require.NoError(t, err)
+	assert.Equal(t, cfg.RelationCloseness["parent_of"].Weight, result.Closeness.Value)
+}
+
+func TestDaysBetween(t *testing.T) {
+	now := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
+
+	t.Run("positive gap", func(t *testing.T) {
+		assert.Equal(t, 10, daysBetween(now.AddDate(0, 0, -10), now))
+	})
+
+	t.Run("zero gap", func(t *testing.T) {
+		assert.Equal(t, 0, daysBetween(now, now))
+	})
+
+	t.Run("future t clamps to zero, never negative", func(t *testing.T) {
+		// t in the future shouldn't happen from real data (see daysBetween's
+		// own doc comment), but must not return a negative day count if it
+		// somehow does.
+		assert.Equal(t, 0, daysBetween(now.AddDate(0, 0, 5), now))
+	})
+}
+
+// --- Error-path coverage: each bulk query's failure must be reported, not
+// silently swallowed. Each test uses a minimal AutoMigrate schema with
+// exactly the table the target step needs missing, so every EARLIER step in
+// computeContactScores's sequence still succeeds and the failure is
+// isolated to the one query under test.
+//
+// Three branches are deliberately left uncovered, consistent with this
+// codebase's existing tolerance for a genuinely unhittable/indistinguishable
+// error path (e.g. GetContactBriefing's own compose-error branch has the
+// same gap):
+//   - scoring.LoadConfig() failing inside computeContactScores: the embedded
+//     testdata/weights.json is validated to 100% coverage on its own
+//     (internal/scoring's tests) and can't be made to fail at runtime
+//     without corrupting the embed itself.
+//   - qualifyingInteractionCountsByEntityID's query failure: it queries the
+//     exact same activities/activity_contacts/contacts join
+//     lastQualifyingInteractionByEntityID already does, so by the time this
+//     step runs, that table is already proven to exist — there is no
+//     schema-only way to fail this query without also failing the one
+//     immediately before it.
+//   - structuralHopsByEntityID's query failure (TraverseGraph's own raw
+//     SQL): tried anticipating this would surface CLAUDE.md backend trap 1
+//     (TraverseGraph's `INDEXED BY idx_relationship_edges_source_id` hint
+//     only exists in the hand-written migration, never in RelationshipEdge's
+//     GORM tags, so an AutoMigrate-derived schema has no such index) — but
+//     glebarez/sqlite (this test suite's pure-Go driver) does not error on a
+//     missing INDEXED BY target the way the production driver's real SQLite
+//     does, so this can't be triggered from a unit test with this driver.
+
+func TestComputeAllContactScores_ContactsQueryFails(t *testing.T) {
+	db := setupContactScoreTestDB(t)
+	user := createScoreTestUser(t, db, "score-contactsfail")
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	_, err = ComputeAllContactScores(db, user.ID, time.Now())
+	assert.ErrorContains(t, err, "loading contacts")
+}
+
+func TestComputeContactScores_CadencePoliciesQueryFails(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Contact{}))
+
+	user := createScoreTestUser(t, db, "score-cadencefail")
+	contact := createScoreTestContact(t, db, user.ID, "Alice")
+
+	_, err = ComputeContactScore(db, user.ID, &contact, time.Now())
+	assert.ErrorContains(t, err, "loading cadence policies")
+}
+
+func TestComputeContactScores_LastInteractionQueryFails(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Contact{}, &models.CadencePolicy{}))
+	// Contact's own `Activities []Activity` many2many tag makes AutoMigrate
+	// create "activities"/"activity_contacts" implicitly even though
+	// models.Activity was never listed above -- drop it explicitly so this
+	// step's query is the one that actually fails, not silently succeeds
+	// against a table AutoMigrate created as a side effect.
+	require.NoError(t, db.Migrator().DropTable("activities"))
+
+	user := createScoreTestUser(t, db, "score-lastintfail")
+	contact := createScoreTestContact(t, db, user.ID, "Alice")
+
+	_, err = ComputeContactScore(db, user.ID, &contact, time.Now())
+	assert.ErrorContains(t, err, "loading last qualifying interactions")
+}
+
+func TestComputeContactScores_SelfContactQueryFails(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	// No models.User table at all -- selfContactVCardUID's query against
+	// "users" is the first thing this schema can't answer. SQLite enforces
+	// no FK constraint here, so a Contact can still reference a user ID with
+	// no real row.
+	require.NoError(t, db.AutoMigrate(&models.Contact{}, &models.CadencePolicy{}, &models.Activity{}))
+
+	contact := createScoreTestContact(t, db, 1, "Alice")
+
+	_, err = ComputeContactScore(db, 1, &contact, time.Now())
+	assert.ErrorContains(t, err, "loading self-contact")
+}
+
+func TestComputeContactScores_DirectRelationTypesQueryFails(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	// No models.RelationshipEdge table -- reached only when a self-contact
+	// is actually set (the `if selfContactUID != ""` guard), so User must be
+	// present and populated.
+	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Contact{}, &models.CadencePolicy{}, &models.Activity{}))
+
+	user := createScoreTestUser(t, db, "score-directrelfail")
+	self := createScoreTestContact(t, db, user.ID, "Self")
+	contact := createScoreTestContact(t, db, user.ID, "Alice")
+	setSelfContact(t, db, user.ID, self.VCardUID)
+
+	_, err = ComputeContactScore(db, user.ID, &contact, time.Now())
+	assert.ErrorContains(t, err, "loading direct relationship edges")
+}
+
+func TestComputeContactScores_PendingReachOutQueryFails(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	// No self-contact set (steps 7/8 are skipped via the `if selfContactUID
+	// != ""` guard), so RelationshipEdge doesn't need to exist here -- only
+	// models.ReachOutSuggestion is deliberately missing.
+	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Contact{}, &models.CadencePolicy{}, &models.Activity{}))
+
+	user := createScoreTestUser(t, db, "score-reachoutfail")
+	contact := createScoreTestContact(t, db, user.ID, "Alice")
+
+	_, err = ComputeContactScore(db, user.ID, &contact, time.Now())
+	assert.ErrorContains(t, err, "loading pending reach-out suggestions")
 }

@@ -264,3 +264,40 @@ func TestGetGraph_Unauthorized(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
+
+// TestGetGraph_ScoringFailureDegradesGracefully proves issue #383's
+// documented degradation: a scoring failure must not 500 the whole graph,
+// only omit the health_score/health_band decoration. Simulated by migrating
+// a schema that has every table GetGraph itself queries directly (contacts,
+// relationship_edges, activities) but is missing cadence_policies, the first
+// table services.ComputeAllContactScores queries internally.
+func TestGetGraph_ScoringFailureDegradesGracefully(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Contact{}, &models.RelationshipEdge{}, &models.Activity{}))
+
+	user := models.User{Username: "scorefail", Password: "x", Email: "scorefail@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	contact := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", user.ID)
+		c.Next()
+	})
+	router.GET("/graph", GetGraph)
+
+	req, _ := http.NewRequest("GET", "/graph", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var resp models.GraphResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Len(t, resp.Nodes, 1)
+	assert.Nil(t, resp.Nodes[0].HealthScore)
+	assert.Empty(t, resp.Nodes[0].HealthBand)
+}
