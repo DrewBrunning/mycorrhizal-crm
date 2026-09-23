@@ -44,6 +44,7 @@
     "activities": "Aktivitäten",
     "notes": "Notizen",
     "network": "Netzwerk",
+    "occasions": "Anlässe",
     "households": "Haushalte",
     "circlesTags": "Kreise & Tags",
     "profile": "Einstellungen",
@@ -2148,6 +2149,94 @@
       "saveFailed": "Geschenk konnte nicht gespeichert werden."
     },
     "statusLabel": "Status"
+  },
+  "occasions": {
+    "widget": {
+      "title": "Anstehende Anlässe",
+      "windowLabel": "Zeitraum",
+      "days30": "30 Tage",
+      "days90": "90 Tage",
+      "empty": "Keine anstehenden Anlässe in diesem Zeitraum.",
+      "today": "Heute",
+      "inDays_one": "in {{count}} Tag",
+      "inDays_other": "in {{count}} Tagen"
+    },
+    "sources": {
+      "birthday": "Geburtstag",
+      "anniversary": "Jahrestag",
+      "life_event": "Lebensereignis",
+      "obligation": "Verpflichtung"
+    },
+    "kinds": {
+      "card": "Karte",
+      "gift": "Geschenk",
+      "invite": "Einladung"
+    },
+    "months": {
+      "1": "Januar",
+      "2": "Februar",
+      "3": "März",
+      "4": "April",
+      "5": "Mai",
+      "6": "Juni",
+      "7": "Juli",
+      "8": "August",
+      "9": "September",
+      "10": "Oktober",
+      "11": "November",
+      "12": "Dezember"
+    },
+    "obligation": {
+      "title": "Anlässe",
+      "add": "Anlass hinzufügen",
+      "createTitle": "Anlass hinzufügen",
+      "editTitle": "Anlass bearbeiten",
+      "kind": "Art",
+      "kindHint": "Karte, Geschenk, Einladung oder eigene Bezeichnung",
+      "label": "Bezeichnung",
+      "labelHint": "z. B. „Weihnachtskarte“, „Geburtstagsgeschenk“",
+      "anchorMonth": "Monat",
+      "anchorDay": "Tag",
+      "anchorDateUnset": "Nicht festgelegt",
+      "leadTimeDays": "Vorlaufzeit (Tage)",
+      "leadTimeDaysHint": "Wie viele Tage vorher erinnert werden soll, z. B. 14 für „Geschenk zwei Wochen vorher“",
+      "leadTimeDisplay_one": "{{count}} Tag Vorlauf",
+      "leadTimeDisplay_other": "{{count}} Tage Vorlauf",
+      "active": "Aktiv",
+      "inactive": "Inaktiv",
+      "sensitivity": "Vertraulichkeit",
+      "sensitivities": {
+        "normal": "Normal",
+        "private": "Privat",
+        "secret": "Geheim"
+      },
+      "notes": "Notizen",
+      "deleteMessage": "Diesen Anlass löschen?",
+      "empty": "Noch keine festen Anlässe. Fügen Sie einen für eine wiederkehrende Karte, ein Geschenk oder eine Einladung hinzu.",
+      "validation": {
+        "labelRequired": "Geben Sie eine Bezeichnung für diesen Anlass ein.",
+        "anchorBothOrNeither": "Legen Sie entweder Monat und Tag fest oder lassen Sie beides leer.",
+        "invalidLeadTime": "Geben Sie eine gültige Anzahl an Vorlauftagen ein.",
+        "saveFailed": "Anlass konnte nicht gespeichert werden."
+      }
+    },
+    "cardList": {
+      "title": "Kartenliste",
+      "description": "Laden Sie eine CSV-Datei mit Namen und Adressen aller Empfänger Ihrer Feiertagskarten herunter.",
+      "download": "CSV herunterladen",
+      "downloadFailed": "Die Kartenliste konnte nicht heruntergeladen werden."
+    },
+    "giftShoppingList": {
+      "title": "Geschenkeliste",
+      "empty": "In diesem Zeitraum werden keine Geschenke benötigt.",
+      "status": {
+        "needed": "Benötigt",
+        "idea": "Idee",
+        "purchased": "Gekauft",
+        "given": "Übergeben",
+        "received": "Erhalten"
+      }
+    }
   },
   "prep": {
     "title": "Briefing",

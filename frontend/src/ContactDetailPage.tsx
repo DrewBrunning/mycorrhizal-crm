@@ -69,6 +69,7 @@ import {
   type WebDAVItem,
 } from './api/nextcloud';
 import { getContactNotes, type Note } from './api/notes';
+import type { OccasionObligation } from './api/occasionObligations';
 import {
   getPaperlessConfig,
   getPaperlessDocuments,
@@ -122,6 +123,11 @@ import LifeEventList from './components/LifeEventList';
 import { ContactDetailHeaderSkeleton, TimelineSkeleton } from './components/LoadingSkeletons';
 import MarkDiscussedDialog from './components/MarkDiscussedDialog';
 import MergeContactsDialog from './components/MergeContactsDialog';
+import OccasionObligationDialog, {
+  type OccasionObligationFormData,
+  toOccasionObligationInput,
+} from './components/OccasionObligationDialog';
+import OccasionObligationList from './components/OccasionObligationList';
 import PreferenceDialog, {
   type PreferenceFormData,
   toPreferenceInput,
@@ -147,6 +153,7 @@ import { useExternalLinks } from './hooks/useExternalLinks';
 import { useContactFieldValues, useFieldDefinitions } from './hooks/useFieldDefinitions';
 import { useGifts } from './hooks/useGifts';
 import { useLifeEvents } from './hooks/useLifeEvents';
+import { useOccasionObligations } from './hooks/useOccasionObligations';
 import { usePreferences } from './hooks/usePreferences';
 import { useRelationshipEdges } from './hooks/useRelationshipEdges';
 import { useReminderManagement } from './hooks/useReminderManagement';
@@ -652,6 +659,14 @@ export default function ContactDetailPage() {
     handleDelete: handleDeleteGift,
   } = useGifts(record?.uid);
 
+  // Occasions (ADR 0024, issue #387): the standing card/gift/invite
+  // obligation registry.
+  const {
+    obligations: occasionObligations,
+    handleSave: handleSaveOccasionObligation,
+    handleDelete: handleDeleteOccasionObligationApi,
+  } = useOccasionObligations(record?.uid, { showError });
+
   // External links substrate (T14): this contact's ExternalIdentities and
   // ExternalActivities (enrichment events that land on the timeline).
   const {
@@ -923,6 +938,34 @@ export default function ContactDetailPage() {
     if (!window.confirm(t('preference.deleteMessage'))) return;
     await handleDeletePreference(id);
   };
+
+  // Occasions (ADR 0024, issue #387): mirrors the Preference dialog's exact
+  // create/edit state shape. Delete's own confirm() lives inside
+  // OccasionObligationList (matching GiftList's own delete-confirm pattern),
+  // so this is a direct passthrough, not a second confirm.
+  const [occasionObligationDialogOpen, setOccasionObligationDialogOpen] = useState(false);
+  const [editingOccasionObligation, setEditingOccasionObligation] =
+    useState<OccasionObligation | null>(null);
+
+  const handleAddOccasionObligation = () => {
+    setEditingOccasionObligation(null);
+    setOccasionObligationDialogOpen(true);
+  };
+
+  const handleEditOccasionObligation = (obligation: OccasionObligation) => {
+    setEditingOccasionObligation(obligation);
+    setOccasionObligationDialogOpen(true);
+  };
+
+  const handleSaveOccasionObligationSubmit = async (data: OccasionObligationFormData) => {
+    if (!record?.uid) return;
+    await handleSaveOccasionObligation(
+      editingOccasionObligation,
+      toOccasionObligationInput(record.uid, data),
+    );
+  };
+
+  const handleDeleteOccasionObligation = handleDeleteOccasionObligationApi;
 
   // Gift-shopping-relevant preferences (jewelry/flowers/color/fragrance/
   // cause/gift-avoid) get their own dialog instance in the Gifts tab,
@@ -1763,6 +1806,7 @@ export default function ContactDetailPage() {
           { id: 'timeline', label: t('contactDetail.timeline') },
           { id: 'cadence', label: t('contactDetail.section.cadence') },
           { id: 'gifts', label: t('gifts.title') },
+          { id: 'occasions', label: t('occasions.obligation.title') },
           { id: 'external-links', label: t('externalLinks.title') },
           { id: 'attachments', label: t('attachments.title') },
         ]}
@@ -2041,6 +2085,28 @@ export default function ContactDetailPage() {
         </PanelCard>
       </SectionGroup>
 
+      {/* Occasions (ADR 0024, issue #387): the standing card/gift/invite
+          obligation registry for this contact. */}
+      <SectionGroup id="occasions">
+        <PanelCard title={t('occasions.obligation.title')}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+            <Button
+              startIcon={<AddIcon />}
+              onClick={handleAddOccasionObligation}
+              variant="outlined"
+              size="small"
+            >
+              {t('occasions.obligation.add')}
+            </Button>
+          </Box>
+          <OccasionObligationList
+            obligations={occasionObligations}
+            onEdit={handleEditOccasionObligation}
+            onDelete={handleDeleteOccasionObligation}
+          />
+        </PanelCard>
+      </SectionGroup>
+
       {/* External links — Immich + other ExternalIdentity panels */}
       <SectionGroup id="external-links">
         <PanelCard title={t('externalLinks.title')}>
@@ -2197,6 +2263,16 @@ export default function ContactDetailPage() {
         onSave={handleSaveGiftPreferenceSubmit}
         preference={editingGiftPreference}
         sections={GIFTS_TAB_SECTIONS}
+      />
+
+      <OccasionObligationDialog
+        open={occasionObligationDialogOpen}
+        onClose={() => {
+          setOccasionObligationDialogOpen(false);
+          setEditingOccasionObligation(null);
+        }}
+        onSave={handleSaveOccasionObligationSubmit}
+        obligation={editingOccasionObligation}
       />
 
       <CadenceDialog
