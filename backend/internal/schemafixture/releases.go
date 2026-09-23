@@ -49,6 +49,7 @@ type Release struct {
 // docker-publish.yml release gate both fail until the dump exists.
 var SupportedReleases = []Release{
 	{Tag: "v1.0.0", Version: 57},
+	{Tag: "v1.1.0", Version: 57},
 }
 
 // DumpFile returns the committed schema-dump filename for a release, e.g.
