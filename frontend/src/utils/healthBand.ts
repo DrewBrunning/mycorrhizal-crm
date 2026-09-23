@@ -2,7 +2,12 @@
 // ADR-0023). NetworkGraph.tsx, NetworkListView.tsx, and ContactHeader.tsx all
 // consume this instead of each reinventing the moss/chanterelle/russula
 // mapping.
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
+import WarningIcon from '@mui/icons-material/Warning';
+import type { SvgIconProps } from '@mui/material';
 import type { Theme } from '@mui/material/styles';
+import type { ComponentType } from 'react';
 
 // Mirrors backend/models/contact_score.go's ContactScoreResponse.Band values.
 export type HealthBand = 'moss' | 'chanterelle' | 'russula';
@@ -40,6 +45,26 @@ export function healthBandChipColor(band: string | undefined): HealthBandChipCol
       return 'warning';
     case 'russula':
       return 'error';
+    default:
+      return undefined;
+  }
+}
+
+// A distinct icon SHAPE per band, not just a color -- matches
+// CadencePanel.tsx's existing convention (CheckCircleIcon/WarningIcon for
+// its own on-track/overdue readout) for exactly the same reason NetworkListView
+// pairs its dot with a text label: color alone can't carry status for a
+// colorblind sighted user, but a differently-shaped icon can, independent of
+// hue. Used for the compact space-constrained presentation (ContactHeader's
+// narrow layout) in place of the full-text Chip the wide layout has room for.
+export function healthBandIcon(band: string | undefined): ComponentType<SvgIconProps> | undefined {
+  switch (band) {
+    case 'moss':
+      return CheckCircleIcon;
+    case 'chanterelle':
+      return WarningIcon;
+    case 'russula':
+      return ErrorIcon;
     default:
       return undefined;
   }

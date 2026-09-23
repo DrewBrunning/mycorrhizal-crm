@@ -438,12 +438,18 @@ test('wide layout: shows a "Neglected" badge for the russula band', () => {
   expect(screen.getByText('Neglected')).toBeInTheDocument();
 });
 
-test('compact layout: also shows the health badge next to the name', () => {
+test('compact layout: also shows the health badge next to the name, as an icon with an accessible name', () => {
   mockMatchMedia(true);
   mockScore(scoreFixture('moss'));
   renderHeader();
 
-  expect(screen.getByText('Healthy')).toBeInTheDocument();
+  // Issue #383: the compact layout renders an icon-only badge (not a text
+  // Chip -- see ContactHeader.tsx's comment for why: a text Chip forces a
+  // header wrap that was measured to break an unrelated a11y test on
+  // narrow viewports), so "Healthy" is only reachable via the button's
+  // accessible name here, never as visible text.
+  expect(screen.getByRole('button', { name: 'Healthy' })).toBeInTheDocument();
+  expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
 });
 
 test('wide layout: clicking the health badge opens a popover with all five facet reasons', async () => {
@@ -468,7 +474,9 @@ test('compact layout: clicking the health badge opens the same popover with all 
   mockScore(scoreFixture('russula'));
   renderHeader();
 
-  fireEvent.click(screen.getByText('Neglected'));
+  // Issue #383: compact layout's badge is icon-only -- click via its
+  // accessible name, not visible text (see the test above).
+  fireEvent.click(screen.getByRole('button', { name: 'Neglected' }));
 
   expect(await screen.findByText('Relationship health breakdown')).toBeInTheDocument();
   expect(screen.getByText('Last qualifying interaction 5 day(s) ago')).toBeInTheDocument();
