@@ -2244,6 +2244,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /contacts/{id}/life-event-suggestions:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: List inferred, unresolved life-event suggestions for a contact
+      operationId: getLifeEventSuggestions
+      description: >
+        ADR 0025 infer-and-suggest: candidate life events derived on read from
+        the contact's dated field periods. Nothing is stored by this call — a
+        candidate is offered, and the user accepts it through the normal
+        POST /life-events route or dismisses it via
+        POST /life-event-suggestions/resolve. A candidate is suppressed when a
+        same-type event already exists on its date or the candidate has been
+        resolved before. Always an array, never null.
+      responses:
+        "200":
+          description: The contact's unresolved suggestions.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggestions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LifeEventSuggestion"
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /contacts/{id}/timeline:
     parameters:
       - name: id
@@ -5408,6 +5450,49 @@ paths:
                 $ref: "#/components/schemas/Error"
         "412":
           description: Stale If-Match revision — the life event was modified since the client last read it; nothing was deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Life-event suggestions (infer-and-suggest, ADR 0025) ---
+  /life-event-suggestions/resolve:
+    post:
+      summary: Resolve an inferred life-event suggestion (accept or dismiss)
+      operationId: resolveLifeEventSuggestion
+      description: >
+        Records the user's terminal decision for one inferred candidate so it
+        is not offered again. It does not create a LifeEvent — accepting is the
+        normal POST /life-events route (which also lets the user change the
+        inferred type). Idempotent: resolving the same candidate twice is a
+        no-op.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LifeEventSuggestionResolutionInput"
+      responses:
+        "200":
+          description: Recorded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The subject contact was not found.
           content:
             application/json:
               schema:
@@ -12327,6 +12412,32 @@ components:
           type: array
           items: { type: string, format: uuid }
         remind: { type: boolean }
+    LifeEventSuggestion:
+      type: object
+      description: >
+        ADR 0025: one inferred, unresolved life-event candidate. Computed on
+        read; not a stored entity. SourceKind/SourceEntryID identify the Card
+        entry the inference came from and are the resolution key, not a live
+        link to an accepted event.
+      properties:
+        entity_id: { type: string, format: uuid }
+        type: { type: string, example: moved }
+        category: { type: string, example: home_living }
+        date:
+          $ref: "#/components/schemas/PartialDate"
+        end_date:
+          $ref: "#/components/schemas/PartialDate"
+        source_kind: { type: string, enum: [address, organization] }
+        source_entry_id: { type: string }
+    LifeEventSuggestionResolutionInput:
+      type: object
+      required: [entity_id, source_kind, source_entry_id, event_type, resolution]
+      properties:
+        entity_id: { type: string, format: uuid }
+        source_kind: { type: string, enum: [address, organization] }
+        source_entry_id: { type: string, maxLength: 255 }
+        event_type: { type: string, maxLength: 100 }
+        resolution: { type: string, enum: [accepted, dismissed] }
 
     # --- Link field types (T34) ---
     LinkFieldType:

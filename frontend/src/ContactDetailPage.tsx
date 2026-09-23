@@ -119,6 +119,7 @@ import GiftDialog, { type GiftFormData } from './components/GiftDialog';
 import GiftList from './components/GiftList';
 import LifeEventDialog, { type LifeEventFormData } from './components/LifeEventDialog';
 import LifeEventList from './components/LifeEventList';
+import LifeEventSuggestions from './components/LifeEventSuggestions';
 import { ContactDetailHeaderSkeleton, TimelineSkeleton } from './components/LoadingSkeletons';
 import MarkDiscussedDialog from './components/MarkDiscussedDialog';
 import MergeContactsDialog from './components/MergeContactsDialog';
@@ -1934,6 +1935,9 @@ export default function ContactDetailPage() {
             </Button>
           }
         >
+          {id && record?.uid && (
+            <LifeEventSuggestions contactId={id} onAccepted={() => refreshLifeEvents()} />
+          )}
           <LifeEventList
             events={lifeEvents}
             contactsByUid={lifeEventsContactsByUid || new Map()}

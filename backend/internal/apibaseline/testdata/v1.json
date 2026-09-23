@@ -2994,6 +2994,31 @@
     },
     {
       "method": "GET",
+      "path": "/contacts/{id}/life-event-suggestions",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/contacts/{id}/notes",
       "parameters": [
         {
@@ -4765,6 +4790,30 @@
         },
         {
           "status": "503",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/life-event-suggestions/resolve",
+      "parameters": null,
+      "request_body": "ref:LifeEventSuggestionResolutionInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MessageResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
           "schema": "ref:Error"
         }
       ]
@@ -13259,6 +13308,88 @@
           "name": "type",
           "type": "string",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "LifeEventSuggestion",
+      "properties": [
+        {
+          "name": "category",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "date",
+          "type": "ref:PartialDate",
+          "required": false
+        },
+        {
+          "name": "end_date",
+          "type": "ref:PartialDate",
+          "required": false
+        },
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "source_entry_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "source_kind",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "address",
+            "organization"
+          ]
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "LifeEventSuggestionResolutionInput",
+      "properties": [
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "event_type",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "resolution",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "accepted",
+            "dismissed"
+          ]
+        },
+        {
+          "name": "source_entry_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "source_kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "address",
+            "organization"
+          ]
         }
       ]
     },

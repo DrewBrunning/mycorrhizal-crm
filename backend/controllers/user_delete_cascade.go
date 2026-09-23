@@ -193,6 +193,11 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
 
+	// Delete life-event-suggestion resolution memory (ADR 0023, hard)
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.LifeEventSuggestionResolution{}).Error; err != nil {
+		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+	}
+
 	// Delete preferences (hard)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Preference{}).Error; err != nil {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment

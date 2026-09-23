@@ -803,6 +803,12 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.LifeEvent{}).Error; err != nil {
 		return err
 	}
+	// Delete this contact's life-event-suggestion resolution memory (ADR 0023 —
+	// system-generated, join-shaped, hard delete; there is no candidate to
+	// remember a decision about once the contact is gone).
+	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.LifeEventSuggestionResolution{}).Error; err != nil {
+		return err
+	}
 	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.Preference{}).Error; err != nil {
 		return err
 	}

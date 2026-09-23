@@ -41,6 +41,7 @@ unleash:
         - ^integrity_controller\.go$
         - ^job_run_controller\.go$
         - ^life_event_controller\.go$
+        - ^life_event_suggestion_controller\.go$
         - ^link_field_type_controller\.go$
         - ^meerkat_import_controller\.go$
         - ^metrics_controller\.go$

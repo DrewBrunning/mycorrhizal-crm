@@ -694,6 +694,12 @@
     "endDateYear": "End year",
     "endDateMonth": "End month",
     "endDateDay": "End day",
+    "suggestions": {
+      "title": "Suggested life events",
+      "prompt": "You recorded a period — add a \"{{event}}\" event for {{when}}?",
+      "add": "Add",
+      "dismiss": "Dismiss"
+    },
     "description": "Description",
     "relatedEntities": "Related to",
     "searchContacts": "Search contacts…",

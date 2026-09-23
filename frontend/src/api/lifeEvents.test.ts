@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   createLifeEvent,
   deleteLifeEvent,
+  getLifeEventSuggestions,
   getLifeEvents,
   isKnownLifeEventCategory,
   LIFE_EVENT_CATEGORIES,
@@ -10,6 +11,7 @@ import {
   partialDateHasMonthDay,
   partialDateIsYearOnly,
   partialDateRangeDisplay,
+  resolveLifeEventSuggestion,
   updateLifeEvent,
 } from './lifeEvents';
 
@@ -271,5 +273,72 @@ describe('life event constants', () => {
     expect(LIFE_EVENT_TYPES_BY_CATEGORY.work_education).toContain('job_change');
     expect(LIFE_EVENT_TYPES_BY_CATEGORY.home_living).toContain('moved');
     expect(LIFE_EVENT_TYPES_BY_CATEGORY.family_relationships).toContain('married');
+  });
+});
+
+describe('getLifeEventSuggestions', () => {
+  test('GETs the contact suggestions and returns the array', async () => {
+    const suggestion = {
+      entity_id: 'contact-1',
+      type: 'moved',
+      category: 'home_living',
+      date: { year: 2019 },
+      end_date: { year: 2024 },
+      source_kind: 'address',
+      source_entry_id: 'addr-1',
+    };
+    const fetchMock = vi.fn().mockResolvedValueOnce(okResponse({ suggestions: [suggestion] }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getLifeEventSuggestions(7);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/contacts/7/life-event-suggestions');
+    expect(init.method).toBeUndefined();
+    expect(result).toEqual([suggestion]);
+  });
+
+  test('returns an empty array when the wire omits suggestions', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(okResponse({})));
+    expect(await getLifeEventSuggestions(7)).toEqual([]);
+  });
+
+  test('throws an ApiError when the response is not ok', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
+    await expect(getLifeEventSuggestions(7)).rejects.toMatchObject({ status: 400 });
+  });
+});
+
+describe('resolveLifeEventSuggestion', () => {
+  test('POSTs the resolution tuple', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(okResponse({ message: 'ok' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const input = {
+      entity_id: 'contact-1',
+      source_kind: 'address',
+      source_entry_id: 'addr-1',
+      event_type: 'moved',
+      resolution: 'dismissed' as const,
+    };
+    await resolveLifeEventSuggestion(input);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/life-event-suggestions/resolve');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual(input);
+  });
+
+  test('throws an ApiError when the response is not ok', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
+    await expect(
+      resolveLifeEventSuggestion({
+        entity_id: 'c',
+        source_kind: 'address',
+        source_entry_id: 'a',
+        event_type: 'moved',
+        resolution: 'accepted',
+      }),
+    ).rejects.toMatchObject({ status: 400 });
   });
 });

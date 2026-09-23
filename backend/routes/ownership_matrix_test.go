@@ -432,6 +432,13 @@ func buildBodyOwnershipTable(fx ownFixtures) map[string]ownRow {
 				},
 				h.fx.ownerC1UID, h.fx.victimC1UID, ownNonexistentUID, http.StatusNotFound, false)
 		}),
+		"LifeEventSuggestionResolutionInput.EntityID": dto(func(t *testing.T, h *ownHarness) {
+			h.assertMasked(http.MethodPost, "/api/v1/life-event-suggestions/resolve",
+				func(uid string) string {
+					return fmt.Sprintf(`{"entity_id":%s,"source_kind":"address","source_entry_id":"a1","event_type":"moved","resolution":"dismissed"}`, jstr(uid))
+				},
+				h.fx.ownerC1UID, h.fx.victimC1UID, ownNonexistentUID, http.StatusNotFound, false)
+		}),
 		"ConversationAgendaInput.EntityID": dto(func(t *testing.T, h *ownHarness) {
 			h.assertMasked(http.MethodPost, "/api/v1/conversation-agenda",
 				func(uid string) string {

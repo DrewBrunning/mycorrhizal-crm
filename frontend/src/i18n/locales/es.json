@@ -694,6 +694,12 @@
     "endDateYear": "Año de fin",
     "endDateMonth": "Mes de fin",
     "endDateDay": "Día de fin",
+    "suggestions": {
+      "title": "Eventos de vida sugeridos",
+      "prompt": "Registraste un período: ¿añadir un evento «{{event}}» para {{when}}?",
+      "add": "Añadir",
+      "dismiss": "Descartar"
+    },
     "description": "Descripción",
     "relatedEntities": "Relacionado con",
     "searchContacts": "Buscar contactos…",

@@ -183,6 +183,49 @@ export async function deleteLifeEvent(id: string): Promise<void> {
   if (!response.ok) throw await parseErrorResponse(response);
 }
 
+// ADR 0025 infer-and-suggest: an inferred, unresolved candidate life event.
+// Computed on read; not a stored entity. source_kind/source_entry_id identify
+// the card entry the inference came from and are the resolution key.
+export interface LifeEventSuggestion {
+  entity_id: string;
+  type: string;
+  category?: string;
+  date?: PartialDate;
+  end_date?: PartialDate;
+  source_kind: string;
+  source_entry_id: string;
+}
+
+export interface LifeEventSuggestionResolutionInput {
+  entity_id: string;
+  source_kind: string;
+  source_entry_id: string;
+  event_type: string;
+  resolution: 'accepted' | 'dismissed';
+}
+
+export async function getLifeEventSuggestions(
+  contactId: string | number,
+): Promise<LifeEventSuggestion[]> {
+  const response = await apiFetch(`${API_BASE_URL}/contacts/${contactId}/life-event-suggestions`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  const data: { suggestions?: LifeEventSuggestion[] } = await response.json();
+  return data.suggestions ?? [];
+}
+
+export async function resolveLifeEventSuggestion(
+  input: LifeEventSuggestionResolutionInput,
+): Promise<void> {
+  const response = await apiFetch(`${API_BASE_URL}/life-event-suggestions/resolve`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+}
+
 export function partialDateDisplay(date?: PartialDate): string {
   if (!date) return '';
   const y = date.year != null ? String(date.year) : '';
