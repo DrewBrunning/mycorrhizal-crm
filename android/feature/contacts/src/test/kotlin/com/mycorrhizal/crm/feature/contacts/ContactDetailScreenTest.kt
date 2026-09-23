@@ -27,6 +27,8 @@ import com.mycorrhizal.crm.model.network.Anniversary
 import com.mycorrhizal.crm.model.network.AnniversaryDate
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.ContactScoreFacet
+import com.mycorrhizal.crm.model.network.ContactScoreResponse
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
@@ -170,6 +172,120 @@ class ContactDetailScreenTest {
             }
         }
         composeTestRule.onNodeWithTag("you-badge").assertDoesNotExist()
+    }
+
+    // --- Issue #383 (ADR-0023): relationship health score badge -------------
+
+    private fun scoreOf(band: String) = ContactScoreResponse(
+        contactId = 5,
+        score = 72,
+        band = band,
+        recency = ContactScoreFacet(value = 80.0, weight = 35.0, reason = "Last seen 5 days ago"),
+        frequency = ContactScoreFacet(value = 60.0, weight = 20.0, reason = "Some cadence"),
+        closeness = ContactScoreFacet(value = 85.0, weight = 20.0, reason = "Close relation"),
+        reachOut = ContactScoreFacet(value = 100.0, weight = 15.0, reason = "No pending reach-out"),
+        lastUpdated = ContactScoreFacet(value = 90.0, weight = 10.0, reason = "Updated recently"),
+    )
+
+    @Test
+    fun `health score badge is absent when score is null`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
+                    score = null,
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("health-score-badge").assertDoesNotExist()
+    }
+
+    @Test
+    fun `health score badge renders with the score and a word-based band description`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
+                    score = scoreOf("moss"),
+                )
+            }
+        }
+        // The band's meaning must be spelled out in words (never color alone)
+        // for TalkBack — see HealthScoreBadge's doc comment.
+        composeTestRule.onNodeWithTag("health-score-badge").assertIsDisplayed()
+        composeTestRule
+            .onNodeWithContentDescription("Relationship health score 72 out of 100: Healthy")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `chanterelle and russula bands each get their own word-based description`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
+                    score = scoreOf("chanterelle"),
+                )
+            }
+        }
+        composeTestRule
+            .onNodeWithContentDescription("Relationship health score 72 out of 100: Needs attention")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `russula band gets its own word-based description`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
+                    score = scoreOf("russula"),
+                )
+            }
+        }
+        composeTestRule
+            .onNodeWithContentDescription("Relationship health score 72 out of 100: At risk")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `tapping the health score badge opens the facet breakdown dialog`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
+                    score = scoreOf("moss"),
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("health-score-badge").performClick()
+
+        composeTestRule.onNodeWithText("Relationship health").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Last seen 5 days ago").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Some cadence").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Close relation").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No pending reach-out").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Updated recently").assertIsDisplayed()
+    }
+
+    @Test
+    fun `closing the facet breakdown dialog dismisses it`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White"))),
+                    score = scoreOf("moss"),
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("health-score-badge").performClick()
+        composeTestRule.onNodeWithText("Relationship health").assertIsDisplayed()
+
+        composeTestRule.onNodeWithText("Close").performClick()
+
+        composeTestRule.onNodeWithText("Relationship health").assertDoesNotExist()
     }
 
     @Test

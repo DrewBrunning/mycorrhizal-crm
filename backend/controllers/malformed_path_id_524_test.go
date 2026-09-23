@@ -40,6 +40,7 @@ func TestMalformedPathID_Returns400NotServerError(t *testing.T) {
 	router.GET("/contacts/:id/briefing", GetContactBriefing)
 	router.GET("/contacts/:id/detail", GetContactDetail)
 	router.GET("/contacts/:id/timeline", GetContactTimeline)
+	router.GET("/contacts/:id/score", GetContactScore)
 	router.GET("/contacts/:id/field-values", ListContactFieldValues)
 	router.PUT("/contacts/:id/field-values", withValidated(func() any { return &models.ContactFieldValuesInput{} }), ReplaceContactFieldValues)
 
@@ -77,6 +78,7 @@ func TestMalformedPathID_Returns400NotServerError(t *testing.T) {
 		{"GET", "/contacts/not-a-number/briefing", false},
 		{"GET", "/contacts/not-a-number/detail", false},
 		{"GET", "/contacts/not-a-number/timeline", false},
+		{"GET", "/contacts/not-a-number/score", false},
 		{"GET", "/contacts/not-a-number/field-values", false},
 		{"PUT", "/contacts/not-a-number/field-values", true},
 

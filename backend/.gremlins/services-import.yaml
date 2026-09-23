@@ -13,6 +13,7 @@ unleash:
         - ^calendar_sync_service\.go$
         - ^capacity_preflight\.go$
         - ^contact_merge_service\.go$
+        - ^contact_score_service\.go$
         - ^contact_share_purge_service\.go$
         - ^contact_sync_service\.go$
         - ^credential_crypto\.go$

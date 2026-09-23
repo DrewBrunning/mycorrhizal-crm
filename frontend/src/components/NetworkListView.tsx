@@ -6,10 +6,19 @@
 // Renders from the exact same computeFilteredGraphData output NetworkGraph
 // draws from (see networkGraphData.ts), so the list and the graph can never
 // disagree about what's currently visible under the five filters.
-import { Box, List, ListItem, ListItemButton, ListItemText, Typography } from '@mui/material';
+import {
+  Box,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+  Typography,
+  useTheme,
+} from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { RELATIONSHIP_EDGE_TYPES, type RelationshipEdgeType } from '../api/relationshipEdges';
 import type { GraphEdge, GraphNode } from '../types/graph';
+import { healthBandColor } from '../utils/healthBand';
 import { edgeEndpointId } from '../utils/networkGraphData';
 
 interface NetworkListViewProps {
@@ -20,6 +29,7 @@ interface NetworkListViewProps {
 
 export default function NetworkListView({ nodes, links, onContactClick }: NetworkListViewProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
   const nodesById = new Map(nodes.map((n) => [n.id, n]));
   const contactNodes = nodes
     .filter((n) => n.type === 'contact')
@@ -71,6 +81,16 @@ export default function NetworkListView({ nodes, links, onContactClick }: Networ
       <List dense>
         {contactNodes.map((contact) => {
           const descriptions = describeConnections(contact);
+          // Issue #383/ADR-0023: the color dot alone is not an accessible
+          // status indicator (WCAG 1.4.1, Use of Color) -- colorblind users
+          // can't distinguish moss/chanterelle/russula by hue, so every dot
+          // is paired with the same band name as visible text, not just an
+          // aria-label. No band (old cached graph data, or a score that
+          // hasn't been computed) renders neither.
+          const dotColor = healthBandColor(contact.health_band, theme);
+          const bandLabel = contact.health_band
+            ? t(`contactScore.badge.${contact.health_band}`, contact.health_band)
+            : undefined;
           return (
             <ListItem
               key={contact.id}
@@ -80,9 +100,36 @@ export default function NetworkListView({ nodes, links, onContactClick }: Networ
             >
               <ListItemButton
                 onClick={() => onContactClick(contact)}
-                sx={{ display: 'inline-flex', borderRadius: 1, py: 0.25 }}
+                sx={{ display: 'inline-flex', alignItems: 'center', borderRadius: 1, py: 0.25 }}
               >
+                {dotColor && (
+                  // Inline `style` (not sx `bgcolor`) because dotColor is an
+                  // arbitrary computed hex value, not a static theme token --
+                  // this also makes the color directly assertable in tests
+                  // via style.backgroundColor rather than an emotion class.
+                  <Box
+                    component="span"
+                    aria-hidden="true"
+                    style={{ backgroundColor: dotColor }}
+                    sx={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      mr: 0.75,
+                      flexShrink: 0,
+                    }}
+                  />
+                )}
                 <ListItemText primary={contact.label} />
+                {bandLabel && (
+                  <Typography
+                    variant="caption"
+                    component="span"
+                    sx={{ color: 'text.secondary', ml: 0.75 }}
+                  >
+                    ({bandLabel})
+                  </Typography>
+                )}
               </ListItemButton>
               {descriptions.length > 0 && (
                 <Typography

@@ -1624,6 +1624,21 @@
     "panLeft": "Pan left",
     "panRight": "Pan right"
   },
+  "contactScore": {
+    "badge": {
+      "moss": "Healthy",
+      "chanterelle": "Needs Attention",
+      "russula": "Neglected"
+    },
+    "popoverTitle": "Relationship health breakdown",
+    "facets": {
+      "recency": "Recency",
+      "frequency": "Frequency",
+      "closeness": "Closeness",
+      "reachOut": "Reach-out readiness",
+      "lastUpdated": "Profile freshness"
+    }
+  },
   "relationships": {
     "title": "Relationships",
     "addRelationship": "Add Relationship",

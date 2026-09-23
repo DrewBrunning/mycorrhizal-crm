@@ -1,8 +1,9 @@
+import { createTheme } from '@mui/material/styles';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { forwardRef, useImperativeHandle } from 'react';
 import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import type { GraphData } from '../types/graph';
+import type { GraphData, GraphNode } from '../types/graph';
 import { GRAPH_RENDER_NODE_CEILING } from '../utils/graphBudget';
 import NetworkGraph from './NetworkGraph';
 
@@ -20,9 +21,22 @@ const centerAtFn = vi.fn(() => ({ x: 0, y: 0 }));
 const zoomToFitFn = vi.fn();
 const d3ForceFn = vi.fn(() => ({ strength: vi.fn() }));
 
+type NodeCanvasObjectFn = (
+  node: GraphNode,
+  ctx: CanvasRenderingContext2D,
+  globalScale: number,
+) => void;
+
 interface ForceGraphStubProps {
   cooldownTicks?: number;
+  nodeCanvasObject?: NodeCanvasObjectFn;
 }
+
+// Captured on every render so tests can invoke NetworkGraph's real
+// nodeCanvasObject callback directly against a fake canvas context -- the
+// stub itself never draws (jsdom has no real <canvas>), but the callback is
+// plain JS and safe to call standalone (issue #383's node-fill-color logic).
+let capturedNodeCanvasObject: NodeCanvasObjectFn | undefined;
 
 vi.mock('react-force-graph-2d', () => ({
   default: forwardRef<unknown, ForceGraphStubProps>((props, ref) => {
@@ -32,11 +46,38 @@ vi.mock('react-force-graph-2d', () => ({
       zoomToFit: zoomToFitFn,
       d3Force: d3ForceFn,
     }));
+    capturedNodeCanvasObject = props.nodeCanvasObject;
     // Expose cooldownTicks so the reduced-motion tests can assert the graph
     // settles instantly instead of animating (#194, WCAG 2.3.3).
     return <div data-testid="force-graph-stub" data-cooldown-ticks={props.cooldownTicks} />;
   }),
 }));
+
+// A minimal CanvasRenderingContext2D fake that records every fillStyle
+// assignment in order, so a test can inspect the FIRST one (the node-body
+// fill) without the later text-drawing fillStyle overwrites clobbering it.
+function createTrackingCtx() {
+  const fillStyles: string[] = [];
+  const ctx = {
+    beginPath: vi.fn(),
+    arc: vi.fn(),
+    fill: vi.fn(),
+    stroke: vi.fn(),
+    fillText: vi.fn(),
+  } as unknown as CanvasRenderingContext2D;
+  Object.defineProperty(ctx, 'fillStyle', {
+    set: (v: string) => {
+      fillStyles.push(v);
+    },
+    get: () => fillStyles[fillStyles.length - 1],
+  });
+  Object.defineProperty(ctx, 'strokeStyle', { set: () => {}, get: () => '' });
+  Object.defineProperty(ctx, 'lineWidth', { set: () => {}, get: () => 0 });
+  Object.defineProperty(ctx, 'font', { set: () => {}, get: () => '' });
+  Object.defineProperty(ctx, 'textAlign', { set: () => {}, get: () => 'center' });
+  Object.defineProperty(ctx, 'textBaseline', { set: () => {}, get: () => 'middle' });
+  return { ctx, fillStyles };
+}
 
 // MUI's useMediaQuery needs window.matchMedia; jsdom provides none.
 function mockMatchMedia(matches: boolean) {
@@ -217,4 +258,98 @@ test('without the preference the graph still animates (control for #194)', () =>
   } finally {
     vi.useRealTimers();
   }
+});
+
+// --- Issue #383/ADR-0023: relationship health score node coloring ---------
+
+test("colors a contact node's fill by its health_band", () => {
+  mockMatchMedia(false);
+  const theme = createTheme();
+  const data: GraphData = {
+    nodes: [
+      { id: 'c-1', type: 'contact', label: 'Alice', health_band: 'moss' },
+      { id: 'c-2', type: 'contact', label: 'Bob', health_band: 'chanterelle' },
+      { id: 'c-3', type: 'contact', label: 'Carol', health_band: 'russula' },
+    ],
+    edges: [],
+  };
+
+  render(
+    <NetworkGraph
+      data={data}
+      onNodeClick={vi.fn()}
+      showRelationships
+      showActivities
+      showCircles={false}
+    />,
+  );
+
+  expect(capturedNodeCanvasObject).toBeDefined();
+
+  const moss = createTrackingCtx();
+  capturedNodeCanvasObject?.(data.nodes[0], moss.ctx, 1);
+  expect(moss.fillStyles[0]).toBe(theme.palette.success.main);
+
+  const chanterelle = createTrackingCtx();
+  capturedNodeCanvasObject?.(data.nodes[1], chanterelle.ctx, 1);
+  expect(chanterelle.fillStyles[0]).toBe(theme.palette.warning.main);
+
+  const russula = createTrackingCtx();
+  capturedNodeCanvasObject?.(data.nodes[2], russula.ctx, 1);
+  expect(russula.fillStyles[0]).toBe(theme.palette.error.main);
+});
+
+test('falls back to the old uniform node color when health_band is absent', () => {
+  mockMatchMedia(false);
+  const theme = createTheme();
+  const data: GraphData = {
+    nodes: [{ id: 'c-1', type: 'contact', label: 'Alice' }],
+    edges: [],
+  };
+
+  render(
+    <NetworkGraph
+      data={data}
+      onNodeClick={vi.fn()}
+      showRelationships
+      showActivities
+      showCircles={false}
+    />,
+  );
+
+  expect(capturedNodeCanvasObject).toBeDefined();
+
+  const fallback = createTrackingCtx();
+  capturedNodeCanvasObject?.(data.nodes[0], fallback.ctx, 1);
+  expect(fallback.fillStyles[0]).toBe(theme.palette.primary.main);
+});
+
+test('does not color activity nodes by health_band even if one were present', () => {
+  mockMatchMedia(false);
+  const theme = createTheme();
+  const data: GraphData = {
+    nodes: [
+      // health_band should never appear on an activity node per the backend
+      // contract, but the render path must not accidentally key off it if it
+      // did -- activities always use activityNodeColor (secondary.main).
+      { id: 'a-1', type: 'activity', label: 'Dinner', health_band: 'moss' } as GraphNode,
+    ],
+    edges: [],
+  };
+
+  render(
+    <NetworkGraph
+      data={data}
+      onNodeClick={vi.fn()}
+      showRelationships
+      showActivities
+      showCircles={false}
+    />,
+  );
+
+  expect(capturedNodeCanvasObject).toBeDefined();
+
+  const ctx = createTrackingCtx();
+  capturedNodeCanvasObject?.(data.nodes[0], ctx.ctx, 1);
+  expect(ctx.fillStyles[0]).toBe(theme.palette.secondary.main);
 });

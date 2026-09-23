@@ -182,10 +182,22 @@ function fullDateFromPartial(d: PartialDate): string | undefined {
 function SectionGroup({
   id,
   twoColumn,
+  mb = 1,
   children,
 }: {
   id: string;
   twoColumn?: boolean;
+  // Issue #383: an escape hatch for a section whose OWN trailing content
+  // (not the section it precedes) risks landing under the sticky
+  // ContactJumpNav once a later section is scrolled to -- scrollMarginTop
+  // below only protects a section when it is itself the scroll TARGET, not
+  // when it's the one being scrolled past. See the "cadence" SectionGroup's
+  // own call site for the concrete case that surfaced this (T45's a11y
+  // test, target-size): the Reminders PanelCard's header button ended up
+  // within the sticky nav's ~101px footprint once "gifts" (the next
+  // section) was scrolled into its aligned position. Defaults to the
+  // original 1 (8px) for every other section.
+  mb?: number;
   children: ReactNode;
 }) {
   return (
@@ -196,7 +208,7 @@ function SectionGroup({
       id={id}
       sx={{
         scrollMarginTop: 112,
-        mb: 1,
+        mb,
         ...(twoColumn && {
           display: 'grid',
           // T88: minmax(0, ...) floor -- see the identical change/comment on
@@ -1939,7 +1951,13 @@ export default function ContactDetailPage() {
       </SectionGroup>
 
       {/* Cadence & follow-up — cadence policy + upcoming reminders */}
-      <SectionGroup id="cadence" twoColumn>
+      {/* Issue #383: extra mb (see SectionGroup's own comment) -- the
+          Reminders PanelCard's header button is close enough to this
+          section's trailing edge that the very next section ("gifts")
+          being scrolled to its aligned position can leave that button
+          within the sticky ContactJumpNav's footprint on narrow
+          viewports. */}
+      <SectionGroup id="cadence" twoColumn mb={16}>
         <PanelCard title={t('cadence.title')}>
           <CadencePanel
             policy={cadencePolicy}

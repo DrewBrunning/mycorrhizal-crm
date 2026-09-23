@@ -1,11 +1,48 @@
 import { createTheme, ThemeProvider } from '@mui/material/styles';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, expect, test, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { ContactScoreResponse } from '../api/contactScore';
 import type { ContactRecordResponse } from '../api/contacts';
+import { useContactScore } from '../hooks/useContactScore';
 import ContactHeader from './ContactHeader';
 
 afterEach(cleanup);
+
+// Issue #383/ADR-0023: ContactHeader fetches the health score itself via
+// useContactScore -- mocked here so tests control the score/loading/error
+// shape directly, same as other component tests mock their data hooks.
+vi.mock('../hooks/useContactScore', () => ({
+  useContactScore: vi.fn(),
+}));
+
+function scoreFixture(band: string): ContactScoreResponse {
+  return {
+    contact_id: 1,
+    score: 72,
+    band,
+    recency: { value: 80, weight: 35, reason: 'Last qualifying interaction 5 day(s) ago' },
+    frequency: { value: 60, weight: 20, reason: 'Roughly on pace, every 12 days on average' },
+    closeness: { value: 85, weight: 20, reason: 'Marked as a close relationship' },
+    reach_out: { value: 100, weight: 15, reason: 'No reach-out currently overdue' },
+    last_updated: { value: 90, weight: 10, reason: 'Profile updated within the last month' },
+  };
+}
+
+function mockScore(score: ContactScoreResponse | null) {
+  vi.mocked(useContactScore).mockReturnValue({
+    score,
+    loading: false,
+    error: null,
+    refreshScore: vi.fn(),
+  });
+}
+
+beforeEach(() => {
+  // Default: no score loaded, matching a fresh contact with no computed
+  // score yet -- individual tests override with mockScore(...).
+  mockScore(null);
+});
 
 function baseRecord(overrides: Partial<ContactRecordResponse> = {}): ContactRecordResponse {
   return {
@@ -363,4 +400,107 @@ test("compact layout: an archived contact's overflow menu offers only Unarchive"
 
   fireEvent.click(screen.getByText('Unarchive'));
   expect(onUnarchiveContact).toHaveBeenCalledTimes(1);
+});
+
+// --- Issue #383/ADR-0023: relationship health score badge + popover -------
+
+test('renders no health badge when no score has loaded', () => {
+  mockMatchMedia(false);
+  mockScore(null);
+  renderHeader();
+
+  expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
+  expect(screen.queryByText('Needs Attention')).not.toBeInTheDocument();
+  expect(screen.queryByText('Neglected')).not.toBeInTheDocument();
+});
+
+test('wide layout: shows a "Healthy" badge for the moss band', () => {
+  mockMatchMedia(false);
+  mockScore(scoreFixture('moss'));
+  renderHeader();
+
+  expect(screen.getByText('Healthy')).toBeInTheDocument();
+});
+
+test('wide layout: shows a "Needs Attention" badge for the chanterelle band', () => {
+  mockMatchMedia(false);
+  mockScore(scoreFixture('chanterelle'));
+  renderHeader();
+
+  expect(screen.getByText('Needs Attention')).toBeInTheDocument();
+});
+
+test('wide layout: shows a "Neglected" badge for the russula band', () => {
+  mockMatchMedia(false);
+  mockScore(scoreFixture('russula'));
+  renderHeader();
+
+  expect(screen.getByText('Neglected')).toBeInTheDocument();
+});
+
+test('compact layout: also shows the health badge next to the name, as an icon with an accessible name', () => {
+  mockMatchMedia(true);
+  mockScore(scoreFixture('moss'));
+  renderHeader();
+
+  // Issue #383: the compact layout renders an icon-only badge (not a text
+  // Chip -- see ContactHeader.tsx's comment for why: a text Chip forces a
+  // header wrap that was measured to break an unrelated a11y test on
+  // narrow viewports), so "Healthy" is only reachable via the button's
+  // accessible name here, never as visible text.
+  expect(screen.getByRole('button', { name: 'Healthy' })).toBeInTheDocument();
+  expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
+});
+
+test('wide layout: clicking the health badge opens a popover with all five facet reasons', async () => {
+  mockMatchMedia(false);
+  mockScore(scoreFixture('moss'));
+  renderHeader();
+
+  expect(screen.queryByText('Relationship health breakdown')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByText('Healthy'));
+
+  expect(await screen.findByText('Relationship health breakdown')).toBeInTheDocument();
+  expect(screen.getByText('Last qualifying interaction 5 day(s) ago')).toBeInTheDocument();
+  expect(screen.getByText('Roughly on pace, every 12 days on average')).toBeInTheDocument();
+  expect(screen.getByText('Marked as a close relationship')).toBeInTheDocument();
+  expect(screen.getByText('No reach-out currently overdue')).toBeInTheDocument();
+  expect(screen.getByText('Profile updated within the last month')).toBeInTheDocument();
+});
+
+test('compact layout: clicking the health badge opens the same popover with all five facet reasons', async () => {
+  mockMatchMedia(true);
+  mockScore(scoreFixture('russula'));
+  renderHeader();
+
+  // Issue #383: compact layout's badge is icon-only -- click via its
+  // accessible name, not visible text (see the test above).
+  fireEvent.click(screen.getByRole('button', { name: 'Neglected' }));
+
+  expect(await screen.findByText('Relationship health breakdown')).toBeInTheDocument();
+  expect(screen.getByText('Last qualifying interaction 5 day(s) ago')).toBeInTheDocument();
+  expect(screen.getByText('Roughly on pace, every 12 days on average')).toBeInTheDocument();
+  expect(screen.getByText('Marked as a close relationship')).toBeInTheDocument();
+  expect(screen.getByText('No reach-out currently overdue')).toBeInTheDocument();
+  expect(screen.getByText('Profile updated within the last month')).toBeInTheDocument();
+});
+
+test('the health score popover closes on an outside click', async () => {
+  mockMatchMedia(false);
+  mockScore(scoreFixture('moss'));
+  const { container } = renderHeader();
+
+  fireEvent.click(screen.getByText('Healthy'));
+  expect(await screen.findByText('Relationship health breakdown')).toBeInTheDocument();
+
+  // MUI's Popover mounts an (invisible) Backdrop in the Modal it renders
+  // into; clicking it is how a real user's outside click dismisses it.
+  const backdrop = container.ownerDocument.querySelector('.MuiBackdrop-root');
+  expect(backdrop).not.toBeNull();
+  fireEvent.click(backdrop as Element);
+
+  await waitFor(() =>
+    expect(screen.queryByText('Relationship health breakdown')).not.toBeInTheDocument(),
+  );
 });

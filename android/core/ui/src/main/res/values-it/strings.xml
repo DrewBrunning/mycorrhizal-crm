@@ -1644,4 +1644,19 @@
     <string name="error_aggregation_refresh">Aggiorna</string>
     <string name="error_aggregation_recurring">Ricorrente</string>
     <string name="error_aggregation_view_events">Visualizza %1$d eventi</string>
+
+    <!-- Issue #383 (ADR-0023): relationship health score -->
+    <string name="health_score_band_moss">In buona salute</string>
+    <string name="health_score_band_chanterelle">Richiede attenzione</string>
+    <string name="health_score_band_russula">A rischio</string>
+    <string name="health_score_badge_description">Punteggio di salute della relazione %1$d su 100: %2$s</string>
+    <string name="health_score_view_details">Visualizza dettagli punteggio</string>
+    <string name="health_score_dialog_title">Salute della relazione</string>
+    <string name="health_score_facet_recency">Recente</string>
+    <string name="health_score_facet_frequency">Frequenza</string>
+    <string name="health_score_facet_closeness">Vicinanza</string>
+    <string name="health_score_facet_reach_out">Contatto</string>
+    <string name="health_score_facet_last_updated">Ultimo aggiornamento</string>
+    <string name="health_score_facet_value">%1$d/100 · %2$d%% di peso</string>
+    <string name="network_row_description_with_health">%1$s — %2$s — %3$s</string>
 </resources>

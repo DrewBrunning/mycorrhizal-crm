@@ -47,6 +47,7 @@ import com.mycorrhizal.crm.model.network.ContactSubscriptionsResponse
 import com.mycorrhizal.crm.model.network.ChangePasswordRequest
 import com.mycorrhizal.crm.model.network.CheckPasswordStrengthRequest
 import com.mycorrhizal.crm.model.network.ContactBriefing
+import com.mycorrhizal.crm.model.network.ContactScoreResponse
 import com.mycorrhizal.crm.model.network.CreateCadencePolicyResponse
 import com.mycorrhizal.crm.model.network.OverdueCadencesResponse
 import com.mycorrhizal.crm.model.network.Circle
@@ -767,6 +768,19 @@ class ApiClient(
     suspend fun getBriefing(contactId: Int): Result<ContactBriefing> =
         executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/briefing") { _, body ->
             moshi.adapter(ContactBriefing::class.java).fromJson(body)
+        }
+
+    /**
+     * GET /api/v1/contacts/{id}/score — issue #383 (ADR-0023) relationship
+     * health score: the 0-100 [ContactScoreResponse.score], its
+     * moss/chanterelle/russula [ContactScoreResponse.band], and the five
+     * weighted facets (recency/frequency/closeness/reach_out/last_updated)
+     * with their plain-language reasons. Computed entirely server-side; this
+     * is a pure read, never recomputed on-device.
+     */
+    suspend fun getContactScore(contactId: Int): Result<ContactScoreResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/score") { _, body ->
+            moshi.adapter(ContactScoreResponse::class.java).fromJson(body)
         }
 
     /**

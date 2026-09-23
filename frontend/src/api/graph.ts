@@ -31,6 +31,13 @@ export interface GraphChain {
   target_name: string;
   depth: number;
   steps: GraphChainStep[];
+  // The target contact's relationship health score (issue #383, ADR-0023).
+  // This is the only health-score-bearing field the Android ego-network
+  // screen ever sees (it never calls GET /graph, only GET
+  // /graph/connections), so this mirrors GraphNode's fields exactly -- see
+  // backend/models/dtos.go's GraphChain doc comment.
+  health_score?: number | null;
+  health_band?: string;
 }
 
 export interface GraphConnectionsResponse {

@@ -5,6 +5,11 @@ export interface GraphNode {
   type: 'contact' | 'activity' | 'circle';
   label: string; // Contact name, activity title, or circle name
   photo_thumbnail?: string;
+  // Relationship health score (issue #383, ADR-0023) -- set only on
+  // type: "contact" nodes, never on "activity" or "circle" nodes. See
+  // utils/healthBand.ts for the band -> color mapping.
+  health_score?: number | null;
+  health_band?: string;
   // Properties added by force-graph during rendering
   x?: number;
   y?: number;

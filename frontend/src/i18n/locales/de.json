@@ -1597,6 +1597,21 @@
     "panLeft": "Nach links verschieben",
     "panRight": "Nach rechts verschieben"
   },
+  "contactScore": {
+    "badge": {
+      "moss": "Gesund",
+      "chanterelle": "Braucht Aufmerksamkeit",
+      "russula": "Vernachlässigt"
+    },
+    "popoverTitle": "Beziehungsgesundheit im Detail",
+    "facets": {
+      "recency": "Aktualität",
+      "frequency": "Häufigkeit",
+      "closeness": "Nähe",
+      "reachOut": "Kontaktbereitschaft",
+      "lastUpdated": "Profilaktualität"
+    }
+  },
   "relationships": {
     "title": "Beziehungen",
     "addRelationship": "Beziehung hinzufügen",
