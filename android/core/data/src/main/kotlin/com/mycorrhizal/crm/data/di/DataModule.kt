@@ -33,6 +33,7 @@ import com.mycorrhizal.crm.data.repository.SystemEventRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CadencePolicyRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CircleRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CustomLinkActionRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ExternalActivityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ExternalIdentityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ImmichRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NextcloudRepositoryImpl
@@ -86,6 +87,7 @@ import com.mycorrhizal.crm.domain.repository.CalendarSubscriptionRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactSubscriptionRepository
 import com.mycorrhizal.crm.domain.repository.CustomLinkActionRepository
+import com.mycorrhizal.crm.domain.repository.ExternalActivityRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
 import com.mycorrhizal.crm.domain.repository.ImmichRepository
 import com.mycorrhizal.crm.domain.repository.NextcloudRepository
@@ -478,6 +480,10 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindExternalIdentityRepository(impl: ExternalIdentityRepositoryImpl): ExternalIdentityRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindExternalActivityRepository(impl: ExternalActivityRepositoryImpl): ExternalActivityRepository
 
     @Binds
     @Singleton

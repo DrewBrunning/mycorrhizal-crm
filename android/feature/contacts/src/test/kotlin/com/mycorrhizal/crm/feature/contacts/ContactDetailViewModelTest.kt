@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.contacts
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.ExternalActivityRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
 import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
 import com.mycorrhizal.crm.domain.repository.ImmichRepository
@@ -15,6 +16,7 @@ import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.ExternalIdentity
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.FieldValue
@@ -59,6 +61,7 @@ class ContactDetailViewModelTest {
     private val tagRepository = mockk<TagRepository>()
     private val externalIdentityRepository = mockk<ExternalIdentityRepository>()
     private val immichRepository = mockk<ImmichRepository>()
+    private val externalActivityRepository = mockk<ExternalActivityRepository>()
     private val paperlessRepository = mockk<PaperlessRepository>()
     private val seafileRepository = mockk<SeafileRepository>()
     private val nextcloudRepository = mockk<NextcloudRepository>()
@@ -92,6 +95,7 @@ class ContactDetailViewModelTest {
             tagRepository,
             externalIdentityRepository,
             immichRepository,
+            externalActivityRepository,
             paperlessRepository,
             seafileRepository,
             nextcloudRepository,
@@ -108,6 +112,7 @@ class ContactDetailViewModelTest {
         coEvery { externalIdentityRepository.listForContact(any()) } returns Result.success(emptyList())
         coEvery { immichRepository.isConfigured() } returns Result.success(false)
         coEvery { immichRepository.getContactSummary(any()) } returns Result.success(null)
+        coEvery { externalActivityRepository.listForContact(any()) } returns Result.success(emptyList())
         coEvery { paperlessRepository.isConfigured() } returns Result.success(false)
         coEvery { seafileRepository.isConfigured() } returns Result.success(false)
         coEvery { nextcloudRepository.isConfigured() } returns Result.success(false)
@@ -170,6 +175,7 @@ class ContactDetailViewModelTest {
             tagRepository,
             externalIdentityRepository,
             immichRepository,
+            externalActivityRepository,
             paperlessRepository,
             seafileRepository,
             nextcloudRepository,
@@ -281,7 +287,7 @@ class ContactDetailViewModelTest {
 
         stubExternalLinks()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -302,7 +308,7 @@ class ContactDetailViewModelTest {
 
         stubExternalLinks()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -325,7 +331,7 @@ class ContactDetailViewModelTest {
 
         stubExternalLinks()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -354,7 +360,7 @@ class ContactDetailViewModelTest {
 
         stubExternalLinks()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -917,6 +923,95 @@ class ContactDetailViewModelTest {
         assertNull(vm.uiState.value.immichSummary)
         io.mockk.coVerify(atLeast = 2) { externalIdentityRepository.listForContact("u5") }
     }
+
+    // --- Issue #836: external activities + Immich sync-now ---
+
+    @Test
+    fun `external activities load alongside the contact`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        coEvery { externalActivityRepository.listForContact("u5") } returns Result.success(
+            listOf(
+                ExternalActivity(
+                    id = "a1",
+                    entityId = "u5",
+                    sourceSystem = "immich",
+                    externalId = "asset-1",
+                    type = "photo-appearance",
+                    occurredAt = "2026-08-01T10:00:00Z",
+                ),
+            ),
+        )
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(1, state.externalActivities.size)
+        assertEquals("photo-appearance", state.externalActivities.first().type)
+    }
+
+    @Test
+    fun `syncImmich syncs then reloads the panel`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { immichRepository.syncNow() } returns Result.success(Unit)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        vm.syncImmich()
+        advanceUntilIdle()
+
+        io.mockk.coVerify(exactly = 1) { immichRepository.syncNow() }
+        // The panel is refetched after the sync (identities, summary, and activities).
+        io.mockk.coVerify(atLeast = 2) { externalIdentityRepository.listForContact("u5") }
+        io.mockk.coVerify(atLeast = 2) { externalActivityRepository.listForContact("u5") }
+        assertFalse(vm.uiState.value.immichSyncing)
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `syncImmich failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { immichRepository.syncNow() } returns Result.failure(ApiError.Server(503, "Immich unreachable"))
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        vm.syncImmich()
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.immichSyncing)
+        assertTrue(vm.uiState.value.error != null)
+    }
+
+    @Test
+    fun `syncImmich ignores a second call while the first is in flight`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+            val gate = CompletableDeferred<Unit>()
+            coEvery { immichRepository.syncNow() } coAnswers {
+                gate.await()
+                Result.success(Unit)
+            }
+
+            val vm = viewModel(5)
+            advanceUntilIdle()
+
+            vm.syncImmich()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.immichSyncing)
+
+            vm.syncImmich()
+
+            gate.complete(Unit)
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { immichRepository.syncNow() }
+        }
 
     @Test
     fun `loadImmichPeople populates the picker's person list`() = runTest(mainDispatcherRule.testDispatcher) {

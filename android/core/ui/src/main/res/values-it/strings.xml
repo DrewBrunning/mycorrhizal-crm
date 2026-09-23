@@ -220,6 +220,7 @@
     <string name="immich_unlink">Scollega</string>
     <string name="immich_unlink_title">Scollega persona Immich</string>
     <string name="immich_unlink_confirm">Scollegare questa persona Immich? La cronologia delle foto verrà conservata.</string>
+    <string name="immich_sync_now">Sincronizza ora</string>
     <string name="immich_person_search_title">Collega una persona Immich</string>
     <string name="immich_person_search_placeholder">Cerca per nome</string>
     <string name="immich_person_search_no_matches">Nessuna persona corrispondente</string>
@@ -859,6 +860,9 @@
     <string name="cd_activity">Attività</string>
     <string name="cd_note">Nota</string>
     <string name="cd_reminder">Promemoria</string>
+    <string name="timeline_external_activity_photo_appearance">Comparsa in foto</string>
+    <string name="timeline_external_activity_unknown">Evento esterno: %1$s</string>
+    <string name="timeline_external_activity_from_system">%1$s (via %2$s)</string>
 
 
     <!-- Circles -->
@@ -1451,6 +1455,66 @@
     <string name="import_vcf_result">Importazione completata: %1$d creati, %2$d aggiornati, %3$d saltati.</string>
     <string name="import_vcf_error_too_large">Il file è troppo grande. La dimensione massima è 50MB.</string>
     <string name="import_vcf_error_invalid_file">Impossibile leggere il file. Scegli un file .vcf.</string>
+
+    <!-- Importazione file CSV (issue #834) -->
+    <string name="import_csv_entry">Importa da un file CSV</string>
+    <string name="import_csv_title">Importa file CSV</string>
+    <string name="import_csv_pick">Seleziona un file .csv</string>
+    <string name="import_csv_pick_hint">Scegli un file .csv esportato da un\'altra app o servizio.</string>
+    <string name="import_csv_error_too_large">Il file è troppo grande. La dimensione massima è 20MB.</string>
+    <string name="import_csv_error_invalid_file">Impossibile leggere il file. Scegli un file .csv.</string>
+    <string name="import_csv_mapping_hint">Associa ogni colonna a un campo contatto (%1$d righe).</string>
+    <string name="import_csv_mapping_ignore">-- Ignora --</string>
+    <string name="import_csv_mapping_continue">Continua</string>
+
+    <!-- Etichette dei campi per la mappatura delle colonne CSV (issue #834) -->
+    <string name="import_field_firstname">Nome</string>
+    <string name="import_field_lastname">Cognome</string>
+    <string name="import_field_middle_name">Secondo Nome</string>
+    <string name="import_field_prefix">Prefisso del Nome</string>
+    <string name="import_field_suffix">Suffisso del Nome</string>
+    <string name="import_field_nickname">Soprannome</string>
+    <string name="import_field_gender">Genere</string>
+    <string name="import_field_birthday">Compleanno</string>
+    <string name="import_field_anniversary">Anniversario</string>
+    <string name="import_field_email">E-mail</string>
+    <string name="import_field_email_label">E-mail – Tipo</string>
+    <string name="import_field_phone">Telefono</string>
+    <string name="import_field_phone_label">Telefono – Tipo</string>
+    <string name="import_field_address_street">Indirizzo – Via</string>
+    <string name="import_field_address_city">Indirizzo – Città</string>
+    <string name="import_field_address_region">Indirizzo – Regione</string>
+    <string name="import_field_address_postal">Indirizzo – Codice Postale</string>
+    <string name="import_field_address_country">Indirizzo – Paese</string>
+    <string name="import_field_address_label">Indirizzo – Tipo</string>
+    <string name="import_field_url">Sito web</string>
+    <string name="import_field_url_label">Sito web – Tipo</string>
+    <string name="import_field_impp">IM / Social</string>
+    <string name="import_field_impp_label">IM / Social – Tipo</string>
+    <string name="import_field_organization">Organizzazione</string>
+    <string name="import_field_department">Reparto</string>
+    <string name="import_field_job_title">Qualifica Professionale</string>
+    <string name="import_field_role">Ruolo</string>
+    <string name="import_field_how_we_met">Come ci Siamo Conosciuti</string>
+    <string name="import_field_work_information">Informazioni Lavorative</string>
+    <string name="import_field_contact_information">Informazioni di Contatto</string>
+    <string name="import_field_circles">Cerchie</string>
+    <string name="import_field_tags">Etichette</string>
+
+    <!-- Cronologia importazioni (parità web, issue #651 / #834) -->
+    <string name="import_history_entry">Cronologia importazioni</string>
+    <string name="import_history_title">Cronologia importazioni</string>
+    <string name="import_history_empty">Nessuna importazione finora.</string>
+    <string name="import_history_col_created">Creati</string>
+    <string name="import_history_col_updated">Aggiornati</string>
+    <string name="import_history_col_skipped">Saltati</string>
+    <string name="import_history_col_errors">Errori</string>
+    <string name="import_history_format_csv">CSV</string>
+    <string name="import_history_format_vcf">VCF</string>
+    <string name="import_history_format_jscontact">JSContact</string>
+    <string name="import_history_format_records">Contatti del dispositivo</string>
+    <string name="import_history_format_monica">Monica</string>
+    <string name="import_history_format_meerkat">Meerkat</string>
 
     <!-- Audit trail (M16) -->
     <string name="nav_audit">Registro di controllo</string>
