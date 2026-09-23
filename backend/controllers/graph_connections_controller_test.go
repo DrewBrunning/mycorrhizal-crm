@@ -57,6 +57,19 @@ func TestGetGraphConnections(t *testing.T) {
 	require.Len(t, husbandChain.Steps, 2)
 	assert.Equal(t, "sibling_of", husbandChain.Steps[0].Relation)
 	assert.Equal(t, "spouse_of", husbandChain.Steps[1].Relation)
+
+	// Issue #383: every chain's target carries a health score/band. This
+	// endpoint is Android's ONLY health-score-bearing surface (it has no
+	// canvas graph and never calls GET /graph). The caller here has no
+	// SelfContactVCardUID set, so Closeness sits at the neutral default
+	// regardless of `from` — proving decoration is anchored to the
+	// caller's own self-contact, not to whatever contact this traversal
+	// happened to start from.
+	for i := range resp.Chains {
+		require.NotNilf(t, resp.Chains[i].HealthScore, "chain target %s must carry a health score", resp.Chains[i].TargetVCardUID)
+		assert.Containsf(t, []string{"moss", "chanterelle", "russula"}, resp.Chains[i].HealthBand,
+			"chain target %s must carry a valid health band", resp.Chains[i].TargetVCardUID)
+	}
 }
 
 func TestGetGraphConnections_ValidationErrors(t *testing.T) {

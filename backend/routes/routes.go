@@ -166,6 +166,10 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// captured as a contact ID (same ordering note as /briefing and
 			// /detail).
 			protected.GET("/contacts/:id/timeline", controllers.GetContactTimeline)
+			// Relationship health score (issue #383): the explainable facet
+			// breakdown behind the contact-detail-page badge. Same ordering
+			// note as /briefing/detail/timeline above.
+			protected.GET("/contacts/:id/score", controllers.GetContactScore)
 			protected.PUT("/contacts/:id", middleware.ValidateJSONMiddleware(&models.ContactRecordInput{}), controllers.UpdateContact)
 			protected.DELETE("/contacts/:id", controllers.DeleteContact)
 			protected.POST("/contacts/:id/archive", controllers.ArchiveContact)

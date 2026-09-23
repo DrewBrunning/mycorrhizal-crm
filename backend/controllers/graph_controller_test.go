@@ -117,6 +117,14 @@ func TestGetGraph_ContactsRelationshipsAndActivities(t *testing.T) {
 	require.NotNil(t, nodeB)
 	assert.Equal(t, "Bob Brown", nodeB.Label)
 
+	// Issue #383: every contact node gets a health score/band.
+	require.NotNil(t, nodeA.HealthScore)
+	assert.GreaterOrEqual(t, *nodeA.HealthScore, 0)
+	assert.LessOrEqual(t, *nodeA.HealthScore, 100)
+	assert.Contains(t, []string{"moss", "chanterelle", "russula"}, nodeA.HealthBand)
+	require.NotNil(t, nodeB.HealthScore)
+	assert.Contains(t, []string{"moss", "chanterelle", "russula"}, nodeB.HealthBand)
+
 	assert.Nil(t, findGraphNode(resp.Nodes, "c-3"), "archived contact must be excluded")
 
 	activityNodeID := "a-1"
@@ -124,6 +132,9 @@ func TestGetGraph_ContactsRelationshipsAndActivities(t *testing.T) {
 	require.NotNil(t, activityNode, "multi-contact activity must produce a node")
 	assert.Equal(t, "activity", activityNode.Type)
 	assert.Equal(t, "Team Meeting", activityNode.Label)
+	// Issue #383: only contact nodes carry a health score.
+	assert.Nil(t, activityNode.HealthScore, "activity nodes must never carry a health score")
+	assert.Empty(t, activityNode.HealthBand)
 
 	assert.Nil(t, findGraphNode(resp.Nodes, "a-2"), "single-contact activity must not produce a node")
 
