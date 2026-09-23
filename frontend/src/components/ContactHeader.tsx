@@ -28,6 +28,7 @@ import {
   ListItemText,
   Menu,
   MenuItem,
+  Popover,
   Stack,
   SvgIcon,
   TextField,
@@ -35,9 +36,10 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { useState } from 'react';
+import { type MouseEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Circle } from '../api/circles';
+import type { ContactScoreFacet } from '../api/contactScore';
 import {
   type ContactRecordResponse,
   getContactDisplayName,
@@ -45,6 +47,8 @@ import {
 } from '../api/contacts';
 import type { Tag } from '../api/tags';
 import { type ContactFieldKey, resolveEnabledFields } from '../contactFields';
+import { useContactScore } from '../hooks/useContactScore';
+import { healthBandChipColor } from '../utils/healthBand';
 import LanguageField from './LanguageField';
 
 export interface ProfileValues {
@@ -143,6 +147,27 @@ export default function ContactHeader({
   const theme = useTheme();
   const compactActions = useMediaQuery(theme.breakpoints.down('md'));
   const isOn = (key: ContactFieldKey) => enabled.has(key);
+
+  // Issue #383/ADR-0023: the relationship health score badge + its
+  // facet-breakdown popover. One hook call / one Popover instance shared by
+  // both the compact and wide layouts below (only one of the two layouts is
+  // ever mounted at a time), following the same anchorEl pattern as the
+  // export/actions menus above and ActivitiesPage.tsx's info popover.
+  const { score } = useContactScore(record.id);
+  const [scoreAnchorEl, setScoreAnchorEl] = useState<HTMLElement | null>(null);
+  const scoreOpen = Boolean(scoreAnchorEl);
+  const scorePopoverId = scoreOpen ? 'contact-score-popover' : undefined;
+  const handleScoreBadgeClick = (e: MouseEvent<HTMLElement>) => setScoreAnchorEl(e.currentTarget);
+  const handleScorePopoverClose = () => setScoreAnchorEl(null);
+  const scoreFacets: Array<{ key: string; i18nKey: string; facet: ContactScoreFacet }> = score
+    ? [
+        { key: 'recency', i18nKey: 'recency', facet: score.recency },
+        { key: 'frequency', i18nKey: 'frequency', facet: score.frequency },
+        { key: 'closeness', i18nKey: 'closeness', facet: score.closeness },
+        { key: 'reach_out', i18nKey: 'reachOut', facet: score.reach_out },
+        { key: 'last_updated', i18nKey: 'lastUpdated', facet: score.last_updated },
+      ]
+    : [];
 
   // #211: only the avatar-initial needs `firstname` on its own; the rest of
   // the name-component assembly lives in the shared getContactDisplayName.
@@ -394,6 +419,22 @@ export default function ContactHeader({
                           label={t('contactDetail.youBadge')}
                           color="default"
                           size="small"
+                          sx={{ ml: 1, flexShrink: 0 }}
+                        />
+                      )}
+                      {score && (
+                        // Issue #383/ADR-0023: relationship health badge --
+                        // see the wide-layout copy below for the matching
+                        // instance. color uses the MUI `color` prop (not a
+                        // raw theme.palette.*.main) so chanterelle/warning
+                        // resolves its documented bark contrastText, not
+                        // white -- see healthBand.ts.
+                        <Chip
+                          label={t(`contactScore.badge.${score.band}`, score.band)}
+                          color={healthBandChipColor(score.band)}
+                          size="small"
+                          onClick={handleScoreBadgeClick}
+                          aria-describedby={scorePopoverId}
                           sx={{ ml: 1, flexShrink: 0 }}
                         />
                       )}
@@ -662,6 +703,17 @@ export default function ContactHeader({
                           sx={{ ml: 1, flexShrink: 0 }}
                         />
                       )}
+                      {score && (
+                        // Issue #383/ADR-0023: see the compact-layout badge above.
+                        <Chip
+                          label={t(`contactScore.badge.${score.band}`, score.band)}
+                          color={healthBandChipColor(score.band)}
+                          size="small"
+                          onClick={handleScoreBadgeClick}
+                          aria-describedby={scorePopoverId}
+                          sx={{ ml: 1, flexShrink: 0 }}
+                        />
+                      )}
                       {onToggleFavorite && (
                         // Issue #173: see the compact-layout star above.
                         <IconButton
@@ -844,6 +896,36 @@ export default function ContactHeader({
                 )}
               </>
             )}
+
+            {/* Issue #383/ADR-0023: relationship health score facet
+                breakdown -- shared by both the compact and wide layouts'
+                badges above, since only one layout is ever mounted at a
+                time. Pattern copied from ActivitiesPage.tsx's info popover. */}
+            <Popover
+              id={scorePopoverId}
+              open={scoreOpen}
+              anchorEl={scoreAnchorEl}
+              onClose={handleScorePopoverClose}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+            >
+              <Box sx={{ p: 2, maxWidth: 320 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  {t('contactScore.popoverTitle')}
+                </Typography>
+                <Stack spacing={1.5}>
+                  {scoreFacets.map(({ key, i18nKey, facet }) => (
+                    <Box key={key}>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {t(`contactScore.facets.${i18nKey}`)}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                        {facet.reason}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              </Box>
+            </Popover>
 
             {/* Circles Section */}
             {/* #188: see the camera-badge focus-within comment above. */}
