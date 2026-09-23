@@ -418,6 +418,23 @@ func buildBodyOwnershipTable(fx ownFixtures) map[string]ownRow {
 				},
 				h.fx.ownerC1UID, h.fx.victimC1UID, ownNonexistentUID, http.StatusNotFound, false)
 		}),
+		"OccasionObligationInput.EntityID": dto(func(t *testing.T, h *ownHarness) {
+			h.assertMasked(http.MethodPost, "/api/v1/occasion-obligations",
+				func(uid string) string {
+					return fmt.Sprintf(`{"entity_id":%s,"kind":"card","label":"x"}`, jstr(uid))
+				},
+				h.fx.ownerC1UID, h.fx.victimC1UID, ownNonexistentUID, http.StatusNotFound, false)
+		}),
+		"OccasionObligationInput.LinkedLifeEventID": dto(func(t *testing.T, h *ownHarness) {
+			// entity_id is a valid owned contact; linked_life_event_id is the
+			// probed UID (a LifeEvent id, not a contact — same 404-mask rule
+			// as GiftInput.LifeEventID).
+			h.assertMasked(http.MethodPost, "/api/v1/occasion-obligations",
+				func(uid string) string {
+					return fmt.Sprintf(`{"entity_id":%s,"kind":"card","label":"x","linked_life_event_id":%s}`, jstr(h.fx.ownerC1UID), jstr(uid))
+				},
+				h.fx.ownerLifeEventID, h.fx.victimLifeEventID, ownNonexistentUID, http.StatusNotFound, false)
+		}),
 		"CadencePolicyInput.EntityID": dto(func(t *testing.T, h *ownHarness) {
 			h.assertMasked(http.MethodPost, "/api/v1/cadence-policies",
 				func(uid string) string {
@@ -548,21 +565,23 @@ func buildBodyOwnershipTable(fx ownFixtures) map[string]ownRow {
 		}),
 
 		// ── persisted-model mirrors / server-generated (no body probe) ──────
-		"CadencePolicy.EntityID":             model("persisted-model mirror of CadencePolicyInput.EntityID; the write path validates the DTO — covered above."),
-		"CircleMember.MemberVCardUID":        model("persisted join-row mirror of CircleMemberInput.MemberVCardUID — covered above."),
-		"ExternalIdentity.EntityID":          model("persisted-model mirror of ExternalIdentityInput.EntityID — covered above."),
-		"HouseholdMember.MemberVCardUID":     model("persisted join-row mirror of HouseholdMemberInput.MemberVCardUID — covered above."),
-		"FieldValue.EntityID":                model("set from the :id contact on PUT /contacts/:id/field-values (path-carried, covered by authorization_matrix_test.go); the body carries FieldDefinition ids, not a contact UID."),
-		"ContactTag.ContactVCardUID":         model("persisted join-row mirror of ContactTagInput.ContactVCardUID — covered above."),
-		"Gift.EntityID":                      model("persisted-model mirror of GiftInput.EntityID — covered above."),
-		"Gift.LifeEventID":                   model("persisted-model mirror of GiftInput.LifeEventID — covered above."),
-		"LifeEvent.EntityID":                 model("persisted-model mirror of LifeEventInput.EntityID — covered above."),
-		"Preference.EntityID":                model("persisted-model mirror of PreferenceInput.EntityID — covered above."),
-		"ExternalActivity.EntityID":          model("persisted-model mirror of ExternalActivityInput.EntityID — covered above."),
-		"ConversationAgenda.EntityID":        model("persisted-model mirror of ConversationAgendaInput.EntityID — covered above."),
-		"RelationshipEdge.SourceID":          model("persisted-model mirror of RelationshipEdgeInput.SourceID — covered above."),
-		"RelationshipEdge.TargetID":          model("persisted-model mirror of RelationshipEdgeInput.TargetID — covered above."),
-		"ReachOutSuggestion.ContactVCardUID": model("server-generated row; the only endpoint (POST /reach-out-suggestions/:id/dismiss) carries the id in the path — covered by authorization_matrix_test.go."),
+		"CadencePolicy.EntityID":               model("persisted-model mirror of CadencePolicyInput.EntityID; the write path validates the DTO — covered above."),
+		"CircleMember.MemberVCardUID":          model("persisted join-row mirror of CircleMemberInput.MemberVCardUID — covered above."),
+		"ExternalIdentity.EntityID":            model("persisted-model mirror of ExternalIdentityInput.EntityID — covered above."),
+		"HouseholdMember.MemberVCardUID":       model("persisted join-row mirror of HouseholdMemberInput.MemberVCardUID — covered above."),
+		"FieldValue.EntityID":                  model("set from the :id contact on PUT /contacts/:id/field-values (path-carried, covered by authorization_matrix_test.go); the body carries FieldDefinition ids, not a contact UID."),
+		"ContactTag.ContactVCardUID":           model("persisted join-row mirror of ContactTagInput.ContactVCardUID — covered above."),
+		"Gift.EntityID":                        model("persisted-model mirror of GiftInput.EntityID — covered above."),
+		"Gift.LifeEventID":                     model("persisted-model mirror of GiftInput.LifeEventID — covered above."),
+		"LifeEvent.EntityID":                   model("persisted-model mirror of LifeEventInput.EntityID — covered above."),
+		"Preference.EntityID":                  model("persisted-model mirror of PreferenceInput.EntityID — covered above."),
+		"OccasionObligation.EntityID":          model("persisted-model mirror of OccasionObligationInput.EntityID — covered above."),
+		"OccasionObligation.LinkedLifeEventID": model("persisted-model mirror of OccasionObligationInput.LinkedLifeEventID — covered above."),
+		"ExternalActivity.EntityID":            model("persisted-model mirror of ExternalActivityInput.EntityID — covered above."),
+		"ConversationAgenda.EntityID":          model("persisted-model mirror of ConversationAgendaInput.EntityID — covered above."),
+		"RelationshipEdge.SourceID":            model("persisted-model mirror of RelationshipEdgeInput.SourceID — covered above."),
+		"RelationshipEdge.TargetID":            model("persisted-model mirror of RelationshipEdgeInput.TargetID — covered above."),
+		"ReachOutSuggestion.ContactVCardUID":   model("server-generated row; the only endpoint (POST /reach-out-suggestions/:id/dismiss) carries the id in the path — covered by authorization_matrix_test.go."),
 	}
 }
 

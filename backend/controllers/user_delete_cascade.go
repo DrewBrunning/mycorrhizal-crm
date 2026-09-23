@@ -213,6 +213,11 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
 
+	// Delete occasion obligations (hard) — docs/adrs/0024-occasions.md, issue #387, ticket #1222
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.OccasionObligation{}).Error; err != nil {
+		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+	}
+
 	// Delete external integration links and enrichment events (T14 —
 	// hard delete, edge/join-shaped)
 	if err := tx.Where("user_id = ?", userID).Delete(&models.ExternalIdentity{}).Error; err != nil {

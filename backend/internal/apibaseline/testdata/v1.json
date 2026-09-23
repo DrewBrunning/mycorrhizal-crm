@@ -5602,6 +5602,139 @@
     },
     {
       "method": "GET",
+      "path": "/occasion-obligations",
+      "parameters": [
+        {
+          "name": "cursor",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "entity_id",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "order",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "410",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/occasion-obligations",
+      "parameters": null,
+      "request_body": "ref:OccasionObligationInput",
+      "responses": [
+        {
+          "status": "201",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/occasion-obligations/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:OccasionObligation"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/occasion-obligations/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:OccasionObligationInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:OccasionObligation"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/occasion-obligations/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MessageResponse"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/paperless/config",
       "parameters": null,
       "responses": [
@@ -14374,6 +14507,146 @@
           "name": "token",
           "type": "string",
           "required": true
+        }
+      ]
+    },
+    {
+      "name": "OccasionObligation",
+      "properties": [
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "anchor_day",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "anchor_month",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "deleted",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "lead_time_days",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "linked_life_event_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "notes",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "OccasionObligationInput",
+      "properties": [
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "anchor_day",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "anchor_month",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "lead_time_days",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "linked_life_event_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "notes",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
         }
       ]
     },

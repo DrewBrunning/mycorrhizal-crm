@@ -3,110 +3,110 @@
   "generated_on": "linux/amd64",
   "core": {
     "cadence.list_overdue": {
-      "smoke": 13105,
-      "typical": 13425
+      "smoke": 13204,
+      "typical": 13044
     },
     "contact_create": {
-      "smoke": 664807,
-      "typical": 849250
+      "smoke": 1040616,
+      "typical": 1496354
     },
     "contact_detail": {
-      "smoke": 1832429,
-      "typical": 2997887
+      "smoke": 1930261,
+      "typical": 3018816
     },
     "contact_detail.pathological": {
-      "smoke": 837308,
-      "typical": 1192318
+      "smoke": 949797,
+      "typical": 1365590
     },
     "contact_list.filtered_sorted": {
-      "smoke": 520368,
-      "typical": 9528718
+      "smoke": 576102,
+      "typical": 11158898
     },
     "contact_list.plain": {
-      "smoke": 434278,
-      "typical": 349330
+      "smoke": 418870,
+      "typical": 388713
     },
     "contact_merge": {
-      "smoke": 7295633,
-      "typical": 11278333
+      "smoke": 9443477,
+      "typical": 10756680
     },
     "contact_update": {
-      "smoke": 953925,
-      "typical": 973461
+      "smoke": 947693,
+      "typical": 960767
     },
     "dashboard": {
-      "smoke": 858167,
-      "typical": 2896168
+      "smoke": 857746,
+      "typical": 2908460
     },
     "delete_cascade": {
-      "smoke": 4592875,
-      "typical": 5451092
+      "smoke": 4309607,
+      "typical": 5373837
     },
     "duplicates.find_pairs": {
-      "smoke": 2753002,
-      "typical": 19561062
+      "smoke": 2533213,
+      "typical": 20231495
     },
     "fts.contact_list_search": {
-      "smoke": 670167,
-      "typical": 2003818
+      "smoke": 724758,
+      "typical": 2013626
     },
     "fts.search_all": {
-      "smoke": 817481,
-      "typical": 733274
+      "smoke": 843489,
+      "typical": 740196
     },
     "graph.traverse_deep": {
-      "smoke": 3915866,
-      "typical": 244307566
+      "smoke": 3427256,
+      "typical": 244655453
     },
     "graph.traverse_hub": {
-      "smoke": 1418900,
-      "typical": 23343709
+      "smoke": 1572936,
+      "typical": 25405420
     },
     "graph.traverse_shallow": {
-      "smoke": 228896,
-      "typical": 387711
+      "smoke": 229547,
+      "typical": 427005
     },
     "reachout.detect": {
-      "smoke": 241640,
-      "typical": 244976
+      "smoke": 343409,
+      "typical": 248482
     }
   },
   "data_movement": {
     "backup.vacuum_into": {
-      "smoke": 36978255,
-      "typical": 53808938
+      "smoke": 38445808,
+      "typical": 55140784
     },
     "delete_cascade.hub": {
-      "smoke": 6426496,
-      "typical": 8353972
+      "smoke": 6413190,
+      "typical": 8145292
     },
     "duplicates.find_pairs": {
-      "smoke": 4279502,
-      "typical": 26042951
+      "smoke": 4443496,
+      "typical": 25225775
     },
     "export.bundle": {
-      "smoke": 10515564,
-      "typical": 48699482
+      "smoke": 11032844,
+      "typical": 53200004
     },
     "export.jscontact": {
-      "smoke": 58210106,
-      "typical": 917604937
+      "smoke": 35567403,
+      "typical": 246079042
     },
     "export.vcard4": {
-      "smoke": 59522557,
-      "typical": 845674306
+      "smoke": 37607378,
+      "typical": 264890065
     },
     "fts.rebuild": {
-      "smoke": 7143290,
-      "typical": 16305605
+      "smoke": 7047931,
+      "typical": 17066708
     },
     "import.vcf": {
-      "smoke": 588241801,
-      "typical": 16603496477
+      "smoke": 586516461,
+      "typical": 17425248256
     },
     "restore.snapshot": {
-      "smoke": 17139226,
-      "typical": 30255148
+      "smoke": 17677364,
+      "typical": 29603960
     }
   }
 }

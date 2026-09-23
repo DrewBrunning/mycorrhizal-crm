@@ -688,3 +688,26 @@ type OIDCNativeExchangeResponse struct {
 	Language   string `json:"language"`
 	DateFormat string `json:"date_format"`
 }
+
+// OccasionObligationInput is the DTO for creating/updating an
+// OccasionObligation (occasion_obligation.go). Kind is deliberately not
+// `oneof`-validated — it is an open classifier, same reasoning as
+// PreferenceInput.Category. AnchorMonth/AnchorDay must be both set or both
+// omitted (enforced in the controller, same cross-field pattern
+// validateGiftValueCurrency uses for Gift's ValueCents/Currency pair — this
+// codebase has no cross-field struct-tag validator). Active/Sensitivity
+// default server-side when omitted. Appended at EOF rather than inlined near
+// PreferenceInput to avoid shifting any docs/security/*.md path:line
+// citations below it (CLAUDE.md's citecheck line-shift trap).
+type OccasionObligationInput struct {
+	EntityID          string `json:"entity_id" validate:"required,uuid4"`
+	Kind              string `json:"kind" validate:"required,max=100"`
+	Label             string `json:"label" validate:"required,max=200"`
+	AnchorMonth       *int   `json:"anchor_month,omitempty" validate:"omitempty,min=1,max=12"`
+	AnchorDay         *int   `json:"anchor_day,omitempty" validate:"omitempty,min=1,max=31"`
+	LinkedLifeEventID string `json:"linked_life_event_id,omitempty" validate:"omitempty,uuid4"`
+	LeadTimeDays      int    `json:"lead_time_days,omitempty" validate:"gte=0,lte=365"`
+	Active            *bool  `json:"active,omitempty"`
+	Sensitivity       string `json:"sensitivity,omitempty" validate:"omitempty,oneof=normal private secret"`
+	Notes             string `json:"notes,omitempty" validate:"omitempty,max=2000"`
+}
