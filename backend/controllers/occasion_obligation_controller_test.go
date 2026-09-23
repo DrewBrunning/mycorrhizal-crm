@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -243,4 +244,167 @@ func TestGetOccasionObligationRejectsOtherUser(t *testing.T) {
 
 	w := doOccasionJSON(router, "GET", "/occasion-obligations/"+obligation.ID, nil)
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestCreateOccasionObligationMaterializesReminder(t *testing.T) {
+	db, router := setupRouter()
+	registerOccasionObligationRoutes(t, router)
+
+	var user models.User
+	db.First(&user)
+	contact := seedOccasionObligationContact(t, db, user.ID)
+
+	w := doOccasionJSON(router, "POST", "/occasion-obligations", models.OccasionObligationInput{
+		EntityID:     contact.VCardUID,
+		Kind:         models.OccasionObligationKindGift,
+		Label:        "Birthday gift",
+		AnchorMonth:  intPtr(12),
+		AnchorDay:    intPtr(25),
+		LeadTimeDays: 14,
+	})
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+
+	var created struct {
+		OccasionObligation models.OccasionObligation `json:"occasion_obligation"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created))
+
+	var reminders []models.Reminder
+	require.NoError(t, db.Where("occasion_obligation_id = ?", created.OccasionObligation.ID).Find(&reminders).Error)
+	require.Len(t, reminders, 1, "an active obligation with a valid anchor must materialize exactly one reminder")
+	assert.Equal(t, "yearly", reminders[0].Recurrence, "recurrence must be yearly so the reminder engine self-regenerates without a separate job")
+
+	loc := time.UTC
+	wantAnchor := nextRemindAt(12, 25, time.Now().In(loc), loc)
+	wantRemindAt := wantAnchor.AddDate(0, 0, -14)
+	assert.WithinDuration(t, wantRemindAt, reminders[0].RemindAt, time.Second, "reminder must fire lead_time_days before the anchor date")
+}
+
+func TestCreateOccasionObligationNoAnchorNoReminder(t *testing.T) {
+	db, router := setupRouter()
+	registerOccasionObligationRoutes(t, router)
+
+	var user models.User
+	db.First(&user)
+	contact := seedOccasionObligationContact(t, db, user.ID)
+
+	w := doOccasionJSON(router, "POST", "/occasion-obligations", models.OccasionObligationInput{
+		EntityID: contact.VCardUID,
+		Kind:     models.OccasionObligationKindInvite,
+		Label:    "Annual summer BBQ",
+	})
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+
+	var count int64
+	db.Model(&models.Reminder{}).Count(&count)
+	assert.EqualValues(t, 0, count, "an obligation with no anchor date must not materialize a reminder")
+}
+
+func TestUpdateOccasionObligationDeactivateRemovesReminder(t *testing.T) {
+	db, router := setupRouter()
+	registerOccasionObligationRoutes(t, router)
+
+	var user models.User
+	db.First(&user)
+	contact := seedOccasionObligationContact(t, db, user.ID)
+
+	createResp := doOccasionJSON(router, "POST", "/occasion-obligations", models.OccasionObligationInput{
+		EntityID:    contact.VCardUID,
+		Kind:        models.OccasionObligationKindCard,
+		Label:       "Christmas card",
+		AnchorMonth: intPtr(12),
+		AnchorDay:   intPtr(25),
+	})
+	require.Equal(t, http.StatusCreated, createResp.Code, createResp.Body.String())
+	var created struct {
+		OccasionObligation models.OccasionObligation `json:"occasion_obligation"`
+	}
+	require.NoError(t, json.Unmarshal(createResp.Body.Bytes(), &created))
+
+	var beforeCount int64
+	db.Model(&models.Reminder{}).Where("occasion_obligation_id = ?", created.OccasionObligation.ID).Count(&beforeCount)
+	require.EqualValues(t, 1, beforeCount)
+
+	inactive := false
+	updateResp := doOccasionJSON(router, "PUT", "/occasion-obligations/"+created.OccasionObligation.ID, models.OccasionObligationInput{
+		EntityID:    contact.VCardUID,
+		Kind:        models.OccasionObligationKindCard,
+		Label:       "Christmas card",
+		AnchorMonth: intPtr(12),
+		AnchorDay:   intPtr(25),
+		Active:      &inactive,
+	})
+	require.Equal(t, http.StatusOK, updateResp.Code, updateResp.Body.String())
+
+	var afterCount int64
+	db.Model(&models.Reminder{}).Where("occasion_obligation_id = ?", created.OccasionObligation.ID).Count(&afterCount)
+	assert.EqualValues(t, 0, afterCount, "deactivating an obligation must remove its materialized reminder")
+}
+
+func TestUpdateOccasionObligationEditAnchorRegeneratesReminderWithoutDuplicate(t *testing.T) {
+	db, router := setupRouter()
+	registerOccasionObligationRoutes(t, router)
+
+	var user models.User
+	db.First(&user)
+	contact := seedOccasionObligationContact(t, db, user.ID)
+
+	createResp := doOccasionJSON(router, "POST", "/occasion-obligations", models.OccasionObligationInput{
+		EntityID:    contact.VCardUID,
+		Kind:        models.OccasionObligationKindCard,
+		Label:       "Christmas card",
+		AnchorMonth: intPtr(12),
+		AnchorDay:   intPtr(25),
+	})
+	require.Equal(t, http.StatusCreated, createResp.Code, createResp.Body.String())
+	var created struct {
+		OccasionObligation models.OccasionObligation `json:"occasion_obligation"`
+	}
+	require.NoError(t, json.Unmarshal(createResp.Body.Bytes(), &created))
+
+	updateResp := doOccasionJSON(router, "PUT", "/occasion-obligations/"+created.OccasionObligation.ID, models.OccasionObligationInput{
+		EntityID:    contact.VCardUID,
+		Kind:        models.OccasionObligationKindCard,
+		Label:       "Christmas card",
+		AnchorMonth: intPtr(11),
+		AnchorDay:   intPtr(1),
+	})
+	require.Equal(t, http.StatusOK, updateResp.Code, updateResp.Body.String())
+
+	var reminders []models.Reminder
+	require.NoError(t, db.Where("occasion_obligation_id = ?", created.OccasionObligation.ID).Find(&reminders).Error)
+	require.Len(t, reminders, 1, "editing the anchor must regenerate, not duplicate, the reminder")
+
+	loc := time.UTC
+	want := nextRemindAt(11, 1, time.Now().In(loc), loc)
+	assert.WithinDuration(t, want, reminders[0].RemindAt, time.Second)
+}
+
+func TestDeleteOccasionObligationRemovesReminder(t *testing.T) {
+	db, router := setupRouter()
+	registerOccasionObligationRoutes(t, router)
+
+	var user models.User
+	db.First(&user)
+	contact := seedOccasionObligationContact(t, db, user.ID)
+
+	createResp := doOccasionJSON(router, "POST", "/occasion-obligations", models.OccasionObligationInput{
+		EntityID:    contact.VCardUID,
+		Kind:        models.OccasionObligationKindCard,
+		Label:       "Christmas card",
+		AnchorMonth: intPtr(12),
+		AnchorDay:   intPtr(25),
+	})
+	require.Equal(t, http.StatusCreated, createResp.Code, createResp.Body.String())
+	var created struct {
+		OccasionObligation models.OccasionObligation `json:"occasion_obligation"`
+	}
+	require.NoError(t, json.Unmarshal(createResp.Body.Bytes(), &created))
+
+	deleteResp := doOccasionJSON(router, "DELETE", "/occasion-obligations/"+created.OccasionObligation.ID, nil)
+	require.Equal(t, http.StatusOK, deleteResp.Code, deleteResp.Body.String())
+
+	var count int64
+	db.Unscoped().Model(&models.Reminder{}).Where("occasion_obligation_id = ?", created.OccasionObligation.ID).Count(&count)
+	assert.EqualValues(t, 0, count, "deleting an obligation must hard-delete its machine-synthesized reminder")
 }

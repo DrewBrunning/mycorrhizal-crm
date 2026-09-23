@@ -2,10 +2,12 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -21,6 +23,70 @@ func validateOccasionAnchorPair(input *models.OccasionObligationInput) *apperror
 		return apperrors.ErrValidation("An occasion anchor date requires both a month and a day, or neither")
 	}
 	return nil
+}
+
+// syncOccasionObligationReminder keeps a materialized Reminder row in sync
+// with an OccasionObligation (docs/adrs/0024-occasions.md, issue #387, ticket
+// #1223) — the same pattern syncLifeEventReminder (life_event_controller.go)
+// uses, with one difference: the reminder fires LeadTimeDays before the
+// anchor date, not on it. Hard-deletes any existing reminder for this
+// obligation (machine-synthesized, not user-authored — no soft-delete),
+// then creates a new yearly one if Active and the obligation has a valid
+// anchor month/day.
+//
+// Recurrence "yearly" (not "once") is deliberate: services.CalculateNextReminderTime
+// already regenerates any yearly reminder's next occurrence generically on
+// completion, so — unlike a one-off reminder — this single row keeps itself
+// current year over year with no separate regeneration job. The lead-time
+// offset survives every future regeneration automatically, since AddDate
+// preserves the fixed day-of-year gap between the reminder and the (implicit)
+// anchor.
+//
+// A RemindAt that lands in the past (the next occurrence's anchor is closer
+// than LeadTimeDays) is valid, not an error: the reminder is simply
+// immediately due, which is the correct behavior for an obligation just
+// created close to its own anchor date — the same "overdue is a real state"
+// convention every other reminder in this codebase already follows.
+func syncOccasionObligationReminder(tx *gorm.DB, userID uint, obligation *models.OccasionObligation, now time.Time, loc *time.Location) error {
+	if err := tx.Where("reminder_id IN (SELECT id FROM reminders WHERE occasion_obligation_id = ?)", obligation.ID).Delete(&models.NotificationDelivery{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Unscoped().Where("occasion_obligation_id = ?", obligation.ID).Delete(&models.Reminder{}).Error; err != nil {
+		return err
+	}
+
+	if !obligation.Active {
+		return nil
+	}
+	if obligation.AnchorMonth == nil || obligation.AnchorDay == nil {
+		return nil
+	}
+
+	contactID, err := getContactIDByVCardUID(tx, userID, obligation.EntityID)
+	if err != nil {
+		return err
+	}
+	if contactID == nil {
+		return nil
+	}
+
+	remindAt := nextRemindAt(*obligation.AnchorMonth, *obligation.AnchorDay, now, loc).AddDate(0, 0, -obligation.LeadTimeDays)
+
+	contactName := obligation.EntityID // fallback: show VCardUID in message if name lookup fails
+	var contact models.Contact
+	if tx.Where("vcard_uid = ? AND user_id = ?", obligation.EntityID, userID).First(&contact).Error == nil {
+		contactName = contact.Firstname + " " + contact.Lastname
+	}
+
+	reminder := models.Reminder{
+		UserID:               userID,
+		Message:              fmt.Sprintf("Occasion — %s: %s", obligation.Label, contactName),
+		RemindAt:             remindAt,
+		Recurrence:           "yearly",
+		ContactID:            contactID,
+		OccasionObligationID: &obligation.ID,
+	}
+	return tx.Create(&reminder).Error
 }
 
 // CreateOccasionObligation creates a new OccasionObligation
@@ -60,22 +126,32 @@ func CreateOccasionObligation(c *gin.Context) {
 		sensitivity = models.RelationshipSensitivityNormal
 	}
 
-	obligation := models.OccasionObligation{
-		UserID:            userID,
-		EntityID:          input.EntityID,
-		Kind:              input.Kind,
-		Label:             input.Label,
-		AnchorMonth:       input.AnchorMonth,
-		AnchorDay:         input.AnchorDay,
-		LinkedLifeEventID: input.LinkedLifeEventID,
-		LeadTimeDays:      input.LeadTimeDays,
-		Active:            active,
-		Sensitivity:       sensitivity,
-		Notes:             input.Notes,
-	}
+	cfg := currentConfig(c)
+	loc := cfg.GetReminderLocation()
+	now := time.Now().In(loc)
 
-	if err := db.Create(&obligation).Error; err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save occasion obligation").WithError(err))
+	var obligation models.OccasionObligation
+	txErr := db.Transaction(func(tx *gorm.DB) error {
+		obligation = models.OccasionObligation{
+			UserID:            userID,
+			EntityID:          input.EntityID,
+			Kind:              input.Kind,
+			Label:             input.Label,
+			AnchorMonth:       input.AnchorMonth,
+			AnchorDay:         input.AnchorDay,
+			LinkedLifeEventID: input.LinkedLifeEventID,
+			LeadTimeDays:      input.LeadTimeDays,
+			Active:            active,
+			Sensitivity:       sensitivity,
+			Notes:             input.Notes,
+		}
+		if err := tx.Create(&obligation).Error; err != nil {
+			return err
+		}
+		return syncOccasionObligationReminder(tx, userID, &obligation, now, loc)
+	})
+	if txErr != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save occasion obligation").WithError(txErr))
 		return
 	}
 
@@ -254,8 +330,18 @@ func UpdateOccasionObligation(c *gin.Context) {
 	obligation.Sensitivity = sensitivity
 	obligation.Notes = input.Notes
 
-	if err := db.Save(&obligation).Error; err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save occasion obligation").WithError(err))
+	cfg := currentConfig(c)
+	loc := cfg.GetReminderLocation()
+	now := time.Now().In(loc)
+
+	txErr := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(&obligation).Error; err != nil {
+			return err
+		}
+		return syncOccasionObligationReminder(tx, userID, &obligation, now, loc)
+	})
+	if txErr != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save occasion obligation").WithError(txErr))
 		return
 	}
 
@@ -282,7 +368,16 @@ func DeleteOccasionObligation(c *gin.Context) {
 		return
 	}
 
-	if err := db.Delete(&obligation).Error; err != nil {
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("reminder_id IN (SELECT id FROM reminders WHERE occasion_obligation_id = ?)", obligation.ID).Delete(&models.NotificationDelivery{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Unscoped().Where("occasion_obligation_id = ?", obligation.ID).Delete(&models.Reminder{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&obligation).Error
+	})
+	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to delete occasion obligation").WithError(err))
 		return
 	}

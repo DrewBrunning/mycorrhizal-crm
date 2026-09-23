@@ -11445,6 +11445,13 @@ components:
         last_sent: { type: string, format: date-time, nullable: true }
         contact_id: { type: integer, nullable: true }
         life_event_id: { type: string }
+        occasion_obligation_id:
+          type: string
+          description: >
+            Machine-synthesized link to the OccasionObligation this reminder
+            was materialized for (docs/adrs/0024-occasions.md, issue #387,
+            ticket #1223) — server-set by syncOccasionObligationReminder,
+            never client-writable.
         contact:
           $ref: "#/components/schemas/ContactFlat"
         revision:

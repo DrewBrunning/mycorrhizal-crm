@@ -10804,6 +10804,11 @@
           "required": false
         },
         {
+          "name": "occasion_obligation_id",
+          "type": "string",
+          "required": false
+        },
+        {
           "name": "recurrence",
           "type": "string",
           "required": false,
@@ -15558,6 +15563,11 @@
         },
         {
           "name": "message",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "occasion_obligation_id",
           "type": "string",
           "required": false
         },
