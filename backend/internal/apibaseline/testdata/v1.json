@@ -5735,6 +5735,36 @@
     },
     {
       "method": "GET",
+      "path": "/occasions/upcoming",
+      "parameters": [
+        {
+          "name": "days",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "include_sensitive",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/paperless/config",
       "parameters": null,
       "responses": [
@@ -16542,6 +16572,52 @@
           "name": "enabled",
           "type": "boolean",
           "required": true
+        }
+      ]
+    },
+    {
+      "name": "UpcomingOccasion",
+      "properties": [
+        {
+          "name": "contact_id",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "contact_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "date",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "days_until",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "birthday",
+            "anniversary",
+            "life_event",
+            "obligation"
+          ]
         }
       ]
     },

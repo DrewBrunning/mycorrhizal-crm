@@ -6112,6 +6112,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /occasions/upcoming:
+    get:
+      summary: Upcoming occasions (birthdays, anniversaries, life events, obligations)
+      operationId: getUpcomingOccasions
+      description: >
+        The "upcoming occasions" dashboard-widget aggregate (ADR 0024,
+        issue #387): every birthday/anniversary/life-event/active-obligation
+        occurrence within the next `days`, sorted ascending by days-until.
+        "Today" is the reminder-zone clock (ADR 0015 Rule 4).
+      parameters:
+        - name: days
+          in: query
+          description: Window size in days. Only 30 (default) or 90 are accepted.
+          schema: { type: integer, enum: [30, 90], default: 30 }
+        - name: include_sensitive
+          in: query
+          description: Include occasion obligations above normal sensitivity.
+          schema: { type: boolean, default: false }
+      responses:
+        "400":
+          description: Invalid days value.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The composed upcoming-occasions list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  occasions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UpcomingOccasion"
+                  days: { type: integer }
+
   # --- CadencePolicies (T19) ---
   /cadence-policies/overdue:
     get:
@@ -12719,6 +12763,20 @@ components:
         active: { type: boolean, nullable: true, description: "Omitted defaults to true server-side." }
         sensitivity: { type: string, enum: [normal, private, secret] }
         notes: { type: string, maxLength: 2000 }
+
+    UpcomingOccasion:
+      type: object
+      description: One row of the /occasions/upcoming aggregate (ADR 0024, issue #387).
+      properties:
+        contact_id: { type: integer }
+        contact_name: { type: string }
+        source: { type: string, enum: [birthday, anniversary, life_event, obligation] }
+        label: { type: string }
+        date: { type: string, format: date, description: "Resolved next-occurrence date (YYYY-MM-DD), reminder-zone." }
+        days_until: { type: integer }
+        kind:
+          type: string
+          description: OccasionObligation.Kind (card/gift/invite), source=obligation rows only.
 
     # --- CadencePolicies (T19) ---
     CadencePolicy:

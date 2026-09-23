@@ -461,6 +461,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/occasion-obligations/:id":    {class: classItem, probe: "/api/v1/occasion-obligations/" + s.occasionObligation},
 		"PUT /api/v1/occasion-obligations/:id":    {class: classItem, probe: "/api/v1/occasion-obligations/" + s.occasionObligation},
 		"DELETE /api/v1/occasion-obligations/:id": {class: classItem, probe: "/api/v1/occasion-obligations/" + s.occasionObligation},
+		"GET /api/v1/occasions/upcoming":          {class: classProtected},
 
 		// --- cadence policies -----------------------------------------------
 		"GET /api/v1/cadence-policies/overdue": {class: classProtected},

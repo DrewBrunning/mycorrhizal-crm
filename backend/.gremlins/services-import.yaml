@@ -44,6 +44,7 @@ unleash:
         - ^mailer\.go$
         - ^notification_health\.go$
         - ^notification_service\.go$
+        - ^occasion_service\.go$
         - ^oidc_native\.go$
         - ^oidc_service\.go$
         - ^operational_alert\.go$

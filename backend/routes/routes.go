@@ -411,6 +411,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.GET("/occasion-obligations/:id", controllers.GetOccasionObligation)
 			protected.PUT("/occasion-obligations/:id", middleware.ValidateJSONMiddleware(&models.OccasionObligationInput{}), controllers.UpdateOccasionObligation)
 			protected.DELETE("/occasion-obligations/:id", controllers.DeleteOccasionObligation)
+			protected.GET("/occasions/upcoming", controllers.GetUpcomingOccasions)
 
 			// CadencePolicy routes (T19 — T19).
 			// /overdue is registered before /:id so the literal path is never
