@@ -253,6 +253,34 @@ class SettingsScreenTest {
         assertTrue(channels)
     }
 
+    // Issue #833: the Paperless/Seafile/Nextcloud connection-config settings screens.
+    @Test
+    fun `paperless, seafile and nextcloud rows invoke their navigation callbacks`() {
+        var paperless = false
+        var seafile = false
+        var nextcloud = false
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(),
+                    onPaperlessSettings = { paperless = true },
+                    onSeafileSettings = { seafile = true },
+                    onNextcloudSettings = { nextcloud = true },
+                    onLogout = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Paperless-ngx").performScrollTo().performClick()
+        assertTrue(paperless)
+
+        composeTestRule.onNodeWithText("Seafile").performScrollTo().performClick()
+        assertTrue(seafile)
+
+        composeTestRule.onNodeWithText("Nextcloud / ownCloud").performScrollTo().performClick()
+        assertTrue(nextcloud)
+    }
+
     // Issue #413's Android follow-up (#573).
     @Test
     fun `api tokens row invokes its navigation callback`() {
