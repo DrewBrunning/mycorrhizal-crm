@@ -6156,6 +6156,38 @@ paths:
                       $ref: "#/components/schemas/UpcomingOccasion"
                   days: { type: integer }
 
+  /occasion-obligations/card-list:
+    get:
+      summary: Sensitivity-filtered card-list CSV export
+      operationId: getOccasionCardListCSV
+      description: >
+        Every contact with an active OccasionObligation of the given `kind`
+        (default "card"), as a CSV of name + postal address (ADR 0024 part 4,
+        issue #387). Deliberately NOT the full-fidelity GET /api/v1/export
+        path — see the handler's own doc comment. A contact with no address
+        on file is skipped.
+      parameters:
+        - name: kind
+          in: query
+          description: OccasionObligation.Kind to filter on.
+          schema: { type: string, default: "card" }
+        - name: include_sensitive
+          in: query
+          description: Include occasion obligations above normal sensitivity.
+          schema: { type: boolean, default: false }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The card-list CSV.
+          content:
+            text/csv:
+              schema: { type: string }
+
   # --- CadencePolicies (T19) ---
   /cadence-policies/overdue:
     get:

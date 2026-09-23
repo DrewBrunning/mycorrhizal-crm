@@ -5667,6 +5667,32 @@
     },
     {
       "method": "GET",
+      "path": "/occasion-obligations/card-list",
+      "parameters": [
+        {
+          "name": "include_sensitive",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "kind",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": ""
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/occasion-obligations/{id}",
       "parameters": [
         {

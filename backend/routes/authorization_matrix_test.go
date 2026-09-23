@@ -456,12 +456,13 @@ func buildTable(s seeded) map[string]authzRow {
 		"PUT /api/v1/preferences/:id":    {class: classItem, probe: "/api/v1/preferences/" + s.preference},
 		"DELETE /api/v1/preferences/:id": {class: classItem, probe: "/api/v1/preferences/" + s.preference},
 
-		"POST /api/v1/occasion-obligations":       {class: classProtected},
-		"GET /api/v1/occasion-obligations":        {class: classProtected},
-		"GET /api/v1/occasion-obligations/:id":    {class: classItem, probe: "/api/v1/occasion-obligations/" + s.occasionObligation},
-		"PUT /api/v1/occasion-obligations/:id":    {class: classItem, probe: "/api/v1/occasion-obligations/" + s.occasionObligation},
-		"DELETE /api/v1/occasion-obligations/:id": {class: classItem, probe: "/api/v1/occasion-obligations/" + s.occasionObligation},
-		"GET /api/v1/occasions/upcoming":          {class: classProtected},
+		"POST /api/v1/occasion-obligations":          {class: classProtected},
+		"GET /api/v1/occasion-obligations":           {class: classProtected},
+		"GET /api/v1/occasion-obligations/:id":       {class: classItem, probe: "/api/v1/occasion-obligations/" + s.occasionObligation},
+		"PUT /api/v1/occasion-obligations/:id":       {class: classItem, probe: "/api/v1/occasion-obligations/" + s.occasionObligation},
+		"DELETE /api/v1/occasion-obligations/:id":    {class: classItem, probe: "/api/v1/occasion-obligations/" + s.occasionObligation},
+		"GET /api/v1/occasions/upcoming":             {class: classProtected},
+		"GET /api/v1/occasion-obligations/card-list": {class: classProtected},
 
 		// --- cadence policies -----------------------------------------------
 		"GET /api/v1/cadence-policies/overdue": {class: classProtected},
