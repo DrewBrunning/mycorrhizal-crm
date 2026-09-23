@@ -1,4 +1,4 @@
-# ADR 0023: Occasions — recurring card/gift/invite obligations
+# ADR 0024: Occasions — recurring card/gift/invite obligations
 
 - **Status:** accepted
 - **Date:** 2026-09-23
