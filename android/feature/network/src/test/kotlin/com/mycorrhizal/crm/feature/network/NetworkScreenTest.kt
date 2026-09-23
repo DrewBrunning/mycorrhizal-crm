@@ -48,7 +48,19 @@ class NetworkScreenTest {
         name: String,
         depth: Int,
         steps: List<GraphChainStep>,
-    ) = GraphChain(targetId = targetId, targetVCardUid = uid, targetName = name, depth = depth, steps = steps)
+        // Issue #383 (ADR-0023): optional so every existing call site (none
+        // of which cares about the score) is unaffected.
+        healthScore: Int? = null,
+        healthBand: String? = null,
+    ) = GraphChain(
+        targetId = targetId,
+        targetVCardUid = uid,
+        targetName = name,
+        depth = depth,
+        steps = steps,
+        healthScore = healthScore,
+        healthBand = healthBand,
+    )
 
     private fun state(
         chains: List<GraphChain> = emptyList(),
@@ -145,6 +157,45 @@ class NetworkScreenTest {
         composeTestRule
             .onNodeWithContentDescription("Ghost — Ghost (spouse of)")
             .assert(SemanticsMatcher("has no click action") { node -> !node.config.contains(SemanticsActions.OnClick) })
+    }
+
+    @Test
+    fun `a row with a health score spells the band out in words in its content description`() {
+        // Issue #383 (ADR-0023): color alone must never carry the band —
+        // the merged row description always spells it out, same rule the
+        // dot's color follows (mirrors CadenceScreen's icon-tint precedent).
+        setContent(
+            uiState = state(
+                chains = listOf(
+                    chain(
+                        10,
+                        "t1",
+                        "Carol",
+                        depth = 1,
+                        steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of")),
+                        healthScore = 72,
+                        healthBand = "moss",
+                    ),
+                ),
+            ),
+        )
+
+        composeTestRule
+            .onNodeWithContentDescription("Carol — Carol (child of) — Healthy")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `a row with no health score keeps the plain two-part description`() {
+        setContent(
+            uiState = state(
+                chains = listOf(
+                    chain(10, "t1", "Carol", depth = 1, steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))),
+                ),
+            ),
+        )
+
+        composeTestRule.onNodeWithContentDescription("Carol — Carol (child of)").assertIsDisplayed()
     }
 
     @Test
@@ -301,7 +352,16 @@ class NetworkScreenTest {
 
     private fun populatedState() = state(
         chains = listOf(
-            chain(10, "t1", "Carol", depth = 1, steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))),
+            chain(
+                10,
+                "t1",
+                "Carol",
+                depth = 1,
+                steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of")),
+                // Issue #383: exercise the health-score dot in the a11y sweep too.
+                healthScore = 72,
+                healthBand = "moss",
+            ),
         ),
     )
 

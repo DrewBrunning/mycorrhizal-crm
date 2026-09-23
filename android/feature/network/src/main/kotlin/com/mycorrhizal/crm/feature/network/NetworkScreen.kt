@@ -53,8 +53,10 @@ import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.GraphChain
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.HealthScoreDot
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.healthBandLabel
 
 /**
  * M14: the ego-centric network list over `GET /graph/connections` (the design
@@ -407,11 +409,26 @@ private fun NetworkRow(
     chain: GraphChain,
     onOpenContact: (Int) -> Unit,
 ) {
-    val contentDescription = stringResource(
-        R.string.network_row_description,
-        chain.displayName,
-        chain.readablePath,
-    )
+    // Issue #383 (ADR-0023): the target's server-computed health band, when
+    // present, is spelled out in words as a third component of the row's
+    // merged content description — the same rule the dot's color follows
+    // (never color alone). No new network call: healthScore/healthBand
+    // already arrive on this GraphChain from GET /graph/connections.
+    val band = chain.healthBand
+    val contentDescription = if (band != null) {
+        stringResource(
+            R.string.network_row_description_with_health,
+            chain.displayName,
+            chain.readablePath,
+            healthBandLabel(band),
+        )
+    } else {
+        stringResource(
+            R.string.network_row_description,
+            chain.displayName,
+            chain.readablePath,
+        )
+    }
     val clickable = if (chain.targetId != 0) {
         Modifier.clickable { onOpenContact(chain.targetId) }
     } else {
@@ -426,7 +443,11 @@ private fun NetworkRow(
             .then(clickable)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        if (band != null) {
+            HealthScoreDot(band = band)
+        }
         Column {
             Text(
                 text = chain.displayName,

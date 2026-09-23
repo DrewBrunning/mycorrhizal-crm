@@ -1185,6 +1185,67 @@ class ApiClientTest {
         assertEquals(404, (error as ApiError.Client).code)
     }
 
+    // --- Issue #383 (ADR-0023): relationship health score ---
+
+    @Test
+    fun `getContactScore parses the score, band and all five facets`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "contact_id": 1,
+                      "score": 72,
+                      "band": "moss",
+                      "recency": {"value": 80, "weight": 35, "reason": "Last qualifying interaction 5 day(s) ago (target every 30 days)"},
+                      "frequency": {"value": 60, "weight": 20, "reason": "Some cadence"},
+                      "closeness": {"value": 85, "weight": 20, "reason": "Close relation"},
+                      "reach_out": {"value": 100, "weight": 15, "reason": "No pending reach-out"},
+                      "last_updated": {"value": 90, "weight": 10, "reason": "Updated recently"}
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.getContactScore(1)
+
+        assertTrue(result.isSuccess)
+        val score = result.getOrThrow()
+        assertEquals(1, score.contactId)
+        assertEquals(72, score.score)
+        assertEquals("moss", score.band)
+        assertEquals(80.0, score.recency.value, 0.0)
+        assertEquals(35.0, score.recency.weight, 0.0)
+        assertEquals("Last qualifying interaction 5 day(s) ago (target every 30 days)", score.recency.reason)
+        assertEquals(60.0, score.frequency.value, 0.0)
+        assertEquals(85.0, score.closeness.value, 0.0)
+        assertEquals(100.0, score.reachOut.value, 0.0)
+        assertEquals(15.0, score.reachOut.weight, 0.0)
+        assertEquals(90.0, score.lastUpdated.value, 0.0)
+        assertEquals(10.0, score.lastUpdated.weight, 0.0)
+
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/contacts/1/score", request.path)
+    }
+
+    @Test
+    fun `getContactScore maps a 404 to a Client error`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(404)
+                .setBody("""{"error":{"code":"not_found","message":"Contact not found"}}"""),
+        )
+
+        val result = client.getContactScore(999)
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(404, (error as ApiError.Client).code)
+    }
+
     @Test
     fun `current user parses profile`() = runBlocking {
         server.enqueue(

@@ -55,7 +55,19 @@ class NetworkViewModelTest {
         name: String,
         depth: Int,
         steps: List<GraphChainStep>,
-    ) = GraphChain(targetId = targetId, targetVCardUid = uid, targetName = name, depth = depth, steps = steps)
+        // Issue #383 (ADR-0023): optional so every existing call site (none
+        // of which cares about the score) is unaffected.
+        healthScore: Int? = null,
+        healthBand: String? = null,
+    ) = GraphChain(
+        targetId = targetId,
+        targetVCardUid = uid,
+        targetName = name,
+        depth = depth,
+        steps = steps,
+        healthScore = healthScore,
+        healthBand = healthBand,
+    )
 
     private fun stubFrom(contactId: Int = 1, uid: String = "uid-1", name: String = "Alice") {
         coEvery { contactRepository.getContact(contactId) } returns Result.success(record(contactId, uid, name))
@@ -455,5 +467,42 @@ class NetworkViewModelTest {
             assertTrue(vm.uiState.value.allChains.isEmpty())
             assertTrue(vm.uiState.value.groupedChains.isEmpty())
             assertEquals("boom", vm.uiState.value.error)
+        }
+
+    // --- Issue #383 (ADR-0023): relationship health score pass-through ---
+
+    @Test
+    fun `healthScore and healthBand pass through unchanged from the connections response`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubFrom()
+            coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
+            val response = GraphConnectionsResponse(
+                fromVCardUid = "uid-1",
+                fromName = "Alice",
+                depth = 2,
+                chains = listOf(
+                    chain(
+                        10,
+                        "t1",
+                        "Carol",
+                        depth = 1,
+                        steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of")),
+                        healthScore = 72,
+                        healthBand = "moss",
+                    ),
+                    // No score computed for this target — must stay null, not defaulted.
+                    chain(20, "t2", "Dave", depth = 1, steps = listOf(GraphChainStep(20, "t2", "Dave", "spouse_of"))),
+                ),
+            )
+            stubConnections(response = response)
+
+            val vm = viewModel(contactId = 1)
+            advanceUntilIdle()
+
+            val chains = vm.uiState.value.groupedChains[1].orEmpty().associateBy { it.targetName }
+            assertEquals(72, chains.getValue("Carol").healthScore)
+            assertEquals("moss", chains.getValue("Carol").healthBand)
+            assertNull(chains.getValue("Dave").healthScore)
+            assertNull(chains.getValue("Dave").healthBand)
         }
 }

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.ContactScoreRepository
 import com.mycorrhizal.crm.domain.repository.ExternalActivityRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
 import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
@@ -20,6 +21,7 @@ import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
+import com.mycorrhizal.crm.model.network.ContactScoreResponse
 import com.mycorrhizal.crm.model.network.DEFAULT_ENABLED_CONTACT_FIELDS
 import com.mycorrhizal.crm.model.network.ExternalActivity
 import com.mycorrhizal.crm.model.network.ExternalIdentity
@@ -150,6 +152,15 @@ data class ContactDetailUiState(
     val nextcloudBrowsePath: String = "/",
     val nextcloudBrowseItems: List<WebDAVItem> = emptyList(),
     val nextcloudBrowseLoading: Boolean = false,
+    /**
+     * Issue #383 (ADR-0023): the server-computed relationship health score
+     * (`GET /contacts/:id/score`) — fetched independently of the contact
+     * record, like [completions]/[fieldDefinitions]. A fetch failure silently
+     * leaves this null; the header badge simply doesn't render rather than
+     * erroring the whole screen (same treatment as every other optional
+     * panel here).
+     */
+    val score: ContactScoreResponse? = null,
 )
 
 sealed interface ContactDetailEvent {
@@ -188,6 +199,8 @@ class ContactDetailViewModel @Inject constructor(
     private val paperlessRepository: PaperlessRepository,
     private val seafileRepository: SeafileRepository,
     private val nextcloudRepository: NextcloudRepository,
+    // Issue #383 (ADR-0023): the relationship health score badge/breakdown.
+    private val contactScoreRepository: ContactScoreRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -240,6 +253,23 @@ class ContactDetailViewModel @Inject constructor(
         }
         loadCustomFields()
         loadCompletions()
+        loadScore()
+    }
+
+    /**
+     * Issue #383 (ADR-0023): fetch the server-computed relationship health
+     * score. Independent of the contact record fetch and of every other
+     * panel; a failure silently leaves [ContactDetailUiState.score] null (see
+     * its doc comment) rather than erroring the screen.
+     */
+    private fun loadScore() {
+        if (contactId == 0) return
+        viewModelScope.launch {
+            contactScoreRepository.getScore(contactId).foldApiError(
+                onSuccess = { score -> _uiState.update { it.copy(score = score) } },
+                onError = {},
+            )
+        }
     }
 
     /**
