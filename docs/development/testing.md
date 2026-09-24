@@ -747,6 +747,41 @@ Two nuances worth writing down, because the mapping is *almost* clean:
   skips the deployed-artifact stack for backend-only diffs, and the overnight
   run is where that signal lands.
 
+## Nightly failure alerting
+
+Nightly is the only **zero-retry** tier: a flake on the PR/push path gets an
+automatic retry (gradle test-retry, gotestsum reruns, Playwright's retry
+config); a scheduled run does not. It is also where the slowest and most
+failure-prone suites live — mutation testing (`go-mutation.yml`,
+`stryker.yml`), the large-dataset performance/capacity jobs
+(`migration-tests.yml`'s nightly leg), chaos injection (`chaos-tests.yml`),
+and the real-server CardDAV/DAVx5/vdirsyncer interop suites — so a red
+nightly run is disproportionately likely to be a real regression, not noise.
+Previously nothing alerted on one: a scheduled workflow going red just sat on
+the Actions tab.
+
+`nightly-failure-alert.yml` closes that gap. It is a `workflow_run` listener
+that reacts to the completion of every workflow with a `schedule:` trigger
+(29 as of this writing), gated to the run that actually fired on its
+`schedule` event rather than a push/PR/dispatch run of the same workflow:
+
+- **On failure, timeout, startup failure, or a cancellation** it opens a
+  `nightly-failure`-labelled issue titled `Nightly failure: <workflow name>`
+  (or comments on the one already open for that workflow), linking the run
+  and naming the non-success job(s).
+- **On success** it comments on that workflow's open `nightly-failure` issue,
+  if any, and closes it — the alert clears itself once the schedule is green
+  again, rather than needing someone to notice and close it by hand.
+
+The `workflows:` list in that file's `on.workflow_run.workflows` must equal
+exactly the set of workflow `name:`s that declare a `schedule:` trigger.
+`cd backend && go run ./cmd/nightlyalertcheck` (a `Docs & security-doc
+citations` step, every PR — unconditional, like citecheck/docscheck above,
+since `.github/filters.yaml` maps a workflow-only change to `workflows`, not
+`backend`) fails the build if the two sets ever diverge: a newly-scheduled
+workflow that nobody registered would otherwise alert on nothing, and a
+renamed or de-scheduled workflow would leave a dead entry.
+
 ## Anti-goal: coverage percentage is not the acceptance criterion
 
 The milestone states it verbatim, and this project means it: **coverage is

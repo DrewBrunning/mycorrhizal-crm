@@ -220,6 +220,20 @@ jobs:
         working-directory: backend
         run: go run ./cmd/codecovcheck
 
+      # Nightly is the only zero-retry CI tier here, and until
+      # nightly-failure-alert.yml nobody was alerted when a scheduled
+      # workflow went red. nightlyalertcheck fails the build the moment the
+      # set of workflow `name:`s with a `schedule:` trigger diverges from
+      # that alert workflow's `on.workflow_run.workflows` registration list
+      # -- in either direction, so a new scheduled workflow can't silently
+      # go unwatched and a renamed/removed one can't leave a stale entry.
+      # Same job/rationale as the checks above: unconditional, because
+      # .github/filters.yaml maps a workflow-only change to `workflows`, not
+      # `backend`.
+      - name: Verify nightly-failure-alert.yml registration matches schedule triggers
+        working-directory: backend
+        run: go run ./cmd/nightlyalertcheck
+
   # REL-05 (issue #449): a PR that touches an operator-visible surface
   # (`changelog-relevant` in .github/filters.yaml — schema migrations, the
   # config surface, .env.example) must carry an `## Upgrade notes` /
