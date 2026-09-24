@@ -2257,6 +2257,44 @@
         "given": "Übergeben",
         "received": "Erhalten"
       }
+    },
+    "events": {
+      "title": "Veranstaltungen",
+      "add": "Neue Veranstaltung",
+      "createTitle": "Veranstaltung erstellen",
+      "editTitle": "Veranstaltung bearbeiten",
+      "empty": "Noch keine Veranstaltungen. Erstelle eine, um die Gästeliste zu planen.",
+      "titleLabel": "Titel",
+      "startsAt": "Beginn",
+      "endsAt": "Ende",
+      "location": "Ort",
+      "sensitivity": "Vertraulichkeit",
+      "notes": "Notizen",
+      "deleteMessage": "Diese Veranstaltung löschen?",
+      "manageAttendees": "Gäste",
+      "attendeesTitle": "Gäste — {{title}}",
+      "noAttendees": "Noch niemand eingeladen.",
+      "addAttendee": "Hinzufügen",
+      "removeAttendee": "Entfernen",
+      "suggestFromCircles": "Gäste aus Kreisen vorschlagen",
+      "selectCircles": "Kreise",
+      "suggest": "Vorschlagen",
+      "noSuggestions": "Keine neuen Vorschläge aus diesen Kreisen.",
+      "rsvpHint": "Notiere, was dir jeder Gast gesagt hat — von hier wird keine Einladung versendet.",
+      "rsvpLabel": "Rückmeldung",
+      "attendeeSaveFailed": "Gast konnte nicht aktualisiert werden.",
+      "rsvp": {
+        "pending": "Ausstehend",
+        "accepted": "Zugesagt",
+        "declined": "Abgesagt",
+        "maybe": "Vielleicht"
+      },
+      "validation": {
+        "titleRequired": "Gib einen Titel für diese Veranstaltung ein.",
+        "startRequired": "Wähle ein Startdatum und eine Uhrzeit.",
+        "endBeforeStart": "Das Ende darf nicht vor dem Beginn liegen.",
+        "saveFailed": "Veranstaltung konnte nicht gespeichert werden."
+      }
     }
   },
   "prep": {

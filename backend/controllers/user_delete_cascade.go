@@ -223,6 +223,17 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
 
+	// Delete occasion event attendees, then occasion events (child before
+	// parent) — docs/adrs/0026-occasions-events.md, issue #1228. Events are
+	// soft-deleted content, so the FK cascade from the hard-deleted user row
+	// never fires for them; the manual enumeration is the convention.
+	if err := tx.Where("user_id = ?", userID).Delete(&models.OccasionEventAttendee{}).Error; err != nil {
+		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+	}
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.OccasionEvent{}).Error; err != nil {
+		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+	}
+
 	// Delete external integration links and enrichment events (T14 —
 	// hard delete, edge/join-shaped)
 	if err := tx.Where("user_id = ?", userID).Delete(&models.ExternalIdentity{}).Error; err != nil {

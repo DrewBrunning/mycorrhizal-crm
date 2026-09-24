@@ -2257,6 +2257,44 @@
         "given": "Offert",
         "received": "Reçu"
       }
+    },
+    "events": {
+      "title": "Événements",
+      "add": "Nouvel événement",
+      "createTitle": "Créer un événement",
+      "editTitle": "Modifier l'événement",
+      "empty": "Aucun événement pour l'instant. Créez-en un pour planifier vos invitations.",
+      "titleLabel": "Titre",
+      "startsAt": "Début",
+      "endsAt": "Fin",
+      "location": "Lieu",
+      "sensitivity": "Confidentialité",
+      "notes": "Notes",
+      "deleteMessage": "Supprimer cet événement ?",
+      "manageAttendees": "Invités",
+      "attendeesTitle": "Invités — {{title}}",
+      "noAttendees": "Personne n'est encore invité.",
+      "addAttendee": "Ajouter",
+      "removeAttendee": "Retirer",
+      "suggestFromCircles": "Suggérer des invités depuis les cercles",
+      "selectCircles": "Cercles",
+      "suggest": "Suggérer",
+      "noSuggestions": "Aucune nouvelle suggestion pour ces cercles.",
+      "rsvpHint": "Notez ce que chaque invité vous a dit — aucune invitation n'est envoyée ici.",
+      "rsvpLabel": "Réponse",
+      "attendeeSaveFailed": "Impossible de mettre à jour l'invité.",
+      "rsvp": {
+        "pending": "En attente",
+        "accepted": "Accepté",
+        "declined": "Refusé",
+        "maybe": "Peut-être"
+      },
+      "validation": {
+        "titleRequired": "Saisissez un titre pour cet événement.",
+        "startRequired": "Choisissez une date et une heure de début.",
+        "endBeforeStart": "L'heure de fin ne peut pas précéder l'heure de début.",
+        "saveFailed": "Impossible d'enregistrer l'événement."
+      }
     }
   },
   "prep": {

@@ -96,6 +96,7 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/gifts",
 		"POST /api/v1/preferences",
 		"POST /api/v1/occasion-obligations",
+		"POST /api/v1/occasion-events",
 		"POST /api/v1/cadence-policies",
 		"POST /api/v1/conversation-agenda",
 		"POST /api/v1/field-definitions",
@@ -179,6 +180,7 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/circles/:id/members",
 		"POST /api/v1/households/:id/members",
 		"POST /api/v1/tags/:id/contacts",
+		"POST /api/v1/occasion-events/:id/attendees",
 	} {
 		t[k] = exempt(idemReasonMembership)
 	}

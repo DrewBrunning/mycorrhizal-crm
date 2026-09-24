@@ -729,3 +729,32 @@ type OccasionObligationInput struct {
 	Sensitivity       string `json:"sensitivity,omitempty" validate:"omitempty,oneof=normal private secret"`
 	Notes             string `json:"notes,omitempty" validate:"omitempty,max=2000"`
 }
+
+// OccasionEventInput is the DTO for creating/updating an OccasionEvent
+// (occasion_event.go, docs/adrs/0026-occasions-events.md). StartsAt/EndsAt are
+// RFC 3339 instants; the controller enforces ends_at >= starts_at (cross-field,
+// same pattern as validateOccasionAnchorPair — this codebase has no cross-field
+// struct-tag validator). Sensitivity defaults server-side. No attendee list:
+// attendee lifecycle is nested sub-resources, per CLAUDE.md's join-row
+// convention (POST/PUT/DELETE /occasion-events/:id/attendees).
+type OccasionEventInput struct {
+	Title       string     `json:"title" validate:"required,max=200"`
+	StartsAt    *time.Time `json:"starts_at" validate:"required"`
+	EndsAt      *time.Time `json:"ends_at,omitempty"`
+	Location    string     `json:"location,omitempty" validate:"omitempty,max=500"`
+	Sensitivity string     `json:"sensitivity,omitempty" validate:"omitempty,oneof=normal private secret"`
+	Notes       string     `json:"notes,omitempty" validate:"omitempty,max=2000"`
+}
+
+// OccasionEventAttendeeInput is the DTO for adding an invitee to an event.
+// RSVP defaults server-side to "pending" (the user records the answer later).
+type OccasionEventAttendeeInput struct {
+	EntityID string `json:"entity_id" validate:"required,uuid4"`
+	RSVP     string `json:"rsvp,omitempty" validate:"omitempty,oneof=pending accepted declined maybe"`
+}
+
+// OccasionEventAttendeeUpdateInput is the DTO for changing one attendee's RSVP
+// status — the entity is named in the path, so only the status is bound.
+type OccasionEventAttendeeUpdateInput struct {
+	RSVP string `json:"rsvp" validate:"required,oneof=pending accepted declined maybe"`
+}

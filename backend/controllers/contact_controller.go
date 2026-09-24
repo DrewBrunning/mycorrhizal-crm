@@ -847,6 +847,14 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 		return err
 	}
 
+	// Remove this contact from every occasion event's attendee list (join row,
+	// hard delete — docs/adrs/0026-occasions-events.md, issue #1228). The
+	// events themselves survive: another attendee may still be invited, and an
+	// event is not contact-scoped.
+	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.OccasionEventAttendee{}).Error; err != nil {
+		return err
+	}
+
 	// Delete CardDAV contact sync links (a genuine Contact.ID FK, unlike the
 	// VCardUID-based references above)
 	if err := tx.Where("contact_id = ? AND user_id = ?", contact.ID, userID).Delete(&models.ContactSyncLink{}).Error; err != nil {

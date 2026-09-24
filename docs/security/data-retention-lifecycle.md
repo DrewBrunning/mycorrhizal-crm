@@ -27,7 +27,8 @@ doc; a handful of genuine gaps are called out explicitly in [Known gaps](#known-
 ## 1. Primary application data (user-authored content)
 
 `Contact`, `Note`, `Activity`, `Reminder`, `LifeEvent`, `Preference`, `CadencePolicy`,
-`ConversationAgenda`, `Gift`, `LinkFieldType`, `CalendarSubscription`/`ContactSubscription`,
+`ConversationAgenda`, `Gift`, `OccasionObligation`, `OccasionEvent`, `LinkFieldType`,
+`CalendarSubscription`/`ContactSubscription`,
 `ImmichConfig`/`PaperlessConfig`/`SeafileConfig`/`WebDAVConfig`, `Attachment` (metadata row only —
 see [§5](#5-attachments--profile-photos-files-on-disk)).
 
@@ -90,7 +91,7 @@ It sits outside the soft-delete model above precisely because it is a copy, not 
 ## 2. Edge- and join-shaped rows
 
 `RelationshipEdge`, `CircleMember`, `ContactTag`, `HouseholdMember`, `ContactSyncLink`,
-`CalendarEventLink`, `FieldValue`, `activity_contacts`, `NotificationDelivery`,
+`CalendarEventLink`, `OccasionEventAttendee`, `FieldValue`, `activity_contacts`, `NotificationDelivery`,
 `ContactSyncConflict`.
 
 - **Where / who**: same DB, same `user_id` scoping.

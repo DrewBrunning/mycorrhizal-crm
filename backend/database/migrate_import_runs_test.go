@@ -60,6 +60,7 @@ func TestMigrationsAddImportRuns(t *testing.T) {
 	// Down drops the table. 000042 is no longer the migration tip — later
 	// migrations sit on top — so roll those back first, then 000042's own
 	// down migration.
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000064_occasion_events
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000063_preference_level
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000062_reminders_occasion_obligation_id
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000061_occasion_obligations
