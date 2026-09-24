@@ -841,6 +841,12 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 		return err
 	}
 
+	// Delete this contact's occasion obligations (user-authored content,
+	// soft delete — docs/adrs/0024-occasions.md, issue #387, ticket #1222)
+	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.OccasionObligation{}).Error; err != nil {
+		return err
+	}
+
 	// Delete CardDAV contact sync links (a genuine Contact.ID FK, unlike the
 	// VCardUID-based references above)
 	if err := tx.Where("contact_id = ? AND user_id = ?", contact.ID, userID).Delete(&models.ContactSyncLink{}).Error; err != nil {

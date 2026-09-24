@@ -32,12 +32,14 @@ import {
 } from './api/contactSyncConflicts';
 import type { Birthday, Contact } from './api/contacts';
 import { type DashboardReminder, getDashboard } from './api/dashboard';
+import { getUpcomingOccasions, type UpcomingOccasion } from './api/occasionObligations';
 import { dismissReachOutSuggestion, type ReachOutSuggestion } from './api/reachOutSuggestions';
 import { completeReminder, getUpcomingReminders, skipReminder } from './api/reminders';
 import { ContactListSkeleton } from './components/LoadingSkeletons';
 import OverdueCadenceList from './components/OverdueCadenceList';
 import ReachOutSuggestionsList from './components/ReachOutSuggestionsList';
 import SyncConflictList from './components/SyncConflictList';
+import UpcomingOccasionsWidget from './components/UpcomingOccasionsWidget';
 import { useDateFormat } from './DateFormatProvider';
 import { useCircles } from './hooks/useCircles';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
@@ -62,6 +64,15 @@ function DashboardPage() {
   const [remindersInfoAnchor, setRemindersInfoAnchor] = useState<HTMLElement | null>(null);
   const [stayInTouchInfoAnchor, setStayInTouchInfoAnchor] = useState<HTMLElement | null>(null);
   const [favoritesInfoAnchor, setFavoritesInfoAnchor] = useState<HTMLElement | null>(null);
+
+  // Occasions widget (ADR 0024, issue #387): a separate fetch from the M3
+  // composite dashboard call above -- /occasions/upcoming is a new,
+  // independently-windowed (30/90 day) endpoint, not part of that
+  // composite's fixed response shape.
+  const [upcomingOccasions, setUpcomingOccasions] = useState<UpcomingOccasion[]>([]);
+  const [upcomingOccasionsLoading, setUpcomingOccasionsLoading] = useState(true);
+  const [upcomingOccasionsError, setUpcomingOccasionsError] = useState<string | null>(null);
+  const [occasionsDays, setOccasionsDays] = useState<30 | 90>(30);
 
   const { circleNamesByUid } = useCircles();
 
@@ -94,6 +105,26 @@ function DashboardPage() {
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setUpcomingOccasionsLoading(true);
+      setUpcomingOccasionsError(null);
+      try {
+        const response = await getUpcomingOccasions({ days: occasionsDays });
+        if (!cancelled) setUpcomingOccasions(response.occasions || []);
+      } catch (err) {
+        if (!cancelled)
+          setUpcomingOccasionsError(handleFetchError(err, 'loading upcoming occasions'));
+      } finally {
+        if (!cancelled) setUpcomingOccasionsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [occasionsDays]);
 
   // attachKnownContactNames carries contact_name forward from the current
   // dashboard state onto a plain Reminder[] refetch (getUpcomingReminders
@@ -785,6 +816,16 @@ function DashboardPage() {
             </Stack>
           )}
         </Box>
+
+        {/* Occasions widget (ADR 0024, issue #387): upcoming birthdays/
+            anniversaries/life-events/active obligations, next 30 or 90 days. */}
+        <UpcomingOccasionsWidget
+          occasions={upcomingOccasions}
+          loading={upcomingOccasionsLoading}
+          error={upcomingOccasionsError}
+          days={occasionsDays}
+          onDaysChange={setOccasionsDays}
+        />
       </Box>
     </Box>
   );

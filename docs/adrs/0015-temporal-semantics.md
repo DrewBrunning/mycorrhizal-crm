@@ -117,6 +117,7 @@ fields are instants of the same kind (pre-`SyncHealthFields` pass/fail clocks).
 | `LifeEvent.Date` | `backend/models/life_event.go:141` | `contactmodel.PartialDate` (any of year/month/day). The neutral model's calendar-date type; no zone, only `calendarScale` |
 | `HouseholdMember.Since/Until` | `backend/models/household.go:105-106` | `PartialDate`-compatible string, unvalidated |
 | Neutral `Card.Anniversaries[].Date` (JSContact) | `backend/contactmodel/model.go` | `AnniversaryDate{PartialDate | Timestamp}` — the discriminated union that keeps partial and timestamp distinct through the neutral model (ADR 0002) |
+| `OccasionObligation.AnchorMonth`/`AnchorDay` | `backend/models/occasion_obligation.go` | Two `*int` (month 1-12, day 1-31), both-or-neither — not a `PartialDate`, since a month/day-only recurring obligation never carries a year to be partial about. Reuses Rule 3's annual month/day occurrence and Rule 6's 29-Feb-advances-to-1-March exactly (ADR 0024) |
 
 **The one REST/relational format set** for date-only/partial values is exactly two shapes — full
 `YYYY-MM-DD` and year-less `--MM-DD` — enforced by the `birthday` validator

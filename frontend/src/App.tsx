@@ -37,6 +37,7 @@
 
 import { mdiGraphOutline, mdiNotebookOutline } from '@mdi/js';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import CelebrationIcon from '@mui/icons-material/Celebration';
 import ClearIcon from '@mui/icons-material/Clear';
 import ContactsIcon from '@mui/icons-material/Contacts';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -107,6 +108,7 @@ import HouseholdsPage from './HouseholdsPage';
 import LoginPage from './LoginPage';
 import NetworkPage from './NetworkPage';
 import NotesPage from './NotesPage';
+import OccasionsPage from './OccasionsPage';
 import PrepViewPage from './PrepViewPage';
 import RegisterPage from './RegisterPage';
 import SettingsPage from './SettingsPage';
@@ -257,6 +259,7 @@ function AppContent({
         ),
         path: '/network',
       },
+      { text: t('nav.occasions'), icon: <CelebrationIcon />, path: '/occasions' },
       { text: t('nav.households'), icon: <HomeWorkIcon />, path: '/households' },
       { text: t('nav.circlesTags'), icon: <GroupIcon />, path: '/circles' },
       { text: t('nav.shares'), icon: <ShareIcon />, path: '/shares' },
@@ -691,6 +694,14 @@ function AppContent({
               element={
                 <Suspense fallback={<RouteLoadingFallback />}>
                   <ActivitiesPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/occasions"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <OccasionsPage />
                 </Suspense>
               }
             />

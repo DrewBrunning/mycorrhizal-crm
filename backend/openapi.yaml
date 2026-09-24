@@ -6038,6 +6038,284 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  # --- OccasionObligations (docs/adrs/0024-occasions.md, issue #387) ---
+  /occasion-obligations:
+    get:
+      summary: List occasion obligations
+      operationId: listOccasionObligations
+      parameters:
+        - name: cursor
+          in: query
+          description: Opaque resume token from the previous page's next_cursor. Ignored when since is present.
+          schema: { type: string }
+        - name: since
+          in: query
+          description: >
+            Change-feed cursor: return every occasion obligation changed
+            after this position — including soft-deleted ones
+            (deleted:true) — ordered forward, ignoring entity_id. A cursor
+            older than DELETED_RETENTION_DAYS returns 410 Gone.
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order. since forces asc.
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - name: entity_id
+          in: query
+          description: Filter to obligations whose subject contact is this Contact.VCardUID.
+          schema: { type: string, format: uuid }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: The ?since= cursor is older than DELETED_RETENTION_DAYS — full resync required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of occasion obligations.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  occasion_obligations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OccasionObligation"
+                  total: { type: integer }
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
+                  limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
+    post:
+      summary: Create an occasion obligation
+      operationId: createOccasionObligation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OccasionObligationInput"
+      responses:
+        "201":
+          description: Occasion obligation created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Occasion obligation created successfully" }
+                  occasion_obligation:
+                    $ref: "#/components/schemas/OccasionObligation"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The subject contact (or linked life event) was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /occasion-obligations/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get an occasion obligation
+      operationId: getOccasionObligation
+      responses:
+        "200":
+          description: The occasion obligation (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OccasionObligation"
+        "404":
+          description: Occasion obligation not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update an occasion obligation (full replace)
+      operationId: updateOccasionObligation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OccasionObligationInput"
+      responses:
+        "200":
+          description: The updated occasion obligation (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OccasionObligation"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Occasion obligation (or subject contact / linked life event) not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete an occasion obligation (soft delete)
+      operationId: deleteOccasionObligation
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Occasion obligation not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /occasions/upcoming:
+    get:
+      summary: Upcoming occasions (birthdays, anniversaries, life events, obligations)
+      operationId: getUpcomingOccasions
+      description: >
+        The "upcoming occasions" dashboard-widget aggregate (ADR 0024,
+        issue #387): every birthday/anniversary/life-event/active-obligation
+        occurrence within the next `days`, sorted ascending by days-until.
+        "Today" is the reminder-zone clock (ADR 0015 Rule 4).
+      parameters:
+        - name: days
+          in: query
+          description: Window size in days. Only 30 (default) or 90 are accepted.
+          schema: { type: integer, enum: [30, 90], default: 30 }
+        - name: include_sensitive
+          in: query
+          description: Include occasion obligations above normal sensitivity.
+          schema: { type: boolean, default: false }
+      responses:
+        "400":
+          description: Invalid days value.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The composed upcoming-occasions list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  occasions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UpcomingOccasion"
+                  days: { type: integer }
+
+  /occasion-obligations/card-list:
+    get:
+      summary: Sensitivity-filtered card-list CSV export
+      operationId: getOccasionCardListCSV
+      description: >
+        Every contact with an active OccasionObligation of the given `kind`
+        (default "card"), as a CSV of name + postal address (ADR 0024 part 4,
+        issue #387). Deliberately NOT the full-fidelity GET /api/v1/export
+        path — see the handler's own doc comment. A contact with no address
+        on file is skipped.
+      parameters:
+        - name: kind
+          in: query
+          description: OccasionObligation.Kind to filter on.
+          schema: { type: string, default: "card" }
+        - name: include_sensitive
+          in: query
+          description: Include occasion obligations above normal sensitivity.
+          schema: { type: boolean, default: false }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The card-list CSV.
+          content:
+            text/csv:
+              schema: { type: string }
+
+  /occasion-obligations/gift-shopping-list:
+    get:
+      summary: Gift shopping list ("who still needs a gift")
+      operationId: getGiftShoppingList
+      description: >
+        Every active Kind="gift" OccasionObligation due within `days`,
+        joined against Gift to report whether this cycle's gift already has
+        a linked idea/purchase (ADR 0024 part 5, issue #387).
+      parameters:
+        - name: days
+          in: query
+          description: Window size in days. Only 30 (default) or 90 are accepted.
+          schema: { type: integer, enum: [30, 90], default: 30 }
+        - name: include_sensitive
+          in: query
+          description: Include occasion obligations above normal sensitivity.
+          schema: { type: boolean, default: false }
+      responses:
+        "400":
+          description: Invalid days value.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The gift shopping list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gift_shopping_list:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/GiftShoppingItem"
+                  days: { type: integer }
+
   # --- CadencePolicies (T19) ---
   /cadence-policies/overdue:
     get:
@@ -11371,6 +11649,13 @@ components:
         last_sent: { type: string, format: date-time, nullable: true }
         contact_id: { type: integer, nullable: true }
         life_event_id: { type: string }
+        occasion_obligation_id:
+          type: string
+          description: >
+            Machine-synthesized link to the OccasionObligation this reminder
+            was materialized for (docs/adrs/0024-occasions.md, issue #387,
+            ticket #1223) — server-set by syncOccasionObligationReminder,
+            never client-writable.
         contact:
           $ref: "#/components/schemas/ContactFlat"
         revision:
@@ -12628,6 +12913,73 @@ components:
         confidence: { type: number, nullable: true }
         last_confirmed: { type: string, format: date-time, nullable: true }
         sensitivity: { type: string, enum: [normal, private, secret] }
+
+    # --- OccasionObligations (docs/adrs/0024-occasions.md, issue #387) ---
+    OccasionObligation:
+      type: object
+      description: >
+        A standing, recurring obligation toward a contact — "this contact is
+        on my holiday card list every year". The missing "standing rule"
+        layer above LifeEvent/Gift/Preference (docs/adrs/0024-occasions.md).
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        entity_id: { type: string, format: uuid }
+        kind: { type: string, maxLength: 100, example: "card" }
+        label: { type: string, maxLength: 200 }
+        anchor_month: { type: integer, minimum: 1, maximum: 12, nullable: true }
+        anchor_day: { type: integer, minimum: 1, maximum: 31, nullable: true }
+        linked_life_event_id: { type: string, format: uuid, nullable: true }
+        lead_time_days: { type: integer, minimum: 0, maximum: 365 }
+        active: { type: boolean }
+        sensitivity: { type: string, enum: [normal, private, secret] }
+        notes: { type: string, maxLength: 2000 }
+        deleted:
+          type: boolean
+          description: "Change-feed tombstone marker (T17): true only via ?since= for a soft-deleted obligation."
+          default: false
+    OccasionObligationInput:
+      type: object
+      required: [entity_id, kind, label]
+      properties:
+        entity_id: { type: string, format: uuid }
+        kind: { type: string, maxLength: 100, example: "card" }
+        label: { type: string, maxLength: 200 }
+        anchor_month: { type: integer, minimum: 1, maximum: 12, nullable: true }
+        anchor_day: { type: integer, minimum: 1, maximum: 31, nullable: true }
+        linked_life_event_id: { type: string, format: uuid, nullable: true }
+        lead_time_days: { type: integer, minimum: 0, maximum: 365 }
+        active: { type: boolean, nullable: true, description: "Omitted defaults to true server-side." }
+        sensitivity: { type: string, enum: [normal, private, secret] }
+        notes: { type: string, maxLength: 2000 }
+
+    UpcomingOccasion:
+      type: object
+      description: One row of the /occasions/upcoming aggregate (ADR 0024, issue #387).
+      properties:
+        contact_id: { type: integer }
+        contact_name: { type: string }
+        source: { type: string, enum: [birthday, anniversary, life_event, obligation] }
+        label: { type: string }
+        date: { type: string, format: date, description: "Resolved next-occurrence date (YYYY-MM-DD), reminder-zone." }
+        days_until: { type: integer }
+        kind:
+          type: string
+          description: OccasionObligation.Kind (card/gift/invite), source=obligation rows only.
+
+    GiftShoppingItem:
+      type: object
+      description: One row of the /occasion-obligations/gift-shopping-list aggregate (ADR 0024, issue #387).
+      properties:
+        contact_id: { type: integer }
+        contact_name: { type: string }
+        obligation_id: { type: string, format: uuid }
+        label: { type: string }
+        date: { type: string, format: date }
+        days_until: { type: integer }
+        status: { type: string, enum: [needed, idea, purchased, given, received] }
+        linked_gift_id: { type: string, format: uuid }
 
     # --- CadencePolicies (T19) ---
     CadencePolicy:
