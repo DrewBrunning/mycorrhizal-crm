@@ -118,6 +118,10 @@ data class PreferenceCategoryConfig(
     val section: String,
     val keyMode: PreferenceKeyMode,
     val keySuggestions: List<String>,
+    /** True only for hobby/skill-shaped categories, where a proficiency level
+     * (issue #246) is a meaningful third axis. Mirrors backend
+     * models.PreferenceCategorySupportsLevel and web's config flag. */
+    val supportsLevel: Boolean = false,
 )
 
 /**
@@ -166,8 +170,10 @@ object PreferenceCategory {
         PreferenceCategoryConfig("media_book_series", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
         PreferenceCategoryConfig("media_book_title", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
 
-        // Activities & Hobbies — a "get to know them" fact, stays with Preferences.
-        PreferenceCategoryConfig("hobby", PreferenceSection.HOBBY, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+        // Activities & Hobbies — a "get to know them" fact, stays with
+        // Preferences. The only category carrying a proficiency level
+        // (issue #246).
+        PreferenceCategoryConfig("hobby", PreferenceSection.HOBBY, PreferenceKeyMode.DISPOSITION, DISPOSITION, supportsLevel = true),
 
         // Jewelry & Style — aspect (metal/stone/style/type) lives in the category.
         PreferenceCategoryConfig("jewelry_metal", PreferenceSection.JEWELRY, PreferenceKeyMode.DISPOSITION, DISPOSITION_WITH_ALLERGY),
@@ -193,6 +199,11 @@ object PreferenceCategory {
     fun keySuggestionsFor(category: String): List<String> = BY_CATEGORY[category]?.keySuggestions.orEmpty()
     fun keyModeFor(category: String): PreferenceKeyMode = BY_CATEGORY[category]?.keyMode ?: PreferenceKeyMode.DISPOSITION
     fun isGiftsTabCategory(category: String): Boolean = sectionOf(category) in PreferenceSection.GIFTS_TAB
+
+    /** True for categories where a proficiency level is meaningful (hobby/skill
+     * only — issue #246). An unrecognized category returns false, so the dialog
+     * never offers a level for legacy/future categories. */
+    fun supportsLevelFor(category: String): Boolean = BY_CATEGORY[category]?.supportsLevel == true
 
     /** Free-solo clothing-type suggestions for CLOTHING_SIZE's key field — a
      * fact (which garment), not a disposition. */

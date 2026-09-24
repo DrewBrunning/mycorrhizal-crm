@@ -1263,6 +1263,11 @@
     <string name="gifts_preferences_heading">Gift Preferences</string>
     <string name="preferences_key">Key</string>
     <string name="preferences_notes">Notes</string>
+    <string name="preferences_level">Proficiency</string>
+    <string name="preferences_level_none">No level</string>
+    <string name="preferences_level_high">Advanced</string>
+    <string name="preferences_level_medium">Intermediate</string>
+    <string name="preferences_level_low">Beginner</string>
     <string name="preferences_category_food">Food</string>
     <string name="preferences_category_drink">Drink</string>
     <string name="preferences_category_media">Media</string>

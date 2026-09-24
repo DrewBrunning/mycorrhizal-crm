@@ -17,6 +17,7 @@ import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.Preference
+import com.mycorrhizal.crm.model.network.PreferenceLevels
 import com.mycorrhizal.crm.model.network.PreferenceSensitivities
 import com.mycorrhizal.crm.model.network.ConversationAgenda
 import com.mycorrhizal.crm.network.ApiError
@@ -680,6 +681,50 @@ class PreferencesViewModelTest {
                 },
             )
         }
+    }
+
+    // Issue #246: a hobby preference carries its proficiency level to the wire.
+    @Test fun `create sends the level for a hobby preference`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubContact(contacts)
+        coEvery { repo.listForContact(UID) } returns Result.success(emptyList())
+        coEvery { repo.create(any()) } returns Result.success(Preference(id = "p1"))
+        val vm = vm(); advanceUntilIdle()
+
+        vm.create(PreferenceFormData(category = "hobby", value = "Piano", level = PreferenceLevels.HIGH))
+        advanceUntilIdle()
+
+        coVerify { repo.create(match { it.category == "hobby" && it.value == "Piano" && it.level == "high" }) }
+    }
+
+    @Test fun `create drops a level on a category that does not support one`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubContact(contacts)
+            coEvery { repo.listForContact(UID) } returns Result.success(emptyList())
+            coEvery { repo.create(any()) } returns Result.success(Preference(id = "p1"))
+            val vm = vm(); advanceUntilIdle()
+
+            // The UI never offers a level for food, but guard the wire anyway —
+            // the backend rejects it, so a stray value must not be sent.
+            vm.create(PreferenceFormData(category = "food", value = "Pizza", level = PreferenceLevels.HIGH))
+            advanceUntilIdle()
+
+            coVerify { repo.create(match { it.category == "food" && it.level == null }) }
+        }
+
+    @Test fun `update sends the hobby level`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubContact(contacts)
+        val original = Preference(id = "p1", entityId = UID, category = "hobby", value = "Piano")
+        coEvery { repo.listForContact(UID) } returns Result.success(listOf(original))
+        coEvery { repo.update("p1", any()) } returns Result.success(original)
+        val vm = vm(); advanceUntilIdle()
+
+        vm.update(
+            original,
+            PreferenceFormData(category = "hobby", value = "Piano", level = PreferenceLevels.MEDIUM),
+        )
+        advanceUntilIdle()
+
+        coVerify { repo.update("p1", match { it.category == "hobby" && it.level == "medium" }) }
     }
 
     @Test fun `update preserves unmodeled fields while the form is authoritative`() =
