@@ -18,6 +18,8 @@ export default tseslint.config(
       'e2e/sw-upgrade/fixtures/**',
       'playwright-report-sw/**',
       'test-results-sw/**',
+      // Generated from backend/openapi.yaml by `go run ./cmd/gentsapi`; never hand-edited.
+      'src/generated/**',
     ],
   },
   tseslint.configs.recommended,
