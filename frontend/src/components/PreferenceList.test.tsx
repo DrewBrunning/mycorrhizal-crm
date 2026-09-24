@@ -86,6 +86,24 @@ test('an unrecognized category falls through to the Other section', () => {
   expect(screen.queryByText('Media Preferences')).not.toBeInTheDocument();
 });
 
+// Issue #246: a recorded proficiency level renders as a chip on the hobby.
+test('shows the proficiency level chip when present', () => {
+  render(
+    <PreferenceList
+      preferences={[
+        preference({ id: 'p1', category: 'hobby', key: 'favorite', value: 'Piano', level: 'high' }),
+        preference({ id: 'p2', category: 'hobby', value: 'Chess' }),
+      ]}
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+    />,
+  );
+
+  expect(screen.getByText('Advanced')).toBeInTheDocument();
+  // The level-less hobby renders no level chip.
+  expect(screen.queryByText('No level')).not.toBeInTheDocument();
+});
+
 test('shows notes when present', () => {
   render(
     <PreferenceList

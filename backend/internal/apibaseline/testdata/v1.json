@@ -14975,6 +14975,16 @@
           "required": false
         },
         {
+          "name": "level",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        {
           "name": "notes",
           "type": "string",
           "required": false
@@ -15039,6 +15049,16 @@
           "name": "last_confirmed",
           "type": "string",
           "required": false
+        },
+        {
+          "name": "level",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
         },
         {
           "name": "notes",

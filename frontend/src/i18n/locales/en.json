@@ -1974,6 +1974,14 @@
       "other": "Other Preferences"
     },
     "value": "Value",
+    "level": "Proficiency",
+    "levelHint": "How skilled they are at it (optional).",
+    "levels": {
+      "none": "No level",
+      "high": "Advanced",
+      "medium": "Intermediate",
+      "low": "Beginner"
+    },
     "notes": "Notes (optional)",
     "notesHint": "Any extra context, e.g. \"doesn't drink alcohol\".",
     "sensitivity": "Sensitivity",

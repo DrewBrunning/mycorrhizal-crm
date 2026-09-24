@@ -32,6 +32,16 @@ export type PreferenceSection =
   | 'giftAvoid';
 export type PreferenceKeyMode = 'disposition' | 'freeSolo';
 
+// Proficiency levels for hobby/skill-shaped categories (issue #246) —
+// "plays piano (advanced)". Mirrors backend/models/preference.go's closed
+// PreferenceLevels set, which is deliberately the neutral PersonalInfo.Level
+// vocabulary for the hobby concept (high/medium/low, RFC 9555), so a recorded
+// level round-trips through CardDAV/vCard/JSContact export without a mapping.
+// Hardcoded mirror of a backend set, by design (see the trap note at the top
+// of this file) — keep in sync if the backend set changes.
+export type PreferenceLevel = 'high' | 'medium' | 'low';
+export const PREFERENCE_LEVELS: PreferenceLevel[] = ['high', 'medium', 'low'];
+
 // Sections whose categories surface in the Gifts tab (alongside clothing
 // sizes) rather than the Overview tab's Preferences panel.
 export const GIFTS_TAB_SECTIONS: PreferenceSection[] = ['jewelry', 'giftPreferences', 'giftAvoid'];
@@ -46,6 +56,12 @@ export interface PreferenceCategoryConfig {
   section: PreferenceSection;
   keyMode: PreferenceKeyMode;
   keySuggestions: string[];
+  // True only for hobby/skill-shaped categories, where "how good are they at
+  // it?" is a meaningful third axis (issue #246). Omitted/false everywhere
+  // else. Mirrors backend models.PreferenceCategorySupportsLevel; the dialog
+  // shows the level picker and the list shows the level chip on exactly these
+  // categories.
+  supportsLevel?: boolean;
 }
 
 const DISPOSITION = ['favorite', 'like', 'dislike'];
@@ -153,7 +169,14 @@ export const PREFERENCE_CATEGORY_CONFIG: PreferenceCategoryConfig[] = [
   },
 
   // Activities & Hobbies — a "get to know them" fact, stays in Preferences.
-  { category: 'hobby', section: 'hobby', keyMode: 'disposition', keySuggestions: DISPOSITION },
+  // The only category carrying a proficiency level (issue #246).
+  {
+    category: 'hobby',
+    section: 'hobby',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION,
+    supportsLevel: true,
+  },
 
   // Gift Preferences — single-facet "tastes", each its own category chip.
   {
@@ -209,6 +232,15 @@ export function isGiftsTabCategory(category: string): boolean {
   return section != null && GIFTS_TAB_SECTIONS.includes(section);
 }
 
+// True for categories where a proficiency level is meaningful (hobby/skill
+// only — issue #246). An unrecognized category returns false, so the dialog
+// never offers a level for legacy/future categories the config doesn't know.
+export function categorySupportsLevel(category: string): boolean {
+  return PREFERENCE_CATEGORY_CONFIG.some(
+    (c) => c.category === category && c.supportsLevel === true,
+  );
+}
+
 // clothing_size is managed from the Gifts tab (where you check sizes before
 // buying), so it is not offered in the general preference dialog but is still
 // a valid category on the wire. Key holds a free-solo clothing *type* here
@@ -243,6 +275,7 @@ export interface Preference {
   category: string;
   key?: string;
   value: string;
+  level?: PreferenceLevel;
   notes?: string;
   source?: PreferenceSource;
   confidence?: number;
@@ -255,6 +288,9 @@ export interface PreferenceInput {
   category: string;
   key?: string;
   value: string;
+  // Omit (or send empty) for no level; only meaningful on hobby/skill
+  // categories — the backend rejects a level on any other category (issue #246).
+  level?: PreferenceLevel;
   notes?: string;
   source?: PreferenceSource;
   confidence?: number;

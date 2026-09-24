@@ -1974,6 +1974,14 @@
       "other": "Otras preferencias"
     },
     "value": "Valor",
+    "level": "Nivel",
+    "levelHint": "Qué tan hábil es en ello (opcional).",
+    "levels": {
+      "none": "Sin nivel",
+      "high": "Avanzado",
+      "medium": "Intermedio",
+      "low": "Principiante"
+    },
     "notes": "Notas (opcional)",
     "notesHint": "Contexto adicional, p. ej. \"no bebe alcohol\".",
     "sensitivity": "Sensibilidad",

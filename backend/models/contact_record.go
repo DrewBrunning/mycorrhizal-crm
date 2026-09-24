@@ -254,7 +254,11 @@ func projectTags(db *gorm.DB, vcardUID string, existing []string) []string {
 // no standard home and stay internal." So hobby-category preferences become
 // PersonalInfo{Kind:"hobby", Value:<value>} entries appended to a COPY of
 // existing (imported/passthrough) entries, and every other category never
-// appears here. Structurally identical to projectTags/projectRelationshipEdges
+// appears here. A recorded proficiency level (Preference.Level, issue #246)
+// rides along as PersonalInfo.Level — the two vocabularies are identical
+// (high/medium/low, the correspondence table's "hobby" level set), so it is a
+// direct assignment, not a mapping. Structurally identical to
+// projectTags/projectRelationshipEdges
 // above — nil-safe, best-effort (a query failure degrades to "just the
 // existing personalInfo entries" rather than failing the whole read), and
 // sensitivity is filtered in the query itself (only
@@ -292,7 +296,11 @@ func projectPreferences(db *gorm.DB, vcardUID string, existing []contactmodel.Pe
 			continue
 		}
 		seen[value] = true
-		result = append(result, contactmodel.PersonalInfo{Kind: "hobby", Value: value})
+		var level string
+		if pref.Level != nil {
+			level = *pref.Level
+		}
+		result = append(result, contactmodel.PersonalInfo{Kind: "hobby", Value: value, Level: level})
 	}
 
 	return result

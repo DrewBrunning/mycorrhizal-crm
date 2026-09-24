@@ -50,6 +50,7 @@ func TestMigrationsAddStorageSamples(t *testing.T) {
 	// Down drops the table. 000043 is no longer the migration tip — later
 	// migrations sit on top — so roll those back first, then 000043's own down
 	// migration.
+	require.NoError(t, MigrateDown(dbPath)) // rolls back 000061_preference_level
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000060_life_event_suggestion_resolutions
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000059_fts_insert_soft_delete_guard
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000058_life_event_end_date

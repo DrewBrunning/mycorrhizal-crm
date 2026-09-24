@@ -208,10 +208,17 @@ type ContactFieldValuesInput struct {
 // defaults to normal server-side when omitted (mirroring
 // FieldValue/RelationshipEdge's own defaults), not validated as required.
 type PreferenceInput struct {
-	EntityID      string     `json:"entity_id" validate:"required,uuid4"`
-	Category      string     `json:"category" validate:"required,max=100"`
-	Key           string     `json:"key,omitempty" validate:"omitempty,max=100"`
-	Value         string     `json:"value" validate:"required,max=1000"`
+	EntityID string `json:"entity_id" validate:"required,uuid4"`
+	Category string `json:"category" validate:"required,max=100"`
+	Key      string `json:"key,omitempty" validate:"omitempty,max=100"`
+	Value    string `json:"value" validate:"required,max=1000"`
+	// Level is the optional proficiency facet (issue #246). Empty means "no
+	// level recorded" — it is a plain string on the wire rather than a
+	// pointer, matching Source's own optional-enum shape, and the controller
+	// maps "" to the model's NULL. This tag enforces the closed value set;
+	// the separate rule that a level is only valid on hobby-shaped categories
+	// is cross-field and lives in the controller (validatePreferenceLevel).
+	Level         string     `json:"level,omitempty" validate:"omitempty,oneof=high medium low"`
 	Notes         string     `json:"notes,omitempty" validate:"omitempty,max=2000"`
 	Source        string     `json:"source,omitempty" validate:"omitempty,oneof=conversation_note user ai-suggested external"`
 	Confidence    *float64   `json:"confidence,omitempty"`

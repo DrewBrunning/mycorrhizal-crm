@@ -464,6 +464,78 @@ func TestMigrationsAddPreferenceNotes(t *testing.T) {
 	assert.Equal(t, "Alcohol", value, "a rollback must not destroy the preference")
 }
 
+// TestMigrationsAddPreferenceLevel covers 000061's additive preferences.level
+// column (issue #246), following TestMigrationsAddPreferenceNotes' exact
+// template: a preference that predates the migration must survive it
+// unchanged, with the new column simply null rather than backfilled, and a
+// proficiency value written against the real migrated schema must round-trip.
+func TestMigrationsAddPreferenceLevel(t *testing.T) {
+	t.Parallel()
+	dbPath := filepath.Join(t.TempDir(), "preference-level.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	// Everything up to but NOT including 000061, so the preference below
+	// genuinely predates the level column.
+	require.NoError(t, m.Steps(60))
+
+	_, err = sqlDB.Exec(
+		"INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 'pref-level', 'x', 'pref-level@example.com')")
+	require.NoError(t, err)
+	var userID int64
+	require.NoError(t, sqlDB.QueryRow("SELECT id FROM users WHERE username = 'pref-level'").Scan(&userID))
+
+	_, err = sqlDB.Exec(`
+		INSERT INTO preferences (id, created_at, updated_at, user_id, entity_id, category, key, value, sensitivity)
+		VALUES ('pref-level-1', datetime('now'), datetime('now'), ?, 'vcard-pref-level', 'hobby', 'favorite', 'Piano', 'normal')`,
+		userID)
+	require.NoError(t, err)
+
+	// Apply exactly 000061 — Steps(1), not m.Up(), so the MigrateDown below
+	// still rolls back this migration once another one lands after it.
+	require.NoError(t, m.Steps(1))
+
+	var colCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('preferences') WHERE name = 'level'",
+	).Scan(&colCount))
+	assert.Equal(t, int64(1), colCount, "preferences.level must be added by the migration")
+
+	var value string
+	var level sql.NullString
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT value, level FROM preferences WHERE id = 'pref-level-1'",
+	).Scan(&value, &level))
+	assert.Equal(t, "Piano", value, "an additive migration must not disturb existing preference data")
+	assert.False(t, level.Valid, "an existing row's new level column must be null, not an empty-string backfill")
+
+	// Writing the new column works against the real migrated schema.
+	_, err = sqlDB.Exec(
+		"UPDATE preferences SET level = ? WHERE id = 'pref-level-1'", "high")
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT level FROM preferences WHERE id = 'pref-level-1'",
+	).Scan(&level))
+	require.True(t, level.Valid)
+	assert.Equal(t, "high", level.String)
+
+	// Down drops the column; the row itself and its original data survive.
+	require.NoError(t, MigrateDown(dbPath))
+
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('preferences') WHERE name = 'level'",
+	).Scan(&colCount))
+	assert.Equal(t, int64(0), colCount, "the down migration must remove the level column")
+
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT value FROM preferences WHERE id = 'pref-level-1'",
+	).Scan(&value))
+	assert.Equal(t, "Piano", value, "a rollback must not destroy the preference")
+}
+
 // TestMigrationsBackfillMediaPreferences covers 000030's backfill of the
 // legacy category='media' scheme (key=show/movie/music, no disposition) into
 // the new medium-specific categories with key='favorite'. Also covers the

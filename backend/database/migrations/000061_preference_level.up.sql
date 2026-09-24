@@ -1,0 +1,15 @@
+-- Proficiency level for hobby/skill preferences (issue #246). One additive
+-- nullable column on `preferences`, same shape and rationale as 000029's
+-- notes: an optional third axis alongside category (the kind of thing) and
+-- key (the disposition) recording how skilled the person is at a hobby —
+-- "plays piano (advanced)" instead of just "plays piano".
+--
+-- NULL is the correct value for every existing row: no level was ever
+-- recorded, and only hobby-shaped categories carry a meaningful level
+-- (models.PreferenceCategorySupportsLevel). No backfill.
+--
+-- The stored vocabulary is high/medium/low, matching the neutral
+-- PersonalInfo.Level set for the hobby concept (RFC 9555 / the correspondence
+-- table's "hobby" row), so projectPreferences carries it through to
+-- Card.PersonalInfo.Level without a mapping table.
+ALTER TABLE preferences ADD COLUMN level TEXT;

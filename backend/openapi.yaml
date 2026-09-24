@@ -12606,6 +12606,10 @@ components:
         category: { type: string, maxLength: 100 }
         key: { type: string, maxLength: 100 }
         value: { type: string, maxLength: 1000 }
+        level:
+          type: string
+          enum: [high, medium, low]
+          description: "Optional proficiency for hobby/skill categories (issue #246); absent when none is recorded."
         notes: { type: string, maxLength: 2000 }
         source: { type: string, enum: [conversation_note, user, ai-suggested, external] }
         confidence: { type: number, nullable: true }
@@ -12623,6 +12627,10 @@ components:
         category: { type: string, maxLength: 100 }
         key: { type: string, maxLength: 100 }
         value: { type: string, maxLength: 1000 }
+        level:
+          type: string
+          enum: [high, medium, low]
+          description: "Optional proficiency for hobby/skill categories (issue #246); omit or empty for none."
         notes: { type: string, maxLength: 2000 }
         source: { type: string, enum: [conversation_note, user, ai-suggested, external] }
         confidence: { type: number, nullable: true }

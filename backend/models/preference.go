@@ -87,6 +87,48 @@ const (
 	PreferenceSourceExternal         = "external"
 )
 
+// Proficiency levels stored on Preference.Level — the third axis the
+// category chooses (kind) and key (disposition) don't cover: how skilled the
+// person is at a hobby/skill-shaped preference ("plays piano (advanced)"),
+// free of the free-text Notes field that is neither queryable nor portable.
+// Issue #246.
+//
+// The vocabulary is deliberately the neutral PersonalInfo.Level set for the
+// hobby concept (high/medium/low), not a new scale: a hobby preference already
+// projects to Card.PersonalInfo (projectPreferences in contact_record.go), and
+// the correspondence table pins that concept's level to high/medium/low
+// (correspondence/testdata/correspondence.tsv, "hobby" row), so carrying the
+// value through is a direct assignment with no second mapping. Only
+// hobby-shaped categories carry a meaningful level — see
+// PreferenceCategorySupportsLevel.
+const (
+	PreferenceLevelHigh   = "high"
+	PreferenceLevelMedium = "medium"
+	PreferenceLevelLow    = "low"
+)
+
+// PreferenceCategorySupportsLevel reports whether Category carries a
+// meaningful proficiency level. Only hobbies/skills do (issue #246): "plays
+// piano (advanced)" has a level, "favorite coffee" and "dislikes candles" do
+// not. The frontend mirrors this per-category gate on the same token
+// (frontend/src/api/preferences.ts's PREFERENCE_CATEGORY_CONFIG), so the two
+// must be kept in sync by hand — the same hardcoded-mirror rule every other
+// category list here follows.
+func PreferenceCategorySupportsLevel(category string) bool {
+	return category == PreferenceCategoryHobby
+}
+
+// PreferenceLevelPtr maps a wire level token to the model's nullable column:
+// "" (the omitted/default DTO value) becomes NULL, any real token becomes a
+// pointer to it. Both the create and the full-replace update paths use this,
+// so an update that omits the level clears it rather than leaving a stale one.
+func PreferenceLevelPtr(level string) *string {
+	if level == "" {
+		return nil
+	}
+	return &level
+}
+
 // Preference is one structured personal fact about an entity
 // (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) — "important info that
 // currently only lives in notes or the single Contact.FoodPreference
@@ -118,6 +160,14 @@ type Preference struct {
 	Category string `gorm:"not null" json:"category" validate:"required,max=100"`
 	Key      string `json:"key,omitempty" validate:"omitempty,max=100"`
 	Value    string `gorm:"not null;serializer:encrypted" json:"value" validate:"required,max=1000"`
+
+	// Level is the optional proficiency facet for hobby/skill-shaped
+	// categories (see the level constants above; issue #246). NULL — absent
+	// from the JSON — means no level recorded, which is every existing row and
+	// every non-hobby preference. It is deliberately unencrypted: it is a
+	// three-value token, not user-authored free text, and it is not sensitive
+	// (unlike Value/Notes, which project via the sensitivity filter).
+	Level *string `gorm:"column:level" json:"level,omitempty" validate:"omitempty,oneof=high medium low"`
 
 	// Notes is free-text context beyond what Value already holds — e.g.
 	// value="Alcohol", notes="Doesn't drink alcohol" instead of cramming both
