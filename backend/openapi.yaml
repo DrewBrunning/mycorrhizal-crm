@@ -13034,14 +13034,14 @@ components:
           $ref: "#/components/schemas/PartialDate"
         end_date:
           $ref: "#/components/schemas/PartialDate"
-        source_kind: { type: string, enum: [address, organization] }
+        source_kind: { type: string, enum: [address, organization, title] }
         source_entry_id: { type: string }
     LifeEventSuggestionResolutionInput:
       type: object
       required: [entity_id, source_kind, source_entry_id, event_type, resolution]
       properties:
         entity_id: { type: string, format: uuid }
-        source_kind: { type: string, enum: [address, organization] }
+        source_kind: { type: string, enum: [address, organization, title] }
         source_entry_id: { type: string, maxLength: 255 }
         event_type: { type: string, maxLength: 100 }
         resolution: { type: string, enum: [accepted, dismissed] }

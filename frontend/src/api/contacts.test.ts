@@ -15,16 +15,21 @@ import {
   getOrganizationFields,
   getTitleField,
   onlineServicesToRows,
+  organizationEntry,
   parseAnniversaryDate,
   rowsToOnlineServices,
   summaryToLegacyContact,
+  titleEntry,
   toContactRecordInput,
   unfavoriteContact,
+  upsertEntryPeriod,
   valuesToCardAddresses,
   valuesToCardEmails,
   valuesToCardPhones,
   withAnniversary,
   withOrganization,
+  withOrganizationEntry,
+  withTitleEntry,
   withTitles,
 } from './contacts';
 
@@ -473,6 +478,40 @@ describe('organization fields', () => {
   test('withOrganization returns an empty array when organization is blank', () => {
     expect(withOrganization('', 'R&D')).toEqual([]);
   });
+
+  test('organizationEntry returns the first organization', () => {
+    expect(organizationEntry(undefined)).toBeUndefined();
+    expect(organizationEntry([{ name: 'Acme' }, { name: 'Globex' }])).toEqual({ name: 'Acme' });
+  });
+
+  // ADR 0025 (#1233): the edit path must not drop the entry ID a period
+  // references.
+  test('withOrganizationEntry preserves the entry ID and extra fields', () => {
+    const updated = withOrganizationEntry(
+      [{ id: 'org-1', name: 'Acme', units: [{ name: 'R&D' }], sortAs: 'Acme Inc' }],
+      'Globex',
+      'Research',
+    );
+    expect(updated).toEqual([
+      { id: 'org-1', name: 'Globex', units: [{ name: 'Research' }], sortAs: 'Acme Inc' },
+    ]);
+  });
+
+  test('withOrganizationEntry keeps organizations beyond the first untouched', () => {
+    const updated = withOrganizationEntry(
+      [
+        { id: 'org-1', name: 'Acme' },
+        { id: 'org-2', name: 'Side Co' },
+      ],
+      'Globex',
+      '',
+    );
+    expect(updated[1]).toEqual({ id: 'org-2', name: 'Side Co' });
+  });
+
+  test('withOrganizationEntry drops the first entry on a blank name', () => {
+    expect(withOrganizationEntry([{ id: 'org-1', name: 'Acme' }], '', '')).toEqual([]);
+  });
 });
 
 describe('title fields', () => {
@@ -490,6 +529,63 @@ describe('title fields', () => {
     const updated = withTitles('Senior Engineer', current.role || '');
     expect(getTitleField(updated, 'title')).toBe('Senior Engineer');
     expect(getTitleField(updated, 'role')).toBe('Lead');
+  });
+
+  test('titleEntry finds the job title even when kind is omitted', () => {
+    expect(titleEntry([{ id: 't1', name: 'Engineer' }], 'title')).toEqual({
+      id: 't1',
+      name: 'Engineer',
+    });
+    expect(titleEntry([{ id: 'r1', name: 'Lead', kind: 'role' }], 'title')).toBeUndefined();
+  });
+
+  // ADR 0025 (#1233): the edit path must preserve the title entry's ID and
+  // organizationId so a period attached to it survives the edit.
+  test('withTitleEntry preserves the ID and leaves the other kind alone', () => {
+    const titles = [
+      { id: 't1', name: 'Engineer', kind: 'title' as const, organizationId: 'org-1' },
+      { id: 'r1', name: 'Lead', kind: 'role' as const },
+    ];
+    const updated = withTitleEntry(titles, 'Senior Engineer', 'title');
+    expect(updated).toEqual([
+      { id: 't1', name: 'Senior Engineer', kind: 'title', organizationId: 'org-1' },
+      { id: 'r1', name: 'Lead', kind: 'role' },
+    ]);
+  });
+
+  test('withTitleEntry appends a missing entry and drops one left blank', () => {
+    expect(withTitleEntry([], 'Engineer', 'title')).toEqual([{ name: 'Engineer', kind: 'title' }]);
+    expect(withTitleEntry([{ id: 't1', name: 'Engineer', kind: 'title' }], '', 'title')).toEqual(
+      [],
+    );
+  });
+});
+
+describe('entry periods', () => {
+  const range = { start: { year: 2019 }, end: { year: 2024 } };
+
+  test('upsertEntryPeriod adds a period keyed by kind + entry', () => {
+    expect(upsertEntryPeriod(undefined, 'organization', 'org-1', range)).toEqual([
+      { kind: 'organization', entry_id: 'org-1', range },
+    ]);
+  });
+
+  test('upsertEntryPeriod replaces the matching period and preserves others', () => {
+    const existing: CardEntryPeriod[] = [
+      { kind: 'address', entry_id: 'addr-1', range: { start: { year: 2000 } } },
+      { kind: 'organization', entry_id: 'org-1', range: { start: { year: 2010 } } },
+    ];
+    const updated = upsertEntryPeriod(existing, 'organization', 'org-1', range);
+    expect(updated).toEqual([
+      { kind: 'address', entry_id: 'addr-1', range: { start: { year: 2000 } } },
+      { kind: 'organization', entry_id: 'org-1', range },
+    ]);
+  });
+
+  test('upsertEntryPeriod clears the matching period for an empty range', () => {
+    const existing: CardEntryPeriod[] = [{ kind: 'organization', entry_id: 'org-1', range }];
+    expect(upsertEntryPeriod(existing, 'organization', 'org-1', undefined)).toEqual([]);
+    expect(upsertEntryPeriod(existing, 'organization', 'org-1', {})).toEqual([]);
   });
 });
 

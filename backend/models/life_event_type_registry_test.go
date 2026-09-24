@@ -6,10 +6,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// expectedLifeEventTypeCount is 7 pre-existing constants + 37 new ones added
-// by T36, the exact
-// count the ticket itself states.
-const expectedLifeEventTypeCount = 44
+// expectedLifeEventTypeCount is 7 pre-existing constants + 37 added by T36 +
+// moved_out (issue #1233, the address-departure counterpart of moved).
+const expectedLifeEventTypeCount = 45
 
 func TestLifeEventCategories(t *testing.T) {
 	t.Parallel()
@@ -41,9 +40,8 @@ func TestIsKnownLifeEventCategory(t *testing.T) {
 
 // TestLifeEventTypeCategoriesCoversEveryConstant pins the registry against
 // silent drift: every LifeEventType* constant referenced anywhere in this
-// package (the 7 pre-existing plus T36's 37 new ones) must have exactly one
-// entry in LifeEventTypeCategories, and the map must have no stray entries
-// beyond those 44.
+// package must have exactly one entry in LifeEventTypeCategories, and the map
+// must have no stray entries beyond those.
 func TestLifeEventTypeCategoriesCoversEveryConstant(t *testing.T) {
 	t.Parallel()
 	allTypes := []string{
@@ -51,7 +49,7 @@ func TestLifeEventTypeCategoriesCoversEveryConstant(t *testing.T) {
 		LifeEventTypeMarried, LifeEventTypeGraduated, LifeEventTypeJobChange,
 		LifeEventTypeHadChild, LifeEventTypeAdoptedPet, LifeEventTypeRetired, LifeEventTypeMoved,
 		// Home & Living
-		LifeEventTypeBoughtAHome, LifeEventTypeMadeAHomeImprovement, LifeEventTypeWentOnHolidays,
+		LifeEventTypeMovedOut, LifeEventTypeBoughtAHome, LifeEventTypeMadeAHomeImprovement, LifeEventTypeWentOnHolidays,
 		LifeEventTypeGotANewVehicle, LifeEventTypeGotARoommate,
 		// Health & Wellness
 		LifeEventTypeOvercameAnIllness, LifeEventTypeQuitAHabit, LifeEventTypeStartedNewEatingHabits,
@@ -71,9 +69,9 @@ func TestLifeEventTypeCategoriesCoversEveryConstant(t *testing.T) {
 		LifeEventTypeLostALovedOne,
 	}
 
-	assert.Len(t, allTypes, expectedLifeEventTypeCount, "test fixture itself must list all 44 tokens")
+	assert.Len(t, allTypes, expectedLifeEventTypeCount, "test fixture itself must list all tokens")
 	assert.Len(t, LifeEventTypeCategories, expectedLifeEventTypeCount,
-		"the registry must have exactly 44 entries, no more, no fewer")
+		"the registry must have exactly the expected number of entries, no more, no fewer")
 
 	seen := make(map[string]bool, len(allTypes))
 	for _, token := range allTypes {
@@ -83,7 +81,7 @@ func TestLifeEventTypeCategoriesCoversEveryConstant(t *testing.T) {
 		assert.True(t, IsKnownLifeEventCategory(category), "token %q maps to unregistered category %q", token, category)
 	}
 
-	// No entries in the map beyond the 44 accounted for above.
+	// No entries in the map beyond those accounted for above.
 	for token := range LifeEventTypeCategories {
 		assert.True(t, seen[token], "LifeEventTypeCategories has an entry %q not covered by this test's fixture", token)
 	}

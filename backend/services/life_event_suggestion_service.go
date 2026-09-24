@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"sort"
 
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/models"
@@ -10,14 +11,20 @@ import (
 )
 
 // lifeEventSuggestionRules maps a Card period kind to the life-event candidate
-// it can imply. Deliberately narrow (docs/adrs/0025-temporal-periods.md): only
-// cases where the inferred event is unambiguous ship. The candidate's date is
-// the period's start; its EndDate is the period's end when present.
+// its *start* date can imply. Deliberately narrow (docs/adrs/0025-temporal-periods.md):
+// only cases where the inferred event is unambiguous ship. The candidate's date
+// is the period's start; its EndDate is the period's end when present.
 //
 // Why not more: an address could be a second home, a dorm, or a mailing
 // address, so only the presence of a start date at the address an entry
-// represents is treated as a move; an address END has no event type of its
-// own. Extending this is a rule addition, not a schema change.
+// represents is treated as a move. An address END is a departure and is handled
+// separately (see addressDepartureSuggestion) because "moved out of X" is a
+// distinct event from "moved to X" — `moved` has no direction of its own.
+// Titles and organizations both read as a job/affiliation change; when both
+// carry the same anchor date only one candidate is offered (see
+// suggestionAlreadyOffered), preferring the organization entry.
+//
+// Extending this table is a rule addition, not a schema change (issue #1233).
 var lifeEventSuggestionRules = map[string]struct{ Type, Category string }{
 	contactmodel.PeriodKindAddress: {
 		Type:     models.LifeEventTypeMoved,
@@ -27,6 +34,27 @@ var lifeEventSuggestionRules = map[string]struct{ Type, Category string }{
 		Type:     models.LifeEventTypeJobChange,
 		Category: models.LifeEventCategoryWorkEducation,
 	},
+	contactmodel.PeriodKindTitle: {
+		Type:     models.LifeEventTypeJobChange,
+		Category: models.LifeEventCategoryWorkEducation,
+	},
+}
+
+// suggestionKindPriority orders period kinds when more than one can imply the
+// same event, so a candidate is attributed to the most specific entry
+// deterministically: an organization before a title (both imply job_change).
+// Unknown kinds sort last and are skipped by the rule lookup anyway.
+var suggestionKindPriority = map[string]int{
+	contactmodel.PeriodKindAddress:      0,
+	contactmodel.PeriodKindOrganization: 1,
+	contactmodel.PeriodKindTitle:        2,
+}
+
+func suggestionKindRank(kind string) int {
+	if rank, ok := suggestionKindPriority[kind]; ok {
+		return rank
+	}
+	return len(suggestionKindPriority)
 }
 
 // SuggestLifeEvents infers candidate life events from a contact's dated field
@@ -59,29 +87,87 @@ func SuggestLifeEvents(db *gorm.DB, contact *models.Contact) ([]models.LifeEvent
 		return nil, err
 	}
 
+	// Deterministic, kind-prioritized order so a shared anchor date is
+	// attributed to the organization rather than the title.
+	periods := make([]contactmodel.EntryPeriod, len(contact.CRM.Periods))
+	copy(periods, contact.CRM.Periods)
+	sort.SliceStable(periods, func(i, j int) bool {
+		return suggestionKindRank(periods[i].Kind) < suggestionKindRank(periods[j].Kind)
+	})
+
 	var out []models.LifeEventSuggestion
-	for _, p := range contact.CRM.Periods {
-		rule, ok := lifeEventSuggestionRules[p.Kind]
-		if !ok || p.Range.Start == nil || p.EntryID == "" {
+	for _, p := range periods {
+		if p.EntryID == "" {
 			continue
 		}
-		if resolved[[2]string{p.Kind + "\x00" + p.EntryID, rule.Type}] {
-			continue
+		if rule, ok := lifeEventSuggestionRules[p.Kind]; ok && p.Range.Start != nil {
+			out = offerSuggestion(out, resolved, events, models.LifeEventSuggestion{
+				EntityID:      contact.VCardUID,
+				Type:          rule.Type,
+				Category:      rule.Category,
+				Date:          p.Range.Start,
+				EndDate:       p.Range.End,
+				SourceKind:    p.Kind,
+				SourceEntryID: p.EntryID,
+			})
 		}
-		if lifeEventAlreadyCovered(events, rule.Type, p.Range.Start) {
-			continue
+		if p.Kind == contactmodel.PeriodKindAddress && p.Range.End != nil &&
+			!hasAddressSuccessor(periods, p) {
+			out = offerSuggestion(out, resolved, events, models.LifeEventSuggestion{
+				EntityID:      contact.VCardUID,
+				Type:          models.LifeEventTypeMovedOut,
+				Category:      models.LifeEventCategoryHomeLiving,
+				Date:          p.Range.End,
+				SourceKind:    p.Kind,
+				SourceEntryID: p.EntryID,
+			})
 		}
-		out = append(out, models.LifeEventSuggestion{
-			EntityID:      contact.VCardUID,
-			Type:          rule.Type,
-			Category:      rule.Category,
-			Date:          p.Range.Start,
-			EndDate:       p.Range.End,
-			SourceKind:    p.Kind,
-			SourceEntryID: p.EntryID,
-		})
 	}
 	return out, nil
+}
+
+// offerSuggestion appends candidate unless it has already been resolved for
+// this (kind, entry, type), an event of the same type already anchors on the
+// same date, or an equivalent candidate was already offered in this pass. The
+// last guard keeps an organization and a title sharing a start date from
+// producing two identical job_change candidates.
+func offerSuggestion(
+	out []models.LifeEventSuggestion,
+	resolved map[[2]string]bool,
+	events []models.LifeEvent,
+	candidate models.LifeEventSuggestion,
+) []models.LifeEventSuggestion {
+	if resolved[[2]string{candidate.SourceKind + "\x00" + candidate.SourceEntryID, candidate.Type}] {
+		return out
+	}
+	if lifeEventAlreadyCovered(events, candidate.Type, candidate.Date) {
+		return out
+	}
+	for i := range out {
+		if out[i].Type == candidate.Type && equalPartialDate(out[i].Date, candidate.Date) {
+			return out
+		}
+	}
+	return append(out, candidate)
+}
+
+// hasAddressSuccessor reports whether another address period starts at or after
+// this period's end — the "they moved somewhere else" signal that makes an
+// address end a move rather than a departure. A period whose end cannot be
+// compared to any other start (missing years) has no demonstrable successor, so
+// the departure is offered. The same entry is never its own successor, and an
+// overlapping period that begins before this one ends does not count.
+func hasAddressSuccessor(periods []contactmodel.EntryPeriod, p contactmodel.EntryPeriod) bool {
+	for i := range periods {
+		q := periods[i]
+		if q.Kind != contactmodel.PeriodKindAddress || q.EntryID == p.EntryID || q.Range.Start == nil {
+			continue
+		}
+		if cmp, ok := contactmodel.ComparePartialDates(q.Range.Start, p.Range.End); ok && cmp >= 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // lifeEventAlreadyCovered reports whether an event of the given type already

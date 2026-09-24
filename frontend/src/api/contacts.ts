@@ -700,7 +700,7 @@ export function valuesToCardAddresses(values: ContactAddress[]): CardAddress[] {
 // A client-assigned card element ID (ADR 0025): the JSContact map key / vCard
 // PROP-ID a period references. crypto.randomUUID needs a secure context
 // (https/localhost); the fallback keeps the editor usable elsewhere.
-function newCardEntryID(): string {
+export function newCardEntryID(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
@@ -753,6 +753,22 @@ export function addressesToCardAndPeriods(values: ContactAddress[]): {
     });
   });
   return { addresses, periods };
+}
+
+// upsertEntryPeriod replaces the (kind, entry_id) period with `range`, or
+// removes it when `range` is undefined/empty. Every other period is preserved.
+// It is the single write path the professional (organization/title) period
+// editor uses, mirroring addressesToCardAndPeriods' derive-both-sides rule
+// (ADR 0025).
+export function upsertEntryPeriod(
+  periods: CardEntryPeriod[] | undefined,
+  kind: string,
+  entryId: string,
+  range: CardTemporalRange | undefined,
+): CardEntryPeriod[] {
+  const rest = (periods ?? []).filter((p) => !(p.kind === kind && p.entry_id === entryId));
+  if (!range || (range.start == null && range.end == null)) return rest;
+  return [...rest, { kind, entry_id: entryId, range }];
 }
 
 function cardAddressFromFlat(a: ContactAddress): CardAddress {
@@ -811,6 +827,41 @@ export function withOrganization(organization: string, department: string): Card
     : [];
 }
 
+// organizationEntry returns the first organization — the one the inline
+// professional editor surfaces. It may carry an `id` a period references.
+export function organizationEntry(
+  organizations: CardOrganization[] | undefined,
+): CardOrganization | undefined {
+  return organizations?.[0];
+}
+
+// withOrganizationEntry is the edit-path counterpart of withOrganization: it
+// updates the first organization's name/department while PRESERVING that
+// entry's element ID (and any unmodeled fields), so a period attached to it
+// survives the edit (`withOrganization` minted a fresh object and dropped the
+// ID — ADR 0025's prerequisite). Every organization beyond the first is left
+// untouched. A blank name drops the first entry entirely, matching
+// withOrganization's create semantics.
+export function withOrganizationEntry(
+  organizations: CardOrganization[] | undefined,
+  organization: string,
+  department: string,
+): CardOrganization[] {
+  const list = organizations ?? [];
+  const rest = list.slice(1);
+  if (!organization) return rest;
+  const first = list[0] ?? {};
+  const unit = first.units?.[0];
+  return [
+    {
+      ...first,
+      name: organization,
+      units: department ? [{ ...unit, name: department }] : undefined,
+    },
+    ...rest,
+  ];
+}
+
 export function getTitleField(
   titles: CardTitle[] | undefined,
   kind: 'title' | 'role',
@@ -823,6 +874,36 @@ export function withTitles(jobTitle: string, role: string): CardTitle[] {
   if (jobTitle) titles.push({ name: jobTitle, kind: 'title' });
   if (role) titles.push({ name: role, kind: 'role' });
   return titles;
+}
+
+// titleEntry returns the entry the inline professional editor surfaces for
+// `kind`: the `title` entry (or the first kind-less one, which reads as a job
+// title) or the `role` entry. It may carry an `id` a period references.
+export function titleEntry(
+  titles: CardTitle[] | undefined,
+  kind: 'title' | 'role',
+): CardTitle | undefined {
+  if (kind === 'title') return titles?.find((t) => t.kind === 'title' || !t.kind);
+  return titles?.find((t) => t.kind === 'role');
+}
+
+// withTitleEntry is the edit-path counterpart of withTitles: it updates the
+// matching entry's name while PRESERVING its element ID and organizationId, so
+// a period attached to the title survives the edit. Other title entries (the
+// other kind, or extra Card-only entries) are left untouched. A blank name
+// drops the matching entry.
+export function withTitleEntry(
+  titles: CardTitle[] | undefined,
+  name: string,
+  kind: 'title' | 'role',
+): CardTitle[] {
+  const list = titles ?? [];
+  const matches = (t: CardTitle) =>
+    kind === 'title' ? t.kind === 'title' || !t.kind : t.kind === 'role';
+  const index = list.findIndex(matches);
+  if (!name) return index === -1 ? list : list.filter((_, i) => i !== index);
+  if (index === -1) return [...list, { name, kind }];
+  return list.map((t, i) => (i === index ? { ...t, name } : t));
 }
 
 // summaryToLegacyContact maps the slim GET /contacts list item shape down

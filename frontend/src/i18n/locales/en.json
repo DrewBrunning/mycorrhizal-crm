@@ -572,6 +572,13 @@
     "birthdayError": "Invalid date format. Check your date format setting.",
     "address": "Address",
     "workInfo": "Work Information",
+    "period": {
+      "label": "Period",
+      "from": "From (year)",
+      "to": "To (year)",
+      "since": "Since {{year}}",
+      "until": "Until {{year}}"
+    },
     "howWeMet": "How We Met",
     "additionalInfo": "Additional Information",
     "timeline": "Timeline",
@@ -731,6 +738,7 @@
       "adopted_pet": "Got a pet",
       "retired": "Retired",
       "moved": "Moved",
+      "moved_out": "Moved out",
       "bought_a_home": "Bought a home",
       "made_a_home_improvement": "Made a home improvement",
       "went_on_holidays": "Went on holidays",

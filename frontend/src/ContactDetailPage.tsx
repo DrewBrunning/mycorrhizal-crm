@@ -33,7 +33,6 @@ import {
   getContactProfilePicture,
   getContactRecord,
   getOrganizationFields,
-  getTitleField,
   type NameComponent,
   nameComponentValue,
   unarchiveContact,
@@ -41,8 +40,8 @@ import {
   updateContactRecord,
   uploadProfilePicture,
   withAnniversary,
-  withOrganization,
-  withTitles,
+  withOrganizationEntry,
+  withTitleEntry,
 } from './api/contacts';
 import type { ConversationAgenda } from './api/conversationAgenda';
 import { suggestContactAddresses } from './api/dataSuggestions';
@@ -1385,20 +1384,24 @@ export default function ContactDetailPage() {
         return { card: { anniversaries: withAnniversary(card.anniversaries, 'wedding', value) } };
       case 'organization': {
         const { department } = getOrganizationFields(card.organizations);
-        return { card: { organizations: withOrganization(value, department || '') } };
+        return {
+          card: {
+            organizations: withOrganizationEntry(card.organizations, value, department || ''),
+          },
+        };
       }
       case 'department': {
         const { organization } = getOrganizationFields(card.organizations);
-        return { card: { organizations: withOrganization(organization || '', value) } };
+        return {
+          card: {
+            organizations: withOrganizationEntry(card.organizations, organization || '', value),
+          },
+        };
       }
-      case 'job_title': {
-        const role = getTitleField(card.titles, 'role');
-        return { card: { titles: withTitles(value, role || '') } };
-      }
-      case 'role': {
-        const jobTitle = getTitleField(card.titles, 'title');
-        return { card: { titles: withTitles(jobTitle || '', value) } };
-      }
+      case 'job_title':
+        return { card: { titles: withTitleEntry(card.titles, value, 'title') } };
+      case 'role':
+        return { card: { titles: withTitleEntry(card.titles, value, 'role') } };
       case 'work_information':
         return { crm: { work_information: value } };
       case 'how_we_met':

@@ -19,6 +19,9 @@ export type LifeEventCategory = (typeof LIFE_EVENT_CATEGORIES)[number];
 export const LIFE_EVENT_TYPES_BY_CATEGORY: Record<LifeEventCategory, readonly string[]> = {
   home_living: [
     'moved',
+    // Issue #1233: the departure counterpart of `moved`, inferred from an
+    // address period whose end has no successor.
+    'moved_out',
     'bought_a_home',
     'made_a_home_improvement',
     'went_on_holidays',

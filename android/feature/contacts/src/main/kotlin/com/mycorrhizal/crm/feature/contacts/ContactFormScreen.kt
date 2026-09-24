@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -43,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -136,6 +138,11 @@ fun ContactFormScreen(
                 onPersonalInfoChange = viewModel::onPersonalInfoChange,
                 onOrganizationNameChange = viewModel::onOrganizationNameChange,
                 onDepartmentChange = viewModel::onDepartmentChange,
+                onPeriodsChange = viewModel::onPeriodsChange,
+                onOrganizationPeriodStartChange = viewModel::onOrganizationPeriodStartChange,
+                onOrganizationPeriodEndChange = viewModel::onOrganizationPeriodEndChange,
+                onJobTitlePeriodStartChange = viewModel::onJobTitlePeriodStartChange,
+                onJobTitlePeriodEndChange = viewModel::onJobTitlePeriodEndChange,
                 onHowWeMetChange = viewModel::onHowWeMetChange,
                 onWorkInformationChange = viewModel::onWorkInformationChange,
                 onContactInformationChange = viewModel::onContactInformationChange,
@@ -187,6 +194,12 @@ fun ContactFormContent(
     onPersonalInfoChange: (List<com.mycorrhizal.crm.model.network.PersonalInfo>) -> Unit,
     onOrganizationNameChange: (String) -> Unit = {},
     onDepartmentChange: (String) -> Unit = {},
+    // ADR 0025 (#1233): period editing for addresses and the professional section.
+    onPeriodsChange: (List<com.mycorrhizal.crm.model.network.EntryPeriod>) -> Unit = {},
+    onOrganizationPeriodStartChange: (String) -> Unit = {},
+    onOrganizationPeriodEndChange: (String) -> Unit = {},
+    onJobTitlePeriodStartChange: (String) -> Unit = {},
+    onJobTitlePeriodEndChange: (String) -> Unit = {},
     onHowWeMetChange: (String) -> Unit = {},
     onWorkInformationChange: (String) -> Unit = {},
     onContactInformationChange: (String) -> Unit = {},
@@ -373,6 +386,8 @@ fun ContactFormContent(
             AddressEditor(
                 addresses = state.addresses,
                 onChange = onAddressesChange,
+                periods = state.periods,
+                onPeriodsChange = onPeriodsChange,
             )
         }
 
@@ -394,6 +409,17 @@ fun ContactFormContent(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+            // ADR 0025 (#1233): the period for organizations[0]. Only offered
+            // once there is an organization to attach it to.
+            if (state.organizationName.isNotBlank()) {
+                SectionLabel(stringResource(R.string.contact_period))
+                PeriodYearFields(
+                    start = state.organizationPeriodStart,
+                    end = state.organizationPeriodEnd,
+                    onStartChange = onOrganizationPeriodStartChange,
+                    onEndChange = onOrganizationPeriodEndChange,
+                )
+            }
         }
 
         if (ContactFieldKey.TITLES in enabled) {
@@ -403,6 +429,16 @@ fun ContactFormContent(
                 onChange = onTitlesChange,
                 label = stringResource(R.string.contact_job_titles),
             )
+            // ADR 0025 (#1233): the period for the job-title entry.
+            if (state.titles.isNotEmpty()) {
+                SectionLabel(stringResource(R.string.contact_period))
+                PeriodYearFields(
+                    start = state.jobTitlePeriodStart,
+                    end = state.jobTitlePeriodEnd,
+                    onStartChange = onJobTitlePeriodStartChange,
+                    onEndChange = onJobTitlePeriodEndChange,
+                )
+            }
         }
 
         // M7 Tier 1: online services. The detail screen resolves handles via `service`
@@ -683,5 +719,37 @@ private fun SelectorChipEditor(
                 }
             }
         }
+    }
+}
+
+/**
+ * ADR 0025 (#1233): a pair of whole-year period inputs, shared by the address
+ * editor's professional counterpart (organization / job title). Either side
+ * may be blank (open-ended); both blank clears the period on save.
+ */
+@Composable
+private fun PeriodYearFields(
+    start: String,
+    end: String,
+    onStartChange: (String) -> Unit,
+    onEndChange: (String) -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = start,
+            onValueChange = onStartChange,
+            label = { Text(stringResource(R.string.contact_period_from)) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.weight(1f),
+        )
+        OutlinedTextField(
+            value = end,
+            onValueChange = onEndChange,
+            label = { Text(stringResource(R.string.contact_period_to)) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.weight(1f),
+        )
     }
 }
