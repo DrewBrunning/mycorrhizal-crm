@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { ContactScoreResponse } from '../api/contactScore';
 import type { ContactRecordResponse } from '../api/contacts';
+import { DateFormatProvider } from '../DateFormatProvider';
 import { useContactScore } from '../hooks/useContactScore';
 import ContactHeader from './ContactHeader';
 
@@ -98,7 +99,9 @@ function renderHeader(props: Partial<React.ComponentProps<typeof ContactHeader>>
   };
   return render(
     <ThemeProvider theme={defaultTheme}>
-      <ContactHeader {...defaults} />
+      <DateFormatProvider>
+        <ContactHeader {...defaults} />
+      </DateFormatProvider>
     </ThemeProvider>,
   );
 }
@@ -400,6 +403,51 @@ test("compact layout: an archived contact's overflow menu offers only Unarchive"
 
   fireEvent.click(screen.getByText('Unarchive'));
   expect(onUnarchiveContact).toHaveBeenCalledTimes(1);
+});
+
+// --- Issue #1193: deceased badge --------------------------------------------
+
+test('shows no deceased badge for a contact with no death anniversary', () => {
+  renderHeader();
+  expect(screen.queryByText('Deceased', { exact: false })).not.toBeInTheDocument();
+});
+
+test('shows a deceased badge with the date of death for a contact with one', () => {
+  renderHeader({
+    record: baseRecord({
+      card: {
+        name: { components: [{ kind: 'given', value: 'Fluffy' }] },
+        anniversaries: [{ kind: 'death', date: { partial: { year: 2020, month: 5, day: 1 } } }],
+      },
+    }),
+  });
+  expect(screen.getByText('Deceased — 01.05.2020', { exact: false })).toBeInTheDocument();
+});
+
+test('shows a bare deceased badge when the death anniversary has no date', () => {
+  renderHeader({
+    record: baseRecord({
+      card: {
+        name: { components: [{ kind: 'given', value: 'Fluffy' }] },
+        anniversaries: [{ kind: 'death', date: {} }],
+      },
+    }),
+  });
+  expect(screen.getByText('Deceased')).toBeInTheDocument();
+});
+
+test('shows both the archived and deceased badges together when both apply', () => {
+  renderHeader({
+    record: baseRecord({
+      archived: true,
+      card: {
+        name: { components: [{ kind: 'given', value: 'Fluffy' }] },
+        anniversaries: [{ kind: 'death', date: { partial: { year: 2020, month: 5, day: 1 } } }],
+      },
+    }),
+  });
+  expect(screen.getByText('Archived')).toBeInTheDocument();
+  expect(screen.getByText('Deceased — 01.05.2020', { exact: false })).toBeInTheDocument();
 });
 
 // --- Issue #383/ADR-0023: relationship health score badge + popover -------

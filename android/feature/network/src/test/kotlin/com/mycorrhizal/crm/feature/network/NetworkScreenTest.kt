@@ -52,6 +52,9 @@ class NetworkScreenTest {
         // of which cares about the score) is unaffected.
         healthScore: Int? = null,
         healthBand: String? = null,
+        // Issue #1193: optional, same reasoning -- defaults to false so
+        // every existing call site is unaffected.
+        deceased: Boolean = false,
     ) = GraphChain(
         targetId = targetId,
         targetVCardUid = uid,
@@ -60,6 +63,7 @@ class NetworkScreenTest {
         steps = steps,
         healthScore = healthScore,
         healthBand = healthBand,
+        deceased = deceased,
     )
 
     private fun state(
@@ -196,6 +200,54 @@ class NetworkScreenTest {
         )
 
         composeTestRule.onNodeWithContentDescription("Carol — Carol (child of)").assertIsDisplayed()
+    }
+
+    // --- Issue #1193: a deceased target overrides the health-band indicator ---
+
+    @Test
+    fun `a deceased target's content description says Deceased, not its health band`() {
+        setContent(
+            uiState = state(
+                chains = listOf(
+                    chain(
+                        10,
+                        "t1",
+                        "Carol",
+                        depth = 1,
+                        steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of")),
+                        healthScore = 72,
+                        healthBand = "moss",
+                        deceased = true,
+                    ),
+                ),
+            ),
+        )
+
+        composeTestRule
+            .onNodeWithContentDescription("Carol — Carol (child of) — Deceased")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `a deceased target with no health band still gets the Deceased description`() {
+        setContent(
+            uiState = state(
+                chains = listOf(
+                    chain(
+                        10,
+                        "t1",
+                        "Carol",
+                        depth = 1,
+                        steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of")),
+                        deceased = true,
+                    ),
+                ),
+            ),
+        )
+
+        composeTestRule
+            .onNodeWithContentDescription("Carol — Carol (child of) — Deceased")
+            .assertIsDisplayed()
     }
 
     @Test

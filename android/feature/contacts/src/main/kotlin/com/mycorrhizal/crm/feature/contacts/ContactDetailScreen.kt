@@ -1090,6 +1090,9 @@ fun ContactDetailContent(
                 // carried no heading semantics, so TalkBack's heading
                 // navigation skipped it. The favorite star sits beside it
                 // (web's ContactHeader), kept out of the heading's semantics.
+                // Issue #1193: Card.Anniversaries[kind=death] IS the deceased
+                // state -- no separate flag (web ContactHeader parity).
+                val deathAnniversary = card?.anniversaries?.firstOrNull { it.kind == "death" }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -1101,6 +1104,17 @@ fun ContactDetailContent(
                         textAlign = TextAlign.Center,
                         modifier = Modifier.semantics { heading() },
                     )
+                    if (deathAnniversary != null) {
+                        // Issue #1193: neutral, non-interactive chip -- same
+                        // pattern as the "You" badge below, web ContactHeader
+                        // parity (Archived/Deceased are states, not warnings).
+                        AssistChip(
+                            onClick = {},
+                            enabled = false,
+                            label = { Text(stringResource(R.string.contact_deceased_badge)) },
+                            modifier = Modifier.testTag("deceased-badge"),
+                        )
+                    }
                     if (isMe) {
                         // T90 / issue #831: being yourself is not a status condition —
                         // a neutral, non-interactive chip (web ContactHeader parity).
@@ -1152,6 +1166,17 @@ fun ContactDetailContent(
                         text = stringResource(
                             R.string.contact_birthday_label,
                             birthday.display(dateFormat ?: DateFormat.EU),
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                val dateOfDeath = deathAnniversary?.date?.partial
+                if (dateOfDeath != null) {
+                    Text(
+                        text = stringResource(
+                            R.string.contact_deceased_date_label,
+                            dateOfDeath.display(dateFormat ?: DateFormat.EU),
                         ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -20,7 +20,7 @@ import ForceGraph2D from 'react-force-graph-2d';
 import { useTranslation } from 'react-i18next';
 import type { GraphData, GraphEdge, GraphNode } from '../types/graph';
 import { exceedsGraphRenderBudget } from '../utils/graphBudget';
-import { healthBandColor } from '../utils/healthBand';
+import { deceasedNodeColor, healthBandColor } from '../utils/healthBand';
 import { computeFilteredGraphData } from '../utils/networkGraphData';
 
 interface NetworkGraphProps {
@@ -173,12 +173,19 @@ export default function NetworkGraph({
       ctx.beginPath();
       ctx.arc(node.x || 0, node.y || 0, size, 0, 2 * Math.PI);
       if (isContact) {
-        // Issue #383/ADR-0023: color contact nodes by relationship health
-        // band when the backend has supplied one, falling back to the old
-        // uniform nodeColor for activity/circle-adjacent nodes with no band
-        // (old cached graph data, or a contact score that hasn't been
+        // Issue #1193: a deceased contact's node always gets the dedicated
+        // deceased color, regardless of what health_band the backend also
+        // supplied -- recency-of-interaction health scoring is meaningless
+        // once someone has died.
+        //
+        // Issue #383/ADR-0023: otherwise color contact nodes by relationship
+        // health band when the backend has supplied one, falling back to the
+        // old uniform nodeColor for activity/circle-adjacent nodes with no
+        // band (old cached graph data, or a contact score that hasn't been
         // computed yet).
-        ctx.fillStyle = healthBandColor(node.health_band, theme) ?? nodeColor;
+        ctx.fillStyle = node.deceased
+          ? deceasedNodeColor(theme)
+          : (healthBandColor(node.health_band, theme) ?? nodeColor);
       } else if (isActivity) {
         ctx.fillStyle = activityNodeColor;
       } else {
@@ -434,6 +441,17 @@ export default function NetworkGraph({
                     ? t('network.legend.activity')
                     : t('network.legend.circle')}
               </Typography>
+              {hoveredNode.deceased && (
+                <Typography
+                  variant="caption"
+                  component="div"
+                  sx={{
+                    color: 'text.secondary',
+                  }}
+                >
+                  {t('contactDetail.deceasedBadge')}
+                </Typography>
+              )}
             </>
           ) : hoveredEdge ? (
             <>

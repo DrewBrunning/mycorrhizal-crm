@@ -497,6 +497,84 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("Birthday: June 15, 1990").assertIsDisplayed()
     }
 
+    // --- Issue #1193: deceased badge + date of death (web ContactHeader parity) ---
+
+    @Test
+    fun `deceased badge is absent when no death anniversary is recorded`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact)
+            }
+        }
+
+        composeTestRule.onNodeWithTag("deceased-badge").assertDoesNotExist()
+    }
+
+    @Test
+    fun `deceased badge shows and date of death renders using the eu format by default`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                anniversaries = listOf(
+                    Anniversary(kind = "death", date = AnniversaryDate(partial = PartialDate(year = 2020, month = 5, day = 1))),
+                ),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact)
+            }
+        }
+
+        composeTestRule.onNodeWithTag("deceased-badge").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Died: 1 May 2020").assertIsDisplayed()
+    }
+
+    @Test
+    fun `date of death honors the user's date_format preference`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                anniversaries = listOf(
+                    Anniversary(kind = "death", date = AnniversaryDate(partial = PartialDate(year = 2020, month = 5, day = 1))),
+                ),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact, dateFormat = "us")
+            }
+        }
+
+        composeTestRule.onNodeWithText("Died: May 1, 2020").assertIsDisplayed()
+    }
+
+    @Test
+    fun `birth and death anniversaries render independently when both are recorded`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                anniversaries = listOf(
+                    Anniversary(kind = "birth", date = AnniversaryDate(partial = PartialDate(year = 1990, month = 6, day = 15))),
+                    Anniversary(kind = "death", date = AnniversaryDate(partial = PartialDate(year = 2020, month = 5, day = 1))),
+                ),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact)
+            }
+        }
+
+        composeTestRule.onNodeWithTag("deceased-badge").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Birthday: 15 June 1990").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Died: 1 May 2020").assertIsDisplayed()
+    }
+
     // --- Issue #832: fields with no prior Android UI ---
 
     @Test

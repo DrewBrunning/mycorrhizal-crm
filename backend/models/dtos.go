@@ -393,6 +393,12 @@ type GraphNode struct {
 	// per-node.
 	HealthScore *int   `json:"health_score,omitempty"`
 	HealthBand  string `json:"health_band,omitempty"`
+	// Deceased (issue #1193) is set only for contact nodes whose Card records
+	// a death anniversary (Card.Anniversaries[kind=death]). Health scoring
+	// (recency of interaction) is meaningless once someone has died, so the
+	// frontend renders a deceased node with a dedicated neutral color instead
+	// of a HealthBand-derived one, regardless of what HealthBand carries.
+	Deceased bool `json:"deceased,omitempty"`
 }
 
 // GraphEdge represents an edge in the network visualization
@@ -439,6 +445,10 @@ type GraphChain struct {
 	// mirror of GraphNode's.
 	HealthScore *int   `json:"health_score,omitempty"`
 	HealthBand  string `json:"health_band,omitempty"`
+	// Deceased (issue #1193) mirrors GraphNode's field, for the same reason:
+	// this is Android's only surface for it, so it is decorated here
+	// unconditionally rather than left for a canvas view Android doesn't have.
+	Deceased bool `json:"deceased,omitempty"`
 }
 
 // GraphConnectionsResponse is the API response for GET /graph/connections.

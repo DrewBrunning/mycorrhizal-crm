@@ -54,6 +54,14 @@ func GetUpcomingBirthdays(db *gorm.DB, userID uint, now time.Time) ([]models.Bir
 
 	// Convert contacts to Birthday DTOs
 	for _, contact := range contacts {
+		// Issue #1193: a deceased contact (Card.Anniversaries[kind=death]) no
+		// longer has a birthday worth celebrating -- the flat `birthday`
+		// column is unaffected (still recorded, still exported), this only
+		// excludes them from the upcoming-birthdays reminder surface.
+		if contact.Card.IsDeceased() {
+			continue
+		}
+
 		name := contact.Firstname
 		if contact.Nickname != "" {
 			name = contact.Nickname

@@ -142,3 +142,55 @@ test('renders a colored dot per health band', () => {
     expect(c).not.toBe('');
   }
 });
+
+// --- Issue #1193: deceased overrides the health-band indicator -------------
+
+test('a deceased contact shows the deceased label instead of a health band, even when one is present', () => {
+  const data: GraphData = {
+    nodes: [
+      { id: 'c-1', type: 'contact', label: 'Alice', health_band: 'moss', deceased: true },
+      { id: 'c-2', type: 'contact', label: 'Bob', health_band: 'moss' },
+    ],
+    edges: [],
+  };
+  const filtered = computeFilteredGraphData(data, {
+    showRelationships: true,
+    showActivities: true,
+    showCircles: false,
+  });
+
+  render(
+    <NetworkListView nodes={filtered.nodes} links={filtered.links} onContactClick={vi.fn()} />,
+  );
+
+  expect(screen.getByText('(Deceased)')).toBeInTheDocument();
+  expect(screen.getByText('(Healthy)')).toBeInTheDocument();
+  expect(screen.queryByText('(Healthy)')?.textContent).not.toContain('Deceased');
+});
+
+test("a deceased contact's dot color is distinct from every health-band color", () => {
+  const data: GraphData = {
+    nodes: [
+      { id: 'c-1', type: 'contact', label: 'Alice', deceased: true },
+      { id: 'c-2', type: 'contact', label: 'Bob', health_band: 'moss' },
+      { id: 'c-3', type: 'contact', label: 'Carol', health_band: 'chanterelle' },
+      { id: 'c-4', type: 'contact', label: 'Dave', health_band: 'russula' },
+    ],
+    edges: [],
+  };
+  const filtered = computeFilteredGraphData(data, {
+    showRelationships: true,
+    showActivities: true,
+    showCircles: false,
+  });
+
+  const { container } = render(
+    <NetworkListView nodes={filtered.nodes} links={filtered.links} onContactClick={vi.fn()} />,
+  );
+
+  const dots = container.querySelectorAll('span[aria-hidden="true"]');
+  expect(dots.length).toBe(4);
+  const dotColors = Array.from(dots).map((el) => (el as HTMLElement).style.backgroundColor);
+  // 4 distinct colors: the deceased dot must not reuse any health-band color.
+  expect(new Set(dotColors).size).toBe(4);
+});

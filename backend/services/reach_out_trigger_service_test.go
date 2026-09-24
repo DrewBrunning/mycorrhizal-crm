@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"mycorrhizal/config"
+	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
@@ -268,6 +269,43 @@ func TestDetectReachOutSuggestions_DeletedContactSkipped(t *testing.T) {
 	var count int64
 	require.NoError(t, db.Model(&models.ReachOutSuggestion{}).Count(&count).Error)
 	assert.Zero(t, count, "a contact deleted before detection runs must not get a reach-out suggestion")
+}
+
+// TestDetectReachOutSuggestions_DeceasedContactSkipped is the regression test
+// for issue #1193: an org/title/address change on a contact with a recorded
+// death anniversary (Card.Anniversaries[kind=death]) must not produce a
+// reach-out suggestion -- there is no one left to reach out to.
+func TestDetectReachOutSuggestions_DeceasedContactSkipped(t *testing.T) {
+	db := setupReachOutTestDB(t)
+	cfg := config.Config{}
+
+	user := models.User{Username: "reachoutuser-deceased", Password: "password123!A", Email: "reachout-deceased@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	contact := models.Contact{UserID: user.ID}
+	models.ApplyRecordToContact(&contact, &contactmodel.Record{
+		Card: contactmodel.Card{
+			Name:          &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Alice"}, {Kind: "surname", Value: "Smith"}}},
+			Organizations: []contactmodel.Organization{{Name: "OldCo"}},
+			Anniversaries: []contactmodel.Anniversary{
+				{Kind: "death", Date: contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{
+					Year: intPtr(2020), Month: intPtr(5), Day: intPtr(1),
+				}}},
+			},
+		},
+	}, "")
+	require.NoError(t, db.Create(&contact).Error)
+	models.AuditFlush()
+
+	contact.Organization = "NewCo"
+	require.NoError(t, db.Save(&contact).Error)
+	models.AuditFlush()
+
+	DetectReachOutSuggestions(db, cfg)
+
+	var count int64
+	require.NoError(t, db.Model(&models.ReachOutSuggestion{}).Count(&count).Error)
+	assert.Zero(t, count, "a deceased contact's org change must not get a reach-out suggestion")
 }
 
 func TestDetectReachOutSuggestions_CursorPreventsDoubleFire(t *testing.T) {
