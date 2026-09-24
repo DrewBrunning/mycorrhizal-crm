@@ -50,6 +50,16 @@ import com.mycorrhizal.crm.model.network.ContactBriefing
 import com.mycorrhizal.crm.model.network.ContactScoreResponse
 import com.mycorrhizal.crm.model.network.CreateCadencePolicyResponse
 import com.mycorrhizal.crm.model.network.OverdueCadencesResponse
+import com.mycorrhizal.crm.model.network.AddOccasionEventAttendeeResponse
+import com.mycorrhizal.crm.model.network.CreateOccasionEventResponse
+import com.mycorrhizal.crm.model.network.InviteeSuggestionsResponse
+import com.mycorrhizal.crm.model.network.OccasionEvent
+import com.mycorrhizal.crm.model.network.OccasionEventAttendee
+import com.mycorrhizal.crm.model.network.OccasionEventAttendeeInput
+import com.mycorrhizal.crm.model.network.OccasionEventAttendeeUpdateInput
+import com.mycorrhizal.crm.model.network.OccasionEventDetail
+import com.mycorrhizal.crm.model.network.OccasionEventInput
+import com.mycorrhizal.crm.model.network.OccasionEventsResponse
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleDetailResponse
 import com.mycorrhizal.crm.model.network.CircleInput
@@ -1329,6 +1339,76 @@ class ApiClient(
     suspend fun deleteCadencePolicy(id: String): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$CADENCE_POLICIES_PATH/$id")
 
+    // --- Occasion events (docs/adrs/0026-occasions-events.md, issue #1228) ---
+
+    /** GET /api/v1/occasion-events — the user's events, newest-updated first. */
+    suspend fun listOccasionEvents(): Result<OccasionEventsResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$OCCASION_EVENTS_PATH") { _, body ->
+            moshi.adapter(OccasionEventsResponse::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/occasion-events/{id} — the event plus its attendee/RSVP list. */
+    suspend fun getOccasionEvent(id: String): Result<OccasionEventDetail> =
+        executeGet("$PLACEHOLDER_ORIGIN$OCCASION_EVENTS_PATH/$id") { _, body ->
+            moshi.adapter(OccasionEventDetail::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/occasion-events — wrapped `{ occasion_event }`, unwrapped here. */
+    suspend fun createOccasionEvent(input: OccasionEventInput): Result<OccasionEvent> =
+        executePost(OCCASION_EVENTS_PATH, input) { _, body ->
+            moshi.adapter(CreateOccasionEventResponse::class.java).fromJson(body)?.occasionEvent
+        }
+
+    /** PUT /api/v1/occasion-events/{id} — raw (unwrapped) updated event. */
+    suspend fun updateOccasionEvent(id: String, input: OccasionEventInput): Result<OccasionEvent> =
+        executePut("$PLACEHOLDER_ORIGIN$OCCASION_EVENTS_PATH/$id", input) { _, body ->
+            moshi.adapter(OccasionEvent::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/occasion-events/{id} — `{ message }`. */
+    suspend fun deleteOccasionEvent(id: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$OCCASION_EVENTS_PATH/$id")
+
+    /** POST /api/v1/occasion-events/{id}/attendees — wrapped `{ attendee }`. */
+    suspend fun addOccasionEventAttendee(
+        eventId: String,
+        input: OccasionEventAttendeeInput,
+    ): Result<OccasionEventAttendee> =
+        executePost("$OCCASION_EVENTS_PATH/$eventId/attendees", input) { _, body ->
+            moshi.adapter(AddOccasionEventAttendeeResponse::class.java).fromJson(body)?.attendee
+        }
+
+    /** PUT /api/v1/occasion-events/{id}/attendees/{vcard_uid} — raw attendee. */
+    suspend fun updateOccasionEventAttendee(
+        eventId: String,
+        vcardUid: String,
+        rsvp: String,
+    ): Result<OccasionEventAttendee> =
+        executePut(
+            "$PLACEHOLDER_ORIGIN$OCCASION_EVENTS_PATH/$eventId/attendees/$vcardUid",
+            OccasionEventAttendeeUpdateInput(rsvp),
+        ) { _, body ->
+            moshi.adapter(OccasionEventAttendee::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/occasion-events/{id}/attendees/{vcard_uid}. */
+    suspend fun removeOccasionEventAttendee(eventId: String, vcardUid: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$OCCASION_EVENTS_PATH/$eventId/attendees/$vcardUid")
+
+    /** GET /api/v1/occasion-events/invitee-suggestions?circle_ids=…[&event_id=…]. */
+    suspend fun suggestInvitees(
+        circleIds: List<String>,
+        eventId: String?,
+    ): Result<InviteeSuggestionsResponse> {
+        val builder = "$PLACEHOLDER_ORIGIN$OCCASION_EVENTS_PATH/invitee-suggestions"
+            .toHttpUrl().newBuilder()
+            .addQueryParameter("circle_ids", circleIds.joinToString(","))
+        if (!eventId.isNullOrBlank()) builder.addQueryParameter("event_id", eventId)
+        return executeGet(builder.build().toString()) { _, body ->
+            moshi.adapter(InviteeSuggestionsResponse::class.java).fromJson(body)
+        }
+    }
+
     /** GET /api/v1/circles — cursor-paginated; members when include_members=true. */
     suspend fun listCircles(
         cursor: String? = null,
@@ -2514,6 +2594,7 @@ class ApiClient(
         private const val PREFERENCES_PATH = "$API_V1/preferences"
         private const val CONVERSATION_AGENDA_PATH = "$API_V1/conversation-agenda"
         private const val CADENCE_POLICIES_PATH = "$API_V1/cadence-policies"
+        private const val OCCASION_EVENTS_PATH = "$API_V1/occasion-events"
         private const val DASHBOARD_PATH = "$API_V1/dashboard"
         private const val REACH_OUT_SUGGESTIONS_PATH = "$API_V1/reach-out-suggestions"
         private const val EXPORT_VCF_PATH = "$API_V1/export/vcf"

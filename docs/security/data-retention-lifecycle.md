@@ -306,6 +306,14 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
 - **Backups**: none — this is a device-local cache with no server-visible backup; Android's own
   Auto Backup is out of scope for app-internal DB files of this kind and isn't configured for it.
 
+**Occasion-event cache (issue #1228).** The Android events surface mirrors the server's event list into
+`cached_occasion_events` (`android/core/data/src/main/kotlin/.../local/CachedOccasionEvent.kt`, added by
+Room migration 18→19) via `OccasionEventRepositoryImpl`, which full-resyncs the table on every list and
+drops server soft-delete tombstones — the same rebuildable-cache pattern as the cadence/timeline entries,
+and wiped with everything else by `LocalDataCleaner.clear()` on logout. Attendees/RSVPs are **not** cached:
+the event detail is fetched live, so no invitee roster survives on-device. Backups: none, same as the rest
+of the Room mirror.
+
 **Android app-lock preference (issue #722).** The opt-in "require biometric / device PIN to open the
 app" flag and its grace-timeout live in a small `local_auth_prefs` DataStore file
 (`android/core/data/src/main/kotlin/.../repository/LocalAuthSettingsRepositoryImpl.kt`). That file holds
