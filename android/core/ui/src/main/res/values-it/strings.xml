@@ -161,6 +161,8 @@
     <string name="contact_custom_field_value_label">Valore</string>
     <string name="contact_edit">Modifica contatto</string>
     <string name="contact_birthday_label">Data di nascita: %1$s</string>
+    <string name="contact_deceased_badge">Deceduto</string>
+    <string name="contact_deceased_date_label">Deceduto: %1$s</string>
     <!-- M24: azioni di livello superiore del contatto -->
     <string name="contact_actions_menu">Azioni del contatto</string>
     <string name="contact_archive">Archivia</string>

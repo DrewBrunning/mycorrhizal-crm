@@ -95,6 +95,7 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/tags",
 		"POST /api/v1/gifts",
 		"POST /api/v1/preferences",
+		"POST /api/v1/occasion-obligations",
 		"POST /api/v1/cadence-policies",
 		"POST /api/v1/conversation-agenda",
 		"POST /api/v1/field-definitions",

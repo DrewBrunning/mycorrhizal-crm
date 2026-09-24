@@ -43,11 +43,13 @@ import type { Circle } from '../api/circles';
 import type { ContactScoreFacet } from '../api/contactScore';
 import {
   type ContactRecordResponse,
+  formatAnniversaryDate,
   getContactDisplayName,
   nameComponentValue,
 } from '../api/contacts';
 import type { Tag } from '../api/tags';
 import { type ContactFieldKey, resolveEnabledFields } from '../contactFields';
+import { useDateFormat } from '../DateFormatProvider';
 import { useContactScore } from '../hooks/useContactScore';
 import { healthBandChipColor, healthBandIcon } from '../utils/healthBand';
 import LanguageField from './LanguageField';
@@ -186,6 +188,15 @@ export default function ContactHeader({
   const [newTagName, setNewTagName] = useState('');
 
   const displayName = getContactDisplayName(record);
+
+  // Issue #1193: Card.Anniversaries[kind=death] IS the deceased state -- no
+  // separate flag. formatBirthday reuses the same date-format preference the
+  // birthday/anniversary fields below already render with.
+  const { formatBirthday } = useDateFormat();
+  const deathAnniversary = record.card?.anniversaries?.find((a) => a.kind === 'death');
+  const dateOfDeathIso = deathAnniversary
+    ? formatAnniversaryDate(deathAnniversary.date)
+    : undefined;
 
   return (
     <Card sx={{ mb: 1.5 }}>
@@ -385,15 +396,31 @@ export default function ContactHeader({
             ) : (
               // View Mode
               <>
-                {archived && (
-                  // T102/T62: neutral, matching the same badge on the contacts
-                  // list. Archived is a state, not a warning condition.
-                  <Chip
-                    label={t('contactDetail.archivedBadge')}
-                    color="default"
-                    size="small"
-                    sx={{ mb: 1 }}
-                  />
+                {(archived || deathAnniversary) && (
+                  <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap' }}>
+                    {archived && (
+                      // T102/T62: neutral, matching the same badge on the
+                      // contacts list. Archived is a state, not a warning
+                      // condition.
+                      <Chip label={t('contactDetail.archivedBadge')} color="default" size="small" />
+                    )}
+                    {deathAnniversary && (
+                      // Issue #1193: neutral like Archived above -- deceased
+                      // is a state, not a warning. The date of death is
+                      // folded into the same chip label rather than a
+                      // separate line, matching Archived's single-badge
+                      // footprint.
+                      <Chip
+                        label={
+                          dateOfDeathIso
+                            ? `${t('contactDetail.deceasedBadge')} — ${formatBirthday(dateOfDeathIso)}`
+                            : t('contactDetail.deceasedBadge')
+                        }
+                        color="default"
+                        size="small"
+                      />
+                    )}
+                  </Stack>
                 )}
                 {compactActions ? (
                   // T54: on narrow viewports the single MoreVertIcon menu button

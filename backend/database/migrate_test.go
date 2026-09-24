@@ -464,7 +464,7 @@ func TestMigrationsAddPreferenceNotes(t *testing.T) {
 	assert.Equal(t, "Alcohol", value, "a rollback must not destroy the preference")
 }
 
-// TestMigrationsAddPreferenceLevel covers 000061's additive preferences.level
+// TestMigrationsAddPreferenceLevel covers 000063's additive preferences.level
 // column (issue #246), following TestMigrationsAddPreferenceNotes' exact
 // template: a preference that predates the migration must survive it
 // unchanged, with the new column simply null rather than backfilled, and a
@@ -478,9 +478,9 @@ func TestMigrationsAddPreferenceLevel(t *testing.T) {
 
 	m, err := newMigrator(sqlDB)
 	require.NoError(t, err)
-	// Everything up to but NOT including 000061, so the preference below
+	// Everything up to but NOT including 000063, so the preference below
 	// genuinely predates the level column.
-	require.NoError(t, m.Steps(60))
+	require.NoError(t, m.Steps(62))
 
 	_, err = sqlDB.Exec(
 		"INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 'pref-level', 'x', 'pref-level@example.com')")
@@ -494,7 +494,7 @@ func TestMigrationsAddPreferenceLevel(t *testing.T) {
 		userID)
 	require.NoError(t, err)
 
-	// Apply exactly 000061 — Steps(1), not m.Up(), so the MigrateDown below
+	// Apply exactly 000063 — Steps(1), not m.Up(), so the MigrateDown below
 	// still rolls back this migration once another one lands after it.
 	require.NoError(t, m.Steps(1))
 

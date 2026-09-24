@@ -44,6 +44,7 @@
     "activities": "Activités",
     "notes": "Notes",
     "network": "Réseau",
+    "occasions": "Occasions",
     "households": "Foyers",
     "circlesTags": "Cercles et étiquettes",
     "profile": "Paramètres",
@@ -613,6 +614,7 @@
     "archive": "Archiver",
     "unarchive": "Désarchiver",
     "archivedBadge": "Archivé",
+    "deceasedBadge": "Décédé",
     "favoriteContact": "Marquer comme favori",
     "unfavoriteContact": "Retirer des favoris",
     "youBadge": "Vous",
@@ -2168,6 +2170,94 @@
       "saveFailed": "Échec de l'enregistrement du cadeau."
     },
     "statusLabel": "Statut"
+  },
+  "occasions": {
+    "widget": {
+      "title": "Occasions à venir",
+      "windowLabel": "Période",
+      "days30": "30 jours",
+      "days90": "90 jours",
+      "empty": "Aucune occasion à venir sur cette période.",
+      "today": "Aujourd'hui",
+      "inDays_one": "dans {{count}} jour",
+      "inDays_other": "dans {{count}} jours"
+    },
+    "sources": {
+      "birthday": "Anniversaire",
+      "anniversary": "Anniversaire de mariage",
+      "life_event": "Événement de vie",
+      "obligation": "Engagement"
+    },
+    "kinds": {
+      "card": "Carte",
+      "gift": "Cadeau",
+      "invite": "Invitation"
+    },
+    "months": {
+      "1": "janvier",
+      "2": "février",
+      "3": "mars",
+      "4": "avril",
+      "5": "mai",
+      "6": "juin",
+      "7": "juillet",
+      "8": "août",
+      "9": "septembre",
+      "10": "octobre",
+      "11": "novembre",
+      "12": "décembre"
+    },
+    "obligation": {
+      "title": "Occasions",
+      "add": "Ajouter une occasion",
+      "createTitle": "Ajouter une occasion",
+      "editTitle": "Modifier l'occasion",
+      "kind": "Type",
+      "kindHint": "carte, cadeau, invitation ou votre propre libellé",
+      "label": "Libellé",
+      "labelHint": "p. ex. « Carte de Noël », « Cadeau d'anniversaire »",
+      "anchorMonth": "Mois",
+      "anchorDay": "Jour",
+      "anchorDateUnset": "Non défini",
+      "leadTimeDays": "Délai (jours)",
+      "leadTimeDaysHint": "Combien de jours à l'avance être rappelé, p. ex. 14 pour « cadeau deux semaines avant »",
+      "leadTimeDisplay_one": "{{count}} jour d'avance",
+      "leadTimeDisplay_other": "{{count}} jours d'avance",
+      "active": "Actif",
+      "inactive": "Inactif",
+      "sensitivity": "Confidentialité",
+      "sensitivities": {
+        "normal": "Normale",
+        "private": "Privée",
+        "secret": "Secrète"
+      },
+      "notes": "Notes",
+      "deleteMessage": "Supprimer cette occasion ?",
+      "empty": "Aucune occasion récurrente pour le moment. Ajoutez-en une pour une carte, un cadeau ou une invitation récurrente.",
+      "validation": {
+        "labelRequired": "Saisissez un libellé pour cette occasion.",
+        "anchorBothOrNeither": "Renseignez à la fois le mois et le jour, ou laissez les deux vides.",
+        "invalidLeadTime": "Saisissez un nombre de jours de délai valide.",
+        "saveFailed": "Échec de l'enregistrement de l'occasion."
+      }
+    },
+    "cardList": {
+      "title": "Liste de cartes",
+      "description": "Téléchargez un CSV des noms et adresses de toutes les personnes de votre liste de cartes de vœux.",
+      "download": "Télécharger le CSV",
+      "downloadFailed": "Échec du téléchargement de la liste de cartes."
+    },
+    "giftShoppingList": {
+      "title": "Liste de cadeaux à acheter",
+      "empty": "Aucun cadeau nécessaire sur cette période.",
+      "status": {
+        "needed": "À prévoir",
+        "idea": "Idée",
+        "purchased": "Acheté",
+        "given": "Offert",
+        "received": "Reçu"
+      }
+    }
   },
   "prep": {
     "title": "Vue de préparation",

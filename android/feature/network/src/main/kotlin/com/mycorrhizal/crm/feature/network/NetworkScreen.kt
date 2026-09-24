@@ -53,6 +53,7 @@ import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.GraphChain
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.DeceasedDot
 import com.mycorrhizal.crm.ui.components.HealthScoreDot
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -414,13 +415,23 @@ private fun NetworkRow(
     // merged content description — the same rule the dot's color follows
     // (never color alone). No new network call: healthScore/healthBand
     // already arrive on this GraphChain from GET /graph/connections.
+    //
+    // Issue #1193: a deceased target overrides the band entirely (both the
+    // dot below and this description) -- recency-of-interaction health
+    // scoring is meaningless once someone has died, so it never competes
+    // with the deceased state for the same indicator.
     val band = chain.healthBand
-    val contentDescription = if (band != null) {
+    val statusLabel = if (chain.deceased) {
+        stringResource(R.string.contact_deceased_badge)
+    } else {
+        band?.let { healthBandLabel(it) }
+    }
+    val contentDescription = if (statusLabel != null) {
         stringResource(
             R.string.network_row_description_with_health,
             chain.displayName,
             chain.readablePath,
-            healthBandLabel(band),
+            statusLabel,
         )
     } else {
         stringResource(
@@ -445,7 +456,9 @@ private fun NetworkRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (band != null) {
+        if (chain.deceased) {
+            DeceasedDot()
+        } else if (band != null) {
             HealthScoreDot(band = band)
         }
         Column {

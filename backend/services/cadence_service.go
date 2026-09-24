@@ -262,6 +262,11 @@ func ListOverdueCadences(db *gorm.DB, userID uint, now time.Time) ([]OverdueCade
 			continue
 		}
 		c := contactByUID[policies[i].EntityID]
+		// Issue #1193: a deceased contact generates no overdue-cadence
+		// nudges -- there is no one left to reach out to.
+		if c.Card.IsDeceased() {
+			continue
+		}
 		overdue = append(overdue, OverdueCadence{
 			Policy:         policies[i],
 			Health:         health,
@@ -367,12 +372,22 @@ func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) (int, error) {
 			logger.Error().Err(err).Uint("user_id", userID).Msg("cadence: failed to resolve contacts for webhook payload")
 			continue
 		}
+		// Issue #1193: deceased contacts (Card.Anniversaries[kind=death]) are
+		// tracked here too, so ProcessOverdueCadences can skip emitting a
+		// cadence.overdue webhook for them below.
+		deceasedByUID := make(map[string]bool, len(contacts))
 		for _, c := range contacts {
 			contactID[key{userID, c.VCardUID}] = c.ID
+			if c.Card.IsDeceased() {
+				deceasedByUID[c.VCardUID] = true
+			}
 		}
 
 		for i := range userPolicies {
 			p := userPolicies[i]
+			if deceasedByUID[p.EntityID] {
+				continue
+			}
 			health := deriveHealth(lastByPolicy[p.ID], p.TargetIntervalDays, now)
 			if health.OverdueBy <= 0 {
 				continue

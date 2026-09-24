@@ -136,6 +136,7 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"life_event_suggestion_resolutions": goCascadeContact,
 	"notes":                             goCascadeContact,
 	"notification_deliveries":           goCascadeContact,
+	"occasion_obligations":              goCascadeContact,
 	"preferences":                       goCascadeContact,
 	"reach_out_suggestions":             goCascadeContact,
 	"relationship_edges":                goCascadeContact,
@@ -351,6 +352,7 @@ func TestDeleteCascadeCoverage_DeleteContactSweepsEveryDeclaredContactTable(t *t
 		scopedCount("life_events", &models.LifeEvent{}, "user_id = ?", user.ID),
 		scopedCount("notes", &models.Note{}, "user_id = ?", user.ID),
 		rawCount("notification_deliveries", "reminder_id IN (SELECT id FROM reminders WHERE user_id = ?)", user.ID),
+		scopedCount("occasion_obligations", &models.OccasionObligation{}, "user_id = ?", user.ID),
 		scopedCount("preferences", &models.Preference{}, "user_id = ?", user.ID),
 		scopedCount("reach_out_suggestions", &models.ReachOutSuggestion{}, "user_id = ?", user.ID),
 		scopedCount("relationship_edges", &models.RelationshipEdge{}, "user_id = ?", user.ID),
@@ -377,6 +379,7 @@ func TestDeleteCascadeCoverage_DeleteContactSweepsEveryDeclaredContactTable(t *t
 	require.NoError(t, db.Create(&models.ExternalIdentity{UserID: user.ID, EntityID: uid, System: "immich", ExternalID: "p-1"}).Error)
 	require.NoError(t, db.Create(&models.FieldValue{FieldDefinitionID: fieldDef.ID, UserID: user.ID, EntityID: uid, Value: json.RawMessage(`"v"`)}).Error)
 	require.NoError(t, db.Create(&models.Gift{UserID: user.ID, EntityID: uid, Description: "gift"}).Error)
+	require.NoError(t, db.Create(&models.OccasionObligation{UserID: user.ID, EntityID: uid, Kind: "card", Label: "occasion"}).Error)
 	require.NoError(t, db.Create(&models.HouseholdMember{HouseholdID: containers.householdID, UserID: user.ID, MemberVCardUID: uid, Role: "adult"}).Error)
 	require.NoError(t, db.Create(&models.LifeEvent{UserID: user.ID, EntityID: uid, Type: "custom"}).Error)
 	require.NoError(t, db.Create(&models.Note{UserID: user.ID, ContactID: &contact.ID, Content: "n", Date: time.Now()}).Error)
@@ -563,6 +566,7 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 		scopedCount("notes", &models.Note{}, "user_id = ?", target.ID),
 		scopedCount("notification_configs", &models.NotificationConfig{}, "user_id = ?", target.ID),
 		rawCount("notification_deliveries", "reminder_id IN (SELECT id FROM reminders WHERE user_id = ?)", target.ID),
+		scopedCount("occasion_obligations", &models.OccasionObligation{}, "user_id = ?", target.ID),
 		scopedCount("paperless_configs", &models.PaperlessConfig{}, "user_id = ?", target.ID),
 		scopedCount("preferences", &models.Preference{}, "user_id = ?", target.ID),
 		scopedCount("push_subscriptions", &models.PushSubscription{}, "user_id = ?", target.ID),
@@ -598,6 +602,7 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 	require.NoError(t, db.Create(&models.ExternalIdentity{UserID: target.ID, EntityID: uid, System: "immich", ExternalID: "p-1"}).Error)
 	require.NoError(t, db.Create(&models.FieldValue{FieldDefinitionID: fieldDef.ID, UserID: target.ID, EntityID: uid, Value: json.RawMessage(`"v"`)}).Error)
 	require.NoError(t, db.Create(&models.Gift{UserID: target.ID, EntityID: uid, Description: "gift"}).Error)
+	require.NoError(t, db.Create(&models.OccasionObligation{UserID: target.ID, EntityID: uid, Kind: "card", Label: "occasion"}).Error)
 	require.NoError(t, db.Create(&models.HouseholdMember{HouseholdID: containers.householdID, UserID: target.ID, MemberVCardUID: uid, Role: "adult"}).Error)
 	require.NoError(t, db.Create(&models.LifeEvent{UserID: target.ID, EntityID: uid, Type: "custom"}).Error)
 	require.NoError(t, db.Create(&models.Note{UserID: target.ID, ContactID: &contact.ID, Content: "n", Date: time.Now()}).Error)

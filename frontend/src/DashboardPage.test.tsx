@@ -5,6 +5,7 @@ import './i18n/config';
 import { listCircles } from './api/circles';
 import { dismissContactSyncConflict, restoreContactSyncConflict } from './api/contactSyncConflicts';
 import { type DashboardResponse, getDashboard } from './api/dashboard';
+import { getUpcomingOccasions, type UpcomingOccasion } from './api/occasionObligations';
 import { completeReminder, getUpcomingReminders, skipReminder } from './api/reminders';
 import DashboardPage from './DashboardPage';
 import { DateFormatProvider } from './DateFormatProvider';
@@ -39,6 +40,10 @@ vi.mock('./api/contactSyncConflicts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/contactSyncConflicts')>();
   return { ...actual, restoreContactSyncConflict: vi.fn(), dismissContactSyncConflict: vi.fn() };
 });
+vi.mock('./api/occasionObligations', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/occasionObligations')>();
+  return { ...actual, getUpcomingOccasions: vi.fn() };
+});
 
 const getDashboardMock = vi.mocked(getDashboard);
 const getUpcomingRemindersMock = vi.mocked(getUpcomingReminders);
@@ -47,6 +52,7 @@ const skipReminderMock = vi.mocked(skipReminder);
 const listCirclesMock = vi.mocked(listCircles);
 const restoreSyncConflictMock = vi.mocked(restoreContactSyncConflict);
 const dismissSyncConflictMock = vi.mocked(dismissContactSyncConflict);
+const getUpcomingOccasionsMock = vi.mocked(getUpcomingOccasions);
 
 function emptyDashboard(): DashboardResponse {
   return {
@@ -68,6 +74,8 @@ beforeEach(() => {
   listCirclesMock.mockReset();
   restoreSyncConflictMock.mockReset();
   dismissSyncConflictMock.mockReset();
+  getUpcomingOccasionsMock.mockReset();
+  getUpcomingOccasionsMock.mockResolvedValue({ occasions: [], days: 30 });
   listCirclesMock.mockResolvedValue({
     circles: [],
     total: 0,
@@ -253,4 +261,22 @@ test('dismissing a sync conflict removes the notice', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
   await waitFor(() => expect(dismissSyncConflictMock).toHaveBeenCalledWith('conflict-2'));
   await waitFor(() => expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument());
+});
+
+test('renders the upcoming occasions widget once the fetch succeeds', async () => {
+  getDashboardMock.mockResolvedValue(emptyDashboard());
+  const occasion: UpcomingOccasion = {
+    contact_id: 9,
+    contact_name: 'Freddie Mercury',
+    source: 'birthday',
+    label: 'Freddie Mercury',
+    date: '2026-09-05',
+    days_until: 3,
+  };
+  getUpcomingOccasionsMock.mockResolvedValue({ occasions: [occasion], days: 30 });
+
+  renderPage();
+
+  await waitFor(() => expect(getUpcomingOccasionsMock).toHaveBeenCalledWith({ days: 30 }));
+  expect(await screen.findByText('Freddie Mercury')).toBeInTheDocument();
 });

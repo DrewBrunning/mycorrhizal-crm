@@ -1,4 +1,4 @@
--- Reverses 000061 (issue #246). Destructive by nature: dropping the column
+-- Reverses 000063 (issue #246). Destructive by nature: dropping the column
 -- discards every proficiency level a user has recorded. The option that holds
 -- real data is the up direction; category/key/value remain.
 --

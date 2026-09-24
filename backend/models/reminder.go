@@ -20,7 +20,13 @@ type Reminder struct {
 	LastSent              *time.Time `gorm:"default:null" json:"last_sent"`
 	ContactID             *uint      `gorm:"not null" json:"contact_id" validate:"required"`
 	LifeEventID           *string    `gorm:"index" json:"life_event_id,omitempty"`
-	Contact               Contact    `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"contact,omitempty" validate:"-"`
+	// OccasionObligationID mirrors LifeEventID exactly (docs/adrs/0024-occasions.md,
+	// issue #387, ticket #1223) — the materialized-reminder link
+	// syncOccasionObligationReminder uses to find and hard-delete/regenerate
+	// the one reminder for a given obligation. Migration 000062 adds the
+	// column.
+	OccasionObligationID *string `gorm:"column:occasion_obligation_id;index" json:"occasion_obligation_id,omitempty"`
+	Contact              Contact `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"contact,omitempty" validate:"-"`
 
 	// Revision is the monotonic per-row write counter (issue #591, CON-01a —
 	// docs/adrs/0006-revision-token-schema.md): starts at 1 on create,

@@ -18,7 +18,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { RELATIONSHIP_EDGE_TYPES, type RelationshipEdgeType } from '../api/relationshipEdges';
 import type { GraphEdge, GraphNode } from '../types/graph';
-import { healthBandColor } from '../utils/healthBand';
+import { deceasedNodeColor, healthBandColor } from '../utils/healthBand';
 import { edgeEndpointId } from '../utils/networkGraphData';
 
 interface NetworkListViewProps {
@@ -87,10 +87,19 @@ export default function NetworkListView({ nodes, links, onContactClick }: Networ
           // is paired with the same band name as visible text, not just an
           // aria-label. No band (old cached graph data, or a score that
           // hasn't been computed) renders neither.
-          const dotColor = healthBandColor(contact.health_band, theme);
-          const bandLabel = contact.health_band
-            ? t(`contactScore.badge.${contact.health_band}`, contact.health_band)
-            : undefined;
+          //
+          // Issue #1193: a deceased contact overrides both the dot color and
+          // the label -- health banding is meaningless once someone has
+          // died, so it never competes with the deceased state for the same
+          // dot.
+          const dotColor = contact.deceased
+            ? deceasedNodeColor(theme)
+            : healthBandColor(contact.health_band, theme);
+          const bandLabel = contact.deceased
+            ? t('contactDetail.deceasedBadge')
+            : contact.health_band
+              ? t(`contactScore.badge.${contact.health_band}`, contact.health_band)
+              : undefined;
           return (
             <ListItem
               key={contact.id}

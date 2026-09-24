@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/contactmodel"
 	"mycorrhizal/models"
 
 	"github.com/glebarez/sqlite"
@@ -246,6 +247,48 @@ func TestListOverdueCadences_OnlyOverduePolicies(t *testing.T) {
 	assert.Equal(t, 17, overdue[0].Health.OverdueBy)
 	assert.Equal(t, bob.ID, overdue[0].ContactID)
 	assert.Equal(t, "Bob", overdue[0].ContactName)
+}
+
+// TestListOverdueCadences_ExcludesDeceasedContacts is the regression test for
+// issue #1193: a policy on a contact with a recorded death anniversary
+// (Card.Anniversaries[kind=death]) must never appear in the overdue list,
+// even when its own health derivation would otherwise call it overdue.
+func TestListOverdueCadences_ExcludesDeceasedContacts(t *testing.T) {
+	db, user, _ := setupCadenceServiceTestDB(t)
+	now := time.Date(2026, 1, 31, 12, 0, 0, 0, time.UTC)
+
+	// Bob: last interaction Dec 15, 30-day interval -> due Jan 14, 17 days overdue.
+	bob := models.Contact{UserID: user.ID, Firstname: "Bob"}
+	require.NoError(t, db.Create(&bob).Error)
+	seedActivity(t, db, user, bob, models.InteractionTypeCall,
+		time.Date(2025, 12, 15, 10, 0, 0, 0, time.UTC))
+	require.NoError(t, db.Create(&models.CadencePolicy{
+		UserID: user.ID, EntityID: bob.VCardUID, TargetIntervalDays: 30,
+	}).Error)
+
+	// Deceased: same overdue shape as Bob, but recorded as deceased.
+	deceased := models.Contact{UserID: user.ID}
+	models.ApplyRecordToContact(&deceased, &contactmodel.Record{
+		Card: contactmodel.Card{
+			Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Deceased"}}},
+			Anniversaries: []contactmodel.Anniversary{
+				{Kind: "death", Date: contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{
+					Year: intPtr(2020), Month: intPtr(5), Day: intPtr(1),
+				}}},
+			},
+		},
+	}, "")
+	require.NoError(t, db.Create(&deceased).Error)
+	seedActivity(t, db, user, deceased, models.InteractionTypeCall,
+		time.Date(2025, 12, 15, 10, 0, 0, 0, time.UTC))
+	require.NoError(t, db.Create(&models.CadencePolicy{
+		UserID: user.ID, EntityID: deceased.VCardUID, TargetIntervalDays: 30,
+	}).Error)
+
+	overdue, err := ListOverdueCadences(db, user.ID, now)
+	require.NoError(t, err)
+	require.Len(t, overdue, 1, "the deceased contact's overdue policy must not be listed")
+	assert.Equal(t, bob.VCardUID, overdue[0].Policy.EntityID)
 }
 
 func TestListOverdueCadences_SortsMostOverdueFirst(t *testing.T) {

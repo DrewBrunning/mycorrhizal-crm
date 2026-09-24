@@ -62,6 +62,20 @@ fun healthBandLabel(band: String): String = when (band) {
 }
 
 /**
+ * Issue #1193: the color for a deceased contact's status dot, wherever a
+ * health-band color would otherwise apply. Deliberately NOT one of the
+ * moss/chanterelle/russula band colors above -- a deceased contact isn't a
+ * health verdict, recency-of-interaction scoring is meaningless once someone
+ * has died. `onSurfaceVariant` is this theme's existing muted-but-legible
+ * role (the same one a band falls back to in [healthBandColor] when it
+ * doesn't recognize the value), so this reads as "present but quiet" rather
+ * than a fourth status color -- mirrors the web's `deceasedNodeColor`
+ * (`text.secondary`) reasoning.
+ */
+@Composable
+fun deceasedColor(): Color = MaterialTheme.colorScheme.onSurfaceVariant
+
+/**
  * A compact colored indicator for a contact's server-computed relationship
  * health score/band (issue #383, ADR-0023). Never recomputed locally — the
  * score, band and every facet behind it come straight from
@@ -125,5 +139,21 @@ fun HealthScoreDot(band: String, modifier: Modifier = Modifier) {
             .size(10.dp)
             .clip(CircleShape)
             .background(color),
+    )
+}
+
+/**
+ * Issue #1193: [HealthScoreDot]'s deceased-state sibling -- same shape and
+ * size, [deceasedColor] instead of a band color. Purely decorative
+ * (`contentDescription = null`); the caller's own semantics must surface the
+ * deceased state in words, the same rule [HealthScoreDot] follows.
+ */
+@Composable
+fun DeceasedDot(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(10.dp)
+            .clip(CircleShape)
+            .background(deceasedColor()),
     )
 }

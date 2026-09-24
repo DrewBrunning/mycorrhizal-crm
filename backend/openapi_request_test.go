@@ -149,6 +149,8 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"PUT /gifts/{id}":                         bindingFor(models.GiftInput{}),
 	"POST /preferences":                       bindingFor(models.PreferenceInput{}),
 	"PUT /preferences/{id}":                   bindingFor(models.PreferenceInput{}),
+	"POST /occasion-obligations":              bindingFor(models.OccasionObligationInput{}),
+	"PUT /occasion-obligations/{id}":          bindingFor(models.OccasionObligationInput{}),
 	"POST /cadence-policies":                  bindingFor(models.CadencePolicyInput{}),
 	"PUT /cadence-policies/{id}":              bindingFor(models.CadencePolicyInput{}),
 

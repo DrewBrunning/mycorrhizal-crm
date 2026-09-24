@@ -115,25 +115,26 @@ const (
 // seeded holds the concrete resource ids of the owner-owned fixtures the item
 // routes' BOLA probes are run against.
 type seeded struct {
-	contact     string // numeric id of the contact probed by /contacts/:id
-	contactUID  string
-	note        string
-	activity    string
-	reminder    string
-	circle      string
-	household   string
-	tag         string
-	lifeEvent   string
-	gift        string
-	preference  string
-	cadence     string
-	agenda      string
-	edge        string
-	fieldDef    string
-	linkType    string
-	extIdentity string
-	extActivity string
-	webhook     string
+	contact            string // numeric id of the contact probed by /contacts/:id
+	contactUID         string
+	note               string
+	activity           string
+	reminder           string
+	circle             string
+	household          string
+	tag                string
+	lifeEvent          string
+	gift               string
+	preference         string
+	occasionObligation string
+	cadence            string
+	agenda             string
+	edge               string
+	fieldDef           string
+	linkType           string
+	extIdentity        string
+	extActivity        string
+	webhook            string
 }
 
 func seedResources(t *testing.T, db *gorm.DB, ownerID uint) seeded {
@@ -163,6 +164,8 @@ func seedResources(t *testing.T, db *gorm.DB, ownerID uint) seeded {
 	require.NoError(t, db.Create(&gift).Error)
 	pref := models.Preference{UserID: ownerID, EntityID: ec.VCardUID, Category: "food", Value: "pizza"}
 	require.NoError(t, db.Create(&pref).Error)
+	occasionObligation := models.OccasionObligation{UserID: ownerID, EntityID: ec.VCardUID, Kind: "card", Label: "matrix card"}
+	require.NoError(t, db.Create(&occasionObligation).Error)
 	cadence := models.CadencePolicy{UserID: ownerID, EntityID: ec.VCardUID, TargetIntervalDays: 30}
 	require.NoError(t, db.Create(&cadence).Error)
 	agenda := models.ConversationAgenda{UserID: ownerID, EntityID: ec.VCardUID, Content: "matrix agenda"}
@@ -190,25 +193,26 @@ func seedResources(t *testing.T, db *gorm.DB, ownerID uint) seeded {
 	require.NoError(t, db.Create(&webhook).Error)
 
 	return seeded{
-		contact:     strconv.FormatUint(uint64(c.ID), 10),
-		contactUID:  c.VCardUID,
-		note:        strconv.FormatUint(uint64(n.ID), 10),
-		activity:    strconv.FormatUint(uint64(a.ID), 10),
-		reminder:    strconv.FormatUint(uint64(r.ID), 10),
-		circle:      circle.ID,
-		household:   household.ID,
-		tag:         tag.ID,
-		lifeEvent:   lifeEvent.ID,
-		gift:        gift.ID,
-		preference:  pref.ID,
-		cadence:     cadence.ID,
-		agenda:      agenda.ID,
-		edge:        edge.ID,
-		fieldDef:    fieldDef.ID,
-		linkType:    linkType.ID,
-		extIdentity: extIdentity.ID,
-		extActivity: extActivity.ID,
-		webhook:     strconv.FormatUint(uint64(webhook.ID), 10),
+		contact:            strconv.FormatUint(uint64(c.ID), 10),
+		contactUID:         c.VCardUID,
+		note:               strconv.FormatUint(uint64(n.ID), 10),
+		activity:           strconv.FormatUint(uint64(a.ID), 10),
+		reminder:           strconv.FormatUint(uint64(r.ID), 10),
+		circle:             circle.ID,
+		household:          household.ID,
+		tag:                tag.ID,
+		lifeEvent:          lifeEvent.ID,
+		gift:               gift.ID,
+		preference:         pref.ID,
+		occasionObligation: occasionObligation.ID,
+		cadence:            cadence.ID,
+		agenda:             agenda.ID,
+		edge:               edge.ID,
+		fieldDef:           fieldDef.ID,
+		linkType:           linkType.ID,
+		extIdentity:        extIdentity.ID,
+		extActivity:        extActivity.ID,
+		webhook:            strconv.FormatUint(uint64(webhook.ID), 10),
 	}
 }
 
@@ -453,6 +457,15 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/preferences/:id":    {class: classItem, probe: "/api/v1/preferences/" + s.preference},
 		"PUT /api/v1/preferences/:id":    {class: classItem, probe: "/api/v1/preferences/" + s.preference},
 		"DELETE /api/v1/preferences/:id": {class: classItem, probe: "/api/v1/preferences/" + s.preference},
+
+		"POST /api/v1/occasion-obligations":                   {class: classProtected},
+		"GET /api/v1/occasion-obligations":                    {class: classProtected},
+		"GET /api/v1/occasion-obligations/:id":                {class: classItem, probe: "/api/v1/occasion-obligations/" + s.occasionObligation},
+		"PUT /api/v1/occasion-obligations/:id":                {class: classItem, probe: "/api/v1/occasion-obligations/" + s.occasionObligation},
+		"DELETE /api/v1/occasion-obligations/:id":             {class: classItem, probe: "/api/v1/occasion-obligations/" + s.occasionObligation},
+		"GET /api/v1/occasions/upcoming":                      {class: classProtected},
+		"GET /api/v1/occasion-obligations/card-list":          {class: classProtected},
+		"GET /api/v1/occasion-obligations/gift-shopping-list": {class: classProtected},
 
 		// --- cadence policies -----------------------------------------------
 		"GET /api/v1/cadence-policies/overdue": {class: classProtected},

@@ -163,6 +163,9 @@
     <string name="contact_custom_field_value_label">Value</string>
     <string name="contact_edit">Edit contact</string>
     <string name="contact_birthday_label">Birthday: %1$s</string>
+    <!-- Issue #1193: Card.Anniversaries[kind=death] IS the deceased state, web parity (ContactHeader). -->
+    <string name="contact_deceased_badge">Deceased</string>
+    <string name="contact_deceased_date_label">Died: %1$s</string>
     <!-- M24: top-level detail actions -->
     <string name="contact_actions_menu">Contact actions</string>
     <string name="contact_archive">Archive</string>

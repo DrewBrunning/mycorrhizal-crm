@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, expect, test, vi } from 'vitest';
 import './i18n/config';
 import type { ContactRecordResponse } from './api/contacts';
+import type { OccasionObligation } from './api/occasionObligations';
 import ContactDetailPage from './ContactDetailPage';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
@@ -50,6 +51,7 @@ function mockFetch({
   record = contactRecord,
   fail = {},
   enabledFields,
+  occasionObligations,
 }: {
   notesOk?: boolean;
   record?: ContactRecordResponse;
@@ -59,9 +61,15 @@ function mockFetch({
   // Overrides GET /users/me's enabled_contact_fields -- some fields exercised
   // below (organization/department) are not in DEFAULT_ENABLED_CONTACT_FIELDS.
   enabledFields?: string[];
+  // Seeds GET /occasion-obligations and backs POST/PUT with an in-memory
+  // list, so a save flows through to a real re-render. Omit to exercise the
+  // catch-all 404 path other tests rely on (useOccasionObligations catches
+  // it silently, same as every other per-contact hook on this page).
+  occasionObligations?: OccasionObligation[];
 } = {}) {
   const calls: Call[] = [];
   let current = record;
+  const obligations = occasionObligations ? [...occasionObligations] : undefined;
   const errorResponse = (message: string) => ({
     ok: false,
     status: 500,
@@ -137,6 +145,25 @@ function mockFetch({
       // with its own "Not Found" toast right after ours.
       if (url.includes('/contacts/1/field-values')) {
         return { ok: true, json: async () => ({ field_values: [] }) };
+      }
+      if (obligations && url.includes('/occasion-obligations?') && method === 'GET') {
+        return { ok: true, json: async () => ({ occasion_obligations: obligations }) };
+      }
+      if (obligations && url.endsWith('/occasion-obligations') && method === 'POST') {
+        const created: OccasionObligation = {
+          id: 'new-ob',
+          created_at: '',
+          updated_at: '',
+          ...body,
+        };
+        obligations.push(created);
+        return { ok: true, json: async () => ({ occasion_obligation: created }) };
+      }
+      if (obligations && url.includes('/occasion-obligations/') && method === 'PUT') {
+        const id = url.split('/occasion-obligations/')[1];
+        const idx = obligations.findIndex((o) => o.id === id);
+        if (idx >= 0) obligations[idx] = { ...obligations[idx], ...body };
+        return { ok: true, json: async () => obligations[idx] };
       }
       // Every other endpoint this page touches on mount (current user,
       // reminders, relationship edges, life events, agenda, gifts, field
@@ -228,6 +255,76 @@ test('a successful favorite toggle flips the star and persists', async () => {
   fireEvent.click(screen.getByLabelText('Mark as favorite'));
 
   await waitFor(() => expect(screen.getByLabelText('Unmark as favorite')).toBeInTheDocument());
+});
+
+// --- Occasions (ADR 0024, issue #387) ---------------------------------------
+
+test('adding an occasion opens the create dialog and saves it via POST', async () => {
+  const calls = mockFetch({ occasionObligations: [] });
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add occasion' }));
+  expect(screen.getByText('Add an occasion')).toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText('Label *'), {
+    target: { value: 'Christmas card' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => {
+    const postCall = calls.find(
+      (c) => c.method === 'POST' && c.url.endsWith('/occasion-obligations'),
+    );
+    expect(postCall?.body).toMatchObject({ entity_id: 'alice-uid', label: 'Christmas card' });
+  });
+  await waitFor(() => expect(screen.queryByText('Add an occasion')).not.toBeInTheDocument());
+});
+
+test('editing an existing occasion opens the edit dialog pre-filled, and saves via PUT', async () => {
+  const existing: OccasionObligation = {
+    id: 'ob-1',
+    created_at: '',
+    updated_at: '',
+    entity_id: 'alice-uid',
+    kind: 'card',
+    label: 'Christmas card',
+    lead_time_days: 14,
+    active: true,
+    sensitivity: 'normal',
+  };
+  const calls = mockFetch({ occasionObligations: [existing] });
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText('Christmas card')).toBeInTheDocument());
+
+  const item = screen.getByText('Christmas card').closest('.MuiPaper-root') as HTMLElement;
+  fireEvent.click(within(item).getByLabelText('Edit'));
+  expect(screen.getByText('Edit occasion')).toBeInTheDocument();
+  expect(screen.getByDisplayValue('Christmas card')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => {
+    const putCall = calls.find(
+      (c) => c.method === 'PUT' && c.url.endsWith('/occasion-obligations/ob-1'),
+    );
+    expect(putCall?.body).toMatchObject({ label: 'Christmas card' });
+  });
+});
+
+test('cancelling the occasion dialog closes it without saving', async () => {
+  const calls = mockFetch({ occasionObligations: [] });
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add occasion' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  await waitFor(() => expect(screen.queryByText('Add an occasion')).not.toBeInTheDocument());
+  expect(calls.some((c) => c.method === 'POST' && c.url.endsWith('/occasion-obligations'))).toBe(
+    false,
+  );
 });
 
 // --- buildRecordPatch: the field-to-patch switch ----------------------------

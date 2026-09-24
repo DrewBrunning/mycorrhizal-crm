@@ -202,6 +202,13 @@ func processContactBaseline(ctx context.Context, db *gorm.DB, cfg config.Config,
 		return 0, fmt.Errorf("loading live contact: %w", err)
 	}
 
+	// Issue #1193: a deceased contact (Card.Anniversaries[kind=death]) gets no
+	// reach-out suggestions -- an org/title/address change on their contact
+	// card is CRM record-keeping, not a prompt to get back in touch.
+	if after.Card.IsDeceased() {
+		return 0, nil
+	}
+
 	changes := diffContactChange(before.Contact, after)
 	if len(changes) == 0 {
 		return 0, nil

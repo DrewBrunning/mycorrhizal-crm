@@ -16,8 +16,8 @@
     },
     "startingUp": {
       "loading": "Loading",
-      "checking": "Connecting to the server\u2026",
-      "message": "The server is still starting up \u2014 this is normal while it applies an update. The app will load automatically.",
+      "checking": "Connecting to the server…",
+      "message": "The server is still starting up — this is normal while it applies an update. The app will load automatically.",
       "retry": "Try again"
     },
     "submitSearch": "Submit search"
@@ -44,6 +44,7 @@
     "activities": "Activities",
     "notes": "Notes",
     "network": "Network",
+    "occasions": "Occasions",
     "households": "Households",
     "circlesTags": "Circles & Tags",
     "profile": "Settings",
@@ -613,6 +614,7 @@
     "archive": "Archive",
     "unarchive": "Unarchive",
     "archivedBadge": "Archived",
+    "deceasedBadge": "Deceased",
     "favoriteContact": "Mark as favorite",
     "unfavoriteContact": "Unmark as favorite",
     "youBadge": "You",
@@ -2168,6 +2170,94 @@
       "saveFailed": "Failed to save gift."
     },
     "statusLabel": "Status"
+  },
+  "occasions": {
+    "widget": {
+      "title": "Upcoming Occasions",
+      "windowLabel": "Time window",
+      "days30": "30 days",
+      "days90": "90 days",
+      "empty": "No upcoming occasions in this window.",
+      "today": "Today",
+      "inDays_one": "in {{count}} day",
+      "inDays_other": "in {{count}} days"
+    },
+    "sources": {
+      "birthday": "Birthday",
+      "anniversary": "Anniversary",
+      "life_event": "Life event",
+      "obligation": "Obligation"
+    },
+    "kinds": {
+      "card": "Card",
+      "gift": "Gift",
+      "invite": "Invite"
+    },
+    "months": {
+      "1": "January",
+      "2": "February",
+      "3": "March",
+      "4": "April",
+      "5": "May",
+      "6": "June",
+      "7": "July",
+      "8": "August",
+      "9": "September",
+      "10": "October",
+      "11": "November",
+      "12": "December"
+    },
+    "obligation": {
+      "title": "Occasions",
+      "add": "Add occasion",
+      "createTitle": "Add an occasion",
+      "editTitle": "Edit occasion",
+      "kind": "Kind",
+      "kindHint": "card, gift, invite, or your own label",
+      "label": "Label",
+      "labelHint": "e.g. “Christmas card”, “Birthday gift”",
+      "anchorMonth": "Month",
+      "anchorDay": "Day",
+      "anchorDateUnset": "Not set",
+      "leadTimeDays": "Lead time (days)",
+      "leadTimeDaysHint": "How many days before the date to be reminded, e.g. 14 for “gift two weeks before”",
+      "leadTimeDisplay_one": "{{count}} day lead time",
+      "leadTimeDisplay_other": "{{count}} days lead time",
+      "active": "Active",
+      "inactive": "Inactive",
+      "sensitivity": "Sensitivity",
+      "sensitivities": {
+        "normal": "Normal",
+        "private": "Private",
+        "secret": "Secret"
+      },
+      "notes": "Notes",
+      "deleteMessage": "Delete this occasion?",
+      "empty": "No standing occasions yet. Add one for a recurring card, gift, or invite.",
+      "validation": {
+        "labelRequired": "Enter a label for this occasion.",
+        "anchorBothOrNeither": "Set both a month and a day, or leave both unset.",
+        "invalidLeadTime": "Enter a valid number of lead-time days.",
+        "saveFailed": "Failed to save occasion."
+      }
+    },
+    "cardList": {
+      "title": "Card List",
+      "description": "Download a CSV of names and addresses for everyone on your holiday card list.",
+      "download": "Download CSV",
+      "downloadFailed": "Failed to download the card list."
+    },
+    "giftShoppingList": {
+      "title": "Gift Shopping List",
+      "empty": "No gifts needed in this window.",
+      "status": {
+        "needed": "Needed",
+        "idea": "Idea",
+        "purchased": "Purchased",
+        "given": "Given",
+        "received": "Received"
+      }
+    }
   },
   "prep": {
     "title": "Prep view",

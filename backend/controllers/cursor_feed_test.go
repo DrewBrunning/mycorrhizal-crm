@@ -34,7 +34,7 @@ func setupRouterWithRetention(retentionDays int) (*gorm.DB, *gin.Engine) {
 	sqlDB, _ := db.DB()
 	sqlDB.SetMaxOpenConns(1)
 
-	db.AutoMigrate(&models.Contact{}, &models.Activity{}, &models.Note{}, models.Reminder{}, models.User{}, models.Webhook{}, models.WebhookDelivery{}, models.ContactSubscription{}, models.ContactSyncLink{}, models.RelationshipEdge{}, models.Circle{}, models.CircleMember{}, models.Tag{}, models.ContactTag{}, models.LifeEvent{}, models.Household{}, models.HouseholdMember{}, models.FieldDefinition{}, models.FieldValue{}, models.CardDAVSync{}, models.ApiToken{}, models.DeviceGrant{}, models.ReminderCompletion{}, models.CalendarSubscription{}, models.CalendarEventLink{}, models.Preference{}, models.CadencePolicy{}, models.ConversationAgenda{}, models.Gift{}, models.ReachOutSuggestion{}, models.ReachOutCursor{})
+	db.AutoMigrate(&models.Contact{}, &models.Activity{}, &models.Note{}, models.Reminder{}, models.User{}, models.Webhook{}, models.WebhookDelivery{}, models.ContactSubscription{}, models.ContactSyncLink{}, models.RelationshipEdge{}, models.Circle{}, models.CircleMember{}, models.Tag{}, models.ContactTag{}, models.LifeEvent{}, models.Household{}, models.HouseholdMember{}, models.FieldDefinition{}, models.FieldValue{}, models.CardDAVSync{}, models.ApiToken{}, models.DeviceGrant{}, models.ReminderCompletion{}, models.CalendarSubscription{}, models.CalendarEventLink{}, models.Preference{}, models.CadencePolicy{}, models.ConversationAgenda{}, models.Gift{}, models.ReachOutSuggestion{}, models.ReachOutCursor{}, models.OccasionObligation{})
 
 	user := models.User{Username: "tester", Password: "password123", Email: "tester@example.com"}
 	if err := db.Create(&user).Error; err != nil {
@@ -560,6 +560,82 @@ func TestChangeFeedGiftTombstones(t *testing.T) {
 	require.Len(t, items2, 1)
 	assert.Equal(t, "Idea two", items2[0].(map[string]any)["description"])
 	assert.Equal(t, true, items2[0].(map[string]any)["deleted"], "soft-deleted gifts must be returned with deleted:true")
+}
+
+// TestChangeFeedOccasionObligationsTombstones mirrors
+// TestChangeFeedGiftTombstones exactly, for occasion_obligations (ADR 0024,
+// issue #387) -- ListOccasionObligations' own ?since= branch had no direct
+// test until now (only its browse-mode path was exercised elsewhere).
+func TestChangeFeedOccasionObligationsTombstones(t *testing.T) {
+	db, router := setupRouterWithRetention(30)
+	var user models.User
+	db.First(&user)
+	router.GET("/occasion-obligations", ListOccasionObligations)
+
+	subject := models.Contact{UserID: user.ID, Firstname: "Subject"}
+	require.NoError(t, db.Create(&subject).Error)
+
+	o1 := models.OccasionObligation{UserID: user.ID, EntityID: subject.VCardUID, Kind: "card", Label: "First"}
+	o2 := models.OccasionObligation{UserID: user.ID, EntityID: subject.VCardUID, Kind: "card", Label: "Second"}
+	require.NoError(t, db.Create(&o1).Error)
+	require.NoError(t, db.Create(&o2).Error)
+
+	afterOne := EncodeCursor(o1.UpdatedAt, o1.ID)
+
+	req := func(query string) map[string]any {
+		t.Helper()
+		r, _ := http.NewRequest("GET", "/occasion-obligations?"+query, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, r)
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var body map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+		return body
+	}
+
+	feed := req("since=" + afterOne + "&limit=10")
+	items := feed["occasion_obligations"].([]any)
+	require.Len(t, items, 1, "only the obligation after the cursor should appear")
+	assert.Equal(t, "Second", items[0].(map[string]any)["label"])
+	assert.Equal(t, "incremental", feed["sync"].(map[string]any)["mode"])
+
+	require.NoError(t, db.Delete(&o2).Error)
+	feed2 := req("since=" + afterOne + "&limit=10")
+	items2 := feed2["occasion_obligations"].([]any)
+	require.Len(t, items2, 1)
+	assert.Equal(t, "Second", items2[0].(map[string]any)["label"])
+	assert.Equal(t, true, items2[0].(map[string]any)["deleted"], "soft-deleted obligations must be returned with deleted:true")
+}
+
+// TestChangeFeedOccasionObligationsPaginatesWithNextCursor covers the
+// ?since= branch's own next-page truncation (distinct from browse mode's --
+// same shape, separate code path).
+func TestChangeFeedOccasionObligationsPaginatesWithNextCursor(t *testing.T) {
+	db, router := setupRouterWithRetention(30)
+	var user models.User
+	db.First(&user)
+	router.GET("/occasion-obligations", ListOccasionObligations)
+
+	subject := models.Contact{UserID: user.ID, Firstname: "Subject"}
+	require.NoError(t, db.Create(&subject).Error)
+	start := time.Now().Add(-time.Second)
+	for i := 0; i < 3; i++ {
+		require.NoError(t, db.Create(&models.OccasionObligation{
+			UserID: user.ID, EntityID: subject.VCardUID, Kind: "card", Label: "Ob",
+		}).Error)
+	}
+
+	beginning := EncodeCursor(start, "0")
+	r, _ := http.NewRequest("GET", "/occasion-obligations?since="+beginning+"&limit=2", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	items := body["occasion_obligations"].([]any)
+	assert.Len(t, items, 2, "must truncate to the requested limit")
+	assert.NotEmpty(t, body["next_cursor"], "a truncated page must return a next_cursor")
 }
 
 // TestAfterDeleteBumpsUpdatedAt proves every soft-delete entity's AfterDelete

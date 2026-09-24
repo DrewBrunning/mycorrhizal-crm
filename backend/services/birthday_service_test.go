@@ -1,6 +1,7 @@
 package services
 
 import (
+	"mycorrhizal/contactmodel"
 	"mycorrhizal/models"
 	"testing"
 	"time"
@@ -475,4 +476,52 @@ func TestGetUpcomingBirthdays_ZoneSelectsMembership(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, birthdays)
 	})
+}
+
+// TestGetUpcomingBirthdays_ExcludesDeceasedContacts is the regression test for
+// issue #1193: a contact with a recorded death anniversary
+// (Card.Anniversaries[kind=death]) must not appear in the upcoming-birthdays
+// reminder surface, even though their flat `birthday` column still falls
+// inside the fetch window.
+func TestGetUpcomingBirthdays_ExcludesDeceasedContacts(t *testing.T) {
+	db, _ := setupRouter()
+	user := models.User{Username: "deceased-birthday-user", Password: "password123", Email: "deceasedbday@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	bday := now.AddDate(0, 0, 5) // well within the 2-week window
+
+	alive := models.Contact{UserID: user.ID}
+	models.ApplyRecordToContact(&alive, &contactmodel.Record{
+		Card: contactmodel.Card{
+			Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Alive"}}},
+			Anniversaries: []contactmodel.Anniversary{
+				{Kind: "birth", Date: contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{
+					Year: intPtr(bday.Year()), Month: intPtr(int(bday.Month())), Day: intPtr(bday.Day()),
+				}}},
+			},
+		},
+	}, "")
+	require.NoError(t, db.Create(&alive).Error)
+
+	deceased := models.Contact{UserID: user.ID}
+	models.ApplyRecordToContact(&deceased, &contactmodel.Record{
+		Card: contactmodel.Card{
+			Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Deceased"}}},
+			Anniversaries: []contactmodel.Anniversary{
+				{Kind: "birth", Date: contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{
+					Year: intPtr(bday.Year()), Month: intPtr(int(bday.Month())), Day: intPtr(bday.Day()),
+				}}},
+				{Kind: "death", Date: contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{
+					Year: intPtr(2020), Month: intPtr(5), Day: intPtr(1),
+				}}},
+			},
+		},
+	}, "")
+	require.NoError(t, db.Create(&deceased).Error)
+
+	birthdays, err := GetUpcomingBirthdays(db, user.ID, now)
+	require.NoError(t, err)
+	require.Len(t, birthdays, 1, "the deceased contact's birthday must not be surfaced")
+	assert.Equal(t, "Alive", birthdays[0].Name)
 }

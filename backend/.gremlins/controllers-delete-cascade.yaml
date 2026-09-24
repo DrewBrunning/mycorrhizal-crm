@@ -49,6 +49,8 @@ unleash:
         - ^note_controller\.go$
         - ^notification_controller\.go$
         - ^notification_health_controller\.go$
+        - ^occasion_controller\.go$
+        - ^occasion_obligation_controller\.go$
         - ^oidc_controller\.go$
         - ^paperless_controller\.go$
         - ^photo_controller\.go$
