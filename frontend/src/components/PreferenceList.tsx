@@ -81,6 +81,9 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
             <Chip label={t(`preference.categories.${pref.category}`, pref.category)} size="small" />
             {pref.key && <Chip label={t(`preference.keys.${pref.key}`, pref.key)} size="small" />}
+            {pref.level && (
+              <Chip label={t(`preference.levels.${pref.level}`, pref.level)} size="small" />
+            )}
             {pref.sensitivity !== 'normal' && (
               <Chip
                 label={t(`preference.sensitivities.${pref.sensitivity}`)}

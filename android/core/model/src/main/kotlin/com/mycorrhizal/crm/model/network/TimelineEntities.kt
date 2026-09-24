@@ -122,6 +122,20 @@ object PreferenceSensitivities {
     val ALL: List<String> = listOf(NORMAL, PRIVATE, SECRET)
 }
 
+/**
+ * Proficiency levels for hobby/skill-shaped preferences (issue #246) —
+ * "plays piano (advanced)". Mirrors backend/models/preference.go's closed
+ * PreferenceLevels set, which is deliberately the neutral PersonalInfo.Level
+ * vocabulary for the hobby concept (high/medium/low, RFC 9555), so a recorded
+ * level round-trips through CardDAV/vCard/JSContact export without a mapping.
+ */
+object PreferenceLevels {
+    const val HIGH = "high"
+    const val MEDIUM = "medium"
+    const val LOW = "low"
+    val ALL: List<String> = listOf(HIGH, MEDIUM, LOW)
+}
+
 @JsonClass(generateAdapter = true)
 data class Preference(
     val id: String = "",
@@ -131,6 +145,7 @@ data class Preference(
     val category: String = "",
     val key: String? = null,
     val value: String = "",
+    val level: String? = null,
     val notes: String? = null,
     val source: String? = null,
     val confidence: Double? = null,
@@ -145,6 +160,9 @@ data class PreferenceInput(
     val category: String,
     val key: String? = null,
     val value: String,
+    /** Omit (null) for no level; only valid on hobby/skill categories — the
+     * backend rejects a level on any other category (issue #246). */
+    val level: String? = null,
     val notes: String? = null,
     val source: String? = null,
     val confidence: Double? = null,

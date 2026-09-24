@@ -1976,6 +1976,14 @@
       "other": "Autres préférences"
     },
     "value": "Valeur",
+    "level": "Niveau",
+    "levelHint": "Son niveau de compétence (facultatif).",
+    "levels": {
+      "none": "Aucun niveau",
+      "high": "Avancé",
+      "medium": "Intermédiaire",
+      "low": "Débutant"
+    },
     "notes": "Notes (facultatif)",
     "notesHint": "Contexte supplémentaire, p. ex. « ne boit pas d'alcool ».",
     "sensitivity": "Sensibilité",

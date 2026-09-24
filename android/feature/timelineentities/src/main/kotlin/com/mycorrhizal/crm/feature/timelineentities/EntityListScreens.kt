@@ -70,6 +70,7 @@ import com.mycorrhizal.crm.model.network.GiftStatuses
 import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.Preference
+import com.mycorrhizal.crm.model.network.PreferenceLevels
 import com.mycorrhizal.crm.model.network.PreferenceSensitivities
 import com.mycorrhizal.crm.model.registry.LifeEventCategory
 import com.mycorrhizal.crm.model.registry.LifeEventTypes
@@ -1058,6 +1059,7 @@ internal fun PreferenceDialog(
     var category by remember(initial) { mutableStateOf(initial?.category ?: defaultCategory) }
     var key by remember(initial) { mutableStateOf(initial?.key ?: "") }
     var value by remember(initial) { mutableStateOf(initial?.value ?: "") }
+    var level by remember(initial) { mutableStateOf(initial?.level) }
     var notes by remember(initial) { mutableStateOf(initial?.notes ?: "") }
     var sensitivity by remember(initial) { mutableStateOf(initial?.sensitivity ?: PreferenceSensitivities.NORMAL) }
 
@@ -1069,7 +1071,17 @@ internal fun PreferenceDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.verticalScroll(rememberScrollState()),
             ) {
-                CategoryField(category = category, categories = availableCategories, onCategoryChange = { category = it })
+                CategoryField(
+                    category = category,
+                    categories = availableCategories,
+                    onCategoryChange = {
+                        category = it
+                        // A level only means something for hobby/skill
+                        // categories (issue #246) — clear it when switching
+                        // away rather than stranding it.
+                        if (!PreferenceCategory.supportsLevelFor(it)) level = null
+                    },
+                )
                 OutlinedTextField(
                     value = key, onValueChange = { key = it },
                     label = { Text(stringResource(R.string.preferences_key)) }, singleLine = true,
@@ -1085,6 +1097,9 @@ internal fun PreferenceDialog(
                     value = value, onValueChange = { value = it },
                     label = { Text(stringResource(R.string.preferences_value)) }, singleLine = true,
                 )
+                if (PreferenceCategory.supportsLevelFor(category)) {
+                    LevelField(level = level, onLevelChange = { level = it })
+                }
                 OutlinedTextField(
                     value = notes, onValueChange = { notes = it },
                     label = { Text(stringResource(R.string.preferences_notes)) },
@@ -1100,6 +1115,8 @@ internal fun PreferenceDialog(
                             category = category,
                             key = key,
                             value = value,
+                            // Only for hobby/skill categories; null otherwise.
+                            level = level?.takeIf { PreferenceCategory.supportsLevelFor(category) },
                             notes = notes,
                             sensitivity = sensitivity,
                         ),
@@ -1146,6 +1163,36 @@ private fun CategoryField(
                     onClick = {
                         menu = false
                         onCategoryChange(cfg.category)
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** Proficiency-level picker (issue #246), shown only for hobby/skill
+ * categories. A leading "no level" entry clears a recorded level. */
+@Composable
+private fun LevelField(level: String?, onLevelChange: (String?) -> Unit) {
+    var menu by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { menu = true }, modifier = Modifier.fillMaxWidth().testTag("preference-level")) {
+            Text(stringResource(preferenceLevelLabelRes(level)))
+        }
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.preferences_level_none)) },
+                onClick = {
+                    menu = false
+                    onLevelChange(null)
+                },
+            )
+            PreferenceLevels.ALL.forEach { token ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(preferenceLevelLabelRes(token))) },
+                    onClick = {
+                        menu = false
+                        onLevelChange(token)
                     },
                 )
             }
@@ -1201,6 +1248,14 @@ private fun preferenceCategoryLabelRes(category: String): Int = when (category) 
     "cause" -> R.string.preferences_category_cause
     "dislike" -> R.string.preferences_category_dislike
     else -> R.string.preferences_category
+}
+
+@androidx.annotation.StringRes
+private fun preferenceLevelLabelRes(level: String?): Int = when (level) {
+    PreferenceLevels.HIGH -> R.string.preferences_level_high
+    PreferenceLevels.MEDIUM -> R.string.preferences_level_medium
+    PreferenceLevels.LOW -> R.string.preferences_level_low
+    else -> R.string.preferences_level_none
 }
 
 @androidx.annotation.StringRes
@@ -1329,6 +1384,13 @@ internal fun PreferenceRow(preference: Preference) {
             preference.key?.takeIf { it.isNotBlank() }?.let { key ->
                 Text(
                     text = stringResource(preferenceKeyLabelRes(key)),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            preference.level?.takeIf { it.isNotBlank() }?.let { level ->
+                Text(
+                    text = stringResource(preferenceLevelLabelRes(level)),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

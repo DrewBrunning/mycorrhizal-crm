@@ -98,6 +98,9 @@ data class PreferenceFormData(
     val category: String,
     val key: String? = null,
     val value: String,
+    /** Proficiency level for hobby/skill categories (issue #246); null when
+     * none is recorded or the category doesn't support one. */
+    val level: String? = null,
     val notes: String? = null,
     val sensitivity: String = PreferenceSensitivities.NORMAL,
 )
@@ -696,6 +699,10 @@ private fun PreferenceFormData.toInput(entityId: String): PreferenceInput =
         category = category,
         key = key?.trim()?.takeIf { it.isNotBlank() },
         value = value,
+        // Guard the category gate here too (the backend rejects a level on any
+        // non-hobby category): a level only travels for hobby/skill categories,
+        // and switching away clears it rather than stranding it.
+        level = level?.takeIf { it.isNotBlank() }?.takeIf { PreferenceCategory.supportsLevelFor(category) },
         notes = notes?.trim()?.takeIf { it.isNotBlank() },
         source = "user",
         confidence = 1.0,

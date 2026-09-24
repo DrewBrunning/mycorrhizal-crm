@@ -11,6 +11,21 @@ import (
 	"gorm.io/gorm"
 )
 
+// validatePreferenceLevel enforces the level's category gate (issue #246): a
+// proficiency level is only meaningful for hobby/skill-shaped categories, so a
+// level on a food/media/... preference is rejected rather than silently stored
+// where no surface would ever show it. The closed value set itself is enforced
+// by PreferenceInput's `oneof` tag; this is the cross-field rule a struct tag
+// cannot express. Returns true when the input is acceptable.
+func validatePreferenceLevel(c *gin.Context, category, level string) bool {
+	if level == "" || models.PreferenceCategorySupportsLevel(category) {
+		return true
+	}
+	apperrors.AbortWithError(c, apperrors.ErrInvalidInput(
+		"level", "a proficiency level is only valid for hobby/skill categories"))
+	return false
+}
+
 // CreatePreference creates a new Preference (preference.go) for the
 // authenticated user, scoped to a Contact they own via EntityID.
 func CreatePreference(c *gin.Context) {
@@ -30,12 +45,17 @@ func CreatePreference(c *gin.Context) {
 		return
 	}
 
+	if !validatePreferenceLevel(c, input.Category, input.Level) {
+		return
+	}
+
 	pref := models.Preference{
 		UserID:        userID,
 		EntityID:      input.EntityID,
 		Category:      input.Category,
 		Key:           input.Key,
 		Value:         input.Value,
+		Level:         models.PreferenceLevelPtr(input.Level),
 		Notes:         input.Notes,
 		Source:        input.Source,
 		Confidence:    input.Confidence,
@@ -203,10 +223,17 @@ func UpdatePreference(c *gin.Context) {
 		return
 	}
 
+	if !validatePreferenceLevel(c, input.Category, input.Level) {
+		return
+	}
+
 	pref.EntityID = input.EntityID
 	pref.Category = input.Category
 	pref.Key = input.Key
 	pref.Value = input.Value
+	// Full-replace semantics: an omitted level clears any previously stored
+	// one (mirroring how an omitted Key/Notes is dropped on update).
+	pref.Level = models.PreferenceLevelPtr(input.Level)
 	pref.Notes = input.Notes
 	pref.Source = input.Source
 	pref.Confidence = input.Confidence

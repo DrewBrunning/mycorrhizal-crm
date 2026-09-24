@@ -8,6 +8,8 @@ import com.mycorrhizal.crm.model.network.DeviceRegistrationInput
 import com.mycorrhizal.crm.model.network.LoginResponse
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.NoteInput
+import com.mycorrhizal.crm.model.network.PreferenceInput
+import com.mycorrhizal.crm.model.network.PreferenceLevels
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.squareup.moshi.Moshi
@@ -5108,5 +5110,37 @@ class ApiClientTest {
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is ApiError.Parse)
+    }
+
+    // --- Preferences proficiency level (issue #246) ---
+
+    @Test
+    fun `createPreference serializes and parses the proficiency level`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(201)
+                .setBody(
+                    """{"message":"Preference created successfully","preference":""" +
+                        """{"id":"p1","entity_id":"c1","category":"hobby","value":"Piano","level":"high","sensitivity":"normal"}}""",
+                ),
+        )
+
+        val result = client.createPreference(
+            PreferenceInput(
+                entityId = "c1",
+                category = "hobby",
+                value = "Piano",
+                level = PreferenceLevels.HIGH,
+            ),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals("high", result.getOrThrow().level)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/preferences", request.path)
+        val body = request.body.readUtf8()
+        assertTrue("the level must ride the create body", body.contains("\"level\":\"high\""))
     }
 }

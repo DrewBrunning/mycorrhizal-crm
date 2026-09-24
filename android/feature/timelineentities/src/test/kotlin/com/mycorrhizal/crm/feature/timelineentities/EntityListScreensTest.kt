@@ -633,6 +633,70 @@ class PreferenceDialogTest {
         composeTestRule.onNodeWithText("Iced only").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Private").performScrollTo().assertIsDisplayed()
     }
+
+    // Issue #246: the proficiency picker is gated to hobby/skill categories.
+    @Test
+    fun `level picker is gated to hobby and round-trips the selected level`() {
+        var confirmed: PreferenceFormData? = null
+        setContent(onConfirm = { confirmed = it })
+
+        // Default category is food — no level field.
+        composeTestRule.onNodeWithTag("preference-level").assertDoesNotExist()
+
+        composeTestRule.onNodeWithTag("preference-category").performClick()
+        // The category menu is scrollable and hobby sits below the fold.
+        composeTestRule.onNodeWithText("Activity/hobby").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("preference-level").performScrollTo().assertIsDisplayed()
+
+        composeTestRule.onNodeWithText("Value").performScrollTo().performTextReplacement("Piano")
+        composeTestRule.onNodeWithTag("preference-level").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Advanced").performClick()
+        composeTestRule.onNodeWithText("Create").performClick()
+
+        assertEquals("hobby", confirmed?.category)
+        assertEquals("high", confirmed?.level)
+    }
+
+    @Test
+    fun `switching away from hobby clears a selected level`() {
+        var confirmed: PreferenceFormData? = null
+        setContent(onConfirm = { confirmed = it })
+
+        composeTestRule.onNodeWithTag("preference-category").performClick()
+        composeTestRule.onNodeWithText("Activity/hobby").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("preference-level").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Advanced").performClick()
+        composeTestRule.onNodeWithText("Value").performScrollTo().performTextReplacement("Piano")
+
+        // Back to a category with no level concept.
+        composeTestRule.onNodeWithTag("preference-category").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Food").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Create").performClick()
+
+        assertEquals("food", confirmed?.category)
+        assertNull(confirmed?.level)
+    }
+
+    @Test
+    fun `edit mode pre-fills an existing hobby level`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                PreferenceDialog(
+                    initial = Preference(
+                        id = "p1",
+                        entityId = "uid",
+                        category = "hobby",
+                        value = "Piano",
+                        level = "medium",
+                        sensitivity = "normal",
+                    ),
+                    onConfirm = {},
+                    onDismiss = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("Intermediate").performScrollTo().assertIsDisplayed()
+    }
 }
 
 @RunWith(RobolectricTestRunner::class)
@@ -711,6 +775,36 @@ class PreferencesRowTest {
         )
         composeTestRule.onNodeWithText("Vegetarian").assertIsDisplayed()
         composeTestRule.onNodeWithText("Favorite").assertDoesNotExist()
+    }
+
+    // Issue #246: a recorded proficiency level renders on the row.
+    @Test
+    fun `row renders the proficiency level when present`() {
+        setContent(
+            Preference(
+                id = "p1",
+                entityId = "uid",
+                category = "hobby",
+                key = "favorite",
+                value = "Piano",
+                level = "high",
+            ),
+        )
+        composeTestRule.onNodeWithText("Advanced").assertIsDisplayed()
+    }
+
+    @Test
+    fun `row renders no level label when absent`() {
+        setContent(
+            Preference(
+                id = "p1",
+                entityId = "uid",
+                category = "hobby",
+                value = "Chess",
+            ),
+        )
+        composeTestRule.onNodeWithText("Advanced").assertDoesNotExist()
+        composeTestRule.onNodeWithText("No level").assertDoesNotExist()
     }
 }
 

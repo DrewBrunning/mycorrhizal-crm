@@ -1976,6 +1976,14 @@
       "other": "Altre preferenze"
     },
     "value": "Valore",
+    "level": "Livello",
+    "levelHint": "Quanto è abile (facoltativo).",
+    "levels": {
+      "none": "Nessun livello",
+      "high": "Avanzato",
+      "medium": "Intermedio",
+      "low": "Principiante"
+    },
     "notes": "Note (facoltativo)",
     "notesHint": "Contesto aggiuntivo, es. \"non beve alcolici\".",
     "sensitivity": "Sensibilità",

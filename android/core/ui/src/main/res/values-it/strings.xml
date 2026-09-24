@@ -1252,6 +1252,11 @@
     <string name="gifts_preferences_heading">Preferenze regalo</string>
     <string name="preferences_key">Chiave</string>
     <string name="preferences_notes">Note</string>
+    <string name="preferences_level">Livello</string>
+    <string name="preferences_level_none">Nessun livello</string>
+    <string name="preferences_level_high">Avanzato</string>
+    <string name="preferences_level_medium">Intermedio</string>
+    <string name="preferences_level_low">Principiante</string>
     <string name="preferences_category_food">Cibo</string>
     <string name="preferences_category_drink">Bevande</string>
     <string name="preferences_category_media">Media</string>

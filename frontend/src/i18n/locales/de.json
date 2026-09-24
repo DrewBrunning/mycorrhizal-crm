@@ -1976,6 +1976,14 @@
       "other": "Sonstige Vorlieben"
     },
     "value": "Wert",
+    "level": "Können",
+    "levelHint": "Wie gut sie darin sind (optional).",
+    "levels": {
+      "none": "Keine Angabe",
+      "high": "Fortgeschritten",
+      "medium": "Mittelstufe",
+      "low": "Anfänger"
+    },
     "notes": "Notizen (optional)",
     "notesHint": "Zusätzlicher Kontext, z. B. \"trinkt keinen Alkohol\".",
     "sensitivity": "Sichtbarkeit",
