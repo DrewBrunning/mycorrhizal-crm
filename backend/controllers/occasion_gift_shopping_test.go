@@ -25,6 +25,31 @@ func doGiftShoppingGET(router *gin.Engine, path string) *httptest.ResponseRecord
 	return w
 }
 
+func TestGetGiftShoppingListRejectsInvalidDays(t *testing.T) {
+	_, router := setupRouter()
+	registerGiftShoppingRoute(router)
+
+	w := doGiftShoppingGET(router, "/occasion-obligations/gift-shopping-list?days=45")
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// TestGetGiftShoppingListEmptyResultIsArrayNotNull mirrors
+// TestGetUpcomingOccasionsEmptyResultIsArrayNotNull (CLAUDE.md frontend trap
+// #8): an empty gift shopping list must serialize as [], not be absent.
+func TestGetGiftShoppingListEmptyResultIsArrayNotNull(t *testing.T) {
+	_, router := setupRouter()
+	registerGiftShoppingRoute(router)
+
+	w := doGiftShoppingGET(router, "/occasion-obligations/gift-shopping-list?days=30")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var raw map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &raw))
+	listRaw, present := raw["gift_shopping_list"]
+	require.True(t, present, "the gift_shopping_list key must be present even when empty")
+	assert.Equal(t, "[]", string(listRaw), "an empty result must serialize as [], not be absent or null")
+}
+
 func TestGetGiftShoppingListReportsNeededWithNoMatchingGift(t *testing.T) {
 	db, router := setupRouter()
 	registerGiftShoppingRoute(router)

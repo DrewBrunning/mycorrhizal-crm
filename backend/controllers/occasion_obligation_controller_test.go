@@ -147,6 +147,74 @@ func TestCreateOccasionObligationAllowsNilAnchor(t *testing.T) {
 	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
 }
 
+func TestCreateOccasionObligationRejectsLinkedLifeEventFromAnotherUser(t *testing.T) {
+	db, router := setupRouter()
+	registerOccasionObligationRoutes(t, router)
+
+	var user models.User
+	db.First(&user)
+	contact := seedOccasionObligationContact(t, db, user.ID)
+
+	otherUser := models.User{Username: "other2", Password: "x", Email: "other2@example.com"}
+	require.NoError(t, db.Create(&otherUser).Error)
+	othersEvent := models.LifeEvent{UserID: otherUser.ID, EntityID: contact.VCardUID, Type: "graduation"}
+	require.NoError(t, db.Create(&othersEvent).Error)
+
+	w := doOccasionJSON(router, "POST", "/occasion-obligations", models.OccasionObligationInput{
+		EntityID:          contact.VCardUID,
+		Kind:              models.OccasionObligationKindGift,
+		Label:             "Grad gift",
+		LinkedLifeEventID: othersEvent.ID,
+	})
+	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+
+	var count int64
+	db.Model(&models.OccasionObligation{}).Count(&count)
+	assert.EqualValues(t, 0, count)
+}
+
+func TestUpdateOccasionObligationNotFound(t *testing.T) {
+	_, router := setupRouter()
+	registerOccasionObligationRoutes(t, router)
+
+	w := doOccasionJSON(router, "PUT", "/occasion-obligations/no-such-id", models.OccasionObligationInput{
+		EntityID: "irrelevant", Kind: "card", Label: "x",
+	})
+	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+}
+
+func TestUpdateOccasionObligationRejectsContactFromAnotherUser(t *testing.T) {
+	db, router := setupRouter()
+	registerOccasionObligationRoutes(t, router)
+
+	var user models.User
+	db.First(&user)
+	contact := seedOccasionObligationContact(t, db, user.ID)
+	obligation := models.OccasionObligation{UserID: user.ID, EntityID: contact.VCardUID, Kind: "card", Label: "Original"}
+	require.NoError(t, db.Create(&obligation).Error)
+
+	otherUser := models.User{Username: "other3", Password: "x", Email: "other3@example.com"}
+	require.NoError(t, db.Create(&otherUser).Error)
+	othersContact := seedOccasionObligationContact(t, db, otherUser.ID)
+
+	w := doOccasionJSON(router, "PUT", "/occasion-obligations/"+obligation.ID, models.OccasionObligationInput{
+		EntityID: othersContact.VCardUID, Kind: "card", Label: "Hijacked",
+	})
+	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+
+	var reloaded models.OccasionObligation
+	require.NoError(t, db.First(&reloaded, "id = ?", obligation.ID).Error)
+	assert.Equal(t, "Original", reloaded.Label, "a rejected update must not have persisted")
+}
+
+func TestDeleteOccasionObligationNotFound(t *testing.T) {
+	_, router := setupRouter()
+	registerOccasionObligationRoutes(t, router)
+
+	w := doOccasionJSON(router, "DELETE", "/occasion-obligations/no-such-id", nil)
+	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+}
+
 func TestListOccasionObligationsFiltersByEntity(t *testing.T) {
 	db, router := setupRouter()
 	registerOccasionObligationRoutes(t, router)
@@ -170,6 +238,33 @@ func TestListOccasionObligationsFiltersByEntity(t *testing.T) {
 	require.Len(t, resp.OccasionObligations, 1)
 	assert.Equal(t, "A card", resp.OccasionObligations[0].Label)
 	assert.EqualValues(t, 1, resp.Total)
+}
+
+func TestListOccasionObligationsBrowseModePaginatesWithNextCursor(t *testing.T) {
+	db, router := setupRouter()
+	registerOccasionObligationRoutes(t, router)
+
+	var user models.User
+	db.First(&user)
+	contact := seedOccasionObligationContact(t, db, user.ID)
+	for i := 0; i < 3; i++ {
+		require.NoError(t, db.Create(&models.OccasionObligation{
+			UserID: user.ID, EntityID: contact.VCardUID, Kind: "card", Label: "Ob",
+		}).Error)
+	}
+
+	w := doOccasionJSON(router, "GET", "/occasion-obligations?limit=2", nil)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var resp struct {
+		OccasionObligations []models.OccasionObligation `json:"occasion_obligations"`
+		NextCursor          string                      `json:"next_cursor"`
+		Total               int64                       `json:"total"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Len(t, resp.OccasionObligations, 2, "must truncate to the requested limit")
+	assert.NotEmpty(t, resp.NextCursor, "a truncated page must return a next_cursor")
+	assert.EqualValues(t, 3, resp.Total)
 }
 
 func TestUpdateOccasionObligationDeactivate(t *testing.T) {

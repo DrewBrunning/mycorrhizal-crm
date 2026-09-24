@@ -74,6 +74,54 @@ func TestGetOccasionCardListCSVSkipsContactWithNoAddress(t *testing.T) {
 	assert.Equal(t, 1, strings.Count(strings.TrimRight(body, "\n"), "\n")+1)
 }
 
+func TestGetOccasionCardListCSVSkipsObligationWithNoMatchingContact(t *testing.T) {
+	db, router := setupRouter()
+	registerOccasionCardListRoute(router)
+
+	var user models.User
+	db.First(&user)
+
+	// EntityID with no matching Contact row (T17: a contact hard-deleted
+	// out from under a soft-referenced obligation).
+	obligation := models.OccasionObligation{
+		UserID: user.ID, EntityID: "no-such-vcard-uid", Kind: "card", Label: "Orphan",
+		Active: true, Sensitivity: models.RelationshipSensitivityNormal,
+	}
+	require.NoError(t, db.Create(&obligation).Error)
+
+	w := doCardListGET(router, "/occasion-obligations/card-list")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	body := w.Body.String()
+	// Only the header row -- the orphaned obligation must be skipped, not
+	// crash the export.
+	assert.Equal(t, 1, strings.Count(strings.TrimRight(body, "\n"), "\n")+1)
+}
+
+func TestGetOccasionCardListCSVPrefersNickname(t *testing.T) {
+	db, router := setupRouter()
+	registerOccasionCardListRoute(router)
+
+	var user models.User
+	db.First(&user)
+
+	contact := models.Contact{
+		UserID: user.ID, Firstname: "Robert", Lastname: "Smith", Nickname: "Bob",
+		Addresses: []models.ContactAddress{{Street: "1 Elm St", City: "Springfield"}},
+	}
+	require.NoError(t, db.Create(&contact).Error)
+	obligation := models.OccasionObligation{
+		UserID: user.ID, EntityID: contact.VCardUID, Kind: "card", Label: "Christmas card",
+		Active: true, Sensitivity: models.RelationshipSensitivityNormal,
+	}
+	require.NoError(t, db.Create(&obligation).Error)
+
+	w := doCardListGET(router, "/occasion-obligations/card-list")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	body := w.Body.String()
+	assert.Contains(t, body, "Bob Smith")
+	assert.NotContains(t, body, "Robert Smith")
+}
+
 func TestGetOccasionCardListCSVFiltersByKind(t *testing.T) {
 	db, router := setupRouter()
 	registerOccasionCardListRoute(router)
