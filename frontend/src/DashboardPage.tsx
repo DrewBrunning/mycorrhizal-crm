@@ -32,9 +32,11 @@ import {
 } from './api/contactSyncConflicts';
 import type { Birthday, Contact } from './api/contacts';
 import { type DashboardReminder, getDashboard } from './api/dashboard';
+import type { OverdueDataDecayPolicy } from './api/dataDecayPolicies';
 import { getUpcomingOccasions, type UpcomingOccasion } from './api/occasionObligations';
 import { dismissReachOutSuggestion, type ReachOutSuggestion } from './api/reachOutSuggestions';
 import { completeReminder, getUpcomingReminders, skipReminder } from './api/reminders';
+import DataDecayOverdueList from './components/DataDecayOverdueList';
 import { ContactListSkeleton } from './components/LoadingSkeletons';
 import OverdueCadenceList from './components/OverdueCadenceList';
 import ReachOutSuggestionsList from './components/ReachOutSuggestionsList';
@@ -58,6 +60,7 @@ function DashboardPage() {
   const [overdueCadences, setOverdueCadences] = useState<OverdueCadence[]>([]);
   const [reachOutSuggestions, setReachOutSuggestions] = useState<ReachOutSuggestion[]>([]);
   const [syncConflicts, setSyncConflicts] = useState<ContactSyncConflict[]>([]);
+  const [dataDecayOverdue, setDataDecayOverdue] = useState<OverdueDataDecayPolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [birthdaysInfoAnchor, setBirthdaysInfoAnchor] = useState<HTMLElement | null>(null);
@@ -94,6 +97,7 @@ function DashboardPage() {
       setOverdueCadences(dashboard.overdue);
       setReachOutSuggestions(dashboard.reach_out_suggestions);
       setSyncConflicts(dashboard.contact_sync_conflicts);
+      setDataDecayOverdue(dashboard.data_decay_overdue);
     } catch (err) {
       const message = handleFetchError(err, 'loading dashboard data');
       setError(message);
@@ -323,6 +327,15 @@ function DashboardPage() {
             onRestore={handleRestoreSyncConflict}
             onDismiss={handleDismissSyncConflict}
           />
+        </Box>
+      )}
+
+      {/* Data decay (issue #352) — contacts whose info is due for
+          re-verification. Only rendered when there is something to show,
+          same "all-clear dashboard stays clean" rule as the blocks above. */}
+      {dataDecayOverdue.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <DataDecayOverdueList overdue={dataDecayOverdue} loading={loading} error={null} />
         </Box>
       )}
 

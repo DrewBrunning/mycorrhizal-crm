@@ -45,6 +45,7 @@ import {
   withTitles,
 } from './api/contacts';
 import type { ConversationAgenda } from './api/conversationAgenda';
+import type { DataDecayPolicy, DataDecayPolicyInput } from './api/dataDecayPolicies';
 import { suggestContactAddresses } from './api/dataSuggestions';
 import { exportContact } from './api/export';
 import type { ExternalActivity } from './api/externalLinks';
@@ -114,6 +115,8 @@ import ConversationAgendaDialog, {
   type ConversationAgendaFormData,
 } from './components/ConversationAgendaDialog';
 import ConversationAgendaList from './components/ConversationAgendaList';
+import DataDecayDialog from './components/DataDecayDialog';
+import DataDecayPanel from './components/DataDecayPanel';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import ExternalLinkPanel from './components/ExternalLinkPanel';
 import GiftDialog, { type GiftFormData } from './components/GiftDialog';
@@ -149,6 +152,7 @@ import { useCadencePolicy } from './hooks/useCadencePolicy';
 import { useCircles } from './hooks/useCircles';
 import { useContactDialogs } from './hooks/useContactDialogs';
 import { useConversationAgenda } from './hooks/useConversationAgenda';
+import { useDataDecayPolicy } from './hooks/useDataDecayPolicy';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useExternalLinks } from './hooks/useExternalLinks';
 import { useContactFieldValues, useFieldDefinitions } from './hooks/useFieldDefinitions';
@@ -602,6 +606,40 @@ export default function ContactDetailPage() {
   const handleCadenceDelete = async (_id: string) => {
     if (!window.confirm(t('cadence.confirmDelete'))) return;
     await handleDeleteCadence();
+  };
+
+  // Data decay (issue #352): periodic reminders to re-verify this contact's
+  // stored info is still accurate -- distinct from cadence above (staying in
+  // touch vs. the freshness of the facts themselves).
+  const {
+    policy: dataDecayPolicy,
+    loading: dataDecayLoading,
+    handleSave: handleSaveDataDecay,
+    handleDelete: handleDeleteDataDecay,
+    handleVerify: handleVerifyDataDecay,
+  } = useDataDecayPolicy(record?.uid, { showError });
+
+  const [dataDecayDialogOpen, setDataDecayDialogOpen] = useState(false);
+  const [editingDataDecay, setEditingDataDecay] = useState<DataDecayPolicy | null>(null);
+
+  const handleAddDataDecay = () => {
+    setEditingDataDecay(null);
+    setDataDecayDialogOpen(true);
+  };
+
+  const handleEditDataDecay = (policy: DataDecayPolicy) => {
+    setEditingDataDecay(policy);
+    setDataDecayDialogOpen(true);
+  };
+
+  const handleSaveDataDecaySubmit = async (input: DataDecayPolicyInput) => {
+    if (!record?.uid) return;
+    await handleSaveDataDecay(input);
+  };
+
+  const handleDataDecayDelete = async (_id: string) => {
+    if (!window.confirm(t('dataDecay.confirmDelete'))) return;
+    await handleDeleteDataDecay();
   };
 
   // Conversation agenda (T21): contextual memory for this contact, resolved by
@@ -1808,6 +1846,7 @@ export default function ContactDetailPage() {
           { id: 'people', label: t('contactDetail.section.people') },
           { id: 'timeline', label: t('contactDetail.timeline') },
           { id: 'cadence', label: t('contactDetail.section.cadence') },
+          { id: 'data-decay', label: t('contactDetail.section.dataDecay') },
           { id: 'gifts', label: t('gifts.title') },
           { id: 'occasions', label: t('occasions.obligation.title') },
           { id: 'external-links', label: t('externalLinks.title') },
@@ -2047,6 +2086,22 @@ export default function ContactDetailPage() {
             onComplete={handleCompleteReminder}
             onEdit={handleEditReminder}
             onDelete={handleDeleteReminder}
+          />
+        </PanelCard>
+      </SectionGroup>
+
+      {/* Data decay (issue #352) — periodic "is this still accurate" check,
+          distinct from the cadence section above (staying in touch vs. the
+          freshness of the stored facts themselves). */}
+      <SectionGroup id="data-decay">
+        <PanelCard title={t('dataDecay.title')}>
+          <DataDecayPanel
+            policy={dataDecayPolicy}
+            loading={dataDecayLoading}
+            onAdd={handleAddDataDecay}
+            onEdit={handleEditDataDecay}
+            onDelete={handleDataDecayDelete}
+            onVerify={handleVerifyDataDecay}
           />
         </PanelCard>
       </SectionGroup>
@@ -2301,6 +2356,17 @@ export default function ContactDetailPage() {
         onSave={handleSaveCadenceSubmit}
         entityId={record?.uid || ''}
         policy={editingCadence}
+      />
+
+      <DataDecayDialog
+        open={dataDecayDialogOpen}
+        onClose={() => {
+          setDataDecayDialogOpen(false);
+          setEditingDataDecay(null);
+        }}
+        onSave={handleSaveDataDecaySubmit}
+        entityId={record?.uid || ''}
+        policy={editingDataDecay}
       />
 
       <ConversationAgendaDialog
