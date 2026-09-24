@@ -69,3 +69,15 @@ export function healthBandIcon(band: string | undefined): ComponentType<SvgIconP
       return undefined;
   }
 }
+
+// Issue #1193: the color for a deceased contact's node/dot, wherever a
+// health-band color would otherwise apply. Deliberately NOT one of the
+// moss/chanterelle/russula health colors (a deceased contact isn't a health
+// verdict) and NOT a bright accent like laccaria/info either -- a deceased
+// contact is inactive/historical, not a distinct status to draw the eye to.
+// text.secondary ("soil") is this codebase's existing muted-but-legible
+// token (already used for NetworkListView's band-label captions), so this
+// reads as "present but quiet" rather than a fourth status color.
+export function deceasedNodeColor(theme: Theme): string {
+  return theme.palette.text.secondary;
+}

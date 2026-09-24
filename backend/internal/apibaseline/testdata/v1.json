@@ -12279,6 +12279,11 @@
       "name": "GraphChain",
       "properties": [
         {
+          "name": "deceased",
+          "type": "boolean",
+          "required": false
+        },
+        {
           "name": "depth",
           "type": "integer",
           "required": false
@@ -12400,6 +12405,11 @@
         {
           "name": "circles",
           "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
+          "name": "deceased",
+          "type": "boolean",
           "required": false
         },
         {

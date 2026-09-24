@@ -38,6 +38,11 @@ export interface GraphChain {
   // backend/models/dtos.go's GraphChain doc comment.
   health_score?: number | null;
   health_band?: string;
+  // Issue #1193: true when the target contact records a death anniversary
+  // (Card.Anniversaries[kind=death]). Mirrors GraphNode's field for the same
+  // "Android's only surface for this" reason as health_score/health_band
+  // above.
+  deceased?: boolean;
 }
 
 export interface GraphConnectionsResponse {

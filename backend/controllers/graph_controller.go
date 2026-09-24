@@ -23,9 +23,13 @@ func GetGraph(c *gin.Context) {
 		return
 	}
 
-	// 1. Fetch all contacts (minimal fields for performance), excluding archived
+	// 1. Fetch all contacts (minimal fields for performance), excluding archived.
+	// "card" is included despite the encrypted-JSON decrypt cost on every row
+	// (issue #1193): the deceased state has no other flat/queryable home
+	// (Card is `serializer:encryptedjson`, so SQL cannot filter on it), and
+	// this is the only place a deceased contact's graph node gets colored.
 	var contacts []models.Contact
-	if err := db.Select("id", "vcard_uid", "firstname", "lastname", "photo_thumbnail", "circles").
+	if err := db.Select("id", "vcard_uid", "firstname", "lastname", "photo_thumbnail", "circles", "card").
 		Where("user_id = ? AND archived = ?", userID, false).
 		Find(&contacts).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch contacts"})
@@ -82,6 +86,7 @@ func GetGraph(c *gin.Context) {
 			Type:           "contact",
 			Label:          label,
 			PhotoThumbnail: contact.PhotoThumbnail,
+			Deceased:       contact.Card.IsDeceased(),
 		}
 		if result, ok := scores[contact.ID]; ok {
 			score := result.Score
@@ -221,6 +226,33 @@ func GetGraphConnections(c *gin.Context) {
 				score := result.Score
 				chains[i].HealthScore = &score
 				chains[i].HealthBand = result.Band
+			}
+		}
+	}
+
+	// Decorate each chain's target with the deceased state (issue #1193) --
+	// same reasoning as the health-score decoration above: this is Android's
+	// only surface for it. A second bulk query (Card is encrypted, so
+	// TraverseGraph's own contact resolution -- id/vcard_uid/firstname/
+	// lastname only -- can't carry it) rather than widening that query for
+	// every caller of TraverseGraph, most of which never look at Deceased.
+	if len(chains) > 0 {
+		targetUIDs := make([]string, len(chains))
+		for i := range chains {
+			targetUIDs[i] = chains[i].TargetVCardUID
+		}
+		var targets []models.Contact
+		if err := db.Select("vcard_uid", "card").
+			Where("user_id = ? AND vcard_uid IN ?", userID, targetUIDs).
+			Find(&targets).Error; err == nil {
+			deceasedByUID := make(map[string]bool, len(targets))
+			for _, t := range targets {
+				if t.Card.IsDeceased() {
+					deceasedByUID[t.VCardUID] = true
+				}
+			}
+			for i := range chains {
+				chains[i].Deceased = deceasedByUID[chains[i].TargetVCardUID]
 			}
 		}
 	}

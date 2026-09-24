@@ -299,6 +299,32 @@ test("colors a contact node's fill by its health_band", () => {
   expect(russula.fillStyles[0]).toBe(theme.palette.error.main);
 });
 
+test('colors a deceased contact node with the deceased color, overriding its health_band', () => {
+  mockMatchMedia(false);
+  const theme = createTheme();
+  const data: GraphData = {
+    nodes: [{ id: 'c-1', type: 'contact', label: 'Alice', health_band: 'moss', deceased: true }],
+    edges: [],
+  };
+
+  render(
+    <NetworkGraph
+      data={data}
+      onNodeClick={vi.fn()}
+      showRelationships
+      showActivities
+      showCircles={false}
+    />,
+  );
+
+  expect(capturedNodeCanvasObject).toBeDefined();
+
+  const deceased = createTrackingCtx();
+  capturedNodeCanvasObject?.(data.nodes[0], deceased.ctx, 1);
+  expect(deceased.fillStyles[0]).toBe(theme.palette.text.secondary);
+  expect(deceased.fillStyles[0]).not.toBe(theme.palette.success.main);
+});
+
 test('falls back to the old uniform node color when health_band is absent', () => {
   mockMatchMedia(false);
   const theme = createTheme();

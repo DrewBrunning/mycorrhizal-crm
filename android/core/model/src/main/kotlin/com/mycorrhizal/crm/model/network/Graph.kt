@@ -34,6 +34,12 @@ data class GraphConnectionsResponse(
  * backend omits them for a degraded step (`targetId == 0`, see
  * [displayName]'s doc comment) or when the target has no computable score.
  * Android never recomputes these locally; they render exactly as returned.
+ *
+ * [deceased] (issue #1193) is true when the target contact records a death
+ * anniversary (Card.Anniversaries[kind=death]). This is Android's only
+ * surface for the deceased state -- there is no canvas graph here, only this
+ * traversal screen -- so a deceased target must always override
+ * [healthBand]'s indicator rather than being shown alongside it.
  */
 @JsonClass(generateAdapter = true)
 data class GraphChain(
@@ -44,6 +50,7 @@ data class GraphChain(
     val steps: List<GraphChainStep>? = null,
     @Json(name = "health_score") val healthScore: Int? = null,
     @Json(name = "health_band") val healthBand: String? = null,
+    val deceased: Boolean = false,
 ) {
     val stepsOrEmpty: List<GraphChainStep> get() = steps ?: emptyList()
 

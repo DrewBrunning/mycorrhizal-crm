@@ -10,6 +10,11 @@ export interface GraphNode {
   // utils/healthBand.ts for the band -> color mapping.
   health_score?: number | null;
   health_band?: string;
+  // Issue #1193: set only on type: "contact" nodes with a recorded death
+  // anniversary (Card.Anniversaries[kind=death]). Takes precedence over
+  // health_band for coloring/labeling -- a deceased contact's health score
+  // (recency of interaction) is meaningless.
+  deceased?: boolean;
   // Properties added by force-graph during rendering
   x?: number;
   y?: number;

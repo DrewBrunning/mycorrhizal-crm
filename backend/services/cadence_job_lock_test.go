@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"mycorrhizal/config"
+	"mycorrhizal/contactmodel"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -164,4 +165,47 @@ func TestProcessOverdueCadencesEmitsWebhookForOverduePolicy(t *testing.T) {
 	var job models.JobExecution
 	require.NoError(t, db.Where("job_name = ?", models.JobNameCadenceOverdue).First(&job).Error)
 	assert.Nil(t, job.LockedAt, "lock should be released after the job completes")
+}
+
+// TestProcessOverdueCadencesSkipsDeceasedContact is the regression test for
+// issue #1193: a cadence policy on a contact with a recorded death
+// anniversary (Card.Anniversaries[kind=death]) must not emit a
+// cadence.overdue webhook, even when the policy is otherwise overdue.
+func TestProcessOverdueCadencesSkipsDeceasedContact(t *testing.T) {
+	db := setupCadenceJobTestDB(t)
+	cfg := config.Config{}
+
+	user := models.User{Username: "tester", Password: "x", Email: "tester@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	deceasedContact := models.Contact{UserID: user.ID}
+	models.ApplyRecordToContact(&deceasedContact, &contactmodel.Record{
+		Card: contactmodel.Card{
+			Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Neglected"}}},
+			Anniversaries: []contactmodel.Anniversary{
+				{Kind: "death", Date: contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{
+					Year: intPtr(2020), Month: intPtr(5), Day: intPtr(1),
+				}}},
+			},
+		},
+	}, "")
+	require.NoError(t, db.Create(&deceasedContact).Error)
+	seedOverduePolicy(t, db, user, deceasedContact)
+
+	var hits int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&hits, 1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	wh := models.Webhook{UserID: user.ID, Name: "vikunja", URL: server.URL, Events: []string{"cadence.overdue"}, Secret: "s", IsActive: true}
+	require.NoError(t, db.Create(&wh).Error)
+
+	require.NotPanics(t, func() { ProcessOverdueCadences(db, cfg) })
+
+	time.Sleep(150 * time.Millisecond)
+	assert.Equal(t, int32(0), atomic.LoadInt32(&hits), "a deceased contact's overdue policy must not emit a webhook")
+	var deliveries int64
+	require.NoError(t, db.Model(&models.WebhookDelivery{}).Count(&deliveries).Error)
+	assert.Zero(t, deliveries)
 }

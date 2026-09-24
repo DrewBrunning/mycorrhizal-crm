@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/contactmodel"
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
@@ -300,4 +301,50 @@ func TestGetGraph_ScoringFailureDegradesGracefully(t *testing.T) {
 	require.Len(t, resp.Nodes, 1)
 	assert.Nil(t, resp.Nodes[0].HealthScore)
 	assert.Empty(t, resp.Nodes[0].HealthBand)
+}
+
+// TestGetGraph_MarksDeceasedContactNode is the regression test for issue
+// #1193: a contact with a recorded death anniversary
+// (Card.Anniversaries[kind=death]) must have Deceased=true on its graph
+// node, so the frontend can render it with a dedicated neutral color instead
+// of a health-band one; a living contact must not carry the flag.
+func TestGetGraph_MarksDeceasedContactNode(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/graph", GetGraph)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	alive := models.Contact{UserID: user.ID, Firstname: "Alive"}
+	require.NoError(t, db.Create(&alive).Error)
+
+	deceased := models.Contact{UserID: user.ID}
+	models.ApplyRecordToContact(&deceased, &contactmodel.Record{
+		Card: contactmodel.Card{
+			Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Departed"}}},
+			Anniversaries: []contactmodel.Anniversary{
+				{Kind: "death", Date: contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{
+					Year: intPtr(2020), Month: intPtr(5), Day: intPtr(1),
+				}}},
+			},
+		},
+	}, "")
+	require.NoError(t, db.Create(&deceased).Error)
+
+	req, _ := http.NewRequest("GET", "/graph", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var resp models.GraphResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Len(t, resp.Nodes, 2)
+
+	aliveNode := findGraphNode(resp.Nodes, "c-"+idString(alive.ID))
+	require.NotNil(t, aliveNode)
+	assert.False(t, aliveNode.Deceased, "a living contact's node must not be marked deceased")
+
+	deceasedNode := findGraphNode(resp.Nodes, "c-"+idString(deceased.ID))
+	require.NotNil(t, deceasedNode)
+	assert.True(t, deceasedNode.Deceased, "a contact with a death anniversary must be marked deceased")
 }

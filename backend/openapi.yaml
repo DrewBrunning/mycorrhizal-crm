@@ -13466,6 +13466,7 @@ components:
             $ref: "#/components/schemas/GraphChainStep"
         health_score: { type: integer, nullable: true, description: "Issue #383 relationship health score, 0-100." }
         health_band: { type: string, enum: [moss, chanterelle, russula] }
+        deceased: { type: boolean, description: "Issue #1193: true when the target contact records a death anniversary (Card.Anniversaries[kind=death])." }
     GraphChainStep:
       type: object
       properties:
@@ -13544,6 +13545,7 @@ components:
           items: { type: string }
         health_score: { type: integer, nullable: true, description: "Issue #383 relationship health score, 0-100. Contact nodes only." }
         health_band: { type: string, enum: [moss, chanterelle, russula] }
+        deceased: { type: boolean, description: "Issue #1193: true when the contact records a death anniversary (Card.Anniversaries[kind=death]). Contact nodes only." }
     GraphEdge:
       type: object
       properties:
