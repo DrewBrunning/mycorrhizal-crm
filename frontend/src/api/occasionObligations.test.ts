@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   createOccasionObligation,
+  deleteOccasionObligation,
   downloadOccasionCardListCSV,
   getGiftShoppingList,
   getOccasionObligations,
@@ -114,6 +115,31 @@ describe('updateOccasionObligation', () => {
     expect(url).toContain('/occasion-obligations/o1');
     expect(init.method).toBe('PUT');
     expect(result.active).toBe(false);
+  });
+});
+
+describe('deleteOccasionObligation', () => {
+  test('DELETEs the id-scoped endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await deleteOccasionObligation('o1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/occasion-obligations/o1');
+    expect(init.method).toBe('DELETE');
+  });
+
+  test('throws the parsed error on a failed response', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: { code: 'NOT_FOUND', message: 'not found' } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(deleteOccasionObligation('missing')).rejects.toThrow();
   });
 });
 

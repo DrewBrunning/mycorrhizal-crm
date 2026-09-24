@@ -77,6 +77,55 @@ test('saves with the label, kind, anchor date, and lead time', async () => {
   });
 });
 
+test('rejects a negative lead time', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ onSave });
+
+  fireEvent.change(screen.getByLabelText('Label *'), { target: { value: 'Christmas card' } });
+  fireEvent.change(screen.getByLabelText('Lead time (days)'), { target: { value: '-1' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  expect(await screen.findByText('Enter a valid number of lead-time days.')).toBeInTheDocument();
+  expect(onSave).not.toHaveBeenCalled();
+});
+
+test('shows an error and stays open when onSave rejects', async () => {
+  const onSave = vi.fn().mockRejectedValue(new Error('boom'));
+  const onClose = vi.fn();
+  renderDialog({ onSave, onClose });
+
+  fireEvent.change(screen.getByLabelText('Label *'), { target: { value: 'Christmas card' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  expect(await screen.findByText('Failed to save occasion.')).toBeInTheDocument();
+  expect(onClose).not.toHaveBeenCalled();
+});
+
+test('saves a custom kind, inactive, secret, and notes', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ onSave });
+
+  fireEvent.change(screen.getByLabelText('Kind'), { target: { value: 'thank-you note' } });
+  fireEvent.change(screen.getByLabelText('Label *'), { target: { value: 'Thank-you note' } });
+  fireEvent.click(screen.getByLabelText('Active'));
+  fireEvent.mouseDown(screen.getByLabelText('Sensitivity'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Secret' }));
+  fireEvent.change(screen.getByLabelText('Notes'), { target: { value: 'Keep this quiet' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+  expect(onSave).toHaveBeenCalledWith({
+    kind: 'thank-you note',
+    label: 'Thank-you note',
+    anchorMonth: null,
+    anchorDay: null,
+    leadTimeDays: 0,
+    active: false,
+    sensitivity: 'secret',
+    notes: 'Keep this quiet',
+  });
+});
+
 test('edit mode pre-fills the existing obligation', () => {
   renderDialog({
     obligation: {

@@ -132,6 +132,26 @@ test('handleDelete deletes and refreshes', async () => {
   expect(getOccasionObligations).toHaveBeenCalledTimes(2);
 });
 
+test('delete errors notify through the notifier and rethrow', async () => {
+  vi.mocked(getOccasionObligations).mockResolvedValue({
+    occasion_obligations: [obligation],
+    total: 1,
+    next_cursor: '',
+    limit: 100,
+  });
+  vi.mocked(deleteOccasionObligation).mockRejectedValue(new Error('boom'));
+  const showError = vi.fn();
+
+  const { result } = renderHook(() => useOccasionObligations('uid-1', { showError }));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  await expect(result.current.handleDelete('o-1')).rejects.toThrow('boom');
+  expect(showError).toHaveBeenCalledWith('boom');
+  // A failed delete must not refresh (it would clobber the list with a
+  // second fetch that races the still-live obligation).
+  expect(getOccasionObligations).toHaveBeenCalledTimes(1);
+});
+
 test('save errors notify through the notifier and rethrow', async () => {
   vi.mocked(getOccasionObligations).mockResolvedValue({
     occasion_obligations: [],
