@@ -437,7 +437,7 @@ func (s *CalendarSyncService) fetchICS(ctx context.Context, httpClient webdav.HT
 	decoder := ical.NewDecoder(resp.Body)
 	for {
 		evs, err := decodeCalendarSafely(decoder, windowStart, windowEnd)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

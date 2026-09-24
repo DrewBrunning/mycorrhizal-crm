@@ -205,11 +205,11 @@ func parseRegister(body string) ([]row, []finding) {
 	inBlock := false
 	for i, raw := range lines {
 		line := strings.TrimSpace(raw)
-		switch {
-		case line == beginMarker:
+		switch line {
+		case beginMarker:
 			inBlock = true
 			continue
-		case line == endMarker:
+		case endMarker:
 			inBlock = false
 			continue
 		}

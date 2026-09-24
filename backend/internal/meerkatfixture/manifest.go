@@ -190,7 +190,7 @@ func Read() (*Manifest, error) {
 	if err != nil {         // # pragma: no cover — defensive
 		return nil, fmt.Errorf("meerkatfixture: opening %s: %w", path, err) // # pragma: no cover
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck // read-only handle: Close cannot lose data
 	return Load(f)
 }
 

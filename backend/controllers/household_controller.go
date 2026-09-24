@@ -443,7 +443,8 @@ func AcceptAddressHouseholdSuggestion(c *gin.Context) {
 	if svcErr != nil {
 		// The service returns *apperrors.AppError for all its client-visible
 		// rejection paths; everything else is a real database failure.
-		if appErr, ok := svcErr.(*apperrors.AppError); ok {
+		var appErr *apperrors.AppError
+		if errors.As(svcErr, &appErr) {
 			apperrors.AbortWithError(c, appErr)
 			return
 		}
@@ -473,7 +474,8 @@ func DismissAddressHouseholdSuggestion(c *gin.Context) {
 	}
 
 	if err := services.DismissAddressHouseholdSuggestion(db, userID, input.MemberVCardUIDs); err != nil {
-		if appErr, ok := err.(*apperrors.AppError); ok {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
 			apperrors.AbortWithError(c, appErr)
 			return
 		}

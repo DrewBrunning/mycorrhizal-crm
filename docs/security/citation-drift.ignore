@@ -37,7 +37,7 @@ docs/security/asvs-l2.md | `export_controller.go:105-128` | backend/controllers/
 docs/security/asvs-l2.md | `export_controller.go:105-119` | backend/controllers/export_controller.go  # same function, cited from row 5.3.4 as the parameterized raw-SQL export path
 docs/security/asvs-l2.md | `attachments.go:27-35` | backend/attachments/attachments.go  # StoredPath's traversal guard; rows 5.3.x and 12.3.x
 docs/security/asvs-l2.md | `attachment_controller.go:212-238` | backend/controllers/attachment_controller.go  # DownloadAttachment, which sets Content-Disposition + nosniff
-docs/security/asvs-l2.md | `photo_controller.go:147-151` | backend/controllers/photo_controller.go  # the 10 MB maxFileSize cap; row says "photo cap"
+docs/security/asvs-l2.md | `photo_controller.go:149-153` | backend/controllers/photo_controller.go  # the 10 MB maxFileSize cap; row says "photo cap"
 docs/security/asvs-l2.md | `photostore/photostore.go:39-72` | backend/photostore/photostore.go  # maxImagePixels, the decompression-bomb cap
 docs/security/asvs-l2.md | `circle_controller.go:242` | backend/controllers/circle_controller.go  # the duplicate-member lookup behind the checked 409; row says "duplicate add"
 docs/security/asvs-l2.md | `household_controller.go:245` | backend/controllers/household_controller.go  # same pattern, household members

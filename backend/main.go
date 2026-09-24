@@ -154,6 +154,15 @@ func execJob(db *gorm.DB, jobName, trigger string, fn func() (*int, error)) {
 	})
 }
 
+// mustSchedule fails startup when gocron rejects a job registration (an
+// invalid .At() time, a non-positive interval). Ignoring that error left the
+// job silently unscheduled — the server booted and the job never ran.
+func mustSchedule(_ *gocron.Job, err error) {
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to schedule background job") // # pragma: no cover — log.Fatal terminates the process
+	}
+}
+
 // safeGo runs fn in a goroutine via runJob (panic recovery + correlation ID +
 // job_runs row), so an unhandled panic in a background task doesn't crash the
 // server.
@@ -361,67 +370,67 @@ func main() {
 	// Daily reminder digest + push-style channels. Reports the number of sends
 	// that succeeded; a send failure marks the run failed (issue #391 item 3).
 	reminderTask := func() (int, error) { return services.SendRemindersWithRateLimit(db, *cfg) }
-	s.Every(1).Day().At(cfg.ReminderTime).Do(recoverJobReport(db, models.JobNameDailyReminders, models.JobTriggerScheduled, reminderTask))
+	mustSchedule(s.Every(1).Day().At(cfg.ReminderTime).Do(recoverJobReport(db, models.JobNameDailyReminders, models.JobTriggerScheduled, reminderTask)))
 	go safeGoReport(db, models.JobNameDailyReminders, models.JobTriggerInitial, reminderTask)
 
-	s.Every(5).Minutes().Do(recoverJob(db, models.JobNameWebhookRetries, models.JobTriggerScheduled, func() error {
+	mustSchedule(s.Every(5).Minutes().Do(recoverJob(db, models.JobNameWebhookRetries, models.JobTriggerScheduled, func() error {
 		services.ProcessWebhookRetries(db, *cfg)
 		return nil
-	}))
+	})))
 
 	// Sync calendar subscriptions regularly (rate-limited via job lock).
 	calendarSyncTask := func() error {
 		services.SyncCalendarsWithRateLimit(db, *cfg)
 		return nil
 	}
-	s.Every(cfg.CalDAVSyncIntervalHours).Hours().Do(recoverJob(db, models.JobNameCalendarSync, models.JobTriggerScheduled, calendarSyncTask))
+	mustSchedule(s.Every(cfg.CalDAVSyncIntervalHours).Hours().Do(recoverJob(db, models.JobNameCalendarSync, models.JobTriggerScheduled, calendarSyncTask)))
 	go safeGo(db, models.JobNameCalendarSync, models.JobTriggerInitial, calendarSyncTask)
 
 	// Purge soft-deleted rows past their retention window (T26).
-	s.Every(24).Hours().Do(recoverJob(db, models.JobNamePurgeDeleted, models.JobTriggerScheduled, purgeDeletedTask(db, *cfg)))
+	mustSchedule(s.Every(24).Hours().Do(recoverJob(db, models.JobNamePurgeDeleted, models.JobTriggerScheduled, purgeDeletedTask(db, *cfg))))
 	go safeGo(db, models.JobNamePurgeDeleted, models.JobTriggerInitial, purgeDeletedTask(db, *cfg))
 
 	// Purge expired audit events past their retention window (T18).
-	s.Every(24).Hours().Do(recoverJob(db, models.JobNameAuditPurge, models.JobTriggerScheduled, auditPurgeTask(db, *cfg)))
+	mustSchedule(s.Every(24).Hours().Do(recoverJob(db, models.JobNameAuditPurge, models.JobTriggerScheduled, auditPurgeTask(db, *cfg))))
 	go safeGo(db, models.JobNameAuditPurge, models.JobTriggerInitial, auditPurgeTask(db, *cfg))
 
 	// Purge expired system_events past their retention window (issue #424).
-	s.Every(24).Hours().Do(recoverJob(db, models.JobNameSystemEventPurge, models.JobTriggerScheduled, systemEventPurgeTask(db, *cfg)))
+	mustSchedule(s.Every(24).Hours().Do(recoverJob(db, models.JobNameSystemEventPurge, models.JobTriggerScheduled, systemEventPurgeTask(db, *cfg))))
 	go safeGo(db, models.JobNameSystemEventPurge, models.JobTriggerInitial, systemEventPurgeTask(db, *cfg))
 
 	// Purge expired job_runs past their retention window (issue #391).
-	s.Every(24).Hours().Do(recoverJob(db, models.JobNameJobRunPurge, models.JobTriggerScheduled, jobRunPurgeTask(db, *cfg)))
+	mustSchedule(s.Every(24).Hours().Do(recoverJob(db, models.JobNameJobRunPurge, models.JobTriggerScheduled, jobRunPurgeTask(db, *cfg))))
 	go safeGo(db, models.JobNameJobRunPurge, models.JobTriggerInitial, jobRunPurgeTask(db, *cfg))
 
 	// Purge expired webhook deliveries past their retention window (issue
 	// #622). Job-lock guarded so a multi-instance deploy does not double-purge.
-	s.Every(24).Hours().Do(recoverJob(db, models.JobNameWebhookDeliveryPurge, models.JobTriggerScheduled, webhookDeliveryPurgeTask(db, *cfg)))
+	mustSchedule(s.Every(24).Hours().Do(recoverJob(db, models.JobNameWebhookDeliveryPurge, models.JobTriggerScheduled, webhookDeliveryPurgeTask(db, *cfg))))
 	go safeGo(db, models.JobNameWebhookDeliveryPurge, models.JobTriggerInitial, webhookDeliveryPurgeTask(db, *cfg))
 
 	// Purge expired idempotency keys past their (short) TTL window (issue
 	// #459, CON-04). Runs more often than the daily purges because the window
 	// itself is hours, not days. Job-lock guarded against multi-instance
 	// double-purge.
-	s.Every(6).Hours().Do(recoverJob(db, models.JobNameIdempotencyKeyPurge, models.JobTriggerScheduled, idempotencyKeyPurgeTask(db, *cfg)))
+	mustSchedule(s.Every(6).Hours().Do(recoverJob(db, models.JobNameIdempotencyKeyPurge, models.JobTriggerScheduled, idempotencyKeyPurgeTask(db, *cfg))))
 	go safeGo(db, models.JobNameIdempotencyKeyPurge, models.JobTriggerInitial, idempotencyKeyPurgeTask(db, *cfg))
 
 	// Purge expired / long-revoked session rows (issue #866). Not disablable —
 	// an expired session row has no recovery value. Job-lock guarded against
 	// multi-instance double-purge.
-	s.Every(6).Hours().Do(recoverJob(db, models.JobNameSessionPurge, models.JobTriggerScheduled, sessionPurgeTask(db)))
+	mustSchedule(s.Every(6).Hours().Do(recoverJob(db, models.JobNameSessionPurge, models.JobTriggerScheduled, sessionPurgeTask(db))))
 	go safeGo(db, models.JobNameSessionPurge, models.JobTriggerInitial, sessionPurgeTask(db))
 
 	// Emit overdue-cadence webhooks daily (T19). Job-lock guarded so a
 	// multi-instance deploy does not double-fire. Reports the number emitted.
 	cadenceOverdueTask := func() (int, error) { return services.ProcessOverdueCadences(db, *cfg) }
-	s.Every(24).Hours().Do(recoverJobReport(db, models.JobNameCadenceOverdue, models.JobTriggerScheduled, cadenceOverdueTask))
+	mustSchedule(s.Every(24).Hours().Do(recoverJobReport(db, models.JobNameCadenceOverdue, models.JobTriggerScheduled, cadenceOverdueTask)))
 	go safeGoReport(db, models.JobNameCadenceOverdue, models.JobTriggerInitial, cadenceOverdueTask)
 
 	// Detect event-driven reach-out suggestions daily (issue #177). Job-lock
 	// guarded so a multi-instance deploy does not double-fire. Reports the
 	// number of suggestions created.
 	reachOutTask := func() (int, error) { return services.DetectReachOutSuggestions(db, *cfg) }
-	s.Every(24).Hours().Do(recoverJobReport(db, models.JobNameReachOutDetection, models.JobTriggerScheduled, reachOutTask))
+	mustSchedule(s.Every(24).Hours().Do(recoverJobReport(db, models.JobNameReachOutDetection, models.JobTriggerScheduled, reachOutTask)))
 	go safeGoReport(db, models.JobNameReachOutDetection, models.JobTriggerInitial, reachOutTask)
 
 	// Sync Immich enrichment regularly (T16). Job-lock guarded so a
@@ -430,7 +439,7 @@ func main() {
 		services.SyncImmichWithRateLimit(db, *cfg)
 		return nil
 	}
-	s.Every(cfg.ImmichSyncIntervalHours).Hours().Do(recoverJob(db, models.JobNameImmichSync, models.JobTriggerScheduled, immichSyncTask))
+	mustSchedule(s.Every(cfg.ImmichSyncIntervalHours).Hours().Do(recoverJob(db, models.JobNameImmichSync, models.JobTriggerScheduled, immichSyncTask)))
 	go safeGo(db, models.JobNameImmichSync, models.JobTriggerInitial, immichSyncTask)
 
 	// Check the live database for corruption on a schedule (issue #273).
@@ -439,7 +448,7 @@ func main() {
 		services.CheckDBIntegrityScheduled(db, *cfg)
 		return nil
 	}
-	s.Every(cfg.DBIntegrityCheckIntervalHours).Hours().Do(recoverJob(db, models.JobNameDBIntegrityCheck, models.JobTriggerScheduled, dbIntegrityTask))
+	mustSchedule(s.Every(cfg.DBIntegrityCheckIntervalHours).Hours().Do(recoverJob(db, models.JobNameDBIntegrityCheck, models.JobTriggerScheduled, dbIntegrityTask)))
 	go safeGo(db, models.JobNameDBIntegrityCheck, models.JobTriggerInitial, dbIntegrityTask)
 
 	// Periodically prove a backup actually restores (issue #275). Job-lock
@@ -448,7 +457,7 @@ func main() {
 		services.RunRestoreDrillScheduled(db, *cfg)
 		return nil
 	}
-	s.Every(cfg.DBRestoreDrillIntervalHours).Hours().Do(recoverJob(db, models.JobNameRestoreDrill, models.JobTriggerScheduled, restoreDrillTask))
+	mustSchedule(s.Every(cfg.DBRestoreDrillIntervalHours).Hours().Do(recoverJob(db, models.JobNameRestoreDrill, models.JobTriggerScheduled, restoreDrillTask)))
 	go safeGo(db, models.JobNameRestoreDrill, models.JobTriggerInitial, restoreDrillTask)
 
 	// Evaluate alert conditions on a schedule (issue #428): detect
@@ -458,7 +467,7 @@ func main() {
 		services.EvaluateAlerts(db, *cfg)
 		return nil
 	}
-	s.Every(cfg.AlertEvalIntervalMinutes).Minutes().Do(recoverJob(db, models.JobNameAlertEval, models.JobTriggerScheduled, alertEvalTask))
+	mustSchedule(s.Every(cfg.AlertEvalIntervalMinutes).Minutes().Do(recoverJob(db, models.JobNameAlertEval, models.JobTriggerScheduled, alertEvalTask)))
 	go safeGo(db, models.JobNameAlertEval, models.JobTriggerInitial, alertEvalTask)
 
 	// Daily storage-growth sampler (issue #652): write one storage_samples row
@@ -469,7 +478,7 @@ func main() {
 		services.RecordStorageSampleScheduled(db, *cfg)
 		return nil
 	}
-	s.Every(24).Hours().Do(recoverJob(db, models.JobNameStorageSample, models.JobTriggerScheduled, storageSampleTask))
+	mustSchedule(s.Every(24).Hours().Do(recoverJob(db, models.JobNameStorageSample, models.JobTriggerScheduled, storageSampleTask)))
 	go safeGo(db, models.JobNameStorageSample, models.JobTriggerInitial, storageSampleTask)
 
 	go s.StartBlocking()

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -44,7 +45,8 @@ func RestoreContactSyncConflict(c *gin.Context) {
 
 	id := c.Param("id")
 	if err := services.RestoreContactSyncConflict(db, userID, id); err != nil {
-		if appErr, ok := err.(*apperrors.AppError); ok {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
 			apperrors.AbortWithError(c, appErr)
 			return
 		}
@@ -66,7 +68,8 @@ func DismissContactSyncConflict(c *gin.Context) {
 
 	id := c.Param("id")
 	if err := services.DismissContactSyncConflict(db, userID, id); err != nil {
-		if appErr, ok := err.(*apperrors.AppError); ok {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
 			apperrors.AbortWithError(c, appErr)
 			return
 		}

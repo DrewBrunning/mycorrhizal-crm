@@ -201,7 +201,7 @@ func GetGraphConnections(c *gin.Context) {
 	chains, err := services.TraverseGraph(db, userID, from, depth, c.Query("relation"))
 	if err != nil {
 		if errors.Is(err, services.ErrTraversalTooDeep) {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("depth", fmt.Sprintf("depth must be at most 5")))
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("depth", "depth must be at most 5"))
 			return
 		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to traverse graph").WithError(err))

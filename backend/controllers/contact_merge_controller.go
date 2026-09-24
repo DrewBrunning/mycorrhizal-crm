@@ -128,7 +128,8 @@ func PreviewContactMerge(c *gin.Context) {
 // not found / loser already merged) and 400 (unresolved conflicts) alongside
 // real database failures, and those must not be flattened into a 500.
 func abortContactMergeError(c *gin.Context, err error) {
-	if appErr, ok := err.(*apperrors.AppError); ok {
+	var appErr *apperrors.AppError
+	if errors.As(err, &appErr) {
 		apperrors.AbortWithError(c, appErr)
 		return
 	}

@@ -193,7 +193,7 @@ last runs on `main` are green, not that they were re-executed here.
 | `backend/httputil/fetch_test.go`, `services/webhook_ssrf_test.go`, `webhook_ssrf_integration_test.go`, `notification_service_test.go` (#373) | SSRF guard on the live webhook delivery path and the push path, not just the dialer in isolation. | PR |
 | `backend/models/audit_chain.go` + `cmd/audit-verify` (#381) | Tamper-evidence: each `AuditEvent` commits `SHA-256(prev_hash ‖ content)`, a `BEFORE UPDATE` trigger rejects edits, and the operator can verify the chain out-of-band. | PR + operator |
 | `database/concurrent_write_test.go` | `_txlock=immediate` — the DSN flag without which concurrent writes 500 with `database is locked` in under 5 ms. | PR |
-| CodeQL, Trivy (misconfig + secret), zizmor, actionlint, shellcheck, golangci-lint (gosec + bodyclose), govulncheck, Dependency Review | SAST/SCA/workflow-security hard gates. | PR |
+| CodeQL, Trivy (misconfig + secret), zizmor, actionlint, shellcheck, golangci-lint (gosec + bodyclose + errcheck/errorlint/staticcheck correctness set), govulncheck, Dependency Review | SAST/SCA/workflow-security hard gates. | PR |
 | Signed SBOM (`syft-sbom.yml`), Grype, TruffleHog git-history | Supply-chain second opinions. | main |
 | Mutation testing (Stryker frontend, gremlins backend — issue #915), full-length fuzz, CIS container hardening | Test-suite quality and container baseline. | nightly |
 | **`backend/cmd/citecheck` (this pass)** | Every citation in the security checklists resolves, and no `satisfied` row cites nothing. | PR |
@@ -325,7 +325,7 @@ like an SSRF oracle and it is worth being exact about whether it is one. **It is
 configuration.** `WEBHOOK_BLOCK_PRIVATE_URLS` defaults to `false` (`config/config.go:148`), so
 `postNotificationJSON` skips its private-address pre-flight and `clientFor` returns the unguarded
 client (`services/notification_service.go:836`, `services/webhook_service.go:64-70`); save-time
-validation checks only the scheme (`middleware/validation.go:182-194`). That is the documented
+validation checks only the scheme (`middleware/validation.go:198-210`). That is the documented
 opt-in-per-service position (row 5.2.6 / API7), and it is deliberate: pointing a self-hosted app at
 an ntfy instance on your own LAN is the intended use, so defaulting the block on would break the
 common case. The caller therefore already chose the target and already learns its reachability from
@@ -376,7 +376,7 @@ chapter; the notes below record the manual read the counts depend on.
 | **V6** Stored Cryptography | Manual audit C. 6.2.5 and 6.2.7 were `satisfied` with no citation at all and now cite the actual call sites plus the gosec/CodeQL enforcement (F-2). |
 | **V7** Error Handling | Manual audit D; found and documented the one envelope bypass. |
 | **V8** Data Protection | 8.1.3 and 8.3.1 were uncited assertions about absence and now cite the Semgrep rule that continuously enforces them (F-2). |
-| **V9** Communication | TLS boundary re-confirmed at `docs/deployment.md:32`; HSTS wiring (`security_headers.go:43-46`, wired `main.go:512`). |
+| **V9** Communication | TLS boundary re-confirmed at `docs/deployment.md:32`; HSTS wiring (`security_headers.go:43-46`, wired `main.go:521`). |
 | **V10** Malicious Code | 10.3.2's SRI claim now cites why SRI is moot here (no external origin in the CSP) rather than asserting it (F-2). |
 | **V11** Business Logic | The 2 `partial` rows are product decisions (per-user content quotas, business-activity monitoring) — unchanged, restated in §7; the alerting row (11.1.8) closed in #940. |
 | **V12** Files and Resources | 12.3.6 now cites the lockfiles and the absence of `os/exec` in non-test packages rather than asserting it (F-2). |
@@ -391,7 +391,7 @@ chapter; the notes below record the manual read the counts depend on.
 
 | # | Finding | Severity | Disposition |
 |---|---|---|---|
-| **F-1** | **48 distinct citations (74 occurrences) pointed at code that had moved.** Every one resolved to a real file with an in-bounds line range, so nothing flagged them: `main.go:191-209` cited for the CORS allowlist actually landed in the scheduler; `unit-tests.yml:175-177` cited for govulncheck landed in the fuzz step; `config.go:359-364` and `:375-380`, cited for the CORS and `COOKIE_SECURE` boot checks, landed in the at-rest-key comments the #380 work inserted above them. Also here: `webhook_service_test.go` (a file that no longer exists) and `errors/middleware.go:111-113` (a 112-line file). | High for the *checklist's* credibility; no code defect | **Fixed on this branch.** All 74 corrected and re-verified. `citecheck` now gates resolution on every PR, and `-drift` is the standing review queue for the content half. |
+| **F-1** | **48 distinct citations (74 occurrences) pointed at code that had moved.** Every one resolved to a real file with an in-bounds line range, so nothing flagged them: `main.go:200-218` cited for the CORS allowlist actually landed in the scheduler; `unit-tests.yml:175-177` cited for govulncheck landed in the fuzz step; `config.go:359-364` and `:375-380`, cited for the CORS and `COOKIE_SECURE` boot checks, landed in the at-rest-key comments the #380 work inserted above them. Also here: `webhook_service_test.go` (a file that no longer exists) and `errors/middleware.go:111-113` (a 112-line file). | High for the *checklist's* credibility; no code defect | **Fixed on this branch.** All 74 corrected and re-verified. `citecheck` now gates resolution on every PR, and `-drift` is the standing review queue for the content half. |
 | **F-2** | **13 rows were `satisfied` with no citation whatsoever**, contradicting the checklist's own stated promise ("No row is left `satisfied` without a citation"). All 13 were negative controls — "no password expiry", "no KBA", "no CDN", "no plugin system" — where there is no `file:line` for a thing that does not exist, so they had been left as bare assertions. | Medium: unverifiable rows in a verification document | **Fixed on this branch.** Each now cites the artifact that proves the absence — the model/migration that has no such column, the Semgrep rule that fails a PR reintroducing it, the CSP that admits no external origin, the lockfiles. `citecheck` now fails a `satisfied` row that cites nothing. |
 | **F-3** | **`threat-model.md` §5 stated the session cookie is `SameSite=Lax`.** It has been `Strict` since issue #392. A factual error, not a stale line number. | Medium: the threat model understated an implemented control | **Fixed on this branch**, including the reason `Lax` is retained for the OIDC handshake cookies only. |
 | **F-4** | **OIDC handshake cookies hardcode `Secure=true`** on the `oidc_client` set and all four clears, while their siblings use `COOKIE_SECURE` (manual audit B). Stricter than configured, so not a confidentiality gap — but on the supported plain-HTTP deployment the browser rejects the cookie, so Android OIDC silently falls back to the web redirect and the handshake cookies are never actively cleared. | Low, fails closed | **Filed as issue #605** (v0.6.2). Recorded in row 3.4.1. |
