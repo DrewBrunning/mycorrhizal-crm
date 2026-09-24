@@ -52,39 +52,53 @@ func template(tb testing.TB) string {
 	tb.Helper()
 	tmplOnce.Do(func() {
 		dir, err := os.MkdirTemp("", "dbtest-template-")
-		if err != nil {
+		if err != nil { // # pragma: no cover — os.MkdirTemp under the OS temp root does not fail in practice; no seam exists to inject that failure without breaking every other test in the binary (tmplOnce runs exactly once per process).
 			tmplErr = err
 			return
 		}
-		p := filepath.Join(dir, "template.db")
-
-		db, err := database.InitDB(p)
-		if err != nil {
-			tmplErr = err
-			return
-		}
-		sqlDB, err := db.DB()
-		if err != nil {
-			tmplErr = err
-			return
-		}
-		// Fold the WAL back into the main file and drop the -wal/-shm sidecars
-		// so a plain file copy is a complete, consistent database.
-		if _, err := sqlDB.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
-			_ = sqlDB.Close()
-			tmplErr = err
-			return
-		}
-		if err := sqlDB.Close(); err != nil {
-			tmplErr = err
-			return
-		}
-		tmplPath = p
+		tmplPath, tmplErr = buildTemplate(dir)
 	})
 	if tmplErr != nil {
 		tb.Fatalf("dbtest: building migrated template database: %v", tmplErr)
 	}
 	return tmplPath
+}
+
+// buildTemplate runs the actual migration + WAL-checkpoint sequence that
+// produces the copyable template file at dir/template.db. It is factored out
+// of template's sync.Once body so a test can drive it directly against a
+// throwaway directory, exercising its failure branches without touching the
+// process-wide cached template every other dbtest-backed test in this binary
+// depends on.
+func buildTemplate(dir string) (string, error) {
+	p := filepath.Join(dir, "template.db")
+
+	db, err := database.InitDB(p)
+	if err != nil {
+		return "", err
+	}
+	return finalizeTemplate(db, p)
+}
+
+// finalizeTemplate folds the WAL back into the main file and closes the
+// connection so a plain file copy of p is a complete, consistent database.
+// Split out of buildTemplate so a test can drive db.DB()'s and the WAL
+// checkpoint's error branches directly (a zero-value *gorm.DB for the
+// former, a pre-closed *sql.DB for the latter) without needing to make the
+// real migration itself fail.
+func finalizeTemplate(db *gorm.DB, p string) (string, error) {
+	sqlDB, err := db.DB()
+	if err != nil {
+		return "", err
+	}
+	if _, err := sqlDB.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+		_ = sqlDB.Close()
+		return "", err
+	}
+	if err := sqlDB.Close(); err != nil { // # pragma: no cover — closing a connection immediately after a successful checkpoint, with no outstanding transaction or checked-out borrow, does not fail in practice.
+		return "", err
+	}
+	return p, nil
 }
 
 // New returns an isolated, fully-migrated *gorm.DB backed by a fresh copy of the
