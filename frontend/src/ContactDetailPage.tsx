@@ -2026,6 +2026,17 @@ export default function ContactDetailPage() {
               variant="contained"
               color="primary"
               size="small"
+              // scrollMarginTop: 112 (AppBar 64 + sticky ContactJumpNav
+              // ~40 -- same constant as SectionGroup's own anchor-jump
+              // clearance above) so `stableClick`'s scrollIntoViewIfNeeded
+              // always leaves this button clear of the nav, regardless of
+              // how tall the sections above it happen to be. Without it,
+              // whatever content lands at the resulting scroll offset's
+              // upper edge is at the mercy of the nav's footprint -- e2e/
+              // reminders.spec.ts caught Timeline's "View all" button
+              // landing there once enough content shifted above it
+              // (target-size, T45's a11y test class).
+              sx={{ scrollMarginTop: 112 }}
             >
               {t('reminders.add')}
             </Button>
