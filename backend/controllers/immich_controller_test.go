@@ -191,7 +191,7 @@ func TestTestImmichConnection_SuccessAndFailure(t *testing.T) {
 
 	enc, err := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "sekret")
 	require.NoError(t, err)
-	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc}).Error)
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc, SyncEnabled: true}).Error)
 
 	w := immichDoJSON(t, router, "POST", "/immich/test-connection", nil)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
@@ -265,7 +265,7 @@ func TestListImmichPeople_RequestFailedVsUnreachable(t *testing.T) {
 	fake.FailWithStatus = http.StatusBadRequest
 	enc, err := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "sekret")
 	require.NoError(t, err)
-	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc}).Error)
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc, SyncEnabled: true}).Error)
 
 	w := immichDoJSON(t, router, "GET", "/immich/people", nil)
 	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
@@ -296,7 +296,7 @@ func TestLinkAndUnlinkImmichContact(t *testing.T) {
 	var contact models.Contact
 	require.NoError(t, db.Where("user_id = ?", uint(1)).First(&contact).Error)
 	enc, _ := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "k")
-	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: "https://immich.example", APIKeyEncrypted: enc}).Error)
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: "https://immich.example", APIKeyEncrypted: enc, SyncEnabled: true}).Error)
 
 	w := immichDoJSON(t, router, "POST", "/immich/contacts/"+contact.VCardUID+"/link", map[string]string{
 		"person_id": "person-alice", "person_name": "Alice",
@@ -367,7 +367,7 @@ func TestSyncImmichNow_EndToEnd(t *testing.T) {
 	require.NoError(t, db.Where("user_id = ?", uint(1)).First(&contact).Error)
 
 	enc, _ := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "sekret")
-	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc}).Error)
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc, SyncEnabled: true}).Error)
 	require.NoError(t, db.Create(&models.ExternalIdentity{
 		UserID: 1, EntityID: contact.VCardUID, System: services.ExternalSystemImmich, ExternalID: "person-alice",
 		URL: fake.URL() + "/people/person-alice", Metadata: map[string]interface{}{"person_name": "Alice"},
@@ -395,7 +395,7 @@ func TestGetImmichThumbnail(t *testing.T) {
 	require.NoError(t, db.Where("user_id = ?", uint(1)).First(&contact).Error)
 
 	enc, _ := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "k")
-	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc}).Error)
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc, SyncEnabled: true}).Error)
 	require.NoError(t, db.Create(&models.ExternalIdentity{
 		UserID: 1, EntityID: contact.VCardUID, System: services.ExternalSystemImmich, ExternalID: "person-alice",
 	}).Error)
@@ -421,7 +421,7 @@ func TestListImmichContactAssets(t *testing.T) {
 	require.NoError(t, db.Where("user_id = ?", uint(1)).First(&contact).Error)
 
 	enc, _ := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "sekret")
-	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc}).Error)
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc, SyncEnabled: true}).Error)
 	require.NoError(t, db.Create(&models.ExternalIdentity{
 		UserID: 1, EntityID: contact.VCardUID, System: services.ExternalSystemImmich, ExternalID: "person-alice",
 	}).Error)
@@ -459,7 +459,7 @@ func TestGetImmichAssetImage(t *testing.T) {
 	require.NoError(t, db.Where("user_id = ?", uint(1)).First(&contact).Error)
 
 	enc, _ := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "k")
-	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc}).Error)
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc, SyncEnabled: true}).Error)
 	require.NoError(t, db.Create(&models.ExternalIdentity{
 		UserID: 1, EntityID: contact.VCardUID, System: services.ExternalSystemImmich, ExternalID: "person-alice",
 	}).Error)
