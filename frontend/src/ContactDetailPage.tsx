@@ -13,70 +13,27 @@ import {
   useTheme,
 } from '@mui/material';
 import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
+import Select, { type SelectChangeEvent } from '@mui/material/Select';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
-import { type Activity, getContactActivities } from './api/activities';
-import { getCurrentUser } from './api/admin';
 import type { CadencePolicy, CadencePolicyInput } from './api/cadencePolicies';
-import { addCircleMember, type Circle, removeCircleMember } from './api/circles';
-import { ApiError } from './api/client';
 import {
-  archiveContact,
-  type Card as CardModel,
   type ContactRecordResponse,
-  type CRMEnvelope,
-  deleteContact,
-  favoriteContact,
   getContactDisplayName,
   getContactProfilePicture,
-  getContactRecord,
-  getOrganizationFields,
-  getTitleField,
-  type NameComponent,
   nameComponentValue,
-  unarchiveContact,
-  unfavoriteContact,
-  updateContactRecord,
   uploadProfilePicture,
-  withAnniversary,
-  withOrganization,
-  withTitles,
 } from './api/contacts';
 import type { ConversationAgenda } from './api/conversationAgenda';
 import { suggestContactAddresses } from './api/dataSuggestions';
 import { exportContact } from './api/export';
-import type { ExternalActivity } from './api/externalLinks';
-import type { FieldValueInput } from './api/fieldDefinitions';
 import type { Gift, GiftInput, GiftStatus } from './api/gifts';
-import {
-  getImmichConfig,
-  getImmichContactSummary,
-  getImmichPeople,
-  type ImmichPerson,
-  type ImmichPersonSummary,
-  linkImmichPerson,
-  syncImmich,
-  unlinkImmichPerson,
-} from './api/immich';
-import type { LifeEvent, PartialDate } from './api/lifeEvents';
-import {
-  getNextcloudConfig,
-  getNextcloudDir,
-  linkNextcloudItem,
-  unlinkNextcloudItem,
-  type WebDAVItem,
-} from './api/nextcloud';
-import { getContactNotes, type Note } from './api/notes';
+import { getImmichPeople } from './api/immich';
+import type { LifeEvent } from './api/lifeEvents';
+import { getNextcloudDir } from './api/nextcloud';
 import type { OccasionObligation } from './api/occasionObligations';
-import {
-  getPaperlessConfig,
-  getPaperlessDocuments,
-  linkPaperlessDocument,
-  type PaperlessDocument,
-  unlinkPaperlessDocument,
-} from './api/paperless';
+import { getPaperlessDocuments } from './api/paperless';
 import {
   GIFTS_TAB_SECTIONS,
   isGiftsTabCategory,
@@ -85,21 +42,8 @@ import {
   type Preference,
 } from './api/preferences';
 import { getOtherPartyId, type RelationshipEdgeInput } from './api/relationshipEdges';
-import {
-  deleteCompletion,
-  getCompletionsForContact,
-  type ReminderCompletion,
-} from './api/reminders';
-import {
-  getSeafileConfig,
-  getSeafileDir,
-  getSeafileLibraries,
-  linkSeafileItem,
-  unlinkSeafileItem,
-} from './api/seafile';
-import { addContactTag, removeContactTag, type Tag } from './api/tags';
-import { updateSelfContact } from './api/users';
-import { fetchAndCacheUserInfo, getCachedSelfContactVCardUID } from './auth';
+import { deleteCompletion } from './api/reminders';
+import { getSeafileDir, getSeafileLibraries } from './api/seafile';
 import AddActivityDialog from './components/AddActivityDialog';
 import AddNoteDialog from './components/AddNoteDialog';
 import AttachmentsSection from './components/AttachmentsSection';
@@ -139,17 +83,21 @@ import RelationshipEdgeDialog from './components/RelationshipEdgeDialog';
 import RelationshipEdgeList from './components/RelationshipEdgeList';
 import ReminderDialog from './components/ReminderDialog';
 import ReminderList from './components/ReminderList';
-import type { SeafileLinkTarget } from './components/SeafileFilePickerDialog';
 import ShareContactDialog from './components/ShareContactDialog';
 import TimelineExplorerDialog from './components/TimelineExplorerDialog';
-import { type ContactFieldKey, resolveEnabledFields } from './contactFields';
 import { useSnackbar } from './context/SnackbarContext';
-import { useDateFormat } from './DateFormatProvider';
 import { useCadencePolicy } from './hooks/useCadencePolicy';
-import { useCircles } from './hooks/useCircles';
+import { useContactDetailData, useContactDetailLoader } from './hooks/useContactDetailData';
 import { useContactDialogs } from './hooks/useContactDialogs';
+import { useContactFieldEditing } from './hooks/useContactFieldEditing';
+import { useContactFileLinks } from './hooks/useContactFileLinks';
+import { useContactImmichLink } from './hooks/useContactImmichLink';
+import { useContactLifecycleActions } from './hooks/useContactLifecycleActions';
+import { useContactMemberships } from './hooks/useContactMemberships';
+import { useContactProfileEditing } from './hooks/useContactProfileEditing';
 import { useConversationAgenda } from './hooks/useConversationAgenda';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useEditDialog } from './hooks/useEditDialog';
 import { useExternalLinks } from './hooks/useExternalLinks';
 import { useContactFieldValues, useFieldDefinitions } from './hooks/useFieldDefinitions';
 import { useGifts } from './hooks/useGifts';
@@ -158,23 +106,14 @@ import { useOccasionObligations } from './hooks/useOccasionObligations';
 import { usePreferences } from './hooks/usePreferences';
 import { useRelationshipEdges } from './hooks/useRelationshipEdges';
 import { useReminderManagement } from './hooks/useReminderManagement';
-import { useTags } from './hooks/useTags';
 import { useTimelineEditing } from './hooks/useTimelineEditing';
+import {
+  fieldValueInputsWith,
+  lifeEventPayloadFromForm,
+  markGivenGiftInput,
+} from './utils/contactDetailPayloads';
+import { buildTimelineItems } from './utils/contactTimeline';
 import { handleFetchError } from './utils/errorHandler';
-
-function fullDateFromPartial(d: PartialDate): string | undefined {
-  if (d.year != null && d.month != null && d.day != null) {
-    return `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
-  }
-  if (d.month != null && d.day != null) {
-    const y = new Date().getFullYear();
-    return `${y}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
-  }
-  if (d.year != null) {
-    return `${d.year}-01-01`;
-  }
-  return undefined;
-}
 
 // T31: the contact detail page is one scrollable page grouped into a handful
 // of anchor sections instead of a growing tab strip. PanelCard is the visual
@@ -281,7 +220,7 @@ function ContactJumpNav({
   const theme = useTheme();
   const isNarrow = useMediaQuery(theme.breakpoints.down('md'));
 
-  const handleSelectChange = (event: any) => {
+  const handleSelectChange = (event: SelectChangeEvent<string>) => {
     const id = event.target.value as string;
     if (id) {
       document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -371,115 +310,54 @@ export default function ContactDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showError, showSuccess, showInfo } = useSnackbar();
-  const { formatBirthdayForInput, parseBirthdayInput, autoFormatBirthdayInput } = useDateFormat();
-  // record is the single source of truth, fetched/written directly against
-  // the nested Card/CRM wire shape -- see.
-  const [record, setRecord] = useState<ContactRecordResponse | null>(null);
-  // T90: VCardUID of the caller's "Me" contact. Seeded from the localStorage
-  // cache (written at login / after a Settings picker change) so a fresh page
-  // shows the badge immediately, then corrected from this page's own
-  // /users/me fetch below when it lands.
-  const [selfContactUid, setSelfContactUid] = useState<string | null>(() =>
-    getCachedSelfContactVCardUID(),
-  );
+
+  const {
+    record,
+    setRecord,
+    selfContactUid,
+    setSelfContactUid,
+    profilePic,
+    setProfilePic,
+    setLoading,
+    loading,
+    notes,
+    activities,
+    completions,
+    enabledFields,
+    timelineRevision,
+    applyCore,
+    refreshNotesAndActivities,
+    reloadRecord,
+  } = useContactDetailData(id);
+
   const isMe = !!record && !!selfContactUid && record.uid === selfContactUid;
   useDocumentTitle(record ? getContactDisplayName(record) : t('nav.contacts'));
   const firstname = record ? nameComponentValue(record.card?.name?.components, 'given') || '' : '';
   const lastname = record ? nameComponentValue(record.card?.name?.components, 'surname') || '' : '';
-  const [profilePic, setProfilePic] = useState<string>('');
-  const [loading, setLoading] = useState(true);
-  const [editingField, setEditingField] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState<string>('');
-  const [validationError, setValidationError] = useState<string>('');
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [completions, setCompletions] = useState<ReminderCompletion[]>([]);
-  // T78: the timeline explorer dialog, and a revision counter bumped whenever
-  // the page's timeline data changes so the explorer's own paginated fetch
-  // (which the page-level edit dialogs can't touch) refreshes to match.
+  const contactName = `${firstname}${lastname ? ` ${lastname}` : ''}`;
+
+  // T78: the timeline explorer dialog.
   const [timelineExplorerOpen, setTimelineExplorerOpen] = useState(false);
-  const [timelineRevision, setTimelineRevision] = useState(0);
-
-  // Profile editing state
-  const [editingProfile, setEditingProfile] = useState(false);
-  const [profileValues, setProfileValues] = useState({
-    prefix: '',
-    firstname: '',
-    middle_name: '',
-    lastname: '',
-    suffix: '',
-    nickname: '',
-    // CRMEnvelope.Kind (T27): human|animal. Defaults to human so the
-    // header's Kind select always has a valid selection.
-    kind: 'human',
-    // Card.Kind (T29) + Card.Language (T29).
-    cardKind: '',
-    language: '',
-  });
-
-  // Circle/Tag state (T4 — real entities instead of flat strings)
-  const {
-    circles: allCircles,
-    circleNamesByUid,
-    refresh: refreshCircles,
-    handleCreate: handleCreateCircle,
-  } = useCircles({ showError });
-
-  const {
-    tags: allTags,
-    tagNamesByUid,
-    refresh: refreshTags,
-    handleCreate: handleCreateTag,
-  } = useTags({ showError });
-
-  const contactCircles = useMemo(() => {
-    if (!record?.uid) return [];
-    const names = circleNamesByUid.get(record.uid) || [];
-    return allCircles.filter((c) => names.includes(c.name));
-  }, [record?.uid, circleNamesByUid, allCircles]);
-
-  const contactTags = useMemo(() => {
-    if (!record?.uid) return [];
-    const names = tagNamesByUid.get(record.uid) || [];
-    return allTags.filter((t) => names.includes(t.name));
-  }, [record?.uid, tagNamesByUid, allTags]);
-
-  // Profile picture upload state
   const [profilePictureDialogOpen, setProfilePictureDialogOpen] = useState(false);
-
   // Contact merge dialog state (ticket N1)
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
-
   // Contact share dialog state (ticket P1)
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
-  // Enabled extended contact fields (UI visibility)
-  const [enabledFields, setEnabledFields] = useState<Set<ContactFieldKey>>(() =>
-    resolveEnabledFields(null),
-  );
+  // Circle/Tag membership (T4 — real entities instead of flat strings)
+  const {
+    allCircles,
+    allTags,
+    contactCircles,
+    contactTags,
+    refreshCircles,
+    refreshTags,
+    handleCircleAdd,
+    handleCircleRemove,
+    handleTagAdd,
+    handleTagRemove,
+  } = useContactMemberships(record?.uid, { showError });
 
-  // Unified refresh function for notes, activities, and completions
-  const refreshNotesAndActivities = async () => {
-    if (!id) return;
-
-    try {
-      const [notesData, activitiesData, completionsData] = await Promise.all([
-        getContactNotes(id),
-        getContactActivities(id),
-        getCompletionsForContact(parseInt(id, 10)),
-      ]);
-      setNotes(notesData.notes || []);
-      setActivities(activitiesData.activities || []);
-      setCompletions(completionsData || []);
-      // Bump the explorer's revision: a save/delete went through the
-      // page-level dialogs, so the explorer's own fetch needs to catch up.
-      setTimelineRevision((r) => r + 1);
-    } catch (err) {
-      handleFetchError(err, 'refreshing notes and activities');
-    }
-  };
-
-  // Custom hooks
   const {
     noteDialogOpen,
     activityDialogOpen,
@@ -516,7 +394,7 @@ export default function ContactDetailPage() {
     setEditingReminder,
   } = useReminderManagement(id, { showError });
 
-  // State for pre-filled reminder values (used by Stay in Touch)
+  // Pre-filled reminder values (used by Stay in Touch)
   const [reminderInitialValues, setReminderInitialValues] = useState<
     | {
         message?: string;
@@ -580,19 +458,7 @@ export default function ContactDetailPage() {
     handleSave: handleSaveCadence,
     handleDelete: handleDeleteCadence,
   } = useCadencePolicy(record?.uid, { showError });
-
-  const [cadenceDialogOpen, setCadenceDialogOpen] = useState(false);
-  const [editingCadence, setEditingCadence] = useState<CadencePolicy | null>(null);
-
-  const handleAddCadence = () => {
-    setEditingCadence(null);
-    setCadenceDialogOpen(true);
-  };
-
-  const handleEditCadence = (policy: CadencePolicy) => {
-    setEditingCadence(policy);
-    setCadenceDialogOpen(true);
-  };
+  const cadenceDialog = useEditDialog<CadencePolicy>();
 
   const handleSaveCadenceSubmit = async (input: CadencePolicyInput) => {
     if (!record?.uid) return;
@@ -614,41 +480,25 @@ export default function ContactDetailPage() {
     handleDiscuss: handleDiscussAgenda,
     handleDelete: handleDeleteAgenda,
   } = useConversationAgenda(record?.uid);
-
-  const [agendaEditDialogOpen, setAgendaEditDialogOpen] = useState(false);
-  const [editingAgendaItem, setEditingAgendaItem] = useState<ConversationAgenda | null>(null);
-  const [agendaDiscussDialogOpen, setAgendaDiscussDialogOpen] = useState(false);
-  const [discussingAgendaItem, setDiscussingAgendaItem] = useState<ConversationAgenda | null>(null);
+  const agendaEditDialog = useEditDialog<ConversationAgenda>();
+  const agendaDiscussDialog = useEditDialog<ConversationAgenda>();
 
   const handleAddAgendaItem = async (content: string) => {
     if (!record?.uid) return;
     await handleCreateAgenda({ entity_id: record.uid, content });
   };
 
-  const handleEditAgendaItem = (item: ConversationAgenda) => {
-    setEditingAgendaItem(item);
-    setAgendaEditDialogOpen(true);
-  };
-
   const handleSaveAgendaItem = async (data: ConversationAgendaFormData) => {
-    if (!record?.uid || !editingAgendaItem) return;
-    await handleUpdateAgenda(editingAgendaItem.id, { entity_id: record.uid, ...data });
-  };
-
-  const handleDiscussAgendaItem = (item: ConversationAgenda) => {
-    setDiscussingAgendaItem(item);
-    setAgendaDiscussDialogOpen(true);
+    const item = agendaEditDialog.editing;
+    if (!record?.uid || !item) return;
+    await handleUpdateAgenda(item.id, { entity_id: record.uid, ...data });
   };
 
   const handleConfirmDiscussAgendaItem = async (activityId?: number) => {
-    if (!discussingAgendaItem) return;
-    await handleDiscussAgenda(discussingAgendaItem.id, activityId);
+    const item = agendaDiscussDialog.editing;
+    if (!item) return;
+    await handleDiscussAgenda(item.id, activityId);
   };
-
-  // Confirmation lives in ConversationAgendaList (the reusable component owns
-  // its delete confirm, like RelationshipEdgeList); the page just wires the
-  // hook's delete through.
-  const handleDeleteAgendaItem = handleDeleteAgenda;
 
   // Gifts (T20b): "what did I give them last year?" — inline idea capture,
   // one-click mark-given, and a full edit dialog for the details.
@@ -659,14 +509,64 @@ export default function ContactDetailPage() {
     handleUpdate: handleUpdateGift,
     handleDelete: handleDeleteGift,
   } = useGifts(record?.uid);
+  const giftDialog = useEditDialog<Gift>();
+  // What a brand-new gift starts as (T46): the section whose "Add with
+  // details" was clicked pre-seeds the dialog, so recording something already
+  // given/received costs no dropdown change. Irrelevant while editing.
+  const [giftDialogInitialStatus, setGiftDialogInitialStatus] = useState<GiftStatus>('idea');
+
+  const handleAddGiftItem = async (description: string, status: GiftStatus) => {
+    if (!record?.uid) return;
+    await handleCreateGift({ entity_id: record.uid, description, status });
+  };
+
+  // The full-form entry point (T35 + T46): the same dialog as edit, with no
+  // gift behind it, pre-seeded with the status of the section it was opened
+  // from.
+  const handleAddFullGift = (status: GiftStatus) => {
+    setGiftDialogInitialStatus(status);
+    giftDialog.openCreate();
+  };
+
+  const handleMarkGivenGift = async (gift: Gift) => {
+    if (!record?.uid) return;
+    try {
+      await handleUpdateGift(
+        gift.id,
+        markGivenGiftInput(gift, record.uid, new Date().toISOString()),
+      );
+    } catch {
+      showError(t('gifts.validation.saveFailed'));
+    }
+  };
+
+  const handleSaveGift = async (data: GiftFormData) => {
+    if (!record?.uid) return;
+    const input: GiftInput = { entity_id: record.uid, ...data };
+    if (giftDialog.editing) {
+      await handleUpdateGift(giftDialog.editing.id, input);
+    } else {
+      await handleCreateGift(input);
+    }
+  };
 
   // Occasions (ADR 0024, issue #387): the standing card/gift/invite
-  // obligation registry.
+  // obligation registry. Delete's own confirm() lives inside
+  // OccasionObligationList, so its delete is a direct passthrough.
   const {
     obligations: occasionObligations,
     handleSave: handleSaveOccasionObligation,
-    handleDelete: handleDeleteOccasionObligationApi,
+    handleDelete: handleDeleteOccasionObligation,
   } = useOccasionObligations(record?.uid, { showError });
+  const occasionDialog = useEditDialog<OccasionObligation>();
+
+  const handleSaveOccasionObligationSubmit = async (data: OccasionObligationFormData) => {
+    if (!record?.uid) return;
+    await handleSaveOccasionObligation(
+      occasionDialog.editing,
+      toOccasionObligationInput(record.uid, data),
+    );
+  };
 
   // External links substrate (T14): this contact's ExternalIdentities and
   // ExternalActivities (enrichment events that land on the timeline).
@@ -677,94 +577,9 @@ export default function ContactDetailPage() {
     refresh: refreshExternalLinks,
   } = useExternalLinks(record?.uid);
 
-  // Immich (T15/T16): the first integration on the substrate.
-  const [immichSummary, setImmichSummary] = useState<ImmichPersonSummary | null>(null);
-  const [immichSummaryLoading, setImmichSummaryLoading] = useState(false);
-  const [immichSyncing, setImmichSyncing] = useState(false);
-  // Whether Immich is configured at all — gates the "Choose from Immich"
-  // profile-photo entry point (Part 3). Failure just leaves it hidden.
-  const [immichConfigured, setImmichConfigured] = useState(false);
-
-  useEffect(() => {
-    getImmichConfig()
-      .then((cfg) => setImmichConfigured(cfg.has_api_key))
-      .catch(() => setImmichConfigured(false));
-  }, []);
-
-  // File-sharing integrations (P2a/P2b/P2c): whether each is configured gates
-  // its "Add link" affordance on the contact page. Failures just leave the
-  // system hidden (the settings page is where connection problems surface).
-  const [fileSystemsConfigured, setFileSystemsConfigured] = useState<{
-    paperless: boolean;
-    seafile: boolean;
-    nextcloud: boolean;
-  }>({ paperless: false, seafile: false, nextcloud: false });
-
-  useEffect(() => {
-    Promise.allSettled([getPaperlessConfig(), getSeafileConfig(), getNextcloudConfig()]).then(
-      ([p, s, n]) => {
-        setFileSystemsConfigured({
-          paperless: p.status === 'fulfilled' && p.value.has_api_token,
-          seafile: s.status === 'fulfilled' && s.value.has_api_token,
-          nextcloud: n.status === 'fulfilled' && n.value.has_app_password,
-        });
-      },
-    );
-  }, []);
-
-  // File link handlers: link/unlink go through the integration endpoints,
-  // then refresh the generic ExternalIdentity list so the new row appears.
-  const handleLinkPaperless = useCallback(
-    async (doc: PaperlessDocument) => {
-      if (!record?.uid) return;
-      await linkPaperlessDocument(record.uid, doc.id);
-      await refreshExternalLinks(record.uid);
-    },
-    [record?.uid, refreshExternalLinks],
-  );
-
-  const handleLinkSeafile = useCallback(
-    async (target: SeafileLinkTarget) => {
-      if (!record?.uid) return;
-      await linkSeafileItem(record.uid, {
-        repo_id: target.repo_id,
-        path: target.path,
-        name: target.name,
-        type: target.type,
-        size: target.size,
-        mtime: target.mtime,
-      });
-      await refreshExternalLinks(record.uid);
-    },
-    [record?.uid, refreshExternalLinks],
-  );
-
-  const handleLinkNextcloud = useCallback(
-    async (item: WebDAVItem) => {
-      if (!record?.uid) return;
-      await linkNextcloudItem(record.uid, {
-        path: item.path,
-        name: item.name,
-        type: item.type,
-        size: item.size,
-        modified_at: item.modified_at,
-        file_id: item.file_id,
-      });
-      await refreshExternalLinks(record.uid);
-    },
-    [record?.uid, refreshExternalLinks],
-  );
-
-  const handleUnlinkFileSystem = useCallback(
-    async (system: 'paperless' | 'seafile' | 'nextcloud', identityId: string) => {
-      if (!record?.uid) return;
-      if (system === 'paperless') await unlinkPaperlessDocument(record.uid, identityId);
-      if (system === 'seafile') await unlinkSeafileItem(record.uid, identityId);
-      if (system === 'nextcloud') await unlinkNextcloudItem(record.uid, identityId);
-      await refreshExternalLinks(record.uid);
-    },
-    [record?.uid, refreshExternalLinks],
-  );
+  // Immich (T15/T16) and the file-sharing integrations (P2a/P2b/P2c).
+  const immich = useContactImmichLink(record?.uid, refreshExternalLinks);
+  const fileLinks = useContactFileLinks(record?.uid, refreshExternalLinks);
 
   // T31's sticky ContactJumpNav sits above every SectionGroup at zIndex 10.
   // SectionGroup's own scrollMarginTop only compensates when the *section*
@@ -787,113 +602,6 @@ export default function ContactDetailPage() {
     };
   }, []);
 
-  const refreshImmichSummary = useCallback(
-    async (overrideUid?: string) => {
-      const uid = overrideUid ?? record?.uid;
-      if (!uid) return;
-      setImmichSummaryLoading(true);
-      try {
-        const s = await getImmichContactSummary(uid);
-        setImmichSummary(s);
-      } catch {
-        setImmichSummary(null);
-      } finally {
-        setImmichSummaryLoading(false);
-      }
-    },
-    [record?.uid],
-  );
-
-  const handleLinkImmich = useCallback(
-    async (person: ImmichPerson) => {
-      if (!record?.uid) return;
-      await linkImmichPerson(record.uid, person.id, person.name);
-      await Promise.all([refreshExternalLinks(record.uid), refreshImmichSummary(record.uid)]);
-    },
-    [record?.uid, refreshExternalLinks, refreshImmichSummary],
-  );
-
-  const handleUnlinkImmich = useCallback(async () => {
-    if (!record?.uid) return;
-    await unlinkImmichPerson(record.uid);
-    setImmichSummary(null);
-    await refreshExternalLinks(record.uid);
-  }, [record?.uid, refreshExternalLinks]);
-
-  const handleSyncImmich = useCallback(async () => {
-    if (!record?.uid) return;
-    setImmichSyncing(true);
-    try {
-      await syncImmich();
-      await Promise.all([refreshExternalLinks(record.uid), refreshImmichSummary(record.uid)]);
-    } finally {
-      setImmichSyncing(false);
-    }
-  }, [record?.uid, refreshExternalLinks, refreshImmichSummary]);
-
-  const [giftDialogOpen, setGiftDialogOpen] = useState(false);
-  const [editingGift, setEditingGift] = useState<Gift | null>(null);
-  // What a brand-new gift starts as (T46): the section whose "Add with
-  // details" was clicked pre-seeds the dialog, so recording something already
-  // given/received costs no dropdown change. Irrelevant while editing.
-  const [giftDialogInitialStatus, setGiftDialogInitialStatus] = useState<GiftStatus>('idea');
-
-  const handleAddGiftItem = async (description: string, status: GiftStatus) => {
-    if (!record?.uid) return;
-    await handleCreateGift({ entity_id: record.uid, description, status });
-  };
-
-  const handleEditGift = (gift: Gift) => {
-    setEditingGift(gift);
-    setGiftDialogOpen(true);
-  };
-
-  // The full-form entry point (T35 + T46): the same dialog as edit, with no
-  // gift behind it, pre-seeded with the status of the section it was opened
-  // from — so a gift is recorded straight as given/received instead of being
-  // created as an idea and immediately edited.
-  const handleAddFullGift = (status: GiftStatus) => {
-    setEditingGift(null);
-    setGiftDialogInitialStatus(status);
-    setGiftDialogOpen(true);
-  };
-
-  // One-click "mark it given" (T20b's Done-when flow): the gift record is the
-  // durable object — status flips to given, the date defaults to now when the
-  // idea had none. All other fields are preserved.
-  const handleMarkGivenGift = async (gift: Gift) => {
-    if (!record?.uid) return;
-    try {
-      await handleUpdateGift(gift.id, {
-        entity_id: record.uid,
-        status: 'given',
-        description: gift.description,
-        url: gift.url,
-        notes: gift.notes,
-        occasion: gift.occasion,
-        date: gift.date ?? new Date().toISOString(),
-        value_cents: gift.value_cents,
-        currency: gift.currency,
-        life_event_id: gift.life_event_id,
-        activity_id: gift.activity_id ?? null,
-      });
-    } catch {
-      showError(t('gifts.validation.saveFailed'));
-    }
-  };
-
-  const handleSaveGift = async (data: GiftFormData) => {
-    if (!record?.uid) return;
-    const input: GiftInput = { entity_id: record.uid, ...data };
-    if (editingGift) {
-      await handleUpdateGift(editingGift.id, input);
-    } else {
-      await handleCreateGift(input);
-    }
-  };
-
-  const handleDeleteGiftItem = handleDeleteGift;
-
   // Custom field definitions (user-wide) + this contact's values (T7).
   const { definitions: fieldDefinitions } = useFieldDefinitions();
   const {
@@ -904,95 +612,30 @@ export default function ContactDetailPage() {
 
   const handleSaveFieldValue = async (definitionId: string, value: unknown) => {
     if (!record) return;
-    const next = new Map(fieldValuesByDefinition);
-    if (value === null || value === undefined) {
-      next.delete(definitionId);
-    } else {
-      next.set(definitionId, value);
-    }
-    const inputs: FieldValueInput[] = [];
-    for (const [defId, v] of next) {
-      if (v !== null && v !== undefined) inputs.push({ field_definition_id: defId, value: v });
-    }
-    await saveFieldValues(inputs);
+    await saveFieldValues(fieldValueInputsWith(fieldValuesByDefinition, definitionId, value));
   };
 
-  const [preferenceDialogOpen, setPreferenceDialogOpen] = useState(false);
-  const [editingPreference, setEditingPreference] = useState<Preference | null>(null);
-
-  const handleAddPreference = () => {
-    setEditingPreference(null);
-    setPreferenceDialogOpen(true);
-  };
-
-  const handleEditPreference = (pref: Preference) => {
-    setEditingPreference(pref);
-    setPreferenceDialogOpen(true);
-  };
+  // Overview-tab preferences, and a second dialog instance for the
+  // gift-shopping-relevant ones (jewelry/flowers/color/fragrance/cause/
+  // gift-avoid) in the Gifts section, scoped via `sections` so it can't
+  // create a food/media/hobby preference that would then only show up in the
+  // Overview panel instead.
+  const preferenceDialog = useEditDialog<Preference>();
+  const giftPreferenceDialog = useEditDialog<Preference>();
 
   const handleSavePreferenceSubmit = async (data: PreferenceFormData) => {
     if (!record?.uid) return;
-    await handleSavePreference(editingPreference, toPreferenceInput(record.uid, data));
-  };
-
-  const handlePreferenceDelete = async (id: string) => {
-    if (!window.confirm(t('preference.deleteMessage'))) return;
-    await handleDeletePreference(id);
-  };
-
-  // Occasions (ADR 0024, issue #387): mirrors the Preference dialog's exact
-  // create/edit state shape. Delete's own confirm() lives inside
-  // OccasionObligationList (matching GiftList's own delete-confirm pattern),
-  // so this is a direct passthrough, not a second confirm.
-  const [occasionObligationDialogOpen, setOccasionObligationDialogOpen] = useState(false);
-  const [editingOccasionObligation, setEditingOccasionObligation] =
-    useState<OccasionObligation | null>(null);
-
-  const handleAddOccasionObligation = () => {
-    setEditingOccasionObligation(null);
-    setOccasionObligationDialogOpen(true);
-  };
-
-  const handleEditOccasionObligation = (obligation: OccasionObligation) => {
-    setEditingOccasionObligation(obligation);
-    setOccasionObligationDialogOpen(true);
-  };
-
-  const handleSaveOccasionObligationSubmit = async (data: OccasionObligationFormData) => {
-    if (!record?.uid) return;
-    await handleSaveOccasionObligation(
-      editingOccasionObligation,
-      toOccasionObligationInput(record.uid, data),
-    );
-  };
-
-  const handleDeleteOccasionObligation = handleDeleteOccasionObligationApi;
-
-  // Gift-shopping-relevant preferences (jewelry/flowers/color/fragrance/
-  // cause/gift-avoid) get their own dialog instance in the Gifts tab,
-  // scoped via `sections` so this dialog can't create a food/media/hobby
-  // preference that would then only show up in the Overview tab instead.
-  const [giftPreferenceDialogOpen, setGiftPreferenceDialogOpen] = useState(false);
-  const [editingGiftPreference, setEditingGiftPreference] = useState<Preference | null>(null);
-
-  const handleAddGiftPreference = () => {
-    setEditingGiftPreference(null);
-    setGiftPreferenceDialogOpen(true);
-  };
-
-  const handleEditGiftPreference = (pref: Preference) => {
-    setEditingGiftPreference(pref);
-    setGiftPreferenceDialogOpen(true);
+    await handleSavePreference(preferenceDialog.editing, toPreferenceInput(record.uid, data));
   };
 
   const handleSaveGiftPreferenceSubmit = async (data: PreferenceFormData) => {
     if (!record?.uid) return;
-    await handleSavePreference(editingGiftPreference, toPreferenceInput(record.uid, data));
+    await handleSavePreference(giftPreferenceDialog.editing, toPreferenceInput(record.uid, data));
   };
 
-  const handleGiftPreferenceDelete = async (id: string) => {
+  const handlePreferenceDelete = async (prefId: string) => {
     if (!window.confirm(t('preference.deleteMessage'))) return;
-    await handleDeletePreference(id);
+    await handleDeletePreference(prefId);
   };
 
   // Clothing sizes are clothing_size preferences surfaced in the Gifts tab
@@ -1026,12 +669,8 @@ export default function ContactDetailPage() {
     );
   };
 
-  const handleDeleteClothingSize = async (id: string) => {
-    await handleDeletePreference(id);
-  };
-
-  const [lifeEventDialogOpen, setLifeEventDialogOpen] = useState(false);
-  const [editingLifeEvent, setEditingLifeEvent] = useState<LifeEvent | null>(null);
+  const lifeEventDialog = useEditDialog<LifeEvent>();
+  const editingLifeEvent = lifeEventDialog.editing;
 
   // Memoized, not an inline object literal at the JSX call site: LifeEventDialog's
   // own reset effect keys off `initial`'s *reference* (dep array `[open,
@@ -1060,33 +699,9 @@ export default function ContactDetailPage() {
     [editingLifeEvent],
   );
 
-  const handleAddLifeEvent = () => {
-    setEditingLifeEvent(null);
-    setLifeEventDialogOpen(true);
-  };
-
-  const handleEditLifeEvent = (event: LifeEvent) => {
-    setEditingLifeEvent(event);
-    setLifeEventDialogOpen(true);
-  };
-
   const handleSaveLifeEvent = async (data: LifeEventFormData) => {
     if (!record?.uid) return;
-    // Explicit field-by-field mapping, not a blind {...data} spread:
-    // LifeEventFormData.relatedEntityIds is camelCase (the dialog's own
-    // shape) but the API wants related_entity_ids — a spread would silently
-    // carry the wrong key through (TS excess-property checks don't fire on
-    // spreads) and the picked related contacts would never actually save.
-    const payload = {
-      entity_id: record.uid,
-      type: data.type,
-      category: data.category,
-      date: data.date,
-      end_date: data.endDate,
-      description: data.description,
-      related_entity_ids: data.relatedEntityIds,
-      remind: data.remind,
-    };
+    const payload = lifeEventPayloadFromForm(record.uid, data);
     if (editingLifeEvent) {
       await handleUpdateLifeEvent(editingLifeEvent.id, payload);
     } else {
@@ -1099,10 +714,10 @@ export default function ContactDetailPage() {
     }
   };
 
-  const handleLifeEventDelete = async (id: string) => {
+  const handleLifeEventDelete = async (eventId: string) => {
     if (!window.confirm(t('lifeEvent.confirmDelete'))) return;
-    const event = lifeEvents.find((e) => e.id === id);
-    await handleDeleteLifeEvent(id);
+    const event = lifeEvents.find((e) => e.id === eventId);
+    await handleDeleteLifeEvent(eventId);
     if (event?.type === 'married') {
       await reloadRecord();
     }
@@ -1113,222 +728,50 @@ export default function ContactDetailPage() {
     return contactsByUid.get(getOtherPartyId(editingEdge, record.uid));
   }, [editingEdge, record, contactsByUid]);
 
-  // Fetch available circles
-  const handleCircleAdd = async (circle: Circle) => {
-    if (!record?.uid) return;
-    try {
-      if (circle.id) {
-        await addCircleMember(circle.id, record.uid);
-      } else {
-        const created = await handleCreateCircle(circle.name);
-        if (created?.id) await addCircleMember(created.id, record.uid);
-      }
-      await refreshCircles();
-    } catch {
-      // Error already reported by hook's handleCreateCircle or
-      // addCircleMember — just refresh to reconcile state.
-      await refreshCircles();
-    }
-  };
+  const refreshImmichSummary = immich.refreshSummary;
+  // Second load batch: every per-contact hook's refresh, given the freshly
+  // fetched record. Memoized on the refreshers so its identity -- the
+  // loader's re-run trigger -- only changes when one of them does.
+  const loadDependents = useCallback(
+    (rec: ContactRecordResponse) =>
+      Promise.all([
+        refreshReminders(),
+        refreshRelationshipEdges(rec.uid),
+        refreshLifeEvents(rec.uid),
+        refreshAgenda(rec.uid),
+        refreshGifts(rec.uid),
+        refreshFieldValues(rec.id),
+        refreshExternalLinks(rec.uid),
+        refreshImmichSummary(rec.uid),
+      ]),
+    [
+      refreshReminders,
+      refreshRelationshipEdges,
+      refreshLifeEvents,
+      refreshAgenda,
+      refreshGifts,
+      refreshFieldValues,
+      refreshExternalLinks,
+      refreshImmichSummary,
+    ],
+  );
 
-  const handleCircleRemove = async (circle: Circle) => {
-    if (!record?.uid) return;
-    try {
-      await removeCircleMember(circle.id, record.uid);
-      await refreshCircles();
-    } catch {
-      await refreshCircles();
-    }
-  };
+  useContactDetailLoader(id, {
+    applyCore,
+    setProfilePic,
+    setLoading,
+    loadDependents,
+    onAuxFetchFailed: () => showError(t('contactDetail.timelineLoadError')),
+  });
 
-  const handleTagAdd = async (tag: Tag) => {
-    if (!record?.uid) return;
-    try {
-      if (tag.id) {
-        await addContactTag(tag.id, record.uid);
-      } else {
-        const created = await handleCreateTag(tag.name);
-        if (created?.id) await addContactTag(created.id, record.uid);
-      }
-      await refreshTags();
-    } catch {
-      await refreshTags();
-    }
-  };
-
-  const handleTagRemove = async (tag: Tag) => {
-    if (!record?.uid) return;
-    try {
-      await removeContactTag(tag.id, record.uid);
-      await refreshTags();
-    } catch {
-      await refreshTags();
-    }
-  };
-
-  // Fetch contact details, notes, and activities
-  useEffect(() => {
-    if (!id) return;
-
-    let currentBlobUrl: string | null = null;
-
-    const fetchData = async () => {
-      try {
-        // First batch: parallel fetch of core data. Only getContactRecord is
-        // allowed to gate the not-found branch below -- notes, activities,
-        // and completions are auxiliary timeline data, and one of them
-        // 500ing must not make an existing contact look deleted (issue #958).
-        // Each is isolated with its own .catch() so a single failure falls
-        // back to an empty list and is surfaced as a non-fatal timeline
-        // error instead of rejecting the whole Promise.all.
-        let auxFetchFailed = false;
-        const [recordData, notesData, activitiesData, completionsData, user] = await Promise.all([
-          getContactRecord(id),
-          getContactNotes(id).catch((err) => {
-            console.error('Error fetching contact notes:', err);
-            auxFetchFailed = true;
-            return { notes: [] };
-          }),
-          getContactActivities(id).catch((err) => {
-            console.error('Error fetching contact activities:', err);
-            auxFetchFailed = true;
-            return { activities: [] };
-          }),
-          getCompletionsForContact(parseInt(id, 10)).catch((err) => {
-            console.error('Error fetching reminder completions:', err);
-            auxFetchFailed = true;
-            return [];
-          }),
-          getCurrentUser().catch((err) => {
-            console.error('Error fetching current user preferences:', err);
-            return null;
-          }),
-        ]);
-
-        setRecord(recordData);
-        setNotes(notesData.notes || []);
-        setActivities(activitiesData.activities || []);
-        setCompletions(completionsData || []);
-        setEnabledFields(resolveEnabledFields(user?.enabled_contact_fields ?? null));
-        if (auxFetchFailed) {
-          showError(t('contactDetail.timelineLoadError'));
-        }
-        // T90: this page's own /users/me fetch is fresher than the localStorage
-        // cache (e.g. right after a Settings picker change); take its value.
-        // Only when the fetch actually succeeded — the `.catch(() => null)`
-        // above means a transient failure shouldn't hide a badge the cache had.
-        if (user) {
-          setSelfContactUid(user.self_contact_vcard_uid ?? null);
-        }
-
-        // Second batch: refresh reminders and relationship edges in
-        // parallel. refreshRelationshipEdges is passed recordData.uid
-        // directly rather than relying on the `record` state var -- that
-        // state hasn't re-rendered yet at this point in the effect, so
-        // relying on it would silently fetch zero edges on every fresh
-        // page load.
-        await Promise.all([
-          refreshReminders(),
-          refreshRelationshipEdges(recordData.uid),
-          refreshLifeEvents(recordData.uid),
-          refreshAgenda(recordData.uid),
-          refreshGifts(recordData.uid),
-          refreshFieldValues(recordData.id),
-          refreshExternalLinks(recordData.uid),
-          refreshImmichSummary(recordData.uid),
-        ]);
-
-        // Only fetch profile picture if contact has one (avoid unnecessary 404)
-        if (recordData.photo) {
-          try {
-            const blob = await getContactProfilePicture(id);
-            if (blob) {
-              currentBlobUrl = URL.createObjectURL(blob);
-              setProfilePic(currentBlobUrl);
-            } else {
-              setProfilePic('');
-            }
-          } catch (err) {
-            console.error('Error fetching profile picture:', err);
-          }
-        } else {
-          setProfilePic('');
-        }
-
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-
-    return () => {
-      if (currentBlobUrl) {
-        URL.revokeObjectURL(currentBlobUrl);
-      }
-    };
-    // showError and t are intentionally left out: both are stable in
-    // practice (useCallback / react-i18next), and including t would refetch
-    // this whole page's timeline on every language switch for no reason.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    id,
-    refreshReminders,
-    refreshRelationshipEdges,
-    refreshLifeEvents,
-    refreshAgenda,
-    refreshGifts,
-    refreshFieldValues,
-    refreshExternalLinks,
-    refreshImmichSummary,
-  ]);
-
-  // Combine and sort notes, activities, completions, life events, and
-  // external activities for the timeline.
-  const timelineItems: Array<{
-    type: 'note' | 'activity' | 'completion' | 'life_event' | 'external_activity' | 'gift';
-    data: Note | Activity | ReminderCompletion | LifeEvent | ExternalActivity | Gift;
-    date: string;
-  }> = [
-    ...notes.map((note) => ({
-      type: 'note' as const,
-      data: note,
-      date: note.date || note.CreatedAt,
-    })),
-    ...activities.map((activity) => ({
-      type: 'activity' as const,
-      data: activity,
-      date: activity.date || activity.CreatedAt,
-    })),
-    ...completions.map((completion) => ({
-      type: 'completion' as const,
-      data: completion,
-      date: completion.completed_at,
-    })),
-    ...lifeEvents
-      .filter((e) => e.date != null)
-      .map((event) => ({
-        type: 'life_event' as const,
-        data: event,
-        date: fullDateFromPartial(event.date!) || event.created_at,
-      })),
-    ...externalActivities.map((activity) => ({
-      type: 'external_activity' as const,
-      data: activity,
-      date: activity.occurred_at || activity.created_at,
-    })),
-    // Gifts that actually happened (given/received with a date) are timeline
-    // events; undated ideas stay off the timeline.
-    ...gifts
-      .filter((g) => g.date && (g.status === 'given' || g.status === 'received'))
-      .map((g) => ({
-        type: 'gift' as const,
-        data: g,
-        date: g.date!,
-      })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const timelineItems = buildTimelineItems({
+    notes,
+    activities,
+    completions,
+    lifeEvents,
+    externalActivities,
+    gifts,
+  });
 
   const handleDeleteCompletion = async (completionId: number) => {
     if (!window.confirm(t('timeline.deleteCompletionConfirm'))) {
@@ -1342,351 +785,48 @@ export default function ContactDetailPage() {
     }
   };
 
-  const validateBirthday = (value: string): boolean => {
-    if (!value || value.trim() === '') return true;
-    // Try to parse the birthday input - if it returns null, it's invalid
-    const parsed = parseBirthdayInput(value);
-    return parsed !== null;
-  };
+  const fieldEditing = useContactFieldEditing({
+    id,
+    record,
+    setRecord,
+    refreshLifeEvents,
+    showError,
+  });
 
-  const handleEditStart = (field: string, currentValue: string) => {
-    setEditingField(field);
-    // For date fields, convert from ISO to display format
-    if ((field === 'birthday' || field === 'anniversary') && currentValue) {
-      setEditValue(formatBirthdayForInput(currentValue));
-    } else {
-      setEditValue(currentValue || '');
-    }
-    setValidationError('');
-  };
+  const {
+    editingProfile,
+    profileValues,
+    setProfileValues,
+    handleStartEditProfile,
+    handleCancelEditProfile,
+    handleSaveProfile,
+  } = useContactProfileEditing({ id, record, setRecord, showError });
 
-  const handleEditCancel = () => {
-    setEditingField(null);
-    setEditValue('');
-    setValidationError('');
-  };
-
-  // Maps one of ContactInformation's scalar field names to the Card/CRM
-  // patch it corresponds to. Lives here (not in ContactInformation) because
-  // building an organization/title patch needs to know the *other* half of
-  // the pair (department when editing organization, and vice versa) --
-  // which only the current `record` has.
-  const buildRecordPatch = (
-    field: string,
-    value: string,
-  ): { card?: Partial<CardModel>; crm?: Partial<CRMEnvelope>; gender?: string } => {
-    const card = record?.card || {};
-    switch (field) {
-      case 'gender':
-        return { gender: value };
-      case 'birthday':
-        return { card: { anniversaries: withAnniversary(card.anniversaries, 'birth', value) } };
-      case 'anniversary':
-        return { card: { anniversaries: withAnniversary(card.anniversaries, 'wedding', value) } };
-      case 'organization': {
-        const { department } = getOrganizationFields(card.organizations);
-        return { card: { organizations: withOrganization(value, department || '') } };
-      }
-      case 'department': {
-        const { organization } = getOrganizationFields(card.organizations);
-        return { card: { organizations: withOrganization(organization || '', value) } };
-      }
-      case 'job_title': {
-        const role = getTitleField(card.titles, 'role');
-        return { card: { titles: withTitles(value, role || '') } };
-      }
-      case 'role': {
-        const jobTitle = getTitleField(card.titles, 'title');
-        return { card: { titles: withTitles(jobTitle || '', value) } };
-      }
-      case 'work_information':
-        return { crm: { work_information: value } };
-      case 'how_we_met':
-        return { crm: { how_we_met: value } };
-      case 'contact_information':
-        return { crm: { contact_information: value } };
-      default:
-        return {};
-    }
-  };
-
-  const handleEditSave = async (field: string) => {
-    if (!record) return;
-
-    let valueToSave = editValue;
-
-    if (field === 'birthday' || field === 'anniversary') {
-      if (!validateBirthday(editValue)) {
-        setValidationError(t('contactDetail.birthdayError'));
-        return;
-      }
-      // Convert from display format to ISO format for storage
-      const parsed = parseBirthdayInput(editValue);
-      valueToSave = parsed || '';
-    }
-
-    const patch = buildRecordPatch(field, valueToSave);
-
-    try {
-      const updated = await updateContactRecord(id!, {
-        gender: patch.gender ?? record.gender,
-        card: { ...record.card, ...patch.card },
-        crm: { ...record.crm, ...patch.crm },
-      });
-      setRecord(updated);
-      setEditingField(null);
-      setEditValue('');
-      setValidationError('');
-      await refreshLifeEvents(record.uid).catch(() => {});
-    } catch (err) {
-      console.error('Error updating contact:', err);
-      if (err instanceof ApiError) {
-        const errorMessage = err.getDisplayMessage();
-        setValidationError(errorMessage);
-        showError(errorMessage);
-      } else {
-        showError(t('contactDetail.updateError'));
-      }
-    }
-  };
-
-  // Refetches the full contact record after a server-side change that touches
-  // the card (e.g. a married LifeEvent mirrored onto the wedding anniversary).
-  const reloadRecord = async () => {
-    if (!id) return;
-    try {
-      setRecord(await getContactRecord(id));
-    } catch {
-      // leave the current record as-is
-    }
-  };
-
-  // Persist multi-valued / structured field updates (emails, phones, addresses, links, imppAddresses)
-  const handleUpdateCard = async (patch: Partial<CardModel>, crmPatch?: Partial<CRMEnvelope>) => {
-    if (!record) return;
-    try {
-      const updated = await updateContactRecord(id!, {
-        gender: record.gender,
-        card: { ...record.card, ...patch },
-        crm: { ...record.crm, ...crmPatch },
-      });
-      setRecord(updated);
-      // The backend mirrors a wedding-anniversary change into a married
-      // LifeEvent (services/wedding_sync.go); refresh so the timeline and the
-      // Life Events tab pick it up without a page reload.
-      await refreshLifeEvents(record.uid).catch(() => {});
-    } catch (err) {
-      console.error('Error updating contact:', err);
-      if (err instanceof ApiError) {
-        showError(err.getDisplayMessage());
-      } else {
-        showError(t('contactDetail.updateError'));
-      }
-      throw err;
-    }
-  };
-
-  const handleStartEditProfile = () => {
-    if (!record) return;
-    const components = record.card?.name?.components;
-    setProfileValues({
-      prefix: nameComponentValue(components, 'title') || '',
-      firstname: nameComponentValue(components, 'given') || '',
-      middle_name: nameComponentValue(components, 'given2') || '',
-      lastname: nameComponentValue(components, 'surname') || '',
-      suffix: nameComponentValue(components, 'generation') || '',
-      nickname: record.card?.nicknames?.[0]?.name || '',
-      kind: record.crm?.kind || 'human',
-      cardKind: record.card?.kind || '',
-      language: record.card?.language || '',
-    });
-    setEditingProfile(true);
-  };
-
-  const handleCancelEditProfile = () => {
-    setEditingProfile(false);
-    setProfileValues({
-      prefix: '',
-      firstname: '',
-      middle_name: '',
-      lastname: '',
-      suffix: '',
-      nickname: '',
-      kind: 'human',
-      cardKind: '',
-      language: '',
-    });
-  };
-
-  const handleSaveProfile = async () => {
-    if (!record || !profileValues.firstname.trim()) {
-      alert(t('contactDetail.firstNameRequired'));
-      return;
-    }
-
-    // Preserve the existing name's rich metadata (sortAs, phonetic system,
-    // separators) and each component's phonetic value so an imported contact
-    // never loses them on a UI edit-and-save (T29).
-    const existingName = record.card?.name;
-    const existingComps = existingName?.components || [];
-    const phoneticFor = (kind: string) => existingComps.find((c) => c.kind === kind)?.phonetic;
-
-    const nameComponents: NameComponent[] = [];
-    const push = (kind: NameComponent['kind'], value: string) => {
-      if (value.trim())
-        nameComponents.push({ kind, value: value.trim(), phonetic: phoneticFor(kind) });
-    };
-    push('title', profileValues.prefix);
-    push('given', profileValues.firstname);
-    push('given2', profileValues.middle_name);
-    push('surname', profileValues.lastname);
-    push('generation', profileValues.suffix);
-
-    try {
-      const updated = await updateContactRecord(id!, {
-        gender: record.gender,
-        card: {
-          ...record.card,
-          name: {
-            ...(existingName || {}),
-            components: nameComponents,
-          },
-          nicknames: profileValues.nickname.trim()
-            ? [{ name: profileValues.nickname.trim() }]
-            : undefined,
-          kind: profileValues.cardKind || undefined,
-          language: profileValues.language || undefined,
-        },
-        crm: {
-          ...record.crm,
-          kind: profileValues.kind,
-        },
-      });
-      setRecord(updated);
-      setEditingProfile(false);
-    } catch (err) {
-      console.error('Error updating profile:', err);
-      if (err instanceof ApiError) {
-        showError(err.getDisplayMessage());
-      } else {
-        showError(t('contactDetail.updateError'));
-      }
-    }
-  };
-
-  const handleDeleteContact = async () => {
-    if (!record || !id) return;
-
-    const confirmMessage = t('contactDetail.confirmDeleteContact', {
-      name: `${firstname} ${lastname}`,
-    });
-
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
-
-    try {
-      await deleteContact(id);
-      navigate('/contacts');
-    } catch (err) {
-      console.error('Error deleting contact:', err);
-      alert(t('contactDetail.deleteContactError'));
-    }
-  };
-
-  const handleArchiveContact = async () => {
-    if (!record || !id) return;
-
-    const confirmMessage = t('contactDetail.archiveConfirmation');
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
-
-    try {
-      const updatedContact = await archiveContact(id);
-      setRecord({ ...record, archived: updatedContact.archived });
-    } catch (err) {
-      console.error('Error archiving contact:', err);
-      if (err instanceof ApiError) {
-        showError(err.getDisplayMessage());
-      } else {
-        showError(t('contactDetail.updateError'));
-      }
-    }
-  };
-
-  const handleUnarchiveContact = async () => {
-    if (!record || !id) return;
-
-    try {
-      const updatedContact = await unarchiveContact(id);
-      setRecord({ ...record, archived: updatedContact.archived });
-    } catch (err) {
-      console.error('Error unarchiving contact:', err);
-      if (err instanceof ApiError) {
-        showError(err.getDisplayMessage());
-      } else {
-        showError(t('contactDetail.updateError'));
-      }
-    }
-  };
-
-  // Issue #173: favorite toggle in the header. Optimistic into state, with a
-  // rollback on failure so the star can never silently disagree with the
-  // database — unlike the archive handlers below, which predate this pattern
-  // and leave the optimistic flip in place on error.
-  const handleToggleFavorite = async () => {
-    if (!record || !id) return;
-
-    const wasFavorite = !!record.is_favorite;
-    setRecord((prev) => (prev ? { ...prev, is_favorite: !wasFavorite } : prev));
-    try {
-      const updatedContact = wasFavorite ? await unfavoriteContact(id) : await favoriteContact(id);
-      setRecord((prev) => (prev ? { ...prev, is_favorite: updatedContact.is_favorite } : prev));
-    } catch (err) {
-      console.error('Error toggling favorite:', err);
-      setRecord((prev) => (prev ? { ...prev, is_favorite: wasFavorite } : prev));
-      if (err instanceof ApiError) {
-        showError(err.getDisplayMessage());
-      } else {
-        showError(t('contactDetail.updateError'));
-      }
-    }
-  };
+  const {
+    handleDeleteContact,
+    handleArchiveContact,
+    handleUnarchiveContact,
+    handleToggleFavorite,
+    handleToggleMe,
+  } = useContactLifecycleActions({
+    id,
+    record,
+    setRecord,
+    displayName: `${firstname} ${lastname}`,
+    selfContactUid,
+    setSelfContactUid,
+    showError,
+    showSuccess,
+  });
 
   const handleStayInTouch = () => {
     if (!record) return;
-    const contactName = `${firstname}${lastname ? ` ${lastname}` : ''}`;
     setReminderInitialValues({
       message: t('contactDetail.catchUpWith', { name: contactName }),
       recurrence: 'quarterly',
     });
     setEditingReminder(null);
     setReminderDialogOpen(true);
-  };
-
-  // T90: set/clear the caller's "Me" pointer from the header's overflow menu.
-  // The PATCH commits the exact value this page computed, so reflect it
-  // immediately (no extra /users/me round-trip), then refresh the
-  // localStorage cache so the Settings picker and any other page agree
-  // without a reload. fetchAndCacheUserInfo swallows its own fetch errors and
-  // returns null, which is why the optimistic set happens first — a failed
-  // cache refresh must not roll the badge back to the pre-toggle state.
-  const handleToggleMe = async () => {
-    if (!record) return;
-    try {
-      const willBeMe = selfContactUid !== record.uid;
-      const newUid = willBeMe ? record.uid : null;
-      await updateSelfContact(newUid);
-      setSelfContactUid(newUid);
-      await fetchAndCacheUserInfo();
-      showSuccess(
-        willBeMe ? t('settings.selfContact.saveSuccess') : t('settings.selfContact.clearSuccess'),
-      );
-    } catch (err) {
-      console.error('Error updating self contact:', err);
-      showError(t('settings.selfContact.saveError'));
-    }
   };
 
   const handleUploadProfilePicture = async (croppedImageBlob: Blob) => {
@@ -1782,7 +922,7 @@ export default function ContactDetailPage() {
             // renders its pre-merge membership, which looks like the merge
             // dropped the circles.
             await Promise.all([refreshCircles(), refreshTags()]);
-            navigate(`/contacts/${keeperId}`);
+            await navigate(`/contacts/${keeperId}`);
           }}
           currentContactId={record.id}
           currentContactUid={record.uid}
@@ -1821,21 +961,14 @@ export default function ContactDetailPage() {
           card={record.card}
           crm={record.crm}
           gender={record.gender}
-          editingField={editingField}
-          editValue={editValue}
-          validationError={validationError}
-          onEditStart={handleEditStart}
-          onEditCancel={handleEditCancel}
-          onEditSave={handleEditSave}
-          onEditValueChange={(value) => {
-            setEditValue(
-              editingField === 'birthday' || editingField === 'anniversary'
-                ? autoFormatBirthdayInput(value, editValue)
-                : value,
-            );
-            setValidationError('');
-          }}
-          onUpdateCard={handleUpdateCard}
+          editingField={fieldEditing.editingField}
+          editValue={fieldEditing.editValue}
+          validationError={fieldEditing.validationError}
+          onEditStart={fieldEditing.handleEditStart}
+          onEditCancel={fieldEditing.handleEditCancel}
+          onEditSave={fieldEditing.handleEditSave}
+          onEditValueChange={fieldEditing.handleEditValueChange}
+          onUpdateCard={fieldEditing.handleUpdateCard}
           enabledFields={enabledFields}
           fieldDefinitions={fieldDefinitions}
           fieldValuesByDefinition={fieldValuesByDefinition}
@@ -1846,7 +979,7 @@ export default function ContactDetailPage() {
           actions={
             <Button
               startIcon={<AddIcon />}
-              onClick={handleAddPreference}
+              onClick={preferenceDialog.openCreate}
               variant="contained"
               color="primary"
               size="small"
@@ -1863,7 +996,7 @@ export default function ContactDetailPage() {
             preferences={preferences.filter(
               (p) => p.category !== PREFERENCE_CLOTHING_SIZE && !isGiftsTabCategory(p.category),
             )}
-            onEdit={handleEditPreference}
+            onEdit={preferenceDialog.openEdit}
             onDelete={handlePreferenceDelete}
           />
         </PanelCard>
@@ -1970,7 +1103,7 @@ export default function ContactDetailPage() {
           actions={
             <Button
               startIcon={<AddIcon />}
-              onClick={handleAddLifeEvent}
+              onClick={lifeEventDialog.openCreate}
               variant="contained"
               color="primary"
               size="small"
@@ -1985,7 +1118,7 @@ export default function ContactDetailPage() {
           <LifeEventList
             events={lifeEvents}
             contactsByUid={lifeEventsContactsByUid || new Map()}
-            onEdit={handleEditLifeEvent}
+            onEdit={lifeEventDialog.openEdit}
             onDelete={handleLifeEventDelete}
           />
         </PanelCard>
@@ -1993,9 +1126,9 @@ export default function ContactDetailPage() {
           <ConversationAgendaList
             items={agendaItems}
             onAdd={handleAddAgendaItem}
-            onEdit={handleEditAgendaItem}
-            onDiscuss={handleDiscussAgendaItem}
-            onDelete={handleDeleteAgendaItem}
+            onEdit={agendaEditDialog.openEdit}
+            onDiscuss={agendaDiscussDialog.openEdit}
+            onDelete={handleDeleteAgenda}
           />
         </PanelCard>
       </SectionGroup>
@@ -2012,8 +1145,8 @@ export default function ContactDetailPage() {
           <CadencePanel
             policy={cadencePolicy}
             loading={cadenceLoading}
-            onAdd={handleAddCadence}
-            onEdit={handleEditCadence}
+            onAdd={cadenceDialog.openCreate}
+            onEdit={cadenceDialog.openEdit}
             onDelete={handleCadenceDelete}
           />
         </PanelCard>
@@ -2058,7 +1191,7 @@ export default function ContactDetailPage() {
             sizes={preferences.filter((p) => p.category === PREFERENCE_CLOTHING_SIZE)}
             onAdd={handleAddClothingSize}
             onEdit={handleEditClothingSize}
-            onDelete={handleDeleteClothingSize}
+            onDelete={handleDeletePreference}
           />
           <Divider sx={{ my: 1.5 }} />
           <Box
@@ -2072,7 +1205,7 @@ export default function ContactDetailPage() {
             </Typography>
             <Button
               startIcon={<AddIcon />}
-              onClick={handleAddGiftPreference}
+              onClick={giftPreferenceDialog.openCreate}
               variant="outlined"
               size="small"
             >
@@ -2085,8 +1218,8 @@ export default function ContactDetailPage() {
               (see PREFERENCE_CATEGORY_CONFIG's GIFTS_TAB_SECTIONS). */}
           <PreferenceList
             preferences={preferences.filter((p) => isGiftsTabCategory(p.category))}
-            onEdit={handleEditGiftPreference}
-            onDelete={handleGiftPreferenceDelete}
+            onEdit={giftPreferenceDialog.openEdit}
+            onDelete={handlePreferenceDelete}
           />
           <Divider sx={{ my: 1.5 }} />
           <GiftList
@@ -2095,9 +1228,9 @@ export default function ContactDetailPage() {
             activities={activities}
             onAdd={handleAddGiftItem}
             onAddFull={handleAddFullGift}
-            onEdit={handleEditGift}
+            onEdit={giftDialog.openEdit}
             onMarkGiven={handleMarkGivenGift}
-            onDelete={handleDeleteGiftItem}
+            onDelete={handleDeleteGift}
           />
         </PanelCard>
       </SectionGroup>
@@ -2109,7 +1242,7 @@ export default function ContactDetailPage() {
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
             <Button
               startIcon={<AddIcon />}
-              onClick={handleAddOccasionObligation}
+              onClick={occasionDialog.openCreate}
               variant="outlined"
               size="small"
             >
@@ -2118,7 +1251,7 @@ export default function ContactDetailPage() {
           </Box>
           <OccasionObligationList
             obligations={occasionObligations}
-            onEdit={handleEditOccasionObligation}
+            onEdit={occasionDialog.openEdit}
             onDelete={handleDeleteOccasionObligation}
           />
         </PanelCard>
@@ -2131,22 +1264,22 @@ export default function ContactDetailPage() {
             contactUid={record?.uid || ''}
             identities={externalIdentities}
             loading={externalLinksLoading}
-            immichSummary={immichSummary}
-            immichSummaryLoading={immichSummaryLoading}
+            immichSummary={immich.summary}
+            immichSummaryLoading={immich.summaryLoading}
             onFetchImmichPeople={() => getImmichPeople()}
-            onLinkImmich={handleLinkImmich}
-            onUnlinkImmich={handleUnlinkImmich}
-            onSyncImmich={handleSyncImmich}
-            syncing={immichSyncing}
-            fileSystemsConfigured={fileSystemsConfigured}
+            onLinkImmich={immich.handleLink}
+            onUnlinkImmich={immich.handleUnlink}
+            onSyncImmich={immich.handleSync}
+            syncing={immich.syncing}
+            fileSystemsConfigured={fileLinks.configured}
             onFetchPaperlessDocuments={(query) => getPaperlessDocuments(query)}
-            onLinkPaperless={handleLinkPaperless}
+            onLinkPaperless={fileLinks.handleLinkPaperless}
             onFetchSeafileLibraries={() => getSeafileLibraries()}
             onFetchSeafileDir={(repoId, path) => getSeafileDir(repoId, path)}
-            onLinkSeafile={handleLinkSeafile}
+            onLinkSeafile={fileLinks.handleLinkSeafile}
             onFetchNextcloudDir={(path) => getNextcloudDir(path)}
-            onLinkNextcloud={handleLinkNextcloud}
-            onUnlinkFileSystem={handleUnlinkFileSystem}
+            onLinkNextcloud={fileLinks.handleLinkNextcloud}
+            onUnlinkFileSystem={fileLinks.handleUnlink}
           />
         </PanelCard>
       </SectionGroup>
@@ -2164,7 +1297,7 @@ export default function ContactDetailPage() {
         onClose={() => setNoteDialogOpen(false)}
         onSave={handleSaveNote}
         noteContactId={id ? parseInt(id, 10) : undefined}
-        noteContactName={`${firstname}${lastname ? ` ${lastname}` : ''}`}
+        noteContactName={contactName}
       />
 
       <AddActivityDialog
@@ -2193,16 +1326,16 @@ export default function ContactDetailPage() {
           onClose={handleCancelEditTimelineItem}
           onSave={() => {
             if (editingTimelineItem.type === 'note') {
-              handleUpdateNote(editingTimelineItem.id);
+              void handleUpdateNote(editingTimelineItem.id);
             } else {
-              handleUpdateActivity(editingTimelineItem.id);
+              void handleUpdateActivity(editingTimelineItem.id);
             }
           }}
           onDelete={() => {
             if (editingTimelineItem.type === 'note') {
-              handleDeleteNote(editingTimelineItem.id);
+              void handleDeleteNote(editingTimelineItem.id);
             } else {
-              handleDeleteActivity(editingTimelineItem.id);
+              void handleDeleteActivity(editingTimelineItem.id);
             }
           }}
           type={editingTimelineItem.type}
@@ -2217,12 +1350,12 @@ export default function ContactDetailPage() {
         onClose={() => setProfilePictureDialogOpen(false)}
         onUpload={handleUploadProfilePicture}
         immich={
-          immichConfigured && record?.uid
+          immich.configured && record?.uid
             ? {
                 contactUid: record.uid,
                 isLinked: externalIdentities.some((i) => i.system === 'immich'),
                 onFetchPeople: () => getImmichPeople(),
-                onLinkPerson: handleLinkImmich,
+                onLinkPerson: immich.handleLink,
               }
             : undefined
         }
@@ -2250,88 +1383,64 @@ export default function ContactDetailPage() {
       />
 
       <LifeEventDialog
-        open={lifeEventDialogOpen}
-        onClose={() => {
-          setLifeEventDialogOpen(false);
-          setEditingLifeEvent(null);
-        }}
+        open={lifeEventDialog.open}
+        onClose={lifeEventDialog.close}
         onSave={handleSaveLifeEvent}
         initial={lifeEventDialogInitial}
         excludeContactUid={record?.uid}
       />
 
       <PreferenceDialog
-        open={preferenceDialogOpen}
-        onClose={() => {
-          setPreferenceDialogOpen(false);
-          setEditingPreference(null);
-        }}
+        open={preferenceDialog.open}
+        onClose={preferenceDialog.close}
         onSave={handleSavePreferenceSubmit}
-        preference={editingPreference}
+        preference={preferenceDialog.editing}
         sections={OVERVIEW_TAB_SECTIONS}
       />
 
       <PreferenceDialog
-        open={giftPreferenceDialogOpen}
-        onClose={() => {
-          setGiftPreferenceDialogOpen(false);
-          setEditingGiftPreference(null);
-        }}
+        open={giftPreferenceDialog.open}
+        onClose={giftPreferenceDialog.close}
         onSave={handleSaveGiftPreferenceSubmit}
-        preference={editingGiftPreference}
+        preference={giftPreferenceDialog.editing}
         sections={GIFTS_TAB_SECTIONS}
       />
 
       <OccasionObligationDialog
-        open={occasionObligationDialogOpen}
-        onClose={() => {
-          setOccasionObligationDialogOpen(false);
-          setEditingOccasionObligation(null);
-        }}
+        open={occasionDialog.open}
+        onClose={occasionDialog.close}
         onSave={handleSaveOccasionObligationSubmit}
-        obligation={editingOccasionObligation}
+        obligation={occasionDialog.editing}
       />
 
       <CadenceDialog
-        open={cadenceDialogOpen}
-        onClose={() => {
-          setCadenceDialogOpen(false);
-          setEditingCadence(null);
-        }}
+        open={cadenceDialog.open}
+        onClose={cadenceDialog.close}
         onSave={handleSaveCadenceSubmit}
         entityId={record?.uid || ''}
-        policy={editingCadence}
+        policy={cadenceDialog.editing}
       />
 
       <ConversationAgendaDialog
-        open={agendaEditDialogOpen}
-        onClose={() => {
-          setAgendaEditDialogOpen(false);
-          setEditingAgendaItem(null);
-        }}
+        open={agendaEditDialog.open}
+        onClose={agendaEditDialog.close}
         onSave={handleSaveAgendaItem}
-        item={editingAgendaItem}
+        item={agendaEditDialog.editing}
       />
 
       <MarkDiscussedDialog
-        open={agendaDiscussDialogOpen}
-        onClose={() => {
-          setAgendaDiscussDialogOpen(false);
-          setDiscussingAgendaItem(null);
-        }}
+        open={agendaDiscussDialog.open}
+        onClose={agendaDiscussDialog.close}
         onConfirm={handleConfirmDiscussAgendaItem}
-        item={discussingAgendaItem}
+        item={agendaDiscussDialog.editing}
         activities={activities}
       />
 
       <GiftDialog
-        open={giftDialogOpen}
-        onClose={() => {
-          setGiftDialogOpen(false);
-          setEditingGift(null);
-        }}
+        open={giftDialog.open}
+        onClose={giftDialog.close}
         onSave={handleSaveGift}
-        gift={editingGift}
+        gift={giftDialog.editing}
         initialStatus={giftDialogInitialStatus}
         lifeEvents={lifeEvents}
         activities={activities}
