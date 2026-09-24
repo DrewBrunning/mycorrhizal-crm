@@ -16,7 +16,7 @@ import (
 )
 
 func TestCreateReminder(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -58,7 +58,7 @@ func TestCreateReminder(t *testing.T) {
 }
 
 func TestGetReminder(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -98,7 +98,7 @@ func TestGetReminder(t *testing.T) {
 }
 
 func TestUpdateReminder(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -154,7 +154,7 @@ func TestUpdateReminder(t *testing.T) {
 }
 
 func TestDeleteReminder(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -201,7 +201,7 @@ func TestDeleteReminder(t *testing.T) {
 }
 
 func TestGetRemindersForContact(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -253,7 +253,7 @@ func TestGetRemindersForContact(t *testing.T) {
 }
 
 func TestGetAllReminders(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -307,7 +307,7 @@ func TestGetAllReminders(t *testing.T) {
 }
 
 func TestGetUpcomingReminders_ReturnsAtLeastFiveWhenFewDueSoon(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -366,7 +366,7 @@ func TestGetUpcomingReminders_ReturnsAtLeastFiveWhenFewDueSoon(t *testing.T) {
 }
 
 func TestGetUpcomingReminders_ReturnsAllWhenManyDueSoon(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -416,7 +416,7 @@ func TestGetUpcomingReminders_ReturnsAllWhenManyDueSoon(t *testing.T) {
 }
 
 func TestCompleteReminder_OnceDeletesAndRecordsCompletion(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -463,7 +463,7 @@ func TestCompleteReminder_OnceDeletesAndRecordsCompletion(t *testing.T) {
 }
 
 func TestCompleteReminder_RecurringReschedulesAndKeepsRecord(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -511,7 +511,7 @@ func TestCompleteReminder_RecurringReschedulesAndKeepsRecord(t *testing.T) {
 }
 
 func TestCompleteReminder_SkipDoesNotCreateCompletionRecord(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -552,7 +552,7 @@ func TestCompleteReminder_SkipDoesNotCreateCompletionRecord(t *testing.T) {
 func boolPtr(b bool) *bool { return &b }
 
 func TestDeleteReminder_ClearsNotificationDeliveries(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/reminders/:id", DeleteReminder)
 
 	var user models.User
@@ -593,7 +593,7 @@ func TestDeleteReminder_ClearsNotificationDeliveries(t *testing.T) {
 // occurrence's delivery rows must be cleared, or no channel would ever notify
 // for the next occurrence (mirroring the existing email_sent=false reset).
 func TestCompleteReminder_RescheduleClearsNotificationDeliveries(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PATCH("/reminders/:id/complete", CompleteReminder)
 
 	var user models.User
@@ -636,7 +636,7 @@ func TestCompleteReminder_RescheduleClearsNotificationDeliveries(t *testing.T) {
 }
 
 func TestGetCompletionsForContact(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -682,7 +682,7 @@ func TestGetCompletionsForContact(t *testing.T) {
 // established cross-user contact-ownership pattern used elsewhere in this
 // package (see life_event_controller_test.go, tag_controller_test.go).
 func TestGetCompletionsForContactRejectsContactFromAnotherUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/completions", GetCompletionsForContact)
 
 	otherUser := models.User{Username: "other", Password: "x", Email: "other@example.com"}
@@ -698,7 +698,7 @@ func TestGetCompletionsForContactRejectsContactFromAnotherUser(t *testing.T) {
 }
 
 func TestDeleteCompletion(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -734,7 +734,7 @@ func TestDeleteCompletion(t *testing.T) {
 // check called out explicitly for this work package: a user must not be able to
 // delete another user's reminder completion record by guessing/enumerating its ID.
 func TestDeleteCompletionRejectsCompletionFromAnotherUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/completions/:id", DeleteCompletion)
 
 	otherUser := models.User{Username: "other", Password: "x", Email: "other@example.com"}

@@ -34,7 +34,7 @@ func activityRouterNoUser(db *gorm.DB) *gin.Engine {
 }
 
 func TestActivityHandlers_Unauthenticated(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	router := activityRouterNoUser(db)
 	router.POST("/activities", withValidated(func() any { return &models.ActivityInput{} }), CreateActivity)
 	router.GET("/activities/:id", GetActivity)
@@ -67,7 +67,7 @@ func TestActivityHandlers_Unauthenticated(t *testing.T) {
 }
 
 func TestCreateActivity_ValidationError(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/activities", middleware.ValidateJSONMiddleware(&models.ActivityInput{}), CreateActivity)
 
 	// Missing required title/date fails validation.
@@ -79,7 +79,7 @@ func TestCreateActivity_ValidationError(t *testing.T) {
 }
 
 func TestCreateActivity_MissingContactIsNotFound(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/activities", withValidated(func() any { return &models.ActivityInput{} }), CreateActivity)
 
 	// A ContactIDs list naming a contact that does not exist (or belongs to
@@ -96,7 +96,7 @@ func TestCreateActivity_MissingContactIsNotFound(t *testing.T) {
 }
 
 func TestCreateActivity_DatabaseError(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	sqlDB, err := db.DB()
 	require.NoError(t, err)
 	require.NoError(t, sqlDB.Close())
@@ -113,7 +113,7 @@ func TestCreateActivity_DatabaseError(t *testing.T) {
 }
 
 func TestGetActivity_NotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/activities/:id", GetActivity)
 	req, _ := http.NewRequest(http.MethodGet, "/activities/999999", nil)
 	w := httptest.NewRecorder()
@@ -122,7 +122,7 @@ func TestGetActivity_NotFound(t *testing.T) {
 }
 
 func TestGetActivity_InvalidID(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/activities/:id", GetActivity)
 	req, _ := http.NewRequest(http.MethodGet, "/activities/not-a-number", nil)
 	w := httptest.NewRecorder()
@@ -131,7 +131,7 @@ func TestGetActivity_InvalidID(t *testing.T) {
 }
 
 func TestGetActivities_InvalidCursor(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/activities", GetActivities)
 	req, _ := http.NewRequest(http.MethodGet, "/activities?cursor=not-base64url", nil)
 	w := httptest.NewRecorder()
@@ -140,7 +140,7 @@ func TestGetActivities_InvalidCursor(t *testing.T) {
 }
 
 func TestGetActivities_FeedCursorOlderThanRetention(t *testing.T) {
-	db, _ := setupRouterWithRetention(30)
+	db, _ := setupRouterWithRetention(t, 30)
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
 		c.Set("db", db)
@@ -162,7 +162,7 @@ func TestGetActivities_FeedCursorOlderThanRetention(t *testing.T) {
 // (deleted:true) and issues a next_cursor when more than one page of changes
 // exists.
 func TestGetActivities_SinceFeedIncludesTombstones(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	var user models.User
 	db.First(&user)
 
@@ -211,7 +211,7 @@ func TestGetActivities_SinceFeedIncludesTombstones(t *testing.T) {
 }
 
 func TestGetActivities_IncludeContacts(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	contact := models.Contact{UserID: user.ID, Firstname: "Ada"}
@@ -237,7 +237,7 @@ func TestGetActivities_IncludeContacts(t *testing.T) {
 }
 
 func TestGetActivities_NextCursorOnFullPage(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	for i := 0; i < 3; i++ {
@@ -262,7 +262,7 @@ func TestGetActivities_NextCursorOnFullPage(t *testing.T) {
 }
 
 func TestUpdateActivity_NotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.PUT("/activities/:id", withValidated(func() any { return &models.ActivityInput{} }), UpdateActivity)
 	req, _ := http.NewRequest(http.MethodPut, "/activities/999999", bytes.NewBufferString(`{"title":"x","date":"2026-01-02T00:00:00Z"}`))
 	req.Header.Set("Content-Type", "application/json")
@@ -272,7 +272,7 @@ func TestUpdateActivity_NotFound(t *testing.T) {
 }
 
 func TestUpdateActivity_MissingContactIsNotFound(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	activity := models.Activity{UserID: user.ID, Title: "Old", Date: time.Now()}
@@ -291,7 +291,7 @@ func TestUpdateActivity_MissingContactIsNotFound(t *testing.T) {
 }
 
 func TestDeleteActivity_NotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.DELETE("/activities/:id", DeleteActivity)
 	req, _ := http.NewRequest(http.MethodDelete, "/activities/999999", nil)
 	w := httptest.NewRecorder()
@@ -300,7 +300,7 @@ func TestDeleteActivity_NotFound(t *testing.T) {
 }
 
 func TestGetActivitiesForContact_MalformedCursor(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	contact := models.Contact{UserID: user.ID, Firstname: "Ada"}

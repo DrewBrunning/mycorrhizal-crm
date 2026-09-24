@@ -24,7 +24,7 @@ import (
 
 func bulkTestRouter(t *testing.T) (*gorm.DB, *gin.Engine) {
 	t.Helper()
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	// The production route uses ValidateJSONMiddleware (not withValidated), so
 	// the tests exercise the same validation (oneof action, uuid4 uids, etc.).
 	router.POST("/contacts/bulk", middleware.ValidateJSONMiddleware(&models.BulkContactOperationInput{}), BulkContactOperation)

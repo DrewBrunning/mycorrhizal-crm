@@ -15,7 +15,7 @@ import (
 )
 
 func TestGetContactScore_ReturnsFullBreakdown(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/score", GetContactScore)
 
 	var user models.User
@@ -46,7 +46,7 @@ func TestGetContactScore_ReturnsFullBreakdown(t *testing.T) {
 }
 
 func TestGetContactScore_NotFound(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/score", GetContactScore)
 
 	var user models.User
@@ -60,7 +60,7 @@ func TestGetContactScore_NotFound(t *testing.T) {
 }
 
 func TestGetContactScore_ScopedToOwner(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/score", GetContactScore)
 
 	otherUser := models.User{Username: "other-score", Password: "x", Email: "other-score@example.com"}
@@ -82,7 +82,7 @@ func TestGetContactScore_ScopedToOwner(t *testing.T) {
 // archived contact, matching GetContactBriefing's own no-archived-filter
 // behavior.
 func TestGetContactScore_ArchivedContactStillScored(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/score", GetContactScore)
 
 	var user models.User
@@ -129,7 +129,7 @@ func TestGetContactScore_Unauthorized(t *testing.T) {
 // non-ErrRecordNotFound error, exercising the 500 branch distinct from the
 // 404 branch TestGetContactScore_NotFound already covers.
 func TestGetContactScore_DatabaseError(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/score", GetContactScore)
 
 	var user models.User

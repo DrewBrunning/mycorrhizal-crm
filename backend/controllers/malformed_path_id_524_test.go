@@ -23,7 +23,7 @@ import (
 // Hand-verified: reverting a handler's requirePathUintID call back to a bare
 // `id := c.Param("id")` turns its subtest's 400 into a 500 here.
 func TestMalformedPathID_Returns400NotServerError(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.GET("/contacts/:id", GetContact)
 	router.PUT("/contacts/:id", withValidated(func() any { return &models.ContactRecordInput{} }), UpdateContact)

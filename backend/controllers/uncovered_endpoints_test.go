@@ -21,7 +21,7 @@ import (
 // --- ArchiveContact / UnarchiveContact ---------------------------------------
 
 func TestArchiveContact_SetsFlagAndRetiresReminders(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts/:id/archive", ArchiveContact)
 
 	var user models.User
@@ -50,7 +50,7 @@ func TestArchiveContact_SetsFlagAndRetiresReminders(t *testing.T) {
 }
 
 func TestUnarchiveContact_ClearsFlag(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts/:id/unarchive", UnarchiveContact)
 
 	var user models.User
@@ -70,7 +70,7 @@ func TestUnarchiveContact_ClearsFlag(t *testing.T) {
 }
 
 func TestArchiveContact_ScopedToOwner(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts/:id/archive", ArchiveContact)
 
 	other := models.User{Username: "other-archive", Email: "other-archive@example.com", Password: "x"}
@@ -89,7 +89,7 @@ func TestArchiveContact_ScopedToOwner(t *testing.T) {
 }
 
 func TestUnarchiveContact_ScopedToOwner(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts/:id/unarchive", UnarchiveContact)
 
 	other := models.User{Username: "other-unarchive", Email: "other-unarchive@example.com", Password: "x"}
@@ -109,7 +109,7 @@ func TestUnarchiveContact_ScopedToOwner(t *testing.T) {
 // authenticated (non-admin) user can call that returns other users. It must
 // expose id + username ONLY — never email, password hash, or admin status.
 func TestListUserDirectory_ReturnsOtherUsersWithoutSensitiveFields(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/users/directory", ListUserDirectory)
 
 	var me models.User
@@ -147,7 +147,7 @@ func TestListUserDirectory_ReturnsOtherUsersWithoutSensitiveFields(t *testing.T)
 }
 
 func TestListUserDirectory_ExcludesOnlyTheCaller(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/users/directory", ListUserDirectory)
 
 	var me models.User
@@ -168,7 +168,7 @@ func TestListUserDirectory_ExcludesOnlyTheCaller(t *testing.T) {
 // --- UpdateHouseholdMember ----------------------------------------------------
 
 func TestUpdateHouseholdMember_ChangesRole(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PATCH("/households/:id/members/:vcard_uid", UpdateHouseholdMember)
 
 	var user models.User
@@ -197,7 +197,7 @@ func TestUpdateHouseholdMember_ChangesRole(t *testing.T) {
 }
 
 func TestUpdateHouseholdMember_UnknownMemberIs404(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PATCH("/households/:id/members/:vcard_uid", UpdateHouseholdMember)
 
 	var user models.User
@@ -215,7 +215,7 @@ func TestUpdateHouseholdMember_UnknownMemberIs404(t *testing.T) {
 }
 
 func TestUpdateHouseholdMember_ScopedToOwner(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PATCH("/households/:id/members/:vcard_uid", UpdateHouseholdMember)
 
 	other := models.User{Username: "other-household", Email: "other-household@example.com", Password: "x"}
@@ -245,7 +245,7 @@ func TestUpdateHouseholdMember_ScopedToOwner(t *testing.T) {
 // --- GetExternalActivity ------------------------------------------------------
 
 func TestGetExternalActivity_ReturnsOwnedActivity(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/external-activities/:id", GetExternalActivity)
 
 	var user models.User
@@ -271,7 +271,7 @@ func TestGetExternalActivity_ReturnsOwnedActivity(t *testing.T) {
 }
 
 func TestGetExternalActivity_ScopedToOwner(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/external-activities/:id", GetExternalActivity)
 
 	other := models.User{Username: "other-extact", Email: "other-extact@example.com", Password: "x"}
@@ -291,7 +291,7 @@ func TestGetExternalActivity_ScopedToOwner(t *testing.T) {
 }
 
 func TestGetExternalActivity_UnknownIDIs404(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/external-activities/:id", GetExternalActivity)
 
 	req, _ := http.NewRequest("GET", "/external-activities/does-not-exist", nil)
@@ -303,7 +303,7 @@ func TestGetExternalActivity_UnknownIDIs404(t *testing.T) {
 // --- Dashboard endpoints ------------------------------------------------------
 
 func TestGetContactsRandom_ExcludesArchivedAndOtherUsers(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/random", GetContactsRandom)
 
 	var user models.User
@@ -327,7 +327,7 @@ func TestGetContactsRandom_ExcludesArchivedAndOtherUsers(t *testing.T) {
 }
 
 func TestGetUpcomingBirthdays_ScopedToOwner(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/birthdays", GetUpcomingBirthdays)
 
 	var user models.User

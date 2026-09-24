@@ -44,7 +44,7 @@ func registerHouseholdRoutes(t *testing.T, router *gin.Engine) {
 }
 
 func TestCreateHousehold(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	payload := models.HouseholdInput{Name: "Smith Family", Type: models.HouseholdTypeFamilyUnit}
@@ -63,7 +63,7 @@ func TestCreateHousehold(t *testing.T) {
 }
 
 func TestCreateHouseholdRejectsInvalidType(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	// Use the real validation middleware (not withValidated) so the `oneof`
 	// tag on HouseholdInput.Type is actually enforced.
 	router.POST("/households", middleware.ValidateJSONMiddleware(&models.HouseholdInput{}), CreateHousehold)
@@ -80,7 +80,7 @@ func TestCreateHouseholdRejectsInvalidType(t *testing.T) {
 }
 
 func TestGetHouseholdIncludesMembers(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User
@@ -103,7 +103,7 @@ func TestGetHouseholdIncludesMembers(t *testing.T) {
 }
 
 func TestGetHouseholdNotFoundForUnknownID(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	req, _ := http.NewRequest("GET", "/households/does-not-exist", nil)
@@ -114,7 +114,7 @@ func TestGetHouseholdNotFoundForUnknownID(t *testing.T) {
 }
 
 func TestGetHouseholdRejectsAnotherUsersHousehold(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User
@@ -132,7 +132,7 @@ func TestGetHouseholdRejectsAnotherUsersHousehold(t *testing.T) {
 }
 
 func TestListHouseholds(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User
@@ -153,7 +153,7 @@ func TestListHouseholds(t *testing.T) {
 }
 
 func TestUpdateHousehold(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User
@@ -177,7 +177,7 @@ func TestUpdateHousehold(t *testing.T) {
 }
 
 func TestDeleteHouseholdCascadesMembers(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User
@@ -205,7 +205,7 @@ func TestDeleteHouseholdCascadesMembers(t *testing.T) {
 }
 
 func TestAddHouseholdMember(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User
@@ -230,7 +230,7 @@ func TestAddHouseholdMember(t *testing.T) {
 }
 
 func TestAddHouseholdMemberRejectsDuplicate(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User
@@ -252,7 +252,7 @@ func TestAddHouseholdMemberRejectsDuplicate(t *testing.T) {
 }
 
 func TestAddHouseholdMemberRejectsContactFromAnotherUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User
@@ -275,7 +275,7 @@ func TestAddHouseholdMemberRejectsContactFromAnotherUser(t *testing.T) {
 }
 
 func TestAddHouseholdMemberRejectsAnotherUsersHousehold(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User
@@ -298,7 +298,7 @@ func TestAddHouseholdMemberRejectsAnotherUsersHousehold(t *testing.T) {
 }
 
 func TestRemoveHouseholdMember(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User
@@ -321,7 +321,7 @@ func TestRemoveHouseholdMember(t *testing.T) {
 }
 
 func TestRemoveHouseholdMemberNotFound(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User
@@ -341,7 +341,7 @@ func TestRemoveHouseholdMemberNotFound(t *testing.T) {
 // trigger, assert the expected suggested edges exist (spouse_of + owned_by),
 // re-run, assert nothing duplicated.
 func TestSuggestHouseholdRelationships(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User
@@ -397,7 +397,7 @@ func TestSuggestHouseholdRelationships(t *testing.T) {
 
 // The suggestion trigger must refuse to run against another user's household.
 func TestSuggestHouseholdRelationshipsRejectsAnotherUsersHousehold(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User
@@ -416,7 +416,7 @@ func TestSuggestHouseholdRelationshipsRejectsAnotherUsersHousehold(t *testing.T)
 
 // T1: UpdateHousehold returns 404 for unknown ID.
 func TestUpdateHouseholdNotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	payload := models.HouseholdInput{Name: "Test", Type: models.HouseholdTypeFamilyUnit}
@@ -431,7 +431,7 @@ func TestUpdateHouseholdNotFound(t *testing.T) {
 
 // T2: UpdateHousehold returns 404 for another user's household.
 func TestUpdateHouseholdCrossUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User
@@ -453,7 +453,7 @@ func TestUpdateHouseholdCrossUser(t *testing.T) {
 
 // T3: DeleteHousehold returns 404 for unknown ID.
 func TestDeleteHouseholdNotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	req, _ := http.NewRequest("DELETE", "/households/nonexistent-id", nil)
@@ -465,7 +465,7 @@ func TestDeleteHouseholdNotFound(t *testing.T) {
 
 // T4: DeleteHousehold returns 404 for another user's household.
 func TestDeleteHouseholdCrossUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User
@@ -484,7 +484,7 @@ func TestDeleteHouseholdCrossUser(t *testing.T) {
 
 // T5: AddHouseholdMember returns 404 for nonexistent contact vcard_uid.
 func TestAddHouseholdMemberNonexistentContact(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User
@@ -504,7 +504,7 @@ func TestAddHouseholdMemberNonexistentContact(t *testing.T) {
 
 // T6: RemoveHouseholdMember returns 404 for another user's household.
 func TestRemoveHouseholdMemberCrossUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User
@@ -523,7 +523,7 @@ func TestRemoveHouseholdMemberCrossUser(t *testing.T) {
 
 // T7: SuggestHouseholdRelationships with 0 or 1 member returns 200 with 0 edges.
 func TestSuggestHouseholdRelationshipsOneMember(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerHouseholdRoutes(t, router)
 
 	var user models.User

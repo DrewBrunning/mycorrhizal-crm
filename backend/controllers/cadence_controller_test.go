@@ -28,7 +28,7 @@ func doCadenceJSON(t *testing.T, router http.Handler, method, path string, body 
 }
 
 func TestCreateCadencePolicy(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/cadence-policies", withValidated(func() any { return &models.CadencePolicyInput{} }), CreateCadencePolicy)
 
 	var user models.User
@@ -54,7 +54,7 @@ func TestCreateCadencePolicy(t *testing.T) {
 }
 
 func TestCreateCadencePolicyRejectsDuplicate(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/cadence-policies", withValidated(func() any { return &models.CadencePolicyInput{} }), CreateCadencePolicy)
 
 	var user models.User
@@ -70,7 +70,7 @@ func TestCreateCadencePolicyRejectsDuplicate(t *testing.T) {
 }
 
 func TestCreateCadencePolicyRejectsForeignContact(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/cadence-policies", withValidated(func() any { return &models.CadencePolicyInput{} }), CreateCadencePolicy)
 
 	var user models.User
@@ -87,7 +87,7 @@ func TestCreateCadencePolicyRejectsForeignContact(t *testing.T) {
 }
 
 func TestGetCadencePolicyNotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/cadence-policies/:id", GetCadencePolicy)
 
 	w := doCadenceJSON(t, router, "GET", "/cadence-policies/does-not-exist", nil)
@@ -95,7 +95,7 @@ func TestGetCadencePolicyNotFound(t *testing.T) {
 }
 
 func TestGetCadencePolicyHappyPath(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/cadence-policies/:id", GetCadencePolicy)
 
 	var user models.User
@@ -119,7 +119,7 @@ func TestGetCadencePolicyHappyPath(t *testing.T) {
 }
 
 func TestGetCadencePolicyScopedToOwner(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/cadence-policies/:id", GetCadencePolicy)
 
 	var user models.User
@@ -136,7 +136,7 @@ func TestGetCadencePolicyScopedToOwner(t *testing.T) {
 }
 
 func TestListCadencePoliciesByEntity(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/cadence-policies", ListCadencePolicies)
 
 	var user models.User
@@ -162,7 +162,7 @@ func TestListCadencePoliciesByEntity(t *testing.T) {
 }
 
 func TestListCadencePoliciesUnfiltered(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/cadence-policies", ListCadencePolicies)
 
 	var user models.User
@@ -190,7 +190,7 @@ func TestListCadencePoliciesUnfiltered(t *testing.T) {
 }
 
 func TestListCadencePoliciesScopedToUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/cadence-policies", ListCadencePolicies)
 
 	var user models.User
@@ -212,7 +212,7 @@ func TestListCadencePoliciesScopedToUser(t *testing.T) {
 }
 
 func TestUpdateCadencePolicy(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/cadence-policies/:id", withValidated(func() any { return &models.CadencePolicyInput{} }), UpdateCadencePolicy)
 
 	var user models.User
@@ -234,7 +234,7 @@ func TestUpdateCadencePolicy(t *testing.T) {
 }
 
 func TestUpdateCadencePolicyScopedToOwner(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/cadence-policies/:id", withValidated(func() any { return &models.CadencePolicyInput{} }), UpdateCadencePolicy)
 
 	var user models.User
@@ -253,7 +253,7 @@ func TestUpdateCadencePolicyScopedToOwner(t *testing.T) {
 }
 
 func TestUpdateCadencePolicyRejectsEntityChangeToExisting(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/cadence-policies/:id", withValidated(func() any { return &models.CadencePolicyInput{} }), UpdateCadencePolicy)
 
 	var user models.User
@@ -276,7 +276,7 @@ func TestUpdateCadencePolicyRejectsEntityChangeToExisting(t *testing.T) {
 }
 
 func TestDeleteCadencePolicySoftDeletesAndAllowsRecreate(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/cadence-policies/:id", DeleteCadencePolicy)
 	router.POST("/cadence-policies", withValidated(func() any { return &models.CadencePolicyInput{} }), CreateCadencePolicy)
 
@@ -307,7 +307,7 @@ func TestDeleteCadencePolicySoftDeletesAndAllowsRecreate(t *testing.T) {
 }
 
 func TestGetOverdueCadences(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/cadence-policies/overdue", GetOverdueCadences)
 
 	var user models.User
@@ -352,7 +352,7 @@ func TestGetOverdueCadences(t *testing.T) {
 }
 
 func TestGetOverdueCadencesEmptyIsNullSafe(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/cadence-policies/overdue", GetOverdueCadences)
 
 	w := doCadenceJSON(t, router, "GET", "/cadence-policies/overdue", nil)
@@ -366,7 +366,7 @@ func TestGetOverdueCadencesEmptyIsNullSafe(t *testing.T) {
 // the AfterDelete hook has bumped it forward. Without the hook the tombstone
 // sits at the old position and any cursor >= that position misses it forever.
 func TestListCadencePoliciesSinceFeedTombstoneAtOriginalPosition(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	router.GET("/cadence-policies", ListCadencePolicies)
 	router.DELETE("/cadence-policies/:id", DeleteCadencePolicy)
 
@@ -402,7 +402,7 @@ func TestListCadencePoliciesSinceFeedTombstoneAtOriginalPosition(t *testing.T) {
 // retention window the setupRouter default would 410 every cursor, so this
 // uses setupRouterWithRetention like the other feed tests.
 func TestListCadencePoliciesSinceFeed(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	router.GET("/cadence-policies", ListCadencePolicies)
 	router.DELETE("/cadence-policies/:id", DeleteCadencePolicy)
 

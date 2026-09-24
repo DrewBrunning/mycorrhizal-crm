@@ -36,7 +36,7 @@ func findGraphEdge(edges []models.GraphEdge, id string) *models.GraphEdge {
 }
 
 func TestGetGraph_EmptyData(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/graph", GetGraph)
 
 	req, _ := http.NewRequest("GET", "/graph", nil)
@@ -55,7 +55,7 @@ func TestGetGraph_EmptyData(t *testing.T) {
 }
 
 func TestGetGraph_ContactsRelationshipsAndActivities(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/graph", GetGraph)
 
 	var user models.User
@@ -166,7 +166,7 @@ func TestGetGraph_ContactsRelationshipsAndActivities(t *testing.T) {
 // user review) must never appear in the graph -- only "confirmed" edges are
 // graphed, per RelationshipEdge.Status's own doc comment.
 func TestGetGraph_ExcludesSuggestedRelationshipEdges(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/graph", GetGraph)
 
 	var user models.User
@@ -202,7 +202,7 @@ func TestGetGraph_ExcludesSuggestedRelationshipEdges(t *testing.T) {
 }
 
 func TestGetGraph_BlankNameFallsBackToUnknown(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/graph", GetGraph)
 
 	var user models.User
@@ -224,7 +224,7 @@ func TestGetGraph_BlankNameFallsBackToUnknown(t *testing.T) {
 }
 
 func TestGetGraph_OnlyReturnsCallingUsersData(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/graph", GetGraph)
 
 	// A contact belonging to a different user must never appear.
@@ -309,7 +309,7 @@ func TestGetGraph_ScoringFailureDegradesGracefully(t *testing.T) {
 // node, so the frontend can render it with a dedicated neutral color instead
 // of a health-band one; a living contact must not carry the flag.
 func TestGetGraph_MarksDeceasedContactNode(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/graph", GetGraph)
 
 	var user models.User

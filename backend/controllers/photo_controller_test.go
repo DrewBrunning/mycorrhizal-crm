@@ -251,7 +251,7 @@ func TestSaveImage_ErrorsWhenParentDirMissing(t *testing.T) {
 
 func TestGetProfilePicture_InvalidContactID(t *testing.T) {
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/contacts/:id/photo", func(c *gin.Context) { GetProfilePicture(c, cfg) })
 
 	req, _ := http.NewRequest("GET", "/contacts/not-a-number/photo", nil)
@@ -263,7 +263,7 @@ func TestGetProfilePicture_InvalidContactID(t *testing.T) {
 
 func TestGetProfilePicture_ContactNotFound(t *testing.T) {
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/contacts/:id/photo", func(c *gin.Context) { GetProfilePicture(c, cfg) })
 
 	req, _ := http.NewRequest("GET", "/contacts/999/photo", nil)
@@ -275,7 +275,7 @@ func TestGetProfilePicture_ContactNotFound(t *testing.T) {
 
 func TestGetProfilePicture_ThumbnailNotSet(t *testing.T) {
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/photo", func(c *gin.Context) { GetProfilePicture(c, cfg) })
 
 	var user models.User
@@ -292,7 +292,7 @@ func TestGetProfilePicture_ThumbnailNotSet(t *testing.T) {
 
 func TestGetProfilePicture_LegacyFileBasedThumbnailUnsupported(t *testing.T) {
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/photo", func(c *gin.Context) { GetProfilePicture(c, cfg) })
 
 	var user models.User
@@ -309,7 +309,7 @@ func TestGetProfilePicture_LegacyFileBasedThumbnailUnsupported(t *testing.T) {
 
 func TestGetProfilePicture_MalformedThumbnailDataURL(t *testing.T) {
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/photo", func(c *gin.Context) { GetProfilePicture(c, cfg) })
 
 	var user models.User
@@ -327,7 +327,7 @@ func TestGetProfilePicture_MalformedThumbnailDataURL(t *testing.T) {
 
 func TestGetProfilePicture_InvalidBase64Thumbnail(t *testing.T) {
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/photo", func(c *gin.Context) { GetProfilePicture(c, cfg) })
 
 	var user models.User
@@ -344,7 +344,7 @@ func TestGetProfilePicture_InvalidBase64Thumbnail(t *testing.T) {
 
 func TestGetProfilePicture_ValidThumbnail(t *testing.T) {
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/photo", func(c *gin.Context) { GetProfilePicture(c, cfg) })
 
 	var user models.User
@@ -365,7 +365,7 @@ func TestGetProfilePicture_ValidThumbnail(t *testing.T) {
 
 func TestGetProfilePicture_NoPhotoSet(t *testing.T) {
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/photo", func(c *gin.Context) { GetProfilePicture(c, cfg) })
 
 	var user models.User
@@ -382,7 +382,7 @@ func TestGetProfilePicture_NoPhotoSet(t *testing.T) {
 
 func TestGetProfilePicture_PathTraversalRejected(t *testing.T) {
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/photo", func(c *gin.Context) { GetProfilePicture(c, cfg) })
 
 	var user models.User
@@ -399,7 +399,7 @@ func TestGetProfilePicture_PathTraversalRejected(t *testing.T) {
 
 func TestGetProfilePicture_AbsolutePathRejected(t *testing.T) {
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/photo", func(c *gin.Context) { GetProfilePicture(c, cfg) })
 
 	var user models.User
@@ -416,7 +416,7 @@ func TestGetProfilePicture_AbsolutePathRejected(t *testing.T) {
 
 func TestGetProfilePicture_FileMissingOnDisk(t *testing.T) {
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/photo", func(c *gin.Context) { GetProfilePicture(c, cfg) })
 
 	var user models.User
@@ -434,7 +434,7 @@ func TestGetProfilePicture_FileMissingOnDisk(t *testing.T) {
 func TestGetProfilePicture_ServesFileFromDisk(t *testing.T) {
 	dir := t.TempDir()
 	cfg := &config.Config{ProfilePhotoDir: dir}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/photo", func(c *gin.Context) { GetProfilePicture(c, cfg) })
 
 	var user models.User
@@ -472,7 +472,7 @@ func newMultipartPhotoRequest(t *testing.T, url, fieldName, filename string, dat
 
 func TestAddPhotoToContact_DemoModeDisabled(t *testing.T) {
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir(), DemoMode: true}
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/contacts/:id/photo", func(c *gin.Context) { AddPhotoToContact(c, cfg) })
 
 	req := newMultipartPhotoRequest(t, "/contacts/1/photo", "photo", "photo.png", newPNGBytes(t, 10, 10))
@@ -484,7 +484,7 @@ func TestAddPhotoToContact_DemoModeDisabled(t *testing.T) {
 
 func TestAddPhotoToContact_InvalidContactID(t *testing.T) {
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/contacts/:id/photo", func(c *gin.Context) { AddPhotoToContact(c, cfg) })
 
 	req := newMultipartPhotoRequest(t, "/contacts/abc/photo", "photo", "photo.png", newPNGBytes(t, 10, 10))
@@ -496,7 +496,7 @@ func TestAddPhotoToContact_InvalidContactID(t *testing.T) {
 
 func TestAddPhotoToContact_ContactNotFound(t *testing.T) {
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/contacts/:id/photo", func(c *gin.Context) { AddPhotoToContact(c, cfg) })
 
 	req := newMultipartPhotoRequest(t, "/contacts/999/photo", "photo", "photo.png", newPNGBytes(t, 10, 10))
@@ -508,7 +508,7 @@ func TestAddPhotoToContact_ContactNotFound(t *testing.T) {
 
 func TestAddPhotoToContact_NoFileUploadedSavesContactUnchanged(t *testing.T) {
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts/:id/photo", func(c *gin.Context) { AddPhotoToContact(c, cfg) })
 
 	var user models.User
@@ -530,7 +530,7 @@ func TestAddPhotoToContact_NoFileUploadedSavesContactUnchanged(t *testing.T) {
 func TestAddPhotoToContact_ValidUploadSetsPhotoAndThumbnail(t *testing.T) {
 	dir := t.TempDir()
 	cfg := &config.Config{ProfilePhotoDir: dir}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts/:id/photo", func(c *gin.Context) { AddPhotoToContact(c, cfg) })
 
 	var user models.User
@@ -556,7 +556,7 @@ func TestAddPhotoToContact_ValidUploadSetsPhotoAndThumbnail(t *testing.T) {
 func TestAddPhotoToContact_ReplacingPhotoDeletesOldFile(t *testing.T) {
 	dir := t.TempDir()
 	cfg := &config.Config{ProfilePhotoDir: dir}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts/:id/photo", func(c *gin.Context) { AddPhotoToContact(c, cfg) })
 
 	var user models.User
@@ -580,7 +580,7 @@ func TestAddPhotoToContact_ReplacingPhotoDeletesOldFile(t *testing.T) {
 
 func TestAddPhotoToContact_FileTooLarge(t *testing.T) {
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts/:id/photo", func(c *gin.Context) { AddPhotoToContact(c, cfg) })
 
 	var user models.User
@@ -598,7 +598,7 @@ func TestAddPhotoToContact_FileTooLarge(t *testing.T) {
 
 func TestAddPhotoToContact_UnsupportedFormatFailsProcessing(t *testing.T) {
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts/:id/photo", func(c *gin.Context) { AddPhotoToContact(c, cfg) })
 
 	var user models.User
@@ -628,7 +628,7 @@ func TestAddPhotoToContact_UnsupportedFormatFailsProcessing(t *testing.T) {
 // checks.
 
 func TestProxyImage_MissingURLParam(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/proxy", ProxyImage)
 
 	req, _ := http.NewRequest("GET", "/proxy", nil)
@@ -639,7 +639,7 @@ func TestProxyImage_MissingURLParam(t *testing.T) {
 }
 
 func TestProxyImage_BlockedSSRFTarget(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/proxy", ProxyImage)
 
 	req, _ := http.NewRequest("GET", "/proxy?url=http://127.0.0.1/photo.jpg", nil)
@@ -652,7 +652,7 @@ func TestProxyImage_BlockedSSRFTarget(t *testing.T) {
 }
 
 func TestProxyImage_RejectsNonHTTPScheme(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/proxy", ProxyImage)
 
 	req, _ := http.NewRequest("GET", "/proxy?url=ftp://not-http-or-https.example.com/x.jpg", nil)

@@ -48,7 +48,7 @@ func contactShareRouterFor(db *gorm.DB, cfg *config.Config, userID uint) *gin.En
 // sender, recipient, and an uninvolved third party.
 func newContactShareFixtures(t *testing.T) (*gorm.DB, *config.Config, models.User, models.User, models.User) {
 	t.Helper()
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
 
 	sender := models.User{Username: "share_sender", Password: "password123", Email: "share_sender@example.com"}

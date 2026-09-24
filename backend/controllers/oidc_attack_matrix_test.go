@@ -25,7 +25,7 @@ func TestOIDCCallbackHandler_SuccessRedirectIgnoresAttackerSuppliedRedirectParam
 
 	provider, cfg := newCallbackTestSetup(t, idp)
 
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/callback", OIDCCallbackHandler(provider, cfg))
 
 	subject := "existing-subject"
@@ -61,7 +61,7 @@ func TestOIDCCallbackHandler_AndroidSuccessRedirectIgnoresAttackerSuppliedRedire
 
 	provider, cfg := newCallbackTestSetup(t, idp)
 
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/callback", OIDCCallbackHandler(provider, cfg))
 
 	subject := "android-existing-subject"

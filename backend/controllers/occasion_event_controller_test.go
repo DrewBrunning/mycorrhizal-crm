@@ -31,7 +31,7 @@ func registerOccasionEventRoutes(t *testing.T, router *gin.Engine) {
 // ---- create ---------------------------------------------------------------
 
 func TestCreateOccasionEvent(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionEventRoutes(t, router)
 
 	var user models.User
@@ -60,7 +60,7 @@ func TestCreateOccasionEvent(t *testing.T) {
 }
 
 func TestCreateOccasionEventRejectsEndBeforeStart(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionEventRoutes(t, router)
 
 	start := time.Date(2026, 7, 4, 15, 0, 0, 0, time.UTC)
@@ -80,7 +80,7 @@ func TestCreateOccasionEventRejectsEndBeforeStart(t *testing.T) {
 // ---- read / list ----------------------------------------------------------
 
 func TestGetOccasionEventIncludesAttendees(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionEventRoutes(t, router)
 
 	var user models.User
@@ -108,7 +108,7 @@ func TestGetOccasionEventIncludesAttendees(t *testing.T) {
 }
 
 func TestGetOccasionEventEmptyAttendeesSerializesAsArray(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionEventRoutes(t, router)
 
 	var user models.User
@@ -123,7 +123,7 @@ func TestGetOccasionEventEmptyAttendeesSerializesAsArray(t *testing.T) {
 }
 
 func TestListOccasionEventsWindow(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionEventRoutes(t, router)
 
 	var user models.User
@@ -147,7 +147,7 @@ func TestListOccasionEventsWindow(t *testing.T) {
 }
 
 func TestListOccasionEventsSinceReturnsTombstones(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	registerOccasionEventRoutes(t, router)
 
 	var user models.User
@@ -170,7 +170,7 @@ func TestListOccasionEventsSinceReturnsTombstones(t *testing.T) {
 }
 
 func TestListOccasionEventsRejectsBadWindow(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerOccasionEventRoutes(t, router)
 
 	w := doOccasionJSON(router, "GET", "/occasion-events?from=not-a-date", nil)
@@ -180,7 +180,7 @@ func TestListOccasionEventsRejectsBadWindow(t *testing.T) {
 // ---- update / delete ------------------------------------------------------
 
 func TestUpdateOccasionEventFullReplace(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionEventRoutes(t, router)
 
 	var user models.User
@@ -203,7 +203,7 @@ func TestUpdateOccasionEventFullReplace(t *testing.T) {
 }
 
 func TestUpdateOccasionEventForeignIsNotFound(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionEventRoutes(t, router)
 
 	other := models.User{Username: "other-event", Password: "x", Email: "other-event@example.com"}
@@ -217,7 +217,7 @@ func TestUpdateOccasionEventForeignIsNotFound(t *testing.T) {
 }
 
 func TestDeleteOccasionEventHardDeletesAttendees(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionEventRoutes(t, router)
 
 	var user models.User
@@ -242,7 +242,7 @@ func TestDeleteOccasionEventHardDeletesAttendees(t *testing.T) {
 // ---- attendees ------------------------------------------------------------
 
 func TestAddOccasionEventAttendee(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionEventRoutes(t, router)
 
 	var user models.User
@@ -264,7 +264,7 @@ func TestAddOccasionEventAttendee(t *testing.T) {
 }
 
 func TestAddOccasionEventAttendeeForeignContactIsNotFound(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionEventRoutes(t, router)
 
 	var user models.User
@@ -280,7 +280,7 @@ func TestAddOccasionEventAttendeeForeignContactIsNotFound(t *testing.T) {
 }
 
 func TestUpdateOccasionEventAttendeeRSVP(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionEventRoutes(t, router)
 
 	var user models.User
@@ -300,7 +300,7 @@ func TestUpdateOccasionEventAttendeeRSVP(t *testing.T) {
 }
 
 func TestRemoveOccasionEventAttendee(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionEventRoutes(t, router)
 
 	var user models.User
@@ -325,7 +325,7 @@ func TestRemoveOccasionEventAttendee(t *testing.T) {
 // ---- invitee suggestions --------------------------------------------------
 
 func TestGetInviteeSuggestionsExpandsCircles(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionEventRoutes(t, router)
 
 	var user models.User
@@ -353,7 +353,7 @@ func TestGetInviteeSuggestionsExpandsCircles(t *testing.T) {
 }
 
 func TestGetInviteeSuggestionsExcludesExistingAttendees(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionEventRoutes(t, router)
 
 	var user models.User
@@ -381,7 +381,7 @@ func TestGetInviteeSuggestionsExcludesExistingAttendees(t *testing.T) {
 }
 
 func TestGetInviteeSuggestionsValidation(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerOccasionEventRoutes(t, router)
 
 	w := doOccasionJSON(router, "GET", "/occasion-events/invitee-suggestions", nil)
@@ -389,7 +389,7 @@ func TestGetInviteeSuggestionsValidation(t *testing.T) {
 }
 
 func TestGetInviteeSuggestionsForeignCircleIsNotFound(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionEventRoutes(t, router)
 
 	other := models.User{Username: "other-suggest", Password: "x", Email: "other-suggest@example.com"}

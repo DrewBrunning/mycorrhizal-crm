@@ -25,7 +25,7 @@ import (
 func intPtr(v int) *int { return &v }
 
 func TestGetContacts(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -103,7 +103,7 @@ func TestGetContacts(t *testing.T) {
 // services.MaxSearchTermLen must be rejected with a 400 before any query
 // work, and a term at the exact boundary must pass.
 func TestGetContacts_RejectsOversizedSearchTerm(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)
@@ -136,7 +136,7 @@ func TestGetContacts_RejectsOversizedSearchTerm(t *testing.T) {
 // "key absent" -- both matter here, nickname for the former, circles (
 // removed from the DTO entirely, not populated) for the latter.
 func TestGetContacts_SummaryHasNicknameNoCircles(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -173,7 +173,7 @@ func TestGetContacts_SummaryHasNicknameNoCircles(t *testing.T) {
 // requested UIDs, ignores an unrequested one, and stays scoped to the
 // requesting user.
 func TestGetContacts_FiltersByVCardUID(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts", GetContacts)
 
 	var user models.User
@@ -249,7 +249,7 @@ func TestGetContacts_VCardUIDFilter_RealMigratedSchema(t *testing.T) {
 }
 
 func TestGetContacts_VCardUIDFilterExcludesArchivedByDefault(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts", GetContacts)
 
 	var user models.User
@@ -284,7 +284,7 @@ func TestGetContacts_VCardUIDFilterExcludesArchivedByDefault(t *testing.T) {
 // TestGetContactsSearchMultiValue verifies search matches values in the emails/phones
 // JSON arrays (including secondary entries), not just the denormalized primary scalar.
 func TestGetContactsSearchMultiValue(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -328,7 +328,7 @@ func TestGetContactsSearchMultiValue(t *testing.T) {
 // addresses_flat column. The tokens are absent from every other field so the
 // match can only come from the address.
 func TestGetContactsSearchMatchesAddresses(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -369,7 +369,7 @@ func TestGetContactsSearchMatchesAddresses(t *testing.T) {
 // Where clause, but this test guards against any regression that would let the
 // unparenthesized OR escape the user scope.)
 func TestGetContactsSearchDoesNotLeakAcrossUsers(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -402,7 +402,7 @@ func TestGetContactsSearchDoesNotLeakAcrossUsers(t *testing.T) {
 // The phone tokens are absent from every name/email/address field so the
 // match can only come from the phone.
 func TestGetContactsSearchMatchesPhonesNormalized(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -448,7 +448,7 @@ func TestGetContactsSearchMatchesPhonesNormalized(t *testing.T) {
 }
 
 func TestGetContact(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -490,7 +490,7 @@ func TestGetContact(t *testing.T) {
 // it no longer restricts or alters the response shape, which is always the
 // fixed ContactSummary regardless of what (if anything) fields= requests.
 func TestGetContactsFieldsParamIgnored(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -531,7 +531,7 @@ func TestGetContactsFieldsParamIgnored(t *testing.T) {
 }
 
 func TestGetContactWithRelationships(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -620,7 +620,7 @@ func TestGetContactWithRelationships(t *testing.T) {
 // preservation of the archive-filtering and circle-filtering mechanics
 // against the new ContactSummary item shape.
 func TestGetContactsArchiveAndCircleFiltering(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -681,7 +681,7 @@ func TestGetContactsArchiveAndCircleFiltering(t *testing.T) {
 }
 
 func TestGetContactsWithSearchCriteria(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -753,7 +753,7 @@ func TestGetContactsWithSearchCriteria(t *testing.T) {
 }
 
 func TestCreateContact(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.POST("/contacts", withValidated(func() any { return &models.ContactRecordInput{} }), CreateContact)
 
@@ -785,7 +785,7 @@ func TestCreateContact(t *testing.T) {
 }
 
 func TestCreateContactWithAllFields(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.POST("/contacts", withValidated(func() any { return &models.ContactRecordInput{} }), CreateContact)
 
@@ -870,7 +870,7 @@ func TestCreateContactWithAllFields(t *testing.T) {
 // not a raw formatted string, so this exercises the equivalent
 // full-date/year-less/absent variations against that shape instead.
 func TestCreateContactBirthdayPartialDates(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.POST("/contacts", withValidated(func() any { return &models.ContactRecordInput{} }), CreateContact)
 
@@ -920,7 +920,7 @@ func TestCreateContactBirthdayPartialDates(t *testing.T) {
 }
 
 func TestUpdateContact(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -968,7 +968,7 @@ func TestUpdateContact(t *testing.T) {
 }
 
 func TestDeleteContact(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -1001,7 +1001,7 @@ func TestDeleteContact(t *testing.T) {
 // Household/Circle/Tag/FieldDefinition containers other contacts may still
 // belong to.
 func TestDeleteContact_CleansUpReferencingRows(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -1080,7 +1080,7 @@ func TestDeleteContact_CleansUpReferencingRows(t *testing.T) {
 }
 
 func TestGetCircles(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -1107,7 +1107,7 @@ func TestGetCircles(t *testing.T) {
 }
 
 func TestDeleteContactCleansUpPhotos(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -1170,7 +1170,7 @@ func TestDeleteContactCleansUpPhotos(t *testing.T) {
 }
 
 func TestDeleteContactWithNoPhotos(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -1204,7 +1204,7 @@ func TestDeleteContactWithNoPhotos(t *testing.T) {
 // deleted_at IS NULL, so a soft-deleted contact no longer occupies the
 // vcard_uid slot.
 func TestRecreateContactAfterDeleteUsesSameVCardUID(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)

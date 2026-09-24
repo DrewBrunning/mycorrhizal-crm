@@ -41,7 +41,7 @@ func routerForUser(db *gorm.DB, userID uint) *gin.Engine {
 }
 
 func TestListWebhooks(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -65,7 +65,7 @@ func TestListWebhooks(t *testing.T) {
 // delivery per webhook is summarized in `delivery_health`, and a webhook with
 // no deliveries reports a zero-valued one.
 func TestListWebhooksDeliveryHealth(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -118,7 +118,7 @@ func TestListWebhooksDeliveryHealth(t *testing.T) {
 }
 
 func TestCreateWebhook(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -157,7 +157,7 @@ func TestCreateWebhook(t *testing.T) {
 // hundreds-wide fan-out target on every matching event. The max=16 tag
 // (exactly the number of oneof tokens) rejects such a payload with a 400.
 func TestCreateWebhook_TooManyEventTokens(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -197,7 +197,7 @@ func TestCreateWebhook_TooManyEventTokens(t *testing.T) {
 // default of true. A user unchecking the "active" toggle on the create form
 // therefore got an immediately-active webhook against their explicit choice.
 func TestCreateWebhookInactive(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -228,7 +228,7 @@ func TestCreateWebhookInactive(t *testing.T) {
 }
 
 func TestCreateWebhookLimit(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -257,7 +257,7 @@ func TestCreateWebhookLimit(t *testing.T) {
 }
 
 func TestGetWebhook(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -278,7 +278,7 @@ func TestGetWebhook(t *testing.T) {
 }
 
 func TestGetWebhookNotFound(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -293,7 +293,7 @@ func TestGetWebhookNotFound(t *testing.T) {
 }
 
 func TestUpdateWebhook(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -324,7 +324,7 @@ func TestUpdateWebhook(t *testing.T) {
 }
 
 func TestDeleteWebhook(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -356,7 +356,7 @@ func TestTestWebhook(t *testing.T) {
 	}))
 	defer target.Close()
 
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -377,7 +377,7 @@ func TestTestWebhook(t *testing.T) {
 }
 
 func TestGetWebhookDeliveries(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -400,7 +400,7 @@ func TestGetWebhookDeliveries(t *testing.T) {
 }
 
 func TestWebhookUserIsolation(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user1 models.User
 	db.First(&user1)
 

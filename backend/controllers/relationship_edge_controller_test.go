@@ -16,7 +16,7 @@ import (
 )
 
 func TestCreateRelationshipEdge(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/relationship-edges", withValidated(func() any { return &models.RelationshipEdgeInput{} }), CreateRelationshipEdge)
 
 	var user models.User
@@ -58,7 +58,7 @@ func TestCreateRelationshipEdge(t *testing.T) {
 }
 
 func TestCreateRelationshipEdge_SymmetricType(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/relationship-edges", withValidated(func() any { return &models.RelationshipEdgeInput{} }), CreateRelationshipEdge)
 
 	var user models.User
@@ -84,7 +84,7 @@ func TestCreateRelationshipEdge_SymmetricType(t *testing.T) {
 }
 
 func TestCreateRelationshipEdge_RejectsSourceFromAnotherUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/relationship-edges", withValidated(func() any { return &models.RelationshipEdgeInput{} }), CreateRelationshipEdge)
 
 	var user models.User
@@ -107,7 +107,7 @@ func TestCreateRelationshipEdge_RejectsSourceFromAnotherUser(t *testing.T) {
 }
 
 func TestCreateRelationshipEdge_RejectsTargetFromAnotherUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/relationship-edges", withValidated(func() any { return &models.RelationshipEdgeInput{} }), CreateRelationshipEdge)
 
 	var user models.User
@@ -130,7 +130,7 @@ func TestCreateRelationshipEdge_RejectsTargetFromAnotherUser(t *testing.T) {
 }
 
 func TestCreateRelationshipEdge_SelfEdgeRejected(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/relationship-edges", withValidated(func() any { return &models.RelationshipEdgeInput{} }), CreateRelationshipEdge)
 
 	var user models.User
@@ -149,7 +149,7 @@ func TestCreateRelationshipEdge_SelfEdgeRejected(t *testing.T) {
 }
 
 func TestCreateRelationshipEdge_BothIDAndThinRejected(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/relationship-edges", withValidated(func() any { return &models.RelationshipEdgeInput{} }), CreateRelationshipEdge)
 
 	var user models.User
@@ -171,7 +171,7 @@ func TestCreateRelationshipEdge_BothIDAndThinRejected(t *testing.T) {
 }
 
 func TestCreateRelationshipEdge_NeitherIDNorThinRejected(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/relationship-edges", withValidated(func() any { return &models.RelationshipEdgeInput{} }), CreateRelationshipEdge)
 
 	var user models.User
@@ -190,7 +190,7 @@ func TestCreateRelationshipEdge_NeitherIDNorThinRejected(t *testing.T) {
 }
 
 func TestCreateRelationshipEdge_ThinTarget(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/relationship-edges", withValidated(func() any { return &models.RelationshipEdgeInput{} }), CreateRelationshipEdge)
 
 	var user models.User
@@ -229,7 +229,7 @@ func TestCreateRelationshipEdge_ThinTarget(t *testing.T) {
 // the test instead forces the failure via cross-user target ownership
 // (target_id pointing at another user's contact — 404).
 func TestCreateRelationshipEdge_ThinTargetTransactionalOnEdgeFailure(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/relationship-edges", withValidated(func() any { return &models.RelationshipEdgeInput{} }), CreateRelationshipEdge)
 
 	var user models.User
@@ -277,7 +277,7 @@ func TestCreateRelationshipEdge_ThinTargetTransactionalOnEdgeFailure(t *testing.
 }
 
 func TestGetRelationshipEdge(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/relationship-edges/:id", GetRelationshipEdge)
 
 	var user models.User
@@ -300,7 +300,7 @@ func TestGetRelationshipEdge(t *testing.T) {
 }
 
 func TestGetRelationshipEdge_NotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/relationship-edges/:id", GetRelationshipEdge)
 
 	req, _ := http.NewRequest("GET", "/relationship-edges/nonexistent", nil)
@@ -311,7 +311,7 @@ func TestGetRelationshipEdge_NotFound(t *testing.T) {
 }
 
 func TestGetRelationshipEdge_WrongUser404s(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/relationship-edges/:id", GetRelationshipEdge)
 
 	var user models.User
@@ -337,7 +337,7 @@ func TestGetRelationshipEdge_WrongUser404s(t *testing.T) {
 }
 
 func TestListRelationshipEdges_FiltersByContactBothDirections(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/relationship-edges", ListRelationshipEdges)
 
 	var user models.User
@@ -384,7 +384,7 @@ func TestListRelationshipEdges_FiltersByContactBothDirections(t *testing.T) {
 }
 
 func TestListRelationshipEdges_FiltersByStatus(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/relationship-edges", ListRelationshipEdges)
 
 	var user models.User
@@ -419,7 +419,7 @@ func TestListRelationshipEdges_FiltersByStatus(t *testing.T) {
 }
 
 func TestListRelationshipEdges_ScopedToUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/relationship-edges", ListRelationshipEdges)
 
 	var user models.User
@@ -449,7 +449,7 @@ func TestListRelationshipEdges_ScopedToUser(t *testing.T) {
 }
 
 func TestUpdateRelationshipEdge(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/relationship-edges/:id", withValidated(func() any { return &models.RelationshipEdgeInput{} }), UpdateRelationshipEdge)
 
 	var user models.User
@@ -483,7 +483,7 @@ func TestUpdateRelationshipEdge(t *testing.T) {
 }
 
 func TestUpdateRelationshipEdge_NotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.PUT("/relationship-edges/:id", withValidated(func() any { return &models.RelationshipEdgeInput{} }), UpdateRelationshipEdge)
 
 	payload := models.RelationshipEdgeInput{SourceID: "x", TargetID: "y", Type: "friend_of"}
@@ -497,7 +497,7 @@ func TestUpdateRelationshipEdge_NotFound(t *testing.T) {
 }
 
 func TestUpdateRelationshipEdge_WrongUser404s(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/relationship-edges/:id", withValidated(func() any { return &models.RelationshipEdgeInput{} }), UpdateRelationshipEdge)
 
 	otherUser := models.User{Username: "other5", Password: "x", Email: "other5@example.com"}
@@ -523,7 +523,7 @@ func TestUpdateRelationshipEdge_WrongUser404s(t *testing.T) {
 }
 
 func TestUpdateRelationshipEdge_RepointTargetToThin(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/relationship-edges/:id", withValidated(func() any { return &models.RelationshipEdgeInput{} }), UpdateRelationshipEdge)
 
 	var user models.User
@@ -560,7 +560,7 @@ func TestUpdateRelationshipEdge_RepointTargetToThin(t *testing.T) {
 }
 
 func TestDeleteRelationshipEdge(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/relationship-edges/:id", DeleteRelationshipEdge)
 
 	var user models.User
@@ -587,7 +587,7 @@ func TestDeleteRelationshipEdge(t *testing.T) {
 }
 
 func TestDeleteRelationshipEdge_NotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.DELETE("/relationship-edges/:id", DeleteRelationshipEdge)
 
 	req, _ := http.NewRequest("DELETE", "/relationship-edges/nonexistent", nil)
@@ -598,7 +598,7 @@ func TestDeleteRelationshipEdge_NotFound(t *testing.T) {
 }
 
 func TestDeleteRelationshipEdge_WrongUser404s(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/relationship-edges/:id", DeleteRelationshipEdge)
 
 	otherUser := models.User{Username: "other6", Password: "x", Email: "other6@example.com"}
@@ -621,7 +621,7 @@ func TestDeleteRelationshipEdge_WrongUser404s(t *testing.T) {
 }
 
 func TestAcceptRelationshipEdge(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PATCH("/relationship-edges/:id/accept", AcceptRelationshipEdge)
 
 	var user models.User
@@ -650,7 +650,7 @@ func TestAcceptRelationshipEdge(t *testing.T) {
 }
 
 func TestAcceptRelationshipEdge_AlreadyConfirmedConflict(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PATCH("/relationship-edges/:id/accept", AcceptRelationshipEdge)
 
 	var user models.User
@@ -673,7 +673,7 @@ func TestAcceptRelationshipEdge_AlreadyConfirmedConflict(t *testing.T) {
 }
 
 func TestAcceptRelationshipEdge_NotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.PATCH("/relationship-edges/:id/accept", AcceptRelationshipEdge)
 
 	req, _ := http.NewRequest("PATCH", "/relationship-edges/nonexistent/accept", nil)
@@ -684,7 +684,7 @@ func TestAcceptRelationshipEdge_NotFound(t *testing.T) {
 }
 
 func TestAcceptRelationshipEdge_WrongUser404s(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PATCH("/relationship-edges/:id/accept", AcceptRelationshipEdge)
 
 	otherUser := models.User{Username: "other7", Password: "x", Email: "other7@example.com"}
@@ -728,7 +728,7 @@ func TestCreateRelationshipEdge_RealValidation_RelationType(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			db, router := setupRouter()
+			db, router := setupRouter(t)
 			router.POST("/relationship-edges", middleware.ValidateJSONMiddleware(&models.RelationshipEdgeInput{}), CreateRelationshipEdge)
 
 			var user models.User
@@ -760,7 +760,7 @@ func TestCreateRelationshipEdge_RealValidation_RelationType(t *testing.T) {
 // replay regression: the exact same (source, target, type) create a second
 // time must be a checked 409, not a second stored row.
 func TestCreateRelationshipEdge_DuplicateNaturalKeyConflict(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/relationship-edges", withValidated(func() any { return &models.RelationshipEdgeInput{} }), CreateRelationshipEdge)
 
 	var user models.User
@@ -803,7 +803,7 @@ func TestCreateRelationshipEdge_DuplicateNaturalKeyConflict(t *testing.T) {
 // natural key includes the type: the same two contacts may hold two different
 // relationship facts.
 func TestCreateRelationshipEdge_DifferentTypeSameEndpointsAllowed(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/relationship-edges", withValidated(func() any { return &models.RelationshipEdgeInput{} }), CreateRelationshipEdge)
 
 	var user models.User
@@ -830,7 +830,7 @@ func TestCreateRelationshipEdge_DifferentTypeSameEndpointsAllowed(t *testing.T) 
 // TestRelationshipEdgeNaturalKey_ScopedByUser proves the natural key is scoped
 // by user_id — two different users may each record the same relationship tuple.
 func TestRelationshipEdgeNaturalKey_ScopedByUser(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	otherUser := models.User{Username: "other8", Password: "x", Email: "other8@example.com"}
 	require.NoError(t, db.Create(&otherUser).Error)
@@ -853,7 +853,7 @@ func TestRelationshipEdgeNaturalKey_ScopedByUser(t *testing.T) {
 // re-point an edge onto another edge's natural key — the same uniqueness gate
 // as create, with the edge under edit excluded from its own lookup.
 func TestUpdateRelationshipEdge_RepointOntoExistingConflict(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/relationship-edges/:id", withValidated(func() any { return &models.RelationshipEdgeInput{} }), UpdateRelationshipEdge)
 
 	var user models.User
@@ -910,7 +910,7 @@ func TestRelationshipEdgeWriteError(t *testing.T) {
 // 409. Closing the pool is the only way to make the otherwise-unreachable
 // SELECT fail against a healthy schema.
 func TestRelationshipEdgeDuplicate_DatabaseError(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	sqlDB, err := db.DB()
 	require.NoError(t, err)
 	require.NoError(t, sqlDB.Close())
@@ -926,7 +926,7 @@ func TestRelationshipEdgeDuplicate_DatabaseError(t *testing.T) {
 // non-duplicate path: when the INSERT itself fails for another reason the
 // error stays a 500 rather than being mislabelled a duplicate.
 func TestCreateRelationshipEdge_WriteErrorIs500(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/relationship-edges", withValidated(func() any { return &models.RelationshipEdgeInput{} }), CreateRelationshipEdge)
 
 	var user models.User
@@ -951,7 +951,7 @@ func TestCreateRelationshipEdge_WriteErrorIs500(t *testing.T) {
 // TestUpdateRelationshipEdge_WriteErrorIs500 is the PUT counterpart of the
 // test above.
 func TestUpdateRelationshipEdge_WriteErrorIs500(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/relationship-edges/:id", withValidated(func() any { return &models.RelationshipEdgeInput{} }), UpdateRelationshipEdge)
 
 	var user models.User

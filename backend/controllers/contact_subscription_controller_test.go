@@ -34,7 +34,7 @@ func seedContactSubscription(db *gorm.DB, userID uint, url string) models.Contac
 }
 
 func TestListContactSubscriptions(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -55,7 +55,7 @@ func TestListContactSubscriptions(t *testing.T) {
 }
 
 func TestCreateContactSubscription(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -89,7 +89,7 @@ func TestCreateContactSubscription(t *testing.T) {
 }
 
 func TestCreateContactSubscriptionRejectsInvalidURL(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -107,7 +107,7 @@ func TestCreateContactSubscriptionRejectsInvalidURL(t *testing.T) {
 }
 
 func TestCreateContactSubscriptionLimit(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -129,7 +129,7 @@ func TestCreateContactSubscriptionLimit(t *testing.T) {
 }
 
 func TestUpdateContactSubscription(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -164,7 +164,7 @@ func TestUpdateContactSubscription(t *testing.T) {
 }
 
 func TestDeleteContactSubscription(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -191,7 +191,7 @@ func TestDeleteContactSubscription(t *testing.T) {
 }
 
 func TestContactSubscriptionUserIsolation(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user1 models.User
 	db.First(&user1)
 
@@ -281,7 +281,7 @@ func TestSyncContactSubscription_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -323,7 +323,7 @@ func TestSyncContactSubscription_UnauthorizedReflectsFailure(t *testing.T) {
 	}))
 	defer server.Close()
 
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -360,7 +360,7 @@ func TestSyncContactSubscription_UnauthorizedReflectsFailure(t *testing.T) {
 }
 
 func TestSyncContactSubscription_NotFoundForOtherUser(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user1 models.User
 	db.First(&user1)
 
@@ -384,7 +384,7 @@ func TestSyncContactSubscription_NotFoundForOtherUser(t *testing.T) {
 // closing the underlying *sql.DB out from under gorm before the request
 // (mirrors export_controller_test.go's TestExportContactsAsVCF_DBError).
 func TestListContactSubscriptions_DBError(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -405,7 +405,7 @@ func TestListContactSubscriptions_DBError(t *testing.T) {
 // TestCreateContactSubscription_DBError exercises the subscription-count
 // db.Count error branch (the first DB call CreateContactSubscription makes).
 func TestCreateContactSubscription_DBError(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -429,7 +429,7 @@ func TestCreateContactSubscription_DBError(t *testing.T) {
 // TestFindContactSubscription_DBError exercises findContactSubscription's
 // non-"record not found" DB error branch (used by Update/Delete/Sync).
 func TestFindContactSubscription_DBError(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	sub := seedContactSubscription(db, user.ID, "https://example.com/a/")
@@ -452,7 +452,7 @@ func TestFindContactSubscription_DBError(t *testing.T) {
 // TestCreateContactSubscription_RealValidation_MissingRequiredFields for the
 // update path's GetValidated error branch.
 func TestUpdateContactSubscription_RealValidation_MissingRequiredFields(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	sub := seedContactSubscription(db, user.ID, "https://example.com/a/")
@@ -500,7 +500,7 @@ func TestContactSyncError_AllSentinelsMapped(t *testing.T) {
 // TestContactSubscriptionHandlers_NoAuth_Unauthorized exercises the
 // currentUserID !ok early-return every handler in this file checks first.
 func TestContactSubscriptionHandlers_NoAuth_Unauthorized(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	router := routerWithoutAuth(db)
 	router.GET("/contact-subscriptions", ListContactSubscriptions)
 	router.POST("/contact-subscriptions", withValidated(func() any { return &models.ContactSubscriptionInput{} }), CreateContactSubscription)
@@ -533,7 +533,7 @@ func mustRequest(t *testing.T, method, path string, body io.Reader) *http.Reques
 // TestFindContactSubscription_NonNumericID_InvalidInput exercises the
 // strconv.ParseUint error branch in findContactSubscription.
 func TestFindContactSubscription_NonNumericID_InvalidInput(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -550,7 +550,7 @@ func TestFindContactSubscription_NonNumericID_InvalidInput(t *testing.T) {
 // TestUpdateContactSubscription_ClearPassword exercises UpdateContactSubscription's
 // ClearPassword branch.
 func TestUpdateContactSubscription_ClearPassword(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -584,7 +584,7 @@ func TestUpdateContactSubscription_ClearPassword(t *testing.T) {
 // TestUpdateContactSubscription_ReplacesPassword exercises the
 // input.Password != "" branch (re-encrypting a new credential on update).
 func TestUpdateContactSubscription_ReplacesPassword(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -619,7 +619,7 @@ func TestUpdateContactSubscription_ReplacesPassword(t *testing.T) {
 // validation error branch on the update path (only the create path was
 // previously tested).
 func TestUpdateContactSubscription_RejectsInvalidURL(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -644,7 +644,7 @@ func TestUpdateContactSubscription_RejectsInvalidURL(t *testing.T) {
 // (name/url required) are actually enforced end-to-end, matching the
 // established pattern from contact_controller_validation_test.go.
 func TestCreateContactSubscription_RealValidation_MissingRequiredFields(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
