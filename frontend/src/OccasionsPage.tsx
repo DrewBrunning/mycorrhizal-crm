@@ -1,5 +1,7 @@
+import AddIcon from '@mui/icons-material/Add';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import DownloadIcon from '@mui/icons-material/Download';
+import EventIcon from '@mui/icons-material/Event';
 import MailIcon from '@mui/icons-material/Mail';
 import {
   Box,
@@ -12,15 +14,20 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
+import type { OccasionEvent, OccasionEventInput } from './api/occasionEvents';
 import {
   downloadOccasionCardListCSV,
   type GiftShoppingItem,
   getGiftShoppingList,
 } from './api/occasionObligations';
+import OccasionEventAttendeesDialog from './components/OccasionEventAttendeesDialog';
+import OccasionEventDialog from './components/OccasionEventDialog';
+import OccasionEventList from './components/OccasionEventList';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useOccasionEvents } from './hooks/useOccasionEvents';
 import { handleError, handleFetchError } from './utils/errorHandler';
 
 // The Occasions surface's two derived views (ADR 0024 parts 4-5, issue
@@ -57,6 +64,30 @@ export default function OccasionsPage() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Events (docs/adrs/0026-occasions-events.md, issue #1228): the one-off
+  // "who am I inviting" planning surface, distinct from the standing
+  // obligation registry managed per-contact.
+  const {
+    events,
+    loading: eventsLoading,
+    error: eventsError,
+    handleSave: handleSaveEvent,
+    handleDelete: handleDeleteEvent,
+  } = useOccasionEvents();
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<OccasionEvent | null>(null);
+  const [attendeesEvent, setAttendeesEvent] = useState<OccasionEvent | null>(null);
+
+  const orderedEvents = useMemo(
+    () =>
+      [...events].sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()),
+    [events],
+  );
+
+  const handleSaveEventInput = async (input: OccasionEventInput) => {
+    await handleSaveEvent(editingEvent, input);
+  };
 
   const handleDownloadCardList = async () => {
     setDownloading(true);
@@ -183,6 +214,54 @@ export default function OccasionsPage() {
           ))}
         </Stack>
       )}
+
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 4, mb: 1.5 }}>
+        <EventIcon color="primary" fontSize="small" />
+        <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500, flexGrow: 1 }}>
+          {t('occasions.events.title')}
+        </Typography>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<AddIcon />}
+          onClick={() => {
+            setEditingEvent(null);
+            setEventDialogOpen(true);
+          }}
+        >
+          {t('occasions.events.add')}
+        </Button>
+      </Box>
+
+      {eventsError && (
+        <Typography variant="body2" color="error" sx={{ mb: 1 }}>
+          {eventsError}
+        </Typography>
+      )}
+
+      {!eventsLoading && (
+        <OccasionEventList
+          events={orderedEvents}
+          onEdit={(event) => {
+            setEditingEvent(event);
+            setEventDialogOpen(true);
+          }}
+          onDelete={handleDeleteEvent}
+          onManageAttendees={setAttendeesEvent}
+        />
+      )}
+
+      <OccasionEventDialog
+        open={eventDialogOpen}
+        onClose={() => setEventDialogOpen(false)}
+        onSave={handleSaveEventInput}
+        event={editingEvent}
+      />
+      <OccasionEventAttendeesDialog
+        open={attendeesEvent !== null}
+        onClose={() => setAttendeesEvent(null)}
+        event={attendeesEvent}
+      />
     </Box>
   );
 }

@@ -5651,6 +5651,261 @@
     },
     {
       "method": "GET",
+      "path": "/occasion-events",
+      "parameters": [
+        {
+          "name": "cursor",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "from",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "order",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "to",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "410",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/occasion-events",
+      "parameters": null,
+      "request_body": "ref:OccasionEventInput",
+      "responses": [
+        {
+          "status": "201",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/occasion-events/invitee-suggestions",
+      "parameters": [
+        {
+          "name": "circle_ids",
+          "in": "query",
+          "required": true
+        },
+        {
+          "name": "event_id",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/occasion-events/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/occasion-events/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:OccasionEventInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:OccasionEvent"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/occasion-events/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MessageResponse"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/occasion-events/{id}/attendees",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:OccasionEventAttendeeInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/occasion-events/{id}/attendees/{vcard_uid}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "vcard_uid",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:OccasionEventAttendeeUpdateInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:OccasionEventAttendee"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/occasion-events/{id}/attendees/{vcard_uid}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "vcard_uid",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MessageResponse"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/occasion-obligations",
       "parameters": [
         {
@@ -13239,6 +13494,26 @@
       ]
     },
     {
+      "name": "InviteeSuggestion",
+      "properties": [
+        {
+          "name": "contact_id",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "contact_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
       "name": "JCardProp",
       "properties": [
         {
@@ -14829,6 +15104,225 @@
         },
         {
           "name": "token",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "OccasionEvent",
+      "properties": [
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "deleted",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "ends_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "notes",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
+        },
+        {
+          "name": "starts_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "OccasionEventAttendee",
+      "properties": [
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "event_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "rsvp",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "pending",
+            "accepted",
+            "declined",
+            "maybe"
+          ]
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "OccasionEventAttendeeInput",
+      "properties": [
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "rsvp",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "pending",
+            "accepted",
+            "declined",
+            "maybe"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "OccasionEventAttendeeUpdateInput",
+      "properties": [
+        {
+          "name": "rsvp",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "pending",
+            "accepted",
+            "declined",
+            "maybe"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "OccasionEventAttendeeView",
+      "properties": [
+        {
+          "name": "contact_id",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "contact_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "event_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "rsvp",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "pending",
+            "accepted",
+            "declined",
+            "maybe"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "OccasionEventInput",
+      "properties": [
+        {
+          "name": "ends_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "notes",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
+        },
+        {
+          "name": "starts_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "title",
           "type": "string",
           "required": true
         }

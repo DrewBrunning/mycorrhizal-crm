@@ -6316,6 +6316,328 @@ paths:
                       $ref: "#/components/schemas/GiftShoppingItem"
                   days: { type: integer }
 
+  # --- OccasionEvents (docs/adrs/0026-occasions-events.md, issue #1228) ---
+  /occasion-events:
+    get:
+      summary: List occasion events
+      operationId: listOccasionEvents
+      description: >
+        The authenticated user's one-off events, cursor-paginated (T17),
+        newest-updated first. Supports the ?since= change feed (soft-delete
+        tombstones) and an optional ?from=/?to= RFC 3339 window on starts_at.
+      parameters:
+        - name: cursor
+          in: query
+          description: Opaque resume token from the previous page's next_cursor. Ignored when since is present.
+          schema: { type: string }
+        - name: since
+          in: query
+          description: >
+            Change-feed cursor: return every occasion event changed after this
+            position — including soft-deleted ones (deleted:true) — ordered
+            forward. A cursor older than DELETED_RETENTION_DAYS returns 410 Gone.
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order. since forces asc.
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - name: from
+          in: query
+          description: Only events starting at or after this RFC 3339 instant.
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          description: Only events starting at or before this RFC 3339 instant.
+          schema: { type: string, format: date-time }
+      responses:
+        "400":
+          description: from/to are not RFC 3339 timestamps.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: The ?since= cursor is older than DELETED_RETENTION_DAYS — full resync required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of occasion events.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  occasion_events:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OccasionEvent"
+                  total: { type: integer }
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
+                  limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
+    post:
+      summary: Create an occasion event
+      operationId: createOccasionEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OccasionEventInput"
+      responses:
+        "201":
+          description: Occasion event created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Occasion event created successfully" }
+                  occasion_event:
+                    $ref: "#/components/schemas/OccasionEvent"
+        "400":
+          description: Validation failed (including ends_at before starts_at).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /occasion-events/invitee-suggestions:
+    get:
+      summary: Suggested invitees from circles
+      operationId: getInviteeSuggestions
+      description: >
+        Expands one or more owned circles into candidate invitees — every
+        member contact, de-duplicated across circles and (when event_id is
+        given) excluding contacts already invited. Read-only; the answer is
+        computed, never stored (docs/adrs/0026-occasions-events.md part 3).
+      parameters:
+        - name: circle_ids
+          in: query
+          required: true
+          description: Comma-separated Circle ids to expand.
+          schema: { type: string }
+        - name: event_id
+          in: query
+          description: When given, exclude contacts already invited to this event.
+          schema: { type: string, format: uuid }
+      responses:
+        "400":
+          description: circle_ids is missing or empty.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: A requested circle (or the event_id) was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The candidate invitees.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggestions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/InviteeSuggestion"
+                  circle_ids:
+                    type: array
+                    items: { type: string, format: uuid }
+  /occasion-events/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get an occasion event with its attendees
+      operationId: getOccasionEvent
+      responses:
+        "200":
+          description: The event plus its attendee/RSVP list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  occasion_event:
+                    $ref: "#/components/schemas/OccasionEvent"
+                  attendees:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OccasionEventAttendeeView"
+        "404":
+          description: Occasion event not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update an occasion event (full replace)
+      operationId: updateOccasionEvent
+      description: Replace the event's fields. Attendees are managed by the nested sub-resources, never here.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OccasionEventInput"
+      responses:
+        "200":
+          description: The updated occasion event (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OccasionEvent"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Occasion event not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete an occasion event (soft delete)
+      operationId: deleteOccasionEvent
+      description: Soft-deletes the event and hard-deletes its attendees in the same transaction.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Occasion event not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /occasion-events/{id}/attendees:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Add an invitee to an occasion event
+      operationId: addOccasionEventAttendee
+      description: >
+        Invites one owned contact. The RSVP defaults to "pending" — the user
+        records the answer later; nothing is sent (docs/adrs/0026-occasions-events.md part 2).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OccasionEventAttendeeInput"
+      responses:
+        "200":
+          description: Attendee added.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Attendee added" }
+                  attendee:
+                    $ref: "#/components/schemas/OccasionEventAttendee"
+        "404":
+          description: Event or contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The contact is already an attendee of this event.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /occasion-events/{id}/attendees/{vcard_uid}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: vcard_uid
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Record an attendee's RSVP status
+      operationId: updateOccasionEventAttendee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OccasionEventAttendeeUpdateInput"
+      responses:
+        "200":
+          description: The updated attendee (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OccasionEventAttendee"
+        "404":
+          description: Event or attendee not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Remove an attendee from an occasion event
+      operationId: removeOccasionEventAttendee
+      responses:
+        "200":
+          description: Removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Event or attendee not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   # --- CadencePolicies (T19) ---
   /cadence-policies/overdue:
     get:
@@ -12988,6 +13310,83 @@ components:
         days_until: { type: integer }
         status: { type: string, enum: [needed, idea, purchased, given, received] }
         linked_gift_id: { type: string, format: uuid }
+
+    # --- OccasionEvents (docs/adrs/0026-occasions-events.md, issue #1228) ---
+    OccasionEvent:
+      type: object
+      description: >
+        A one-off event the user is hosting (docs/adrs/0026-occasions-events.md).
+        First-class, soft-deleting, user-authored; starts_at/ends_at are RFC 3339
+        instants (ADR 0015 category 1).
+      required: [id, title, starts_at, sensitivity]
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        title: { type: string, maxLength: 200 }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time, nullable: true }
+        location: { type: string, maxLength: 500 }
+        sensitivity: { type: string, enum: [normal, private, secret] }
+        notes: { type: string, maxLength: 2000 }
+        deleted:
+          type: boolean
+          description: T17 change-feed tombstone marker; only true via ?since=.
+
+    OccasionEventInput:
+      type: object
+      description: Create/update body for an OccasionEvent. ends_at must not precede starts_at (controller check).
+      required: [title, starts_at]
+      properties:
+        title: { type: string, maxLength: 200 }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time, nullable: true }
+        location: { type: string, maxLength: 500 }
+        sensitivity: { type: string, enum: [normal, private, secret] }
+        notes: { type: string, maxLength: 2000 }
+
+    OccasionEventAttendee:
+      type: object
+      description: An invitee/RSVP join row. RSVP is a manually-recorded status, not a delivered invitation (docs/adrs/0026-occasions-events.md part 2).
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        event_id: { type: string, format: uuid }
+        entity_id: { type: string, format: uuid, description: The invited Contact.VCardUID. }
+        rsvp: { type: string, enum: [pending, accepted, declined, maybe] }
+
+    OccasionEventAttendeeInput:
+      type: object
+      required: [entity_id]
+      properties:
+        entity_id: { type: string, format: uuid }
+        rsvp: { type: string, enum: [pending, accepted, declined, maybe] }
+
+    OccasionEventAttendeeUpdateInput:
+      type: object
+      required: [rsvp]
+      properties:
+        rsvp: { type: string, enum: [pending, accepted, declined, maybe] }
+
+    OccasionEventAttendeeView:
+      type: object
+      description: An attendee enriched with its contact's display data, for the event-detail response.
+      properties:
+        id: { type: string, format: uuid }
+        event_id: { type: string, format: uuid }
+        entity_id: { type: string, format: uuid }
+        contact_id: { type: integer }
+        contact_name: { type: string }
+        rsvp: { type: string, enum: [pending, accepted, declined, maybe] }
+
+    InviteeSuggestion:
+      type: object
+      description: One candidate from GET /occasion-events/invitee-suggestions (computed, never stored).
+      properties:
+        contact_id: { type: integer }
+        contact_name: { type: string }
+        entity_id: { type: string, format: uuid }
 
     # --- CadencePolicies (T19) ---
     CadencePolicy:
