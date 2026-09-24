@@ -28,6 +28,7 @@ import NetworkListView from './components/NetworkListView';
 import { useCircles } from './hooks/useCircles';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useGraph } from './hooks/useGraph';
+import { dropStaleCircleFilter, loadNetworkFilters, saveNetworkFilters } from './networkFilters';
 import type { GraphNode } from './types/graph';
 import { computeFilteredGraphData } from './utils/networkGraphData';
 
@@ -38,21 +39,19 @@ export default function NetworkPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { data, loading, error } = useGraph();
-  const { circles: circleEntities, circleNamesByUid } = useCircles();
+  const { circles: circleEntities, circleNamesByUid, loading: circlesLoading } = useCircles();
 
-  const [selectedCircle, setSelectedCircle] = useState<string>('');
-  const [showRelationships, setShowRelationships] = useState(() => {
-    return localStorage.getItem('network-show-relationships') !== 'false';
-  });
-  const [showActivities, setShowActivities] = useState(() => {
-    return localStorage.getItem('network-show-activities') !== 'false';
-  });
-  const [showCircles, setShowCircles] = useState(() => {
-    return localStorage.getItem('network-show-circles') === 'true';
-  });
-  const [centeredNodeId, setCenteredNodeId] = useState<string | null>(() => {
-    return localStorage.getItem('network-centered-node-id');
-  });
+  const [filters, setFilters] = useState(() => loadNetworkFilters());
+  const { selectedCircle, showRelationships, showActivities, showCircles, centeredNodeId } =
+    filters;
+  const setSelectedCircle = (value: string) => setFilters((f) => ({ ...f, selectedCircle: value }));
+  const setShowRelationships = (value: boolean) =>
+    setFilters((f) => ({ ...f, showRelationships: value }));
+  const setShowActivities = (value: boolean) =>
+    setFilters((f) => ({ ...f, showActivities: value }));
+  const setShowCircles = (value: boolean) => setFilters((f) => ({ ...f, showCircles: value }));
+  const setCenteredNodeId = (value: string | null) =>
+    setFilters((f) => ({ ...f, centeredNodeId: value }));
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [editValues, setEditValues] = useState<{
     activityTitle?: string;
@@ -63,20 +62,10 @@ export default function NetworkPage() {
   }>({});
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
 
-  // Persist filter toggles to localStorage
+  // Persist the consolidated filter state to localStorage
   useEffect(() => {
-    localStorage.setItem('network-show-relationships', String(showRelationships));
-    localStorage.setItem('network-show-activities', String(showActivities));
-    localStorage.setItem('network-show-circles', String(showCircles));
-  }, [showRelationships, showActivities, showCircles]);
-
-  useEffect(() => {
-    if (centeredNodeId !== null) {
-      localStorage.setItem('network-centered-node-id', centeredNodeId);
-    } else {
-      localStorage.removeItem('network-centered-node-id');
-    }
-  }, [centeredNodeId]);
+    saveNetworkFilters(filters);
+  }, [filters]);
 
   useEffect(() => {
     if (!data || !centeredNodeId) return;
@@ -90,6 +79,15 @@ export default function NetworkPage() {
   const circleNames = useMemo(() => {
     return circleEntities.map((c) => c.name).sort();
   }, [circleEntities]);
+
+  // Drop a persisted selectedCircle that no longer exists (renamed or
+  // deleted since it was saved) once the circle list has actually loaded --
+  // otherwise the empty circleNames during the initial fetch would look
+  // indistinguishable from "this circle was deleted" and clear it wrongly.
+  useEffect(() => {
+    if (circlesLoading) return;
+    setFilters((f) => dropStaleCircleFilter(f, circleNames));
+  }, [circlesLoading, circleNames]);
 
   // Contact nodes for the center-on-contact autocomplete
   const contactNodes = useMemo(() => {

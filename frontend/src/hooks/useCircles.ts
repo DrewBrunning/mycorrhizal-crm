@@ -12,7 +12,11 @@ import { type ErrorNotifier, handleError, handleFetchError } from '../utils/erro
 export function useCircles(notifier?: ErrorNotifier) {
   const [circles, setCircles] = useState<Circle[]>([]);
   const [members, setMembers] = useState<CircleMember[]>([]);
-  const [loading, setLoading] = useState(false);
+  // Starts true: refresh() always runs on mount, so there's no render where
+  // circles are genuinely absent rather than just not-yet-fetched (matches
+  // useGraph's convention -- NetworkPage's stale-circle-filter cleanup
+  // depends on this to tell "empty" apart from "not loaded yet").
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
