@@ -2244,6 +2244,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /contacts/{id}/life-event-suggestions:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: List inferred, unresolved life-event suggestions for a contact
+      operationId: getLifeEventSuggestions
+      description: >
+        ADR 0025 infer-and-suggest: candidate life events derived on read from
+        the contact's dated field periods. Nothing is stored by this call — a
+        candidate is offered, and the user accepts it through the normal
+        POST /life-events route or dismisses it via
+        POST /life-event-suggestions/resolve. A candidate is suppressed when a
+        same-type event already exists on its date or the candidate has been
+        resolved before. Always an array, never null.
+      responses:
+        "200":
+          description: The contact's unresolved suggestions.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggestions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LifeEventSuggestion"
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /contacts/{id}/timeline:
     parameters:
       - name: id
@@ -5408,6 +5450,49 @@ paths:
                 $ref: "#/components/schemas/Error"
         "412":
           description: Stale If-Match revision — the life event was modified since the client last read it; nothing was deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Life-event suggestions (infer-and-suggest, ADR 0025) ---
+  /life-event-suggestions/resolve:
+    post:
+      summary: Resolve an inferred life-event suggestion (accept or dismiss)
+      operationId: resolveLifeEventSuggestion
+      description: >
+        Records the user's terminal decision for one inferred candidate so it
+        is not offered again. It does not create a LifeEvent — accepting is the
+        normal POST /life-events route (which also lets the user change the
+        inferred type). Idempotent: resolving the same candidate twice is a
+        no-op.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LifeEventSuggestionResolutionInput"
+      responses:
+        "200":
+          description: Recorded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The subject contact was not found.
           content:
             application/json:
               schema:
@@ -12575,6 +12660,8 @@ components:
           description: "T36: nullable on the wire. Only backfilled (migration 000011) for pre-existing rows whose type mapped onto one of the original seven LifeEventType* constants; otherwise absent/uncategorized."
         date:
           $ref: "#/components/schemas/PartialDate"
+        end_date:
+          $ref: "#/components/schemas/PartialDate"
         description: { type: string, maxLength: 2000 }
         source: { type: string, enum: [user, imported, ai-suggested] }
         related_entity_ids:
@@ -12602,12 +12689,40 @@ components:
           enum: [home_living, health_wellness, work_education, travel_experiences, family_relationships]
         date:
           $ref: "#/components/schemas/PartialDate"
+        end_date:
+          $ref: "#/components/schemas/PartialDate"
         description: { type: string, maxLength: 2000 }
         source: { type: string, enum: [user, imported, ai-suggested] }
         related_entity_ids:
           type: array
           items: { type: string, format: uuid }
         remind: { type: boolean }
+    LifeEventSuggestion:
+      type: object
+      description: >
+        ADR 0025: one inferred, unresolved life-event candidate. Computed on
+        read; not a stored entity. SourceKind/SourceEntryID identify the Card
+        entry the inference came from and are the resolution key, not a live
+        link to an accepted event.
+      properties:
+        entity_id: { type: string, format: uuid }
+        type: { type: string, example: moved }
+        category: { type: string, example: home_living }
+        date:
+          $ref: "#/components/schemas/PartialDate"
+        end_date:
+          $ref: "#/components/schemas/PartialDate"
+        source_kind: { type: string, enum: [address, organization] }
+        source_entry_id: { type: string }
+    LifeEventSuggestionResolutionInput:
+      type: object
+      required: [entity_id, source_kind, source_entry_id, event_type, resolution]
+      properties:
+        entity_id: { type: string, format: uuid }
+        source_kind: { type: string, enum: [address, organization] }
+        source_entry_id: { type: string, maxLength: 255 }
+        event_type: { type: string, maxLength: 100 }
+        resolution: { type: string, enum: [accepted, dismissed] }
 
     # --- Link field types (T34) ---
     LinkFieldType:
@@ -13930,6 +14045,16 @@ components:
             sibling `gender` field on the contact DTOs remains for backward
             compat; when both are present, crm.gender wins (it is the
             authoritative copy).
+        periods:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntryPeriod"
+          description: >
+            ADR 0025: start/end ranges for Card entries (addresses, employers,
+            titles). A period's entry_id must resolve to an entry of the same
+            kind on the submitted card, or the request is rejected 400. No RFC
+            home exists, so file exports drop these by design (reported as
+            crm.periods); the CSV export carries them.
     Passthrough:
       type: object
       description: Unmapped data preserved verbatim (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md).
@@ -13969,6 +14094,31 @@ components:
         partial:
           $ref: "#/components/schemas/PartialDate"
         timestamp: { type: string, format: date-time, nullable: true }
+    TemporalRange:
+      type: object
+      description: >
+        ADR 0025: a CRM-only start/end period for a value that is true over an
+        interval. Endpoints are partial calendar dates (no time, no zone);
+        either may be absent (open-ended), but both absent is rejected. It has
+        no RFC 9553/9554/9555 home, so it lives in CRMEnvelope and is dropped
+        from vCard/JSContact file export (named loss, crm.periods).
+      properties:
+        start:
+          $ref: "#/components/schemas/PartialDate"
+        end:
+          $ref: "#/components/schemas/PartialDate"
+    EntryPeriod:
+      type: object
+      required: [kind, entry_id, range]
+      description: >
+        ADR 0025: one TemporalRange attached to one Card entry by its neutral
+        element ID (JSContact map key / vCard PROP-ID). kind names which Card
+        collection entry_id indexes.
+      properties:
+        kind: { type: string, example: address }
+        entry_id: { type: string }
+        range:
+          $ref: "#/components/schemas/TemporalRange"
     Anniversary:
       type: object
       required: [kind, date]

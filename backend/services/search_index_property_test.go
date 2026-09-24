@@ -5,23 +5,23 @@
 // trigger-maintained index clean.
 //
 // The incremental index is kept by SQL triggers (migrations
-// 000007/000010/000020) — the path a real client exercises; RebuildSearchIndex
-// is the derived-from-source fallback. If the two ever disagree (a column the
-// trigger indexes but the rebuild does not, a trigger forgetting the
-// soft-delete guard), this property finds it with a shrunk counterexample.
+// 000007/000010/000020; migration 000059 gave the AFTER INSERT triggers the
+// same `deleted_at IS NULL` guard AFTER UPDATE already had) — the path a real
+// client exercises; RebuildSearchIndex is the derived-from-source fallback. If
+// the two ever disagree (a column the trigger indexes but the rebuild does
+// not, a trigger forgetting the soft-delete guard), this property finds it
+// with a shrunk counterexample.
 //
 // # Comparison is modulo the contract (issue #462 action 7)
 //
-// The AFTER INSERT triggers have no `deleted_at IS NULL` guard (only AFTER
-// UPDATE does), so a row inserted already-soft-deleted — a bulk import, a
-// hand-written migration — stays in the incremental index, while a rebuild
-// (which selects live rows only) will not reproduce it. That asymmetry is
-// acceptable under the contract (ADR 0012 INV-D9): the outer query, not index
-// contents, is authoritative on deletion state. **Decision: normalise in the
-// comparison, do not align the triggers** — restrict the snapshot equality to
-// rowids backed by a live base row (snapshotFTSLive). The full incremental
-// snapshot is still handed to CheckSearchIndexConsistency, which is contract-
-// aware and must call it clean.
+// A row may sit in the incremental index while being soft-deleted (for
+// example an archived-then-soft-deleted row, or index state left by a
+// historical write), while a rebuild (which selects live rows only) will not
+// reproduce it. That asymmetry is acceptable under the contract (ADR 0012
+// INV-D9): the outer query, not index contents, is authoritative on deletion
+// state. So the snapshot equality is restricted to rowids backed by a live
+// base row (snapshotFTSLive). The full incremental snapshot is still handed to
+// CheckSearchIndexConsistency, which is contract-aware and must call it clean.
 package services
 
 import (
@@ -84,10 +84,10 @@ func TestSearchIndex_RebuildMatchesIncremental(t *testing.T) {
 		//   - a soft DELETE (AFTER UPDATE re-insert has the deleted_at guard,
 		//     so the row drops out of FTS)
 		//   - a hard DELETE (AFTER DELETE removes the FTS row)
-		//   - a raw INSERT of an already-soft-deleted contact (AFTER INSERT has
-		//     NO guard, so the row lands in the incremental index — the
-		//     asymmetry the contract tolerates and the rebuild will not
-		//     reproduce)
+		//   - a raw INSERT of an already-soft-deleted contact (since migration
+		//     000059 AFTER INSERT carries the guard too, so the row stays out
+		//     of the index; the snapshot comparison is still normalised to live
+		//     base rows either way)
 		if len(contacts) > 0 && drawBool(t, "mutate.update") {
 			require.NoError(t, db.Exec("UPDATE contacts SET firstname = ? WHERE id = ?", "Updated-"+string(rune('A'+drawInt(t, "mut.update.suffix", 0, 25))), contacts[0].ID).Error)
 		}

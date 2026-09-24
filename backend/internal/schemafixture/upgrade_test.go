@@ -1,6 +1,7 @@
 package schemafixture
 
 import (
+	"fmt"
 	"testing"
 
 	"mycorrhizal/database"
@@ -44,11 +45,10 @@ func migrateFixtureTo(t *testing.T, f *Fixture, target uint) *gorm.DB {
 	assert.EqualValues(t, target, version)
 	assert.False(t, dirty)
 
-	after := tableCounts(t, db)
-	for table, want := range before {
-		assert.Equalf(t, want, after[table],
-			"upgrading %s -> version %d must preserve %s row counts", f.Release.Tag, target, table)
-	}
+	// assertRowCountsPreserved (not a raw loop): migrationDiagnosticTables
+	// legitimately gain rows during a real migration run (system_events), so
+	// they are excluded from the user-data preservation check.
+	assertRowCountsPreserved(t, fmt.Sprintf("%s -> version %d", f.Release.Tag, target), before, tableCounts(t, db))
 	return db
 }
 
@@ -105,45 +105,18 @@ func TestUpgradeLongestSkip(t *testing.T) {
 	assert.EqualValues(t, latest, version, "the longest supported skip must land on the current schema")
 	assert.False(t, dirty)
 
-	after := tableCounts(t, db)
-	for table, want := range before {
-		if table == "system_events" {
-			// database.InitDB (the production entry point this test exercises,
-			// unlike migrateFixtureTo's stepwise database.MigrateUpTo) writes its
-			// own operational events on a real pending-migration upgrade:
-			// takePreMigrationBackup logs one (database/premigration_backup.go),
-			// and recordMigrationEvent logs a migration_completed row
-			// (database/migrate.go) once the batch commits. Both are deliberate,
-			// documented issue #530/#424 behavior, not data loss — this table is
-			// expected to grow by exactly two rows on any upgrade that actually
-			// has a pending migration to apply, so equality would be wrong here.
-			// This is untestable before this ticket: every previous PR since the
-			// v1.0.0 floor was cut had migration head == floor, so `before` and
-			// `after` never actually differed for the assertion to catch.
-			assert.GreaterOrEqualf(t, after[table], want,
-				"the v1.0.0 -> current skip must not lose %s rows", table)
-			continue
-		}
-		assert.Equalf(t, want, after[table],
-			"the v1.0.0 -> current skip must preserve %s row counts", table)
-	}
+	// assertRowCountsPreserved (not a raw loop): the production InitDB entry
+	// point records a pre-migration backup event and a migration_completed
+	// event into system_events, so that operational table is excluded while
+	// every user-data table must survive exactly.
+	assertRowCountsPreserved(t, "the v1.0.0 -> current skip", before, tableCounts(t, db))
 }
 
 // TestUpgradeLeavesSearchConsistent mirrors DEPLOY-02's "search returns
 // pre-upgrade contacts after the upgrade": after the longest skip, the FTS
 // index must still resolve a contact that was loaded into the fixture.
-//
-// Known failing as of issue #1232: a real database.InitDB-driven upgrade
-// (the production entry point this test exercises) leaves a soft-deleted
-// contact searchable in contacts_fts afterward. Confirmed unrelated to any
-// particular migration's content (reproduces with a no-op migration) and
-// specific to the InitDB/migrateFileWithPreBackup path — the stepwise
-// database.MigrateUpTo path TestUpgradeEachAdjacentHop uses does not hit it.
-// Skipped rather than left red so CI stays green without silently dropping
-// the check; remove this skip once #1232 is fixed.
 func TestUpgradeLeavesSearchConsistent(t *testing.T) {
 	requirePendingMigrationAboveFloor(t)
-	t.Skip("known bug: soft-deleted contact resurfaces in contacts_fts after a real InitDB upgrade — see issue #1232")
 	f := Load(t, SupportedReleases[0])
 	gina := f.Dataset.Contacts["gina"]
 

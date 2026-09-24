@@ -170,6 +170,10 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// breakdown behind the contact-detail-page badge. Same ordering
 			// note as /briefing/detail/timeline above.
 			protected.GET("/contacts/:id/score", controllers.GetContactScore)
+			// Infer-and-suggest (issue #354 follow-up, ADR 0023): inferred,
+			// not-yet-resolved life-event candidates for a contact. Read-only;
+			// resolving one is the POST /life-event-suggestions/resolve route.
+			protected.GET("/contacts/:id/life-event-suggestions", controllers.GetLifeEventSuggestions)
 			protected.PUT("/contacts/:id", middleware.ValidateJSONMiddleware(&models.ContactRecordInput{}), controllers.UpdateContact)
 			protected.DELETE("/contacts/:id", controllers.DeleteContact)
 			protected.POST("/contacts/:id/archive", controllers.ArchiveContact)
@@ -380,6 +384,10 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.GET("/life-events/:id", controllers.GetLifeEvent)
 			protected.PUT("/life-events/:id", middleware.ValidateJSONMiddleware(&models.LifeEventInput{}), controllers.UpdateLifeEvent)
 			protected.DELETE("/life-events/:id", controllers.DeleteLifeEvent)
+			// Infer-and-suggest (issue #354 follow-up, ADR 0023): record the
+			// accept/dismiss decision for one inferred candidate. Accepting the
+			// event itself is the normal POST /life-events route.
+			protected.POST("/life-event-suggestions/resolve", middleware.ValidateJSONMiddleware(&models.LifeEventSuggestionResolutionInput{}), controllers.ResolveLifeEventSuggestion)
 
 			// ConversationAgenda routes (T21 — T21). /:id/discuss is registered
 			// after /:id reads but the PATCH method never collides with

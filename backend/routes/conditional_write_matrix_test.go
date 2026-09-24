@@ -229,6 +229,7 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/households/suggest-addresses":         exempt(reasonCollectionOp),
 		"POST /api/v1/households/suggestions/accept":        exempt(reasonCollectionOp),
 		"POST /api/v1/households/suggestions/dismiss":       exempt(reasonCollectionOp),
+		"POST /api/v1/life-event-suggestions/resolve":       exempt(reasonCollectionOp),
 		"POST /api/v1/households/:id/suggest-relationships": exempt(reasonCollectionOp),
 		"POST /api/v1/relationship-edges/suggest":           exempt(reasonCollectionOp),
 		"POST /api/v1/contacts/import/upload":               exempt(reasonCollectionOp),

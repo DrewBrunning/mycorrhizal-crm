@@ -168,6 +168,10 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/paperless/test-connection",
 		"POST /api/v1/seafile/test-connection",
 		"POST /api/v1/nextcloud/test-connection",
+		// ADR 0025 infer-and-suggest: resolving a candidate is idempotent by
+		// its natural (entity, source kind, source entry, event type) key — a
+		// repeat is a no-op, never a second row.
+		"POST /api/v1/life-event-suggestions/resolve",
 	} {
 		t[k] = exempt(idemReasonDedup)
 	}

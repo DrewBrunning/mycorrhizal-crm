@@ -412,6 +412,8 @@
       "pobox": "Casella postale",
       "apartment": "Interno / Appartamento",
       "floor": "Piano",
+      "periodFrom": "Ha vissuto qui dal (anno)",
+      "periodTo": "Fino al (anno)",
       "additionalFields": "Campi aggiuntivi"
     },
     "anniversaries": "Anniversari",
@@ -689,6 +691,16 @@
     "dateYear": "Anno",
     "dateMonth": "Mese",
     "dateDay": "Giorno",
+    "endDate": "Fine (opzionale)",
+    "endDateYear": "Anno di fine",
+    "endDateMonth": "Mese di fine",
+    "endDateDay": "Giorno di fine",
+    "suggestions": {
+      "title": "Eventi di vita suggeriti",
+      "prompt": "Hai registrato un periodo: aggiungere un evento «{{event}}» per {{when}}?",
+      "add": "Aggiungi",
+      "dismiss": "Ignora"
+    },
     "description": "Descrizione",
     "relatedEntities": "In relazione con",
     "searchContacts": "Cerca contatti…",

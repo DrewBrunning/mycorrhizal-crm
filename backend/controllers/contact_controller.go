@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"mycorrhizal/attachments"
+	"mycorrhizal/contactmodel"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
@@ -50,7 +51,24 @@ var contactInfoClause = `(
 	OR (json_valid(emails) AND EXISTS (SELECT 1 FROM json_each(contacts.emails) WHERE length(trim(json_extract(json_each.value, '$.value'))) > 0))
 	OR (json_valid(phones) AND EXISTS (SELECT 1 FROM json_each(contacts.phones) WHERE length(trim(json_extract(json_each.value, '$.value'))) > 0))
 	OR (json_valid(urls) AND EXISTS (SELECT 1 FROM json_each(contacts.urls) WHERE length(trim(json_extract(json_each.value, '$.value'))) > 0))
-)`
+ )`
+
+// rejectInvalidPeriods aborts with a 400 and returns true when the submitted
+// CRMEnvelope carries a period that cannot be stored: both endpoints absent, a
+// reversed range, or an EntryID that does not resolve to an entry of its Kind
+// on the submitted Card (docs/adrs/0025-temporal-periods.md). A reference that
+// cannot resolve is a caller error, never a silent drop — the degradation
+// policy's drop-with-warning applies to export formats, not to user input.
+func rejectInvalidPeriods(c *gin.Context, card contactmodel.Card, crm contactmodel.CRMEnvelope) bool {
+	bad := crm.InvalidPeriods(card)
+	if len(bad) == 0 {
+		return false
+	}
+	apperrors.AbortWithError(c, apperrors.ErrValidation("Request validation failed").
+		WithDetails("crm.periods", fmt.Sprintf(
+			"%d period(s) reference a missing entry, are empty, or end before they start", len(bad))))
+	return true
+}
 
 func CreateContact(c *gin.Context) {
 	// Save to the database
@@ -74,6 +92,10 @@ func CreateContact(c *gin.Context) {
 	input, err := middleware.GetValidated[models.ContactRecordInput](c)
 	if err != nil {
 		apperrors.AbortWithError(c, err)
+		return
+	}
+
+	if rejectInvalidPeriods(c, input.Card, input.CRM) {
 		return
 	}
 
@@ -678,6 +700,10 @@ func UpdateContact(c *gin.Context) {
 		return
 	}
 
+	if rejectInvalidPeriods(c, input.Card, input.CRM) {
+		return
+	}
+
 	contact.Gender = input.Gender
 	models.ApplyRecordToContact(&contact, input.ToRecord(), currentConfig(c).ProfilePhotoDir)
 
@@ -775,6 +801,12 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 
 	// Delete this contact's life events, preferences, and custom field values
 	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.LifeEvent{}).Error; err != nil {
+		return err
+	}
+	// Delete this contact's life-event-suggestion resolution memory (ADR 0023 —
+	// system-generated, join-shaped, hard delete; there is no candidate to
+	// remember a decision about once the contact is gone).
+	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.LifeEventSuggestionResolution{}).Error; err != nil {
 		return err
 	}
 	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.Preference{}).Error; err != nil {

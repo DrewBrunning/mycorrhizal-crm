@@ -164,3 +164,43 @@ test('re-filing a legacy uncategorized event under a real category removes the U
   fireEvent.mouseDown(screen.getByRole('combobox', { name: /category/i }));
   expect(screen.queryByText('Other / Uncategorized')).not.toBeInTheDocument();
 });
+
+// ADR 0025: an event may span a period; the end date must round-trip through
+// the edit dialog instead of being silently dropped on save.
+test('an explicit end date initializes and round-trips into the save payload', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({
+    onSave,
+    initial: {
+      type: 'job_change',
+      category: 'work_education',
+      date: { year: 2019 },
+      endDate: { year: 2024 },
+    },
+  });
+
+  expect(screen.getByLabelText('End year')).toHaveValue(2024);
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ endDate: { year: 2024 } }));
+});
+
+test('clearing all end-date fields omits endDate from the save payload', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({
+    onSave,
+    initial: {
+      type: 'job_change',
+      category: 'work_education',
+      date: { year: 2019 },
+      endDate: { year: 2024 },
+    },
+  });
+
+  fireEvent.change(screen.getByLabelText('End year'), { target: { value: '' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ endDate: undefined }));
+});

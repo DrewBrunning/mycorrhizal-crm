@@ -23,7 +23,7 @@ type Reminder struct {
 	// OccasionObligationID mirrors LifeEventID exactly (docs/adrs/0024-occasions.md,
 	// issue #387, ticket #1223) — the materialized-reminder link
 	// syncOccasionObligationReminder uses to find and hard-delete/regenerate
-	// the one reminder for a given obligation. Migration 000059 adds the
+	// the one reminder for a given obligation. Migration 000062 adds the
 	// column.
 	OccasionObligationID *string `gorm:"column:occasion_obligation_id;index" json:"occasion_obligation_id,omitempty"`
 	Contact              Contact `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"contact,omitempty" validate:"-"`

@@ -1,4 +1,4 @@
--- Rollback of 000059. occasion_obligation_id holds no durable user content
+-- Rollback of 000062. occasion_obligation_id holds no durable user content
 -- (a machine-synthesized link to a materialized reminder), so dropping it
 -- loses nothing recoverable -- the reminder row itself, and the obligation it
 -- points at, are untouched.

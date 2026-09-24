@@ -51,6 +51,8 @@ export interface LifeEventFormData {
   type: string;
   category?: string;
   date?: PartialDate;
+  // ADR 0025: optional end date, turning the event's start into a span.
+  endDate?: PartialDate;
   description?: string;
   relatedEntityIds?: string[];
   remind?: boolean;
@@ -91,6 +93,9 @@ export default function LifeEventDialog({
   const [dateYear, setDateYear] = useState('');
   const [dateMonth, setDateMonth] = useState('');
   const [dateDay, setDateDay] = useState('');
+  const [endDateYear, setEndDateYear] = useState('');
+  const [endDateMonth, setEndDateMonth] = useState('');
+  const [endDateDay, setEndDateDay] = useState('');
   const [description, setDescription] = useState('');
   const [remind, setRemind] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -167,6 +172,9 @@ export default function LifeEventDialog({
           setDateMonth('');
           setDateDay('');
         }
+        setEndDateYear(initial.endDate?.year != null ? String(initial.endDate.year) : '');
+        setEndDateMonth(initial.endDate?.month != null ? String(initial.endDate.month) : '');
+        setEndDateDay(initial.endDate?.day != null ? String(initial.endDate.day) : '');
         setDescription(initial.description || '');
         setRemind(initial.remind || false);
         setRelatedContacts([]);
@@ -189,6 +197,9 @@ export default function LifeEventDialog({
         setDateYear('');
         setDateMonth('');
         setDateDay('');
+        setEndDateYear('');
+        setEndDateMonth('');
+        setEndDateDay('');
         setDescription('');
         setRemind(false);
         setRelatedContacts([]);
@@ -202,6 +213,14 @@ export default function LifeEventDialog({
     const y = dateYear ? parseInt(dateYear, 10) : undefined;
     const m = dateMonth ? parseInt(dateMonth, 10) : undefined;
     const d = dateDay ? parseInt(dateDay, 10) : undefined;
+    if (y == null && m == null && d == null) return undefined;
+    return { year: y, month: m, day: d };
+  })();
+
+  const currentEndDate: PartialDate | undefined = (() => {
+    const y = endDateYear ? parseInt(endDateYear, 10) : undefined;
+    const m = endDateMonth ? parseInt(endDateMonth, 10) : undefined;
+    const d = endDateDay ? parseInt(endDateDay, 10) : undefined;
     if (y == null && m == null && d == null) return undefined;
     return { year: y, month: m, day: d };
   })();
@@ -243,6 +262,7 @@ export default function LifeEventDialog({
         type,
         category: category === UNCATEGORIZED ? undefined : category,
         date: currentDate,
+        endDate: currentEndDate,
         description: description || undefined,
         relatedEntityIds: relatedContacts.map((c) => c.uid),
         remind: canRemind ? remind : false,
@@ -375,6 +395,41 @@ export default function LifeEventDialog({
               fullWidth
               slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: 1, max: 31 } }}
             />
+          </Box>
+
+          {/* ADR 0025: an optional end date turns the event into a span
+              ("worked at Acme 2019-2024"). Kept as a separate optional row so
+              a point event is unchanged. */}
+          <Box>
+            <Typography variant="caption" color="textSecondary">
+              {t('lifeEvent.endDate')}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
+              <TextField
+                label={t('lifeEvent.endDateYear')}
+                type="number"
+                value={endDateYear}
+                onChange={(e) => setEndDateYear(e.target.value)}
+                fullWidth
+                slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: 1900, max: 2100 } }}
+              />
+              <TextField
+                label={t('lifeEvent.endDateMonth')}
+                type="number"
+                value={endDateMonth}
+                onChange={(e) => setEndDateMonth(e.target.value)}
+                fullWidth
+                slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: 1, max: 12 } }}
+              />
+              <TextField
+                label={t('lifeEvent.endDateDay')}
+                type="number"
+                value={endDateDay}
+                onChange={(e) => setEndDateDay(e.target.value)}
+                fullWidth
+                slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: 1, max: 31 } }}
+              />
+            </Box>
           </Box>
 
           <TextField

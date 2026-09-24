@@ -28,6 +28,13 @@ type CRMEnvelope struct {
 	// export path reports that loss by name (models.EnvelopeExportLoss-
 	// Diagnostics) rather than silently.
 	Gender string `json:"gender,omitempty"`
+	// Periods are start/end ranges for Card entries (addresses, employers,
+	// titles) — user-authored content with no RFC 9553/9554/9555 home, so it
+	// lives in the envelope rather than the standards Card
+	// (docs/adrs/0025-temporal-periods.md). Keyed by the entry's neutral ID,
+	// never by array position. Dropped from file export by design and
+	// reported by name (models.EnvelopeExportLossDiagnostics).
+	Periods []EntryPeriod `json:"periods,omitempty"`
 	// Reminders/Activities/Relationships remain separate GORM tables keyed by contact ID;
 	// they are NOT embedded here.
 }

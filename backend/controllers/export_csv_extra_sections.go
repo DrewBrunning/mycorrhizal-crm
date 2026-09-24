@@ -75,6 +75,20 @@ func formatExportPartialDate(p *contactmodel.PartialDate) string {
 	return ""
 }
 
+// formatExportPeriods renders a contact's CRMEnvelope periods for the CSV's
+// full-fidelity CONTACTS section: one "kind:entryID:start..end" token per
+// period, joined by "; ". The CSV is the one export that carries ADR 0025
+// periods — the vCard/JSContact file exports drop them by design (named loss,
+// crm.periods), because no RFC 9553/9554/9555 home exists.
+func formatExportPeriods(periods []contactmodel.EntryPeriod) string {
+	parts := make([]string, 0, len(periods))
+	for _, p := range periods {
+		parts = append(parts, fmt.Sprintf("%s:%s:%s..%s", p.Kind, p.EntryID,
+			formatExportPartialDate(p.Range.Start), formatExportPartialDate(p.Range.End)))
+	}
+	return strings.Join(parts, "; ")
+}
+
 // exportContactByEntityID resolves an EntityID (Contact.VCardUID) to its
 // display ID/name, falling back to the raw EntityID for both when the
 // referenced contact isn't found (mirrors ExportData's own RelationshipEdge
@@ -132,7 +146,7 @@ func writeExportLifeEvents(c *gin.Context, log *zerolog.Logger, buf *bytes.Buffe
 	buf.WriteString("\n=== LIFE_EVENTS ===\n")
 
 	headers := []string{
-		"ID", "Contact ID", "Contact Name", "Type", "Category", "Date",
+		"ID", "Contact ID", "Contact Name", "Type", "Category", "Date", "End Date",
 		"Description", "Source", "Related Contact Names", "Remind", "Created At", "Updated At",
 	}
 	if err := writer.Write(headers); err != nil {
@@ -156,6 +170,7 @@ func writeExportLifeEvents(c *gin.Context, log *zerolog.Logger, buf *bytes.Buffe
 			event.Type,
 			event.Category,
 			formatExportPartialDate(event.Date),
+			formatExportPartialDate(event.EndDate),
 			event.Description,
 			event.Source,
 			strings.Join(relatedNames, "; "),
