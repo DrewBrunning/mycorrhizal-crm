@@ -27,6 +27,7 @@ doc; a handful of genuine gaps are called out explicitly in [Known gaps](#known-
 ## 1. Primary application data (user-authored content)
 
 `Contact`, `Note`, `Activity`, `Reminder`, `LifeEvent`, `Preference`, `CadencePolicy`,
+`DataDecayPolicy` (issue #352 — same opt-in, per-contact, soft-deleting shape as `CadencePolicy`),
 `ConversationAgenda`, `Gift`, `LinkFieldType`, `CalendarSubscription`/`ContactSubscription`,
 `ImmichConfig`/`PaperlessConfig`/`SeafileConfig`/`WebDAVConfig`, `Attachment` (metadata row only —
 see [§5](#5-attachments--profile-photos-files-on-disk)).

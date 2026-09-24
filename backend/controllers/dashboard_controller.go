@@ -76,6 +76,12 @@ func GetDashboard(c *gin.Context) {
 		return
 	}
 
+	dataDecayOverdue, err := services.ListOverdueDataDecayPolicies(db, userID, now)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to compute overdue data decay policies").WithError(err))
+		return
+	}
+
 	resp := models.DashboardResponse{
 		Birthdays:            birthdays,
 		RandomContacts:       randomContacts,
@@ -84,6 +90,7 @@ func GetDashboard(c *gin.Context) {
 		Favorites:            favoriteContacts,
 		ReachOutSuggestions:  reachOutSuggestions,
 		ContactSyncConflicts: syncConflicts,
+		DataDecayOverdue:     toDashboardOverdueDataDecay(dataDecayOverdue),
 	}
 	normalizeDashboardSlices(&resp)
 
@@ -209,6 +216,27 @@ func toDashboardOverdueCadences(overdue []services.OverdueCadence) []models.Dash
 	return result
 }
 
+// toDashboardOverdueDataDecay converts services.OverdueDataDecayPolicy to
+// the models-local mirror DashboardResponse's wire shape uses (see
+// models.DashboardOverdueDataDecay's doc comment for why). Mirrors
+// toDashboardOverdueCadences.
+func toDashboardOverdueDataDecay(overdue []services.OverdueDataDecayPolicy) []models.DashboardOverdueDataDecay {
+	result := make([]models.DashboardOverdueDataDecay, len(overdue))
+	for i, o := range overdue {
+		result[i] = models.DashboardOverdueDataDecay{
+			Policy: o.Policy,
+			Health: models.DataDecayHealth{
+				NextDue:   o.Health.NextDue,
+				OverdueBy: o.Health.OverdueBy,
+			},
+			ContactID:      o.ContactID,
+			ContactName:    o.ContactName,
+			PhotoThumbnail: o.PhotoThumbnail,
+		}
+	}
+	return result
+}
+
 // normalizeDashboardSlices replaces every nil block with an empty slice so
 // the response always serializes as `[]`, never `null`/absent — the same
 // normalizeBriefingSlices discipline briefing_controller.go documents
@@ -234,5 +262,8 @@ func normalizeDashboardSlices(resp *models.DashboardResponse) {
 	}
 	if resp.ContactSyncConflicts == nil {
 		resp.ContactSyncConflicts = []models.ContactSyncConflictResponse{}
+	}
+	if resp.DataDecayOverdue == nil {
+		resp.DataDecayOverdue = []models.DashboardOverdueDataDecay{}
 	}
 }

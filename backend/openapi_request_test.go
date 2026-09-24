@@ -153,6 +153,8 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"PUT /occasion-obligations/{id}":          bindingFor(models.OccasionObligationInput{}),
 	"POST /cadence-policies":                  bindingFor(models.CadencePolicyInput{}),
 	"PUT /cadence-policies/{id}":              bindingFor(models.CadencePolicyInput{}),
+	"POST /data-decay-policies":               bindingFor(models.DataDecayPolicyInput{}),
+	"PUT /data-decay-policies/{id}":           bindingFor(models.DataDecayPolicyInput{}),
 
 	// --- Reminders (bind the raw GORM model, not an Input DTO — deliberate
 	// and already documented that way in openapi.yaml's Reminder schema). ---
@@ -279,6 +281,7 @@ var noBodyMutatingRoutes = map[string]bool{
 	"POST /api-tokens/{id}/rotate":                true,
 	"POST /contact-sync-conflicts/{id}/restore":   true,
 	"POST /contact-sync-conflicts/{id}/dismiss":   true,
+	"POST /data-decay-policies/{id}/verify":       true,
 }
 
 // boundJSONFields returns the top-level JSON field names t would bind via

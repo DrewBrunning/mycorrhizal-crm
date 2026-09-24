@@ -18,6 +18,7 @@ unleash:
         - ^contact_sync_service\.go$
         - ^credential_crypto\.go$
         - ^custom_field_service\.go$
+        - ^data_decay_service\.go$
         - ^data_integrity_repair\.go$
         - ^data_integrity_service\.go$
         - ^db_integrity_service\.go$

@@ -348,6 +348,7 @@ func ComputeContactMergeAssociationCounts(db *gorm.DB, userID uint, loserID uint
 		{&c.ExternalActivities, db.Model(&models.ExternalActivity{}).Where("entity_id = ? AND user_id = ?", loserVCardUID, userID)},
 		{&c.CadencePolicies, db.Model(&models.CadencePolicy{}).Where("entity_id = ? AND user_id = ?", loserVCardUID, userID)},
 		{&c.ReachOutSuggestions, db.Model(&models.ReachOutSuggestion{}).Where("contact_vcard_uid = ? AND user_id = ?", loserVCardUID, userID)},
+		{&c.DataDecayPolicies, db.Model(&models.DataDecayPolicy{}).Where("entity_id = ? AND user_id = ?", loserVCardUID, userID)},
 	}
 	for _, s := range steps {
 		if err := s.q.Count(s.dst).Error; err != nil {
@@ -614,6 +615,13 @@ func RepointContactAssociations(
 		return 0, err
 	}
 
+	// data_decay_policies (issue #352): same one-per-contact partial unique
+	// index shape as cadence_policies, so the same conflict-aware repoint is
+	// needed -- see repointDataDecayPolicy and ComputeDataDecayPolicyConflict.
+	if err := repointDataDecayPolicy(tx, userID, keeper, loser, resolutions); err != nil {
+		return 0, err
+	}
+
 	// users.self_contact_vcard_uid (T90): the user's "Me" pointer. One row
 	// per user, no uniqueness hazard — if it pointed at the loser (the loser
 	// was "Me"), move it to the keeper so it doesn't dangle once the loser is
@@ -751,6 +759,114 @@ func repointCadencePolicy(tx *gorm.DB, userID uint, keeper, loser *models.Contac
 			// picking wrong here doesn't just write an odd string -- it
 			// decides which whole row survives).
 			return fmt.Errorf("contact merge: cadence policy resolution %q does not match either side", chosen)
+		}
+	}
+	// Keeper's policy wins (explicitly chosen, or the two already agreed):
+	// drop the loser's, the keeper's is untouched.
+	return tx.Delete(&loserPolicy).Error
+}
+
+// dataDecayPolicyConflictField is the fixed conflict key for a
+// DataDecayPolicy collision (issue #352), mirroring
+// cadencePolicyConflictField's role for CadencePolicy.
+const dataDecayPolicyConflictField = "data_decay_policy"
+
+// ComputeDataDecayPolicyConflict returns a conflict when both keeper and
+// loser already have a DataDecayPolicy and they genuinely differ --
+// migration 000064's partial unique index on (user_id, entity_id) means only
+// one can survive per contact, the same constraint shape
+// ComputeCadencePolicyConflict handles. nil, nil when at most one side has a
+// policy (repointDataDecayPolicy adopts a one-sided policy silently) or when
+// both sides already agree (nothing to ask).
+func ComputeDataDecayPolicyConflict(db *gorm.DB, userID uint, keeperVCardUID, loserVCardUID string) (*models.ContactMergeFieldConflict, error) {
+	var keeperPolicy, loserPolicy models.DataDecayPolicy
+	if err := db.Where("entity_id = ? AND user_id = ?", keeperVCardUID, userID).First(&keeperPolicy).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if err := db.Where("entity_id = ? AND user_id = ?", loserVCardUID, userID).First(&loserPolicy).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	keeperSummary, loserSummary := formatDataDecayPolicySummary(keeperPolicy), formatDataDecayPolicySummary(loserPolicy)
+	if keeperSummary == loserSummary {
+		return nil, nil
+	}
+	return &models.ContactMergeFieldConflict{
+		Field:       dataDecayPolicyConflictField,
+		Label:       "Data verification interval",
+		KeeperValue: keeperSummary,
+		LoserValue:  loserSummary,
+	}, nil
+}
+
+// formatDataDecayPolicySummary renders a DataDecayPolicy identically
+// everywhere it's compared or displayed, mirroring
+// formatCadencePolicySummary's role. LastVerifiedAt is deliberately not part
+// of the summary: it's a history fact, not a rule the user is choosing
+// between, so two policies with the same interval and active state never
+// surface a spurious conflict just because one was verified more recently.
+func formatDataDecayPolicySummary(p models.DataDecayPolicy) string {
+	state := "active"
+	if !p.Active {
+		state = "paused"
+	}
+	return fmt.Sprintf("Every %d days (%s)", p.IntervalDays, state)
+}
+
+// repointDataDecayPolicy resolves DataDecayPolicy across a merge, inside tx,
+// mirroring repointCadencePolicy: nothing on the loser -> no-op; only the
+// loser has one -> repoint it silently; both have one -> apply whichever
+// ComputeDataDecayPolicyConflict's caller resolved (or, if the two already
+// agree, keep the keeper's and drop the loser's with no resolution
+// required).
+func repointDataDecayPolicy(tx *gorm.DB, userID uint, keeper, loser *models.Contact, resolutions map[string]string) error {
+	var keeperPolicy models.DataDecayPolicy
+	keeperErr := tx.Where("entity_id = ? AND user_id = ?", keeper.VCardUID, userID).First(&keeperPolicy).Error
+	if keeperErr != nil && !errors.Is(keeperErr, gorm.ErrRecordNotFound) {
+		return keeperErr
+	}
+
+	var loserPolicy models.DataDecayPolicy
+	loserErr := tx.Where("entity_id = ? AND user_id = ?", loser.VCardUID, userID).First(&loserPolicy).Error
+	if errors.Is(loserErr, gorm.ErrRecordNotFound) {
+		return nil // nothing to move
+	} else if loserErr != nil {
+		return loserErr
+	}
+
+	if errors.Is(keeperErr, gorm.ErrRecordNotFound) {
+		// Only the loser has one -- adopt silently.
+		return tx.Model(&models.DataDecayPolicy{}).Where("id = ?", loserPolicy.ID).
+			Update("entity_id", keeper.VCardUID).Error
+	}
+
+	keeperSummary, loserSummary := formatDataDecayPolicySummary(keeperPolicy), formatDataDecayPolicySummary(loserPolicy)
+	if keeperSummary != loserSummary {
+		chosen, ok := resolutions[dataDecayPolicyConflictField]
+		if !ok {
+			return fmt.Errorf("contact merge: unresolved data decay policy conflict")
+		}
+		switch chosen {
+		case loserSummary:
+			// The loser's policy wins: drop the keeper's, then repoint the
+			// loser's onto the keeper.
+			if err := tx.Delete(&keeperPolicy).Error; err != nil {
+				return err
+			}
+			return tx.Model(&models.DataDecayPolicy{}).Where("id = ?", loserPolicy.ID).
+				Update("entity_id", keeper.VCardUID).Error
+		case keeperSummary:
+			// Explicitly the keeper's: fall through to the drop-the-loser's
+			// return below.
+		default:
+			// Doesn't match either side -- e.g. one policy was edited between
+			// preview and commit. Reject rather than silently guessing.
+			return fmt.Errorf("contact merge: data decay policy resolution %q does not match either side", chosen)
 		}
 	}
 	// Keeper's policy wins (explicitly chosen, or the two already agreed):

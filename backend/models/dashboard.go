@@ -26,6 +26,20 @@ type DashboardOverdueCadence struct {
 	PhotoThumbnail string                `json:"photo_thumbnail,omitempty"`
 }
 
+// DashboardOverdueDataDecay mirrors services.OverdueDataDecayPolicy
+// field-for-field (same JSON shape), kept as a models-local type rather than
+// importing "mycorrhizal/services" here — same import-cleanliness reasoning
+// DashboardOverdueCadence documents. Health reuses DataDecayPolicy's own
+// DataDecayHealth mirror (data_decay_policy.go), itself already an exact
+// mirror of services.DataDecayHealth.
+type DashboardOverdueDataDecay struct {
+	Policy         DataDecayPolicy `json:"policy"`
+	Health         DataDecayHealth `json:"health"`
+	ContactID      uint            `json:"contact_id"`
+	ContactName    string          `json:"contact_name"`
+	PhotoThumbnail string          `json:"photo_thumbnail,omitempty"`
+}
+
 // DashboardResponse is the M3 read-only composite of the four data blocks
 // the dashboard ("today/overview") screen needs: upcoming birthdays, a
 // handful of random contacts (the "stay in touch" nudge), upcoming
@@ -54,4 +68,7 @@ type DashboardResponse struct {
 	// remote change overwrote a local edit and the notice is the only record
 	// of it. Same no-omitempty discipline as every other block.
 	ContactSyncConflicts []ContactSyncConflictResponse `json:"contact_sync_conflicts"`
+	// DataDecayOverdue (issue #352): contacts whose info is due for
+	// re-verification. Same no-omitempty discipline as every other block.
+	DataDecayOverdue []DashboardOverdueDataDecay `json:"data_decay_overdue"`
 }

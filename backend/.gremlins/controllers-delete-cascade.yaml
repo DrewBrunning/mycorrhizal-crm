@@ -20,6 +20,7 @@ unleash:
         - ^contact_subscription_controller\.go$
         - ^conversation_agenda_controller\.go$
         - ^dashboard_controller\.go$
+        - ^data_decay_controller\.go$
         - ^derived_columns_controller\.go$
         - ^device_grant_controller\.go$
         - ^diagnostics_controller\.go$

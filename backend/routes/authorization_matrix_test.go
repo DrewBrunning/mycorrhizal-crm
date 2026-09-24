@@ -128,6 +128,7 @@ type seeded struct {
 	preference         string
 	occasionObligation string
 	cadence            string
+	dataDecay          string
 	agenda             string
 	edge               string
 	fieldDef           string
@@ -168,6 +169,8 @@ func seedResources(t *testing.T, db *gorm.DB, ownerID uint) seeded {
 	require.NoError(t, db.Create(&occasionObligation).Error)
 	cadence := models.CadencePolicy{UserID: ownerID, EntityID: ec.VCardUID, TargetIntervalDays: 30}
 	require.NoError(t, db.Create(&cadence).Error)
+	dataDecay := models.DataDecayPolicy{UserID: ownerID, EntityID: ec.VCardUID, IntervalDays: 365}
+	require.NoError(t, db.Create(&dataDecay).Error)
 	agenda := models.ConversationAgenda{UserID: ownerID, EntityID: ec.VCardUID, Content: "matrix agenda"}
 	require.NoError(t, db.Create(&agenda).Error)
 
@@ -206,6 +209,7 @@ func seedResources(t *testing.T, db *gorm.DB, ownerID uint) seeded {
 		preference:         pref.ID,
 		occasionObligation: occasionObligation.ID,
 		cadence:            cadence.ID,
+		dataDecay:          dataDecay.ID,
 		agenda:             agenda.ID,
 		edge:               edge.ID,
 		fieldDef:           fieldDef.ID,
@@ -474,6 +478,15 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/cadence-policies/:id":     {class: classItem, probe: "/api/v1/cadence-policies/" + s.cadence},
 		"PUT /api/v1/cadence-policies/:id":     {class: classItem, probe: "/api/v1/cadence-policies/" + s.cadence},
 		"DELETE /api/v1/cadence-policies/:id":  {class: classItem, probe: "/api/v1/cadence-policies/" + s.cadence},
+
+		// --- data decay policies (issue #352) --------------------------------
+		"GET /api/v1/data-decay-policies/overdue":     {class: classProtected},
+		"POST /api/v1/data-decay-policies":            {class: classProtected},
+		"GET /api/v1/data-decay-policies":             {class: classProtected},
+		"GET /api/v1/data-decay-policies/:id":         {class: classItem, probe: "/api/v1/data-decay-policies/" + s.dataDecay},
+		"PUT /api/v1/data-decay-policies/:id":         {class: classItem, probe: "/api/v1/data-decay-policies/" + s.dataDecay},
+		"DELETE /api/v1/data-decay-policies/:id":      {class: classItem, probe: "/api/v1/data-decay-policies/" + s.dataDecay},
+		"POST /api/v1/data-decay-policies/:id/verify": {class: classItem, probe: "/api/v1/data-decay-policies/" + s.dataDecay + "/verify"},
 
 		// --- reach-out suggestions ------------------------------------------
 		"GET /api/v1/reach-out-suggestions":              {class: classProtected},

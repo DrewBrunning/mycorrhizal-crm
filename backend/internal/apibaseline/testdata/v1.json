@@ -3523,6 +3523,187 @@
     },
     {
       "method": "GET",
+      "path": "/data-decay-policies",
+      "parameters": [
+        {
+          "name": "cursor",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "entity_id",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "order",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "since",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "410",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/data-decay-policies",
+      "parameters": null,
+      "request_body": "ref:DataDecayPolicyInput",
+      "responses": [
+        {
+          "status": "201",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/data-decay-policies/overdue",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/data-decay-policies/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:DataDecayPolicyWithHealth"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/data-decay-policies/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:DataDecayPolicyInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:DataDecayPolicyWithHealth"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/data-decay-policies/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MessageResponse"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/data-decay-policies/{id}/verify",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:DataDecayPolicyWithHealth"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/export",
       "parameters": null,
       "responses": [
@@ -9624,6 +9805,11 @@
           "required": false
         },
         {
+          "name": "data_decay_policies",
+          "type": "integer",
+          "required": false
+        },
+        {
           "name": "external_activities",
           "type": "integer",
           "required": false
@@ -10992,6 +11178,11 @@
           "required": false
         },
         {
+          "name": "data_decay_overdue",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
           "name": "favorites",
           "type": "array\u003ccomposed[object,object]\u003e",
           "required": false
@@ -11014,6 +11205,126 @@
         {
           "name": "upcoming_reminders",
           "type": "array\u003ccomposed[object,object]\u003e",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "DataDecayHealth",
+      "properties": [
+        {
+          "name": "next_due",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "overdue_by",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "DataDecayPolicy",
+      "properties": [
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "interval_days",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "last_verified_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "DataDecayPolicyInput",
+      "properties": [
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "interval_days",
+          "type": "integer",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "DataDecayPolicyWithHealth",
+      "properties": [
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "health",
+          "type": "ref:DataDecayHealth",
+          "required": false
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "interval_days",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "last_verified_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
           "required": false
         }
       ]
@@ -15080,6 +15391,36 @@
         {
           "name": "policy",
           "type": "ref:CadencePolicy",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "OverdueDataDecayPolicy",
+      "properties": [
+        {
+          "name": "contact_id",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "contact_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "health",
+          "type": "ref:DataDecayHealth",
+          "required": false
+        },
+        {
+          "name": "photo_thumbnail",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "policy",
+          "type": "ref:DataDecayPolicy",
           "required": false
         }
       ]

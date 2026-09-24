@@ -6681,6 +6681,239 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  # --- DataDecayPolicies (issue #352, docs/adrs/0026-data-decay.md) ---
+  /data-decay-policies/overdue:
+    get:
+      summary: List overdue data decay policies
+      operationId: listOverdueDataDecayPolicies
+      description: >
+        Every active data decay policy that is currently overdue, most-
+        overdue first, joined with the contact's numeric ID and display
+        name. Health is derived from last_verified_at/created_at (never
+        stored); a paused (active:false) policy never appears.
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The overdue list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  overdue:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OverdueDataDecayPolicy"
+  /data-decay-policies:
+    get:
+      summary: List data decay policies
+      operationId: listDataDecayPolicies
+      parameters:
+        - name: cursor
+          in: query
+          description: Opaque resume token from the previous page's next_cursor. Ignored when since is present.
+          schema: { type: string }
+        - name: since
+          in: query
+          description: >
+            Change-feed cursor: return every data decay policy changed after
+            this position — including soft-deleted ones (deleted:true) —
+            ordered forward, ignoring entity_id. A cursor older than
+            DELETED_RETENTION_DAYS returns 410 Gone.
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order. since forces asc.
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - name: entity_id
+          in: query
+          description: Filter to the data decay policy whose subject contact is this Contact.VCardUID (the contact-page query).
+          schema: { type: string, format: uuid }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: The ?since= cursor is older than DELETED_RETENTION_DAYS — full resync required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of data decay policies, each with its derived health (browse mode; ?since= feed mode omits health and total).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data_decay_policies:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DataDecayPolicyWithHealth"
+                  total: { type: integer }
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
+                  limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
+    post:
+      summary: Create a data decay policy
+      operationId: createDataDecayPolicy
+      description: >
+        One policy per contact: an existing non-deleted policy for the same
+        entity is a 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DataDecayPolicyInput"
+      responses:
+        "201":
+          description: Data decay policy created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Data decay policy created" }
+                  data_decay_policy:
+                    $ref: "#/components/schemas/DataDecayPolicyWithHealth"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The subject contact was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A data decay policy already exists for this contact.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /data-decay-policies/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get a data decay policy
+      operationId: getDataDecayPolicy
+      responses:
+        "200":
+          description: The data decay policy with its derived health (raw, embedded).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataDecayPolicyWithHealth"
+        "404":
+          description: Data decay policy not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a data decay policy (full replace)
+      operationId: updateDataDecayPolicy
+      description: Does not touch last_verified_at; only the verify action does.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DataDecayPolicyInput"
+      responses:
+        "200":
+          description: The updated data decay policy with its derived health.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataDecayPolicyWithHealth"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Data decay policy (or subject contact) not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Another data decay policy already exists for the new subject contact.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a data decay policy (soft delete)
+      operationId: deleteDataDecayPolicy
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Data decay policy not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /data-decay-policies/{id}/verify:
+    post:
+      summary: Confirm a contact's info is still current
+      operationId: verifyDataDecayPolicy
+      description: >
+        Stamps last_verified_at = now, resetting the derived health's
+        baseline. The one write path a user actually clicks.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The verified data decay policy with its derived health.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataDecayPolicyWithHealth"
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Data decay policy not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   # --- Reminders ---
   /reminders:
     get:
@@ -11045,6 +11278,10 @@ components:
           type: array
           description: "Issue #177: pending event-driven reach-out suggestions."
           items: { $ref: "#/components/schemas/ReachOutSuggestion" }
+        data_decay_overdue:
+          type: array
+          description: "Issue #352: contacts whose info is due for re-verification."
+          items: { $ref: "#/components/schemas/OverdueDataDecayPolicy" }
     DashboardReminder:
       description: >
         A Reminder enriched with its contact's display name (nickname-
@@ -11550,6 +11787,7 @@ components:
         external_activities: { type: integer }
         cadence_policies: { type: integer, description: "0 or 1 -- at most one per contact." }
         reach_out_suggestions: { type: integer, description: "Issue #177." }
+        data_decay_policies: { type: integer, description: "Issue #352. 0 or 1 -- at most one per contact." }
 
     # --- Notes / Activities / Reminders (gorm.Model PascalCase identity) ---
     Note:
@@ -13055,6 +13293,78 @@ components:
           $ref: "#/components/schemas/CadencePolicy"
         health:
           $ref: "#/components/schemas/CadenceHealth"
+        contact_id:
+          type: integer
+          description: The contact's numeric ID (the /contacts/<id> URL component).
+        contact_name: { type: string }
+        photo_thumbnail: { type: string }
+
+    DataDecayPolicy:
+      type: object
+      description: >
+        An opt-in, per-contact rule to periodically re-verify stored info
+        (issue #352, docs/adrs/0026-data-decay.md) is still accurate. Health
+        is DERIVED (see DataDecayHealth), never stored; this entity carries
+        only the rule itself plus last_verified_at (see the field's own
+        description for why that one column is stored, not derived).
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        entity_id:
+          type: string
+          format: uuid
+          description: The subject Contact's VCardUID.
+        interval_days: { type: integer, minimum: 1 }
+        last_verified_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            Null until the "confirm still current" action is used for the
+            first time; the health derivation then falls back to created_at
+            as the baseline.
+        active:
+          type: boolean
+          description: A paused policy (false) never appears in the overdue list.
+    DataDecayHealth:
+      type: object
+      description: >
+        The DERIVED read-model — computed from last_verified_at (or
+        created_at, when never verified) + interval_days, never persisted.
+        Unlike CadenceHealth there is no undefined state: every policy has a
+        baseline, so next_due is always defined.
+      properties:
+        next_due: { type: string, format: date-time }
+        overdue_by:
+          type: integer
+          description: >
+            Whole calendar days past due. 0 when due today, in the future, or
+            undefined. "Due today" is not overdue.
+    DataDecayPolicyWithHealth:
+      type: object
+      description: A data decay policy with its derived health embedded.
+      allOf:
+        - $ref: "#/components/schemas/DataDecayPolicy"
+        - type: object
+          properties:
+            health:
+              $ref: "#/components/schemas/DataDecayHealth"
+    DataDecayPolicyInput:
+      type: object
+      required: [entity_id, interval_days]
+      properties:
+        entity_id: { type: string, format: uuid }
+        interval_days: { type: integer, minimum: 1 }
+        active: { type: boolean }
+    OverdueDataDecayPolicy:
+      type: object
+      description: An overdue data decay policy joined with its contact's display identity.
+      properties:
+        policy:
+          $ref: "#/components/schemas/DataDecayPolicy"
+        health:
+          $ref: "#/components/schemas/DataDecayHealth"
         contact_id:
           type: integer
           description: The contact's numeric ID (the /contacts/<id> URL component).
