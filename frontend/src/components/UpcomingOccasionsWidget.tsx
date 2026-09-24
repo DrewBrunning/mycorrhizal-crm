@@ -50,8 +50,19 @@ export default function UpcomingOccasionsWidget({
           }}
           aria-label={t('occasions.widget.windowLabel')}
         >
-          <ToggleButton value={30}>{t('occasions.widget.days30')}</ToggleButton>
-          <ToggleButton value={90}>{t('occasions.widget.days90')}</ToggleButton>
+          {/* MUI's default unselected ToggleButton color (action.active,
+              rgba(0,0,0,0.54)) composites to ~4.48:1 against this theme's
+              parchment surface (#faf5ea) -- just under the 4.5:1 WCAG AA
+              floor (caught by the fixtures.ts per-test axe scan, since the
+              dashboard is where most specs end up). text.secondary is this
+              theme's own AA-checked muted color (7.17:1) and reads the same
+              visual weight. */}
+          <ToggleButton value={30} sx={{ color: 'text.secondary' }}>
+            {t('occasions.widget.days30')}
+          </ToggleButton>
+          <ToggleButton value={90} sx={{ color: 'text.secondary' }}>
+            {t('occasions.widget.days90')}
+          </ToggleButton>
         </ToggleButtonGroup>
       </Box>
 

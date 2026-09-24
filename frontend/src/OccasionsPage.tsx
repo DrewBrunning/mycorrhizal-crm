@@ -118,8 +118,15 @@ export default function OccasionsPage() {
           }}
           aria-label={t('occasions.widget.windowLabel')}
         >
-          <ToggleButton value={30}>{t('occasions.widget.days30')}</ToggleButton>
-          <ToggleButton value={90}>{t('occasions.widget.days90')}</ToggleButton>
+          {/* See UpcomingOccasionsWidget.tsx's matching comment: MUI's default
+              unselected ToggleButton color fails WCAG AA contrast against
+              this theme's surface color. */}
+          <ToggleButton value={30} sx={{ color: 'text.secondary' }}>
+            {t('occasions.widget.days30')}
+          </ToggleButton>
+          <ToggleButton value={90} sx={{ color: 'text.secondary' }}>
+            {t('occasions.widget.days90')}
+          </ToggleButton>
         </ToggleButtonGroup>
       </Box>
 
