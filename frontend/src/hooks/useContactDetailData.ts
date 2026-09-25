@@ -188,7 +188,9 @@ export interface ContactDetailLoaderOptions {
   // refresh, passed the freshly-fetched record directly rather than relying
   // on the record state var -- that state hasn't re-rendered yet at this
   // point, so relying on it would silently fetch nothing on a fresh load.
-  // Its identity is the effect's re-run trigger, so memoize it.
+  // Read through a ref, not a dependency: the per-contact hooks' refresh
+  // functions change identity once the record arrives, and re-running the
+  // whole load on that used to fetch every endpoint twice per page visit.
   loadDependents: (record: ContactRecordResponse) => Promise<unknown>;
   // Called when an auxiliary timeline fetch fell back to empty. Read through
   // a ref, not a dependency: a notifier change must not refetch the page.
@@ -207,23 +209,34 @@ export function useContactDetailLoader(
 ) {
   const onAuxFetchFailedRef = useRef(onAuxFetchFailed);
   onAuxFetchFailedRef.current = onAuxFetchFailed;
+  const loadDependentsRef = useRef(loadDependents);
+  loadDependentsRef.current = loadDependents;
 
   useEffect(() => {
     if (!id) return;
 
     let currentBlobUrl: string | null = null;
+    // Set by cleanup when the id changes (or the page unmounts) mid-load, so
+    // a slow response for the previous contact can't overwrite the new one.
+    let cancelled = false;
 
     const fetchData = async () => {
       try {
         const core = await fetchContactDetailCore(id);
+        if (cancelled) return;
         applyCore(core);
         if (core.auxFetchFailed) {
           onAuxFetchFailedRef.current();
         }
 
-        await loadDependents(core.record);
+        await loadDependentsRef.current(core.record);
+        if (cancelled) return;
 
         const pic = await fetchProfilePictureUrl(id, !!core.record.photo);
+        if (cancelled) {
+          if (pic) URL.revokeObjectURL(pic);
+          return;
+        }
         if (pic !== undefined) {
           if (pic) currentBlobUrl = pic;
           setProfilePic(pic);
@@ -231,6 +244,7 @@ export function useContactDetailLoader(
 
         setLoading(false);
       } catch (err) {
+        if (cancelled) return;
         console.error('Error fetching data:', err);
         setLoading(false);
       }
@@ -239,9 +253,10 @@ export function useContactDetailLoader(
     void fetchData();
 
     return () => {
+      cancelled = true;
       if (currentBlobUrl) {
         URL.revokeObjectURL(currentBlobUrl);
       }
     };
-  }, [id, applyCore, setProfilePic, setLoading, loadDependents]);
+  }, [id, applyCore, setProfilePic, setLoading]);
 }

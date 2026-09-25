@@ -292,4 +292,52 @@ describe('useContactDetailLoader', () => {
     rerender({ currentId: '2' });
     await waitFor(() => expect(getContactRecord).toHaveBeenCalledWith('2'));
   });
+
+  test('a new loadDependents identity does not refetch the page', async () => {
+    const applyCore = vi.fn();
+    const setProfilePic = vi.fn();
+    const setLoading = vi.fn();
+    const first = vi.fn(async () => {});
+    const second = vi.fn(async () => {});
+    const { rerender } = renderHook(
+      ({ deps }: { deps: typeof first }) =>
+        useContactDetailLoader('1', {
+          applyCore,
+          setProfilePic,
+          setLoading,
+          loadDependents: deps,
+          onAuxFetchFailed: () => {},
+        }),
+      { initialProps: { deps: first } },
+    );
+    await waitFor(() => expect(setLoading).toHaveBeenCalledWith(false));
+    rerender({ deps: second });
+    await act(async () => {});
+    expect(getContactRecord).toHaveBeenCalledTimes(1);
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).not.toHaveBeenCalled();
+  });
+
+  test("a slow response for the previous id never overwrites the new contact's state", async () => {
+    let resolveFirst: (r: ContactRecordResponse) => void = () => {};
+    vi.mocked(getContactRecord).mockImplementation((id: string | number) =>
+      String(id) === '1'
+        ? new Promise<ContactRecordResponse>((resolve) => {
+            resolveFirst = resolve;
+          })
+        : Promise.resolve({ ...record, id: 2, uid: 'bob-uid' }),
+    );
+    const { rerender, applyCore, setLoading } = setup('1');
+    rerender({ currentId: '2' });
+    await waitFor(() => expect(setLoading).toHaveBeenCalledWith(false));
+    expect(applyCore).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveFirst(record);
+    });
+    expect(applyCore).toHaveBeenCalledTimes(1);
+    expect(applyCore).toHaveBeenLastCalledWith(
+      expect.objectContaining({ record: expect.objectContaining({ uid: 'bob-uid' }) }),
+    );
+  });
 });
