@@ -94,7 +94,7 @@ describe('useNavigationGuard', () => {
     // link, programmatic navigate, browser Back) #805 exists to guard. The
     // navigate promise stays pending while blocked, so it must not be awaited.
     await act(async () => {
-      router.navigate('/away');
+      void router.navigate('/away');
     });
 
     expect(router.state.location.pathname).toBe('/home');
@@ -106,7 +106,7 @@ describe('useNavigationGuard', () => {
     render(<RouterProvider router={router} />);
 
     await act(async () => {
-      router.navigate('/away');
+      void router.navigate('/away');
     });
     expect(screen.getByText('blocked:yes')).toBeTruthy();
 
@@ -121,7 +121,7 @@ describe('useNavigationGuard', () => {
     render(<RouterProvider router={router} />);
 
     await act(async () => {
-      router.navigate('/away');
+      void router.navigate('/away');
     });
     expect(screen.getByText('blocked:yes')).toBeTruthy();
 

@@ -146,7 +146,7 @@ describe('useDiscardGuard under a data router (in-app navigation guard)', () => 
     render(<RouterProvider router={router} />);
 
     await act(async () => {
-      router.navigate('/away');
+      await router.navigate('/away');
     });
 
     expect(router.state.location.pathname).toBe('/home');
@@ -160,7 +160,7 @@ describe('useDiscardGuard under a data router (in-app navigation guard)', () => 
     render(<RouterProvider router={router} />);
 
     await act(async () => {
-      router.navigate('/away');
+      await router.navigate('/away');
     });
     expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
 
@@ -179,7 +179,7 @@ describe('useDiscardGuard under a data router (in-app navigation guard)', () => 
     render(<RouterProvider router={router} />);
 
     await act(async () => {
-      router.navigate('/away');
+      await router.navigate('/away');
     });
     expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
 
@@ -201,7 +201,7 @@ describe('useDiscardGuard under a data router (in-app navigation guard)', () => 
     fireEvent.click(screen.getByText('close'));
     expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
     await act(async () => {
-      router.navigate('/away');
+      await router.navigate('/away');
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
