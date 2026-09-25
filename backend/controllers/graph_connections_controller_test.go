@@ -14,7 +14,7 @@ import (
 // TestGetGraphConnections exercises the T10 endpoint end-to-end: two-hop
 // chain, ownership/validation errors.
 func TestGetGraphConnections(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/graph/connections", GetGraphConnections)
 
 	var user models.User
@@ -73,7 +73,7 @@ func TestGetGraphConnections(t *testing.T) {
 }
 
 func TestGetGraphConnections_ValidationErrors(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/graph/connections", GetGraphConnections)
 
 	// Missing from.
@@ -102,7 +102,7 @@ func TestGetGraphConnections_ValidationErrors(t *testing.T) {
 }
 
 func TestGetGraphConnections_SynonymRelationFilter(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/graph/connections", GetGraphConnections)
 
 	var user models.User

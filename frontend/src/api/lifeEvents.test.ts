@@ -79,9 +79,11 @@ describe('getLifeEvents', () => {
 
     await getLifeEvents();
 
-    const [url] = fetchMock.mock.calls[0];
+    const [url, init] = fetchMock.mock.calls[0];
     expect(url).toContain('limit=25');
     expect(url).not.toContain('entity_id=');
+    expect(url).not.toContain('cursor=');
+    expect(init.headers).toEqual({ 'Content-Type': 'application/json' });
   });
 
   test('throws an ApiError when the response is not ok', async () => {
@@ -217,6 +219,10 @@ describe('partialDateDisplay', () => {
   test('returns an empty string when the date is missing', () => {
     expect(partialDateDisplay(undefined)).toBe('');
   });
+
+  test('returns an empty string for a completely empty (but defined) date', () => {
+    expect(partialDateDisplay({})).toBe('');
+  });
 });
 
 describe('partialDateRangeDisplay', () => {
@@ -245,6 +251,11 @@ describe('partialDateHasMonthDay', () => {
     expect(partialDateHasMonthDay({ month: 3 })).toBe(false);
     expect(partialDateHasMonthDay(undefined)).toBe(false);
   });
+
+  test('is false when day is present but month is not (isolates the month check)', () => {
+    expect(partialDateHasMonthDay({ day: 15 })).toBe(false);
+    expect(partialDateHasMonthDay({ year: 1990, day: 15 })).toBe(false);
+  });
 });
 
 describe('partialDateIsYearOnly', () => {
@@ -254,6 +265,14 @@ describe('partialDateIsYearOnly', () => {
     expect(partialDateIsYearOnly({ year: 1990, month: 3, day: 15 })).toBe(false);
     expect(partialDateIsYearOnly({ month: 3, day: 15 })).toBe(false);
     expect(partialDateIsYearOnly(undefined)).toBe(false);
+  });
+
+  test('is false when year is absent, even if month/day are also absent', () => {
+    expect(partialDateIsYearOnly({})).toBe(false);
+  });
+
+  test('is false when year and day are present but month is not (isolates the day check)', () => {
+    expect(partialDateIsYearOnly({ year: 1990, day: 15 })).toBe(false);
   });
 });
 
@@ -273,6 +292,66 @@ describe('life event constants', () => {
     expect(LIFE_EVENT_TYPES_BY_CATEGORY.work_education).toContain('job_change');
     expect(LIFE_EVENT_TYPES_BY_CATEGORY.home_living).toContain('moved');
     expect(LIFE_EVENT_TYPES_BY_CATEGORY.family_relationships).toContain('married');
+  });
+
+  // Pins every token exactly -- issue #915's ticket-readiness bar plus the
+  // sheer number of hand-typed string-literal mutants in this table means a
+  // "contains" check alone leaves nearly every token unasserted.
+  test('LIFE_EVENT_TYPES_BY_CATEGORY lists every type token exactly, in order', () => {
+    expect(LIFE_EVENT_TYPES_BY_CATEGORY.home_living).toEqual([
+      'moved',
+      'bought_a_home',
+      'made_a_home_improvement',
+      'went_on_holidays',
+      'got_a_new_vehicle',
+      'got_a_roommate',
+    ]);
+    expect(LIFE_EVENT_TYPES_BY_CATEGORY.health_wellness).toEqual([
+      'overcame_an_illness',
+      'quit_a_habit',
+      'started_new_eating_habits',
+      'lost_weight',
+      'started_wearing_glasses_or_contacts',
+      'broke_a_bone',
+      'removed_braces',
+      'had_surgery',
+      'went_to_the_dentist',
+    ]);
+    expect(LIFE_EVENT_TYPES_BY_CATEGORY.work_education).toEqual([
+      'job_change',
+      'retired',
+      'started_school',
+      'studied_abroad',
+      'started_volunteering',
+      'published_a_paper',
+      'started_military_service',
+      'graduated',
+    ]);
+    expect(LIFE_EVENT_TYPES_BY_CATEGORY.travel_experiences).toEqual([
+      'started_a_sport',
+      'started_a_hobby',
+      'learned_a_new_instrument',
+      'learned_a_new_language',
+      'got_a_tattoo_or_piercing',
+      'got_a_license',
+      'traveled',
+      'got_an_achievement_or_award',
+      'changed_beliefs',
+      'spoke_for_the_first_time',
+      'kissed_for_the_first_time',
+    ]);
+    expect(LIFE_EVENT_TYPES_BY_CATEGORY.family_relationships).toEqual([
+      'started_a_relationship',
+      'got_engaged',
+      'married',
+      'anniversary',
+      'expects_a_baby',
+      'had_child',
+      'added_a_family_member',
+      'adopted_pet',
+      'ended_a_relationship',
+      'lost_a_loved_one',
+    ]);
   });
 });
 
@@ -295,6 +374,7 @@ describe('getLifeEventSuggestions', () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toContain('/contacts/7/life-event-suggestions');
     expect(init.method).toBeUndefined();
+    expect(init.headers).toEqual({ 'Content-Type': 'application/json' });
     expect(result).toEqual([suggestion]);
   });
 
@@ -326,6 +406,7 @@ describe('resolveLifeEventSuggestion', () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toContain('/life-event-suggestions/resolve');
     expect(init.method).toBe('POST');
+    expect(init.headers).toEqual({ 'Content-Type': 'application/json' });
     expect(JSON.parse(init.body)).toEqual(input);
   });
 

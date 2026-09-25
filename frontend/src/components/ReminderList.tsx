@@ -160,7 +160,7 @@ export default function ReminderList({
                   <Tooltip title={t('reminders.complete')}>
                     <IconButton
                       size="small"
-                      onClick={() => handleCompleteClick(reminder.ID)}
+                      onClick={() => void handleCompleteClick(reminder.ID)}
                       disabled={loading === reminder.ID}
                       color="success"
                       aria-label={t('reminders.complete')}
@@ -226,7 +226,7 @@ export default function ReminderList({
             {t('common.cancel')}
           </Button>
           <Button
-            onClick={handleDeleteConfirm}
+            onClick={() => void handleDeleteConfirm()}
             color="error"
             variant="contained"
             disabled={loading !== null}

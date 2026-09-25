@@ -185,7 +185,8 @@ func relationshipEdgeWriteError(err error) error {
 // found) and 400 (bad source/target combo) cases that must not be
 // flattened into a 500.
 func abortRelationshipEdgeError(c *gin.Context, err error, fallback string) {
-	if appErr, ok := err.(*apperrors.AppError); ok {
+	var appErr *apperrors.AppError
+	if errors.As(err, &appErr) {
 		apperrors.AbortWithError(c, appErr)
 		return
 	}

@@ -73,7 +73,12 @@ export default function EditableArrayField<T>({
           <Box sx={{ flexGrow: 1 }}>
             {renderEditor(draft, setDraft)}
             <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-              <Button size="small" variant="contained" onClick={save} disabled={saving}>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => void save()}
+                disabled={saving}
+              >
                 {saving ? t('common.saving') : t('common.save')}
               </Button>
               <Button size="small" onClick={cancel} disabled={saving}>

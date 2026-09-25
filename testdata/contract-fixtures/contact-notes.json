@@ -1,0 +1,26 @@
+{
+  "limit": 25,
+  "next_cursor": "",
+  "notes": [
+    {
+      "CreatedAt": "2026-08-21T00:08:42Z",
+      "DeletedAt": null,
+      "ID": 2,
+      "UpdatedAt": "2026-08-21T00:08:42Z",
+      "contact_id": 11,
+      "content": "Contract fixture note",
+      "date": "2026-08-20T18:00:00Z",
+      "revision": 1
+    },
+    {
+      "CreatedAt": "2026-08-21T00:09:42Z",
+      "DeletedAt": null,
+      "ID": 3,
+      "UpdatedAt": "2026-08-21T00:09:42Z",
+      "contact_id": null,
+      "content": "Unfiled fixture note",
+      "date": "2026-08-20T19:00:00Z",
+      "revision": 2
+    }
+  ]
+}

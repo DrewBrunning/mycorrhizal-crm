@@ -106,7 +106,7 @@ export default function ImmichPersonSearchDialog({
             {filtered.map((person) => (
               <ListItemButton
                 key={person.id}
-                onClick={() => handlePick(person)}
+                onClick={() => void handlePick(person)}
                 disabled={selecting}
               >
                 <ListItemText

@@ -21,6 +21,7 @@
 package dbtest
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -51,39 +52,53 @@ func template(tb testing.TB) string {
 	tb.Helper()
 	tmplOnce.Do(func() {
 		dir, err := os.MkdirTemp("", "dbtest-template-")
-		if err != nil {
+		if err != nil { // # pragma: no cover — os.MkdirTemp under the OS temp root does not fail in practice; no seam exists to inject that failure without breaking every other test in the binary (tmplOnce runs exactly once per process).
 			tmplErr = err
 			return
 		}
-		p := filepath.Join(dir, "template.db")
-
-		db, err := database.InitDB(p)
-		if err != nil {
-			tmplErr = err
-			return
-		}
-		sqlDB, err := db.DB()
-		if err != nil {
-			tmplErr = err
-			return
-		}
-		// Fold the WAL back into the main file and drop the -wal/-shm sidecars
-		// so a plain file copy is a complete, consistent database.
-		if _, err := sqlDB.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
-			_ = sqlDB.Close()
-			tmplErr = err
-			return
-		}
-		if err := sqlDB.Close(); err != nil {
-			tmplErr = err
-			return
-		}
-		tmplPath = p
+		tmplPath, tmplErr = buildTemplate(dir)
 	})
 	if tmplErr != nil {
-		tb.Fatalf("dbtest: building migrated template database: %v", tmplErr)
+		tb.Fatalf("dbtest: building migrated template database: %v", tmplErr) // # pragma: no cover — tmplErr is set only if the once-per-process template build failed; every other test in this binary already depends on it succeeding, so failing it here without breaking the whole suite needs a subprocess
 	}
 	return tmplPath
+}
+
+// buildTemplate runs the actual migration + WAL-checkpoint sequence that
+// produces the copyable template file at dir/template.db. It is factored out
+// of template's sync.Once body so a test can drive it directly against a
+// throwaway directory, exercising its failure branches without touching the
+// process-wide cached template every other dbtest-backed test in this binary
+// depends on.
+func buildTemplate(dir string) (string, error) {
+	p := filepath.Join(dir, "template.db")
+
+	db, err := database.InitDB(p)
+	if err != nil {
+		return "", err
+	}
+	return finalizeTemplate(db, p)
+}
+
+// finalizeTemplate folds the WAL back into the main file and closes the
+// connection so a plain file copy of p is a complete, consistent database.
+// Split out of buildTemplate so a test can drive db.DB()'s and the WAL
+// checkpoint's error branches directly (a zero-value *gorm.DB for the
+// former, a pre-closed *sql.DB for the latter) without needing to make the
+// real migration itself fail.
+func finalizeTemplate(db *gorm.DB, p string) (string, error) {
+	sqlDB, err := db.DB()
+	if err != nil {
+		return "", err
+	}
+	if _, err := sqlDB.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+		_ = sqlDB.Close()
+		return "", err
+	}
+	if err := sqlDB.Close(); err != nil { // # pragma: no cover — closing a connection immediately after a successful checkpoint, with no outstanding transaction or checked-out borrow, does not fail in practice.
+		return "", err
+	}
+	return p, nil
 }
 
 // New returns an isolated, fully-migrated *gorm.DB backed by a fresh copy of the
@@ -106,12 +121,12 @@ func NewAt(tb testing.TB, dbPath string) *gorm.DB {
 	tb.Helper()
 
 	if err := copyFile(template(tb), dbPath); err != nil {
-		tb.Fatalf("dbtest: copying migrated template to %s: %v", dbPath, err)
+		tb.Fatalf("dbtest: copying migrated template to %s: %v", dbPath, err) // # pragma: no cover — copyFile's own failure modes are tested directly (TestCopyFile_*); this line is just the fatal wrapper, and forcing it without a subprocess would kill this test too
 	}
 
 	db, err := database.OpenMigratedFile(dbPath)
 	if err != nil {
-		tb.Fatalf("dbtest: opening copied database at %s: %v", dbPath, err)
+		tb.Fatalf("dbtest: opening copied database at %s: %v", dbPath, err) // # pragma: no cover — database.OpenMigratedFile failing against a file this function just wrote a valid template copy to is not reachable without corrupting the template out from under every other test in the binary
 	}
 	tb.Cleanup(func() {
 		// Drain the fire-and-forget goroutines (webhook deliveries, audit
@@ -139,7 +154,7 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer in.Close() //nolint:errcheck // read-only copy source; the destination Close is checked
 
 	out, err := os.Create(dst) // #nosec G304 -- see the note on os.Open above.
 	if err != nil {
@@ -151,4 +166,21 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	return out.Close()
+}
+
+// HideTable makes table unreachable under its own name, so any query against
+// it fails with "no such table" -- the error-path seam for tests that used to
+// build an AutoMigrate schema deliberately missing a table. It renames the
+// table instead of dropping it: SQLite's ALTER TABLE ... RENAME rewrites the
+// foreign keys and triggers on every other table to follow, so the rest of the
+// real migrated schema (and rows already seeded into it) keep working. Call it
+// after seeding whatever rows the test needs.
+func HideTable(tb testing.TB, db *gorm.DB, table string) {
+	tb.Helper()
+	// Identifiers cannot be bound parameters; table is a test-supplied
+	// constant, never request input.
+	stmt := fmt.Sprintf(`ALTER TABLE %q RENAME TO %q`, table, table+"__hidden_by_test")
+	if err := db.Exec(stmt).Error; err != nil {
+		tb.Fatalf("dbtest: hiding table %s: %v", table, err) // # pragma: no cover — db.Exec failing here needs a table name that ALTER TABLE rejects or a connection that's already gone; both are exercised at the database.OpenMigratedFile/*gorm.DB level elsewhere, not worth a subprocess just for this fatal wrapper
+	}
 }

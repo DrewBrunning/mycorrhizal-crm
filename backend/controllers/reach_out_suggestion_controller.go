@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -42,7 +43,8 @@ func DismissReachOutSuggestion(c *gin.Context) {
 
 	id := c.Param("id")
 	if err := services.DismissReachOutSuggestion(db, userID, id); err != nil {
-		if appErr, ok := err.(*apperrors.AppError); ok {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
 			apperrors.AbortWithError(c, appErr)
 			return
 		}

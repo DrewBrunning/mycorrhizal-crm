@@ -49,3 +49,20 @@ func TestNewAt_MaterialisesFileAtPath(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, db.Create(&models.User{Username: "at", Email: "at@example.com", Password: "x"}).Error)
 }
+
+// HideTable renames the table out from under its own name, so a query
+// against it fails with "no such table" -- this package's own error-path
+// seam, used by controllers/services tests but (per CLAUDE.md's per-package
+// coverage model) not otherwise exercised from within this package itself.
+func TestHideTable_QueryAgainstHiddenTableFails(t *testing.T) {
+	db := dbtest.New(t)
+
+	var count int64
+	require.NoError(t, db.Model(&models.User{}).Count(&count).Error, "sanity: the table is queryable before hiding it")
+
+	dbtest.HideTable(t, db, "users")
+
+	err := db.Model(&models.User{}).Count(&count).Error
+	require.Error(t, err, "the table must be unreachable under its own name after HideTable")
+	assert.Contains(t, err.Error(), "no such table")
+}

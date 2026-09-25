@@ -91,7 +91,12 @@ export default function CustomFieldValueRow({
             <Button size="small" onClick={cancelEdit} disabled={saving}>
               {t('common.cancel')}
             </Button>
-            <Button size="small" variant="contained" onClick={handleSave} disabled={saving}>
+            <Button
+              size="small"
+              variant="contained"
+              onClick={() => void handleSave()}
+              disabled={saving}
+            >
               {saving ? <CircularProgress size={16} color="inherit" /> : t('common.save')}
             </Button>
           </Stack>

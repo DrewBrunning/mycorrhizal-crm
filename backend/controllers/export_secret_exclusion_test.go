@@ -26,7 +26,7 @@ const (
 )
 
 func TestExports_NeverLeakApiTokenOrTOTPSecret(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 	registerJSContactRoute(router, "")
 	router.GET("/export", ExportData)

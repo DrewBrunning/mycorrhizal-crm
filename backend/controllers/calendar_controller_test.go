@@ -43,7 +43,7 @@ func seedCalendarSubscription(db *gorm.DB, userID uint, url string) models.Calen
 }
 
 func TestListCalendarSubscriptions(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -64,7 +64,7 @@ func TestListCalendarSubscriptions(t *testing.T) {
 }
 
 func TestCreateCalendarSubscription(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -100,7 +100,7 @@ func TestCreateCalendarSubscription(t *testing.T) {
 }
 
 func TestCreateCalendarSubscriptionCustomWindow(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -123,7 +123,7 @@ func TestCreateCalendarSubscriptionCustomWindow(t *testing.T) {
 }
 
 func TestCreateCalendarSubscriptionRejectsInvalidURL(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -141,7 +141,7 @@ func TestCreateCalendarSubscriptionRejectsInvalidURL(t *testing.T) {
 }
 
 func TestCreateCalendarSubscriptionLimit(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -163,7 +163,7 @@ func TestCreateCalendarSubscriptionLimit(t *testing.T) {
 }
 
 func TestUpdateCalendarSubscription(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -196,7 +196,7 @@ func TestUpdateCalendarSubscription(t *testing.T) {
 }
 
 func TestUpdateCalendarSubscription_ClearPassword(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -228,7 +228,7 @@ func TestUpdateCalendarSubscription_ClearPassword(t *testing.T) {
 }
 
 func TestUpdateCalendarSubscription_ReplacesPassword(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -260,7 +260,7 @@ func TestUpdateCalendarSubscription_ReplacesPassword(t *testing.T) {
 }
 
 func TestUpdateCalendarSubscription_RejectsInvalidURL(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -280,7 +280,7 @@ func TestUpdateCalendarSubscription_RejectsInvalidURL(t *testing.T) {
 }
 
 func TestDeleteCalendarSubscription(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -307,7 +307,7 @@ func TestDeleteCalendarSubscription(t *testing.T) {
 }
 
 func TestCalendarSubscriptionUserIsolation(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user1 models.User
 	db.First(&user1)
 
@@ -361,7 +361,7 @@ func TestSyncCalendarSubscription_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -400,7 +400,7 @@ func TestSyncCalendarSubscription_UnauthorizedReflectsFailure(t *testing.T) {
 	}))
 	defer server.Close()
 
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -433,7 +433,7 @@ func TestSyncCalendarSubscription_UnauthorizedReflectsFailure(t *testing.T) {
 }
 
 func TestSyncCalendarSubscription_NotFoundForOtherUser(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user1 models.User
 	db.First(&user1)
 
@@ -483,7 +483,7 @@ func TestCalendarSyncError_AllSentinelsMapped(t *testing.T) {
 // TestCalendarSubscriptionHandlers_NoAuth_Unauthorized exercises the
 // currentUserID !ok early-return every handler in this file checks first.
 func TestCalendarSubscriptionHandlers_NoAuth_Unauthorized(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	router := routerWithoutAuth(db)
 	router.GET("/calendars", ListCalendarSubscriptions)
 	router.POST("/calendars", withValidated(func() any { return &models.CalendarSubscriptionInput{} }), CreateCalendarSubscription)
@@ -508,7 +508,7 @@ func TestCalendarSubscriptionHandlers_NoAuth_Unauthorized(t *testing.T) {
 // TestFindCalendarSubscription_NonNumericID_InvalidInput exercises the
 // strconv.ParseUint error branch in findCalendarSubscription.
 func TestFindCalendarSubscription_NonNumericID_InvalidInput(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -525,7 +525,7 @@ func TestFindCalendarSubscription_NonNumericID_InvalidInput(t *testing.T) {
 // TestListCalendarSubscriptions_DBError exercises the db.Find error branch by
 // closing the underlying *sql.DB out from under gorm before the request.
 func TestListCalendarSubscriptions_DBError(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -546,7 +546,7 @@ func TestListCalendarSubscriptions_DBError(t *testing.T) {
 // TestCreateCalendarSubscription_DBError exercises the subscription-count
 // db.Count error branch (the first DB call CreateCalendarSubscription makes).
 func TestCreateCalendarSubscription_DBError(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -572,7 +572,7 @@ func TestCreateCalendarSubscription_DBError(t *testing.T) {
 // used elsewhere in this file) to prove the CalendarSubscriptionInput struct
 // tags (name/url required) are actually enforced end-to-end.
 func TestCreateCalendarSubscription_RealValidation_MissingRequiredFields(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 

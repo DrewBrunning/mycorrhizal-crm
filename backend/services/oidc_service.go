@@ -389,7 +389,11 @@ func FindOrProvisionUser(db *gorm.DB, claims *OIDCClaims, cfg *config.Config) (*
 	base := username
 	for i := 1; i <= 100; i++ {
 		var count int64
-		db.Model(&models.User{}).Where("username = ?", username).Count(&count)
+		// Unchecked, a failed Count reads as 0 and "claims" a username that
+		// was never actually verified free.
+		if err := db.Model(&models.User{}).Where("username = ?", username).Count(&count).Error; err != nil {
+			return nil, fmt.Errorf("checking OIDC username availability: %w", err)
+		}
 		if count == 0 {
 			break
 		}

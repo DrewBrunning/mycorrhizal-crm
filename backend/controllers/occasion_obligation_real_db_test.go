@@ -13,8 +13,8 @@ import (
 )
 
 // TestOccasionObligation_RealMigratedSchema is the real-DB check (CLAUDE.md
-// backend trap #1) for docs/adrs/0024-occasions.md / issue #1222: every other
-// controller test in this package runs against AutoMigrate on :memory:
+// backend trap #1) for docs/adrs/0024-occasions.md / issue #1222: when written, every
+// other controller test in this package ran against AutoMigrate on :memory:
 // sqlite, which derives its schema from the same Go struct tags the
 // application code uses — it cannot catch a GORM column-tag mismatch against
 // the real hand-written migration SQL (this fork's own recurring bug class).

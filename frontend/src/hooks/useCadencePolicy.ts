@@ -34,7 +34,7 @@ export function useCadencePolicy(entityId: string | undefined, notifier?: ErrorN
   );
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const handleSave = useCallback(

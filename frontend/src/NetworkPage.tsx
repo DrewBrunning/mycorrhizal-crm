@@ -125,7 +125,7 @@ export default function NetworkPage() {
   const handleNodeClick = (node: GraphNode) => {
     if (node.type === 'contact') {
       const contactId = node.id.replace('c-', '');
-      navigate(`/contacts/${contactId}`);
+      void navigate(`/contacts/${contactId}`);
     }
   };
 
@@ -361,7 +361,7 @@ export default function NetworkPage() {
         <NetworkGraph
           data={data}
           onNodeClick={handleNodeClick}
-          onActivityClick={handleActivityNodeClick}
+          onActivityClick={(p0) => void handleActivityNodeClick(p0)}
           selectedCircle={selectedCircle || undefined}
           showRelationships={showRelationships}
           showActivities={showActivities}
@@ -381,8 +381,8 @@ export default function NetworkPage() {
         <EditTimelineItemDialog
           open
           onClose={handleActivityEditClose}
-          onSave={handleActivitySave}
-          onDelete={handleActivityDelete}
+          onSave={() => void handleActivitySave()}
+          onDelete={() => void handleActivityDelete()}
           type="activity"
           values={editValues}
           onChange={setEditValues}

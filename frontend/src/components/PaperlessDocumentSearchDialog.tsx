@@ -105,7 +105,11 @@ export default function PaperlessDocumentSearchDialog({
         <Box sx={{ maxHeight: 360, overflowY: 'auto' }}>
           <List dense>
             {filtered.map((doc) => (
-              <ListItemButton key={doc.id} onClick={() => handlePick(doc)} disabled={selecting}>
+              <ListItemButton
+                key={doc.id}
+                onClick={() => void handlePick(doc)}
+                disabled={selecting}
+              >
                 <ListItemText
                   primary={doc.title || t('paperless.search.untitled')}
                   secondary={doc.file_name || `#${doc.id}`}

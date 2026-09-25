@@ -614,6 +614,7 @@
     "deleteContact": "Eliminar Contacto",
     "confirmDeleteContact": "¿Estás seguro de que quieres eliminar a {{name}}? Esta acción no se puede deshacer y también eliminará todas las notas, actividades y recordatorios asociados con este contacto.",
     "deleteContactError": "Error al eliminar el contacto. Inténtalo de nuevo.",
+    "exportContactError": "Error al exportar el contacto. Inténtalo de nuevo.",
     "updateError": "Error al actualizar el contacto. Verifica tu entrada e inténtalo de nuevo.",
     "firstNameRequired": "El nombre es obligatorio",
     "stayInTouch": "Mantente en Contacto",

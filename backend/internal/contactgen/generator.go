@@ -81,7 +81,6 @@ var (
 	relationTokens        = []string{"acquaintance", "child", "colleague", "contact", "coworker", "family", "friend", "spouse", "sibling", "parent", "emergency", "other"}
 	mediaKinds            = []string{"photo", "logo", "sound"}
 	directoryKinds        = []string{"directory", "entry"}
-	onlineServiceKinds    = []string{"impp", "social", "other"}
 )
 
 // ---------------------------------------------------------------------------

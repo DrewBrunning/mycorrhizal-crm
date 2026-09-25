@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"time"
 
 	"mycorrhizal/logger"
@@ -25,7 +26,7 @@ func RecordOperationalCheckResult(db *gorm.DB, checkName, status, detail string)
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var row models.OperationalCheckResult
 		err := tx.Where("check_name = ?", checkName).First(&row).Error
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return tx.Create(&models.OperationalCheckResult{
 				CheckName: checkName,
 				Status:    status,

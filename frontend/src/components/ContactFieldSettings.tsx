@@ -43,7 +43,7 @@ export default function ContactFieldSettings() {
         setLoading(false);
       }
     };
-    load();
+    void load();
   }, [t]);
 
   const handleToggle = async (key: ContactFieldKey) => {
@@ -124,7 +124,7 @@ export default function ContactFieldSettings() {
                             size="small"
                             checked={enabled.has(f.key)}
                             disabled={saving}
-                            onChange={() => handleToggle(f.key)}
+                            onChange={() => void handleToggle(f.key)}
                           />
                         }
                         label={t(f.labelKey)}

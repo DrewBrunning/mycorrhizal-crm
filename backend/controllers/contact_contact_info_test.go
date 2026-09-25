@@ -91,7 +91,7 @@ func walkContactInfoPages(t *testing.T, router *gin.Engine, baseQuery string, li
 // consumers; only the web Contacts page turns it on by default. Explicit
 // has_contact_info=false must behave identically (all rows, no hidden_count).
 func TestGetContacts_ContactInfoFilterOffByDefault(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)
@@ -121,7 +121,7 @@ func TestGetContacts_ContactInfoFilterOffByDefault(t *testing.T) {
 // from the list but is silently not counted as hidden, under-reporting the
 // disclosure.
 func TestGetContacts_ContactInfoFilterNullScalars(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)
@@ -141,7 +141,7 @@ func TestGetContacts_ContactInfoFilterNullScalars(t *testing.T) {
 // contact with no contact fields at all (a pet or relationship stub) is
 // excluded. Also pins hidden_count: 1 of 3 excluded.
 func TestGetContacts_ContactInfoFilterFlatScalars(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)
@@ -166,23 +166,26 @@ func TestGetContacts_ContactInfoFilterFlatScalars(t *testing.T) {
 // BeforeSave's scalar derivation never runs — mirroring the real-data rows the
 // predicate's json_each leg exists for.
 func TestGetContacts_ContactInfoFilterArrayOnly(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)
 
 	require.NoError(t, db.Session(&gorm.Session{SkipHooks: true}).Create(&models.Contact{
 		UserID:    user.ID,
+		VCardUID:  "array-only-arrayonly",
 		Firstname: "ArrayOnly",
 		Emails:    []models.ContactEmail{{Type: "home", Value: "array@only.example"}},
 	}).Error)
 	require.NoError(t, db.Session(&gorm.Session{SkipHooks: true}).Create(&models.Contact{
 		UserID:    user.ID,
+		VCardUID:  "array-only-urlonly",
 		Firstname: "URLOnly",
 		URLs:      []models.ContactURL{{Type: "work", Value: "https://only.example"}},
 	}).Error)
 	require.NoError(t, db.Session(&gorm.Session{SkipHooks: true}).Create(&models.Contact{
 		UserID:    user.ID,
+		VCardUID:  "array-only-phonearrayonly",
 		Firstname: "PhoneArrayOnly",
 		Phones:    []models.ContactPhone{{Type: "cell", Value: "+15550003333"}},
 	}).Error)
@@ -190,6 +193,7 @@ func TestGetContacts_ContactInfoFilterArrayOnly(t *testing.T) {
 	// "non-empty entry" means non-empty.
 	require.NoError(t, db.Session(&gorm.Session{SkipHooks: true}).Create(&models.Contact{
 		UserID:    user.ID,
+		VCardUID:  "array-only-blankemail",
 		Firstname: "BlankEmail",
 		Emails:    []models.ContactEmail{{Type: "home", Value: "   "}},
 	}).Error)
@@ -205,7 +209,7 @@ func TestGetContacts_ContactInfoFilterArrayOnly(t *testing.T) {
 // table: an archived or different-circle contact that lacks contact info is
 // not part of the set the user is looking at, so it is not counted as hidden.
 func TestGetContacts_ContactInfoFilterHiddenCountScoped(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)
@@ -230,7 +234,7 @@ func TestGetContacts_ContactInfoFilterHiddenCountScoped(t *testing.T) {
 // outside the circle stays hidden, and a non-contactable member inside it is
 // counted as hidden within that circle's scope.
 func TestGetContacts_ContactInfoFilterComposesWithCircle(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)
@@ -257,7 +261,7 @@ func TestGetContacts_ContactInfoFilterComposesWithCircle(t *testing.T) {
 // has_contact_info value other than true/false is rejected, matching how sort
 // treats an unknown value — never a silent fallback.
 func TestGetContacts_ContactInfoFilterRejectsMalformed(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/contacts", GetContacts)
 
 	for _, bad := range []string{"yes", "1", "TRUE", "on"} {
@@ -284,7 +288,7 @@ func TestGetContacts_ContactInfoFilterRejectsMalformed(t *testing.T) {
 // must return every changed row regardless of filters, so has_contact_info
 // must not narrow it — exactly as archive/search/circle are ignored there.
 func TestGetContacts_ContactInfoFilterFeedUnaffected(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)
@@ -347,7 +351,7 @@ func TestGetContacts_ContactInfoFilterRealMigratedSchema(t *testing.T) {
 // boundaries), while stubs stay out, and every page carries the same
 // whole-set hidden_count (not the per-page count).
 func TestGetContacts_ContactInfoFilterPagesFilteredSet(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)
@@ -376,7 +380,7 @@ func TestGetContacts_ContactInfoFilterPagesFilteredSet(t *testing.T) {
 // name-sorted cursor: the predicate ANDs with sort=name, hidden_count is still
 // present, and the filtered rows come back in (sort_name, id) order.
 func TestGetContacts_ContactInfoFilterNameSort(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)
@@ -396,7 +400,7 @@ func TestGetContacts_ContactInfoFilterNameSort(t *testing.T) {
 // ContactSummaryWithRelations response branch (?includes=) — the other
 // response shape GetContacts can take.
 func TestGetContacts_ContactInfoFilterIncludesRelations(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)

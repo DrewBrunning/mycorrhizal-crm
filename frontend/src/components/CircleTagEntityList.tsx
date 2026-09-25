@@ -143,7 +143,7 @@ export default function CircleTagEntityList({
                         <IconButton
                           size="small"
                           color="primary"
-                          onClick={() => saveEdit(item.id)}
+                          onClick={() => void saveEdit(item.id)}
                           disabled={isSaving}
                           aria-label={t('common.save')}
                         >
@@ -175,7 +175,7 @@ export default function CircleTagEntityList({
                         <IconButton
                           size="small"
                           color="error"
-                          onClick={() => handleDeleteClick(item)}
+                          onClick={() => void handleDeleteClick(item)}
                           disabled={isDeleting}
                           aria-label={t('common.delete')}
                         >
@@ -195,7 +195,7 @@ export default function CircleTagEntityList({
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveEdit(item.id);
+                        if (e.key === 'Enter') void saveEdit(item.id);
                         if (e.key === 'Escape') cancelEdit();
                       }}
                       autoFocus
@@ -231,11 +231,15 @@ export default function CircleTagEntityList({
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && newName.trim()) handleAdd();
+            if (e.key === 'Enter' && newName.trim()) void handleAdd();
           }}
           sx={{ flexGrow: 1, minWidth: 0 }}
         />
-        <Button variant="contained" onClick={handleAdd} disabled={!newName.trim() || creating}>
+        <Button
+          variant="contained"
+          onClick={() => void handleAdd()}
+          disabled={!newName.trim() || creating}
+        >
           {addLabel}
         </Button>
       </Stack>

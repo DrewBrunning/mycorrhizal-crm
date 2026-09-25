@@ -110,7 +110,7 @@ func RunStorageIntegrityChecks(db *gorm.DB) (StorageIntegrityReport, error) {
 	if err := db.Raw("PRAGMA integrity_check").Scan(&iRows).Error; err != nil {
 		return report, err
 	}
-	if !(len(iRows) == 1 && strings.EqualFold(iRows[0].IntegrityCheck, "ok")) {
+	if len(iRows) != 1 || !strings.EqualFold(iRows[0].IntegrityCheck, "ok") {
 		lines := make([]string, 0, len(iRows))
 		for _, r := range iRows {
 			lines = append(lines, r.IntegrityCheck)

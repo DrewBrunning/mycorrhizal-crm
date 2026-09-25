@@ -83,7 +83,7 @@ func BackupSnapshot(srcPath, outPath string) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove(tmpPath)
+	defer os.Remove(tmpPath) //nolint:errcheck // normally already renamed away (ENOENT); only an early-return leftover needs removing
 
 	sqlDB, err := sql.Open("sqlite", openDSN(srcPath))
 	if err != nil {

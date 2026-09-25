@@ -313,7 +313,7 @@ export default function ContactTimeline({
                             variant="caption"
                             onClick={(e) => {
                               e.preventDefault();
-                              navigate(`/contacts/${activityContact.ID}`);
+                              void navigate(`/contacts/${activityContact.ID}`);
                             }}
                             sx={{
                               cursor: 'pointer',

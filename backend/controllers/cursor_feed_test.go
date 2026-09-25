@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -24,22 +23,14 @@ import (
 // non-zero DELETE_RETENTION_DAYS so ?since= feed cursors are not all rejected
 // as too old. The T17 feed tests need a real retention window; the default
 // test router's config has zero.
-func setupRouterWithRetention(retentionDays int) (*gorm.DB, *gin.Engine) {
+func setupRouterWithRetention(t testing.TB, retentionDays int) (*gorm.DB, *gin.Engine) {
+	t.Helper()
 	gin.SetMode(gin.ReleaseMode)
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
-	}
-	sqlDB, _ := db.DB()
-	sqlDB.SetMaxOpenConns(1)
-
-	db.AutoMigrate(&models.Contact{}, &models.Activity{}, &models.Note{}, models.Reminder{}, models.User{}, models.Webhook{}, models.WebhookDelivery{}, models.ContactSubscription{}, models.ContactSyncLink{}, models.RelationshipEdge{}, models.Circle{}, models.CircleMember{}, models.Tag{}, models.ContactTag{}, models.LifeEvent{}, models.Household{}, models.HouseholdMember{}, models.FieldDefinition{}, models.FieldValue{}, models.CardDAVSync{}, models.ApiToken{}, models.DeviceGrant{}, models.ReminderCompletion{}, models.CalendarSubscription{}, models.CalendarEventLink{}, models.Preference{}, models.CadencePolicy{}, models.ConversationAgenda{}, models.Gift{}, models.ReachOutSuggestion{}, models.ReachOutCursor{}, models.OccasionObligation{}, models.OccasionEvent{}, models.OccasionEventAttendee{})
+	db := dbtest.New(t)
 
 	user := models.User{Username: "tester", Password: "password123", Email: "tester@example.com"}
-	if err := db.Create(&user).Error; err != nil {
-		panic("failed to seed user")
-	}
+	require.NoError(t, db.Create(&user).Error, "seed user")
 
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
@@ -156,7 +147,7 @@ func encodeRawURL(s string) string {
 // Cursor pagination must still return every row exactly once — no drops, no
 // duplicates.
 func TestGetContactsCursorStableUnderBoundaryInsert(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)
@@ -216,7 +207,7 @@ func TestGetContactsCursorStableUnderBoundaryInsert(t *testing.T) {
 // soft-deleted row is returned as a deletion (deleted:true) rather than
 // silently vanishing.
 func TestChangeFeedSinceAndTombstones(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)
@@ -261,7 +252,7 @@ func TestChangeFeedSinceAndTombstones(t *testing.T) {
 // ?since= cursor older than DELETED_RETENTION_DAYS returns 410 Gone telling
 // the client to full-resync, because tombstones in that range were purged.
 func TestChangeFeedCursorTooOld410(t *testing.T) {
-	_, router := setupRouterWithRetention(30)
+	_, router := setupRouterWithRetention(t, 30)
 	router.GET("/contacts", GetContacts)
 
 	tooOld := EncodeCursor(time.Now().AddDate(0, 0, -40), uint(1))
@@ -286,7 +277,7 @@ func TestChangeFeedCursorTooOld410(t *testing.T) {
 // TestChangeFeedMalformedCursor400 pins that a garbage ?since= is a 400, not
 // a 500.
 func TestChangeFeedMalformedCursor400(t *testing.T) {
-	_, router := setupRouterWithRetention(30)
+	_, router := setupRouterWithRetention(t, 30)
 	router.GET("/contacts", GetContacts)
 
 	req, _ := http.NewRequest("GET", "/contacts?since=!!!not-a-cursor!!!", nil)
@@ -299,7 +290,7 @@ func TestChangeFeedMalformedCursor400(t *testing.T) {
 // feed: a soft-deleted note must surface via ?since= as deleted:true (Note's
 // AfterDelete hook advances updated_at so the cursor moves past it).
 func TestChangeFeedNotesTombstones(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	var user models.User
 	db.First(&user)
 	router.GET("/notes", GetUnassignedNotes)
@@ -344,7 +335,7 @@ func TestChangeFeedNotesTombstones(t *testing.T) {
 // deleted:true (Activity.AfterDelete bumps updated_at so the cursor
 // sees it).
 func TestChangeFeedActivitiesTombstones(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	var user models.User
 	db.First(&user)
 	router.GET("/activities", GetActivities)
@@ -386,7 +377,7 @@ func TestChangeFeedActivitiesTombstones(t *testing.T) {
 // deleted:true (LifeEvent.AfterDelete bumps updated_at so the cursor
 // sees it).
 func TestChangeFeedLifeEventsTombstones(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	var user models.User
 	db.First(&user)
 	router.GET("/life-events", ListLifeEvents)
@@ -431,7 +422,7 @@ func TestChangeFeedLifeEventsTombstones(t *testing.T) {
 // deleted:true (Preference.AfterDelete bumps updated_at so the cursor
 // sees it).
 func TestChangeFeedPreferencesTombstones(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	var user models.User
 	db.First(&user)
 	router.GET("/preferences", ListPreferences)
@@ -478,7 +469,7 @@ func TestChangeFeedPreferencesTombstones(t *testing.T) {
 // ?since= as deleted:true (ConversationAgenda.AfterDelete bumps updated_at so
 // the cursor sees it).
 func TestChangeFeedConversationAgendaTombstones(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	var user models.User
 	db.First(&user)
 	router.GET("/conversation-agenda", ListConversationAgenda)
@@ -522,7 +513,7 @@ func TestChangeFeedConversationAgendaTombstones(t *testing.T) {
 // a soft-deleted Gift must surface via ?since= as deleted:true (Gift.AfterDelete
 // bumps updated_at so the cursor sees it), exactly like the agenda items above.
 func TestChangeFeedGiftTombstones(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	var user models.User
 	db.First(&user)
 	router.GET("/gifts", ListGifts)
@@ -567,7 +558,7 @@ func TestChangeFeedGiftTombstones(t *testing.T) {
 // issue #387) -- ListOccasionObligations' own ?since= branch had no direct
 // test until now (only its browse-mode path was exercised elsewhere).
 func TestChangeFeedOccasionObligationsTombstones(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	var user models.User
 	db.First(&user)
 	router.GET("/occasion-obligations", ListOccasionObligations)
@@ -611,7 +602,7 @@ func TestChangeFeedOccasionObligationsTombstones(t *testing.T) {
 // ?since= branch's own next-page truncation (distinct from browse mode's --
 // same shape, separate code path).
 func TestChangeFeedOccasionObligationsPaginatesWithNextCursor(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	var user models.User
 	db.First(&user)
 	router.GET("/occasion-obligations", ListOccasionObligations)
@@ -645,7 +636,7 @@ func TestChangeFeedOccasionObligationsPaginatesWithNextCursor(t *testing.T) {
 // would forever sit ahead of the tombstone (the exact trap the ticket
 // calls out).
 func TestAfterDeleteBumpsUpdatedAt(t *testing.T) {
-	db, _ := setupRouterWithRetention(30)
+	db, _ := setupRouterWithRetention(t, 30)
 	var user models.User
 	db.First(&user)
 
@@ -741,7 +732,7 @@ func TestAfterDeleteBumpsUpdatedAt(t *testing.T) {
 // updated_at. The explicit bump in deleteContactAssociations exists precisely
 // because this path is skipped.
 func TestAfterDeleteSkipsBulkDelete(t *testing.T) {
-	db, _ := setupRouterWithRetention(30)
+	db, _ := setupRouterWithRetention(t, 30)
 	var user models.User
 	db.First(&user)
 

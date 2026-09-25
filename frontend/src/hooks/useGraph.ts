@@ -53,7 +53,7 @@ export function useGraph(): UseGraphResult {
   }, []);
 
   useEffect(() => {
-    fetchGraph();
+    void fetchGraph();
   }, [fetchGraph]);
 
   return {

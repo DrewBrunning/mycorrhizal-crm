@@ -72,7 +72,7 @@ export default function SubsystemHealthPanel({
         <Button
           size="small"
           startIcon={<RefreshIcon />}
-          onClick={refresh}
+          onClick={() => void refresh()}
           disabled={loading}
           sx={{ flexShrink: 0 }}
         >

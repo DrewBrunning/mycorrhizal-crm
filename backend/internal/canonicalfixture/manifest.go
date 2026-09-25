@@ -267,7 +267,7 @@ func Read() (*Manifest, error) {
 	if err != nil {
 		return nil, fmt.Errorf("canonicalfixture: opening %s: %w", path, err) // # pragma: no cover — a path FindManifest just stat'ed is openable
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck // read-only handle: Close cannot lose data
 	return Load(f)
 }
 

@@ -38,7 +38,7 @@ type ImmichConfig struct {
 	APIKeyEncrypted string `gorm:"column:api_key_encrypted;not null;default:''" json:"-"`
 
 	// SyncEnabled gates the scheduled enrichment sync (T16).
-	SyncEnabled bool `gorm:"column:sync_enabled;default:true" json:"sync_enabled"`
+	SyncEnabled bool `gorm:"column:sync_enabled" json:"sync_enabled"`
 
 	LastSyncedAt   *time.Time `gorm:"column:last_synced_at" json:"last_synced_at,omitempty"`
 	LastSyncStatus string     `gorm:"column:last_sync_status;not null;default:''" json:"last_sync_status"`

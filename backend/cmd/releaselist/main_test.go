@@ -3,12 +3,24 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"io"
+	"os"
 	"testing"
 
 	"mycorrhizal/internal/schemafixture"
 
 	"github.com/stretchr/testify/require"
 )
+
+// failingWriter always errors, so tests can exercise run's write-failure
+// branch without touching the real os.Stdout (which does not fail this
+// write in practice).
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) {
+	return 0, errors.New("boom")
+}
 
 // TestRunEmitsEverySupportedRelease is the contract migration-tests.yml relies
 // on: the matrix has exactly one leg per SupportedReleases entry, in registry
@@ -55,4 +67,42 @@ func TestRunEmitsSingleLineJSON(t *testing.T) {
 
 	require.Equal(t, 1, bytes.Count(buf.Bytes(), []byte("\n")), "output must be exactly one line")
 	require.True(t, json.Valid(bytes.TrimSpace(buf.Bytes())))
+}
+
+// TestRunReturns2OnWriteFailure proves the checker actually fails closed
+// when it cannot report its result — a checker that swallows a write error
+// and exits 0 would silently look like success in CI.
+func TestRunReturns2OnWriteFailure(t *testing.T) {
+	require.Equal(t, 2, run(failingWriter{}))
+}
+
+// TestMainExitsZero drives main() itself (not just run()) through the
+// osExit seam, so the real process-entry wiring is exercised too.
+func TestMainExitsZero(t *testing.T) {
+	origExit := osExit
+	origStdout := os.Stdout
+	defer func() {
+		osExit = origExit
+		os.Stdout = origStdout
+	}()
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	var gotCode int
+	exited := false
+	osExit = func(code int) { gotCode = code; exited = true }
+
+	main()
+
+	require.NoError(t, w.Close())
+	os.Stdout = origStdout
+
+	require.True(t, exited, "main must call osExit")
+	require.Equal(t, 0, gotCode)
+
+	buf, err := io.ReadAll(r)
+	require.NoError(t, err)
+	require.True(t, json.Valid(bytes.TrimSpace(buf)))
 }

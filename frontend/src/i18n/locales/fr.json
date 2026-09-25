@@ -614,6 +614,7 @@
     "deleteContact": "Supprimer le contact",
     "confirmDeleteContact": "Êtes-vous sûr de vouloir supprimer {{name}} ? Cette action est irréversible et supprimera également toutes les notes, activités et rappels associés à ce contact.",
     "deleteContactError": "Échec de la suppression du contact. Veuillez réessayer.",
+    "exportContactError": "Échec de l'exportation du contact. Veuillez réessayer.",
     "updateError": "Échec de la mise à jour du contact. Veuillez vérifier votre saisie et réessayer.",
     "firstNameRequired": "Le prénom est requis",
     "stayInTouch": "Restez en contact",

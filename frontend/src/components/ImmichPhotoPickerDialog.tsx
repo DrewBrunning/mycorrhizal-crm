@@ -145,7 +145,7 @@ export default function ImmichPhotoPickerDialog({
             <Box
               component="button"
               type="button"
-              onClick={() => handlePick(immichThumbnailUrl(contactUid))}
+              onClick={() => void handlePick(immichThumbnailUrl(contactUid))}
               disabled={selecting}
               sx={{
                 p: 0,
@@ -168,7 +168,7 @@ export default function ImmichPhotoPickerDialog({
                 key={asset.id}
                 component="button"
                 type="button"
-                onClick={() => handlePick(immichAssetImageUrl(contactUid, asset.id))}
+                onClick={() => void handlePick(immichAssetImageUrl(contactUid, asset.id))}
                 disabled={selecting}
                 sx={{
                   p: 0,

@@ -12,6 +12,7 @@ import (
 
 	"mycorrhizal/atrest"
 	"mycorrhizal/database"
+	"mycorrhizal/internal/citest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -251,7 +252,7 @@ func TestMakeBackupTarget(t *testing.T) {
 	t.Parallel()
 	makeBin, err := exec.LookPath("make")
 	if err != nil {
-		t.Skip("make not available; cannot exercise the Makefile target")
+		citest.SkipOrRequire(t, "make not available; cannot exercise the Makefile target")
 	}
 
 	srcPath := liveTestDB(t, "live.db")

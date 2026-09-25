@@ -4,17 +4,10 @@ on:
   push:
     tags: ['v*']
 
-  # Manual fallback for a tag that exists but never produced a run.
-  #
-  # A tag trigger is the only path into this workflow, so when the push event
-  # is lost the tag is published-but-unbuilt and the sole recovery is deleting
-  # and re-pushing the tag. That is not hypothetical: during the GitHub Actions
-  # incident of 2026-08-06, webhook delivery was throttled to ~15% and the
-  # v0.3.0 tag push created no run at all -- not queued, not failed, absent.
-  #
-  # This takes the tag as an INPUT rather than relying on the ref this is
-  # dispatched from, so it can rebuild a tag whose commit predates this change.
-  # Dispatch it from a branch; it checks out the tag you name.
+  # Manual fallback for a tag whose push event never produced a run (e.g. a
+  # webhook-delivery outage, as happened 2026-08-06) -- the only other recovery
+  # is deleting and re-pushing the tag. Takes the tag as an INPUT rather than
+  # the dispatch ref, so it can rebuild a tag whose commit predates this change.
   workflow_dispatch:
     inputs:
       tag:
@@ -34,23 +27,18 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  # The tag being released. On a tag push that is the ref; on a manual run it
-  # is the input. Everything below keys off this rather than github.ref_name /
-  # github.sha, which on a dispatch point at the branch, not the tag.
+  # Everything below keys off this rather than github.ref_name/github.sha,
+  # which on a dispatch point at the branch, not the tag.
   RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
 permissions:
   contents: read
 
 jobs:
-  # REL-01 (issue #445): the release-tag format gate. This workflow publishes
-  # on `push: tags: ['v*']`, so without this a malformed or stray tag
-  # (the v1.7.0 class, issue #545) would build, sign, and publish a GitHub
-  # Release. The pattern is the canonical one from the versioning policy
-  # (docs/versioning-policy.md) and backend/internal/versionpolicy/tagpattern.go;
-  # a drift test fails if this copy diverges from either. The three roots
-  # below (create-release, build-android-apk, schema-fixture-gate) depend on
-  # this job, so a bad tag produces no release, no images, no APK.
+  # REL-01 (issue #445): release-tag format gate, so a malformed/stray tag
+  # (the v1.7.0 class, #545) can't build/sign/publish. Pattern must match
+  # docs/versioning-policy.md and backend/internal/versionpolicy/tagpattern.go
+  # (drift-tested). Every root job depends on this.
   validate-tag:
     runs-on: ubuntu-latest
     permissions:
@@ -67,14 +55,11 @@ jobs:
           fi
           echo "Tag '$RELEASE_TAG' is a valid release tag."
 
-  # REL-03 (issue #447): publication-time enforcement, now by composition
-  # (ADR 0021, issue #1165). Nothing else in this workflow runs until this
-  # passes. It calls the same reusable `release-validate.yml` that release.yml
-  # calls before tagging, so "is this commit releasable" has exactly one
-  # definition and the two cannot drift. A `workflow_dispatch` run with a
-  # non-empty `override_reason` skips the gate and records the override in the
-  # sibling `release-gate-override` job; the jobs that need this gate accept
-  # either outcome. Rationale + the full gate list:
+  # REL-03 (issue #447), by composition (ADR 0021 / #1165): calls the same
+  # reusable release-validate.yml that release.yml calls before tagging, so
+  # "is this commit releasable" has one definition. A dispatch with a
+  # non-empty override_reason skips this and records the bypass in the
+  # sibling release-gate-override job instead. Full gate list:
   # docs/development/release-gates.md.
   release-gate:
     needs: validate-tag
@@ -84,14 +69,13 @@ jobs:
       contents: read
       pull-requests: read
       actions: read
-      # Required by the SARIF-uploading scan jobs release-validate.yml
-      # composes; GitHub validates nested-job permissions statically against
-      # every caller in the chain. The upload step itself is skipped when
-      # composed (github.event_name == 'workflow_call').
+      # GitHub validates nested-job permissions statically against every
+      # caller in the chain, so these two are required even though the
+      # steps that use them are skipped when composed (event_name ==
+      # 'workflow_call'): security-events: write for release-validate.yml's
+      # SARIF upload, statuses: write for unit-tests.yml's codecov-patch-stub
+      # (#1188).
       security-events: write
-      # Required by unit-tests.yml's `codecov-patch-stub` job (issue #1188),
-      # the other nested write scope the chain declares; the job is likewise
-      # skipped when composed.
       statuses: write
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -129,11 +113,9 @@ jobs:
       # Read the release-readiness artifact (ADR 0021, issue #1164).
       actions: read
 
-    # Only on a real tag push. A manual run is for recovering images when the
-    # release already exists -- re-running it would regenerate the notes and
-    # append a second copy of the Docker Images block over whatever is there.
-    # `always()` + the explicit result check let it proceed when either the
-    # composed gate passed or an operator recorded an override (ADR 0021 / #1165).
+    # push-only: a manual run recovers images for an existing release, and
+    # re-running this would append a second Docker Images block. `always()` +
+    # explicit result checks let it proceed on either gate outcome (ADR 0021/#1165).
     if: ${{ always() && github.event_name == 'push' && (needs.release-gate.result == 'success' || needs.release-gate-override.result == 'success') }}
 
     steps:
@@ -142,30 +124,22 @@ jobs:
         with:
           persist-credentials: false
           # REL-05 (#449): the operator-notes harvest below walks the commit
-          # range since the previous release tag, so it needs full history + tags.
+          # range since the previous tag, so needs full history + tags.
           fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: backend/go.mod
-          # zizmor cache-poisoning (issue #358): this job publishes the GitHub
-          # Release, so no build cache from an earlier (PR/other-trigger) run is
-          # restored into it. `go run ./cmd/releasenotes` is a few seconds cold.
+          # zizmor cache-poisoning (#358): this job publishes the Release, so
+          # no build cache from an earlier run is restored into it.
           cache: false
 
-      # Resolve the exact image references the build-and-push job publishes,
-      # rather than re-deriving them differently here. Two ways the raw inputs
-      # diverge from what is actually pushed (both already handled in the scan
-      # job -- keep them in lockstep):
-      #
-      # 1. The build tags with type=semver,pattern={{version}}, whose
-      #    {{version}} output drops the leading 'v' (RELEASE_TAG=v0.6.5 -> tag
-      #    0.6.5). The v-prefixed tag is never pushed, so release notes quoting
-      #    ghcr.io/...:v0.6.5 advertised a manifest that 404s.
-      # 2. Docker references must be lowercase, but github.repository preserves
-      #    the account case (DrewBrunning). metadata-action lowercases the image
-      #    on the push side, so the published image is ghcr.io/drewbrunning/...
+      # Resolve the exact refs build-and-push publishes rather than re-deriving
+      # them here: (1) the build's semver tag drops the leading 'v'
+      # (v0.6.5 -> 0.6.5), so a v-prefixed ref in the notes would 404; (2)
+      # github.repository preserves account case but GHCR refs must be
+      # lowercase. Keep in lockstep with the scan job's identical derivation.
       - name: Resolve published image references
         id: images
         env:
@@ -179,14 +153,12 @@ jobs:
             echo "frontend=ghcr.io/${repo}-frontend:${tag}"
           } >> "$GITHUB_OUTPUT"
 
-      # REL-05 (issue #449): the operator-facing half of the changelog. GitHub's
-      # generate_release_notes gives the categorized "what changed" list
-      # (.github/release.yml); this harvests the hand-written `## Upgrade notes`
-      # / `## Breaking changes` blocks from the descriptions of the PRs merged
-      # since the previous release tag and assembles them with
-      # cmd/releasenotes. Best-effort: any failure still yields the tool's
-      # explicit "no action required" section, so it never blocks a release.
-      # Folds into the #499 release workflow.
+      # REL-05 (#449): the operator-facing half of the changelog. GitHub's
+      # generate_release_notes gives the categorized "what changed" list;
+      # this harvests hand-written `## Upgrade notes`/`## Breaking changes`
+      # blocks from PRs merged since the previous tag via cmd/releasenotes.
+      # Best-effort: any failure still yields the tool's "no action required"
+      # section, so it never blocks a release.
       - name: Harvest operator notes from the release's PRs
         id: opnotes
         env:
@@ -222,15 +194,11 @@ jobs:
           tag_name: ${{ env.RELEASE_TAG }}
           generate_release_notes: true
           append_body: true
-          # RC-02 (issue #446): an `-rc.` tag is a SemVer pre-release. Marking
-          # the GitHub Release a pre-release and never `make_latest` is what
-          # keeps it off the in-app update check (`/releases/latest` excludes
-          # pre-releases) and Obtainium (default skips pre-releases). The APK is
-          # still attached and still gated by #527 -- an RC exercises the APK
-          # build/sign path. Promotion flips these on the final tag
-          # (promote-rc.yml). The later APK / signature / SBOM / provenance
-          # attach steps pass only `tag_name` + `files`, so they do not reset
-          # this.
+          # RC-02 (#446): an `-rc.` tag is a SemVer pre-release; marking it
+          # prerelease and never make_latest keeps it off the in-app update
+          # check and Obtainium's default feed. Promotion flips both on the
+          # final tag (promote-rc.yml); later attach steps pass only
+          # tag_name + files, so they don't reset this.
           prerelease: ${{ contains(env.RELEASE_TAG, '-rc.') }}
           make_latest: ${{ !contains(env.RELEASE_TAG, '-rc.') }}
           body: |
@@ -250,13 +218,11 @@ jobs:
             ${{ steps.images.outputs.frontend }}
             ```
 
-      # ADR 0021 (issue #1163): the workflow that owns the Release owns every
-      # asset on it, including release-metadata.json. Moving this here from
-      # release.yml removes the forward dependency where that workflow waited
-      # (in three 40-minute, token-re-minting segments) for a Release this one
-      # had not created yet -- the tail that #1158/#1159 patched around. The
-      # residual-risk statement is regenerated from the tagged tree, so there is
-      # one producer and no cross-run artifact fetch.
+      # ADR 0021 (#1163): the workflow that owns the Release owns every asset
+      # on it, including release-metadata.json -- moved here from release.yml
+      # to remove the forward dependency on a Release that workflow hadn't
+      # created yet (#1158/#1159). Regenerated from the tagged tree: one
+      # producer, no cross-run artifact fetch.
       - name: Emit and attach release metadata
         env:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
@@ -300,11 +266,10 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           gh release upload "$RELEASE_TAG" release-metadata.json --clobber
 
-      # ADR 0021 (issue #1164): attach the release-readiness record too. It is
-      # produced by release.yml (the workflow that owns the candidate decision);
-      # a tag pushed by hand or by a recovery dispatch has none, so this warns
-      # and skips rather than failing. `gh api` needs actions: read (granted on
-      # this job).
+      # ADR 0021 (#1164): attach the release-readiness record produced by
+      # release.yml. A hand-pushed or recovery-dispatched tag has none, so
+      # this warns and skips rather than failing. `gh api` needs actions:
+      # read (granted above).
       - name: Attach the release-readiness record (if any)
         env:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
@@ -324,16 +289,12 @@ jobs:
           gh release upload "$RELEASE_TAG" "${RUNNER_TEMP}/readiness/release-readiness.json" --clobber
 
   # Builds the same signed release APK android-apk-build.yml's manual "release"
-  # variant produces, and attaches it to this tag's GitHub Release so Obtainium
-  # (which polls Releases for an APK asset) picks it up as an update. No `needs`
-  # on create-release, matching build-and-push below: release creation and asset
-  # upload are independent operations against the same tag, so ordering doesn't
-  # matter, and a signing problem here shouldn't block the Docker images.
-  #
-  # No `if: github.event_name == 'push'` gate (unlike create-release, which
-  # excludes workflow_dispatch to avoid re-generating notes) -- this job never
-  # touches the release body, so it's safe, and useful, to also run on the
-  # manual "recover a lost run" dispatch described above.
+  # variant produces, and attaches it to this tag's Release so Obtainium picks
+  # it up. No `needs: create-release` (matching build-and-push): release
+  # creation and asset upload are independent, so a signing problem here
+  # shouldn't block the Docker images. No push-only `if:` either -- unlike
+  # create-release, this never touches the release body, so it's also safe on
+  # the manual recovery dispatch.
   build-android-apk:
     name: Build Android release APK
     runs-on: ubuntu-latest
@@ -341,29 +302,22 @@ jobs:
     # `apk-provenance` job below as the SLSA generator's subject (issue #355).
     outputs:
       hashes: ${{ steps.apk-hash.outputs.hashes }}
-    # REL-03 / issue #527: the Android APK is a mandatory release gate. A
-    # signed, apksigner-verified APK that lands on the Release is now a
-    # precondition for the whole release -- `create-release` and
-    # `build-and-push` both `needs:` this job, so a build or signing failure
-    # blocks the Docker images too. This deliberately reverses the earlier
-    # decoupling; rationale in docs/development/release-gates.md ("The Android
-    # decision"). `needs: release-gate` so it does not build for a commit whose
-    # mandatory gates failed.
+    # REL-03 / #527: the signed, apksigner-verified APK is now a mandatory
+    # release gate -- create-release and build-and-push both `needs:` this
+    # job, so a build/signing failure blocks the Docker images too
+    # (rationale: docs/development/release-gates.md, "The Android decision").
     needs: [validate-tag, release-gate, release-gate-override]
-    # Proceed when the composed gate passed, or when an operator recorded an
-    # override (ADR 0021 / #1165). `always()` is required because one of the two
-    # gate jobs is always skipped.
+    # Proceed on either gate outcome (ADR 0021/#1165); `always()` is required
+    # since one of the two gate jobs is always skipped.
     if: ${{ always() && (needs.release-gate.result == 'success' || needs.release-gate-override.result == 'success') }}
     # #508: same protected `release` environment as create-release / build-and-push.
     environment: release
     timeout-minutes: 45
     permissions:
       contents: write
-      # id-token: write + attestations: write let
-      # actions/attest-build-provenance mint a short-lived Sigstore
-      # certificate from GitHub's OIDC issuer and persist the resulting
-      # attestation against this repository (see the "Attest the release APK"
-      # step below). No key material to generate or store.
+      # id-token + attestations let actions/attest-build-provenance mint a
+      # short-lived Sigstore cert from GitHub's OIDC issuer and persist the
+      # attestation (see "Attest the release APK" below). No key material.
       id-token: write
       attestations: write
     env:
@@ -431,21 +385,15 @@ jobs:
           printf '%s' "$SIGNING_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/keystore.jks"
           echo "store_file=$RUNNER_TEMP/keystore.jks" >> "$GITHUB_OUTPUT"
 
-      # versionName strips the leading 'v' and, issue #1022, any `-rc.N`
-      # (or other) pre-release qualifier: an RC build reports itself as the
-      # plain release it will become (e.g. "0.7.0", not "0.7.0-rc.3"), since
-      # promotion ships this exact APK unrebuilt and a tester/end-user has no
-      # reason to see or care about the RC number. versionCode uses the
-      # workflow's own run number rather than parsing MAJOR.MINOR.PATCH out
-      # of the tag: this repo's tags aren't strict semver (e.g.
-      # v0.2.0-alpha-candidate), so two pre-release/final tags sharing a
-      # MAJOR.MINOR.PATCH would otherwise collide on the same versionCode.
-      # GITHUB_RUN_NUMBER only ever increases across runs of this workflow,
-      # so it's guaranteed strictly increasing release-over-release -- which
-      # is what Android requires to accept an APK as an upgrade over
-      # whatever's already installed. +1000 is headroom above 1, the static
-      # versionCode every non-release build (including a tester's manually
-      # sideloaded android-apk-build.yml APK) still carries.
+      # versionName strips 'v' and any `-rc.N` (#1022): promotion ships this
+      # exact APK unrebuilt, so an RC reports the plain release it will
+      # become. versionCode uses this workflow's own run number rather than
+      # parsing the tag: tags aren't strict semver (e.g.
+      # v0.2.0-alpha-candidate), so two tags could collide on
+      # MAJOR.MINOR.PATCH. GITHUB_RUN_NUMBER only increases, so it's
+      # guaranteed strictly increasing -- what Android requires to accept an
+      # upgrade. +1000 is headroom above 1, the static placeholder every
+      # non-release build still carries.
       - name: Compute release version
         id: version
         env:
@@ -474,12 +422,11 @@ jobs:
             -PMYCORRHIZAL_VERSION_NAME="$MYCORRHIZAL_VERSION_NAME" \
             -PMYCORRHIZAL_VERSION_CODE="$MYCORRHIZAL_VERSION_CODE"
 
-      # REL-03 / issue #527: `assembleRelease` only checks the signing *secrets*
-      # are present (the "Materialize release keystore" step) -- a misconfigured
-      # signing block still produces an unsigned, uninstallable APK. Verify the
-      # actual output. If the repo variable ANDROID_SIGNING_CERT_SHA256 is set,
-      # also assert the signer certificate matches; otherwise warn. On failure,
-      # the message names the PKCS12 trap.
+      # REL-03 / #527: "Materialize release keystore" only checks the signing
+      # secrets are present -- a misconfigured signing block still produces an
+      # unsigned APK. Verify the actual output; if ANDROID_SIGNING_CERT_SHA256
+      # is set, also assert the signer cert matches. Failure message names
+      # the PKCS12 trap (key/store password mismatch).
       - name: Verify APK signature
         env:
           EXPECTED_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
@@ -515,11 +462,9 @@ jobs:
             echo "::warning::ANDROID_SIGNING_CERT_SHA256 repo variable is not set; the APK is signature-verified but the certificate is not pinned. See docs/development/release-gates.md."
           fi
 
-      # REL-03 / issue #527: pin the plugin's version-code override wiring so an
-      # in-place upgrade keeps working. The built APK's versionCode must equal
-      # the value the workflow computed (1000 + run number, strictly increasing
-      # per docs/versioning-policy.md) and be > 1 (the plugin's static
-      # placeholder). The full "install N then N+1" emulator test is issue #480.
+      # REL-03 / #527: the built APK's versionCode must equal the workflow's
+      # computed value and be > 1 (the plugin's static placeholder), or an
+      # in-place upgrade breaks. Full "install N then N+1" emulator test: #480.
       - name: Assert APK versionCode
         env:
           MYCORRHIZAL_VERSION_CODE: ${{ steps.version.outputs.code }}
@@ -538,11 +483,10 @@ jobs:
             exit 1
           fi
 
-      # Subject digest for the SLSA provenance (issue #355). Computed here, off
-      # the same file the attach step uploads, so the `.intoto.jsonl` the
-      # `apk-provenance` job produces attests the exact bytes on the Release.
-      # base64 -w0: the slsa-github-generator `base64-subjects` input is a
-      # single-line base64 blob of `sha256sum` output lines.
+      # Subject digest for the SLSA provenance (#355), computed off the same
+      # file the attach step uploads so the provenance attests the exact
+      # bytes on the Release. base64 -w0: slsa-github-generator's
+      # base64-subjects input is a single-line blob of sha256sum output.
       - name: Compute APK subject digest
         id: apk-hash
         run: |
@@ -550,66 +494,43 @@ jobs:
           cd android/app/build/outputs/apk/obtainium/release
           echo "hashes=$(sha256sum app-obtainium-release.apk | base64 -w0)" >> "$GITHUB_OUTPUT"
 
-      # No body/generate_release_notes here -- this only uploads the asset, and
-      # deliberately leaves whatever create-release wrote untouched regardless
-      # of which job happens to finish first.
-      # Same rationale as the create step: asset upload stays on the same
-      # pinned action for symmetry with the append_body recovery path above.
+      # No body/generate_release_notes here -- only uploads the asset,
+      # leaving whatever create-release wrote untouched. Same pinned action
+      # as the create step, for symmetry with its append_body recovery path.
       - name: Attach APK to GitHub Release # zizmor: ignore[superfluous-actions]
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           files: android/app/build/outputs/apk/obtainium/release/*.apk
 
-      # SLSA build provenance for the APK, as a GitHub-native attestation.
-      # GitHub digest-matches the attested subject against the release asset
-      # uploaded just above, which is what puts the "Verified" provenance badge
-      # on the Release page. Verifiable downstream with
-      # `gh attestation verify <apk> -R DrewBrunning/mycorrhizal-crm`.
-      #
-      # Note this attestation is NOT what satisfies OSSF Scorecard's
-      # Signed-Releases check: it lives in GitHub's attestations API, not as a
-      # release asset, and that check only inspects release asset filenames for
-      # signature extensions. The cosign bundle attached as a release asset
-      # below is what Scorecard sees.
-      #
-      # Deliberately after the upload: the release-asset association happens
-      # when the attestation is created, by matching the subject digest against
-      # assets that exist at that moment.
+      # SLSA build provenance as a GitHub-native attestation. GitHub
+      # digest-matches the subject against the uploaded release asset, which
+      # puts the "Verified" badge on the Release page. Verify downstream with
+      # `gh attestation verify <apk> -R DrewBrunning/mycorrhizal-crm`. This
+      # is NOT what satisfies Scorecard's Signed-Releases check (it lives in
+      # the attestations API, not a release asset with a signature
+      # extension) -- the cosign bundle below is what Scorecard sees.
+      # Deliberately after the upload: the asset association happens when
+      # the attestation is created, by matching against assets that exist
+      # at that moment.
       - name: Attest the release APK (build provenance)
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: android/app/build/outputs/apk/obtainium/release/*.apk
 
-      # Issue #578, B3: cosign co-signature on the release APK — additive
-      # ONLY. It does NOT replace the SIGNING_* keystore signing above, which
-      # is what makes the APK installable; cosign gives an independent
-      # keyless (Sigstore) verifier on top of the GH attestation. cosign v3
-      # made the standardized bundle format (--bundle, a single file with the
-      # cert + signature + transparency log entry) the default and required
-      # it, retiring --output-certificate/--output-signature (they're now
-      # silently ignored, so cosign wrote to an empty path and errored: "create
-      # bundle file: open : no such file or directory"). Verify with
+      # Issue #578, B3: cosign co-signature on the release APK -- additive
+      # ONLY, does not replace the SIGNING_* keystore signing that makes the
+      # APK installable. Verify with
       # cosign verify-blob --bundle mycorrhizal-apk.sigstore.json <apk>.
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
-          # Pinned explicitly rather than trusting the action's own default --
-          # v4.1.2's baked-in default is v3.0.6, and that specific cosign
-          # release has a keyless-signing regression against a registry with
-          # no OCI 1.1 Referrers API support (GHCR is one): `cosign sign`
-          # prints "Generating ephemeral keys... Signing artifact..." and
-          # exits 0, but never prints "tlog entry created" / "Pushing
-          # signature to:" and no signature ever lands in the registry. Found
-          # via v0.6.1: three images published, none verifiable
-          # (`cosign verify` -> "no signatures found" on every one), while the
-          # prior release's identical step -- an older cosign-installer
-          # version with a different baked-in default -- signed cleanly.
-          # v3.1.x's changelog lists "Sign exclusively via sigstore-go" and
-          # "Require bundle output or registry upload", consistent with a
-          # registry-upload fix in the keyless path. Pin the version, not the
-          # installer's default, so a future installer bump can't silently
-          # swap this out from under the workflow again.
+          # Pin explicitly: v4.1.2's baked-in default (v3.0.6) silently fails
+          # keyless signing against a registry with no OCI 1.1 Referrers API
+          # (GHCR is one) -- `cosign sign` exits 0 but pushes no signature.
+          # Found via v0.6.1 (three images published, none verifiable). Pin
+          # the version, not the installer's default, so a future installer
+          # bump can't silently regress this again.
           cosign-release: 'v3.1.3'
 
       - name: Cosign-sign the release APK (keyless, additive)
@@ -618,26 +539,16 @@ jobs:
             --bundle "$RUNNER_TEMP/mycorrhizal-apk.sigstore.json" \
             android/app/build/outputs/apk/obtainium/release/app-obtainium-release.apk
 
-      # OSSF Scorecard's Signed-Releases check counts a release as "signed"
-      # only when it has a release ASSET whose filename carries a recognized
-      # signature extension (.asc, .sig, .minisig, .sigstore,
-      # .sigstore.json, ...). It does not look at the attestations API, the
-      # OCI registry, or workflow artifacts, and it never cryptographically
-      # verifies anything -- pure filename matching. So this bundle (already
-      # produced by the step above and also kept as a 30-day workflow artifact
-      # below) must additionally be a release asset, or every release scores
-      # as unsigned no matter what else we sign. .sigstore.json is a
-      # recognized suffix.
+      # Scorecard's Signed-Releases check only recognizes a release ASSET
+      # with a signature-extension filename (pure filename matching, not the
+      # attestations API or OCI registry) -- so this bundle must also be a
+      # release asset, or every release scores as unsigned.
       #
-      # `gh release upload --clobber` + retry, not
-      # softprops/action-gh-release (#1147): for v0.8.6 the action hit
-      # GitHub's server-side "Error creating asset temp dir" (HTTP 500) on
-      # this exact file, and because `build-and-push` `needs:` this job (#527)
-      # that single transient upload failure skipped every image build and
-      # published a Release with no container images. gh release upload is
-      # the same idiom `verify-release-assets` already uses; the Release
-      # necessarily exists by here (the APK attach above creates it). The
-      # "Assert APK assets landed" step below remains the hard #527 gate.
+      # `gh release upload --clobber` + retry, not softprops/action-gh-release
+      # (#1147): the action hit a transient GitHub 500 on this exact file for
+      # v0.8.6, and since build-and-push `needs:` this job (#527), that one
+      # failure skipped every image build. "Assert APK assets landed" below
+      # remains the hard #527 gate.
       - name: Attach APK cosign signature to GitHub Release
         env:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
@@ -682,47 +593,32 @@ jobs:
             esac
           done
 
-  # Issue #355: a real SLSA build-provenance statement for the release APK,
-  # attached to the Release as `mycorrhizal-apk.intoto.jsonl`. This is the file
-  # OSSF Scorecard's Signed-Releases check needs for the 10/10 tier (the
-  # `.sigstore.json` cosign bundle already covers 8/10). The reusable
-  # slsa-github-generator workflow signs the APK's sha256 subject keyless with
-  # the run's ambient OIDC identity — no key material.
+  # Issue #355: real SLSA build provenance for the release APK, attached as
+  # `mycorrhizal-apk.intoto.jsonl` -- what Scorecard's Signed-Releases check
+  # needs for the 10/10 tier (the cosign bundle above covers 8/10). The
+  # reusable slsa-github-generator workflow signs the APK's sha256 subject
+  # keyless with the run's ambient OIDC identity.
   #
-  # `@v2.1.0` is a semver tag, not a SHA: the trusted-builder model requires
-  # the generator resolve its own ref to establish the builder identity in the
-  # provenance, so slsa-github-generator refuses to run when referenced by
-  # commit SHA -- a hash pin would break the artifact this job produces. This
-  # is a KNOWN, ACCEPTED, PERMANENT exception to the repo's SHA-pin rule:
-  #   - Scorecard's Pinned-Dependencies check flags it ("third-party
-  #     GitHubAction not pinned by hash", sub-score 9) and has no suppression
-  #     mechanism -- accepted, see docs/dependency-upgrade-policy.md;
-  #   - zizmor's `unpinned-uses` is suppressed inline below;
-  #   - version bumps are a deliberate tag change (Dependabot github-actions).
-  # Verification consequence: docs/security/release-verification.md.
+  # `@v2.1.0` (not a SHA) is a KNOWN, PERMANENT exception to the SHA-pin
+  # rule: the trusted-builder model requires the generator resolve its own
+  # ref to establish builder identity, so it refuses to run pinned by commit
+  # SHA. Accepted in docs/dependency-upgrade-policy.md; zizmor's
+  # `unpinned-uses` is suppressed inline below; version bumps are a
+  # deliberate tag change.
   #
-  # `upload-assets: false` keeps release-asset ownership out of this job: the
-  # generator uploads the `.intoto.jsonl` only as a workflow artifact, and
-  # `verify-release-assets` attaches it to the Release alongside SHA256SUMS.
-  # That sidesteps the create-release / action-gh-release collision #355 flags.
+  # `upload-assets: false` keeps release-asset ownership out of this job --
+  # the generator uploads the .intoto.jsonl only as a workflow artifact, and
+  # verify-release-assets attaches it alongside SHA256SUMS, sidestepping the
+  # create-release/action-gh-release collision #355 flags.
   #
-  # permissions.contents is write, not read, even though upload-assets: false
-  # below means this job's own use of it never writes anything (issue #1006,
-  # a real STARTUP_FAILURE the first time this job ever ran for real): the
-  # called workflow's own internal `upload-assets` job unconditionally
-  # declares `permissions: contents: write` at the job level, regardless of
-  # the upload-assets input or this job's `if:`. GitHub validates a
-  # reusable-workflow caller's granted permissions as a ceiling for every
-  # job inside the called workflow at PARSE TIME, for the whole graph,
-  # before any `if:` is evaluated -- so a too-narrow ceiling here breaks the
-  # run before any job is even created, independent of whether that internal
-  # job would ever actually execute. Matches the project's own reference
-  # usage example (hashicorp/packer's
-  # examples/ci/github-actions-l3-delegated.yml), which grants contents:
-  # write for exactly this job. Verified in isolation (a throwaway
-  # workflow_dispatch-only workflow calling the same reusable workflow with
-  # these exact permissions, run to completion, then removed) before landing
-  # here.
+  # permissions.contents is write, not read, even though this job's own use
+  # of it never writes (upload-assets: false): GitHub validates a
+  # reusable-workflow caller's permissions as a ceiling for the WHOLE called
+  # graph at parse time, before any `if:` runs -- the generator's internal
+  # upload-assets job unconditionally declares contents: write at the job
+  # level regardless of the input, so a narrower ceiling here breaks the run
+  # before any job is created (#1006, a real STARTUP_FAILURE). Matches
+  # hashicorp/packer's own reference usage of this generator.
   apk-provenance:
     name: SLSA provenance for the APK
     needs: [build-android-apk]
@@ -739,13 +635,9 @@ jobs:
       provenance-name: mycorrhizal-apk.intoto.jsonl
       upload-assets: false
 
-  # Issue #436 / #529: the "new release without a schema fixture fails CI"
-  # gate. The upgrade test matrix (MIG-01 fixtures, internal/schemafixture) is
-  # bounded by the v1.0.0 floor (raised from v0.6.0 at the 1.0 major, issue
-  # #1170) and requires a committed per-release schema dump under
-  # backend/database/testdata/schemas/. A release tag that ships a
-  # mycorrhizal-supported-series schema (squashed baseline present, version at
-  # or above v1.0.0) but has no dump would publish an upgrade path that CI has
+  # #436/#529: a release at or above the v1.0.0 floor (raised from v0.6.0 at
+  # the 1.0 major, #1170) must ship a committed schema dump under
+  # backend/database/testdata/schemas/, or it publishes an upgrade path CI
   # never tested. That must fail the publish, not be noticed later.
   schema-fixture-gate:
     runs-on: ubuntu-latest
@@ -759,23 +651,18 @@ jobs:
           ref: ${{ env.RELEASE_TAG }}
           persist-credentials: false
 
-      # RELEASE_TAG arrives via env (not inline ${{ }}) -- same zizmor-safe
-      # pattern the rest of this workflow uses. The discriminator for "is this
-      # a mycorrhizal supported-series release" is the presence of the squashed
-      # migration baseline at that tag: the pre-fork upstream meerkat tags
-      # (v0.7.5..v0.9.x, v1.x) use a different migration numbering and never
-      # carry 000001_initial_schema.up.sql.
+      # The discriminator for "is this a mycorrhizal supported-series
+      # release" is the presence of the squashed migration baseline at that
+      # tag: pre-fork upstream meerkat tags use different migration
+      # numbering and never carry 000001_initial_schema.up.sql.
       - name: Verify release has a schema fixture
         env:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
         run: |
           set -eu
-          # RC-02 (issue #446): a release candidate ships the same schema its
-          # final will, and no in-place upgrade is ever supported *from* an RC,
-          # so an `-rc.` tag carries no fixture -- the final one is registered
-          # at promotion (promote-rc.yml). Without this exemption the RC's run
-          # fails here (an RC whose final is at or above the floor carries the
-          # schemas dir, so the gate would demand the RC's own dump).
+          # RC-02 (#446): no in-place upgrade is ever supported *from* an RC,
+          # so an `-rc.` tag carries no fixture of its own -- the final one
+          # is registered at promotion (promote-rc.yml).
           if printf '%s' "$RELEASE_TAG" | grep -qE -- '-rc\.[0-9]+$'; then
             echo "$RELEASE_TAG is a release candidate; the final schema fixture is registered at promotion. Fixture gate not applicable."
             exit 0
@@ -790,11 +677,8 @@ jobs:
             echo "Release $RELEASE_TAG is below the $floor floor; fixture gate not required (two-step upgrade applies)."
             exit 0
           fi
-          # A tag whose tree predates the fixture machinery (v0.6.0..v0.6.3,
-          # shipped before the schemas dir existed) is exempt -- it cannot
-          # retroactively carry a fixture, and its images are only rebuilt for
-          # recovery. Anything at or above the floor that DOES carry the
-          # schemas dir must have its own dump.
+          # A tag predating the fixture machinery (v0.6.0..v0.6.3) is exempt
+          # -- it cannot retroactively carry a fixture.
           if [ ! -d backend/database/testdata/schemas ]; then
             echo "Release $RELEASE_TAG predates the schema-fixture machinery; gate not applicable."
             exit 0
@@ -808,39 +692,30 @@ jobs:
 
   build-and-push:
     runs-on: ubuntu-latest
-    # REL-03 / issue #527: also needs build-android-apk -- the images do not
-    # publish unless the release APK built and passed its signature check.
+    # REL-03 / #527: also needs build-android-apk -- images don't publish
+    # unless the release APK built and passed its signature check.
     needs: [schema-fixture-gate, build-android-apk]
-    # ADR 0021 (issue #1184): the sibling `release-gate-override` job is skipped
-    # on a normal tag push, and a skipped job poisons the default `success()`
-    # condition of everything downstream -- `build-and-push` skipped while both
-    # its needs succeeded, silently dropping the images, provenance and
-    # SHA256SUMS from the Release. `always()` + explicit result checks restore
-    # the intended behaviour (a real upstream failure still blocks).
+    # ADR 0021 (#1184): a skipped sibling job (release-gate-override on a
+    # normal push) poisons the default `success()` downstream; `always()` +
+    # explicit result checks restore the intended behaviour.
     if: ${{ always() && needs.schema-fixture-gate.result == 'success' && needs.build-android-apk.result == 'success' }}
     # #508: the protected `release` environment (see create-release).
     environment: release
     permissions:
       contents: read
       packages: write
-      # id-token: write is what lets cosign and actions/attest-build-provenance
-      # request a short-lived OIDC identity token from GitHub's
-      # Sigstore-federated issuer for keyless signing / attestation below -- no
-      # key material to generate, rotate, or store.
+      # id-token lets cosign / attest-build-provenance request a short-lived
+      # OIDC identity token for keyless signing/attestation below.
       id-token: write
-      # Persists the SLSA attestation against this repository (see the
-      # "Attest the published image" step below).
+      # attestations: write persists the SLSA attestation (see below).
       attestations: write
 
     strategy:
-      # One leg's failure must not cancel the others. With the default
-      # (fail-fast: true), the backend leg failing on its last step killed the
-      # all-in-one and frontend legs *mid-push* -- both had uploaded their
-      # manifests but were cancelled before `Install cosign`, so v0.6.1 shipped
-      # two images with no signature and no provenance while
-      # docs/security/release-verification.md tells operators to cosign-verify
-      # all three. These legs are independent images; there is nothing to fail
-      # fast about.
+      # One leg's failure must not cancel the others: with fail-fast: true,
+      # the backend leg failing killed the other two legs mid-push, and
+      # v0.6.1 shipped two images with no signature/provenance despite
+      # release-verification.md promising all three are cosign-verifiable.
+      # These are independent images; nothing to fail fast about.
       fail-fast: false
       matrix:
         include:
@@ -891,28 +766,18 @@ jobs:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
         run: |
           sha=$(git rev-parse HEAD)
-          # REL-04 (issue #448): SOURCE_DATE_EPOCH is the release commit's
-          # committer date -- deterministic per tag, so BuildKit can rewrite
-          # every layer/config timestamp to it and two builds of the same tag
-          # produce the same image config digest. `sha_full` and `created` feed
-          # the explicit OCI labels below (revision + created), which otherwise
-          # come from github.sha / wall-clock and are wrong on a manual run.
+          # REL-04 (#448): SOURCE_DATE_EPOCH is the release commit's committer
+          # date, deterministic per tag, so BuildKit rewrites every
+          # layer/config timestamp to it and two builds of the same tag
+          # produce the same image digest. `sha_full`/`created` feed the
+          # explicit OCI labels below, which otherwise default to github.sha
+          # and wall-clock -- both wrong on a manual run.
           epoch=$(git log -1 --format=%ct HEAD)
-          # `created` (ISO-8601 of the commit date) is the build date the binary
-          # and the image label both carry -- a deterministic value, so a
-          # third-party rebuild of the tag reproduces the same bytes. It is not
-          # the workflow's wall-clock, which was the old behaviour.
-          #
-          # issue #1022: `display_version` is what the running binary (and,
-          # via VITE_APP_VERSION, the frontend) reports as its own version --
-          # distinct from the image TAG, which must keep the full `-rc.N`
-          # suffix to stay distinguishable in the registry. Strips the
-          # leading `v` and everything from the first `-` onward, so an RC
-          # build of v0.7.0-rc.3 reports itself simply as "0.7.0" (the same
-          # value the eventual final release reports, since promotion copies
-          # this exact binary rather than rebuilding it) instead of exposing
-          # the pre-release qualifier to an end user who has no reason to
-          # know or care an RC number.
+          # issue #1022: `display_version` is what the running binary reports
+          # as its own version -- distinct from the image TAG, which must
+          # keep the full `-rc.N` suffix. Strips `v` and everything from the
+          # first `-` on, so an RC reports the plain release it will become
+          # (promotion copies this exact binary rather than rebuilding).
           v="${RELEASE_TAG#v}"
           {
             echo "commit=$(echo "$sha" | cut -c1-12)"
@@ -928,53 +793,42 @@ jobs:
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}${{ matrix.suffix }}
-          # Each type takes an explicit value so the derived tags come from
-          # RELEASE_TAG and the checked-out commit. Left implicit, semver reads
-          # the ref and sha reads github.sha -- both wrong on a manual run,
-          # which would publish an image labelled with the branch it was
-          # dispatched from. Same output as before on a tag push.
+          # Each type takes an explicit value so tags come from RELEASE_TAG
+          # and the checked-out commit; left implicit, semver reads the ref
+          # and sha reads github.sha, both wrong on a manual run.
           #
-          # `latest` (docker compose version issue): this job never moved this
-          # tag, on any release, ever -- it sat frozen at whatever the last
-          # manual push left it (0.6.12, discovered when 0.7.0 shipped and
-          # `docker compose pull` kept reporting 0.6.12). Gated to skip an RC
-          # push (`-rc.N`) so a pre-release never becomes what a bare
-          # `docker compose pull` lands on; mirrors create-release's
-          # `make_latest` condition above. A *final* tag promoted via
-          # promote-rc.yml (REL-02) never reaches this job at all (pushed with
-          # GITHUB_TOKEN, so `on: push: tags` never fires) -- that path moves
-          # `latest` itself, unconditionally, in its own re-tag step.
+          # `latest`: this tag never moved on any release (it sat frozen at
+          # 0.6.12 until discovered when 0.7.0 shipped and `docker compose
+          # pull` still reported it) -- gated to skip an `-rc.N` push so a
+          # pre-release never becomes the bare-pull default, mirroring
+          # create-release's make_latest. A final tag promoted via
+          # promote-rc.yml never reaches this job (pushed with GITHUB_TOKEN,
+          # so `on: push: tags` doesn't fire); that path moves `latest`
+          # itself in its own re-tag step.
           tags: |
             type=semver,pattern={{version}},value=${{ env.RELEASE_TAG }}
             type=semver,pattern={{major}}.{{minor}},value=${{ env.RELEASE_TAG }}
             type=raw,value=${{ steps.stamp.outputs.sha7 }}
             type=raw,value=latest,enable=${{ !contains(env.RELEASE_TAG, '-rc.') }}
-          # REL-04 (issue #448): pin the identity labels explicitly. Left to
-          # metadata-action's defaults, `revision` is github.sha and `created`
-          # is the run's wall-clock -- both wrong on a manual recovery run (the
-          # same reason the tags above take explicit values) and `created`
-          # breaks image reproducibility. These come from the checked-out tag.
+          # REL-04 (#448): pin identity labels explicitly -- metadata-action's
+          # defaults (github.sha, wall-clock) are wrong on a manual run and
+          # break image reproducibility.
           labels: |
             org.opencontainers.image.revision=${{ steps.stamp.outputs.sha_full }}
             org.opencontainers.image.version=${{ env.RELEASE_TAG }}
             org.opencontainers.image.created=${{ steps.stamp.outputs.created }}
 
-      # SHA-pinned (trailing comment carries the version) because Scorecard's
-      # Pinned-Dependencies check flagged this line and the cosign-installer
-      # one below -- both touched by this PR. Other actions in this job
-      # (setup-buildx-action, login-action, metadata-action) predate this PR
-      # and are still on floating major tags; that's a separate, larger
-      # cleanup, not something to do piecemeal here. Dependabot's
-      # github-actions ecosystem (#269) updates the SHA + comment together.
+      # SHA-pinned per Scorecard's Pinned-Dependencies check; other actions
+      # in this job still float on major tags (separate cleanup). Dependabot
+      # updates the SHA + version comment together (#269).
       - name: Build and push
         id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         env:
-          # REL-04 (issue #448): BuildKit / build-push-action pick this up and
-          # rewrite every layer + config timestamp to it, so a rebuild of the
-          # same tag yields the same image config digest. See
-          # docs/security/reproducible-builds.md for what this does and does not
-          # make bit-reproducible (the multi-arch manifest digest is not gated).
+          # REL-04 (#448): rewrites every layer/config timestamp so a rebuild
+          # of the same tag yields the same image digest. See
+          # docs/security/reproducible-builds.md for what this does and does
+          # not make bit-reproducible (multi-arch manifest digest is not gated).
           SOURCE_DATE_EPOCH: ${{ steps.stamp.outputs.source_date_epoch }}
         with:
           context: ${{ matrix.context }}
@@ -983,80 +837,41 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Stamp the binary with the release it actually is. Without these the
-          # Dockerfile's defaults apply and /health reports version "dev" --
-          # so a published v0.2.0 image could not be told apart from any other
-          # build, which is the exact problem the buildinfo package exists to
-          # solve. issue #1022: APP_VERSION is `stamp`'s display_version, not
-          # metadata-action's `version` output -- the former strips a `-rc.N`
-          # suffix (an RC binary should self-report the plain release it will
-          # become, not the pre-release qualifier), the latter is the actual
-          # image tag and must keep it.
+          # Stamp the binary with the release it actually is, or /health
+          # reports version "dev" like any other build. #1022: APP_VERSION is
+          # `stamp`'s display_version (strips `-rc.N`), not metadata-action's
+          # `version` output, which is the actual image tag and must keep it.
           build-args: |
             APP_VERSION=${{ steps.stamp.outputs.display_version }}
             APP_COMMIT=${{ steps.stamp.outputs.commit }}
             APP_BUILD_DATE=${{ steps.stamp.outputs.created }}
-          # scope is required, not cosmetic, once this step runs as a matrix:
-          # the GHA cache backend's default scope is shared across the whole
-          # workflow, so the three legs -- running concurrently -- read and
-          # write the same cache namespace. Docker's own docs call this out
-          # ("cache scopes need to be unique for each [matrix] entry, otherwise
-          # the cache will be overwritten"), and it is not hypothetical here:
-          # v0.6.1's libssl3/libcrypto3 fix (CVE-2026-14456) landed in the
-          # Dockerfile, built clean locally from a fresh no-cache clone of the
-          # exact merged commit, and then the re-dispatched release build still
-          # pushed the pre-fix layer -- `docker history` on the pushed image
-          # showed the *old* apk add command verbatim, even though the image's
-          # own OCI revision label named the commit with the fix. The
-          # instruction text differed, so BuildKit's own per-layer cache key
-          # should have missed; the shared, unscoped GHA namespace being
-          # written and read by all three concurrent legs is what let a stale
-          # layer come back as a hit anyway. Scoped per matrix leg so each
-          # image's cache is isolated from the other two and from itself
-          # across runs in the way the key is supposed to guarantee.
+          # scope is required, not cosmetic: the GHA cache backend's default
+          # scope is shared workflow-wide, so the three concurrent matrix legs
+          # would read/write the same namespace. Not hypothetical -- v0.6.1's
+          # CVE-2026-14456 fix built clean locally but the unscoped shared
+          # cache served a stale pre-fix layer to the pushed image anyway
+          # (`docker history` showed the old instruction despite a differing
+          # cache key). Scoped per leg so each image's cache is isolated.
           cache-from: type=gha,scope=docker-publish${{ matrix.suffix }}
           cache-to: type=gha,mode=max,scope=docker-publish${{ matrix.suffix }}
-          # SBOM + SLSA provenance attestations, pushed alongside the image
-          # as referrers. Trivy scans more accurately with an SBOM present,
-          # and provenance lets a user verify which commit actually produced
-          # the digest they pulled.
+          # SBOM + SLSA provenance, pushed alongside the image as referrers.
           provenance: true
           sbom: true
 
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
-          # Pinned explicitly rather than trusting the action's own default --
-          # v4.1.2's baked-in default is v3.0.6, and that specific cosign
-          # release has a keyless-signing regression against a registry with
-          # no OCI 1.1 Referrers API support (GHCR is one): `cosign sign`
-          # prints "Generating ephemeral keys... Signing artifact..." and
-          # exits 0, but never prints "tlog entry created" / "Pushing
-          # signature to:" and no signature ever lands in the registry. Found
-          # via v0.6.1: three images published, none verifiable
-          # (`cosign verify` -> "no signatures found" on every one), while the
-          # prior release's identical step -- an older cosign-installer
-          # version with a different baked-in default -- signed cleanly.
-          # v3.1.x's changelog lists "Sign exclusively via sigstore-go" and
-          # "Require bundle output or registry upload", consistent with a
-          # registry-upload fix in the keyless path. Pin the version, not the
-          # installer's default, so a future installer bump can't silently
-          # swap this out from under the workflow again.
+          # Same v4.1.2-default regression as build-android-apk's cosign
+          # install above (v3.0.6 silently fails keyless signing against a
+          # Referrers-API-less registry like GHCR) -- pin the version, not
+          # the installer's default.
           cosign-release: 'v3.1.3'
 
-      # Keyless signing via cosign's ambient GitHub Actions OIDC detection --
-      # no --certificate-identity/--certificate-oidc-issuer flags here, those
-      # are `cosign verify` options; `cosign sign` auto-requests a Fulcio
-      # cert using the id-token: write permission granted above. No key
-      # material to generate or store.
-      #
-      # Signs the digest, not a tag: tags are mutable, the digest isn't, and
-      # `steps.build.outputs.digest` is exactly what was just pushed. Reuses
-      # the docker/login-action session above for registry auth.
-      #
-      # Lowercased the same way the scan job below resolves its image
-      # reference: github.repository preserves account case (DrewBrunning),
-      # but GHCR references must be lowercase.
+      # Keyless signing via cosign's ambient OIDC detection, using the
+      # id-token: write permission granted above. Signs the digest, not a
+      # tag (tags are mutable). Lowercased the same way the scan job below
+      # resolves its image reference (github.repository preserves account
+      # case; GHCR refs must be lowercase).
       - name: Sign the published image (keyless)
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
@@ -1064,12 +879,9 @@ jobs:
         run: |
           cosign sign --yes "ghcr.io/${GITHUB_REPOSITORY,,}${SUFFIX}@${DIGEST}"
 
-      # The lowercase reference again, shared by the attest step below (GitHub
-      # Actions expressions have no lower() function, so it's done in bash the
-      # same way the cosign line above does it). Also emits the semver-tagged
-      # reference (RELEASE_TAG with the leading 'v' stripped, matching what the
-      # build actually pushed — see the scan job's identical derivation) for
-      # the image SBOM generation below.
+      # Lowercase reference again for the attest step below (Actions
+      # expressions have no lower()); also emits the semver-tagged reference
+      # for the SBOM generation below.
       - name: Compute lowercase image reference
         env:
           SUFFIX: ${{ matrix.suffix }}
@@ -1078,28 +890,22 @@ jobs:
           echo "IMAGE_REF=ghcr.io/${GITHUB_REPOSITORY,,}${SUFFIX}" >> "$GITHUB_ENV"
           echo "IMAGE_REF_TAGGED=ghcr.io/${GITHUB_REPOSITORY,,}${SUFFIX}:${RELEASE_TAG#v}" >> "$GITHUB_ENV"
 
-      # GH-native SLSA build provenance, in addition to the buildkit provenance
-      # (`provenance: true` on the build above) and the cosign signature just
-      # created. The layers have different verifiers and consumers: buildkit
-      # provenance is pulled from the registry with cosign, this one is checked
-      # with `gh attestation verify oci://ghcr.io/...` and surfaces in GitHub's
-      # UI. Signs the digest (`steps.build.outputs.digest`), not a tag, for the
-      # same mutability reason as the cosign line. Stored in the GH attestations
-      # API only -- the images already carry provenance referrers in the
-      # registry from the build, so nothing extra is pushed there.
+      # GH-native SLSA provenance, in addition to buildkit's (`provenance:
+      # true` on the build above) and the cosign signature just created --
+      # different verifiers: buildkit's is pulled with cosign, this one with
+      # `gh attestation verify oci://...` and surfaces in GitHub's UI. Signs
+      # the digest, not a tag, same reason as the cosign line.
       - name: Attest the published image (build provenance)
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-name: ${{ env.IMAGE_REF }}
           subject-digest: ${{ steps.build.outputs.digest }}
 
-      # Issue #578, B3: portable signed SBOMs for the released images, in
-      # addition to buildkit's in-toto SBOM referrer (registry-only) and the
-      # GH attestation above. syft scans the *published* image (the exact
-      # artifact users pull), emits SPDX + CycloneDX, and cosign signs both
-      # keyless with the same pattern as the image sign above. syft-version
-      # pinned for reproducible output; per-suffix artifact names avoid matrix
-      # collisions.
+      # Issue #578, B3: portable signed SBOMs for the released images, on
+      # top of buildkit's registry-only SBOM referrer. syft scans the
+      # *published* image, emits SPDX + CycloneDX, signed keyless below.
+      # syft-version pinned for reproducible output; per-suffix artifact
+      # names avoid matrix collisions.
       - name: Generate SPDX SBOM from image
         uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
         with:
@@ -1109,14 +915,12 @@ jobs:
           syft-version: 'v1.51.0'
           artifact-name: 'sbom-spdx${{ matrix.suffix }}'
           upload-artifact-retention: 30
-          # The action attaches SBOMs to the GitHub Release by default, which
-          # needs `contents: write`; this job is deliberately `contents: read`.
-          # That mismatch is what failed the backend leg on v0.6.1 -- image
-          # built, signed and attested, then `Resource not accessible by
-          # integration` on the release upload. Turned off rather than widening
-          # the token: release-verification.md already documents the standalone
-          # SBOMs as 30-day workflow artifacts, not Release assets, so this
-          # makes the workflow match what the doc promises.
+          # The action attaches SBOMs to the Release by default, needing
+          # contents: write; this job is deliberately contents: read (failed
+          # the backend leg on v0.6.1: "Resource not accessible by
+          # integration"). Turned off rather than widening the token --
+          # release-verification.md already documents these as 30-day
+          # workflow artifacts, not Release assets.
           upload-release-assets: false
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
@@ -1137,12 +941,9 @@ jobs:
           registry-password: ${{ secrets.GITHUB_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Keyless blob signing, same OIDC pattern as the "Sign the published
-      # image" step (the cosign-installer above is reused). cosign v3 made
-      # the standardized bundle format the default and --bundle required in
-      # place of --output-certificate/--output-signature (see the APK-signing
-      # step above for why). The bundle rides along as an artifact so a
-      # consumer can verify: cosign verify-blob --bundle <sbom>.sigstore.json <sbom>
+      # Keyless blob signing, same OIDC pattern as "Sign the published
+      # image" (cosign-installer reused). Bundle rides along as an artifact:
+      # cosign verify-blob --bundle <sbom>.sigstore.json <sbom>
       - name: Sign the image SBOMs (keyless)
         env:
           SUFFIX: ${{ matrix.suffix }}
@@ -1174,32 +975,19 @@ jobs:
       security-events: write
 
     steps:
-      # Two mismatches between the reference the build actually publishes and
-      # the raw inputs the scan used to pass through:
-      #
-      # 1. Docker references must be lowercase, but github.repository preserves
-      #    the account's case (DrewBrunning) -- metadata-action lowercases the
-      #    image on the push side, so the published image is ghcr.io/drewbrunning/...
-      #    Passing the raw repository here made trivy fail to parse the reference
-      #    before it even contacted the registry.
-      # 2. The build tags with type=semver,pattern={{version}}, whose {{version}}
-      #    output drops the leading 'v' (RELEASE_TAG=v0.5.6 -> tag 0.5.6). The
-      #    v-prefixed tag is never pushed, so scanning that name would 404.
-      #
-      # Resolve the exact name the build pushed instead of re-deriving it
-      # differently in a second place.
+      # Same two mismatches as "Resolve published image references" above
+      # (lowercase account case, semver tag dropping the leading 'v') --
+      # resolve the exact name the build pushed rather than re-deriving it
+      # differently here; passing the raw repository made trivy fail to
+      # parse the reference before contacting the registry.
       - name: Resolve the image reference the build actually published
         env:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
         run: echo "IMAGE_REF=ghcr.io/${GITHUB_REPOSITORY,,}:${RELEASE_TAG#v}" >> "$GITHUB_ENV"
 
-      # Pinned to an exact patch rather than floating on a major like the
-      # other actions in this file: trivy-action is still pre-1.0 (0.x), so
-      # there is no stable major tag to float on -- every release can be
-      # breaking. This is the one deliberate exception to the "float on
-      # major" policy above; #269 added trivy-action to the github-actions
-      # Dependabot ecosystem, so bumps still arrive as PRs instead of
-      # drifting unnoticed.
+      # Pinned to an exact patch, not floating on a major like other actions
+      # here: trivy-action is still pre-1.0, so every release can be
+      # breaking. Dependabot (#269) still surfaces bumps as PRs.
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -1220,11 +1008,9 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-  # REL-03 / issue #527: the final "the artifacts actually landed" gate. The
-  # `needs:` graph above already blocks publication on a failed build; this
-  # additionally asserts the outputs are present after upload -- a separate
-  # operation that can fail on its own. It is a mandatory gate
-  # (docs/development/release-gates.md); its failure is a red, attributed run.
+  # REL-03 / #527: the final "the artifacts actually landed" gate -- upload
+  # is a separate operation that can fail even after a green build. Mandatory
+  # gate (docs/development/release-gates.md).
   verify-release-assets:
     name: Verify release assets
     runs-on: ubuntu-latest
@@ -1232,10 +1018,8 @@ jobs:
     # issue #1184: explicit guard against the skipped release-gate-override job.
     if: ${{ always() && github.event_name == 'push' && needs.create-release.result == 'success' && needs.build-and-push.result == 'success' && needs.build-android-apk.result == 'success' && needs.apk-provenance.result == 'success' && needs.scan.result == 'success' }}
     permissions:
-      # contents: write so this job can attach the two assets it owns -- the
-      # SLSA provenance (from apk-provenance's workflow artifact, issue #355)
-      # and a SHA256SUMS over every release asset (issue #499). Everything
-      # else here is read-only assertion.
+      # contents: write to attach the two assets this job owns: the SLSA
+      # provenance (#355) and a SHA256SUMS over every asset (#499).
       contents: write
       packages: read
     steps:
@@ -1254,24 +1038,16 @@ jobs:
           name: mycorrhizal-apk.intoto.jsonl
           path: release-assets
 
-      # Attach the provenance, then a SHA256SUMS manifest over the whole
-      # Release. SHA256SUMS is generated last, from the asset list as it stands
-      # after every other job has uploaded, so it covers the APK, both
-      # signature bundles, the SBOMs and the provenance. --clobber makes a
-      # manual recovery re-run idempotent.
+      # SHA256SUMS is generated last, from the asset list as it stands after
+      # every other job has uploaded, so it covers everything. --clobber
+      # makes a manual recovery re-run idempotent.
       - name: Attach SLSA provenance + SHA256SUMS to the Release
         env:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # issue #1015: this job has no actions/checkout step (it only needs
-          # a downloaded artifact + `gh release` calls, not repo files), so
-          # `gh` has no git remote to infer the target repo from and fails
-          # with "not a git repository" on its first call -- never caught
-          # before because this job (if: event_name == 'push', an actual tag
-          # push) had never run to completion until #543's RC-verification
-          # cleared every gate ahead of it for the first time. GH_REPO is
-          # gh's own env var for exactly this: pointing it at a repo without
-          # needing a git checkout at all.
+          # #1015: this job has no checkout step, so `gh` has no git remote
+          # to infer the target repo from ("not a git repository") -- GH_REPO
+          # points it at one without needing a checkout.
           GH_REPO: ${{ github.repository }}
         run: |
           set -eu
@@ -1313,23 +1089,17 @@ jobs:
 
           exit "$fail"
 
-  # DEPLOY-04 (issue #996, split from #923): the job above proves the
-  # published all-in-one image RESOLVES in the registry -- presence, not
-  # behavior. deploy-smoke.yml proves a FROM-SOURCE build of the release
-  # commit boots and serves a real workflow, but that is a build from the
-  # commit, not the published ARTIFACT: a release-path-only defect (a broken
-  # entrypoint, a bad baked-in env default, a migration that only fails
-  # inside the real Dockerfile's build context -- different base layers and
-  # COPY boundaries than the from-source compose build) could reach
-  # operators completely undetected. This pulls the just-published all-in-one
-  # image BY DIGEST (never the mutable tag, in case something re-tags it in
-  # the seconds between publish and this job) and runs the same end-to-end
-  # workflow deploy-smoke.yml runs, against the real artifact.
+  # DEPLOY-04 (#996, split from #923): the job above proves the published
+  # image RESOLVES in the registry -- presence, not behavior.
+  # deploy-smoke.yml proves a FROM-SOURCE build boots correctly, but a
+  # release-path-only defect (broken entrypoint, bad baked-in env default, a
+  # migration that only fails inside the real Dockerfile's build context)
+  # could still reach operators undetected. This pulls the just-published
+  # image BY DIGEST (never the mutable tag) and runs the same end-to-end
+  # workflow against the real artifact.
   #
-  # `if: github.event_name == 'push'` mirrors verify-release-assets above:
-  # skips the workflow_dispatch manual-recovery path the same way, since a
-  # dispatch is a maintainer already investigating a specific failure, not a
-  # fresh publish that needs its own smoke pass.
+  # `if: github.event_name == 'push'` mirrors verify-release-assets: skips
+  # the manual-recovery dispatch, which doesn't need its own smoke pass.
   post-publish-smoke:
     name: Post-publish smoke (published image)
     runs-on: ubuntu-latest
@@ -1351,12 +1121,7 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: backend/go.mod
-          # zizmor cache-poisoning (issue #358), same reasoning + fix as the
-          # create-release job above: this job only runs `go run
-          # ./cmd/deploysmoke` against a booted container, nothing that
-          # publishes an artifact a poisoned cache could taint, and a tag
-          # push has no earlier PR/other-trigger run to restore a cache from
-          # anyway. Cold `go run` here is a few seconds.
+          # zizmor cache-poisoning (#358), same as create-release above.
           cache: false
 
       - name: Log in to Container Registry
@@ -1369,10 +1134,7 @@ jobs:
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
-          # Same pin as the build-and-push job above and promote-rc.yml --
-          # v3.0.6 (v4.1.2's baked-in default) has a keyless-signing
-          # regression against a registry with no OCI 1.1 Referrers API
-          # (GHCR is one).
+          # Same pin as build-and-push above and promote-rc.yml.
           cosign-release: 'v3.1.3'
 
       - name: Verify the published image and resolve its digest
@@ -1384,9 +1146,7 @@ jobs:
           tag="${RELEASE_TAG#v}"
           ref="ghcr.io/${repo}:${tag}"
 
-          # Same identity check promote-rc.yml runs before trusting an RC
-          # image -- only an image build-and-push (above, in THIS run) itself
-          # built and signed passes. Prove that before booting it.
+          # Same identity check promote-rc.yml runs before trusting an image.
           cosign verify "$ref" \
             --certificate-identity-regexp '^https://github\.com/DrewBrunning/mycorrhizal-crm/\.github/workflows/docker-publish\.yml@refs/tags/v' \
             --certificate-oidc-issuer https://token.actions.githubusercontent.com >/dev/null

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"mycorrhizal/config"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -12,36 +13,21 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
 
-func setupAuthTestRouter() (*gorm.DB, *gin.Engine) {
-	return setupAuthTestRouterWithIdle(0)
+func setupAuthTestRouter(t testing.TB) (*gorm.DB, *gin.Engine) {
+	return setupAuthTestRouterWithIdle(t, 0)
 }
 
 // setupAuthTestRouterWithIdle is setupAuthTestRouter with a non-zero session
 // idle timeout (issue #866); 0 disables idle enforcement.
-func setupAuthTestRouterWithIdle(idleHours int) (*gorm.DB, *gin.Engine) {
+func setupAuthTestRouterWithIdle(t testing.TB, idleHours int) (*gorm.DB, *gin.Engine) {
 	gin.SetMode(gin.ReleaseMode)
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		panic("failed to open test db")
-	}
-	// Pin the pool to a single connection: AuthMiddleware's TouchAPIToken
-	// fires a goroutine that writes last_used_at, and a second pooled
-	// connection would open a *separate* empty :memory: DB (the SQLite
-	// :memory: gotcha) — the write and any concurrent read would hit
-	// "no such table" intermittently. Same fix as the services job-lock tests.
-	sqlDB, err := db.DB()
-	if err != nil {
-		panic("failed to get underlying sql db")
-	}
-	sqlDB.SetMaxOpenConns(1)
-	db.AutoMigrate(&models.User{}, &models.ApiToken{}, &models.Session{})
+	db := dbtest.New(t)
 
 	user := models.User{Username: "authtest", Email: "authtest@example.com", Password: "password"}
 	if err := db.Create(&user).Error; err != nil {
@@ -71,7 +57,7 @@ func hashToken(plaintext string) string {
 }
 
 func TestAuthMiddleware_ValidApiToken(t *testing.T) {
-	db, router := setupAuthTestRouter()
+	db, router := setupAuthTestRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -97,7 +83,7 @@ func TestAuthMiddleware_ValidApiToken(t *testing.T) {
 }
 
 func TestAuthMiddleware_RevokedApiToken(t *testing.T) {
-	db, router := setupAuthTestRouter()
+	db, router := setupAuthTestRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -120,7 +106,7 @@ func TestAuthMiddleware_RevokedApiToken(t *testing.T) {
 }
 
 func TestAuthMiddleware_UnknownApiToken(t *testing.T) {
-	_, router := setupAuthTestRouter()
+	_, router := setupAuthTestRouter(t)
 
 	req, _ := http.NewRequest("GET", "/protected", nil)
 	req.Header.Set("Authorization", "Bearer mycorrhizal_doesnotexistXXXX")
@@ -131,7 +117,7 @@ func TestAuthMiddleware_UnknownApiToken(t *testing.T) {
 }
 
 func TestAuthMiddleware_ApiToken_UpdatesLastUsedAt(t *testing.T) {
-	db, router := setupAuthTestRouter()
+	db, router := setupAuthTestRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -166,7 +152,7 @@ func TestAuthMiddleware_ApiToken_UpdatesLastUsedAt(t *testing.T) {
 }
 
 func TestAuthMiddleware_FullScopeApiTokenAuthenticates(t *testing.T) {
-	db, router := setupAuthTestRouter()
+	db, router := setupAuthTestRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -190,7 +176,7 @@ func TestAuthMiddleware_FullScopeApiTokenAuthenticates(t *testing.T) {
 func TestAuthMiddleware_DefaultScopeApiTokenAuthenticates(t *testing.T) {
 	// Tokens minted before the scope column existed default to "full" via the
 	// DB column default, so this is a no-regression check.
-	db, router := setupAuthTestRouter()
+	db, router := setupAuthTestRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -211,7 +197,7 @@ func TestAuthMiddleware_DefaultScopeApiTokenAuthenticates(t *testing.T) {
 }
 
 func TestAuthMiddleware_CardDAVScopeApiTokenRejected(t *testing.T) {
-	db, router := setupAuthTestRouter()
+	db, router := setupAuthTestRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -237,7 +223,7 @@ func TestAuthMiddleware_CardDAVScopeApiTokenRejected(t *testing.T) {
 }
 
 func TestAuthMiddleware_MissingAuthorizationHeader(t *testing.T) {
-	_, router := setupAuthTestRouter()
+	_, router := setupAuthTestRouter(t)
 
 	req, _ := http.NewRequest("GET", "/protected", nil)
 	w := httptest.NewRecorder()
@@ -249,11 +235,7 @@ func TestAuthMiddleware_MissingAuthorizationHeader(t *testing.T) {
 func TestAdminMiddleware_BlocksApiToken(t *testing.T) {
 	gin.SetMode(gin.ReleaseMode)
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		panic("failed to open test db")
-	}
-	db.AutoMigrate(&models.User{}, &models.ApiToken{})
+	db := dbtest.New(t)
 
 	user := models.User{Username: "admintest", Email: "admin@example.com", Password: "pw", IsAdmin: true}
 	db.Create(&user)
@@ -286,11 +268,7 @@ func TestAdminMiddleware_BlocksApiToken(t *testing.T) {
 func TestAdminMiddleware_AllowsAdminUser(t *testing.T) {
 	gin.SetMode(gin.ReleaseMode)
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		panic("failed to open test db")
-	}
-	db.AutoMigrate(&models.User{})
+	db := dbtest.New(t)
 
 	user := models.User{Username: "superadmin", Email: "super@example.com", Password: "pw", IsAdmin: true}
 	db.Create(&user)
@@ -318,11 +296,7 @@ func TestAdminMiddleware_AllowsAdminUser(t *testing.T) {
 func TestAdminMiddleware_BlocksNonAdminUser(t *testing.T) {
 	gin.SetMode(gin.ReleaseMode)
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		panic("failed to open test db")
-	}
-	db.AutoMigrate(&models.User{})
+	db := dbtest.New(t)
 
 	user := models.User{Username: "regular", Email: "regular@example.com", Password: "pw", IsAdmin: false}
 	db.Create(&user)

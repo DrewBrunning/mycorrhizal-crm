@@ -68,7 +68,7 @@ func TestAdapterForFormat(t *testing.T) {
 // naming the contact, the field, the format, and the reason — without producing
 // the file. The Gender case (issue #515 canary) is the load-bearing example.
 func TestExportPreflight_ReportsEnvelopeLoss(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreflightRoute(router)
 
 	var user models.User
@@ -105,7 +105,7 @@ func TestExportPreflight_ReportsEnvelopeLoss(t *testing.T) {
 // TestExportPreflight_UnknownFormat pins the 400 path: an unknown format token
 // is an explicit rejection, not a silent default.
 func TestExportPreflight_UnknownFormat(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerPreflightRoute(router)
 
 	req, _ := http.NewRequest("GET", "/export/preflight?format=bogus", nil)
@@ -118,7 +118,7 @@ func TestExportPreflight_UnknownFormat(t *testing.T) {
 // 400, exactly like the export handlers it mirrors (a typo must not silently
 // narrow the preflight).
 func TestExportPreflight_UnknownSection(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreflightRoute(router)
 
 	var user models.User
@@ -135,7 +135,7 @@ func TestExportPreflight_UnknownSection(t *testing.T) {
 // (the milestone v0.6.2 export-failure contract, issue #532): a database
 // failure during preflight is identified, not swallowed.
 func TestExportPreflight_DBError(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreflightRoute(router)
 
 	sqlDB, err := db.DB()
@@ -153,7 +153,7 @@ func TestExportPreflight_DBError(t *testing.T) {
 // currentUserID(c) !ok return branch, mirroring the export handlers' own
 // unauthenticated tests.
 func TestExportPreflight_NoAuth_Unauthorized(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	router := routerWithoutAuth(db)
 	router.GET("/export/preflight", ExportPreflight)
 
@@ -228,7 +228,7 @@ func TestExportPreflight_CanonicalFixtureReportsCorrespondToMatrix(t *testing.T)
 // TestExportPreflight_UserScoping pins that a preflight is scoped to the
 // caller's own contacts (backend trap #5).
 func TestExportPreflight_UserScoping(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreflightRoute(router)
 
 	var user models.User
@@ -250,7 +250,7 @@ func TestExportPreflight_UserScoping(t *testing.T) {
 // preflight restricted to one contact reports only that contact's losses,
 // mirroring the export handlers' own scoping.
 func TestExportPreflight_SingleContactScope(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreflightRoute(router)
 
 	var user models.User
@@ -272,7 +272,7 @@ func TestExportPreflight_SingleContactScope(t *testing.T) {
 // The assertion reads the raw JSON body — decoding into the Go struct makes
 // "absent" and "[]" indistinguishable, which is exactly why the trap exists.
 func TestExportPreflight_NoLossesEmptyArray(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreflightRoute(router)
 
 	var user models.User
@@ -295,7 +295,7 @@ func TestExportPreflight_NoLossesEmptyArray(t *testing.T) {
 // depends on the format: a field unsupported only in vCard 3.0 (e.g. a
 // populated vCard 4.0-only concept) is reported for vcard3 and not vcard4.
 func TestExportPreflight_VCard3VsVCard4FormatSpecificity(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreflightRoute(router)
 
 	var user models.User
@@ -344,7 +344,7 @@ func TestExportPreflight_VCard3VsVCard4FormatSpecificity(t *testing.T) {
 // the preflight endpoint run the same computation and produce the same report
 // set for identical data.
 func TestExportLossHeader_AgreesWithPreflight(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 	registerPreflightRoute(router)
 
@@ -379,7 +379,7 @@ func TestExportLossHeader_AgreesWithPreflight(t *testing.T) {
 // truncated flag plus the true count when it does not. The complete list stays
 // available via preflight.
 func TestExportLossHeader_TruncatesToHeaderBudget(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	var user models.User
@@ -417,7 +417,7 @@ func TestExportLossHeader_TruncatesToHeaderBudget(t *testing.T) {
 // asymmetry the pen test reported). The value must stay well under 4 KB so
 // the status line and the dozen other response headers also fit.
 func TestExportLossHeader_FitsStockProxyHeaderBuffer(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	var user models.User
@@ -459,7 +459,7 @@ func TestExportLossHeader_FitsStockProxyHeaderBuffer(t *testing.T) {
 // lost still sets the header — as an empty diagnostics list, not an absent
 // key or null — so a client can always read count/diagnostics.
 func TestExportLossHeader_EmptyCarriesEmptyList(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	var user models.User
@@ -483,7 +483,7 @@ func TestExportLossHeader_EmptyCarriesEmptyList(t *testing.T) {
 // (either by default or when the file omits it). Conflating the two would
 // teach users to ignore the report.
 func TestExportLossHeader_SensitivityPolicyExclusionNotReported(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	var user models.User

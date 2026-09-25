@@ -142,7 +142,7 @@ export default function CadenceDialog({
         <Button onClick={handleClose} disabled={saving}>
           {t('common.cancel')}
         </Button>
-        <Button onClick={handleSave} variant="contained" disabled={saving}>
+        <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {saving ? t('common.saving') : t('common.save')}
         </Button>
       </DialogActions>

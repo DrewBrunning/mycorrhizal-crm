@@ -97,7 +97,7 @@ export default function ContactsPage() {
   // Cross-entity search (notes/activities) fires in parallel with the list and
   // is only ever additive — the contact cards never wait on it (trap #3).
   useEffect(() => {
-    runSearch(searchQuery);
+    void runSearch(searchQuery);
   }, [searchQuery, runSearch]);
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -242,14 +242,14 @@ export default function ContactsPage() {
         console.error('Error fetching enabled contact fields:', err);
       }
     };
-    fetchData();
+    void fetchData();
   }, []);
 
   // Clear the circle filter chip → list refetches automatically via contactParams.
   const clearCircle = useCallback(() => setSelectedCircle(''), []);
 
   const handleContactAdded = (contactId: number) => {
-    navigate(`/contacts/${contactId}`);
+    void navigate(`/contacts/${contactId}`);
   };
 
   const handleImportComplete = async () => {
@@ -610,7 +610,7 @@ export default function ContactsPage() {
                 key={contact.ID}
                 data-testid="contact-card"
                 data-contact-id={contact.ID}
-                onClick={() => navigate(`/contacts/${contact.ID}`)}
+                onClick={() => void navigate(`/contacts/${contact.ID}`)}
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
@@ -655,7 +655,7 @@ export default function ContactsPage() {
                   }
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleToggleFavorite(contact);
+                    void handleToggleFavorite(contact);
                   }}
                   sx={{ mr: 0.5 }}
                 >
@@ -733,7 +733,7 @@ export default function ContactsPage() {
           )}
           {nextCursor && (
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-              <Button variant="outlined" onClick={loadMore} disabled={loading}>
+              <Button variant="outlined" onClick={() => void loadMore()} disabled={loading}>
                 {t('common.loadMore')}
               </Button>
             </Box>
@@ -744,7 +744,7 @@ export default function ContactsPage() {
         <SearchNotesActivities
           query={searchQuery}
           result={crossResultMatches ? searchResult : null}
-          onOpenContact={(id) => navigate(`/contacts/${id}`)}
+          onOpenContact={(id) => void navigate(`/contacts/${id}`)}
         />
       )}
       <AddContactDialog
@@ -758,7 +758,7 @@ export default function ContactsPage() {
       <ImportContactsDialog
         open={importDialogOpen}
         onClose={() => setImportDialogOpen(false)}
-        onImportComplete={handleImportComplete}
+        onImportComplete={() => void handleImportComplete()}
       />
       <ReviewDuplicatesDialog
         open={reviewDuplicatesOpen}

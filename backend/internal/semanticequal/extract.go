@@ -401,9 +401,7 @@ func addressKey(a contactmodel.Address) string {
 	}
 	sort.Strings(comps)
 	var contexts []string
-	for _, c := range a.Contexts {
-		contexts = append(contexts, c)
-	}
+	contexts = append(contexts, a.Contexts...)
 	sort.Strings(contexts)
 	return joinKeys(
 		strings.Join(comps, ","),

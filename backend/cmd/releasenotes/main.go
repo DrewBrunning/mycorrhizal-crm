@@ -25,8 +25,12 @@ import (
 	"mycorrhizal/internal/releasenotes"
 )
 
+// osExit is os.Exit through a seam so tests can drive main() itself without
+// killing the test process.
+var osExit = os.Exit
+
 func main() {
-	os.Exit(run(os.Stdin, os.Stdout)) // # pragma: no cover — os.Exit terminates the process; tests exercise run() directly
+	osExit(run(os.Stdin, os.Stdout))
 }
 
 // run reads a JSON PR array from in, writes the assembled notes block to out,
@@ -34,7 +38,7 @@ func main() {
 func run(in io.Reader, out io.Writer) int {
 	raw, err := io.ReadAll(in)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "releasenotes: read stdin:", err) // # pragma: no cover — stdin read failure is not reproducible in-process
+		fmt.Fprintln(os.Stderr, "releasenotes: read stdin:", err)
 		return 2
 	}
 
@@ -45,7 +49,7 @@ func run(in io.Reader, out io.Writer) int {
 	}
 
 	if _, err := io.WriteString(out, releasenotes.Assemble(prs)); err != nil {
-		fmt.Fprintln(os.Stderr, "releasenotes: write:", err) // # pragma: no cover — os.Stdout write failure is not reproducible in-process
+		fmt.Fprintln(os.Stderr, "releasenotes: write:", err)
 		return 2
 	}
 	return 0

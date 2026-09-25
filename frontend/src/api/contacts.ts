@@ -129,7 +129,7 @@ export interface CardName {
   components?: NameComponent[];
   full?: string;
   sortAs?: Record<string, string>;
-  isOrdered?: boolean;
+  isOrdered?: boolean | null;
   defaultSeparator?: string;
   phoneticSystem?: string;
   phoneticScript?: string;
@@ -214,7 +214,7 @@ export interface CardAddress {
   contexts?: string[];
   pref?: number | null;
   full?: string;
-  isOrdered?: boolean;
+  isOrdered?: boolean | null;
   defaultSeparator?: string;
   phoneticSystem?: string;
   phoneticScript?: string;

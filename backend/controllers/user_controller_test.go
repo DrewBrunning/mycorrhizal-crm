@@ -31,7 +31,7 @@ const (
 )
 
 func TestRegisterUser(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.POST("/register", middleware.ValidateJSONMiddleware(&models.UserRegistrationInput{}), RegisterUser(cfg))
 
@@ -57,7 +57,7 @@ func TestRegisterUser(t *testing.T) {
 }
 
 func TestRegisterUser_InvalidInput(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.POST("/register", middleware.ValidateJSONMiddleware(&models.UserRegistrationInput{}), RegisterUser(cfg))
 
@@ -88,7 +88,7 @@ func TestLoginUser(t *testing.T) {
 		JWTExpiryHours: 24,
 	}
 
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/login", func(c *gin.Context) {
 		LoginUser(c, &config)
 	})
@@ -139,7 +139,7 @@ func TestLoginUser_WithUsername(t *testing.T) {
 		JWTExpiryHours: 24,
 	}
 
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/login", func(c *gin.Context) {
 		LoginUser(c, &config)
 	})
@@ -189,7 +189,7 @@ func TestLoginUser_LegacyEmailField(t *testing.T) {
 		JWTExpiryHours: 24,
 	}
 
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/login", func(c *gin.Context) {
 		LoginUser(c, &config)
 	})
@@ -238,7 +238,7 @@ func TestLoginUser_InvalidCredentials(t *testing.T) {
 		JWTSecretKey:   "mysecretkey",
 		JWTExpiryHours: 24,
 	}
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/login", func(c *gin.Context) {
 		LoginUser(c, &config)
 	})
@@ -275,7 +275,7 @@ func TestLoginUser_InvalidCredentials(t *testing.T) {
 //     exactly the regression this guards.
 func TestLoginUser_UnknownIdentifier_ResponseIsIndistinguishable(t *testing.T) {
 	cfg := config.Config{JWTSecretKey: "mysecretkey", JWTExpiryHours: 24}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/login", func(c *gin.Context) { LoginUser(c, &cfg) })
 
 	realUser := models.User{Username: "realuser_ind", Email: "realuser_ind@example.com"}
@@ -329,7 +329,7 @@ func loginFrom(router http.Handler, ip, identifier, password string) *httptest.R
 // IP cannot lock the real user out from a different IP.
 func TestLoginUser_Griefing_DoesNotLockLegitimateIP(t *testing.T) {
 	cfg := config.Config{JWTSecretKey: "mysecretkey", JWTExpiryHours: 24}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/login", func(c *gin.Context) { LoginUser(c, &cfg) })
 
 	u := models.User{Username: "grief_target", Email: "grief_target@example.com"}
@@ -358,7 +358,7 @@ func TestLoginUser_Griefing_DoesNotLockLegitimateIP(t *testing.T) {
 // source is preserved — repeated failures from one IP still lock that IP.
 func TestLoginUser_SameIP_StillLocksAfterMaxAttempts(t *testing.T) {
 	cfg := config.Config{JWTSecretKey: "mysecretkey", JWTExpiryHours: 24}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/login", func(c *gin.Context) { LoginUser(c, &cfg) })
 
 	u := models.User{Username: "bf_target", Email: "bf_target@example.com"}
@@ -380,7 +380,7 @@ func TestLoginUser_SameIP_StillLocksAfterMaxAttempts(t *testing.T) {
 // authenticated is still let through.
 func TestLoginUser_DistributedSprayTripsInstanceThrottle(t *testing.T) {
 	cfg := config.Config{JWTSecretKey: "mysecretkey", JWTExpiryHours: 24}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/login", func(c *gin.Context) { LoginUser(c, &cfg) })
 
 	// Isolate the process-wide signal for this test and leave the limiter clean
@@ -426,7 +426,7 @@ func TestLoginUser_InvalidInput(t *testing.T) {
 	config := config.Config{
 		JWTSecretKey: "mysecretkey",
 	}
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/login", func(c *gin.Context) {
 		LoginUser(c, &config)
 	})
@@ -457,7 +457,7 @@ func TestRequestPasswordReset_Succeeds(t *testing.T) {
 		UseResend:   false,
 	}
 
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	hashed, _ := services.HashPassword(strongPassword)
 	user := models.User{
@@ -492,7 +492,7 @@ func TestRequestPasswordReset_Succeeds(t *testing.T) {
 }
 
 func TestConfirmPasswordReset_Succeeds(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	initialPassword, _ := services.HashPassword(strongPassword)
 	token, tokenHash, _ := services.GeneratePasswordResetToken()
@@ -529,7 +529,7 @@ func TestConfirmPasswordReset_Succeeds(t *testing.T) {
 }
 
 func TestChangePassword_Succeeds(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	initialPassword, _ := services.HashPassword(strongPassword)
 	user := models.User{
@@ -567,7 +567,7 @@ func TestChangePassword_Succeeds(t *testing.T) {
 func TestRequestPasswordReset_DemoModeDisabled(t *testing.T) {
 	cfg := config.Config{FrontendURL: "http://localhost:3000", DemoMode: true}
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/password-reset/request", func(c *gin.Context) {
 		c.Set("validated", &models.PasswordResetRequestInput{Email: "reset@example.com"})
 		RequestPasswordReset(c, &cfg)
@@ -581,7 +581,7 @@ func TestRequestPasswordReset_DemoModeDisabled(t *testing.T) {
 }
 
 func TestConfirmPasswordReset_DemoModeDisabled(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/password-reset/confirm", func(c *gin.Context) {
 		c.Set("validated", &models.PasswordResetConfirmInput{Token: "irrelevant", Password: strongPasswordAlt})
 		ConfirmPasswordReset(c, &config.Config{DemoMode: true})
@@ -595,7 +595,7 @@ func TestConfirmPasswordReset_DemoModeDisabled(t *testing.T) {
 }
 
 func TestChangePassword_DemoModeDisabled(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/change-password", func(c *gin.Context) {
 		c.Set("username", "irrelevant")
 		c.Set("validated", &models.ChangePasswordInput{
@@ -642,7 +642,7 @@ func TestRegisterUser_HIBPCheckEnabled_RejectsBreachedPassword(t *testing.T) {
 	defer server.Close()
 	t.Cleanup(services.SetHIBPAPIBaseURLForTest(server.URL))
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := &config.Config{HIBPCheckEnabled: true}
 	router.POST("/register", middleware.ValidateJSONMiddleware(&models.UserRegistrationInput{}), RegisterUser(cfg))
 
@@ -663,7 +663,7 @@ func TestRegisterUser_HIBPCheckEnabled_AllowsCleanPassword(t *testing.T) {
 	defer server.Close()
 	t.Cleanup(services.SetHIBPAPIBaseURLForTest(server.URL))
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := &config.Config{HIBPCheckEnabled: true}
 	router.POST("/register", middleware.ValidateJSONMiddleware(&models.UserRegistrationInput{}), RegisterUser(cfg))
 
@@ -683,7 +683,7 @@ func TestRegisterUser_HIBPCheckDisabled_SkipsBreachedPassword(t *testing.T) {
 	// hibpAPIBaseURL is left at its real default, which would fail/hang if
 	// this test actually reached it. If registration returns 201 here, the
 	// check was skipped as intended.
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.POST("/register", middleware.ValidateJSONMiddleware(&models.UserRegistrationInput{}), RegisterUser(cfg))
 
@@ -702,7 +702,7 @@ func TestChangePassword_HIBPCheckEnabled_RejectsBreachedPassword(t *testing.T) {
 	defer server.Close()
 	t.Cleanup(services.SetHIBPAPIBaseURLForTest(server.URL))
 
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	cfg := &config.Config{HIBPCheckEnabled: true}
 
 	initialPassword, _ := services.HashPassword(strongPassword)
@@ -735,7 +735,7 @@ func TestConfirmPasswordReset_HIBPCheckEnabled_RejectsBreachedPassword(t *testin
 	defer server.Close()
 	t.Cleanup(services.SetHIBPAPIBaseURLForTest(server.URL))
 
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	cfg := &config.Config{HIBPCheckEnabled: true}
 
 	initialPassword, _ := services.HashPassword(strongPassword)
@@ -775,7 +775,7 @@ func TestConfirmPasswordReset_HIBPCheckEnabled_RejectsBreachedPassword(t *testin
 // belongs to a real account.
 func TestRequestPasswordReset_UnknownEmail_SameResponseAsKnown(t *testing.T) {
 	cfg := &config.Config{}
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	hashed, _ := services.HashPassword(strongPassword)
 	db.Create(&models.User{
@@ -808,7 +808,7 @@ func TestRequestPasswordReset_UnknownEmail_SameResponseAsKnown(t *testing.T) {
 // reset token is consumed on first confirm, so replaying it must fail and
 // must not touch the password set by the first confirm.
 func TestConfirmPasswordReset_RejectsSecondUse(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	initialPassword, _ := services.HashPassword(strongPassword)
 	token, tokenHash, _ := services.GeneratePasswordResetToken()
@@ -856,7 +856,7 @@ func TestConfirmPasswordReset_RejectsSecondUse(t *testing.T) {
 // TestConfirmPasswordReset_RejectsExpiredToken pins the TTL invariant: a
 // token past its expiry is rejected and cleared, not honored.
 func TestConfirmPasswordReset_RejectsExpiredToken(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	initialPassword, _ := services.HashPassword(strongPassword)
 	token, tokenHash, _ := services.GeneratePasswordResetToken()
@@ -896,7 +896,7 @@ func TestConfirmPasswordReset_RejectsExpiredToken(t *testing.T) {
 // previously-issued JWT stop validating (middleware/auth_lifecycle_test.go
 // covers the middleware side of that contract).
 func TestConfirmPasswordReset_BumpsTokenVersion(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	initialPassword, _ := services.HashPassword(strongPassword)
 	token, tokenHash, _ := services.GeneratePasswordResetToken()
@@ -934,7 +934,7 @@ func TestConfirmPasswordReset_BumpsTokenVersion(t *testing.T) {
 // suspected compromise, so standing API tokens (which carry no TokenVersion
 // of their own) must be revoked too, not just JWTs.
 func TestConfirmPasswordReset_RevokesExistingAPITokens(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	initialPassword, _ := services.HashPassword(strongPassword)
 	token, tokenHash, _ := services.GeneratePasswordResetToken()
@@ -984,7 +984,7 @@ func TestConfirmPasswordReset_RevokesExistingAPITokens(t *testing.T) {
 // off an enrolled second factor -- doing so would let compromised email
 // access alone strip 2FA protection from the account.
 func TestConfirmPasswordReset_DoesNotDisableTOTP(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	initialPassword, _ := services.HashPassword(strongPassword)
 	token, tokenHash, _ := services.GeneratePasswordResetToken()
@@ -1031,7 +1031,7 @@ func TestConfirmPasswordReset_DoesNotDisableTOTP(t *testing.T) {
 // attacker requested earlier can't later be used to reset the password the
 // legitimate owner just changed.
 func TestChangePassword_ClearsPendingPasswordResetToken(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	hashed, _ := services.HashPassword(strongPassword)
 	_, tokenHash, _ := services.GeneratePasswordResetToken()
@@ -1074,7 +1074,7 @@ func TestChangePassword_ClearsPendingPasswordResetToken(t *testing.T) {
 // "configured empty" ([] -> no extended fields), and that the scoped column write
 // round-trips concrete values.
 func TestEnabledContactFieldsNullVsEmpty(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -1114,7 +1114,7 @@ func TestEnabledContactFieldsNullVsEmpty(t *testing.T) {
 }
 
 func TestCheckPasswordStrength_WeakPassword(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/password-strength", CheckPasswordStrength)
 
 	jsonValue, _ := json.Marshal(map[string]string{"password": "abc"})
@@ -1134,7 +1134,7 @@ func TestCheckPasswordStrength_WeakPassword(t *testing.T) {
 }
 
 func TestCheckPasswordStrength_StrongPassword(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/password-strength", CheckPasswordStrength)
 
 	jsonValue, _ := json.Marshal(map[string]string{"password": strongPassword})
@@ -1154,7 +1154,7 @@ func TestCheckPasswordStrength_StrongPassword(t *testing.T) {
 }
 
 func TestCheckPasswordStrength_MissingPassword(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/password-strength", CheckPasswordStrength)
 
 	req, _ := http.NewRequest("POST", "/password-strength", bytes.NewBufferString(`{}`))
@@ -1172,7 +1172,7 @@ func TestCheckPasswordStrength_MissingPassword(t *testing.T) {
 }
 
 func TestUpdateLanguage_Succeeds(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -1205,7 +1205,7 @@ func TestUpdateLanguage_Succeeds(t *testing.T) {
 // (i18n/i18n.go) fixes this by never falling back -- a genuinely unsupported
 // code must now be rejected.
 func TestUpdateLanguage_RejectsUnsupportedCode(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -1237,7 +1237,7 @@ func TestUpdateLanguage_RejectsUnsupportedCode(t *testing.T) {
 // UpdateLanguage used to persist input.Language raw/unnormalized even when
 // valid, so e.g. "DE-AT" would be stored verbatim instead of as "de".
 func TestUpdateLanguage_NormalizesBeforePersisting(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -1266,7 +1266,7 @@ func TestUpdateLanguage_NormalizesBeforePersisting(t *testing.T) {
 // TestUpdateLanguage_RejectsMalformedJSON exercises UpdateLanguage's bind-failure
 // branch.
 func TestUpdateLanguage_RejectsMalformedJSON(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -1290,7 +1290,7 @@ func TestUpdateLanguage_RejectsMalformedJSON(t *testing.T) {
 }
 
 func TestUpdateLanguage_RequiresAuth(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	// setupRouter's shared middleware sets "userID" but not "username", so
 	// mounting UpdateLanguage directly exercises the unauthenticated path.
 	router.PATCH("/language", UpdateLanguage)
@@ -1305,7 +1305,7 @@ func TestUpdateLanguage_RequiresAuth(t *testing.T) {
 }
 
 func TestUpdateDateFormat_Succeeds(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -1332,7 +1332,7 @@ func TestUpdateDateFormat_Succeeds(t *testing.T) {
 }
 
 func TestUpdateDateFormat_AcceptsNewFormats(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -1357,7 +1357,7 @@ func TestUpdateDateFormat_AcceptsNewFormats(t *testing.T) {
 }
 
 func TestUpdateDateFormat_RejectsUnsupportedFormat(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -1381,7 +1381,7 @@ func TestUpdateDateFormat_RejectsUnsupportedFormat(t *testing.T) {
 }
 
 func TestUpdateDateFormat_RequiresAuth(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.PATCH("/date-format", UpdateDateFormat)
 
 	req, _ := http.NewRequest("PATCH", "/date-format", bytes.NewBufferString(`{"date_format":"iso"}`))
@@ -1490,4 +1490,31 @@ func TestRegisterUser_SubsequentUsersAreNotAdmin(t *testing.T) {
 	var sneaky models.User
 	require.NoError(t, db.Where("username = ?", "sneaky").First(&sneaky).Error)
 	assert.False(t, sneaky.IsAdmin, "is_admin in the registration body must be ignored (no mass assignment)")
+}
+
+// TestRegisterUser_UserCountFailureAborts pins the fix for a real bug: a
+// transient failure counting existing users used to leave userCount at its
+// zero value, which registration then read as "no users yet" and granted
+// admin to a non-first registrant. The count failure must instead abort the
+// request with an error and create no user at all.
+func TestRegisterUser_UserCountFailureAborts(t *testing.T) {
+	db, router := newRegisterRouter(t, &config.Config{})
+	failDBTableOn(t, db, "users", "query")
+
+	w := postRegister(t, router, models.UserRegistrationInput{
+		Username: "victim",
+		Email:    "victim@example.com",
+		Password: strongPassword,
+	})
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+
+	// The failDBTableOn fault is a GORM callback, so bypass it with a raw
+	// query on the underlying *sql.DB to confirm no row was written despite
+	// the userCount read having failed.
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	var count int64
+	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM users").Scan(&count))
+	assert.Equal(t, int64(0), count, "a failed user-count read must not create a user row")
 }

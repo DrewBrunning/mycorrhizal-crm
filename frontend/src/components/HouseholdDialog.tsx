@@ -109,7 +109,7 @@ export default function HouseholdDialog({
         <Button onClick={onClose} disabled={saving}>
           {t('household.cancel')}
         </Button>
-        <Button onClick={handleSave} variant="contained" disabled={saving}>
+        <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('household.save')}
         </Button>
       </DialogActions>

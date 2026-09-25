@@ -21,9 +21,9 @@ type CalendarSubscription struct {
 	URL               string     `gorm:"not null" json:"url"`
 	Username          string     `json:"username"`
 	PasswordEncrypted string     `json:"-"`
-	SyncEnabled       bool       `gorm:"default:true" json:"sync_enabled"`
-	PastDays          int        `gorm:"default:5" json:"past_days"`
-	FutureDays        int        `gorm:"default:10" json:"future_days"`
+	SyncEnabled       bool       `json:"sync_enabled"`
+	PastDays          int        `json:"past_days"`
+	FutureDays        int        `json:"future_days"`
 	LastSyncedAt      *time.Time `json:"last_synced_at"`
 	LastSyncStatus    string     `json:"last_sync_status"`
 	LastSyncError     string     `json:"last_sync_error"`

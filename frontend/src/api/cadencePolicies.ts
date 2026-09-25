@@ -40,7 +40,8 @@ export interface CadencePolicy {
   id: string;
   entity_id: string; // Contact.VCardUID
   target_interval_days: number;
-  qualifying_types: string[]; // empty = all default-qualifying types count
+  // omitempty in Go: ABSENT (not []) when empty = all default-qualifying types count.
+  qualifying_types?: string[];
   created_at: string;
   updated_at: string;
   health?: CadenceHealth;

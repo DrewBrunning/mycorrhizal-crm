@@ -57,7 +57,7 @@ export default function RegisterPage() {
         throw new Error(t('register.registrationFailed'));
       }
       setSuccess(t('register.registrationSuccess'));
-      setTimeout(() => navigate('/login'), 1500);
+      setTimeout(() => void navigate('/login'), 1500);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('register.registrationFailed');
       setError(errorMessage);
@@ -104,7 +104,7 @@ export default function RegisterPage() {
         >
           {t('register.title')}
         </Typography>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={(p0) => void handleSubmit(p0)}>
           <Stack spacing={2}>
             <TextField
               label={t('register.username')}

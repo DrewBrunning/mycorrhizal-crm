@@ -142,7 +142,7 @@ function GiftSection({
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
-              handleAdd();
+              void handleAdd();
             }
           }}
           placeholder={placeholder}
@@ -160,7 +160,7 @@ function GiftSection({
                 <InputAdornment position="end">
                   <IconButton
                     size="small"
-                    onClick={handleAdd}
+                    onClick={() => void handleAdd()}
                     disabled={adding || !draft.trim()}
                     aria-label={t('gifts.add')}
                   >
@@ -245,7 +245,7 @@ export default function GiftList({
       {gift.status !== 'given' && gift.status !== 'received' && (
         <IconButton
           size="small"
-          onClick={() => onMarkGiven(gift)}
+          onClick={() => void onMarkGiven(gift)}
           aria-label={t('gifts.markGiven')}
           color="success"
           title={t('gifts.markGiven')}

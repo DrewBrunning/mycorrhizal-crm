@@ -1,0 +1,20 @@
+{
+  "life_events": [
+    {
+      "category": "work_education",
+      "created_at": "2026-08-21T00:08:45Z",
+      "date": {
+        "month": 6,
+        "year": 2020
+      },
+      "description": "Fixture life event",
+      "entity_id": "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f",
+      "id": "c06177b1-e498-43c7-9821-7a6669411a04",
+      "revision": 1,
+      "type": "graduated",
+      "updated_at": "2026-08-21T00:08:45Z"
+    }
+  ],
+  "limit": 25,
+  "next_cursor": ""
+}

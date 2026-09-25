@@ -88,7 +88,7 @@ func TestBirthdaysAndDashboard_UsesReminderZoneForToday(t *testing.T) {
 		t.Run(z.zone, func(t *testing.T) {
 			setTimeNow(t, instant)
 
-			db, _ := setupRouter()
+			db, _ := setupRouter(t)
 			contact := models.Contact{UserID: seedUserID(t, db), Firstname: "Boundary", Lastname: "Case", Birthday: "--03-14", Archived: false}
 			require.NoError(t, db.Create(&contact).Error)
 
@@ -154,7 +154,7 @@ func TestBirthdaysEndpoint_IndependentOfServerLocalZone(t *testing.T) {
 		t.Run(localZone, func(t *testing.T) {
 			swapLocal(t, localZone)
 
-			db, _ := setupRouter()
+			db, _ := setupRouter(t)
 			uid := seedUserID(t, db)
 			for _, b := range stored {
 				require.NoError(t, db.Create(&models.Contact{UserID: uid, Firstname: "Stored", Lastname: b, Birthday: b, Archived: false}).Error)
@@ -216,7 +216,7 @@ func TestContactBriefing_UpcomingDatesUseReminderZone(t *testing.T) {
 		t.Run(z.zone, func(t *testing.T) {
 			setTimeNow(t, instant)
 
-			db, _ := setupRouter()
+			db, _ := setupRouter(t)
 			contact := models.Contact{UserID: seedUserID(t, db), Firstname: "Ann", Lastname: "Iv", Birthday: "--03-15", Archived: false}
 			require.NoError(t, db.Create(&contact).Error)
 

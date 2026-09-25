@@ -29,7 +29,7 @@ func suggestionsGet(t *testing.T, router *gin.Engine, path string) []models.Life
 }
 
 func TestLifeEventSuggestions_OfferResolveAndSuppress(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts", withValidated(func() any { return &models.ContactRecordInput{} }), CreateContact)
 	router.GET("/contacts/:id/life-event-suggestions", GetLifeEventSuggestions)
 	router.POST("/life-event-suggestions/resolve",
@@ -89,7 +89,7 @@ func TestLifeEventSuggestions_OfferResolveAndSuppress(t *testing.T) {
 // Issue #1233: a title period is a valid inference source, and resolving it
 // must pass the request-body oneof (address|organization|title).
 func TestLifeEventSuggestions_TitleSourceKindIsAccepted(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts", withValidated(func() any { return &models.ContactRecordInput{} }), CreateContact)
 	router.GET("/contacts/:id/life-event-suggestions", GetLifeEventSuggestions)
 	router.POST("/life-event-suggestions/resolve",
@@ -136,7 +136,7 @@ func TestLifeEventSuggestions_TitleSourceKindIsAccepted(t *testing.T) {
 }
 
 func TestLifeEventSuggestions_UnknownContactIs404(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/contacts/:id/life-event-suggestions", GetLifeEventSuggestions)
 
 	req, _ := http.NewRequest("GET", "/contacts/9999/life-event-suggestions", nil)
@@ -146,7 +146,7 @@ func TestLifeEventSuggestions_UnknownContactIs404(t *testing.T) {
 }
 
 func TestResolveLifeEventSuggestionRoutes(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/life-event-suggestions/resolve",
 		middleware.ValidateJSONMiddleware(&models.LifeEventSuggestionResolutionInput{}), ResolveLifeEventSuggestion)
 

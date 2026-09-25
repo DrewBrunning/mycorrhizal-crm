@@ -139,9 +139,9 @@ export default function NotificationSettings() {
   }, []);
 
   useEffect(() => {
-    loadConfig();
-    loadSubscriptions();
-    loadDevices();
+    void loadConfig();
+    void loadSubscriptions();
+    void loadDevices();
   }, [loadConfig, loadSubscriptions, loadDevices]);
 
   const handleSave = async () => {
@@ -356,7 +356,7 @@ export default function NotificationSettings() {
                     variant="outlined"
                     size="small"
                     startIcon={<PlayArrowIcon />}
-                    onClick={() => handleTest('ntfy')}
+                    onClick={() => void handleTest('ntfy')}
                     disabled={
                       testing === 'ntfy' || !notifyNtfy || !ntfyUrl.trim() || !ntfyTopic.trim()
                     }
@@ -423,7 +423,7 @@ export default function NotificationSettings() {
                     variant="outlined"
                     size="small"
                     startIcon={<PlayArrowIcon />}
-                    onClick={() => handleTest('gotify')}
+                    onClick={() => void handleTest('gotify')}
                     disabled={
                       testing === 'gotify' ||
                       !notifyGotify ||
@@ -466,7 +466,7 @@ export default function NotificationSettings() {
                   variant="outlined"
                   size="small"
                   startIcon={<NotificationsIcon />}
-                  onClick={handleEnablePush}
+                  onClick={() => void handleEnablePush()}
                   disabled={enablingPush || !browserSupportsPush()}
                 >
                   {enablingPush
@@ -515,7 +515,7 @@ export default function NotificationSettings() {
                             edge="end"
                             size="small"
                             color="error"
-                            onClick={() => handleDeleteDevice(sub)}
+                            onClick={() => void handleDeleteDevice(sub)}
                             title={t('notifications.settings.push.removeDevice')}
                             aria-label={t('notifications.settings.push.removeDevice')}
                           >
@@ -540,7 +540,7 @@ export default function NotificationSettings() {
                     variant="outlined"
                     size="small"
                     startIcon={<PlayArrowIcon />}
-                    onClick={() => handleTest('push')}
+                    onClick={() => void handleTest('push')}
                     disabled={
                       testing === 'push' ||
                       !notifyPush ||
@@ -594,7 +594,7 @@ export default function NotificationSettings() {
                             edge="end"
                             size="small"
                             color="error"
-                            onClick={() => handleDeleteMobileDevice(device)}
+                            onClick={() => void handleDeleteMobileDevice(device)}
                             title={t('notifications.settings.push.removeDevice')}
                             aria-label={t('notifications.settings.push.removeDevice')}
                           >
@@ -631,7 +631,12 @@ export default function NotificationSettings() {
             )}
 
             <Box>
-              <Button variant="contained" size="small" onClick={handleSave} disabled={saving}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => void handleSave()}
+                disabled={saving}
+              >
                 {saving ? t('common.saving') : t('notifications.settings.saveButton')}
               </Button>
             </Box>

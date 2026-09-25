@@ -88,9 +88,9 @@ export function isKnownLifeEventCategory(token: string): token is LifeEventCateg
 }
 
 export interface PartialDate {
-  year?: number;
-  month?: number;
-  day?: number;
+  year?: number | null;
+  month?: number | null;
+  day?: number | null;
 }
 
 export interface LifeEvent {

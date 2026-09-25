@@ -1,28 +1,19 @@
 name: Minimum Version Tests
 
-# COMPAT-02 (issue #473). Every other workflow in this repository builds and
-# tests at CURRENT versions (whatever go.mod's toolchain line, the bundled
-# Playwright Chromium, or the runner's own Docker happen to be) — the exact
-# opposite of the MINIMUM this project claims to support in
-# docs/development/supported-runtime-matrix.md (COMPAT-01, issue #472). A
-# stated floor nothing exercises drifts upward silently the first time a
-# dependency bump raises its own requirement (see the Node.js job below,
-# which exists because COMPAT-02 caught exactly that already having
-# happened). These jobs install the DECLARED MINIMUM for each matrix row —
-# not go.mod's toolchain, not the latest Node/browser/Compose — and prove
-# both that the floor still works and that one version *below* it fails with
-# a comprehensible message rather than something silently broken (#473
-# action 4, the milestone's "unsupported environments fail clearly"
-# criterion). backend/internal/compatci is the structural coupling: a matrix
-# row with no job here (or a job renamed/removed out from under it) fails
-# TestMatrixRowsHaveCoverage.
+# COMPAT-02 (#473). Every other workflow here builds/tests at CURRENT
+# versions -- the opposite of the MINIMUM this project claims to support
+# (docs/development/supported-runtime-matrix.md, COMPAT-01/#472). A stated
+# floor nothing exercises drifts upward silently (the Node.js job below
+# exists because COMPAT-02 caught exactly that). These jobs install the
+# DECLARED MINIMUM per row and prove both that it still works and that one
+# version *below* it fails with a comprehensible message (#473 action 4).
+# backend/internal/compatci structurally couples this: a matrix row with no
+# job here fails TestMatrixRowsHaveCoverage.
 #
-# Deliberately NOT on pull_request/push: these are slow (multiple browser/
-# Node/Go toolchain downloads) and the floor moves rarely — per the issue,
-# "a scheduled run plus a required run before release is the right cadence."
-# workflow_call is exposed so a future REL-03 release-gate workflow (#447)
-# can require this to pass before cutting a release without editing this
-# file; nothing calls it yet.
+# Deliberately NOT on pull_request/push: slow, and the floor moves rarely
+# -- "a scheduled run plus a required run before release" is the cadence.
+# workflow_call is exposed for a future release-gate workflow; nothing
+# calls it yet.
 #
 # Coverage by row (docs/development/supported-runtime-matrix.md):
 #   Go              -> go-minimum / go-below-minimum
@@ -48,22 +39,17 @@ permissions:
 
 jobs:
   # --- Go -----------------------------------------------------------------
-  # go.mod declares `go 1.26.0` (the floor this row states) and
-  # `toolchain go1.27.1` (what every other job actually builds with). Using
-  # go-version-file here would install the toolchain line, not the floor —
-  # the whole point of this job is to prove 1.26.0 itself still builds and
-  # passes, so the version is hardcoded to match the matrix doc instead.
+  # go.mod declares `go 1.26.0` (this row's floor) and `toolchain go1.27.1`
+  # (what every other job builds with); go-version-file would install the
+  # toolchain, not the floor, so the version is hardcoded here instead.
   go-minimum:
     name: Go minimum version (1.26.0)
     permissions:
       contents: read
     runs-on: ubuntu-latest
-    # The floor job runs the whole `go test ./...` suite; under the composed
-    # release run's load that is slow, and internal/schemafixture alone can
-    # take >10m (migration-tests.yml already runs that package with
-    # -timeout=25m). Give the per-binary timeout real headroom and the job
-    # room above it (issue #1177's follow-up: the RC2 floor leg timed out at
-    # the 10m default, not on a hang).
+    # internal/schemafixture alone can take >10m under load; #1177's
+    # follow-up found the RC2 floor leg timed out at the 10m default, not on
+    # a hang -- give real headroom.
     timeout-minutes: 45
     steps:
       - name: Checkout repository
@@ -77,11 +63,9 @@ jobs:
           go-version: '1.26.0'
           check-latest: false
 
-      # GOTOOLCHAIN=local is load-bearing: go.mod's `toolchain go1.27.1`
-      # line would otherwise make the 1.26.0 binary silently download and
-      # switch to 1.27.1 on the first command, which would pass every time
-      # regardless of whether the 1.26.0 floor itself still builds — exactly
-      # the silent-drift failure mode this ticket exists to catch.
+      # GOTOOLCHAIN=local is load-bearing: without it go.mod's `toolchain
+      # go1.27.1` line would silently switch the 1.26.0 binary to 1.27.1,
+      # passing regardless of whether the floor itself still builds.
       - name: Build, vet, and test at the floor
         working-directory: backend
         env:
@@ -130,11 +114,9 @@ jobs:
           fi
           echo "OK: below-floor Go failed clearly."
 
-  # --- Node.js / Yarn -------------------------------------------------------
-  # Yarn Classic is downloaded as a standalone script and invoked via `node
-  # <yarn.js>` rather than relying on whatever `yarn` a runner image ships,
-  # so the pinned 1.22.0 floor is the one actually exercised regardless of
-  # PATH order.
+  # Yarn Classic is downloaded as a standalone script, invoked via `node
+  # <yarn.js>` rather than whatever `yarn` the runner ships, so the pinned
+  # 1.22.0 floor is what actually runs regardless of PATH order.
   node-yarn-minimum:
     name: Node.js + Yarn minimum version (22.22.2 / 1.22.0)
     permissions:
@@ -147,22 +129,16 @@ jobs:
         with:
           persist-credentials: false
 
-      # node-version-file would install whatever frontend/package.json
-      # currently declares; that's the point being proven here, so it's
-      # hardcoded to guard against setup-node's own resolution masking a
-      # drift (e.g. if the file briefly named a version setup-node quietly
-      # rounds up from).
+      # Hardcoded, not node-version-file: that's the floor being proven, so
+      # it must not be masked by setup-node's own resolution.
       - name: Install Node.js at the declared floor
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22.22.2'
 
-      # The hash below was computed by hand against this exact release asset
-      # (independently re-fetched and re-hashed to confirm it's stable) and
-      # is checked before anything downloaded is ever executed -- Yarn's own
-      # release tarball has no published checksum file to verify against
-      # instead. Bumping the pinned Yarn version means recomputing this hash
-      # against the new asset, not copying it forward.
+      # Hash computed by hand against this exact release asset -- Yarn's
+      # tarball has no published checksum file. Bumping the version means
+      # recomputing the hash, not copying it forward.
       - name: Install Yarn Classic at the declared floor
         run: |
           curl -fsSL -o /tmp/yarn-1.22.0.tar.gz https://github.com/yarnpkg/yarn/releases/download/v1.22.0/yarn-v1.22.0.tar.gz
@@ -172,11 +148,9 @@ jobs:
           node /tmp/yarn-1.22.0/bin/yarn.js --version
           echo "YARN_MIN_BIN=/tmp/yarn-1.22.0/bin/yarn.js" >> "$GITHUB_ENV"
 
-      # frontend/.yarnrc's engine-strict enforces both frontend's own
-      # engines.node AND every dependency's own engines field (jsdom@30 and
-      # react-router@8 both declare a Node floor of their own) -- this step
-      # succeeding at exactly 22.22.2 is what proves the declared floor is
-      # real, not just self-consistent.
+      # frontend/.yarnrc's engine-strict enforces engines.node for frontend
+      # AND every dependency (jsdom@30, react-router@8) -- succeeding at
+      # exactly 22.22.2 proves the declared floor is real.
       - name: Install dependencies at the floor
         working-directory: frontend
         run: node "$YARN_MIN_BIN" install --frozen-lockfile
@@ -237,11 +211,9 @@ jobs:
           fi
           echo "OK: below-floor Node failed clearly (frontend/.yarnrc engine-strict)."
 
-  # --- Browsers --------------------------------------------------------------
-  # Drives real, pinned browser binaries through raw WebDriver (curl only —
-  # see .github/scripts/min-browser-check.sh) to prove the browserslist floor
-  # (docs/development/supported-runtime-matrix.md) actually works end to end,
-  # not just that vite.config.ts's build.target compiled without error.
+  # Drives real, pinned browser binaries through raw WebDriver (see
+  # .github/scripts/min-browser-check.sh) to prove the browserslist floor
+  # works end to end, not just that build.target compiled without error.
   browser-minimum:
     name: Browser minimum version (Firefox 111 / Chrome 115)
     permissions:
@@ -278,46 +250,20 @@ jobs:
             sleep 1
           done
 
-      # Both hashes are checked before anything downloaded is ever executed.
-      # Firefox's matches Mozilla's own published
-      # https://ftp.mozilla.org/pub/firefox/releases/111.0/SHA256SUMS;
-      # geckodriver has no published checksum file (only a GPG .asc
-      # signature), so that hash was computed by hand against the exact
-      # release asset and re-verified against an independent re-download.
-      # Bumping either pinned version means recomputing its hash, not
-      # copying this one forward.
-      # Firefox 111's libxul.so links libdbus-glib-1.so.2 directly (later
-      # Firefox releases don't); ubuntu-latest's runner image no longer ships
-      # it by default, so an old pinned build now fails to load with
-      # "Couldn't load XPCOM" -- a runner-image drift this job exists to
-      # catch, same shape as the Node.js floor bump COMPAT-02 already found.
-      # Found by dispatching this workflow for the v0.7.0 milestone-gate
-      # verification pass (issue #543) -- min-version-tests.yml is
-      # release-tier/scheduled-only, so this had never run since the image
-      # stopped carrying the library.
-      # With libdbus-glib-1.so.2 fixed, Firefox 111's content process still
-      # segfaulted on this runner ("glxtest: Unable to open a connection to
-      # the X server" / "No GPUs detected via PCI" / "RenderCompositorSWGL
-      # failed mapping default framebuffer" -> signal 11).
+      # Both hashes checked before anything downloaded runs. Firefox's
+      # matches Mozilla's published SHA256SUMS; geckodriver's has none
+      # published, so it was computed by hand and re-verified. Bumping
+      # either version means recomputing its hash, not copying forward.
       #
-      # A first pass here concluded `libgl1` alone was the fix, reasoning
-      # from a local Docker reproduction (bare ubuntu:24.04, no DISPLAY, no
-      # /tmp/.X11-unix) where installing it made the identical crash go
-      # away. That reproduction was real but insufficient: on the actual
-      # GitHub-hosted runner, `libgl1 is already the newest version` BEFORE
-      # this fix ever ran -- it was never missing there -- yet the crash
-      # still happened. Something about the hosted runner's virtualization
-      # (most likely no /dev/dri render node, unlike a local Docker
-      # container which can inherit the host's) forces Firefox down a
-      # code path that needs a real GLX connection -- even to a fake
-      # display -- that a local container apparently doesn't need. Xvfb +
-      # the Mesa software-GL stack is the standard, broadly-portable fix for
-      # this exact failure mode across CI providers for that reason: a
-      # virtual display gives glxtest something to open, and llvmpipe
-      # (Mesa's software rasterizer) makes GLX against it actually work.
-      # Keeping `libgl1` too since the real runner already carries it
-      # harmlessly, and dropping it isn't worth another round-trip to
-      # confirm.
+      # Firefox 111's libxul.so links libdbus-glib-1.so.2 directly (later
+      # releases don't); ubuntu-latest no longer ships it by default, so
+      # the pinned build fails to load ("Couldn't load XPCOM") -- a
+      # runner-image drift this job exists to catch (found via #543).
+      # `libgl1 xvfb libgl1-mesa-dri libglx-mesa0` fix a separate GLX
+      # segfault ("RenderCompositorSWGL failed mapping default framebuffer"):
+      # the hosted runner has no /dev/dri render node, so Firefox needs a
+      # real GLX connection even to a fake display -- Xvfb + Mesa's
+      # software rasterizer (llvmpipe) is the standard portable fix.
       - name: Install Firefox 111's runtime dependencies
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libdbus-glib-1-2 libgl1 xvfb libgl1-mesa-dri libglx-mesa0
 
@@ -341,37 +287,24 @@ jobs:
           tar -xzf /tmp/geckodriver.tar.gz -C /tmp
           chmod +x /tmp/geckodriver /tmp/firefox-111/firefox-bin
 
-      # Advisory, not blocking (issue #1002): Firefox 111 headless segfaults
-      # on this runner ("RenderCompositorSWGL failed mapping default
-      # framebuffer" -> signal 11) regardless of libdbus-glib, libgl1, or a
-      # real Xvfb display -- all three confirmed present, crash unchanged.
-      # This is a known, unresolved Firefox bug (Mozilla Bugzilla #1693011,
-      # #1832201 -- the latter closed as incomplete; a WebRender developer
-      # could not reproduce it), not something specific to this repo's
-      # setup. Chrome for Testing 115 below remains the real, blocking
-      # browser-floor signal.
+      # Advisory, not blocking (#1002): Firefox 111 headless still segfaults
+      # on this runner despite all three fixes above confirmed present --
+      # a known, unresolved Firefox bug (Mozilla Bugzilla #1693011,
+      # #1832201), not specific to this repo. Chrome for Testing 115 below
+      # is the real, blocking browser-floor signal.
       - name: Assert the app loads on Firefox 111 (the documented floor)
         continue-on-error: true
         run: |
           /tmp/geckodriver --port 4444 > /tmp/geckodriver.log 2>&1 &
           .github/scripts/min-browser-check.sh 4444 firefox /tmp/firefox-111/firefox-bin http://127.0.0.1:8899/index.html
 
-      # Google does not publish an officially pinned, downloadable Chrome
-      # 111 build anywhere — Chrome for Testing (the only versioned,
-      # reproducible artifact feed Google ships) starts at 113, and 113/114
-      # lack a matching chromedriver in that feed. 115.0.5763.0 is the
-      # earliest version with both a chrome and a chromedriver linux64
-      # artifact — four minors above the documented floor, and the closest
-      # real, reproducible stand-in available. See
-      # docs/development/supported-runtime-matrix.md; Edge shares Chrome's
-      # engine and floor and isn't tested separately for the same reason
-      # the matrix doc gives for pinning all three evergreen browsers to one
-      # release window.
-      # Chrome for Testing's own metadata feed publishes no checksum either
-      # (see the comment above), so both hashes were computed by hand
-      # against the exact release assets and re-verified against an
-      # independent re-download, same as geckodriver's above. Bumping the
-      # pinned version means recomputing both, not copying these forward.
+      # Google publishes no downloadable Chrome 111 build; Chrome for
+      # Testing starts at 113, and 113/114 lack a matching chromedriver.
+      # 115.0.5763.0 is the earliest version with both artifacts -- the
+      # closest reproducible stand-in (docs/development/
+      # supported-runtime-matrix.md; Edge shares Chrome's engine/floor and
+      # isn't tested separately for the same reason). No published
+      # checksum, so both hashes were computed by hand, same as geckodriver.
       - name: Download Chrome for Testing 115 (closest official pin to the 111 floor) + matching chromedriver
         run: |
           curl -fsSL -o /tmp/chrome.zip https://storage.googleapis.com/chrome-for-testing-public/115.0.5763.0/linux64/chrome-linux64.zip
@@ -413,18 +346,12 @@ jobs:
           echo "--- geckodriver ---"; cat /tmp/geckodriver.log 2>/dev/null || true
           echo "--- chromedriver ---"; cat /tmp/chromedriver.log 2>/dev/null || true
 
-  # --- Docker / Docker Compose ------------------------------------------------
-  # Swaps in the earliest Compose V2 release (contemporaneous with the
-  # Engine >=23.0 floor that made `docker compose` the bundled default) as a
-  # standalone client binary against the runner's own, current dockerd.
-  # This validates the risk the matrix doc actually names for this row --
-  # "compose file syntax and behavior are exactly what changes across
-  # versions" -- by parsing and running the real docker-compose.yml with the
-  # oldest V2 client. It does NOT run an actual Engine 23.0 daemon: safely
-  # pinning the daemon itself to an old version on a shared, ephemeral
-  # runner is a separate, higher-risk piece of work than this ticket's
-  # verified scope covers, and is called out here rather than silently
-  # assumed away.
+  # Swaps in the earliest Compose V2 release as a standalone client binary
+  # against the runner's own current dockerd, validating "compose file
+  # syntax and behavior changes across versions" with the real
+  # docker-compose.yml. Does NOT run an actual Engine 23.0 daemon: pinning
+  # the daemon on a shared runner is separate, higher-risk work outside
+  # this ticket's scope.
   docker-compose-minimum:
     name: Docker Compose minimum version (v2.17.2)
     permissions:
@@ -442,11 +369,8 @@ jobs:
         with:
           go-version-file: backend/go.mod
 
-      # Checked against docker/compose's own published
-      # docker-compose-linux-x86_64.sha256 release asset before anything
-      # downloaded is ever executed. Bumping the pinned version means
-      # fetching that release's own .sha256 file, not copying this hash
-      # forward.
+      # Checked against docker/compose's own published .sha256 release
+      # asset. Bumping the version means fetching that release's own file.
       - name: Download Docker Compose at the floor
         run: |
           curl -fsSL -o /tmp/docker-compose https://github.com/docker/compose/releases/download/v2.17.2/docker-compose-linux-x86_64

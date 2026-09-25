@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**/*.{js,jsx,ts,tsx,mjs,cjs,json}"]
+    "includes": ["**/*.{js,jsx,ts,tsx,mjs,cjs,json}", "!src/generated"]
   },
   "formatter": {
     "enabled": true,

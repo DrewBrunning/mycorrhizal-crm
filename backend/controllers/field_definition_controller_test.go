@@ -16,9 +16,9 @@ import (
 )
 
 // T6 controller tests for
-// the FieldDefinition/FieldValue API surface. These use the package's
-// setupRouter() AutoMigrate idiom (see field_definition_real_db_test.go for
-// the real-migrated-schema round trip).
+// the FieldDefinition/FieldValue API surface, via the package's shared
+// setupRouter(t) (see field_definition_real_db_test.go for the column-level
+// round trip).
 
 func createTestDefinition(t *testing.T, db *gorm.DB, userID uint, key string) models.FieldDefinition {
 	t.Helper()
@@ -34,7 +34,7 @@ func createTestDefinition(t *testing.T, db *gorm.DB, userID uint, key string) mo
 }
 
 func TestCreateFieldDefinition(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/field-definitions", withValidated(func() any { return &models.FieldDefinitionInput{} }), CreateFieldDefinition)
 
 	var user models.User
@@ -68,7 +68,7 @@ func TestCreateFieldDefinition(t *testing.T) {
 }
 
 func TestCreateFieldDefinitionRejectsDuplicateKey(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/field-definitions", withValidated(func() any { return &models.FieldDefinitionInput{} }), CreateFieldDefinition)
 
 	var user models.User
@@ -87,7 +87,7 @@ func TestCreateFieldDefinitionRejectsDuplicateKey(t *testing.T) {
 }
 
 func TestGetFieldDefinition(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/field-definitions/:id", GetFieldDefinition)
 
 	var user models.User
@@ -107,7 +107,7 @@ func TestGetFieldDefinition(t *testing.T) {
 }
 
 func TestGetFieldDefinitionNotFoundForUnknownID(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/field-definitions/:id", GetFieldDefinition)
 
 	req, _ := http.NewRequest("GET", "/field-definitions/does-not-exist", nil)
@@ -118,7 +118,7 @@ func TestGetFieldDefinitionNotFoundForUnknownID(t *testing.T) {
 }
 
 func TestListFieldDefinitions(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/field-definitions", ListFieldDefinitions)
 
 	var user models.User
@@ -143,7 +143,7 @@ func TestListFieldDefinitions(t *testing.T) {
 }
 
 func TestUpdateFieldDefinition(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/field-definitions/:id", withValidated(func() any { return &models.FieldDefinitionInput{} }), UpdateFieldDefinition)
 
 	var user models.User
@@ -175,7 +175,7 @@ func TestUpdateFieldDefinition(t *testing.T) {
 }
 
 func TestDeleteFieldDefinition(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/field-definitions/:id", DeleteFieldDefinition)
 
 	var user models.User
@@ -194,15 +194,13 @@ func TestDeleteFieldDefinition(t *testing.T) {
 	assert.Zero(t, defCount)
 
 	// The FieldValue cascade is enforced by the hand-written migration's ON
-	// DELETE CASCADE FK, which AutoMigrate (what this test's setupRouter
-	// builds) does not replicate -- so it is asserted against the real
-	// migrated schema in field_definition_real_db_test.go instead.
+	// DELETE CASCADE FK; it is asserted in field_definition_real_db_test.go.
 }
 
 // --- Ownership scoping ---
 
 func TestFieldDefinitionOwnershipScoping(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/field-definitions", ListFieldDefinitions)
 	router.GET("/field-definitions/:id", GetFieldDefinition)
 	router.PUT("/field-definitions/:id", withValidated(func() any { return &models.FieldDefinitionInput{} }), UpdateFieldDefinition)
@@ -254,7 +252,7 @@ func TestFieldDefinitionOwnershipScoping(t *testing.T) {
 // router with one user, one contact, and a default string definition.
 func setupFieldValueRoutes(t *testing.T) (*gorm.DB, *gin.Engine, models.User, models.Contact, models.FieldDefinition) {
 	t.Helper()
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/field-values", ListContactFieldValues)
 	router.PUT("/contacts/:id/field-values", withValidated(func() any { return &models.ContactFieldValuesInput{} }), ReplaceContactFieldValues)
 
@@ -436,7 +434,7 @@ func TestReplaceContactFieldValues_FullReplaceDeletesAbsent(t *testing.T) {
 }
 
 func TestListContactFieldValues_ContactNotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/contacts/:id/field-values", ListContactFieldValues)
 
 	req, _ := http.NewRequest("GET", "/contacts/999999/field-values", nil)

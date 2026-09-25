@@ -8,7 +8,6 @@ import (
 	"mycorrhizal/internal/scoring"
 	"mycorrhizal/models"
 
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -402,78 +401,65 @@ func TestComputeAllContactScores_ContactsQueryFails(t *testing.T) {
 }
 
 func TestComputeContactScores_CadencePoliciesQueryFails(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Contact{}))
+	db := dbtest.New(t)
 
 	user := createScoreTestUser(t, db, "score-cadencefail")
 	contact := createScoreTestContact(t, db, user.ID, "Alice")
+	dbtest.HideTable(t, db, "cadence_policies")
 
-	_, err = ComputeContactScore(db, user.ID, &contact, time.Now())
+	_, err := ComputeContactScore(db, user.ID, &contact, time.Now())
 	assert.ErrorContains(t, err, "loading cadence policies")
 }
 
 func TestComputeContactScores_LastInteractionQueryFails(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Contact{}, &models.CadencePolicy{}))
-	// Contact's own `Activities []Activity` many2many tag makes AutoMigrate
-	// create "activities"/"activity_contacts" implicitly even though
-	// models.Activity was never listed above -- drop it explicitly so this
-	// step's query is the one that actually fails, not silently succeeds
-	// against a table AutoMigrate created as a side effect.
-	require.NoError(t, db.Migrator().DropTable("activities"))
+	db := dbtest.New(t)
 
 	user := createScoreTestUser(t, db, "score-lastintfail")
 	contact := createScoreTestContact(t, db, user.ID, "Alice")
+	dbtest.HideTable(t, db, "activities")
 
-	_, err = ComputeContactScore(db, user.ID, &contact, time.Now())
+	_, err := ComputeContactScore(db, user.ID, &contact, time.Now())
 	assert.ErrorContains(t, err, "loading last qualifying interactions")
 }
 
 func TestComputeContactScores_SelfContactQueryFails(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	// No models.User table at all -- selfContactVCardUID's query against
-	// "users" is the first thing this schema can't answer. SQLite enforces
-	// no FK constraint here, so a Contact can still reference a user ID with
-	// no real row.
-	require.NoError(t, db.AutoMigrate(&models.Contact{}, &models.CadencePolicy{}, &models.Activity{}))
+	db := dbtest.New(t)
 
-	contact := createScoreTestContact(t, db, 1, "Alice")
+	// Hide "users" -- selfContactVCardUID's query against it is the first
+	// thing this schema can't answer. The contact needs a real user row
+	// first (FK), which the rename carries along.
+	user := createScoreTestUser(t, db, "score-selffail")
+	contact := createScoreTestContact(t, db, user.ID, "Alice")
+	dbtest.HideTable(t, db, "users")
 
-	_, err = ComputeContactScore(db, 1, &contact, time.Now())
+	_, err := ComputeContactScore(db, user.ID, &contact, time.Now())
 	assert.ErrorContains(t, err, "loading self-contact")
 }
 
 func TestComputeContactScores_DirectRelationTypesQueryFails(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	// No models.RelationshipEdge table -- reached only when a self-contact
-	// is actually set (the `if selfContactUID != ""` guard), so User must be
-	// present and populated.
-	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Contact{}, &models.CadencePolicy{}, &models.Activity{}))
+	db := dbtest.New(t)
 
 	user := createScoreTestUser(t, db, "score-directrelfail")
 	self := createScoreTestContact(t, db, user.ID, "Self")
 	contact := createScoreTestContact(t, db, user.ID, "Alice")
 	setSelfContact(t, db, user.ID, self.VCardUID)
+	// Reached only when a self-contact is actually set (the
+	// `if selfContactUID != ""` guard).
+	dbtest.HideTable(t, db, "relationship_edges")
 
-	_, err = ComputeContactScore(db, user.ID, &contact, time.Now())
+	_, err := ComputeContactScore(db, user.ID, &contact, time.Now())
 	assert.ErrorContains(t, err, "loading direct relationship edges")
 }
 
 func TestComputeContactScores_PendingReachOutQueryFails(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	// No self-contact set (steps 7/8 are skipped via the `if selfContactUID
-	// != ""` guard), so RelationshipEdge doesn't need to exist here -- only
-	// models.ReachOutSuggestion is deliberately missing.
-	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Contact{}, &models.CadencePolicy{}, &models.Activity{}))
+	db := dbtest.New(t)
 
 	user := createScoreTestUser(t, db, "score-reachoutfail")
 	contact := createScoreTestContact(t, db, user.ID, "Alice")
+	// No self-contact set (steps 7/8 are skipped), so only the pending
+	// reach-out query can fail.
+	dbtest.HideTable(t, db, "reach_out_suggestions")
 
-	_, err = ComputeContactScore(db, user.ID, &contact, time.Now())
+	_, err := ComputeContactScore(db, user.ID, &contact, time.Now())
 	assert.ErrorContains(t, err, "loading pending reach-out suggestions")
 }

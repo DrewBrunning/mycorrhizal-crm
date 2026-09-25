@@ -108,7 +108,10 @@ rules:
   # checked) discards it. Scoped to the `db`/`tx` receiver names this
   # codebase uses for *gorm.DB throughout (controllers/services), so it
   # doesn't fire on unrelated *.Save()/*.Updates() methods elsewhere (e.g.
-  # attachments.Save).
+  # attachments.Save). The type-aware complement is cmd/gormerrcheck
+  # (internal/lint/gormerr), which covers every GORM finisher on any receiver
+  # name; its analysistest fixtures are deliberate positives, hence the
+  # testdata exclusion below.
   - id: mycorrhizal-gorm-save-updates-error-unchecked
     languages: [go]
     severity: ERROR
@@ -138,6 +141,7 @@ rules:
     paths:
       exclude:
         - "*_test.go"
+        - "internal/lint/gormerr/testdata/"
 
   # Not a CLAUDE.md trap by name, but the same class of domain-specific
   # footgun: reading auth material (an OIDC/OAuth code, an API token, a

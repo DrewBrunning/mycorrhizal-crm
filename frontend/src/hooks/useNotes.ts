@@ -90,7 +90,7 @@ export function useNotes(contactId?: string | number, params: GetNotesParams = {
   }, [nextCursor, paramLimit, search, fromDate, toDate]);
 
   useEffect(() => {
-    fetchFirst();
+    void fetchFirst();
   }, [fetchFirst]);
 
   return {

@@ -57,6 +57,9 @@ export default function PeriodField({ label, range, onSave }: PeriodFieldProps) 
             },
       );
       setEditing(false);
+    } catch {
+      // onSave's own caller already reports the error to the user; swallow
+      // here so the click handler can be a fire-and-forget void.
     } finally {
       setSaving(false);
     }
@@ -117,7 +120,7 @@ export default function PeriodField({ label, range, onSave }: PeriodFieldProps) 
           <IconButton
             size="small"
             color="primary"
-            onClick={commit}
+            onClick={() => void commit()}
             disabled={saving}
             aria-label={t('common.save')}
             data-testid="period-save"

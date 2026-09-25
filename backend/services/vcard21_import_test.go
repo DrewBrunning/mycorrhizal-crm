@@ -39,7 +39,7 @@ func TestSniffVCardVersion(t *testing.T) {
 // photo all survive import -- the three fields the ticket reports coming
 // back blank.
 func TestParseVCF_VCard21_BareTokenGrammar(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -85,7 +85,7 @@ func TestParseVCF_VCard21_BareTokenGrammar(t *testing.T) {
 // trailing "=" with no leading whitespace on the continuation line) --
 // go-vcard has no notion of that continuation mechanism on its own.
 func TestParseVCF_VCard21_QuotedPrintable(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -117,7 +117,7 @@ func TestParseVCF_VCard21_QuotedPrintable(t *testing.T) {
 // surfaces as a contactmodel.Diagnostic warning (visible in the preview)
 // rather than being silently dropped or aborting the whole import.
 func TestParseVCF_VCard21_MalformedQuotedPrintable_Diagnostic(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -159,7 +159,7 @@ func TestParseVCF_VCard21_MalformedQuotedPrintable_Diagnostic(t *testing.T) {
 // non-PREF/plain TEL, guarding against a future regression that routes 2.1
 // to vcard4 instead.
 func TestParseVCF_VCard21_RoutesThroughVCard3Adapter(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 

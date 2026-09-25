@@ -142,7 +142,7 @@ export default function SessionsSettings() {
                           size="small"
                           color="error"
                           disabled={busyId === session.id}
-                          onClick={() => handleRevoke(session)}
+                          onClick={() => void handleRevoke(session)}
                         >
                           {session.current ? t('sessions.revokeCurrent') : t('sessions.revoke')}
                         </Button>
@@ -158,7 +158,7 @@ export default function SessionsSettings() {
                   variant="outlined"
                   color="error"
                   disabled={revokingOthers}
-                  onClick={handleRevokeOthers}
+                  onClick={() => void handleRevokeOthers()}
                 >
                   {t('sessions.revokeOthersButton')}
                 </Button>

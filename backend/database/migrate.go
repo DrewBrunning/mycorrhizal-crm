@@ -537,7 +537,7 @@ func RunMigrations(db *sql.DB) error {
 
 	// Get current version
 	version, dirty, err := m.Version()
-	if err != nil && err != migrate.ErrNilVersion {
+	if err != nil && !errors.Is(err, migrate.ErrNilVersion) {
 		return fmt.Errorf("failed to get migration version: %w", err)
 	}
 
@@ -546,7 +546,7 @@ func RunMigrations(db *sql.DB) error {
 	// as a clean install and before m.Up() replays the chain against existing
 	// tables. A genuinely fresh database has no such tables (only an optional
 	// empty schema_migrations bookkeeping table).
-	if err == migrate.ErrNilVersion {
+	if errors.Is(err, migrate.ErrNilVersion) {
 		tables, terr := applicationTables(db)
 		if terr != nil {
 			return fmt.Errorf("failed to inspect database tables: %w", terr) // # pragma: no cover -- reached only if sqlite_master cannot be read on a connection whose version query just succeeded
@@ -578,10 +578,9 @@ func RunMigrations(db *sql.DB) error {
 // flag, both continue from the same place through the same code.
 func runPendingMigrations(m *migrate.Migrate, db *sql.DB) error {
 	startVersion, _, err := m.Version()
-	if err != nil && err != migrate.ErrNilVersion { // # pragma: no cover -- a migration driver the version read just succeeded on
+	if err != nil && !errors.Is(err, migrate.ErrNilVersion) { // # pragma: no cover -- a migration driver the version read just succeeded on
 		return fmt.Errorf("failed to get migration version: %w", err)
 	}
-	version := startVersion
 
 	// DEPLOY-03 (issue #452) failure-injection seam: the "before any migration
 	// begins" window. The preflight has passed and the mandatory pre-migration
@@ -599,7 +598,7 @@ func runPendingMigrations(m *migrate.Migrate, db *sql.DB) error {
 
 	// Run migrations
 	upErr := m.Up()
-	if upErr != nil && upErr != migrate.ErrNoChange {
+	if upErr != nil && !errors.Is(upErr, migrate.ErrNoChange) {
 		// Milestone v0.6.2 gate (issue #532): a migration failure must
 		// identify WHICH migration failed, not just carry the SQL error.
 		// golang-migrate leaves the failed version dirty, so m.Version()
@@ -627,16 +626,16 @@ func runPendingMigrations(m *migrate.Migrate, db *sql.DB) error {
 	}
 
 	// Get final version
-	version, _, err = m.Version()
-	if err != nil && err != migrate.ErrNilVersion { // # pragma: no cover -- a migration driver the version read just succeeded on
+	version, _, err := m.Version()
+	if err != nil && !errors.Is(err, migrate.ErrNilVersion) { // # pragma: no cover -- a migration driver the version read just succeeded on
 		return fmt.Errorf("failed to get final version: %w", err)
 	}
 
 	elapsed := time.Since(start)
-	schemaAdvanced := upErr != migrate.ErrNoChange && version != startVersion
+	schemaAdvanced := !errors.Is(upErr, migrate.ErrNoChange) && version != startVersion
 
 	switch {
-	case err == migrate.ErrNilVersion: // # pragma: no cover -- m.Up() always writes a version row
+	case errors.Is(err, migrate.ErrNilVersion): // # pragma: no cover -- m.Up() always writes a version row
 		logger.Info().Msg("No migrations applied (database is empty)")
 	case schemaAdvanced:
 		logger.Info().
@@ -849,7 +848,7 @@ func MigrateForce(dbPath string) error {
 	defer closeMigrator(m)
 
 	version, dirty, err := m.Version()
-	if err == migrate.ErrNilVersion {
+	if errors.Is(err, migrate.ErrNilVersion) {
 		return errors.New("no migrations have been applied; there is no dirty state to force")
 	}
 	if err != nil { // # pragma: no cover -- a migrator the Ping of which just succeeded
@@ -899,7 +898,7 @@ func MigrateUpTo(dbPath string, version uint) error {
 	}
 	defer closeMigrator(m)
 
-	if err := m.Migrate(version); err != nil && err != migrate.ErrNoChange {
+	if err := m.Migrate(version); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("failed to migrate to version %d: %w", version, err)
 	}
 	return nil
@@ -922,7 +921,7 @@ func MigrationVersion(dbPath string) (version uint, dirty bool, ok bool, err err
 	defer closeMigrator(m)
 
 	version, dirty, err = m.Version()
-	if err == migrate.ErrNilVersion {
+	if errors.Is(err, migrate.ErrNilVersion) {
 		return 0, false, false, nil
 	}
 	if err != nil {

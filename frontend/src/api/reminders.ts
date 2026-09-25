@@ -4,13 +4,13 @@ import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './cl
 export interface Reminder {
   ID: number;
   message: string;
-  by_mail: boolean;
+  by_mail: boolean | null; // nullable column (*bool, no omitempty)
   remind_at: string; // ISO date string
   recurrence: 'once' | 'weekly' | 'monthly' | 'quarterly' | 'six-months' | 'yearly';
-  reoccur_from_completion: boolean;
+  reoccur_from_completion: boolean | null; // nullable column (*bool, no omitempty)
   completed: boolean;
   email_sent: boolean;
-  last_sent?: string; // ISO date string
+  last_sent?: string | null; // ISO date string; null until first sent
   contact_id: number;
   CreatedAt?: string;
   UpdatedAt?: string;
@@ -21,10 +21,10 @@ export interface Reminder {
 
 export interface ReminderFormData {
   message: string;
-  by_mail: boolean;
+  by_mail: boolean | null; // nullable column (*bool, no omitempty)
   remind_at: string; // ISO date string
   recurrence: 'once' | 'weekly' | 'monthly' | 'quarterly' | 'six-months' | 'yearly';
-  reoccur_from_completion: boolean;
+  reoccur_from_completion: boolean | null; // nullable column (*bool, no omitempty)
   contact_id: number;
 }
 

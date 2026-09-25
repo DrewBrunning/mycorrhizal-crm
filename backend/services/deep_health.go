@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -205,7 +206,7 @@ func dbWriteProbe(db *gorm.DB) HealthCheckDetail {
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var row models.OperationalCheckResult
 		e := tx.Where("check_name = ?", opCheckWriteProbe).First(&row).Error
-		if e == gorm.ErrRecordNotFound {
+		if errors.Is(e, gorm.ErrRecordNotFound) {
 			return tx.Create(&models.OperationalCheckResult{
 				CheckName: opCheckWriteProbe, Status: models.OpCheckStatusOK, CheckedAt: now,
 			}).Error
@@ -292,7 +293,7 @@ func persistedCheckDetail(db *gorm.DB, checkName string, enabled bool, intervalH
 	}
 	var row models.OperationalCheckResult
 	err := db.Where("check_name = ?", checkName).First(&row).Error
-	if err == gorm.ErrRecordNotFound {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return HealthCheckDetail{Status: DeepStatusDegraded, Reason: "enabled but has never recorded a result"}
 	}
 	if err != nil {
