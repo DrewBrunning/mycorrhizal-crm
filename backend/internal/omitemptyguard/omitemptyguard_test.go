@@ -3,6 +3,7 @@ package omitemptyguard
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -131,6 +132,20 @@ type Resp struct {
 	}
 }
 
+func TestScanFile_UnterminatedTagQuoteIsNotAFinding(t *testing.T) {
+	// extractTagValue's closing-quote search fails on a malformed tag with
+	// no closing `"` -- jsonOmitempty must treat that as "no json tag"
+	// rather than panicking on a bad slice index.
+	src := "package x\ntype Resp struct {\n\tNotes []string `json:\"notes,omitempty`\n}\n"
+	findings, err := ScanFile("x.go", src, map[string]string{})
+	if err != nil {
+		t.Fatalf("ScanFile: %v", err)
+	}
+	if len(findings) != 0 {
+		t.Fatalf("findings = %+v, want none for an unterminated tag", findings)
+	}
+}
+
 func TestScanFile_UnparseableFileErrors(t *testing.T) {
 	if _, err := ScanFile("x.go", "not valid go {{{", map[string]string{}); err == nil {
 		t.Fatal("want a parse error")
@@ -152,6 +167,78 @@ type Resp struct {
 	}
 	if len(findings) != 0 {
 		t.Fatalf("findings = %+v, want none (test file excluded)", findings)
+	}
+}
+
+func TestScanDir_MissingDirErrors(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "does-not-exist")
+	if _, err := ScanDir(dir, map[string]string{}); err == nil {
+		t.Fatal("want an error for a missing directory")
+	}
+}
+
+func TestScanDir_UnreadableFileErrors(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root: permission bits are not enforced")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "x.go")
+	if err := os.WriteFile(path, []byte("package x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(path, 0o644) //nolint:errcheck // best-effort cleanup so t.TempDir can remove it
+
+	if _, err := ScanDir(dir, map[string]string{}); err == nil {
+		t.Fatal("want an error reading an unreadable file")
+	}
+}
+
+func TestScanDir_UnparseableFilePropagatesError(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "x.go"), []byte("not valid go {{{"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ScanDir(dir, map[string]string{}); err == nil {
+		t.Fatal("want ScanFile's parse error to propagate from ScanDir")
+	}
+}
+
+func TestScanDirObserved_PropagatesScanDirError(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "does-not-exist")
+	if _, err := ScanDirObserved(dir); err == nil {
+		t.Fatal("want ScanDir's error to propagate from ScanDirObserved")
+	}
+}
+
+func TestScanDirObserved_CollectsAllowlistedAndNot(t *testing.T) {
+	dir := t.TempDir()
+	src := `package x
+type Resp struct {
+	Notes []string ` + "`json:\"notes,omitempty\"`" + `
+}
+`
+	if err := os.WriteFile(filepath.Join(dir, "x.go"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	observed, err := ScanDirObserved(dir)
+	if err != nil {
+		t.Fatalf("ScanDirObserved: %v", err)
+	}
+	if !observed["Resp.Notes"] {
+		t.Fatalf("observed = %+v, want Resp.Notes present", observed)
+	}
+}
+
+func TestFormatFinding_RendersPathLineAndTag(t *testing.T) {
+	f := Finding{Path: "models/x.go", Line: 12, StructKey: "Resp.Notes", JSONTag: "notes,omitempty"}
+	got := FormatFinding(f)
+	for _, want := range []string{"models/x.go:12:", "Resp.Notes", `"notes,omitempty"`} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("FormatFinding() = %q, missing %q", got, want)
+		}
 	}
 }
 
