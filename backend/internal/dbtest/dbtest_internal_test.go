@@ -86,6 +86,20 @@ func TestCopyFile_FailsWhenDstDirMissing(t *testing.T) {
 	require.Error(t, err)
 }
 
+// TestCopyFile_FailsWhenWriteFails covers io.Copy's own error branch (as
+// opposed to os.Create's, above): /dev/full always reports ENOSPC on write,
+// which is otherwise nearly impossible to arrange deterministically.
+func TestCopyFile_FailsWhenWriteFails(t *testing.T) {
+	if _, err := os.Stat("/dev/full"); err != nil {
+		t.Skip("/dev/full not available on this platform")
+	}
+	src := filepath.Join(t.TempDir(), "src.db")
+	require.NoError(t, os.WriteFile(src, []byte("hello, this needs to be non-trivially sized to force a write"), 0o644))
+
+	err := copyFile(src, "/dev/full")
+	require.Error(t, err)
+}
+
 // TestCopyFile_CopiesContent is the positive control for the two failure
 // tests above.
 func TestCopyFile_CopiesContent(t *testing.T) {

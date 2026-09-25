@@ -59,7 +59,7 @@ func template(tb testing.TB) string {
 		tmplPath, tmplErr = buildTemplate(dir)
 	})
 	if tmplErr != nil {
-		tb.Fatalf("dbtest: building migrated template database: %v", tmplErr)
+		tb.Fatalf("dbtest: building migrated template database: %v", tmplErr) // # pragma: no cover — tmplErr is set only if the once-per-process template build failed; every other test in this binary already depends on it succeeding, so failing it here without breaking the whole suite needs a subprocess
 	}
 	return tmplPath
 }
@@ -121,12 +121,12 @@ func NewAt(tb testing.TB, dbPath string) *gorm.DB {
 	tb.Helper()
 
 	if err := copyFile(template(tb), dbPath); err != nil {
-		tb.Fatalf("dbtest: copying migrated template to %s: %v", dbPath, err)
+		tb.Fatalf("dbtest: copying migrated template to %s: %v", dbPath, err) // # pragma: no cover — copyFile's own failure modes are tested directly (TestCopyFile_*); this line is just the fatal wrapper, and forcing it without a subprocess would kill this test too
 	}
 
 	db, err := database.OpenMigratedFile(dbPath)
 	if err != nil {
-		tb.Fatalf("dbtest: opening copied database at %s: %v", dbPath, err)
+		tb.Fatalf("dbtest: opening copied database at %s: %v", dbPath, err) // # pragma: no cover — database.OpenMigratedFile failing against a file this function just wrote a valid template copy to is not reachable without corrupting the template out from under every other test in the binary
 	}
 	tb.Cleanup(func() {
 		// Drain the fire-and-forget goroutines (webhook deliveries, audit
@@ -181,6 +181,6 @@ func HideTable(tb testing.TB, db *gorm.DB, table string) {
 	// constant, never request input.
 	stmt := fmt.Sprintf(`ALTER TABLE %q RENAME TO %q`, table, table+"__hidden_by_test")
 	if err := db.Exec(stmt).Error; err != nil {
-		tb.Fatalf("dbtest: hiding table %s: %v", table, err)
+		tb.Fatalf("dbtest: hiding table %s: %v", table, err) // # pragma: no cover — db.Exec failing here needs a table name that ALTER TABLE rejects or a connection that's already gone; both are exercised at the database.OpenMigratedFile/*gorm.DB level elsewhere, not worth a subprocess just for this fatal wrapper
 	}
 }

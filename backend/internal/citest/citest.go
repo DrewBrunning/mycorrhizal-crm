@@ -30,7 +30,7 @@ const RequireReferencesEnvVar = "MYCORRHIZAL_REQUIRE_REFERENCES"
 func SkipOrRequire(t *testing.T, reason string) {
 	t.Helper()
 	if os.Getenv(RequireReferencesEnvVar) != "" {
-		t.Fatalf("%s is set, but a required tool/reference is unavailable: %s", RequireReferencesEnvVar, reason)
+		t.Fatalf("%s is set, but a required tool/reference is unavailable: %s", RequireReferencesEnvVar, reason) // # pragma: no cover — t.Fatalf calls runtime.Goexit; exercised via the subprocess in TestSkipOrRequire_FailsWhenEnvVarSet, whose coverage isn't merged into this process's profile
 	}
 	t.Skip(reason)
 }

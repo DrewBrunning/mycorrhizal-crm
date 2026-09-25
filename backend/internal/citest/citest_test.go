@@ -3,50 +3,55 @@ package citest
 import (
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-const helperProcessEnvVar = "MYCORRHIZAL_CITEST_HELPER"
+func TestSkipOrRequire_SkipsWhenEnvVarUnset(t *testing.T) {
+	t.Setenv(RequireReferencesEnvVar, "")
 
-// TestSkipOrRequireHelperProcess is not a real test: it is re-executed as a
-// subprocess (via `go test -run`) by the two tests below, so
-// SkipOrRequire's t.Fatalf path can be observed by exit code without
-// failing this package's own test run the way calling it in-process would.
-func TestSkipOrRequireHelperProcess(t *testing.T) {
+	var sub *testing.T
+	t.Run("inner", func(inner *testing.T) {
+		sub = inner
+		SkipOrRequire(inner, "reference tool not installed")
+	})
+
+	if !sub.Skipped() {
+		t.Fatal("expected SkipOrRequire to skip when the env var is unset")
+	}
+	if sub.Failed() {
+		t.Fatal("expected SkipOrRequire not to fail the test when merely skipping")
+	}
+}
+
+// helperProcessEnvVar, when set, tells TestHelperProcess_FailsWhenRequired
+// to actually run instead of being a no-op -- it's invoked only as a
+// subprocess by TestSkipOrRequire_FailsWhenEnvVarSet below.
+const helperProcessEnvVar = "CITEST_RUN_HELPER_PROCESS"
+
+// TestHelperProcess_FailsWhenRequired is not meant to run as part of the
+// normal suite (it's an intentional Fatalf); TestSkipOrRequire_FailsWhenEnvVarSet
+// re-invokes `go test` targeting just this test, in a subprocess, so the
+// Fatalf can be observed via exit code without failing this package's own
+// `go test` run.
+func TestHelperProcess_FailsWhenRequired(t *testing.T) {
 	if os.Getenv(helperProcessEnvVar) == "" {
-		t.Skip("only runs as a subprocess helper; see TestSkipOrRequire_*")
+		t.Skip("only runs as a subprocess of TestSkipOrRequire_FailsWhenEnvVarSet")
 	}
-	SkipOrRequire(t, "tool unavailable for this test")
+	SkipOrRequire(t, "reference tool not installed")
 }
 
-// TestSkipOrRequire_SkipsWhenEnvUnset is the default-developer-machine
-// path: no RequireReferencesEnvVar set, so a missing tool is a skip.
-func TestSkipOrRequire_SkipsWhenEnvUnset(t *testing.T) {
-	out, err := runHelperProcess(t, false)
-	require.NoErrorf(t, err, "output:\n%s", out)
-	assert.Contains(t, string(out), "SKIP")
-}
-
-// TestSkipOrRequire_FailsWhenEnvSet proves SkipOrRequire actually turns a
-// missing tool into a hard failure once the CI env var is set.
-func TestSkipOrRequire_FailsWhenEnvSet(t *testing.T) {
-	out, err := runHelperProcess(t, true)
-	require.Errorf(t, err, "expected the subprocess to fail; output:\n%s", out)
-	assert.Contains(t, string(out), "FAIL")
-}
-
-func runHelperProcess(t *testing.T, requireReferences bool) ([]byte, error) {
-	t.Helper()
-	// #nosec G204 -- os.Args[0] is this test binary re-executing itself with a fixed -test.run pattern, never request-controlled
-	cmd := exec.Command(os.Args[0], "-test.run=^TestSkipOrRequireHelperProcess$", "-test.v")
-	cmd.Env = append(os.Environ(), helperProcessEnvVar+"=1")
-	if requireReferences {
-		cmd.Env = append(cmd.Env, RequireReferencesEnvVar+"=1")
-	} else {
-		cmd.Env = append(cmd.Env, RequireReferencesEnvVar+"=")
+func TestSkipOrRequire_FailsWhenEnvVarSet(t *testing.T) {
+	cmd := exec.Command("go", "test", "-run", "^TestHelperProcess_FailsWhenRequired$", "-v", ".")
+	cmd.Env = append(os.Environ(),
+		helperProcessEnvVar+"=1",
+		RequireReferencesEnvVar+"=1",
+	)
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected the subprocess to fail (SkipOrRequire must Fatalf when %s is set); output:\n%s", RequireReferencesEnvVar, out)
 	}
-	return cmd.CombinedOutput()
+	if !strings.Contains(string(out), RequireReferencesEnvVar+" is set, but a required tool/reference is unavailable") {
+		t.Fatalf("subprocess output missing the expected failure message:\n%s", out)
+	}
 }
