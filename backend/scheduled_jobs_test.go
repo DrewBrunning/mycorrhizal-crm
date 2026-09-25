@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/go-co-op/gocron"
@@ -205,4 +206,47 @@ func TestRegisterScheduledJobs_InvalidIntervalReturnsError(t *testing.T) {
 	err := registerScheduledJobs(s, nil, &cfg)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), models.JobNameCalendarSync)
+}
+
+// TestTaskConstructors_RunAgainstScratchDatabase actually invokes the
+// closure each task constructor returns (not just registers it), against a
+// real migrated scratch database with no rows. registerScheduledJobs's own
+// tests above only ever register these closures with gocron; none of them
+// runs. These are the boot-time "Initial" triggers' bodies (main.go's
+// safeGo/safeGoReport calls) — running each once against an empty database
+// pins that a fresh, row-less install doesn't panic on any of them.
+func TestTaskConstructors_RunAgainstScratchDatabase(t *testing.T) {
+	db := dbtest.New(t)
+	cfg := testSchedulerConfig()
+
+	if _, err := reminderTask(db, cfg)(); err != nil {
+		t.Errorf("reminderTask: %v", err)
+	}
+	if err := webhookRetriesTask(db, cfg)(); err != nil {
+		t.Errorf("webhookRetriesTask: %v", err)
+	}
+	if err := calendarSyncTask(db, cfg)(); err != nil {
+		t.Errorf("calendarSyncTask: %v", err)
+	}
+	if _, err := cadenceOverdueTask(db, cfg)(); err != nil {
+		t.Errorf("cadenceOverdueTask: %v", err)
+	}
+	if _, err := reachOutTask(db, cfg)(); err != nil {
+		t.Errorf("reachOutTask: %v", err)
+	}
+	if err := immichSyncTask(db, cfg)(); err != nil {
+		t.Errorf("immichSyncTask: %v", err)
+	}
+	if err := dbIntegrityTask(db, cfg)(); err != nil {
+		t.Errorf("dbIntegrityTask: %v", err)
+	}
+	if err := restoreDrillTask(db, cfg)(); err != nil {
+		t.Errorf("restoreDrillTask: %v", err)
+	}
+	if err := alertEvalTask(db, cfg)(); err != nil {
+		t.Errorf("alertEvalTask: %v", err)
+	}
+	if err := storageSampleTask(db, cfg)(); err != nil {
+		t.Errorf("storageSampleTask: %v", err)
+	}
 }

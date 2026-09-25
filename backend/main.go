@@ -364,8 +364,8 @@ func main() {
 	// .At() time or an invalid interval used to be silently discarded here,
 	// producing a job that never ran) and tags each gocron.Job with its
 	// models.JobName* token.
-	if err := registerScheduledJobs(s, db, cfg); err != nil {
-		logger.Fatal().Err(err).Msg("Failed to register scheduled jobs")
+	if err := registerScheduledJobs(s, db, cfg); err != nil { // # pragma: no cover — main() startup wiring; registerScheduledJobs's own registration logic is covered by scheduled_jobs_test.go against a scratch scheduler/database
+		logger.Fatal().Err(err).Msg("Failed to register scheduled jobs") // # pragma: no cover — log.Fatal terminates the process
 	}
 
 	// Boot-time "Initial" triggers: one immediate run per job (job-lock
@@ -374,22 +374,22 @@ func main() {
 	// service logic against the live database, so — unlike the recurring
 	// registration above — they stay here rather than in the testable
 	// registerScheduledJobs, which a test calls against a scratch database.
-	go safeGoReport(db, models.JobNameDailyReminders, models.JobTriggerInitial, reminderTask(db, *cfg))
-	go safeGo(db, models.JobNameCalendarSync, models.JobTriggerInitial, calendarSyncTask(db, *cfg))
-	go safeGo(db, models.JobNamePurgeDeleted, models.JobTriggerInitial, purgeDeletedTask(db, *cfg))
-	go safeGo(db, models.JobNameAuditPurge, models.JobTriggerInitial, auditPurgeTask(db, *cfg))
-	go safeGo(db, models.JobNameSystemEventPurge, models.JobTriggerInitial, systemEventPurgeTask(db, *cfg))
-	go safeGo(db, models.JobNameJobRunPurge, models.JobTriggerInitial, jobRunPurgeTask(db, *cfg))
-	go safeGo(db, models.JobNameWebhookDeliveryPurge, models.JobTriggerInitial, webhookDeliveryPurgeTask(db, *cfg))
-	go safeGo(db, models.JobNameIdempotencyKeyPurge, models.JobTriggerInitial, idempotencyKeyPurgeTask(db, *cfg))
-	go safeGo(db, models.JobNameSessionPurge, models.JobTriggerInitial, sessionPurgeTask(db))
-	go safeGoReport(db, models.JobNameCadenceOverdue, models.JobTriggerInitial, cadenceOverdueTask(db, *cfg))
-	go safeGoReport(db, models.JobNameReachOutDetection, models.JobTriggerInitial, reachOutTask(db, *cfg))
-	go safeGo(db, models.JobNameImmichSync, models.JobTriggerInitial, immichSyncTask(db, *cfg))
-	go safeGo(db, models.JobNameDBIntegrityCheck, models.JobTriggerInitial, dbIntegrityTask(db, *cfg))
-	go safeGo(db, models.JobNameRestoreDrill, models.JobTriggerInitial, restoreDrillTask(db, *cfg))
-	go safeGo(db, models.JobNameAlertEval, models.JobTriggerInitial, alertEvalTask(db, *cfg))
-	go safeGo(db, models.JobNameStorageSample, models.JobTriggerInitial, storageSampleTask(db, *cfg))
+	go safeGoReport(db, models.JobNameDailyReminders, models.JobTriggerInitial, reminderTask(db, *cfg))             // # pragma: no cover — main() boot-time goroutine dispatch against a live server/database; each task constructor's own logic is unit-tested directly (e.g. scheduled_jobs_test.go), and safeGo/safeGoReport's panic-recovery wrapper is tested separately
+	go safeGo(db, models.JobNameCalendarSync, models.JobTriggerInitial, calendarSyncTask(db, *cfg))                 // # pragma: no cover — main() boot-time goroutine dispatch against a live server/database; each task constructor's own logic is unit-tested directly (e.g. scheduled_jobs_test.go), and safeGo/safeGoReport's panic-recovery wrapper is tested separately
+	go safeGo(db, models.JobNamePurgeDeleted, models.JobTriggerInitial, purgeDeletedTask(db, *cfg))                 // # pragma: no cover — main() boot-time goroutine dispatch against a live server/database; each task constructor's own logic is unit-tested directly (e.g. scheduled_jobs_test.go), and safeGo/safeGoReport's panic-recovery wrapper is tested separately
+	go safeGo(db, models.JobNameAuditPurge, models.JobTriggerInitial, auditPurgeTask(db, *cfg))                     // # pragma: no cover — main() boot-time goroutine dispatch against a live server/database; each task constructor's own logic is unit-tested directly (e.g. scheduled_jobs_test.go), and safeGo/safeGoReport's panic-recovery wrapper is tested separately
+	go safeGo(db, models.JobNameSystemEventPurge, models.JobTriggerInitial, systemEventPurgeTask(db, *cfg))         // # pragma: no cover — main() boot-time goroutine dispatch against a live server/database; each task constructor's own logic is unit-tested directly (e.g. scheduled_jobs_test.go), and safeGo/safeGoReport's panic-recovery wrapper is tested separately
+	go safeGo(db, models.JobNameJobRunPurge, models.JobTriggerInitial, jobRunPurgeTask(db, *cfg))                   // # pragma: no cover — main() boot-time goroutine dispatch against a live server/database; each task constructor's own logic is unit-tested directly (e.g. scheduled_jobs_test.go), and safeGo/safeGoReport's panic-recovery wrapper is tested separately
+	go safeGo(db, models.JobNameWebhookDeliveryPurge, models.JobTriggerInitial, webhookDeliveryPurgeTask(db, *cfg)) // # pragma: no cover — main() boot-time goroutine dispatch against a live server/database; each task constructor's own logic is unit-tested directly (e.g. scheduled_jobs_test.go), and safeGo/safeGoReport's panic-recovery wrapper is tested separately
+	go safeGo(db, models.JobNameIdempotencyKeyPurge, models.JobTriggerInitial, idempotencyKeyPurgeTask(db, *cfg))   // # pragma: no cover — main() boot-time goroutine dispatch against a live server/database; each task constructor's own logic is unit-tested directly (e.g. scheduled_jobs_test.go), and safeGo/safeGoReport's panic-recovery wrapper is tested separately
+	go safeGo(db, models.JobNameSessionPurge, models.JobTriggerInitial, sessionPurgeTask(db))                       // # pragma: no cover — main() boot-time goroutine dispatch against a live server/database; each task constructor's own logic is unit-tested directly (e.g. scheduled_jobs_test.go), and safeGo/safeGoReport's panic-recovery wrapper is tested separately
+	go safeGoReport(db, models.JobNameCadenceOverdue, models.JobTriggerInitial, cadenceOverdueTask(db, *cfg))       // # pragma: no cover — main() boot-time goroutine dispatch against a live server/database; each task constructor's own logic is unit-tested directly (e.g. scheduled_jobs_test.go), and safeGo/safeGoReport's panic-recovery wrapper is tested separately
+	go safeGoReport(db, models.JobNameReachOutDetection, models.JobTriggerInitial, reachOutTask(db, *cfg))          // # pragma: no cover — main() boot-time goroutine dispatch against a live server/database; each task constructor's own logic is unit-tested directly (e.g. scheduled_jobs_test.go), and safeGo/safeGoReport's panic-recovery wrapper is tested separately
+	go safeGo(db, models.JobNameImmichSync, models.JobTriggerInitial, immichSyncTask(db, *cfg))                     // # pragma: no cover — main() boot-time goroutine dispatch against a live server/database; each task constructor's own logic is unit-tested directly (e.g. scheduled_jobs_test.go), and safeGo/safeGoReport's panic-recovery wrapper is tested separately
+	go safeGo(db, models.JobNameDBIntegrityCheck, models.JobTriggerInitial, dbIntegrityTask(db, *cfg))              // # pragma: no cover — main() boot-time goroutine dispatch against a live server/database; each task constructor's own logic is unit-tested directly (e.g. scheduled_jobs_test.go), and safeGo/safeGoReport's panic-recovery wrapper is tested separately
+	go safeGo(db, models.JobNameRestoreDrill, models.JobTriggerInitial, restoreDrillTask(db, *cfg))                 // # pragma: no cover — main() boot-time goroutine dispatch against a live server/database; each task constructor's own logic is unit-tested directly (e.g. scheduled_jobs_test.go), and safeGo/safeGoReport's panic-recovery wrapper is tested separately
+	go safeGo(db, models.JobNameAlertEval, models.JobTriggerInitial, alertEvalTask(db, *cfg))                       // # pragma: no cover — main() boot-time goroutine dispatch against a live server/database; each task constructor's own logic is unit-tested directly (e.g. scheduled_jobs_test.go), and safeGo/safeGoReport's panic-recovery wrapper is tested separately
+	go safeGo(db, models.JobNameStorageSample, models.JobTriggerInitial, storageSampleTask(db, *cfg))               // # pragma: no cover — main() boot-time goroutine dispatch against a live server/database; each task constructor's own logic is unit-tested directly (e.g. scheduled_jobs_test.go), and safeGo/safeGoReport's panic-recovery wrapper is tested separately
 
 	go s.StartBlocking()
 
