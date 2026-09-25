@@ -6,7 +6,7 @@
 // end by the CI job + hand-verification in the PR; this pins the regression
 // logic itself so a loosened tolerance or a swallowed drop fails loudly.
 import { describe, expect, test } from 'vitest';
-import { compareCoverage, renderTable } from './check-coverage-ratchet.mjs';
+import { compareCoverage, renderTable, unitTolerancePct } from './check-coverage-ratchet.mjs';
 
 const baseline = {
   tolerancePct: 1.5,
@@ -118,5 +118,48 @@ describe('renderTable', () => {
       'src/AuditPage.tsx': { lines: 60, branches: 40 },
     });
     expect(renderTable(rows)).toMatch(/held or improved/);
+  });
+});
+
+describe('one-unit tolerance floor', () => {
+  const small = {
+    tolerancePct: 1.5,
+    files: {
+      'src/components/Small.tsx': { lines: 95.55, linesTotal: 45, branches: 80, branchesTotal: 10 },
+    },
+  };
+
+  test('unitTolerancePct is the larger of the pt tolerance and one unit', () => {
+    expect(unitTolerancePct(1.5, 45)).toBeCloseTo(2.222, 3);
+    expect(unitTolerancePct(1.5, 1000)).toBe(1.5);
+    expect(unitTolerancePct(1.5, undefined)).toBe(1.5);
+    expect(unitTolerancePct(1.5, 0)).toBe(1.5);
+  });
+
+  test('losing a single line of a small file passes (the OccasionEventAttendeesDialog case)', () => {
+    const current = {
+      'src/components/Small.tsx': { lines: 93.33, linesTotal: 45, branches: 80, branchesTotal: 10 },
+    };
+    expect(compareCoverage(small, current).ok).toBe(true);
+  });
+
+  test('losing two lines of the same small file still fails', () => {
+    const current = {
+      'src/components/Small.tsx': { lines: 91.11, linesTotal: 45, branches: 80, branchesTotal: 10 },
+    };
+    const r = compareCoverage(small, current);
+    expect(r.ok).toBe(false);
+    expect(r.violations.join('\n')).toMatch(/Small\.tsx: lines coverage dropped/);
+  });
+
+  test('losing two branches of ten fails even though one would pass', () => {
+    const one = {
+      'src/components/Small.tsx': { lines: 95.55, linesTotal: 45, branches: 70, branchesTotal: 10 },
+    };
+    const two = {
+      'src/components/Small.tsx': { lines: 95.55, linesTotal: 45, branches: 60, branchesTotal: 10 },
+    };
+    expect(compareCoverage(small, one).ok).toBe(true);
+    expect(compareCoverage(small, two).ok).toBe(false);
   });
 });

@@ -262,7 +262,11 @@ tolerance, never on an existing low number by itself.
 Both sides share the same rules:
 
 - A file whose gated metric(s) drop by more than the baseline's tolerance
-  fails. An improved file never fails, regardless of magnitude.
+  fails. The effective tolerance per file is the larger of the configured
+  percentage points and **one unit** of that file (one line or branch on the
+  frontend, one statement on the backend): losing a single unit is always
+  allowed, losing two is not. An improved file never fails, regardless of
+  magnitude.
 - A **new** file with no baseline entry is not gated here — that's
   `codecov/patch/*`'s job; gating it twice would just let the two disagree
   on some edge case.
@@ -298,9 +302,14 @@ iteration count still means a push/schedule run's coverage numbers are not
 directly comparable to the PR-tier baseline, **the backend ratchet only runs
 on `pull_request`** (`unit-tests.yml`'s "Per-file coverage ratchet
 (pull_request only)" step) — matching the property-test depth the baseline
-was generated at. The frontend ratchet has no such variance source (vitest
-has no property/generative testing here) and runs on every trigger the
-`frontend` job runs on.
+was generated at. The frontend ratchet has no property/generative variance
+and runs on every trigger the `frontend` job runs on — but it does have
+*incidental* coverage: a line one component's own tests never reach, hit only
+because another test file happens to render it. That flipped on the first CI
+run of this ratchet (`OccasionEventAttendeesDialog.tsx`: 43/45 lines in a local
+full run, 42/45 in CI — 2.2pt on a 45-line file, over a flat 1.5pt). The
+one-unit floor is the fix for that class; the file's own error paths were also
+pinned directly so its number no longer depends on other tests.
 
 If a real, intentional coverage change makes the ratchet fail (a test
 legitimately removed because the code it tested was deleted, a refactor that

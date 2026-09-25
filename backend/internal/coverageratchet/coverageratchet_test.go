@@ -350,3 +350,28 @@ func TestSaveBaseline_WriteFileFailure(t *testing.T) {
 		t.Fatal("expected an error when SaveBaseline's target path is a directory")
 	}
 }
+
+func TestCompare_OneStatementOfASmallFileIsWithinTolerance(t *testing.T) {
+	baseline := Baseline{TolerancePct: 1.5, Files: map[string]float64{"cmd/tiny/main.go": 100}}
+	// 20 statements: losing one is a 5pt drop -- noise, not a lost test.
+	one := map[string]FileStat{"cmd/tiny/main.go": {Statements: 20, Covered: 19}}
+	if r := Compare(baseline, one); !r.OK {
+		t.Fatalf("one statement of 20 should pass, got %v", r.Findings)
+	}
+	two := map[string]FileStat{"cmd/tiny/main.go": {Statements: 20, Covered: 18}}
+	if r := Compare(baseline, two); r.OK {
+		t.Fatal("two statements of 20 should still fail")
+	}
+}
+
+func TestUnitTolerance(t *testing.T) {
+	if got := unitTolerance(1.5, 1000); got != 1.5 {
+		t.Errorf("large file: got %v, want the pt tolerance", got)
+	}
+	if got := unitTolerance(1.5, 20); got < 5 || got > 5.001 {
+		t.Errorf("20 statements: got %v, want ~5", got)
+	}
+	if got := unitTolerance(1.5, 0); got != 1.5 {
+		t.Errorf("no statements: got %v, want the pt tolerance", got)
+	}
+}

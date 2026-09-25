@@ -28,6 +28,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -290,8 +291,20 @@ type Report struct {
 	DropFiles []string
 }
 
+// unitTolerance is the effective tolerance for one file: the configured
+// percentage-point tolerance, or one statement of that file, whichever is
+// larger. Without the floor a small file fails on a single statement that
+// some other test happened to reach (noise, not a lost test); two or more
+// statements still fail.
+func unitTolerance(tolerancePct float64, statements int) float64 {
+	if statements <= 0 {
+		return tolerancePct
+	}
+	return math.Max(tolerancePct, 100/float64(statements)+1e-9)
+}
+
 // Compare finds every file whose coverage percentage dropped by more than
-// baseline.TolerancePct percentage points. A file in `current` with no
+// unitTolerance(baseline.TolerancePct, statements). A file in `current` with no
 // baseline entry (new) is not gated -- that is codecov/patch/backend's job.
 // A baseline entry with no matching current file (removed/renamed) is
 // reported but does not fail: the baseline is simply stale for that entry
@@ -325,12 +338,13 @@ func Compare(baseline Baseline, current map[string]FileStat) Report {
 		default:
 			nowPct := nowStat.Percent()
 			drop := basePct - nowPct
-			if drop > baseline.TolerancePct {
+			allowed := unitTolerance(baseline.TolerancePct, nowStat.Statements)
+			if drop > allowed {
 				report.OK = false
 				report.DropFiles = append(report.DropFiles, file)
 				report.Findings = append(report.Findings, fmt.Sprintf(
 					"%s: statement coverage dropped from %.2f%% to %.2f%% (-%.2fpt, over the %.2fpt tolerance)",
-					file, basePct, nowPct, drop, baseline.TolerancePct,
+					file, basePct, nowPct, drop, allowed,
 				))
 			}
 		}
