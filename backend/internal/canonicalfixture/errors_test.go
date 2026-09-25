@@ -13,7 +13,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func intPtr(v int) *int { return &v }
+func intPtr(v int) *int       { return &v }
+func strPtr(v string) *string { return &v }
+
+// levelPreferenceIndex finds the first manifest preference that carries a
+// Level, so the level-validation test cases don't hard-code an index into the
+// manifest that would silently point at the wrong row if the fixture is
+// reordered.
+func levelPreferenceIndex(m *Manifest) int {
+	for i, p := range m.Preferences {
+		if p.Level != nil {
+			return i
+		}
+	}
+	panic("canonicalfixture: no preference with a level in the manifest fixture") // # pragma: no cover — the manifest always carries at least one leveled hobby preference
+}
 
 // TestManifestValidateRejectsBreakages is the table-driven counterpart of the
 // happy-path Read() tests: each case breaks exactly one manifest invariant and
@@ -174,6 +188,67 @@ func TestManifestValidateRejectsBreakages(t *testing.T) {
 			name:    "occasion event without start",
 			mutate:  func(m *Manifest) { m.OccasionEvents[0].StartsInDays = nil },
 			wantErr: "must set starts_at or starts_in_days",
+		},
+		{
+			name: "occasion event sets both ends_at and ends_in_days",
+			mutate: func(m *Manifest) {
+				end := time.Now().Add(24 * time.Hour)
+				m.OccasionEvents[0].EndsAt = &end
+			},
+			wantErr: "sets both ends_at and ends_in_days",
+		},
+		{
+			name: "occasion event absolute end before absolute start",
+			mutate: func(m *Manifest) {
+				start := time.Now()
+				end := start.Add(-time.Hour)
+				m.OccasionEvents[0].StartsInDays = nil
+				m.OccasionEvents[0].EndsInDays = nil
+				m.OccasionEvents[0].StartsAt = &start
+				m.OccasionEvents[0].EndsAt = &end
+			},
+			wantErr: "ends",
+		},
+		{
+			name: "occasion event relative end before relative start",
+			mutate: func(m *Manifest) {
+				m.OccasionEvents[0].StartsInDays = intPtr(10)
+				m.OccasionEvents[0].EndsInDays = intPtr(5)
+			},
+			wantErr: "ends_in_days 5 is before starts_in_days 10",
+		},
+		{
+			name:    "reach out suggestion has unknown kind",
+			mutate:  func(m *Manifest) { m.ReachOutSuggestions[0].Kind = "bogus" },
+			wantErr: `reach_out_suggestion for "bjork" has unknown kind "bogus"`,
+		},
+		{
+			name:    "reach out suggestion has unknown status",
+			mutate:  func(m *Manifest) { m.ReachOutSuggestions[0].Status = "bogus" },
+			wantErr: `has unknown status "bogus"`,
+		},
+		{
+			name:    "occasion event attendee has unknown rsvp",
+			mutate:  func(m *Manifest) { m.OccasionEvents[0].Attendees[0].RSVP = "bogus" },
+			wantErr: `has unknown rsvp "bogus"`,
+		},
+		{
+			name:    "preference has unknown level",
+			mutate:  func(m *Manifest) { m.Preferences[levelPreferenceIndex(m)].Level = strPtr("bogus") },
+			wantErr: `has unknown level "bogus"`,
+		},
+		{
+			name: "preference sets level on a category that doesn't support one",
+			mutate: func(m *Manifest) {
+				i := levelPreferenceIndex(m)
+				m.Preferences[i].Category = "food"
+			},
+			wantErr: `does not support a level`,
+		},
+		{
+			name:    "cadence policy has non-positive target_interval_days",
+			mutate:  func(m *Manifest) { m.CadencePolicies[0].TargetIntervalDays = 0 },
+			wantErr: "non-positive target_interval_days",
 		},
 	}
 

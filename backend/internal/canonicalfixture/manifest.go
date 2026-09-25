@@ -399,9 +399,45 @@ func FindManifest() (string, error) {
 	}
 }
 
+// The loader writes these enum-shaped fields straight to the DB, bypassing
+// the API's own `validate:"oneof=..."` struct tags on the equivalent model
+// fields — these sets mirror those tags (not the models package's own second
+// copy; it exposes plain string constants, no validator/set) so Validate can
+// catch a typo'd token the same way the API would reject it. Kept next to the
+// exported constants they mirror, not hard-coded literals.
+var (
+	reachOutKinds = map[string]bool{
+		models.ReachOutKindOrganization: true,
+		models.ReachOutKindTitle:        true,
+		models.ReachOutKindAddress:      true,
+	}
+	reachOutStatuses = map[string]bool{
+		models.ReachOutStatusPending:   true,
+		models.ReachOutStatusDismissed: true,
+	}
+	occasionEventRSVPs = map[string]bool{
+		models.OccasionEventRSVPPending:  true,
+		models.OccasionEventRSVPAccepted: true,
+		models.OccasionEventRSVPDeclined: true,
+		models.OccasionEventRSVPMaybe:    true,
+	}
+	preferenceLevels = map[string]bool{
+		models.PreferenceLevelHigh:   true,
+		models.PreferenceLevelMedium: true,
+		models.PreferenceLevelLow:    true,
+	}
+)
+
 // Validate checks the manifest's version and that every cross-reference
 // resolves to a declared contact. Failures are returned as one joined error so
 // a malformed manifest is fixed in one pass, not one compile-test iteration.
+//
+// occasion_obligations[].kind is deliberately NOT validated against a closed
+// list here: OccasionObligation.Kind is an open, unvalidated classifier by
+// design (see the doc comment on models.OccasionObligationKindCard — "the
+// column accepts any string so a future kind doesn't need a migration"),
+// exactly like LifeEvent.Type/Preference.Category. Enforcing a closed set in
+// the fixture loader would be stricter than the API it's standing in for.
 func (m *Manifest) Validate() error {
 	if m.Version != ManifestVersion {
 		return fmt.Errorf("canonicalfixture: unsupported manifest version %d (this loader understands %d)", m.Version, ManifestVersion)
@@ -503,6 +539,17 @@ func (m *Manifest) Validate() error {
 		if err := ref("preference", p.Contact); err != nil {
 			errs = append(errs, err)
 		}
+		// Level mirrors Preference.Level's own `validate:"omitempty,oneof=..."`
+		// tag (models/preference.go), plus the category gate
+		// models.PreferenceCategorySupportsLevel enforces at the API layer —
+		// both are bypassed by this loader's direct DB writes.
+		if p.Level != nil {
+			if !preferenceLevels[*p.Level] {
+				errs = append(errs, fmt.Errorf("canonicalfixture: preference for %q has unknown level %q", p.Contact, *p.Level))
+			} else if !models.PreferenceCategorySupportsLevel(p.Category) {
+				errs = append(errs, fmt.Errorf("canonicalfixture: preference for %q sets level %q but category %q does not support a level", p.Contact, *p.Level, p.Category))
+			}
+		}
 	}
 	for _, e := range m.ExternalIdentities {
 		if err := ref("external_identity", e.Contact); err != nil {
@@ -537,9 +584,24 @@ func (m *Manifest) Validate() error {
 			errs = append(errs, err)
 		}
 	}
+	for _, c := range m.CadencePolicies {
+		if c.TargetIntervalDays <= 0 {
+			errs = append(errs, fmt.Errorf("canonicalfixture: cadence_policy for %q has non-positive target_interval_days %d (models.CadencePolicy requires gt=0)", c.Contact, c.TargetIntervalDays))
+		}
+	}
 	for _, r := range m.ReachOutSuggestions {
 		if err := ref("reach_out_suggestion", r.Contact); err != nil {
 			errs = append(errs, err)
+		}
+		// Kind/Status mirror ReachOutSuggestion's own `validate:"oneof=..."`
+		// struct tags (models/reach_out_suggestion.go) — the loader writes
+		// these straight to the DB, bypassing that validation, so Validate is
+		// the only thing standing between a typo and a silently-broken row.
+		if !reachOutKinds[r.Kind] {
+			errs = append(errs, fmt.Errorf("canonicalfixture: reach_out_suggestion for %q has unknown kind %q", r.Contact, r.Kind))
+		}
+		if r.Status != "" && !reachOutStatuses[r.Status] {
+			errs = append(errs, fmt.Errorf("canonicalfixture: reach_out_suggestion for %q has unknown status %q", r.Contact, r.Status))
 		}
 	}
 	for _, o := range m.OccasionObligations {
@@ -554,9 +616,29 @@ func (m *Manifest) Validate() error {
 		if e.StartsAt != nil && e.StartsInDays != nil {
 			errs = append(errs, fmt.Errorf("canonicalfixture: occasion_event %q sets both starts_at and starts_in_days", e.Title))
 		}
+		if e.EndsAt != nil && e.EndsInDays != nil {
+			errs = append(errs, fmt.Errorf("canonicalfixture: occasion_event %q sets both ends_at and ends_in_days", e.Title))
+		}
+		// An end before its start can only be caught when both ends are
+		// expressed in the same form — comparing an absolute instant against
+		// a demo-relative day offset needs a clock, which Validate doesn't
+		// have (see PopulateAt). Mirrors validateOccasionEventTimes's
+		// ends_at >= starts_at rule (controllers/occasion_event_controller.go);
+		// equal is allowed there too.
+		if e.StartsAt != nil && e.EndsAt != nil && e.EndsAt.Before(*e.StartsAt) {
+			errs = append(errs, fmt.Errorf("canonicalfixture: occasion_event %q ends (%s) before it starts (%s)", e.Title, e.EndsAt, e.StartsAt))
+		}
+		if e.StartsInDays != nil && e.EndsInDays != nil && *e.EndsInDays < *e.StartsInDays {
+			errs = append(errs, fmt.Errorf("canonicalfixture: occasion_event %q ends_in_days %d is before starts_in_days %d", e.Title, *e.EndsInDays, *e.StartsInDays))
+		}
 		for _, a := range e.Attendees {
 			if err := ref("occasion_event attendee", a.Contact); err != nil {
 				errs = append(errs, err)
+			}
+			// RSVP mirrors OccasionEventAttendee.RSVP's own
+			// `validate:"oneof=..."` tag (models/occasion_event.go).
+			if a.RSVP != "" && !occasionEventRSVPs[a.RSVP] {
+				errs = append(errs, fmt.Errorf("canonicalfixture: occasion_event %q attendee %q has unknown rsvp %q", e.Title, a.Contact, a.RSVP))
 			}
 		}
 	}
