@@ -98,6 +98,7 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/occasion-obligations",
 		"POST /api/v1/occasion-events",
 		"POST /api/v1/cadence-policies",
+		"POST /api/v1/data-decay-policies",
 		"POST /api/v1/conversation-agenda",
 		"POST /api/v1/field-definitions",
 		"POST /api/v1/link-field-types",
@@ -156,6 +157,10 @@ func buildIdemTable() map[string]idemRow {
 	}
 	for _, k := range []string{
 		"POST /api/v1/reminders/:id/complete",
+		// Issue #352: repeating "confirm still current" just overwrites
+		// last_verified_at with a slightly later timestamp -- same shape as
+		// completing an already-completed reminder, no new row.
+		"POST /api/v1/data-decay-policies/:id/verify",
 		"POST /api/v1/webhooks/:id/test",
 		"POST /api/v1/calendars/:id/sync",
 		"POST /api/v1/contact-subscriptions/:id/sync",

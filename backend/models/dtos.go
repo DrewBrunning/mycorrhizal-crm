@@ -768,3 +768,17 @@ type OccasionEventAttendeeInput struct {
 type OccasionEventAttendeeUpdateInput struct {
 	RSVP string `json:"rsvp" validate:"required,oneof=pending accepted declined maybe"`
 }
+
+// DataDecayPolicyInput is the DTO for creating/updating a DataDecayPolicy
+// (data_decay_policy.go, issue #352). Active defaults to true server-side
+// when omitted (the JSON zero value for *bool is nil, not false, so the
+// controller sets it explicitly rather than trusting a Go zero value — see
+// applyDataDecayInput). Appended at EOF rather than inlined near
+// CadencePolicyInput to avoid shifting any docs/security/*.md path:line
+// citations below it (CLAUDE.md's citecheck line-shift trap — same reasoning
+// OccasionObligationInput above documents).
+type DataDecayPolicyInput struct {
+	EntityID     string `json:"entity_id" validate:"required,uuid4"`
+	IntervalDays int    `json:"interval_days" validate:"required,gt=0,lte=3650"`
+	Active       *bool  `json:"active,omitempty"`
+}

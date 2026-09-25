@@ -7,6 +7,7 @@ import com.mycorrhizal.crm.model.network.Birthday
 import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
 import com.mycorrhizal.crm.model.network.OverdueCadence
+import com.mycorrhizal.crm.model.network.OverdueDataDecayPolicy
 import com.mycorrhizal.crm.model.network.ReachOutSuggestion
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.foldApiError
@@ -30,6 +31,8 @@ data class DashboardUiState(
     val favorites: List<DashboardRandomContact> = emptyList(),
     // Issue #177: pending event-driven reach-out suggestions.
     val reachOutSuggestions: List<ReachOutSuggestion> = emptyList(),
+    // Issue #352: contacts whose info is due for re-verification.
+    val dataDecayOverdue: List<OverdueDataDecayPolicy> = emptyList(),
     val isLoading: Boolean = false,
     /** The dashboard-wide load failure; the screen replaces the widgets with an error + retry. */
     val error: String? = null,
@@ -44,13 +47,16 @@ data class DashboardUiState(
     val completingId: Int? = null,
     /** The reach-out suggestion currently being dismissed; guards against double-taps. */
     val dismissingSuggestionId: String? = null,
+    /** The data-decay policy currently being verified; guards against double-taps. */
+    val verifyingDataDecayId: String? = null,
     /** The signed-in user's `date_format` preference; falls back to "eu" when absent. */
     val dateFormat: String? = null,
 ) {
     /** True when at least one widget has data, so a refresh keeps the list on screen. */
     val hasContent: Boolean
         get() = birthdays.isNotEmpty() || upcomingReminders.isNotEmpty() || randomContacts.isNotEmpty() ||
-            overdueCadences.isNotEmpty() || favorites.isNotEmpty() || reachOutSuggestions.isNotEmpty()
+            overdueCadences.isNotEmpty() || favorites.isNotEmpty() || reachOutSuggestions.isNotEmpty() ||
+            dataDecayOverdue.isNotEmpty()
 }
 
 /**
@@ -103,6 +109,7 @@ class DashboardViewModel @Inject constructor(
                             overdueCadences = dashboard.overdue,
                             favorites = dashboard.favorites,
                             reachOutSuggestions = dashboard.reachOutSuggestions,
+                            dataDecayOverdue = dashboard.dataDecayOverdue,
                         )
                     }
                 },
@@ -172,6 +179,42 @@ class DashboardViewModel @Inject constructor(
                             val restored = state.reachOutSuggestions.toMutableList()
                             restored.add(index.coerceIn(0, restored.size), removed)
                             state.copy(dismissingSuggestionId = null, actionError = error.displayMessage, reachOutSuggestions = restored)
+                        }
+                    }
+                },
+            )
+        }
+    }
+
+    /**
+     * Confirms a contact's info is still current from the dashboard widget
+     * (issue #352). Optimistically removes the policy from
+     * [DashboardUiState.dataDecayOverdue] and restores it at its original
+     * position if the call fails — mirrors [dismissReachOutSuggestion]'s
+     * contract. Android v1 scope is view + confirm only; creating/editing a
+     * policy is web-only for now (docs/adrs/0027-data-decay.md).
+     */
+    fun verifyDataDecay(id: String) {
+        if (_uiState.value.verifyingDataDecayId != null) return
+        viewModelScope.launch {
+            val index = _uiState.value.dataDecayOverdue.indexOfFirst { it.policy?.id == id }
+            val removed = _uiState.value.dataDecayOverdue.getOrNull(index)
+            _uiState.update { state ->
+                state.copy(
+                    verifyingDataDecayId = id,
+                    dataDecayOverdue = state.dataDecayOverdue.filterNot { it.policy?.id == id },
+                )
+            }
+            apiClient.verifyDataDecayPolicy(id).foldApiError(
+                onSuccess = { _uiState.update { it.copy(verifyingDataDecayId = null) } },
+                onError = { error ->
+                    _uiState.update { state ->
+                        if (removed == null) {
+                            state.copy(verifyingDataDecayId = null, actionError = error.displayMessage)
+                        } else {
+                            val restored = state.dataDecayOverdue.toMutableList()
+                            restored.add(index.coerceIn(0, restored.size), removed)
+                            state.copy(verifyingDataDecayId = null, actionError = error.displayMessage, dataDecayOverdue = restored)
                         }
                     }
                 },

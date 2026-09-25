@@ -21,7 +21,10 @@ import com.mycorrhizal.crm.model.network.CadencePolicy
 import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
 import com.mycorrhizal.crm.model.network.DashboardResponse
+import com.mycorrhizal.crm.model.network.DataDecayHealth
+import com.mycorrhizal.crm.model.network.DataDecayPolicy
 import com.mycorrhizal.crm.model.network.OverdueCadence
+import com.mycorrhizal.crm.model.network.OverdueDataDecayPolicy
 import com.mycorrhizal.crm.model.network.ReachOutSuggestion
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.network.ApiClient
@@ -92,6 +95,15 @@ class DashboardScreenTest {
                 contactId = 5L, contactName = "Dana Prince",
             ),
         ),
+        // Issue #352: contacts whose info is due for re-verification.
+        dataDecayOverdue = listOf(
+            OverdueDataDecayPolicy(
+                policy = DataDecayPolicy(id = "d1", entityId = "u6"),
+                health = DataDecayHealth(overdueBy = 40, nextDue = "2026-08-01T00:00:00Z"),
+                contactId = 6L,
+                contactName = "Eve Stale",
+            ),
+        ),
     )
 
     private fun setContent(
@@ -100,6 +112,7 @@ class DashboardScreenTest {
         onOpenContact: (Int) -> Unit = {},
         onCompleteReminder: (id: Int, skip: Boolean) -> Unit = { _, _ -> },
         onDismissReachOutSuggestion: (id: String) -> Unit = {},
+        onVerifyDataDecay: (id: String) -> Unit = {},
         darkTheme: Boolean = false,
     ) {
         composeTestRule.setContent {
@@ -110,6 +123,7 @@ class DashboardScreenTest {
                     onOpenContact = onOpenContact,
                     onCompleteReminder = onCompleteReminder,
                     onDismissReachOutSuggestion = onDismissReachOutSuggestion,
+                    onVerifyDataDecay = onVerifyDataDecay,
                 )
             }
         }
@@ -137,6 +151,12 @@ class DashboardScreenTest {
         scrollTo("Overdue Relationships")
         composeTestRule.onNodeWithText("Carol Davis").assertIsDisplayed()
         composeTestRule.onNodeWithText("3 days overdue").assertIsDisplayed()
+
+        // Data decay (issue #352).
+        scrollTo("Info Needs a Check")
+        composeTestRule.onNodeWithText("Eve Stale").assertIsDisplayed()
+        composeTestRule.onNodeWithText("40 days overdue").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Confirm still current").assertIsDisplayed()
 
         // Reach-out suggestions (issue #177).
         scrollTo("Reasons to Reach Out")
@@ -195,6 +215,8 @@ class DashboardScreenTest {
         composeTestRule.onNodeWithText("Overdue Relationships").assertDoesNotExist()
         // Same treatment for reach-out suggestions (issue #177).
         composeTestRule.onNodeWithText("Reasons to Reach Out").assertDoesNotExist()
+        // Same treatment for data decay (issue #352).
+        composeTestRule.onNodeWithText("Info Needs a Check").assertDoesNotExist()
     }
 
     @Test
@@ -250,6 +272,30 @@ class DashboardScreenTest {
         composeTestRule.onNodeWithContentDescription("Dismiss suggestion").performClick()
 
         assertEquals("s1", dismissed)
+        assertEquals(null, opened)
+    }
+
+    @Test
+    fun `tapping a data decay card opens the contact`() {
+        var opened: Int? = null
+        setContent(populatedState(), onOpenContact = { opened = it })
+
+        scrollTo("Info Needs a Check")
+        composeTestRule.onNodeWithText("Eve Stale").performClick()
+
+        assertEquals(6, opened)
+    }
+
+    @Test
+    fun `confirming a data decay policy calls the callback and does not navigate`() {
+        var opened: Int? = null
+        var verified: String? = null
+        setContent(populatedState(), onOpenContact = { opened = it }, onVerifyDataDecay = { verified = it })
+
+        scrollToContentDescription("Confirm still current")
+        composeTestRule.onNodeWithContentDescription("Confirm still current").performClick()
+
+        assertEquals("d1", verified)
         assertEquals(null, opened)
     }
 

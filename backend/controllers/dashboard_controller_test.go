@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -31,7 +32,7 @@ func TestGetDashboard_EmptyBlocksSerializeAsArrays(t *testing.T) {
 	var raw map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &raw))
 
-	for _, key := range []string{"birthdays", "random_contacts", "upcoming_reminders", "overdue", "favorites", "reach_out_suggestions", "contact_sync_conflicts"} {
+	for _, key := range []string{"birthdays", "random_contacts", "upcoming_reminders", "overdue", "favorites", "reach_out_suggestions", "contact_sync_conflicts", "data_decay_overdue"} {
 		block, present := raw[key]
 		require.Truef(t, present, "block %q must be present in the response even when empty", key)
 		assert.JSONEqf(t, "[]", string(block), "block %q must serialize as an empty array, not null", key)
@@ -73,6 +74,12 @@ func TestGetDashboard_PopulatedComposesAllBlocks(t *testing.T) {
 	require.NoError(t, db.Create(&oldActivity).Error)
 	require.NoError(t, db.Create(&models.CadencePolicy{UserID: user.ID, EntityID: contact.VCardUID, TargetIntervalDays: 30}).Error)
 
+	// Overdue data decay policy (issue #352): created 40 days ago, 30-day
+	// interval, never verified -- the baseline is created_at.
+	decayPolicy := models.DataDecayPolicy{UserID: user.ID, EntityID: contact.VCardUID, IntervalDays: 30, Active: true}
+	require.NoError(t, db.Create(&decayPolicy).Error)
+	require.NoError(t, db.Model(&decayPolicy).UpdateColumn("created_at", time.Now().AddDate(0, 0, -40)).Error)
+
 	req, _ := http.NewRequest("GET", "/dashboard", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -91,6 +98,11 @@ func TestGetDashboard_PopulatedComposesAllBlocks(t *testing.T) {
 	require.Len(t, resp.Overdue, 1)
 	assert.Equal(t, contact.VCardUID, resp.Overdue[0].Policy.EntityID)
 	assert.Equal(t, contact.ID, resp.Overdue[0].ContactID)
+
+	require.Len(t, resp.DataDecayOverdue, 1)
+	assert.Equal(t, contact.VCardUID, resp.DataDecayOverdue[0].Policy.EntityID)
+	assert.Equal(t, contact.ID, resp.DataDecayOverdue[0].ContactID)
+	assert.True(t, resp.DataDecayOverdue[0].Health.OverdueBy > 0)
 }
 
 // TestGetDashboard_SyncConflictsBlock seeds a pending CardDAV sync conflict
@@ -196,4 +208,22 @@ func TestGetDashboard_FavoritesBlock(t *testing.T) {
 	assert.Equal(t, "Alpha", resp.Favorites[0].Firstname, "favorites must be name-ordered")
 	assert.Equal(t, "Zebra", resp.Favorites[1].Firstname)
 	assert.True(t, resp.Favorites[0].IsFavorite, "the wire flag must be true for a favorite")
+}
+
+// TestGetDashboard_DataDecayQueryFails fault-injects (dbtest.HideTable) a
+// failure in services.ListOverdueDataDecayPolicies -- the last of the
+// composite's eight per-block queries -- and pins that GetDashboard aborts
+// with a 500 rather than silently dropping the block, mirroring the error
+// contract every other block already gets from apperrors.AbortWithError.
+func TestGetDashboard_DataDecayQueryFails(t *testing.T) {
+	db, router := setupRouter(t)
+	router.GET("/dashboard", GetDashboard)
+
+	dbtest.HideTable(t, db, "data_decay_policies")
+
+	req, _ := http.NewRequest("GET", "/dashboard", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+	assert.Contains(t, w.Body.String(), "overdue data decay")
 }

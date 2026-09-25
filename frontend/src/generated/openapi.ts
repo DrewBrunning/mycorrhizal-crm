@@ -505,6 +505,7 @@ export type ContactMergeAssociationCounts = {
   cadence_policies?: number;
   circle_memberships?: number;
   contact_sync_links?: number;
+  data_decay_policies?: number;
   external_activities?: number;
   external_identities?: number;
   field_values?: number;
@@ -753,11 +754,37 @@ export type DashboardReminder = Reminder & {
 export type DashboardResponse = {
   birthdays: Birthday[];
   contact_sync_conflicts: ContactSyncConflict[];
+  data_decay_overdue: OverdueDataDecayPolicy[];
   favorites: ContactResponse[];
   overdue: OverdueCadence[];
   random_contacts: ContactResponse[];
   reach_out_suggestions: ReachOutSuggestion[];
   upcoming_reminders: DashboardReminder[];
+};
+
+export type DataDecayHealth = {
+  next_due: string;
+  overdue_by: number;
+};
+
+export type DataDecayPolicy = {
+  active: boolean;
+  created_at: string;
+  entity_id: string;
+  id: string;
+  interval_days: number;
+  last_verified_at?: string | null;
+  updated_at: string;
+};
+
+export type DataDecayPolicyInput = {
+  active?: boolean;
+  entity_id: string;
+  interval_days: number;
+};
+
+export type DataDecayPolicyWithHealth = DataDecayPolicy & {
+  health?: DataDecayHealth;
 };
 
 export type DataIntegrityReport = {
@@ -1791,6 +1818,14 @@ export type OverdueCadence = {
   health: CadenceHealth;
   photo_thumbnail?: string;
   policy: CadencePolicy;
+};
+
+export type OverdueDataDecayPolicy = {
+  contact_id: number;
+  contact_name: string;
+  health: DataDecayHealth;
+  photo_thumbnail?: string;
+  policy: DataDecayPolicy;
 };
 
 export type PaperlessConfigInput = {

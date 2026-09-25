@@ -2070,6 +2070,59 @@ class ApiClientTest {
         assertTrue(dashboard.overdue.isEmpty())
         assertTrue(dashboard.favorites.isEmpty())
         assertTrue(dashboard.reachOutSuggestions.isEmpty())
+        assertTrue(dashboard.dataDecayOverdue.isEmpty())
+    }
+
+    @Test
+    fun `list overdue data decay policies parses the overdue block`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {
+                  "overdue": [
+                    {
+                      "policy": {"id": "d1", "entity_id": "u6", "interval_days": 365, "active": true},
+                      "health": {"next_due": "2026-08-01T00:00:00Z", "overdue_by": 40},
+                      "contact_id": 6,
+                      "contact_name": "Eve Stale"
+                    }
+                  ]
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        val result = client.listOverdueDataDecayPolicies()
+
+        assertTrue(result.isSuccess)
+        val overdue = result.getOrThrow().overdue
+        assertEquals(1, overdue.size)
+        assertEquals("d1", overdue[0].policy?.id)
+        assertEquals(40, overdue[0].health?.overdueBy)
+        assertEquals("Eve Stale", overdue[0].contactName)
+
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/data-decay-policies/overdue", request.path)
+    }
+
+    @Test
+    fun `verify data decay policy posts to the policy-specific endpoint with no body`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"id": "d1", "entity_id": "u6", "interval_days": 365, "active": true, "last_verified_at": "2026-09-24T00:00:00Z"}""",
+            ),
+        )
+
+        val result = client.verifyDataDecayPolicy("d1")
+
+        assertTrue(result.isSuccess)
+        assertEquals("2026-09-24T00:00:00Z", result.getOrThrow().lastVerifiedAt)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/data-decay-policies/d1/verify", request.path)
+        assertEquals(0L, request.bodySize)
     }
 
     @Test

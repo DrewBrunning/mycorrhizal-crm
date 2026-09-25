@@ -86,6 +86,12 @@ type ContactMergeAssociationCounts struct {
 	ExternalActivities  int64 `json:"external_activities"`
 	CadencePolicies     int64 `json:"cadence_policies"`      // 0 or 1 -- at most one per contact
 	ReachOutSuggestions int64 `json:"reach_out_suggestions"` // issue #177
+
+	// DataDecayPolicies (issue #352): same one-per-contact shape and conflict
+	// handling as CadencePolicies (data_decay_policies' partial unique index
+	// on (user_id, entity_id) is the identical constraint) -- see
+	// services.ComputeDataDecayPolicyConflict/repointDataDecayPolicy.
+	DataDecayPolicies int64 `json:"data_decay_policies"` // 0 or 1 -- at most one per contact
 }
 
 // ContactMergeRequest is the DTO for both merge endpoints. KeepID survives;

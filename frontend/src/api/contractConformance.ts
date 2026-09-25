@@ -53,6 +53,7 @@ import type {
 } from './contacts';
 import type { ConversationAgenda } from './conversationAgenda';
 import type { DashboardReminder, DashboardResponse } from './dashboard';
+import type { DataDecayHealth, DataDecayPolicy, OverdueDataDecayPolicy } from './dataDecayPolicies';
 import type { ExternalActivity, ExternalIdentity } from './externalLinks';
 import type { FieldDefinition, FieldValue } from './fieldDefinitions';
 import type { GIFT_STATUSES, Gift } from './gifts';
@@ -167,6 +168,9 @@ export type Conformance = [
   NoDrift<ResponseDrift<CadencePolicy, S.CadencePolicyWithHealth>>,
   NoDrift<ResponseDrift<CadenceHealth, S.CadenceHealth>>,
   NoDrift<ResponseDrift<OverdueCadence, S.OverdueCadence>>,
+  NoDrift<ResponseDrift<DataDecayPolicy, S.DataDecayPolicyWithHealth>>,
+  NoDrift<ResponseDrift<DataDecayHealth, S.DataDecayHealth>>,
+  NoDrift<ResponseDrift<OverdueDataDecayPolicy, S.OverdueDataDecayPolicy>>,
   NoDrift<ResponseDrift<ReachOutSuggestion, S.ReachOutSuggestion>>,
   NoDrift<ResponseDrift<ExternalIdentity, S.ExternalIdentity>>,
   NoDrift<ResponseDrift<ExternalActivity, S.ExternalActivity>>,

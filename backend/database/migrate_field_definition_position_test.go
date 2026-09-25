@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestMigrationBackfillsFieldDefinitionPosition covers 000065 (issue #1210):
+// TestMigrationBackfillsFieldDefinitionPosition covers 000066 (issue #1210):
 // the added `position` column is backfilled with a per-user contiguous order
 // derived from each row's created_at (id breaking ties), so a user who never
 // reorders keeps the relative order the list already showed. The canonical
@@ -26,9 +26,9 @@ func TestMigrationBackfillsFieldDefinitionPosition(t *testing.T) {
 
 	m, err := newMigrator(sqlDB)
 	require.NoError(t, err)
-	// Everything up to but NOT including 000065, so the rows below genuinely
+	// Everything up to but NOT including 000066, so the rows below genuinely
 	// predate the position column.
-	require.NoError(t, m.Steps(64))
+	require.NoError(t, m.Steps(65))
 
 	mkUser := func(username string) int64 {
 		t.Helper()
@@ -65,7 +65,7 @@ func TestMigrationBackfillsFieldDefinitionPosition(t *testing.T) {
 	insertDef("b1", userB, "b1", "2026-01-05 00:00:00")
 	insertDef("b0", userB, "b0", "2026-01-04 00:00:00")
 
-	// Apply exactly 000065.
+	// Apply exactly 000066.
 	require.NoError(t, m.Steps(1))
 
 	positionOf := func(id string) int {
@@ -85,7 +85,7 @@ func TestMigrationBackfillsFieldDefinitionPosition(t *testing.T) {
 	require.NoError(t, sqlDB.QueryRow(
 		"SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_field_definitions_user_position'",
 	).Scan(&idxCount))
-	assert.Equal(t, int64(1), idxCount, "the display-order index must exist after 000065")
+	assert.Equal(t, int64(1), idxCount, "the display-order index must exist after 000066")
 
 	// The down migration drops the index and the column.
 	require.NoError(t, MigrateDown(dbPath))

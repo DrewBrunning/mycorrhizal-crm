@@ -127,6 +127,7 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"contact_sync_links":                goCascadeContact,
 	"contact_tags":                      goCascadeContact,
 	"conversation_agenda":               goCascadeContact,
+	"data_decay_policies":               goCascadeContact,
 	"dismissed_duplicate_pairs":         goCascadeContact,
 	"external_activities":               goCascadeContact,
 	"external_identities":               goCascadeContact,
@@ -345,6 +346,7 @@ func TestDeleteCascadeCoverage_DeleteContactSweepsEveryDeclaredContactTable(t *t
 		scopedCount("contact_sync_links", &models.ContactSyncLink{}, "user_id = ?", user.ID),
 		scopedCount("contact_tags", &models.ContactTag{}, "user_id = ?", user.ID),
 		scopedCount("conversation_agenda", &models.ConversationAgenda{}, "user_id = ?", user.ID),
+		scopedCount("data_decay_policies", &models.DataDecayPolicy{}, "user_id = ?", user.ID),
 		scopedCount("dismissed_duplicate_pairs", &models.DismissedDuplicatePair{}, "user_id = ?", user.ID),
 		scopedCount("external_activities", &models.ExternalActivity{}, "user_id = ?", user.ID),
 		scopedCount("external_identities", &models.ExternalIdentity{}, "user_id = ?", user.ID),
@@ -372,6 +374,7 @@ func TestDeleteCascadeCoverage_DeleteContactSweepsEveryDeclaredContactTable(t *t
 	// Seed one row per contact-scoped table referencing the contact.
 	require.NoError(t, db.Create(&models.Attachment{UserID: user.ID, ContactVCardUID: uid, StoredName: "s", OriginalName: "o", ContentType: "text/plain", SizeBytes: 1}).Error)
 	require.NoError(t, db.Create(&models.CadencePolicy{UserID: user.ID, EntityID: uid, TargetIntervalDays: 30}).Error)
+	require.NoError(t, db.Create(&models.DataDecayPolicy{UserID: user.ID, EntityID: uid, IntervalDays: 365}).Error)
 	require.NoError(t, db.Create(&models.CircleMember{CircleID: containers.circleID, UserID: user.ID, MemberVCardUID: uid}).Error)
 	require.NoError(t, db.Create(&models.ContactSyncConflict{UserID: user.ID, SubscriptionID: containers.subID, ContactID: contact.ID, Field: "firstname", LocalValue: "a", RemoteValue: "b", Status: "pending"}).Error)
 	require.NoError(t, db.Create(&models.ContactSyncLink{SubscriptionID: containers.subID, UserID: user.ID, Href: "/dav/1.vcf", ContactID: contact.ID, ContentHash: "h"}).Error)
@@ -553,6 +556,7 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 		scopedCount("contact_tags", &models.ContactTag{}, "user_id = ?", target.ID),
 		scopedCount("contacts", &models.Contact{}, "user_id = ?", target.ID),
 		scopedCount("conversation_agenda", &models.ConversationAgenda{}, "user_id = ?", target.ID),
+		scopedCount("data_decay_policies", &models.DataDecayPolicy{}, "user_id = ?", target.ID),
 		scopedCount("device_grants", &models.DeviceGrant{}, "user_id = ?", target.ID),
 		scopedCount("device_registrations", &models.DeviceRegistration{}, "user_id = ?", target.ID),
 		scopedCount("dismissed_duplicate_pairs", &models.DismissedDuplicatePair{}, "user_id = ?", target.ID),
@@ -600,6 +604,7 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 	// side of tables that are both, so DeleteUser empties them by user_id).
 	require.NoError(t, db.Create(&models.Attachment{UserID: target.ID, ContactVCardUID: uid, StoredName: "s", OriginalName: "o", ContentType: "text/plain", SizeBytes: 1}).Error)
 	require.NoError(t, db.Create(&models.CadencePolicy{UserID: target.ID, EntityID: uid, TargetIntervalDays: 30}).Error)
+	require.NoError(t, db.Create(&models.DataDecayPolicy{UserID: target.ID, EntityID: uid, IntervalDays: 365}).Error)
 	require.NoError(t, db.Create(&models.CircleMember{CircleID: containers.circleID, UserID: target.ID, MemberVCardUID: uid}).Error)
 	require.NoError(t, db.Create(&models.ContactSyncConflict{UserID: target.ID, SubscriptionID: containers.subID, ContactID: contact.ID, Field: "firstname", LocalValue: "a", RemoteValue: "b", Status: "pending"}).Error)
 	require.NoError(t, db.Create(&models.ContactSyncLink{SubscriptionID: containers.subID, UserID: target.ID, Href: "/dav/1.vcf", ContactID: contact.ID, ContentHash: "h"}).Error)

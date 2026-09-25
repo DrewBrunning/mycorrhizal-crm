@@ -33,6 +33,21 @@ func appendCadencePolicyConflict(db *gorm.DB, userID uint, keeperVCardUID, loser
 	return nil
 }
 
+// appendDataDecayPolicyConflict computes issue #352's data-decay-policy
+// conflict (if any) and appends it into resolution.Conflicts, mirroring
+// appendCadencePolicyConflict's role for CadencePolicy.
+func appendDataDecayPolicyConflict(db *gorm.DB, userID uint, keeperVCardUID, loserVCardUID string, resolution *models.ContactMergeResolution, errMessage string) *apperrors.AppError {
+	conflict, err := services.ComputeDataDecayPolicyConflict(db, userID, keeperVCardUID, loserVCardUID)
+	if err != nil {
+		return apperrors.ErrDatabase(errMessage).WithError(err)
+	}
+	if conflict != nil {
+		resolution.Conflicts = append(resolution.Conflicts, *conflict)
+		sort.Slice(resolution.Conflicts, func(i, j int) bool { return resolution.Conflicts[i].Field < resolution.Conflicts[j].Field })
+	}
+	return nil
+}
+
 // loadMergePair validates and loads the keeper/loser contacts for a merge
 // request: both must exist and be owned by userID, and the two IDs must
 // differ. Shared by preview and commit so the two endpoints reject the same
@@ -102,6 +117,10 @@ func PreviewContactMerge(c *gin.Context) {
 	resolution.FieldValueConflicts = fvConflicts
 
 	if appErr := appendCadencePolicyConflict(db, userID, keeper.VCardUID, loser.VCardUID, resolution, "Failed to compute merge preview"); appErr != nil {
+		apperrors.AbortWithError(c, appErr)
+		return
+	}
+	if appErr := appendDataDecayPolicyConflict(db, userID, keeper.VCardUID, loser.VCardUID, resolution, "Failed to compute merge preview"); appErr != nil {
 		apperrors.AbortWithError(c, appErr)
 		return
 	}
@@ -187,6 +206,9 @@ func CommitContactMerge(c *gin.Context) {
 		resolution.FieldValueConflicts = fvConflicts
 
 		if appErr := appendCadencePolicyConflict(tx, userID, keeper.VCardUID, loser.VCardUID, resolution, "Failed to merge contacts"); appErr != nil {
+			return appErr
+		}
+		if appErr := appendDataDecayPolicyConflict(tx, userID, keeper.VCardUID, loser.VCardUID, resolution, "Failed to merge contacts"); appErr != nil {
 			return appErr
 		}
 

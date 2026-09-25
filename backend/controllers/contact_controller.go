@@ -841,6 +841,12 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 		return err
 	}
 
+	// Delete this contact's data decay policy (user-authored content, soft
+	// delete — issue #352, docs/adrs/0027-data-decay.md)
+	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.DataDecayPolicy{}).Error; err != nil {
+		return err
+	}
+
 	// Delete this contact's occasion obligations (user-authored content,
 	// soft delete — docs/adrs/0024-occasions.md, issue #387, ticket #1222)
 	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.OccasionObligation{}).Error; err != nil {

@@ -8,8 +8,11 @@ import com.mycorrhizal.crm.model.network.CadencePolicy
 import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
 import com.mycorrhizal.crm.model.network.DashboardResponse
+import com.mycorrhizal.crm.model.network.DataDecayHealth
+import com.mycorrhizal.crm.model.network.DataDecayPolicy
 import com.mycorrhizal.crm.model.network.MessageResponse
 import com.mycorrhizal.crm.model.network.OverdueCadence
+import com.mycorrhizal.crm.model.network.OverdueDataDecayPolicy
 import com.mycorrhizal.crm.model.network.ReachOutSuggestion
 import com.mycorrhizal.crm.model.network.ReminderCompleteResponse
 import com.mycorrhizal.crm.network.ApiClient
@@ -66,6 +69,15 @@ class DashboardViewModelTest {
                 contactId = 3L, contactName = "Bobby Smith",
             ),
         ),
+        // Issue #352: contacts whose info is due for re-verification.
+        dataDecayOverdue = listOf(
+            OverdueDataDecayPolicy(
+                policy = DataDecayPolicy(id = "d1", entityId = "u3"),
+                health = DataDecayHealth(overdueBy = 40),
+                contactId = 3L,
+                contactName = "Bobby Smith",
+            ),
+        ),
     )
 
     @Test
@@ -84,6 +96,7 @@ class DashboardViewModelTest {
             assertEquals(1, state.overdueCadences.size)
             assertEquals(1, state.favorites.size)
             assertEquals(1, state.reachOutSuggestions.size)
+            assertEquals(1, state.dataDecayOverdue.size)
             assertEquals("Zebra", state.favorites[0].firstname)
             // The M3 embedded contact name survives into the widget.
             assertEquals("Bobby Smith", state.upcomingReminders[0].contactName)
@@ -113,6 +126,7 @@ class DashboardViewModelTest {
             assertTrue(state.overdueCadences.isEmpty())
             assertTrue(state.favorites.isEmpty())
             assertTrue(state.reachOutSuggestions.isEmpty())
+            assertTrue(state.dataDecayOverdue.isEmpty())
         }
 
     @Test
@@ -124,6 +138,7 @@ class DashboardViewModelTest {
         assertTrue(DashboardUiState(overdueCadences = listOf(OverdueCadence())).hasContent)
         assertTrue(DashboardUiState(favorites = listOf(DashboardRandomContact(id = 1))).hasContent)
         assertTrue(DashboardUiState(reachOutSuggestions = listOf(ReachOutSuggestion(id = "s1"))).hasContent)
+        assertTrue(DashboardUiState(dataDecayOverdue = listOf(OverdueDataDecayPolicy())).hasContent)
     }
 
     @Test
@@ -286,6 +301,62 @@ class DashboardViewModelTest {
             assertEquals("Server error (500)", state.actionError)
             assertNull(state.error)
             assertNull(state.dismissingSuggestionId)
+        }
+
+    @Test
+    fun `verifying a data decay policy removes it from the widget before the call resolves`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val (viewModel, apiClient, _) = newViewModel()
+            coEvery { apiClient.getDashboard() } returns Result.success(
+                DashboardResponse(
+                    dataDecayOverdue = listOf(
+                        OverdueDataDecayPolicy(policy = DataDecayPolicy(id = "d1"), contactName = "Bobby Smith"),
+                        OverdueDataDecayPolicy(policy = DataDecayPolicy(id = "d2"), contactName = "Alice"),
+                    ),
+                ),
+            )
+            coEvery { apiClient.verifyDataDecayPolicy("d1") } coAnswers {
+                // The optimistic removal must have already happened by the
+                // time the API call executes.
+                assertTrue(viewModel.uiState.value.dataDecayOverdue.none { it.policy?.id == "d1" })
+                Result.success(DataDecayPolicy(id = "d1"))
+            }
+            advanceUntilIdle()
+
+            viewModel.verifyDataDecay("d1")
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { apiClient.verifyDataDecayPolicy("d1") }
+            assertEquals(listOf("d2"), viewModel.uiState.value.dataDecayOverdue.map { it.policy?.id })
+            assertNull(viewModel.uiState.value.verifyingDataDecayId)
+        }
+
+    @Test
+    fun `a failed verify restores the data decay policy at its original position`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val (viewModel, apiClient, _) = newViewModel()
+            coEvery { apiClient.getDashboard() } returns Result.success(
+                DashboardResponse(
+                    dataDecayOverdue = listOf(
+                        OverdueDataDecayPolicy(policy = DataDecayPolicy(id = "d1"), contactName = "Bobby Smith"),
+                        OverdueDataDecayPolicy(policy = DataDecayPolicy(id = "d2"), contactName = "Alice"),
+                        OverdueDataDecayPolicy(policy = DataDecayPolicy(id = "d3"), contactName = "Carol"),
+                    ),
+                ),
+            )
+            coEvery { apiClient.verifyDataDecayPolicy("d2") } returns
+                Result.failure(ApiError.Server(500, "boom"))
+            advanceUntilIdle()
+
+            viewModel.verifyDataDecay("d2")
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            // Restored to its original middle position, not merely re-appended.
+            assertEquals(listOf("d1", "d2", "d3"), state.dataDecayOverdue.map { it.policy?.id })
+            assertEquals("Server error (500)", state.actionError)
+            assertNull(state.error)
+            assertNull(state.verifyingDataDecayId)
         }
 
     @Test

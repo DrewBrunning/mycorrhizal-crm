@@ -131,6 +131,9 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/contacts/:id/favorite":   exempt(reasonToggle),
 		"POST /api/v1/contacts/:id/unfavorite": exempt(reasonToggle),
 		"POST /api/v1/reminders/:id/complete":  exempt(reasonToggle),
+		// Issue #352: "confirm still current" is the same shape as completing
+		// a reminder — a toggle-like action on a non-revision-bearing entity.
+		"POST /api/v1/data-decay-policies/:id/verify": exempt(reasonToggle),
 
 		// === Creates (no prior revision) ===
 		"POST /api/v1/contacts":                         exempt(reasonCreate),
@@ -146,6 +149,7 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/preferences":                      exempt(reasonCreate),
 		"POST /api/v1/occasion-obligations":             exempt(reasonCreate),
 		"POST /api/v1/cadence-policies":                 exempt(reasonCreate),
+		"POST /api/v1/data-decay-policies":              exempt(reasonCreate),
 		"POST /api/v1/conversation-agenda":              exempt(reasonCreate),
 		"POST /api/v1/field-definitions":                exempt(reasonCreate),
 		"POST /api/v1/link-field-types":                 exempt(reasonCreate),
@@ -186,6 +190,8 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"DELETE /api/v1/occasion-events/:id/attendees/:vcard_uid": exempt(reasonMembership),
 		"PUT /api/v1/cadence-policies/:id":                        exempt(reasonNonRevision),
 		"DELETE /api/v1/cadence-policies/:id":                     exempt(reasonNonRevision),
+		"PUT /api/v1/data-decay-policies/:id":                     exempt(reasonNonRevision),
+		"DELETE /api/v1/data-decay-policies/:id":                  exempt(reasonNonRevision),
 		"PUT /api/v1/conversation-agenda/:id":                     exempt(reasonNonRevision),
 		"DELETE /api/v1/conversation-agenda/:id":                  exempt(reasonNonRevision),
 		"PUT /api/v1/field-definitions/:id":                       exempt(reasonNonRevision),
