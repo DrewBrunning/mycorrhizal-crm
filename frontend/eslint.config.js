@@ -24,6 +24,33 @@ export default tseslint.config(
   },
   tseslint.configs.recommended,
   {
+    // Type-aware linting (typescript-eslint's projectService) needs a real
+    // tsconfig program per file. `tsconfig.json` covers `src/**`;
+    // `tsconfig.node.json` covers `e2e/**` plus the root-level config files
+    // (vite/vitest/playwright configs). projectService discovers both
+    // automatically via directory walk, but `eslint.config.js` itself and
+    // other files outside both tsconfigs' `include` need `allowDefaultProject`
+    // or they'd hard-error — listed explicitly below.
+    //
+    // Deliberately NOT `tseslint.configs.recommendedTypeChecked`: that pulls
+    // in the whole `no-unsafe-*`/`require-await`/`no-unnecessary-type-assertion`
+    // family, which surfaced ~2200 more findings across this codebase (mostly
+    // `no-unsafe-member-access`/`no-unsafe-assignment` from the api/ layer's
+    // deliberate `Record<string, any>` parsing, already covered by the
+    // existing `no-explicit-any: warn` policy above) — a separate, much
+    // larger cleanup than the promise-safety gap this change targets. Only
+    // the specific type-aware rules below are turned on.
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: {
+        projectService: {
+          allowDefaultProject: ['eslint.config.js', 'playwright.sw.config.ts'],
+        },
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
     files: ['**/*.{ts,tsx}'],
     plugins: {
       'react-hooks': reactHooks,
@@ -76,6 +103,17 @@ export default tseslint.config(
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
+      // Type-aware promise-safety rules (already 'error' in
+      // recommendedTypeChecked; restated explicitly since they're the point
+      // of enabling projectService). checksVoidReturn stays fully on
+      // (default): MUI/DOM event handlers (onClick etc.) are typed to expect
+      // a void return, and an async handler that silently swallows its own
+      // rejection is exactly the flake/lost-error class this rule exists to
+      // catch — `attributes: false` was considered and rejected here because
+      // this repo's handlers are the common offender, not an edge case.
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
     },
   },
   {
@@ -95,6 +133,19 @@ export default tseslint.config(
     files: ['e2e/fixtures.ts'],
     rules: {
       'react-hooks/rules-of-hooks': 'off',
+    },
+  },
+  {
+    // TEMPORARY carve-out, not a policy exception: ContactDetailPage.tsx (and
+    // its test file) is mid-refactor in a parallel worktree at the time the
+    // type-aware promise-safety rules below were turned on repo-wide. Every
+    // other file was fixed properly; these two are exempted only so `yarn
+    // lint` stays green while that refactor lands, and should have this
+    // override removed (plus the same real fixes applied) once it merges.
+    files: ['src/ContactDetailPage.tsx', 'src/ContactDetailPage.test.tsx'],
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'off',
+      '@typescript-eslint/no-misused-promises': 'off',
     },
   },
 );
