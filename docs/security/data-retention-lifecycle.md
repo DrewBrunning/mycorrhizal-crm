@@ -92,7 +92,9 @@ It sits outside the soft-delete model above precisely because it is a copy, not 
 ## 2. Edge- and join-shaped rows
 
 `RelationshipEdge`, `CircleMember`, `ContactTag`, `HouseholdMember`, `ContactSyncLink`,
-`CalendarEventLink`, `OccasionEventAttendee`, `FieldValue`, `activity_contacts`, `NotificationDelivery`,
+`CalendarEventLink`, `OccasionEventAttendee`, `LifeEventSuggestionResolution` (issue #1233 — the
+permanent memory of a user's decision about one inferred candidate, keyed by its natural tuple and
+hard-deleted per T26; ADR 0025), `FieldValue`, `activity_contacts`, `NotificationDelivery`,
 `ContactSyncConflict`.
 
 - **Where / who**: same DB, same `user_id` scoping.
