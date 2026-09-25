@@ -54,3 +54,27 @@ test('saving an empty range clears the period', async () => {
 
   await waitFor(() => expect(onSave).toHaveBeenCalledWith(undefined));
 });
+
+// The caller (e.g. ContactInformation's saveOrganizationPeriod/saveJobTitlePeriod,
+// which route through onUpdateCard) already reports the error to the user, so
+// commit()'s own catch just needs to swallow the rejection: the editor stays
+// open (edit isn't dismissed) and the button becomes clickable again.
+test('a failed save leaves editing open and re-enables the save button', async () => {
+  const onSave = vi.fn(async () => {
+    throw new Error('boom');
+  });
+  render(
+    <PeriodField
+      label="Period"
+      range={{ start: { year: 2019 }, end: { year: 2024 } }}
+      onSave={onSave}
+    />,
+  );
+
+  fireEvent.click(screen.getByTestId('period-edit'));
+  fireEvent.click(screen.getByTestId('period-save'));
+
+  await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+  expect(screen.getByTestId('period-save')).toBeEnabled();
+  expect(screen.getByLabelText('From (year)')).toBeInTheDocument();
+});

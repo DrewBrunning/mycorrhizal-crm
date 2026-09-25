@@ -170,6 +170,71 @@ test('mints an element ID when a period is set on a legacy entry without one', a
   });
 });
 
+test('shows a job title period and saves an edit keyed by the entry ID', async () => {
+  const onUpdateCard = vi.fn(async () => {});
+  renderInformation(
+    { titles: [{ id: 'title-1', name: 'Engineer', kind: 'title' }] },
+    {
+      periods: [{ kind: 'title', entry_id: 'title-1', range: { start: { year: 2020 } } }],
+    },
+    { enabledFields: new Set<ContactFieldKey>(['titles']), onUpdateCard },
+  );
+
+  expect(screen.getByText('Since 2020')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByTestId('period-edit'));
+  fireEvent.change(screen.getByLabelText('To (year)'), { target: { value: '2023' } });
+  fireEvent.click(screen.getByTestId('period-save'));
+
+  await waitFor(() => expect(onUpdateCard).toHaveBeenCalledTimes(1));
+  expect(onUpdateCard).toHaveBeenCalledWith(
+    {},
+    {
+      periods: [
+        {
+          kind: 'title',
+          entry_id: 'title-1',
+          range: { start: { year: 2020 }, end: { year: 2023 } },
+        },
+      ],
+    },
+  );
+});
+
+test('mints an element ID when a job title period is set on a legacy entry without one', async () => {
+  const calls: Array<[Partial<Card>, Partial<CRMEnvelope> | undefined]> = [];
+  const onUpdateCard = vi.fn(async (patch: Partial<Card>, crmPatch?: Partial<CRMEnvelope>) => {
+    calls.push([patch, crmPatch]);
+  });
+  renderInformation(
+    { titles: [{ name: 'Engineer', kind: 'title' }] },
+    {},
+    { enabledFields: new Set<ContactFieldKey>(['titles']), onUpdateCard },
+  );
+
+  fireEvent.click(screen.getByTestId('period-edit'));
+  fireEvent.change(screen.getByLabelText('From (year)'), { target: { value: '2021' } });
+  fireEvent.click(screen.getByTestId('period-save'));
+
+  await waitFor(() => expect(calls).toHaveLength(1));
+  const [cardPatch, crmPatch] = calls[0];
+  expect(cardPatch.titles).toHaveLength(1);
+  const entryID = (cardPatch.titles as { id?: string }[])[0].id;
+  expect(entryID).toBeTruthy();
+  expect(crmPatch).toEqual({
+    periods: [{ kind: 'title', entry_id: entryID, range: { start: { year: 2021 } } }],
+  });
+});
+
+test('shows no period editor when there is no organization or title entry to attach one to', () => {
+  renderInformation(
+    {},
+    {},
+    { enabledFields: new Set<ContactFieldKey>(['organizations', 'titles']) },
+  );
+  expect(screen.queryByTestId('period-edit')).toBeNull();
+});
+
 // --- T30: hide section subtitles when the section has nothing to show ---
 
 test('hides the About subtitle when every About field is disabled', () => {
