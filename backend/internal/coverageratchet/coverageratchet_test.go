@@ -283,3 +283,70 @@ func TestCompare_RemovedFileNotFailed(t *testing.T) {
 		t.Errorf("GoneFiles = %v", report.GoneFiles)
 	}
 }
+
+func TestParseCoverprofile_LineTooLongIsAnError(t *testing.T) {
+	// ParseCoverprofile sets its scanner's max token size to 1MiB; a line
+	// past that makes Scan() fail with ErrTooLong, which must surface via
+	// scanner.Err() rather than silently truncating the profile.
+	huge := "mode: atomic\n# " + strings.Repeat("x", 2*1024*1024) + "\n"
+	_, err := ParseCoverprofile(strings.NewReader(huge))
+	if err == nil {
+		t.Fatal("expected an error for an oversized coverprofile line")
+	}
+}
+
+func TestFilterPragma_PropagatesSourceScanError(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "internal", "foo"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	huge := strings.Repeat("x", 128*1024)
+	src := "package foo\n\nvar _ = \"" + huge + "\"\n"
+	if err := os.WriteFile(filepath.Join(dir, "internal", "foo", "bar.go"), []byte(src), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	blocks := []Block{{File: "mycorrhizal/internal/foo/bar.go", StartLine: 3, EndLine: 3, NumStmt: 1, Count: 0}}
+	_, err := FilterPragma(blocks, dir, "mycorrhizal/")
+	if err == nil {
+		t.Fatal("expected FilterPragma to propagate the underlying scan error")
+	}
+}
+
+func TestLoadBaseline_MalformedJSON(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "baseline.json")
+	if err := os.WriteFile(path, []byte("not json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := LoadBaseline(path)
+	if err == nil {
+		t.Fatal("expected an error loading a malformed baseline")
+	}
+}
+
+func TestSaveBaseline_MkdirAllFailure(t *testing.T) {
+	dir := t.TempDir()
+	// Put a plain file where the baseline's parent directory needs to be
+	// created, so os.MkdirAll fails.
+	blocker := filepath.Join(dir, "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	err := SaveBaseline(filepath.Join(blocker, "sub", "baseline.json"), Baseline{Files: map[string]float64{}})
+	if err == nil {
+		t.Fatal("expected an error when SaveBaseline's directory can't be created")
+	}
+}
+
+func TestSaveBaseline_WriteFileFailure(t *testing.T) {
+	dir := t.TempDir()
+	// A directory at the exact path SaveBaseline wants to write to makes
+	// os.WriteFile fail (it's a directory, not a writable file).
+	target := filepath.Join(dir, "baseline.json")
+	if err := os.MkdirAll(target, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	err := SaveBaseline(target, Baseline{Files: map[string]float64{}})
+	if err == nil {
+		t.Fatal("expected an error when SaveBaseline's target path is a directory")
+	}
+}
