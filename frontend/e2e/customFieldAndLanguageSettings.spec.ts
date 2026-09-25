@@ -49,6 +49,14 @@ async function withPreferredLanguagesEnabled(page: Page): Promise<() => Promise<
 // two boxes up from its containing row (caption -> flex column -> row box,
 // which also holds the hover-only Edit button). Same helper as
 // linkFieldTypeEditors.spec.ts.
+// The Settings -> Data page has several "Add" buttons (one per card); scope to
+// the Custom Fields card by its heading.
+function customFieldsCard(page: Page): Locator {
+  return page
+    .locator('.MuiCard-root')
+    .filter({ has: page.getByRole('heading', { name: 'Custom Fields', exact: true }) });
+}
+
 function fieldRow(page: Page, label: string): Locator {
   return page.getByText(label, { exact: true }).locator('..').locator('..');
 }
@@ -64,7 +72,7 @@ test.describe('Custom field definitions (Settings -> Data)', () => {
       await page.goto('/settings/data');
       await waitForLoading(page);
 
-      await page.getByRole('button', { name: 'Add' }).click();
+      await customFieldsCard(page).getByRole('button', { name: 'Add' }).click();
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
       await expect(dialog.getByText('Add Custom Field')).toBeVisible();
@@ -123,7 +131,7 @@ test.describe('Custom field definitions (Settings -> Data)', () => {
     await page.goto('/settings/data');
     await waitForLoading(page);
 
-    await page.getByRole('button', { name: 'Add' }).click();
+    await customFieldsCard(page).getByRole('button', { name: 'Add' }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
 
@@ -164,7 +172,7 @@ test.describe('Preferred Languages contact field', () => {
         await page.getByLabel('Language').fill('fr-CA');
         // Preferred Languages also carries an optional usage-context
         // multi-select (work/private/school/...).
-        const contextsInput = page.getByLabel('Contexts');
+        const contextsInput = page.getByRole('combobox', { name: 'Contexts' });
         await contextsInput.click();
         await contextsInput.fill('work');
         await page.keyboard.press('Enter');
