@@ -214,7 +214,7 @@ func TestGetContacts_FiltersByVCardUID(t *testing.T) {
 }
 
 // TestGetContacts_VCardUIDFilter_RealMigratedSchema is the real-DB check for
-// unlike the AutoMigrate-backed test above, this runs against a
+// written when the test above was AutoMigrate-backed, this runs against a
 // database.InitDB-migrated file DB, confirming the `vcard_uid`/`archived`
 // columns the new filter queries actually exist with those exact names in
 // the real migration SQL (this fork's own recurring bug class).

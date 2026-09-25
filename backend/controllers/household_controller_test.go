@@ -337,7 +337,7 @@ func TestRemoveHouseholdMemberNotFound(t *testing.T) {
 }
 
 // TestSuggestHouseholdRelationships is the ticket's core round-trip against
-// the AutoMigrate setup: create a household with two adults + a pet, run the
+// the shared setupRouter harness: create a household with two adults + a pet, run the
 // trigger, assert the expected suggested edges exist (spouse_of + owned_by),
 // re-run, assert nothing duplicated.
 func TestSuggestHouseholdRelationships(t *testing.T) {
