@@ -275,3 +275,27 @@ object PhoneFeature {
 
     val ALL = listOf(VOICE, FAX, CELL, VIDEO, PAGER, TEXT, TEXTPHONE, MAIN_NUMBER)
 }
+
+/**
+ * docs/adrs/0026-occasions-events.md (issue #1228): the manually-recorded RSVP
+ * status an event attendee carries. Mirrors the backend's closed
+ * `pending|accepted|declined|maybe` set — a hand-maintained copy, same rule as
+ * every other mirror here (CLAUDE.md trap 4).
+ */
+object OccasionRsvp {
+    const val PENDING = "pending"
+    const val ACCEPTED = "accepted"
+    const val DECLINED = "declined"
+    const val MAYBE = "maybe"
+
+    val ALL = listOf(PENDING, ACCEPTED, DECLINED, MAYBE)
+}
+
+/** OccasionEvent.Sensitivity — the shared normal/private/secret set. */
+object OccasionSensitivity {
+    const val NORMAL = "normal"
+    const val PRIVATE = "private"
+    const val SECRET = "secret"
+
+    val ALL = listOf(NORMAL, PRIVATE, SECRET)
+}

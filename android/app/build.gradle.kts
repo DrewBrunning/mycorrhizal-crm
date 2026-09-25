@@ -147,6 +147,7 @@ dependencies {
     implementation(project(":feature:timeline"))
     implementation(project(":feature:settings"))
     implementation(project(":feature:cadence"))
+    implementation(project(":feature:occasions"))
     implementation(project(":feature:shares"))
     implementation(project(":feature:audit"))
     implementation(project(":feature:sysevents"))

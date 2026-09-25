@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.Dataset
 import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.EventNote
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Group
@@ -103,6 +104,8 @@ import com.mycorrhizal.crm.feature.auth.ForgotPasswordScreen
 import com.mycorrhizal.crm.feature.audit.AuditScreen
 import com.mycorrhizal.crm.feature.sysevents.SystemEventsScreen
 import com.mycorrhizal.crm.feature.cadence.CadenceScreen
+import com.mycorrhizal.crm.feature.occasions.OccasionAttendeesScreen
+import com.mycorrhizal.crm.feature.occasions.OccasionsScreen
 import com.mycorrhizal.crm.feature.circles.CircleDetailScreen
 import com.mycorrhizal.crm.feature.circles.CirclesScreen
 import com.mycorrhizal.crm.feature.contacts.ContactDetailScreen
@@ -184,6 +187,7 @@ private val secondaryDestinations = listOf(
     DrawerDestination("network", R.string.nav_network, Icons.Outlined.Share),
     DrawerDestination("shares", R.string.nav_shares, Icons.Outlined.IosShare),
     DrawerDestination("circles", R.string.nav_circles, Icons.Outlined.Group),
+    DrawerDestination("occasions", R.string.occasions_title, Icons.Outlined.Event),
     DrawerDestination("tags", R.string.nav_tags, Icons.Outlined.Label),
     DrawerDestination("households", R.string.nav_households, Icons.Outlined.HomeWork),
     DrawerDestination("audit", R.string.nav_audit, Icons.Outlined.History),
@@ -1131,6 +1135,18 @@ private fun AppNavGraph(
             CadenceScreen(
                 onBack = { navController.popBackStack() },
             )
+        }
+        composable("occasions") {
+            OccasionsScreen(
+                onBack = { navController.navigateToRoot("home") },
+                onOpenAttendees = { eventId -> navController.navigate("occasions/$eventId/attendees") },
+            )
+        }
+        composable(
+            route = "occasions/{eventId}/attendees",
+            arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
+        ) {
+            OccasionAttendeesScreen(onBack = { navController.popBackStack() })
         }
         composable(
             route = "contacts/{contactId}/life-events",
