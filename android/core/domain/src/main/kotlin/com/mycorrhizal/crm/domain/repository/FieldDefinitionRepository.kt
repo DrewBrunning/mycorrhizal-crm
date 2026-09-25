@@ -31,6 +31,13 @@ interface FieldDefinitionRepository {
     /** Delete a field definition; its FieldValues cascade server-side. */
     suspend fun delete(id: String): Result<Unit>
 
+    /**
+     * Persist the full display order (issue #1210). [order] must be every one of the user's
+     * definition ids exactly once; the backend rejects an incomplete, duplicated, or foreign set
+     * with a 400. Returns the reordered definitions.
+     */
+    suspend fun reorder(order: List<String>): Result<List<FieldDefinition>>
+
     /** A contact's current custom-field values. */
     suspend fun contactValues(contactId: Int): Result<List<FieldValue>>
 

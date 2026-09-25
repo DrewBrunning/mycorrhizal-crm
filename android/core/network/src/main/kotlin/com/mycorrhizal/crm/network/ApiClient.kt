@@ -86,6 +86,7 @@ import com.mycorrhizal.crm.model.network.CreateFieldDefinitionResponse
 import com.mycorrhizal.crm.model.network.ExportLossPreflightResponse
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.FieldDefinitionInput
+import com.mycorrhizal.crm.model.network.FieldDefinitionReorderInput
 import com.mycorrhizal.crm.model.network.FieldDefinitionsResponse
 import com.mycorrhizal.crm.model.network.CreateGiftResponse
 import com.mycorrhizal.crm.model.network.CreateHouseholdResponse
@@ -1075,6 +1076,20 @@ class ApiClient(
     /** DELETE /api/v1/field-definitions/{id} (issue #830) — FieldValues cascade server-side. */
     suspend fun deleteFieldDefinition(id: String): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$FIELD_DEFINITIONS_PATH/$id")
+
+    /**
+     * PUT /api/v1/field-definitions/reorder (issue #1210) — persists the user's display order.
+     * [order] must be the complete set of the caller's definition ids, duplicate-free; the backend
+     * rejects anything else with a 400. The response is `{ field_definitions: [...] }` in the new
+     * order, parsed by the same [FieldDefinitionsResponse] the list endpoint uses.
+     */
+    suspend fun reorderFieldDefinitions(order: List<String>): Result<FieldDefinitionsResponse> =
+        executePut(
+            "$PLACEHOLDER_ORIGIN$FIELD_DEFINITIONS_PATH/reorder",
+            FieldDefinitionReorderInput(order),
+        ) { _, body ->
+            moshi.adapter(FieldDefinitionsResponse::class.java).fromJson(body)
+        }
 
     /** GET /api/v1/contacts/{id}/field-values (T84). */
     suspend fun listContactFieldValues(contactId: Int): Result<ContactFieldValuesResponse> =

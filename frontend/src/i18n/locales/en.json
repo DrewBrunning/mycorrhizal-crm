@@ -1361,6 +1361,8 @@
       "loading": "Loading custom fields...",
       "noFields": "No custom fields defined yet.",
       "add": "Add",
+      "moveUp": "Move {{name}} up",
+      "moveDown": "Move {{name}} down",
       "deleteDialog": {
         "title": "Delete Custom Field",
         "message": "Are you sure you want to delete the field \"{{fieldName}}\"? This will remove the field from all contacts.",

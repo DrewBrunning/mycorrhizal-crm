@@ -96,7 +96,7 @@ func TestOpenAPISpecValidates(t *testing.T) {
 		"Preference", "PreferenceInput",
 		"ConversationAgenda", "ConversationAgendaInput", "ConversationAgendaDiscussInput",
 		"Gift", "GiftInput",
-		"FieldDefinition", "FieldDefinitionInput", "FieldConstraints",
+		"FieldDefinition", "FieldDefinitionInput", "FieldDefinitionReorderInput", "FieldConstraints",
 		"FieldValue", "FieldValueInput", "ContactFieldValuesInput",
 		"CalendarSubscriptionInput", "CalendarSubscriptionResponse",
 		"ApiTokenInput", "ApiTokenResponse", "ApiTokenCreateResponse",

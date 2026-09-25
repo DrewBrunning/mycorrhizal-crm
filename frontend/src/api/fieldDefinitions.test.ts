@@ -8,6 +8,7 @@ import {
   fieldValueToDisplay,
   getFieldDefinitions,
   isEditorValueEmpty,
+  reorderFieldDefinitions,
   replaceContactFieldValues,
   wireToEditorValue,
 } from './fieldDefinitions';
@@ -24,6 +25,7 @@ function def(overrides: Partial<FieldDefinition> & { type: FieldType }): FieldDe
     target: 'contact',
     projection: 'internal-only',
     sensitivity: 'normal',
+    position: 0,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -137,6 +139,50 @@ describe('field definition API calls', () => {
     expect(url).toContain('/field-definitions');
     expect(init.method).toBe('POST');
     expect(result.id).toBe('def-1');
+  });
+
+  test('reorderFieldDefinitions PUTs the full order and returns the reordered list', async () => {
+    const first = def({ type: 'string', id: 'b', position: 0 });
+    const second = def({ type: 'string', id: 'a', position: 1 });
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ field_definitions: [first, second] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await reorderFieldDefinitions(['b', 'a']);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/field-definitions/reorder');
+    expect(init.method).toBe('PUT');
+    expect(JSON.parse(init.body)).toEqual({ order: ['b', 'a'] });
+    expect(result.map((d) => d.id)).toEqual(['b', 'a']);
+  });
+
+  test('reorderFieldDefinitions rejects with the parsed error on a failed response', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      json: async () => ({
+        error: { message: 'must include every field definition', code: 'INVALID_INPUT' },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(reorderFieldDefinitions(['a'])).rejects.toThrow(
+      'must include every field definition',
+    );
+  });
+
+  test('reorderFieldDefinitions tolerates an absent collection key', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({}),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(reorderFieldDefinitions(['a'])).resolves.toEqual([]);
   });
 
   test('replaceContactFieldValues PUTs the full set and returns the saved values', async () => {

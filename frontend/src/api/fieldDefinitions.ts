@@ -58,6 +58,9 @@ export interface FieldDefinition {
   // validateFieldDefinitionProjection.
   projection: string;
   sensitivity: FieldSensitivity;
+  // The user's display order for this definition (issue #1210). Always
+  // present on the wire; the list endpoint returns rows ordered by it.
+  position: number;
   created_at: string;
   updated_at: string;
 }
@@ -135,6 +138,20 @@ export async function deleteFieldDefinition(id: string): Promise<void> {
     headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
+}
+
+// order is the caller's full set of FieldDefinition IDs in the desired
+// display order; the backend rejects anything but a complete, owned,
+// duplicate-free set (issue #1210).
+export async function reorderFieldDefinitions(order: string[]): Promise<FieldDefinition[]> {
+  const response = await apiFetch(`${API_BASE_URL}/field-definitions/reorder`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ order }),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  const result = await response.json();
+  return result.field_definitions || [];
 }
 
 export async function getContactFieldValues(contactId: string | number): Promise<FieldValue[]> {

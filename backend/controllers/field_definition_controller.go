@@ -71,6 +71,12 @@ func CreateFieldDefinition(c *gin.Context) {
 		return
 	}
 
+	position, posErr := nextFieldDefinitionPosition(db, userID)
+	if posErr != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to compute field definition position").WithError(posErr))
+		return
+	}
+
 	def := models.FieldDefinition{
 		UserID:      userID,
 		Label:       input.Label,
@@ -80,6 +86,7 @@ func CreateFieldDefinition(c *gin.Context) {
 		Constraints: input.Constraints,
 		Projection:  orDefault(input.Projection, "internal-only"),
 		Sensitivity: orDefault(input.Sensitivity, models.RelationshipSensitivityNormal),
+		Position:    position,
 	}
 	if err := db.Create(&def).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save field definition").WithError(err))
@@ -87,6 +94,23 @@ func CreateFieldDefinition(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Field definition created successfully", "field_definition": def})
+}
+
+// nextFieldDefinitionPosition returns one past the user's current highest
+// Position, so a newly created definition appends at the end of the custom
+// order rather than jumping to the front (issue #1210). No rows is 0.
+func nextFieldDefinitionPosition(db *gorm.DB, userID uint) (int, error) {
+	var result struct {
+		MaxPosition *int
+	}
+	if err := db.Model(&models.FieldDefinition{}).Where("user_id = ?", userID).
+		Select("MAX(position) as max_position").Scan(&result).Error; err != nil {
+		return 0, err
+	}
+	if result.MaxPosition == nil {
+		return 0, nil
+	}
+	return *result.MaxPosition + 1, nil
 }
 
 // GetFieldDefinition returns one FieldDefinition owned by the authenticated user.
@@ -112,7 +136,10 @@ func GetFieldDefinition(c *gin.Context) {
 }
 
 // ListFieldDefinitions returns the authenticated user's FieldDefinitions,
-// paginated, ordered by label.
+// paginated, ordered by the user's custom display order (position, then id).
+// The ?cursor= resume token carries that (position, id) pair (issue #1210);
+// ?order= defaults to asc because a display order reads front-to-back, unlike
+// the newest-first default of the time-cursored endpoints.
 func ListFieldDefinitions(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 	userID, ok := currentUserID(c)
@@ -120,7 +147,7 @@ func ListFieldDefinitions(c *gin.Context) {
 		return
 	}
 
-	params, err := GetCursorParams(c)
+	params, err := GetCursorParamsForPosition(c)
 	if err != nil {
 		apperrors.AbortWithError(c, err)
 		return
@@ -136,12 +163,12 @@ func ListFieldDefinitions(c *gin.Context) {
 	}
 
 	desc := params.Order == "desc"
-	if params.Cursor != nil {
-		pred, t, idv := cursorPredicate("field_definitions", params.Cursor, params.Cursor.ID, desc)
-		baseQuery = baseQuery.Where(pred, t, idv)
+	if params.PositionCursor != nil {
+		pred, p, idv := positionCursorPredicate("field_definitions", params.PositionCursor, params.PositionCursor.ID, desc)
+		baseQuery = baseQuery.Where(pred, p, idv)
 	}
 
-	if err := cursorOrderBy(baseQuery, "field_definitions", desc).
+	if err := positionCursorOrderBy(baseQuery, "field_definitions", desc).
 		Limit(params.Limit + 1).
 		Find(&defs).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve field definitions").WithError(err))
@@ -150,7 +177,7 @@ func ListFieldDefinitions(c *gin.Context) {
 	nextCursor := ""
 	if len(defs) > params.Limit {
 		defs = defs[:params.Limit]
-		nextCursor = EncodeCursor(defs[len(defs)-1].UpdatedAt, defs[len(defs)-1].ID)
+		nextCursor = EncodePositionCursor(defs[len(defs)-1].Position, defs[len(defs)-1].ID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -242,6 +269,70 @@ func DeleteFieldDefinition(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Field definition deleted"})
+}
+
+// ReorderFieldDefinitions persists a new display order for the authenticated
+// user's FieldDefinitions (issue #1210). The payload must contain every one
+// of the user's definitions exactly once — a partial list would leave the
+// un-listed rows colliding with the newly assigned positions, and a foreign
+// ID is an ownership violation. Two counts enforce this, mirroring
+// ReorderLinkFieldTypes: COUNT of matching owned rows must equal the list
+// length (catches foreign IDs and duplicates), AND must equal the user's
+// total row count (catches an incomplete list of otherwise-valid IDs).
+//
+// Positions are renumbered 0..N-1 in one transaction. GORM's Update bumps
+// updated_at on each row, which moves it in any updated_at-ordered feed — the
+// reorder is a real change, so that is intended.
+func ReorderFieldDefinitions(c *gin.Context) {
+	input, err := middleware.GetValidated[models.FieldDefinitionReorderInput](c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	var total int64
+	if err := db.Model(&models.FieldDefinition{}).Where("user_id = ?", userID).Count(&total).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to verify field definitions").WithError(err))
+		return
+	}
+
+	var count int64
+	if err := db.Model(&models.FieldDefinition{}).Where("user_id = ? AND id IN ?", userID, input.Order).Count(&count).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to verify field definitions").WithError(err))
+		return
+	}
+	if int(count) != len(input.Order) || int(total) != len(input.Order) {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("order", "must include every one of the user's field definitions exactly once, with no duplicates"))
+		return
+	}
+
+	txErr := db.Transaction(func(tx *gorm.DB) error {
+		for i, id := range input.Order {
+			if err := tx.Model(&models.FieldDefinition{}).Where("id = ? AND user_id = ?", id, userID).
+				Update("position", i).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if txErr != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to reorder field definitions").WithError(txErr))
+		return
+	}
+
+	var defs []models.FieldDefinition
+	if err := db.Where("user_id = ?", userID).Order("position, id").Find(&defs).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve field definitions").WithError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"field_definitions": defs})
 }
 
 // ListContactFieldValues returns every FieldValue on the contact referenced

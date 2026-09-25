@@ -107,4 +107,82 @@ class FieldDefinitionsViewModelTest {
         coVerify(exactly = 0) { repository.delete("d2") }
         assertEquals(listOf("T-shirt size"), vm.uiState.value.definitions.map { it.label })
     }
+
+    @Test
+    fun `move swaps adjacent definitions and persists the full order`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { repository.list() } returns Result.success(
+            listOf(FieldDefinition(id = "d1", label = "A", position = 0), FieldDefinition(id = "d2", label = "B", position = 1)),
+        )
+        coEvery { repository.reorder(listOf("d2", "d1")) } returns Result.success(
+            listOf(FieldDefinition(id = "d2", label = "B", position = 0), FieldDefinition(id = "d1", label = "A", position = 1)),
+        )
+
+        val vm = FieldDefinitionsViewModel(repository)
+        advanceUntilIdle()
+
+        vm.move("d1", 1)
+        advanceUntilIdle()
+
+        assertEquals(listOf("d2", "d1"), vm.uiState.value.definitions.map { it.id })
+        assertFalse(vm.uiState.value.isReordering)
+        coVerify { repository.reorder(listOf("d2", "d1")) }
+    }
+
+    @Test
+    fun `move at a list boundary is a no-op`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { repository.list() } returns Result.success(listOf(FieldDefinition(id = "d1", label = "A")))
+        val vm = FieldDefinitionsViewModel(repository)
+        advanceUntilIdle()
+
+        vm.move("d1", -1)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { repository.reorder(any()) }
+        assertEquals(listOf("d1"), vm.uiState.value.definitions.map { it.id })
+    }
+
+    @Test
+    fun `move failure surfaces the error and keeps the order`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { repository.list() } returns Result.success(
+            listOf(FieldDefinition(id = "d1", label = "A", position = 0), FieldDefinition(id = "d2", label = "B", position = 1)),
+        )
+        coEvery { repository.reorder(any()) } returns Result.failure(ApiError.Client(400, "boom"))
+
+        val vm = FieldDefinitionsViewModel(repository)
+        advanceUntilIdle()
+
+        vm.move("d1", 1)
+        advanceUntilIdle()
+
+        assertEquals("boom", vm.uiState.value.error)
+        assertEquals(listOf("d1", "d2"), vm.uiState.value.definitions.map { it.id })
+    }
+
+    @Test
+    fun `a second move call is ignored while one is already in flight`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { repository.list() } returns Result.success(
+            listOf(FieldDefinition(id = "d1", label = "A", position = 0), FieldDefinition(id = "d2", label = "B", position = 1)),
+        )
+        val gate = CompletableDeferred<Unit>()
+        coEvery { repository.reorder(any()) } coAnswers {
+            gate.await()
+            Result.success(
+                listOf(FieldDefinition(id = "d2", label = "B", position = 0), FieldDefinition(id = "d1", label = "A", position = 1)),
+            )
+        }
+
+        val vm = FieldDefinitionsViewModel(repository)
+        advanceUntilIdle()
+
+        vm.move("d1", 1)
+        advanceUntilIdle() // isReordering flips true and the coroutine suspends on the gate
+        assertTrue(vm.uiState.value.isReordering)
+
+        vm.move("d1", 1) // ignored while the first is in flight
+
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { repository.reorder(any()) }
+    }
 }

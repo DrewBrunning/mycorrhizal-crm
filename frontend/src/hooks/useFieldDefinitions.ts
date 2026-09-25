@@ -8,6 +8,7 @@ import {
   type FieldValueInput,
   getContactFieldValues,
   getFieldDefinitions,
+  reorderFieldDefinitions,
   replaceContactFieldValues,
   updateFieldDefinition,
 } from '../api/fieldDefinitions';
@@ -74,6 +75,30 @@ export function useFieldDefinitions(notifier?: ErrorNotifier) {
     [refresh, notifier],
   );
 
+  // Swaps the given definition with its immediate neighbor (direction -1 =
+  // up, +1 = down) and persists the full resulting order in one call (issue
+  // #1210). Field definitions have no category grouping, so this is a straight
+  // adjacent swap across the whole list. No drag-and-drop library exists in
+  // this repo, and the LinkFieldType settings use the same up/down pattern.
+  const handleMove = useCallback(
+    async (id: string, direction: -1 | 1) => {
+      const ids = definitions.map((d) => d.id);
+      const index = ids.indexOf(id);
+      if (index === -1) return;
+      const swapIndex = index + direction;
+      if (swapIndex < 0 || swapIndex >= ids.length) return;
+      [ids[index], ids[swapIndex]] = [ids[swapIndex], ids[index]];
+
+      try {
+        setDefinitions(await reorderFieldDefinitions(ids));
+      } catch (err) {
+        handleError(err, { operation: 'reordering custom fields' }, notifier);
+        throw err;
+      }
+    },
+    [definitions, notifier],
+  );
+
   return {
     definitions,
     loading,
@@ -82,6 +107,7 @@ export function useFieldDefinitions(notifier?: ErrorNotifier) {
     handleCreate,
     handleUpdate,
     handleDelete,
+    handleMove,
   };
 }
 

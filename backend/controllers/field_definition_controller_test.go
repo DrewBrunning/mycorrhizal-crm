@@ -3,6 +3,7 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
+	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -491,4 +492,208 @@ func TestReplaceContactFieldValues_ContactNotFound(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// --- Display order / reorder (issue #1210) ---
+
+// reorderRoutes wires the list + reorder routes used by the order tests.
+func reorderRoutes(t *testing.T) (*gorm.DB, *gin.Engine, models.User) {
+	t.Helper()
+	db, router := setupRouter(t)
+	router.GET("/field-definitions", ListFieldDefinitions)
+	router.PUT("/field-definitions/reorder", withValidated(func() any { return &models.FieldDefinitionReorderInput{} }), ReorderFieldDefinitions)
+	var user models.User
+	db.First(&user)
+	return db, router, user
+}
+
+// makeOrderedDefinition creates a definition with an explicit position.
+func makeOrderedDefinition(t *testing.T, db *gorm.DB, userID uint, key string, position int) models.FieldDefinition {
+	t.Helper()
+	def := createTestDefinition(t, db, userID, key)
+	def.Position = position
+	require.NoError(t, db.Create(&def).Error)
+	return def
+}
+
+func putReorder(t *testing.T, router *gin.Engine, order []string) *httptest.ResponseRecorder {
+	t.Helper()
+	body, _ := json.Marshal(models.FieldDefinitionReorderInput{Order: order})
+	req, _ := http.NewRequest("PUT", "/field-definitions/reorder", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	return w
+}
+
+func TestCreateFieldDefinitionAppendsPosition(t *testing.T) {
+	db, router := setupRouter(t)
+	router.POST("/field-definitions", withValidated(func() any { return &models.FieldDefinitionInput{} }), CreateFieldDefinition)
+
+	var user models.User
+	db.First(&user)
+	// An existing definition at a non-zero position proves append is max+1,
+	// not a row count.
+	makeOrderedDefinition(t, db, user.ID, "existing", 4)
+
+	payload := models.FieldDefinitionInput{Label: "New", Key: "new_one", Type: models.FieldTypeString}
+	body, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("POST", "/field-definitions", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusCreated, w.Code)
+	var saved models.FieldDefinition
+	require.NoError(t, db.First(&saved, "key = ?", "new_one").Error)
+	assert.Equal(t, 5, saved.Position, "a new definition appends after the current maximum position")
+}
+
+func TestListFieldDefinitionsOrdersByPosition(t *testing.T) {
+	db, router, user := reorderRoutes(t)
+	// Inserted out of display order.
+	makeOrderedDefinition(t, db, user.ID, "gamma", 2)
+	makeOrderedDefinition(t, db, user.ID, "alpha", 0)
+	makeOrderedDefinition(t, db, user.ID, "beta", 1)
+
+	req, _ := http.NewRequest("GET", "/field-definitions", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var body struct {
+		FieldDefinitions []models.FieldDefinition `json:"field_definitions"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Len(t, body.FieldDefinitions, 3)
+	assert.Equal(t, []string{"alpha", "beta", "gamma"},
+		[]string{body.FieldDefinitions[0].Key, body.FieldDefinitions[1].Key, body.FieldDefinitions[2].Key},
+		"the list is ordered by position, not updated_at")
+}
+
+func TestListFieldDefinitionsCursorByPosition(t *testing.T) {
+	db, router, user := reorderRoutes(t)
+	makeOrderedDefinition(t, db, user.ID, "one", 0)
+	makeOrderedDefinition(t, db, user.ID, "two", 1)
+	makeOrderedDefinition(t, db, user.ID, "three", 2)
+
+	firstReq, _ := http.NewRequest("GET", "/field-definitions?limit=2", nil)
+	firstW := httptest.NewRecorder()
+	router.ServeHTTP(firstW, firstReq)
+	require.Equal(t, http.StatusOK, firstW.Code)
+	var firstPage struct {
+		FieldDefinitions []models.FieldDefinition `json:"field_definitions"`
+		NextCursor       string                   `json:"next_cursor"`
+	}
+	require.NoError(t, json.Unmarshal(firstW.Body.Bytes(), &firstPage))
+	require.Len(t, firstPage.FieldDefinitions, 2)
+	assert.Equal(t, "one", firstPage.FieldDefinitions[0].Key)
+	assert.Equal(t, "two", firstPage.FieldDefinitions[1].Key)
+	require.NotEmpty(t, firstPage.NextCursor, "a full page must mint a resume cursor")
+
+	secondReq, _ := http.NewRequest("GET", "/field-definitions?limit=2&cursor="+firstPage.NextCursor, nil)
+	secondW := httptest.NewRecorder()
+	router.ServeHTTP(secondW, secondReq)
+	require.Equal(t, http.StatusOK, secondW.Code)
+	var secondPage struct {
+		FieldDefinitions []models.FieldDefinition `json:"field_definitions"`
+		NextCursor       string                   `json:"next_cursor"`
+	}
+	require.NoError(t, json.Unmarshal(secondW.Body.Bytes(), &secondPage))
+	require.Len(t, secondPage.FieldDefinitions, 1)
+	assert.Equal(t, "three", secondPage.FieldDefinitions[0].Key)
+	assert.Empty(t, secondPage.NextCursor, "the last page mints no cursor")
+
+	// A malformed position cursor is a 400, not a silent full re-list.
+	badReq, _ := http.NewRequest("GET", "/field-definitions?cursor=bm90LWEtY3Vyc29y", nil)
+	badW := httptest.NewRecorder()
+	router.ServeHTTP(badW, badReq)
+	assert.Equal(t, http.StatusBadRequest, badW.Code)
+}
+
+func TestReorderFieldDefinitions(t *testing.T) {
+	db, router, user := reorderRoutes(t)
+	a := makeOrderedDefinition(t, db, user.ID, "a", 0)
+	b := makeOrderedDefinition(t, db, user.ID, "b", 1)
+	c := makeOrderedDefinition(t, db, user.ID, "c", 2)
+
+	// Reverse the order: c, a, b.
+	w := putReorder(t, router, []string{c.ID, a.ID, b.ID})
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var body struct {
+		FieldDefinitions []models.FieldDefinition `json:"field_definitions"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Len(t, body.FieldDefinitions, 3)
+	assert.Equal(t, []string{"c", "a", "b"},
+		[]string{body.FieldDefinitions[0].Key, body.FieldDefinitions[1].Key, body.FieldDefinitions[2].Key},
+		"the response is the new order")
+
+	for i, key := range []string{"c", "a", "b"} {
+		var reloaded models.FieldDefinition
+		require.NoError(t, db.First(&reloaded, "key = ?", key).Error)
+		assert.Equal(t, i, reloaded.Position, "positions are renumbered 0..N-1")
+	}
+
+	// The list endpoint reflects the persisted order.
+	listReq, _ := http.NewRequest("GET", "/field-definitions", nil)
+	listW := httptest.NewRecorder()
+	router.ServeHTTP(listW, listReq)
+	var listBody struct {
+		FieldDefinitions []models.FieldDefinition `json:"field_definitions"`
+	}
+	require.NoError(t, json.Unmarshal(listW.Body.Bytes(), &listBody))
+	require.Len(t, listBody.FieldDefinitions, 3)
+	assert.Equal(t, "c", listBody.FieldDefinitions[0].Key)
+}
+
+func TestReorderFieldDefinitionsRejectsIncompleteSet(t *testing.T) {
+	db, router, user := reorderRoutes(t)
+	a := makeOrderedDefinition(t, db, user.ID, "a", 0)
+	makeOrderedDefinition(t, db, user.ID, "b", 1)
+
+	// Missing "b": a valid but partial set must be rejected, not silently
+	// reorder a subset and leave b colliding.
+	w := putReorder(t, router, []string{a.ID})
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestReorderFieldDefinitionsRejectsForeignID(t *testing.T) {
+	db, router, user := reorderRoutes(t)
+	a := makeOrderedDefinition(t, db, user.ID, "a", 0)
+	otherUser := models.User{Username: "other", Password: "password123", Email: "other@example.com"}
+	require.NoError(t, db.Create(&otherUser).Error)
+	foreign := createTestDefinition(t, db, otherUser.ID, "not_yours")
+	require.NoError(t, db.Create(&foreign).Error)
+
+	w := putReorder(t, router, []string{a.ID, foreign.ID})
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	// The owner's own definition is untouched by the rejected request.
+	var reloaded models.FieldDefinition
+	require.NoError(t, db.First(&reloaded, "id = ?", a.ID).Error)
+	assert.Equal(t, 0, reloaded.Position)
+}
+
+func TestReorderFieldDefinitionsRejectsDuplicateID(t *testing.T) {
+	db, router, user := reorderRoutes(t)
+	a := makeOrderedDefinition(t, db, user.ID, "a", 0)
+	makeOrderedDefinition(t, db, user.ID, "b", 1)
+
+	// [a, a]: two entries but only one distinct owned row, so the count check
+	// fails.
+	w := putReorder(t, router, []string{a.ID, a.ID})
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestReorderFieldDefinitionsEmptySetIsRejected(t *testing.T) {
+	// The min=1 rule lives in the DTO tag, enforced by the real validation
+	// middleware — wire it directly so the empty payload is actually rejected
+	// (the withValidated helper the other reorder tests use skips it).
+	_, router := setupRouter(t)
+	router.PUT("/field-definitions/reorder", middleware.ValidateJSONMiddleware(&models.FieldDefinitionReorderInput{}), ReorderFieldDefinitions)
+
+	w := putReorder(t, router, []string{})
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }

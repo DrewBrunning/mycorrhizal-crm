@@ -19,6 +19,7 @@ data class FieldDefinitionsUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val deletingId: String? = null,
+    val isReordering: Boolean = false,
 )
 
 @HiltViewModel
@@ -67,5 +68,32 @@ class FieldDefinitionsViewModel @Inject constructor(
 
     fun onErrorShown() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * Swap the definition with its immediate neighbor (direction -1 = up, +1 = down) and persist
+     * the full resulting order in one call (issue #1210). A boundary move is a no-op, and a
+     * reorder already in flight blocks another so two overlapping full-set calls can't race.
+     */
+    fun move(id: String, direction: Int) {
+        if (_uiState.value.isReordering) return
+        val ids = _uiState.value.definitions.map { it.id }.toMutableList()
+        val index = ids.indexOf(id)
+        if (index == -1) return
+        val swapIndex = index + direction
+        if (swapIndex < 0 || swapIndex >= ids.size) return
+        ids[index] = ids[swapIndex].also { ids[swapIndex] = ids[index] }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isReordering = true, error = null) }
+            repository.reorder(ids).foldApiError(
+                onSuccess = { definitions ->
+                    _uiState.update { it.copy(isReordering = false, definitions = definitions) }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(isReordering = false, error = error.displayMessage) }
+                },
+            )
+        }
     }
 }

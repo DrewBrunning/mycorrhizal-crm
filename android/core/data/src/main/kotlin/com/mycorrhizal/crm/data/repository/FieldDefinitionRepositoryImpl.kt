@@ -29,6 +29,9 @@ class FieldDefinitionRepositoryImpl @Inject constructor(
     override suspend fun delete(id: String): Result<Unit> =
         apiClient.deleteFieldDefinition(id).mapError()
 
+    override suspend fun reorder(order: List<String>): Result<List<FieldDefinition>> =
+        apiClient.reorderFieldDefinitions(order).mapError().map { it.definitions }
+
     override suspend fun contactValues(contactId: Int): Result<List<FieldValue>> =
         apiClient.listContactFieldValues(contactId).mapError().map { it.values }
 

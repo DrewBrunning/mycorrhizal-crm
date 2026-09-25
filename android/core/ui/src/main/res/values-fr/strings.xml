@@ -968,6 +968,8 @@
     <string name="settings_custom_fields_delete_confirm">Supprimer « %1$s » ? Cela supprime aussi ses valeurs enregistrées.</string>
     <string name="settings_custom_fields_delete_named">Supprimer %1$s</string>
     <string name="settings_custom_fields_edit_named">Modifier %1$s</string>
+    <string name="settings_custom_fields_move_up_named">Déplacer %1$s vers le haut</string>
+    <string name="settings_custom_fields_move_down_named">Déplacer %1$s vers le bas</string>
     <string name="settings_custom_fields_label">Libellé</string>
     <string name="settings_custom_fields_key">Clé</string>
     <string name="settings_custom_fields_key_hint">Le nom technique stable ; ne peut plus être modifié après la création.</string>

@@ -1012,6 +1012,7 @@ export type FieldDefinition = {
   id: string;
   key: string;
   label: string;
+  position: number;
   projection: string;
   sensitivity: 'normal' | 'private' | 'secret';
   target: 'contact';
@@ -1027,6 +1028,10 @@ export type FieldDefinitionInput = {
   sensitivity?: 'normal' | 'private' | 'secret';
   target?: 'contact';
   type: 'string' | 'text' | 'number' | 'boolean' | 'date' | 'datetime' | 'uri' | 'email' | 'phone' | 'enum';
+};
+
+export type FieldDefinitionReorderInput = {
+  order: string[];
 };
 
 export type FieldValue = {
