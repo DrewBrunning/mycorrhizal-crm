@@ -183,6 +183,16 @@ deliberately untested. In order of preference:
    Use these only for code that structurally cannot be hit (a defensive branch
    that only executes on a broken invariant), and keep the reason discoverable
    — the marker is invisible in the diff otherwise.
+
+   `cmd/pragmacheck` makes "keep the reason discoverable" mechanical: it scans
+   every non-test Go file under `backend/` for `# pragma: no cover` and every
+   file under `frontend/src` for `/* v8 ignore ... */`, and fails if a marker
+   has no reason — either non-trivial text after the marker on its own line,
+   or on the line directly above it (the common pattern of stating the reason
+   once on a guarding `if` and marking every line inside the block). It runs
+   in `unit-tests.yml`'s `docs-citations` job and in `.githooks/pre-commit`,
+   both unconditionally, for the same reason `citecheck`/`docscheck` are: a
+   marker with no accompanying test change never trips a path filter.
 3. **File-level ignore.** Add the path to the `ignore:` list in `codecov.yml`
    with a justifying comment. Coarse — only for an entire file that is
    genuinely outside the coverage model. `android/build-logic/.../AndroidConfig.kt`'s

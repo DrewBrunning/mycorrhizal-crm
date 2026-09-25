@@ -996,9 +996,9 @@ func DeleteOwnAccount(c *gin.Context, cfg *config.Config) {
 	// document, and this call site is not independently isolatable from those.
 	candidates, err := soleAdminPromotionCandidates(db, userID)
 	if err != nil {
-		log.Error().Err(err).Uint("user_id", userID).Msg("Failed to check sole-admin promotion requirement") // # pragma: no cover
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("check admin count").WithError(err))               // # pragma: no cover
-		return                                                                                               // # pragma: no cover
+		log.Error().Err(err).Uint("user_id", userID).Msg("Failed to check sole-admin promotion requirement") // # pragma: no cover — see the comment above soleAdminPromotionCandidates's call
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("check admin count").WithError(err))               // # pragma: no cover — see above
+		return                                                                                               // # pragma: no cover — see above
 	}
 
 	var promoteUser *models.User

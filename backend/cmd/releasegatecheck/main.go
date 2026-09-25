@@ -129,7 +129,7 @@ func runAt(w io.Writer, root string) int {
 func findRepoRoot() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
-		return "", err // # pragma: no cover
+		return "", err // # pragma: no cover — os.Getwd fails only when the cwd has been deleted out from under the process
 	}
 	for {
 		if _, statErr := os.Stat(filepath.Join(dir, "backend", "go.mod")); statErr == nil {

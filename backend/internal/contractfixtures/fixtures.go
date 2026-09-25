@@ -101,7 +101,7 @@ func Generate(doc *openapi3.T) (map[string][]byte, error) {
 			// An example always comes from a YAML-parsed spec document
 			// (objects/arrays/scalars), which json.Encoder.Encode can never
 			// fail on, so no test can reach this.
-			return nil, fmt.Errorf("%s: encoding example: %w", pin.Filename, err) // # pragma: no cover
+			return nil, fmt.Errorf("%s: encoding example: %w", pin.Filename, err) // # pragma: no cover — see above
 		}
 		out[pin.Filename] = buf.Bytes()
 	}

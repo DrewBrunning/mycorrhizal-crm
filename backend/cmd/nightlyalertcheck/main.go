@@ -32,7 +32,7 @@ func main() {
 func run(w io.Writer) int {
 	root, err := findRepoRoot()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "nightlyalertcheck:", err) // # pragma: no cover
+		fmt.Fprintln(os.Stderr, "nightlyalertcheck:", err) // # pragma: no cover — only reachable when run outside the repository
 		return 2                                           // # pragma: no cover
 	}
 	return runAt(w, root)
@@ -62,7 +62,7 @@ func runAt(w io.Writer, root string) int {
 		// directory entry we just listed
 		b, rerr := os.ReadFile(filepath.Join(dir, name))
 		if rerr != nil {
-			fmt.Fprintln(w, "cannot read "+workflowsDir+"/"+name+": "+rerr.Error()) // # pragma: no cover
+			fmt.Fprintln(w, "cannot read "+workflowsDir+"/"+name+": "+rerr.Error()) // # pragma: no cover — a just-listed workflow file becoming unreadable is a filesystem race, not a testable input
 			return 2                                                                // # pragma: no cover
 		}
 		files[name] = b
@@ -99,7 +99,7 @@ func runAt(w io.Writer, root string) int {
 func findRepoRoot() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
-		return "", err // # pragma: no cover
+		return "", err // # pragma: no cover — Getwd fails only when the cwd has been deleted
 	}
 	for {
 		if _, statErr := os.Stat(filepath.Join(dir, "backend", "go.mod")); statErr == nil {
@@ -107,7 +107,7 @@ func findRepoRoot() (string, error) {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", fmt.Errorf("could not locate repository root (no backend/go.mod)") // # pragma: no cover
+			return "", fmt.Errorf("could not locate repository root (no backend/go.mod)") // # pragma: no cover — only reachable when run outside the repository
 		}
 		dir = parent
 	}

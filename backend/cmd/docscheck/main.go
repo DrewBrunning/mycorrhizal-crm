@@ -57,12 +57,12 @@ import (
 func main() {
 	root, err := findRepoRoot()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "docscheck:", err) // # pragma: no cover — main is not exercised by tests; run() is
-		os.Exit(1)                                 // # pragma: no cover
+		fmt.Fprintln(os.Stderr, "docscheck:", err) // # pragma: no cover — main is not exercised by tests; runAt is
+		os.Exit(1)                                 // # pragma: no cover — see above; main's own os.Exit is not exercised by tests
 	}
 	if err := runAt(root); err != nil {
-		fmt.Fprintln(os.Stderr, "docscheck:", err) // # pragma: no cover — main is not exercised by tests; run() is
-		os.Exit(1)                                 // # pragma: no cover
+		fmt.Fprintln(os.Stderr, "docscheck:", err) // # pragma: no cover — main is not exercised by tests; runAt is
+		os.Exit(1)                                 // # pragma: no cover — see above; main's own os.Exit is not exercised by tests
 	}
 }
 

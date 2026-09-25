@@ -234,6 +234,18 @@ jobs:
         working-directory: backend
         run: go run ./cmd/nightlyalertcheck
 
+      # docs/development/coverage.md's Override path asks for a reason on
+      # every coverage-exclusion marker; pragmacheck makes that mechanical.
+      # It scans every non-test Go file under backend/ for `# pragma: no
+      # cover` and every frontend/src file for `/* v8 ignore ... */`, and
+      # fails if a marker's own line (or the line directly above it) has no
+      # discoverable reason. Same job/rationale as the checks above:
+      # unconditional, because a marker with no test around it never trips a
+      # path filter.
+      - name: Verify coverage-override markers carry a reason
+        working-directory: backend
+        run: go run ./cmd/pragmacheck
+
   # REL-05 (issue #449): a PR that touches an operator-visible surface
   # (`changelog-relevant` in .github/filters.yaml — schema migrations, the
   # config surface, .env.example) must carry an `## Upgrade notes` /
