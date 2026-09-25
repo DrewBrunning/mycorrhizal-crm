@@ -64,6 +64,8 @@ enum class ServerFeature(val minServerVersion: AppVersion) {
     CONTACT_RELATIONSHIPS(SERVER_BASELINE),
     /** Cadence policies / overdue reach-outs. */
     CONTACT_CADENCE(SERVER_BASELINE),
+    /** Occasion events + attendee/RSVP tracking (ADR 0026, issue #1228). */
+    OCCASIONS(SERVER_BASELINE),
     /** Life events on a contact. */
     CONTACT_LIFE_EVENTS(SERVER_BASELINE),
     /** Gift ideas on a contact. */

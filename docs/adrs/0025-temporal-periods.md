@@ -224,6 +224,31 @@ Schema impact: one table, `life_event_suggestion_resolutions` (migration 000060)
 It holds no contact-file data and has no standards surface, so the correspondence table and the DATA-01
 matrix are unchanged.
 
+### Follow-up: extended rules and employer/title period editing (issue #1233)
+
+The "deliberately narrow" rules above were extended, still as code changes with no schema impact:
+
+- **Title periods** (`kind: title`) start → `job_change`. When an organization and a title share an
+  anchor date they produce a single candidate, attributed to the organization entry (deterministic
+  kind priority), so the user is not offered two identical events.
+- **Address end with no successor** → `moved_out`, a new predefined `LifeEventType*` token (the
+  departure counterpart of `moved`). It is a distinct token rather than a second `moved` because the
+  resolution key is `(entity, source_kind, source_entry_id, event_type)` — two `moved` candidates from
+  the same address entry would collide. "No successor" means no other address period starts at or after
+  this one's end (compared at shared precision, `contactmodel.ComparePartialDates`); when a successor
+  exists, its own start already yields the `moved` and no departure is offered, which is the compound
+  "an address change is a move at the new start" case.
+- **Employer/title period editing** shipped on web and Android, on the single organization / job-title
+  entry the professional section surfaces, preserving (and, where an imported entry has none, minting)
+  the entry's element ID so the period has something to attach to.
+- **Android parity also fixed a latent data loss**: Android's `CRMEnvelope` did not model `crm.periods`
+  and its contact PUT is a full overwrite, so any Android edit silently deleted every period (and
+  `LifeEvent.EndDate`). Both are now modelled and round-tripped.
+- **Still deferred**: household-membership (`Since`/`Until`) rules need a second data source in the
+  suggestion service (the membership edge, not a Card `EntryPeriod`); and "schools" cannot be
+  distinguished from employers because `contactmodel.Organization` carries no `contexts` field (RFC
+  9553 defines one, but the model does not).
+
 ## Alternatives considered
 
 - **Put the range on the `Card` entry (`Address.Start`/`Address.End`).** The smallest code change, but it

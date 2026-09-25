@@ -126,6 +126,11 @@ that.) If an event ever gets an export, this is the field that gates it, not a n
    conditional-write) — every new route needs its declared row.
 5. Frontend: events list/section on the Occasions surface, create/edit dialog, per-event attendee
    management with an RSVP status control, and the "suggest from circles" picker.
+6. Android parity, in the same PR (this project ships web and Android together; parity is not deferred
+   behind a separate backlog ticket): an "Occasions" destination with the event list + create/edit/delete,
+   a per-event attendee/RSVP screen, contact-search add, and the circle-based suggestions. The event list
+   is mirrored into a `cached_occasion_events` Room table (Room version 19) following the same
+   full-resync cache pattern as the cadence/timeline entities; attendees are online-only.
 
 **Deferred** (explicitly not in this slice):
 
@@ -133,7 +138,6 @@ that.) If an event ever gets an export, this is the field that gates it, not a n
 - Relationship-edge-based invitee suggestion — §3.
 - Any projection to / import from CalDAV, and any `OccasionObligation` ↔ `OccasionEvent` link — §1.
 - Recurring events (ADR 0024 part 2's annual-only ceiling stands).
-- Android parity (follows the established web-first parity backlog pattern).
 
 ## Consequences
 
@@ -143,3 +147,5 @@ that.) If an event ever gets an export, this is the field that gates it, not a n
   as a user-recorded fact, never as evidence of a delivered invitation.
 - The event/obligation/imported-calendar boundaries are now written down: three surfaces that all sound
   like "calendar" and are deliberately not coupled.
+- Android adds one mirror table (`cached_occasion_events`, Room version 19) and a new `:feature:occasions`
+  module; both are cache/UI only, with the server as the source of truth.

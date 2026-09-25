@@ -16,12 +16,15 @@ import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.AddressComponent
+import com.mycorrhizal.crm.model.network.EntryPeriod
 import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Organization
+import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.PersonalInfo
 import com.mycorrhizal.crm.model.network.Resource
-import com.mycorrhizal.crm.model.network.Title
 import com.mycorrhizal.crm.model.network.Tag
+import com.mycorrhizal.crm.model.network.TemporalRange
+import com.mycorrhizal.crm.model.network.Title
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.ui.R
@@ -953,6 +956,158 @@ class ContactFormViewModelTest {
                 match<ContactRecordInput> { input ->
                     val orgs = input.card?.organizations.orEmpty()
                     orgs.size == 1 && orgs.first().id == "org-2"
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `existing periods round-trip on save so Android never drops them`() = runTest(mainDispatcherRule.testDispatcher) {
+        // Regression guard for the ADR 0025 data loss: the PUT is a full
+        // overwrite and toInput rebuilds crm via copy, so every period must be
+        // carried back even when the form doesn't touch one.
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White", components = listOf(
+                    com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
+                )),
+                addresses = listOf(Address(id = "addr-1", components = listOf(AddressComponent(kind = "name", value = "1 Main St")))),
+                organizations = listOf(Organization(id = "org-1", name = "Acme")),
+                titles = listOf(Title(id = "title-1", name = "Engineer", kind = "title")),
+            ),
+            crm = CRMEnvelope(periods = listOf(
+                EntryPeriod(kind = "address", entryId = "addr-1", range = TemporalRange(start = PartialDate(year = 2019))),
+                EntryPeriod(kind = "organization", entryId = "org-1", range = TemporalRange(start = PartialDate(year = 2020))),
+                EntryPeriod(kind = "title", entryId = "title-1", range = TemporalRange(start = PartialDate(year = 2020))),
+            )),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        assertEquals("2020", vm.uiState.value.organizationPeriodStart)
+        vm.onGivenNameChange("Dana")
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify {
+            contactRepository.updateContact(
+                5,
+                match<ContactRecordInput> { input ->
+                    val periods = input.crm?.periods.orEmpty()
+                    periods.size == 3 &&
+                        periods.any { it.kind == "address" && it.entryId == "addr-1" && it.range.start?.year == 2019 } &&
+                        periods.any { it.kind == "organization" && it.entryId == "org-1" } &&
+                        periods.any { it.kind == "title" && it.entryId == "title-1" }
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `setting an organization period mints an element ID and records it`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White", components = listOf(
+                    com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
+                )),
+                organizations = listOf(Organization(name = "Acme")), // legacy: no id
+            ),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        vm.onOrganizationPeriodStartChange("2019")
+        vm.onOrganizationPeriodEndChange("2024")
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify {
+            contactRepository.updateContact(
+                5,
+                match<ContactRecordInput> { input ->
+                    val orgId = input.card?.organizations?.firstOrNull()?.id
+                    !orgId.isNullOrBlank() &&
+                        input.crm?.periods.orEmpty().any {
+                            it.kind == "organization" && it.entryId == orgId &&
+                                it.range.start?.year == 2019 && it.range.end?.year == 2024
+                        }
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `clearing the organization period removes it`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White", components = listOf(
+                    com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
+                )),
+                organizations = listOf(Organization(id = "org-1", name = "Acme")),
+            ),
+            crm = CRMEnvelope(periods = listOf(
+                EntryPeriod(kind = "organization", entryId = "org-1", range = TemporalRange(start = PartialDate(year = 2019))),
+            )),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        assertEquals("2019", vm.uiState.value.organizationPeriodStart)
+        vm.onOrganizationPeriodStartChange("")
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify {
+            contactRepository.updateContact(
+                5,
+                match<ContactRecordInput> { input ->
+                    input.crm?.periods.orEmpty().none { it.kind == "organization" }
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `editing an address period writes it back keyed by address id`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White", components = listOf(
+                    com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
+                )),
+                addresses = listOf(Address(id = "addr-1", components = listOf(AddressComponent(kind = "name", value = "1 Main St")))),
+            ),
+            crm = CRMEnvelope(periods = listOf(
+                EntryPeriod(kind = "address", entryId = "addr-1", range = TemporalRange(start = PartialDate(year = 2019))),
+            )),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        vm.onPeriodsChange(
+            listOf(EntryPeriod(kind = "address", entryId = "addr-1", range = TemporalRange(start = PartialDate(year = 2019), end = PartialDate(year = 2024)))),
+        )
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify {
+            contactRepository.updateContact(
+                5,
+                match<ContactRecordInput> { input ->
+                    input.crm?.periods.orEmpty().any {
+                        it.kind == "address" && it.entryId == "addr-1" && it.range.end?.year == 2024
+                    }
                 },
             )
         }

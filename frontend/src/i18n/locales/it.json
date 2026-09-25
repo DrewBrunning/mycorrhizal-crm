@@ -573,6 +573,13 @@
     "birthdayError": "Formato data non valido. Controlla le impostazioni del formato data.",
     "address": "Indirizzo",
     "workInfo": "Informazioni Lavorative",
+    "period": {
+      "label": "Periodo",
+      "from": "Da (anno)",
+      "to": "A (anno)",
+      "since": "Dal {{year}}",
+      "until": "Fino al {{year}}"
+    },
     "howWeMet": "Come ci siamo conosciuti",
     "additionalInfo": "Informazioni Aggiuntive",
     "timeline": "Cronologia",
@@ -733,6 +740,7 @@
       "adopted_pet": "Ha preso un animale",
       "retired": "In pensione",
       "moved": "Trasferito",
+      "moved_out": "Ha lasciato la casa",
       "bought_a_home": "Ha comprato casa",
       "made_a_home_improvement": "Ha fatto una ristrutturazione",
       "went_on_holidays": "È andato in vacanza",

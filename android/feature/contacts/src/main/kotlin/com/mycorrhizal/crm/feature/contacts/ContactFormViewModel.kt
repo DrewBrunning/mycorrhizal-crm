@@ -14,6 +14,7 @@ import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.Email
+import com.mycorrhizal.crm.model.network.EntryPeriod
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.NameComponent
 import com.mycorrhizal.crm.model.network.Nickname
@@ -34,6 +35,8 @@ import com.mycorrhizal.crm.model.network.LanguagePref
 import com.mycorrhizal.crm.model.network.Pronouns
 import com.mycorrhizal.crm.model.network.resolveEnabledFields
 import com.mycorrhizal.crm.model.network.SpeakToAs
+import com.mycorrhizal.crm.model.network.upsertEntryPeriod
+import com.mycorrhizal.crm.model.network.yearTemporalRange
 import com.mycorrhizal.crm.model.network.CardNote
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.util.formatForEdit
@@ -54,6 +57,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Locale
+import java.util.UUID
 import javax.inject.Inject
 
 /**
@@ -103,6 +107,16 @@ data class ContactFormState(
     val organizationName: String = "",
     val department: String = "",
     val titles: List<Title> = emptyList(),
+    // ADR 0025 (#1233): the whole-years organization / job-title period the
+    // professional section edits (either side may be blank), plus the full
+    // period list for entries edited elsewhere (addresses) and everything the
+    // form doesn't surface. `periods` is the round-trip source of truth: the
+    // PUT is a full overwrite, so an omitted period is deleted.
+    val organizationPeriodStart: String = "",
+    val organizationPeriodEnd: String = "",
+    val jobTitlePeriodStart: String = "",
+    val jobTitlePeriodEnd: String = "",
+    val periods: List<EntryPeriod> = emptyList(),
     val imppAddresses: List<OnlineService> = emptyList(),
     val socialProfiles: List<OnlineService> = emptyList(),
     val otherOnlineServices: List<OnlineService> = emptyList(),
@@ -229,6 +243,12 @@ data class ContactFormState(
                 if (text.isNullOrBlank()) null else note.copy(note = text)
             }.ifEmpty { null },
         )
+        // ADR 0025 (#1233): mint an element ID for the organization / job-title
+        // entry a period is being attached to, then fold the edited org/title
+        // periods into the round-tripped list (and drop periods whose entry no
+        // longer exists). Address periods ride in `periods` already.
+        val finalizedCard = ensureEntryIdsForPeriods(card)
+        val mergedPeriods = reconcilePeriods(finalizedCard)
         val crm = baseCrm.copy(
             kind = kind.ifBlank { baseCrm.kind },
             // M24: the flat `circles` projection mirrors the selection; the real memberships
@@ -243,12 +263,78 @@ data class ContactFormState(
             // field an edit must write to. Preserve-on-blank, matching howWeMet/workInformation.
             gender = gender.trim().ifBlank { baseCrm.gender },
             contactInformation = contactInformation.trim().ifBlank { baseCrm.contactInformation },
+            periods = mergedPeriods.ifEmpty { null },
         )
         return ContactRecordInput(
             gender = base?.gender,
-            card = card,
+            card = finalizedCard,
             crm = crm,
         )
+    }
+
+    /**
+     * ADR 0025 (#1233): an entry must carry an element ID to carry a period, so
+     * if the user set an organization / job-title period on an entry that has
+     * none (a legacy import, or a brand-new create), mint one. Only the first
+     * organization and the `title`-kind title are surfaced by the professional
+     * section, matching the web.
+     */
+    private fun ensureEntryIdsForPeriods(card: Card): Card {
+        var organizations = card.organizations
+        if (yearTemporalRange(organizationPeriodStart, organizationPeriodEnd) != null &&
+            organizations?.firstOrNull()?.id.isNullOrBlank()
+        ) {
+            organizations = organizations?.mapIndexed { i, org ->
+                if (i == 0) org.copy(id = newEntryId()) else org
+            }
+        }
+        var titles = card.titles
+        val jobTitleIndex = titles?.indexOfFirst { it.kind == "title" }
+            ?.takeIf { it >= 0 }
+            ?: titles?.indices?.firstOrNull()
+        if (yearTemporalRange(jobTitlePeriodStart, jobTitlePeriodEnd) != null &&
+            jobTitleIndex != null && titles!![jobTitleIndex].id.isNullOrBlank()
+        ) {
+            titles = titles.mapIndexed { i, title ->
+                if (i == jobTitleIndex) title.copy(id = newEntryId()) else title
+            }
+        }
+        return card.copy(organizations = organizations, titles = titles)
+    }
+
+    /**
+     * Fold the organization / job-title period fields into the round-tripped
+     * period list, then prune periods whose (kind, entry) no longer resolves on
+     * the card (a removed row). Address periods already live in [periods].
+     */
+    private fun reconcilePeriods(card: Card): List<EntryPeriod> {
+        var result = periods
+        card.organizations?.firstOrNull()?.id?.takeIf { it.isNotBlank() }?.let { orgId ->
+            result = upsertEntryPeriod(
+                result,
+                "organization",
+                orgId,
+                yearTemporalRange(organizationPeriodStart, organizationPeriodEnd),
+            )
+        }
+        val jobTitle = card.titles?.firstOrNull { it.kind == "title" } ?: card.titles?.firstOrNull()
+        jobTitle?.id?.takeIf { it.isNotBlank() }?.let { titleId ->
+            result = upsertEntryPeriod(
+                result,
+                "title",
+                titleId,
+                yearTemporalRange(jobTitlePeriodStart, jobTitlePeriodEnd),
+            )
+        }
+        val entryIds = mapOf(
+            "address" to card.addresses.orEmpty().mapNotNull { it.id }.toSet(),
+            "organization" to card.organizations.orEmpty().mapNotNull { it.id }.toSet(),
+            "title" to card.titles.orEmpty().mapNotNull { it.id }.toSet(),
+        )
+        return result.filter { period ->
+            val ids = entryIds[period.kind] ?: return@filter false
+            period.entryId in ids
+        }
     }
 
     /** Validate the form; returns the first problem's string resource id or null if valid. */
@@ -506,6 +592,13 @@ class ContactFormViewModel @Inject constructor(
     fun onPersonalInfoChange(value: List<PersonalInfo>) = _uiState.update { it.copy(personalInfo = value) }
     fun onOrganizationNameChange(value: String) = _uiState.update { it.copy(organizationName = value) }
     fun onDepartmentChange(value: String) = _uiState.update { it.copy(department = value) }
+    // ADR 0025 (#1233): whole-year period fields for the professional section,
+    // plus the period list the address editor writes into.
+    fun onOrganizationPeriodStartChange(value: String) = _uiState.update { it.copy(organizationPeriodStart = value) }
+    fun onOrganizationPeriodEndChange(value: String) = _uiState.update { it.copy(organizationPeriodEnd = value) }
+    fun onJobTitlePeriodStartChange(value: String) = _uiState.update { it.copy(jobTitlePeriodStart = value) }
+    fun onJobTitlePeriodEndChange(value: String) = _uiState.update { it.copy(jobTitlePeriodEnd = value) }
+    fun onPeriodsChange(value: List<EntryPeriod>) = _uiState.update { it.copy(periods = value) }
     fun onHowWeMetChange(value: String) = _uiState.update { it.copy(howWeMet = value) }
     fun onWorkInformationChange(value: String) = _uiState.update { it.copy(workInformation = value) }
     fun onContactInformationChange(value: String) = _uiState.update { it.copy(contactInformation = value) }
@@ -627,6 +720,13 @@ class ContactFormViewModel @Inject constructor(
         val organizationName = firstOrg?.name.orEmpty()
         val department = firstOrg?.units?.firstOrNull()?.name.orEmpty()
         val titles = card?.titles.orEmpty()
+        // ADR 0025 (#1233): the professional section's org / job-title periods,
+        // plus the full period list (address periods and everything the form
+        // doesn't surface) so a save round-trips it rather than dropping it.
+        val periods = record.crm?.periods.orEmpty()
+        val organizationPeriod = periods.firstOrNull { it.kind == "organization" && it.entryId == firstOrg?.id }
+        val jobTitleEntry = titles.firstOrNull { it.kind == "title" } ?: titles.firstOrNull()
+        val jobTitlePeriod = periods.firstOrNull { it.kind == "title" && it.entryId == jobTitleEntry?.id }
         val imppAddresses = card?.imppAddresses.orEmpty()
         val socialProfiles = card?.socialProfiles.orEmpty()
         val otherOnlineServices = card?.otherOnlineServices.orEmpty()
@@ -656,6 +756,11 @@ class ContactFormViewModel @Inject constructor(
             organizationName = organizationName,
             department = department,
             titles = titles,
+            organizationPeriodStart = organizationPeriod?.range?.start?.year?.toString().orEmpty(),
+            organizationPeriodEnd = organizationPeriod?.range?.end?.year?.toString().orEmpty(),
+            jobTitlePeriodStart = jobTitlePeriod?.range?.start?.year?.toString().orEmpty(),
+            jobTitlePeriodEnd = jobTitlePeriod?.range?.end?.year?.toString().orEmpty(),
+            periods = periods,
             imppAddresses = imppAddresses,
             socialProfiles = socialProfiles,
             otherOnlineServices = otherOnlineServices,
@@ -682,3 +787,11 @@ class ContactFormViewModel @Inject constructor(
             Locale.getDefault().language.takeIf { it.isNotBlank() } ?: "en"
     }
 }
+
+/**
+ * ADR 0025 (#1233): a client-minted Card element ID (the JSContact map key /
+ * vCard PROP-ID a period references), mirroring the web's `newCardEntryID`.
+ */
+private fun newEntryId(): String = UUID.randomUUID().toString()
+
+

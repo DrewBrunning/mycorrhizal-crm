@@ -17,7 +17,7 @@ var lifeEventCategoryOrder = []string{
 // LifeEventTypeCategories is the single source of truth for which category a
 // predefined LifeEventType* token belongs to — the same "map lives in one
 // place backend-side" role relationTypeRegistry plays for RelationshipEdge
-// types (relationship_type_registry.go). Only the 44 predefined tokens are
+// types (relationship_type_registry.go). Only the predefined tokens are
 // present; a custom (user-typed) Type has no entry here and its Category
 // comes directly from whichever category's picker the frontend opened it
 // from, not from this map.
@@ -29,6 +29,7 @@ var lifeEventCategoryOrder = []string{
 var LifeEventTypeCategories = map[string]string{
 	// Home & Living
 	LifeEventTypeMoved:                LifeEventCategoryHomeLiving,
+	LifeEventTypeMovedOut:             LifeEventCategoryHomeLiving,
 	LifeEventTypeBoughtAHome:          LifeEventCategoryHomeLiving,
 	LifeEventTypeMadeAHomeImprovement: LifeEventCategoryHomeLiving,
 	LifeEventTypeWentOnHolidays:       LifeEventCategoryHomeLiving,
@@ -94,6 +95,7 @@ var LifeEventTypeCategories = map[string]string{
 var lifeEventTypesByCategoryOrder = map[string][]string{
 	LifeEventCategoryHomeLiving: {
 		LifeEventTypeMoved,
+		LifeEventTypeMovedOut,
 		LifeEventTypeBoughtAHome,
 		LifeEventTypeMadeAHomeImprovement,
 		LifeEventTypeWentOnHolidays,

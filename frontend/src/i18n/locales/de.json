@@ -573,6 +573,13 @@
     "birthdayError": "Ungültiges Datumsformat. Überprüfen Sie Ihre Datumsformat-Einstellung.",
     "address": "Adresse",
     "workInfo": "Arbeitsinformationen",
+    "period": {
+      "label": "Zeitraum",
+      "from": "Von (Jahr)",
+      "to": "Bis (Jahr)",
+      "since": "Seit {{year}}",
+      "until": "Bis {{year}}"
+    },
     "howWeMet": "Wie wir uns kennengelernt haben",
     "additionalInfo": "Zusätzliche Informationen",
     "timeline": "Zeitachse",
@@ -733,6 +740,7 @@
       "adopted_pet": "Haustier bekommen",
       "retired": "In Rente gegangen",
       "moved": "Umgezogen",
+      "moved_out": "Ausgezogen",
       "bought_a_home": "Haus gekauft",
       "made_a_home_improvement": "Wohnung renoviert",
       "went_on_holidays": "In den Urlaub gefahren",

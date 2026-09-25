@@ -38,6 +38,7 @@ import {
   type CardOnlineService,
   type CardPersonalInfo,
   type CardSpeakToAs,
+  type CardTemporalRange,
   type ContactAddress,
   type ContactValue,
   type CRMEnvelope,
@@ -49,6 +50,10 @@ import {
   getAnniversaryField,
   getOrganizationFields,
   getTitleField,
+  newCardEntryID,
+  organizationEntry,
+  titleEntry,
+  upsertEntryPeriod,
   valuesToCardEmails,
   valuesToCardLinks,
   valuesToCardPhones,
@@ -80,6 +85,7 @@ import ImportedResourcesSection, { hasImportedResources } from './ImportedResour
 import KeywordsEditor from './KeywordsEditor';
 import MultiValueField from './MultiValueField';
 import OnlineServiceEditor from './OnlineServiceEditor';
+import PeriodField from './PeriodField';
 import PersonalInfoEditor from './PersonalInfoEditor';
 import PreferredLanguagesEditor from './PreferredLanguagesEditor';
 import RelatedToMembersSection, { hasRelatedToOrMembers } from './RelatedToMembersSection';
@@ -189,6 +195,54 @@ export default function ContactInformation({
   const { organization = '', department = '' } = getOrganizationFields(card.organizations);
   const jobTitle = getTitleField(card.titles, 'title') || '';
   const role = getTitleField(card.titles, 'role') || '';
+
+  // ADR 0025 (#1233): the period attached to the single organization / job
+  // title entry this section edits. Read via the entry's neutral element ID; a
+  // legacy entry without one simply has no period yet.
+  const organizationPeriodEntry = organizationEntry(card.organizations);
+  const organizationPeriod = organizationPeriodEntry?.id
+    ? crm.periods?.find(
+        (p) => p.kind === 'organization' && p.entry_id === organizationPeriodEntry.id,
+      )?.range
+    : undefined;
+  const jobTitleEntry = titleEntry(card.titles, 'title');
+  const jobTitlePeriod = jobTitleEntry?.id
+    ? crm.periods?.find((p) => p.kind === 'title' && p.entry_id === jobTitleEntry.id)?.range
+    : undefined;
+
+  // Persist the period to the first organization / job-title entry, minting the
+  // entry's element ID if it lacks one (an entry must carry an ID to carry a
+  // period — ADR 0025). Every other period and entry is preserved.
+  const saveOrganizationPeriod = async (range: CardTemporalRange | undefined) => {
+    const entry = organizationEntry(card.organizations);
+    if (!entry) return;
+    const entryID = entry.id ?? newCardEntryID();
+    const patch: Partial<CardModel> = entry.id
+      ? {}
+      : {
+          organizations: (card.organizations ?? []).map((o, i) =>
+            i === 0 ? { ...o, id: entryID } : o,
+          ),
+        };
+    await onUpdateCard(patch, {
+      periods: upsertEntryPeriod(crm.periods, 'organization', entryID, range),
+    });
+  };
+  const saveJobTitlePeriod = async (range: CardTemporalRange | undefined) => {
+    const entry = titleEntry(card.titles, 'title');
+    if (!entry) return;
+    const entryID = entry.id ?? newCardEntryID();
+    const patch: Partial<CardModel> = entry.id
+      ? {}
+      : {
+          titles: (card.titles ?? []).map((title) =>
+            title === entry ? { ...title, id: entryID } : title,
+          ),
+        };
+    await onUpdateCard(patch, {
+      periods: upsertEntryPeriod(crm.periods, 'title', entryID, range),
+    });
+  };
 
   const birthdayAgeSuffix = useMemo(() => {
     if (!birthday) return undefined;
@@ -1164,6 +1218,13 @@ export default function ContactInformation({
                 onEditSave={onEditSave}
                 onEditValueChange={onEditValueChange}
               />
+              {organizationPeriodEntry && (
+                <PeriodField
+                  label={t('contactDetail.period.label')}
+                  range={organizationPeriod}
+                  onSave={saveOrganizationPeriod}
+                />
+              )}
               <EditableField
                 icon={<BusinessIcon sx={iconSx} />}
                 label={t('contacts.department')}
@@ -1195,6 +1256,13 @@ export default function ContactInformation({
                 onEditSave={onEditSave}
                 onEditValueChange={onEditValueChange}
               />
+              {jobTitleEntry && (
+                <PeriodField
+                  label={t('contactDetail.period.label')}
+                  range={jobTitlePeriod}
+                  onSave={saveJobTitlePeriod}
+                />
+              )}
               <EditableField
                 icon={<BadgeIcon sx={iconSx} />}
                 label={t('contacts.role')}
