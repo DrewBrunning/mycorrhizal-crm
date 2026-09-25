@@ -153,6 +153,7 @@ run "docscheck (docs structure/links/drift)" backend go run ./cmd/docscheck
 run "releasegatecheck (release-gate registry)" backend go run ./cmd/releasegatecheck
 run "governancecheck (governance settings)" backend go run ./cmd/governancecheck
 run "pragmacheck (coverage-override markers carry a reason)" backend go run ./cmd/pragmacheck
+run "nightlyalertcheck (scheduled workflows registered for failure alerts)" backend go run ./cmd/nightlyalertcheck
 
 if [ "$changelog_relevant" = true ]; then
   echo ""

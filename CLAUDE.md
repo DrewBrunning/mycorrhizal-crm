@@ -315,8 +315,8 @@ needs running per worktree, not just once per clone.
   suite).
 - **Staged `frontend/` files:** `tsc --noEmit`, `biome ci`, `eslint` (`yarn lint` — type-aware:
   `no-floating-promises`/`no-misused-promises`/`await-thenable` are errors).
-- **Always:** the six docs-citations/governance checks (`citecheck`, `depexceptions`, `deprecations`,
-  `docscheck`, `releasegatecheck`, `governancecheck`) — CI runs these unconditionally too, since
+- **Always:** the docs-citations/governance checks (`citecheck`, `depexceptions`, `deprecations`,
+  `docscheck`, `releasegatecheck`, `governancecheck`, `pragmacheck`, `nightlyalertcheck`) — CI runs these unconditionally too, since
   `docs/**` maps to nothing in `.github/filters.yaml`.
 - **`commit-msg`:** rejects a commit with no `Signed-off-by:` trailer matching your `user.email`
   (DCO) — use `git commit -s`.
@@ -344,6 +344,10 @@ specific commit — a failing hook is CI catching you locally, not an obstacle t
   otherwise (OSPS-LE-01.01) — this has shipped as a red PR check more than once because
   `Signed-off-by:` isn't automatic; `git commit -s` (or `--amend -s`) adds it, `git config
   format.signoff true` makes it the default for every commit in this checkout.
+- **Tests that need a CI-provided tool must not skip-as-pass there.** Use
+  `internal/citest.SkipOrRequire`: it skips locally but fails when `MYCORRHIZAL_REQUIRE_REFERENCES=1`
+  (set in the CI steps that install the tool — e.g. the vobject/calcard differential legs), so a
+  broken `pip install` can't turn a gate silently green.
 - **Hand-verify your tests.** Break the code, confirm the new test actually fails, restore. A test that
   has never failed has proven nothing. This has caught real bugs here repeatedly.
 - Close the corresponding GitHub issue when a ticket lands; the issue body plus the commit history is the
@@ -358,7 +362,8 @@ Each judges its own area's changed lines (Go coverprofile / vitest lcov / JaCoCo
 a PR that adds an executable line the coverage tooling records as uncovered goes red
 in that area. The project-wide `codecov/project` number is deliberately *not* gated.
 Overrides exist and are meant to be rare — write the test first, then
-`// pragma: no cover` for a structurally unhittable line, or (coarse) an `ignore:`
+`// # pragma: no cover — <reason>` for a structurally unhittable line (`cd backend && go run
+./cmd/pragmacheck` fails on a marker with no reason on its own line or the line above), or (coarse) an `ignore:`
 entry in `codecov.yml`. Full rules: `docs/development/coverage.md`. The statuses only
 block merges because all three are required checks in the `main-protection` ruleset.
 Splitting a single `codecov/patch` into per-area ones (issue #808) **renamed the
@@ -529,6 +534,8 @@ These are real bugs that shipped, not hypotheticals.
    into the ErrorBoundary for any contact with no history. Collection fields on a response DTO should
    not carry `omitempty`, and a test asserting it must read the **raw JSON** — decoding into the Go
    struct makes "absent" and `[]` indistinguishable, which is exactly why the existing test passed.
+   `backend/internal/omitemptyguard` fails on any `[]T`/`map` field with `omitempty` in `models`/
+   `controllers` unless allowlisted with a reason (request-only, conditionally-included, etc.).
 
 ### Frontend conventions
 
