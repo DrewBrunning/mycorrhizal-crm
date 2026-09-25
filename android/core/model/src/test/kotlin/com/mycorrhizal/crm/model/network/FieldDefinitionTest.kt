@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.model.network
 
+import com.mycorrhizal.crm.model.MoshiProvider
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -190,5 +191,14 @@ class FieldDefinitionTest {
         val wire = listOf(1.0, 2.5)
         val editor = wireToEditorValue(def, wire)
         assertEquals(wire, editorToWireValue(def, editor))
+    }
+
+    @Test
+    fun `position parses from JSON and defaults to 0 when absent`() {
+        val adapter = MoshiProvider.get().adapter(FieldDefinition::class.java)
+        val parsed = adapter.fromJson("""{"id":"d1","label":"Coffee order","position":3}""")
+        assertEquals(3, parsed?.position)
+        val absent = adapter.fromJson("""{"id":"d1","label":"Coffee order"}""")
+        assertEquals(0, absent?.position)
     }
 }

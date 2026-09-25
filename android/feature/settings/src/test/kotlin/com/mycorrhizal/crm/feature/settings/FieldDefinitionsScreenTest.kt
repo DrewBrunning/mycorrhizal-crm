@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.settings
 import android.content.Context
 import androidx.annotation.StringRes
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -58,6 +59,7 @@ class FieldDefinitionsScreenTest {
         val repository = mockk<FieldDefinitionRepository>()
         coEvery { repository.list() } returns result
         coEvery { repository.delete(any()) } returns Result.success(Unit)
+        coEvery { repository.reorder(any()) } returns Result.success(emptyList())
         val viewModel = FieldDefinitionsViewModel(repository)
 
         composeTestRule.setContent {
@@ -138,5 +140,32 @@ class FieldDefinitionsScreenTest {
         // The error is both the body Text and the transient snackbar, so assert
         // on the collection rather than a single node (mirrors TagsScreenTest).
         assertTrue(composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty())
+    }
+
+    private fun twoDefinitions() = Result.success(
+        listOf(
+            FieldDefinition(id = "d1", label = "Coffee order", type = "string", sensitivity = "normal", position = 0),
+            FieldDefinition(id = "d2", label = "Tea order", type = "string", sensitivity = "normal", position = 1),
+        ),
+    )
+
+    @Test
+    fun `the first definition cannot move up and the last cannot move down`() {
+        setScreen(twoDefinitions())
+
+        composeTestRule.onNodeWithContentDescription(str(R.string.settings_custom_fields_move_up_named, "Coffee order"))
+            .assertIsNotEnabled()
+        composeTestRule.onNodeWithContentDescription(str(R.string.settings_custom_fields_move_down_named, "Tea order"))
+            .assertIsNotEnabled()
+    }
+
+    @Test
+    fun `tapping move down persists the swapped full order`() {
+        val repository = setScreen(twoDefinitions())
+
+        composeTestRule.onNodeWithContentDescription(str(R.string.settings_custom_fields_move_down_named, "Coffee order"))
+            .performClick()
+
+        coVerify { repository.reorder(listOf("d2", "d1")) }
     }
 }

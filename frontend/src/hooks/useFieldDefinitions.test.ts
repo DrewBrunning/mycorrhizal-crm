@@ -1,6 +1,8 @@
-import { cleanup, renderHook, waitFor } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
-import { useContactFieldValues } from './useFieldDefinitions';
+import type { FieldDefinition } from '../api/fieldDefinitions';
+import { getFieldDefinitions, reorderFieldDefinitions } from '../api/fieldDefinitions';
+import { useContactFieldValues, useFieldDefinitions } from './useFieldDefinitions';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);
@@ -12,7 +14,23 @@ vi.mock('../api/fieldDefinitions', () => ({
   createFieldDefinition: vi.fn(),
   updateFieldDefinition: vi.fn(),
   deleteFieldDefinition: vi.fn(),
+  reorderFieldDefinitions: vi.fn(),
 }));
+
+function definition(id: string, label: string, position: number): FieldDefinition {
+  return {
+    id,
+    label,
+    key: id,
+    target: 'contact',
+    type: 'string',
+    projection: 'internal-only',
+    sensitivity: 'normal',
+    position,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  };
+}
 
 /**
  * These pin an identity contract, not behaviour, because that is what broke:
@@ -74,4 +92,55 @@ test('refresh takes a new identity when the contact id actually changes', async 
   rerender({ id: 2 });
 
   expect(result.current.refresh).not.toBe(first);
+});
+
+// --- handleMove (issue #1210) ---
+
+test('handleMove swaps adjacent definitions and persists the full order in one call', async () => {
+  const first = definition('a', 'Signal', 0);
+  const second = definition('b', 'Telegram', 1);
+  vi.mocked(getFieldDefinitions).mockResolvedValue({
+    field_definitions: [first, second],
+    total: 2,
+    next_cursor: '',
+    limit: 100,
+  });
+  vi.mocked(reorderFieldDefinitions).mockResolvedValue([
+    { ...second, position: 0 },
+    { ...first, position: 1 },
+  ]);
+
+  const { result } = renderHook(() => useFieldDefinitions());
+  await act(async () => {
+    await result.current.refresh();
+  });
+  expect(result.current.definitions.map((d) => d.id)).toEqual(['a', 'b']);
+
+  await act(async () => {
+    await result.current.handleMove('a', 1);
+  });
+
+  expect(reorderFieldDefinitions).toHaveBeenCalledWith(['b', 'a']);
+  expect(result.current.definitions.map((d) => d.id)).toEqual(['b', 'a']);
+});
+
+test('handleMove at the list boundary does not call the API', async () => {
+  vi.mocked(getFieldDefinitions).mockResolvedValue({
+    field_definitions: [definition('a', 'Signal', 0)],
+    total: 1,
+    next_cursor: '',
+    limit: 100,
+  });
+  vi.mocked(reorderFieldDefinitions).mockClear();
+
+  const { result } = renderHook(() => useFieldDefinitions());
+  await act(async () => {
+    await result.current.refresh();
+  });
+
+  await act(async () => {
+    await result.current.handleMove('a', -1);
+  });
+
+  expect(reorderFieldDefinitions).not.toHaveBeenCalled();
 });

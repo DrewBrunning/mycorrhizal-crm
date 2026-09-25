@@ -2554,6 +2554,32 @@ class ApiClientTest {
     }
 
     @Test
+    fun `reorderFieldDefinitions sends a PUT of the full order and parses the response`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {"field_definitions": [
+                  {"id": "b", "label": "Telegram", "key": "telegram", "target": "contact",
+                   "type": "string", "projection": "internal-only", "sensitivity": "normal", "position": 0},
+                  {"id": "a", "label": "Signal", "key": "signal", "target": "contact",
+                   "type": "string", "projection": "internal-only", "sensitivity": "normal", "position": 1}
+                ]}
+                """.trimIndent(),
+            ),
+        )
+
+        val result = client.reorderFieldDefinitions(listOf("b", "a"))
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf("b", "a"), result.getOrThrow().definitions.map { it.id })
+        assertEquals(0, result.getOrThrow().definitions.first().position)
+        val request = server.takeRequest()
+        assertEquals("PUT", request.method)
+        assertEquals("/api/v1/field-definitions/reorder", request.path)
+        assertTrue(request.body.readUtf8().contains("\"order\":[\"b\",\"a\"]"))
+    }
+
+    @Test
     fun `update relationship edge sends a PUT and parses the raw edge`() = runBlocking {
         server.enqueue(
             MockResponse()

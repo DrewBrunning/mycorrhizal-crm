@@ -1333,6 +1333,8 @@
       "loading": "Lade benutzerdefinierte Felder...",
       "noFields": "Noch keine benutzerdefinierten Felder definiert.",
       "add": "Hinzufügen",
+      "moveUp": "{{name}} nach oben verschieben",
+      "moveDown": "{{name}} nach unten verschieben",
       "deleteDialog": {
         "title": "Benutzerdefiniertes Feld löschen",
         "message": "Möchten Sie das Feld \"{{fieldName}}\" wirklich löschen? Dies entfernt das Feld von allen Kontakten.",

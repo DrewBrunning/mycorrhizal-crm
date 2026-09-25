@@ -1,4 +1,6 @@
 import AddIcon from '@mui/icons-material/Add';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import TuneIcon from '@mui/icons-material/Tune';
@@ -15,13 +17,14 @@ import {
   DialogContentText,
   DialogTitle,
   Divider,
+  IconButton,
   List,
   ListItem,
   ListItemText,
   Stack,
   Typography,
 } from '@mui/material';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FieldDefinition, FieldDefinitionInput } from '../api/fieldDefinitions';
 import { useSnackbar } from '../context/SnackbarContext';
@@ -35,8 +38,25 @@ import FieldDefinitionDialog from './FieldDefinitionDialog';
 export default function CustomFieldsSettings() {
   const { t } = useTranslation();
   const { showSuccess } = useSnackbar();
-  const { definitions, loading, error, handleCreate, handleUpdate, handleDelete } =
-    useFieldDefinitions();
+  const {
+    definitions,
+    loading,
+    error,
+    refresh,
+    handleCreate,
+    handleUpdate,
+    handleDelete,
+    handleMove,
+  } = useFieldDefinitions();
+
+  // Fetch the existing definitions on mount. Without this the list is always
+  // empty until a create/edit/delete happens in the same session, so an
+  // existing field could never be edited, deleted, or reordered (issue #1210's
+  // reorder UI is the latest thing to depend on it). LinkFieldTypesSettings
+  // does the same.
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingDefinition, setEditingDefinition] = useState<FieldDefinition | null>(null);
@@ -122,12 +142,28 @@ export default function CustomFieldsSettings() {
               <>
                 {definitions.length > 0 ? (
                   <List dense sx={{ py: 0 }}>
-                    {definitions.map((def) => (
+                    {definitions.map((def, index) => (
                       <ListItem
                         key={def.id}
                         sx={{ px: 0 }}
                         secondaryAction={
                           <>
+                            <IconButton
+                              size="small"
+                              onClick={() => void handleMove(def.id, -1)}
+                              disabled={index === 0}
+                              aria-label={t('settings.customFields.moveUp', { name: def.label })}
+                            >
+                              <ArrowUpwardIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => void handleMove(def.id, 1)}
+                              disabled={index === definitions.length - 1}
+                              aria-label={t('settings.customFields.moveDown', { name: def.label })}
+                            >
+                              <ArrowDownwardIcon fontSize="small" />
+                            </IconButton>
                             <Button
                               size="small"
                               startIcon={<EditIcon fontSize="small" />}

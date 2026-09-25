@@ -91,6 +91,12 @@ type FieldDefinition struct {
 	// "the cross-cutting sensitivity rule ", not an entity-specific
 	// classifier like Type/Target above.
 	Sensitivity string `gorm:"not null;default:normal;index" json:"sensitivity" validate:"required,oneof=normal private secret"`
+
+	// Position orders the list for display/reorder (issue #1210; Settings
+	// up/down controls, the same no-drag-library approach LinkFieldType.Position
+	// takes). It is per-user display state: CreateFieldDefinition appends at
+	// end-of-list and ReorderFieldDefinitions renumbers 0..N-1.
+	Position int `gorm:"not null;default:0" json:"position"`
 }
 
 // BeforeCreate generates a UUID for new FieldDefinitions, mirroring

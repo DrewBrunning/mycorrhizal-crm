@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.AlertDialog
@@ -111,10 +113,15 @@ fun FieldDefinitionsScreen(
                     }
                     else -> {
                         LazyColumn(modifier = Modifier.fillMaxSize()) {
-                            items(state.definitions, key = { it.id }) { definition ->
+                            itemsIndexed(state.definitions, key = { _, definition -> definition.id }) { index, definition ->
                                 FieldDefinitionListItem(
                                     definition = definition,
                                     deleting = state.deletingId == definition.id,
+                                    canMoveUp = index > 0,
+                                    canMoveDown = index < state.definitions.lastIndex,
+                                    reordering = state.isReordering,
+                                    onMoveUp = { viewModel.move(definition.id, -1) },
+                                    onMoveDown = { viewModel.move(definition.id, 1) },
                                     onEdit = { onEdit(definition.id) },
                                     onDelete = { viewModel.delete(definition.id) },
                                 )
@@ -138,6 +145,11 @@ fun FieldDefinitionsScreen(
 private fun FieldDefinitionListItem(
     definition: FieldDefinition,
     deleting: Boolean,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    reordering: Boolean,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -187,6 +199,24 @@ private fun FieldDefinitionListItem(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
+            AccessibleIconButton(onClick = onMoveUp, enabled = canMoveUp && !reordering) {
+                Icon(
+                    Icons.Outlined.ArrowUpward,
+                    contentDescription = stringResource(
+                        R.string.settings_custom_fields_move_up_named,
+                        definition.label.orEmpty(),
+                    ),
+                )
+            }
+            AccessibleIconButton(onClick = onMoveDown, enabled = canMoveDown && !reordering) {
+                Icon(
+                    Icons.Outlined.ArrowDownward,
+                    contentDescription = stringResource(
+                        R.string.settings_custom_fields_move_down_named,
+                        definition.label.orEmpty(),
+                    ),
+                )
+            }
             AccessibleIconButton(onClick = onEdit) {
                 Icon(
                     Icons.Outlined.Edit,

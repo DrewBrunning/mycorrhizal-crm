@@ -426,11 +426,12 @@ func buildTable(s seeded) map[string]authzRow {
 		"DELETE /api/v1/tags/:id/contacts/:vcard_uid": {class: classItem, probe: "/api/v1/tags/" + s.tag + "/contacts/" + fabricatedUUID},
 
 		// --- field definitions ----------------------------------------------
-		"POST /api/v1/field-definitions":       {class: classProtected},
-		"GET /api/v1/field-definitions":        {class: classProtected},
-		"GET /api/v1/field-definitions/:id":    {class: classItem, probe: "/api/v1/field-definitions/" + s.fieldDef},
-		"PUT /api/v1/field-definitions/:id":    {class: classItem, probe: "/api/v1/field-definitions/" + s.fieldDef},
-		"DELETE /api/v1/field-definitions/:id": {class: classItem, probe: "/api/v1/field-definitions/" + s.fieldDef},
+		"POST /api/v1/field-definitions":        {class: classProtected},
+		"GET /api/v1/field-definitions":         {class: classProtected},
+		"GET /api/v1/field-definitions/:id":     {class: classItem, probe: "/api/v1/field-definitions/" + s.fieldDef},
+		"PUT /api/v1/field-definitions/:id":     {class: classItem, probe: "/api/v1/field-definitions/" + s.fieldDef},
+		"PUT /api/v1/field-definitions/reorder": {class: classProtected},
+		"DELETE /api/v1/field-definitions/:id":  {class: classItem, probe: "/api/v1/field-definitions/" + s.fieldDef},
 
 		// --- life events ----------------------------------------------------
 		"POST /api/v1/life-events":                    {class: classProtected},

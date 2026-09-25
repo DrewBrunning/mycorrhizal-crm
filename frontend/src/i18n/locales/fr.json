@@ -1333,6 +1333,8 @@
       "loading": "Chargement des champs personnalisés...",
       "noFields": "Aucun champ personnalisé défini pour l'instant.",
       "add": "Ajouter",
+      "moveUp": "Déplacer {{name}} vers le haut",
+      "moveDown": "Déplacer {{name}} vers le bas",
       "deleteDialog": {
         "title": "Supprimer le champ personnalisé",
         "message": "Êtes-vous sûr de vouloir supprimer le champ \"{{fieldName}}\" ? Cela supprimera le champ de tous les contacts.",

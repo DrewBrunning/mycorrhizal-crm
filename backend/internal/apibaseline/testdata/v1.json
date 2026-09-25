@@ -3951,6 +3951,22 @@
       ]
     },
     {
+      "method": "PUT",
+      "path": "/field-definitions/reorder",
+      "parameters": null,
+      "request_body": "ref:FieldDefinitionReorderInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "GET",
       "path": "/field-definitions/{id}",
       "parameters": [
@@ -12160,6 +12176,11 @@
           "required": true
         },
         {
+          "name": "position",
+          "type": "integer",
+          "required": true
+        },
+        {
           "name": "projection",
           "type": "string",
           "required": true
@@ -12263,6 +12284,16 @@
             "phone",
             "enum"
           ]
+        }
+      ]
+    },
+    {
+      "name": "FieldDefinitionReorderInput",
+      "properties": [
+        {
+          "name": "order",
+          "type": "array\u003cstring\u003e",
+          "required": true
         }
       ]
     },

@@ -95,6 +95,24 @@ class FieldDefinitionRepositoryImplTest {
     }
 
     @Test
+    fun `reorder forwards the full order and returns the reordered definitions`() = runTest {
+        coEvery { apiClient.reorderFieldDefinitions(listOf("b", "a")) } returns Result.success(
+            FieldDefinitionsResponse(
+                fieldDefinitions = listOf(
+                    FieldDefinition(id = "b", label = "Telegram", position = 0),
+                    FieldDefinition(id = "a", label = "Signal", position = 1),
+                ),
+            ),
+        )
+
+        val result = repository.reorder(listOf("b", "a"))
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf("b", "a"), result.getOrThrow().map { it.id })
+        coVerify { apiClient.reorderFieldDefinitions(listOf("b", "a")) }
+    }
+
+    @Test
     fun `contactValues unwraps the values list on success`() = runTest {
         coEvery { apiClient.listContactFieldValues(5) } returns Result.success(
             ContactFieldValuesResponse(fieldValues = listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte"))),

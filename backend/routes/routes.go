@@ -373,6 +373,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/field-definitions", middleware.ValidateJSONMiddleware(&models.FieldDefinitionInput{}), controllers.CreateFieldDefinition)
 			protected.GET("/field-definitions", controllers.ListFieldDefinitions)
 			protected.GET("/field-definitions/:id", controllers.GetFieldDefinition)
+			protected.PUT("/field-definitions/reorder", middleware.ValidateJSONMiddleware(&models.FieldDefinitionReorderInput{}), controllers.ReorderFieldDefinitions)
 			protected.PUT("/field-definitions/:id", middleware.ValidateJSONMiddleware(&models.FieldDefinitionInput{}), controllers.UpdateFieldDefinition)
 			protected.DELETE("/field-definitions/:id", controllers.DeleteFieldDefinition)
 			protected.GET("/contacts/:id/field-values", controllers.ListContactFieldValues)

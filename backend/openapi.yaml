@@ -1168,8 +1168,8 @@ paths:
           schema: { type: integer, minimum: 1, default: 25 }
         - name: order
           in: query
-          description: Direction for the selected sort's cursor order (updated_at, id) or (sort_name, id). since forces asc.
-          schema: { type: string, enum: [asc, desc], default: desc }
+          description: Direction for the (position, id) display order; defaults to asc.
+          schema: { type: string, enum: [asc, desc], default: asc }
         - name: search
           in: query
           description: >
@@ -5141,6 +5141,39 @@ paths:
                 $ref: "#/components/schemas/Error"
         "409":
           description: A field definition with this key already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /field-definitions/reorder:
+    put:
+      summary: Reorder the user's field definitions
+      operationId: reorderFieldDefinitions
+      description: >
+        Persists the user's custom display order. The payload must contain every
+        one of the user's field definitions exactly once, with no duplicates and
+        no IDs belonging to another user; anything else is a 400. Positions are
+        renumbered 0..N-1.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FieldDefinitionReorderInput"
+      responses:
+        "200":
+          description: The reordered field definitions, in the new order.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  field_definitions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FieldDefinition"
+        "400":
+          description: Validation failed, or an ID is missing, duplicated, or not owned by the caller.
           content:
             application/json:
               schema:
@@ -13616,7 +13649,7 @@ components:
     # --- Custom fields ---
     FieldDefinition:
       type: object
-      required: [id, created_at, updated_at, label, key, target, type, projection, sensitivity]
+      required: [id, created_at, updated_at, label, key, target, type, projection, sensitivity, position]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -13629,6 +13662,7 @@ components:
           $ref: "#/components/schemas/FieldConstraints"
         projection: { type: string, description: "internal-only, or vcard:X-<NAME>.", pattern: "^(internal-only|vcard:X-[A-Za-z0-9-]+)$", example: "internal-only" }
         sensitivity: { type: string, enum: [normal, private, secret] }
+        position: { type: integer, description: "The user's display order for this definition (ascending)." }
     FieldDefinitionInput:
       type: object
       required: [label, key, type]
@@ -13641,6 +13675,15 @@ components:
           $ref: "#/components/schemas/FieldConstraints"
         projection: { type: string, pattern: "^(internal-only|vcard:X-[A-Za-z0-9-]+)$", example: "internal-only" }
         sensitivity: { type: string, enum: [normal, private, secret] }
+    FieldDefinitionReorderInput:
+      type: object
+      required: [order]
+      description: The user's FieldDefinition IDs in the desired display order; must be complete, owned, and duplicate-free.
+      properties:
+        order:
+          type: array
+          minItems: 1
+          items: { type: string, format: uuid }
     FieldConstraints:
       type: object
       properties:

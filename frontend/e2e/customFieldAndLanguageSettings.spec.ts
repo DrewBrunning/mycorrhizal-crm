@@ -146,6 +146,70 @@ test.describe('Custom field definitions (Settings -> Data)', () => {
     await dialog.getByRole('button', { name: /cancel/i }).click();
     await expect(dialog).toBeHidden();
   });
+
+  test('reordering moves a custom field definition up (issue #1210)', async ({ page, request }) => {
+    const suffix = Date.now();
+    const labelA = `E2E Reorder A ${suffix}`;
+    const labelB = `E2E Reorder B ${suffix}`;
+    const keyA = `e2e_reorder_a_${suffix}`;
+    const keyB = `e2e_reorder_b_${suffix}`;
+
+    async function rank(label: string): Promise<number> {
+      const resp = await request.get(`${API_BASE_URL}/field-definitions?limit=100`);
+      expect(resp.ok(), `GET field-definitions failed: ${resp.status()}`).toBeTruthy();
+      const defs: Array<{ label: string }> = (await resp.json()).field_definitions ?? [];
+      return defs.findIndex((d) => d.label === label);
+    }
+
+    try {
+      await page.goto('/settings/data');
+      await waitForLoading(page);
+
+      // Create two definitions; each create refreshes the list, so both are
+      // present afterward. B is created last and lands at the tail.
+      for (const [label, key] of [
+        [labelA, keyA],
+        [labelB, keyB],
+      ] as const) {
+        await customFieldsCard(page).getByRole('button', { name: 'Add' }).click();
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        await dialog.getByLabel('Label').fill(label);
+        await dialog.getByLabel('Key').fill(key);
+        await dialog.getByRole('button', { name: /^save$/i }).click();
+        await expect(dialog).toBeHidden();
+        await expect(page.getByText(label, { exact: true })).toBeVisible();
+      }
+
+      // B is last, so moving it up must put it above A.
+      const before = await rank(labelB);
+      expect(before).toBeGreaterThan(0);
+      expect(await rank(labelA)).toBe(before - 1);
+
+      const rowB = page.getByRole('listitem').filter({ hasText: labelB });
+      await Promise.all([
+        page.waitForResponse(
+          (r) => r.url().includes('/field-definitions/reorder') && r.request().method() === 'PUT',
+        ),
+        rowB.getByLabel(`Move ${labelB} up`).click(),
+      ]);
+
+      expect(await rank(labelB)).toBe(before - 1);
+      expect(await rank(labelA)).toBe(before);
+    } finally {
+      for (const key of [keyA, keyB]) {
+        const resp = await request.get(`${API_BASE_URL}/field-definitions?limit=100`);
+        if (resp.ok()) {
+          const defs: Array<{ key: string; id: string }> =
+            (await resp.json()).field_definitions ?? [];
+          const match = defs.find((d) => d.key === key);
+          if (match) {
+            await request.delete(`${API_BASE_URL}/field-definitions/${match.id}`).catch(() => {});
+          }
+        }
+      }
+    }
+  });
 });
 
 test.describe('Preferred Languages contact field', () => {

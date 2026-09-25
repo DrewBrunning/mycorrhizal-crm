@@ -202,6 +202,16 @@ type ContactFieldValuesInput struct {
 	FieldValues []FieldValueInput `json:"field_values" validate:"dive"`
 }
 
+// FieldDefinitionReorderInput is the DTO for PUT /field-definitions/reorder
+// (issue #1210) — the user's FieldDefinition IDs in the desired display
+// order, mirroring LinkFieldTypeReorderInput. The set must be complete
+// (every one of the user's definitions exactly once) and owned; the handler
+// rejects anything else rather than silently reordering a subset, which
+// would leave the un-listed rows colliding with the newly assigned positions.
+type FieldDefinitionReorderInput struct {
+	Order []string `json:"order" validate:"required,min=1,dive,uuid4"`
+}
+
 // PreferenceInput is the DTO for creating/updating a Preference
 // (preference.go). Category is deliberately not `oneof`-validated —
 // it is an open classifier (see Preference's doc comment). Sensitivity

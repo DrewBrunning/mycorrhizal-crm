@@ -6,6 +6,7 @@ import {
   deleteFieldDefinition,
   type FieldDefinition,
   getFieldDefinitions,
+  reorderFieldDefinitions,
   updateFieldDefinition,
 } from '../api/fieldDefinitions';
 import { SnackbarProvider } from '../context/SnackbarContext';
@@ -22,6 +23,7 @@ vi.mock('../api/fieldDefinitions', async (importOriginal) => {
     createFieldDefinition: vi.fn(),
     updateFieldDefinition: vi.fn(),
     deleteFieldDefinition: vi.fn(),
+    reorderFieldDefinitions: vi.fn(),
   };
 });
 
@@ -34,9 +36,19 @@ function definition(overrides: Partial<FieldDefinition> = {}): FieldDefinition {
     type: 'string',
     projection: 'internal-only',
     sensitivity: 'normal',
+    position: 0,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     ...overrides,
+  };
+}
+
+function response(definitions: FieldDefinition[]) {
+  return {
+    field_definitions: definitions,
+    total: definitions.length,
+    next_cursor: '',
+    limit: 100,
   };
 }
 
@@ -53,34 +65,37 @@ beforeEach(() => {
   vi.mocked(createFieldDefinition).mockReset();
   vi.mocked(updateFieldDefinition).mockReset();
   vi.mocked(deleteFieldDefinition).mockReset();
+  vi.mocked(reorderFieldDefinitions).mockReset();
+  // The component now fetches on mount (issue #1210), so every test starts
+  // from a fetched list; default to none unless a test overrides it.
+  vi.mocked(getFieldDefinitions).mockResolvedValue(response([]));
 });
 
-// NOTE: CustomFieldsSettings mounts via `useFieldDefinitions()` but never
-// calls the hook's `refresh()` on mount (no useEffect anywhere in the
-// component or the hook) -- unlike ImportContactsDialog, which does call
-// `refresh`. So on a fresh mount the definitions list is always empty and
-// getFieldDefinitions is never requested, even though `loading` starts
-// `false` so no spinner appears either. This looks like a real bug (existing
-// custom fields never show up on this settings page without some other
-// trigger), not intended behavior -- pinned here rather than silently
-// worked around.
-test('on mount, shows the empty state and never requests the definitions (documents a real bug: no fetch-on-mount)', () => {
+test('fetches and renders existing definitions on mount', async () => {
+  vi.mocked(getFieldDefinitions).mockResolvedValue(response([definition()]));
+
   renderSettings();
 
-  expect(screen.getByText('No custom fields defined yet.')).toBeInTheDocument();
-  expect(getFieldDefinitions).not.toHaveBeenCalled();
+  await waitFor(() => expect(screen.getByText('Pronouns')).toBeInTheDocument());
+  expect(getFieldDefinitions).toHaveBeenCalled();
 });
 
-test('creating a field opens the dialog and, on save, posts the input and shows a success message', async () => {
+test('shows the empty state when there are no definitions', async () => {
+  renderSettings();
+
+  await waitFor(() =>
+    expect(screen.getByText('No custom fields defined yet.')).toBeInTheDocument(),
+  );
+});
+
+test('creating a field opens the dialog and, on save, posts the input and refreshes', async () => {
+  vi.mocked(getFieldDefinitions)
+    .mockResolvedValueOnce(response([])) // mount
+    .mockResolvedValueOnce(response([definition()])); // post-create refresh
   vi.mocked(createFieldDefinition).mockResolvedValue(definition());
-  vi.mocked(getFieldDefinitions).mockResolvedValue({
-    field_definitions: [definition()],
-    total: 1,
-    next_cursor: '',
-    limit: 100,
-  });
 
   renderSettings();
+  await waitFor(() => expect(getFieldDefinitions).toHaveBeenCalledTimes(1));
 
   fireEvent.click(screen.getByRole('button', { name: 'Add' }));
   expect(screen.getByText('Add Custom Field')).toBeInTheDocument();
@@ -94,62 +109,30 @@ test('creating a field opens the dialog and, on save, posts the input and shows 
       expect.objectContaining({ label: 'Pronouns', key: 'pronouns', type: 'string' }),
     ),
   );
-  // handleCreate refreshes the list via getFieldDefinitions after creating.
-  await waitFor(() => expect(getFieldDefinitions).toHaveBeenCalled());
   await waitFor(() => expect(screen.getByText('Pronouns')).toBeInTheDocument());
 });
 
-test('after a definition is loaded (via a refresh triggered by create), it lists type/sensitivity chips', async () => {
-  vi.mocked(createFieldDefinition).mockResolvedValue(definition());
-  vi.mocked(getFieldDefinitions).mockResolvedValue({
-    field_definitions: [
+test('a loaded definition lists type/sensitivity chips', async () => {
+  vi.mocked(getFieldDefinitions).mockResolvedValue(
+    response([
       definition({ id: 'def-2', label: 'Secret Note', type: 'text', sensitivity: 'secret' }),
-    ],
-    total: 1,
-    next_cursor: '',
-    limit: 100,
-  });
+    ]),
+  );
 
   renderSettings();
-  fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-  fireEvent.change(screen.getByLabelText('Label *'), { target: { value: 'Secret Note' } });
-  fireEvent.change(screen.getByLabelText('Key *'), { target: { value: 'secret_note' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
   await waitFor(() => expect(screen.getByText('Secret Note')).toBeInTheDocument());
   expect(screen.getByText('Secret')).toBeInTheDocument();
 });
 
 test('editing a definition opens the dialog prefilled and saves via update', async () => {
-  vi.mocked(createFieldDefinition).mockResolvedValue(definition());
   vi.mocked(getFieldDefinitions)
-    .mockResolvedValueOnce({
-      field_definitions: [definition()],
-      total: 1,
-      next_cursor: '',
-      limit: 100,
-    })
-    .mockResolvedValueOnce({
-      field_definitions: [definition({ label: 'Preferred Pronouns' })],
-      total: 1,
-      next_cursor: '',
-      limit: 100,
-    });
+    .mockResolvedValueOnce(response([definition()])) // mount
+    .mockResolvedValueOnce(response([definition({ label: 'Preferred Pronouns' })])); // refresh
   vi.mocked(updateFieldDefinition).mockResolvedValue(definition({ label: 'Preferred Pronouns' }));
 
   renderSettings();
-  // Seed the list by going through the create flow first (mount doesn't fetch).
-  fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-  fireEvent.change(screen.getByLabelText('Label *'), { target: { value: 'Pronouns' } });
-  fireEvent.change(screen.getByLabelText('Key *'), { target: { value: 'pronouns' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   await waitFor(() => expect(screen.getByText('Pronouns')).toBeInTheDocument());
-  // The create dialog's own close (a separate state update from the list
-  // refresh above) can still be pending here -- wait for it to actually
-  // unmount before querying by role, since MUI's Modal marks the rest of the
-  // page aria-hidden="true" while any dialog is open, which hides the list's
-  // Edit/Delete buttons from the accessibility tree the role queries use.
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
   expect(screen.getByText('Edit Custom Field')).toBeInTheDocument();
@@ -171,24 +154,13 @@ test('editing a definition opens the dialog prefilled and saves via update', asy
 });
 
 test('deleting a definition requires confirmation and calls delete with the id', async () => {
-  vi.mocked(createFieldDefinition).mockResolvedValue(definition());
   vi.mocked(getFieldDefinitions)
-    .mockResolvedValueOnce({
-      field_definitions: [definition()],
-      total: 1,
-      next_cursor: '',
-      limit: 100,
-    })
-    .mockResolvedValueOnce({ field_definitions: [], total: 0, next_cursor: '', limit: 100 });
+    .mockResolvedValueOnce(response([definition()])) // mount
+    .mockResolvedValueOnce(response([])); // refresh after delete
   vi.mocked(deleteFieldDefinition).mockResolvedValue(undefined);
 
   renderSettings();
-  fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-  fireEvent.change(screen.getByLabelText('Label *'), { target: { value: 'Pronouns' } });
-  fireEvent.change(screen.getByLabelText('Key *'), { target: { value: 'pronouns' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   await waitFor(() => expect(screen.getByText('Pronouns')).toBeInTheDocument());
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
   expect(deleteFieldDefinition).not.toHaveBeenCalled();
@@ -208,21 +180,10 @@ test('deleting a definition requires confirmation and calls delete with the id',
 });
 
 test('canceling the delete dialog does not delete anything', async () => {
-  vi.mocked(createFieldDefinition).mockResolvedValue(definition());
-  vi.mocked(getFieldDefinitions).mockResolvedValue({
-    field_definitions: [definition()],
-    total: 1,
-    next_cursor: '',
-    limit: 100,
-  });
+  vi.mocked(getFieldDefinitions).mockResolvedValue(response([definition()]));
 
   renderSettings();
-  fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-  fireEvent.change(screen.getByLabelText('Label *'), { target: { value: 'Pronouns' } });
-  fireEvent.change(screen.getByLabelText('Key *'), { target: { value: 'pronouns' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   await waitFor(() => expect(screen.getByText('Pronouns')).toBeInTheDocument());
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -232,12 +193,56 @@ test('canceling the delete dialog does not delete anything', async () => {
   expect(screen.getByText('Pronouns')).toBeInTheDocument();
 });
 
-test('a validation error in the dialog (missing label) blocks the save call', () => {
+test('a validation error in the dialog (missing label) blocks the save call', async () => {
   renderSettings();
+  // Wait for the mount fetch to settle and the list (with its Add button) to render.
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: 'Add' }));
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
   expect(screen.getByText('Label is required.')).toBeInTheDocument();
   expect(createFieldDefinition).not.toHaveBeenCalled();
+});
+
+async function renderTwoDefinitions() {
+  const first = definition({ id: 'a', label: 'Signal', position: 0 });
+  const second = definition({ id: 'b', label: 'Telegram', position: 1 });
+  vi.mocked(getFieldDefinitions).mockResolvedValue(response([first, second]));
+  renderSettings();
+  await waitFor(() => expect(screen.getByText('Signal')).toBeInTheDocument());
+  return { first, second };
+}
+
+test('moving a definition down persists the swapped full order', async () => {
+  const { first, second } = await renderTwoDefinitions();
+  vi.mocked(reorderFieldDefinitions).mockResolvedValue([
+    { ...second, position: 0 },
+    { ...first, position: 1 },
+  ]);
+
+  fireEvent.click(screen.getByLabelText('Move Signal down'));
+
+  await waitFor(() => expect(reorderFieldDefinitions).toHaveBeenCalledWith(['b', 'a']));
+});
+
+test('moving a definition up persists the swapped full order', async () => {
+  const { first, second } = await renderTwoDefinitions();
+  vi.mocked(reorderFieldDefinitions).mockResolvedValue([
+    { ...second, position: 0 },
+    { ...first, position: 1 },
+  ]);
+
+  fireEvent.click(screen.getByLabelText('Move Telegram up'));
+
+  await waitFor(() => expect(reorderFieldDefinitions).toHaveBeenCalledWith(['b', 'a']));
+});
+
+test('the first definition cannot move up and the last cannot move down', async () => {
+  await renderTwoDefinitions();
+
+  expect(screen.getByLabelText('Move Signal up')).toBeDisabled();
+  expect(screen.getByLabelText('Move Telegram down')).toBeDisabled();
+  expect(screen.getByLabelText('Move Signal down')).toBeEnabled();
+  expect(screen.getByLabelText('Move Telegram up')).toBeEnabled();
 });

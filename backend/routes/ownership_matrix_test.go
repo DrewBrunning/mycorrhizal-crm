@@ -177,6 +177,7 @@ type ownFixtures struct {
 	ownerTagID, victimTagID             string
 	ownerLifeEventID, victimLifeEventID string
 	ownerLinkTypeID, victimLinkTypeID   string
+	ownerFieldDefID, victimFieldDefID   string
 	ownerEventID, victimEventID         string
 }
 
@@ -232,6 +233,19 @@ func ownSeed(t *testing.T, db *gorm.DB) ownFixtures {
 		require.NoError(t, db.Create(&lt).Error)
 		return lt.ID
 	}
+	mkFieldDef := func(uid uint, key string) string {
+		fd := models.FieldDefinition{
+			UserID:      uid,
+			Label:       "field",
+			Key:         key,
+			Target:      models.FieldDefinitionTargetContact,
+			Type:        models.FieldTypeString,
+			Projection:  "internal-only",
+			Sensitivity: models.RelationshipSensitivityNormal,
+		}
+		require.NoError(t, db.Create(&fd).Error)
+		return fd.ID
+	}
 	mkEvent := func(uid uint, title string) string {
 		e := models.OccasionEvent{UserID: uid, Title: title, StartsAt: time.Now()}
 		require.NoError(t, db.Create(&e).Error)
@@ -247,6 +261,7 @@ func ownSeed(t *testing.T, db *gorm.DB) ownFixtures {
 		ownerTagID: mkTag(owner.ID), victimTagID: mkTag(victim.ID),
 		ownerLifeEventID: mkLifeEvent(owner.ID, oc1.VCardUID), victimLifeEventID: mkLifeEvent(victim.ID, vc1.VCardUID),
 		ownerLinkTypeID: mkLinkType(owner.ID), victimLinkTypeID: mkLinkType(victim.ID),
+		ownerFieldDefID: mkFieldDef(owner.ID, "owner_field"), victimFieldDefID: mkFieldDef(victim.ID, "victim_field"),
 		ownerEventID: mkEvent(owner.ID, "owner event"), victimEventID: mkEvent(victim.ID, "victim event"),
 	}
 }
@@ -582,6 +597,15 @@ func buildBodyOwnershipTable(fx ownFixtures) map[string]ownRow {
 			h.assertMasked(http.MethodPut, "/api/v1/link-field-types/reorder",
 				func(id string) string { return fmt.Sprintf(`{"order":%s}`, jsonArray([]string{id})) },
 				h.fx.ownerLinkTypeID, h.fx.victimLinkTypeID, ownNonexistentUID, http.StatusBadRequest, false)
+		}),
+
+		"FieldDefinitionReorderInput.Order": dto(func(t *testing.T, h *ownHarness) {
+			// order[] is a set of the caller's own FieldDefinition ids; a
+			// foreign or nonexistent id fails the same 400, never reordering a
+			// foreign row.
+			h.assertMasked(http.MethodPut, "/api/v1/field-definitions/reorder",
+				func(id string) string { return fmt.Sprintf(`{"order":%s}`, jsonArray([]string{id})) },
+				h.fx.ownerFieldDefID, h.fx.victimFieldDefID, ownNonexistentUID, http.StatusBadRequest, false)
 		}),
 
 		// ── persisted-model mirrors / server-generated (no body probe) ──────

@@ -984,6 +984,8 @@
     <string name="settings_custom_fields_delete_confirm">Delete “%1$s”? This also removes its saved values.</string>
     <string name="settings_custom_fields_delete_named">Delete %1$s</string>
     <string name="settings_custom_fields_edit_named">Edit %1$s</string>
+    <string name="settings_custom_fields_move_up_named">Move %1$s up</string>
+    <string name="settings_custom_fields_move_down_named">Move %1$s down</string>
     <string name="settings_custom_fields_label">Label</string>
     <string name="settings_custom_fields_key">Key</string>
     <string name="settings_custom_fields_key_hint">The stable machine name; cannot be changed after creation.</string>

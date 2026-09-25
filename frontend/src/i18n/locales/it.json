@@ -1333,6 +1333,8 @@
       "loading": "Caricamento campi personalizzati...",
       "noFields": "Ancora nessun campo personalizzato definito.",
       "add": "Aggiungi",
+      "moveUp": "Sposta {{name}} in alto",
+      "moveDown": "Sposta {{name}} in basso",
       "deleteDialog": {
         "title": "Elimina Campo Personalizzato",
         "message": "Sei sicuro di voler eliminare il campo \"{{fieldName}}\"? Questo rimuoverà il campo da tutti i contatti.",

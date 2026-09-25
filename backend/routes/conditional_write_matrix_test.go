@@ -189,6 +189,7 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"PUT /api/v1/conversation-agenda/:id":                     exempt(reasonNonRevision),
 		"DELETE /api/v1/conversation-agenda/:id":                  exempt(reasonNonRevision),
 		"PUT /api/v1/field-definitions/:id":                       exempt(reasonNonRevision),
+		"PUT /api/v1/field-definitions/reorder":                   exempt(reasonNonRevision),
 		"DELETE /api/v1/field-definitions/:id":                    exempt(reasonNonRevision),
 		"PUT /api/v1/link-field-types/:id":                        exempt(reasonNonRevision),
 		"DELETE /api/v1/link-field-types/:id":                     exempt(reasonNonRevision),

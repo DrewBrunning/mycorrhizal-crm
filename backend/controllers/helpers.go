@@ -261,6 +261,17 @@ type NameCursor struct {
 	ID       string
 }
 
+// PositionCursor is one position in the (position, id) total order used by a
+// list sorted by an explicit integer `position` column (field definitions,
+// issue #1210). Position is per-user display state, so unlike NameCursor this
+// shape is not tied to one entity kind; it is deliberately a third small
+// shape rather than a generalized cursor because the leading component is an
+// integer with its own wire encoding.
+type PositionCursor struct {
+	Position int
+	ID       string
+}
+
 // EncodeCursor renders a cursor as an opaque base64url string. id may be any
 // of the PK types (uint, uint64, string); it is rendered with fmt.Sprint.
 //
@@ -332,6 +343,35 @@ func DecodeNameCursor(raw string) (*NameCursor, error) {
 	return &NameCursor{SortName: sortName, ID: s[sep+1:]}, nil
 }
 
+// EncodePositionCursor renders a position-sorted cursor as an opaque base64url
+// string: base64url("<position>|<id>"). Same wire idiom as EncodeCursor/
+// EncodeNameCursor, with an integer leading component.
+func EncodePositionCursor(position int, id any) string {
+	return base64.RawURLEncoding.EncodeToString(
+		[]byte(strconv.Itoa(position) + "|" + fmt.Sprint(id)),
+	)
+}
+
+// DecodePositionCursor parses a position-sorted cursor back into its
+// (position, id) pair. A non-integer leading component (e.g. a timestamp from
+// the time-based shape) fails here, so a cursor minted by another endpoint is
+// rejected rather than silently matching nothing.
+func DecodePositionCursor(raw string) (*PositionCursor, error) {
+	decoded, err := base64.RawURLEncoding.DecodeString(raw)
+	if err != nil {
+		return nil, errors.New("cursor is not valid base64url")
+	}
+	parts := strings.SplitN(string(decoded), "|", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return nil, errors.New("cursor is malformed")
+	}
+	position, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return nil, errors.New("cursor position is malformed")
+	}
+	return &PositionCursor{Position: position, ID: parts[1]}, nil
+}
+
 // CursorParams is the sanitized set of pagination controls shared by every
 // list handler.
 type CursorParams struct {
@@ -348,6 +388,11 @@ type CursorParams struct {
 	// the request is GET /contacts?sort=name — the (sort_name, id) shape.
 	// Every other list endpoint leaves it nil.
 	NameCursor *NameCursor
+	// PositionCursor is the resume-after position supplied via ?cursor= when
+	// the request is a list ordered by an explicit integer `position` column
+	// (field definitions, issue #1210) — the (position, id) shape. Every
+	// other list endpoint leaves it nil.
+	PositionCursor *PositionCursor
 	// Since is true when the request was a ?since= change-feed request.
 	Since bool
 }
@@ -361,6 +406,7 @@ type cursorKind int
 const (
 	cursorUpdatedAt cursorKind = iota
 	cursorName
+	cursorPosition
 )
 
 // GetCursorParams extracts cursor pagination controls from the request,
@@ -390,6 +436,22 @@ func GetCursorParamsForSort(c *gin.Context, sort string) (CursorParams, *apperro
 	return cursorParams(c, kind)
 }
 
+// GetCursorParamsForPosition is the field-definitions (issue #1210) variant:
+// a ?cursor= value is decoded as a (position, id) PositionCursor and the
+// default ?order= is ASC, because `position` is the user's own display order
+// (ascending) rather than a newest-first creation order. An explicit
+// ?order=asc|desc is still honoured.
+func GetCursorParamsForPosition(c *gin.Context) (CursorParams, *apperrors.AppError) {
+	params, err := cursorParams(c, cursorPosition)
+	if err != nil {
+		return params, err
+	}
+	if c.Query("order") == "" {
+		params.Order = "asc"
+	}
+	return params, nil
+}
+
 func cursorParams(c *gin.Context, kind cursorKind) (CursorParams, *apperrors.AppError) {
 	limit := parsePositiveOrDefault(c.DefaultQuery("limit", "25"), defaultLimit)
 	if limit > maxLimit {
@@ -412,6 +474,12 @@ func cursorParams(c *gin.Context, kind cursorKind) (CursorParams, *apperrors.App
 				return params, apperrors.ErrInvalidInput("cursor", err.Error())
 			}
 			params.NameCursor = cur
+		case cursorPosition:
+			cur, err := DecodePositionCursor(raw)
+			if err != nil {
+				return params, apperrors.ErrInvalidInput("cursor", err.Error())
+			}
+			params.PositionCursor = cur
 		default:
 			cur, err := DecodeCursor(raw)
 			if err != nil {
@@ -482,6 +550,17 @@ func nameCursorPredicate(table string, cursor *NameCursor, id any, desc bool) (s
 	return fmt.Sprintf("(%s.sort_name, %s.id) %s (?, ?)", table, table, op), cursor.SortName, id
 }
 
+// positionCursorPredicate is the issue-#1210 analog of cursorPredicate over
+// the (position, id) display-order key. Same "strictly after (asc) /
+// strictly before (desc)" semantics and same explicit-id rule.
+func positionCursorPredicate(table string, cursor *PositionCursor, id any, desc bool) (string, any, any) {
+	op := ">"
+	if desc {
+		op = "<"
+	}
+	return fmt.Sprintf("(%s.position, %s.id) %s (?, ?)", table, table, op), cursor.Position, id
+}
+
 // cursorOrderBy orders a query by the (updated_at, id) feed key in the given
 // direction — the order that makes cursor pagination total and stable.
 func cursorOrderBy(q *gorm.DB, table string, desc bool) *gorm.DB {
@@ -501,6 +580,17 @@ func nameCursorOrderBy(q *gorm.DB, table string, desc bool) *gorm.DB {
 		dir = "DESC"
 	}
 	return q.Order(table + ".sort_name " + dir).Order(table + ".id " + dir)
+}
+
+// positionCursorOrderBy is the issue-#1210 analog of cursorOrderBy: order by
+// the (position, id) display-order key in the given direction, the
+// tiebreak-by-id making the order total for rows sharing a position.
+func positionCursorOrderBy(q *gorm.DB, table string, desc bool) *gorm.DB {
+	dir := "ASC"
+	if desc {
+		dir = "DESC"
+	}
+	return q.Order(table + ".position " + dir).Order(table + ".id " + dir)
 }
 
 // parseCursorID re-types a cursor's string ID to a uint PK column value.

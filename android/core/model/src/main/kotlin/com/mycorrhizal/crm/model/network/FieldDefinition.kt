@@ -40,6 +40,8 @@ data class FieldDefinition(
     val projection: String? = null,
     /** normal | private | secret (§91.13) — all sensitivities are returned on this owner-only surface. */
     val sensitivity: String? = null,
+    /** The user's display order (issue #1210); the list endpoint returns rows ordered by it. */
+    val position: Int = 0,
     @Json(name = "created_at") val createdAt: String? = null,
     @Json(name = "updated_at") val updatedAt: String? = null,
 )
@@ -120,6 +122,16 @@ data class FieldDefinitionInput(
     val constraints: FieldConstraints? = null,
     val projection: String? = null,
     val sensitivity: String? = null,
+)
+
+/**
+ * PUT /field-definitions/reorder request body (issue #1210) — the caller's full set of
+ * [FieldDefinition] ids in the desired display order. The backend rejects anything but a
+ * complete, owned, duplicate-free set.
+ */
+@JsonClass(generateAdapter = true)
+data class FieldDefinitionReorderInput(
+    val order: List<String>,
 )
 
 /** POST /field-definitions response — wrapped `{ message, field_definition }`, unlike
