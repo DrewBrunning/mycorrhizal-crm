@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.data.auth.AndroidLocalAuthCapabilities
 import com.mycorrhizal.crm.data.local.AppDatabase
 import com.mycorrhizal.crm.data.local.CachedActivityDao
 import com.mycorrhizal.crm.data.local.CachedCadencePolicyDao
+import com.mycorrhizal.crm.data.local.CachedOccasionEventDao
 import com.mycorrhizal.crm.data.local.CachedCircleDao
 import com.mycorrhizal.crm.data.local.CachedCircleMemberDao
 import com.mycorrhizal.crm.data.local.CachedContactDao
@@ -31,6 +32,7 @@ import com.mycorrhizal.crm.data.repository.DuplicateRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ExportRepositoryImpl
 import com.mycorrhizal.crm.data.repository.SystemEventRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CadencePolicyRepositoryImpl
+import com.mycorrhizal.crm.data.repository.OccasionEventRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CircleRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CustomLinkActionRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ExternalActivityRepositoryImpl
@@ -84,6 +86,7 @@ import com.mycorrhizal.crm.domain.repository.ExportRepository
 import com.mycorrhizal.crm.domain.repository.SystemEventRepository
 import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
 import com.mycorrhizal.crm.domain.repository.CadencePolicyRepository
+import com.mycorrhizal.crm.domain.repository.OccasionEventRepository
 import com.mycorrhizal.crm.domain.repository.CalendarSubscriptionRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactSubscriptionRepository
@@ -275,6 +278,10 @@ object DataModule {
         db.cachedCadencePolicyDao()
 
     @Provides
+    fun provideCachedOccasionEventDao(db: AppDatabase): CachedOccasionEventDao =
+        db.cachedOccasionEventDao()
+
+    @Provides
     fun providePendingInteractionDao(db: AppDatabase): PendingInteractionDao =
         db.pendingInteractionDao()
 
@@ -454,6 +461,10 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindCadencePolicyRepository(impl: CadencePolicyRepositoryImpl): CadencePolicyRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindOccasionEventRepository(impl: OccasionEventRepositoryImpl): OccasionEventRepository
 
     @Binds
     @Singleton

@@ -128,11 +128,30 @@ val MIGRATION_17_18: Migration = object : Migration(startVersion = 17, endVersio
 }
 
 /**
+ * Occasions event planning (docs/adrs/0026-occasions-events.md, issue #1228):
+ * adds the `cached_occasion_events` table. A new table only — no existing
+ * table's schema changed. Hand-written rather than relying on the destructive
+ * fallback for the same reason as every migration since 13: the destructive
+ * path drops *every* table, `pending_interactions` (a real not-yet-synced
+ * outbox) included.
+ */
+val MIGRATION_18_19: Migration = object : Migration(startVersion = 18, endVersion = 19) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `cached_occasion_events` (`id` TEXT NOT NULL, " +
+                "`title` TEXT NOT NULL, `startsAt` TEXT NOT NULL, `endsAt` TEXT, " +
+                "`location` TEXT, `sensitivity` TEXT NOT NULL, `notes` TEXT, " +
+                "`updatedAt` TEXT, `deleted` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        )
+    }
+}
+
+/**
  * The [AppDatabase] schema version. A `const val` (rather than a bare `18` in the `@Database`
  * annotation) so [MigrationVersionCoverageTest] can read the exact same value the annotation
  * compiles with, instead of a second, independently-maintained copy of the number.
  */
-const val CURRENT_VERSION: Int = 18
+const val CURRENT_VERSION: Int = 19
 
 /**
  * Issue #480: the lowest [AppDatabase] version this repo has any evidence of shipping.
@@ -156,6 +175,7 @@ val REGISTERED_MIGRATIONS: List<Migration> = listOf(
     MIGRATION_15_16,
     MIGRATION_16_17,
     MIGRATION_17_18,
+    MIGRATION_18_19,
 )
 
 /**

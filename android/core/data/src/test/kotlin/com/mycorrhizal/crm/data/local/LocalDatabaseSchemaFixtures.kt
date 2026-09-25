@@ -201,4 +201,20 @@ object LocalDatabaseSchemaFixtures {
         createV16Tables(db)
         db.execSQL("ALTER TABLE `pending_interactions` ADD COLUMN `idempotencyKey` TEXT")
     }
+
+    /**
+     * The I18N-02 v18 shape (post [MIGRATION_17_18]): v17 with the FTS mirror
+     * switched to the `unicode61` tokenizer. This is the "before" database for
+     * the v18→v19 hop ([MIGRATION_18_19] adds `cached_occasion_events`, a new
+     * table only). Does not set `db.version`.
+     */
+    fun createV18Tables(db: SQLiteDatabase) {
+        createV17Tables(db)
+        db.execSQL("DROP TABLE IF EXISTS `cached_contacts_fts`")
+        db.execSQL(
+            "CREATE VIRTUAL TABLE `cached_contacts_fts` USING FTS4(`fn` TEXT, `firstname` TEXT, " +
+                "`lastname` TEXT, `primaryEmail` TEXT, `primaryPhone` TEXT, `phonesNormalized` TEXT, " +
+                "`org` TEXT, content=`cached_contacts`, tokenize=unicode61)",
+        )
+    }
 }
