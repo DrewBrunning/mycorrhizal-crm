@@ -33,6 +33,21 @@ data class OverdueCadencesResponse(
     val overdue: List<OverdueCadence> = emptyList(),
 )
 
+/** GET /data-decay-policies/overdue — `{ overdue: [...] }` (issue #352). */
+@JsonClass(generateAdapter = true)
+data class OverdueDataDecayPolicy(
+    val policy: DataDecayPolicy? = null,
+    val health: DataDecayHealth? = null,
+    @Json(name = "contact_id") val contactId: Long = 0,
+    @Json(name = "contact_name") val contactName: String = "",
+    @Json(name = "photo_thumbnail") val photoThumbnail: String? = null,
+)
+
+@JsonClass(generateAdapter = true)
+data class OverdueDataDecayPoliciesResponse(
+    val overdue: List<OverdueDataDecayPolicy> = emptyList(),
+)
+
 /** Kind tokens on [ReachOutSuggestion.kind] — mirrors the backend's ReachOutKind* constants (issue #177). */
 object ReachOutKind {
     const val ORGANIZATION = "organization"

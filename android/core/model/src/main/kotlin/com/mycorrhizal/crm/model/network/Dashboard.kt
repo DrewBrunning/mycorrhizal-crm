@@ -33,6 +33,9 @@ data class DashboardResponse(
     // Issue #177: pending event-driven reach-out suggestions. Same
     // no-omitempty/always-`[]` discipline as every other block.
     @Json(name = "reach_out_suggestions") val reachOutSuggestions: List<ReachOutSuggestion> = emptyList(),
+    // Issue #352: contacts whose info is due for re-verification. Same
+    // no-omitempty/always-`[]` discipline as every other block.
+    @Json(name = "data_decay_overdue") val dataDecayOverdue: List<OverdueDataDecayPolicy> = emptyList(),
 )
 
 /**

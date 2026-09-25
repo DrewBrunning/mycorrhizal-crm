@@ -94,6 +94,20 @@ section's shape) and, implicitly, by no longer appearing in the overdue dashboar
 "review surface" the issue asks for: not a field-by-field diff UI (that's the deferred per-field
 granularity), but a lightweight per-contact checkpoint.
 
+### 5a. Android: view + confirm, not full CRUD
+
+Android's v1 scope is narrower than web's, by deliberate choice: the dashboard's overdue-check block
+(mirroring `OverdueCadence`'s existing dashboard section — model + a `GET /dashboard` field + a
+`DashboardViewModel`/`DashboardScreen` section, no repository layer, no Room cache) plus a "confirm
+still current" action inline on that dashboard row (`POST .../verify`, mirroring the
+`ReachOutSuggestion` dismiss-from-dashboard pattern exactly). Creating, editing, deleting, or pausing a
+policy is web-only for now — there is no Android equivalent of `CadenceScreen`'s dedicated management
+UI. This is a genuine scope difference, not an oversight: it's the same shape `ReachOutSuggestion` and
+`ContactSyncConflict` already use on Android (dashboard-visible and actionable, with fuller management
+staying on web), and it satisfies the issue's literal ask ("how reminders surface — dashboard block on
+Android + web") without pulling in the offline-cache/CRUD-screen machinery `CadencePolicy`'s Android
+parity needed. A full Android management screen is a reasonable follow-up, not implied by this ADR.
+
 ### 6. Contact merge: same conflict-aware repoint as `CadencePolicy`
 
 `DataDecayPolicy` carries the identical one-per-contact partial-unique-index constraint `CadencePolicy`
@@ -112,13 +126,15 @@ recently.
 1. `DataDecayPolicy` entity + migration + CRUD + verify endpoints (backend).
 2. Overdue-list derivation + dashboard composite wiring (backend).
 3. Contact-merge conflict handling (backend).
-4. Web: dashboard widget, contact-detail review section.
-5. Android: dashboard section, contact-detail review action.
+4. Web: dashboard widget, contact-detail review section (full CRUD + verify).
+5. Android: dashboard section + inline "confirm still current" action (view + confirm, decision 5a —
+   deliberately not full CRUD).
 6. Comprehensive tests on all three (per this project's usual bar).
 
 **Deferred** (not part of v1, no ticket filed yet beyond this note):
 
 - Per-field granularity (decision 1 above) — a genuinely bigger feature, not a missing detail.
+- An Android policy-management screen (create/edit/delete/pause) — decision 5a; web-only for now.
 - Materializing decay reminders into the generic `Reminder`/notification-delivery system (e.g. a push
   notification when a policy goes overdue) — today it's dashboard/contact-page-visible only, the same way
   overdue cadences are.

@@ -67,6 +67,7 @@ import com.mycorrhizal.crm.model.network.Birthday
 import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
 import com.mycorrhizal.crm.model.network.OverdueCadence
+import com.mycorrhizal.crm.model.network.OverdueDataDecayPolicy
 import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.ReachOutKind
 import com.mycorrhizal.crm.model.network.ReachOutSuggestion
@@ -157,6 +158,7 @@ fun DashboardScreen(
                         onOpenContact = onOpenContact,
                         onCompleteReminder = viewModel::completeReminder,
                         onDismissReachOutSuggestion = viewModel::dismissReachOutSuggestion,
+                        onVerifyDataDecay = viewModel::verifyDataDecay,
                     )
                 }
             }
@@ -178,6 +180,7 @@ internal fun DashboardContent(
     onOpenContact: (Int) -> Unit,
     onCompleteReminder: (id: Int, skip: Boolean) -> Unit,
     onDismissReachOutSuggestion: (id: String) -> Unit = {},
+    onVerifyDataDecay: (id: String) -> Unit = {},
 ) {
     var pendingSkip by remember { mutableStateOf<DashboardReminder?>(null) }
 
@@ -211,6 +214,20 @@ internal fun DashboardContent(
                 OverdueRow(cadence, dateFormat, onClick = {
                     if (cadence.contactId > 0) onOpenContact(cadence.contactId.toInt())
                 })
+            }
+        }
+        // Issue #352: contacts whose info is due for re-verification. Same
+        // "hidden entirely when clear" treatment as overdue cadences above.
+        if (state.dataDecayOverdue.isNotEmpty()) {
+            item { DashboardSectionHeader(stringResource(R.string.dashboard_data_decay_overdue), Icons.Outlined.Warning) }
+            items(state.dataDecayOverdue, key = { dashboardKey("data-decay", it.dataDecaySourceId) }) { overdue ->
+                DataDecayRow(
+                    overdue = overdue,
+                    dateFormat = dateFormat,
+                    isVerifying = state.verifyingDataDecayId == overdue.policy?.id,
+                    onClick = { if (overdue.contactId > 0) onOpenContact(overdue.contactId.toInt()) },
+                    onVerify = { overdue.policy?.id?.let(onVerifyDataDecay) },
+                )
             }
         }
         // Issue #177: event-driven reach-out suggestions — the change-driven
@@ -302,6 +319,10 @@ private fun dashboardKey(section: String, id: Any): String = "$section-$id"
 private val OverdueCadence.sourceId: String
     get() = policy?.id ?: "contact-$contactId"
 
+/** Mirrors [OverdueCadence.sourceId] for [OverdueDataDecayPolicy] (issue #352). */
+private val OverdueDataDecayPolicy.dataDecaySourceId: String
+    get() = policy?.id ?: "contact-$contactId"
+
 /** Full-screen load failure with retry — replaces the widgets, never shows alongside them. */
 @Composable
 private fun DashboardErrorState(message: String, onRetry: () -> Unit) {
@@ -383,6 +404,57 @@ private fun OverdueRow(cadence: OverdueCadence, dateFormat: String, onClick: () 
                 containerColor = LocalWarningColors.current.container,
                 contentColor = LocalWarningColors.current.onContainer,
             )
+        }
+    }
+}
+
+// Issue #352: the data-decay row. Mirrors OverdueRow's tappable warning-
+// bordered card, plus a "confirm still current" action since (unlike an
+// overdue cadence, a pure fact) this is something the user can resolve
+// directly from the dashboard, the same way ReachOutRow's dismiss is.
+@Composable
+private fun DataDecayRow(
+    overdue: OverdueDataDecayPolicy,
+    dateFormat: String,
+    isVerifying: Boolean,
+    onClick: () -> Unit,
+    onVerify: () -> Unit,
+) {
+    val name = overdue.contactName.ifBlank { stringResource(R.string.dashboard_unknown_contact) }
+    val nextDue = DateFormat.formatTimestamp(overdue.health?.nextDue, dateFormat)
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        border = BorderStroke(1.dp, LocalWarningColors.current.foreground),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            ContactAvatar(photoUri = overdue.photoThumbnail, contentDescription = null, size = 40.dp)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(name, style = MaterialTheme.typography.bodyLarge)
+                if (nextDue.isNotBlank()) {
+                    Text(
+                        text = stringResource(R.string.data_decay_due_on, nextDue),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            DashboardChip(
+                text = stringResource(R.string.data_decay_overdue_by, overdue.health?.overdueBy ?: 0),
+                leadingIcon = Icons.Outlined.Warning,
+                containerColor = LocalWarningColors.current.container,
+                contentColor = LocalWarningColors.current.onContainer,
+            )
+            AccessibleIconButton(onClick = onVerify, enabled = !isVerifying) {
+                Icon(
+                    Icons.Outlined.CheckCircle,
+                    contentDescription = stringResource(R.string.cd_confirm_data_decay_current),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
