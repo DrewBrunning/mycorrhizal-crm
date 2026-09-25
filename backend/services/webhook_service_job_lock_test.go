@@ -75,3 +75,54 @@ func TestProcessWebhookRetriesAcquiresAndReleasesLock(t *testing.T) {
 	assert.WithinDuration(t, time.Now(), job.LastRunAt, 5*time.Second)
 	assert.Nil(t, job.LockedAt, "lock should be released after the job completes")
 }
+
+// TestProcessWebhookRetriesOrphanedDeliveryClearsNextRetryAt covers a
+// pending delivery whose webhook has since been deactivated: the webhook
+// lookup misses (First filters on is_active = true), and the delivery's
+// next_retry_at must be cleared so it isn't picked up again forever, rather
+// than left set on a delivery that can never be retried.
+func TestProcessWebhookRetriesOrphanedDeliveryClearsNextRetryAt(t *testing.T) {
+	db := setupWebhookRetryTestDB(t)
+	whID := seedTestWebhookID(t, db)
+	require.NoError(t, db.Model(&models.Webhook{}).Where("id = ?", whID).Update("is_active", false).Error)
+
+	past := time.Now().Add(-time.Minute)
+	delivery := models.WebhookDelivery{WebhookID: whID, EventType: "contact.created", Payload: "{}", Attempts: 1, NextRetryAt: &past}
+	require.NoError(t, db.Create(&delivery).Error)
+
+	ProcessWebhookRetries(db, config.Config{})
+
+	var got models.WebhookDelivery
+	require.NoError(t, db.First(&got, delivery.ID).Error)
+	assert.Nil(t, got.NextRetryAt, "an orphaned delivery's next_retry_at must be cleared")
+}
+
+// TestProcessWebhookRetriesOrphanedDeliveryUpdateFailureIsLogged pins the
+// CLAUDE.md trap #4 fix for this branch: the Update clearing an orphaned
+// delivery's next_retry_at can itself fail, and that must be logged rather
+// than silently swallowed. There is no return value to assert on here, so
+// this pins that ProcessWebhookRetries does not panic and still finishes
+// (releases the job lock) even when that Update fails.
+func TestProcessWebhookRetriesOrphanedDeliveryUpdateFailureIsLogged(t *testing.T) {
+	db := setupWebhookRetryTestDB(t)
+	whID := seedTestWebhookID(t, db)
+	require.NoError(t, db.Model(&models.Webhook{}).Where("id = ?", whID).Update("is_active", false).Error)
+
+	past := time.Now().Add(-time.Minute)
+	delivery := models.WebhookDelivery{WebhookID: whID, EventType: "contact.created", Payload: "{}", Attempts: 1, NextRetryAt: &past}
+	require.NoError(t, db.Create(&delivery).Error)
+
+	require.NoError(t, db.Callback().Update().Before("gorm:update").Register("fail_webhook_deliveries_update", func(tx *gorm.DB) {
+		if tx.Statement.Table == "webhook_deliveries" {
+			tx.AddError(assert.AnError)
+		}
+	}))
+
+	require.NotPanics(t, func() {
+		ProcessWebhookRetries(db, config.Config{})
+	})
+
+	var job models.JobExecution
+	require.NoError(t, db.Where("job_name = ?", models.JobNameWebhookRetries).First(&job).Error)
+	assert.Nil(t, job.LockedAt, "lock should still be released even though the delivery update failed")
+}

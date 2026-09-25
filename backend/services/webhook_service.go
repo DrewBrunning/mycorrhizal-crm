@@ -277,7 +277,7 @@ func TestWebhookDelivery(db *gorm.DB, cfg config.Config, wh models.Webhook) mode
 	if err != nil {
 		errStr := err.Error()
 		d := models.WebhookDelivery{WebhookID: wh.ID, EventType: "test", Payload: "{}", Error: &errStr, Attempts: 1}
-		if cerr := db.Create(&d).Error; cerr != nil {
+		if cerr := db.Create(&d).Error; cerr != nil { // # pragma: no cover — this whole branch needs buildPayloadBody to fail, which it cannot for TestWebhookDelivery's fixed, always-marshalable testData literal
 			logger.Error().Err(cerr).Uint("webhook_id", wh.ID).Msg("Failed to record failed test webhook delivery")
 		}
 		return d
