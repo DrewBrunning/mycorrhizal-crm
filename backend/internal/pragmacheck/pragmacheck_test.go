@@ -55,6 +55,21 @@ func TestCheckGoSource_ProseDiscussingTheConventionIsNotAMarker(t *testing.T) {
 	assert.Empty(t, CheckGoSource("x.go", src))
 }
 
+func TestCheckGoSource_MarkerOnFirstLineHasNoPrecedingComment(t *testing.T) {
+	// precedingComment must not walk off the start of the file: a marker on
+	// line 1 (or preceded only by blank lines back to the start) has no
+	// earlier line to inherit a reason from.
+	src := "return // # pragma: no cover\n"
+	findings := CheckGoSource("x.go", src)
+	assert.Len(t, findings, 1)
+}
+
+func TestCheckGoSource_MarkerAfterOnlyBlankLinesHasNoPrecedingComment(t *testing.T) {
+	src := "\n\n\treturn // # pragma: no cover\n"
+	findings := CheckGoSource("x.go", src)
+	assert.Len(t, findings, 1)
+}
+
 func TestCheckGoSource_NoMarkersIsClean(t *testing.T) {
 	assert.Empty(t, CheckGoSource("x.go", "package x\n\nfunc f() {}\n"))
 }

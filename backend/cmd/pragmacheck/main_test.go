@@ -60,6 +60,27 @@ func TestRunAtOKOnCleanTree(t *testing.T) {
 	assert.Contains(t, out.String(), "pragmacheck OK")
 }
 
+// TestRunAtScanErrorExitsTwo covers runAt's CheckTree-error branch: an
+// unreadable subdirectory under backend/ makes the underlying filepath.Walk
+// fail with something other than "does not exist", which runAt must report
+// as exit 2 rather than treating it as clean.
+func TestRunAtScanErrorExitsTwo(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root: permission bits are not enforced")
+	}
+	root := t.TempDir()
+	blocked := filepath.Join(root, "backend", "pkg")
+	require.NoError(t, os.MkdirAll(blocked, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(blocked, "x.go"), []byte("package pkg\n"), 0o644))
+	require.NoError(t, os.Chmod(blocked, 0o000))
+	defer os.Chmod(blocked, 0o755) //nolint:errcheck // best-effort cleanup so t.TempDir can remove it
+
+	var out bytes.Buffer
+	code := runAt(&out, root)
+	assert.Equal(t, 2, code)
+	assert.Contains(t, out.String(), "pragmacheck: scanning:")
+}
+
 // TestRunFailsWhenRepoRootNotFound proves run() itself fails closed when no
 // backend/go.mod exists above the working directory.
 func TestRunFailsWhenRepoRootNotFound(t *testing.T) {
