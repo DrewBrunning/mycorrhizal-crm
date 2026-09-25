@@ -57,14 +57,17 @@ func (r TemporalRange) IsEmpty() bool {
 // non-comparability is not a caller error. A range that is empty or open on
 // either side is never reversed.
 func (r TemporalRange) Reversed() bool {
-	cmp, ok := comparePartialDates(r.Start, r.End)
+	cmp, ok := ComparePartialDates(r.Start, r.End)
 	return ok && cmp > 0
 }
 
-// comparePartialDates compares two partial dates at the coarsest precision
+// ComparePartialDates compares two partial dates at the coarsest precision
 // they share, returning (comparison, comparable). comparison is -1, 0, or 1.
-// Not comparable (either side year-less, or nil) returns ok=false.
-func comparePartialDates(a, b *PartialDate) (int, bool) {
+// Not comparable (either side year-less, or nil) returns ok=false. Exported so
+// period-ordering callers (e.g. the life-event suggestion rules, issue #1233,
+// deciding whether one address period succeeds another) use the same
+// comparison the model's own Reversed() guard does, rather than a second one.
+func ComparePartialDates(a, b *PartialDate) (int, bool) {
 	if a == nil || b == nil || a.Year == nil || b.Year == nil {
 		return 0, false
 	}

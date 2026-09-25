@@ -4,12 +4,11 @@ import {
   type ContactRecordResponse,
   type CRMEnvelope,
   getOrganizationFields,
-  getTitleField,
   type NameComponent,
   nameComponentValue,
   withAnniversary,
-  withOrganization,
-  withTitles,
+  withOrganizationEntry,
+  withTitleEntry,
 } from '../api/contacts';
 import type { FieldValueInput } from '../api/fieldDefinitions';
 import type { Gift, GiftInput } from '../api/gifts';
@@ -54,20 +53,22 @@ export function buildRecordPatch(
       return { card: { anniversaries: withAnniversary(c.anniversaries, 'wedding', value) } };
     case 'organization': {
       const { department } = getOrganizationFields(c.organizations);
-      return { card: { organizations: withOrganization(value, department || '') } };
+      return {
+        card: { organizations: withOrganizationEntry(c.organizations, value, department || '') },
+      };
     }
     case 'department': {
       const { organization } = getOrganizationFields(c.organizations);
-      return { card: { organizations: withOrganization(organization || '', value) } };
+      return {
+        card: {
+          organizations: withOrganizationEntry(c.organizations, organization || '', value),
+        },
+      };
     }
-    case 'job_title': {
-      const role = getTitleField(c.titles, 'role');
-      return { card: { titles: withTitles(value, role || '') } };
-    }
-    case 'role': {
-      const jobTitle = getTitleField(c.titles, 'title');
-      return { card: { titles: withTitles(jobTitle || '', value) } };
-    }
+    case 'job_title':
+      return { card: { titles: withTitleEntry(c.titles, value, 'title') } };
+    case 'role':
+      return { card: { titles: withTitleEntry(c.titles, value, 'role') } };
     case 'work_information':
       return { crm: { work_information: value } };
     case 'how_we_met':

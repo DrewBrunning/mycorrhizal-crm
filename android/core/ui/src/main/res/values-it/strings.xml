@@ -326,6 +326,9 @@
     <string name="contact_address_apartment">Appartamento / Suite</string>
     <string name="contact_address_floor">Piano</string>
     <string name="contact_address_additional">Campi aggiuntivi</string>
+    <string name="contact_period">Periodo</string>
+    <string name="contact_period_from">Da (anno)</string>
+    <string name="contact_period_to">A (anno)</string>
     <string name="contact_create">Crea contatto</string>
     <string name="contact_save">Salva modifiche</string>
     <string name="contact_error_given_name">È richiesto almeno un nome</string>

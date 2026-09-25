@@ -130,6 +130,41 @@ data class CRMEnvelope(
      * field the form must write to.
      */
     val gender: String? = null,
+    /**
+     * ADR 0025 (issue #1233): start/end periods attached to Card entries
+     * (addresses, employers, titles) by their neutral element ID. Mirrors
+     * backend contactmodel.CRMEnvelope.Periods. Modelling this is load-bearing,
+     * not cosmetic: the contact PUT is a full overwrite and [ContactFormViewModel.toInput]
+     * rebuilds `crm` via `copy`, so an unmodelled field would be silently
+     * dropped on every Android save (this exact data loss shipped once — the
+     * reason this field exists).
+     */
+    @Json(name = "periods") val periods: List<EntryPeriod>? = null,
+)
+
+/**
+ * ADR 0025: a CRM-only start/end period for a value true over an interval.
+ * Endpoints are partial calendar dates (no time, no zone); either may be
+ * absent. Mirrors backend contactmodel.TemporalRange. No RFC 9553/9554/9555
+ * home, so file exports drop it by design (the CSV carries it).
+ */
+@JsonClass(generateAdapter = true)
+data class TemporalRange(
+    val start: PartialDate? = null,
+    val end: PartialDate? = null,
+)
+
+/**
+ * ADR 0025: one [TemporalRange] attached to one Card entry by its neutral
+ * element ID (the JSContact map key / vCard PROP-ID). Mirrors backend
+ * contactmodel.EntryPeriod. `kind` names which Card collection `entryId`
+ * indexes (address|organization|title).
+ */
+@JsonClass(generateAdapter = true)
+data class EntryPeriod(
+    val kind: String = "",
+    @Json(name = "entry_id") val entryId: String = "",
+    val range: TemporalRange = TemporalRange(),
 )
 
 /** Unmapped data preserved verbatim (passthrough). */

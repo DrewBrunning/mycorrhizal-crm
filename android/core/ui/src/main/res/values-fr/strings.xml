@@ -326,6 +326,9 @@
     <string name="contact_address_apartment">Appartement / Suite</string>
     <string name="contact_address_floor">Étage</string>
     <string name="contact_address_additional">Champs supplémentaires</string>
+    <string name="contact_period">Période</string>
+    <string name="contact_period_from">De (année)</string>
+    <string name="contact_period_to">À (année)</string>
     <string name="contact_create">Créer le contact</string>
     <string name="contact_save">Enregistrer les modifications</string>
     <string name="contact_error_given_name">Au moins un prénom est requis</string>

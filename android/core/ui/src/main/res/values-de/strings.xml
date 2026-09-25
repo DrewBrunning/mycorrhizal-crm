@@ -326,6 +326,9 @@
     <string name="contact_address_apartment">Wohnung / Suite</string>
     <string name="contact_address_floor">Etage</string>
     <string name="contact_address_additional">Weitere Felder</string>
+    <string name="contact_period">Zeitraum</string>
+    <string name="contact_period_from">Von (Jahr)</string>
+    <string name="contact_period_to">Bis (Jahr)</string>
     <string name="contact_create">Kontakt erstellen</string>
     <string name="contact_save">Änderungen speichern</string>
     <string name="contact_error_given_name">Mindestens ein Vorname ist erforderlich</string>

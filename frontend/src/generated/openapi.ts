@@ -1397,7 +1397,7 @@ export type LifeEventSuggestion = {
   end_date?: PartialDate;
   entity_id: string;
   source_entry_id: string;
-  source_kind: 'address' | 'organization';
+  source_kind: 'address' | 'organization' | 'title';
   type: string;
 };
 
@@ -1406,7 +1406,7 @@ export type LifeEventSuggestionResolutionInput = {
   event_type: string;
   resolution: 'accepted' | 'dismissed';
   source_entry_id: string;
-  source_kind: 'address' | 'organization';
+  source_kind: 'address' | 'organization' | 'title';
 };
 
 export type LinkFieldType = {

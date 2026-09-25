@@ -13924,7 +13924,8 @@
           "required": true,
           "enum": [
             "address",
-            "organization"
+            "organization",
+            "title"
           ]
         },
         {
@@ -13967,7 +13968,8 @@
           "required": true,
           "enum": [
             "address",
-            "organization"
+            "organization",
+            "title"
           ]
         }
       ]

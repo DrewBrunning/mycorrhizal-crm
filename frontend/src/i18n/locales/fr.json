@@ -572,6 +572,13 @@
     "birthdayError": "Format de date invalide. Vérifiez votre paramètre de format de date.",
     "address": "Adresse",
     "workInfo": "Informations professionnelles",
+    "period": {
+      "label": "Période",
+      "from": "De (année)",
+      "to": "À (année)",
+      "since": "Depuis {{year}}",
+      "until": "Jusqu'à {{year}}"
+    },
     "howWeMet": "Comment nous nous sommes rencontrés",
     "additionalInfo": "Informations supplémentaires",
     "timeline": "Chronologie",
@@ -732,6 +739,7 @@
       "adopted_pet": "A eu un animal",
       "retired": "À la retraite",
       "moved": "Déménagé",
+      "moved_out": "A quitté le logement",
       "bought_a_home": "A acheté une maison",
       "made_a_home_improvement": "A fait des travaux dans son logement",
       "went_on_holidays": "Est parti en vacances",

@@ -572,6 +572,13 @@
     "birthdayError": "Formato de fecha inválido. Verifica tu configuración de formato de fecha.",
     "address": "Dirección",
     "workInfo": "Información Laboral",
+    "period": {
+      "label": "Período",
+      "from": "Desde (año)",
+      "to": "Hasta (año)",
+      "since": "Desde {{year}}",
+      "until": "Hasta {{year}}"
+    },
     "howWeMet": "Cómo nos conocimos",
     "additionalInfo": "Información Adicional",
     "timeline": "Línea de Tiempo",
@@ -732,6 +739,7 @@
       "adopted_pet": "Consiguió una mascota",
       "retired": "Jubilado",
       "moved": "Mudado",
+      "moved_out": "Se mudó fuera",
       "bought_a_home": "Compró una casa",
       "made_a_home_improvement": "Hizo una mejora en el hogar",
       "went_on_holidays": "Se fue de vacaciones",

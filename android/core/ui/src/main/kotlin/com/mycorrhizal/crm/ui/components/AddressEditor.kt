@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
@@ -22,10 +23,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.AddressComponent
+import com.mycorrhizal.crm.model.network.EntryPeriod
+import com.mycorrhizal.crm.model.network.entryPeriodOf
+import com.mycorrhizal.crm.model.network.upsertEntryPeriod
+import com.mycorrhizal.crm.model.network.yearTemporalRange
 import com.mycorrhizal.crm.ui.R
+import java.util.UUID
 
 /**
  * Edits `card.addresses[]` (the nested model, `components[]` not a scalar).
@@ -44,6 +51,10 @@ fun AddressEditor(
     addresses: List<Address>,
     onChange: (List<Address>) -> Unit,
     modifier: Modifier = Modifier,
+    // ADR 0025 (#1233): the contact's full period list and its setter, so each
+    // row can display/edit its own start/end year period keyed by element ID.
+    periods: List<EntryPeriod> = emptyList(),
+    onPeriodsChange: (List<EntryPeriod>) -> Unit = {},
 ) {
     // Per-row reveal keys for the hidden additional fields. Only ever grows
     // (web's useRowKeys semantics); loaded rows key off their stable `id`,
@@ -55,14 +66,26 @@ fun AddressEditor(
             val key = address.id ?: "row-$index"
             val draft = address.toDraft()
             val showAdditional = key in revealedKeys || draft.hasAdditionalParts
+            val period = address.id?.let { entryPeriodOf(periods, "address", it) }
             AddressRow(
                 draft = draft,
                 showAdditional = showAdditional,
                 canRemove = addresses.size > 1,
+                periodStart = period?.range?.start?.year?.toString().orEmpty(),
+                periodEnd = period?.range?.end?.year?.toString().orEmpty(),
                 onDraftChange = { newDraft ->
                     onChange(addresses.mapIndexed { i, a -> if (i == index) a.withDraft(newDraft) else a })
                 },
                 onRemove = { onChange(addresses.filterIndexed { i, _ -> i != index }) },
+                onPeriodChange = { start, end ->
+                    // An entry must carry an element ID to carry a period: mint
+                    // one for a brand-new/legacy row before attaching.
+                    val id = address.id ?: UUID.randomUUID().toString()
+                    if (address.id == null) {
+                        onChange(addresses.mapIndexed { i, a -> if (i == index) a.copy(id = id) else a })
+                    }
+                    onPeriodsChange(upsertEntryPeriod(periods, "address", id, yearTemporalRange(start, end)))
+                },
                 onRevealAdditional = { revealedKeys = revealedKeys + key },
             )
         }
@@ -148,8 +171,11 @@ private fun AddressRow(
     draft: AddressDraft,
     showAdditional: Boolean,
     canRemove: Boolean,
+    periodStart: String,
+    periodEnd: String,
     onDraftChange: (AddressDraft) -> Unit,
     onRemove: () -> Unit,
+    onPeriodChange: (String, String) -> Unit,
     onRevealAdditional: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
@@ -234,6 +260,26 @@ private fun AddressRow(
                 onValueChange = { onDraftChange(draft.copy(country = it)) },
                 label = stringResource(R.string.contact_address_country),
                 contentType = ContentType.AddressCountry,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        // ADR 0025 (#1233): the period this address was lived at — whole years,
+        // either side blank (open-ended). The wire carries the full PartialDate.
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            OutlinedTextField(
+                value = periodStart,
+                onValueChange = { onPeriodChange(it, periodEnd) },
+                label = { Text(stringResource(R.string.contact_period_from)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f),
+            )
+            OutlinedTextField(
+                value = periodEnd,
+                onValueChange = { onPeriodChange(periodStart, it) },
+                label = { Text(stringResource(R.string.contact_period_to)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.weight(1f),
             )
         }

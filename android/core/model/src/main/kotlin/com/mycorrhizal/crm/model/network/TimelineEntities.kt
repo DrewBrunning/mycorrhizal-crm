@@ -18,6 +18,8 @@ data class LifeEvent(
     val type: String? = null,
     val category: String? = null,
     val date: PartialDate? = null,
+    // ADR 0025: when present, turns `date` (the start/anchor) into a span.
+    @Json(name = "end_date") val endDate: PartialDate? = null,
     val description: String? = null,
     val source: String? = null,
     @Json(name = "related_entity_ids") val relatedEntityIds: List<String>? = null,
@@ -31,6 +33,7 @@ data class LifeEventInput(
     val type: String? = null,
     val category: String? = null,
     val date: PartialDate? = null,
+    @Json(name = "end_date") val endDate: PartialDate? = null,
     val description: String? = null,
     val source: String? = null,
     @Json(name = "related_entity_ids") val relatedEntityIds: List<String>? = null,

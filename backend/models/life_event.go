@@ -32,6 +32,15 @@ const (
 	LifeEventTypeRetired    = "retired"
 	LifeEventTypeMoved      = "moved"
 
+	// LifeEventTypeMovedOut is the departure counterpart of Moved — inferred
+	// from an address period whose end has no successor ("moved out of X",
+	// issue #1233). It is a distinct token rather than a second `moved` at the
+	// end date because the suggestion resolution key is
+	// (entity, source_kind, source_entry_id, event_type): two `moved`
+	// candidates from the same address entry would collide and resolving one
+	// would suppress the other.
+	LifeEventTypeMovedOut = "moved_out"
+
 	// Home & Living
 	LifeEventTypeBoughtAHome          = "bought_a_home"
 	LifeEventTypeMadeAHomeImprovement = "made_a_home_improvement"

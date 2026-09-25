@@ -31,8 +31,9 @@ type LifeEventSuggestion struct {
 	EndDate *contactmodel.PartialDate `json:"end_date,omitempty"`
 
 	// SourceKind/SourceEntryID identify the Card entry the inference came from
-	// (address|organization + the neutral element ID). They are the resolution
-	// key, not a live link: accepting does not tie the event back to the entry.
+	// (address|organization|title + the neutral element ID). They are the
+	// resolution key, not a live link: accepting does not tie the event back to
+	// the entry.
 	SourceKind    string `json:"source_kind"`
 	SourceEntryID string `json:"source_entry_id"`
 }
@@ -41,7 +42,7 @@ type LifeEventSuggestion struct {
 // suggestion (accept or dismiss). It names the candidate by its inference key.
 type LifeEventSuggestionResolutionInput struct {
 	EntityID      string `json:"entity_id" validate:"required,uuid4"`
-	SourceKind    string `json:"source_kind" validate:"required,oneof=address organization"`
+	SourceKind    string `json:"source_kind" validate:"required,oneof=address organization title"`
 	SourceEntryID string `json:"source_entry_id" validate:"required,max=255"`
 	EventType     string `json:"event_type" validate:"required,max=100"`
 	Resolution    string `json:"resolution" validate:"required,oneof=accepted dismissed"`
@@ -70,7 +71,7 @@ type LifeEventSuggestionResolution struct {
 	EntityID string `gorm:"column:entity_id;not null;index;uniqueIndex:idx_life_event_suggestion_resolution,priority:2" json:"entity_id"`
 
 	// SourceKind is the Card collection the candidate came from
-	// (address|organization).
+	// (address|organization|title).
 	SourceKind string `gorm:"column:source_kind;not null;uniqueIndex:idx_life_event_suggestion_resolution,priority:3" json:"source_kind"`
 
 	// SourceEntryID is the referenced Card element's neutral ID.
