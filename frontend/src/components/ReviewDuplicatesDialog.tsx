@@ -38,7 +38,14 @@ function PairLine({
 }: {
   pair: DuplicatePair;
   onMerge: (pair: DuplicatePair) => void;
-  onDismiss: (pair: DuplicatePair) => void;
+  // The real implementation (ReviewDuplicatesDialog's handleDismiss) is
+  // async — it awaits the dismiss API call so the caller can show the
+  // spinner and swallow the already-snackbar'd error for its actual
+  // duration. A `void`-only signature here was a real type mismatch: it
+  // made `await onDismiss(pair)` below type-check as awaiting a
+  // non-Promise, which `@typescript-eslint/await-thenable` caught. Widen to
+  // `void | Promise<void>` so a synchronous caller still type-checks too.
+  onDismiss: (pair: DuplicatePair) => void | Promise<void>;
 }) {
   const { t } = useTranslation();
   const [dismissing, setDismissing] = useState(false);
@@ -135,7 +142,12 @@ function PairLine({
         <Button size="small" variant="outlined" onClick={() => onMerge(pair)}>
           {t('contactMerge.mergeButton')}
         </Button>
-        <Button size="small" color="inherit" onClick={handleDismiss} disabled={dismissing}>
+        <Button
+          size="small"
+          color="inherit"
+          onClick={() => void handleDismiss()}
+          disabled={dismissing}
+        >
           {dismissing ? <CircularProgress size={14} /> : t('duplicates.notDuplicate')}
         </Button>
       </Box>
@@ -155,7 +167,9 @@ export default function ReviewDuplicatesDialog({ open, onClose }: ReviewDuplicat
   const [mergePair, setMergePair] = useState<{ a: Contact; b: Contact } | null>(null);
 
   useEffect(() => {
-    if (open) refresh();
+    // refresh() catches its own errors internally (sets `error` state);
+    // fire-and-forget here is intentional.
+    if (open) void refresh();
   }, [open, refresh]);
 
   const handleDismiss = async (pair: DuplicatePair) => {
