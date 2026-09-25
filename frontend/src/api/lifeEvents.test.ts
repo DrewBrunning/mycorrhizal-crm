@@ -300,6 +300,7 @@ describe('life event constants', () => {
   test('LIFE_EVENT_TYPES_BY_CATEGORY lists every type token exactly, in order', () => {
     expect(LIFE_EVENT_TYPES_BY_CATEGORY.home_living).toEqual([
       'moved',
+      'moved_out',
       'bought_a_home',
       'made_a_home_improvement',
       'went_on_holidays',
