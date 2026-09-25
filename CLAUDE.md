@@ -171,7 +171,7 @@ table and the `networkGraphScale.spec.ts` benchmark. Two-tier per #447: bundle b
 
 **Mutation testing (issue #915):** two nightly (`workflow_dispatch` too), threshold-gated workflows
 — not report-only, and not a per-PR or release gate, since mutation testing is O(test suite × mutant
-count). `stryker.yml` (frontend, unchanged scope: `src/api/{contacts,relationshipEdges,lifeEvents}.ts`)
+count). `stryker.yml` (frontend: `src/api/{contacts,relationshipEdges,lifeEvents}.ts` + the matching `src/hooks/use*.ts`, break 85 against a measured ~90%)
 now sets `thresholds.break` in `frontend/stryker.conf.json`, so `npx stryker run` itself fails below the
 committed baseline. `go-mutation.yml` (backend, new) runs `gremlins` against the safety-critical Go
 paths coverage alone can't prove: migration/upgrade + backup/restore (`database`), data-integrity

@@ -805,10 +805,12 @@ criterion.**
   it is now two nightly, threshold-gated workflows rather than one advisory
   one:
   - `stryker.yml` — frontend, the core domain modules (`src/api/contacts.ts`,
-    `relationshipEdges.ts`, `lifeEvents.ts`). `frontend/stryker.conf.json`'s
-    `thresholds.break` fails the run itself on a score drop below the
-    committed baseline (60.73% measured 2026-09-15; `break: 55` leaves margin
-    for run-to-run noise, not because a further drop is expected).
+    `relationshipEdges.ts`, `lifeEvents.ts`) plus their matching
+    `useContacts`/`useRelationshipEdges`/`useLifeEvents` hooks.
+    `frontend/stryker.conf.json`'s `thresholds.break` fails the run itself on
+    a score drop below the committed baseline (90.27% measured 2026-09-25;
+    `break: 85` leaves margin for run-to-run noise, not because a further
+    drop is expected).
   - `go-mutation.yml` — backend, gremlins against the paths where silent
     data loss lives: migration/upgrade and backup/restore (`database`),
     data-integrity invariants (`atrest`), delete cascade (the two files
