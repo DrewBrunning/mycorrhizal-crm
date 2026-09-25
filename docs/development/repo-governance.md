@@ -66,6 +66,19 @@ registry disagree, so the branch-protection list can never drift from the gate l
 
 <!-- governance-required-checks:end -->
 
+## Code ownership
+
+[`.github/CODEOWNERS`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/CODEOWNERS)
+routes review of the paths a quality gate derives its verdict from — the per-file coverage ratchets,
+the gate registry/ruleset/path-filter, the analyzer and budget configs, and the generated
+contracts/schema dumps (#1243). It is **routing, not access control**: `main-protection` leaves
+`require_code_owner_review` at `false` (see above), so the requested review is visible but not
+merge-blocking and the solo maintainer still self-merges. Flip `require_code_owner_review` to `true`
+in [`main-protection.json`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/rulesets/main-protection.json)
+and apply it live to make the routing binding — a deliberate switch to make once there is a second
+maintainer, since GitHub never counts the PR author's own approval toward a required code-owner
+review. The gate-adding procedure and rationale are in `CLAUDE.md`'s "Adding a quality gate".
+
 ## Release tags
 
 **`v-tag-protection`** ([`.github/rulesets/tags-v.json`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/rulesets/tags-v.json)) —

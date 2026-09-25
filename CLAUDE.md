@@ -332,6 +332,53 @@ hook that runs on every commit.
 **Never bypass with `git commit --no-verify`** except with the user's explicit go-ahead for that
 specific commit — a failing hook is CI catching you locally, not an obstacle to route around.
 
+## Adding a quality gate
+
+The merge-blocking surface is **exactly** the `required_status_checks` contexts of the live
+`main-protection` ruleset, mirrored by `.github/rulesets/main-protection.json` and kept equal to the
+per-PR `mandatory` gates in `.github/release-gates.json` by `go run ./cmd/governancecheck` (every PR,
+in the `docs-citations` job). A check that is not one of those contexts does not block a merge, no
+matter how it is wired — a per-PR job absent from the ruleset is advisory in practice (the `Frontend
+bundle-size budget` job is the current example; it runs per-PR but is not a required context).
+
+**Default: add the check as a step inside an existing required job.** Most gates belong there, and a
+step is merge-blocking with no governance change — which is how PR #1243 added `gormerrcheck`, the
+coverage ratchets, the contract/TS drift checks, `pragmacheck` and `nightlyalertcheck` without
+touching the registry. The three jobs that carry the load:
+
+- **`Backend (Go)`** — `unit-tests.yml`'s `backend-checks` (lint/analyzers) and `backend-tests`
+  (`go test ./...`, so *any* Go test is enforced: `models/schema_parity_test.go`, the
+  `AutoMigrate` ratchet, `omitemptyguard`, the generated-artifact drift tests).
+- **`Frontend (Vitest)`** — `tsc --noEmit` (picks up `frontend/src/api/contractConformance.ts`),
+  `yarn lint` (type-aware ESLint), and the per-file coverage ratchet.
+- **`Docs & security-doc citations`** — runs **unconditionally**, so a repo-wide analyzer or a
+  docs/citation gate goes here (`pragmacheck`, `nightlyalertcheck`, `codecovcheck`, `docscheck`, …).
+
+**Only create a new job/context when the check genuinely cannot live in one of those** (its own
+runner or trigger, or a release-tier suite too slow for every PR). Then, in the same PR:
+
+1. Add a gate entry to `.github/release-gates.json` with `tier: "per-pr"`, `mandatory: true` and a
+   real `check_context` (`release_gate: true` if the release gate must re-poll it).
+2. Add that context to `.github/rulesets/main-protection.json`'s `required_status_checks`.
+3. Apply the committed ruleset to the live repo — `gh api --method PUT
+   /repos/DrewBrunning/mycorrhizal-crm/rulesets/<id> --input .github/rulesets/main-protection.json`
+   (`<id>` from `gh api /repos/DrewBrunning/mycorrhizal-crm/rulesets`).
+4. Update `docs/development/release-gates.md` and `docs/development/repo-governance.md` to match.
+
+`governancecheck` fails the PR if steps 1–2 (committed registry ↔ ruleset) or step 4 (the doc's
+marked required-check table) disagree; `governance-drift.yml` (weekly) fails if the committed ruleset
+and the **live** one disagree, since step 3 is the half no in-repo test can see.
+
+Mirror the check in `.githooks/pre-commit` for fast local feedback (never a substitute for CI), and
+hand-verify it the way you would a test: break the thing it guards, watch the gate fail, restore.
+
+**Gates are not silently weakened.** Lowering a coverage baseline, adding a `# pragma: no cover`,
+allowlisting an analyzer finding, or removing a required context each needs a recorded reason and a
+deliberate look. `pragmacheck`/`codecovcheck` and the analyzers' reason-bearing allowlists enforce the
+"recorded reason" half mechanically; the committed baselines, generated contracts and gate configs —
+the artifacts a PR can otherwise move by regenerating them — are routed to the maintainer for review
+by `.github/CODEOWNERS` (routing only today; see `docs/development/repo-governance.md`).
+
 ## Workflow
 
 - **One branch per concern.** `feature/<thing>`. Implement → verify → commit per concern → push → merge
