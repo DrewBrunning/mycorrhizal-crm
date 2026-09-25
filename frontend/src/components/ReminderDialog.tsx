@@ -72,10 +72,10 @@ export default function ReminderDialog({
   useEffect(() => {
     if (reminder) {
       setMessage(reminder.message);
-      setByMail(reminder.by_mail);
+      setByMail(reminder.by_mail ?? false); // nullable column; DB default false
       setRemindAt(reminder.remind_at.split('T')[0]); // Extract date part
       setRecurrence(reminder.recurrence);
-      setReoccurFromCompletion(reminder.reoccur_from_completion);
+      setReoccurFromCompletion(reminder.reoccur_from_completion ?? true); // DB default true
     } else {
       // Reset form for new reminder, using initialValues if provided
       const initialRec = initialValues?.recurrence || 'once';

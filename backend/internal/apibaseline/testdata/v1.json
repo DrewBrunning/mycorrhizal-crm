@@ -3214,7 +3214,7 @@
           "required": true
         }
       ],
-      "request_body": "ref:Reminder",
+      "request_body": "ref:ReminderInput",
       "responses": [
         {
           "status": "200",
@@ -6804,7 +6804,7 @@
           "required": true
         }
       ],
-      "request_body": "ref:Reminder",
+      "request_body": "ref:ReminderInput",
       "responses": [
         {
           "status": "200",
@@ -7737,22 +7737,22 @@
         {
           "name": "CreatedAt",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "DeletedAt",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "ID",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "UpdatedAt",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "contacts",
@@ -7762,7 +7762,7 @@
         {
           "name": "date",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "deleted",
@@ -7772,7 +7772,7 @@
         {
           "name": "description",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "external_ref",
@@ -7782,17 +7782,17 @@
         {
           "name": "location",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "revision",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "title",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "type",
@@ -8419,17 +8419,17 @@
         {
           "name": "birthday",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "contact_id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "photo_thumbnail",
@@ -8439,7 +8439,10 @@
         {
           "name": "type",
           "type": "string",
-          "required": false
+          "required": true,
+          "enum": [
+            "contact"
+          ]
         }
       ]
     },
@@ -8534,7 +8537,7 @@
         {
           "name": "edge",
           "type": "ref:RelationshipEdge",
-          "required": false
+          "required": true
         },
         {
           "name": "other_party_contact_id",
@@ -8687,7 +8690,7 @@
         {
           "name": "has_qualifying_interaction",
           "type": "boolean",
-          "required": false
+          "required": true
         },
         {
           "name": "last_interaction",
@@ -8702,7 +8705,7 @@
         {
           "name": "overdue_by",
           "type": "integer",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -8712,17 +8715,17 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "entity_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "qualifying_types",
@@ -8732,12 +8735,12 @@
         {
           "name": "target_interval_days",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -8767,12 +8770,12 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "entity_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "health",
@@ -8782,7 +8785,7 @@
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "qualifying_types",
@@ -8792,12 +8795,12 @@
         {
           "name": "target_interval_days",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -9180,22 +9183,22 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -9215,27 +9218,27 @@
         {
           "name": "circle_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "member_vcard_uid",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -9444,7 +9447,7 @@
         {
           "name": "summary",
           "type": "composed[object]",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -9466,7 +9469,7 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "date",
@@ -9491,12 +9494,12 @@
         {
           "name": "entity_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "related_entity_ids",
@@ -9506,7 +9509,7 @@
         {
           "name": "related_entity_names",
           "type": "object",
-          "required": false
+          "required": true
         },
         {
           "name": "remind",
@@ -9516,7 +9519,7 @@
         {
           "name": "revision",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "source",
@@ -9536,7 +9539,7 @@
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -9546,47 +9549,47 @@
         {
           "name": "activities",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "agenda",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "circles",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "completions",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "contact",
           "type": "ref:ContactRecordResponse",
-          "required": false
+          "required": true
         },
         {
           "name": "external_activities",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "external_identities",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "field_values",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "gifts",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "immich",
@@ -9596,32 +9599,32 @@
         {
           "name": "life_events",
           "type": "array\u003ccomposed[object,object]\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "notes",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "relationship_edges",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "reminders",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "tags",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "user",
           "type": "ref:ContactDetailUser",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -9631,7 +9634,7 @@
         {
           "name": "enabled_contact_fields",
           "type": "array\u003cstring\u003e",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -9666,22 +9669,22 @@
         {
           "name": "CreatedAt",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "DeletedAt",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "ID",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "UpdatedAt",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "activities",
@@ -9691,92 +9694,97 @@
         {
           "name": "address",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "addresses",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "anniversary",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "archived",
           "type": "boolean",
-          "required": false
+          "required": true
         },
         {
           "name": "birthday",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "circles",
           "type": "array\u003cstring\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "contact_information",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "department",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "email",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "emails",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "firstname",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "gender",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "how_we_met",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "impps",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
+        },
+        {
+          "name": "is_favorite",
+          "type": "boolean",
+          "required": true
         },
         {
           "name": "job_title",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "lastname",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "middle_name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "nickname",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "notes",
@@ -9786,27 +9794,27 @@
         {
           "name": "organization",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "phone",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "phones",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "photo",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "prefix",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "reminders",
@@ -9816,22 +9824,22 @@
         {
           "name": "role",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "suffix",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "urls",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "work_information",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -10122,37 +10130,37 @@
         {
           "name": "archived",
           "type": "boolean",
-          "required": false
+          "required": true
         },
         {
           "name": "card",
           "type": "ref:Card",
-          "required": false
+          "required": true
         },
         {
           "name": "crm",
           "type": "ref:CRMEnvelope",
-          "required": false
+          "required": true
         },
         {
           "name": "etag",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "gender",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "is_favorite",
           "type": "boolean",
-          "required": false
+          "required": true
         },
         {
           "name": "notes",
@@ -10167,7 +10175,7 @@
         {
           "name": "photo",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "photo_thumbnail",
@@ -10182,12 +10190,12 @@
         {
           "name": "revision",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "uid",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -10197,22 +10205,22 @@
         {
           "name": "CreatedAt",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "DeletedAt",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "ID",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "UpdatedAt",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "activities",
@@ -10222,92 +10230,97 @@
         {
           "name": "address",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "addresses",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "anniversary",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "archived",
           "type": "boolean",
-          "required": false
+          "required": true
         },
         {
           "name": "birthday",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "circles",
           "type": "array\u003cstring\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "contact_information",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "department",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "email",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "emails",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "firstname",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "gender",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "how_we_met",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "impps",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
+        },
+        {
+          "name": "is_favorite",
+          "type": "boolean",
+          "required": true
         },
         {
           "name": "job_title",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "lastname",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "middle_name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "nickname",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "notes",
@@ -10317,32 +10330,32 @@
         {
           "name": "organization",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "phone",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "phones",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "photo",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "photo_thumbnail",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "prefix",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "reminders",
@@ -10352,22 +10365,22 @@
         {
           "name": "role",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "suffix",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "urls",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "work_information",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -10692,12 +10705,12 @@
         {
           "name": "archived",
           "type": "boolean",
-          "required": false
+          "required": true
         },
         {
           "name": "birthday",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "deleted",
@@ -10707,42 +10720,42 @@
         {
           "name": "firstname",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "fn",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "is_favorite",
           "type": "boolean",
-          "required": false
+          "required": true
         },
         {
           "name": "lastname",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "nickname",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "org",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "photo",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "photo_thumbnail",
@@ -10752,22 +10765,22 @@
         {
           "name": "primary_email",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "primary_phone",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "revision",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "uid",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -10782,12 +10795,12 @@
         {
           "name": "archived",
           "type": "boolean",
-          "required": false
+          "required": true
         },
         {
           "name": "birthday",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "deleted",
@@ -10797,32 +10810,32 @@
         {
           "name": "firstname",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "fn",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "is_favorite",
           "type": "boolean",
-          "required": false
+          "required": true
         },
         {
           "name": "lastname",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "nickname",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "notes",
@@ -10832,12 +10845,12 @@
         {
           "name": "org",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "photo",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "photo_thumbnail",
@@ -10847,12 +10860,12 @@
         {
           "name": "primary_email",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "primary_phone",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "reminders",
@@ -10862,12 +10875,12 @@
         {
           "name": "revision",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "uid",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -10877,37 +10890,37 @@
         {
           "name": "contact_id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "contact_name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "contact_vcard_uid",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "field",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "local_value",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "photo_thumbnail",
@@ -10917,12 +10930,12 @@
         {
           "name": "remote_value",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "status",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "pending",
             "dismissed"
@@ -10931,17 +10944,17 @@
         {
           "name": "subscription_id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "subscription_name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -10951,27 +10964,27 @@
         {
           "name": "contact_vcard_uid",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "tag_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -11011,12 +11024,12 @@
         {
           "name": "content",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "deleted",
@@ -11031,12 +11044,12 @@
         {
           "name": "entity_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "reference_url",
@@ -11046,7 +11059,7 @@
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -11141,32 +11154,32 @@
         {
           "name": "CreatedAt",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "DeletedAt",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "ID",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "UpdatedAt",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "by_mail",
           "type": "boolean",
-          "required": false
+          "required": true
         },
         {
           "name": "completed",
           "type": "boolean",
-          "required": false
+          "required": true
         },
         {
           "name": "contact",
@@ -11176,22 +11189,22 @@
         {
           "name": "contact_id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "contact_name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "email_sent",
           "type": "boolean",
-          "required": false
+          "required": true
         },
         {
           "name": "last_sent",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "life_event_id",
@@ -11201,7 +11214,7 @@
         {
           "name": "message",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "occasion_obligation_id",
@@ -11211,7 +11224,7 @@
         {
           "name": "recurrence",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "once",
             "weekly",
@@ -11224,17 +11237,17 @@
         {
           "name": "remind_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "reoccur_from_completion",
           "type": "boolean",
-          "required": false
+          "required": true
         },
         {
           "name": "revision",
           "type": "integer",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -11244,32 +11257,37 @@
         {
           "name": "birthdays",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
+        },
+        {
+          "name": "contact_sync_conflicts",
+          "type": "array\u003cobject\u003e",
+          "required": true
         },
         {
           "name": "favorites",
           "type": "array\u003ccomposed[object,object]\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "overdue",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "random_contacts",
           "type": "array\u003ccomposed[object,object]\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "reach_out_suggestions",
           "type": "array\u003cobject\u003e",
-          "required": false
+          "required": true
         },
         {
           "name": "upcoming_reminders",
           "type": "array\u003ccomposed[object,object]\u003e",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -11861,27 +11879,27 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "entity_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "external_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "occurred_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "payload",
@@ -11891,7 +11909,7 @@
         {
           "name": "provenance",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "external",
             "user"
@@ -11900,12 +11918,12 @@
         {
           "name": "source_system",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "sync_state",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "synced",
             "pending"
@@ -11914,12 +11932,12 @@
         {
           "name": "type",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -11982,22 +12000,22 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "entity_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "external_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "last_synced_at",
@@ -12012,7 +12030,7 @@
         {
           "name": "sync_status",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "idle",
             "syncing",
@@ -12023,12 +12041,12 @@
         {
           "name": "system",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "url",
@@ -12124,32 +12142,32 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "key",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "label",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "projection",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "sensitivity",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "normal",
             "private",
@@ -12159,7 +12177,7 @@
         {
           "name": "target",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "contact"
           ]
@@ -12167,7 +12185,7 @@
         {
           "name": "type",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "string",
             "text",
@@ -12184,7 +12202,7 @@
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -12254,32 +12272,32 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "entity_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "field_definition_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "value",
           "type": "",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -12309,7 +12327,7 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "currency",
@@ -12329,17 +12347,17 @@
         {
           "name": "description",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "entity_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "life_event_id",
@@ -12359,7 +12377,7 @@
         {
           "name": "status",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "idea",
             "purchased",
@@ -12370,7 +12388,7 @@
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "url",
@@ -12456,27 +12474,27 @@
         {
           "name": "contact_id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "contact_name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "date",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "days_until",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "label",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "linked_gift_id",
@@ -12486,12 +12504,12 @@
         {
           "name": "obligation_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "status",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "needed",
             "idea",
@@ -12805,22 +12823,22 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "type",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "family_unit",
             "roommates",
@@ -12830,7 +12848,7 @@
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -12865,22 +12883,22 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "household_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "member_vcard_uid",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "role",
@@ -12900,7 +12918,7 @@
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -13045,7 +13063,7 @@
         {
           "name": "identity",
           "type": "ref:ExternalIdentity",
-          "required": false
+          "required": true
         },
         {
           "name": "latest_asset_id",
@@ -13060,12 +13078,12 @@
         {
           "name": "person_name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "photo_count",
           "type": "integer",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -13499,17 +13517,17 @@
         {
           "name": "contact_id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "contact_name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "entity_id",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -13741,7 +13759,7 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "date",
@@ -13766,12 +13784,12 @@
         {
           "name": "entity_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "related_entity_ids",
@@ -13786,7 +13804,7 @@
         {
           "name": "revision",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "source",
@@ -13806,7 +13824,7 @@
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -13878,12 +13896,12 @@
         {
           "name": "category",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "date",
           "type": "ref:PartialDate",
-          "required": false
+          "required": true
         },
         {
           "name": "end_date",
@@ -13893,17 +13911,17 @@
         {
           "name": "entity_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "source_entry_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "source_kind",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "address",
             "organization"
@@ -13912,7 +13930,7 @@
         {
           "name": "type",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -13960,7 +13978,7 @@
         {
           "name": "category",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "messaging",
             "social",
@@ -13970,7 +13988,7 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "icon",
@@ -13980,32 +13998,32 @@
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "is_default",
           "type": "boolean",
-          "required": false
+          "required": true
         },
         {
           "name": "name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "position",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "protocol",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -14813,22 +14831,22 @@
         {
           "name": "CreatedAt",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "DeletedAt",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "ID",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "UpdatedAt",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "contact",
@@ -14838,17 +14856,17 @@
         {
           "name": "contact_id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "content",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "date",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "deleted",
@@ -14858,7 +14876,7 @@
         {
           "name": "revision",
           "type": "integer",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -15115,7 +15133,7 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "deleted",
@@ -15165,7 +15183,7 @@
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -15175,27 +15193,27 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "entity_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "event_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "rsvp",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "pending",
             "accepted",
@@ -15206,7 +15224,7 @@
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -15253,32 +15271,32 @@
         {
           "name": "contact_id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "contact_name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "entity_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "event_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "rsvp",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "pending",
             "accepted",
@@ -15334,7 +15352,7 @@
         {
           "name": "active",
           "type": "boolean",
-          "required": false
+          "required": true
         },
         {
           "name": "anchor_day",
@@ -15349,7 +15367,7 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "deleted",
@@ -15359,27 +15377,27 @@
         {
           "name": "entity_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "kind",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "label",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "lead_time_days",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "linked_life_event_id",
@@ -15394,7 +15412,7 @@
         {
           "name": "sensitivity",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "normal",
             "private",
@@ -15404,7 +15422,7 @@
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -15554,17 +15572,17 @@
         {
           "name": "contact_id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "contact_name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "health",
           "type": "ref:CadenceHealth",
-          "required": false
+          "required": true
         },
         {
           "name": "photo_thumbnail",
@@ -15574,7 +15592,7 @@
         {
           "name": "policy",
           "type": "ref:CadencePolicy",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -15857,7 +15875,7 @@
         {
           "name": "category",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "confidence",
@@ -15867,7 +15885,7 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "deleted",
@@ -15877,12 +15895,12 @@
         {
           "name": "entity_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "key",
@@ -15912,7 +15930,7 @@
         {
           "name": "sensitivity",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "normal",
             "private",
@@ -15933,12 +15951,12 @@
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "value",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -16104,37 +16122,37 @@
         {
           "name": "audit_event_id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "contact_id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "contact_name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "contact_vcard_uid",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "kind",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "organization",
             "title",
@@ -16144,12 +16162,12 @@
         {
           "name": "new_value",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "old_value",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "photo_thumbnail",
@@ -16164,7 +16182,7 @@
         {
           "name": "status",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "pending",
             "dismissed"
@@ -16173,7 +16191,7 @@
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -16217,22 +16235,22 @@
         {
           "name": "confidence",
           "type": "number",
-          "required": false
+          "required": true
         },
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "directional",
           "type": "boolean",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "metadata",
@@ -16242,7 +16260,7 @@
         {
           "name": "sensitivity",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "normal",
             "private",
@@ -16252,23 +16270,24 @@
         {
           "name": "source",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "user-confirmed",
             "household-inferred",
             "imported",
-            "ai-suggested"
+            "ai-suggested",
+            "graph-inferred"
           ]
         },
         {
           "name": "source_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "status",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "confirmed",
             "suggested"
@@ -16277,17 +16296,17 @@
         {
           "name": "target_id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "type",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -16342,6 +16361,164 @@
         {
           "name": "CreatedAt",
           "type": "string",
+          "required": true
+        },
+        {
+          "name": "DeletedAt",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ID",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "UpdatedAt",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "by_mail",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "completed",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "contact",
+          "type": "ref:ContactFlat",
+          "required": false
+        },
+        {
+          "name": "contact_id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "email_sent",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "last_sent",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "life_event_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "occasion_obligation_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "recurrence",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "once",
+            "weekly",
+            "monthly",
+            "quarterly",
+            "six-months",
+            "yearly"
+          ]
+        },
+        {
+          "name": "remind_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "reoccur_from_completion",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "revision",
+          "type": "integer",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ReminderCompleteResponse",
+      "properties": [
+        {
+          "name": "message",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "reminder",
+          "type": "ref:Reminder",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "ReminderCompletion",
+      "properties": [
+        {
+          "name": "CreatedAt",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "DeletedAt",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ID",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "UpdatedAt",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "completed_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "contact_id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "reminder_id",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "ReminderInput",
+      "properties": [
+        {
+          "name": "CreatedAt",
+          "type": "string",
           "required": false
         },
         {
@@ -16377,7 +16554,7 @@
         {
           "name": "contact_id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "email_sent",
@@ -16397,7 +16574,7 @@
         {
           "name": "message",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "occasion_obligation_id",
@@ -16407,7 +16584,7 @@
         {
           "name": "recurrence",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "once",
             "weekly",
@@ -16420,7 +16597,7 @@
         {
           "name": "remind_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "reoccur_from_completion",
@@ -16429,66 +16606,6 @@
         },
         {
           "name": "revision",
-          "type": "integer",
-          "required": false
-        }
-      ]
-    },
-    {
-      "name": "ReminderCompleteResponse",
-      "properties": [
-        {
-          "name": "message",
-          "type": "string",
-          "required": false
-        },
-        {
-          "name": "reminder",
-          "type": "ref:Reminder",
-          "required": false
-        }
-      ]
-    },
-    {
-      "name": "ReminderCompletion",
-      "properties": [
-        {
-          "name": "CreatedAt",
-          "type": "string",
-          "required": false
-        },
-        {
-          "name": "DeletedAt",
-          "type": "string",
-          "required": false
-        },
-        {
-          "name": "ID",
-          "type": "integer",
-          "required": false
-        },
-        {
-          "name": "UpdatedAt",
-          "type": "string",
-          "required": false
-        },
-        {
-          "name": "completed_at",
-          "type": "string",
-          "required": false
-        },
-        {
-          "name": "contact_id",
-          "type": "integer",
-          "required": false
-        },
-        {
-          "name": "message",
-          "type": "string",
-          "required": false
-        },
-        {
-          "name": "reminder_id",
           "type": "integer",
           "required": false
         }
@@ -17181,22 +17298,22 @@
         {
           "name": "created_at",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "id",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "updated_at",
           "type": "string",
-          "required": false
+          "required": true
         }
       ]
     },
@@ -17399,22 +17516,22 @@
         {
           "name": "contact_id",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "contact_name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "date",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "days_until",
           "type": "integer",
-          "required": false
+          "required": true
         },
         {
           "name": "kind",
@@ -17424,12 +17541,12 @@
         {
           "name": "label",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "source",
           "type": "string",
-          "required": false,
+          "required": true,
           "enum": [
             "birthday",
             "anniversary",

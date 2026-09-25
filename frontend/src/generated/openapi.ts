@@ -15,18 +15,18 @@ export type AcceptHouseholdSuggestionInput = {
 };
 
 export type Activity = {
-  CreatedAt?: string;
-  DeletedAt?: string | null;
-  ID?: number;
-  UpdatedAt?: string;
+  CreatedAt: string;
+  DeletedAt: string | null;
+  ID: number;
+  UpdatedAt: string;
   contacts?: ContactFlat[];
-  date?: string;
+  date: string;
   deleted?: boolean;
-  description?: string;
+  description: string;
   external_ref?: string;
-  location?: string;
-  revision?: number;
-  title?: string;
+  location: string;
+  revision: number;
+  title: string;
   type?: string;
   uuid?: string;
 };
@@ -168,11 +168,11 @@ export type Author = {
 };
 
 export type Birthday = {
-  birthday?: string;
-  contact_id?: number;
-  name?: string;
+  birthday: string;
+  contact_id: number;
+  name: string;
   photo_thumbnail?: string;
-  type?: string;
+  type: 'contact';
 };
 
 export type BriefingActivity = {
@@ -199,7 +199,7 @@ export type BriefingCadenceHealth = {
 
 export type BriefingRelationship = {
   display_token?: string;
-  edge?: RelationshipEdge;
+  edge: RelationshipEdge;
   other_party_contact_id?: number;
   other_party_name?: string;
   other_party_uid?: string;
@@ -240,19 +240,19 @@ export type CRMEnvelope = {
 };
 
 export type CadenceHealth = {
-  has_qualifying_interaction?: boolean;
+  has_qualifying_interaction: boolean;
   last_interaction?: string | null;
   next_due?: string | null;
-  overdue_by?: number;
+  overdue_by: number;
 };
 
 export type CadencePolicy = {
-  created_at?: string;
-  entity_id?: string;
-  id?: string;
+  created_at: string;
+  entity_id: string;
+  id: string;
   qualifying_types?: string[];
-  target_interval_days?: number;
-  updated_at?: string;
+  target_interval_days: number;
+  updated_at: string;
 };
 
 export type CadencePolicyInput = {
@@ -349,10 +349,10 @@ export type ChangePasswordInput = {
 };
 
 export type Circle = {
-  created_at?: string;
-  id?: string;
-  name?: string;
-  updated_at?: string;
+  created_at: string;
+  id: string;
+  name: string;
+  updated_at: string;
 };
 
 export type CircleInput = {
@@ -360,11 +360,11 @@ export type CircleInput = {
 };
 
 export type CircleMember = {
-  circle_id?: string;
-  created_at?: string;
-  id?: number;
-  member_vcard_uid?: string;
-  updated_at?: string;
+  circle_id: string;
+  created_at: string;
+  id: number;
+  member_vcard_uid: string;
+  updated_at: string;
 };
 
 export type CircleMemberInput = {
@@ -417,34 +417,34 @@ export type ContactBriefing = {
 };
 
 export type ContactDetailImmich = {
-  summary?: ImmichPersonSummary | null;
+  summary: ImmichPersonSummary | null;
 };
 
 export type ContactDetailLifeEvent = LifeEvent & {
-  related_entity_names?: Record<string, string>;
+  related_entity_names: Record<string, string>;
 };
 
 export type ContactDetailResponse = {
-  activities?: Activity[];
-  agenda?: ConversationAgenda[];
-  circles?: Circle[];
-  completions?: ReminderCompletion[];
-  contact?: ContactRecordResponse;
-  external_activities?: ExternalActivity[];
-  external_identities?: ExternalIdentity[];
-  field_values?: FieldValue[];
-  gifts?: Gift[];
+  activities: Activity[];
+  agenda: ConversationAgenda[];
+  circles: Circle[];
+  completions: ReminderCompletion[];
+  contact: ContactRecordResponse;
+  external_activities: ExternalActivity[];
+  external_identities: ExternalIdentity[];
+  field_values: FieldValue[];
+  gifts: Gift[];
   immich?: ContactDetailImmich;
-  life_events?: ContactDetailLifeEvent[];
-  notes?: Note[];
-  relationship_edges?: BriefingRelationship[];
-  reminders?: Reminder[];
-  tags?: Tag[];
-  user?: ContactDetailUser;
+  life_events: ContactDetailLifeEvent[];
+  notes: Note[];
+  relationship_edges: BriefingRelationship[];
+  reminders: Reminder[];
+  tags: Tag[];
+  user: ContactDetailUser;
 };
 
 export type ContactDetailUser = {
-  enabled_contact_fields?: string[] | null;
+  enabled_contact_fields: string[] | null;
 };
 
 export type ContactEmail = {
@@ -457,40 +457,41 @@ export type ContactFieldValuesInput = {
 };
 
 export type ContactFlat = {
-  CreatedAt?: string;
-  DeletedAt?: string | null;
-  ID?: number;
-  UpdatedAt?: string;
+  CreatedAt: string;
+  DeletedAt: string | null;
+  ID: number;
+  UpdatedAt: string;
   activities?: Activity[];
-  address?: string;
-  addresses?: ContactAddress[] | null;
-  anniversary?: string;
-  archived?: boolean;
-  birthday?: string;
-  circles?: string[] | null;
-  contact_information?: string;
-  department?: string;
-  email?: string;
-  emails?: ContactEmail[] | null;
-  firstname?: string;
-  gender?: string;
-  how_we_met?: string;
-  impps?: ContactIMPP[] | null;
-  job_title?: string;
-  lastname?: string;
-  middle_name?: string;
-  nickname?: string;
+  address: string;
+  addresses: ContactAddress[] | null;
+  anniversary: string;
+  archived: boolean;
+  birthday: string;
+  circles: string[] | null;
+  contact_information: string;
+  department: string;
+  email: string;
+  emails: ContactEmail[] | null;
+  firstname: string;
+  gender: string;
+  how_we_met: string;
+  impps: ContactIMPP[] | null;
+  is_favorite: boolean;
+  job_title: string;
+  lastname: string;
+  middle_name: string;
+  nickname: string;
   notes?: Note[];
-  organization?: string;
-  phone?: string;
-  phones?: ContactPhone[] | null;
-  photo?: string;
-  prefix?: string;
+  organization: string;
+  phone: string;
+  phones: ContactPhone[] | null;
+  photo: string;
+  prefix: string;
   reminders?: Reminder[];
-  role?: string;
-  suffix?: string;
-  urls?: ContactURL[] | null;
-  work_information?: string;
+  role: string;
+  suffix: string;
+  urls: ContactURL[] | null;
+  work_information: string;
 };
 
 export type ContactIMPP = {
@@ -565,24 +566,24 @@ export type ContactRecordInput = {
 
 export type ContactRecordResponse = {
   activities?: Record<string, unknown>[];
-  archived?: boolean;
-  card?: Card;
-  crm?: CRMEnvelope;
-  etag?: string;
-  gender?: string;
-  id?: number;
-  is_favorite?: boolean;
+  archived: boolean;
+  card: Card;
+  crm: CRMEnvelope;
+  etag: string;
+  gender: string;
+  id: number;
+  is_favorite: boolean;
   notes?: Record<string, unknown>[];
   passthrough?: Passthrough;
-  photo?: string;
+  photo: string;
   photo_thumbnail?: string;
   reminders?: Record<string, unknown>[];
-  revision?: number;
-  uid?: string;
+  revision: number;
+  uid: string;
 };
 
 export type ContactResponse = ContactFlat & {
-  photo_thumbnail?: string;
+  photo_thumbnail: string;
 };
 
 export type ContactScoreFacet = {
@@ -661,22 +662,22 @@ export type ContactSubscriptionResponse = {
 };
 
 export type ContactSummary = {
-  archived?: boolean;
-  birthday?: string;
+  archived: boolean;
+  birthday: string;
   deleted?: boolean;
-  firstname?: string;
-  fn?: string;
-  id?: number;
-  is_favorite?: boolean;
-  lastname?: string;
-  nickname?: string;
-  org?: string;
-  photo?: string;
+  firstname: string;
+  fn: string;
+  id: number;
+  is_favorite: boolean;
+  lastname: string;
+  nickname: string;
+  org: string;
+  photo: string;
   photo_thumbnail?: string;
-  primary_email?: string;
-  primary_phone?: string;
-  revision?: number;
-  uid?: string;
+  primary_email: string;
+  primary_phone: string;
+  revision: number;
+  uid: string;
 };
 
 export type ContactSummaryWithRelations = ContactSummary & {
@@ -686,27 +687,27 @@ export type ContactSummaryWithRelations = ContactSummary & {
 };
 
 export type ContactSyncConflict = {
-  contact_id?: number;
-  contact_name?: string;
-  contact_vcard_uid?: string;
-  created_at?: string;
-  field?: string;
-  id?: string;
-  local_value?: string;
+  contact_id: number;
+  contact_name: string;
+  contact_vcard_uid: string;
+  created_at: string;
+  field: string;
+  id: string;
+  local_value: string;
   photo_thumbnail?: string;
-  remote_value?: string;
-  status?: 'pending' | 'dismissed';
-  subscription_id?: number;
-  subscription_name?: string;
-  updated_at?: string;
+  remote_value: string;
+  status: 'pending' | 'dismissed';
+  subscription_id: number;
+  subscription_name: string;
+  updated_at: string;
 };
 
 export type ContactTag = {
-  contact_vcard_uid?: string;
-  created_at?: string;
-  id?: number;
-  tag_id?: string;
-  updated_at?: string;
+  contact_vcard_uid: string;
+  created_at: string;
+  id: number;
+  tag_id: string;
+  updated_at: string;
 };
 
 export type ContactTagInput = {
@@ -719,15 +720,15 @@ export type ContactURL = {
 };
 
 export type ConversationAgenda = {
-  activity_id?: number | null;
-  content?: string;
-  created_at?: string;
+  activity_id?: number;
+  content: string;
+  created_at: string;
   deleted?: boolean;
-  discussed_at?: string | null;
-  entity_id?: string;
-  id?: string;
+  discussed_at?: string;
+  entity_id: string;
+  id: string;
   reference_url?: string;
-  updated_at?: string;
+  updated_at: string;
 };
 
 export type ConversationAgendaDiscussInput = {
@@ -746,16 +747,17 @@ export type CurrentUserResponse = AdminUserResponse & {
 };
 
 export type DashboardReminder = Reminder & {
-  contact_name?: string;
+  contact_name: string;
 };
 
 export type DashboardResponse = {
-  birthdays?: Birthday[];
-  favorites?: ContactResponse[];
-  overdue?: OverdueCadence[];
-  random_contacts?: ContactResponse[];
-  reach_out_suggestions?: ReachOutSuggestion[];
-  upcoming_reminders?: DashboardReminder[];
+  birthdays: Birthday[];
+  contact_sync_conflicts: ContactSyncConflict[];
+  favorites: ContactResponse[];
+  overdue: OverdueCadence[];
+  random_contacts: ContactResponse[];
+  reach_out_suggestions: ReachOutSuggestion[];
+  upcoming_reminders: DashboardReminder[];
 };
 
 export type DataIntegrityReport = {
@@ -922,17 +924,17 @@ export type ExportLossPreflightResponse = {
 };
 
 export type ExternalActivity = {
-  created_at?: string;
-  entity_id?: string;
-  external_id?: string;
-  id?: string;
-  occurred_at?: string;
+  created_at: string;
+  entity_id: string;
+  external_id: string;
+  id: string;
+  occurred_at: string;
   payload?: Record<string, unknown>;
-  provenance?: 'external' | 'user';
-  source_system?: string;
-  sync_state?: 'synced' | 'pending';
-  type?: string;
-  updated_at?: string;
+  provenance: 'external' | 'user';
+  source_system: string;
+  sync_state: 'synced' | 'pending';
+  type: string;
+  updated_at: string;
 };
 
 export type ExternalActivityInput = {
@@ -947,15 +949,15 @@ export type ExternalActivityInput = {
 };
 
 export type ExternalIdentity = {
-  created_at?: string;
-  entity_id?: string;
-  external_id?: string;
-  id?: string;
+  created_at: string;
+  entity_id: string;
+  external_id: string;
+  id: string;
   last_synced_at?: string | null;
   metadata?: Record<string, unknown>;
-  sync_status?: 'idle' | 'syncing' | 'synced' | 'error';
-  system?: string;
-  updated_at?: string;
+  sync_status: 'idle' | 'syncing' | 'synced' | 'error';
+  system: string;
+  updated_at: string;
   url?: string;
 };
 
@@ -979,15 +981,15 @@ export type FieldConstraints = {
 
 export type FieldDefinition = {
   constraints?: FieldConstraints;
-  created_at?: string;
-  id?: string;
-  key?: string;
-  label?: string;
-  projection?: string;
-  sensitivity?: 'normal' | 'private' | 'secret';
-  target?: 'contact';
-  type?: 'string' | 'text' | 'number' | 'boolean' | 'date' | 'datetime' | 'uri' | 'email' | 'phone' | 'enum';
-  updated_at?: string;
+  created_at: string;
+  id: string;
+  key: string;
+  label: string;
+  projection: string;
+  sensitivity: 'normal' | 'private' | 'secret';
+  target: 'contact';
+  type: 'string' | 'text' | 'number' | 'boolean' | 'date' | 'datetime' | 'uri' | 'email' | 'phone' | 'enum';
+  updated_at: string;
 };
 
 export type FieldDefinitionInput = {
@@ -1001,12 +1003,12 @@ export type FieldDefinitionInput = {
 };
 
 export type FieldValue = {
-  created_at?: string;
-  entity_id?: string;
-  field_definition_id?: string;
-  id?: number;
-  updated_at?: string;
-  value?: unknown;
+  created_at: string;
+  entity_id: string;
+  field_definition_id: string;
+  id: number;
+  updated_at: string;
+  value: unknown;
 };
 
 export type FieldValueInput = {
@@ -1015,19 +1017,19 @@ export type FieldValueInput = {
 };
 
 export type Gift = {
-  activity_id?: number | null;
-  created_at?: string;
+  activity_id?: number;
+  created_at: string;
   currency?: string;
-  date?: string | null;
+  date?: string;
   deleted?: boolean;
-  description?: string;
-  entity_id?: string;
-  id?: string;
-  life_event_id?: string | null;
+  description: string;
+  entity_id: string;
+  id: string;
+  life_event_id?: string;
   notes?: string;
   occasion?: string;
-  status?: 'idea' | 'purchased' | 'given' | 'received';
-  updated_at?: string;
+  status: 'idea' | 'purchased' | 'given' | 'received';
+  updated_at: string;
   url?: string;
   value_cents?: number;
 };
@@ -1047,14 +1049,14 @@ export type GiftInput = {
 };
 
 export type GiftShoppingItem = {
-  contact_id?: number;
-  contact_name?: string;
-  date?: string;
-  days_until?: number;
-  label?: string;
+  contact_id: number;
+  contact_name: string;
+  date: string;
+  days_until: number;
+  label: string;
   linked_gift_id?: string;
-  obligation_id?: string;
-  status?: 'needed' | 'idea' | 'purchased' | 'given' | 'received';
+  obligation_id: string;
+  status: 'needed' | 'idea' | 'purchased' | 'given' | 'received';
 };
 
 export type GrammaticalGender = {
@@ -1131,11 +1133,11 @@ export type HealthResponse = {
 
 export type Household = {
   address?: Address;
-  created_at?: string;
-  id?: string;
-  name?: string;
-  type?: 'family_unit' | 'roommates' | 'other';
-  updated_at?: string;
+  created_at: string;
+  id: string;
+  name: string;
+  type: 'family_unit' | 'roommates' | 'other';
+  updated_at: string;
 };
 
 export type HouseholdInput = {
@@ -1145,14 +1147,14 @@ export type HouseholdInput = {
 };
 
 export type HouseholdMember = {
-  created_at?: string;
-  household_id?: string;
-  id?: number;
-  member_vcard_uid?: string;
+  created_at: string;
+  household_id: string;
+  id: number;
+  member_vcard_uid: string;
   role?: string;
   since?: string;
   until?: string;
-  updated_at?: string;
+  updated_at: string;
 };
 
 export type HouseholdMemberInput = {
@@ -1194,11 +1196,11 @@ export type ImmichPerson = {
 };
 
 export type ImmichPersonSummary = {
-  identity?: ExternalIdentity;
+  identity: ExternalIdentity;
   latest_asset_id?: string;
   latest_at?: string | null;
-  person_name?: string;
-  photo_count?: number;
+  person_name: string;
+  photo_count: number;
 };
 
 export type ImportAddedValue = {
@@ -1308,9 +1310,9 @@ export type IntegrityFinding = {
 };
 
 export type InviteeSuggestion = {
-  contact_id?: number;
-  contact_name?: string;
-  entity_id?: string;
+  contact_id: number;
+  contact_name: string;
+  entity_id: string;
 };
 
 export type JCardProp = {
@@ -1362,19 +1364,19 @@ export type LanguagePref = {
 
 export type LifeEvent = {
   category?: 'home_living' | 'health_wellness' | 'work_education' | 'travel_experiences' | 'family_relationships';
-  created_at?: string;
+  created_at: string;
   date?: PartialDate;
   deleted?: boolean;
   description?: string;
   end_date?: PartialDate;
-  entity_id?: string;
-  id?: string;
+  entity_id: string;
+  id: string;
   related_entity_ids?: string[];
   remind?: boolean;
-  revision?: number;
+  revision: number;
   source?: 'user' | 'imported' | 'ai-suggested';
   type?: string;
-  updated_at?: string;
+  updated_at: string;
 };
 
 export type LifeEventInput = {
@@ -1390,13 +1392,13 @@ export type LifeEventInput = {
 };
 
 export type LifeEventSuggestion = {
-  category?: string;
-  date?: PartialDate;
+  category: string;
+  date: PartialDate;
   end_date?: PartialDate;
-  entity_id?: string;
-  source_entry_id?: string;
-  source_kind?: 'address' | 'organization';
-  type?: string;
+  entity_id: string;
+  source_entry_id: string;
+  source_kind: 'address' | 'organization';
+  type: string;
 };
 
 export type LifeEventSuggestionResolutionInput = {
@@ -1408,15 +1410,15 @@ export type LifeEventSuggestionResolutionInput = {
 };
 
 export type LinkFieldType = {
-  category?: 'messaging' | 'social' | 'other';
-  created_at?: string;
+  category: 'messaging' | 'social' | 'other';
+  created_at: string;
   icon?: string;
-  id?: string;
-  is_default?: boolean;
-  name?: string;
-  position?: number;
-  protocol?: string;
-  updated_at?: string;
+  id: string;
+  is_default: boolean;
+  name: string;
+  position: number;
+  protocol: string;
+  updated_at: string;
 };
 
 export type LinkFieldTypeInput = {
@@ -1605,16 +1607,16 @@ export type Nickname = {
 };
 
 export type Note = {
-  CreatedAt?: string;
-  DeletedAt?: string | null;
-  ID?: number;
-  UpdatedAt?: string;
+  CreatedAt: string;
+  DeletedAt: string | null;
+  ID: number;
+  UpdatedAt: string;
   contact?: ContactFlat;
-  contact_id?: number | null;
-  content?: string;
-  date?: string;
+  contact_id: number | null;
+  content: string;
+  date: string;
   deleted?: boolean;
-  revision?: number;
+  revision: number;
 };
 
 export type NoteInput = {
@@ -1678,25 +1680,25 @@ export type OIDCNativeExchangeResponse = {
 };
 
 export type OccasionEvent = {
-  created_at?: string;
+  created_at: string;
   deleted?: boolean;
-  ends_at?: string | null;
+  ends_at?: string;
   id: string;
   location?: string;
   notes?: string;
   sensitivity: 'normal' | 'private' | 'secret';
   starts_at: string;
   title: string;
-  updated_at?: string;
+  updated_at: string;
 };
 
 export type OccasionEventAttendee = {
-  created_at?: string;
-  entity_id?: string;
-  event_id?: string;
-  id?: string;
-  rsvp?: 'pending' | 'accepted' | 'declined' | 'maybe';
-  updated_at?: string;
+  created_at: string;
+  entity_id: string;
+  event_id: string;
+  id: string;
+  rsvp: 'pending' | 'accepted' | 'declined' | 'maybe';
+  updated_at: string;
 };
 
 export type OccasionEventAttendeeInput = {
@@ -1709,12 +1711,12 @@ export type OccasionEventAttendeeUpdateInput = {
 };
 
 export type OccasionEventAttendeeView = {
-  contact_id?: number;
-  contact_name?: string;
-  entity_id?: string;
-  event_id?: string;
-  id?: string;
-  rsvp?: 'pending' | 'accepted' | 'declined' | 'maybe';
+  contact_id: number;
+  contact_name: string;
+  entity_id: string;
+  event_id: string;
+  id: string;
+  rsvp: 'pending' | 'accepted' | 'declined' | 'maybe';
 };
 
 export type OccasionEventInput = {
@@ -1727,20 +1729,20 @@ export type OccasionEventInput = {
 };
 
 export type OccasionObligation = {
-  active?: boolean;
-  anchor_day?: number | null;
-  anchor_month?: number | null;
-  created_at?: string;
+  active: boolean;
+  anchor_day?: number;
+  anchor_month?: number;
+  created_at: string;
   deleted?: boolean;
-  entity_id?: string;
-  id?: string;
-  kind?: string;
-  label?: string;
-  lead_time_days?: number;
-  linked_life_event_id?: string | null;
+  entity_id: string;
+  id: string;
+  kind: string;
+  label: string;
+  lead_time_days: number;
+  linked_life_event_id?: string;
   notes?: string;
-  sensitivity?: 'normal' | 'private' | 'secret';
-  updated_at?: string;
+  sensitivity: 'normal' | 'private' | 'secret';
+  updated_at: string;
 };
 
 export type OccasionObligationInput = {
@@ -1779,11 +1781,11 @@ export type Organization = {
 };
 
 export type OverdueCadence = {
-  contact_id?: number;
-  contact_name?: string;
-  health?: CadenceHealth;
+  contact_id: number;
+  contact_name: string;
+  health: CadenceHealth;
   photo_thumbnail?: string;
-  policy?: CadencePolicy;
+  policy: CadencePolicy;
 };
 
 export type PaperlessConfigInput = {
@@ -1860,20 +1862,20 @@ export type Phone = {
 };
 
 export type Preference = {
-  category?: string;
-  confidence?: number | null;
-  created_at?: string;
+  category: string;
+  confidence?: number;
+  created_at: string;
   deleted?: boolean;
-  entity_id?: string;
-  id?: string;
+  entity_id: string;
+  id: string;
   key?: string;
-  last_confirmed?: string | null;
+  last_confirmed?: string;
   level?: 'high' | 'medium' | 'low';
   notes?: string;
-  sensitivity?: 'normal' | 'private' | 'secret';
+  sensitivity: 'normal' | 'private' | 'secret';
   source?: 'conversation_note' | 'user' | 'ai-suggested' | 'external';
-  updated_at?: string;
-  value?: string;
+  updated_at: string;
+  value: string;
 };
 
 export type PreferenceInput = {
@@ -1913,19 +1915,19 @@ export type PushSubscriptionResponse = {
 };
 
 export type ReachOutSuggestion = {
-  audit_event_id?: number;
-  contact_id?: number;
-  contact_name?: string;
-  contact_vcard_uid?: string;
-  created_at?: string;
-  id?: string;
-  kind?: 'organization' | 'title' | 'address';
-  new_value?: string;
-  old_value?: string;
+  audit_event_id: number;
+  contact_id: number;
+  contact_name: string;
+  contact_vcard_uid: string;
+  created_at: string;
+  id: string;
+  kind: 'organization' | 'title' | 'address';
+  new_value: string;
+  old_value: string;
   photo_thumbnail?: string;
   reminder_id?: number;
-  status?: 'pending' | 'dismissed';
-  updated_at?: string;
+  status: 'pending' | 'dismissed';
+  updated_at: string;
 };
 
 export type ReadinessResponse = {
@@ -1942,18 +1944,18 @@ export type Relation = {
 };
 
 export type RelationshipEdge = {
-  confidence?: number;
-  created_at?: string;
-  directional?: boolean;
-  id?: string;
+  confidence: number;
+  created_at: string;
+  directional: boolean;
+  id: string;
   metadata?: Record<string, unknown>;
-  sensitivity?: 'normal' | 'private' | 'secret';
-  source?: 'user-confirmed' | 'household-inferred' | 'imported' | 'ai-suggested';
-  source_id?: string;
-  status?: 'confirmed' | 'suggested';
-  target_id?: string;
-  type?: string;
-  updated_at?: string;
+  sensitivity: 'normal' | 'private' | 'secret';
+  source: 'user-confirmed' | 'household-inferred' | 'imported' | 'ai-suggested' | 'graph-inferred';
+  source_id: string;
+  status: 'confirmed' | 'suggested';
+  target_id: string;
+  type: string;
+  updated_at: string;
 };
 
 export type RelationshipEdgeInput = {
@@ -1967,23 +1969,23 @@ export type RelationshipEdgeInput = {
 };
 
 export type Reminder = {
-  CreatedAt?: string;
-  DeletedAt?: string | null;
-  ID?: number;
-  UpdatedAt?: string;
-  by_mail?: boolean | null;
-  completed?: boolean;
+  CreatedAt: string;
+  DeletedAt: string | null;
+  ID: number;
+  UpdatedAt: string;
+  by_mail: boolean | null;
+  completed: boolean;
   contact?: ContactFlat;
-  contact_id?: number | null;
-  email_sent?: boolean;
-  last_sent?: string | null;
+  contact_id: number;
+  email_sent: boolean;
+  last_sent: string | null;
   life_event_id?: string;
-  message?: string;
+  message: string;
   occasion_obligation_id?: string;
-  recurrence?: 'once' | 'weekly' | 'monthly' | 'quarterly' | 'six-months' | 'yearly';
-  remind_at?: string;
-  reoccur_from_completion?: boolean | null;
-  revision?: number;
+  recurrence: 'once' | 'weekly' | 'monthly' | 'quarterly' | 'six-months' | 'yearly';
+  remind_at: string;
+  reoccur_from_completion: boolean | null;
+  revision: number;
 };
 
 export type ReminderCompleteResponse = {
@@ -1992,14 +1994,34 @@ export type ReminderCompleteResponse = {
 };
 
 export type ReminderCompletion = {
+  CreatedAt: string;
+  DeletedAt: string | null;
+  ID: number;
+  UpdatedAt: string;
+  completed_at: string;
+  contact_id: number;
+  message: string;
+  reminder_id?: number;
+};
+
+export type ReminderInput = {
   CreatedAt?: string;
   DeletedAt?: string | null;
   ID?: number;
   UpdatedAt?: string;
-  completed_at?: string;
-  contact_id?: number;
-  message?: string;
-  reminder_id?: number | null;
+  by_mail?: boolean | null;
+  completed?: boolean;
+  contact?: ContactFlat;
+  contact_id: number | null;
+  email_sent?: boolean;
+  last_sent?: string | null;
+  life_event_id?: string;
+  message: string;
+  occasion_obligation_id?: string;
+  recurrence: 'once' | 'weekly' | 'monthly' | 'quarterly' | 'six-months' | 'yearly';
+  remind_at: string;
+  reoccur_from_completion?: boolean | null;
+  revision?: number;
 };
 
 export type Resource = {
@@ -2236,10 +2258,10 @@ export type SystemStatus = {
 };
 
 export type Tag = {
-  created_at?: string;
-  id?: string;
-  name?: string;
-  updated_at?: string;
+  created_at: string;
+  id: string;
+  name: string;
+  updated_at: string;
 };
 
 export type TagInput = {
@@ -2300,13 +2322,13 @@ export type TwoFactorStatusResponse = {
 };
 
 export type UpcomingOccasion = {
-  contact_id?: number;
-  contact_name?: string;
-  date?: string;
-  days_until?: number;
+  contact_id: number;
+  contact_name: string;
+  date: string;
+  days_until: number;
   kind?: string;
-  label?: string;
-  source?: 'birthday' | 'anniversary' | 'life_event' | 'obligation';
+  label: string;
+  source: 'birthday' | 'anniversary' | 'life_event' | 'obligation';
 };
 
 export type UpdateDateFormatInput = {

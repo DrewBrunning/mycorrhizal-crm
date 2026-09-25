@@ -44,6 +44,7 @@
       "date": "2026-08-20T18:00:00Z",
       "description": "",
       "location": "",
+      "revision": 1,
       "title": "Fixture activity",
       "uuid": "56c3cf8a-2c2e-4e9d-a5c4-fa0081de1d32"
     }
@@ -188,6 +189,7 @@
       "entity_id": "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f",
       "id": "c06177b1-e498-43c7-9821-7a6669411a04",
       "related_entity_names": {},
+      "revision": 1,
       "type": "graduated",
       "updated_at": "2026-08-21T00:08:45Z"
     }
@@ -234,7 +236,8 @@
       },
       "contact_id": 11,
       "content": "Contract fixture note",
-      "date": "2026-08-20T18:00:00Z"
+      "date": "2026-08-20T18:00:00Z",
+      "revision": 1
     }
   ],
   "relationship_edges": [
@@ -306,7 +309,8 @@
       "message": "Fixture reminder",
       "recurrence": "once",
       "remind_at": "2026-08-22T00:00:00Z",
-      "reoccur_from_completion": false
+      "reoccur_from_completion": false,
+      "revision": 1
     }
   ],
   "tags": [

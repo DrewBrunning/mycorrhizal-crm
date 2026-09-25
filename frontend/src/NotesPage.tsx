@@ -119,7 +119,7 @@ const NotesPage: React.FC = () => {
     setEditValues({
       noteContent: note.content || '',
       noteDate: note.date ? new Date(note.date).toISOString().split('T')[0] : '',
-      noteContactId: note.contact_id,
+      noteContactId: note.contact_id ?? undefined,
     });
   };
 
