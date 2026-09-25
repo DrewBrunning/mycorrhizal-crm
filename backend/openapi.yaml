@@ -11289,7 +11289,11 @@ components:
             plain list request.
           default: false
     ContactSummaryWithRelations:
-      description: ContactSummary extended with the sub-resource arrays requested via includes=.
+      description: >
+        ContactSummary extended with the sub-resource arrays requested via
+        includes=. notes/activities/reminders are always present and
+        serialize as `[]` when the contact has none, never `null`/absent
+        (CLAUDE.md frontend trap #8).
       allOf:
         - $ref: "#/components/schemas/ContactSummary"
         - type: object
@@ -11351,9 +11355,20 @@ components:
           description: >
             Issue #173: whether the caller marked this contact as a favorite.
             Always present. CRM-local — never exported or synced.
-        notes: { type: array, items: { type: object } }
-        activities: { type: array, items: { type: object } }
-        reminders: { type: array, items: { type: object } }
+        notes:
+          type: array
+          items: { type: object }
+          description: >
+            Always present; serializes as `[]` when the contact has none,
+            never `null`/absent (CLAUDE.md frontend trap #8).
+        activities:
+          type: array
+          items: { type: object }
+          description: Always present; serializes as `[]` when the contact has none, never `null`/absent (CLAUDE.md frontend trap #8).
+        reminders:
+          type: array
+          items: { type: object }
+          description: Always present; serializes as `[]` when the contact has none, never `null`/absent (CLAUDE.md frontend trap #8).
     DashboardResponse:
       type: object
       description: >

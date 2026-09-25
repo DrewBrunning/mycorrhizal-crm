@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -196,5 +197,71 @@ func TestNewContactRecordResponse_UnbackedMediaPhotoKept(t *testing.T) {
 	}
 	if resp.Card.Media[1].Kind != "logo" || resp.Card.Media[1].URI != "data:image/png;base64,TE9HTw==" {
 		t.Errorf("non-photo media entry was damaged: %+v", resp.Card.Media[1])
+	}
+}
+
+// TestNewContactRecordResponse_EmptyRelationsSerializeAsEmptyArrays is the
+// CLAUDE.md frontend trap #8 regression test: a contact with zero notes,
+// activities, and reminders (GORM's Preload leaves those has-many slices
+// nil) must still serialize `"notes":[]`, not `null` and not an absent key
+// — a required TS array field crashes on `.length` for exactly the missing
+// case. Asserted on the raw JSON, not by decoding back into the Go struct:
+// decoding makes "absent"/`null`/`[]` indistinguishable, which is exactly
+// why a struct-level assertion would pass even with the bug (CLAUDE.md's
+// own note on why this must be a raw-JSON test).
+func TestNewContactRecordResponse_EmptyRelationsSerializeAsEmptyArrays(t *testing.T) {
+	t.Parallel()
+	c := &Contact{Firstname: "Ada"} // Notes/Activities/Reminders left nil, as an un-Preloaded Contact has them
+
+	resp := NewContactRecordResponse(c, "", nil)
+
+	raw, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	var decoded map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	for _, field := range []string{"notes", "activities", "reminders"} {
+		raw, present := decoded[field]
+		if !present {
+			t.Errorf("%q key is absent from the response JSON, want present as []", field)
+			continue
+		}
+		if string(raw) != "[]" {
+			t.Errorf("%q = %s, want []", field, raw)
+		}
+	}
+}
+
+// TestNewContactSummaryWithRelations_EmptyRelationsSerializeAsEmptyArrays
+// is the same CLAUDE.md frontend trap #8 regression for the list-with-
+// includes= shape.
+func TestNewContactSummaryWithRelations_EmptyRelationsSerializeAsEmptyArrays(t *testing.T) {
+	t.Parallel()
+	c := &Contact{Firstname: "Ada"}
+
+	resp := NewContactSummaryWithRelations(c)
+
+	raw, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	var decoded map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	for _, field := range []string{"notes", "activities", "reminders"} {
+		raw, present := decoded[field]
+		if !present {
+			t.Errorf("%q key is absent from the response JSON, want present as []", field)
+			continue
+		}
+		if string(raw) != "[]" {
+			t.Errorf("%q = %s, want []", field, raw)
+		}
 	}
 }
