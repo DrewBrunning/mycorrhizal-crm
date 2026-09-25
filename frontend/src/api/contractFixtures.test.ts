@@ -243,7 +243,9 @@ describe('contract fixtures: list endpoints', () => {
   // Trap-8 pins the conformance check found: nullable-on-the-wire fields the
   // TS types used to declare non-null.
   test('an unfiled note carries contact_id: null, not absent', () => {
-    const unfiled = contactNotesRaw.notes.find((n) => n.contact_id === null);
+    const unfiled = contactNotesRaw.notes.find(
+      (n: { contact_id?: number | null }) => n.contact_id === null,
+    );
     expect(unfiled).toBeDefined();
     expect('contact_id' in (unfiled as object)).toBe(true);
   });
