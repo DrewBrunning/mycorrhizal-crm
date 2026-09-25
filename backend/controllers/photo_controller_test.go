@@ -616,6 +616,32 @@ func TestAddPhotoToContact_UnsupportedFormatFailsProcessing(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
+func TestAddPhotoToContact_SaveErrorCleansUpNewlyWrittenFile(t *testing.T) {
+	dir := t.TempDir()
+	cfg := &config.Config{ProfilePhotoDir: dir}
+	db, router := setupRouter(t)
+	router.POST("/contacts/:id/photo", func(c *gin.Context) { AddPhotoToContact(c, cfg) })
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	contact := models.Contact{UserID: user.ID, Firstname: "Db", Lastname: "Fails"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	failDBTableOn(t, db, "contacts", "update")
+
+	req := newMultipartPhotoRequest(t, "/contacts/"+strconv.Itoa(int(contact.ID))+"/photo", "photo", "photo.png", newPNGBytes(t, 20, 20))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+
+	// The newly written photo file must be cleaned up when the DB save that
+	// would have recorded it fails, or it's an orphan on disk forever.
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	assert.Empty(t, entries, "the newly saved photo file must be removed after the failed db.Save")
+}
+
 // --- ProxyImage ---
 //
 // httputil.FetchImageFromURL's SSRF protections (blocked hosts, private IPs,
