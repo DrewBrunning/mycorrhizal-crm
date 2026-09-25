@@ -190,6 +190,14 @@ func TestManifestValidateRejectsBreakages(t *testing.T) {
 			wantErr: "must set starts_at or starts_in_days",
 		},
 		{
+			name: "occasion event sets both starts_at and starts_in_days",
+			mutate: func(m *Manifest) {
+				start := time.Now()
+				m.OccasionEvents[0].StartsAt = &start
+			},
+			wantErr: "sets both starts_at and starts_in_days",
+		},
+		{
 			name: "occasion event sets both ends_at and ends_in_days",
 			mutate: func(m *Manifest) {
 				end := time.Now().Add(24 * time.Hour)
