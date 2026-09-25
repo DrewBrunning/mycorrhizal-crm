@@ -335,6 +335,7 @@ const FIXED_DASHBOARD = {
   favorites: FIXED_FAVORITES,
   reach_out_suggestions: [],
   contact_sync_conflicts: [],
+  data_decay_overdue: [],
 };
 
 /** Fixed circles response — drives the list's filter dropdown and row chips. */
