@@ -338,8 +338,8 @@ The merge-blocking surface is **exactly** the `required_status_checks` contexts 
 `main-protection` ruleset, mirrored by `.github/rulesets/main-protection.json` and kept equal to the
 per-PR `mandatory` gates in `.github/release-gates.json` by `go run ./cmd/governancecheck` (every PR,
 in the `docs-citations` job). A check that is not one of those contexts does not block a merge, no
-matter how it is wired — a per-PR job absent from the ruleset is advisory in practice (the `Frontend
-bundle-size budget` job is the current example; it runs per-PR but is not a required context).
+matter how it is wired — a per-PR job absent from the ruleset is advisory in practice, so make it a
+step in one of the three jobs below or register it as a context (steps 1–4 below).
 
 **Default: add the check as a step inside an existing required job.** Most gates belong there, and a
 step is merge-blocking with no governance change — which is how PR #1243 added `gormerrcheck`, the

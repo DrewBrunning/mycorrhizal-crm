@@ -19,6 +19,7 @@
           { "context": "Detect Changes" },
           { "context": "Backend (Go)" },
           { "context": "Frontend (Vitest)" },
+          { "context": "Frontend bundle-size budget" },
           { "context": "Run E2E Tests" },
           { "context": "Android (Gradle)" },
           { "context": "Android E2E (emulator)" },
