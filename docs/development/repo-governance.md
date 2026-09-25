@@ -52,6 +52,7 @@ registry disagree, so the branch-protection list can never drift from the gate l
 | `Detect Changes` | `unit-tests.yml` (path-filter job; always green, required so path-skipped suites can be required) |
 | `Backend (Go)` | `unit-tests.yml` |
 | `Frontend (Vitest)` | `unit-tests.yml` |
+| `Frontend bundle-size budget` | `unit-tests.yml` (path-gated; fails on `yarn build && yarn budget` growth past `frontend/bundle-budget.json`) |
 | `Run E2E Tests` | `e2e-tests.yml` |
 | `Android (Gradle)` | `android-tests.yml` |
 | `Android E2E (emulator)` | `android-tests.yml` |
@@ -65,6 +66,23 @@ registry disagree, so the branch-protection list can never drift from the gate l
 | `codecov/patch/android` | Codecov |
 
 <!-- governance-required-checks:end -->
+
+## Code ownership
+
+[`.github/CODEOWNERS`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/CODEOWNERS)
+routes review of the paths a quality gate derives its verdict from — the per-file coverage ratchets,
+the gate registry/ruleset/path-filter, the analyzer and budget configs, and the generated
+contracts/schema dumps (#1243). It is **routing, not access control**: `main-protection` leaves
+`require_code_owner_review` at `false` (see above), so the requested review is visible but not
+merge-blocking and the solo maintainer still self-merges. That is the deliberate decision, not an
+omission — the ruleset already grants the repo Admin role a `bypass_mode: always` bypass, so
+enabling `require_code_owner_review` today would be a no-op for the only person who merges and would
+bind no one else; it only ever bites a *future non-admin* contributor. Flip
+`require_code_owner_review` to `true` in
+[`main-protection.json`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/rulesets/main-protection.json)
+(and `release-branches.json`) and apply it live when a second maintainer appears, since GitHub never
+counts the PR author's own approval toward a required code-owner review. The gate-adding procedure
+and rationale are in `CLAUDE.md`'s "Adding a quality gate".
 
 ## Release tags
 
