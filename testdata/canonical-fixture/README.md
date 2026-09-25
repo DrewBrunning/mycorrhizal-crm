@@ -168,14 +168,14 @@ relationship-health score reads:
 - **`self_contact`** — names the contact that becomes the user's self-contact
   (`users.self_contact_vcard_uid`). It is what lets the health score's Closeness
   facet resolve; without it every score is the neutral 50 (ADR 0023).
-- **`cadence_policies[]`** — `{contact, target_interval_days, …}`, the target
-  interval Recency/Frequency read.
+- **`cadence_policies[]`** — `{contact, target_interval_days, …, soft_deleted}`,
+  the target interval Recency/Frequency read.
 - **`reach_out_suggestions[]`** — `{contact, kind, old_value, new_value, status}`;
   a `pending` row is a discrete health warning and a populated dashboard block.
 - **`occasion_obligations[]`** — `{contact, kind, label, anchor_month, anchor_day,
   lead_time_days, active, sensitivity, notes, soft_deleted}` (ADR 0024).
 - **`occasion_events[]`** — `{title, starts_at|starts_in_days, ends_at|ends_in_days,
-  location, sensitivity, notes, attendees:[{contact, rsvp}]}` (ADR 0026).
+  location, sensitivity, notes, attendees:[{contact, rsvp}], soft_deleted}` (ADR 0026).
 - **`life_events[].end_date`** — turns a life event into a span (ADR 0025).
 - **`preferences[].level`** — `high|medium|low` proficiency (issue #246).
 - **`custom_fields[].position`** — deliberate display order (issue #1210).

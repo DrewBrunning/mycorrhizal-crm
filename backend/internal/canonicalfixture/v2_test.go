@@ -82,7 +82,7 @@ func TestFavoritesPopulate(t *testing.T) {
 // interval the health score's Recency/Frequency facets read.
 func TestCadencePoliciesPopulate(t *testing.T) {
 	_, ds, db := populatedAt(t)
-	require.Len(t, ds.CadencePolicies, 4)
+	require.Len(t, ds.CadencePolicies, 5, "4 live plus harold's soft-deleted tombstone row")
 
 	var nadia models.CadencePolicy
 	require.NoError(t, db.Where("entity_id = ?", ds.Contacts["nadia"].VCardUID).First(&nadia).Error)
@@ -91,7 +91,7 @@ func TestCadencePoliciesPopulate(t *testing.T) {
 
 	var count int64
 	require.NoError(t, db.Model(&models.CadencePolicy{}).Where("user_id = ?", ds.User.ID).Count(&count).Error)
-	assert.Equal(t, int64(4), count)
+	assert.Equal(t, int64(4), count, "the live-row count excludes harold's soft-deleted tombstone row")
 }
 
 // TestReachOutSuggestionsPopulate pins the pending/dismissed status the
@@ -114,8 +114,8 @@ func TestReachOutSuggestionsPopulate(t *testing.T) {
 // anchors/lead time/active flag, and events with a full RSVP ledger.
 func TestOccasionsPopulate(t *testing.T) {
 	_, ds, db := populatedAt(t)
-	require.Len(t, ds.OccasionObligations, 3)
-	require.Len(t, ds.OccasionEvents, 2)
+	require.Len(t, ds.OccasionObligations, 4, "3 live plus harold's soft-deleted tombstone row")
+	require.Len(t, ds.OccasionEvents, 3, "2 live plus the soft-deleted Cancelled reunion")
 
 	var gift models.OccasionObligation
 	require.NoError(t, db.Where("label = ?", "Birthday gift for Nadia").First(&gift).Error)
@@ -127,11 +127,11 @@ func TestOccasionsPopulate(t *testing.T) {
 	assert.True(t, gift.Active)
 
 	var retired models.OccasionObligation
-	require.NoError(t, db.Where("label = ?", "Annual garden party invite").First(&retired).Error)
+	require.NoError(t, db.Where("label = ?", "Annual holiday potluck invite").First(&retired).Error)
 	assert.False(t, retired.Active, "an explicitly inactive obligation must stay inactive")
 
 	var party models.OccasionEvent
-	require.NoError(t, db.Where("title = ?", "Summer garden party").First(&party).Error)
+	require.NoError(t, db.Where("title = ?", "Garden party").First(&party).Error)
 	assert.WithinDuration(t, fixedNow.AddDate(0, 0, 21), party.StartsAt, time.Second)
 
 	var attendees []models.OccasionEventAttendee
@@ -241,16 +241,16 @@ func TestSoftDeleteCascadeCoversV2Entities(t *testing.T) {
 	// tombstoned row survives. Reach-out suggestions are system-generated and
 	// edge-shaped, so they are hard-deleted even under Unscoped.
 	var liveCadences, liveObligations, allReachOuts int64
-	db.Model(&models.CadencePolicy{}).Where("entity_id = ?", uid).Count(&liveCadences)
-	db.Model(&models.OccasionObligation{}).Where("entity_id = ?", uid).Count(&liveObligations)
-	db.Unscoped().Model(&models.ReachOutSuggestion{}).Where("contact_vcard_uid = ?", uid).Count(&allReachOuts)
+	require.NoError(t, db.Model(&models.CadencePolicy{}).Where("entity_id = ?", uid).Count(&liveCadences).Error)
+	require.NoError(t, db.Model(&models.OccasionObligation{}).Where("entity_id = ?", uid).Count(&liveObligations).Error)
+	require.NoError(t, db.Unscoped().Model(&models.ReachOutSuggestion{}).Where("contact_vcard_uid = ?", uid).Count(&allReachOuts).Error)
 	assert.Zero(t, liveCadences, "a tombstoned contact's cadence policy must be soft-swept")
 	assert.Zero(t, liveObligations, "a tombstoned contact's occasion obligations must be soft-swept")
 	assert.Zero(t, allReachOuts, "a tombstoned contact's reach-out suggestions must be hard-deleted")
 
 	var sweptCadences, sweptObligations int64
-	db.Unscoped().Model(&models.CadencePolicy{}).Where("entity_id = ? AND deleted_at IS NOT NULL", uid).Count(&sweptCadences)
-	db.Unscoped().Model(&models.OccasionObligation{}).Where("entity_id = ? AND deleted_at IS NOT NULL", uid).Count(&sweptObligations)
+	require.NoError(t, db.Unscoped().Model(&models.CadencePolicy{}).Where("entity_id = ? AND deleted_at IS NOT NULL", uid).Count(&sweptCadences).Error)
+	require.NoError(t, db.Unscoped().Model(&models.OccasionObligation{}).Where("entity_id = ? AND deleted_at IS NOT NULL", uid).Count(&sweptObligations).Error)
 	assert.Equal(t, int64(1), sweptCadences, "the cadence row must be tombstoned, not never-created")
 	assert.Equal(t, int64(1), sweptObligations, "the obligation row must be tombstoned, not never-created")
 

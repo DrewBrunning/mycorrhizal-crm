@@ -1092,7 +1092,7 @@
     },
     {
       "name": "marcus",
-      "comment": "Demo persona (issue #1220): a close friend with no logged interaction yet. Recency floors at the no-interaction constant (45), so the node reads CHANTERELLE ('warming up') — the deliberate not-russula default for a fresh contact.",
+      "comment": "Demo persona (issue #1220): a close friend with regular, recent interactions (three activities at days_ago 5/20/55, no cadence policy needed) — a MOSS node (see backend/services/contact_score_fixture_test.go, ~84).",
       "card": {
         "uid": "10000000-0000-4000-8000-000000000035",
         "kind": "individual",
@@ -1104,6 +1104,7 @@
             { "kind": "surname", "value": "Bell" }
           ]
         },
+        "organizations": [{ "name": "Northgate Studio" }],
         "emails": [{ "address": "marcus.bell@example.com", "label": "home" }],
         "anniversaries": [
           { "kind": "birth", "date": { "partial": { "year": 1985, "month": 2, "day": 17 } } }
@@ -1469,7 +1470,7 @@
       "source": "me",
       "target": "marcus",
       "type": "friend_of",
-      "comment": "self-edge: close tier, but no logged interaction — CHANTERELLE",
+      "comment": "self-edge: close tier plus frequent recent interactions — MOSS",
       "status": "confirmed",
       "sensitivity": "normal",
       "provenance": "user-confirmed",
@@ -1499,7 +1500,7 @@
       "source": "me",
       "target": "margaret",
       "type": "child_of",
-      "comment": "self-edge to the deceased persona; the immediate tier would score moss, but deceased overrides the graph color",
+      "comment": "self-edge to the deceased persona; deceased overrides the graph color regardless of health band",
       "status": "confirmed",
       "sensitivity": "normal",
       "provenance": "user-confirmed",
@@ -1914,6 +1915,11 @@
     {
       "contact": "bjork",
       "target_interval_days": 30
+    },
+    {
+      "contact": "harold",
+      "target_interval_days": 30,
+      "soft_deleted": true
     }
   ],
   "reach_out_suggestions": [
@@ -1957,15 +1963,23 @@
     {
       "contact": "ada",
       "kind": "invite",
-      "label": "Annual garden party invite",
+      "label": "Annual holiday potluck invite",
       "active": false,
       "sensitivity": "normal",
-      "notes": "Retired — the garden party stopped in 2024."
+      "notes": "Retired — the potluck stopped in 2024."
+    },
+    {
+      "contact": "harold",
+      "kind": "card",
+      "label": "Holiday card (discontinued)",
+      "active": true,
+      "sensitivity": "normal",
+      "soft_deleted": true
     }
   ],
   "occasion_events": [
     {
-      "title": "Summer garden party",
+      "title": "Garden party",
       "starts_in_days": 21,
       "ends_in_days": 21,
       "location": "Our garden",
@@ -1989,6 +2003,19 @@
         { "contact": "celine", "rsvp": "maybe" },
         { "contact": "hugo", "rsvp": "declined" }
       ]
+    },
+    {
+      "title": "Cancelled reunion",
+      "starts_in_days": 15,
+      "ends_in_days": 15,
+      "location": "TBD",
+      "sensitivity": "normal",
+      "notes": "Planned then called off; kept as a tombstoned row for the v2 soft-delete section.",
+      "attendees": [
+        { "contact": "soren", "rsvp": "accepted" },
+        { "contact": "bea", "rsvp": "pending" }
+      ],
+      "soft_deleted": true
     }
   ]
 }
