@@ -151,7 +151,7 @@ func TestSeedWithProfile(t *testing.T) {
 	})
 	require.Contains(t, out, "migratebench seed: profile=smoke")
 	require.Contains(t, out, "users=2")
-	require.Contains(t, out, "contacts=324", "smoke = 162 contacts/user x 2 users")
+	require.Contains(t, out, "contacts=350", "smoke = 175 contacts/user x 2 users")
 
 	db, err := database.OpenMigratedFile(dbPath)
 	require.NoError(t, err)
@@ -165,7 +165,7 @@ func TestSeedWithProfile(t *testing.T) {
 	require.NoError(t, db.Table("contacts").Count(&contacts).Error)
 	require.NoError(t, db.Table("relationship_edges").Count(&edges).Error)
 	assert.EqualValues(t, 2, users)
-	assert.EqualValues(t, 324, contacts)
+	assert.EqualValues(t, 350, contacts)
 	assert.Greater(t, edges, int64(100), "the graph shape adds hub + chain edges on top of the block edges")
 }
 

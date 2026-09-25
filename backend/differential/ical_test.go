@@ -37,6 +37,28 @@ func TestICalCorpus(t *testing.T) {
 	require.Positive(t, lifeEvents, "corpus must include the month/day LifeEvents")
 }
 
+// TestICalCorpus_DaysAgoActivitiesIncluded verifies the demo-relative
+// (`days_ago`) activities are resolved against the pinned reference instant
+// and included in the corpus rather than skipped — the TEST-08 review
+// finding: these 17 v1.2.0 demo activities used to `continue` past this loop
+// entirely and never reached the serve/parse differential.
+func TestICalCorpus_DaysAgoActivitiesIncluded(t *testing.T) {
+	corpus, err := ICalCorpus()
+	require.NoError(t, err)
+
+	var found bool
+	for _, e := range corpus {
+		if e.Activity == nil || e.Activity.Title != "Dinner with Nadia" {
+			continue
+		}
+		found = true
+		want := icalCorpusReferenceNow.AddDate(0, 0, -3)
+		require.True(t, e.Activity.Date.Equal(want),
+			"want DTSTART %s (reference - 3 days), got %s", want.Format(time.RFC3339), e.Activity.Date.Format(time.RFC3339))
+	}
+	require.True(t, found, "days_ago activity %q must reach the corpus, not be skipped", "Dinner with Nadia")
+}
+
 // TestExpectedEvent verifies the expected-surface derivation for both event
 // kinds (activity vs recurring life event).
 func TestExpectedEvent(t *testing.T) {

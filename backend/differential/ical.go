@@ -56,6 +56,18 @@ type ICalCorpusEntry struct {
 	LifeEvent *models.LifeEvent
 }
 
+// icalCorpusReferenceNow is the pinned reference instant the corpus resolves
+// demo-relative activities' `days_ago` against, so the corpus (and every
+// DTSTART it produces) is deterministic across runs. It intentionally
+// matches the reference instant the canonicalfixture v1.2.0 relative-timing
+// tests pin (internal/canonicalfixture/v2_test.go's fixedNow) — same
+// convention, independently pinned here because this package reads the
+// manifest directly rather than going through PopulateAt. Replicates
+// resolveDaysAgo's `now.AddDate(0, 0, -days)` semantics exactly
+// (internal/canonicalfixture/populate.go); that helper is unexported, so
+// this is a deliberate, matched copy rather than a shared call.
+var icalCorpusReferenceNow = time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC)
+
 // ICalCorpus assembles the iCalendar corpus from the canonical fixture's
 // Activities and month/day LifeEvents (year-only LifeEvents are deliberately
 // not calendar events — the serve path skips them).
@@ -66,13 +78,23 @@ func ICalCorpus() ([]ICalCorpusEntry, error) {
 	}
 	var out []ICalCorpusEntry
 	for i, a := range m.Activities {
+		// Demo-relative activities carry days_ago instead of an absolute
+		// date, resolved against icalCorpusReferenceNow rather than the
+		// manifest's absolute Date, so they still get a deterministic
+		// DTSTART and reach the serve/parse differential like every other
+		// activity. Corpus IDs stay positional (activity/<index>) so
+		// existing absolute-date entries' IDs never shift.
+		date := a.Date
+		if a.DaysAgo != nil {
+			date = icalCorpusReferenceNow.AddDate(0, 0, -*a.DaysAgo)
+		}
 		out = append(out, ICalCorpusEntry{
 			ID: fmt.Sprintf("activity/%d", i),
 			Activity: &models.Activity{
 				Title:       a.Title,
 				Description: a.Description,
 				Location:    a.Location,
-				Date:        a.Date.UTC(),
+				Date:        date.UTC(),
 			},
 		})
 	}

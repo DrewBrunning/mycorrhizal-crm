@@ -21,29 +21,33 @@ and the traversal graph added on top.
 ## What "large" means (written number, not an adjective)
 
 The large migration profile is derived from the intended MVP scale and stated
-as a shape, not a size. It is **~100,000 contacts**, generated as 3,704 replicas
+as a shape, not a size. It is **~100,000 contacts**, generated as 2,858 replicas
 of the canonical TEST-02 pathological manifest (issue #430; the manifest carries
-27 records since the I18N-01 international records landed, issue #484), so
-every data shape — including the pathological ones — exists at scale. The exact
-row counts are the canonical manifest's own ratios times 3,704 blocks
-(3,704 × 27 = 100,008 contacts):
+35 records — the legacy trap/TEST-07 and I18N-01 international records plus the
+v1.2.0 demo personas, issues #1193/#1220), so every data shape — including the
+pathological ones — exists at scale. The exact row counts are the canonical
+manifest's own ratios times 2,858 blocks (2,858 × 35 = 100,030 contacts):
 
-| Entity | Per block | At ~100,000 contacts (3,704 blocks) |
+| Entity | Per block | At ~100,000 contacts (2,858 blocks) |
 |---|---|---|
-| contacts | 27 | **100,008** |
-| relationship edges | 10 → 8 | 29,632 (10 per block minus the 2 per block hard-deleted with each tombstoned contact's cascade) |
-| notes | 6 | 22,224 |
-| life events | 9 | 33,336 |
-| gifts | 5 | 18,520 |
-| activities | 4 | 14,816 |
-| preferences | 5 | 18,520 |
-| external identities | 3 | 11,112 |
-| attachments (metadata) | 4 | 14,816 |
-| households / circles / tags | 2 / 2 / 2 | 7,408 each |
-| custom-field values | 7 | 25,928 |
-| **soft-deleted contacts** | 1 | **3,704** |
-| **vcard-uid-recreating contacts** | 1 | **3,704** |
-| **very-long (~1700-char) notes** | 1 | **3,704** |
+| contacts | 35 | **100,030** |
+| relationship edges | 17 → 15 | 42,870 (17 per block minus the 2 per block hard-deleted with each tombstoned contact's cascade) |
+| notes | 6 | 17,148 |
+| life events | 10 | 28,580 |
+| gifts | 5 | 14,290 |
+| activities | 21 | 60,018 |
+| preferences | 6 | 17,148 |
+| external identities | 3 | 8,574 |
+| attachments (metadata) | 4 | 11,432 |
+| cadence policies | 4 | 11,432 |
+| reach-out suggestions | 2 | 5,716 |
+| occasion obligations | 3 | 8,574 |
+| occasion events | 2 | 5,716 |
+| households / circles / tags | 2 / 2 / 2 | 5,716 each |
+| custom-field values | 7 | 20,006 |
+| **soft-deleted contacts** | 1 | **2,858** |
+| **vcard-uid-recreating contacts** | 1 | **2,858** |
+| **very-long (~1700-char) notes** | 1 | **2,858** |
 
 The pathological records are present at scale, not just plain ones: each block
 carries the soft-deleted `gina` + `julie`-recreates-her-uid pair (the partial
@@ -51,7 +55,7 @@ unique index `idx_contacts_vcard_uid_user`), the very-long note, the Unicode
 data, the duplicate-detection pair, and the sensitive records. A migration or
 exporter that mishandles any trap at canonical size does the same at 100k.
 
-The scaling unit is the **manifest block** (27 contacts + their derived
+The scaling unit is the **manifest block** (35 contacts + their derived
 content). `internal/largedata.Scale(manifest, N)` rounds `N` up to a whole
 number of blocks, so the scaled dataset is always an exact integer multiple of
 the pathological manifest — never a trimmed copy that accidentally drops the
@@ -132,11 +136,12 @@ methodology above is the reproducibility contract.
 | v0.6.0 → current | 100,005 | ~6.5 s | ~35 MB | **~184 MB** | ~450 MB |
 
 > These figures were recorded against the pre-I18N-01 manifest (15-record
-> blocks, issue #484). The canonical manifest now carries 27 records, so the
-> `--contacts` targets round to different actual row counts (2,000 → 2,025,
-> 100,000 → 100,008) and every row-touching migration touches a different row
-> distribution. Re-run `migratebench measure` below and update the table before
-> quoting any number from it.
+> blocks, issue #484). The canonical manifest now carries 35 records (the
+> v1.2.0 demo personas, issues #1193/#1220), so the `--contacts` targets round
+> to different actual row counts (2,000 → 2,030, 100,000 → 100,030) and every
+> row-touching migration touches a different row distribution. Re-run
+> `migratebench measure` below and update the table before quoting any number
+> from it.
 
 Seed and checkpoint cost at the same sizes (build-time, one-off): 2,010
 contacts ≈ 2.4 s seed / 0.25 s checkpoint; 10,005 ≈ 18 s / 1.1 s; 20,010 ≈

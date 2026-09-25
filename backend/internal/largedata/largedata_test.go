@@ -73,6 +73,10 @@ func TestScaleValidates(t *testing.T) {
 		{"external_identities", len(m.ExternalIdentities), len(scaled.ExternalIdentities)},
 		{"attachments", len(m.Attachments), len(scaled.Attachments)},
 		{"activities", len(m.Activities), len(scaled.Activities)},
+		{"cadence_policies", len(m.CadencePolicies), len(scaled.CadencePolicies)},
+		{"reach_out_suggestions", len(m.ReachOutSuggestions), len(scaled.ReachOutSuggestions)},
+		{"occasion_obligations", len(m.OccasionObligations), len(scaled.OccasionObligations)},
+		{"occasion_events", len(m.OccasionEvents), len(scaled.OccasionEvents)},
 	} {
 		assert.Equal(t, blocks*section.base, section.got, "%s must scale with the contacts", section.name)
 	}

@@ -140,7 +140,7 @@
   docker compose -f docker-compose.pentest.yml exec mycorrhizal cat /app/data/credentials.json
   docker compose -f docker-compose.pentest.yml down -v   # wipe
   ```
-- `PENTEST_PROFILE=demo|smoke|typical|large` selects dataset size (default `demo`: one user, 27 contacts, screenshot-ready). Data is generated fresh from the drift-gated canonical manifest, so it stays current with the schema. Full runbook: [docs/development/pentest-environment.md](docs/development/pentest-environment.md).
+- `PENTEST_PROFILE=demo|smoke|typical|large` selects dataset size (default `demo`: one user, 35 contacts, screenshot-ready). Data is generated fresh from the drift-gated canonical manifest, so it stays current with the schema. Full runbook: [docs/development/pentest-environment.md](docs/development/pentest-environment.md).
 
 **DAST (OWASP ZAP, issue #368)**
 - Dynamic application security testing: boots the real all-in-one image (`docker-compose.test.yml`), then runs OWASP ZAP against it — an authenticated API scan seeded from [backend/openapi.yaml](backend/openapi.yaml) (via a minted `full`-scope API token handed to ZAP as a bearer header) plus an active scan of the SPA and the CardDAV/CalDAV discovery surface.

@@ -45,12 +45,13 @@ Planned and in-progress work lives in [GitHub Issues](https://github.com/DrewBru
 ### Contacts, circles & tags
 
 Contacts are stored against a neutral, standards-based card model (vCard 3.0/4.0, JSContact, and
-CardDAV/CalDAV sync) rather than a proprietary shape, with custom fields and custom vCard mappings
-for anything the built-in fields don't cover. **Circles** group the social groups a person belongs
-to; **tags** are free-form labels - two distinct, deliberately separate ways to organize the same
-contact. Fields can be marked `private` or `secret` to keep them out of external sync, contact
-shares and standards exports entirely. Full backups still contain private and secret fields
-because a backup is a backup, not a share.
+CardDAV/CalDAV sync) rather than a proprietary shape, with custom fields - reorderable, and with
+custom vCard mappings - for anything the built-in fields don't cover. **Circles** group the social
+groups a person belongs to; **tags** are free-form labels - two distinct, deliberately separate ways
+to organize the same contact. Hobbies and interests can carry a proficiency level, so "plays piano"
+becomes "plays piano (advanced)". Fields can be marked `private` or `secret` to keep them out of
+external sync, contact shares and standards exports entirely. Full backups still contain private and
+secret fields because a backup is a backup, not a share.
 
 Duplicate contacts merge cleanly, bulk operations apply across contacts, and SQLite FTS5 search
 covers contacts, notes and addresses with relationship-aware synonyms.
@@ -69,8 +70,13 @@ household (confirming or rejecting a suggestion is always your choice), and a ho
 a mailing list for invites, cards or gifts. Pets are first-class contacts too, searchable by name
 and connected into the same relationship graph as everyone else.
 
+The network graph colors every contact by **relationship health** - moss for healthy, chanterelle
+for fading, russula for neglected - derived from how recently you actually talked, how often, and
+how close the relationship is, so a glance shows who needs attention. The graph also remembers your
+circle filter between visits.
+
 <p align="center">
-<img src="assets/screenshots/network-graph.png" alt="An interactive contact network graph showing relationships and shared activities between contacts" width="850" />
+<img src="assets/screenshots/network-graph.png" alt="An interactive contact network graph showing relationships and shared activities between contacts, with nodes colored by relationship health" width="850" />
 </p>
 
 ### Staying in touch
@@ -81,7 +87,9 @@ contacts to a dashboard shortlist. Before you see or call someone, **Prep View**
 their recent history, open agenda items and upcoming life events into a single briefing, and a
 running **conversation agenda** keeps track of things you meant to raise next time. Reminders can
 be delivered by email, [ntfy](https://ntfy.sh), [Gotify](https://gotify.net) or browser push - see
-[Notifications](#notifications) below.
+[Notifications](#notifications) below. **Data decay** closes the loop the other way: Mycorrhizal
+periodically asks you to confirm a contact's details are still current, rather than letting an old
+address or job quietly rot.
 
 <p align="center">
 <img src="assets/screenshots/prep-view.png" alt="Prep View for a contact, showing last interaction, recent notes, related people and upcoming dates" width="850" />
@@ -90,9 +98,18 @@ be delivered by email, [ntfy](https://ntfy.sh), [Gotify](https://gotify.net) or 
 ### Tracking & integrations
 
 Life events beyond birthdays - anniversaries, and anything else worth a reminder - are organized
-into categories, and an audit trail records what changed on a contact and when. **Gift tracking**
-(modeled after [Monica](https://github.com/monicahq/monica)) covers ideas, gifts given and gifts
-received, with notes and links. Contacts can link to identified people in
+into categories, and an audit trail records what changed on a contact and when. **Temporal periods**
+record when a value was true - an employer, title or address with a start and end ("Product designer,
+2018-2021") - and Mycorrhizal can suggest the corresponding life event instead of making you
+re-enter it. A contact who has died can be marked **deceased**: they stay in your address book, but
+drop out of birthday, cadence and reach-out prompts.
+
+**Occasions** cover the standing obligations and one-off events around the people you care for:
+recurring rules such as a holiday card or a birthday gift ordered two weeks ahead, and events like a
+summer party or a 70th, each with an invitee list and per-person RSVP status.
+
+**Gift tracking** (modeled after [Monica](https://github.com/monicahq/monica)) covers ideas, gifts
+given and gifts received, with notes and links. Contacts can link to identified people in
 [Immich](https://github.com/immich-app/immich), documents in
 [Paperless-ngx](https://docs.paperless-ngx.com/), and files or folders in
 [Seafile](https://www.seafile.com/), [Nextcloud](https://nextcloud.com/) or
@@ -123,9 +140,10 @@ alternative, and CardDAV/API-token auth is unaffected either way.
 A Kotlin/Jetpack Compose client lives in [`android/`](android/): login (including OIDC SSO), a
 contact list and detail view with an offline cache and favorites, a tablet two-pane layout, the
 dashboard and Prep View, call/SMS tracking with a quick-capture overlay, device-contacts and VCF
-import, circles, tags, households, relationships and the network graph, the timeline (life events,
-gifts, preferences, agenda), reminders, cadence, contact sharing, the audit trail, push
-notifications, and per-user settings.
+import, circles, tags, households, relationships and the network graph (colored by relationship
+health), the timeline (life events, gifts, preferences, agenda), occasions and RSVP tracking,
+reminders, cadence, contact sharing, the audit trail, custom-field management, push notifications,
+and per-user settings.
 
 The same source builds three distribution variants (see [ADR 0022](docs/adrs/0022-distribution-variants.md)):
 the **obtainium** build attached to each GitHub Release (the gold standard, updated in place by

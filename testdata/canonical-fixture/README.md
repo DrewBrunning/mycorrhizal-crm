@@ -122,7 +122,8 @@ ds, err := canonicalfixture.Populate(db, m)  // loads it, returns the created Da
 - `ds.User`, `ds.Contacts`, `ds.Notes`, `ds.LifeEvents`, `ds.Gifts`,
   `ds.Relationships`, `ds.Households`, `ds.Circles`, `ds.Tags`,
   `ds.FieldDefinitions`, `ds.Preferences`, `ds.ExternalIdentities`,
-  `ds.Attachments`, `ds.Activities`.
+  `ds.Attachments`, `ds.Activities`, `ds.CadencePolicies`,
+  `ds.ReachOutSuggestions`, `ds.OccasionObligations`, `ds.OccasionEvents`.
 
 The TEST-03 round-trip consumer (`backend/roundtrip`, issue #431) is the other
 Go consumer today: it serializes each manifest contact's neutral `Record`
@@ -134,13 +135,16 @@ mapped field that fails to land fails the suite.
 Extend it, don't fork it: a suite that needs a special case adds a row to the
 shared manifest (or a new section — contacts, notes, life_events, gifts,
 relationships, households, circles, tags, custom_fields, preferences,
-external_identities, attachments, activities), never a private copy of the
-file.
+external_identities, attachments, activities, cadence_policies,
+reach_out_suggestions, occasion_obligations, occasion_events), never a private
+copy of the file.
 
 ## The manifest schema
 
-`version` must match `canonicalfixture.ManifestVersion` (currently `1`);
+`version` must match `canonicalfixture.ManifestVersion` (currently `2`);
 bumping the schema means bumping both, and that diff is the versioning record.
+Version 2 is the v1.2.0 refresh (issues #1193/#1220 and the features shipped
+since v1.1.0).
 
 A contact entry embeds the neutral `contactmodel.Record` verbatim — `card` /
 `crm` / `passthrough` use exactly the JSON keys the nested REST API and the
@@ -152,6 +156,44 @@ neutral model use — plus manifest-level fields:
 | `comment` | why this entry exists (which trap / dataset item it pins) |
 | `soft_deleted` | create, then tombstone like `DeleteContact` (phase A contact row, phase B dependent cascade) |
 | `recreates_vcard_uid_of` | copy the named (earlier, soft-deleted) contact's `vcard_uid` — pins the partial unique index |
+| `updated_days_ago` | back-date the contact's `updated_at` to `now - N days` (the health score's LastUpdated facet) |
+| `favorite` | set the CRM-local dashboard favorite flag (issue #173) |
+
+### v1.2.0 additions (schema version 2)
+
+The refresh that made the manifest also carry the demo/screenshot dataset added
+coverage for everything shipped since v1.1.0, plus the raw inputs the derived
+relationship-health score reads:
+
+- **`self_contact`** — names the contact that becomes the user's self-contact
+  (`users.self_contact_vcard_uid`). It is what lets the health score's Closeness
+  facet resolve; without it every score is the neutral 50 (ADR 0023).
+- **`cadence_policies[]`** — `{contact, target_interval_days, …, soft_deleted}`,
+  the target interval Recency/Frequency read.
+- **`reach_out_suggestions[]`** — `{contact, kind, old_value, new_value, status}`;
+  a `pending` row is a discrete health warning and a populated dashboard block.
+- **`occasion_obligations[]`** — `{contact, kind, label, anchor_month, anchor_day,
+  lead_time_days, active, sensitivity, notes, soft_deleted}` (ADR 0024).
+- **`occasion_events[]`** — `{title, starts_at|starts_in_days, ends_at|ends_in_days,
+  location, sensitivity, notes, attendees:[{contact, rsvp}], soft_deleted}` (ADR 0026).
+- **`life_events[].end_date`** — turns a life event into a span (ADR 0025).
+- **`preferences[].level`** — `high|medium|low` proficiency (issue #246).
+- **`custom_fields[].position`** — deliberate display order (issue #1210).
+- **Death** is not a new field: it is `card.anniversaries[]` with
+  `kind: "death"`. `Card.IsDeceased()` derives the whole state from it — the
+  single source of truth (issue #1193/#1238).
+- **Demo-relative timing** — `contacts[].updated_days_ago` and
+  `activities[].days_ago` (and `occasion_events[].starts_in_days`/
+  `ends_in_days`) resolve against a clock injected at `PopulateAt(db, m, now)`;
+  `Populate` delegates with `time.Now()`, so the demo stays fresh while tests
+  pin a fixed reference instant. An activity must set exactly one of
+  `date`/`days_ago`.
+
+The new **demo personas** (`me`, `nadia`, `theo`, `marcus`, `soren`, `bea`,
+`margaret`, `harold`) carry a deliberate health spread — moss (close tier +
+frequent recent interactions), chanterelle (the no-interaction floor / a stale
+interaction) and russula (long overdue and/or a pending reach-out) — plus two
+deceased records (one recent with a death place, one year-only).
 
 All other sections reference contacts by `name`; the loader resolves to
 `vcard_uid`. Cross-references that do not resolve fail `Validate` naming the

@@ -376,6 +376,12 @@ func TestManifestReadAndValidate(t *testing.T) {
 	for _, required := range []string{"ada", "bob", "celine", "dmitri", "eve", "frank", "gina", "hugo", "ida", "julie"} {
 		assert.True(t, names[required], "manifest must declare the %q trap contact", required)
 	}
+	// v1.2.0 demo personas: the self-contact, the health-spread nodes, and the
+	// deceased records (issues #1193/#1220).
+	for _, required := range []string{"me", "nadia", "theo", "marcus", "soren", "bea", "margaret", "harold"} {
+		assert.True(t, names[required], "manifest must declare the %q demo contact", required)
+	}
+	assert.NotEmpty(t, m.SelfContact, "manifest must name the self-contact the Closeness facet resolves against")
 	assert.NotEmpty(t, m.Notes)
 	assert.NotEmpty(t, m.LifeEvents)
 	assert.NotEmpty(t, m.Gifts)
@@ -388,6 +394,10 @@ func TestManifestReadAndValidate(t *testing.T) {
 	assert.NotEmpty(t, m.ExternalIdentities)
 	assert.NotEmpty(t, m.Attachments)
 	assert.NotEmpty(t, m.Activities)
+	assert.NotEmpty(t, m.CadencePolicies)
+	assert.NotEmpty(t, m.ReachOutSuggestions)
+	assert.NotEmpty(t, m.OccasionObligations)
+	assert.NotEmpty(t, m.OccasionEvents)
 }
 
 // TestPopulateIsScopedAndDeterministic pins that the fixture is one user's

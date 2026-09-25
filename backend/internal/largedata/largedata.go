@@ -35,7 +35,7 @@ import (
 )
 
 // MinContacts is the smallest target ContactCount Scale accepts. Scale rounds
-// up to a whole block (27 contacts each), so anything >= MinContacts yields
+// up to a whole block (35 contacts each), so anything >= MinContacts yields
 // at least one full manifest block.
 const MinContacts = 1
 
@@ -44,8 +44,9 @@ const MinContacts = 1
 // (and the tests asserting it) cannot drift from the manifest itself.
 //
 // 15 legacy trap/TEST-07 records + 12 I18N-01 international records (issue
-// #484) = 27; keep in lockstep with testdata/canonical-fixture/manifest.json.
-const BlocksOfManifest = 27
+// #484) + 8 v1.2.0 demo personas (self/deceased/health spread, issue #1220)
+// = 35; keep in lockstep with testdata/canonical-fixture/manifest.json.
+const BlocksOfManifest = 35
 
 // Scale returns a copy of m block-replicated until it has at least
 // targetContacts contacts. The copy is machine-generated: per-block comments
@@ -312,5 +313,29 @@ func appendBlock(out, m *canonicalfixture.Manifest, b int, salt string) {
 			a.Contacts[i] = rw.name(a.Contacts[i])
 		}
 		out.Activities = append(out.Activities, a)
+	}
+	for _, c := range m.CadencePolicies {
+		c.Contact = rw.name(c.Contact)
+		out.CadencePolicies = append(out.CadencePolicies, c)
+	}
+	for _, r := range m.ReachOutSuggestions {
+		r.Contact = rw.name(r.Contact)
+		out.ReachOutSuggestions = append(out.ReachOutSuggestions, r)
+	}
+	for _, o := range m.OccasionObligations {
+		o.Contact = rw.name(o.Contact)
+		out.OccasionObligations = append(out.OccasionObligations, o)
+	}
+	for _, e := range m.OccasionEvents {
+		e.Attendees = append([]canonicalfixture.OccasionEventAttendeeEntry(nil), e.Attendees...)
+		for i := range e.Attendees {
+			e.Attendees[i].Contact = rw.name(e.Attendees[i].Contact)
+		}
+		out.OccasionEvents = append(out.OccasionEvents, e)
+	}
+	// A scaled manifest has one `me` contact per block; the user's single
+	// self-contact pointer can only name one, so point it at the first block's.
+	if b == 0 && m.SelfContact != "" {
+		out.SelfContact = rw.name(m.SelfContact)
 	}
 }

@@ -193,6 +193,19 @@ func referenceServerDivergences(serverID string) []serverDivergence {
 			{name: "somchai", concepts: "adr;email.label;phone.label", reason: "vobject re-serializes on output: ADR components beyond the seven RFC 6350 slots (subdistrict, district) dropped; plus issue #968 (email/phone label never exported)"},
 			{name: "priya", concepts: "email.label;phone.label", reason: "issue #968: email/phone label never exported"},
 			{name: "aoife", concepts: "email.label;phone.label", reason: "issue #968: email/phone label never exported"},
+
+			// v1.2.0 demo personas (issue #1220). Radicale stores the vCard 4.0
+			// card otherwise verbatim (KIND, LANGUAGE, ADR CC/TZ all survive),
+			// so the only loss is issue #968's email/phone label, which our own
+			// exporter never sends. harold carries no email or phone and
+			// round-trips cleanly, so he has no entry.
+			{name: "me", concepts: "email.label", reason: "issue #968: email label never exported"},
+			{name: "nadia", concepts: "email.label;phone.label", reason: "issue #968: email/phone label never exported"},
+			{name: "theo", concepts: "email.label", reason: "issue #968: email label never exported"},
+			{name: "marcus", concepts: "email.label", reason: "issue #968: email label never exported"},
+			{name: "soren", concepts: "email.label", reason: "issue #968: email label never exported"},
+			{name: "bea", concepts: "email.label", reason: "issue #968: email label never exported"},
+			{name: "margaret", concepts: "email.label", reason: "issue #968: email label never exported"},
 		}
 	case "baikal", "nextcloud":
 		// The accepted-card divergences are byte-identical between Baikal and
@@ -238,6 +251,22 @@ func referenceServerDivergences(serverID string) []serverDivergence {
 			{name: "somchai", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params and the RFC 9554 extended components (subdistrict, district) dropped, prodid added; plus issue #968 (email/phone label never exported)"},
 			{name: "priya", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added; plus issue #968 (email/phone label never exported)"},
 			{name: "aoife", concepts: "adr;adr.tz;kind;language;prodid;pt.vcard;email.label;phone.label", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), ADR CC/TZ params dropped, prodid added; plus issue #968 (email/phone label never exported)"},
+
+			// v1.2.0 demo personas (issue #1220): the same Sabre VObject 3.0
+			// downgrade as the I18N records — KIND/LANGUAGE 4.0-only (LANGUAGE
+			// lands in passthrough) and prodid added, plus issue #968. None of
+			// them carries an ADR, so there is no adr/adr.tz divergence. theo's
+			// wedding ANNIVERSARY becomes Apple X-ABDATE/X-ABLABEL in
+			// passthrough; margaret/harold's RFC 6474 DEATHDATE/DEATHPLACE land
+			// in passthrough and are not re-read as anniversaries.
+			{name: "me", concepts: "email.label;kind;language;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), prodid added; plus issue #968 (email label never exported)"},
+			{name: "nadia", concepts: "email.label;kind;language;phone.label;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), prodid added; plus issue #968 (email/phone label never exported)"},
+			{name: "theo", concepts: "email.label;kind;language;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: the wedding ANNIVERSARY becomes Apple X-ABDATE/X-ABLABEL in passthrough, KIND/LANGUAGE 4.0-only, prodid added; plus issue #968 (email label never exported)"},
+			{name: "marcus", concepts: "email.label;kind;language;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), prodid added; plus issue #968 (email label never exported)"},
+			{name: "soren", concepts: "email.label;kind;language;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), prodid added; plus issue #968 (email label never exported)"},
+			{name: "bea", concepts: "email.label;kind;language;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: KIND/LANGUAGE 4.0-only (LANGUAGE lands in passthrough), prodid added; plus issue #968 (email label never exported)"},
+			{name: "margaret", concepts: "anniversary.death;anniversary.place.death;email.label;kind;language;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: RFC 6474 DEATHDATE/DEATHPLACE land in passthrough and are not re-read as anniversaries, KIND/LANGUAGE 4.0-only, prodid added; plus issue #968 (email label never exported)"},
+			{name: "harold", concepts: "anniversary.death;kind;language;prodid;pt.vcard", reason: "Sabre VObject 3.0 downgrade: RFC 6474 DEATHDATE lands in passthrough and is not re-read as an anniversary, KIND/LANGUAGE 4.0-only, prodid added (no email/phone to lose)"},
 		}
 		if serverID == "baikal" {
 			// eve is ACCEPTED by Baikal but its BDAY (no value-type) survives

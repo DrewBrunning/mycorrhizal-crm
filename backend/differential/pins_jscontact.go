@@ -49,4 +49,14 @@ func registerJSContactPins() {
 	for _, name := range []string{"naoki", "wei", "minjun", "layla", "yael", "bjork", "carmen", "joao", "jan", "somchai", "priya", "aoife"} {
 		checkPin(DivergencePin{CorpusID: "fixture/" + name, Format: "jscontact", Dir: "reference->ours", Concepts: []string{"anniversary.birth"}, Reason: "calcard's RFC 9555 vCard->JSContact conversion re-reads BDAY/ANNIVERSARY/DEATHDATE as partial dates, losing the timestamp-vs-partial distinction the neutral model carries"})
 	}
+
+	// v1.2.0 demo personas (issue #1220): same calcard BDAY day-loss as the
+	// records above — me/nadia/marcus/soren/bea carry a plain birth, theo a
+	// birth+wedding, and margaret a birth+death. harold's year-only dates have
+	// no day component to lose, so it needs no pin.
+	for _, name := range []string{"me", "nadia", "marcus", "soren", "bea"} {
+		checkPin(DivergencePin{CorpusID: "fixture/" + name, Format: "jscontact", Dir: "reference->ours", Concepts: []string{"anniversary.birth"}, Reason: "calcard's RFC 9555 vCard->JSContact conversion re-reads BDAY/ANNIVERSARY/DEATHDATE as partial dates, losing the timestamp-vs-partial distinction the neutral model carries"})
+	}
+	checkPin(DivergencePin{CorpusID: "fixture/theo", Format: "jscontact", Dir: "reference->ours", Concepts: []string{"anniversary.birth", "anniversary.wedding"}, Reason: "calcard's RFC 9555 vCard->JSContact conversion re-reads BDAY/ANNIVERSARY/DEATHDATE as partial dates, losing the timestamp-vs-partial distinction the neutral model carries"})
+	checkPin(DivergencePin{CorpusID: "fixture/margaret", Format: "jscontact", Dir: "reference->ours", Concepts: []string{"anniversary.birth", "anniversary.death"}, Reason: "calcard's RFC 9555 vCard->JSContact conversion re-reads BDAY/ANNIVERSARY/DEATHDATE as partial dates, losing the timestamp-vs-partial distinction the neutral model carries"})
 }
