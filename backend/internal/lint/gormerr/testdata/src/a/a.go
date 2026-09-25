@@ -2,6 +2,8 @@ package a
 
 import (
 	"gorm.io/gorm"
+
+	"b"
 )
 
 type Contact struct{ ID uint }
@@ -10,6 +12,20 @@ type Contact struct{ ID uint }
 type FakeDB struct{}
 
 func (f *FakeDB) Save(v interface{}) *FakeDB { return f }
+
+// ValRecv has a value (non-pointer) receiver, so isGormDBPtr's pointer
+// assertion on the receiver type fails -- exercising that branch directly
+// rather than the *gorm.DB-shaped-result branches below.
+type ValRecv struct{}
+
+func (v ValRecv) Save() ValRecv { return v }
+
+// Weird has a pointer receiver (so the receiver check passes) but returns a
+// pointer to an unnamed type, exercising isGormDBPtr's "pointer to a Named
+// type" assertion failing on the *result* type instead of the receiver.
+type Weird struct{}
+
+func (w *Weird) Save() *[]int { return nil }
 
 func positives(db *gorm.DB, c *Contact) {
 	db.Save(c)                                  // want `result of \(\*gorm.DB\).Save is discarded`
@@ -62,6 +78,24 @@ func negatives(db *gorm.DB, c *Contact, f *FakeDB) error {
 	use(db.First(c))
 	// Look-alike method on a non-gorm type.
 	f.Save(c)
+	// A value (non-pointer) receiver: isGormDBPtr's pointer assertion on
+	// the receiver type fails before ever inspecting the result.
+	var v ValRecv
+	_ = v.Save()
+	// A pointer receiver but a result that is a pointer to an unnamed
+	// type: isGormDBPtr's Named assertion fails on the result type.
+	var w Weird
+	_ = w.Save()
+	// A package-level function (no receiver) sharing a finisher name,
+	// called through a selector like a method call.
+	_ = b.Save()
+	// A genuine *gorm.DB method (so the receiver check passes) whose result
+	// is a pointer to an unnamed type: isGormDBPtr's Named assertion fails
+	// on the result rather than the receiver.
+	db.Take()
+	// Multi-value assignment: len(stmt.Rhs) != 1 is never true for a single
+	// call, so use two separate call expressions on the right-hand side.
+	_, _ = db.First(c), db.Find(&[]Contact{})
 	return db.Save(c).Error
 }
 

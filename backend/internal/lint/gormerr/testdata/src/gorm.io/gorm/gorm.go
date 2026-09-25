@@ -29,3 +29,10 @@ func (db *DB) Scan(dest interface{}) *DB                                { return
 func (db *DB) Pluck(column string, dest interface{}) *DB                { return db }
 func (db *DB) FirstOrCreate(dest interface{}, conds ...interface{}) *DB { return db }
 func (db *DB) Transaction(fc func(tx *DB) error) error                  { return nil }
+
+// Take does not actually exist on the real *gorm.DB with this signature;
+// it stands in here only so the analyzer's test suite can exercise a
+// finisher-named method whose *receiver* is genuinely *gorm.DB but whose
+// *result* is a pointer to an unnamed type (isGormDBPtr's Named assertion
+// failing on the result, as opposed to the receiver).
+func (db *DB) Take() *[]int { return nil }
