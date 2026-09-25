@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -57,7 +58,8 @@ func ApplyContactAddressSuggestion(c *gin.Context) {
 
 	contact, svcErr := services.ApplyContactAddressSuggestion(db, userID, input)
 	if svcErr != nil {
-		if appErr, ok := svcErr.(*apperrors.AppError); ok {
+		var appErr *apperrors.AppError
+		if errors.As(svcErr, &appErr) {
 			apperrors.AbortWithError(c, appErr)
 			return
 		}

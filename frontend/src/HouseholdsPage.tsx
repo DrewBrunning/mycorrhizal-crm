@@ -206,7 +206,7 @@ export default function HouseholdsPage() {
                 <path d={mdiMapMarkerMultipleOutline} />
               </SvgIcon>
             }
-            onClick={handleScanAddressSuggestions}
+            onClick={() => void handleScanAddressSuggestions()}
             disabled={suggestionsLoading}
           >
             {suggestionsLoading ? t('household.scanning') : t('household.suggestAddresses')}
@@ -255,15 +255,15 @@ export default function HouseholdsPage() {
         contactsByUid={contactsByUid}
         suggestPendingId={suggestPendingId}
         onEdit={handleOpenEdit}
-        onDelete={handleConfirmDelete}
-        onSuggest={handleSuggest}
+        onDelete={(p0) => void handleConfirmDelete(p0)}
+        onSuggest={(p0) => void handleSuggest(p0)}
         onAddMember={(householdId, uid, role) => {
           handleAddMember(householdId, uid, role).catch(() => {});
         }}
         onRemoveMember={(householdId, uid) => {
           handleRemoveMember(householdId, uid).catch(() => {});
         }}
-        onRoleChange={handleRoleChange}
+        onRoleChange={(p0, p1, p2) => void handleRoleChange(p0, p1, p2)}
       />
 
       <HouseholdDialog

@@ -123,7 +123,7 @@ export default function WebhooksSettings() {
   }, [t]);
 
   useEffect(() => {
-    loadWebhooks();
+    void loadWebhooks();
   }, [loadWebhooks]);
 
   const openCreate = () => {
@@ -307,7 +307,7 @@ export default function WebhooksSettings() {
                         <Box sx={{ display: 'flex', gap: 0.5 }}>
                           <IconButton
                             size="small"
-                            onClick={() => handleTest(wh)}
+                            onClick={() => void handleTest(wh)}
                             disabled={testing[wh.id]}
                             title={t('settings.webhooks.test')}
                             aria-label={t('settings.webhooks.test')}
@@ -393,7 +393,7 @@ export default function WebhooksSettings() {
                     <Box sx={{ pl: 2, pb: 1 }}>
                       <Button
                         size="small"
-                        onClick={() => toggleDeliveries(wh)}
+                        onClick={() => void toggleDeliveries(wh)}
                         endIcon={
                           expandedDeliveries[wh.id] ? (
                             <ExpandLessIcon fontSize="small" />
@@ -556,7 +556,7 @@ export default function WebhooksSettings() {
         <DialogActions>
           <Button onClick={() => setDialogOpen(false)}>{t('settings.webhooks.cancel')}</Button>
           <Button
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             variant="contained"
             disabled={saving || !form.name.trim() || !form.url.trim() || form.events.length === 0}
           >
@@ -603,7 +603,7 @@ export default function WebhooksSettings() {
               <IconButton
                 onClick={() => {
                   if (createdWebhook) {
-                    navigator.clipboard.writeText(createdWebhook.secret);
+                    void navigator.clipboard.writeText(createdWebhook.secret);
                     setSecretCopied(true);
                     setTimeout(() => setSecretCopied(false), 2000);
                   }
@@ -639,7 +639,12 @@ export default function WebhooksSettings() {
           <Button onClick={() => setDeleteDialogOpen(false)}>
             {t('settings.webhooks.deleteDialog.cancel')}
           </Button>
-          <Button onClick={handleDeleteConfirm} color="error" disabled={deleting} autoFocus>
+          <Button
+            onClick={() => void handleDeleteConfirm()}
+            color="error"
+            disabled={deleting}
+            autoFocus
+          >
             {t('settings.webhooks.deleteDialog.confirm')}
           </Button>
         </DialogActions>

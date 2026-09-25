@@ -5,19 +5,16 @@ on:
     branches: [main]
   pull_request:
     branches: [main, "release/**"]
-  # 2026-08-28: the nightly run is the full web suite (all specs + loadsmoke)
-  # that the PR path deliberately skips for pure backend/** changes — a
-  # backend-only change that breaks a shipped *user flow* is caught here, not
-  # on the PR (see docs/development/testing.md "Layers vs CI path gating").
-  # Same schedule-exemption pattern as unit-tests.yml: the suite jobs run
-  # unconditionally on the schedule event and are path-gated only on PR/push.
+  # The nightly run is the full web suite (all specs + loadsmoke) the PR
+  # path skips for pure backend/** changes -- a backend-only change that
+  # breaks a shipped user flow is caught here (docs/development/testing.md
+  # "Layers vs CI path gating"). Same schedule-exemption pattern as
+  # unit-tests.yml.
   schedule:
     - cron: '25 3 * * *' # 03:25 UTC nightly (consolidated nightly suite)
-  # Issue #543: lets release.yml / docker-publish.yml's mandatory-gate step
-  # dispatch this workflow against an exact release commit instead of
-  # passively waiting for check-runs a `push` to release/** never produces
-  # (deliberately -- see unit-tests.yml's workflow_dispatch comment for why
-  # not a `push: release/**` trigger). Not meant for ad hoc manual runs.
+  # Issue #543: lets the release mandatory-gate step dispatch this against
+  # an exact release commit (see unit-tests.yml's workflow_dispatch comment
+  # for why not a `push: release/**` trigger). Not for ad hoc manual runs.
   workflow_dispatch:
   workflow_call:
 
@@ -60,11 +57,8 @@ jobs:
         with:
           filters: .github/filters.yaml
 
-      # Boolean outputs only, so this is safe to interpolate (see unit-tests.yml).
-      # Passed as env vars rather than inline ${{ }} so zizmor's
-      # template-injection audit has nothing to flag. workflow_dispatch forces
-      # every area true (issue #543) -- see unit-tests.yml's "Resolve gating
-      # decision" comment for why.
+      # Boolean outputs only, via env for zizmor (see unit-tests.yml).
+      # workflow_dispatch forces every area true (#543).
       - name: Resolve gating decision
         id: resolve
         run: |
@@ -97,12 +91,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs: changes
-    # The web Playwright suite exercises the frontend and the deployed
-    # artifact (all-in-one image + compose + nginx), and the openapi contract
-    # the frontend consumes. Pure backend/** changes are covered by the Go
-    # checks in unit-tests.yml and don't re-run the full e2e stack — the
-    # scheduled nightly run is what re-runs the full suite with no diff to
-    # gate on (same exemption pattern as unit-tests.yml).
+    # Pure backend/** changes are covered by unit-tests.yml's Go checks and
+    # don't re-run the full e2e stack; the scheduled nightly run re-runs the
+    # full suite with no diff to gate on.
     if: github.event_name == 'schedule' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
@@ -127,7 +118,6 @@ jobs:
       - name: Start services
         run: |
           docker compose -f docker-compose.test.yml up -d
-          # Wait for the app to be ready (frontend + same-origin /api on 7300)
           echo "Waiting for services to be ready..."
           timeout 120 bash -c 'until curl -s http://localhost:7300/health/live > /dev/null 2>&1; do sleep 2; done'
           echo "App is ready"
@@ -135,8 +125,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          # COMPAT-01 (issue #472): floor comes from frontend/package.json's
-          # "engines.node" rather than a hardcoded number here.
+          # COMPAT-01 (#472): floor comes from package.json's engines.node.
           node-version-file: frontend/package.json
           cache: 'yarn'
           cache-dependency-path: frontend/yarn.lock
@@ -166,32 +155,24 @@ jobs:
       - name: Run Playwright tests
         working-directory: frontend
         # Runs every spec, including visual.spec.ts's screenshot regression
-        # (issue #258): the committed baselines under e2e/visual.spec.ts-snapshots/
-        # are compared here — any pixel diff to a pinned view fails the job.
-        # Regenerate after an intentional visual change with
+        # (#258) against committed baselines -- regenerate with
         # `npx playwright test visual.spec.ts --update-snapshots`.
         #
-        # --project=chromium (the 'setup' dependency still runs automatically):
-        # playwright.config.ts also declares a `webkit` project (issue #992,
-        # testMatch-scoped to e2e/webkitSmoke.spec.ts alone) which this job
-        # never installs a browser for -- that spec has its own dedicated
-        # `e2e-webkit-smoke` job below with its own `webkit` install step.
-        # Without this flag, an un-scoped `npx playwright test` here picks up
-        # every declared project and fails with "Executable doesn't exist"
-        # the moment a second engine's project is added to the config.
+        # --project=chromium: playwright.config.ts also declares a `webkit`
+        # project (#992, scoped to webkitSmoke.spec.ts, its own dedicated
+        # `e2e-webkit-smoke` job below) this job never installs a browser
+        # for -- without this flag an un-scoped run fails with "Executable
+        # doesn't exist" once a second engine's project exists.
         run: npx playwright test --project=chromium
         env:
           CI: true
-          # Issue #556, two-tier perf split (#447): the @perf-heavy specs
-          # (listPerf, networkGraphScale — seed ~150 contacts / render 15k-node
-          # payloads) self-skip unless RUN_PERF_HEAVY is set, so they run on the
-          # nightly full-suite schedule only, not on every PR. The light @perf
-          # specs (route-stubbed) run unconditionally with the rest of the suite.
+          # Issue #556: the @perf-heavy specs (listPerf, networkGraphScale)
+          # self-skip unless RUN_PERF_HEAVY is set, so they run nightly
+          # only; light @perf specs run unconditionally.
           RUN_PERF_HEAVY: ${{ github.event_name == 'schedule' && '1' || '' }}
-          # Issue #1177: the release composer (workflow_call) runs this suite
-          # under heavy load, where two workers racing the shared test user's
-          # settings is what flaked RC2. Pin to one worker there; the per-PR
-          # and push paths keep the config's 2.
+          # Issue #1177: the release composer runs this suite under heavy
+          # load, where two workers racing the shared test user's settings
+          # flaked RC2. Pin to one worker there.
           PLAYWRIGHT_WORKERS: ${{ github.event_name == 'workflow_call' && '1' || '' }}
 
       - name: Upload Playwright report
@@ -210,23 +191,19 @@ jobs:
           path: frontend/test-results/
           retention-days: 7
 
-      # Issue #262: a short concurrent-write smoke test against the actual
-      # deployed artifact (nginx + backend under supervisord), not just the
-      # in-process pin (database/concurrent_write_test.go). Runs after
-      # Playwright rather than alongside it so the two don't share (and
-      # confuse) the same rate-limit bucket/log stream. Uses the same
-      # running instance already up for Playwright above.
+      # Issue #262: a short concurrent-write smoke test against the real
+      # deployed artifact, not just the in-process pin
+      # (database/concurrent_write_test.go). Runs after Playwright so the
+      # two don't share the same rate-limit bucket/log stream.
       - name: Run concurrency/load smoke test
         working-directory: backend
         run: go run ./cmd/loadsmoke
         env:
           LOADSMOKE_BASE_URL: http://localhost:7300
 
-      # Issue #498, "many users on one instance" axis: ten independent
-      # accounts, forty workers, so the contention is cross-user writers on
-      # the shared tables and FTS indexes against the one SQLite writer — a
-      # profile one user with ten times the data never produces. Same
-      # pass/fail contract (no SQLITE_BUSY, no spurious 429).
+      # Issue #498, "many users" axis: ten accounts, forty workers, so
+      # contention is cross-user writers against the one SQLite writer -- a
+      # profile one user with ten times the data never produces.
       - name: Run many-users concurrency smoke test
         working-directory: backend
         run: go run ./cmd/loadsmoke
@@ -236,19 +213,14 @@ jobs:
           LOADSMOKE_WORKERS: "40"
           LOADSMOKE_DURATION: "12s"
 
-      # Issue #498: a concurrent write storm must never leave the database
-      # corrupt. The check runs against a *quiesced* snapshot: stopping the
-      # stack first checkpoints the WAL and closes the DB cleanly, so the file
-      # copied out is a consistent point-in-time image of exactly the state the
-      # load left behind. (Copying the live DB out of the still-running
-      # container — .db, -wal and -shm as three separate instants — is a torn
-      # snapshot: a checkpoint landing between the copies reads pages from two
-      # generations and integrity_check reports corruption that is not on disk.
-      # Observed twice on PR #783.) The -wal sidecar is copied if a clean stop
-      # still left one; the -shm is never copied (it is a transient WAL index
-      # SQLite rebuilds, and a stale copy misleads the check). This is the same
-      # cold-DB assertion the chaos suite's SIGKILL jobs make after the
-      # container stops.
+      # Issue #498: runs against a *quiesced* snapshot -- stopping the
+      # stack first checkpoints the WAL and closes the DB cleanly. Copying
+      # the live DB out of a still-running container (.db/-wal/-shm as
+      # three separate instants) is a torn snapshot: a checkpoint landing
+      # between copies reads two generations and reports corruption that
+      # isn't on disk (observed twice on PR #783). -shm is never copied (a
+      # transient index SQLite rebuilds). Same cold-DB assertion the chaos
+      # suite's SIGKILL jobs make.
       - name: Assert the database is not corrupt after the load
         run: |
           rm -f /tmp/loadsmoke.db /tmp/loadsmoke.db-wal /tmp/loadsmoke.db-shm
@@ -269,14 +241,13 @@ jobs:
         if: always()
         run: docker compose -f docker-compose.test.yml down -v
 
-  # Issue #274: a second, smaller pass under production-default settings. The
-  # main suite above runs against docker-compose.test.yml, which deliberately
-  # raises the API rate limit and enables CalDAV so a full parallel run can
-  # finish — so the shipped defaults (real rate limit, CardDAV off) are never
-  # exercised anywhere unless a job asks for them. This job boots the same
-  # image with the prod-defaults override layered on top and runs only the
-  # @prod-defaults-tagged subset (auth + contacts + dashboard), which stays
-  # comfortably under the production rate limit (burst 1000, 600ms refill).
+  # Issue #274: a second, smaller pass under production-default settings.
+  # The main suite runs against docker-compose.test.yml, which raises the
+  # API rate limit and enables CalDAV so a full parallel run finishes -- so
+  # shipped defaults (real rate limit, CardDAV off) are otherwise never
+  # exercised. Boots the same image with the prod-defaults override and
+  # runs only @prod-defaults-tagged specs, staying under the production
+  # rate limit.
   e2e-prod-defaults:
     permissions:
       contents: read
@@ -285,11 +256,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: changes
-    # Same path gating as the main e2e job: the web suite exercises the
-    # frontend, the deployed artifact (all-in-one image + compose + nginx),
-    # and the openapi contract the frontend consumes. Also runs nightly
-    # (schedule-exempt, like the main e2e job) so the production-default
-    # signal lands with the rest of the nightly full suite.
+    # Same path gating + nightly schedule-exemption as the main e2e job.
     if: github.event_name == 'schedule' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
@@ -314,7 +281,6 @@ jobs:
       - name: Start services (production-default config)
         run: |
           docker compose -f docker-compose.test.yml -f docker-compose.prod-defaults.yml up -d
-          # Wait for the app to be ready (frontend + same-origin /api on 7300)
           echo "Waiting for services to be ready..."
           timeout 120 bash -c 'until curl -s http://localhost:7300/health/live > /dev/null 2>&1; do sleep 2; done'
           echo "App is ready"
@@ -322,8 +288,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          # COMPAT-01 (issue #472): floor comes from frontend/package.json's
-          # "engines.node" rather than a hardcoded number here.
+          # COMPAT-01 (#472): floor comes from package.json's engines.node.
           node-version-file: frontend/package.json
           cache: 'yarn'
           cache-dependency-path: frontend/yarn.lock
@@ -344,13 +309,9 @@ jobs:
 
       - name: Run Playwright tests (production-default subset)
         working-directory: frontend
-        # Only the @prod-defaults-tagged specs run here. A single worker keeps
-        # request volume low enough to sit comfortably under the production
-        # rate limit — the raised test values in docker-compose.test.yml were
-        # introduced precisely because the full suite could not. --project=chromium
-        # for the same reason as the main `e2e` job above: this job only installs
-        # chromium, and playwright.config.ts also declares a `webkit` project
-        # (issue #992) with its own dedicated job/install step below.
+        # A single worker keeps request volume under the production rate
+        # limit. --project=chromium for the same reason as the main `e2e`
+        # job (webkit has its own dedicated job below, #992).
         run: npx playwright test --grep @prod-defaults --workers=1 --project=chromium
         env:
           CI: true
@@ -381,18 +342,13 @@ jobs:
         if: always()
         run: docker compose -f docker-compose.test.yml -f docker-compose.prod-defaults.yml down -v
 
-  # Issue #476 (WEB-02): the service-worker upgrade suite. It is a SEPARATE
-  # Playwright config (playwright.sw.config.ts) that deliberately does NOT run
-  # against the docker stack: the main stack serves a single fixed build on
-  # 7300, while an upgrade needs an origin that swaps between two builds
-  # mid-test. Its own harness server (frontend/e2e/sw-upgrade/) takes over port
-  # 7300 and stages two real `vite build` fixtures; no backend is involved. It
-  # exercises Chromium AND Firefox (the wrong-MIME /service-worker.js failure
-  # this suite guards was a Firefox report). First run also builds both
-  # fixtures from source inside the Playwright webServer.
-  #
-  # Same path gating as the main e2e job (frontend/deployed-artifact/workflow
-  # changes) plus the nightly full-suite run.
+  # Issue #476 (WEB-02): the service-worker upgrade suite, a SEPARATE
+  # Playwright config that deliberately does NOT run against the docker
+  # stack -- an upgrade needs an origin that swaps between two builds
+  # mid-test, which the main stack's single fixed build can't do. Its own
+  # harness (frontend/e2e/sw-upgrade/) takes over port 7300 and stages two
+  # real `vite build` fixtures; no backend involved. Exercises Chromium AND
+  # Firefox (the wrong-MIME failure this suite guards was a Firefox report).
   e2e-sw-upgrade:
     permissions:
       contents: read
@@ -411,8 +367,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          # COMPAT-01 (issue #472): floor comes from frontend/package.json's
-          # "engines.node" rather than a hardcoded number here.
+          # COMPAT-01 (#472): floor comes from package.json's engines.node.
           node-version-file: frontend/package.json
           cache: 'yarn'
           cache-dependency-path: frontend/yarn.lock
@@ -456,24 +411,15 @@ jobs:
           path: frontend/test-results-sw/
           retention-days: 7
 
-  # Issue #992 (split from #917 finding G6): the only WebKit coverage in this
-  # repo. Every other browser job here -- the `e2e` job's `chromium` project,
-  # `e2e-sw-upgrade`'s chromium+firefox, min-version-tests.yml's
-  # `browser-minimum` -- drives Chromium or Firefox, leaving the engine the
-  # documented Safari/iOS >=16.4 floor actually names (see
-  # docs/development/supported-runtime-matrix.md's "Browsers" row) completely
-  # untested. See frontend/e2e/webkitSmoke.spec.ts's header for exactly what
-  # this proves (the app loads and functions, service worker registers) and
-  # does not (the Push API itself -- verified absent from every CI-available
-  # WebKit build, real Safari's push support depends on Apple frameworks no
-  # open-source WebKit replicates).
+  # Issue #992 (split from #917 finding G6): the only WebKit coverage here
+  # -- every other browser job drives Chromium or Firefox, leaving the
+  # documented Safari/iOS >=16.4 floor untested. See webkitSmoke.spec.ts's
+  # header for what this proves (app loads, service worker registers) and
+  # does not (the Push API -- absent from every CI-available WebKit build).
   #
-  # Runs against the same docker-compose.test.yml stack as the `e2e` job
-  # (login + dashboard need the real backend) but only Playwright's `webkit`
-  # project and a single spec -- this is a smoke check on one engine, not the
-  # full suite, which has never been run against (and is not verified to
-  # pass on) anything but Chromium. Same path gating and nightly schedule as
-  # the other e2e jobs above.
+  # Same docker-compose.test.yml stack as `e2e`, but only `webkit` and a
+  # single spec -- a smoke check on one engine, not the full suite, which
+  # has never been verified on anything but Chromium.
   e2e-webkit-smoke:
     permissions:
       contents: read
@@ -505,7 +451,6 @@ jobs:
       - name: Start services
         run: |
           docker compose -f docker-compose.test.yml up -d
-          # Wait for the app to be ready (frontend + same-origin /api on 7300)
           echo "Waiting for services to be ready..."
           timeout 120 bash -c 'until curl -s http://localhost:7300/health/live > /dev/null 2>&1; do sleep 2; done'
           echo "App is ready"
@@ -513,8 +458,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          # COMPAT-01 (issue #472): floor comes from frontend/package.json's
-          # "engines.node" rather than a hardcoded number here.
+          # COMPAT-01 (#472): floor comes from package.json's engines.node.
           node-version-file: frontend/package.json
           cache: 'yarn'
           cache-dependency-path: frontend/yarn.lock

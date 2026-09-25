@@ -105,14 +105,14 @@ export default function ClothingSizesPanel({
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
-                      handleSaveEdit(size);
+                      void handleSaveEdit(size);
                     }
                   }}
                 />
                 <IconButton
                   size="small"
                   color="primary"
-                  onClick={() => handleSaveEdit(size)}
+                  onClick={() => void handleSaveEdit(size)}
                   aria-label={t('common.save')}
                 >
                   <CheckIcon fontSize="small" />
@@ -144,7 +144,7 @@ export default function ClothingSizesPanel({
                 <IconButton
                   size="small"
                   color="error"
-                  onClick={() => onDelete(size.id)}
+                  onClick={() => void onDelete(size.id)}
                   aria-label={t('common.delete')}
                 >
                   <DeleteIcon fontSize="small" />
@@ -173,7 +173,7 @@ export default function ClothingSizesPanel({
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
-                handleAdd();
+                void handleAdd();
               }
             }}
             placeholder={t('gifts.clothingSizePlaceholder')}
@@ -183,7 +183,7 @@ export default function ClothingSizesPanel({
                 endAdornment: (
                   <IconButton
                     size="small"
-                    onClick={handleAdd}
+                    onClick={() => void handleAdd()}
                     disabled={busy || !newValue.trim()}
                     aria-label={t('gifts.add')}
                   >

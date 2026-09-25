@@ -258,7 +258,11 @@ type auditState struct {
 	before string
 }
 
-const auditStateKey = "mycorrhizal:audit:state"
+// auditContextKey is an unexported key type so no other package's
+// context.WithValue can collide with the audit state (staticcheck SA1029).
+type auditContextKey string
+
+const auditStateKey auditContextKey = "mycorrhizal:audit:state"
 
 // auditBeforeSave is the shared BeforeSave hook helper: it marks whether this
 // save is a create or an update and, for updates, captures the pre-update

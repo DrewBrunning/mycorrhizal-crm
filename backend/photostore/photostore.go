@@ -113,10 +113,10 @@ func SaveContactPhoto(photoData []byte, mediaType string, photoDir string) (stri
 		if img == nil {
 			img, err = jpeg.Decode(reader)
 			if err != nil {
-				reader.Seek(0, 0)
+				_, _ = reader.Seek(0, io.SeekStart) // bytes.Reader: rewinding to 0 cannot fail
 				img, err = png.Decode(reader)
 				if err != nil {
-					reader.Seek(0, 0)
+					_, _ = reader.Seek(0, io.SeekStart) // bytes.Reader: rewinding to 0 cannot fail
 					img, err = heic.Decode(reader)
 				}
 			}
@@ -150,10 +150,14 @@ func SaveContactPhoto(photoData []byte, mediaType string, photoDir string) (stri
 	if err != nil {
 		return "", "", err
 	}
-	defer outFile.Close()
-
-	if err := jpeg.Encode(outFile, photoImg, &jpeg.Options{Quality: 85}); err != nil {
+	if err := jpeg.Encode(outFile, photoImg, &jpeg.Options{Quality: 85}); err != nil { // # pragma: no cover — jpeg.Encode only fails on a zero-sized image, which a real decoded photo (cropToSquare's input) cannot produce, or a write failure indistinguishable from the Close-failure case below without a fault-injectable io.Writer seam
+		_ = outFile.Close() // the encode error is the one worth reporting
 		return "", "", err
+	}
+	// A written file's Close can report the write-back failure (ENOSPC, a
+	// network filesystem) that leaves the photo truncated on disk.
+	if err := outFile.Close(); err != nil {
+		return "", "", err // # pragma: no cover — needs a filesystem that fails on close
 	}
 
 	// Create thumbnail and encode as base64 data URL (48x48)

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -196,5 +197,98 @@ func TestNewContactRecordResponse_UnbackedMediaPhotoKept(t *testing.T) {
 	}
 	if resp.Card.Media[1].Kind != "logo" || resp.Card.Media[1].URI != "data:image/png;base64,TE9HTw==" {
 		t.Errorf("non-photo media entry was damaged: %+v", resp.Card.Media[1])
+	}
+}
+
+// TestNewContactRecordResponse_EmptyRelationsSerializeAsEmptyArrays is the
+// CLAUDE.md frontend trap #8 regression test: a contact with zero notes,
+// activities, and reminders (GORM's Preload leaves those has-many slices
+// nil) must still serialize `"notes":[]`, not `null` and not an absent key
+// — a required TS array field crashes on `.length` for exactly the missing
+// case. Asserted on the raw JSON, not by decoding back into the Go struct:
+// decoding makes "absent"/`null`/`[]` indistinguishable, which is exactly
+// why a struct-level assertion would pass even with the bug (CLAUDE.md's
+// own note on why this must be a raw-JSON test).
+func TestNewContactRecordResponse_EmptyRelationsSerializeAsEmptyArrays(t *testing.T) {
+	t.Parallel()
+	c := &Contact{Firstname: "Ada"} // Notes/Activities/Reminders left nil, as an un-Preloaded Contact has them
+
+	resp := NewContactRecordResponse(c, "", nil)
+
+	raw, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	var decoded map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	for _, field := range []string{"notes", "activities", "reminders"} {
+		raw, present := decoded[field]
+		if !present {
+			t.Errorf("%q key is absent from the response JSON, want present as []", field)
+			continue
+		}
+		if string(raw) != "[]" {
+			t.Errorf("%q = %s, want []", field, raw)
+		}
+	}
+}
+
+// TestNewContactRecordResponse_NonEmptyRelationsPassThrough is
+// nonNilSlice's positive control: a Contact whose Notes/Activities/
+// Reminders are already populated (the common Preloaded case) must have
+// those exact slices carried through, not just the nil/empty edge case
+// above.
+func TestNewContactRecordResponse_NonEmptyRelationsPassThrough(t *testing.T) {
+	t.Parallel()
+	c := &Contact{
+		Firstname:  "Ada",
+		Notes:      []Note{{Content: "hello"}},
+		Activities: []Activity{{Title: "Coffee"}},
+		Reminders:  []Reminder{{Message: "Call back"}},
+	}
+
+	resp := NewContactRecordResponse(c, "", nil)
+
+	if len(resp.Notes) != 1 || resp.Notes[0].Content != "hello" {
+		t.Errorf("Notes = %+v, want the one populated note passed through", resp.Notes)
+	}
+	if len(resp.Activities) != 1 || resp.Activities[0].Title != "Coffee" {
+		t.Errorf("Activities = %+v, want the one populated activity passed through", resp.Activities)
+	}
+	if len(resp.Reminders) != 1 || resp.Reminders[0].Message != "Call back" {
+		t.Errorf("Reminders = %+v, want the one populated reminder passed through", resp.Reminders)
+	}
+}
+
+// TestNewContactSummaryWithRelations_EmptyRelationsSerializeAsEmptyArrays
+// is the same CLAUDE.md frontend trap #8 regression for the list-with-
+// includes= shape.
+func TestNewContactSummaryWithRelations_EmptyRelationsSerializeAsEmptyArrays(t *testing.T) {
+	t.Parallel()
+	c := &Contact{Firstname: "Ada"}
+
+	resp := NewContactSummaryWithRelations(c)
+
+	raw, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	var decoded map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	for _, field := range []string{"notes", "activities", "reminders"} {
+		raw, present := decoded[field]
+		if !present {
+			t.Errorf("%q key is absent from the response JSON, want present as []", field)
+			continue
+		}
+		if string(raw) != "[]" {
+			t.Errorf("%q = %s, want []", field, raw)
+		}
 	}
 }

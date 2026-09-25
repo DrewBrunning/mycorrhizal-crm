@@ -57,7 +57,7 @@ export default function PrepViewPage() {
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
         const data = await getContactBriefing(id);
         if (!cancelled) setBriefing(data);
@@ -101,7 +101,7 @@ export default function PrepViewPage() {
     <Box sx={{ maxWidth: 900, mx: 'auto', mt: 1, px: 2, pb: 2 }}>
       <Button
         startIcon={<ArrowBackIcon />}
-        onClick={() => navigate(`/contacts/${briefing.contact_id}`)}
+        onClick={() => void navigate(`/contacts/${briefing.contact_id}`)}
         size="small"
         sx={{ mb: 1.5 }}
       >

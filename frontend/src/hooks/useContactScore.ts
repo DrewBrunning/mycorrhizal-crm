@@ -24,7 +24,7 @@ export function useContactScore(contactId: number | undefined) {
   }, [contactId]);
 
   useEffect(() => {
-    refreshScore();
+    void refreshScore();
   }, [refreshScore]);
 
   return { score, loading, error, refreshScore };

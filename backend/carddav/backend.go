@@ -3,6 +3,7 @@ package carddav
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/logger"
@@ -267,7 +268,7 @@ func (b *Backend) GetAddressObject(ctx context.Context, urlPath string, req *car
 
 	// Try to find by vcard_uid first, then by ID
 	err = db.Where("user_id = ? AND vcard_uid = ?", userID, uid).First(&contact).Error
-	if err == gorm.ErrRecordNotFound {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		// Try parsing as numeric ID for backwards compatibility
 		var id uint
 		if _, scanErr := fmt.Sscanf(uid, "%d", &id); scanErr == nil {
@@ -352,7 +353,7 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 	// Try to find existing contact
 	if uid != "" {
 		err = db.Where("user_id = ? AND vcard_uid = ?", userID, uid).First(&contact).Error
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			isNew = true
 		} else if err != nil {
 			return nil, err
@@ -436,7 +437,7 @@ func (b *Backend) DeleteAddressObject(ctx context.Context, urlPath string) error
 	// Find contact by vcard_uid or ID
 	var contact models.Contact
 	err = db.Where("user_id = ? AND vcard_uid = ?", userID, uid).First(&contact).Error
-	if err == gorm.ErrRecordNotFound {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		var id uint
 		if _, scanErr := fmt.Sscanf(uid, "%d", &id); scanErr == nil {
 			err = db.Where("user_id = ? AND id = ?", userID, id).First(&contact).Error

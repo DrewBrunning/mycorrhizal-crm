@@ -3,6 +3,8 @@ package differential
 import (
 	"testing"
 
+	"mycorrhizal/internal/citest"
+
 	"mycorrhizal/jscontact"
 	"mycorrhizal/vcard4"
 
@@ -38,7 +40,7 @@ import (
 func TestJSContactCalcardDifferential(t *testing.T) {
 	ref, reason := NewCalcardRef()
 	if len(ref.argv) == 0 {
-		t.Skip(reason)
+		citest.SkipOrRequire(t, reason)
 	}
 	registerJSContactPins()
 

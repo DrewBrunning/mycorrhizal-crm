@@ -154,7 +154,7 @@ export default function SessionExpiredGate() {
             </Typography>
 
             {step === 'twoFactor' ? (
-              <form onSubmit={handleCodeSubmit}>
+              <form onSubmit={(p0) => void handleCodeSubmit(p0)}>
                 <Stack spacing={2}>
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     {t('login.twoFactorDescription')}
@@ -184,7 +184,7 @@ export default function SessionExpiredGate() {
                 </Stack>
               </form>
             ) : (
-              <form onSubmit={handleCredentialsSubmit}>
+              <form onSubmit={(p0) => void handleCredentialsSubmit(p0)}>
                 <Stack spacing={2}>
                   <TextField
                     label={t('login.identifier')}

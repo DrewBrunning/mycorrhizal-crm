@@ -345,7 +345,7 @@ func copyFile(src, dst string) error {
 	if err != nil {         // # pragma: no cover — src was just written by Populate
 		return err
 	}
-	defer in.Close()
+	defer in.Close()           //nolint:errcheck // read-only copy source; the destination Close is checked
 	out, err := os.Create(dst) // #nosec G304 -- dst is a caller t.TempDir()/os.MkdirTemp path
 	if err != nil {            // # pragma: no cover — dst dir exists and is writable
 		return err

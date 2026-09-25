@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"mycorrhizal/internal/dbtest"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,7 +12,6 @@ import (
 	"mycorrhizal/models"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
@@ -128,9 +128,7 @@ func TestEnrichFromUserInfoRequiresToken(t *testing.T) {
 // setupUserDB gives an in-memory database with just the users table.
 func setupUserDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.User{}))
+	db := dbtest.New(t)
 	return db
 }
 
@@ -169,6 +167,64 @@ func TestFindOrProvisionUserCreatesWithEmail(t *testing.T) {
 	require.NotNil(t, user)
 	assert.Equal(t, "ada@example.com", user.Email)
 	assert.Equal(t, "ada", user.Username)
+}
+
+// failUsersQueryAfterNCalls fails every Query-kind GORM call against the
+// "users" table starting with the (skipCalls+1)-th one, letting earlier
+// calls succeed -- the same fault-injection pattern controllers'
+// failDBTableAfterNCalls uses, needed here because a single
+// FindOrProvisionUser call issues more than one Query against "users" and a
+// test wants to isolate the fault to a specific later one.
+func failUsersQueryAfterNCalls(t *testing.T, db *gorm.DB, skipCalls int) {
+	t.Helper()
+	calls := 0
+	require.NoError(t, db.Callback().Query().Before("gorm:query").Register("fail_users_query_after_n", func(tx *gorm.DB) {
+		if tx.Statement.Table != "users" {
+			return
+		}
+		calls++
+		if calls > skipCalls {
+			tx.AddError(assert.AnError)
+		}
+	}))
+}
+
+// TestFindOrProvisionUserUsernameCountFailureAborts pins the fix for a real
+// bug mirroring RegisterUser's (controllers/user_controller.go): a
+// transient failure counting existing users with a candidate username used
+// to leave count at its zero value, which the loop then read as "username
+// is free" and provisioned a new account under a username that was never
+// actually verified available. The count failure must instead abort
+// provisioning with an error and create no user.
+func TestFindOrProvisionUserUsernameCountFailureAborts(t *testing.T) {
+	db := setupUserDB(t)
+	cfg := &config.Config{OIDC: config.OIDCConfig{AllowAutoProvision: true}}
+
+	// Skip the one preceding Query call (the oidc_subject+provider lookup);
+	// EmailVerified/TrustEmail are both false so the email-lookup branch is
+	// skipped entirely, making the username-availability Count the second
+	// Query-kind call against "users" and the first one this fails.
+	failUsersQueryAfterNCalls(t, db, 1)
+
+	claims := &OIDCClaims{
+		Subject:  "user-123",
+		Provider: "https://idp.example.com",
+		Email:    "ada@example.com",
+	}
+	user, err := FindOrProvisionUser(db, claims, cfg)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "checking OIDC username availability")
+	assert.Nil(t, user)
+
+	// The fault callback stays registered on db for its lifetime, so bypass
+	// it with a raw query on the underlying *sql.DB to confirm no row was
+	// written despite the count read having failed.
+	sqlDB, sqlErr := db.DB()
+	require.NoError(t, sqlErr)
+	var count int64
+	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM users").Scan(&count))
+	assert.Zero(t, count, "a failed username-availability count must not create a user row")
 }
 
 // Two different subjects that both lack an email must both be refused, rather

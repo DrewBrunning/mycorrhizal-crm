@@ -32,12 +32,28 @@
 // drift test backend/contract_fixtures_test.go fails until they are
 // regenerated.
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import activitiesListRaw from '../../../testdata/contract-fixtures/activities-list.json';
+import circlesListRaw from '../../../testdata/contract-fixtures/circles-list.json';
 import contactDetailRaw from '../../../testdata/contract-fixtures/contact-detail.json';
+import contactNotesRaw from '../../../testdata/contract-fixtures/contact-notes.json';
+import contactRemindersRaw from '../../../testdata/contract-fixtures/contact-reminders.json';
 import contactsListRaw from '../../../testdata/contract-fixtures/contacts-list.json';
 import dashboardRaw from '../../../testdata/contract-fixtures/dashboard.json';
+import lifeEventsListRaw from '../../../testdata/contract-fixtures/life-events-list.json';
+import occasionEventsListRaw from '../../../testdata/contract-fixtures/occasion-events-list.json';
+import relationshipEdgesListRaw from '../../../testdata/contract-fixtures/relationship-edges-list.json';
+import tagsListRaw from '../../../testdata/contract-fixtures/tags-list.json';
+import { getActivities } from './activities';
+import { listCircles } from './circles';
 import { getContactDetail } from './contactDetail';
 import { getContacts } from './contacts';
 import { getDashboard } from './dashboard';
+import { getLifeEvents } from './lifeEvents';
+import { getContactNotes } from './notes';
+import { getOccasionEvents } from './occasionEvents';
+import { getRelationshipEdges } from './relationshipEdges';
+import { getRemindersForContact } from './reminders';
+import { listTags } from './tags';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -117,6 +133,7 @@ describe('contract fixtures: GET /dashboard', () => {
     'overdue',
     'favorites',
     'reach_out_suggestions',
+    'contact_sync_conflicts',
   ] as const;
 
   test('the raw capture has every block as an array, never absent', () => {
@@ -134,6 +151,108 @@ describe('contract fixtures: GET /dashboard', () => {
       expect(Array.isArray(result[key]), `${key} should be an array after parsing`).toBe(true);
       expect(result[key]).toEqual(dashboardRaw[key]);
     }
+  });
+});
+
+// List endpoints: each fixture is the spec's `example:` for that endpoint's
+// 200 response. Two checks per fixture, mirroring the ones above: the raw
+// collection key is an array on the wire, and the real API function parses
+// it through unchanged (row count and row contents preserved).
+describe('contract fixtures: list endpoints', () => {
+  const cases: Array<{
+    name: string;
+    raw: Record<string, unknown>;
+    key: string;
+    parse: () => Promise<unknown>;
+    // Where the parsed rows live: the function returns the envelope, or the
+    // bare array (getRemindersForContact unwraps `reminders`).
+    unwrap: (parsed: unknown) => unknown;
+  }> = [
+    {
+      name: 'GET /contacts/:id/notes',
+      raw: contactNotesRaw,
+      key: 'notes',
+      parse: () => getContactNotes(11),
+      unwrap: (p) => (p as { notes: unknown }).notes,
+    },
+    {
+      name: 'GET /activities',
+      raw: activitiesListRaw,
+      key: 'activities',
+      parse: () => getActivities({}),
+      unwrap: (p) => (p as { activities: unknown }).activities,
+    },
+    {
+      name: 'GET /contacts/:id/reminders',
+      raw: contactRemindersRaw,
+      key: 'reminders',
+      parse: () => getRemindersForContact(11),
+      unwrap: (p) => p,
+    },
+    {
+      name: 'GET /relationship-edges',
+      raw: relationshipEdgesListRaw,
+      key: 'relationship_edges',
+      parse: () => getRelationshipEdges({ contactId: '458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f' }),
+      unwrap: (p) => (p as { relationship_edges: unknown }).relationship_edges,
+    },
+    {
+      name: 'GET /life-events',
+      raw: lifeEventsListRaw,
+      key: 'life_events',
+      parse: () => getLifeEvents(),
+      unwrap: (p) => (p as { life_events: unknown }).life_events,
+    },
+    {
+      name: 'GET /circles',
+      raw: circlesListRaw,
+      key: 'circles',
+      parse: () => listCircles(),
+      unwrap: (p) => (p as { circles: unknown }).circles,
+    },
+    {
+      name: 'GET /tags',
+      raw: tagsListRaw,
+      key: 'tags',
+      parse: () => listTags(),
+      unwrap: (p) => (p as { tags: unknown }).tags,
+    },
+    {
+      name: 'GET /occasion-events',
+      raw: occasionEventsListRaw,
+      key: 'occasion_events',
+      parse: () => getOccasionEvents(),
+      unwrap: (p) => (p as { occasion_events: unknown }).occasion_events,
+    },
+  ];
+
+  for (const c of cases) {
+    test(`${c.name}: raw ${c.key} is a non-empty array and parses through`, async () => {
+      const rows = c.raw[c.key];
+      expect(Array.isArray(rows), `${c.key} should be an array`).toBe(true);
+      expect((rows as unknown[]).length).toBeGreaterThan(0);
+
+      stubFetchOnce(c.raw);
+      const parsed = c.unwrap(await c.parse());
+
+      expect(Array.isArray(parsed)).toBe(true);
+      expect(parsed).toEqual(rows);
+    });
+  }
+
+  // Trap-8 pins the conformance check found: nullable-on-the-wire fields the
+  // TS types used to declare non-null.
+  test('an unfiled note carries contact_id: null, not absent', () => {
+    const unfiled = contactNotesRaw.notes.find(
+      (n: { contact_id?: number | null }) => n.contact_id === null,
+    );
+    expect(unfiled).toBeDefined();
+    expect('contact_id' in (unfiled as object)).toBe(true);
+  });
+
+  test('a reminder can carry by_mail: null (nullable column)', () => {
+    expect(contactRemindersRaw.reminders[0].by_mail).toBeNull();
+    expect(contactRemindersRaw.reminders[0].last_sent).toBeNull();
   });
 });
 

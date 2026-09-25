@@ -27,7 +27,7 @@ import (
 
 // selfContactTestRouter wires a gin engine with the same context middleware
 // the AuthMiddleware sets (db, userID, cfg) so the real handlers run as if
-// authenticated. All other controller tests share setupRouter(); this file
+// authenticated. All other controller tests share setupRouter(t); this file
 // needs the real migrated schema, so it builds its own.
 func selfContactTestRouter(t *testing.T, db *gorm.DB, userID uint) *gin.Engine {
 	t.Helper()

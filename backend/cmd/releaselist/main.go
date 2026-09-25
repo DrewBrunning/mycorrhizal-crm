@@ -26,8 +26,12 @@ import (
 	"mycorrhizal/internal/schemafixture"
 )
 
+// osExit is os.Exit through a seam so tests can drive main() itself without
+// killing the test process.
+var osExit = os.Exit
+
 func main() {
-	os.Exit(run(os.Stdout)) // # pragma: no cover — os.Exit terminates the process; tests exercise run() directly
+	osExit(run(os.Stdout))
 }
 
 // matrixEntry is one GitHub Actions `strategy.matrix.include` element: the
@@ -55,8 +59,6 @@ func run(w io.Writer) int {
 		return 2
 	}
 	if _, err := fmt.Fprintln(w, string(out)); err != nil {
-		// # pragma: no cover — os.Stdout does not fail this write in practice;
-		// the io.Writer seam exists for the tests, which pass a bytes.Buffer.
 		fmt.Fprintln(os.Stderr, "releaselist:", err)
 		return 2
 	}

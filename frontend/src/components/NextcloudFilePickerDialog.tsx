@@ -97,7 +97,7 @@ export default function NextcloudFilePickerDialog({
             component="button"
             underline="hover"
             color="inherit"
-            onClick={() => enterDir('/')}
+            onClick={() => void enterDir('/')}
           >
             /
           </MuiLink>
@@ -119,7 +119,7 @@ export default function NextcloudFilePickerDialog({
                 component="button"
                 underline="hover"
                 color="inherit"
-                onClick={() => enterDir(target)}
+                onClick={() => void enterDir(target)}
               >
                 {segment}
               </MuiLink>
@@ -135,7 +135,9 @@ export default function NextcloudFilePickerDialog({
               {items.map((item) => (
                 <ListItemButton
                   key={item.path}
-                  onClick={() => (item.type === 'dir' ? enterDir(item.path) : handlePick(item))}
+                  onClick={() =>
+                    void (item.type === 'dir' ? enterDir(item.path) : handlePick(item))
+                  }
                   disabled={selecting}
                 >
                   <ListItemIcon>
@@ -169,7 +171,7 @@ export default function NextcloudFilePickerDialog({
       </DialogContent>
       <DialogActions>
         {path !== '/' && (
-          <Button onClick={() => enterDir(parentDir(path))} disabled={loading}>
+          <Button onClick={() => void enterDir(parentDir(path))} disabled={loading}>
             {t('common.back')}
           </Button>
         )}

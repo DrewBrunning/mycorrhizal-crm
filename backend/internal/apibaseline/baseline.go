@@ -335,9 +335,7 @@ func schemaProperties(s *openapi3.Schema) []PropertySurface {
 
 func sortedPathKeys(paths *openapi3.Paths) []string {
 	keys := make([]string, 0, paths.Len())
-	for _, k := range paths.Keys() {
-		keys = append(keys, k)
-	}
+	keys = append(keys, paths.Keys()...)
 	sort.Strings(keys)
 	return keys
 }

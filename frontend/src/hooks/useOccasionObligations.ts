@@ -32,7 +32,7 @@ export function useOccasionObligations(entityId: string | undefined, notifier?: 
   }, [entityId]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const handleSave = useCallback(

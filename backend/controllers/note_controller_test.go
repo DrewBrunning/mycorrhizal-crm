@@ -17,7 +17,7 @@ import (
 )
 
 func TestGetContactNotes(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -65,7 +65,7 @@ func TestGetContactNotes(t *testing.T) {
 }
 
 func TestGetContactNotesSearchAndDateFilter(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -112,7 +112,7 @@ func TestGetContactNotesSearchAndDateFilter(t *testing.T) {
 }
 
 func TestGetContactNotesPagination(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -169,7 +169,7 @@ func TestGetContactNotesPagination(t *testing.T) {
 }
 
 func TestGetContactNotesNotFound(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -184,7 +184,7 @@ func TestGetContactNotesNotFound(t *testing.T) {
 }
 
 func TestGetContactNotesMalformedCursor(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -202,7 +202,7 @@ func TestGetContactNotesMalformedCursor(t *testing.T) {
 }
 
 func TestCreateContactNote(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -241,7 +241,7 @@ func TestCreateContactNote(t *testing.T) {
 }
 
 func TestGetNote(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -268,7 +268,7 @@ func TestGetNote(t *testing.T) {
 }
 
 func TestGetNotes(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -310,7 +310,7 @@ func TestGetNotes(t *testing.T) {
 }
 
 func TestGetNotesSearch(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -340,7 +340,7 @@ func TestGetNotesSearch(t *testing.T) {
 }
 
 func TestCreateNote(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -378,7 +378,7 @@ func TestCreateNote(t *testing.T) {
 }
 
 func TestCreateUnassignedNoteWithoutContactID(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.POST("/notes", middleware.ValidateJSONMiddleware(&models.NoteInput{}), CreateUnassignedNote)
 
@@ -409,7 +409,7 @@ func TestCreateUnassignedNoteWithoutContactID(t *testing.T) {
 }
 
 func TestUpdateNote(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -465,7 +465,7 @@ func TestUpdateNote(t *testing.T) {
 }
 
 func TestDeleteNote(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -493,7 +493,7 @@ func TestDeleteNote(t *testing.T) {
 
 // T2: UpdateNote clears contact_id (unassigned). GORM's Save must write nil.
 func TestUpdateNoteClearsContactID(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -535,7 +535,7 @@ func TestUpdateNoteClearsContactID(t *testing.T) {
 
 // T3: UpdateNote changes contact_id to a different contact.
 func TestUpdateNoteChangesContactID(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -576,7 +576,7 @@ func TestUpdateNoteChangesContactID(t *testing.T) {
 
 // T4: CreateUnassignedNote with a contact_id (note created already filed).
 func TestCreateUnassignedNoteWithContactID(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -612,7 +612,7 @@ func TestCreateUnassignedNoteWithContactID(t *testing.T) {
 
 // T5: UpdateNote rejects contact_id referencing another user's contact (IDOR).
 func TestUpdateNoteRejectsCrossUserContactID(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var owner models.User
 	var other models.User
@@ -654,7 +654,7 @@ func TestUpdateNoteRejectsCrossUserContactID(t *testing.T) {
 // about a contact's note history, which accumulates without bound. The unfiled
 // set is a queue the user drains, and counting it is the point of an inbox.
 func TestGetUnassignedNotes_TotalCountsWholeSetNotPage(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/notes", GetUnassignedNotes)
 
 	var user models.User
@@ -689,7 +689,7 @@ func TestGetUnassignedNotes_TotalCountsWholeSetNotPage(t *testing.T) {
 // A note that gains a contact leaves the inbox, and the total must follow it
 // down — otherwise the queue depth never decreases as the user files.
 func TestGetUnassignedNotes_TotalExcludesFiledNotes(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/notes", GetUnassignedNotes)
 
 	var user models.User
@@ -722,7 +722,7 @@ func TestGetUnassignedNotes_TotalExcludesFiledNotes(t *testing.T) {
 // The count is computed on the filtered query, so it stays consistent with the
 // list rendered next to it rather than contradicting a visible search filter.
 func TestGetUnassignedNotes_TotalRespectsSearchFilter(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/notes", GetUnassignedNotes)
 
 	var user models.User
@@ -746,7 +746,7 @@ func TestGetUnassignedNotes_TotalRespectsSearchFilter(t *testing.T) {
 
 // Another user's unfiled notes must never inflate this user's queue depth.
 func TestGetUnassignedNotes_TotalScopedToOwner(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/notes", GetUnassignedNotes)
 
 	var user models.User

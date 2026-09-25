@@ -87,7 +87,9 @@ export default function RelationshipSuggestionsInbox({
     setBusyId(id);
     try {
       await acceptRelationshipEdge(id);
-      await reload();
+      // reload() is synchronous — it only bumps reloadTick to retrigger the
+      // fetch effect above; it returns no promise to wait on.
+      reload();
     } catch (err) {
       handleFetchError(err, 'accepting suggested relationship');
     } finally {
@@ -99,7 +101,8 @@ export default function RelationshipSuggestionsInbox({
     setBusyId(id);
     try {
       await deleteRelationshipEdge(id);
-      await reload();
+      // See handleAccept above — reload() is synchronous.
+      reload();
     } catch (err) {
       handleFetchError(err, 'rejecting suggested relationship');
     } finally {
@@ -173,7 +176,7 @@ export default function RelationshipSuggestionsInbox({
                     size="small"
                     color="success"
                     disabled={busy}
-                    onClick={() => handleAccept(edge.id)}
+                    onClick={() => void handleAccept(edge.id)}
                     aria-label={t('relationships.accept')}
                   >
                     <CheckIcon fontSize="small" />
@@ -182,7 +185,7 @@ export default function RelationshipSuggestionsInbox({
                     size="small"
                     color="error"
                     disabled={busy}
-                    onClick={() => handleReject(edge.id)}
+                    onClick={() => void handleReject(edge.id)}
                     aria-label={t('relationships.reject')}
                   >
                     <CloseIcon fontSize="small" />

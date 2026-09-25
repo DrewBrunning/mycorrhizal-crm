@@ -30,7 +30,7 @@ export function useSystemStatus() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   return { data, loading, error, refresh };

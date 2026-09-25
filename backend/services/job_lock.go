@@ -139,11 +139,11 @@ func acquireJobLock(db *gorm.DB, jobName string, minInterval time.Duration) (boo
 			var job models.JobExecution
 
 			lookupErr := tx.Where("job_name = ?", jobName).First(&job).Error
-			if lookupErr != nil && lookupErr != gorm.ErrRecordNotFound {
+			if lookupErr != nil && !errors.Is(lookupErr, gorm.ErrRecordNotFound) {
 				return lookupErr
 			}
 
-			if lookupErr == gorm.ErrRecordNotFound {
+			if errors.Is(lookupErr, gorm.ErrRecordNotFound) {
 				job = models.JobExecution{
 					JobName:     jobName,
 					LastRunAt:   now,

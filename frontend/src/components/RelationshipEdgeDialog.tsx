@@ -96,7 +96,7 @@ export default function RelationshipEdgeDialog({
 
   useEffect(() => {
     if (open && entryMode === 'linked' && !isEditing) {
-      loadContacts();
+      void loadContacts();
     }
   }, [open, entryMode, isEditing, loadContacts]);
 
@@ -120,7 +120,7 @@ export default function RelationshipEdgeDialog({
   useEffect(() => {
     if (isEditing || entryMode !== 'linked') return;
     const timeoutId = setTimeout(() => {
-      loadContacts(searchInput);
+      void loadContacts(searchInput);
     }, 300);
     return () => clearTimeout(timeoutId);
   }, [searchInput, entryMode, isEditing, loadContacts]);
@@ -146,7 +146,7 @@ export default function RelationshipEdgeDialog({
   const handleModeChange = (mode: EntryMode) => {
     setEntryMode(mode);
     if (mode === 'linked') {
-      loadContacts('');
+      void loadContacts('');
     }
   };
 
@@ -403,7 +403,7 @@ export default function RelationshipEdgeDialog({
         <Button onClick={handleClose} disabled={saving}>
           {t('common.cancel')}
         </Button>
-        <Button onClick={handleSave} variant="contained" disabled={saving}>
+        <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {saving ? t('common.saving') : t('common.save')}
         </Button>
       </DialogActions>

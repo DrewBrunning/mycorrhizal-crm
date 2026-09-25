@@ -258,7 +258,7 @@ describe('AddActivityDialog in-app route navigation guard (issue #805)', () => {
     // Simulate the browser Back button / a programmatic in-app navigation
     // while the dirty dialog is open.
     await act(async () => {
-      router.navigate('/notes');
+      void router.navigate('/notes');
     });
 
     expect(router.state.location.pathname).toBe('/activities');
@@ -271,7 +271,7 @@ describe('AddActivityDialog in-app route navigation guard (issue #805)', () => {
     await typeDirtyActivity();
 
     await act(async () => {
-      router.navigate('/notes');
+      void router.navigate('/notes');
     });
     expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
 
@@ -289,7 +289,7 @@ describe('AddActivityDialog in-app route navigation guard (issue #805)', () => {
     await typeDirtyActivity();
 
     await act(async () => {
-      router.navigate('/notes');
+      void router.navigate('/notes');
     });
     expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
 
@@ -307,7 +307,7 @@ describe('AddActivityDialog in-app route navigation guard (issue #805)', () => {
     await waitFor(() => expect(screen.getByLabelText('Title *')).toBeInTheDocument());
 
     await act(async () => {
-      router.navigate('/notes');
+      void router.navigate('/notes');
     });
 
     expect(router.state.location.pathname).toBe('/notes');

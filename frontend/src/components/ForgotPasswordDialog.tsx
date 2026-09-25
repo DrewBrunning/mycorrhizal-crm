@@ -132,7 +132,7 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
 
     if (step === 'confirm') {
       return (
-        <form onSubmit={handleConfirm}>
+        <form onSubmit={(p0) => void handleConfirm(p0)}>
           <Stack spacing={2}>
             <Typography
               variant="body2"
@@ -192,7 +192,7 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
     }
 
     return (
-      <form onSubmit={handleRequest}>
+      <form onSubmit={(p0) => void handleRequest(p0)}>
         <Stack spacing={2}>
           <Typography
             variant="body2"

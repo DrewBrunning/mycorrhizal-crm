@@ -115,7 +115,7 @@ export function useActivities(
   }, [nextCursor, paramLimit, includeContacts, search, fromDate, toDate]);
 
   useEffect(() => {
-    fetchFirst();
+    void fetchFirst();
   }, [fetchFirst]);
 
   return {

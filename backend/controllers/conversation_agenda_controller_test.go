@@ -14,7 +14,7 @@ import (
 )
 
 func TestCreateConversationAgenda(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/conversation-agenda", withValidated(func() any { return &models.ConversationAgendaInput{} }), CreateConversationAgenda)
 
 	var user models.User
@@ -39,7 +39,7 @@ func TestCreateConversationAgenda(t *testing.T) {
 }
 
 func TestCreateConversationAgendaRejectsContactFromAnotherUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/conversation-agenda", withValidated(func() any { return &models.ConversationAgendaInput{} }), CreateConversationAgenda)
 
 	var user models.User
@@ -60,7 +60,7 @@ func TestCreateConversationAgendaRejectsContactFromAnotherUser(t *testing.T) {
 }
 
 func TestGetConversationAgenda(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/conversation-agenda/:id", GetConversationAgenda)
 
 	var user models.User
@@ -78,7 +78,7 @@ func TestGetConversationAgenda(t *testing.T) {
 }
 
 func TestGetConversationAgendaScopedToUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/conversation-agenda/:id", GetConversationAgenda)
 
 	var user models.User
@@ -98,7 +98,7 @@ func TestGetConversationAgendaScopedToUser(t *testing.T) {
 }
 
 func TestListConversationAgendaFiltersByEntityID(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/conversation-agenda", ListConversationAgenda)
 
 	var user models.User
@@ -122,7 +122,7 @@ func TestListConversationAgendaFiltersByEntityID(t *testing.T) {
 }
 
 func TestListConversationAgendaScopedToUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/conversation-agenda", ListConversationAgenda)
 
 	var user models.User
@@ -144,7 +144,7 @@ func TestListConversationAgendaScopedToUser(t *testing.T) {
 }
 
 func TestUpdateConversationAgendaPreservesDiscussedState(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/conversation-agenda/:id", withValidated(func() any { return &models.ConversationAgendaInput{} }), UpdateConversationAgenda)
 
 	var user models.User
@@ -175,7 +175,7 @@ func TestUpdateConversationAgendaPreservesDiscussedState(t *testing.T) {
 }
 
 func TestDeleteConversationAgendaSoftDeletes(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/conversation-agenda/:id", DeleteConversationAgenda)
 
 	var user models.User
@@ -201,7 +201,7 @@ func TestDeleteConversationAgendaSoftDeletes(t *testing.T) {
 }
 
 func TestDiscussConversationAgendaWithoutActivity(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PATCH("/conversation-agenda/:id/discuss", withValidated(func() any { return &models.ConversationAgendaDiscussInput{} }), DiscussConversationAgenda)
 
 	var user models.User
@@ -227,7 +227,7 @@ func TestDiscussConversationAgendaWithoutActivity(t *testing.T) {
 }
 
 func TestDiscussConversationAgendaWithActivity(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PATCH("/conversation-agenda/:id/discuss", withValidated(func() any { return &models.ConversationAgendaDiscussInput{} }), DiscussConversationAgenda)
 
 	var user models.User
@@ -256,7 +256,7 @@ func TestDiscussConversationAgendaWithActivity(t *testing.T) {
 }
 
 func TestDiscussConversationAgendaRejectsForeignActivity(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PATCH("/conversation-agenda/:id/discuss", withValidated(func() any { return &models.ConversationAgendaDiscussInput{} }), DiscussConversationAgenda)
 
 	var user models.User
@@ -286,7 +286,7 @@ func TestDiscussConversationAgendaRejectsForeignActivity(t *testing.T) {
 }
 
 func TestDiscussConversationAgendaScopedToUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PATCH("/conversation-agenda/:id/discuss", withValidated(func() any { return &models.ConversationAgendaDiscussInput{} }), DiscussConversationAgenda)
 
 	var user models.User

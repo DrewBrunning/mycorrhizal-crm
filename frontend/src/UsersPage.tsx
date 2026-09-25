@@ -101,7 +101,7 @@ export default function UsersPage() {
   // Check admin access
   useEffect(() => {
     if (!isAdmin()) {
-      navigate('/');
+      void navigate('/');
     }
   }, [navigate]);
 
@@ -126,7 +126,7 @@ export default function UsersPage() {
   }, [page, rowsPerPage, t]);
 
   useEffect(() => {
-    fetchUsers();
+    void fetchUsers();
   }, [fetchUsers]);
 
   const handleChangePage = (_: unknown, newPage: number) => {
@@ -337,7 +337,7 @@ export default function UsersPage() {
           <Button
             variant="outlined"
             startIcon={triggerLoading ? <CircularProgress size={16} /> : <SendIcon />}
-            onClick={handleTriggerReminders}
+            onClick={() => void handleTriggerReminders()}
             disabled={triggerLoading}
           >
             {t('users.triggerReminders')}
@@ -533,7 +533,7 @@ export default function UsersPage() {
 
       {/* Create User Dialog */}
       <AppDialog open={createDialogOpen} onClose={handleCreateClose} maxWidth="sm" fullWidth>
-        <form onSubmit={handleCreateSubmit}>
+        <form onSubmit={(p0) => void handleCreateSubmit(p0)}>
           <DialogTitle>{t('users.createDialog.title')}</DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
@@ -588,7 +588,7 @@ export default function UsersPage() {
 
       {/* Edit User Dialog */}
       <AppDialog open={editDialogOpen} onClose={handleEditClose} maxWidth="sm" fullWidth>
-        <form onSubmit={handleEditSubmit}>
+        <form onSubmit={(p0) => void handleEditSubmit(p0)}>
           <DialogTitle>{t('users.editDialog.title')}</DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
@@ -660,7 +660,7 @@ export default function UsersPage() {
             {t('common.cancel')}
           </Button>
           <Button
-            onClick={handleDeleteConfirm}
+            onClick={() => void handleDeleteConfirm()}
             color="error"
             variant="contained"
             disabled={deleteLoading}
@@ -693,7 +693,7 @@ export default function UsersPage() {
             {t('common.cancel')}
           </Button>
           <Button
-            onClick={handleResetTwoFactorConfirm}
+            onClick={() => void handleResetTwoFactorConfirm()}
             color="warning"
             variant="contained"
             disabled={resetTwoFactorLoading}

@@ -46,7 +46,7 @@ func postExchange(t *testing.T, router *gin.Engine, body any) *httptest.Response
 // mints a valid code for the seeded user (id 1) bound to the RFC vector
 // challenge, so a test only has to supply the right verifier.
 func TestOIDCNativeExchangeHandler_Success(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	cfg := exchangeTestConfig()
 	router.POST("/exchange",
 		middleware.ValidateJSONMiddleware(&models.OIDCNativeExchangeInput{}),
@@ -80,7 +80,7 @@ func TestOIDCNativeExchangeHandler_Success(t *testing.T) {
 }
 
 func TestOIDCNativeExchangeHandler_ValidationAndRejections(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	cfg := exchangeTestConfig()
 	router.POST("/exchange",
 		middleware.ValidateJSONMiddleware(&models.OIDCNativeExchangeInput{}),
@@ -132,7 +132,7 @@ func TestOIDCNativeExchangeHandler_ValidationAndRejections(t *testing.T) {
 // middleware in front of it (GetValidated finds nothing in context): it must
 // reject rather than nil-panic.
 func TestOIDCNativeExchangeHandler_MissingValidatedBodyIsRejected(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := exchangeTestConfig()
 	router.POST("/exchange", OIDCNativeExchangeHandler(cfg))
 
@@ -146,7 +146,7 @@ func TestOIDCNativeExchangeHandler_MissingValidatedBodyIsRejected(t *testing.T) 
 // `purpose` claim. This is the property that makes leaking the deep link
 // non-fatal.
 func TestOIDCNativeExchangeCode_RejectedAsBearer(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	cfg := exchangeTestConfig()
 
 	var user models.User

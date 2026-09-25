@@ -8,7 +8,8 @@ name: Mutation Testing (Stryker)
 # Tier 3 (nightly) + manual dispatch only — deliberately NOT on PR or push:
 # mutation testing is O(test suite × mutant count), too slow to gate every
 # diff. The scope (stryker.conf.json's `mutate`) is the core domain modules
-# only — the contact model, relationship graph, and life events — not the
+# only — the contact/relationship-edge/life-event API layer and their
+# matching useContacts/useRelationshipEdges/useLifeEvents hooks — not the
 # whole tree, and the vitest-runner's `related` mode narrows each mutant to
 # the tests that touch it.
 #

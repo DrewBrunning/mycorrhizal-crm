@@ -18,8 +18,7 @@ import (
 )
 
 func TestListApiTokens_Empty(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	_, router := setupRouter(t)
 
 	router.GET("/api-tokens", ListApiTokens)
 
@@ -37,8 +36,7 @@ func TestListApiTokens_Empty(t *testing.T) {
 }
 
 func TestListApiTokens_ReturnsScopedTokens(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -67,8 +65,7 @@ func TestListApiTokens_ReturnsScopedTokens(t *testing.T) {
 }
 
 func TestListApiTokens_OrderedByCreatedAtDesc(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -94,8 +91,7 @@ func TestListApiTokens_OrderedByCreatedAtDesc(t *testing.T) {
 }
 
 func TestListApiTokens_RevokedTokensAreIncluded(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -129,8 +125,7 @@ func TestListApiTokens_RevokedTokensAreIncluded(t *testing.T) {
 }
 
 func TestCreateApiToken_Success(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	db, router := setupRouter(t)
 
 	router.POST("/api-tokens", withValidated(func() any { return &models.ApiTokenInput{} }), CreateApiToken)
 
@@ -168,8 +163,7 @@ func TestCreateApiToken_Success(t *testing.T) {
 }
 
 func TestCreateApiToken_DefaultScopeIsFull(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	db, router := setupRouter(t)
 
 	router.POST("/api-tokens", withValidated(func() any { return &models.ApiTokenInput{} }), CreateApiToken)
 
@@ -193,8 +187,7 @@ func TestCreateApiToken_DefaultScopeIsFull(t *testing.T) {
 }
 
 func TestCreateApiToken_CardDAVScope(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	db, router := setupRouter(t)
 
 	router.POST("/api-tokens", withValidated(func() any { return &models.ApiTokenInput{} }), CreateApiToken)
 
@@ -218,8 +211,7 @@ func TestCreateApiToken_CardDAVScope(t *testing.T) {
 }
 
 func TestCreateApiToken_InvalidScopeRejected(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	_, router := setupRouter(t)
 
 	router.POST("/api-tokens", middleware.ValidateJSONMiddleware(&models.ApiTokenInput{}), CreateApiToken)
 
@@ -233,8 +225,7 @@ func TestCreateApiToken_InvalidScopeRejected(t *testing.T) {
 }
 
 func TestCreateApiToken_MissingName(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	_, router := setupRouter(t)
 
 	router.POST("/api-tokens", middleware.ValidateJSONMiddleware(&models.ApiTokenInput{}), CreateApiToken)
 
@@ -248,8 +239,7 @@ func TestCreateApiToken_MissingName(t *testing.T) {
 }
 
 func TestRevokeApiToken_Success(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -276,8 +266,7 @@ func TestRevokeApiToken_Success(t *testing.T) {
 }
 
 func TestRevokeApiToken_NotFound(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	_, router := setupRouter(t)
 
 	router.DELETE("/api-tokens/:id", RevokeApiToken)
 
@@ -289,8 +278,7 @@ func TestRevokeApiToken_NotFound(t *testing.T) {
 }
 
 func TestRevokeApiToken_WrongUser(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	db, router := setupRouter(t)
 
 	// setupRouter seeds a user and sets its ID in the context.
 	// Create a second user and put their token in the DB.
@@ -315,8 +303,7 @@ func TestRevokeApiToken_WrongUser(t *testing.T) {
 }
 
 func TestRevokeApiToken_InvalidID(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	_, router := setupRouter(t)
 
 	router.DELETE("/api-tokens/:id", RevokeApiToken)
 
@@ -330,8 +317,7 @@ func TestRevokeApiToken_InvalidID(t *testing.T) {
 // --- RevokeAllApiTokens (issue #413) ---
 
 func TestRevokeAllApiTokens_OnlyAffectsCallersOwnTokens(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -370,8 +356,7 @@ func TestRevokeAllApiTokens_OnlyAffectsCallersOwnTokens(t *testing.T) {
 }
 
 func TestRevokeAllApiTokens_AlreadyRevokedTokensUnaffectedAndUncounted(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -404,8 +389,7 @@ func TestRevokeAllApiTokens_AlreadyRevokedTokensUnaffectedAndUncounted(t *testin
 // --- RotateApiToken (issue #413) ---
 
 func TestRotateApiToken_Success(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -440,8 +424,7 @@ func TestRotateApiToken_Success(t *testing.T) {
 }
 
 func TestRotateApiToken_WrongUser(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	db, router := setupRouter(t)
 
 	other := models.User{Username: "attacker-rotate", Email: "attacker-rotate@example.com", Password: "x"}
 	db.Create(&other)
@@ -463,8 +446,7 @@ func TestRotateApiToken_WrongUser(t *testing.T) {
 }
 
 func TestRotateApiToken_AlreadyRevoked(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -483,8 +465,7 @@ func TestRotateApiToken_AlreadyRevoked(t *testing.T) {
 }
 
 func TestRotateApiToken_InvalidID(t *testing.T) {
-	db, router := setupRouter()
-	db.AutoMigrate(&models.ApiToken{})
+	_, router := setupRouter(t)
 
 	router.POST("/api-tokens/:id/rotate", RotateApiToken)
 

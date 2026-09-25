@@ -220,7 +220,7 @@ func sha256OfFile(path string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("open %q: %w", path, err)
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck // read-only handle: Close cannot lose data
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
 		return "", fmt.Errorf("hash %q: %w", path, err)

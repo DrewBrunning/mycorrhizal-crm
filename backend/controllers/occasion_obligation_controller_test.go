@@ -43,7 +43,7 @@ func doOccasionJSON(router *gin.Engine, method, path string, body any) *httptest
 }
 
 func TestCreateOccasionObligation(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	var user models.User
@@ -77,7 +77,7 @@ func TestCreateOccasionObligation(t *testing.T) {
 }
 
 func TestCreateOccasionObligationRejectsContactFromAnotherUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	var user models.User
@@ -100,7 +100,7 @@ func TestCreateOccasionObligationRejectsContactFromAnotherUser(t *testing.T) {
 }
 
 func TestCreateOccasionObligationRejectsPartialAnchor(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	var user models.User
@@ -131,7 +131,7 @@ func TestCreateOccasionObligationRejectsPartialAnchor(t *testing.T) {
 }
 
 func TestCreateOccasionObligationAllowsNilAnchor(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	var user models.User
@@ -148,7 +148,7 @@ func TestCreateOccasionObligationAllowsNilAnchor(t *testing.T) {
 }
 
 func TestCreateOccasionObligationRejectsLinkedLifeEventFromAnotherUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	var user models.User
@@ -174,7 +174,7 @@ func TestCreateOccasionObligationRejectsLinkedLifeEventFromAnotherUser(t *testin
 }
 
 func TestUpdateOccasionObligationNotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	w := doOccasionJSON(router, "PUT", "/occasion-obligations/no-such-id", models.OccasionObligationInput{
@@ -184,7 +184,7 @@ func TestUpdateOccasionObligationNotFound(t *testing.T) {
 }
 
 func TestUpdateOccasionObligationRejectsContactFromAnotherUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	var user models.User
@@ -208,7 +208,7 @@ func TestUpdateOccasionObligationRejectsContactFromAnotherUser(t *testing.T) {
 }
 
 func TestDeleteOccasionObligationNotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	w := doOccasionJSON(router, "DELETE", "/occasion-obligations/no-such-id", nil)
@@ -216,7 +216,7 @@ func TestDeleteOccasionObligationNotFound(t *testing.T) {
 }
 
 func TestListOccasionObligationsFiltersByEntity(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	var user models.User
@@ -241,7 +241,7 @@ func TestListOccasionObligationsFiltersByEntity(t *testing.T) {
 }
 
 func TestListOccasionObligationsBrowseModePaginatesWithNextCursor(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	var user models.User
@@ -268,7 +268,7 @@ func TestListOccasionObligationsBrowseModePaginatesWithNextCursor(t *testing.T) 
 }
 
 func TestUpdateOccasionObligationDeactivate(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	var user models.User
@@ -293,7 +293,7 @@ func TestUpdateOccasionObligationDeactivate(t *testing.T) {
 }
 
 func TestDeleteOccasionObligationSoftDeletesAndAllowsRecreate(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	var user models.User
@@ -325,7 +325,7 @@ func TestDeleteOccasionObligationSoftDeletesAndAllowsRecreate(t *testing.T) {
 }
 
 func TestGetOccasionObligationRejectsOtherUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	var user models.User
@@ -342,7 +342,7 @@ func TestGetOccasionObligationRejectsOtherUser(t *testing.T) {
 }
 
 func TestCreateOccasionObligationMaterializesReminder(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	var user models.User
@@ -376,7 +376,7 @@ func TestCreateOccasionObligationMaterializesReminder(t *testing.T) {
 }
 
 func TestCreateOccasionObligationNoAnchorNoReminder(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	var user models.User
@@ -396,7 +396,7 @@ func TestCreateOccasionObligationNoAnchorNoReminder(t *testing.T) {
 }
 
 func TestUpdateOccasionObligationDeactivateRemovesReminder(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	var user models.User
@@ -437,7 +437,7 @@ func TestUpdateOccasionObligationDeactivateRemovesReminder(t *testing.T) {
 }
 
 func TestUpdateOccasionObligationEditAnchorRegeneratesReminderWithoutDuplicate(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	var user models.User
@@ -476,7 +476,7 @@ func TestUpdateOccasionObligationEditAnchorRegeneratesReminderWithoutDuplicate(t
 }
 
 func TestDeleteOccasionObligationRemovesReminder(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
 	var user models.User

@@ -82,7 +82,7 @@ func TestParseCSV_ReaderErrorMidStream(t *testing.T) {
 // --- GenerateCSVPreview ---------------------------------------------------
 
 func TestGenerateCSVPreview(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	userID := uint(1)
 
 	existing := models.Contact{
@@ -265,7 +265,7 @@ func TestNormalizeGender_UnrecognizedPassedThrough(t *testing.T) {
 // --- CreateMergeNote -------------------------------------------------------
 
 func TestCreateMergeNote_CSVChangesRecorded(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	userID := uint(1)
 
 	contact := models.Contact{UserID: userID, Firstname: "John", Lastname: "Doe"}
@@ -293,7 +293,7 @@ func TestCreateMergeNote_CSVChangesRecorded(t *testing.T) {
 }
 
 func TestCreateMergeNote_VCFLabelAndCirclesDiff(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	userID := uint(1)
 
 	contact := models.Contact{UserID: userID, Firstname: "Ada", Circles: []string{"Old"}}
@@ -314,7 +314,7 @@ func TestCreateMergeNote_VCFLabelAndCirclesDiff(t *testing.T) {
 // TestCreateMergeNote_NoChangesCreatesNoNote asserts CreateMergeNote is a
 // no-op (no Note row, no error) when nothing actually changed.
 func TestCreateMergeNote_NoChangesCreatesNoNote(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	userID := uint(1)
 
 	contact := models.Contact{UserID: userID, Firstname: "John"}
@@ -336,7 +336,7 @@ func TestCreateMergeNote_NoChangesCreatesNoNote(t *testing.T) {
 // added), an incoming entry with a blank value must not be reported (it
 // isn't content), and a genuinely new entry must show up as "added ...".
 func TestCreateMergeNote_MultiValuedFieldsReportOnlyGenuinelyNewEntries(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	userID := uint(1)
 
 	contact := models.Contact{
@@ -368,7 +368,7 @@ func TestCreateMergeNote_MultiValuedFieldsReportOnlyGenuinelyNewEntries(t *testi
 // --- structured preview diagnostics (DATA-02, issue #442) ---------------
 
 func TestBuildImportRowPreview_PreservesStructuredDiagnostics(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 

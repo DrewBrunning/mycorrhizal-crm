@@ -25,7 +25,7 @@ func doCardListGET(router *gin.Engine, path string) *httptest.ResponseRecorder {
 }
 
 func TestGetOccasionCardListCSVIncludesAddressedContact(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionCardListRoute(router)
 
 	var user models.User
@@ -52,7 +52,7 @@ func TestGetOccasionCardListCSVIncludesAddressedContact(t *testing.T) {
 }
 
 func TestGetOccasionCardListCSVSkipsContactWithNoAddress(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionCardListRoute(router)
 
 	var user models.User
@@ -75,7 +75,7 @@ func TestGetOccasionCardListCSVSkipsContactWithNoAddress(t *testing.T) {
 }
 
 func TestGetOccasionCardListCSVSkipsObligationWithNoMatchingContact(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionCardListRoute(router)
 
 	var user models.User
@@ -98,7 +98,7 @@ func TestGetOccasionCardListCSVSkipsObligationWithNoMatchingContact(t *testing.T
 }
 
 func TestGetOccasionCardListCSVPrefersNickname(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionCardListRoute(router)
 
 	var user models.User
@@ -123,7 +123,7 @@ func TestGetOccasionCardListCSVPrefersNickname(t *testing.T) {
 }
 
 func TestGetOccasionCardListCSVFiltersByKind(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionCardListRoute(router)
 
 	var user models.User
@@ -153,7 +153,7 @@ func TestGetOccasionCardListCSVFiltersByKind(t *testing.T) {
 // included, issue #861's full-fidelity exception) — the regression guard for
 // accidentally merging this into that path.
 func TestGetOccasionCardListCSVSensitivityFilterDiffersFromFullExport(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionCardListRoute(router)
 
 	var user models.User
@@ -177,7 +177,7 @@ func TestGetOccasionCardListCSVSensitivityFilterDiffersFromFullExport(t *testing
 }
 
 func TestGetOccasionCardListCSVNeutralizesFormulaInjection(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionCardListRoute(router)
 
 	var user models.User

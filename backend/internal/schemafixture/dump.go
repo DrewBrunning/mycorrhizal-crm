@@ -46,7 +46,7 @@ func GenerateDump(version uint, tag string) (string, error) {
 	if err := database.MigrateUpTo(dbPath, version); err != nil {
 		return "", fmt.Errorf("genschema: building schema at version %d: %w", version, err)
 	}
-	defer os.Remove(dbPath)
+	defer os.Remove(dbPath) //nolint:errcheck // scratch file in os.TempDir; a leftover is overwritten by the next run
 
 	db, err := database.OpenMigratedFile(dbPath)
 	if err != nil {

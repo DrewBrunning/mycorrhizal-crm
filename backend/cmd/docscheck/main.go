@@ -57,12 +57,12 @@ import (
 func main() {
 	root, err := findRepoRoot()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "docscheck:", err) // # pragma: no cover — main is not exercised by tests; run() is
-		os.Exit(1)                                 // # pragma: no cover
+		fmt.Fprintln(os.Stderr, "docscheck:", err) // # pragma: no cover — main is not exercised by tests; runAt is
+		os.Exit(1)                                 // # pragma: no cover — see above; main's own os.Exit is not exercised by tests
 	}
 	if err := runAt(root); err != nil {
-		fmt.Fprintln(os.Stderr, "docscheck:", err) // # pragma: no cover — main is not exercised by tests; run() is
-		os.Exit(1)                                 // # pragma: no cover
+		fmt.Fprintln(os.Stderr, "docscheck:", err) // # pragma: no cover — main is not exercised by tests; runAt is
+		os.Exit(1)                                 // # pragma: no cover — see above; main's own os.Exit is not exercised by tests
 	}
 }
 
@@ -463,7 +463,7 @@ func checkFileReferences(root, docsDir, rel, text string) []string {
 	pathRe := mustCompile(`(?m)(?:^|[^A-Za-z0-9_./*-])((?:backend|frontend|android|docs|cmd|\.github|testdata)/[A-Za-z0-9_./{}\-*?]+)`)
 	seen := map[string]bool{}
 	for _, m := range pathRe.FindAllStringSubmatch(clean, -1) {
-		cand := strings.TrimRight(m[1], ".,;:])},")
+		cand := strings.TrimRight(m[1], ".,;:])}")
 		if strings.ContainsAny(cand, "{}*?") || strings.Contains(cand, "...") {
 			continue // a glob, a template, or an intentionally-abbreviated path
 		}
@@ -529,7 +529,7 @@ func trimLineColSuffix(s string) string {
 		return s
 	}
 	for _, r := range suffix {
-		if !(r >= '0' && r <= '9') && r != '-' {
+		if (r < '0' || r > '9') && r != '-' {
 			return s
 		}
 	}

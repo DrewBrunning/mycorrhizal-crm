@@ -116,7 +116,7 @@ export default function DeleteAccountSettings() {
       </CardContent>
 
       <AppDialog open={open} onClose={() => !busy && resetAndClose()} maxWidth="xs" fullWidth>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={(p0) => void handleSubmit(p0)}>
           <Box sx={{ p: 3 }}>
             <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
               {t('settings.deleteAccount.dialogTitle')}

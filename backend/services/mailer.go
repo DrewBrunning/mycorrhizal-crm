@@ -214,7 +214,7 @@ func sendSMTPStartTLS(cfg config.Config, addr string, auth smtp.Auth, to string,
 	if err != nil {
 		return fmt.Errorf("smtp client: %w", err)
 	}
-	defer client.Close()
+	defer client.Close() //nolint:errcheck // the outcome is smtpDeliver's QUIT; this only tears down early-return paths
 
 	if err := client.Hello(smtpHelloName()); err != nil {
 		return fmt.Errorf("smtp hello: %w", err)
@@ -247,7 +247,7 @@ func sendSMTPImplicitTLS(cfg config.Config, addr string, auth smtp.Auth, to stri
 	if err != nil { // # pragma: no cover — smtp.NewClient only fails if the server never sends a 220 greeting; the dial+deadline already covers a non-responsive server
 		return fmt.Errorf("smtp client: %w", err)
 	}
-	defer client.Close()
+	defer client.Close() //nolint:errcheck // the outcome is smtpDeliver's QUIT; this only tears down early-return paths
 
 	if auth != nil {
 		if err := client.Auth(auth); err != nil {

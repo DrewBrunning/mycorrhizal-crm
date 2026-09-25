@@ -13,6 +13,7 @@ import (
 
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/canonicalfixture"
+	"mycorrhizal/internal/citest"
 	"mycorrhizal/internal/semanticequal"
 	"mycorrhizal/vcard4"
 
@@ -84,7 +85,10 @@ func vdirsyncerEnv(t *testing.T) (baseURL, cmd string) {
 		cmd = "vdirsyncer"
 	}
 	if _, err := exec.LookPath(cmd); err != nil {
-		t.Skipf("vdirsyncer (%s) not installed — this suite runs against the real client via .github/workflows/reference-clients-e2e.yml", cmd)
+		// MYCORRHIZAL_OUR_CARDDAV_URL is already set, so this run is inside
+		// reference-clients-e2e.yml, which is supposed to have installed
+		// vdirsyncer — a broken install step there must not silently pass.
+		citest.SkipOrRequire(t, fmt.Sprintf("vdirsyncer (%s) not installed — this suite runs against the real client via .github/workflows/reference-clients-e2e.yml", cmd))
 	}
 	return baseURL, cmd
 }

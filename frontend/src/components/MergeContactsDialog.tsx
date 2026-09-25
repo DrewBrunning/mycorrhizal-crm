@@ -32,7 +32,10 @@ interface MergeContactsDialogBaseProps {
   // Called after a successful commit with the surviving (keeper) contact's
   // id, since the loser no longer exists -- the parent is expected to
   // navigate there (detail-page flow) or refresh its list (review flow).
-  onMerged: (keeperId: number) => void;
+  // Every real implementation is async (it refetches); widened to
+  // `void | Promise<void>` to match instead of forcing callers to lie about
+  // their return type.
+  onMerged: (keeperId: number) => void | Promise<void>;
 }
 
 // --- Single-contact mode (contact detail page) ---
@@ -149,7 +152,7 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
   );
 
   useEffect(() => {
-    if (open && !pair) loadContacts();
+    if (open && !pair) void loadContacts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, pair]);
 
@@ -159,7 +162,7 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
       setKeeperUid(pair.a.uid);
       return;
     }
-    const timeoutId = setTimeout(() => loadContacts(searchInput), 300);
+    const timeoutId = setTimeout(() => void loadContacts(searchInput), 300);
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchInput, open, pair]);
@@ -174,14 +177,14 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
     if (keeperUid === undefined) return;
     const k = keeperUid === pair.b.uid ? pair.b : pair.a;
     const l = keeperUid === pair.b.uid ? pair.a : pair.b;
-    loadPreview(k.ID, l.ID);
+    void loadPreview(k.ID, l.ID);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, inPairMode, pair, keeperUid]);
 
   const handleSelectContact = (contact: Contact | null) => {
     setSelectedContact(contact);
     if (contact) {
-      loadPreview(contact.ID, currentContactId!);
+      void loadPreview(contact.ID, currentContactId!);
     } else {
       reset();
     }
@@ -218,7 +221,13 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
       // unmounts this dialog -- without an explicit close it stays open over
       // the keeper's page holding the now-deleted loser in selectedContact.
       handleClose();
-      onMerged(keeperId!);
+      // Fire-and-forget by design (unchanged from before the prop type was
+      // widened to allow an async implementation): the dialog is already
+      // closed, and each real implementation is responsible for its own
+      // error handling (ReviewDuplicatesDialog's refresh() catches
+      // internally; ContactsPage's Promise.all(...) does not, which is an
+      // existing gap, not one introduced here).
+      void onMerged(keeperId!);
     } catch {
       // useContactMerge's commit already surfaced the error via the snackbar.
       // Deliberately no close here: a failed merge keeps the user's selection
@@ -477,7 +486,7 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
           variant="contained"
           color="primary"
           disabled={!preview || !allConflictsResolved || committing}
-          onClick={handleCommit}
+          onClick={() => void handleCommit()}
         >
           {committing ? <CircularProgress size={20} /> : t('contactMerge.mergeButton')}
         </Button>

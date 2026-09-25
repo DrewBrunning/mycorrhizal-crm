@@ -54,7 +54,7 @@ export function useLifeEvents(entityId: string | undefined) {
   );
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const handleCreate = useCallback(

@@ -39,7 +39,7 @@ export function useOccasionEvents(notifier?: ErrorNotifier) {
   }, []);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const handleSave = useCallback(
@@ -104,7 +104,7 @@ export function useOccasionEventAttendees(eventId: string | undefined, notifier?
   }, [eventId]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const handleAdd = useCallback(

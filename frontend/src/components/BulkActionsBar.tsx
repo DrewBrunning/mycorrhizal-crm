@@ -122,7 +122,7 @@ export default function BulkActionsBar({
             size="small"
             variant="outlined"
             disabled={busy || !circleId}
-            onClick={() => onAddCircle(circleId)}
+            onClick={() => void onAddCircle(circleId)}
           >
             {t('bulk.addCircle')}
           </Button>
@@ -130,7 +130,7 @@ export default function BulkActionsBar({
             size="small"
             variant="outlined"
             disabled={busy || !circleId}
-            onClick={() => onRemoveCircle(circleId)}
+            onClick={() => void onRemoveCircle(circleId)}
           >
             {t('bulk.removeCircle')}
           </Button>
@@ -156,7 +156,7 @@ export default function BulkActionsBar({
             size="small"
             variant="outlined"
             disabled={busy || !tagId}
-            onClick={() => onAddTag(tagId)}
+            onClick={() => void onAddTag(tagId)}
           >
             {t('bulk.addTag')}
           </Button>
@@ -164,15 +164,20 @@ export default function BulkActionsBar({
             size="small"
             variant="outlined"
             disabled={busy || !tagId}
-            onClick={() => onRemoveTag(tagId)}
+            onClick={() => void onRemoveTag(tagId)}
           >
             {t('bulk.removeTag')}
           </Button>
 
-          <Button size="small" variant="outlined" disabled={busy} onClick={onArchive}>
+          <Button size="small" variant="outlined" disabled={busy} onClick={() => void onArchive()}>
             {t('bulk.archive')}
           </Button>
-          <Button size="small" variant="outlined" disabled={busy} onClick={onUnarchive}>
+          <Button
+            size="small"
+            variant="outlined"
+            disabled={busy}
+            onClick={() => void onUnarchive()}
+          >
             {t('bulk.unarchive')}
           </Button>
           {/* T92: merge is pairwise, not a one-verb-over-N-rows action, so it
@@ -191,7 +196,13 @@ export default function BulkActionsBar({
               </Button>
             </span>
           </Tooltip>
-          <Button size="small" variant="outlined" color="error" disabled={busy} onClick={onDelete}>
+          <Button
+            size="small"
+            variant="outlined"
+            color="error"
+            disabled={busy}
+            onClick={() => void onDelete()}
+          >
             {t('bulk.delete')}
           </Button>
         </>

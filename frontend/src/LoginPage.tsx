@@ -55,13 +55,13 @@ export default function LoginPage({ setToken }: LoginPageProps) {
 
     // Sync language preference from backend if available
     if (language && language !== i18n.language) {
-      i18n.changeLanguage(language);
+      void i18n.changeLanguage(language);
     }
 
     // Sync date format preference from backend
     initializeDateFormatFromBackend(date_format);
 
-    navigate('/');
+    void navigate('/');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -138,7 +138,7 @@ export default function LoginPage({ setToken }: LoginPageProps) {
             >
               {t('login.twoFactorDescription')}
             </Typography>
-            <form onSubmit={handleCodeSubmit}>
+            <form onSubmit={(p0) => void handleCodeSubmit(p0)}>
               <Stack spacing={2}>
                 <TextField
                   label={t('login.twoFactorCode')}
@@ -186,7 +186,7 @@ export default function LoginPage({ setToken }: LoginPageProps) {
             >
               {t('login.title')}
             </Typography>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={(p0) => void handleSubmit(p0)}>
               <Stack spacing={2}>
                 <TextField
                   label={t('login.identifier')}

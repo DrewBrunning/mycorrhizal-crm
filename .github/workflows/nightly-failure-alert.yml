@@ -1,0 +1,215 @@
+name: Nightly failure alert
+
+# Nightly is the only zero-retry CI tier here: a PR/push flake gets retried
+# automatically, a scheduled run does not. It is also where mutation testing,
+# large-dataset benchmarks, chaos injection, and the real-server CardDAV suite
+# all live -- and until this workflow, none of the 29 scheduled workflows in
+# this repo alerted anyone on failure. A red nightly run just sat there;
+# nobody was watching the schedule tab.
+#
+# This workflow reacts to the completion of every scheduled workflow (listed
+# below by `name:`, one entry per workflow that declares a top-level
+# `schedule:` trigger -- `go run ./cmd/nightlyalertcheck`, wired into
+# unit-tests.yml's docs-citations job, fails the build if this list and that
+# set of names ever diverge) and, for the run that actually fired on its
+# `schedule` event (never a push/PR/dispatch run of the same workflow):
+#
+#   - on failure/timed_out/startup_failure/cancelled: opens a `nightly-
+#     failure`-labelled issue titled for that workflow, or comments on the
+#     one already open for it, linking the run and naming the failed jobs;
+#   - on success: comments on that workflow's open nightly-failure issue (if
+#     any) and closes it -- the alarm clears itself once the workflow is
+#     green again.
+#
+on:
+  # zizmor: ignore[dangerous-triggers] workflow_run is the entire point of this
+  # workflow, same rationale as test-report.yml: the job below runs only when
+  # the triggering event was `schedule` (never a PR), it checks out nothing,
+  # and it executes no code from the triggering run -- it only reads the
+  # Actions API for that run's own id/conclusion/jobs (already computed by
+  # GitHub, not attacker-controlled) and writes an issue/comment through `gh
+  # api`. No PR-controlled code ever executes in this workflow's context.
+  workflow_run:
+    workflows:
+      - Android Tests
+      - ASVS attestation staleness
+      - CardDAV Real-Server E2E (reference-server matrix)
+      - Chaos Tests (failure injection)
+      - CodeQL
+      - Container Hardening (CIS)
+      - Clean-install Smoke Test
+      - Differential E2E (calcard)
+      - Docker image build (cache-busted)
+      - E2E Tests
+      - Mutation Testing (Go)
+      - Governance drift
+      - Vulnerability Scan (Grype)
+      - License Compliance
+      - Migration Tests
+      - Minimum Version Tests
+      - Pentest harness drift
+      - Reference-Client E2E (vdirsyncer + DAVx5 against our server)
+      - Release dry-run rehearsal
+      - Reproducible builds
+      - SAST (mobsfscan + hadolint + semgrep)
+      - Schemathesis API fuzzing
+      - OpenSSF Scorecard
+      - Security stewardship cadence
+      - Mutation Testing (Stryker)
+      - Secret Scan (TruffleHog)
+      - Unit Tests
+      - DAST (OWASP ZAP)
+      - GitHub Actions Security (zizmor)
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  alert:
+    name: Alert on nightly failure/recovery
+    runs-on: ubuntu-latest
+    # Only react to the run that actually fired on its own schedule -- the
+    # same workflow's push/pull_request/workflow_dispatch runs are not the
+    # zero-retry tier this workflow exists to watch, and would otherwise
+    # double-report every red PR check here too.
+    if: github.event.workflow_run.event == 'schedule'
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      actions: read
+    steps:
+      - name: Ensure the nightly-failure label exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          gh label create nightly-failure \
+            --color B60205 \
+            --description "A scheduled (nightly/weekly/monthly) workflow run failed or has not yet recovered" \
+            2>/dev/null || true
+
+      - name: Record the triggering run's identity
+        env:
+          # Every field below comes from the workflow_run event, which for a
+          # `schedule` run (the only event this job's `if:` admits) describes
+          # a run of a workflow file already committed to the default branch
+          # -- there is no PR-controlled content here. Still routed through
+          # env, never inlined into a script, per this repo's zizmor
+          # convention for any event-derived value.
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+        run: |
+          set -eu
+          {
+            echo "WORKFLOW_NAME=$WORKFLOW_NAME"
+            echo "RUN_ID=$RUN_ID"
+            echo "RUN_URL=$RUN_URL"
+            echo "CONCLUSION=$CONCLUSION"
+            echo "RUN_ATTEMPT=$RUN_ATTEMPT"
+          } >> "$GITHUB_ENV"
+          echo "Nightly run of '${WORKFLOW_NAME}': ${CONCLUSION} (attempt ${RUN_ATTEMPT}) -- ${RUN_URL}"
+
+      - name: Find the failed job names (failure path only)
+        id: failed-jobs
+        if: >-
+          contains(fromJSON('["failure","timed_out","startup_failure","cancelled"]'), github.event.workflow_run.conclusion)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ env.RUN_ID }}
+        run: |
+          set -eu
+          failed="$(gh api "repos/${GH_REPO}/actions/runs/${RUN_ID}/jobs" --paginate \
+            --jq '[.jobs[] | select(.conclusion != "success" and .conclusion != "skipped" and .conclusion != null) | .name] | join(", ")')"
+          if [ -z "$failed" ]; then
+            failed="(no individual job reported a non-success conclusion -- see the run for details)"
+          fi
+          {
+            echo "failed_jobs<<NIGHTLY_ALERT_EOF"
+            echo "$failed"
+            echo "NIGHTLY_ALERT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Find this workflow's open nightly-failure issue, if any
+        id: existing-issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW_NAME: ${{ env.WORKFLOW_NAME }}
+        run: |
+          set -eu
+          title="Nightly failure: ${WORKFLOW_NAME}"
+          # `gh issue list` is unreliable against this repo (Projects-classic
+          # GraphQL error) -- go through the REST search API directly, the
+          # same workaround this repo's other automation uses. The query
+          # string is built with jq's @uri so the title's own characters
+          # (parens, etc. in a workflow name like "Chaos Tests (failure
+          # injection)") cannot break out of the quoted in:title term.
+          query="repo:${GH_REPO} is:issue is:open label:nightly-failure in:title \"${title}\""
+          encoded="$(jq -rn --arg q "$query" '$q | @uri')"
+          number="$(gh api -X GET "search/issues?q=${encoded}" \
+            --jq '.items[0].number // empty')"
+          echo "number=${number:-}" >> "$GITHUB_OUTPUT"
+          if [ -n "$number" ]; then
+            echo "Found existing open issue #${number} for '${WORKFLOW_NAME}'."
+          else
+            echo "No existing open issue for '${WORKFLOW_NAME}'."
+          fi
+
+      - name: Open or update the failure issue
+        if: >-
+          contains(fromJSON('["failure","timed_out","startup_failure","cancelled"]'), github.event.workflow_run.conclusion)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW_NAME: ${{ env.WORKFLOW_NAME }}
+          RUN_URL: ${{ env.RUN_URL }}
+          CONCLUSION: ${{ env.CONCLUSION }}
+          RUN_ATTEMPT: ${{ env.RUN_ATTEMPT }}
+          FAILED_JOBS: ${{ steps.failed-jobs.outputs.failed_jobs }}
+          EXISTING_ISSUE: ${{ steps.existing-issue.outputs.number }}
+        run: |
+          set -eu
+          title="Nightly failure: ${WORKFLOW_NAME}"
+          body="Scheduled run of **${WORKFLOW_NAME}** ended \`${CONCLUSION}\` (attempt ${RUN_ATTEMPT}): ${RUN_URL}
+
+          Failed/non-success job(s): ${FAILED_JOBS}
+
+          Nightly is the zero-retry CI tier -- a flake here does not get an automatic re-run the way a PR check does. Investigate, or close this issue once triaged as a known flake; it reopens automatically (a fresh comment on the next failure) if it keeps happening, and this alert workflow closes it automatically the next time the scheduled run is green."
+          if [ -n "$EXISTING_ISSUE" ]; then
+            gh api --method POST "repos/${GH_REPO}/issues/${EXISTING_ISSUE}/comments" -f body="$body" >/dev/null
+            echo "Commented on existing issue #${EXISTING_ISSUE}."
+          else
+            gh api --method POST "repos/${GH_REPO}/issues" \
+              -f title="$title" \
+              -f body="$body" \
+              -f "labels[]=nightly-failure" >/dev/null
+            echo "Opened a new nightly-failure issue for '${WORKFLOW_NAME}'."
+          fi
+
+      - name: Close the issue on recovery
+        if: github.event.workflow_run.conclusion == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW_NAME: ${{ env.WORKFLOW_NAME }}
+          RUN_URL: ${{ env.RUN_URL }}
+          EXISTING_ISSUE: ${{ steps.existing-issue.outputs.number }}
+        run: |
+          set -eu
+          if [ -z "$EXISTING_ISSUE" ]; then
+            echo "No open nightly-failure issue for '${WORKFLOW_NAME}' -- nothing to close."
+            exit 0
+          fi
+          body="Scheduled run of **${WORKFLOW_NAME}** succeeded: ${RUN_URL}
+
+          Closing -- the nightly run is green again."
+          gh api --method POST "repos/${GH_REPO}/issues/${EXISTING_ISSUE}/comments" -f body="$body" >/dev/null
+          gh api --method PATCH "repos/${GH_REPO}/issues/${EXISTING_ISSUE}" -f state=closed >/dev/null
+          echo "Closed issue #${EXISTING_ISSUE}."

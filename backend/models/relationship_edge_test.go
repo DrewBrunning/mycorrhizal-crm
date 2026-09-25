@@ -1,11 +1,11 @@
 package models
 
 import (
+	"mycorrhizal/internal/dbtest"
 	"testing"
 
 	"mycorrhizal/contactmodel"
 
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -135,14 +135,7 @@ func TestRelatedToFallbackToken(t *testing.T) {
 func setupRelationshipTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-
-	sqlDB, err := db.DB()
-	require.NoError(t, err)
-	sqlDB.SetMaxOpenConns(1)
-
-	require.NoError(t, db.AutoMigrate(&User{}, &Contact{}, &RelationshipEdge{}))
+	db := dbtest.New(t)
 	return db
 }
 

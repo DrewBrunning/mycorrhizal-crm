@@ -112,7 +112,7 @@ It sits outside the soft-delete model above precisely because it is a copy, not 
 - **Deletion / propagation**: `PurgeExpiredAuditEvents` (`backend/services/audit_purge_service.go:26-45`)
   hard-deletes rows older than the window and re-links the surviving hash chain
   (`models.RecomputeAuditChain`) so tamper-evidence isn't broken by the purge itself. Runs daily via cron
-  (`backend/main.go:185-191`); `AUDIT_RETENTION_DAYS<=0` is treated as "disabled", never "delete
+  (`backend/main.go:194-200`); `AUDIT_RETENTION_DAYS<=0` is treated as "disabled", never "delete
   everything". No external mirror — audit never syncs to CardDAV/CalDAV/Android.
 - **Backups**: yes, and a restored backup's audit trail is only as fresh as the snapshot.
 - **Verification**: `backend/services/audit_purge_service_test.go` (`TestPurgeExpiredAuditEvents*`, 3
@@ -269,10 +269,10 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
 - **Deletion / propagation**: `go-webdav` v0.7.0 (this project's DAV library) has **no RFC 6578
   sync-collection REPORT support** — there is no incremental delta protocol to push a tombstone through.
   Instead, `ListAddressObjects`/`ListCalendarObjects` query with GORM's default scope
-  (`backend/carddav/backend.go:266-284`, no `.Unscoped()`), which — like every other query in this
+  (`backend/carddav/backend.go:267-285`, no `.Unscoped()`), which — like every other query in this
   codebase — silently excludes soft-deleted rows. A deleted contact/event simply stops appearing in the
   *next* full listing a client requests (PROPFIND/REPORT), which is how these clients already detect
-  removal without a native delta protocol. `DeleteAddressObject` (`backend/carddav/backend.go:385-413`)
+  removal without a native delta protocol. `DeleteAddressObject` (`backend/carddav/backend.go:386-414`)
   performs the same soft delete a REST client would, so a delete initiated *from* a DAV client propagates
   back into §1's normal lifecycle (undo window, purge, etc.) identically.
   - **Practical implication**: propagation isn't "instant" in the push sense (there is no push) — it is

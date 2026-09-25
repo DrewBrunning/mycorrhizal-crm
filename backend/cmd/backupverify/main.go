@@ -74,7 +74,7 @@ func run(args []string, out, errOut io.Writer) int {
 		return 2
 	}
 
-	sigDetail, sigErr, sigCode := checkSnapshotSignature(dbPath)
+	sigDetail, sigCode, sigErr := checkSnapshotSignature(dbPath)
 	if sigErr != nil {
 		fmt.Fprintln(errOut, "backupverify:", sigErr)
 		return sigCode
@@ -92,37 +92,37 @@ func run(args []string, out, errOut io.Writer) int {
 // manifest. It returns the human-facing detail line on success, or an error and
 // the exit code to report: 1 when the set is not authenticated (missing or
 // invalid signature), 2 when authentication could not be attempted (no key).
-func checkSnapshotSignature(dbPath string) (detail string, err error, exitCode int) {
+func checkSnapshotSignature(dbPath string) (detail string, exitCode int, err error) {
 	allowUnsigned := os.Getenv(backupAllowUnsignedEnv) == "1"
 
 	signingKey, keyErr := atrest.BackupSigningKey()
 	if keyErr != nil {
-		return "", keyErr, 2
+		return "", 2, keyErr
 	}
 
 	manifestPath := database.ManifestPath(dbPath)
 	_, statErr := os.Stat(manifestPath) // #nosec G703 -- manifestPath derives from the operator-supplied SQLITE_DB_PATH/argument, never request input
 	if os.IsNotExist(statErr) {
 		if allowUnsigned {
-			return "unsigned (allowed by BACKUP_ALLOW_UNSIGNED=1)", nil, 0
+			return "unsigned (allowed by BACKUP_ALLOW_UNSIGNED=1)", 0, nil
 		}
-		return "", fmt.Errorf("snapshot is unsigned: no manifest at %q — every backup must be signed (issue #943); set %s=1 to reconcile a legacy unsigned set", manifestPath, backupAllowUnsignedEnv), 1
+		return "", 1, fmt.Errorf("snapshot is unsigned: no manifest at %q — every backup must be signed (issue #943); set %s=1 to reconcile a legacy unsigned set", manifestPath, backupAllowUnsignedEnv)
 	}
 	if statErr != nil {
-		return "", fmt.Errorf("stat manifest %q: %w", manifestPath, statErr), 2
+		return "", 2, fmt.Errorf("stat manifest %q: %w", manifestPath, statErr)
 	}
 
 	if len(signingKey) == 0 {
 		if allowUnsigned {
-			return "not verified (no signing key; BACKUP_ALLOW_UNSIGNED=1)", nil, 0
+			return "not verified (no signing key; BACKUP_ALLOW_UNSIGNED=1)", 0, nil
 		}
-		return "", errors.New("no at-rest master key configured — set DATA_ENCRYPTION_KEY (preferred) or JWT_SECRET_KEY to the same value the server uses, or set BACKUP_ALLOW_UNSIGNED=1 to reconcile an unsigned legacy set"), 2
+		return "", 2, errors.New("no at-rest master key configured — set DATA_ENCRYPTION_KEY (preferred) or JWT_SECRET_KEY to the same value the server uses, or set BACKUP_ALLOW_UNSIGNED=1 to reconcile an unsigned legacy set")
 	}
 
 	if err := database.VerifyBackupSignature(dbPath, signingKey); err != nil {
-		return "", err, 1
+		return "", 1, err
 	}
-	return "verified (hmac-sha256)", nil, 0
+	return "verified (hmac-sha256)", 0, nil
 }
 
 // resolvePaths applies the precedence documented in the package comment.

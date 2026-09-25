@@ -39,9 +39,9 @@ export const FIELD_TYPES: FieldType[] = [
 ];
 
 export interface FieldConstraints {
-  min?: number;
-  max?: number;
-  maxLength?: number;
+  min?: number | null;
+  max?: number | null;
+  maxLength?: number | null;
   pattern?: string;
   values?: string[];
   multi?: boolean;

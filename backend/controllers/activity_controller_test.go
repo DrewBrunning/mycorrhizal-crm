@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"mycorrhizal/config"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -14,46 +15,24 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
 
-func setupRouter() (*gorm.DB, *gin.Engine) {
+// setupRouter returns a fresh copy of the real migrated schema (dbtest.New --
+// CLAUDE.md backend trap #1: never an AutoMigrate schema, which derives its
+// columns from the same struct tags the code under test uses and so cannot see
+// tag-vs-migration drift) with one seeded user, and a router that
+// authenticates every request as that user.
+func setupRouter(t testing.TB) (*gorm.DB, *gin.Engine) {
+	t.Helper()
 	gin.SetMode(gin.ReleaseMode)
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
-	}
-
-	sqlDB, _ := db.DB()
-	sqlDB.SetMaxOpenConns(1)
-
-	db.AutoMigrate(&models.Contact{}, &models.Activity{}, &models.Note{}, models.Reminder{}, models.User{}, models.Webhook{}, models.WebhookDelivery{}, models.ContactSubscription{}, models.ContactSyncLink{}, models.RelationshipEdge{}, models.Circle{}, models.CircleMember{}, models.Tag{}, models.ContactTag{}, models.LifeEvent{}, models.LifeEventSuggestionResolution{}, models.Household{}, models.HouseholdMember{}, models.FieldDefinition{}, models.FieldValue{}, models.CardDAVSync{}, models.ApiToken{}, models.DeviceGrant{}, models.ReminderCompletion{}, models.CalendarSubscription{}, models.CalendarEventLink{}, models.Preference{}, models.CadencePolicy{}, models.ConversationAgenda{}, models.Gift{}, models.ExternalIdentity{}, models.ExternalActivity{}, models.ImmichConfig{}, models.PaperlessConfig{}, models.SeafileConfig{}, models.WebDAVConfig{}, models.ContactShare{}, models.LinkFieldType{}, models.NotificationDelivery{}, models.NotificationConfig{}, models.PushSubscription{}, models.DeviceRegistration{}, models.ServerSetting{}, models.Attachment{}, models.DismissedDuplicatePair{}, models.RecoveryCode{}, models.ReachOutSuggestion{}, models.ReachOutCursor{}, models.ContactSyncConflict{}, models.ImportRun{}, models.IdempotencyKey{}, models.Session{}, models.JobRun{}, models.OccasionObligation{}, models.OccasionEvent{}, models.OccasionEventAttendee{})
-
-	// T85:
-	// applyContactSearch unconditionally references contacts_fts for any
-	// search= term of two-plus runes, but that virtual table is hand-written
-	// migration SQL (000007, widened by 000010/000020) that AutoMigrate does
-	// not know about. Create it empty here (no triggers, no rows) purely so
-	// the query doesn't 500 under this fast AutoMigrate schema — the FTS
-	// clause then contributes nothing, which is fine: this helper's tests
-	// exercise the LIKE clause, and FTS-specific matching is covered against
-	// the real migrated schema (database.InitDB) in
-	// contact_fts_search_test.go.
-	if err := db.Exec(`CREATE VIRTUAL TABLE IF NOT EXISTS contacts_fts USING fts5(
-		firstname, lastname, nickname, email, phone, org, addresses_flat, phones_normalized,
-		user_id UNINDEXED
-	)`).Error; err != nil {
-		panic("failed to create stub contacts_fts table: " + err.Error())
-	}
+	db := dbtest.New(t)
 
 	user := models.User{Username: "tester", Password: "password123", Email: "tester@example.com"}
-	if err := db.Create(&user).Error; err != nil {
-		panic("failed to seed user")
-	}
+	require.NoError(t, db.Create(&user).Error, "seed user")
 
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
@@ -81,7 +60,7 @@ func withValidated(factory func() any) gin.HandlerFunc {
 }
 
 func TestCreateActivity(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -127,7 +106,7 @@ func TestCreateActivity(t *testing.T) {
 }
 
 func TestGetActivitiesForContact(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -199,7 +178,7 @@ func TestGetActivitiesForContact(t *testing.T) {
 }
 
 func TestGetActivitiesForContactSearchAndDateFilter(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -240,7 +219,7 @@ func TestGetActivitiesForContactSearchAndDateFilter(t *testing.T) {
 }
 
 func TestGetActivitiesForContactPagination(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -292,7 +271,7 @@ func TestGetActivitiesForContactPagination(t *testing.T) {
 }
 
 func TestGetActivitiesForContactNotFound(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -307,7 +286,7 @@ func TestGetActivitiesForContactNotFound(t *testing.T) {
 }
 
 func TestGetActivities(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -350,7 +329,7 @@ func TestGetActivities(t *testing.T) {
 }
 
 func TestGetActivitiesSearchByContact(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -394,7 +373,7 @@ func TestGetActivitiesSearchByContact(t *testing.T) {
 }
 
 func TestGetActivity(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -424,7 +403,7 @@ func TestGetActivity(t *testing.T) {
 }
 
 func TestUpdateActivity(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -468,7 +447,7 @@ func TestUpdateActivity(t *testing.T) {
 // round-tripped on read but could never be set via the API — Create/Update
 // never copied them from ActivityInput onto the model.
 func TestCreateActivitySetsTypeAndExternalRef(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/activities", withValidated(func() any { return &models.ActivityInput{} }), CreateActivity)
 
 	payload := models.ActivityInput{
@@ -492,7 +471,7 @@ func TestCreateActivitySetsTypeAndExternalRef(t *testing.T) {
 }
 
 func TestUpdateActivitySetsTypeAndExternalRef(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	router.PUT("/activities/:id", withValidated(func() any { return &models.ActivityInput{} }), UpdateActivity)
@@ -520,7 +499,7 @@ func TestUpdateActivitySetsTypeAndExternalRef(t *testing.T) {
 }
 
 func TestDeleteActivity(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)

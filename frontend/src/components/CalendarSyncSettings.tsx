@@ -93,7 +93,7 @@ export default function CalendarSyncSettings() {
   }, [t]);
 
   useEffect(() => {
-    loadCalendars();
+    void loadCalendars();
   }, [loadCalendars]);
 
   const openCreate = () => {
@@ -371,7 +371,7 @@ export default function CalendarSyncSettings() {
                           <span>
                             <IconButton
                               size="small"
-                              onClick={() => handleSync(cal)}
+                              onClick={() => void handleSync(cal)}
                               disabled={!!syncing[cal.id]}
                               aria-label={t('settings.calendarSync.syncNow')}
                             >
@@ -558,7 +558,7 @@ export default function CalendarSyncSettings() {
           <Button onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
           <Button
             variant="contained"
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             disabled={saving || !form.name.trim() || !form.url.trim()}
             startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
           >
@@ -579,7 +579,7 @@ export default function CalendarSyncSettings() {
           <Button
             color="error"
             variant="contained"
-            onClick={handleDeleteConfirm}
+            onClick={() => void handleDeleteConfirm()}
             disabled={deleting}
           >
             {t('common.delete')}

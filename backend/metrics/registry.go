@@ -251,9 +251,9 @@ func (f *family) writeTo(w *bufio.Writer) {
 	})
 
 	if f.help != "" {
-		fmt.Fprintf(w, "# HELP %s %s\n", f.name, escapeHelp(f.help))
+		fmt.Fprintf(w, "# HELP %s %s\n", f.name, escapeHelp(f.help)) //nolint:errcheck // bufio.Writer error is sticky; WritePrometheus returns bw.Flush()
 	}
-	fmt.Fprintf(w, "# TYPE %s %s\n", f.name, f.typ)
+	fmt.Fprintf(w, "# TYPE %s %s\n", f.name, f.typ) //nolint:errcheck // see above
 
 	for _, s := range series {
 		switch f.typ {

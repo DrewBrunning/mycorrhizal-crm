@@ -103,6 +103,18 @@ test('splits confirmed and suggested edges', async () => {
   expect(result.current.suggestedEdges.map((e) => e.id)).toEqual(['e-2']);
 });
 
+test('skips getContactsByUid entirely when there are no edges to resolve', async () => {
+  vi.mocked(getRelationshipEdges).mockResolvedValue(listResponse([]));
+
+  const { result } = renderHook(() => useRelationshipEdges('alice-uid'));
+  await act(async () => {
+    await result.current.refreshRelationshipEdges();
+  });
+
+  expect(getContactsByUid).not.toHaveBeenCalled();
+  expect(result.current.contactsByUid.size).toBe(0);
+});
+
 test('does not fetch without a viewed contact uid', async () => {
   const { result } = renderHook(() => useRelationshipEdges(undefined));
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -234,6 +246,7 @@ test('save errors notify through the notifier and rethrow', async () => {
   vi.mocked(getContactsByUid).mockResolvedValue(new Map());
   vi.mocked(createRelationshipEdge).mockRejectedValue(new Error('boom'));
   const showError = vi.fn();
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
   const { result } = renderHook(() => useRelationshipEdges('alice-uid', { showError }));
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -242,6 +255,71 @@ test('save errors notify through the notifier and rethrow', async () => {
     result.current.handleSaveRelationshipEdge({ target_id: 'bob-uid', type: 'friend_of' }),
   ).rejects.toThrow('boom');
   expect(showError).toHaveBeenCalledWith('boom');
+  // The operation context (not observable via the notifier) is what
+  // distinguishes this call site's handleError from delete/accept/reject's.
+  expect(consoleError).toHaveBeenCalledWith('[saving relationship] Error:', expect.anything());
+});
+
+test('refreshRelationshipEdges is a no-op with no uid and no override', async () => {
+  const { result } = renderHook(() => useRelationshipEdges(undefined));
+
+  await act(async () => {
+    await result.current.refreshRelationshipEdges();
+  });
+
+  expect(getRelationshipEdges).not.toHaveBeenCalled();
+  expect(result.current.loading).toBe(false);
+});
+
+test('resets loading to false and clears a previous error on a successful refresh', async () => {
+  vi.mocked(getRelationshipEdges)
+    .mockRejectedValueOnce(new Error('first failure'))
+    .mockResolvedValueOnce(listResponse([]));
+  vi.mocked(getContactsByUid).mockResolvedValue(new Map());
+
+  const { result } = renderHook(() => useRelationshipEdges('alice-uid'));
+  await act(async () => {
+    await result.current.refreshRelationshipEdges();
+  });
+  expect(result.current.error).toBe('first failure');
+
+  await act(async () => {
+    await result.current.refreshRelationshipEdges();
+  });
+  expect(result.current.error).toBeNull();
+  expect(result.current.loading).toBe(false);
+});
+
+test('treats a missing relationship_edges field on the response as no edges', async () => {
+  vi.mocked(getRelationshipEdges).mockResolvedValue({
+    total: 0,
+    next_cursor: '',
+    limit: 100,
+  } as unknown as RelationshipEdgesResponse);
+
+  const { result } = renderHook(() => useRelationshipEdges('alice-uid'));
+  await act(async () => {
+    await result.current.refreshRelationshipEdges();
+  });
+
+  expect(result.current.edges).toEqual([]);
+  expect(getContactsByUid).not.toHaveBeenCalled();
+});
+
+test('handleAddRelationshipEdge clears any edge that was being edited', async () => {
+  vi.mocked(getRelationshipEdges).mockResolvedValue(listResponse([edge('e-1')]));
+  vi.mocked(getContactsByUid).mockResolvedValue(new Map());
+
+  const { result } = renderHook(() => useRelationshipEdges('alice-uid'));
+  await act(async () => {
+    await result.current.refreshRelationshipEdges();
+  });
+  act(() => result.current.handleEditRelationshipEdge(result.current.edges[0]));
+  expect(result.current.editingEdge?.id).toBe('e-1');
+
+  act(() => result.current.handleAddRelationshipEdge());
+  expect(result.current.editingEdge).toBeNull();
+  expect(result.current.relationshipDialogOpen).toBe(true);
 });
 
 test('sets error when the fetch fails', async () => {

@@ -309,7 +309,7 @@ export default function ProfilePictureUploadDialog({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
-                    handleFetchFromUrl();
+                    void handleFetchFromUrl();
                   }
                 }}
                 slotProps={{
@@ -320,7 +320,7 @@ export default function ProfilePictureUploadDialog({
               />
               <Button
                 variant="outlined"
-                onClick={handleFetchFromUrl}
+                onClick={() => void handleFetchFromUrl()}
                 disabled={!imageUrl.trim() || fetchingUrl}
                 sx={{ minWidth: 100 }}
               >
@@ -415,7 +415,7 @@ export default function ProfilePictureUploadDialog({
           {t('common.cancel')}
         </Button>
         <Button
-          onClick={handleUpload}
+          onClick={() => void handleUpload()}
           variant="contained"
           disabled={!imageSrc || uploading}
           startIcon={uploading ? <CircularProgress size={20} /> : undefined}

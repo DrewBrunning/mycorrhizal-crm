@@ -14,7 +14,7 @@ import (
 )
 
 func TestCreateGiftDefaultsToIdea(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/gifts", withValidated(func() any { return &models.GiftInput{} }), CreateGift)
 
 	var user models.User
@@ -43,7 +43,7 @@ func TestCreateGiftDefaultsToIdea(t *testing.T) {
 }
 
 func TestCreateGiftWithExplicitStatusAndValue(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/gifts", withValidated(func() any { return &models.GiftInput{} }), CreateGift)
 
 	var user models.User
@@ -75,7 +75,7 @@ func TestCreateGiftWithExplicitStatusAndValue(t *testing.T) {
 }
 
 func TestCreateGiftRejectsContactFromAnotherUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/gifts", withValidated(func() any { return &models.GiftInput{} }), CreateGift)
 
 	var user models.User
@@ -100,7 +100,7 @@ func TestCreateGiftRejectsContactFromAnotherUser(t *testing.T) {
 }
 
 func TestCreateGiftRequiresCurrencyWithValue(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/gifts", withValidated(func() any { return &models.GiftInput{} }), CreateGift)
 
 	var user models.User
@@ -134,7 +134,7 @@ func TestCreateGiftRequiresCurrencyWithValue(t *testing.T) {
 }
 
 func TestCreateGiftRejectsForeignLifeEvent(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/gifts", withValidated(func() any { return &models.GiftInput{} }), CreateGift)
 
 	var user models.User
@@ -158,7 +158,7 @@ func TestCreateGiftRejectsForeignLifeEvent(t *testing.T) {
 }
 
 func TestCreateGiftRejectsForeignActivity(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/gifts", withValidated(func() any { return &models.GiftInput{} }), CreateGift)
 
 	var user models.User
@@ -182,7 +182,7 @@ func TestCreateGiftRejectsForeignActivity(t *testing.T) {
 }
 
 func TestGetGift(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/gifts/:id", GetGift)
 
 	var user models.User
@@ -200,7 +200,7 @@ func TestGetGift(t *testing.T) {
 }
 
 func TestGetGiftScopedToUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/gifts/:id", GetGift)
 
 	var user models.User
@@ -220,7 +220,7 @@ func TestGetGiftScopedToUser(t *testing.T) {
 }
 
 func TestListGiftsFiltersByEntityID(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/gifts", ListGifts)
 
 	var user models.User
@@ -244,7 +244,7 @@ func TestListGiftsFiltersByEntityID(t *testing.T) {
 }
 
 func TestListGiftsScopedToUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/gifts", ListGifts)
 
 	var user models.User
@@ -266,7 +266,7 @@ func TestListGiftsScopedToUser(t *testing.T) {
 }
 
 func TestUpdateGift(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/gifts/:id", withValidated(func() any { return &models.GiftInput{} }), UpdateGift)
 
 	var user models.User
@@ -292,7 +292,7 @@ func TestUpdateGift(t *testing.T) {
 }
 
 func TestUpdateGiftScopedToUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/gifts/:id", withValidated(func() any { return &models.GiftInput{} }), UpdateGift)
 
 	var user models.User
@@ -315,7 +315,7 @@ func TestUpdateGiftScopedToUser(t *testing.T) {
 }
 
 func TestUpdateGiftRejectsForeignLifeEvent(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/gifts/:id", withValidated(func() any { return &models.GiftInput{} }), UpdateGift)
 
 	var user models.User
@@ -341,7 +341,7 @@ func TestUpdateGiftRejectsForeignLifeEvent(t *testing.T) {
 }
 
 func TestUpdateGiftRejectsForeignActivity(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/gifts/:id", withValidated(func() any { return &models.GiftInput{} }), UpdateGift)
 
 	var user models.User
@@ -367,7 +367,7 @@ func TestUpdateGiftRejectsForeignActivity(t *testing.T) {
 }
 
 func TestDeleteGiftSoftDeletes(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/gifts/:id", DeleteGift)
 
 	var user models.User

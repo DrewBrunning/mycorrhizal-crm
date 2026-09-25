@@ -1,8 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import i18n from '../i18n/config';
 import '../i18n/config';
+import { addCircleMember, type Circle, createCircle } from '../api/circles';
 import { createContactRecord } from '../api/contacts';
+import { addContactTag, createTag, type Tag } from '../api/tags';
 import { resolveEnabledFields } from '../contactFields';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import { DateFormatProvider } from '../DateFormatProvider';
@@ -13,13 +15,29 @@ vi.mock('../api/contacts', async (importOriginal) => {
   return { ...actual, createContactRecord: vi.fn() };
 });
 
+vi.mock('../api/circles', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/circles')>();
+  return { ...actual, createCircle: vi.fn(), addCircleMember: vi.fn() };
+});
+
+vi.mock('../api/tags', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/tags')>();
+  return { ...actual, createTag: vi.fn(), addContactTag: vi.fn() };
+});
+
 afterEach(cleanup);
 
 beforeEach(() => {
   vi.mocked(createContactRecord).mockReset();
+  vi.mocked(createCircle).mockReset();
+  vi.mocked(addCircleMember).mockReset();
+  vi.mocked(createTag).mockReset();
+  vi.mocked(addContactTag).mockReset();
 });
 
-function renderDialog() {
+function renderDialog(
+  overrides: Partial<{ availableCircles: Circle[]; availableTags: Tag[] }> = {},
+) {
   return render(
     <DateFormatProvider>
       <SnackbarProvider>
@@ -27,8 +45,8 @@ function renderDialog() {
           open
           onClose={vi.fn()}
           onContactAdded={vi.fn()}
-          availableCircles={[]}
-          availableTags={[]}
+          availableCircles={overrides.availableCircles ?? []}
+          availableTags={overrides.availableTags ?? []}
         />
       </SnackbarProvider>
     </DateFormatProvider>,
@@ -230,4 +248,173 @@ test('submits with just first name', async () => {
       (c: { kind: string; value: string }) => c.kind === 'given' && c.value === 'Test',
     ),
   ).toBe(true);
+});
+
+// The "Circles" and "Tags" sections share identical field labels ("Select
+// existing .../Or create new...") and button text ("Add"), so every query
+// here is scoped to its own section container (the heading's parent Box).
+function circlesSection(): HTMLElement {
+  return screen.getByText('Circles').parentElement as HTMLElement;
+}
+function tagsSection(): HTMLElement {
+  return screen.getByText('Tags').parentElement as HTMLElement;
+}
+
+test('typing a new circle name and clicking Add shows it as a removable chip', () => {
+  renderDialog();
+  const section = circlesSection();
+
+  fireEvent.change(within(section).getByLabelText('Or create new...'), {
+    target: { value: 'Book Club' },
+  });
+  fireEvent.click(within(section).getByRole('button', { name: 'Add' }));
+
+  expect(within(section).getByText('Book Club')).toBeInTheDocument();
+
+  const chip = within(section).getByText('Book Club').closest('.MuiChip-root') as HTMLElement;
+  fireEvent.click(chip.querySelector('svg') as Element);
+  expect(within(section).queryByText('Book Club')).not.toBeInTheDocument();
+});
+
+test('selecting an existing circle from the dropdown adds it as a chip', () => {
+  renderDialog({
+    availableCircles: [{ id: 'c1', created_at: '', updated_at: '', name: 'Family' }],
+  });
+  const section = circlesSection();
+
+  fireEvent.mouseDown(within(section).getByLabelText('Select existing circle...'));
+  fireEvent.click(screen.getByRole('option', { name: 'Family' }));
+
+  expect(within(section).getByText('Family')).toBeInTheDocument();
+});
+
+test('typing a new tag name and clicking Add shows it as a removable chip', () => {
+  renderDialog();
+  const section = tagsSection();
+
+  fireEvent.change(within(section).getByLabelText('Or create new...'), {
+    target: { value: 'VIP' },
+  });
+  fireEvent.click(within(section).getByRole('button', { name: 'Add' }));
+
+  expect(within(section).getByText('VIP')).toBeInTheDocument();
+
+  const chip = within(section).getByText('VIP').closest('.MuiChip-root') as HTMLElement;
+  fireEvent.click(chip.querySelector('svg') as Element);
+  expect(within(section).queryByText('VIP')).not.toBeInTheDocument();
+});
+
+test('selecting an existing tag from the dropdown adds it as a chip', () => {
+  renderDialog({ availableTags: [{ id: 't1', created_at: '', updated_at: '', name: 'Client' }] });
+  const section = tagsSection();
+
+  fireEvent.mouseDown(within(section).getByLabelText('Select existing tag...'));
+  fireEvent.click(screen.getByRole('option', { name: 'Client' }));
+
+  expect(within(section).getByText('Client')).toBeInTheDocument();
+});
+
+test('creating a contact with a new circle and an existing tag wires up both memberships', async () => {
+  const createMocked = vi.mocked(createContactRecord).mockResolvedValue({
+    id: 9,
+    uid: 'uid-9',
+    etag: '',
+    revision: 1,
+    card: {},
+    crm: {},
+  });
+  vi.mocked(createCircle).mockResolvedValue({
+    message: 'created',
+    circle: { id: 'new-circle-id', created_at: '', updated_at: '', name: 'Book Club' },
+  });
+  vi.mocked(addCircleMember).mockResolvedValue({
+    id: 1,
+    circle_id: 'new-circle-id',
+    member_vcard_uid: 'uid-9',
+  });
+  vi.mocked(addContactTag).mockResolvedValue({
+    id: 1,
+    tag_id: 't1',
+    contact_vcard_uid: 'uid-9',
+  });
+
+  renderDialog({ availableTags: [{ id: 't1', created_at: '', updated_at: '', name: 'Client' }] });
+
+  fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Rio' } });
+  fireEvent.change(within(circlesSection()).getByLabelText('Or create new...'), {
+    target: { value: 'Book Club' },
+  });
+  fireEvent.click(within(circlesSection()).getByRole('button', { name: 'Add' }));
+  fireEvent.mouseDown(within(tagsSection()).getByLabelText('Select existing tag...'));
+  fireEvent.click(screen.getByRole('option', { name: 'Client' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+  await waitFor(() => expect(createMocked).toHaveBeenCalled());
+  await waitFor(() => expect(createCircle).toHaveBeenCalledWith('Book Club'));
+  await waitFor(() => expect(addCircleMember).toHaveBeenCalledWith('new-circle-id', 'uid-9'));
+  await waitFor(() => expect(addContactTag).toHaveBeenCalledWith('t1', 'uid-9'));
+});
+
+test('a failed circle-membership call is swallowed -- the contact was already created', async () => {
+  const createMocked = vi.mocked(createContactRecord).mockResolvedValue({
+    id: 10,
+    uid: 'uid-10',
+    etag: '',
+    revision: 1,
+    card: {},
+    crm: {},
+  });
+  vi.mocked(createCircle).mockRejectedValue(new Error('circle create failed'));
+  const onContactAdded = vi.fn();
+
+  render(
+    <DateFormatProvider>
+      <SnackbarProvider>
+        <AddContactDialog
+          open
+          onClose={vi.fn()}
+          onContactAdded={onContactAdded}
+          availableCircles={[]}
+          availableTags={[]}
+        />
+      </SnackbarProvider>
+    </DateFormatProvider>,
+  );
+
+  fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Sam' } });
+  fireEvent.change(within(circlesSection()).getByLabelText('Or create new...'), {
+    target: { value: 'Broken Circle' },
+  });
+  fireEvent.click(within(circlesSection()).getByRole('button', { name: 'Add' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+  await waitFor(() => expect(createMocked).toHaveBeenCalled());
+  // Membership failure is silently skipped -- the contact is still reported as added.
+  await waitFor(() => expect(onContactAdded).toHaveBeenCalledWith(10));
+});
+
+test('shows an error and does not call onContactAdded when contact creation itself fails', async () => {
+  vi.mocked(createContactRecord).mockRejectedValue(new Error('server exploded'));
+  const onContactAdded = vi.fn();
+
+  render(
+    <DateFormatProvider>
+      <SnackbarProvider>
+        <AddContactDialog
+          open
+          onClose={vi.fn()}
+          onContactAdded={onContactAdded}
+          availableCircles={[]}
+          availableTags={[]}
+        />
+      </SnackbarProvider>
+    </DateFormatProvider>,
+  );
+
+  fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Fails' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+  // May render both as the inline form error and as a snackbar toast.
+  await waitFor(() => expect(screen.getAllByText('server exploded').length).toBeGreaterThan(0));
+  expect(onContactAdded).not.toHaveBeenCalled();
 });

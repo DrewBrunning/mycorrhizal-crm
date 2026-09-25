@@ -27,7 +27,7 @@ import (
 
 func TestOIDCConfigHandler_Disabled(t *testing.T) {
 	cfg := &config.Config{OIDC: config.OIDCConfig{Enabled: false}}
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/config", OIDCConfigHandler(cfg))
 
 	req, _ := http.NewRequest("GET", "/config", nil)
@@ -44,7 +44,7 @@ func TestOIDCConfigHandler_Disabled(t *testing.T) {
 
 func TestOIDCConfigHandler_RegistrationDisabled(t *testing.T) {
 	cfg := &config.Config{RegistrationDisabled: true}
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/config", OIDCConfigHandler(cfg))
 
 	req, _ := http.NewRequest("GET", "/config", nil)
@@ -59,7 +59,7 @@ func TestOIDCConfigHandler_RegistrationDisabled(t *testing.T) {
 
 func TestOIDCConfigHandler_Enabled(t *testing.T) {
 	cfg := &config.Config{OIDC: config.OIDCConfig{Enabled: true, ProviderURL: "https://accounts.google.com"}}
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/config", OIDCConfigHandler(cfg))
 
 	req, _ := http.NewRequest("GET", "/config", nil)
@@ -83,7 +83,7 @@ func TestOIDCLoginHandler(t *testing.T) {
 	provider := newFakeOIDCProviderForLogout(t, "")
 	cfg := &config.Config{CookieDomain: "", CookieSecure: false}
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/login", OIDCLoginHandler(provider, cfg))
 
 	req, _ := http.NewRequest("GET", "/login", nil)
@@ -123,7 +123,7 @@ func TestOIDCLoginHandler_AndroidClientCookie(t *testing.T) {
 	provider := newFakeOIDCProviderForLogout(t, "")
 	cfg := &config.Config{CookieDomain: "", CookieSecure: false}
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/login", OIDCLoginHandler(provider, cfg))
 
 	// Issue #965: the android start must carry the app's state + S256 PKCE
@@ -157,7 +157,7 @@ func TestOIDCLoginHandler_AndroidClientCookieSecureWhenConfigured(t *testing.T) 
 	provider := newFakeOIDCProviderForLogout(t, "")
 	cfg := &config.Config{CookieDomain: "", CookieSecure: true}
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/login", OIDCLoginHandler(provider, cfg))
 
 	req, _ := http.NewRequest("GET",
@@ -175,7 +175,7 @@ func TestOIDCLoginHandler_NoClientCookieWithoutAndroidParam(t *testing.T) {
 	provider := newFakeOIDCProviderForLogout(t, "")
 	cfg := &config.Config{CookieDomain: "", CookieSecure: false}
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/login", OIDCLoginHandler(provider, cfg))
 
 	req, _ := http.NewRequest("GET", "/login?client=web", nil)
@@ -194,7 +194,7 @@ func TestOIDCLoginHandler_AndroidRequiresNativePKCEBinding(t *testing.T) {
 	provider := newFakeOIDCProviderForLogout(t, "")
 	cfg := &config.Config{CookieDomain: "", CookieSecure: false}
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/login", OIDCLoginHandler(provider, cfg))
 
 	req, _ := http.NewRequest("GET", "/login?client=android", nil)
@@ -217,7 +217,7 @@ func TestOIDCLoginHandler_AndroidSetsNativePKCECookies(t *testing.T) {
 	provider := newFakeOIDCProviderForLogout(t, "")
 	cfg := &config.Config{CookieDomain: "", CookieSecure: false}
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/login", OIDCLoginHandler(provider, cfg))
 
 	// code_challenge_method omitted on purpose: S256 is the default.
@@ -246,7 +246,7 @@ func TestOIDCLoginHandler_AndroidRejectsNonS256Challenge(t *testing.T) {
 	provider := newFakeOIDCProviderForLogout(t, "")
 	cfg := &config.Config{CookieDomain: "", CookieSecure: false}
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/login", OIDCLoginHandler(provider, cfg))
 
 	req, _ := http.NewRequest("GET",
@@ -420,7 +420,7 @@ func assertRedirectsTo(t *testing.T, w *httptest.ResponseRecorder, path string) 
 // --- OIDCCallbackHandler: pre-exchange validation (no real IdP needed) ---
 
 func TestOIDCCallbackHandler_ProviderDenied(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
 
@@ -432,7 +432,7 @@ func TestOIDCCallbackHandler_ProviderDenied(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_MissingStateCookie(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
 
@@ -444,7 +444,7 @@ func TestOIDCCallbackHandler_MissingStateCookie(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_MissingNonceCookie(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
 
@@ -456,7 +456,7 @@ func TestOIDCCallbackHandler_MissingNonceCookie(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_MissingPKCECookie(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
 
@@ -468,7 +468,7 @@ func TestOIDCCallbackHandler_MissingPKCECookie(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_StateMismatch(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
 
@@ -480,7 +480,7 @@ func TestOIDCCallbackHandler_StateMismatch(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_MissingCode(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
 
@@ -495,7 +495,7 @@ func TestOIDCCallbackHandler_MissingCode(t *testing.T) {
 // outcome -- verified once here since every other test only checks the
 // redirect.
 func TestOIDCCallbackHandler_ClearsCookiesEvenOnFailure(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
 
@@ -527,7 +527,7 @@ func TestOIDCCallbackHandler_ExchangeFailsOnForgedSignature(t *testing.T) {
 
 	provider, cfg := newCallbackTestSetup(t, idp)
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/callback", OIDCCallbackHandler(provider, cfg))
 
 	req := callbackRequest(fullCookieSet("good-state", "good-nonce", "good-pkce"),
@@ -548,7 +548,7 @@ func TestOIDCCallbackHandler_NonceMismatch(t *testing.T) {
 
 	provider, cfg := newCallbackTestSetup(t, idp)
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/callback", OIDCCallbackHandler(provider, cfg))
 
 	req := callbackRequest(fullCookieSet("good-state", "cookie-nonce-does-not-match", "good-pkce"),
@@ -566,7 +566,7 @@ func TestOIDCCallbackHandler_ClaimsRejectsMultipleAudienceWithoutAzp(t *testing.
 
 	provider, cfg := newCallbackTestSetup(t, idp)
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/callback", OIDCCallbackHandler(provider, cfg))
 
 	req := callbackRequest(fullCookieSet("good-state", "matching-nonce", "good-pkce"),
@@ -589,7 +589,7 @@ func TestOIDCCallbackHandler_NoAccountAndAutoProvisionDisabled(t *testing.T) {
 	provider, cfg := newCallbackTestSetup(t, idp)
 	cfg.OIDC.AllowAutoProvision = false
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/callback", OIDCCallbackHandler(provider, cfg))
 
 	req := callbackRequest(fullCookieSet("good-state", "matching-nonce", "good-pkce"),
@@ -611,7 +611,7 @@ func TestOIDCCallbackHandler_NoEmailWithAutoProvisionEnabled(t *testing.T) {
 	provider, cfg := newCallbackTestSetup(t, idp)
 	cfg.OIDC.AllowAutoProvision = true
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/callback", OIDCCallbackHandler(provider, cfg))
 
 	req := callbackRequest(fullCookieSet("good-state", "matching-nonce", "good-pkce"),
@@ -629,7 +629,7 @@ func TestOIDCCallbackHandler_SuccessLinksExistingUserByOIDCSubject(t *testing.T)
 
 	provider, cfg := newCallbackTestSetup(t, idp)
 
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/callback", OIDCCallbackHandler(provider, cfg))
 
 	subject := "existing-subject"
@@ -674,7 +674,7 @@ func TestOIDCCallbackHandler_SuccessLinksExistingUserByVerifiedEmail(t *testing.
 
 	provider, cfg := newCallbackTestSetup(t, idp)
 
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/callback", OIDCCallbackHandler(provider, cfg))
 
 	req := callbackRequest(fullCookieSet("good-state", "matching-nonce", "good-pkce"),
@@ -701,7 +701,7 @@ func TestOIDCCallbackHandler_SuccessAutoProvisionsNewUser(t *testing.T) {
 	provider, cfg := newCallbackTestSetup(t, idp)
 	cfg.OIDC.AllowAutoProvision = true
 
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/callback", OIDCCallbackHandler(provider, cfg))
 
 	req := callbackRequest(fullCookieSet("good-state", "matching-nonce", "good-pkce"),
@@ -731,7 +731,7 @@ func TestOIDCCallbackHandler_AndroidSuccessDeepLink(t *testing.T) {
 
 	provider, cfg := newCallbackTestSetup(t, idp)
 
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/callback", OIDCCallbackHandler(provider, cfg))
 
 	subject := "existing-subject"
@@ -796,7 +796,7 @@ func TestOIDCCallbackHandler_AndroidSuccessDeepLink(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_AndroidProviderDeniedUsesDeepLink(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
 
@@ -811,7 +811,7 @@ func TestOIDCCallbackHandler_AndroidProviderDeniedUsesDeepLink(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_AndroidStateMismatchUsesDeepLink(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
 
@@ -829,7 +829,7 @@ func TestOIDCCallbackHandler_AndroidStateMismatchUsesDeepLink(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_AndroidStillRequiresPKCE(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
 
@@ -848,7 +848,7 @@ func TestOIDCCallbackHandler_AndroidStillRequiresPKCE(t *testing.T) {
 // is missing the app's native state/PKCE cookies must fail closed rather than
 // emit a code that cannot be bound to a verifier.
 func TestOIDCCallbackHandler_AndroidMissingNativeBinding(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
 
@@ -876,7 +876,7 @@ func TestOIDCCallbackHandler_AndroidMintFailureRedirectsToError(t *testing.T) {
 	provider, cfg := newCallbackTestSetup(t, idp)
 	cfg.JWTSecretKey = ""
 
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/callback", OIDCCallbackHandler(provider, cfg))
 
 	subject := "existing-subject"

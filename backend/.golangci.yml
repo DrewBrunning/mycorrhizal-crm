@@ -1,33 +1,48 @@
-# golangci-lint configuration (issue #358 — SAST stack expansion).
+# golangci-lint configuration (issue #358 — SAST stack expansion; widened to
+# the correctness layer by the code-quality-checks review).
 #
-# The gate is the security-focused layer the issue asked for, consolidated
-# from the old standalone `go run gosec` step:
-#   - gosec     — Go-specific crypto / file-mode / injection patterns
-#   - bodyclose — HTTP response bodies that are never closed (the CardDAV /
-#                 CalDAV / webpush / Resend clients all make outbound calls)
-#   - govet     — the correctness pass CI already runs via `go vet`; kept here
-#                 so golangci-lint is self-contained.
+# Pinned version: v2.14.0 (unit-tests.yml, .githooks/pre-commit). v2.12.2 —
+# the previous pin — panics inside staticcheck/unused (`buildir`) under the Go
+# 1.27 toolchain this module pins; v2.14.0 is the first pin that runs them.
 #
-# Deliberately NOT enabled, each with a documented reason:
-#   - errcheck / staticcheck / unused / ineffassign (the rest of `standard`):
-#     unhandled errors in best-effort paths are a documented, accepted pattern
-#     here — the old gosec step excluded G104 for exactly this ("the findings
-#     are intentional best-effort paths (cron scheduling, cleanup os.Remove,
-#     src.Seek), not bugs"). Gating errcheck would force a ~50-site refactor
-#     of accepted code. Revisit if that discipline changes.
+# Enabled:
+#   - gosec       — Go-specific crypto / file-mode / injection patterns
+#   - bodyclose   — HTTP response bodies that are never closed (the CardDAV /
+#                   CalDAV / webpush / Resend clients all make outbound calls)
+#   - govet       — the correctness pass CI already runs via `go vet`; kept
+#                   here so golangci-lint is self-contained.
+#   - errcheck    — CLAUDE.md backend trap #4 ("check .Error on every
+#                   db.Updates/db.Save") generalised to every error return.
+#                   GORM's chained `*gorm.DB` result is invisible to errcheck,
+#                   so the GORM half of trap #4 is the separate custom
+#                   analyzer `go run ./cmd/gormerrcheck ./...`
+#                   (internal/lint/gormerr), run next to this in CI and the
+#                   pre-commit hook.
+#   - errorlint   — `==` / type assertions on errors that may be wrapped
+#                   (gorm.ErrRecordNotFound, *apperrors.AppError, migrate
+#                   sentinels). See the `errorf: false` note below.
+#   - ineffassign — assignments whose value is never read.
+#   - staticcheck — SA (bugs), S (simplifications), ST/QF (style) with the
+#                   opt-outs listed under settings.
+#   - unused      — dead code.
+#
+# Deliberately NOT enabled:
 #   - noctx: the HTTP helpers and the database layer (the golang-migrate
 #     sqlite driver in database/) do not thread contexts through their
 #     signatures; wiring them in is a context-propagation refactor across the
 #     SSRF-guarded fetcher, the SMTP client, and the DB driver, tracked
 #     separately rather than rushed behind a red gate.
 #
-# gosec G104 (unhandled errors) stays excluded, matching the standing position
-# above. Tests are exempt from the security layer: they exercise hostile input
-# by design, and `go test -race` + CodeQL already cover the non-test code.
+# gosec G104 (unhandled errors) stays excluded — errcheck is now the one
+# owner of that rule, with a real exclusion list instead of a blanket skip.
+#
+# Test files are exempt from gosec/bodyclose (they exercise hostile input by
+# design) and from the correctness linters below (errcheck & co. over tests
+# is a separate, larger sweep; `go test -race` exercises them anyway).
 version: "2"
 
 run:
-  timeout: 5m
+  timeout: 10m
 
 linters:
   default: none
@@ -35,10 +50,65 @@ linters:
     - govet
     - gosec
     - bodyclose
+    - errcheck
+    - errorlint
+    - ineffassign
+    - staticcheck
+    - unused
   settings:
     gosec:
       excludes:
         - G104
+    errcheck:
+      exclude-functions:
+        # A bufio.Writer's error is sticky and surfaces from Flush(), which
+        # every caller here checks (metrics.Registry.WritePrometheus).
+        - (*bufio.Writer).Write
+        - (*bufio.Writer).WriteString
+        - (*bufio.Writer).WriteByte
+        - (*bufio.Writer).WriteRune
+        # rows.Err() is the iteration error that matters; Close() after a
+        # full iteration reports nothing new.
+        - (*database/sql.Rows).Close
+        # Interface-typed closers. In production code these are HTTP response
+        # bodies (bodyclose enforces the Close; its error is not actionable)
+        # and read-only multipart upload files. A concrete *os.File is NOT
+        # covered, so a written file's Close stays checked (photo saves).
+        - (io.Closer).Close
+        # Pool teardown after every statement/transaction on the handle has
+        # already committed or returned its own checked error.
+        - (*database/sql.DB).Close
+        # Builder methods: they mutate the receiver in place and return it
+        # only for chaining (errors/errors.go), so the discarded result is
+        # the same pointer the caller already holds, not a new error.
+        - (*mycorrhizal/errors.AppError).WithDetails
+        - (*mycorrhizal/errors.AppError).WithError
+    errorlint:
+      # The `fmt.Errorf("%w: %v", ErrSentinel, err)` idiom used throughout
+      # services/ and monica/ is deliberate: the sentinel is the
+      # classification callers errors.Is against, and the transport cause is
+      # text only. Wrapping the cause too (`%w: %w`) would let errors.Is/As
+      # match net/url/context errors through the chain and change the
+      # transient-vs-permanent classification (integrations.Dispositions).
+      # `comparison` and `asserts` — the checks that catch real bugs — stay on.
+      errorf: false
+    staticcheck:
+      checks:
+        - all
+        # golangci-lint's own defaults:
+        - -ST1000
+        - -ST1003
+        - -ST1016
+        - -ST1020
+        - -ST1021
+        - -ST1022
+        # Error strings lead with a product name (Immich, Paperless,
+        # Nextcloud, Seafile, Google) and are surfaced to the user verbatim.
+        - -ST1005
+        # "Use fmt.Fprintf instead of WriteString(fmt.Sprintf(...))" on a
+        # strings.Builder: pure style, and Fprintf's (never-non-nil) error
+        # would then trip errcheck.
+        - -QF1012
 
   exclusions:
     rules:
@@ -46,3 +116,18 @@ linters:
         linters:
           - gosec
           - bodyclose
+          - errcheck
+          - errorlint
+          - ineffassign
+          - staticcheck
+          - unused
+      # CLI tools under cmd/ print reports to stdout/stderr; a failed write
+      # to the terminal has no recovery path worth writing.
+      - path: '^cmd/'
+        linters:
+          - errcheck
+        text: 'Error return value of `fmt\.Fprint(f|ln)?` is not checked'
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

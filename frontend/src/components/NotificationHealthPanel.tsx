@@ -60,7 +60,7 @@ export default function NotificationHealthPanel() {
         <Button
           size="small"
           startIcon={<RefreshIcon />}
-          onClick={refresh}
+          onClick={() => void refresh()}
           disabled={loading}
           sx={{ flexShrink: 0 }}
         >

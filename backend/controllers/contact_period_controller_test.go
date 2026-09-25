@@ -30,7 +30,7 @@ func contactPeriodInput(entryID string, rangeIn contactmodel.TemporalRange) mode
 // ADR 0025: a period attached to a Card entry by its ID round-trips through
 // the nested write path and is persisted on the envelope.
 func TestCreateContactWithAddressPeriod(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts", withValidated(func() any { return &models.ContactRecordInput{} }), CreateContact)
 
 	payload := contactPeriodInput("addr-1", contactmodel.TemporalRange{
@@ -57,7 +57,7 @@ func TestCreateContactWithAddressPeriod(t *testing.T) {
 }
 
 func TestCreateContactRejectsUnresolvedPeriodEntry(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts", withValidated(func() any { return &models.ContactRecordInput{} }), CreateContact)
 
 	payload := contactPeriodInput("addr-1", contactmodel.TemporalRange{
@@ -77,7 +77,7 @@ func TestCreateContactRejectsUnresolvedPeriodEntry(t *testing.T) {
 }
 
 func TestCreateContactRejectsEmptyPeriod(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts", withValidated(func() any { return &models.ContactRecordInput{} }), CreateContact)
 
 	payload := contactPeriodInput("addr-1", contactmodel.TemporalRange{})
@@ -95,7 +95,7 @@ func TestCreateContactRejectsEmptyPeriod(t *testing.T) {
 
 // A flat-only write (no periods) must remain valid — periods are optional.
 func TestCreateContactWithoutPeriodsIsValid(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts", withValidated(func() any { return &models.ContactRecordInput{} }), CreateContact)
 
 	payload := models.ContactRecordInput{Card: contactmodel.Card{
