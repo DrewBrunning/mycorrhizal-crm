@@ -1,28 +1,23 @@
 name: Promote a release candidate
 
-# RC-02 (issue #446): promote a release candidate to its final release WITHOUT
-# rebuilding. The artifact that was tested must be the artifact that ships, so
-# this workflow copies -- it never rebuilds:
+# RC-02 (#446): promote a release candidate to its final release WITHOUT
+# rebuilding -- the artifact tested must be the artifact shipped. This
+# workflow copies, never rebuilds: the three images are re-tagged by
+# DIGEST (`docker buildx imagetools create`), every Release asset is
+# downloaded from the RC Release and re-uploaded unchanged (verified
+# against the RC's SHA256SUMS), and the final `vX.Y.Z` tag is pushed with
+# GITHUB_TOKEN, which by design does NOT trigger docker-publish.yml.
 #
-#   - the three container images are re-tagged by DIGEST
-#     (`docker buildx imagetools create`), so `ghcr.io/...:1.0.0` and
-#     `ghcr.io/...:1.0.0-rc.N` resolve to byte-identical manifests;
-#   - every GitHub Release asset (APK, cosign bundle, SLSA provenance, SBOMs) is
-#     downloaded from the RC Release and re-uploaded unchanged, verified against
-#     the RC's SHA256SUMS;
-#   - the final `vX.Y.Z` git tag is pushed with GITHUB_TOKEN, which by design
-#     does NOT trigger docker-publish.yml -- nothing rebuilds.
+# Also does the two things release.yml deferred for the RC: registers the
+# final tag in schemafixture.SupportedReleases + commits the schema dump
+# (locked once, here, against the RC's tree), and merges
+# `release/vX.Y.0` back into `main`.
 #
-# It also does the two things `release.yml` deferred for the RC:
-#   - registers the final tag in schemafixture.SupportedReleases + commits the
-#     schema dump (the schema is locked once, here, against the RC's tree);
-#   - merges `release/vX.Y.0` back into `main`.
+# `promotion-metadata.json` records `digest_rc == digest_final` for every
+# image -- the machine-checkable proof of copy-not-rebuild.
 #
-# `promotion-metadata.json` records `digest_rc == digest_final` for every image
-# -- the machine-checkable proof that promotion copied rather than rebuilt.
-#
-# Full policy + exit criteria: docs/release-candidate-process.md.
-# One-time setup is release.yml's (the GitHub App + RELEASE_APP_* vars/secrets).
+# Full policy: docs/release-candidate-process.md. One-time setup is
+# release.yml's (the GitHub App + RELEASE_APP_* vars/secrets).
 
 on:
   workflow_dispatch:
@@ -98,8 +93,7 @@ jobs:
             echo "::error::RC tag ${RC_TAG} does not exist."
             exit 1
           fi
-          # The RC's GitHub Release must exist and be a pre-release (sanity: we
-          # are promoting something docker-publish actually published as an RC).
+          # Sanity: the RC's Release must exist and be a pre-release.
           ispre="$(gh release view "$RC_TAG" --json isPrerelease --jq '.isPrerelease' 2>/dev/null || echo missing)"
           if [ "$ispre" != "true" ]; then
             echo "::error::GitHub Release for ${RC_TAG} is missing or not marked pre-release (got: ${ispre})."
@@ -121,13 +115,11 @@ jobs:
           } >> "$GITHUB_ENV"
           echo "Promoting ${RC_TAG} ($rc_sha) -> ${final}."
 
-      # issue #1195: release.yml skips these two final-release-only
-      # obligations for an RC (`if: is_rc != true`) and relies on promotion to
-      # run them. Run them here, against the RC commit -- the tree the final
-      # tag will point at -- BEFORE any mutation (image re-tag, fixture
-      # registration, main merge), so a failure aborts with the final tag
-      # unpushed. The shared script is the single definition release.yml's
-      # final path also calls.
+      # #1195: release.yml skips these final-release-only obligations for
+      # an RC and relies on promotion to run them, against the RC commit,
+      # BEFORE any mutation, so a failure aborts with the final tag
+      # unpushed. Shared script, same definition release.yml's final path
+      # also calls.
       - name: Check out the RC commit for the release-only obligations
         env:
           RC_SHA: ${{ env.RC_SHA }}
@@ -192,16 +184,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # issue #1020: a prior promotion attempt for this exact RC can have
-          # already pushed this fixture commit to $SERIES_BRANCH and then
-          # failed at a LATER step (the v0.7.0 promotion hit exactly this --
-          # a real main/release-branch merge conflict after this step had
-          # already succeeded). A naive re-dispatch re-derives an identical
-          # commit from RC_SHA and gets rejected as a non-fast-forward push
-          # against the branch's now-advanced tip. Skip registration -- and
-          # adopt the branch's current tip as FINAL_SHA -- when it's already
-          # there, so a retry after a downstream failure doesn't need manual
-          # git surgery on the release branch first.
+          # #1020: a prior promotion attempt can have already pushed this
+          # fixture commit and failed at a LATER step (v0.7.0 hit exactly
+          # this). A naive re-dispatch re-derives an identical commit and
+          # gets rejected as non-fast-forward. Skip registration -- adopting
+          # the branch's tip as FINAL_SHA -- when it's already there.
           if git show "$SERIES_BRANCH:backend/internal/schemafixture/releases.go" 2>/dev/null | grep -qF "{Tag: \"${FINAL_TAG}\","; then
             echo "Schema fixture for ${FINAL_TAG} is already registered on ${SERIES_BRANCH} (a prior promotion attempt got this far) -- skipping."
             echo "FINAL_SHA=$(git rev-parse "$SERIES_BRANCH")" >> "$GITHUB_ENV"
@@ -244,13 +231,11 @@ jobs:
             git -c credential.helper="$helper" push origin "HEAD:${SERIES_BRANCH}"
           fi
 
-      # Merge FIRST, tag LAST: the final tag is the point of no return
-      # (docker-publish.yml recovery keys off it, and Obtainium/update-checkers
-      # only see a promotion once the tag + Release exist), so it is only
-      # pushed once the main merge has landed AND the images below have been
-      # re-tagged and proven to be byte-identical to the RC's. FINAL_SHA (the
-      # fixture commit) is an ancestor of main after the --no-ff merge, so the
-      # tag still points at the RC's tree.
+      # Merge FIRST, tag LAST: the final tag is the point of no return, so
+      # it's only pushed once the merge has landed and the images below
+      # are proven byte-identical to the RC's. FINAL_SHA is an ancestor of
+      # main after the --no-ff merge, so the tag still points at the RC's
+      # tree.
       - name: Merge the release branch back into main
         env:
           FINAL_TAG: ${{ env.FINAL_TAG }}
@@ -278,45 +263,31 @@ jobs:
             src="ghcr.io/${repo}${suffix}:${rc}"
             dst="ghcr.io/${repo}${suffix}:${final}"
             dst_latest="ghcr.io/${repo}${suffix}:latest"
-            # Manifest copy: dst (and dst_latest) resolve to the SAME digest as
-            # src. `latest` is moved here -- not by docker-publish.yml -- because
-            # the final git tag (pushed by a later step, once the digest check
-            # below has passed) uses GITHUB_TOKEN and by design never triggers
-            # that workflow (see the "Create + push the final tag" step). Every
-            # promotion is to a final, non-RC tag by construction (validated
-            # earlier), so `latest` always moves here, unconditionally --
-            # unlike docker-publish.yml's own `latest` tag, which is gated to
-            # skip RC pushes.
+            # Manifest copy: dst/dst_latest resolve to the SAME digest as
+            # src. `latest` is moved here, not by docker-publish.yml, since
+            # the final tag (pushed with GITHUB_TOKEN) never triggers that
+            # workflow -- every promotion is to a final tag by construction,
+            # so `latest` always moves here unconditionally.
             docker buildx imagetools create --tag "$dst" --tag "$dst_latest" "$src"
             digest="$(docker buildx imagetools inspect "$dst" --format '{{json .Manifest}}' | jq -r '.digest')"
             echo "ghcr.io/${repo}${suffix} ${digest}" | tee -a /tmp/final-digests.txt
-            # Additional signature carrying the promote-rc.yml identity. The
-            # RC pipeline's original cosign signature + GH build-provenance
-            # attestation are digest-scoped and still verify for this tag
-            # (the digest is unchanged) -- this is a promotion marker on top.
-            # Signing by digest (not by tag) covers both $dst and $dst_latest,
-            # which share this digest.
+            # Additional signature carrying the promote-rc.yml identity, on
+            # top of the RC pipeline's own digest-scoped signature/
+            # attestation (still valid, digest unchanged). By digest so it
+            # covers both $dst and $dst_latest.
             cosign sign --yes "ghcr.io/${repo}${suffix}@${digest}"
           done
 
-      # issue #997: this gate used to run inside "Emit + attach promotion
-      # metadata", AFTER the final git tag was pushed and the GitHub Release
-      # published -- so a digest mismatch was reported only once the bad state
-      # (a promoted tag/Release that does not actually match the tested RC
-      # image) was already live. It now runs here, before either exists: a
-      # mismatch aborts the workflow with the git tag unpushed and no final
-      # Release created, leaving only the (harmless, untagged-by-git) GHCR
-      # re-tag from the step above to clean up. The per-image comparison
-      # itself is unchanged; it is just no longer downstream of the point of
-      # no return. images.json is handed to "Emit + attach promotion metadata"
-      # below so that step does not need to recompute it.
+      # #997: this gate used to run AFTER the tag was pushed and the
+      # Release published, so a mismatch was reported only once the bad
+      # state was already live. Now runs before either exists: a mismatch
+      # aborts with the tag unpushed and no Release created.
       - name: Verify promoted image digests match the RC's (before the tag is pushed)
         run: |
           set -eu
           mismatch=0
           images_json='[]'
-          # Both files list ghcr.io/<repo><suffix> <digest>, one line per image,
-          # in the same order (all-in-one, backend, frontend).
+          # Both files list ghcr.io/<repo><suffix> <digest>, same order.
           while read -r ref rc_digest _ final_digest; do
             match=true
             [ "$rc_digest" = "$final_digest" ] || { match=false; mismatch=1; }
@@ -339,8 +310,8 @@ jobs:
         run: |
           set -eu
           git tag "$FINAL_TAG" "$FINAL_SHA"
-          # A tag pushed with GITHUB_TOKEN never triggers on:push:tags, so
-          # docker-publish.yml stays dormant -- this workflow does the publish.
+          # GITHUB_TOKEN never triggers on:push:tags, so docker-publish.yml
+          # stays dormant -- this workflow does the publish.
           # shellcheck disable=SC2016
           helper='!f() { echo "username=x-access-token"; echo "password=${GH_TOKEN_PUSH}"; }; f'
           git -c credential.helper="$helper" push origin "refs/tags/${FINAL_TAG}"
@@ -354,8 +325,7 @@ jobs:
           set -eu
           work="$(mktemp -d)"
           gh release download "$RC_TAG" --dir "$work" --clobber
-          # Integrity: the RC's own SHA256SUMS must still verify over the files
-          # we are about to copy forward.
+          # Integrity: the RC's SHA256SUMS must still verify these files.
           ( cd "$work" && grep -v ' SHA256SUMS$' SHA256SUMS | sha256sum -c - )
 
           gh release create "$FINAL_TAG" \
@@ -364,8 +334,8 @@ jobs:
             --latest \
             --notes "Promoted from ${RC_TAG} without rebuilding: container images re-tagged by digest, release assets copied byte-for-byte. See \`promotion-metadata.json\` (digest_rc == digest_final) and docs/release-candidate-process.md."
 
-          # Copy every asset except the RC's SHA256SUMS (regenerated) and its
-          # release-metadata.json (RC-specific).
+          # Skip the RC's SHA256SUMS (regenerated) and release-metadata.json
+          # (RC-specific).
           find "$work" -maxdepth 1 -type f \
             ! -name SHA256SUMS ! -name release-metadata.json -print0 \
           | xargs -0 -I{} gh release upload "$FINAL_TAG" {} --clobber
@@ -387,11 +357,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -eu
-          # The per-image digest_rc == digest_final comparison already ran (and
-          # would have aborted the workflow before the tag/Release existed) in
-          # "Verify promoted image digests match the RC's" above; this step
-          # only formats that already-verified result into the published
-          # artifact, it does not re-derive or re-gate on it.
+          # The digest_rc == digest_final comparison already ran above; this
+          # step only formats the already-verified result.
           jq -n \
             --arg rc_tag "$RC_TAG" --arg final_tag "$FINAL_TAG" \
             --arg rc_sha "$RC_SHA" --arg final_sha "$FINAL_SHA" \
