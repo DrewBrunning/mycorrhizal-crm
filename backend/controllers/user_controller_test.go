@@ -1491,3 +1491,30 @@ func TestRegisterUser_SubsequentUsersAreNotAdmin(t *testing.T) {
 	require.NoError(t, db.Where("username = ?", "sneaky").First(&sneaky).Error)
 	assert.False(t, sneaky.IsAdmin, "is_admin in the registration body must be ignored (no mass assignment)")
 }
+
+// TestRegisterUser_UserCountFailureAborts pins the fix for a real bug: a
+// transient failure counting existing users used to leave userCount at its
+// zero value, which registration then read as "no users yet" and granted
+// admin to a non-first registrant. The count failure must instead abort the
+// request with an error and create no user at all.
+func TestRegisterUser_UserCountFailureAborts(t *testing.T) {
+	db, router := newRegisterRouter(t, &config.Config{})
+	failDBTableOn(t, db, "users", "query")
+
+	w := postRegister(t, router, models.UserRegistrationInput{
+		Username: "victim",
+		Email:    "victim@example.com",
+		Password: strongPassword,
+	})
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+
+	// The failDBTableOn fault is a GORM callback, so bypass it with a raw
+	// query on the underlying *sql.DB to confirm no row was written despite
+	// the userCount read having failed.
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	var count int64
+	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM users").Scan(&count))
+	assert.Equal(t, int64(0), count, "a failed user-count read must not create a user row")
+}
