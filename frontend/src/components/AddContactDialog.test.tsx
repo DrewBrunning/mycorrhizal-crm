@@ -352,7 +352,7 @@ test('creating a contact with a new circle and an existing tag wires up both mem
   await waitFor(() => expect(createMocked).toHaveBeenCalled());
   await waitFor(() => expect(createCircle).toHaveBeenCalledWith('Book Club'));
   await waitFor(() => expect(addCircleMember).toHaveBeenCalledWith('new-circle-id', 'uid-9'));
-  await waitFor(() => expect(addContactTag).toHaveBeenCalledWith('uid-9', 't1'));
+  await waitFor(() => expect(addContactTag).toHaveBeenCalledWith('t1', 'uid-9'));
 });
 
 test('a failed circle-membership call is swallowed -- the contact was already created', async () => {

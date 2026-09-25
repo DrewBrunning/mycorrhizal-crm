@@ -191,7 +191,7 @@ export default function AddContactDialog({
             const created = await createTag(tag.name);
             tagId = created.tag.id;
           }
-          await addContactTag(newRecord.uid, tagId);
+          await addContactTag(tagId, newRecord.uid);
         } catch {
           // Silently skip — the contact exists, memberships are best-effort
         }
