@@ -135,6 +135,35 @@ func TestCursorDecodeRejectsMalformed(t *testing.T) {
 	}
 }
 
+// TestPositionCursorEncodeDecodeRoundTrip proves an issue-#1210 position
+// cursor survives the base64url round trip with both position and id intact.
+func TestPositionCursorEncodeDecodeRoundTrip(t *testing.T) {
+	for _, id := range []any{uint(7), "1f2e3d4c-5b6a-7890-abcd-ef1234567890"} {
+		cur, err := DecodePositionCursor(EncodePositionCursor(3, id))
+		require.NoError(t, err)
+		assert.Equal(t, 3, cur.Position)
+		assert.Equal(t, fmt.Sprint(id), cur.ID)
+	}
+}
+
+// TestPositionCursorDecodeRejectsMalformed pins the position cursor's 400
+// paths, including the cross-shape case: a time or name cursor's leading
+// component is not an integer and must not decode as a position.
+func TestPositionCursorDecodeRejectsMalformed(t *testing.T) {
+	for _, raw := range []string{
+		"!!!not-base64url!!!",
+		encodeRawURL("3|"),     // missing id
+		encodeRawURL("|abc"),   // missing position
+		encodeRawURL("no-sep"), // no separator
+		encodeRawURL("x|abc"),  // non-integer position
+		EncodeNameCursor("smith", uint(7)),
+		EncodeCursor(time.Date(2026, 8, 2, 18, 7, 19, 0, time.UTC), uint(7)),
+	} {
+		_, err := DecodePositionCursor(raw)
+		assert.Error(t, err, "cursor %q should fail to decode", raw)
+	}
+}
+
 // encodeRawURL is a tiny mirror of EncodeCursor's encoding for test inputs.
 func encodeRawURL(s string) string {
 	return base64.RawURLEncoding.EncodeToString([]byte(s))

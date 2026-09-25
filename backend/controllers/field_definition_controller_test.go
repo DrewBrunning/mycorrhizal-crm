@@ -611,6 +611,41 @@ func TestListFieldDefinitionsCursorByPosition(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, badW.Code)
 }
 
+// TestListFieldDefinitionsCursorByPositionDescending pins the explicit
+// ?order=desc branch of the (position, id) keyset: highest position first,
+// and the resume cursor continues strictly before the last row.
+func TestListFieldDefinitionsCursorByPositionDescending(t *testing.T) {
+	db, router, user := reorderRoutes(t)
+	makeOrderedDefinition(t, db, user.ID, "one", 0)
+	makeOrderedDefinition(t, db, user.ID, "two", 1)
+	makeOrderedDefinition(t, db, user.ID, "three", 2)
+
+	type page struct {
+		FieldDefinitions []models.FieldDefinition `json:"field_definitions"`
+		NextCursor       string                   `json:"next_cursor"`
+	}
+	get := func(query string) page {
+		req, _ := http.NewRequest("GET", "/field-definitions?"+query, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var p page
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &p))
+		return p
+	}
+
+	first := get("order=desc&limit=2")
+	require.Len(t, first.FieldDefinitions, 2)
+	assert.Equal(t, "three", first.FieldDefinitions[0].Key)
+	assert.Equal(t, "two", first.FieldDefinitions[1].Key)
+	require.NotEmpty(t, first.NextCursor, "a full page must mint a resume cursor")
+
+	second := get("order=desc&limit=2&cursor=" + first.NextCursor)
+	require.Len(t, second.FieldDefinitions, 1)
+	assert.Equal(t, "one", second.FieldDefinitions[0].Key)
+	assert.Empty(t, second.NextCursor, "the last page mints no cursor")
+}
+
 func TestReorderFieldDefinitions(t *testing.T) {
 	db, router, user := reorderRoutes(t)
 	a := makeOrderedDefinition(t, db, user.ID, "a", 0)
