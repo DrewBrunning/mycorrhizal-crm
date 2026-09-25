@@ -63,6 +63,7 @@ function emptyDashboard(): DashboardResponse {
     favorites: [],
     reach_out_suggestions: [],
     contact_sync_conflicts: [],
+    data_decay_overdue: [],
   };
 }
 
@@ -120,6 +121,7 @@ test('fetches the dashboard composite once and renders all four blocks', async (
     overdue: [],
     reach_out_suggestions: [],
     contact_sync_conflicts: [],
+    data_decay_overdue: [],
   });
 
   renderPage();
@@ -279,4 +281,41 @@ test('renders the upcoming occasions widget once the fetch succeeds', async () =
 
   await waitFor(() => expect(getUpcomingOccasionsMock).toHaveBeenCalledWith({ days: 30 }));
   expect(await screen.findByText('Freddie Mercury')).toBeInTheDocument();
+});
+
+test('renders an overdue data decay policy and links to the contact (issue #352)', async () => {
+  getDashboardMock.mockResolvedValue({
+    ...emptyDashboard(),
+    data_decay_overdue: [
+      {
+        policy: {
+          id: 'decay-1',
+          entity_id: 'uid-stale',
+          interval_days: 365,
+          active: true,
+          created_at: '2025-01-01T00:00:00Z',
+          updated_at: '2025-01-01T00:00:00Z',
+        },
+        health: { next_due: '2026-08-01T00:00:00Z', overdue_by: 40 },
+        contact_id: 55,
+        contact_name: 'Stale Sam',
+      },
+    ],
+  });
+
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Stale Sam')).toBeInTheDocument());
+  expect(screen.getByText('40 days overdue')).toBeInTheDocument();
+  const link = screen.getByRole('link', { name: /^Stale Sam/ });
+  expect(link.getAttribute('href')).toBe('/contacts/55');
+});
+
+test('an all-clear data decay block is not rendered at all', async () => {
+  getDashboardMock.mockResolvedValue(emptyDashboard());
+
+  renderPage();
+
+  await waitFor(() => expect(getDashboardMock).toHaveBeenCalled());
+  expect(screen.queryByText('Info Needs a Check')).not.toBeInTheDocument();
 });

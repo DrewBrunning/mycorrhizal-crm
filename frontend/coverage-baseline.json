@@ -39,10 +39,10 @@
       "branchesTotal": 22
     },
     "src/ContactDetailPage.tsx": {
-      "lines": 84.58,
-      "linesTotal": 240,
-      "branches": 74.16,
-      "branchesTotal": 120
+      "lines": 85.71,
+      "linesTotal": 259,
+      "branches": 73.8,
+      "branchesTotal": 126
     },
     "src/ContactSharesPage.tsx": {
       "lines": 95.45,
@@ -57,10 +57,10 @@
       "branchesTotal": 105
     },
     "src/DashboardPage.tsx": {
-      "lines": 71.83,
-      "linesTotal": 142,
-      "branches": 59.78,
-      "branchesTotal": 92
+      "lines": 72.22,
+      "linesTotal": 144,
+      "branches": 60.63,
+      "branchesTotal": 94
     },
     "src/DataSettingsPage.tsx": {
       "lines": 100,
@@ -271,6 +271,12 @@
       "linesTotal": 3,
       "branches": 50,
       "branchesTotal": 2
+    },
+    "src/api/dataDecayPolicies.ts": {
+      "lines": 100,
+      "linesTotal": 19,
+      "branches": 50,
+      "branchesTotal": 12
     },
     "src/api/dataSuggestions.ts": {
       "lines": 100,
@@ -727,6 +733,24 @@
       "linesTotal": 38,
       "branches": 70,
       "branchesTotal": 20
+    },
+    "src/components/DataDecayDialog.tsx": {
+      "lines": 93.75,
+      "linesTotal": 32,
+      "branches": 95,
+      "branchesTotal": 20
+    },
+    "src/components/DataDecayOverdueList.tsx": {
+      "lines": 83.33,
+      "linesTotal": 6,
+      "branches": 85.71,
+      "branchesTotal": 14
+    },
+    "src/components/DataDecayPanel.tsx": {
+      "lines": 100,
+      "linesTotal": 11,
+      "branches": 100,
+      "branchesTotal": 14
     },
     "src/components/DeleteAccountSettings.tsx": {
       "lines": 100,
@@ -1399,6 +1423,12 @@
       "linesTotal": 28,
       "branches": 66.66,
       "branchesTotal": 6
+    },
+    "src/hooks/useDataDecayPolicy.ts": {
+      "lines": 100,
+      "linesTotal": 36,
+      "branches": 93.75,
+      "branchesTotal": 16
     },
     "src/hooks/useDebounce.ts": {
       "lines": 100,

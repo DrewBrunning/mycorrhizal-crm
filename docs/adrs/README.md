@@ -32,3 +32,4 @@ ticket backlog moved to GitHub Issues.
 | [0024](0024-occasions.md) | Occasions — recurring card/gift/invite obligations | accepted |
 | [0025](0025-temporal-periods.md) | Temporal periods — start/end ranges for addresses and employment | accepted |
 | [0026](0026-occasions-events.md) | Occasions — event planning & RSVP tracking | accepted |
+| [0027](0027-data-decay.md) | Data decay — periodic reminders to verify contact info is still current | accepted |

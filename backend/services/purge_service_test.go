@@ -125,21 +125,31 @@ func TestPurgeSoftDeletedRows_CleansUpEdgeRowsForPurgedContacts(t *testing.T) {
 		Sensitivity: models.RelationshipSensitivityNormal,
 	}).Error)
 
+	// Issue #352: a live DataDecayPolicy still pointing at the doomed contact
+	// (its own soft-delete never fired, only its contact's) must be cleaned
+	// up as defense-in-depth, the same as cadence_policies below.
+	require.NoError(t, db.Create(&models.DataDecayPolicy{
+		UserID: userID, EntityID: contact.VCardUID, IntervalDays: 365, Active: true,
+	}).Error)
+
 	softDeleteAt(t, db, &models.Contact{}, contact.ID, time.Now().AddDate(0, 0, -60))
 
 	PurgeSoftDeletedRows(db, purgeConfig())
 
-	var memberCount, tagCount, edgeCount int64
+	var memberCount, tagCount, edgeCount, decayCount int64
 	require.NoError(t, db.Model(&models.CircleMember{}).
 		Where("member_vcard_uid = ?", contact.VCardUID).Count(&memberCount).Error)
 	require.NoError(t, db.Model(&models.ContactTag{}).
 		Where("contact_vcard_uid = ?", contact.VCardUID).Count(&tagCount).Error)
 	require.NoError(t, db.Model(&models.RelationshipEdge{}).
 		Where("source_id = ? OR target_id = ?", contact.VCardUID, contact.VCardUID).Count(&edgeCount).Error)
+	require.NoError(t, db.Model(&models.DataDecayPolicy{}).
+		Where("entity_id = ?", contact.VCardUID).Count(&decayCount).Error)
 
 	assert.Zero(t, memberCount, "circle_members must not outlive the purged contact")
 	assert.Zero(t, tagCount, "contact_tags must not outlive the purged contact")
 	assert.Zero(t, edgeCount, "relationship_edges must not outlive the purged contact")
+	assert.Zero(t, decayCount, "data_decay_policies must not outlive the purged contact")
 
 	// The surviving contact and its own grouping rows are untouched.
 	var survivor int64
@@ -172,6 +182,28 @@ func TestPurgeSoftDeletedRows_PurgesSoftDeletedChildContent(t *testing.T) {
 
 	assert.Zero(t, oldCount, "a note soft-deleted past retention must be purged")
 	assert.Equal(t, int64(1), freshCount, "a recently soft-deleted note must survive")
+	assert.Equal(t, int64(1), parentCount, "purging a child must not touch its live parent")
+}
+
+// Issue #352: DataDecayPolicy soft-deletes (user-authored content, T26) and
+// must be in the primary purge list, mirroring CadencePolicy's own coverage.
+func TestPurgeSoftDeletedRows_PurgesSoftDeletedDataDecayPolicy(t *testing.T) {
+	db, userID := newPurgeDB(t)
+
+	contact := models.Contact{UserID: userID, Firstname: "Alive"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	old := models.DataDecayPolicy{UserID: userID, EntityID: contact.VCardUID, IntervalDays: 365, Active: true}
+	require.NoError(t, db.Create(&old).Error)
+	softDeleteAt(t, db, &models.DataDecayPolicy{}, old.ID, time.Now().AddDate(0, 0, -60))
+
+	PurgeSoftDeletedRows(db, purgeConfig())
+
+	var oldCount, parentCount int64
+	require.NoError(t, db.Unscoped().Model(&models.DataDecayPolicy{}).Where("id = ?", old.ID).Count(&oldCount).Error)
+	require.NoError(t, db.Model(&models.Contact{}).Where("id = ?", contact.ID).Count(&parentCount).Error)
+
+	assert.Zero(t, oldCount, "a data decay policy soft-deleted past retention must be purged")
 	assert.Equal(t, int64(1), parentCount, "purging a child must not touch its live parent")
 }
 

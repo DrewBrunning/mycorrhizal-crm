@@ -449,6 +449,13 @@ func buildBodyOwnershipTable(fx ownFixtures) map[string]ownRow {
 				},
 				h.fx.ownerC1UID, h.fx.victimC1UID, ownNonexistentUID, http.StatusNotFound, false)
 		}),
+		"DataDecayPolicyInput.EntityID": dto(func(t *testing.T, h *ownHarness) {
+			h.assertMasked(http.MethodPost, "/api/v1/data-decay-policies",
+				func(uid string) string {
+					return fmt.Sprintf(`{"entity_id":%s,"interval_days":365}`, jstr(uid))
+				},
+				h.fx.ownerC1UID, h.fx.victimC1UID, ownNonexistentUID, http.StatusNotFound, false)
+		}),
 		"LifeEventInput.EntityID": dto(func(t *testing.T, h *ownHarness) {
 			h.assertMasked(http.MethodPost, "/api/v1/life-events",
 				func(uid string) string {
@@ -586,6 +593,7 @@ func buildBodyOwnershipTable(fx ownFixtures) map[string]ownRow {
 
 		// ── persisted-model mirrors / server-generated (no body probe) ──────
 		"CadencePolicy.EntityID":               model("persisted-model mirror of CadencePolicyInput.EntityID; the write path validates the DTO — covered above."),
+		"DataDecayPolicy.EntityID":             model("persisted-model mirror of DataDecayPolicyInput.EntityID; the write path validates the DTO — covered above."),
 		"CircleMember.MemberVCardUID":          model("persisted join-row mirror of CircleMemberInput.MemberVCardUID — covered above."),
 		"ExternalIdentity.EntityID":            model("persisted-model mirror of ExternalIdentityInput.EntityID — covered above."),
 		"HouseholdMember.MemberVCardUID":       model("persisted join-row mirror of HouseholdMemberInput.MemberVCardUID — covered above."),

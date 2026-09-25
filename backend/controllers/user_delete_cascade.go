@@ -208,6 +208,11 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
 
+	// Delete data decay policies (hard) — issue #352, docs/adrs/0027-data-decay.md
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.DataDecayPolicy{}).Error; err != nil {
+		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+	}
+
 	// Delete conversation agenda items (hard)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ConversationAgenda{}).Error; err != nil {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment

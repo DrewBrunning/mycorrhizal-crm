@@ -50,6 +50,7 @@ import com.mycorrhizal.crm.model.network.ContactBriefing
 import com.mycorrhizal.crm.model.network.ContactScoreResponse
 import com.mycorrhizal.crm.model.network.CreateCadencePolicyResponse
 import com.mycorrhizal.crm.model.network.OverdueCadencesResponse
+import com.mycorrhizal.crm.model.network.OverdueDataDecayPoliciesResponse
 import com.mycorrhizal.crm.model.network.AddOccasionEventAttendeeResponse
 import com.mycorrhizal.crm.model.network.CreateOccasionEventResponse
 import com.mycorrhizal.crm.model.network.InviteeSuggestionsResponse
@@ -105,6 +106,7 @@ import com.mycorrhizal.crm.model.network.ContactMergeCommitResponse
 import com.mycorrhizal.crm.model.network.ContactMergePreviewResponse
 import com.mycorrhizal.crm.model.network.ContactMergeRequest
 import com.mycorrhizal.crm.model.network.DashboardResponse
+import com.mycorrhizal.crm.model.network.DataDecayPolicy
 import com.mycorrhizal.crm.model.network.DeviceRegistration
 import com.mycorrhizal.crm.model.network.DeviceRegistrationInput
 import com.mycorrhizal.crm.model.network.DeviceRegistrationsResponse
@@ -1338,6 +1340,27 @@ class ApiClient(
     /** DELETE /api/v1/cadence-policies/{id} — `{ message }`. */
     suspend fun deleteCadencePolicy(id: String): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$CADENCE_POLICIES_PATH/$id")
+
+    /**
+     * GET /api/v1/data-decay-policies/overdue — contacts whose info is due
+     * for re-verification (issue #352). Android v1 scope is view + confirm
+     * only (this call, plus [verifyDataDecayPolicy]) — creating/editing a
+     * policy is web-only for now, docs/adrs/0027-data-decay.md.
+     */
+    suspend fun listOverdueDataDecayPolicies(): Result<OverdueDataDecayPoliciesResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$DATA_DECAY_POLICIES_PATH/overdue") { _, body ->
+            moshi.adapter(OverdueDataDecayPoliciesResponse::class.java).fromJson(body)
+        }
+
+    /**
+     * POST /api/v1/data-decay-policies/{id}/verify — the "confirm still
+     * current" action: stamps last_verified_at = now server-side. No body;
+     * returns the raw (unwrapped) updated policy.
+     */
+    suspend fun verifyDataDecayPolicy(id: String): Result<DataDecayPolicy> =
+        executePostEmpty("$DATA_DECAY_POLICIES_PATH/$id/verify") { _, body ->
+            moshi.adapter(DataDecayPolicy::class.java).fromJson(body)
+        }
 
     // --- Occasion events (docs/adrs/0026-occasions-events.md, issue #1228) ---
 
@@ -2594,6 +2617,7 @@ class ApiClient(
         private const val PREFERENCES_PATH = "$API_V1/preferences"
         private const val CONVERSATION_AGENDA_PATH = "$API_V1/conversation-agenda"
         private const val CADENCE_POLICIES_PATH = "$API_V1/cadence-policies"
+        private const val DATA_DECAY_POLICIES_PATH = "$API_V1/data-decay-policies"
         private const val OCCASION_EVENTS_PATH = "$API_V1/occasion-events"
         private const val DASHBOARD_PATH = "$API_V1/dashboard"
         private const val REACH_OUT_SUGGESTIONS_PATH = "$API_V1/reach-out-suggestions"

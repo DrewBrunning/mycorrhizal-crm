@@ -7,6 +7,7 @@ import type { CadencePolicy } from './api/cadencePolicies';
 import type { Circle, CircleMember } from './api/circles';
 import type { ContactRecordResponse } from './api/contacts';
 import type { ConversationAgenda } from './api/conversationAgenda';
+import type { DataDecayPolicy } from './api/dataDecayPolicies';
 import type { Gift } from './api/gifts';
 import type { LifeEvent } from './api/lifeEvents';
 import type { Note } from './api/notes';
@@ -232,6 +233,7 @@ type Endpoint =
   | 'preferences'
   | 'occasions'
   | 'cadence'
+  | 'dataDecay'
   | 'record';
 
 type Mutation =
@@ -268,6 +270,7 @@ function mockFetch({
   occasionObligations = [],
   addressSuggestions = [],
   cadencePolicies = [],
+  dataDecayPolicies = [],
   immichConfigured = false,
   extraPreferences = [],
 }: {
@@ -284,6 +287,7 @@ function mockFetch({
   // null makes the post-save address scan fail.
   addressSuggestions?: unknown[] | null | 'omitted';
   cadencePolicies?: CadencePolicy[];
+  dataDecayPolicies?: DataDecayPolicy[];
   immichConfigured?: boolean;
   extraPreferences?: Preference[];
 } = {}) {
@@ -432,6 +436,13 @@ function mockFetch({
               next_cursor: '',
               limit: 100,
             }));
+          case '/data-decay-policies':
+            return get('dataDecay', () => ({
+              data_decay_policies: dataDecayPolicies,
+              total: dataDecayPolicies.length,
+              next_cursor: '',
+              limit: 100,
+            }));
           case '/graph/connections':
             return json({ from_vcard_uid: 'alice-uid', from_name: 'Alice', depth: 1, chains: [] });
           case '/export/vcf':
@@ -490,6 +501,17 @@ function mockFetch({
       }
       if (path.startsWith('/gifts/') && method === 'PUT') {
         return fail.giftUpdate ? errorResponse('gift failed') : json({ ...gifts[0], ...body });
+      }
+      if (
+        path.startsWith('/data-decay-policies/') &&
+        path.endsWith('/verify') &&
+        method === 'POST'
+      ) {
+        // Echo the seeded policy back (raw, not wrapped -- see
+        // verifyDataDecayPolicy) so a verify click doesn't collapse the
+        // hook's policy state to {} the way the generic body-echo fallback
+        // below would.
+        return json(dataDecayPolicies[0] ?? {});
       }
       if (path === '/contacts/address-suggestions' && method === 'POST') {
         if (addressSuggestions === 'omitted') return json({});
@@ -1397,6 +1419,66 @@ test('an existing cadence can be edited and saved, and deleted after confirmatio
   fireEvent.click((await within(cadence).findAllByRole('button', { name: 'Delete' }))[0]);
   expect(writes()).toBe(0);
   fireEvent.click(within(cadence).getAllByRole('button', { name: 'Delete' })[0]);
+  await waitFor(() => expect(writes()).toBe(1));
+  expect(confirmSpy).toHaveBeenCalledTimes(2);
+});
+
+const dataDecayPolicy: DataDecayPolicy = {
+  id: 'decay-1',
+  entity_id: 'alice-uid',
+  interval_days: 180,
+  active: true,
+  created_at: '',
+  updated_at: '',
+};
+
+test('a data decay policy can be added, edited, verified, and deleted', async () => {
+  const calls = mockFetch();
+  await renderLoaded();
+  const dataDecay = section('data-decay');
+
+  // No policy yet: only the "Add" affordance is offered.
+  const addButton = await within(dataDecay).findByRole('button', { name: 'Set up verification' });
+  const addDialog = await openDialog(() => fireEvent.click(addButton));
+  fireEvent.click(within(addDialog).getByRole('button', { name: 'Save' }));
+  await waitFor(() =>
+    expect(calls.some((c) => c.method === 'POST' && c.url.includes('/data-decay-policies'))).toBe(
+      true,
+    ),
+  );
+});
+
+test('an existing data decay policy can be verified, edited and saved, and deleted after confirmation', async () => {
+  const calls = mockFetch({ dataDecayPolicies: [dataDecayPolicy] });
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValue(true);
+  await renderLoaded();
+  const dataDecay = section('data-decay');
+  await within(dataDecay).findByRole('button', { name: 'Confirm still current' });
+
+  fireEvent.click(within(dataDecay).getByRole('button', { name: 'Confirm still current' }));
+  await waitFor(() =>
+    expect(
+      calls.some(
+        (c) => c.method === 'POST' && c.url.includes('/data-decay-policies/decay-1/verify'),
+      ),
+    ).toBe(true),
+  );
+
+  const dialog = await openDialog(() =>
+    fireEvent.click(within(dataDecay).getByRole('button', { name: 'Edit' })),
+  );
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+  await waitFor(() =>
+    expect(
+      calls.some((c) => c.method === 'PUT' && c.url.includes('/data-decay-policies/decay-1')),
+    ).toBe(true),
+  );
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+  const writes = () => calls.filter((c) => c.method === 'DELETE').length;
+  fireEvent.click(within(dataDecay).getByRole('button', { name: 'Delete' }));
+  expect(writes()).toBe(0);
+  fireEvent.click(within(dataDecay).getByRole('button', { name: 'Delete' }));
   await waitFor(() => expect(writes()).toBe(1));
   expect(confirmSpy).toHaveBeenCalledTimes(2);
 });

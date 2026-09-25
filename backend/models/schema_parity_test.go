@@ -58,6 +58,7 @@ var registeredModels = []any{
 	&ContactSyncLink{},
 	&ContactTag{},
 	&ConversationAgenda{},
+	&DataDecayPolicy{},
 	&DeviceGrant{},
 	&DeviceRegistration{},
 	&DismissedDuplicatePair{},

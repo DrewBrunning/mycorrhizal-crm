@@ -77,6 +77,7 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) error {
 		&models.LifeEvent{},
 		&models.Preference{},
 		&models.CadencePolicy{},
+		&models.DataDecayPolicy{},
 		&models.ConversationAgenda{},
 		&models.Gift{},
 		&models.ImmichConfig{},
@@ -134,6 +135,10 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) error {
 		{
 			"DELETE FROM cadence_policies WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
 			[]interface{}{cutoff}, "cadence_policies",
+		},
+		{
+			"DELETE FROM data_decay_policies WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
+			[]interface{}{cutoff}, "data_decay_policies",
 		},
 		{
 			"DELETE FROM relationship_edges WHERE source_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?) OR target_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",

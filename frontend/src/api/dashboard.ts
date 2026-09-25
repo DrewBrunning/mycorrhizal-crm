@@ -6,6 +6,7 @@ import type { OverdueCadence } from './cadencePolicies';
 import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 import type { ContactSyncConflict } from './contactSyncConflicts';
 import type { Birthday, Contact } from './contacts';
+import type { OverdueDataDecayPolicy } from './dataDecayPolicies';
 import type { ReachOutSuggestion } from './reachOutSuggestions';
 import type { Reminder } from './reminders';
 
@@ -26,6 +27,8 @@ export interface DashboardResponse {
   reach_out_suggestions: ReachOutSuggestion[];
   // Issue #395: pending CardDAV sync conflicts (overwritten local edits).
   contact_sync_conflicts: ContactSyncConflict[];
+  // Issue #352: contacts whose info is due for re-verification.
+  data_decay_overdue: OverdueDataDecayPolicy[];
 }
 
 export async function getDashboard(): Promise<DashboardResponse> {

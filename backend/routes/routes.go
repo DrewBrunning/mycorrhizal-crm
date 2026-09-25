@@ -717,6 +717,22 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// surface. Instance-wide, admin-only, read-only.
 			admin.GET("/system-status", controllers.GetSystemStatus)
 		}
+
+		// DataDecayPolicy routes (issue #352, docs/adrs/0027-data-decay.md).
+		// /overdue is registered before /:id so the literal path is never
+		// captured as a policy ID, mirroring the CadencePolicy routes above.
+		// Appended here, after the admin block, rather than inlined next to
+		// the CadencePolicy routes above, to avoid shifting any
+		// docs/security/*.md path:line citations below that point
+		// (CLAUDE.md's citecheck line-shift trap — see dtos.go's
+		// OccasionObligationInput for the same pattern).
+		protected.GET("/data-decay-policies/overdue", controllers.GetOverdueDataDecayPolicies)
+		protected.POST("/data-decay-policies", middleware.ValidateJSONMiddleware(&models.DataDecayPolicyInput{}), controllers.CreateDataDecayPolicy)
+		protected.GET("/data-decay-policies", controllers.ListDataDecayPolicies)
+		protected.GET("/data-decay-policies/:id", controllers.GetDataDecayPolicy)
+		protected.PUT("/data-decay-policies/:id", middleware.ValidateJSONMiddleware(&models.DataDecayPolicyInput{}), controllers.UpdateDataDecayPolicy)
+		protected.DELETE("/data-decay-policies/:id", controllers.DeleteDataDecayPolicy)
+		protected.POST("/data-decay-policies/:id/verify", controllers.VerifyDataDecayPolicy)
 	}
 
 	// CardDAV routes (optional, enabled via CARDDAV_ENABLED)
