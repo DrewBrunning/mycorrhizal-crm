@@ -1,8 +1,23 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import ImmichSettings from './ImmichSettings';
+
+// The initial-config fetch resolves and commits (making the form fields
+// visible) in one render pass, but the *separate* effect that mirrors
+// `immich.config` onto local field state (`setBaseUrl`/`setApiKey`) is a
+// distinct passive effect that React schedules to flush slightly later.
+// `waitFor` below only waits for the DOM mutation that makes the fields
+// visible — not for that second, still-pending effect. Under load (e.g. a
+// nightly run under `--coverage`), that pending effect can still be queued
+// when the *next* `fireEvent.*` call's implicit `act()` flushes it,
+// clobbering whatever the test just typed with the mirrored config value.
+// This settles all pending effects before any interaction, so field edits
+// aren't racing a same-tick mirror-effect flush (T41 flake, 2026-09-24).
+async function settle() {
+  await act(async () => {});
+}
 
 beforeEach(() => {
   localStorage.setItem(
@@ -85,6 +100,7 @@ test('saving posts the base URL and API key, and the key never comes back', asyn
   );
 
   await waitFor(() => expect(screen.getByLabelText('Base URL')).toBeInTheDocument());
+  await settle();
   fireEvent.change(screen.getByLabelText('Base URL'), { target: { value: 'http://immich:2283' } });
   fireEvent.change(screen.getByLabelText('API Key'), { target: { value: 'sekret-key' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save connection' }));
@@ -120,6 +136,7 @@ test('a non-http(s) base URL is rejected client-side without sending a request (
   );
 
   await waitFor(() => expect(screen.getByLabelText('Base URL')).toBeInTheDocument());
+  await settle();
   // Scheme-less is rejected deliberately — unlike GiftDialog there is no
   // scheme-less→https default, because the backend cannot guess http vs https.
   fireEvent.change(screen.getByLabelText('Base URL'), { target: { value: 'immich.example.com' } });
