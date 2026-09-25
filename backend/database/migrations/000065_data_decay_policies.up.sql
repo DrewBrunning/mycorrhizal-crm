@@ -1,7 +1,7 @@
 -- Issue #352 — DataDecayPolicy: an opt-in, per-contact reminder to
 -- periodically re-verify stored info (address, phone, employer, etc.) is
 -- still accurate. Deliberately distinct from cadence_policies (T19), which
--- is about staying in touch, not data freshness (docs/adrs/0026-data-decay.md).
+-- is about staying in touch, not data freshness (docs/adrs/0027-data-decay.md).
 --
 -- last_verified_at is a stored column, not derived: unlike cadence (which
 -- derives from the existing activities timeline), there is no existing

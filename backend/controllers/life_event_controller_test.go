@@ -16,7 +16,7 @@ import (
 )
 
 func TestCreateLifeEvent(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/life-events", withValidated(func() any { return &models.LifeEventInput{} }), CreateLifeEvent)
 
 	var user models.User
@@ -46,7 +46,7 @@ func TestCreateLifeEvent(t *testing.T) {
 // T36: Category round-trips through create/update, and an invalid value is
 // rejected by LifeEventInput's `oneof` validator.
 func TestCreateLifeEventWithCategory(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/life-events", withValidated(func() any { return &models.LifeEventInput{} }), CreateLifeEvent)
 
 	var user models.User
@@ -74,7 +74,7 @@ func TestCreateLifeEventWithCategory(t *testing.T) {
 }
 
 func TestCreateLifeEventRejectsInvalidCategory(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	// Real validation middleware (not withValidated) so the `oneof` tag on
 	// LifeEventInput.Category is actually enforced.
 	router.POST("/life-events", middleware.ValidateJSONMiddleware(&models.LifeEventInput{}), CreateLifeEvent)
@@ -104,7 +104,7 @@ func TestCreateLifeEventRejectsInvalidCategory(t *testing.T) {
 }
 
 func TestUpdateLifeEventChangesCategory(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/life-events/:id", withValidated(func() any { return &models.LifeEventInput{} }), UpdateLifeEvent)
 
 	var user models.User
@@ -140,7 +140,7 @@ func TestUpdateLifeEventChangesCategory(t *testing.T) {
 }
 
 func TestCreateLifeEventRejectsContactFromAnotherUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/life-events", withValidated(func() any { return &models.LifeEventInput{} }), CreateLifeEvent)
 
 	var user models.User
@@ -161,7 +161,7 @@ func TestCreateLifeEventRejectsContactFromAnotherUser(t *testing.T) {
 }
 
 func TestGetLifeEvent(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/life-events/:id", GetLifeEvent)
 
 	var user models.User
@@ -179,7 +179,7 @@ func TestGetLifeEvent(t *testing.T) {
 }
 
 func TestListLifeEventsFiltersByEntityID(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/life-events", ListLifeEvents)
 
 	var user models.User
@@ -203,7 +203,7 @@ func TestListLifeEventsFiltersByEntityID(t *testing.T) {
 }
 
 func TestUpdateLifeEvent(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/life-events/:id", withValidated(func() any { return &models.LifeEventInput{} }), UpdateLifeEvent)
 
 	var user models.User
@@ -229,7 +229,7 @@ func TestUpdateLifeEvent(t *testing.T) {
 }
 
 func TestDeleteLifeEvent(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/life-events/:id", DeleteLifeEvent)
 
 	var user models.User
@@ -258,7 +258,7 @@ func TestDeleteLifeEvent(t *testing.T) {
 // M1: Creating a LifeEvent with Remind=true and month/day creates a
 // materialised yearly Reminder row.
 func TestCreateLifeEventWithRemind(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	router.POST("/life-events", withValidated(func() any { return &models.LifeEventInput{} }), CreateLifeEvent)
 
@@ -302,7 +302,7 @@ func TestCreateLifeEventWithRemind(t *testing.T) {
 // M1b: Creating a LifeEvent with Remind=true but year-only date does NOT
 // create a reminder (no month/day to anchor recurrence).
 func TestCreateLifeEventWithRemindYearOnly(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	router.POST("/life-events", withValidated(func() any { return &models.LifeEventInput{} }), CreateLifeEvent)
 
@@ -339,7 +339,7 @@ func TestCreateLifeEventWithRemindYearOnly(t *testing.T) {
 
 // M1c: Toggling Remind from true→false deletes the reminder.
 func TestUpdateLifeEventRemindToggleOff(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	router.PUT("/life-events/:id", withValidated(func() any { return &models.LifeEventInput{} }), UpdateLifeEvent)
 
@@ -410,7 +410,7 @@ func TestEventHasMonthDayRejectsInvalidDates(t *testing.T) {
 
 // ADR 0025: a life event may carry an end date, turning its start into a span.
 func TestCreateLifeEventWithEndDate(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/life-events", middleware.ValidateJSONMiddleware(&models.LifeEventInput{}), CreateLifeEvent)
 
 	var user models.User
@@ -443,7 +443,7 @@ func TestCreateLifeEventWithEndDate(t *testing.T) {
 // not a silent write. Partial dates carry no total order, so a year-less pair
 // is not an error (and is exercised through the helper directly below).
 func TestCreateLifeEventRejectsReversedRange(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/life-events", middleware.ValidateJSONMiddleware(&models.LifeEventInput{}), CreateLifeEvent)
 
 	var user models.User
@@ -482,7 +482,7 @@ func TestValidateLifeEventRange(t *testing.T) {
 
 // ADR 0025: updating the end date (and clearing it) round-trips.
 func TestUpdateLifeEventEndDate(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/life-events/:id", middleware.ValidateJSONMiddleware(&models.LifeEventInput{}), UpdateLifeEvent)
 
 	var user models.User

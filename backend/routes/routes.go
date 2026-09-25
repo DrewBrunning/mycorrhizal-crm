@@ -423,6 +423,19 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.GET("/occasion-obligations/card-list", controllers.GetOccasionCardListCSV)
 			protected.GET("/occasion-obligations/gift-shopping-list", controllers.GetGiftShoppingList)
 
+			// OccasionEvent routes (docs/adrs/0026-occasions-events.md, issue
+			// #1228). /invitee-suggestions is registered before /:id so the
+			// literal path is never captured as an event ID.
+			protected.POST("/occasion-events", middleware.ValidateJSONMiddleware(&models.OccasionEventInput{}), controllers.CreateOccasionEvent)
+			protected.GET("/occasion-events", controllers.ListOccasionEvents)
+			protected.GET("/occasion-events/invitee-suggestions", controllers.GetInviteeSuggestions)
+			protected.GET("/occasion-events/:id", controllers.GetOccasionEvent)
+			protected.PUT("/occasion-events/:id", middleware.ValidateJSONMiddleware(&models.OccasionEventInput{}), controllers.UpdateOccasionEvent)
+			protected.DELETE("/occasion-events/:id", controllers.DeleteOccasionEvent)
+			protected.POST("/occasion-events/:id/attendees", middleware.ValidateJSONMiddleware(&models.OccasionEventAttendeeInput{}), controllers.AddOccasionEventAttendee)
+			protected.PUT("/occasion-events/:id/attendees/:vcard_uid", middleware.ValidateJSONMiddleware(&models.OccasionEventAttendeeUpdateInput{}), controllers.UpdateOccasionEventAttendee)
+			protected.DELETE("/occasion-events/:id/attendees/:vcard_uid", controllers.RemoveOccasionEventAttendee)
+
 			// CadencePolicy routes (T19 — T19).
 			// /overdue is registered before /:id so the literal path is never
 			// captured as a policy ID.
@@ -705,7 +718,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			admin.GET("/system-status", controllers.GetSystemStatus)
 		}
 
-		// DataDecayPolicy routes (issue #352, docs/adrs/0026-data-decay.md).
+		// DataDecayPolicy routes (issue #352, docs/adrs/0027-data-decay.md).
 		// /overdue is registered before /:id so the literal path is never
 		// captured as a policy ID, mirroring the CadencePolicy routes above.
 		// Appended here, after the admin block, rather than inlined next to

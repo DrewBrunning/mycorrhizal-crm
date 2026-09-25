@@ -208,7 +208,7 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
 
-	// Delete data decay policies (hard) — issue #352, docs/adrs/0026-data-decay.md
+	// Delete data decay policies (hard) — issue #352, docs/adrs/0027-data-decay.md
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.DataDecayPolicy{}).Error; err != nil {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
@@ -225,6 +225,17 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 
 	// Delete occasion obligations (hard) — docs/adrs/0024-occasions.md, issue #387, ticket #1222
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.OccasionObligation{}).Error; err != nil {
+		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+	}
+
+	// Delete occasion event attendees, then occasion events (child before
+	// parent) — docs/adrs/0026-occasions-events.md, issue #1228. Events are
+	// soft-deleted content, so the FK cascade from the hard-deleted user row
+	// never fires for them; the manual enumeration is the convention.
+	if err := tx.Where("user_id = ?", userID).Delete(&models.OccasionEventAttendee{}).Error; err != nil {
+		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
+	}
+	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.OccasionEvent{}).Error; err != nil {
 		return err // # pragma: no cover — DB/disk failure only (schema/FK integrity is proven elsewhere); see file doc comment
 	}
 

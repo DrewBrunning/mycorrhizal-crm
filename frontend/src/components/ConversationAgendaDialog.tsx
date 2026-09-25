@@ -118,7 +118,7 @@ export default function ConversationAgendaDialog({
         <Button onClick={onClose} disabled={saving}>
           {t('conversationAgenda.cancel')}
         </Button>
-        <Button onClick={handleSave} variant="contained" disabled={saving}>
+        <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('conversationAgenda.save')}
         </Button>
       </DialogActions>

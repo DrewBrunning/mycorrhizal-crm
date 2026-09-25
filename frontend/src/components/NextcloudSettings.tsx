@@ -35,7 +35,7 @@ export default function NextcloudSettings() {
   const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
-    nextcloud.refreshConfig();
+    void nextcloud.refreshConfig();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -183,7 +183,12 @@ export default function NextcloudSettings() {
             )}
 
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button variant="contained" size="small" onClick={handleSave} disabled={saving}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => void handleSave()}
+                disabled={saving}
+              >
                 {saving ? t('common.saving') : t('nextcloud.settings.saveButton')}
               </Button>
               {nextcloud.config?.has_app_password && (
@@ -203,7 +208,12 @@ export default function NextcloudSettings() {
                 </Button>
               )}
               {nextcloud.config && (
-                <Button variant="outlined" size="small" color="error" onClick={handleRemove}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  color="error"
+                  onClick={() => void handleRemove()}
+                >
                   {t('nextcloud.settings.removeButton')}
                 </Button>
               )}

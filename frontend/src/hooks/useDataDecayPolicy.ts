@@ -35,7 +35,7 @@ export function useDataDecayPolicy(entityId: string | undefined, notifier?: Erro
   );
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const handleSave = useCallback(

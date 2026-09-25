@@ -1070,6 +1070,7 @@ paths:
                     email_sent: false
                     last_sent: null
                     contact_id: 11
+                    revision: 1
                     contact:
                       ID: 0
                       CreatedAt: "0001-01-01T00:00:00Z"
@@ -1107,6 +1108,8 @@ paths:
                 overdue: []
                 favorites: []
                 reach_out_suggestions: []
+                contact_sync_conflicts: []
+                data_decay_overdue: []
 
   # --- Contacts ---
   /contacts:
@@ -2060,6 +2063,7 @@ paths:
                     content: "Contract fixture note"
                     date: "2026-08-20T18:00:00Z"
                     contact_id: 11
+                    revision: 1
                     contact:
                       ID: 0
                       CreatedAt: "0001-01-01T00:00:00Z"
@@ -2103,6 +2107,7 @@ paths:
                     description: ""
                     location: ""
                     date: "2026-08-20T18:00:00Z"
+                    revision: 1
                     contacts:
                       - ID: 11
                         CreatedAt: "0001-01-01T00:00:00Z"
@@ -2151,6 +2156,7 @@ paths:
                     email_sent: false
                     last_sent: null
                     contact_id: 11
+                    revision: 1
                     contact:
                       ID: 0
                       CreatedAt: "0001-01-01T00:00:00Z"
@@ -2209,6 +2215,7 @@ paths:
                     type: "graduated"
                     category: "work_education"
                     description: "Fixture life event"
+                    revision: 1
                     related_entity_names: {}
                 agenda: []
                 gifts:
@@ -3183,6 +3190,7 @@ paths:
                   limit: { type: integer }
                   sync:
                     $ref: "#/components/schemas/SyncInfo"
+              example: {"relationship_edges": [{"id": "4535c2cb-34a1-4471-a195-ad18f7957a49", "created_at": "2026-08-21T00:08:50Z", "updated_at": "2026-08-21T00:08:50Z", "source_id": "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f", "target_id": "0836c948-4c37-4ac8-bb27-358936e6b67c", "type": "friend_of", "directional": false, "source": "user-confirmed", "confidence": 1, "status": "confirmed", "sensitivity": "normal"}], "next_cursor": "", "limit": 25}
     post:
       summary: Create a relationship edge
       operationId: createRelationshipEdge
@@ -3659,6 +3667,7 @@ paths:
                     type: string
                     description: Resume token for the next page; empty when there are no more rows.
                   limit: { type: integer }
+              example: {"notes": [{"ID": 2, "CreatedAt": "2026-08-21T00:08:42Z", "UpdatedAt": "2026-08-21T00:08:42Z", "DeletedAt": null, "content": "Contract fixture note", "date": "2026-08-20T18:00:00Z", "contact_id": 11, "revision": 1}, {"ID": 3, "CreatedAt": "2026-08-21T00:09:42Z", "UpdatedAt": "2026-08-21T00:09:42Z", "DeletedAt": null, "content": "Unfiled fixture note", "date": "2026-08-20T19:00:00Z", "contact_id": null, "revision": 2}], "next_cursor": "", "limit": 25}
         "400":
           description: Malformed cursor.
           content:
@@ -4038,6 +4047,7 @@ paths:
                   limit: { type: integer }
                   sync:
                     $ref: "#/components/schemas/SyncInfo"
+              example: {"activities": [{"ID": 2, "CreatedAt": "2026-08-21T00:08:43Z", "UpdatedAt": "2026-08-21T00:08:43Z", "DeletedAt": null, "uuid": "56c3cf8a-2c2e-4e9d-a5c4-fa0081de1d32", "title": "Fixture activity", "description": "", "location": "", "date": "2026-08-20T18:00:00Z", "revision": 1}], "next_cursor": "", "limit": 25}
     post:
       summary: Create an activity
       operationId: createActivity
@@ -4223,6 +4233,7 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/CircleMember"
+              example: {"circles": [{"id": "e7d59493-5f47-4fff-88e0-7d1ba44604df", "created_at": "2026-08-21T00:08:47Z", "updated_at": "2026-08-21T00:08:47Z", "name": "contract-fixture-circle"}], "total": 1, "next_cursor": "", "limit": 25}
     post:
       summary: Create a circle
       operationId: createCircle
@@ -4885,6 +4896,7 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/ContactTag"
+              example: {"tags": [{"id": "99814236-a948-4083-b6a9-d9ae4deb335d", "created_at": "2026-08-21T00:08:48Z", "updated_at": "2026-08-21T00:08:48Z", "name": "contract-fixture"}], "total": 1, "next_cursor": "", "limit": 25}
     post:
       summary: Create a tag
       operationId: createTag
@@ -5324,6 +5336,7 @@ paths:
                   limit: { type: integer }
                   sync:
                     $ref: "#/components/schemas/SyncInfo"
+              example: {"life_events": [{"id": "c06177b1-e498-43c7-9821-7a6669411a04", "created_at": "2026-08-21T00:08:45Z", "updated_at": "2026-08-21T00:08:45Z", "entity_id": "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f", "type": "graduated", "category": "work_education", "date": {"year": 2020, "month": 6}, "description": "Fixture life event", "revision": 1}], "next_cursor": "", "limit": 25}
     post:
       summary: Create a life event
       operationId: createLifeEvent
@@ -6316,6 +6329,329 @@ paths:
                       $ref: "#/components/schemas/GiftShoppingItem"
                   days: { type: integer }
 
+  # --- OccasionEvents (docs/adrs/0026-occasions-events.md, issue #1228) ---
+  /occasion-events:
+    get:
+      summary: List occasion events
+      operationId: listOccasionEvents
+      description: >
+        The authenticated user's one-off events, cursor-paginated (T17),
+        newest-updated first. Supports the ?since= change feed (soft-delete
+        tombstones) and an optional ?from=/?to= RFC 3339 window on starts_at.
+      parameters:
+        - name: cursor
+          in: query
+          description: Opaque resume token from the previous page's next_cursor. Ignored when since is present.
+          schema: { type: string }
+        - name: since
+          in: query
+          description: >
+            Change-feed cursor: return every occasion event changed after this
+            position — including soft-deleted ones (deleted:true) — ordered
+            forward. A cursor older than DELETED_RETENTION_DAYS returns 410 Gone.
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order. since forces asc.
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - name: from
+          in: query
+          description: Only events starting at or after this RFC 3339 instant.
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          description: Only events starting at or before this RFC 3339 instant.
+          schema: { type: string, format: date-time }
+      responses:
+        "400":
+          description: from/to are not RFC 3339 timestamps.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: The ?since= cursor is older than DELETED_RETENTION_DAYS — full resync required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of occasion events.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  occasion_events:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OccasionEvent"
+                  total: { type: integer }
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
+                  limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
+              example: {"occasion_events": [{"id": "7b1e0c52-5d8a-4f7e-9a51-2f3c4d5e6f70", "created_at": "2026-08-21T00:08:51Z", "updated_at": "2026-08-21T00:08:51Z", "title": "Fixture dinner", "starts_at": "2026-09-01T18:00:00Z", "location": "Fixture Hall", "sensitivity": "normal"}], "total": 1, "next_cursor": "", "limit": 25}
+    post:
+      summary: Create an occasion event
+      operationId: createOccasionEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OccasionEventInput"
+      responses:
+        "201":
+          description: Occasion event created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Occasion event created successfully" }
+                  occasion_event:
+                    $ref: "#/components/schemas/OccasionEvent"
+        "400":
+          description: Validation failed (including ends_at before starts_at).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /occasion-events/invitee-suggestions:
+    get:
+      summary: Suggested invitees from circles
+      operationId: getInviteeSuggestions
+      description: >
+        Expands one or more owned circles into candidate invitees — every
+        member contact, de-duplicated across circles and (when event_id is
+        given) excluding contacts already invited. Read-only; the answer is
+        computed, never stored (docs/adrs/0026-occasions-events.md part 3).
+      parameters:
+        - name: circle_ids
+          in: query
+          required: true
+          description: Comma-separated Circle ids to expand.
+          schema: { type: string }
+        - name: event_id
+          in: query
+          description: When given, exclude contacts already invited to this event.
+          schema: { type: string, format: uuid }
+      responses:
+        "400":
+          description: circle_ids is missing or empty.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: A requested circle (or the event_id) was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The candidate invitees.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggestions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/InviteeSuggestion"
+                  circle_ids:
+                    type: array
+                    items: { type: string, format: uuid }
+  /occasion-events/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get an occasion event with its attendees
+      operationId: getOccasionEvent
+      responses:
+        "200":
+          description: The event plus its attendee/RSVP list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  occasion_event:
+                    $ref: "#/components/schemas/OccasionEvent"
+                  attendees:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OccasionEventAttendeeView"
+        "404":
+          description: Occasion event not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update an occasion event (full replace)
+      operationId: updateOccasionEvent
+      description: Replace the event's fields. Attendees are managed by the nested sub-resources, never here.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OccasionEventInput"
+      responses:
+        "200":
+          description: The updated occasion event (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OccasionEvent"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Occasion event not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete an occasion event (soft delete)
+      operationId: deleteOccasionEvent
+      description: Soft-deletes the event and hard-deletes its attendees in the same transaction.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Occasion event not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /occasion-events/{id}/attendees:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Add an invitee to an occasion event
+      operationId: addOccasionEventAttendee
+      description: >
+        Invites one owned contact. The RSVP defaults to "pending" — the user
+        records the answer later; nothing is sent (docs/adrs/0026-occasions-events.md part 2).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OccasionEventAttendeeInput"
+      responses:
+        "200":
+          description: Attendee added.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Attendee added" }
+                  attendee:
+                    $ref: "#/components/schemas/OccasionEventAttendee"
+        "404":
+          description: Event or contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The contact is already an attendee of this event.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /occasion-events/{id}/attendees/{vcard_uid}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: vcard_uid
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Record an attendee's RSVP status
+      operationId: updateOccasionEventAttendee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OccasionEventAttendeeUpdateInput"
+      responses:
+        "200":
+          description: The updated attendee (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OccasionEventAttendee"
+        "404":
+          description: Event or attendee not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Remove an attendee from an occasion event
+      operationId: removeOccasionEventAttendee
+      responses:
+        "200":
+          description: Removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Event or attendee not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   # --- CadencePolicies (T19) ---
   /cadence-policies/overdue:
     get:
@@ -6681,7 +7017,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
-  # --- DataDecayPolicies (issue #352, docs/adrs/0026-data-decay.md) ---
+  # --- DataDecayPolicies (issue #352, docs/adrs/0027-data-decay.md) ---
   /data-decay-policies/overdue:
     get:
       summary: List overdue data decay policies
@@ -6993,7 +7329,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Reminder"
+              $ref: "#/components/schemas/ReminderInput"
       responses:
         "200":
           description: Reminder updated.
@@ -7099,6 +7435,7 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Reminder"
+              example: {"reminders": [{"ID": 2, "CreatedAt": "2026-08-21T00:08:44Z", "UpdatedAt": "2026-08-21T00:08:44Z", "DeletedAt": null, "message": "Fixture reminder", "by_mail": null, "remind_at": "2026-08-22T00:00:00Z", "recurrence": "once", "reoccur_from_completion": false, "completed": false, "email_sent": false, "last_sent": null, "contact_id": 11, "revision": 1}]}
         "404":
           description: Contact not found.
           content:
@@ -7119,7 +7456,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Reminder"
+              $ref: "#/components/schemas/ReminderInput"
       responses:
         "200":
           description: Reminder created (200, not 201).
@@ -11143,6 +11480,7 @@ components:
       description: >
         Slim per-item shape for GET /contacts (list) — wraps
         contactmodel.Projection's own fields plus identity/photo.
+      required: [id, uid, firstname, lastname, nickname, fn, primary_email, primary_phone, birthday, org, photo, archived, is_favorite, revision]
       properties:
         id: { type: integer }
         uid: { type: string }
@@ -11185,7 +11523,11 @@ components:
             plain list request.
           default: false
     ContactSummaryWithRelations:
-      description: ContactSummary extended with the sub-resource arrays requested via includes=.
+      description: >
+        ContactSummary extended with the sub-resource arrays requested via
+        includes=. notes/activities/reminders are always present and
+        serialize as `[]` when the contact has none, never `null`/absent
+        (CLAUDE.md frontend trap #8).
       allOf:
         - $ref: "#/components/schemas/ContactSummary"
         - type: object
@@ -11213,6 +11555,7 @@ components:
     ContactRecordResponse:
       type: object
       description: Full neutral detail-view response for GET/POST/PUT /contacts.
+      required: [id, uid, etag, revision, gender, card, crm, photo, archived, is_favorite]
       properties:
         id: { type: integer }
         uid: { type: string }
@@ -11246,15 +11589,27 @@ components:
           description: >
             Issue #173: whether the caller marked this contact as a favorite.
             Always present. CRM-local — never exported or synced.
-        notes: { type: array, items: { type: object } }
-        activities: { type: array, items: { type: object } }
-        reminders: { type: array, items: { type: object } }
+        notes:
+          type: array
+          items: { type: object }
+          description: >
+            Always present; serializes as `[]` when the contact has none,
+            never `null`/absent (CLAUDE.md frontend trap #8).
+        activities:
+          type: array
+          items: { type: object }
+          description: Always present; serializes as `[]` when the contact has none, never `null`/absent (CLAUDE.md frontend trap #8).
+        reminders:
+          type: array
+          items: { type: object }
+          description: Always present; serializes as `[]` when the contact has none, never `null`/absent (CLAUDE.md frontend trap #8).
     DashboardResponse:
       type: object
       description: >
         Read-only M3 dashboard composite (GET /dashboard). Pure aggregation
         of existing per-user queries; every block is always present and
         serializes as `[]` when empty, never `null`/absent.
+      required: [birthdays, random_contacts, upcoming_reminders, overdue, favorites, reach_out_suggestions, contact_sync_conflicts, data_decay_overdue]
       properties:
         birthdays:
           type: array
@@ -11278,6 +11633,10 @@ components:
           type: array
           description: "Issue #177: pending event-driven reach-out suggestions."
           items: { $ref: "#/components/schemas/ReachOutSuggestion" }
+        contact_sync_conflicts:
+          type: array
+          description: "Issue #395: pending CardDAV sync conflicts (a remote change overwrote a local edit)."
+          items: { $ref: "#/components/schemas/ContactSyncConflict" }
         data_decay_overdue:
           type: array
           description: "Issue #352: contacts whose info is due for re-verification."
@@ -11290,6 +11649,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/Reminder"
         - type: object
+          required: [contact_name]
           properties:
             contact_name: { type: string }
     ContactDetailResponse:
@@ -11300,6 +11660,7 @@ components:
         block is always present and serializes as `[]` when empty, never
         `null`/absent. `immich` is the one legitimately-absent block (present
         only when the user has an Immich config at all).
+      required: [contact, user, notes, activities, completions, reminders, relationship_edges, life_events, agenda, gifts, field_values, external_identities, external_activities, circles, tags]
       properties:
         contact:
           $ref: "#/components/schemas/ContactRecordResponse"
@@ -11351,6 +11712,7 @@ components:
     ContactDetailUser:
       type: object
       description: The current user's fields the detail screen needs — deliberately thinner than the admin user object.
+      required: [enabled_contact_fields]
       properties:
         enabled_contact_fields:
           type: array
@@ -11362,6 +11724,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/LifeEvent"
         - type: object
+          required: [related_entity_names]
           properties:
             related_entity_names:
               type: object
@@ -11372,6 +11735,7 @@ components:
       description: >
         Present only when the requesting user has an Immich config, regardless
         of whether this particular contact is linked to an Immich person yet.
+      required: [summary]
       properties:
         summary:
           nullable: true
@@ -11515,6 +11879,7 @@ components:
     BriefingRelationship:
       type: object
       description: One confirmed relationship edge resolved for display.
+      required: [edge]
       properties:
         edge:
           $ref: "#/components/schemas/RelationshipEdge"
@@ -11545,6 +11910,7 @@ components:
         phones, addresses, urls, impps) serialize as `null` when empty — a
         nil Go slice has no omitempty — never as `[]`; a client must accept
         null here (the neutral Card endpoints never emit this shape).
+      required: [ID, CreatedAt, UpdatedAt, DeletedAt, firstname, lastname, nickname, gender, email, phone, birthday, photo, address, how_we_met, work_information, contact_information, circles, emails, phones, addresses, urls, impps, prefix, middle_name, suffix, organization, department, job_title, role, anniversary, archived, is_favorite]
       properties:
         ID: { type: integer }
         CreatedAt: { type: string, format: date-time }
@@ -11595,6 +11961,7 @@ components:
         role: { type: string }
         anniversary: { type: string }
         archived: { type: boolean }
+        is_favorite: { type: boolean }
         activities:
           type: array
           items: { $ref: "#/components/schemas/Activity" }
@@ -11609,6 +11976,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/ContactFlat"
         - type: object
+          required: [photo_thumbnail]
           properties:
             photo_thumbnail: { type: string }
     ContactEmail:
@@ -11652,8 +12020,9 @@ components:
     Birthday:
       type: object
       description: One upcoming contact birthday.
+      required: [type, name, birthday, contact_id]
       properties:
-        type: { type: string, example: "contact" }
+        type: { type: string, enum: [contact], description: "Always \"contact\" (models.Birthday)." }
         name: { type: string }
         birthday: { type: string, description: "ISO YYYY-MM-DD." }
         photo_thumbnail: { type: string }
@@ -11795,6 +12164,7 @@ components:
       description: >
         A note. Emits gorm.Model identity/timestamps in PascalCase and always
         includes a nested contact object (struct value, never omitted).
+      required: [ID, CreatedAt, UpdatedAt, DeletedAt, content, date, contact_id, revision]
       properties:
         ID: { type: integer }
         CreatedAt: { type: string, format: date-time }
@@ -11828,6 +12198,7 @@ components:
         An activity/Interaction. gorm.Model identity keys in PascalCase.
         Type is a conventional, open classifier (call, visit, meal, message,
         gift, photo, ...).
+      required: [ID, CreatedAt, UpdatedAt, DeletedAt, title, description, location, date, revision]
       properties:
         ID: { type: integer }
         CreatedAt: { type: string, format: date-time }
@@ -11866,12 +12237,15 @@ components:
           items: { type: integer }
         type: { type: string }
         external_ref: { type: string }
-    Reminder:
+    ReminderInput:
       type: object
       description: >
-        A reminder. Doubles as the request body for create/update, so the
-        required fields (message, remind_at, recurrence, contact_id) must be
-        present on every write.
+        The create/update request body. The backend binds models.Reminder
+        itself, so every Reminder property is accepted, but only the
+        validator-required fields (message, remind_at, recurrence,
+        contact_id) must be present on a write. Split from Reminder so the
+        response schema can mark its always-emitted fields required.
+      required: [message, remind_at, recurrence, contact_id]
       properties:
         ID: { type: integer }
         CreatedAt: { type: string, format: date-time }
@@ -11886,6 +12260,32 @@ components:
         email_sent: { type: boolean }
         last_sent: { type: string, format: date-time, nullable: true }
         contact_id: { type: integer, nullable: true }
+        life_event_id: { type: string }
+        occasion_obligation_id: { type: string, description: "Server-set; never client-writable (ignored on write)." }
+        contact:
+          $ref: "#/components/schemas/ContactFlat"
+        revision: { type: integer, description: "Read-only (ADR 0006); ignored on write." }
+    Reminder:
+      type: object
+      description: >
+        A reminder as returned by the API. The request body for create/update
+        is ReminderInput (the same Go model, validated on message, remind_at,
+        recurrence and contact_id).
+      required: [ID, CreatedAt, UpdatedAt, DeletedAt, message, by_mail, remind_at, recurrence, reoccur_from_completion, completed, email_sent, last_sent, contact_id, revision]
+      properties:
+        ID: { type: integer }
+        CreatedAt: { type: string, format: date-time }
+        UpdatedAt: { type: string, format: date-time }
+        DeletedAt: { type: string, format: date-time, nullable: true }
+        message: { type: string, minLength: 1, maxLength: 500 }
+        by_mail: { type: boolean, nullable: true }
+        remind_at: { type: string, format: date-time }
+        recurrence: { type: string, enum: [once, weekly, monthly, quarterly, six-months, yearly] }
+        reoccur_from_completion: { type: boolean, nullable: true }
+        completed: { type: boolean }
+        email_sent: { type: boolean }
+        last_sent: { type: string, format: date-time, nullable: true }
+        contact_id: { type: integer, description: "NOT NULL column, so never null on a persisted reminder." }
         life_event_id: { type: string }
         occasion_obligation_id:
           type: string
@@ -11912,12 +12312,13 @@ components:
     ReminderCompletion:
       type: object
       description: A timeline entry recording that a reminder was completed.
+      required: [ID, CreatedAt, UpdatedAt, DeletedAt, contact_id, message, completed_at]
       properties:
         ID: { type: integer }
         CreatedAt: { type: string, format: date-time }
         UpdatedAt: { type: string, format: date-time }
         DeletedAt: { type: string, format: date-time, nullable: true }
-        reminder_id: { type: integer, nullable: true }
+        reminder_id: { type: integer }
         contact_id: { type: integer }
         message: { type: string }
         completed_at: { type: string, format: date-time }
@@ -11925,6 +12326,7 @@ components:
     # --- Circles / Households / Tags ---
     Circle:
       type: object
+      required: [id, created_at, updated_at, name]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -11938,6 +12340,7 @@ components:
     CircleMember:
       type: object
       description: A circle membership join row.
+      required: [id, created_at, updated_at, circle_id, member_vcard_uid]
       properties:
         id: { type: integer }
         created_at: { type: string, format: date-time }
@@ -12020,6 +12423,7 @@ components:
               reason: { type: string }
     Household:
       type: object
+      required: [id, created_at, updated_at, name, type]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -12039,6 +12443,7 @@ components:
     HouseholdMember:
       type: object
       description: A household membership join row.
+      required: [id, created_at, updated_at, household_id, member_vcard_uid]
       properties:
         id: { type: integer }
         created_at: { type: string, format: date-time }
@@ -12569,6 +12974,7 @@ components:
         size_bytes: { type: integer }
     Tag:
       type: object
+      required: [id, created_at, updated_at, name]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -12582,6 +12988,7 @@ components:
     ContactTag:
       type: object
       description: A tagging join row (contact x tag).
+      required: [id, created_at, updated_at, tag_id, contact_vcard_uid]
       properties:
         id: { type: integer }
         created_at: { type: string, format: date-time }
@@ -12601,6 +13008,7 @@ components:
         A directed edge in the relationship graph; Type describes the source's
         role relative to the target. Only status=confirmed edges are fact;
         suggested edges await review.
+      required: [id, created_at, updated_at, source_id, target_id, type, directional, source, confidence, status, sensitivity]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -12612,7 +13020,7 @@ components:
         metadata:
           type: object
           additionalProperties: true
-        source: { type: string, enum: [user-confirmed, household-inferred, imported, ai-suggested] }
+        source: { type: string, enum: [user-confirmed, household-inferred, imported, ai-suggested, graph-inferred] }
         confidence: { type: number }
         status: { type: string, enum: [confirmed, suggested] }
         sensitivity: { type: string, enum: [normal, private, secret] }
@@ -12650,6 +13058,7 @@ components:
         "This contact IS this thing in that external system." Keyed by
         entity_id (a Contact.VCardUID), never the numeric ID. System-specific
         data lives in metadata (JSON), never in a per-system column.
+      required: [id, created_at, updated_at, entity_id, system, external_id, sync_status]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -12684,6 +13093,7 @@ components:
         An event contributed by an external system, linkable into a contact's
         timeline. The CRM stores a reference + timeline entry; the source data
         stays in the external system.
+      required: [id, created_at, updated_at, entity_id, source_system, external_id, type, occurred_at, provenance, sync_state]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -12753,6 +13163,7 @@ components:
     ImmichPersonSummary:
       type: object
       description: A contact's Immich link plus live (or cached, on failure) person info.
+      required: [identity, person_name, photo_count]
       properties:
         identity:
           $ref: "#/components/schemas/ExternalIdentity"
@@ -12886,6 +13297,7 @@ components:
     LifeEvent:
       type: object
       description: A permanent fact about an entity's life. remind=false is omitted on the wire (omitempty).
+      required: [id, created_at, updated_at, entity_id, revision]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -12942,6 +13354,7 @@ components:
         read; not a stored entity. SourceKind/SourceEntryID identify the Card
         entry the inference came from and are the resolution key, not a live
         link to an accepted event.
+      required: [entity_id, type, category, date, source_kind, source_entry_id]
       properties:
         entity_id: { type: string, format: uuid }
         type: { type: string, example: moved }
@@ -12969,6 +13382,7 @@ components:
         A user-configurable messaging/social link type (name, {value}-templated
         protocol, category, icon, position). Deliberately not a hardcoded
         oneof-validated enum — see the ticket's "Decisions made" section.
+      required: [id, created_at, updated_at, name, protocol, category, is_default, position]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -13015,6 +13429,7 @@ components:
         "Things to bring up next time I see them" . Contextual memory
         surfaced on the contact view, explicitly NOT date-scheduled. resolved
         by discussed_at, never by a timer.
+      required: [id, created_at, updated_at, entity_id, content]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -13025,11 +13440,9 @@ components:
         discussed_at:
           type: string
           format: date-time
-          nullable: true
-          description: When the item was marked discussed; null means still open.
+          description: When the item was marked discussed; absent (omitempty) means still open.
         activity_id:
           type: integer
-          nullable: true
           description: The Activity that covered this item, if linked.
         deleted:
           type: boolean
@@ -13055,6 +13468,7 @@ components:
         captured opportunistically, the offered/given gift, or a received gift.
         Status defaults to idea; any value carries an explicit ISO 4217
         currency.
+      required: [id, created_at, updated_at, entity_id, status, description]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -13079,7 +13493,6 @@ components:
         date:
           type: string
           format: date-time
-          nullable: true
           description: When the gift was given/received. An idea may have no date.
         value_cents:
           type: integer
@@ -13091,11 +13504,9 @@ components:
         life_event_id:
           type: string
           format: uuid
-          nullable: true
           description: The LifeEvent this gift relates to, if any.
         activity_id:
           type: integer
-          nullable: true
           description: The Activity (interaction) this gift relates to, if any.
         deleted:
           type: boolean
@@ -13121,6 +13532,7 @@ components:
     Preference:
       type: object
       description: One structured personal fact about an entity (category/key/value + provenance).
+      required: [id, created_at, updated_at, entity_id, category, value, sensitivity]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -13135,8 +13547,8 @@ components:
           description: "Optional proficiency for hobby/skill categories (issue #246); absent when none is recorded."
         notes: { type: string, maxLength: 2000 }
         source: { type: string, enum: [conversation_note, user, ai-suggested, external] }
-        confidence: { type: number, nullable: true }
-        last_confirmed: { type: string, format: date-time, nullable: true }
+        confidence: { type: number }
+        last_confirmed: { type: string, format: date-time }
         sensitivity: { type: string, enum: [normal, private, secret] }
         deleted:
           type: boolean
@@ -13167,6 +13579,7 @@ components:
         A standing, recurring obligation toward a contact — "this contact is
         on my holiday card list every year". The missing "standing rule"
         layer above LifeEvent/Gift/Preference (docs/adrs/0024-occasions.md).
+      required: [id, created_at, updated_at, entity_id, kind, label, lead_time_days, active, sensitivity]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -13174,9 +13587,9 @@ components:
         entity_id: { type: string, format: uuid }
         kind: { type: string, maxLength: 100, example: "card" }
         label: { type: string, maxLength: 200 }
-        anchor_month: { type: integer, minimum: 1, maximum: 12, nullable: true }
-        anchor_day: { type: integer, minimum: 1, maximum: 31, nullable: true }
-        linked_life_event_id: { type: string, format: uuid, nullable: true }
+        anchor_month: { type: integer, minimum: 1, maximum: 12 }
+        anchor_day: { type: integer, minimum: 1, maximum: 31 }
+        linked_life_event_id: { type: string, format: uuid }
         lead_time_days: { type: integer, minimum: 0, maximum: 365 }
         active: { type: boolean }
         sensitivity: { type: string, enum: [normal, private, secret] }
@@ -13203,6 +13616,7 @@ components:
     UpcomingOccasion:
       type: object
       description: One row of the /occasions/upcoming aggregate (ADR 0024, issue #387).
+      required: [contact_id, contact_name, source, label, date, days_until]
       properties:
         contact_id: { type: integer }
         contact_name: { type: string }
@@ -13217,6 +13631,7 @@ components:
     GiftShoppingItem:
       type: object
       description: One row of the /occasion-obligations/gift-shopping-list aggregate (ADR 0024, issue #387).
+      required: [contact_id, contact_name, obligation_id, label, date, days_until, status]
       properties:
         contact_id: { type: integer }
         contact_name: { type: string }
@@ -13227,6 +13642,86 @@ components:
         status: { type: string, enum: [needed, idea, purchased, given, received] }
         linked_gift_id: { type: string, format: uuid }
 
+    # --- OccasionEvents (docs/adrs/0026-occasions-events.md, issue #1228) ---
+    OccasionEvent:
+      type: object
+      description: >
+        A one-off event the user is hosting (docs/adrs/0026-occasions-events.md).
+        First-class, soft-deleting, user-authored; starts_at/ends_at are RFC 3339
+        instants (ADR 0015 category 1).
+      required: [id, title, starts_at, sensitivity, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        title: { type: string, maxLength: 200 }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        location: { type: string, maxLength: 500 }
+        sensitivity: { type: string, enum: [normal, private, secret] }
+        notes: { type: string, maxLength: 2000 }
+        deleted:
+          type: boolean
+          description: T17 change-feed tombstone marker; only true via ?since=.
+
+    OccasionEventInput:
+      type: object
+      description: Create/update body for an OccasionEvent. ends_at must not precede starts_at (controller check).
+      required: [title, starts_at]
+      properties:
+        title: { type: string, maxLength: 200 }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time, nullable: true }
+        location: { type: string, maxLength: 500 }
+        sensitivity: { type: string, enum: [normal, private, secret] }
+        notes: { type: string, maxLength: 2000 }
+
+    OccasionEventAttendee:
+      type: object
+      description: An invitee/RSVP join row. RSVP is a manually-recorded status, not a delivered invitation (docs/adrs/0026-occasions-events.md part 2).
+      required: [id, created_at, updated_at, event_id, entity_id, rsvp]
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        event_id: { type: string, format: uuid }
+        entity_id: { type: string, format: uuid, description: The invited Contact.VCardUID. }
+        rsvp: { type: string, enum: [pending, accepted, declined, maybe] }
+
+    OccasionEventAttendeeInput:
+      type: object
+      required: [entity_id]
+      properties:
+        entity_id: { type: string, format: uuid }
+        rsvp: { type: string, enum: [pending, accepted, declined, maybe] }
+
+    OccasionEventAttendeeUpdateInput:
+      type: object
+      required: [rsvp]
+      properties:
+        rsvp: { type: string, enum: [pending, accepted, declined, maybe] }
+
+    OccasionEventAttendeeView:
+      type: object
+      description: An attendee enriched with its contact's display data, for the event-detail response.
+      required: [id, event_id, entity_id, contact_id, contact_name, rsvp]
+      properties:
+        id: { type: string, format: uuid }
+        event_id: { type: string, format: uuid }
+        entity_id: { type: string, format: uuid }
+        contact_id: { type: integer }
+        contact_name: { type: string }
+        rsvp: { type: string, enum: [pending, accepted, declined, maybe] }
+
+    InviteeSuggestion:
+      type: object
+      description: One candidate from GET /occasion-events/invitee-suggestions (computed, never stored).
+      required: [contact_id, contact_name, entity_id]
+      properties:
+        contact_id: { type: integer }
+        contact_name: { type: string }
+        entity_id: { type: string, format: uuid }
+
     # --- CadencePolicies (T19) ---
     CadencePolicy:
       type: object
@@ -13234,6 +13729,7 @@ components:
         A relationship-maintenance rule — "stay in touch every N days"
         . Health is DERIVED (see CadenceHealth), never stored; this
         entity carries only the rule itself.
+      required: [id, created_at, updated_at, entity_id, target_interval_days]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -13258,6 +13754,7 @@ components:
         the timeline, never persisted. Undefined (has_qualifying_interaction
         false) until the contact has at least one qualifying interaction;
         cadence does NOT count from the contact's creation date.
+      required: [has_qualifying_interaction, overdue_by]
       properties:
         has_qualifying_interaction: { type: boolean }
         last_interaction: { type: string, format: date-time, nullable: true }
@@ -13288,6 +13785,7 @@ components:
     OverdueCadence:
       type: object
       description: An overdue cadence policy joined with its contact's display identity.
+      required: [policy, health, contact_id, contact_name]
       properties:
         policy:
           $ref: "#/components/schemas/CadencePolicy"
@@ -13303,10 +13801,11 @@ components:
       type: object
       description: >
         An opt-in, per-contact rule to periodically re-verify stored info
-        (issue #352, docs/adrs/0026-data-decay.md) is still accurate. Health
+        (issue #352, docs/adrs/0027-data-decay.md) is still accurate. Health
         is DERIVED (see DataDecayHealth), never stored; this entity carries
         only the rule itself plus last_verified_at (see the field's own
         description for why that one column is stored, not derived).
+      required: [id, created_at, updated_at, entity_id, interval_days, active]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -13334,6 +13833,7 @@ components:
         created_at, when never verified) + interval_days, never persisted.
         Unlike CadenceHealth there is no undefined state: every policy has a
         baseline, so next_due is always defined.
+      required: [next_due, overdue_by]
       properties:
         next_due: { type: string, format: date-time }
         overdue_by:
@@ -13360,6 +13860,7 @@ components:
     OverdueDataDecayPolicy:
       type: object
       description: An overdue data decay policy joined with its contact's display identity.
+      required: [policy, health, contact_id, contact_name]
       properties:
         policy:
           $ref: "#/components/schemas/DataDecayPolicy"
@@ -13378,6 +13879,7 @@ components:
         meaningful organization/title/address change detected on a contact,
         joined with its contact's display identity. Companion to the
         time-based cadence.overdue trigger.
+      required: [id, created_at, updated_at, contact_vcard_uid, kind, old_value, new_value, audit_event_id, status, contact_id, contact_name]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -13407,6 +13909,7 @@ components:
         is the synced value that replaced it. Array fields (email/phone/
         address/url/impp/circles) carry their JSON array. Scoped to the
         owning user; values are the user's own synced contact data.
+      required: [id, created_at, updated_at, subscription_id, contact_id, field, local_value, remote_value, status, contact_vcard_uid, contact_name, subscription_name]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -13427,6 +13930,7 @@ components:
     # --- Custom fields ---
     FieldDefinition:
       type: object
+      required: [id, created_at, updated_at, label, key, target, type, projection, sensitivity]
       properties:
         id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -13465,6 +13969,7 @@ components:
     FieldValue:
       type: object
       description: One value of a FieldDefinition for one contact.
+      required: [id, created_at, updated_at, field_definition_id, entity_id, value]
       properties:
         id: { type: integer }
         created_at: { type: string, format: date-time }

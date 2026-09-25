@@ -5,6 +5,7 @@ import (
 	"io"
 	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -12,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -21,18 +21,7 @@ import (
 func setupCadenceJobTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	// ProcessOverdueCadences dispatches deliveries through goroutines, so a
-	// single connection must serve them all (the:memory: sqlite gotcha).
-	sqlDB, err := db.DB()
-	require.NoError(t, err)
-	sqlDB.SetMaxOpenConns(1)
-
-	require.NoError(t, db.AutoMigrate(
-		&models.User{}, &models.Contact{}, &models.Activity{}, &models.CadencePolicy{},
-		&models.Webhook{}, &models.WebhookDelivery{}, &models.JobExecution{},
-	))
+	db := dbtest.New(t)
 	return db
 }
 

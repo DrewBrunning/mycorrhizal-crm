@@ -3,7 +3,8 @@ package models
 import (
 	"testing"
 
-	"github.com/glebarez/sqlite"
+	"mycorrhizal/internal/dbtest"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -12,15 +13,7 @@ import (
 func setupDataDecayPolicyTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-
-	sqlDB, err := db.DB()
-	require.NoError(t, err)
-	sqlDB.SetMaxOpenConns(1)
-
-	require.NoError(t, db.AutoMigrate(&User{}, &Contact{}, &DataDecayPolicy{}))
-	return db
+	return dbtest.New(t)
 }
 
 func TestDataDecayPolicyBeforeCreateGeneratesUUID(t *testing.T) {

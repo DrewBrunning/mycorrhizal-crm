@@ -236,3 +236,25 @@ test('picking a photo from Immich flows into the existing crop step', async () =
     expect(screen.getByLabelText('Zoom')).toBeInTheDocument();
   });
 });
+
+// --- handleClose -------------------------------------------------------------
+//
+// handleUpload's crop+upload success/error paths are NOT covered here: they
+// depend on the real crop library calling onCropComplete (which needs its
+// own image-measurement/ResizeObserver machinery jsdom doesn't drive without
+// much heavier stubbing) to populate croppedAreaPixels, without which
+// handleUpload's own guard (`if (!imageSrc || !croppedAreaPixels) return;`)
+// no-ops before ever reaching getCroppedImg. Left as a known gap rather than
+// shipping a test that doesn't actually exercise the upload call.
+
+test('Cancel resets the dialog state and calls onClose', async () => {
+  const onClose = vi.fn();
+  renderDialog({ onClose });
+
+  selectFile(new File(['fake-image-bytes'], 'photo.png', { type: 'image/png' }));
+  await waitFor(() => expect(screen.getByLabelText('Zoom')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  expect(onClose).toHaveBeenCalledTimes(1);
+});

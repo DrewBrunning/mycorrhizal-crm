@@ -27,7 +27,7 @@ import (
 // leave orphaned rows in any of the 14 tables that reference a user, not just
 // the handful it originally covered.
 func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	// setupRouter seeds the "tester" user and puts their ID in context as the
 	// acting admin — create a second, deletable target user.
@@ -228,7 +228,7 @@ func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
 // --- GetCurrentUser ---
 
 func TestGetCurrentUser_Success(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	require.NoError(t, db.First(&user).Error)
@@ -257,7 +257,7 @@ func TestGetCurrentUser_Success(t *testing.T) {
 }
 
 func TestGetCurrentUser_NotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	// Overwrite the seeded userID with one that doesn't exist in the DB.
 	router.Use(func(c *gin.Context) {
@@ -275,7 +275,7 @@ func TestGetCurrentUser_NotFound(t *testing.T) {
 // --- ListUsers ---
 
 func TestListUsers_Success(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	require.NoError(t, db.Create(&models.User{Username: "second", Email: "second@example.com", Password: "password123"}).Error)
 	require.NoError(t, db.Create(&models.User{Username: "third", Email: "third@example.com", Password: "password123", IsAdmin: true}).Error)
@@ -308,7 +308,7 @@ func TestListUsers_Success(t *testing.T) {
 }
 
 func TestListUsers_Pagination(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	for i := 0; i < 4; i++ {
 		require.NoError(t, db.Create(&models.User{
@@ -337,7 +337,7 @@ func TestListUsers_Pagination(t *testing.T) {
 }
 
 func TestListUsers_DatabaseError(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	sqlDB, err := db.DB()
 	require.NoError(t, err)
@@ -355,7 +355,7 @@ func TestListUsers_DatabaseError(t *testing.T) {
 // --- GetUser ---
 
 func TestGetUser_Success(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	target := models.User{Username: "target", Email: "target@example.com", Password: "password123", IsAdmin: true}
 	require.NoError(t, db.Create(&target).Error)
@@ -377,7 +377,7 @@ func TestGetUser_Success(t *testing.T) {
 }
 
 func TestGetUser_NotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.GET("/users/:id", GetUser)
 
@@ -389,7 +389,7 @@ func TestGetUser_NotFound(t *testing.T) {
 }
 
 func TestGetUser_InvalidID(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.GET("/users/:id", GetUser)
 
@@ -403,7 +403,7 @@ func TestGetUser_InvalidID(t *testing.T) {
 // --- CreateUser (T39) ---
 
 func TestCreateUser_Success(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	router.POST("/users", withValidated(func() any { return &models.AdminUserCreateInput{} }), CreateUser)
 
@@ -459,7 +459,7 @@ func TestCreateUser_Success(t *testing.T) {
 }
 
 func TestCreateUser_DefaultsToNonAdmin(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.POST("/users", withValidated(func() any { return &models.AdminUserCreateInput{} }), CreateUser)
 
@@ -483,7 +483,7 @@ func TestCreateUser_DefaultsToNonAdmin(t *testing.T) {
 }
 
 func TestCreateUser_DuplicateEmail_Conflict(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	require.NoError(t, db.Create(&models.User{Username: "existing", Email: "taken@example.com", Password: "password123"}).Error)
 
@@ -509,7 +509,7 @@ func TestCreateUser_DuplicateEmail_Conflict(t *testing.T) {
 }
 
 func TestCreateUser_DuplicateUsername_Conflict(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	require.NoError(t, db.Create(&models.User{Username: "taken", Email: "taken@example.com", Password: "password123"}).Error)
 
@@ -533,7 +533,7 @@ func TestCreateUser_DuplicateUsername_Conflict(t *testing.T) {
 // Reuses the same validators as self-registration (models.UserRegistrationInput)
 // rather than a parallel set — a short password must be rejected the same way.
 func TestCreateUser_WeakPassword_Rejected(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.POST("/users", middleware.ValidateJSONMiddleware(&models.AdminUserCreateInput{}), CreateUser)
 
@@ -548,7 +548,7 @@ func TestCreateUser_WeakPassword_Rejected(t *testing.T) {
 }
 
 func TestCreateUser_MissingFields_Rejected(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.POST("/users", middleware.ValidateJSONMiddleware(&models.AdminUserCreateInput{}), CreateUser)
 
@@ -571,7 +571,7 @@ func TestCreateUser_MissingFields_Rejected(t *testing.T) {
 // input would be caught here rather than only in the (not always run)
 // Playwright e2e suite.
 func TestCreateUser_RealValidationMiddleware_AcceptsValidPayload(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	router.POST("/users", middleware.ValidateJSONMiddleware(&models.AdminUserCreateInput{}), CreateUser)
 
@@ -596,7 +596,7 @@ func TestCreateUser_RealValidationMiddleware_AcceptsValidPayload(t *testing.T) {
 // design as UpdateUser — see TestUpdateUser_HandlerAllowsSelfPromotion_
 // GatedOnlyByRouteMiddleware's note above).
 func TestCreateUser_NonAdmin_Forbidden(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	var nonAdmin models.User
 	require.NoError(t, db.Where("username = ?", "tester").First(&nonAdmin).Error)
@@ -633,7 +633,7 @@ func TestCreateUser_NonAdmin_Forbidden(t *testing.T) {
 // --- UpdateUser: normal CRUD paths ---
 
 func TestUpdateUser_Success(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	target := models.User{Username: "target", Email: "target@example.com", Password: "password123"}
 	require.NoError(t, db.Create(&target).Error)
@@ -665,7 +665,7 @@ func TestUpdateUser_Success(t *testing.T) {
 }
 
 func TestUpdateUser_PasswordReset_IncrementsTokenVersion(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	target := models.User{Username: "target", Email: "target@example.com", Password: "password123", TokenVersion: 3}
 	require.NoError(t, db.Create(&target).Error)
@@ -747,7 +747,7 @@ func TestUpdateUser_RoleChange_RecordsAuditEvent(t *testing.T) {
 // DisableTwoFactor produces on the self-service path, minus the live-code
 // proof requirement.
 func TestResetUserTwoFactor_Success(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	secret := "encrypted-secret"
 	confirmedAt := time.Now()
@@ -799,7 +799,7 @@ func TestResetUserTwoFactor_Success(t *testing.T) {
 // at all: the endpoint must still succeed (200), not error, per issue #592's
 // idempotency requirement.
 func TestResetUserTwoFactor_Idempotent_NoOp(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	target := models.User{Username: "target", Email: "target@example.com", Password: "password123"}
 	require.NoError(t, db.Create(&target).Error)
@@ -819,7 +819,7 @@ func TestResetUserTwoFactor_Idempotent_NoOp(t *testing.T) {
 }
 
 func TestResetUserTwoFactor_NotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.POST("/users/:id/reset-2fa", ResetUserTwoFactor)
 
@@ -831,7 +831,7 @@ func TestResetUserTwoFactor_NotFound(t *testing.T) {
 }
 
 func TestResetUserTwoFactor_InvalidID(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.POST("/users/:id/reset-2fa", ResetUserTwoFactor)
 
@@ -847,7 +847,7 @@ func TestResetUserTwoFactor_InvalidID(t *testing.T) {
 // AdminMiddleware before the handler ever runs, and the target's 2FA state
 // must be untouched.
 func TestResetUserTwoFactor_NonAdmin_Forbidden(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	var nonAdmin models.User
 	require.NoError(t, db.Where("username = ?", "tester").First(&nonAdmin).Error)
@@ -943,7 +943,7 @@ func TestResetUserTwoFactor_RecordsAuditEvent(t *testing.T) {
 }
 
 func TestUpdateUser_NotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.PATCH("/users/:id", withValidated(func() any { return &models.AdminUserUpdateInput{} }), UpdateUser)
 
@@ -960,7 +960,7 @@ func TestUpdateUser_NotFound(t *testing.T) {
 }
 
 func TestUpdateUser_InvalidID(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.PATCH("/users/:id", withValidated(func() any { return &models.AdminUserUpdateInput{} }), UpdateUser)
 
@@ -977,7 +977,7 @@ func TestUpdateUser_InvalidID(t *testing.T) {
 }
 
 func TestUpdateUser_DuplicateUsername_Conflict(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	require.NoError(t, db.Create(&models.User{Username: "taken", Email: "taken@example.com", Password: "password123"}).Error)
 	target := models.User{Username: "target", Email: "target@example.com", Password: "password123"}
@@ -1012,7 +1012,7 @@ func TestUpdateUser_DuplicateUsername_Conflict(t *testing.T) {
 // is the path an operator uses to step a departing colleague down before the
 // account is deleted.
 func TestUpdateUser_CanRemoveOwnAdminStatus_WhenNotLastAdmin(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var actingUser models.User
 	require.NoError(t, db.First(&actingUser).Error)
@@ -1044,7 +1044,7 @@ func TestUpdateUser_CanRemoveOwnAdminStatus_WhenNotLastAdmin(t *testing.T) {
 // The last admin may not demote themselves -- the last-admin guard applies to
 // a self-demotion just as it does to demoting another account.
 func TestUpdateUser_CannotSelfDemote_WhenLastAdmin(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var actingUser models.User
 	require.NoError(t, db.First(&actingUser).Error)
@@ -1079,7 +1079,7 @@ func TestUpdateUser_CannotSelfDemote_WhenLastAdmin(t *testing.T) {
 // before the last-admin count is even consulted, but the invariant -- no path
 // to a zero-admin instance -- is the point.
 func TestUpdateUser_CannotDemoteLastAdmin(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	// Seeded "tester" user is NOT an admin; "target" is the ONLY admin.
 	target := models.User{Username: "target", Email: "target@example.com", Password: "password123", IsAdmin: true}
@@ -1112,7 +1112,7 @@ func TestUpdateUser_CannotDemoteLastAdmin(t *testing.T) {
 // self-service only (issue #871): without this an admin could strip every
 // other admin and take sole control.
 func TestUpdateUser_CannotDemotePeerAdmin(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var actingUser models.User
 	require.NoError(t, db.First(&actingUser).Error)
@@ -1147,7 +1147,7 @@ func TestUpdateUser_CannotDemotePeerAdmin(t *testing.T) {
 // Promoting a NON-admin to admin is unaffected by the #871 guard -- the guard
 // only blocks de-escalation of an existing admin, not onboarding a new one.
 func TestUpdateUser_CanPromotePeerToAdmin_Succeeds(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var actingUser models.User
 	require.NoError(t, db.First(&actingUser).Error)
@@ -1197,7 +1197,7 @@ func TestUpdateUser_CanPromotePeerToAdmin_Succeeds(t *testing.T) {
 // behavior -- see the SECURITY FINDINGS note in the WP report for why this
 // is a defense-in-depth observation, not a live vulnerability.
 func TestUpdateUser_HandlerAllowsSelfPromotion_GatedOnlyByRouteMiddleware(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var actingUser models.User
 	require.NoError(t, db.First(&actingUser).Error)
@@ -1231,7 +1231,7 @@ func TestUpdateUser_HandlerAllowsSelfPromotion_GatedOnlyByRouteMiddleware(t *tes
 // --- TriggerReminders ---
 
 func TestTriggerReminders_Success(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	require.NoError(t, db.First(&user).Error)
@@ -1278,7 +1278,7 @@ func TestTriggerReminders_Success(t *testing.T) {
 }
 
 func TestTriggerReminders_DatabaseError(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	sqlDB, err := db.DB()
 	require.NoError(t, err)
@@ -1298,7 +1298,7 @@ func TestTriggerReminders_DatabaseError(t *testing.T) {
 
 // M5/T26: TriggerPurge endpoint executes the purge without error.
 func TestTriggerPurge(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	cfg := config.Config{DeleteRetentionDays: 30, ContactShareRetentionDays: 30}
 	router.POST("/trigger-purge", func(c *gin.Context) {
@@ -1383,7 +1383,7 @@ func TestTriggerPurge(t *testing.T) {
 // job_runs row, instead of the endpoint always claiming "Purge completed" and
 // recording success.
 func TestTriggerPurge_FailureSurfaces(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	cfg := config.Config{DeleteRetentionDays: 30, ContactShareRetentionDays: 30, WebhookDeliveryRetentionDays: 30}
 	router.POST("/trigger-purge", func(c *gin.Context) {
@@ -1410,7 +1410,7 @@ func TestTriggerPurge_FailureSurfaces(t *testing.T) {
 
 // M1/T26: PurgeSoftDeletedRows hard-deletes rows past the retention window.
 func TestPurgeSoftDeletedRows_DeletesRowsPastWindow(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	cfg := config.Config{DeleteRetentionDays: 30}
 
@@ -1450,7 +1450,7 @@ func TestPurgeSoftDeletedRows_DeletesRowsPastWindow(t *testing.T) {
 
 // M1b/T26: Live rows (deleted_at IS NULL) are never touched.
 func TestPurgeSoftDeletedRows_NeverTouchesLiveRows(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	cfg := config.Config{DeleteRetentionDays: 1}
 
@@ -1473,7 +1473,7 @@ func TestPurgeSoftDeletedRows_NeverTouchesLiveRows(t *testing.T) {
 
 // T20a: PurgeSoftDeletedRows hard-deletes soft-deleted preferences past retention.
 func TestPurgeSoftDeletedRows_HandlesPreferences(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	cfg := config.Config{DeleteRetentionDays: 30}
 
@@ -1518,7 +1518,7 @@ func TestPurgeSoftDeletedRows_HandlesPreferences(t *testing.T) {
 // contact about to be purged is cleaned up even without a prior soft-delete
 // cascade (the Edge/join-shaped defense-in-depth block).
 func TestPurgeCleansUpPreferencesOfPurgedContact(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	cfg := config.Config{DeleteRetentionDays: 30}
 

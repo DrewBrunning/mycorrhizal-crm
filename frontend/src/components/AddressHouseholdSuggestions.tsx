@@ -140,7 +140,7 @@ export default function AddressHouseholdSuggestions({
                       size="small"
                       startIcon={<CheckIcon />}
                       disabled={busy || isPending}
-                      onClick={() => run(suggestion, 'accept')}
+                      onClick={() => void run(suggestion, 'accept')}
                     >
                       {t('household.acceptSuggestion')}
                     </Button>
@@ -149,7 +149,7 @@ export default function AddressHouseholdSuggestions({
                       size="small"
                       startIcon={<CloseIcon />}
                       disabled={busy || isPending}
-                      onClick={() => run(suggestion, 'dismiss')}
+                      onClick={() => void run(suggestion, 'dismiss')}
                     >
                       {t('household.dismissSuggestion')}
                     </Button>

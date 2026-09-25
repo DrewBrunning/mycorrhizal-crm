@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"mycorrhizal/internal/citest"
+
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/semanticequal"
 	"mycorrhizal/vcard3"
@@ -28,7 +30,7 @@ import (
 func TestVCardVObjectDifferential(t *testing.T) {
 	ref, reason := NewPyRef()
 	if ref.python == "" {
-		t.Skip(reason)
+		citest.SkipOrRequire(t, reason)
 	}
 	registerVCardPins()
 

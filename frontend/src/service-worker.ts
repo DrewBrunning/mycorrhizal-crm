@@ -78,7 +78,7 @@ self.addEventListener('message', (event) => {
     return;
   }
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
+    void self.skipWaiting();
   }
 });
 
@@ -113,7 +113,7 @@ self.addEventListener('notificationclick', (event) => {
       });
       for (const client of windowClients) {
         if ('focus' in client) {
-          client.focus();
+          void client.focus();
           return;
         }
       }

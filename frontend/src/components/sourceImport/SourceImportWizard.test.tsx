@@ -262,7 +262,7 @@ describe('SourceImportWizard in-app route navigation guard (issue #805)', () => 
     const { router } = renderWizardInRouter(reviewWizard());
 
     await act(async () => {
-      router.navigate('/contacts');
+      void router.navigate('/contacts');
     });
 
     expect(router.state.location.pathname).toBe('/settings');
@@ -276,7 +276,7 @@ describe('SourceImportWizard in-app route navigation guard (issue #805)', () => 
     const { router } = renderWizardInRouter(reviewWizard(cancel, reset), onClose);
 
     await act(async () => {
-      router.navigate('/contacts');
+      void router.navigate('/contacts');
     });
     expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
 
@@ -293,7 +293,7 @@ describe('SourceImportWizard in-app route navigation guard (issue #805)', () => 
     const { router } = renderWizardInRouter(reviewWizard(cancel));
 
     await act(async () => {
-      router.navigate('/contacts');
+      void router.navigate('/contacts');
     });
     expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
 
@@ -308,7 +308,7 @@ describe('SourceImportWizard in-app route navigation guard (issue #805)', () => 
     const { router } = renderWizardInRouter(makeWizard({ step: 'connect' }));
 
     await act(async () => {
-      router.navigate('/contacts');
+      void router.navigate('/contacts');
     });
 
     expect(router.state.location.pathname).toBe('/contacts');

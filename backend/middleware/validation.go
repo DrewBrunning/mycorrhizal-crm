@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"errors"
+	"fmt"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
@@ -19,17 +21,25 @@ var validate *validator.Validate
 func init() {
 	validate = validator.New()
 
-	// Register custom validators
-	validate.RegisterValidation("phone", validatePhone)
-	validate.RegisterValidation("birthday", validateBirthday)
-	validate.RegisterValidation("strong_password", validateStrongPassword)
-	validate.RegisterValidation("unique_circles", validateUniqueCircles)
-	validate.RegisterValidation("no_at_sign", validateNoAtSign)
-	validate.RegisterValidation("safeurl", validateSafeURL)
-	validate.RegisterValidation("httpurl", validateHTTPURL)
-	validate.RegisterValidation("relation_type", validateRelationType)
-	validate.RegisterValidation("fielddefprojection", validateFieldDefinitionProjection)
-	validate.RegisterValidation("life_event_category", validateLifeEventCategory)
+	// Register custom validators. RegisterValidation only fails on an empty
+	// tag or nil func — a programming error, so a failure aborts startup
+	// rather than leaving a struct tag silently unenforced.
+	mustRegisterValidation("phone", validatePhone)
+	mustRegisterValidation("birthday", validateBirthday)
+	mustRegisterValidation("strong_password", validateStrongPassword)
+	mustRegisterValidation("unique_circles", validateUniqueCircles)
+	mustRegisterValidation("no_at_sign", validateNoAtSign)
+	mustRegisterValidation("safeurl", validateSafeURL)
+	mustRegisterValidation("httpurl", validateHTTPURL)
+	mustRegisterValidation("relation_type", validateRelationType)
+	mustRegisterValidation("fielddefprojection", validateFieldDefinitionProjection)
+	mustRegisterValidation("life_event_category", validateLifeEventCategory)
+}
+
+func mustRegisterValidation(tag string, fn validator.Func) {
+	if err := validate.RegisterValidation(tag, fn); err != nil {
+		panic(fmt.Sprintf("middleware: registering validator %q: %v", tag, err)) // # pragma: no cover — every tag above is a non-empty literal with a non-nil func
+	}
 }
 
 // ValidationError represents a validation error response
@@ -40,19 +50,25 @@ type ValidationError struct {
 
 // ValidateStruct validates a struct and returns formatted errors
 func ValidateStruct(obj interface{}) []ValidationError {
-	var errors []ValidationError
+	var result []ValidationError
 
 	err := validate.Struct(obj)
 	if err != nil {
-		for _, err := range err.(validator.ValidationErrors) {
-			errors = append(errors, ValidationError{
-				Field:   err.Field(),
-				Message: formatValidationError(err),
+		var verrs validator.ValidationErrors
+		if !errors.As(err, &verrs) {
+			// *validator.InvalidValidationError: obj is not a struct — a
+			// programming error at the call site, never bad user input.
+			panic(fmt.Sprintf("middleware.ValidateStruct: %v", err)) // # pragma: no cover — every caller passes a struct pointer
+		}
+		for _, fe := range verrs {
+			result = append(result, ValidationError{
+				Field:   fe.Field(),
+				Message: formatValidationError(fe),
 			})
 		}
 	}
 
-	return errors
+	return result
 }
 
 // formatValidationError creates user-friendly error messages

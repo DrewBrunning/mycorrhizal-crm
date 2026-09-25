@@ -74,7 +74,7 @@ type OccasionObligation struct {
 	// Active retires an obligation without deleting its history (e.g. "we
 	// stopped exchanging holiday cards") — distinct from soft-delete, which
 	// removes it from every surface including its own history.
-	Active bool `gorm:"not null;default:true" json:"active"`
+	Active bool `gorm:"not null" json:"active"`
 
 	// Sensitivity reuses the cross-cutting normal/private/secret set
 	// (RelationshipSensitivity* — relationship_edge.go), driving the

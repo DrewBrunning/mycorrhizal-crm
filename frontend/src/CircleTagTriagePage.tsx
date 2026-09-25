@@ -94,7 +94,7 @@ export default function CircleTagTriagePage() {
   }, []);
 
   useEffect(() => {
-    collect();
+    void collect();
   }, [collect]);
 
   const handleClassificationChange = (index: number, classification: Classification) => {
@@ -277,7 +277,7 @@ export default function CircleTagTriagePage() {
             >
               {t('triage.noLegacyCircles')}
             </Typography>
-            <Button variant="outlined" sx={{ mt: 2 }} onClick={collect}>
+            <Button variant="outlined" sx={{ mt: 2 }} onClick={() => void collect()}>
               {t('triage.refresh')}
             </Button>
           </Paper>
@@ -503,10 +503,10 @@ export default function CircleTagTriagePage() {
                   justifyContent: 'center',
                 }}
               >
-                <Button variant="contained" onClick={handleApply}>
+                <Button variant="contained" onClick={() => void handleApply()}>
                   {t('triage.createEntities')}
                 </Button>
-                <Button variant="contained" onClick={handleAddMembers}>
+                <Button variant="contained" onClick={() => void handleAddMembers()}>
                   {t('triage.addMembers')}
                 </Button>
               </Box>

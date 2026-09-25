@@ -26,7 +26,7 @@ func doOccasionGET(router *gin.Engine, path string) *httptest.ResponseRecorder {
 }
 
 func TestGetUpcomingOccasionsComposesAllSources(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionRoutes(router)
 
 	var user models.User
@@ -86,7 +86,7 @@ func TestGetUpcomingOccasionsComposesAllSources(t *testing.T) {
 }
 
 func TestGetUpcomingOccasionsSortedByDaysUntil(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionRoutes(router)
 
 	var user models.User
@@ -115,7 +115,7 @@ func TestGetUpcomingOccasionsSortedByDaysUntil(t *testing.T) {
 }
 
 func TestGetUpcomingOccasionsSensitivityFilter(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerOccasionRoutes(router)
 
 	var user models.User
@@ -148,7 +148,7 @@ func TestGetUpcomingOccasionsSensitivityFilter(t *testing.T) {
 }
 
 func TestGetUpcomingOccasionsRejectsInvalidDays(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerOccasionRoutes(router)
 
 	w := doOccasionGET(router, "/occasions/upcoming?days=45")
@@ -160,7 +160,7 @@ func TestGetUpcomingOccasionsRejectsInvalidDays(t *testing.T) {
 // instead of serializing as `[]`, which crashed the prep view for exactly
 // this class of bug before.
 func TestGetUpcomingOccasionsEmptyResultIsArrayNotNull(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerOccasionRoutes(router)
 
 	w := doOccasionGET(router, "/occasions/upcoming?days=30")

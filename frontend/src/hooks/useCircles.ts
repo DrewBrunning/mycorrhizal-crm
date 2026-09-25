@@ -34,7 +34,7 @@ export function useCircles(notifier?: ErrorNotifier) {
   }, []);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const circleById = useMemo(() => {

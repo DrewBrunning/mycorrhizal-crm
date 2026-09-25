@@ -130,14 +130,14 @@ export default function LifeEventDialog({
   useEffect(() => {
     if (!open || !isEditing) return;
     const timeoutId = setTimeout(() => {
-      loadContacts(searchInput);
+      void loadContacts(searchInput);
     }, 300);
     return () => clearTimeout(timeoutId);
   }, [searchInput, open, isEditing, loadContacts]);
 
   useEffect(() => {
     if (open && !isEditing) {
-      loadContacts();
+      void loadContacts();
     }
   }, [open, isEditing, loadContacts]);
 
@@ -520,7 +520,7 @@ export default function LifeEventDialog({
         <Button onClick={handleClose} disabled={saving}>
           {t('lifeEvent.cancel')}
         </Button>
-        <Button onClick={handleSave} variant="contained" disabled={saving}>
+        <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('lifeEvent.save')}
         </Button>
       </DialogActions>

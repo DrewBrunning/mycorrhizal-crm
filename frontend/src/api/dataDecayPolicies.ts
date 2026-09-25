@@ -1,4 +1,4 @@
-// DataDecayPolicy API calls -- issue #352, docs/adrs/0026-data-decay.md,
+// DataDecayPolicy API calls -- issue #352, docs/adrs/0027-data-decay.md,
 // opt-in per-contact rules to periodically re-verify stored info is still
 // accurate, with DERIVED health (never stored) except last_verified_at
 // itself -- see DataDecayPolicy.LastVerifiedAt's backend doc comment for why

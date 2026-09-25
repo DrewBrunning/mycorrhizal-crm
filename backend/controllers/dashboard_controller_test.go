@@ -19,7 +19,7 @@ import (
 // on the raw JSON, since decoding into the Go struct makes "absent" and `[]`
 // indistinguishable.
 func TestGetDashboard_EmptyBlocksSerializeAsArrays(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/dashboard", GetDashboard)
 	_ = db
 
@@ -42,7 +42,7 @@ func TestGetDashboard_EmptyBlocksSerializeAsArrays(t *testing.T) {
 // source data and asserts the composite surfaces it, including a reminder's
 // contact_name resolving without a second fetch (design decision 2).
 func TestGetDashboard_PopulatedComposesAllBlocks(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/dashboard", GetDashboard)
 
 	var user models.User
@@ -108,7 +108,7 @@ func TestGetDashboard_PopulatedComposesAllBlocks(t *testing.T) {
 // (issue #395) and asserts the composite surfaces it, enriched with the
 // contact's name.
 func TestGetDashboard_SyncConflictsBlock(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/dashboard", GetDashboard)
 
 	var user models.User
@@ -141,7 +141,7 @@ func TestGetDashboard_SyncConflictsBlock(t *testing.T) {
 // requesting user (CLAUDE.md trap 5) — a second user's data must never
 // appear.
 func TestGetDashboard_ScopedToUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/dashboard", GetDashboard)
 
 	otherUser := models.User{Username: "other-dash", Password: "x", Email: "other-dash@example.com"}
@@ -175,7 +175,7 @@ func TestGetDashboard_ScopedToUser(t *testing.T) {
 // favorites in name order — and that non-favorites and archived favorites
 // never leak in (issue #173).
 func TestGetDashboard_FavoritesBlock(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/dashboard", GetDashboard)
 
 	var user models.User

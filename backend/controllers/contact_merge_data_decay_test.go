@@ -18,7 +18,7 @@ import (
 // TestContactMerge_DataDecayPolicyConflict covers issue #352's merge-conflict
 // type, mirroring TestContactMerge_CadencePolicyConflict: DataDecayPolicy
 // carries the same one-per-contact partial unique index shape
-// (migration 000064) as CadencePolicy, so it can't be unioned or plain
+// (migration 000065) as CadencePolicy, so it can't be unioned or plain
 // re-pointed either. Three independent pairs: pair A shows the commit is
 // rejected until resolved; pair B resolves it toward the loser's policy and
 // confirms the keeper actually ends up with the loser's values; pair C

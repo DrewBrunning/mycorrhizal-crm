@@ -1,107 +1,70 @@
 name: Release
 
-# REL-06 (issue #499): the single automated release workflow. Cutting a release
-# is one human action -- dispatch this with a version -- and everything
-# downstream is automatic and gated.
+# REL-06 (issue #499): the single automated release workflow -- dispatch
+# with a version and everything downstream is automatic and gated.
 #
-# FINAL vs RELEASE CANDIDATE (RC-02, issue #446). The `version` input decides:
-#   - `vX.Y.Z`      -> a final release, cut from `main` (the default `ref`).
-#   - `vX.Y.Z-rc.N` -> a release candidate, cut from `ref: release/vX.Y.0`.
-# An RC composes the SAME gate battery (`validate`, via release-validate.yml)
-# -- "RC gates match release gates" (#446 action 7) -- but SKIPS the two
-# final-release-only pieces:
-#   - the schema-fixture registration: an RC ships the same schema the final
-#     will, and you never support in-place upgrade *from* an RC, so the fixture
-#     is registered once, at promotion (promote-rc.yml);
-#   - the ASVS/MASVS re-verification changelog-row gate and the per-release
-#     adversarial delta: final-release obligations. The RC still runs
-#     `citecheck`.
-# docker-publish.yml marks an `-rc.` tag's GitHub Release as a pre-release and
-# never `make_latest`, so it stays off the in-app update check and Obtainium.
-# Promotion (RC -> final, same artifact by digest) is promote-rc.yml.
-# Full policy: docs/release-candidate-process.md.
+# FINAL vs RC (RC-02, #446): `vX.Y.Z` is a final release cut from `main`;
+# `vX.Y.Z-rc.N` is a release candidate cut from `release/vX.Y.0`. An RC
+# composes the SAME gate battery ("RC gates match release gates", #446
+# action 7) but SKIPS the two final-only pieces: the schema-fixture
+# registration (an RC ships the final's schema and is never itself an
+# in-place upgrade source; registered once at promotion, promote-rc.yml)
+# and the ASVS/MASVS re-verification + adversarial-delta obligations (an RC
+# still runs citecheck). docker-publish.yml marks an `-rc.` tag's Release as
+# a pre-release, off the update check and Obtainium. Promotion (same
+# artifact by digest) is promote-rc.yml. Full policy:
+# docs/release-candidate-process.md.
 #
-# What a run does (ADR 0021, issue #1162): three jobs, no cross-run polling.
+# What a run does (ADR 0021, #1162), three jobs, no cross-run polling:
+#   1. `preflight` -- validates the version string and that it's unshipped
+#      (registered-but-untagged is an interrupted release, RESUMED per
+#      #1142; an existing tag is a hard refusal); verifies the checkout is
+#      the true tip of `ref`; runs citecheck + releasegatecheck.
+#   2. `validate` -- calls the reusable release-validate.yml, which composes
+#      every mandatory + release-tier gate with real `needs:` -- the ONE
+#      definition of "is this commit releasable" (docker-publish.yml calls
+#      the same workflow for a tag-triggered cut, so the two cannot drift).
+#   3. `release` -- release-only bookkeeping: the ASVS/adversarial-delta
+#      gates (final only, #608/#953), schema-fixture registration +
+#      regeneration + frozen-chain assertion + test gates (final only), then
+#      the App-token-signed tag push.
 #
-#   1. `preflight` -- validates the version string, that no such tag exists, and
-#      (final only) whether it is already registered in SupportedReleases
-#      (registered-but-untagged means an interrupted release and is RESUMED,
-#      issue #1142; an existing tag is a hard refusal); verifies the checkout is
-#      the true tip of `ref`; runs `citecheck` + `releasegatecheck`.
-#   2. `validate` -- calls the reusable `release-validate.yml`, which composes
-#      EVERY gate with real `needs: dependencies: the `release_gate:true` per-PR
-#      checks (the same workflow files the per-PR ruleset runs) and the
-#      release-tier suites. This is the one definition of "is this commit
-#      releasable"; docker-publish.yml calls the same workflow for a
-#      tag-triggered cut, so the two cannot drift. The tagged commit is the
-#      checked-out tip for an RC; for a final the fixture commit is created by
-#      job 3 *after* this composition, and the generated dump it adds is
-#      validated by "Verify test gates" and docker-publish's schema-fixture-gate.
-#   3. `release` -- the release-only bookkeeping: the ASVS/MASVS re-verification
-#      row gate and the per-release adversarial delta (final only, issue
-#      #608/#953), the schema-fixture registration + regeneration + frozen-chain
-#      assertion + test gates (final only), then the App-token-signed tag push.
+# release-metadata.json and every Release asset are owned by
+# docker-publish.yml (ADR 0021, #1163); this workflow ends at the tag and
+# never waits for a Release to appear. The tag push is what triggers
+# docker-publish.yml, and only works with a GitHub App token (not
+# GITHUB_TOKEN, which cannot trigger another workflow).
 #
-# `release-metadata.json` and everything attached to the GitHub Release are now
-# owned by docker-publish.yml (ADR 0021, issue #1163); this workflow ends at the
-# tag and never waits for a Release to appear.
+# DRY RUN (`dry_run: true`): runs the whole gate composition + fixture
+# regeneration + test gates, but makes NO commit/push/tag/artifact (#499:
+# "the workflow is itself tested"). `preflight`'s tag-exists/already-
+# registered checks downgrade to warnings so a dry run can target the last
+# shipped version. `release-dry-run.yml` dispatches this weekly + on demand
+# against the last SupportedReleases entry (#929).
 #
-# The tag push is what triggers docker-publish.yml (build + sign the three
-# images and the release APK, mint SBOMs + SLSA provenance + SHA256SUMS, create
-# the GitHub Release). That works -- and needs NO change to docker-publish.yml's
-# trigger -- only because the push here uses a GitHub App token, not
-# GITHUB_TOKEN: a tag pushed with GITHUB_TOKEN cannot trigger another workflow.
-# For a final release the tag points at a real commit on main (the one carrying
-# the dump), so docker-publish's schema-fixture-gate passes and source<->release
-# correspondence is exact; for an RC the tag points at the release-branch tip
-# and schema-fixture-gate is exempt for `-rc.` tags.
+# Rehearsing an ALREADY-REGISTERED version (#929): "Register the release"
+# skips re-appending when the version is already there
+# (release-register-decide.sh) -- a dry run against the last shipped
+# version must reproduce every dump byte-identical, so "Assert only the new
+# dump changed" expects NO diff there, not a new untracked file.
 #
-# DRY RUN (`dry_run: true`): runs the whole gate composition, the fixture
-# regeneration and the test gates (final only) -- but makes NO commit, push, tag
-# or artifact. This is how the workflow is exercised without cutting a release
-# (issue #499: "the workflow is itself tested"); the "tag exists / already
-# registered" checks in `preflight` are downgraded to warnings so a dry run can
-# target the last shipped version. `release-dry-run.yml` is what actually does
-# this: weekly + on demand, it dispatches this workflow with dry_run: true
-# against the last entry in SupportedReleases (issue #929 -- previously nothing
-# did, so a defect in the final-release path was only ever discovered by cutting
-# a real release).
+# One-time setup (docs/security/release-verification.md, "How a release is
+# cut"): a GitHub App with Contents: write installed on this repo; repo
+# variable RELEASE_APP_ID + secret RELEASE_APP_PRIVATE_KEY; the App on
+# main's branch-protection/ruleset bypass list.
 #
-# Rehearsing an ALREADY-REGISTERED version (issue #929): the "Register the
-# release" step skips re-appending a SupportedReleases entry when the
-# version is already there (`.github/scripts/release-register-decide.sh`) --
-# a dry run against the last shipped version regenerates every dump from the
-# UNCHANGED release set and must reproduce them byte-identical, so the
-# "Assert only the new dump changed" step expects NO diff at all in that
-# case, not a new untracked file. A dry run against a version that has not
-# shipped yet still expects exactly one new untracked dump, same as before.
+# Re-entrant/resumable (#1142): re-dispatching the same version is the
+# recovery path for every failure before the tag exists -- registration is
+# idempotent, the fixture commit is a no-op if already landed, the release
+# commit is the checked-out tip, and the full gate battery re-runs before
+# the tag.
 #
-# One-time setup (see docs/security/release-verification.md, "How a release is
-# cut"):
-#   - a GitHub App with Contents: write, installed on this repo;
-#   - repo variable RELEASE_APP_ID + repo secret RELEASE_APP_PRIVATE_KEY;
-#   - the App added to main's branch-protection / ruleset bypass list (and to
-#     any v* tag ruleset's bypass list), so it can push the commit and the tag.
-#
-# Re-entrant / resumable (issue #1142): re-dispatching the same version is the
-# recovery path for every failure before the tag exists. The fixture
-# registration is idempotent (release-register-decide.sh returns SKIP when
-# already present), the fixture commit is a no-op when it already landed, the
-# release commit is the checked-out tip (so a fix merged to main since the
-# interrupted attempt is included in the release), and the full mandatory gate
-# battery + release-tier suites re-run before the tag.
-#
-# Failure modes:
-#   - a gate or the registration fails -> nothing was pushed; fix and re-dispatch.
-#   - (final) fixture pushed, the tag push fails -> the fixture commit
-#     is on main; fix on main and re-dispatch this workflow. It RESUMES at the
-#     new tip (already-registered + untagged is now a warning, not a refusal)
-#     and tags that commit. (An RC pushes nothing before the tag, so this
-#     window does not exist there.)
-#   - tag pushed, docker-publish.yml fails -> recover the images via
-#     docker-publish.yml -> Run workflow -> `tag` input. Do NOT re-dispatch this
-#     workflow for an already-tagged version -- it refuses an existing tag
-#     rather than move a released one.
+# Failure modes: a gate/registration fails -> nothing pushed, fix and
+# re-dispatch. (final) fixture pushed but tag push fails -> fix on main and
+# re-dispatch (RESUMES at the new tip; an RC has no such window, nothing is
+# pushed before its tag). Tag pushed, docker-publish.yml fails -> recover
+# via docker-publish.yml's `tag` dispatch input, never re-dispatch this
+# workflow for an already-tagged version.
 
 on:
   workflow_dispatch:
@@ -142,18 +105,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # --- Job 1: preflight ------------------------------------------------------
-  # Fast, read-only checks that reject a bad dispatch before any expensive gate
-  # runs: the version is well-formed and unshipped, the checkout is the true tip
-  # of `ref`, and the two local gate-registry checks pass. Outputs feed the
-  # later jobs (ADR 0021, issue #1162).
+  # Job 1: fast, read-only checks that reject a bad dispatch before any
+  # expensive gate runs (ADR 0021, #1162).
   preflight:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
-      # Read the release-readiness artifact of a prior run of this version
-      # (ADR 0021, issue #1164) via the artifacts API.
+      # Read a prior run's release-readiness artifact (ADR 0021, #1164).
       actions: read
     outputs:
       version: ${{ steps.validate.outputs.version }}
@@ -165,11 +124,9 @@ jobs:
       - name: Checkout the release ref
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # `main` for a final release, `release/vX.Y.0` for an RC. fetch-depth 0
-          # so the "tag exists" check and the "previous release tag" lookup see
-          # the full ref set. persist-credentials: false per repo convention --
-          # the push step scopes its own credential (the App token) via an
-          # ephemeral helper.
+          # fetch-depth 0 so tag-exists / previous-release-tag lookups see
+          # the full ref set; persist-credentials false, the push step
+          # scopes its own credential (App token) via an ephemeral helper.
           ref: ${{ inputs.ref }}
           fetch-depth: 0
           persist-credentials: false
@@ -188,18 +145,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -eu
-          # Canonical release-tag pattern (REL-01, issue #445):
-          # docs/versioning-policy.md and backend/internal/versionpolicy/tagpattern.go.
-          # Kept byte-identical to the gate in docker-publish.yml; a drift test
-          # (internal/versionpolicy) fails if these diverge.
+          # Canonical release-tag pattern (REL-01, #445). Kept byte-identical
+          # to docker-publish.yml's gate; a drift test fails if they diverge.
           if ! printf '%s' "$VERSION" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$'; then
             echo "::error::Version must match the versioning policy: vMAJOR.MINOR.PATCH with an optional -rc.N suffix (e.g. v0.6.6 or v1.0.0-rc.1). Got '$VERSION'. See docs/versioning-policy.md."
             exit 1
           fi
-          # RC-02 (issue #446): classify. An `-rc.N` suffix is a release
-          # candidate -- it skips the schema-fixture registration and the ASVS
-          # changelog-row gate, and docker-publish marks its Release as a
-          # pre-release. Everything else is identical.
+          # RC-02 (#446): classify -- an `-rc.N` suffix is a release
+          # candidate, see the header comment.
           if printf '%s' "$VERSION" | grep -qE -- '-rc\.[0-9]+$'; then
             IS_RC=true
             echo "Release candidate: $VERSION (cut from ${GITHUB_REF_NAME:-the checked-out ref})."
@@ -208,14 +161,11 @@ jobs:
           fi
           echo "is_rc=$IS_RC" >> "$GITHUB_OUTPUT"
 
-          # --- Resume decision (ADR 0021, issue #1164) -----------------------
-          # Primary signal: the durable release-readiness artifact a prior run
-          # of this same version uploaded before tagging. Git state is the
-          # permanent backstop *and* a fail-closed consistency check: a final
-          # version already in SupportedReleases with no tag is an interrupted
-          # release (the artifact may have expired, or the attempt predates
-          # it). SupportedReleases only ever records final releases, so the git
-          # lookup is final-only. An existing tag always hard-fails.
+          # Resume decision (ADR 0021, #1164). Primary signal: the durable
+          # release-readiness artifact a prior run uploaded before tagging.
+          # Git state is the permanent backstop + fail-closed consistency
+          # check: a final version already in SupportedReleases with no tag
+          # is an interrupted release. An existing tag always hard-fails.
           tag_exists=false
           if git rev-parse "refs/tags/$VERSION" >/dev/null 2>&1; then tag_exists=true; fi
           registered=false
@@ -258,7 +208,7 @@ jobs:
             echo "resume=true" >> "$GITHUB_OUTPUT"
             echo "resumed_from_run=$prior_run" >> "$GITHUB_OUTPUT"
           else
-            # Dry runs downgrade the two checks to warnings (issue #929: the
+            # Dry runs downgrade the two checks to warnings (#929: the
             # rehearsal targets the last shipped version deliberately).
             if [ "$DRY_RUN" = "true" ] && [ "$tag_exists" = "true" ]; then
               echo "::warning::Tag $VERSION already exists -- allowed for a dry run (no tag is pushed)."
@@ -268,8 +218,6 @@ jobs:
             fi
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      # --- Step 2: repository state ------------------------------------------
 
       - name: Verify repository state
         id: verify
@@ -293,8 +241,6 @@ jobs:
           fi
           echo "release_commit=$head" >> "$GITHUB_OUTPUT"
 
-      # --- Step 3: the mandatory gate battery ------------------------------
-
       - name: Gate - security-doc citations (citecheck)
         working-directory: backend
         run: |
@@ -306,19 +252,12 @@ jobs:
         run: go run ./cmd/releasegatecheck
 
 
-  # --- Job 2: the composed gate battery (ADR 0021, issue #1162) -------------
-  # One reusable workflow composes the mandatory per-PR gates and the
-  # release-tier suites with real `needs:` dependencies -- the same check
-  # workflows the per-PR/schedule paths run, not a second definition. This
-  # replaces the dispatch-and-poll steps that used to live in this job.
-  #
-  # The gate scope is read-only apart from two write scopes that nested jobs
-  # declare and GitHub validates statically against every caller in the
-  # reusable-workflow chain: `security-events: write` (the SARIF-uploading
-  # scan jobs' uploads) and `statuses: write` (unit-tests.yml's
-  # `codecov-patch-stub` job, issue #1188). This job must grant both even
-  # though each job's write step is skipped when composed. Everything else is
-  # contents/pull-requests/actions read. Recorded in
+  # Job 2 (ADR 0021, #1162): the reusable workflow that composes the
+  # mandatory per-PR gates and release-tier suites with real `needs:`,
+  # replacing the old dispatch-and-poll steps. Grants two write scopes GitHub
+  # validates statically against every caller in the chain even though each
+  # is inert when composed: security-events (SARIF uploads) and statuses
+  # (unit-tests.yml's codecov-patch-stub, #1188). Recorded in
   # asvs-l2-verification-report.md §9.
   validate:
     needs: preflight
@@ -334,17 +273,17 @@ jobs:
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-  # --- Job 3: register the schema fixture and push the tag ------------------
+  # Job 3: register the schema fixture and push the tag.
   release:
     needs: [preflight, validate]
     runs-on: ubuntu-latest
-    # The metadata tail is gone (it moved into docker-publish.yml, ADR 0021 /
-    # issue #1163), so the job now ends at the tag -- no 6-hour ceiling needed.
+    # The metadata tail moved into docker-publish.yml (ADR 0021/#1163), so
+    # the job now ends at the tag -- no 6-hour ceiling needed.
     timeout-minutes: 120
     permissions:
       contents: read
-      # Download the composer's per-gate results artifact (same run) for the
-      # release-readiness record (ADR 0021, issue #1164).
+      # Download the composer's per-gate results artifact for the
+      # release-readiness record (ADR 0021, #1164).
       actions: read
     env:
       VERSION: ${{ needs.preflight.outputs.version }}
@@ -357,11 +296,9 @@ jobs:
       - name: Checkout the release ref
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # `main` for a final release, `release/vX.Y.0` for an RC. fetch-depth 0
-          # so the "tag exists" check and the "previous release tag" lookup see
-          # the full ref set. persist-credentials: false per repo convention --
-          # the push step scopes its own credential (the App token) via an
-          # ephemeral helper.
+          # fetch-depth 0 so tag-exists / previous-release-tag lookups see
+          # the full ref set; persist-credentials false, the push step
+          # scopes its own credential (App token) via an ephemeral helper.
           ref: ${{ inputs.ref }}
           fetch-depth: 0
           persist-credentials: false
@@ -372,10 +309,9 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
-      # The two final-release-only obligations live in one shared script so
-      # promote-rc.yml runs the same definition at promotion (issue #1195).
-      # Both are `if: is_rc != true` here; promote-rc.yml runs them
-      # unconditionally before it pushes the final tag.
+      # Both obligations live in one shared script so promote-rc.yml runs
+      # the same definition at promotion (#1195) -- unconditionally there,
+      # `if: is_rc != true` here.
       - name: Gate - ASVS/MASVS re-verification obligation
         if: ${{ env.IS_RC != 'true' }}
         env:
@@ -398,11 +334,8 @@ jobs:
             bash .github/scripts/release-obligations.sh adversarial --release "$VERSION" --ack "${ACK_ADVERSARIAL_DELTA:-}"
           fi
 
-      # --- Step 4: register + regenerate the schema fixture ---------------
-      # Final-release only. An RC ships the same schema the final will, and no
-      # in-place upgrade is ever supported *from* an RC, so the fixture is
-      # registered once -- at promotion (promote-rc.yml), against the final tag.
-
+      # Register + regenerate the schema fixture, final-release only (an RC
+      # is never itself an upgrade source; registered once at promotion).
       - name: Derive the migration version from the tree
         run: |
           set -eu
@@ -427,16 +360,11 @@ jobs:
           MIGRATION_VERSION: ${{ env.MIGRATION_VERSION }}
         run: |
           set -eu
-          # issue #929: a dry run is allowed (preflight downgrades it to a warning)
-          # to target a version already in SupportedReleases -- the documented
-          # way to rehearse the final-release path against the last shipped
-          # release. That is the ONLY way this step can be reached with an
-          # already-registered $VERSION (a real, non-dry-run cut of an
-          # already-registered version fails preflight outright). Skip re-adding
-          # it: appending a second entry for the same tag corrupted the
-          # frozen-chain assertion below every time (genschema regenerated
-          # that version's dump byte-identical, so the assertion's expected
-          # "one new untracked file" was never true).
+          # #929: a dry run (preflight downgrades to a warning) is the ONLY
+          # way to reach here with an already-registered $VERSION (a real
+          # cut fails preflight outright). Skip re-adding: a second entry
+          # for the same tag corrupted the frozen-chain assertion below
+          # every time.
           decision="$(.github/scripts/release-register-decide.sh backend/internal/schemafixture/releases.go "$VERSION")"
           echo "REGISTRATION=$decision" >> "$GITHUB_ENV"
           if [ "$decision" = "SKIP" ]; then
@@ -462,15 +390,10 @@ jobs:
         working-directory: backend
         run: go run ./cmd/genschema
 
-      # The frozen-chain check: genschema rewrites every dump in place. A new
-      # release expects exactly one new (untracked) file and zero
-      # modifications. issue #929: rehearsing an already-registered version
-      # (REGISTRATION=SKIP, above -- only reachable via a dry run) appends
-      # nothing new to SupportedReleases, so regenerating from the unchanged
-      # set must reproduce every dump byte-identical -- the correct
-      # expectation there is NO diff at all, not a new file that was never
-      # going to appear.
-
+      # The frozen-chain check: genschema rewrites every dump in place. A
+      # new release expects exactly one new (untracked) file and zero
+      # modifications; #929's REGISTRATION=SKIP rehearsal expects NO diff at
+      # all (nothing new was appended to regenerate against).
       - name: Assert only the new dump changed
         if: ${{ env.IS_RC != 'true' }}
         env:
@@ -503,8 +426,6 @@ jobs:
         working-directory: backend
         run: go test ./internal/schemafixture/... ./cmd/genschema/... ./cmd/releaselist/...
 
-      # --- Step 6: release metadata -------------------------------------
-
       - name: Dry run - summary
         if: ${{ inputs.dry_run }}
         run: |
@@ -514,16 +435,11 @@ jobs:
             echo "Every gate passed and \`${VERSION}\` checked cleanly. No commit, push or tag was made."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # --- Commit + push the fixture (final release only) -----------------
-      # Mint the App token HERE, not at the top of the workflow. The composed
-      # gate battery in `validate` can take a long time; a GitHub App
-      # installation token lives only ~1 hour, so a token minted before the
-      # gates is already dead by "Push main". Confirmed failing for real: the
-      # resumed v0.8.7 cut (run 35381018703) spent ~75 minutes in the old gate
-      # poll and died on "Push main" with "Invalid username or
-      # token ... Password authentication is not supported for Git
-      # operations", the token minted at 18:36 having expired.
-
+      # Mint the App token HERE, not at the top of the workflow: an App
+      # installation token lives only ~1 hour, and the composed gate battery
+      # in `validate` can run well past that -- confirmed failing for real
+      # (the resumed v0.8.7 cut died on "Push main" with an expired token
+      # after ~75 minutes in the old gate poll).
       - name: Mint GitHub App token (fresh -- for the fixture push)
         id: app-token
         if: ${{ !inputs.dry_run && env.IS_RC != 'true' }}
@@ -542,11 +458,8 @@ jobs:
           REGISTRATION: ${{ env.REGISTRATION }}
         run: |
           set -eu
-          # Idempotent (issue #1142): a resumed release reaches here with
-          # REGISTRATION=SKIP -- the fixture commit is already on main. Leave
-          # RELEASE_COMMIT at the checked-out tip set by "Verify repository
-          # state": that tip carries the fix that made the earlier attempt
-          # fail, and is what the tag should point at.
+          # Idempotent (#1142): a resumed release reaches here with
+          # REGISTRATION=SKIP -- the fixture commit is already on main.
           if [ "$REGISTRATION" = "SKIP" ]; then
             echo "$VERSION is already registered; nothing to commit. Release commit remains $(git rev-parse --short HEAD)."
             exit 0
@@ -563,20 +476,17 @@ jobs:
           GH_APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           set -eu
-          # No-op on a resume: RELEASE_COMMIT is the checked-out tip of main,
-          # which "Verify repository state" already confirmed equals
-          # origin/main, and the commit step above added nothing.
-          # Ephemeral credential helper for the push only. ${GH_APP_TOKEN} must
-          # expand at git-helper runtime, not when this script is parsed.
+          # No-op on a resume: RELEASE_COMMIT is already origin/main's tip.
+          # Ephemeral credential helper for the push only; ${GH_APP_TOKEN}
+          # must expand at git-helper runtime, not when this script is parsed.
           # shellcheck disable=SC2016
           helper='!f() { echo "username=x-access-token"; echo "password=${GH_APP_TOKEN}"; }; f'
           git -c credential.helper="$helper" push origin "HEAD:refs/heads/main"
 
-      # ADR 0021 (issue #1164): the durable record of what was validated and
-      # tagged, emitted once every gate has passed and the release commit is
-      # final. It is the durable release-readiness record (ADR 0021, issue
-      # #1164): a re-dispatch reads it rather than re-deriving state from git,
-      # and docker-publish attaches it to the Release.
+      # ADR 0021 (#1164): the durable release-readiness record, emitted once
+      # every gate has passed and the release commit is final. A re-dispatch
+      # reads it rather than re-deriving state from git; docker-publish
+      # attaches it to the Release.
       - name: Download the composer's per-gate results
         if: ${{ !inputs.dry_run }}
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -599,8 +509,8 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -eu
-          # The residual-risk statement (#953), same input the release metadata
-          # in docker-publish.yml uses.
+          # The residual-risk statement (#953), same input docker-publish.yml's
+          # release metadata uses.
           residual="${RUNNER_TEMP:-/tmp}/residual-risk.json"
           (cd backend && go run ./cmd/residualrisk -out "$residual")
           jq -n \
@@ -646,12 +556,9 @@ jobs:
           GH_APP_TOKEN: ${{ steps.app-token-2.outputs.token }}
         run: |
           set -eu
-          # The tag points at the release commit: the fixture commit for a
-          # final release (docker-publish's schema-fixture-gate checks the
-          # tagged tree), or the release-branch tip for an RC (that gate is
-          # exempt for `-rc.` tags). The tag push triggers docker-publish.yml,
-          # which owns the Release and every asset on it (ADR 0021, #1163) --
-          # this workflow no longer waits for that Release.
+          # Tag points at the fixture commit (final) or the release-branch
+          # tip (RC, schema-fixture-gate exempt for `-rc.` tags). Triggers
+          # docker-publish.yml, which owns the Release (ADR 0021, #1163).
           git tag "$VERSION" "$RELEASE_COMMIT"
           # shellcheck disable=SC2016
           helper='!f() { echo "username=x-access-token"; echo "password=${GH_APP_TOKEN}"; }; f'

@@ -177,6 +177,7 @@ type ownFixtures struct {
 	ownerTagID, victimTagID             string
 	ownerLifeEventID, victimLifeEventID string
 	ownerLinkTypeID, victimLinkTypeID   string
+	ownerEventID, victimEventID         string
 }
 
 type ownHarness struct {
@@ -231,6 +232,11 @@ func ownSeed(t *testing.T, db *gorm.DB) ownFixtures {
 		require.NoError(t, db.Create(&lt).Error)
 		return lt.ID
 	}
+	mkEvent := func(uid uint, title string) string {
+		e := models.OccasionEvent{UserID: uid, Title: title, StartsAt: time.Now()}
+		require.NoError(t, db.Create(&e).Error)
+		return e.ID
+	}
 
 	return ownFixtures{
 		ownerID: owner.ID, victimID: victim.ID, recipientID: recipient.ID,
@@ -241,6 +247,7 @@ func ownSeed(t *testing.T, db *gorm.DB) ownFixtures {
 		ownerTagID: mkTag(owner.ID), victimTagID: mkTag(victim.ID),
 		ownerLifeEventID: mkLifeEvent(owner.ID, oc1.VCardUID), victimLifeEventID: mkLifeEvent(victim.ID, vc1.VCardUID),
 		ownerLinkTypeID: mkLinkType(owner.ID), victimLinkTypeID: mkLinkType(victim.ID),
+		ownerEventID: mkEvent(owner.ID, "owner event"), victimEventID: mkEvent(victim.ID, "victim event"),
 	}
 }
 
@@ -525,6 +532,12 @@ func buildBodyOwnershipTable(fx ownFixtures) map[string]ownRow {
 				"/api/v1/tags/"+h.fx.victimTagID+"/contacts",
 				func(uid string) string { return fmt.Sprintf(`{"contact_vcard_uid":%s}`, jstr(uid)) })
 		}),
+		"OccasionEventAttendeeInput.EntityID": dto(func(t *testing.T, h *ownHarness) {
+			h.assertContainerMasked(http.MethodPost,
+				"/api/v1/occasion-events/"+h.fx.ownerEventID+"/attendees",
+				"/api/v1/occasion-events/"+h.fx.victimEventID+"/attendees",
+				func(uid string) string { return fmt.Sprintf(`{"entity_id":%s}`, jstr(uid)) })
+		}),
 
 		// ── collection fields — assert the victim's DB rows, not the wire ───
 		"BulkContactOperationInput.VCardUIDs": dto(func(t *testing.T, h *ownHarness) {
@@ -592,6 +605,7 @@ func buildBodyOwnershipTable(fx ownFixtures) map[string]ownRow {
 		"Preference.EntityID":                  model("persisted-model mirror of PreferenceInput.EntityID — covered above."),
 		"OccasionObligation.EntityID":          model("persisted-model mirror of OccasionObligationInput.EntityID — covered above."),
 		"OccasionObligation.LinkedLifeEventID": model("persisted-model mirror of OccasionObligationInput.LinkedLifeEventID — covered above."),
+		"OccasionEventAttendee.EntityID":       model("persisted join-row mirror of OccasionEventAttendeeInput.EntityID — covered above."),
 		"ExternalActivity.EntityID":            model("persisted-model mirror of ExternalActivityInput.EntityID — covered above."),
 		"ConversationAgenda.EntityID":          model("persisted-model mirror of ConversationAgendaInput.EntityID — covered above."),
 		"RelationshipEdge.SourceID":            model("persisted-model mirror of RelationshipEdgeInput.SourceID — covered above."),

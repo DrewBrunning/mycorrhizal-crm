@@ -183,6 +183,16 @@ deliberately untested. In order of preference:
    Use these only for code that structurally cannot be hit (a defensive branch
    that only executes on a broken invariant), and keep the reason discoverable
    — the marker is invisible in the diff otherwise.
+
+   `cmd/pragmacheck` makes "keep the reason discoverable" mechanical: it scans
+   every non-test Go file under `backend/` for `# pragma: no cover` and every
+   file under `frontend/src` for `/* v8 ignore ... */`, and fails if a marker
+   has no reason — either non-trivial text after the marker on its own line,
+   or on the line directly above it (the common pattern of stating the reason
+   once on a guarding `if` and marking every line inside the block). It runs
+   in `unit-tests.yml`'s `docs-citations` job and in `.githooks/pre-commit`,
+   both unconditionally, for the same reason `citecheck`/`docscheck` are: a
+   marker with no accompanying test change never trips a path filter.
 3. **File-level ignore.** Add the path to the `ignore:` list in `codecov.yml`
    with a justifying comment. Coarse — only for an entire file that is
    genuinely outside the coverage model. `android/build-logic/.../AndroidConfig.kt`'s
@@ -216,6 +226,97 @@ request**, the same gap is a hard failure of the `Backend (Go)` job instead
 against stale carryforward data, with only a warning annotation as
 evidence, is the exact failure mode that motivated this doc's own
 `cmd/codecovcheck` gate above.
+
+## Per-file no-regression ratchet
+
+The patch-coverage gate above only judges a PR's *changed* lines. That leaves
+two gaps it cannot close by design:
+
+- A file that already sits at 0% (or 40%, or whatever) coverage stays there
+  forever — no status ever re-measures a file a PR doesn't touch.
+- A PR that deletes or guts a test for a file it doesn't otherwise edit trips
+  nothing: the file's *source* lines are unchanged, so there's nothing for
+  Codecov's patch diff to flag, even though its tests just got weaker.
+
+Both are closed by a **ratchet**, not an absolute floor — deliberately the
+same non-absolute philosophy as the patch gate and as
+`frontend/bundle-budget.json` (issue #556): it fails on *regression* past a
+tolerance, never on an existing low number by itself.
+
+- **Backend**: `backend/cmd/coverageratchet` (logic in
+  `backend/internal/coverageratchet`) reads the same merged
+  `coverage.out` the `backend` job in `unit-tests.yml` already
+  produces for Codecov, computes each file's statement-coverage percentage,
+  and compares it against the committed
+  `backend/internal/coverageratchet/testdata/baseline.json`. It honors the
+  `// # pragma: no cover` marker (CLAUDE.md's Override path) at the
+  coverprofile's own block granularity — a marked line anywhere inside a
+  block excludes that whole block — so a deliberately-excluded line doesn't
+  masquerade as a real drop.
+- **Frontend**: `frontend/scripts/check-coverage-ratchet.mjs` reads
+  `coverage/coverage-summary.json` (the `json-summary` reporter added to
+  `vitest.config.ts` alongside the existing `text`/`html`/`lcov` reporters)
+  and compares each file's line% and branch% against the committed
+  `frontend/coverage-baseline.json`.
+
+Both sides share the same rules:
+
+- A file whose gated metric(s) drop by more than the baseline's tolerance
+  fails. The effective tolerance per file is the larger of the configured
+  percentage points and **one unit** of that file (one line or branch on the
+  frontend, one statement on the backend): losing a single unit is always
+  allowed, losing two is not. An improved file never fails, regardless of
+  magnitude.
+- A **new** file with no baseline entry is not gated here — that's
+  `codecov/patch/*`'s job; gating it twice would just let the two disagree
+  on some edge case.
+- A **removed or renamed** file drops out silently (reported, not failed) —
+  the baseline is simply stale for that entry until the next regeneration.
+
+**Regenerating the baseline** (a deliberate, reviewed act — the diff *is* the
+review, same convention as `bundle-budget.json`):
+
+```bash
+cd backend && make gen-coverage-baseline    # needs backend's coverage.out from a full-suite run
+cd frontend && yarn coverage:ratchet:update # needs frontend/coverage/coverage-summary.json from `yarn test:coverage`
+```
+
+Both regenerate in place, keeping the existing `tolerancePercentPoints` /
+`tolerancePct` unless you edit it by hand.
+
+**Tolerance rationale.** The backend's seven coverage-producing legs include
+property/generative tests (TEST-07, issue #435) whose iteration budget
+(`RAPID_CHECKS`) is tiered by trigger — 200 on a PR, 1000 on a push, 8000 on
+the nightly schedule — and whose generators use randomized inputs. A
+run-to-run comparison of the `property` leg's coverprofile (two back-to-back
+local runs at the PR-tier 200 iterations) found the *statement invocation
+counts* varying by up to ~5% run to run (expected: different random inputs
+exercise a block a different number of times), but **zero** blocks flipped
+between covered and uncovered across the two runs — the set of `count == 0`
+blocks was byte-identical. Coverage percentage is boolean per block
+(covered/not), not proportional to invocation count, so this variance does
+not by itself threaten the ratchet; the committed default (1.5 percentage
+points, both sides) is a safety margin above that empirical zero, not a
+number chosen to paper over observed flakiness. Because the tiered
+iteration count still means a push/schedule run's coverage numbers are not
+directly comparable to the PR-tier baseline, **the backend ratchet only runs
+on `pull_request`** (`unit-tests.yml`'s "Per-file coverage ratchet
+(pull_request only)" step) — matching the property-test depth the baseline
+was generated at. The frontend ratchet has no property/generative variance
+and runs on every trigger the `frontend` job runs on — but it does have
+*incidental* coverage: a line one component's own tests never reach, hit only
+because another test file happens to render it. That flipped on the first CI
+run of this ratchet (`OccasionEventAttendeesDialog.tsx`: 43/45 lines in a local
+full run, 42/45 in CI — 2.2pt on a 45-line file, over a flat 1.5pt). The
+one-unit floor is the fix for that class; the file's own error paths were also
+pinned directly so its number no longer depends on other tests.
+
+If a real, intentional coverage change makes the ratchet fail (a test
+legitimately removed because the code it tested was deleted, a refactor that
+moves logic into a file whose baseline entry no longer applies), regenerate
+the baseline and commit the diff — same override philosophy as the patch
+gate: write the test first if you can, only lower the baseline when the drop
+is deliberate.
 
 ## Making the gate block merges
 

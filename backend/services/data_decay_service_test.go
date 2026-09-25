@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -15,12 +15,7 @@ import (
 func setupDataDecayServiceTestDB(t *testing.T) (*gorm.DB, models.User, models.Contact) {
 	t.Helper()
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	sqlDB, err := db.DB()
-	require.NoError(t, err)
-	sqlDB.SetMaxOpenConns(1)
-	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Contact{}, &models.DataDecayPolicy{}))
+	db := dbtest.New(t)
 
 	user := models.User{Username: "decay-tester", Password: "x", Email: "decay@example.com"}
 	require.NoError(t, db.Create(&user).Error)

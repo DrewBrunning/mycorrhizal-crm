@@ -21,7 +21,7 @@ data class DataDecayHealth(
 
 /**
  * An opt-in, per-contact rule to periodically re-verify stored info is still
- * accurate (issue #352, docs/adrs/0026-data-decay.md), plus its derived
+ * accurate (issue #352, docs/adrs/0027-data-decay.md), plus its derived
  * [DataDecayHealth]. Mirrors the backend's `DataDecayPolicyWithHealth`
  * composite.
  */

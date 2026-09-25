@@ -32,7 +32,7 @@ export default function SeafileSettings() {
   const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
-    seafile.refreshConfig();
+    void seafile.refreshConfig();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -161,7 +161,12 @@ export default function SeafileSettings() {
             )}
 
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button variant="contained" size="small" onClick={handleSave} disabled={saving}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => void handleSave()}
+                disabled={saving}
+              >
                 {saving ? t('common.saving') : t('seafile.settings.saveButton')}
               </Button>
               {seafile.config?.has_api_token && (
@@ -181,7 +186,12 @@ export default function SeafileSettings() {
                 </Button>
               )}
               {seafile.config && (
-                <Button variant="outlined" size="small" color="error" onClick={handleRemove}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  color="error"
+                  onClick={() => void handleRemove()}
+                >
                   {t('seafile.settings.removeButton')}
                 </Button>
               )}

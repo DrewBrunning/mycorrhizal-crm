@@ -2,12 +2,12 @@ package services
 
 import (
 	"mycorrhizal/config"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -44,18 +44,13 @@ func sendRemindersExpectErrT(t *testing.T, db *gorm.DB, cfg config.Config) {
 	require.Error(t, err, "a channel send failure must surface as an aggregate error")
 }
 
-func setupRouter() (*gorm.DB, *gin.Engine) {
+// setupRouter returns a fresh copy of the real migrated schema (dbtest.New,
+// CLAUDE.md backend trap #1 -- never AutoMigrate) and a router that injects it.
+func setupRouter(t testing.TB) (*gorm.DB, *gin.Engine) {
+	t.Helper()
 	gin.SetMode(gin.ReleaseMode)
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
-	}
-
-	sqlDB, _ := db.DB()
-	sqlDB.SetMaxOpenConns(1)
-
-	db.AutoMigrate(&models.Contact{}, &models.Activity{}, &models.Note{}, models.Reminder{}, models.User{}, models.JobExecution{}, models.Webhook{}, models.WebhookDelivery{}, models.NotificationDelivery{}, models.NotificationConfig{}, models.PushSubscription{}, models.ServerSetting{})
+	db := dbtest.New(t)
 
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
@@ -266,7 +261,7 @@ func TestCalculateNextReminderTimeUTCConsistency(t *testing.T) {
 }
 
 func TestSendReminders(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	user := models.User{Username: "reminder-user", Password: "password123", Email: "owner@example.com"}
 	if err := db.Create(&user).Error; err != nil {
@@ -345,7 +340,7 @@ func TestSendReminders(t *testing.T) {
 // (eligible reminders wrongly excluded), neither of which shows up in normal
 // monitoring.
 func TestSendReminders_ExcludesCompletedAndAlreadySentReminders(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	user := models.User{Username: "reminder-filter-user", Password: "password123", Email: "owner2@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -400,7 +395,7 @@ func TestSendReminders_ExcludesCompletedAndAlreadySentReminders(t *testing.T) {
 }
 
 func TestSendRemindersWithRateLimit_FirstRun(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	// Set a short interval for testing
 	originalInterval := ReminderMinInterval
@@ -456,7 +451,7 @@ func TestSendRemindersWithRateLimit_FirstRun(t *testing.T) {
 }
 
 func TestSendRemindersWithRateLimit_RateLimited(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	// Set a long interval to ensure rate limiting
 	originalInterval := ReminderMinInterval
@@ -511,7 +506,7 @@ func TestSendRemindersWithRateLimit_RateLimited(t *testing.T) {
 }
 
 func TestSendRemindersWithRateLimit_AllowsAfterInterval(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	// Set a very short interval
 	originalInterval := ReminderMinInterval
@@ -592,7 +587,7 @@ func TestSendRemindersWithRateLimit_AllowsAfterInterval(t *testing.T) {
 // different instance currently holds a fresh (non-stale) lock: acquisition
 // must fail and leave the lock untouched.
 func TestAcquireJobLock_LockedByAnotherInstance(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	now := time.Now()
 	lockedAt := now.Add(-1 * time.Minute) // fresh, well within the 5-minute stale timeout
@@ -617,7 +612,7 @@ func TestAcquireJobLock_LockedByAnotherInstance(t *testing.T) {
 // instance's lock is older than the 5-minute staleness timeout: acquisition
 // must succeed and take over the lock.
 func TestAcquireJobLock_TakesOverStaleLock(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	now := time.Now()
 	lockedAt := now.Add(-10 * time.Minute) // past the 5-minute stale timeout
@@ -643,7 +638,7 @@ func TestAcquireJobLock_TakesOverStaleLock(t *testing.T) {
 // (e.g. it was taken over as stale by someone else in the meantime): release
 // must no-op without error and without clobbering the new owner's lock.
 func TestReleaseJobLock_LockTakenByAnotherInstance(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	now := time.Now()
 	job := models.JobExecution{
@@ -717,7 +712,7 @@ func TestFormatBirthdayForUser(t *testing.T) {
 // TestSendReminderEmail_MissingEmailSkips covers the early-return guard when
 // the user has no email address configured.
 func TestSendReminderEmail_MissingEmailSkips(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	user := models.User{Username: "no-email-user", Password: "password123"}
 	require.NoError(t, db.Create(&user).Error)
 
@@ -732,7 +727,7 @@ func TestSendReminderEmail_MissingEmailSkips(t *testing.T) {
 // including today/tomorrow/future badge branches, contact name lookup) while
 // SendEmail's no-channel-configured guard prevents any real network call.
 func TestSendReminderEmail_NoChannelConfiguredRendersWithoutSending(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	user := models.User{
 		Username:   "email-render-user",
@@ -847,7 +842,7 @@ func TestCalculateNextReminderTime_ReoccurFromCompletionTrue_PastRemindAt(t *tes
 // SendReminders that scans all users for a birthday falling today even when
 // they have no due reminders, and includes them in the email/webhook run.
 func TestSendReminders_BirthdayOnlyUserIncluded(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	user := models.User{Username: "birthday-only-user", Password: "password123", Email: "bdayonly@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -895,7 +890,7 @@ func TestSendReminders_BirthdayOnlyUserIncluded(t *testing.T) {
 // EmailSent=false (not mutated) so they're picked up again once email is
 // configured.
 func TestSendReminders_EmailDisabledPreservesReminders(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	user := models.User{Username: "email-disabled-user", Password: "password123", Email: "disabled@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -959,7 +954,7 @@ func TestSendRemindersAt_DayBoundaryUsesReminderZone(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			db, _ := setupRouter()
+			db, _ := setupRouter(t)
 			user := models.User{Username: "ist-boundary", Password: "password123", Email: "ist@example.com"}
 			require.NoError(t, db.Create(&user).Error)
 			contact := models.Contact{UserID: user.ID, Firstname: "Due", Lastname: "Boundary"}
@@ -1015,7 +1010,7 @@ func TestSendRemindersAt_LeapDayBirthdayReachesTheDigestOnMarchFirstNonLeap(t *t
 		{"Mar 1 2024 (leap): the real occurrence was yesterday", time.Date(2024, 3, 1, 6, 0, 0, 0, time.UTC), false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			db, _ := setupRouter()
+			db, _ := setupRouter(t)
 			user := models.User{Username: "leap-digest", Password: "password123", Email: "leapdigest@example.com"}
 			require.NoError(t, db.Create(&user).Error)
 			require.NoError(t, db.Create(&models.Contact{UserID: user.ID, Firstname: "Leapling", Lastname: "Digest", Birthday: "2000-02-29", Archived: false}).Error)
@@ -1048,7 +1043,7 @@ func TestSendRemindersAt_LeapDayBirthdayReachesTheDigestOnMarchFirstNonLeap(t *t
 // second pass, which is what stands between a repeated-hour day and a doubled
 // email if the scheduler ever fired twice.
 func TestSendRemindersAt_RunsOncePerCalendarDayOnTheSameDay(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	user := models.User{Username: "once-a-day", Password: "password123", Email: "once@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 	contact := models.Contact{UserID: user.ID, Firstname: "Once", Lastname: "ADay"}

@@ -51,7 +51,7 @@ func createControllerContactWithWedding(t *testing.T, db *gorm.DB, userID uint) 
 }
 
 func TestCreateContactWeddingAnniversaryCreatesMarriedLifeEvent(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts", withValidated(func() any { return &models.ContactRecordInput{} }), CreateContact)
 
 	jsonValue, _ := json.Marshal(weddingContactPayload(
@@ -75,7 +75,7 @@ func TestCreateContactWeddingAnniversaryCreatesMarriedLifeEvent(t *testing.T) {
 }
 
 func TestUpdateContactWeddingAnniversaryUpdatesMarriedLifeEvent(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts", withValidated(func() any { return &models.ContactRecordInput{} }), CreateContact)
 	router.PUT("/contacts/:id", withValidated(func() any { return &models.ContactRecordInput{} }), UpdateContact)
 
@@ -122,7 +122,7 @@ func TestUpdateContactWeddingAnniversaryUpdatesMarriedLifeEvent(t *testing.T) {
 }
 
 func TestCreateMarriedLifeEventSetsWeddingAnniversary(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/life-events", withValidated(func() any { return &models.LifeEventInput{} }), CreateLifeEvent)
 
 	var user models.User
@@ -153,7 +153,7 @@ func TestCreateMarriedLifeEventSetsWeddingAnniversary(t *testing.T) {
 }
 
 func TestDeleteMarriedLifeEventClearsWeddingAnniversary(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/life-events/:id", DeleteLifeEvent)
 
 	var user models.User

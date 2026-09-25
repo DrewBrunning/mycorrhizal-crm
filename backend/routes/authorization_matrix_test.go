@@ -127,6 +127,7 @@ type seeded struct {
 	gift               string
 	preference         string
 	occasionObligation string
+	occasionEvent      string
 	cadence            string
 	dataDecay          string
 	agenda             string
@@ -167,6 +168,8 @@ func seedResources(t *testing.T, db *gorm.DB, ownerID uint) seeded {
 	require.NoError(t, db.Create(&pref).Error)
 	occasionObligation := models.OccasionObligation{UserID: ownerID, EntityID: ec.VCardUID, Kind: "card", Label: "matrix card"}
 	require.NoError(t, db.Create(&occasionObligation).Error)
+	occasionEvent := models.OccasionEvent{UserID: ownerID, Title: "matrix event", StartsAt: time.Now()}
+	require.NoError(t, db.Create(&occasionEvent).Error)
 	cadence := models.CadencePolicy{UserID: ownerID, EntityID: ec.VCardUID, TargetIntervalDays: 30}
 	require.NoError(t, db.Create(&cadence).Error)
 	dataDecay := models.DataDecayPolicy{UserID: ownerID, EntityID: ec.VCardUID, IntervalDays: 365}
@@ -208,6 +211,7 @@ func seedResources(t *testing.T, db *gorm.DB, ownerID uint) seeded {
 		gift:               gift.ID,
 		preference:         pref.ID,
 		occasionObligation: occasionObligation.ID,
+		occasionEvent:      occasionEvent.ID,
 		cadence:            cadence.ID,
 		dataDecay:          dataDecay.ID,
 		agenda:             agenda.ID,
@@ -470,6 +474,17 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/occasions/upcoming":                      {class: classProtected},
 		"GET /api/v1/occasion-obligations/card-list":          {class: classProtected},
 		"GET /api/v1/occasion-obligations/gift-shopping-list": {class: classProtected},
+
+		// --- occasion events (docs/adrs/0026-occasions-events.md, issue #1228) --
+		"POST /api/v1/occasion-events":                            {class: classProtected},
+		"GET /api/v1/occasion-events":                             {class: classProtected},
+		"GET /api/v1/occasion-events/invitee-suggestions":         {class: classProtected},
+		"GET /api/v1/occasion-events/:id":                         {class: classItem, probe: "/api/v1/occasion-events/" + s.occasionEvent},
+		"PUT /api/v1/occasion-events/:id":                         {class: classItem, probe: "/api/v1/occasion-events/" + s.occasionEvent},
+		"DELETE /api/v1/occasion-events/:id":                      {class: classItem, probe: "/api/v1/occasion-events/" + s.occasionEvent},
+		"POST /api/v1/occasion-events/:id/attendees":              {class: classItem, probe: "/api/v1/occasion-events/" + s.occasionEvent + "/attendees"},
+		"PUT /api/v1/occasion-events/:id/attendees/:vcard_uid":    {class: classItem, probe: "/api/v1/occasion-events/" + s.occasionEvent + "/attendees/" + s.contactUID},
+		"DELETE /api/v1/occasion-events/:id/attendees/:vcard_uid": {class: classItem, probe: "/api/v1/occasion-events/" + s.occasionEvent + "/attendees/" + s.contactUID},
 
 		// --- cadence policies -----------------------------------------------
 		"GET /api/v1/cadence-policies/overdue": {class: classProtected},

@@ -43,17 +43,27 @@ const (
 	composerFile = ".github/workflows/release-validate.yml"
 )
 
+// osExit is os.Exit through a seam so tests can drive main() itself without
+// killing the test process.
+var osExit = os.Exit
+
 func main() {
-	os.Exit(run(os.Stdout)) // # pragma: no cover — os.Exit ends the process; tests drive run()
+	osExit(run(os.Stdout))
 }
 
 func run(w io.Writer) int {
 	root, err := findRepoRoot()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "releasegatecheck:", err) // # pragma: no cover
-		return 2                                          // # pragma: no cover
+		fmt.Fprintln(os.Stderr, "releasegatecheck:", err)
+		return 2
 	}
+	return runAt(w, root)
+}
 
+// runAt is the testable core: it runs every check rooted at root (the real
+// repository root in production, a constructed temp directory in tests) and
+// returns the process exit code.
+func runAt(w io.Writer, root string) int {
 	// #nosec G304 -- root is the repo root from findRepoRoot, the leaf is a constant
 	regBytes, err := os.ReadFile(filepath.Join(root, registryFile))
 	if err != nil {
@@ -94,9 +104,9 @@ func run(w io.Writer) int {
 	findings = append(findings, releaseworkflow.CheckRelease(string(releaseBytes))...)
 	// #nosec G304 -- constant leaf under the repository root
 	promoteBytes, err := os.ReadFile(filepath.Join(root, workflowsDir, "promote-rc.yml"))
-	if err != nil { // # pragma: no cover -- the committed tree always has promote-rc.yml
-		fmt.Fprintln(os.Stderr, "releasegatecheck: read promote-rc.yml", err) // # pragma: no cover
-		return 2                                                              // # pragma: no cover
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "releasegatecheck: read promote-rc.yml", err)
+		return 2
 	}
 	findings = append(findings, releaseworkflow.CheckPromote(string(promoteBytes))...)
 	findings = append(findings, releasegates.CrossCheckDoc(reg, string(docBytes))...)
@@ -119,7 +129,7 @@ func run(w io.Writer) int {
 func findRepoRoot() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
-		return "", err // # pragma: no cover
+		return "", err // # pragma: no cover — os.Getwd fails only when the cwd has been deleted out from under the process
 	}
 	for {
 		if _, statErr := os.Stat(filepath.Join(dir, "backend", "go.mod")); statErr == nil {

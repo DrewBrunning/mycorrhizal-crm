@@ -23,7 +23,7 @@ import (
 // does not reach) ---
 
 func TestDeleteUser_CannotDeleteSelf(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var me models.User
 	require.NoError(t, db.First(&me).Error)
@@ -42,7 +42,7 @@ func TestDeleteUser_CannotDeleteSelf(t *testing.T) {
 }
 
 func TestDeleteUser_InvalidID(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.DELETE("/users/:id", DeleteUser)
 
@@ -54,7 +54,7 @@ func TestDeleteUser_InvalidID(t *testing.T) {
 }
 
 func TestDeleteUser_NotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.DELETE("/users/:id", DeleteUser)
 
@@ -66,7 +66,7 @@ func TestDeleteUser_NotFound(t *testing.T) {
 }
 
 func TestDeleteUser_LastAdminProtected(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	// The seeded "tester" user is NOT an admin, so a brand-new admin target
 	// is the instance's only admin and must not be deletable. Post-#871 this
@@ -96,7 +96,7 @@ func TestDeleteUser_LastAdminProtected(t *testing.T) {
 // An admin cannot delete a PEER admin, even when other admins remain (issue
 // #871). The account must remove its own admin status first.
 func TestDeleteUser_CannotDeletePeerAdmin(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	// Acting user (seeded "tester") becomes an admin.
 	var actingUser models.User
@@ -126,7 +126,7 @@ func TestDeleteUser_CannotDeletePeerAdmin(t *testing.T) {
 // Once an account is no longer an admin it can be deleted normally -- the
 // #871 guard keys off current admin status, not history.
 func TestDeleteUser_DeletesFormerAdmin_AfterDemotion(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var actingUser models.User
 	require.NoError(t, db.First(&actingUser).Error)

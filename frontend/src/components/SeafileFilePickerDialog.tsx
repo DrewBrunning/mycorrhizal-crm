@@ -118,7 +118,7 @@ export default function SeafileFilePickerDialog({
               component="button"
               underline="hover"
               color="inherit"
-              onClick={() => enterDir(repoId, '/')}
+              onClick={() => void enterDir(repoId, '/')}
             >
               /
             </MuiLink>
@@ -140,7 +140,7 @@ export default function SeafileFilePickerDialog({
                   component="button"
                   underline="hover"
                   color="inherit"
-                  onClick={() => enterDir(repoId, target)}
+                  onClick={() => void enterDir(repoId, target)}
                 >
                   {segment}
                 </MuiLink>
@@ -156,7 +156,7 @@ export default function SeafileFilePickerDialog({
             <List dense>
               {repoId === null &&
                 libraries.map((lib) => (
-                  <ListItemButton key={lib.id} onClick={() => enterDir(lib.id, '/')}>
+                  <ListItemButton key={lib.id} onClick={() => void enterDir(lib.id, '/')}>
                     <ListItemIcon>
                       <FolderIcon />
                     </ListItemIcon>
@@ -168,9 +168,9 @@ export default function SeafileFilePickerDialog({
                   <ListItemButton
                     key={item.name}
                     onClick={() =>
-                      item.type === 'dir'
+                      void (item.type === 'dir'
                         ? enterDir(repoId, joinDirPath(path, item.name))
-                        : handlePick(item)
+                        : handlePick(item))
                     }
                     disabled={selecting}
                   >
@@ -217,7 +217,7 @@ export default function SeafileFilePickerDialog({
       </DialogContent>
       <DialogActions>
         {repoId !== null && (
-          <Button onClick={() => enterDir(repoId, parentDir(path))} disabled={loading}>
+          <Button onClick={() => void enterDir(repoId, parentDir(path))} disabled={loading}>
             {t('common.back')}
           </Button>
         )}

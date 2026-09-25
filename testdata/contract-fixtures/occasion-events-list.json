@@ -1,0 +1,16 @@
+{
+  "limit": 25,
+  "next_cursor": "",
+  "occasion_events": [
+    {
+      "created_at": "2026-08-21T00:08:51Z",
+      "id": "7b1e0c52-5d8a-4f7e-9a51-2f3c4d5e6f70",
+      "location": "Fixture Hall",
+      "sensitivity": "normal",
+      "starts_at": "2026-09-01T18:00:00Z",
+      "title": "Fixture dinner",
+      "updated_at": "2026-08-21T00:08:51Z"
+    }
+  ],
+  "total": 1
+}

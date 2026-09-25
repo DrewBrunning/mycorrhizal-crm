@@ -157,23 +157,44 @@ func NewContactSummary(c *Contact) ContactSummary {
 //
 // Relationships was removed from this shape alongside the
 // includes=relationships removal in contact_controller.go's GetContacts.
+// Notes/Activities/Reminders deliberately carry no `omitempty`: this is a
+// response DTO, and CLAUDE.md frontend trap #8 is exactly this shape —
+// GORM's Preload leaves the field nil when a contact has zero rows,
+// `omitempty` then drops the key entirely, and a frontend TS type with a
+// required (non-optional) array field crashes on `.length` for that
+// contact. NewContactSummaryWithRelations below normalizes nil to `[]`.
 type ContactSummaryWithRelations struct {
 	ContactSummary
-	Notes      []Note     `json:"notes,omitempty"`
-	Activities []Activity `json:"activities,omitempty"`
-	Reminders  []Reminder `json:"reminders,omitempty"`
+	Notes      []Note     `json:"notes"`
+	Activities []Activity `json:"activities"`
+	Reminders  []Reminder `json:"reminders"`
 }
 
 // NewContactSummaryWithRelations builds the extended list-item shape from a
 // Contact whose requested associations have already been Preload()ed by the
-// caller (GetContacts in contact_controller.go).
+// caller (GetContacts in contact_controller.go). Nil slices (Preload found
+// zero rows) are normalized to non-nil empty ones so the field always
+// serializes as `[]`, never `null` or an absent key (CLAUDE.md frontend
+// trap #8).
 func NewContactSummaryWithRelations(c *Contact) ContactSummaryWithRelations {
 	return ContactSummaryWithRelations{
 		ContactSummary: NewContactSummary(c),
-		Notes:          c.Notes,
-		Activities:     c.Activities,
-		Reminders:      c.Reminders,
+		Notes:          nonNilSlice(c.Notes),
+		Activities:     nonNilSlice(c.Activities),
+		Reminders:      nonNilSlice(c.Reminders),
 	}
+}
+
+// nonNilSlice returns s, or a non-nil empty slice of the same type when s is
+// nil — the normalization CLAUDE.md frontend trap #8 asks for on every
+// response DTO collection field: GORM leaves a preloaded has-many slice nil
+// when the query matches zero rows, and encoding/json serializes a nil
+// slice as `null` even without `omitempty` dropping the key outright.
+func nonNilSlice[T any](s []T) []T {
+	if s == nil {
+		return []T{}
+	}
+	return s
 }
 
 // ContactRecordInput is the request body for POST /api/v1/contacts and
@@ -253,9 +274,15 @@ type ContactRecordResponse struct {
 	// dedicated /contacts/:id/notes-style endpoints also exist).
 	//
 	// Relationships was removed — see GetContact's doc comment.
-	Notes      []Note     `json:"notes,omitempty"`
-	Activities []Activity `json:"activities,omitempty"`
-	Reminders  []Reminder `json:"reminders,omitempty"`
+	//
+	// Deliberately no `omitempty`: CLAUDE.md frontend trap #8 — GORM's
+	// Preload leaves the field nil when a contact has zero rows, and a
+	// frontend TS type with a required array field crashes on `.length`
+	// for exactly that contact. NewContactRecordResponse below normalizes
+	// nil to `[]`.
+	Notes      []Note     `json:"notes"`
+	Activities []Activity `json:"activities"`
+	Reminders  []Reminder `json:"reminders"`
 }
 
 // NewContactRecordResponse builds the full detail-view response from a
@@ -285,9 +312,9 @@ func NewContactRecordResponse(c *Contact, photoDir string, db *gorm.DB) ContactR
 		PhotoThumbnail: ProfilePictureURL(c.ID, c.Photo, c.PhotoThumbnail, true),
 		Archived:       c.Archived,
 		IsFavorite:     c.IsFavorite,
-		Notes:          c.Notes,
-		Activities:     c.Activities,
-		Reminders:      c.Reminders,
+		Notes:          nonNilSlice(c.Notes),
+		Activities:     nonNilSlice(c.Activities),
+		Reminders:      nonNilSlice(c.Reminders),
 	}
 
 	// M6: the Card.Media photo entry's URI carries the relative

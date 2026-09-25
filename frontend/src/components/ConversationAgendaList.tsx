@@ -165,7 +165,7 @@ export default function ConversationAgendaList({
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
-            handleAdd();
+            void handleAdd();
           }
         }}
         placeholder={t('conversationAgenda.placeholder')}
@@ -183,7 +183,7 @@ export default function ConversationAgendaList({
               <InputAdornment position="end">
                 <IconButton
                   size="small"
-                  onClick={handleAdd}
+                  onClick={() => void handleAdd()}
                   disabled={adding || !draft.trim()}
                   aria-label={t('conversationAgenda.add')}
                 >

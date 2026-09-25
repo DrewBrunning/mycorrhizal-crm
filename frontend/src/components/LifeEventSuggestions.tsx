@@ -109,7 +109,7 @@ export default function LifeEventSuggestions({ contactId, onAccepted }: LifeEven
               size="small"
               variant="contained"
               disabled={busy}
-              onClick={() => accept(s)}
+              onClick={() => void accept(s)}
               data-testid="suggestion-accept"
             >
               {t('lifeEvent.suggestions.add')}
@@ -117,7 +117,7 @@ export default function LifeEventSuggestions({ contactId, onAccepted }: LifeEven
             <Button
               size="small"
               disabled={busy}
-              onClick={() => dismiss(s)}
+              onClick={() => void dismiss(s)}
               data-testid="suggestion-dismiss"
             >
               {t('lifeEvent.suggestions.dismiss')}

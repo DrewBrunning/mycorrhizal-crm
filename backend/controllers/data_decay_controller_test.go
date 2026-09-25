@@ -13,7 +13,7 @@ import (
 )
 
 func TestCreateDataDecayPolicy(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/data-decay-policies", withValidated(func() any { return &models.DataDecayPolicyInput{} }), CreateDataDecayPolicy)
 
 	var user models.User
@@ -40,7 +40,7 @@ func TestCreateDataDecayPolicy(t *testing.T) {
 }
 
 func TestCreateDataDecayPolicyExplicitInactive(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/data-decay-policies", withValidated(func() any { return &models.DataDecayPolicyInput{} }), CreateDataDecayPolicy)
 
 	var user models.User
@@ -60,7 +60,7 @@ func TestCreateDataDecayPolicyExplicitInactive(t *testing.T) {
 }
 
 func TestCreateDataDecayPolicyRejectsDuplicate(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/data-decay-policies", withValidated(func() any { return &models.DataDecayPolicyInput{} }), CreateDataDecayPolicy)
 
 	var user models.User
@@ -76,7 +76,7 @@ func TestCreateDataDecayPolicyRejectsDuplicate(t *testing.T) {
 }
 
 func TestCreateDataDecayPolicyRejectsForeignContact(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/data-decay-policies", withValidated(func() any { return &models.DataDecayPolicyInput{} }), CreateDataDecayPolicy)
 
 	var user models.User
@@ -93,7 +93,7 @@ func TestCreateDataDecayPolicyRejectsForeignContact(t *testing.T) {
 }
 
 func TestGetDataDecayPolicyNotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/data-decay-policies/:id", GetDataDecayPolicy)
 
 	w := doCadenceJSON(t, router, "GET", "/data-decay-policies/does-not-exist", nil)
@@ -101,7 +101,7 @@ func TestGetDataDecayPolicyNotFound(t *testing.T) {
 }
 
 func TestGetDataDecayPolicyScopedToOwner(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/data-decay-policies/:id", GetDataDecayPolicy)
 
 	var user models.User
@@ -118,7 +118,7 @@ func TestGetDataDecayPolicyScopedToOwner(t *testing.T) {
 }
 
 func TestListDataDecayPoliciesByEntity(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/data-decay-policies", ListDataDecayPolicies)
 
 	var user models.User
@@ -144,7 +144,7 @@ func TestListDataDecayPoliciesByEntity(t *testing.T) {
 }
 
 func TestListDataDecayPoliciesScopedToUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/data-decay-policies", ListDataDecayPolicies)
 
 	var user models.User
@@ -166,7 +166,7 @@ func TestListDataDecayPoliciesScopedToUser(t *testing.T) {
 }
 
 func TestUpdateDataDecayPolicy(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/data-decay-policies/:id", withValidated(func() any { return &models.DataDecayPolicyInput{} }), UpdateDataDecayPolicy)
 
 	var user models.User
@@ -189,7 +189,7 @@ func TestUpdateDataDecayPolicy(t *testing.T) {
 }
 
 func TestUpdateDataDecayPolicyDoesNotTouchLastVerifiedAt(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/data-decay-policies/:id", withValidated(func() any { return &models.DataDecayPolicyInput{} }), UpdateDataDecayPolicy)
 
 	var user models.User
@@ -212,7 +212,7 @@ func TestUpdateDataDecayPolicyDoesNotTouchLastVerifiedAt(t *testing.T) {
 }
 
 func TestUpdateDataDecayPolicyScopedToOwner(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/data-decay-policies/:id", withValidated(func() any { return &models.DataDecayPolicyInput{} }), UpdateDataDecayPolicy)
 
 	var user models.User
@@ -231,7 +231,7 @@ func TestUpdateDataDecayPolicyScopedToOwner(t *testing.T) {
 }
 
 func TestUpdateDataDecayPolicyRejectsEntityChangeToExisting(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/data-decay-policies/:id", withValidated(func() any { return &models.DataDecayPolicyInput{} }), UpdateDataDecayPolicy)
 
 	var user models.User
@@ -252,7 +252,7 @@ func TestUpdateDataDecayPolicyRejectsEntityChangeToExisting(t *testing.T) {
 }
 
 func TestDeleteDataDecayPolicySoftDeletesAndAllowsRecreate(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/data-decay-policies/:id", DeleteDataDecayPolicy)
 	router.POST("/data-decay-policies", withValidated(func() any { return &models.DataDecayPolicyInput{} }), CreateDataDecayPolicy)
 
@@ -280,7 +280,7 @@ func TestDeleteDataDecayPolicySoftDeletesAndAllowsRecreate(t *testing.T) {
 }
 
 func TestVerifyDataDecayPolicyStampsLastVerifiedAt(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/data-decay-policies/:id/verify", VerifyDataDecayPolicy)
 
 	var user models.User
@@ -308,7 +308,7 @@ func TestVerifyDataDecayPolicyStampsLastVerifiedAt(t *testing.T) {
 }
 
 func TestVerifyDataDecayPolicyScopedToOwner(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/data-decay-policies/:id/verify", VerifyDataDecayPolicy)
 
 	var user models.User
@@ -329,7 +329,7 @@ func TestVerifyDataDecayPolicyScopedToOwner(t *testing.T) {
 }
 
 func TestGetOverdueDataDecayPolicies(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/data-decay-policies/overdue", GetOverdueDataDecayPolicies)
 
 	var user models.User
@@ -364,7 +364,7 @@ func TestGetOverdueDataDecayPolicies(t *testing.T) {
 }
 
 func TestGetOverdueDataDecayPoliciesEmptyIsNullSafe(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/data-decay-policies/overdue", GetOverdueDataDecayPolicies)
 
 	w := doCadenceJSON(t, router, "GET", "/data-decay-policies/overdue", nil)

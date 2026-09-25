@@ -9,8 +9,10 @@ import (
 	"mycorrhizal/internal/diskspace"
 	"mycorrhizal/models"
 
+	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 // Issue #498: the import-confirm and source-import transactions run a disk
@@ -26,14 +28,14 @@ func TestSqliteMainFilePath_ReturnsPathForOnDiskDatabase(t *testing.T) {
 }
 
 func TestSqliteMainFilePath_FalseForInMemoryDatabase(t *testing.T) {
-	db := setupImportSessionTestDB(t) // gorm sqlite :memory:
+	db := openBareInMemoryDB(t)
 	path, ok := sqliteMainFilePath(db)
 	assert.False(t, ok, "an in-memory database has no on-disk path")
 	assert.Empty(t, path)
 }
 
 func TestPreflightImportDiskSpace_NoopForInMemoryDatabase(t *testing.T) {
-	db := setupImportSessionTestDB(t)
+	db := openBareInMemoryDB(t)
 	restore := diskspace.StubForTest(1 << 10) // 1 KiB free — would refuse if it ran
 	t.Cleanup(restore)
 	assert.Nil(t, preflightImportDiskSpace(db, 100_000), "in-memory DB skips the preflight")
@@ -137,4 +139,20 @@ func TestExecuteSourceImport_RefusesWhenDiskTooFull(t *testing.T) {
 	report, err = ExecuteSourceImport(db, user.ID, plan)
 	require.NoError(t, err)
 	assert.Equal(t, 2, report.ContactsCreated)
+}
+
+// openBareInMemoryDB opens a schema-less :memory: database. These two tests
+// exercise the in-memory branch of sqliteMainFilePath / the preflight, which
+// only looks at the connection's file list, so no tables are needed (and the
+// real migrated schema, dbtest.New, is on-disk by construction).
+func openBareInMemoryDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if sqlDB, err := db.DB(); err == nil {
+			_ = sqlDB.Close()
+		}
+	})
+	return db
 }

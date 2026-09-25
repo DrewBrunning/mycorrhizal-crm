@@ -102,7 +102,7 @@ browser → API → database → filesystem → integrations → Android local D
 
 | Hop | Enforced by |
 |---|---|
-| browser → API | TLS at the operator's reverse proxy (`docs/deployment.md:35`); CORS strict origin allowlist, `"*"` refused in release (`backend/main.go:481-500`, `backend/config/config.go:823-849`); CSP/HSTS/`nosniff`/frame-ancestors (`backend/middleware/security_headers.go`); client IP for rate limiting comes only from a validated trusted-proxy hop (loopback trusted by default, a catch-all refused at boot) and buckets are keyed on the network prefix, not the literal address (`asvs-l2.md` V14.5.4, issue #954) |
+| browser → API | TLS at the operator's reverse proxy (`docs/deployment.md:35`); CORS strict origin allowlist, `"*"` refused in release (`backend/main.go:400-419`, `backend/config/config.go:823-849`); CSP/HSTS/`nosniff`/frame-ancestors (`backend/middleware/security_headers.go`); client IP for rate limiting comes only from a validated trusted-proxy hop (loopback trusted by default, a catch-all refused at boot) and buckets are keyed on the network prefix, not the literal address (`asvs-l2.md` V14.5.4, issue #954) |
 | API → database | Every query AND-scoped by `user_id`/`VCardUID` (`asvs-l2.md` V4, API1); parameterized SQL only (V5.3.4) |
 | API → filesystem | UUID filenames, traversal guards, 0700/0750 perms (`asvs-l2.md` V12.3–V12.4) |
 | API → integrations | Public-IP-only SSRF dialer with DNS-rebinding pinning, per-service opt-in (`backend/httputil/safedial.go:27-47`, `asvs-l2.md` V5.2.6/API7) |
@@ -336,7 +336,7 @@ times.
 
 ### 5. Session cookie flags (ASVS V3.4: HttpOnly/Secure/SameSite)
 
-**Keep, verified against the exact code.** `backend/controllers/user_controller.go:234-243` sets the
+**Keep, verified against the exact code.** `backend/controllers/user_controller.go:239-248` sets the
 session cookie `HttpOnly` (always), `Secure = cfg.CookieSecure`, and `SameSite=Strict` — tightened
 from `Lax` by issue #392, which closed the residual sibling-subdomain/CSRF gap `Lax` left open. The
 only cookies still deliberately `Lax` are the transient OIDC handshake cookies — `oidc_state`/`oidc_nonce`/`oidc_pkce`

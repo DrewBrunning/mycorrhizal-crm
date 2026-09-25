@@ -1,4 +1,4 @@
-# ADR 0026: Data decay — periodic reminders to verify contact info is still current
+# ADR 0027: Data decay — periodic reminders to verify contact info is still current
 
 - **Status:** accepted
 - **Date:** 2026-09-24

@@ -22,7 +22,8 @@ import type { Reminder, ReminderCompletion } from './reminders';
 import type { Tag } from './tags';
 
 export interface ContactDetailUser {
-  enabled_contact_fields: string[];
+  // Go []string without omitempty: null (not []) for a user who never set it.
+  enabled_contact_fields: string[] | null;
 }
 
 // A LifeEvent enriched with its related_entity_ids' display names,

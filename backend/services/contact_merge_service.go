@@ -773,7 +773,7 @@ const dataDecayPolicyConflictField = "data_decay_policy"
 
 // ComputeDataDecayPolicyConflict returns a conflict when both keeper and
 // loser already have a DataDecayPolicy and they genuinely differ --
-// migration 000064's partial unique index on (user_id, entity_id) means only
+// migration 000065's partial unique index on (user_id, entity_id) means only
 // one can survive per contact, the same constraint shape
 // ComputeCadencePolicyConflict handles. nil, nil when at most one side has a
 // policy (repointDataDecayPolicy adopts a one-sided policy silently) or when

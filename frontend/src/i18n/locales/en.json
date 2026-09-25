@@ -608,6 +608,7 @@
     "deleteContact": "Delete Contact",
     "confirmDeleteContact": "Are you sure you want to delete {{name}}? This action cannot be undone and will also delete all notes, activities, and reminders associated with this contact.",
     "deleteContactError": "Failed to delete contact. Please try again.",
+    "exportContactError": "Failed to export contact. Please try again.",
     "updateError": "Failed to update contact. Please check your input and try again.",
     "firstNameRequired": "First name is required",
     "stayInTouch": "Stay in Touch",
@@ -2283,6 +2284,44 @@
         "purchased": "Purchased",
         "given": "Given",
         "received": "Received"
+      }
+    },
+    "events": {
+      "title": "Events",
+      "add": "New event",
+      "createTitle": "Create an event",
+      "editTitle": "Edit event",
+      "empty": "No events yet. Create one to start planning who to invite.",
+      "titleLabel": "Title",
+      "startsAt": "Starts",
+      "endsAt": "Ends",
+      "location": "Location",
+      "sensitivity": "Sensitivity",
+      "notes": "Notes",
+      "deleteMessage": "Delete this event?",
+      "manageAttendees": "Attendees",
+      "attendeesTitle": "Attendees — {{title}}",
+      "noAttendees": "No one invited yet.",
+      "addAttendee": "Add",
+      "removeAttendee": "Remove",
+      "suggestFromCircles": "Suggest invitees from circles",
+      "selectCircles": "Circles",
+      "suggest": "Suggest",
+      "noSuggestions": "No new suggestions from those circles.",
+      "rsvpHint": "Record what each guest told you — no invitation is sent from here.",
+      "rsvpLabel": "RSVP",
+      "attendeeSaveFailed": "Failed to update the attendee.",
+      "rsvp": {
+        "pending": "Pending",
+        "accepted": "Accepted",
+        "declined": "Declined",
+        "maybe": "Maybe"
+      },
+      "validation": {
+        "titleRequired": "Enter a title for this event.",
+        "startRequired": "Choose a start date and time.",
+        "endBeforeStart": "The end time cannot be before the start time.",
+        "saveFailed": "Failed to save event."
       }
     }
   },

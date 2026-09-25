@@ -29,7 +29,7 @@ type ContactSubscription struct {
 	URL               string     `gorm:"not null" json:"url"`
 	Username          string     `json:"username"`
 	PasswordEncrypted string     `json:"-"`
-	SyncEnabled       bool       `gorm:"default:true" json:"sync_enabled"`
+	SyncEnabled       bool       `json:"sync_enabled"`
 	SyncToken         string     `json:"-"`
 	LastSyncedAt      *time.Time `json:"last_synced_at"`
 	LastSyncStatus    string     `json:"last_sync_status"`

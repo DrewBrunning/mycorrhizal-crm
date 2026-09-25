@@ -1,27 +1,46 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   addressesToCardAndPeriods,
+  archiveContact,
   type CardAddress,
   type CardEntryPeriod,
   cardAddressesToValues,
   cardEmailsToValues,
+  cardImppToValues,
+  cardLinksToValues,
   cardPhonesToValues,
+  createContactRecord,
+  deleteContact,
   favoriteContact,
   formatAnniversaryDate,
   getAllContacts,
   getAnniversaryField,
+  getCircles,
+  getContactDisplayName,
+  getContactProfilePicture,
+  getContactRecord,
   getContacts,
+  getContactsByLegacyCircle,
   getContactsByUid,
+  getLegacyCircles,
   getOrganizationFields,
+  getRandomContacts,
   getTitleField,
+  getUpcomingBirthdays,
+  nameComponentValue,
   onlineServicesToRows,
   parseAnniversaryDate,
   rowsToOnlineServices,
   summaryToLegacyContact,
   toContactRecordInput,
+  unarchiveContact,
   unfavoriteContact,
+  updateContactRecord,
+  uploadProfilePicture,
   valuesToCardAddresses,
   valuesToCardEmails,
+  valuesToCardImpp,
+  valuesToCardLinks,
   valuesToCardPhones,
   withAnniversary,
   withOrganization,
@@ -808,5 +827,763 @@ describe('favorites', () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+// --- link / IMPP conversion --------------------------------------------------
+
+describe('link conversion', () => {
+  test('round-trips links with contexts', () => {
+    const links = [{ uri: 'https://example.com', contexts: ['work'], pref: 1, label: 'Site' }];
+    const values = cardLinksToValues(links);
+    expect(values).toEqual([
+      { type: 'work', value: 'https://example.com', pref: 1, label: 'Site', contexts: ['work'] },
+    ]);
+    expect(valuesToCardLinks(values)).toEqual([
+      { uri: 'https://example.com', contexts: ['work'], pref: 1, label: 'Site' },
+    ]);
+  });
+
+  test('drops rows with an empty value when converting back', () => {
+    expect(valuesToCardLinks([{ type: '', value: '   ', contexts: [] }])).toEqual([]);
+  });
+
+  test('handles an empty/undefined array', () => {
+    expect(cardLinksToValues(undefined)).toEqual([]);
+    expect(cardLinksToValues([])).toEqual([]);
+  });
+
+  test('falls back to type when contexts is empty on write', () => {
+    expect(valuesToCardLinks([{ type: 'home', value: 'https://x.example', contexts: [] }])).toEqual(
+      [{ uri: 'https://x.example', contexts: ['home'], pref: undefined, label: undefined }],
+    );
+  });
+});
+
+describe('IMPP conversion', () => {
+  test('round-trips impp addresses with contexts', () => {
+    const impps = [
+      { uri: 'xmpp:alice@example.com', contexts: ['work'], pref: 2, label: 'Work IM' },
+    ];
+    const values = cardImppToValues(impps);
+    expect(values).toEqual([
+      {
+        type: 'work',
+        value: 'xmpp:alice@example.com',
+        pref: 2,
+        label: 'Work IM',
+        contexts: ['work'],
+      },
+    ]);
+    expect(valuesToCardImpp(values)).toEqual([
+      { uri: 'xmpp:alice@example.com', contexts: ['work'], pref: 2, label: 'Work IM' },
+    ]);
+  });
+
+  test('defaults an absent uri to an empty string on read', () => {
+    expect(cardImppToValues([{ contexts: [] }])).toEqual([
+      { type: '', value: '', pref: undefined, label: undefined, contexts: [] },
+    ]);
+  });
+
+  test('drops rows with an empty value when converting back', () => {
+    expect(valuesToCardImpp([{ type: '', value: '', contexts: [] }])).toEqual([]);
+  });
+
+  test('handles an empty/undefined array', () => {
+    expect(cardImppToValues(undefined)).toEqual([]);
+  });
+});
+
+// --- name assembly ------------------------------------------------------------
+
+describe('nameComponentValue', () => {
+  test('finds the component matching the requested kind', () => {
+    const components = [
+      { kind: 'given' as const, value: 'Marie' },
+      { kind: 'surname' as const, value: 'Curie' },
+    ];
+    expect(nameComponentValue(components, 'given')).toBe('Marie');
+    expect(nameComponentValue(components, 'surname')).toBe('Curie');
+  });
+
+  test('returns undefined when the kind is absent', () => {
+    expect(
+      nameComponentValue([{ kind: 'given' as const, value: 'Marie' }], 'surname'),
+    ).toBeUndefined();
+  });
+
+  test('returns undefined for an undefined components array', () => {
+    expect(nameComponentValue(undefined, 'given')).toBeUndefined();
+  });
+});
+
+describe('getContactDisplayName', () => {
+  test('assembles prefix, given, quoted nickname, middle, surname, suffix in order', () => {
+    const record = {
+      card: {
+        name: {
+          components: [
+            { kind: 'title' as const, value: 'Dr.' },
+            { kind: 'given' as const, value: 'Marie' },
+            { kind: 'given2' as const, value: 'Salomea' },
+            { kind: 'surname' as const, value: 'Curie' },
+            { kind: 'generation' as const, value: 'PhD' },
+          ],
+        },
+        nicknames: [{ name: 'Manya' }],
+      },
+    };
+    expect(getContactDisplayName(record)).toBe('Dr. Marie "Manya" Salomea Curie PhD');
+  });
+
+  test('skips missing parts without leaving extra whitespace', () => {
+    const record = { card: { name: { components: [{ kind: 'given' as const, value: 'Bob' }] } } };
+    expect(getContactDisplayName(record)).toBe('Bob');
+  });
+
+  test('returns an empty string when there is no name data at all', () => {
+    expect(getContactDisplayName({ card: {} })).toBe('');
+  });
+
+  test('handles a missing card entirely', () => {
+    expect(getContactDisplayName({ card: undefined as unknown as never })).toBe('');
+  });
+});
+
+// --- anniversary date formatting edge cases ------------------------------------
+
+describe('formatAnniversaryDate edge cases', () => {
+  test('returns undefined for an undefined date', () => {
+    expect(formatAnniversaryDate(undefined)).toBeUndefined();
+  });
+
+  test('falls back to the raw timestamp slice when there is no usable partial', () => {
+    expect(formatAnniversaryDate({ timestamp: '2019-06-01T00:00:00Z' })).toBe('2019-06-01');
+  });
+
+  test('returns undefined when neither partial nor timestamp is usable', () => {
+    expect(formatAnniversaryDate({ partial: { year: 1990 } })).toBeUndefined();
+  });
+
+  test('returns undefined for a completely empty date object', () => {
+    expect(formatAnniversaryDate({})).toBeUndefined();
+  });
+});
+
+describe('parseAnniversaryDate edge cases', () => {
+  test('passes an unparseable value through as a raw timestamp', () => {
+    expect(parseAnniversaryDate('not-a-date')).toEqual({ timestamp: 'not-a-date' });
+  });
+
+  test('parses a full YYYY-MM-DD date', () => {
+    expect(parseAnniversaryDate('2024-03-01')).toEqual({
+      partial: { year: 2024, month: 3, day: 1 },
+    });
+  });
+});
+
+// --- organization / title field edge cases -------------------------------------
+
+describe('organization fields edge cases', () => {
+  test('returns undefined organization/department when the list is empty', () => {
+    expect(getOrganizationFields([])).toEqual({ organization: undefined, department: undefined });
+  });
+
+  test('returns undefined organization/department when undefined', () => {
+    expect(getOrganizationFields(undefined)).toEqual({
+      organization: undefined,
+      department: undefined,
+    });
+  });
+
+  test('withOrganization omits units when department is blank', () => {
+    expect(withOrganization('Acme', '')).toEqual([{ name: 'Acme', units: undefined }]);
+  });
+});
+
+describe('title fields edge cases', () => {
+  test('getTitleField(title) matches an entry with no kind at all (legacy data)', () => {
+    expect(getTitleField([{ name: 'Legacy Title' }], 'title')).toBe('Legacy Title');
+  });
+
+  test('getTitleField returns undefined when nothing matches', () => {
+    expect(getTitleField([], 'title')).toBeUndefined();
+    expect(getTitleField(undefined, 'role')).toBeUndefined();
+  });
+
+  test('withTitles returns an empty array when both inputs are blank', () => {
+    expect(withTitles('', '')).toEqual([]);
+  });
+
+  test('withTitles adds only the role when job title is blank', () => {
+    expect(withTitles('', 'Lead')).toEqual([{ name: 'Lead', kind: 'role' }]);
+  });
+});
+
+// --- toContactRecordInput edge cases --------------------------------------------
+
+describe('toContactRecordInput edge cases', () => {
+  test('falls back to the flat email/phone/address fields when the array fields are absent', () => {
+    const input = toContactRecordInput({
+      firstname: 'Bob',
+      email: 'bob@example.com',
+      phone: '555-0199',
+      address: '123 Main St',
+    });
+    expect(input.card.emails).toEqual([{ address: 'bob@example.com', contexts: undefined }]);
+    expect(input.card.phones).toEqual([{ number: '555-0199', contexts: undefined }]);
+    expect(input.card.addresses?.[0]?.components).toEqual([{ kind: 'name', value: '123 Main St' }]);
+  });
+
+  test('ignores the flat email/phone/address fields when the array fields are present', () => {
+    const input = toContactRecordInput({
+      firstname: 'Bob',
+      email: 'ignored@example.com',
+      emails: [{ type: 'work', value: 'real@example.com' }],
+    });
+    expect(input.card.emails).toEqual([{ address: 'real@example.com', contexts: ['work'] }]);
+  });
+
+  test('an empty emails/phones/addresses array falls back to the flat field, not to nothing', () => {
+    const input = toContactRecordInput({ firstname: 'Bob', emails: [], email: 'bob@example.com' });
+    expect(input.card.emails).toEqual([{ address: 'bob@example.com', contexts: undefined }]);
+  });
+
+  test('produces no card sub-fields for a completely bare input', () => {
+    const input = toContactRecordInput({});
+    expect(input.card.name).toBeUndefined();
+    expect(input.card.nicknames).toBeUndefined();
+    expect(input.card.emails).toBeUndefined();
+    expect(input.card.phones).toBeUndefined();
+    expect(input.card.links).toBeUndefined();
+    expect(input.card.imppAddresses).toBeUndefined();
+    expect(input.card.addresses).toBeUndefined();
+    expect(input.card.anniversaries).toBeUndefined();
+    expect(input.card.organizations).toBeUndefined();
+    expect(input.card.titles).toBeUndefined();
+    expect(input.crm.kind).toBeUndefined();
+  });
+});
+
+// --- summaryToLegacyContact falsy-to-undefined mapping --------------------------
+
+describe('summaryToLegacyContact edge cases', () => {
+  const base = {
+    id: 3,
+    uid: 'u3',
+    firstname: 'Cara',
+    lastname: 'Cee',
+    nickname: '',
+    fn: 'Cara Cee',
+    primary_email: '',
+    primary_phone: '',
+    birthday: '',
+    org: '',
+    photo: '',
+    archived: false,
+    is_favorite: false,
+    revision: 1,
+  };
+
+  test('maps every empty-string wire field to undefined', () => {
+    const contact = summaryToLegacyContact(base);
+    expect(contact.nickname).toBeUndefined();
+    expect(contact.email).toBeUndefined();
+    expect(contact.phone).toBeUndefined();
+    expect(contact.birthday).toBeUndefined();
+    expect(contact.photo).toBeUndefined();
+    expect(contact.photo_thumbnail).toBeUndefined();
+    expect(contact.organization).toBeUndefined();
+  });
+
+  test('preserves non-empty wire fields as-is', () => {
+    const contact = summaryToLegacyContact({
+      ...base,
+      nickname: 'Cee',
+      primary_email: 'cara@example.com',
+      primary_phone: '555-0100',
+      birthday: '1990-01-01',
+      photo: '/p.jpg',
+      photo_thumbnail: '/p_thumb.jpg',
+      org: 'Acme',
+    });
+    expect(contact.nickname).toBe('Cee');
+    expect(contact.email).toBe('cara@example.com');
+    expect(contact.phone).toBe('555-0100');
+    expect(contact.birthday).toBe('1990-01-01');
+    expect(contact.photo).toBe('/p.jpg');
+    expect(contact.photo_thumbnail).toBe('/p_thumb.jpg');
+    expect(contact.organization).toBe('Acme');
+  });
+});
+
+// --- getContacts: remaining query params + error path ---------------------------
+
+describe('getContacts additional params (T17/T103)', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function okList() {
+    return { ok: true, json: async () => ({ contacts: [], next_cursor: '', limit: 25 }) };
+  }
+
+  test('appends circle, sort, archived and has_contact_info when given', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(okList());
+
+    await getContacts({ circle: 'friends', sort: 'name', archived: true, hasContactInfo: true });
+
+    const calledUrl = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(calledUrl).toContain('circle=friends');
+    expect(calledUrl).toContain('sort=name');
+    expect(calledUrl).toContain('archived=true');
+    expect(calledUrl).toContain('has_contact_info=true');
+  });
+
+  test('archived=false is still sent explicitly (distinct from "unset")', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(okList());
+    await getContacts({ archived: false });
+    const calledUrl = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(calledUrl).toContain('archived=false');
+  });
+
+  test('omits optional params entirely when not given', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(okList());
+    await getContacts({});
+    const calledUrl = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(calledUrl).not.toContain('cursor=');
+    expect(calledUrl).not.toContain('search=');
+    expect(calledUrl).not.toContain('circle=');
+    expect(calledUrl).not.toContain('sort=');
+    expect(calledUrl).not.toContain('order=');
+    expect(calledUrl).not.toContain('include_archived=');
+    expect(calledUrl).not.toContain('archived=');
+    expect(calledUrl).not.toContain('favorites=');
+    expect(calledUrl).not.toContain('has_contact_info=');
+  });
+
+  test('sends the auth headers', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(okList());
+    await getContacts({});
+    const [, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(init.headers).toEqual({ 'Content-Type': 'application/json' });
+  });
+
+  test('carries hidden_count through when present', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ contacts: [], next_cursor: '', limit: 25, hidden_count: 4 }),
+    });
+    const result = await getContacts({ hasContactInfo: true });
+    expect(result.hidden_count).toBe(4);
+  });
+
+  test('throws an ApiError when the response is not ok', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      json: async () => ({
+        error: { code: 'VALIDATION_ERROR', message: 'nope' },
+        request_id: 'req-1',
+      }),
+    });
+    await expect(getContacts({})).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+  });
+});
+
+// --- Card/CRM record CRUD endpoints, none previously covered --------------------
+
+describe('contact record CRUD endpoints', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function errorResp() {
+    return {
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      json: async () => ({
+        error: { code: 'VALIDATION_ERROR', message: 'nope' },
+        request_id: 'req-1',
+      }),
+    };
+  }
+
+  test('getContactRecord GETs /contacts/:id with auth headers', async () => {
+    const record = { card: {}, crm: {} };
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => record,
+    });
+    const result = await getContactRecord(42);
+    const [url, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('/contacts/42');
+    expect(init.headers).toEqual({ 'Content-Type': 'application/json' });
+    expect(result).toEqual(record);
+  });
+
+  test('getContactRecord throws an ApiError on failure', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(errorResp());
+    await expect(getContactRecord(42)).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+  });
+
+  test('updateContactRecord PUTs the input body and returns the updated record', async () => {
+    const input = { gender: 'other', card: {}, crm: {} };
+    const updated = { card: {}, crm: {} };
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => updated,
+    });
+    const result = await updateContactRecord(42, input);
+    const [url, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('/contacts/42');
+    expect(init.method).toBe('PUT');
+    expect(JSON.parse(init.body)).toEqual(input);
+    expect(result).toEqual(updated);
+  });
+
+  test('updateContactRecord throws an ApiError on failure', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(errorResp());
+    await expect(updateContactRecord(42, { card: {}, crm: {} })).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+    });
+  });
+
+  test('createContactRecord POSTs the input and unwraps { contact }', async () => {
+    const input = { card: {}, crm: {} };
+    const created = { card: {}, crm: {} };
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ contact: created }),
+    });
+    const result = await createContactRecord(input);
+    const [url, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('/contacts');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual(input);
+    expect(result).toEqual(created);
+  });
+
+  test('createContactRecord falls back to the raw body when not wrapped in { contact }', async () => {
+    const created = { card: {}, crm: {} };
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => created,
+    });
+    const result = await createContactRecord({ card: {}, crm: {} });
+    expect(result).toEqual(created);
+  });
+
+  test('createContactRecord throws an ApiError on failure', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(errorResp());
+    await expect(createContactRecord({ card: {}, crm: {} })).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+    });
+  });
+
+  test('deleteContact DELETEs /contacts/:id', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({}),
+    });
+    await deleteContact(42);
+    const [url, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('/contacts/42');
+    expect(init.method).toBe('DELETE');
+  });
+
+  test('deleteContact throws an ApiError on failure', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(errorResp());
+    await expect(deleteContact(42)).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+  });
+});
+
+describe('profile picture endpoints', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test('getContactProfilePicture GETs the plain URL by default', async () => {
+    const blob = new Blob(['x']);
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      blob: async () => blob,
+    });
+    const result = await getContactProfilePicture(5);
+    const [url] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('/contacts/5/profile_picture');
+    expect(url).not.toContain('thumbnail');
+    expect(result).toBe(blob);
+  });
+
+  test('getContactProfilePicture appends ?thumbnail=true when requested', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      blob: async () => new Blob(['x']),
+    });
+    await getContactProfilePicture(5, true);
+    const [url] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('thumbnail=true');
+  });
+
+  test('getContactProfilePicture returns null (not a throw) when the response is not ok', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+    });
+    const result = await getContactProfilePicture(5);
+    expect(result).toBeNull();
+  });
+
+  test('uploadProfilePicture POSTs a FormData body with the photo field', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({}),
+    });
+    const blob = new Blob(['data']);
+    await uploadProfilePicture(5, blob);
+    const [url, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('/contacts/5/profile_picture');
+    expect(init.method).toBe('POST');
+    expect(init.body).toBeInstanceOf(FormData);
+    const uploaded = (init.body as FormData).get('photo') as File;
+    expect(uploaded.name).toBe('profile.jpg');
+    expect(uploaded.size).toBe(blob.size);
+  });
+
+  test('uploadProfilePicture throws an ApiError on failure', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      json: async () => ({ error: { code: 'VALIDATION_ERROR', message: 'nope' }, request_id: 'r' }),
+    });
+    await expect(uploadProfilePicture(5, new Blob(['x']))).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+    });
+  });
+});
+
+describe('circles endpoints', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test('getCircles GETs /contacts/circles and returns the array as-is', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ['friends', 'family'],
+    });
+    const result = await getCircles();
+    const [url] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('/contacts/circles');
+    expect(url).not.toContain('legacy');
+    expect(result).toEqual(['friends', 'family']);
+  });
+
+  test('getCircles returns [] when the backend does not return an array', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ not: 'an array' }),
+    });
+    expect(await getCircles()).toEqual([]);
+  });
+
+  test('getCircles throws an ApiError on failure', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => ({ error: { code: 'INTERNAL', message: 'boom' }, request_id: 'r' }),
+    });
+    await expect(getCircles()).rejects.toMatchObject({ code: 'INTERNAL' });
+  });
+
+  test('getLegacyCircles GETs /contacts/circles?legacy=true', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ['old-circle'],
+    });
+    const result = await getLegacyCircles();
+    const [url] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('/contacts/circles?legacy=true');
+    expect(result).toEqual(['old-circle']);
+  });
+
+  test('getLegacyCircles returns [] when the backend does not return an array', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => null,
+    });
+    expect(await getLegacyCircles()).toEqual([]);
+  });
+
+  test('getLegacyCircles throws an ApiError on failure', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => ({ error: { code: 'INTERNAL', message: 'boom' }, request_id: 'r' }),
+    });
+    await expect(getLegacyCircles()).rejects.toMatchObject({ code: 'INTERNAL' });
+  });
+
+  test('getContactsByLegacyCircle sends limit=500 and circle_legacy=<circle>', async () => {
+    const payload = { contacts: [], total: 0 };
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => payload,
+    });
+    const result = await getContactsByLegacyCircle('old-friends');
+    const [url] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('limit=500');
+    expect(url).toContain('circle_legacy=old-friends');
+    expect(result).toEqual(payload);
+  });
+
+  test('getContactsByLegacyCircle throws an ApiError on failure', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => ({ error: { code: 'INTERNAL', message: 'boom' }, request_id: 'r' }),
+    });
+    await expect(getContactsByLegacyCircle('x')).rejects.toMatchObject({ code: 'INTERNAL' });
+  });
+});
+
+describe('random contacts / upcoming birthdays', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test('getRandomContacts GETs /contacts/random and returns data.contacts', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ contacts: [{ ID: 1, firstname: 'Al' }] }),
+    });
+    const result = await getRandomContacts();
+    const [url] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('/contacts/random');
+    expect(result).toEqual([{ ID: 1, firstname: 'Al' }]);
+  });
+
+  test('getRandomContacts returns [] when data.contacts is absent', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({}),
+    });
+    expect(await getRandomContacts()).toEqual([]);
+  });
+
+  test('getRandomContacts throws an ApiError on failure', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => ({ error: { code: 'INTERNAL', message: 'boom' }, request_id: 'r' }),
+    });
+    await expect(getRandomContacts()).rejects.toMatchObject({ code: 'INTERNAL' });
+  });
+
+  test('getUpcomingBirthdays GETs /contacts/birthdays and returns data.birthdays', async () => {
+    const bday = { type: 'contact' as const, name: 'Al', birthday: '01-01', contact_id: 1 };
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ birthdays: [bday] }),
+    });
+    const result = await getUpcomingBirthdays();
+    const [url] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('/contacts/birthdays');
+    expect(result).toEqual([bday]);
+  });
+
+  test('getUpcomingBirthdays returns [] when data.birthdays is absent', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({}),
+    });
+    expect(await getUpcomingBirthdays()).toEqual([]);
+  });
+
+  test('getUpcomingBirthdays throws an ApiError on failure', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => ({ error: { code: 'INTERNAL', message: 'boom' }, request_id: 'r' }),
+    });
+    await expect(getUpcomingBirthdays()).rejects.toMatchObject({ code: 'INTERNAL' });
+  });
+});
+
+describe('archive / unarchive', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test('archiveContact POSTs to /contacts/:id/archive', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ID: 9, archived: true }),
+    });
+    const result = await archiveContact(9);
+    const [url, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('/contacts/9/archive');
+    expect(init.method).toBe('POST');
+    expect(result.archived).toBe(true);
+  });
+
+  test('archiveContact throws an ApiError on failure', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => ({ error: { code: 'INTERNAL', message: 'boom' }, request_id: 'r' }),
+    });
+    await expect(archiveContact(9)).rejects.toMatchObject({ code: 'INTERNAL' });
+  });
+
+  test('unarchiveContact POSTs to /contacts/:id/unarchive', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ID: 9, archived: false }),
+    });
+    const result = await unarchiveContact(9);
+    const [url, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain('/contacts/9/unarchive');
+    expect(init.method).toBe('POST');
+    expect(result.archived).toBe(false);
+  });
+
+  test('unarchiveContact throws an ApiError on failure', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => ({ error: { code: 'INTERNAL', message: 'boom' }, request_id: 'r' }),
+    });
+    await expect(unarchiveContact(9)).rejects.toMatchObject({ code: 'INTERNAL' });
   });
 });

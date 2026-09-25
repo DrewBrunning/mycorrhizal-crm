@@ -162,7 +162,7 @@ export default function ContactAddressSuggestions({ loadKey }: ContactAddressSug
                     size="small"
                     startIcon={<CheckIcon />}
                     disabled={busy}
-                    onClick={() => handleApply(suggestion)}
+                    onClick={() => void handleApply(suggestion)}
                   >
                     {t('settings.data.propose.applyAddress')}
                   </Button>

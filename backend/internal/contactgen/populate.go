@@ -40,27 +40,27 @@ func migratedTemplate() (string, error) {
 		dir, err := os.MkdirTemp("", "contactgen-template-")
 		if err != nil {
 			templateErr = err // # pragma: no cover — MkdirTemp fails only when /tmp is unusable
-			return            // # pragma: no cover
+			return            // # pragma: no cover — see above
 		}
 		p := filepath.Join(dir, "template.db")
 
 		db, err := database.InitDB(p)
 		if err != nil {
 			templateErr = err // # pragma: no cover — the embedded migration set is exercised elsewhere; failure here means a broken schema
-			return            // # pragma: no cover
+			return            // # pragma: no cover — see above
 		}
 		sqlDB, err := db.DB()
 		if err != nil {
 			templateErr = err // # pragma: no cover — the connection was just opened
-			return            // # pragma: no cover
+			return            // # pragma: no cover — see above
 		}
 		if _, err := sqlDB.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
 			templateErr = err // # pragma: no cover — the file was just created
-			return            // # pragma: no cover
+			return            // # pragma: no cover — see above
 		}
 		if err := sqlDB.Close(); err != nil {
 			templateErr = err // # pragma: no cover — the handle was just opened
-			return            // # pragma: no cover
+			return            // # pragma: no cover — see above
 		}
 		templatePath = p
 	})
@@ -111,7 +111,7 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer in.Close() //nolint:errcheck // read-only copy source; the destination Close is checked
 
 	out, err := os.Create(dst) // #nosec G304 -- dst is a t-scoped MkdirTemp path
 	if err != nil {
@@ -119,7 +119,7 @@ func copyFile(src, dst string) error {
 	}
 	if _, err := io.Copy(out, in); err != nil {
 		_ = out.Close() // # pragma: no cover — both handles are open local files
-		return err      // # pragma: no cover
+		return err      // # pragma: no cover — see above
 	}
 	return out.Close()
 }

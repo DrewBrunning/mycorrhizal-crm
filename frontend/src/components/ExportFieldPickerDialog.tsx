@@ -150,7 +150,7 @@ export default function ExportFieldPickerDialog({
           {t('common.cancel')}
         </Button>
         <Button
-          onClick={handleExport}
+          onClick={() => void handleExport()}
           variant="contained"
           disabled={exporting || selected.size === 0}
         >

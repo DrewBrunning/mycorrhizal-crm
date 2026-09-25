@@ -149,7 +149,11 @@ export default function AcceptContactShareDialog({
         <Button onClick={handleClose} disabled={confirming}>
           {t('common.cancel')}
         </Button>
-        <Button onClick={handleConfirmClick} variant="contained" disabled={confirming || !row}>
+        <Button
+          onClick={() => void handleConfirmClick()}
+          variant="contained"
+          disabled={confirming || !row}
+        >
           {confirming
             ? t('contactShares.acceptDialog.confirming')
             : t('contactShares.acceptDialog.confirm')}

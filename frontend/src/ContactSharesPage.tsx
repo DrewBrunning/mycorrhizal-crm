@@ -50,7 +50,7 @@ export default function ContactSharesPage() {
   const [acceptingShare, setAcceptingShare] = useState<ContactShare | null>(null);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const handleDeclineClick = (share: ContactShare) => {

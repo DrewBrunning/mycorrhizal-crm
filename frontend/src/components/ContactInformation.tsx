@@ -181,7 +181,7 @@ export default function ContactInformation({
     isOn('socialProfiles') || isOn('otherOnlineServices') || isOn('imppAddresses');
   const { linkFieldTypes, refreshLinkFieldTypes } = useLinkFieldTypes();
   useEffect(() => {
-    if (registryFieldsEnabled) refreshLinkFieldTypes();
+    if (registryFieldsEnabled) void refreshLinkFieldTypes();
   }, [registryFieldsEnabled, refreshLinkFieldTypes]);
 
   const birthday = getAnniversaryField(card.anniversaries, 'birth') || '';

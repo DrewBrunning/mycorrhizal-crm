@@ -209,7 +209,7 @@ describe('useJobRunHistory', () => {
 
     await act(async () => {
       // Stale request "a" — fires first, settles last.
-      result.current.load({ jobName: 'a' });
+      void result.current.load({ jobName: 'a' });
       const loadPromise = result.current.load({ jobName: 'b' });
       second.resolve({ job_runs: [run], total: 1 });
       await loadPromise;
@@ -230,7 +230,7 @@ describe('useJobRunHistory', () => {
     const { result } = renderHook(() => useJobRunHistory());
 
     await act(async () => {
-      result.current.load({ jobName: 'a' });
+      void result.current.load({ jobName: 'a' });
       const loadPromise = result.current.load({ jobName: 'b' });
       second.resolve({ job_runs: [run], total: 1 });
       await loadPromise;

@@ -111,7 +111,7 @@ const ActivitiesPage: React.FC = () => {
         date: new Date(activity.date).toISOString(),
       });
       setAddDialogOpen(false);
-      refetch();
+      void refetch();
     } catch (err) {
       console.error('Failed to create activity:', err);
       throw err;
@@ -155,7 +155,7 @@ const ActivitiesPage: React.FC = () => {
       });
       setEditingActivity(null);
       setEditValues({});
-      refetch();
+      void refetch();
     } catch (err) {
       console.error('Failed to update activity:', err);
     }
@@ -173,7 +173,7 @@ const ActivitiesPage: React.FC = () => {
       await deleteActivity(editingActivity.ID);
       setEditingActivity(null);
       setEditValues({});
-      refetch();
+      void refetch();
     } catch (err) {
       console.error('Failed to delete activity:', err);
     }
@@ -384,7 +384,7 @@ const ActivitiesPage: React.FC = () => {
                       >
                         <IconButton
                           size="small"
-                          onClick={() => handleEditClick(activity)}
+                          onClick={() => void handleEditClick(activity)}
                           aria-label={t('contactDetail.editActivity')}
                         >
                           <EditIcon fontSize="small" />
@@ -429,7 +429,7 @@ const ActivitiesPage: React.FC = () => {
             mt: 3,
           }}
         >
-          <Button variant="outlined" onClick={loadMore} disabled={loading}>
+          <Button variant="outlined" onClick={() => void loadMore()} disabled={loading}>
             {t('common.loadMore')}
           </Button>
         </Box>
@@ -445,8 +445,8 @@ const ActivitiesPage: React.FC = () => {
         <EditTimelineItemDialog
           open={!!editingActivity}
           onClose={handleCancelEdit}
-          onSave={handleSaveEdit}
-          onDelete={handleDeleteActivity}
+          onSave={() => void handleSaveEdit()}
+          onDelete={() => void handleDeleteActivity()}
           type="activity"
           values={editValues}
           onChange={setEditValues}

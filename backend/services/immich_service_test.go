@@ -4,13 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"mycorrhizal/config"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -27,11 +27,7 @@ func immichTestConfig() config.Config {
 // newImmichTestDB migrates the models the Immich service touches.
 func newImmichTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	sqlDB, _ := db.DB()
-	sqlDB.SetMaxOpenConns(1)
-	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Contact{}, &models.ImmichConfig{}, &models.ExternalIdentity{}, &models.ExternalActivity{}))
+	db := dbtest.New(t)
 	return db
 }
 
@@ -799,14 +795,6 @@ func TestSyncImmichWithRateLimit_RunsWhenNoPriorRun(t *testing.T) {
 // newImmichJobLockDB migrates the models the job-lock tests touch.
 func newImmichJobLockDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	sqlDB, _ := db.DB()
-	sqlDB.SetMaxOpenConns(1)
-	require.NoError(t, db.AutoMigrate(
-		&models.User{}, &models.Contact{}, &models.ImmichConfig{},
-		&models.ExternalIdentity{}, &models.ExternalActivity{},
-		&models.JobExecution{},
-	))
+	db := dbtest.New(t)
 	return db
 }

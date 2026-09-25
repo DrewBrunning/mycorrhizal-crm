@@ -13,7 +13,7 @@ import (
 )
 
 func TestCreateTag(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/tags", withValidated(func() any { return &models.TagInput{} }), CreateTag)
 
 	payload := models.TagInput{Name: "poly"}
@@ -32,7 +32,7 @@ func TestCreateTag(t *testing.T) {
 }
 
 func TestGetTagIncludesTaggedContacts(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/tags/:id", GetTag)
 
 	var user models.User
@@ -55,7 +55,7 @@ func TestGetTagIncludesTaggedContacts(t *testing.T) {
 }
 
 func TestListTags(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/tags", ListTags)
 
 	var user models.User
@@ -76,7 +76,7 @@ func TestListTags(t *testing.T) {
 }
 
 func TestUpdateTag(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/tags/:id", withValidated(func() any { return &models.TagInput{} }), UpdateTag)
 
 	var user models.User
@@ -99,7 +99,7 @@ func TestUpdateTag(t *testing.T) {
 }
 
 func TestDeleteTagCascadesTaggings(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/tags/:id", DeleteTag)
 
 	var user models.User
@@ -122,7 +122,7 @@ func TestDeleteTagCascadesTaggings(t *testing.T) {
 }
 
 func TestAddContactTag(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/tags/:id/contacts", withValidated(func() any { return &models.ContactTagInput{} }), AddContactTag)
 
 	var user models.User
@@ -147,7 +147,7 @@ func TestAddContactTag(t *testing.T) {
 }
 
 func TestAddContactTagRejectsDuplicate(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/tags/:id/contacts", withValidated(func() any { return &models.ContactTagInput{} }), AddContactTag)
 
 	var user models.User
@@ -169,7 +169,7 @@ func TestAddContactTagRejectsDuplicate(t *testing.T) {
 }
 
 func TestAddContactTagRejectsContactFromAnotherUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/tags/:id/contacts", withValidated(func() any { return &models.ContactTagInput{} }), AddContactTag)
 
 	var user models.User
@@ -192,7 +192,7 @@ func TestAddContactTagRejectsContactFromAnotherUser(t *testing.T) {
 }
 
 func TestRemoveContactTag(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/tags/:id/contacts/:vcard_uid", RemoveContactTag)
 
 	var user models.User

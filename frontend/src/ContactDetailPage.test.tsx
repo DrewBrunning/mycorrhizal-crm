@@ -1,23 +1,46 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
+import type { Activity } from './api/activities';
+import type { CadencePolicy } from './api/cadencePolicies';
+import type { Circle, CircleMember } from './api/circles';
 import type { ContactRecordResponse } from './api/contacts';
+import type { ConversationAgenda } from './api/conversationAgenda';
+import type { DataDecayPolicy } from './api/dataDecayPolicies';
+import type { Gift } from './api/gifts';
+import type { LifeEvent } from './api/lifeEvents';
+import type { Note } from './api/notes';
 import type { OccasionObligation } from './api/occasionObligations';
+import type { Preference } from './api/preferences';
+import type { RelationshipEdge } from './api/relationshipEdges';
+import type { Reminder, ReminderCompletion } from './api/reminders';
+import type { ContactTag, Tag } from './api/tags';
 import ContactDetailPage from './ContactDetailPage';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
 
-afterEach(() => {
-  cleanup();
-  vi.unstubAllGlobals();
-});
+// --- Fixture ----------------------------------------------------------------
+//
+// A realistic, fully-populated contact modelled on the backend's documented
+// contract (testdata/contract-fixtures/contact-detail.json, generated from
+// openapi.yaml), split into the per-endpoint envelopes this page's hooks
+// actually fetch. Every GET the page makes on mount has a route below, so a
+// happy-path render exercises the success branches (issue: the previous
+// catch-all 404 made "every auxiliary fetch succeeds" log ~400 Not Found
+// errors and render empty sections). An unrouted GET is recorded in
+// `unrouted` and fails the test in afterEach, so a new endpoint can't
+// silently fall back to a 404 again.
 
 const contactRecord: ContactRecordResponse = {
   id: 1,
   uid: 'alice-uid',
-  etag: '',
-  revision: 1,
+  etag: 'e-1-7',
+  revision: 7,
+  gender: '',
+  photo: '',
+  archived: false,
+  is_favorite: false,
   card: {
     name: {
       components: [
@@ -25,8 +48,164 @@ const contactRecord: ContactRecordResponse = {
         { kind: 'surname', value: 'Wonder' },
       ],
     },
+    emails: [{ address: 'alice.wonder@example.com', contexts: ['home'] }],
+    phones: [{ number: '+1 555-0100', contexts: ['mobile'] }],
+    keywords: ['contract-fixture'],
   },
   crm: { kind: 'human' },
+};
+
+const notes: Note[] = [
+  {
+    ID: 2,
+    contact_id: 1,
+    content: 'Contract fixture note',
+    date: '2026-08-20T18:00:00Z',
+    CreatedAt: '2026-08-21T00:08:42Z',
+    UpdatedAt: '2026-08-21T00:08:42Z',
+  },
+];
+
+const activities: Activity[] = [
+  {
+    ID: 2,
+    title: 'Fixture activity',
+    description: '',
+    location: '',
+    date: '2026-08-19T18:00:00Z',
+    CreatedAt: '2026-08-21T00:08:43Z',
+    UpdatedAt: '2026-08-21T00:08:43Z',
+    contacts: [{ ID: 2, firstname: 'Bob', lastname: 'Builder' }],
+  },
+];
+
+const completions: ReminderCompletion[] = [
+  {
+    ID: 5,
+    reminder_id: 2,
+    contact_id: 1,
+    message: 'Fixture completed reminder',
+    completed_at: '2026-08-18T09:00:00Z',
+  },
+];
+
+const reminders: Reminder[] = [
+  {
+    ID: 2,
+    message: 'Fixture reminder',
+    by_mail: false,
+    remind_at: '2026-08-22T00:00:00Z',
+    recurrence: 'once',
+    reoccur_from_completion: false,
+    completed: false,
+    email_sent: false,
+    contact_id: 1,
+  },
+];
+
+const relationshipEdges: RelationshipEdge[] = [
+  {
+    id: 'edge-1',
+    source_id: 'alice-uid',
+    target_id: 'bob-uid',
+    type: 'friend_of',
+    directional: false,
+    source: 'user-confirmed',
+    confidence: 1,
+    status: 'confirmed',
+    sensitivity: 'normal',
+    created_at: '2026-08-21T00:08:50Z',
+    updated_at: '2026-08-21T00:08:50Z',
+  },
+];
+
+const lifeEvents: LifeEvent[] = [
+  {
+    id: 'le-1',
+    entity_id: 'alice-uid',
+    type: 'graduated',
+    category: 'work_education',
+    description: 'Fixture life event',
+    date: { year: 2012, month: 6, day: 1 },
+    created_at: '2026-08-21T00:08:45Z',
+    updated_at: '2026-08-21T00:08:45Z',
+  },
+  {
+    id: 'le-2',
+    entity_id: 'alice-uid',
+    type: 'married',
+    category: 'relationships',
+    description: 'Fixture wedding',
+    date: { year: 2015, month: 9, day: 12 },
+    created_at: '2026-08-21T00:08:45Z',
+    updated_at: '2026-08-21T00:08:45Z',
+  },
+];
+
+const agenda: ConversationAgenda[] = [
+  {
+    id: 'ag-1',
+    entity_id: 'alice-uid',
+    content: 'Ask about the Lisbon trip',
+    created_at: '2026-08-21T00:08:45Z',
+    updated_at: '2026-08-21T00:08:45Z',
+  },
+];
+
+const gifts: Gift[] = [
+  {
+    id: 'gift-1',
+    entity_id: 'alice-uid',
+    status: 'idea',
+    description: 'Fixture gift idea',
+    created_at: '2026-08-21T00:08:46Z',
+    updated_at: '2026-08-21T00:08:46Z',
+  },
+];
+
+const preferences: Preference[] = [
+  {
+    id: 'pref-1',
+    entity_id: 'alice-uid',
+    category: 'food',
+    key: 'love',
+    value: 'Sushi',
+    sensitivity: 'normal',
+    created_at: '',
+    updated_at: '',
+  },
+  {
+    id: 'pref-2',
+    entity_id: 'alice-uid',
+    category: 'flowers',
+    value: 'Tulips',
+    sensitivity: 'normal',
+    created_at: '',
+    updated_at: '',
+  },
+];
+
+const circles: Circle[] = [
+  { id: 'circle-1', name: 'contract-fixture-circle', created_at: '', updated_at: '' },
+];
+const circleMembers: CircleMember[] = [
+  { id: 1, circle_id: 'circle-1', member_vcard_uid: 'alice-uid' },
+];
+const tags: Tag[] = [{ id: 'tag-1', name: 'contract-fixture', created_at: '', updated_at: '' }];
+const tagContacts: ContactTag[] = [{ id: 1, tag_id: 'tag-1', contact_vcard_uid: 'alice-uid' }];
+
+const bobSummary = {
+  id: 2,
+  uid: 'bob-uid',
+  firstname: 'Bob',
+  lastname: 'Builder',
+  nickname: '',
+  fn: 'Bob Builder',
+  primary_email: '',
+  primary_phone: '',
+  birthday: '',
+  org: '',
+  photo: '',
 };
 
 interface Call {
@@ -35,59 +214,253 @@ interface Call {
   body?: unknown;
 }
 
-// Issue #958: one failed auxiliary fetch (notes, activities, or reminder
-// completions) must not make an existing contact look deleted. Only the
-// core `getContactRecord` call is allowed to gate the not-found branch.
-// `notesOk: false` reproduces the reported scenario -- everything else on
-// the page still succeeds (or 404s and is caught internally by its own
-// hook, same as the rest of this page's many auxiliary calls).
-//
-// `record` seeds the GET response (and PUT echoes back a merge of it with
-// the request body, so a save flows through to a real re-render). The
-// per-endpoint `fail` flags let a test force one specific mutation to error
-// without hand-rolling a whole new fetch mock.
+type Endpoint =
+  | 'notes'
+  | 'activities'
+  | 'completions'
+  | 'user'
+  | 'reminders'
+  | 'relationshipEdges'
+  | 'lifeEvents'
+  | 'agenda'
+  | 'gifts'
+  | 'fieldValues'
+  | 'externalIdentities'
+  | 'externalActivities'
+  | 'immichSummary'
+  | 'circles'
+  | 'tags'
+  | 'preferences'
+  | 'occasions'
+  | 'cadence'
+  | 'dataDecay'
+  | 'record';
+
+type Mutation =
+  | 'update'
+  | 'delete'
+  | 'archive'
+  | 'unarchive'
+  | 'favorite'
+  | 'unfavorite'
+  | 'giftUpdate';
+
+let unrouted: string[] = [];
+
+const json = (body: unknown) => ({ ok: true, status: 200, json: async () => body });
+const errorResponse = (message: string, status = 500) => ({
+  ok: false,
+  status,
+  statusText: status === 404 ? 'Not Found' : 'Internal Server Error',
+  json: async () => ({
+    error: { code: status === 404 ? 'NOT_FOUND' : 'INTERNAL_ERROR', message },
+  }),
+});
+
+// `record` seeds GET /contacts/1 (and PUT echoes back a merge of it with the
+// request body, so a save flows through to a real re-render). `failGet`
+// makes one specific GET 500 (#958's failure-isolation tests); `fail` does
+// the same for one mutation.
 function mockFetch({
-  notesOk = true,
   record = contactRecord,
+  failGet = [],
   fail = {},
-  enabledFields,
-  occasionObligations,
+  enabledFields = null,
+  selfContactUid = null,
+  occasionObligations = [],
+  addressSuggestions = [],
+  cadencePolicies = [],
+  dataDecayPolicies = [],
+  immichConfigured = false,
+  extraPreferences = [],
 }: {
-  notesOk?: boolean;
   record?: ContactRecordResponse;
-  fail?: Partial<
-    Record<'update' | 'delete' | 'archive' | 'unarchive' | 'favorite' | 'unfavorite', boolean>
-  >;
-  // Overrides GET /users/me's enabled_contact_fields -- some fields exercised
-  // below (organization/department) are not in DEFAULT_ENABLED_CONTACT_FIELDS.
-  enabledFields?: string[];
+  failGet?: Endpoint[];
+  fail?: Partial<Record<Mutation, boolean>>;
+  // GET /users/me's enabled_contact_fields -- some fields exercised below
+  // (organization/department) are not in DEFAULT_ENABLED_CONTACT_FIELDS.
+  enabledFields?: string[] | null;
+  selfContactUid?: string | null;
   // Seeds GET /occasion-obligations and backs POST/PUT with an in-memory
-  // list, so a save flows through to a real re-render. Omit to exercise the
-  // catch-all 404 path other tests rely on (useOccasionObligations catches
-  // it silently, same as every other per-contact hook on this page).
+  // list, so a save flows through to a real re-render.
   occasionObligations?: OccasionObligation[];
+  // null makes the post-save address scan fail.
+  addressSuggestions?: unknown[] | null | 'omitted';
+  cadencePolicies?: CadencePolicy[];
+  dataDecayPolicies?: DataDecayPolicy[];
+  immichConfigured?: boolean;
+  extraPreferences?: Preference[];
 } = {}) {
   const calls: Call[] = [];
   let current = record;
-  const obligations = occasionObligations ? [...occasionObligations] : undefined;
-  const errorResponse = (message: string) => ({
-    ok: false,
-    status: 500,
-    statusText: 'Internal Server Error',
-    json: async () => ({ error: { code: 'INTERNAL_ERROR', message } }),
-  });
+  const obligations = [...occasionObligations];
+
+  const get = (endpoint: Endpoint, body: () => unknown) =>
+    failGet.includes(endpoint) ? errorResponse(`${endpoint} failed`) : json(body());
 
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (url: string, options?: RequestInit) => {
+    vi.fn(async (input: string, options?: RequestInit) => {
+      const url = String(input);
       const method = (options?.method || 'GET').toUpperCase();
-      const body = options?.body ? JSON.parse(options.body as string) : undefined;
+      const body =
+        typeof options?.body === 'string' ? JSON.parse(options.body as string) : undefined;
       calls.push({ url, method, body });
+      const path = url.replace(/^.*\/api\/v1/, '').split('?')[0];
 
-      if (url.endsWith('/contacts/1') && method === 'GET') {
-        return { ok: true, json: async () => current };
+      if (method === 'GET') {
+        switch (path) {
+          case '/contacts/1':
+            return failGet.includes('record')
+              ? errorResponse('Contact not found', 404)
+              : json(current);
+          case '/contacts/1/notes':
+            return get('notes', () => ({ notes }));
+          case '/contacts/1/activities':
+            return get('activities', () => ({ activities }));
+          case '/contacts/1/reminder-completions':
+            return get('completions', () => ({ completions }));
+          case '/contacts/1/reminders':
+            return get('reminders', () => ({ reminders }));
+          case '/contacts/1/field-values':
+            return get('fieldValues', () => ({ field_values: [] }));
+          case '/contacts/1/attachments':
+            return json({ attachments: [], total: 0 });
+          case '/contacts/1/life-event-suggestions':
+            return json({ suggestions: [] });
+          case '/contacts/1/score':
+            return json({
+              contact_id: 1,
+              score: 72,
+              band: 'healthy',
+              recency: { value: 1, weight: 1, reason: '' },
+              frequency: { value: 1, weight: 1, reason: '' },
+              closeness: { value: 1, weight: 1, reason: '' },
+              reach_out: { value: 1, weight: 1, reason: '' },
+              last_updated: { value: 1, weight: 1, reason: '' },
+            });
+          case '/contacts':
+            return json({ contacts: [bobSummary], total: 1, next_cursor: '', limit: 100 });
+          case '/users/me':
+            return get('user', () => ({
+              id: 1,
+              email: 'me@example.com',
+              username: 'me',
+              enabled_contact_fields: enabledFields,
+              self_contact_vcard_uid: selfContactUid,
+            }));
+          case '/relationship-edges':
+            return get('relationshipEdges', () => ({
+              relationship_edges: relationshipEdges,
+              total: 1,
+              next_cursor: '',
+              limit: 100,
+            }));
+          case '/life-events':
+            return get('lifeEvents', () => ({
+              life_events: lifeEvents,
+              next_cursor: '',
+              limit: 50,
+            }));
+          case '/conversation-agenda':
+            return get('agenda', () => ({
+              conversation_agenda: agenda,
+              next_cursor: '',
+              limit: 100,
+            }));
+          case '/gifts':
+            return get('gifts', () => ({ gifts, next_cursor: '', limit: 100 }));
+          case '/external-identities':
+            return get('externalIdentities', () => ({
+              external_identities: [],
+              total: 0,
+              next_cursor: '',
+              limit: 100,
+            }));
+          case '/external-activities':
+            return get('externalActivities', () => ({
+              external_activities: [],
+              total: 0,
+              next_cursor: '',
+              limit: 100,
+            }));
+          case '/immich/contacts/alice-uid/summary':
+            return get('immichSummary', () => ({ summary: null }));
+          case '/immich/config':
+            return json({
+              base_url: '',
+              has_api_key: immichConfigured,
+              sync_enabled: false,
+              last_sync_status: '',
+              last_sync_error: '',
+            });
+          case '/paperless/config':
+          case '/seafile/config':
+            return json({ base_url: '', has_api_token: false });
+          case '/nextcloud/config':
+            return json({ base_url: '', has_app_password: false });
+          case '/circles':
+            return get('circles', () => ({
+              circles,
+              members: circleMembers,
+              total: 1,
+              next_cursor: '',
+              limit: 200,
+            }));
+          case '/tags':
+            return get('tags', () => ({
+              tags,
+              contacts: tagContacts,
+              total: 1,
+              next_cursor: '',
+              limit: 200,
+            }));
+          case '/preferences':
+            return get('preferences', () => ({
+              preferences: [...preferences, ...extraPreferences],
+              total: preferences.length + extraPreferences.length,
+              next_cursor: '',
+              limit: 200,
+            }));
+          case '/occasion-obligations':
+            return get('occasions', () => ({
+              occasion_obligations: obligations,
+              total: obligations.length,
+              next_cursor: '',
+              limit: 100,
+            }));
+          case '/cadence-policies':
+            return get('cadence', () => ({
+              cadence_policies: cadencePolicies,
+              total: cadencePolicies.length,
+              next_cursor: '',
+              limit: 100,
+            }));
+          case '/data-decay-policies':
+            return get('dataDecay', () => ({
+              data_decay_policies: dataDecayPolicies,
+              total: dataDecayPolicies.length,
+              next_cursor: '',
+              limit: 100,
+            }));
+          case '/graph/connections':
+            return json({ from_vcard_uid: 'alice-uid', from_name: 'Alice', depth: 1, chains: [] });
+          case '/export/vcf':
+            return errorResponse('export failed');
+          default:
+            if (path.startsWith('/contacts/1/timeline')) {
+              return json({ items: [], next_cursor: '', total: 0 });
+            }
+            if (path === '/users/directory') return json({ users: [] });
+            if (path.startsWith('/contact-shares')) {
+              return json({ contact_shares: [] });
+            }
+            unrouted.push(`GET ${path}`);
+            return errorResponse(`unrouted GET ${path}`, 404);
+        }
       }
-      if (url.endsWith('/contacts/1') && method === 'PUT') {
+
+      if (path === '/contacts/1' && method === 'PUT') {
         if (fail.update) return errorResponse('update failed');
         current = {
           ...current,
@@ -95,61 +468,22 @@ function mockFetch({
           card: { ...current.card, ...body.card },
           crm: { ...current.crm, ...body.crm },
         };
-        return { ok: true, json: async () => current };
+        return json(current);
       }
-      if (url.endsWith('/contacts/1') && method === 'DELETE') {
-        if (fail.delete) return errorResponse('delete failed');
-        return { ok: true, json: async () => ({}) };
+      if (path === '/contacts/1' && method === 'DELETE') {
+        return fail.delete ? errorResponse('delete failed') : json({});
       }
-      if (url.endsWith('/contacts/1/archive') && method === 'POST') {
-        if (fail.archive) return errorResponse('archive failed');
-        return { ok: true, json: async () => ({ ID: 1, archived: true }) };
-      }
-      if (url.endsWith('/contacts/1/unarchive') && method === 'POST') {
-        if (fail.unarchive) return errorResponse('unarchive failed');
-        return { ok: true, json: async () => ({ ID: 1, archived: false }) };
-      }
-      if (url.endsWith('/contacts/1/favorite') && method === 'POST') {
-        if (fail.favorite) return errorResponse('favorite failed');
-        return { ok: true, json: async () => ({ ID: 1, is_favorite: true }) };
-      }
-      if (url.endsWith('/contacts/1/unfavorite') && method === 'POST') {
-        if (fail.unfavorite) return errorResponse('unfavorite failed');
-        return { ok: true, json: async () => ({ ID: 1, is_favorite: false }) };
-      }
-      if (url.endsWith('/users/me') && method === 'GET') {
-        if (!enabledFields)
-          return { ok: false, status: 404, statusText: 'Not Found', json: async () => ({}) };
-        return { ok: true, json: async () => ({ enabled_contact_fields: enabledFields }) };
-      }
-      if (url.includes('/contacts/1/notes')) {
-        if (!notesOk) {
-          return {
-            ok: false,
-            status: 500,
-            statusText: 'Internal Server Error',
-            json: async () => ({ error: { code: 'INTERNAL_ERROR', message: 'boom' } }),
-          };
+      for (const action of ['archive', 'unarchive', 'favorite', 'unfavorite'] as const) {
+        if (path === `/contacts/1/${action}` && method === 'POST') {
+          if (fail[action]) return errorResponse(`${action} failed`);
+          return json(
+            action.endsWith('archive')
+              ? { ID: 1, archived: action === 'archive' }
+              : { ID: 1, is_favorite: action === 'favorite' },
+          );
         }
-        return { ok: true, json: async () => ({ notes: [] }) };
       }
-      if (url.includes('/contacts/1/activities')) {
-        return { ok: true, json: async () => ({ activities: [] }) };
-      }
-      if (url.includes('/contacts/1/reminder-completions')) {
-        return { ok: true, json: async () => ({ completions: [] }) };
-      }
-      // useContactFieldValues is the one auxiliary hook on this page whose
-      // notifier is wired to a fetch failure (not just its own mutations),
-      // so it must succeed here or it clobbers the single shared Snackbar
-      // with its own "Not Found" toast right after ours.
-      if (url.includes('/contacts/1/field-values')) {
-        return { ok: true, json: async () => ({ field_values: [] }) };
-      }
-      if (obligations && url.includes('/occasion-obligations?') && method === 'GET') {
-        return { ok: true, json: async () => ({ occasion_obligations: obligations }) };
-      }
-      if (obligations && url.endsWith('/occasion-obligations') && method === 'POST') {
+      if (path === '/occasion-obligations' && method === 'POST') {
         const created: OccasionObligation = {
           id: 'new-ob',
           created_at: '',
@@ -157,25 +491,66 @@ function mockFetch({
           ...body,
         };
         obligations.push(created);
-        return { ok: true, json: async () => ({ occasion_obligation: created }) };
+        return json({ occasion_obligation: created });
       }
-      if (obligations && url.includes('/occasion-obligations/') && method === 'PUT') {
-        const id = url.split('/occasion-obligations/')[1];
+      if (path.startsWith('/occasion-obligations/') && method === 'PUT') {
+        const id = path.split('/occasion-obligations/')[1];
         const idx = obligations.findIndex((o) => o.id === id);
         if (idx >= 0) obligations[idx] = { ...obligations[idx], ...body };
-        return { ok: true, json: async () => obligations[idx] };
+        return json(obligations[idx]);
       }
-      // Every other endpoint this page touches on mount (current user,
-      // reminders, relationship edges, life events, agenda, gifts, field
-      // definitions, external links, immich, paperless/seafile/nextcloud
-      // configs, circles, tags, cadence policies) is fetched by a hook that
-      // already catches its own errors without notifying -- 404 exercises
-      // that path rather than papering over it with a full mock of every
-      // endpoint.
-      return { ok: false, status: 404, statusText: 'Not Found', json: async () => ({}) };
+      if (path.startsWith('/gifts/') && method === 'PUT') {
+        return fail.giftUpdate ? errorResponse('gift failed') : json({ ...gifts[0], ...body });
+      }
+      if (
+        path.startsWith('/data-decay-policies/') &&
+        path.endsWith('/verify') &&
+        method === 'POST'
+      ) {
+        // Echo the seeded policy back (raw, not wrapped -- see
+        // verifyDataDecayPolicy) so a verify click doesn't collapse the
+        // hook's policy state to {} the way the generic body-echo fallback
+        // below would.
+        return json(dataDecayPolicies[0] ?? {});
+      }
+      if (path === '/contacts/address-suggestions' && method === 'POST') {
+        if (addressSuggestions === 'omitted') return json({});
+        return addressSuggestions
+          ? json({ suggestions: addressSuggestions })
+          : errorResponse('scan failed');
+      }
+      // Any other mutation a test deliberately triggers: echo the body back.
+      return json(body ?? {});
     }),
   );
   return calls;
+}
+
+let consoleError: ReturnType<typeof vi.spyOn>;
+
+beforeEach(() => {
+  unrouted = [];
+  localStorage.clear();
+  consoleError = vi.spyOn(console, 'error');
+});
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  // Every GET the page makes must be routed -- see the fixture comment.
+  expect(unrouted).toEqual([]);
+});
+
+// Errors the page (or its hooks) logged, as "Not Found"-style strings.
+function loggedErrors(): string[] {
+  return consoleError.mock.calls.map((args: unknown[]) => args.map(String).join(' '));
+}
+
+// The header's own actions come first in the DOM; lists further down the
+// page reuse the same "Delete"/"Edit" labels.
+function headerButton(name: string): HTMLElement {
+  return screen.getAllByRole('button', { name })[0];
 }
 
 function renderPage() {
@@ -205,30 +580,92 @@ function fieldContent(label: string): HTMLElement {
   return fieldRow(label).parentElement as HTMLElement;
 }
 
-test('renders the contact when every auxiliary fetch succeeds', async () => {
-  mockFetch();
+async function renderLoaded() {
   renderPage();
-
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
+  // The second load batch (reminders, edges, life events, gifts...) lands
+  // after the header; wait for the last of it before asserting.
+  await screen.findByText('Fixture gift idea');
+  await within(document.getElementById('people') as HTMLElement).findByRole('button', {
+    name: 'Bob Builder',
+  });
+}
+
+test('the happy path renders every populated section from the fixture', async () => {
+  mockFetch();
+  await renderLoaded();
+
   expect(screen.queryByText('Contact not found')).not.toBeInTheDocument();
+  // Contact information.
+  expect(screen.getByText(/alice\.wonder@example\.com/)).toBeInTheDocument();
+  expect(screen.getByText(/\+1 555-0100/)).toBeInTheDocument();
+  // Header memberships.
+  expect(screen.getByText('contract-fixture-circle')).toBeInTheDocument();
+  expect(screen.getByText('contract-fixture')).toBeInTheDocument();
+  // Merged timeline: note, activity, completion, dated life events.
+  const timeline = document.getElementById('timeline') as HTMLElement;
+  expect(within(timeline).getByText('Contract fixture note')).toBeInTheDocument();
+  expect(within(timeline).getByText('Fixture activity')).toBeInTheDocument();
+  expect(within(timeline).getByText('Fixture completed reminder')).toBeInTheDocument();
+  expect(within(timeline).getAllByText('Fixture life event').length).toBeGreaterThan(0);
+  expect(within(timeline).getByText('Ask about the Lisbon trip')).toBeInTheDocument();
+  // People, reminders, preferences (overview vs gifts split).
+  expect(screen.getByText('Fixture reminder')).toBeInTheDocument();
+  expect(
+    within(document.getElementById('overview') as HTMLElement).getByText('Sushi'),
+  ).toBeInTheDocument();
+  const giftsSection = document.getElementById('gifts') as HTMLElement;
+  expect(within(giftsSection).getByText('Tulips')).toBeInTheDocument();
+  expect(within(giftsSection).getByText('Fixture gift idea')).toBeInTheDocument();
+
+  // No success-path endpoint 404'd or errored.
+  expect(loggedErrors().filter((e) => /Not Found|Error fetching/.test(e))).toEqual([]);
 });
 
-test('a failed notes fetch does not turn an existing contact into "not found" (#958)', async () => {
-  mockFetch({ notesOk: false });
-  renderPage();
+test.each([
+  ['notes', 'Contract fixture note'],
+  ['activities', 'Fixture activity'],
+  ['completions', 'Fixture completed reminder'],
+] as const)(
+  'a failed %s fetch still renders the contact and flags the timeline (#958)',
+  async (endpoint, missing) => {
+    consoleError.mockImplementation(() => {});
+    mockFetch({ failGet: [endpoint] });
+    await renderLoaded();
 
-  // The contact record loaded fine -- the page must still render it, not
-  // fall into the notFound branch just because the notes fetch 500'd.
-  await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
-  expect(screen.queryByText('Contact not found')).not.toBeInTheDocument();
-
-  // The failure is surfaced as a non-fatal notification instead of being
-  // silently swallowed.
-  await waitFor(() =>
+    // The contact record loaded fine -- the page must still render it, not
+    // fall into the notFound branch just because one timeline fetch 500'd.
+    expect(screen.queryByText('Contact not found')).not.toBeInTheDocument();
     expect(
-      screen.getByText('Some timeline data failed to load. Try refreshing the page.'),
-    ).toBeInTheDocument(),
-  );
+      await screen.findByText('Some timeline data failed to load. Try refreshing the page.'),
+    ).toBeInTheDocument();
+    // Only the failed source is missing; the rest of the timeline rendered.
+    expect(screen.queryByText(missing)).not.toBeInTheDocument();
+    expect(screen.getByText('Fixture reminder')).toBeInTheDocument();
+  },
+);
+
+test('a failed /users/me still renders the contact without a timeline warning', async () => {
+  consoleError.mockImplementation(() => {});
+  mockFetch({ failGet: ['user'] });
+  await renderLoaded();
+  expect(screen.getByText('Contract fixture note')).toBeInTheDocument();
+  expect(
+    screen.queryByText('Some timeline data failed to load. Try refreshing the page.'),
+  ).not.toBeInTheDocument();
+});
+
+test('a failed contact record renders "not found"', async () => {
+  consoleError.mockImplementation(() => {});
+  mockFetch({ failGet: ['record'] });
+  renderPage();
+  expect(await screen.findByText('Contact not found')).toBeInTheDocument();
+});
+
+test('the /users/me self-contact pointer marks this contact as Me', async () => {
+  mockFetch({ selfContactUid: 'alice-uid' });
+  await renderLoaded();
+  expect(screen.getByText('You')).toBeInTheDocument();
 });
 
 // --- handleToggleFavorite: optimistic rollback on error ---------------------
@@ -260,7 +697,7 @@ test('a successful favorite toggle flips the star and persists', async () => {
 // --- Occasions (ADR 0024, issue #387) ---------------------------------------
 
 test('adding an occasion opens the create dialog and saves it via POST', async () => {
-  const calls = mockFetch({ occasionObligations: [] });
+  const calls = mockFetch();
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
@@ -314,7 +751,7 @@ test('editing an existing occasion opens the edit dialog pre-filled, and saves v
 });
 
 test('cancelling the occasion dialog closes it without saving', async () => {
-  const calls = mockFetch({ occasionObligations: [] });
+  const calls = mockFetch();
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
@@ -480,7 +917,7 @@ test('deleting a contact asks for confirmation, then navigates away on success',
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(headerButton('Delete'));
 
   expect(confirmSpy).toHaveBeenCalledWith(
     'Are you sure you want to delete Alice Wonder? This action cannot be undone and will also delete all notes, activities, and reminders associated with this contact.',
@@ -495,7 +932,7 @@ test('declining the delete confirmation makes no request and stays on the page',
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(headerButton('Delete'));
 
   expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
   expect(screen.getByText('Alice Wonder')).toBeInTheDocument();
@@ -509,7 +946,7 @@ test('a failed delete alerts an error and stays on the page', async () => {
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(headerButton('Delete'));
 
   await waitFor(() =>
     expect(alertSpy).toHaveBeenCalledWith('Failed to delete contact. Please try again.'),
@@ -525,7 +962,7 @@ test('archiving a contact asks for confirmation, then flips to the archived badg
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
+  fireEvent.click(headerButton('Archive'));
 
   expect(confirmSpy).toHaveBeenCalledWith(
     "Are you sure you want to archive this contact? All reminders will be deleted. You can unarchive later, but reminders won't be restored.",
@@ -540,7 +977,7 @@ test('declining the archive confirmation leaves the contact unarchived', async (
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
+  fireEvent.click(headerButton('Archive'));
 
   expect(calls.some((c) => c.url.endsWith('/archive'))).toBe(false);
   expect(screen.queryByText('Archived')).not.toBeInTheDocument();
@@ -553,9 +990,631 @@ test('a failed archive shows an error and leaves the contact unarchived', async 
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
+  fireEvent.click(headerButton('Archive'));
 
   await waitFor(() => expect(screen.getByText('archive failed')).toBeInTheDocument());
   expect(screen.queryByText('Archived')).not.toBeInTheDocument();
   confirmSpy.mockRestore();
+});
+
+// --- Section wiring: dialogs, list actions, and their handlers --------------
+
+function section(id: string): HTMLElement {
+  return document.getElementById(id) as HTMLElement;
+}
+
+// The nearest ancestor of `text` that holds its own row actions (an "Edit"
+// button) -- lists on this page don't share one row element type.
+function rowWith(text: string, scope: HTMLElement = document.body): HTMLElement {
+  let el: HTMLElement | null = within(scope).getAllByText(text).at(-1) as HTMLElement;
+  while (el && !within(el).queryAllByRole('button', { name: 'Edit' }).length) {
+    el = el.parentElement;
+  }
+  return el as HTMLElement;
+}
+
+async function openDialog(open: () => unknown): Promise<HTMLElement> {
+  open();
+  return screen.findByRole('dialog');
+}
+
+async function dismiss(dialog: HTMLElement, name: RegExp = /cancel/i) {
+  fireEvent.click(within(dialog).getAllByRole('button', { name })[0]);
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+}
+
+test.each([
+  [
+    'overview preference',
+    () => within(section('overview')).getByRole('button', { name: 'Add Preference' }),
+  ],
+  [
+    'gift preference',
+    () => within(section('gifts')).getByRole('button', { name: 'Add Preference' }),
+  ],
+  ['preference edit', () => within(rowWith('Sushi')).getByRole('button', { name: 'Edit' })],
+  ['life event', () => screen.getByRole('button', { name: 'Add Life Event' })],
+  ['cadence', () => screen.getByRole('button', { name: 'Add Cadence' })],
+  ['note', () => screen.getByRole('button', { name: 'Add Note' })],
+  ['activity', () => screen.getByRole('button', { name: 'Add Activity' })],
+  ['reminder', () => screen.getByRole('button', { name: 'Add Reminder' })],
+  [
+    'gift with details',
+    () => within(section('gifts')).getAllByRole('button', { name: 'Add with details' })[0],
+  ],
+  ['profile picture', () => screen.getByRole('button', { name: 'Select an image' })],
+])('the %s dialog opens from its panel and closes cleanly', async (_name, button) => {
+  mockFetch();
+  await renderLoaded();
+  const dialog = await openDialog(() => fireEvent.click(button()));
+  await dismiss(dialog);
+});
+
+test('Stay in Touch opens the reminder dialog pre-filled with a catch-up message', async () => {
+  mockFetch();
+  await renderLoaded();
+  const dialog = await openDialog(() =>
+    fireEvent.click(screen.getByRole('button', { name: 'Stay in Touch' })),
+  );
+  expect(within(dialog).getByDisplayValue('Catch-up with Alice Wonder')).toBeInTheDocument();
+  await dismiss(dialog);
+});
+
+test('editing a life event opens its dialog pre-filled', async () => {
+  mockFetch();
+  await renderLoaded();
+  const row = rowWith('Fixture life event', section('timeline'));
+  const dialog = await openDialog(() =>
+    fireEvent.click(within(row).getByRole('button', { name: 'Edit' })),
+  );
+  expect(within(dialog).getByDisplayValue('Fixture life event')).toBeInTheDocument();
+  await dismiss(dialog);
+});
+
+test('deleting a married life event confirms, deletes, and reloads the record', async () => {
+  const calls = mockFetch();
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  await renderLoaded();
+  const recordLoads = () =>
+    calls.filter((c) => c.method === 'GET' && c.url.endsWith('/contacts/1')).length;
+  const before = recordLoads();
+
+  const row = rowWith('Fixture wedding', section('timeline'));
+  fireEvent.click(within(row).getByRole('button', { name: 'Delete' }));
+
+  await waitFor(() =>
+    expect(calls.some((c) => c.method === 'DELETE' && c.url.endsWith('/life-events/le-2'))).toBe(
+      true,
+    ),
+  );
+  await waitFor(() => expect(recordLoads()).toBe(before + 1));
+});
+
+test('declining a life-event or preference delete makes no request', async () => {
+  const calls = mockFetch();
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  await renderLoaded();
+
+  const row = rowWith('Fixture wedding', section('timeline'));
+  fireEvent.click(within(row).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(section('overview')).getAllByRole('button', { name: 'Delete' })[0]);
+
+  expect(confirmSpy).toHaveBeenCalledTimes(2);
+  expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
+});
+
+test('deleting a preference confirms and sends the DELETE', async () => {
+  const calls = mockFetch();
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  await renderLoaded();
+  fireEvent.click(within(section('gifts')).getAllByRole('button', { name: 'Delete' })[0]);
+  await waitFor(() =>
+    expect(calls.some((c) => c.method === 'DELETE' && c.url.endsWith('/preferences/pref-2'))).toBe(
+      true,
+    ),
+  );
+});
+
+test('"Mark as given" flips a gift idea to given, defaulting the date to now', async () => {
+  const calls = mockFetch();
+  await renderLoaded();
+  fireEvent.click(screen.getByRole('button', { name: 'Mark as given' }));
+  await waitFor(() => {
+    const put = calls.find((c) => c.method === 'PUT' && c.url.endsWith('/gifts/gift-1'));
+    expect(put?.body).toMatchObject({
+      entity_id: 'alice-uid',
+      status: 'given',
+      description: 'Fixture gift idea',
+    });
+    expect((put?.body as { date?: string } | undefined)?.date).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+});
+
+test('a failed "Mark as given" shows the gift save error', async () => {
+  consoleError.mockImplementation(() => {});
+  mockFetch({ fail: { giftUpdate: true } });
+  await renderLoaded();
+  fireEvent.click(screen.getByRole('button', { name: 'Mark as given' }));
+  expect(await screen.findByText('Failed to save gift.')).toBeInTheDocument();
+});
+
+test('editing a gift saves it via PUT with the entity id', async () => {
+  const calls = mockFetch();
+  await renderLoaded();
+  const row = rowWith('Fixture gift idea', section('gifts'));
+  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+  await waitFor(() => {
+    const put = calls.find((c) => c.method === 'PUT' && c.url.endsWith('/gifts/gift-1'));
+    expect(put?.body).toMatchObject({ entity_id: 'alice-uid', description: 'Fixture gift idea' });
+  });
+});
+
+test('marking an agenda item discussed sends the discuss PATCH', async () => {
+  const calls = mockFetch();
+  await renderLoaded();
+  fireEvent.click(screen.getByRole('button', { name: 'Mark as discussed' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.click(within(dialog).getByRole('button', { name: /mark as discussed|confirm/i }));
+  await waitFor(() =>
+    expect(
+      calls.some(
+        (c) => c.method === 'PATCH' && c.url.endsWith('/conversation-agenda/ag-1/discuss'),
+      ),
+    ).toBe(true),
+  );
+});
+
+test('editing an agenda item saves it via PUT', async () => {
+  const calls = mockFetch();
+  await renderLoaded();
+  const row = rowWith('Ask about the Lisbon trip');
+  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+  await waitFor(() => {
+    const put = calls.find(
+      (c) => c.method === 'PUT' && c.url.endsWith('/conversation-agenda/ag-1'),
+    );
+    expect(put?.body).toMatchObject({
+      entity_id: 'alice-uid',
+      content: 'Ask about the Lisbon trip',
+    });
+  });
+});
+
+test('saving a relationship nudges toward address suggestions when the scan finds some', async () => {
+  const calls = mockFetch({ addressSuggestions: [{ id: 's-1' }] });
+  await renderLoaded();
+  const row = rowWith('Bob Builder', section('people'));
+  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+  await waitFor(() =>
+    expect(
+      calls.some((c) => c.method === 'PUT' && c.url.endsWith('/relationship-edges/edge-1')),
+    ).toBe(true),
+  );
+  expect(calls.some((c) => c.url.endsWith('/contacts/address-suggestions'))).toBe(true);
+});
+
+test('editing a timeline note saves it through the edit dialog', async () => {
+  const calls = mockFetch();
+  await renderLoaded();
+  const row = rowWith('Contract fixture note', section('timeline'));
+  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+  await waitFor(() =>
+    expect(calls.some((c) => c.method === 'PUT' && c.url.endsWith('/notes/2'))).toBe(true),
+  );
+});
+
+test('editing a timeline activity saves it through the edit dialog', async () => {
+  const calls = mockFetch();
+  await renderLoaded();
+  const row = rowWith('Fixture activity', section('timeline'));
+  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+  await waitFor(() =>
+    expect(calls.some((c) => c.method === 'PUT' && c.url.endsWith('/activities/2'))).toBe(true),
+  );
+});
+
+test('the narrow jump nav is a select that scrolls to the chosen section', async () => {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  );
+  const scrollIntoView = vi.fn();
+  Element.prototype.scrollIntoView = scrollIntoView;
+  mockFetch();
+  await renderLoaded();
+
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Jump to section' }));
+  fireEvent.click(await screen.findByRole('option', { name: 'People' }));
+  expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' });
+});
+
+test('quick-adding an agenda item and a gift idea POSTs them for this contact', async () => {
+  const calls = mockFetch();
+  await renderLoaded();
+
+  fireEvent.change(screen.getByLabelText('Things to bring up next time…'), {
+    target: { value: 'Birthday plans' },
+  });
+  fireEvent.click(within(section('timeline')).getByRole('button', { name: 'Add' }));
+  fireEvent.change(screen.getByLabelText('Record a gift idea…'), {
+    target: { value: 'Scarf' },
+  });
+  fireEvent.keyDown(screen.getByLabelText('Record a gift idea…'), { key: 'Enter' });
+
+  await waitFor(() => {
+    const agendaPost = calls.find(
+      (c) => c.method === 'POST' && c.url.endsWith('/conversation-agenda'),
+    );
+    expect(agendaPost?.body).toEqual({ entity_id: 'alice-uid', content: 'Birthday plans' });
+    const giftPost = calls.find((c) => c.method === 'POST' && c.url.endsWith('/gifts'));
+    expect(giftPost?.body).toMatchObject({
+      entity_id: 'alice-uid',
+      description: 'Scarf',
+      status: 'idea',
+    });
+  });
+});
+
+test('a gift recorded via "Add with details" is created (POST) with the section status', async () => {
+  const calls = mockFetch();
+  await renderLoaded();
+  const dialog = await openDialog(() =>
+    fireEvent.click(
+      within(section('gifts')).getAllByRole('button', { name: 'Add with details' })[0],
+    ),
+  );
+  fireEvent.change(within(dialog).getByLabelText(/^What the gift is/), {
+    target: { value: 'Book' },
+  });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+  await waitFor(() => {
+    const post = calls.find((c) => c.method === 'POST' && c.url.endsWith('/gifts'));
+    expect(post?.body).toMatchObject({ entity_id: 'alice-uid', description: 'Book' });
+  });
+});
+
+test.each([
+  ['Sushi', 'pref-1'],
+  ['Tulips', 'pref-2'],
+])('saving an edited %s preference PUTs it', async (value, prefId) => {
+  const calls = mockFetch();
+  await renderLoaded();
+  const dialog = await openDialog(() =>
+    fireEvent.click(within(rowWith(value)).getByRole('button', { name: 'Edit' })),
+  );
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+  await waitFor(() => {
+    const put = calls.find((c) => c.method === 'PUT' && c.url.endsWith(`/preferences/${prefId}`));
+    expect(put?.body).toMatchObject({ entity_id: 'alice-uid', value });
+  });
+});
+
+test('saving an edited married life event PUTs it and reloads the record', async () => {
+  const calls = mockFetch();
+  await renderLoaded();
+  const recordLoads = () =>
+    calls.filter((c) => c.method === 'GET' && c.url.endsWith('/contacts/1')).length;
+  const before = recordLoads();
+  const dialog = await openDialog(() =>
+    fireEvent.click(
+      within(rowWith('Fixture wedding', section('timeline'))).getByRole('button', {
+        name: 'Edit',
+      }),
+    ),
+  );
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+  await waitFor(() => {
+    const put = calls.find((c) => c.method === 'PUT' && c.url.endsWith('/life-events/le-2'));
+    expect(put?.body).toMatchObject({ entity_id: 'alice-uid', type: 'married' });
+  });
+  await waitFor(() => expect(recordLoads()).toBe(before + 1));
+});
+
+test('deleting a reminder completion from the timeline confirms, deletes, and refreshes', async () => {
+  const calls = mockFetch();
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValue(true);
+  await renderLoaded();
+  const row = within(section('timeline'))
+    .getByText('Fixture completed reminder')
+    .closest('.MuiTimelineItem-root') as HTMLElement;
+
+  fireEvent.click(within(row).getByRole('button', { name: 'Delete' }));
+  expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
+
+  fireEvent.click(within(row).getByRole('button', { name: 'Delete' }));
+  await waitFor(() =>
+    expect(
+      calls.some((c) => c.method === 'DELETE' && c.url.endsWith('/reminder-completions/5')),
+    ).toBe(true),
+  );
+  expect(confirmSpy).toHaveBeenCalledWith(
+    'Are you sure you want to remove this completed reminder from the timeline?',
+  );
+});
+
+test('deleting a note from its edit dialog sends the DELETE', async () => {
+  const calls = mockFetch();
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  await renderLoaded();
+  const dialog = await openDialog(() =>
+    fireEvent.click(
+      within(rowWith('Contract fixture note', section('timeline'))).getByRole('button', {
+        name: 'Edit',
+      }),
+    ),
+  );
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+  await waitFor(() =>
+    expect(calls.some((c) => c.method === 'DELETE' && c.url.endsWith('/notes/2'))).toBe(true),
+  );
+});
+
+test.each([
+  ['View all', /close/i],
+  ['Merge', /cancel/i],
+  ['Share Contact', /cancel/i],
+])('the %s dialog opens from the page and closes', async (name, close) => {
+  mockFetch();
+  await renderLoaded();
+  const dialog = await openDialog(() => fireEvent.click(screen.getByRole('button', { name })));
+  await dismiss(dialog, close);
+});
+
+test('a failed export surfaces an error toast', async () => {
+  consoleError.mockImplementation(() => {});
+  const calls = mockFetch();
+  await renderLoaded();
+  fireEvent.click(screen.getByRole('button', { name: 'Export vCard' }));
+  fireEvent.click(await screen.findByText('vCard 4.0'));
+  await waitFor(() => expect(calls.some((c) => c.url.includes('/export/vcf'))).toBe(true));
+  expect(
+    await screen.findByText('Failed to export contact. Please try again.'),
+  ).toBeInTheDocument();
+});
+
+const cadencePolicy: CadencePolicy = {
+  id: 'cad-1',
+  entity_id: 'alice-uid',
+  target_interval_days: 30,
+  qualifying_types: [],
+  created_at: '',
+  updated_at: '',
+};
+
+test('an existing cadence can be edited and saved, and deleted after confirmation', async () => {
+  const calls = mockFetch({ cadencePolicies: [cadencePolicy] });
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValue(true);
+  await renderLoaded();
+  const cadence = section('cadence');
+  await within(cadence).findAllByRole('button', { name: 'Edit' });
+
+  const dialog = await openDialog(() =>
+    fireEvent.click(within(cadence).getAllByRole('button', { name: 'Edit' })[0]),
+  );
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+  await waitFor(() =>
+    expect(calls.some((c) => c.method !== 'GET' && c.url.includes('/cadence-policies'))).toBe(true),
+  );
+
+  const writes = () => calls.filter((c) => c.method === 'DELETE').length;
+  fireEvent.click((await within(cadence).findAllByRole('button', { name: 'Delete' }))[0]);
+  expect(writes()).toBe(0);
+  fireEvent.click(within(cadence).getAllByRole('button', { name: 'Delete' })[0]);
+  await waitFor(() => expect(writes()).toBe(1));
+  expect(confirmSpy).toHaveBeenCalledTimes(2);
+});
+
+const dataDecayPolicy: DataDecayPolicy = {
+  id: 'decay-1',
+  entity_id: 'alice-uid',
+  interval_days: 180,
+  active: true,
+  created_at: '',
+  updated_at: '',
+};
+
+test('a data decay policy can be added, edited, verified, and deleted', async () => {
+  const calls = mockFetch();
+  await renderLoaded();
+  const dataDecay = section('data-decay');
+
+  // No policy yet: only the "Add" affordance is offered.
+  const addButton = await within(dataDecay).findByRole('button', { name: 'Set up verification' });
+  const addDialog = await openDialog(() => fireEvent.click(addButton));
+  fireEvent.click(within(addDialog).getByRole('button', { name: 'Save' }));
+  await waitFor(() =>
+    expect(calls.some((c) => c.method === 'POST' && c.url.includes('/data-decay-policies'))).toBe(
+      true,
+    ),
+  );
+});
+
+test('an existing data decay policy can be verified, edited and saved, and deleted after confirmation', async () => {
+  const calls = mockFetch({ dataDecayPolicies: [dataDecayPolicy] });
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValue(true);
+  await renderLoaded();
+  const dataDecay = section('data-decay');
+  await within(dataDecay).findByRole('button', { name: 'Confirm still current' });
+
+  fireEvent.click(within(dataDecay).getByRole('button', { name: 'Confirm still current' }));
+  await waitFor(() =>
+    expect(
+      calls.some(
+        (c) => c.method === 'POST' && c.url.includes('/data-decay-policies/decay-1/verify'),
+      ),
+    ).toBe(true),
+  );
+
+  const dialog = await openDialog(() =>
+    fireEvent.click(within(dataDecay).getByRole('button', { name: 'Edit' })),
+  );
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+  await waitFor(() =>
+    expect(
+      calls.some((c) => c.method === 'PUT' && c.url.includes('/data-decay-policies/decay-1')),
+    ).toBe(true),
+  );
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+  const writes = () => calls.filter((c) => c.method === 'DELETE').length;
+  fireEvent.click(within(dataDecay).getByRole('button', { name: 'Delete' }));
+  expect(writes()).toBe(0);
+  fireEvent.click(within(dataDecay).getByRole('button', { name: 'Delete' }));
+  await waitFor(() => expect(writes()).toBe(1));
+  expect(confirmSpy).toHaveBeenCalledTimes(2);
+});
+
+test.each([
+  ['finds suggestions', [{ id: 's-1' }], true],
+  ['finds none', [], false],
+  ['fails', null, false],
+  ['omits the list', 'omitted', false],
+] as const)(
+  'after a relationship save, an address scan that %s never breaks the save',
+  async (_label, addressSuggestions, nudged) => {
+    const calls = mockFetch({
+      addressSuggestions: addressSuggestions as unknown[] | null | 'omitted',
+    });
+    await renderLoaded();
+    const dialog = await openDialog(() =>
+      fireEvent.click(
+        within(rowWith('Bob Builder', section('people'))).getByRole('button', { name: 'Edit' }),
+      ),
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(calls.some((c) => c.url.endsWith('/contacts/address-suggestions'))).toBe(true),
+    );
+    const nudge = 'New address suggestions are available — review them under Settings → Data.';
+    if (nudged) {
+      expect(await screen.findByText(nudge)).toBeInTheDocument();
+    } else {
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      expect(screen.queryByText(nudge)).not.toBeInTheDocument();
+    }
+  },
+);
+
+test('adding a clothing size saves a clothing_size preference', async () => {
+  const calls = mockFetch();
+  await renderLoaded();
+  const input = screen.getByPlaceholderText('Add a size, e.g. M, 42, S/M…');
+  fireEvent.change(input, { target: { value: 'M' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+  await waitFor(() => {
+    const post = calls.find((c) => c.method === 'POST' && c.url.endsWith('/preferences'));
+    expect(post?.body).toMatchObject({
+      entity_id: 'alice-uid',
+      category: 'clothing_size',
+      value: 'M',
+    });
+  });
+});
+
+test('deleting a non-married life event does not reload the record', async () => {
+  const calls = mockFetch();
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  await renderLoaded();
+  const recordLoads = () =>
+    calls.filter((c) => c.method === 'GET' && c.url.endsWith('/contacts/1')).length;
+  const before = recordLoads();
+  fireEvent.click(
+    within(rowWith('Fixture life event', section('timeline'))).getByRole('button', {
+      name: 'Delete',
+    }),
+  );
+  await waitFor(() =>
+    expect(calls.some((c) => c.method === 'DELETE' && c.url.endsWith('/life-events/le-1'))).toBe(
+      true,
+    ),
+  );
+  expect(recordLoads()).toBe(before);
+});
+
+test('with Immich configured, the profile picture dialog offers the Immich picker', async () => {
+  mockFetch({ immichConfigured: true });
+  await renderLoaded();
+  const dialog = await openDialog(() =>
+    fireEvent.click(screen.getByRole('button', { name: 'Select an image' })),
+  );
+  expect(within(dialog).getByText(/immich/i)).toBeInTheDocument();
+  await dismiss(dialog);
+});
+
+test('editing a clothing size keeps its type and PUTs the new size', async () => {
+  const calls = mockFetch({
+    extraPreferences: [
+      {
+        id: 'pref-3',
+        entity_id: 'alice-uid',
+        category: 'clothing_size',
+        key: 'shirt',
+        value: 'M',
+        sensitivity: 'normal',
+        created_at: '',
+        updated_at: '',
+      },
+    ],
+  });
+  await renderLoaded();
+  const row = rowWith('Shirt: M', section('gifts'));
+  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  fireEvent.change(within(section('gifts')).getByDisplayValue('M'), { target: { value: 'L' } });
+  fireEvent.click(within(section('gifts')).getByRole('button', { name: 'Save' }));
+  await waitFor(() => {
+    const put = calls.find((c) => c.method === 'PUT' && c.url.endsWith('/preferences/pref-3'));
+    expect(put?.body).toMatchObject({ category: 'clothing_size', key: 'shirt', value: 'L' });
+  });
+});
+
+test('deleting an activity from its edit dialog sends the DELETE', async () => {
+  const calls = mockFetch();
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  await renderLoaded();
+  const dialog = await openDialog(() =>
+    fireEvent.click(
+      within(rowWith('Fixture activity', section('timeline'))).getByRole('button', {
+        name: 'Edit',
+      }),
+    ),
+  );
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+  await waitFor(() =>
+    expect(calls.some((c) => c.method === 'DELETE' && c.url.endsWith('/activities/2'))).toBe(true),
+  );
+});
+
+test('a contact with only a given name still renders and names its dialogs', async () => {
+  mockFetch({
+    record: {
+      ...contactRecord,
+      card: { name: { components: [{ kind: 'given', value: 'Cher' }] } },
+    },
+  });
+  renderPage();
+  expect(await screen.findByText('Cher')).toBeInTheDocument();
+  const dialog = await openDialog(() =>
+    fireEvent.click(screen.getByRole('button', { name: 'Stay in Touch' })),
+  );
+  expect(within(dialog).getByDisplayValue('Catch-up with Cher')).toBeInTheDocument();
+  await dismiss(dialog);
 });

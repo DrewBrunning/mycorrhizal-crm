@@ -192,7 +192,7 @@ class DashboardViewModel @Inject constructor(
      * [DashboardUiState.dataDecayOverdue] and restores it at its original
      * position if the call fails — mirrors [dismissReachOutSuggestion]'s
      * contract. Android v1 scope is view + confirm only; creating/editing a
-     * policy is web-only for now (docs/adrs/0026-data-decay.md).
+     * policy is web-only for now (docs/adrs/0027-data-decay.md).
      */
     fun verifyDataDecay(id: String) {
         if (_uiState.value.verifyingDataDecayId != null) return

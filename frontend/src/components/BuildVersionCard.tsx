@@ -124,7 +124,11 @@ export default function BuildVersionCard() {
           )}
           {health && (
             <Tooltip title={t('settings.about.copy')}>
-              <IconButton size="small" onClick={handleCopy} aria-label={t('settings.about.copy')}>
+              <IconButton
+                size="small"
+                onClick={() => void handleCopy()}
+                aria-label={t('settings.about.copy')}
+              >
                 <ContentCopyIcon fontSize="inherit" />
               </IconButton>
             </Tooltip>

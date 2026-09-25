@@ -26,7 +26,7 @@ func doGiftShoppingGET(router *gin.Engine, path string) *httptest.ResponseRecord
 }
 
 func TestGetGiftShoppingListRejectsInvalidDays(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerGiftShoppingRoute(router)
 
 	w := doGiftShoppingGET(router, "/occasion-obligations/gift-shopping-list?days=45")
@@ -37,7 +37,7 @@ func TestGetGiftShoppingListRejectsInvalidDays(t *testing.T) {
 // TestGetUpcomingOccasionsEmptyResultIsArrayNotNull (CLAUDE.md frontend trap
 // #8): an empty gift shopping list must serialize as [], not be absent.
 func TestGetGiftShoppingListEmptyResultIsArrayNotNull(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerGiftShoppingRoute(router)
 
 	w := doGiftShoppingGET(router, "/occasion-obligations/gift-shopping-list?days=30")
@@ -51,7 +51,7 @@ func TestGetGiftShoppingListEmptyResultIsArrayNotNull(t *testing.T) {
 }
 
 func TestGetGiftShoppingListReportsNeededWithNoMatchingGift(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerGiftShoppingRoute(router)
 
 	var user models.User
@@ -81,7 +81,7 @@ func TestGetGiftShoppingListReportsNeededWithNoMatchingGift(t *testing.T) {
 }
 
 func TestGetGiftShoppingListReportsMatchedGiftStatus(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerGiftShoppingRoute(router)
 
 	var user models.User
@@ -118,7 +118,7 @@ func TestGetGiftShoppingListReportsMatchedGiftStatus(t *testing.T) {
 }
 
 func TestGetGiftShoppingListIgnoresStaleGiftOutsideWindow(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerGiftShoppingRoute(router)
 
 	var user models.User
@@ -155,7 +155,7 @@ func TestGetGiftShoppingListIgnoresStaleGiftOutsideWindow(t *testing.T) {
 }
 
 func TestGetGiftShoppingListExcludesNonGiftKind(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerGiftShoppingRoute(router)
 
 	var user models.User

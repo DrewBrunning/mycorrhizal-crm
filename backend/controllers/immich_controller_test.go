@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"mycorrhizal/config"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
@@ -11,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -57,11 +57,7 @@ func immichTestRouter(t *testing.T, db *gorm.DB) *gin.Engine {
 // contact for user 1.
 func seedImmichControllerDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	sqlDB, _ := db.DB()
-	sqlDB.SetMaxOpenConns(1)
-	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Contact{}, &models.ImmichConfig{}, &models.ExternalIdentity{}, &models.ExternalActivity{}))
+	db := dbtest.New(t)
 	user := models.User{Username: "immich-ctrl", Password: "password123!A", Email: "immich-ctrl@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 	require.NoError(t, db.Create(&models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Example"}).Error)
@@ -191,7 +187,7 @@ func TestTestImmichConnection_SuccessAndFailure(t *testing.T) {
 
 	enc, err := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "sekret")
 	require.NoError(t, err)
-	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc}).Error)
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc, SyncEnabled: true}).Error)
 
 	w := immichDoJSON(t, router, "POST", "/immich/test-connection", nil)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
@@ -265,7 +261,7 @@ func TestListImmichPeople_RequestFailedVsUnreachable(t *testing.T) {
 	fake.FailWithStatus = http.StatusBadRequest
 	enc, err := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "sekret")
 	require.NoError(t, err)
-	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc}).Error)
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc, SyncEnabled: true}).Error)
 
 	w := immichDoJSON(t, router, "GET", "/immich/people", nil)
 	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
@@ -296,7 +292,7 @@ func TestLinkAndUnlinkImmichContact(t *testing.T) {
 	var contact models.Contact
 	require.NoError(t, db.Where("user_id = ?", uint(1)).First(&contact).Error)
 	enc, _ := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "k")
-	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: "https://immich.example", APIKeyEncrypted: enc}).Error)
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: "https://immich.example", APIKeyEncrypted: enc, SyncEnabled: true}).Error)
 
 	w := immichDoJSON(t, router, "POST", "/immich/contacts/"+contact.VCardUID+"/link", map[string]string{
 		"person_id": "person-alice", "person_name": "Alice",
@@ -367,7 +363,7 @@ func TestSyncImmichNow_EndToEnd(t *testing.T) {
 	require.NoError(t, db.Where("user_id = ?", uint(1)).First(&contact).Error)
 
 	enc, _ := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "sekret")
-	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc}).Error)
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc, SyncEnabled: true}).Error)
 	require.NoError(t, db.Create(&models.ExternalIdentity{
 		UserID: 1, EntityID: contact.VCardUID, System: services.ExternalSystemImmich, ExternalID: "person-alice",
 		URL: fake.URL() + "/people/person-alice", Metadata: map[string]interface{}{"person_name": "Alice"},
@@ -395,7 +391,7 @@ func TestGetImmichThumbnail(t *testing.T) {
 	require.NoError(t, db.Where("user_id = ?", uint(1)).First(&contact).Error)
 
 	enc, _ := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "k")
-	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc}).Error)
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc, SyncEnabled: true}).Error)
 	require.NoError(t, db.Create(&models.ExternalIdentity{
 		UserID: 1, EntityID: contact.VCardUID, System: services.ExternalSystemImmich, ExternalID: "person-alice",
 	}).Error)
@@ -421,7 +417,7 @@ func TestListImmichContactAssets(t *testing.T) {
 	require.NoError(t, db.Where("user_id = ?", uint(1)).First(&contact).Error)
 
 	enc, _ := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "sekret")
-	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc}).Error)
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc, SyncEnabled: true}).Error)
 	require.NoError(t, db.Create(&models.ExternalIdentity{
 		UserID: 1, EntityID: contact.VCardUID, System: services.ExternalSystemImmich, ExternalID: "person-alice",
 	}).Error)
@@ -459,7 +455,7 @@ func TestGetImmichAssetImage(t *testing.T) {
 	require.NoError(t, db.Where("user_id = ?", uint(1)).First(&contact).Error)
 
 	enc, _ := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "k")
-	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc}).Error)
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc, SyncEnabled: true}).Error)
 	require.NoError(t, db.Create(&models.ExternalIdentity{
 		UserID: 1, EntityID: contact.VCardUID, System: services.ExternalSystemImmich, ExternalID: "person-alice",
 	}).Error)

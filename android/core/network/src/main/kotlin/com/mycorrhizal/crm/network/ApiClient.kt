@@ -1335,7 +1335,7 @@ class ApiClient(
      * GET /api/v1/data-decay-policies/overdue — contacts whose info is due
      * for re-verification (issue #352). Android v1 scope is view + confirm
      * only (this call, plus [verifyDataDecayPolicy]) — creating/editing a
-     * policy is web-only for now, docs/adrs/0026-data-decay.md.
+     * policy is web-only for now, docs/adrs/0027-data-decay.md.
      */
     suspend fun listOverdueDataDecayPolicies(): Result<OverdueDataDecayPoliciesResponse> =
         executeGet("$PLACEHOLDER_ORIGIN$DATA_DECAY_POLICIES_PATH/overdue") { _, body ->

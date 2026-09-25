@@ -213,7 +213,7 @@ export default function AuditPage() {
             startIcon={
               exportingAuditLog ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />
             }
-            onClick={handleExportAuditLog}
+            onClick={() => void handleExportAuditLog()}
             disabled={exportingAuditLog}
             sx={{ ml: 'auto' }}
           >
@@ -336,7 +336,7 @@ export default function AuditPage() {
           <Button
             variant="contained"
             color="primary"
-            onClick={handleUndoConfirm}
+            onClick={() => void handleUndoConfirm()}
             disabled={undoing}
           >
             {t('audit.undo.confirm')}

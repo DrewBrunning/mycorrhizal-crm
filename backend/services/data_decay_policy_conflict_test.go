@@ -12,7 +12,7 @@ import (
 )
 
 // setupDataDecayConflictTestDB opens a real migrated schema (the
-// DataDecayPolicy table's partial unique index comes from migration 000064,
+// DataDecayPolicy table's partial unique index comes from migration 000065,
 // which AutoMigrate cannot see) and creates a test user. Mirrors
 // setupCadenceConflictTestDB.
 func setupDataDecayConflictTestDB(t *testing.T) (*gorm.DB, models.User) {

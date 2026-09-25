@@ -136,7 +136,9 @@ describe('forceReloadToCurrentBuild', () => {
 
   test('asks the browser for a new worker when none is installing or waiting yet', async () => {
     const registration = fakeRegistration({});
-    registration.update.mockImplementation(async () => {
+    // No `await` needed inside, so this doesn't need to be `async` --
+    // avoids a real type mismatch against the mock's void-returning slot.
+    registration.update.mockImplementation(() => {
       registration.waiting = fakeWorker('installed');
     });
     stubEnvironment(registration);

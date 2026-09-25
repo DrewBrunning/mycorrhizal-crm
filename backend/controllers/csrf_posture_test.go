@@ -72,7 +72,7 @@ func TestComplete2FALogin_AuthTokenCookie_SameSiteStrict(t *testing.T) {
 
 func TestLogoutUser_ClearsAuthTokenCookie_SameSiteStrict(t *testing.T) {
 	cfg := &config.Config{JWTSecretKey: testJWTSecret, JWTExpiryHours: 24}
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/logout", func(c *gin.Context) { LogoutUser(c, cfg, nil) })
 
 	req, _ := http.NewRequest("POST", "/logout", nil)
@@ -95,7 +95,7 @@ func TestOIDCLoginHandler_StateCookies_RemainSameSiteLax(t *testing.T) {
 	provider := newFakeOIDCProviderForLogout(t, "")
 	cfg := &config.Config{CookieDomain: "", CookieSecure: false}
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/login", OIDCLoginHandler(provider, cfg))
 
 	req, _ := http.NewRequest("GET", "/login", nil)
@@ -116,7 +116,7 @@ func TestOIDCLoginHandler_StateCookies_RemainSameSiteLax(t *testing.T) {
 // call with no session cookie attached — and it must be rejected.
 func TestProtectedEndpoint_RejectsRequestWithNoSessionCookie(t *testing.T) {
 	cfg := &config.Config{JWTSecretKey: testJWTSecret, JWTExpiryHours: 24}
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	protected := router.Group("/")
 	protected.Use(middleware.AuthMiddleware(cfg))
 	protected.PATCH("/users/language", UpdateLanguage)

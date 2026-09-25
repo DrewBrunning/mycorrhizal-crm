@@ -230,7 +230,7 @@ export default function DataSettingsPage() {
                     <CircularProgress size={16} color="inherit" />
                   ) : undefined
                 }
-                onClick={handleSuggestRelationships}
+                onClick={() => void handleSuggestRelationships()}
                 disabled={suggestingRelationships}
               >
                 {suggestingRelationships
@@ -243,7 +243,7 @@ export default function DataSettingsPage() {
                 startIcon={
                   suggestingAddresses ? <CircularProgress size={16} color="inherit" /> : undefined
                 }
-                onClick={handleSuggestAddresses}
+                onClick={() => void handleSuggestAddresses()}
                 disabled={suggestingAddresses}
               >
                 {suggestingAddresses
@@ -420,7 +420,7 @@ export default function DataSettingsPage() {
               startIcon={
                 exporting ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />
               }
-              onClick={handleExportData}
+              onClick={() => void handleExportData()}
               disabled={exporting}
             >
               {exporting ? t('settings.export.exporting') : t('settings.export.downloadButton')}
@@ -465,7 +465,7 @@ export default function DataSettingsPage() {
                 startIcon={
                   exportingVcf ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />
                 }
-                onClick={handleExportVcf}
+                onClick={() => void handleExportVcf()}
                 disabled={exportingVcf}
               >
                 {exportingVcf

@@ -23,7 +23,7 @@ export function useTags(notifier?: ErrorNotifier) {
   }, []);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const tagById = useMemo(() => {

@@ -68,21 +68,26 @@ function ContactAutocomplete({
   }, [value, onSelect]);
 
   useEffect(() => {
-    const timer = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const response = await getContacts({ limit: 40, search: searchInput });
-        setContacts(
-          (response.contacts || [])
-            .map(toContactBrief)
-            .filter((c): c is ContactBrief => c !== null && !excludeUids.has(c.uid)),
-        );
-      } catch (err) {
-        handleFetchError(err, 'searching contacts');
-        setContacts([]);
-      } finally {
-        setLoading(false);
-      }
+    const timer = setTimeout(() => {
+      // setTimeout's callback type is void-returning; run the async work in
+      // an IIFE and void the resulting promise instead (errors are already
+      // caught internally below).
+      void (async () => {
+        setLoading(true);
+        try {
+          const response = await getContacts({ limit: 40, search: searchInput });
+          setContacts(
+            (response.contacts || [])
+              .map(toContactBrief)
+              .filter((c): c is ContactBrief => c !== null && !excludeUids.has(c.uid)),
+          );
+        } catch (err) {
+          handleFetchError(err, 'searching contacts');
+          setContacts([]);
+        } finally {
+          setLoading(false);
+        }
+      })();
     }, 300);
     return () => clearTimeout(timer);
   }, [searchInput, excludeUids]);

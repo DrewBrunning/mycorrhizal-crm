@@ -69,7 +69,7 @@ func smokeConfigFromEnv(getenv func(string) string) smokeConfig {
 
 func main() {
 	if err := run(smokeConfigFromEnv(os.Getenv)); err != nil { // # pragma: no cover — thin wiring; tests exercise run() directly
-		log.Fatal(err) // # pragma: no cover
+		log.Fatal(err) // # pragma: no cover — see above; main's own process-exit path is not exercised by tests
 	}
 }
 

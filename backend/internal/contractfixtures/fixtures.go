@@ -50,6 +50,16 @@ var Pinned = []Pin{
 	{Filename: "contacts-list.json", Method: "GET", Path: "/contacts", Status: "200"},
 	{Filename: "contact-detail.json", Method: "GET", Path: "/contacts/{id}/detail", Status: "200"},
 	{Filename: "dashboard.json", Method: "GET", Path: "/dashboard", Status: "200"},
+	// Web-only (Android's ContractFixtureTest reads fixtures by name and
+	// consumes only dashboard.json + contacts-list.json).
+	{Filename: "contact-notes.json", Method: "GET", Path: "/contacts/{id}/notes", Status: "200"},
+	{Filename: "activities-list.json", Method: "GET", Path: "/activities", Status: "200"},
+	{Filename: "contact-reminders.json", Method: "GET", Path: "/contacts/{id}/reminders", Status: "200"},
+	{Filename: "relationship-edges-list.json", Method: "GET", Path: "/relationship-edges", Status: "200"},
+	{Filename: "life-events-list.json", Method: "GET", Path: "/life-events", Status: "200"},
+	{Filename: "circles-list.json", Method: "GET", Path: "/circles", Status: "200"},
+	{Filename: "tags-list.json", Method: "GET", Path: "/tags", Status: "200"},
+	{Filename: "occasion-events-list.json", Method: "GET", Path: "/occasion-events", Status: "200"},
 }
 
 // FixturesDir is the shared checked-in fixture directory, repo-relative.
@@ -91,7 +101,7 @@ func Generate(doc *openapi3.T) (map[string][]byte, error) {
 			// An example always comes from a YAML-parsed spec document
 			// (objects/arrays/scalars), which json.Encoder.Encode can never
 			// fail on, so no test can reach this.
-			return nil, fmt.Errorf("%s: encoding example: %w", pin.Filename, err) // # pragma: no cover
+			return nil, fmt.Errorf("%s: encoding example: %w", pin.Filename, err) // # pragma: no cover — see above
 		}
 		out[pin.Filename] = buf.Bytes()
 	}

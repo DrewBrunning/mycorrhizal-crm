@@ -608,6 +608,7 @@
     "deleteContact": "Elimina Contatto",
     "confirmDeleteContact": "Sei sicuro di voler eliminare {{name}}? Questa azione non può essere annullata ed eliminerà anche tutte le note, attività e promemoria associati a questo contatto.",
     "deleteContactError": "Impossibile eliminare il contatto. Riprova.",
+    "exportContactError": "Impossibile esportare il contatto. Riprova.",
     "updateError": "Impossibile aggiornare il contatto. Controlla i dati inseriti e riprova.",
     "firstNameRequired": "Il nome è obbligatorio",
     "stayInTouch": "Resta in Contatto",
@@ -2283,6 +2284,44 @@
         "purchased": "Acquistato",
         "given": "Consegnato",
         "received": "Ricevuto"
+      }
+    },
+    "events": {
+      "title": "Eventi",
+      "add": "Nuovo evento",
+      "createTitle": "Crea un evento",
+      "editTitle": "Modifica evento",
+      "empty": "Nessun evento ancora. Creane uno per pianificare chi invitare.",
+      "titleLabel": "Titolo",
+      "startsAt": "Inizio",
+      "endsAt": "Fine",
+      "location": "Luogo",
+      "sensitivity": "Riservatezza",
+      "notes": "Note",
+      "deleteMessage": "Eliminare questo evento?",
+      "manageAttendees": "Invitati",
+      "attendeesTitle": "Invitati — {{title}}",
+      "noAttendees": "Nessuno è ancora invitato.",
+      "addAttendee": "Aggiungi",
+      "removeAttendee": "Rimuovi",
+      "suggestFromCircles": "Suggerisci invitati dai cerchi",
+      "selectCircles": "Cerchi",
+      "suggest": "Suggerisci",
+      "noSuggestions": "Nessun nuovo suggerimento da quei cerchi.",
+      "rsvpHint": "Annota ciò che ti ha detto ogni invitato — da qui non viene inviato alcun invito.",
+      "rsvpLabel": "Conferma",
+      "attendeeSaveFailed": "Impossibile aggiornare l'invitato.",
+      "rsvp": {
+        "pending": "In attesa",
+        "accepted": "Accettato",
+        "declined": "Rifiutato",
+        "maybe": "Forse"
+      },
+      "validation": {
+        "titleRequired": "Inserisci un titolo per questo evento.",
+        "startRequired": "Scegli una data e un'ora di inizio.",
+        "endBeforeStart": "L'ora di fine non può essere precedente a quella di inizio.",
+        "saveFailed": "Impossibile salvare l'evento."
       }
     }
   },

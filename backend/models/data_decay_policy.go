@@ -9,7 +9,7 @@ import (
 
 // DataDecayPolicy is an opt-in, per-contact rule to periodically re-verify
 // stored info (address, phone, employer, relationship facts) is still
-// accurate — issue #352, docs/adrs/0026-data-decay.md.
+// accurate — issue #352, docs/adrs/0027-data-decay.md.
 //
 // Deliberately distinct from CadencePolicy (T19): cadence is about staying
 // in touch (relationship maintenance), data decay is about the freshness of
@@ -30,7 +30,7 @@ import (
 //
 // Soft-deletes (deleted_at), per T26: user-authored content, same shape as
 // CadencePolicy/LifeEvent/Note. The natural key (user_id, entity_id) is
-// enforced by a PARTIAL unique index (migration 000064) so a soft-deleted
+// enforced by a PARTIAL unique index (migration 000065) so a soft-deleted
 // policy never blocks re-creating one for the same contact.
 type DataDecayPolicy struct {
 	ID        string         `gorm:"primarykey" json:"id"`
@@ -62,7 +62,7 @@ type DataDecayPolicy struct {
 	// overridden back to the SQL column default (OccasionObligation.Active
 	// has this exact latent bug — flagged separately, not fixed here). The
 	// application layer (applyDataDecayInput) always sets a real value
-	// before Create, so no GORM-level default is needed; migration 000064's
+	// before Create, so no GORM-level default is needed; migration 000065's
 	// `DEFAULT 1` column default remains as schema-level documentation and a
 	// safety net for any future raw-SQL insert.
 	Active bool `gorm:"not null" json:"active"`

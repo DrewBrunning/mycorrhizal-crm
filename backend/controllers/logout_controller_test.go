@@ -60,7 +60,7 @@ func findCookie(cookies []*http.Cookie, name string) *http.Cookie {
 
 func TestLogoutUser_NoOIDC(t *testing.T) {
 	cfg := &config.Config{}
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/logout", func(c *gin.Context) {
 		LogoutUser(c, cfg, nil)
 	})
@@ -85,7 +85,7 @@ func TestLogoutUser_OIDCEnabledButLocalPasswordLogin(t *testing.T) {
 	cfg := &config.Config{OIDC: config.OIDCConfig{PostLogoutRedirectURL: "https://mycorrhizal.example.com/login"}}
 	provider := newFakeOIDCProviderForLogout(t, "/end_session")
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/logout", func(c *gin.Context) {
 		LogoutUser(c, cfg, provider)
 	})
@@ -108,7 +108,7 @@ func TestLogoutUser_OIDCSessionBuildsRedirect(t *testing.T) {
 	cfg := &config.Config{OIDC: config.OIDCConfig{PostLogoutRedirectURL: "https://mycorrhizal.example.com/login"}}
 	provider := newFakeOIDCProviderForLogout(t, "/end_session")
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/logout", func(c *gin.Context) {
 		LogoutUser(c, cfg, provider)
 	})
@@ -144,7 +144,7 @@ func TestLogoutUser_ProviderWithoutEndSessionEndpoint(t *testing.T) {
 	cfg := &config.Config{OIDC: config.OIDCConfig{PostLogoutRedirectURL: "https://mycorrhizal.example.com/login"}}
 	provider := newFakeOIDCProviderForLogout(t, "") // no end_session_endpoint advertised
 
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/logout", func(c *gin.Context) {
 		LogoutUser(c, cfg, provider)
 	})

@@ -69,7 +69,7 @@ func run(w io.Writer, root, outPath string, now time.Time) int {
 	encoded, err := json.MarshalIndent(summary, "", "  ")
 	if err != nil {
 		fmt.Fprintln(w, "residualrisk: encode:", err) // # pragma: no cover — MarshalIndent of a plain struct cannot fail
-		return 2                                      // # pragma: no cover
+		return 2                                      // # pragma: no cover — see above
 	}
 	if outPath == "" {
 		fmt.Fprintln(w, string(encoded))

@@ -42,7 +42,7 @@ export default function CopyButton({ value, label, className }: CopyButtonProps)
       <IconButton
         size="small"
         color="primary"
-        onClick={handleCopy}
+        onClick={() => void handleCopy()}
         aria-label={ariaLabel}
         className={className}
       >

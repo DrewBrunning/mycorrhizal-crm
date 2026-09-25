@@ -18,46 +18,46 @@ are gated behind `MYCORRHIZAL_LARGE_TESTS=1`; `stress` is projection-only and is
 never populated. Regenerate with `make gen-perf-baseline` (add `-large` for the
 `large` column).
 
-_Last generated: 2026-09-24._
+_Last generated: 2026-09-25._
 
 ## Measurements
 
 | Operation | Kind | Profile | Contacts | Queries | Result size | Median |
 |---|---|---|--:|--:|--:|--:|
-| `contact_list.plain` | read | smoke | 324 | 1 | 50 | 397.7µs |
-| `contact_list.plain` | read | typical | 918 | 1 | 50 | 428.4µs |
-| `contact_list.filtered_sorted` | read | smoke | 324 | 1 | 2 | 519.3µs |
-| `contact_list.filtered_sorted` | read | typical | 918 | 1 | 2 | 9.2ms |
-| `contact_detail` | read | smoke | 324 | 25 | 0 | 2.2ms |
-| `contact_detail` | read | typical | 918 | 25 | 0 | 2.9ms |
-| `contact_detail.pathological` | read | smoke | 324 | 20 | 0 | 1.1ms |
-| `contact_detail.pathological` | read | typical | 918 | 20 | 0 | 1.3ms |
-| `fts.search_all` | read | smoke | 324 | 3 | 10 | 835.0µs |
-| `fts.search_all` | read | typical | 918 | 3 | 10 | 750.3µs |
-| `fts.contact_list_search` | read | smoke | 324 | 1 | 12 | 693.9µs |
-| `fts.contact_list_search` | read | typical | 918 | 1 | 50 | 1.9ms |
-| `graph.traverse_shallow` | read | smoke | 324 | 2 | 9 | 239.7µs |
-| `graph.traverse_shallow` | read | typical | 918 | 2 | 30 | 408.6µs |
-| `graph.traverse_deep` | read | smoke | 324 | 2 | 29 | 3.5ms |
-| `graph.traverse_deep` | read | typical | 918 | 2 | 169 | 234.6ms |
-| `graph.traverse_hub` | read | smoke | 324 | 2 | 29 | 1.4ms |
-| `graph.traverse_hub` | read | typical | 918 | 2 | 169 | 22.8ms |
-| `dashboard` | read | smoke | 324 | 9 | 0 | 743.0µs |
+| `contact_list.plain` | read | smoke | 324 | 1 | 50 | 393.4µs |
+| `contact_list.plain` | read | typical | 918 | 1 | 50 | 397.7µs |
+| `contact_list.filtered_sorted` | read | smoke | 324 | 1 | 2 | 559.3µs |
+| `contact_list.filtered_sorted` | read | typical | 918 | 1 | 2 | 9.9ms |
+| `contact_detail` | read | smoke | 324 | 25 | 0 | 1.7ms |
+| `contact_detail` | read | typical | 918 | 25 | 0 | 3.0ms |
+| `contact_detail.pathological` | read | smoke | 324 | 20 | 0 | 713.3µs |
+| `contact_detail.pathological` | read | typical | 918 | 20 | 0 | 1.1ms |
+| `fts.search_all` | read | smoke | 324 | 3 | 10 | 1.1ms |
+| `fts.search_all` | read | typical | 918 | 3 | 10 | 799.7µs |
+| `fts.contact_list_search` | read | smoke | 324 | 1 | 12 | 817.4µs |
+| `fts.contact_list_search` | read | typical | 918 | 1 | 50 | 2.2ms |
+| `graph.traverse_shallow` | read | smoke | 324 | 2 | 9 | 230.5µs |
+| `graph.traverse_shallow` | read | typical | 918 | 2 | 30 | 432.9µs |
+| `graph.traverse_deep` | read | smoke | 324 | 2 | 29 | 3.8ms |
+| `graph.traverse_deep` | read | typical | 918 | 2 | 169 | 241.6ms |
+| `graph.traverse_hub` | read | smoke | 324 | 2 | 29 | 1.5ms |
+| `graph.traverse_hub` | read | typical | 918 | 2 | 169 | 26.0ms |
+| `dashboard` | read | smoke | 324 | 9 | 0 | 894.4µs |
 | `dashboard` | read | typical | 918 | 9 | 0 | 2.2ms |
-| `cadence.list_overdue` | read | smoke | 324 | 1 | 0 | 21.6µs |
-| `cadence.list_overdue` | read | typical | 918 | 1 | 0 | 13.0µs |
-| `reachout.detect` | read | smoke | 324 | 5 | 0 | 273.6µs |
-| `reachout.detect` | read | typical | 918 | 5 | 0 | 261.6µs |
-| `duplicates.find_pairs` | read | smoke | 324 | 5 | 306 | 2.7ms |
-| `duplicates.find_pairs` | read | typical | 918 | 5 | 11254 | 18.9ms |
-| `contact_create` | write | smoke | 324 | 8 | 0 | 848.9µs |
-| `contact_create` | write | typical | 918 | 8 | 0 | 800.4µs |
-| `contact_update` | write | smoke | 324 | 11 | 0 | 1.6ms |
-| `contact_update` | write | typical | 918 | 11 | 0 | 978.9µs |
-| `contact_merge` | write, 1x | smoke | 324 | 108 | 0 | 8.2ms |
-| `contact_merge` | write, 1x | typical | 918 | 108 | 0 | 11.5ms |
-| `delete_cascade` | write, 1x | smoke | 324 | 40 | 0 | 4.0ms |
-| `delete_cascade` | write, 1x | typical | 918 | 40 | 0 | 5.9ms |
+| `cadence.list_overdue` | read | smoke | 324 | 1 | 0 | 12.8µs |
+| `cadence.list_overdue` | read | typical | 918 | 1 | 0 | 13.6µs |
+| `reachout.detect` | read | smoke | 324 | 5 | 0 | 256.8µs |
+| `reachout.detect` | read | typical | 918 | 5 | 0 | 249.7µs |
+| `duplicates.find_pairs` | read | smoke | 324 | 5 | 306 | 3.0ms |
+| `duplicates.find_pairs` | read | typical | 918 | 5 | 11254 | 20.9ms |
+| `contact_create` | write | smoke | 324 | 8 | 0 | 833.1µs |
+| `contact_create` | write | typical | 918 | 8 | 0 | 926.4µs |
+| `contact_update` | write | smoke | 324 | 11 | 0 | 1.0ms |
+| `contact_update` | write | typical | 918 | 11 | 0 | 1.3ms |
+| `contact_merge` | write, 1x | smoke | 324 | 109 | 0 | 9.0ms |
+| `contact_merge` | write, 1x | typical | 918 | 109 | 0 | 11.3ms |
+| `delete_cascade` | write, 1x | smoke | 324 | 41 | 0 | 4.4ms |
+| `delete_cascade` | write, 1x | typical | 918 | 41 | 0 | 8.3ms |
 
 (Result size 0 = the operation returns a single record or is a write, not a collection.)
 
@@ -76,23 +76,23 @@ wall-clock legitimately grow faster than 3x between `smoke` and `typical` — it
 
 | Operation | Scales | Row x | Query x | Result x | Median x | Class | Expected |
 |---|---|--:|--:|--:|--:|---|---|
-| `cadence.list_overdue` | smoke→typical | 2.83 | 1.00 | 1.00 | 0.60 | constant | constant |
-| `contact_create` | smoke→typical | 2.83 | 1.00 | 1.00 | 0.94 | constant | constant |
-| `contact_detail` | smoke→typical | 2.83 | 1.00 | 1.00 | 1.32 | constant | constant |
-| `contact_detail.pathological` | smoke→typical | 2.83 | 1.00 | 1.00 | 1.21 | constant | constant |
-| `contact_list.filtered_sorted` | smoke→typical | 2.83 | 1.00 | 1.00 | 17.77 ⏱ | constant | constant |
-| `contact_list.plain` | smoke→typical | 2.83 | 1.00 | 1.00 | 1.08 | constant | constant |
-| `contact_merge` | smoke→typical | 2.83 | 1.00 | 1.00 | 1.41 | constant | constant |
-| `contact_update` | smoke→typical | 2.83 | 1.00 | 1.00 | 0.63 | constant | constant |
-| `dashboard` | smoke→typical | 2.83 | 1.00 | 1.00 | 3.01 | constant | constant |
-| `delete_cascade` | smoke→typical | 2.83 | 1.00 | 1.00 | 1.49 | constant | constant |
-| `duplicates.find_pairs` | smoke→typical | 2.83 | 1.00 | 36.78 | 6.95 | superlinear | superlinear |
-| `fts.contact_list_search` | smoke→typical | 2.83 | 1.00 | 4.17 | 2.80 | constant | constant |
-| `fts.search_all` | smoke→typical | 2.83 | 1.00 | 1.00 | 0.90 | constant | constant |
-| `graph.traverse_deep` | smoke→typical | 2.83 | 1.00 | 5.83 | 66.75 ⏱ | constant | constant |
-| `graph.traverse_hub` | smoke→typical | 2.83 | 1.00 | 5.83 | 16.45 ⏱ | constant | constant |
-| `graph.traverse_shallow` | smoke→typical | 2.83 | 1.00 | 3.33 | 1.70 | constant | constant |
-| `reachout.detect` | smoke→typical | 2.83 | 1.00 | 1.00 | 0.96 | constant | constant |
+| `cadence.list_overdue` | smoke→typical | 2.83 | 1.00 | 1.00 | 1.06 | constant | constant |
+| `contact_create` | smoke→typical | 2.83 | 1.00 | 1.00 | 1.11 | constant | constant |
+| `contact_detail` | smoke→typical | 2.83 | 1.00 | 1.00 | 1.75 | constant | constant |
+| `contact_detail.pathological` | smoke→typical | 2.83 | 1.00 | 1.00 | 1.55 | constant | constant |
+| `contact_list.filtered_sorted` | smoke→typical | 2.83 | 1.00 | 1.00 | 17.65 ⏱ | constant | constant |
+| `contact_list.plain` | smoke→typical | 2.83 | 1.00 | 1.00 | 1.01 | constant | constant |
+| `contact_merge` | smoke→typical | 2.83 | 1.00 | 1.00 | 1.26 | constant | constant |
+| `contact_update` | smoke→typical | 2.83 | 1.00 | 1.00 | 1.21 | constant | constant |
+| `dashboard` | smoke→typical | 2.83 | 1.00 | 1.00 | 2.42 | constant | constant |
+| `delete_cascade` | smoke→typical | 2.83 | 1.00 | 1.00 | 1.89 | constant | constant |
+| `duplicates.find_pairs` | smoke→typical | 2.83 | 1.00 | 36.78 | 7.05 | superlinear | superlinear |
+| `fts.contact_list_search` | smoke→typical | 2.83 | 1.00 | 4.17 | 2.63 | constant | constant |
+| `fts.search_all` | smoke→typical | 2.83 | 1.00 | 1.00 | 0.74 | constant | constant |
+| `graph.traverse_deep` | smoke→typical | 2.83 | 1.00 | 5.83 | 64.11 ⏱ | constant | constant |
+| `graph.traverse_hub` | smoke→typical | 2.83 | 1.00 | 5.83 | 17.17 ⏱ | constant | constant |
+| `graph.traverse_shallow` | smoke→typical | 2.83 | 1.00 | 3.33 | 1.88 | constant | constant |
+| `reachout.detect` | smoke→typical | 2.83 | 1.00 | 1.00 | 0.97 | constant | constant |
 
 **Super-linear operations (hard findings):** `duplicates.find_pairs`. Recorded, not necessarily
 bugs — PERF-04 (issue #471) records a budget or a waiver-with-reason for each in `budgets.json`.

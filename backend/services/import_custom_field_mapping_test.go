@@ -12,7 +12,6 @@ import (
 	"mycorrhizal/models"
 	"mycorrhizal/vcard4"
 
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -286,14 +285,13 @@ func TestBuildImportFieldPlan_CreateWithUnusableKeyFails(t *testing.T) {
 	assert.Contains(t, err.Error(), "no usable name")
 }
 
-// TestBuildImportFieldPlan_MissingDefinitionsTableDegrades drives the
-// AutoMigrate test schemas that predate field_definitions (CLAUDE.md backend
-// trap #1): auto-match degrades to off instead of failing the import, while
-// an explicit "create" still fails loudly through the per-definition query.
+// TestBuildImportFieldPlan_MissingDefinitionsTableDegrades drives a schema
+// whose field_definitions query fails (the table is hidden): auto-match
+// degrades to off instead of failing the import, while an explicit "create"
+// still fails loudly through the per-definition query.
 func TestBuildImportFieldPlan_MissingDefinitionsTableDegrades(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.Contact{})) // no field_definitions
+	db := dbtest.New(t)
+	dbtest.HideTable(t, db, "field_definitions")
 
 	// Auto-match off, no error.
 	plan, err := buildImportFieldPlan(db, 1, nil)
@@ -423,24 +421,25 @@ func mustPromote(t *testing.T, db *gorm.DB, userID uint, target *models.Contact,
 // when the field_values write itself fails (a schema without the table): the
 // value is skipped with a note rather than failing the import.
 func TestPromoteImportedCustomFields_UpsertFailureWarns(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.Contact{}, &models.FieldDefinition{})) // no field_values
+	db := dbtest.New(t)
+	user := models.User{Username: "cf-upsertfail", Email: "cf-upsertfail@example.com", Password: "x"}
+	require.NoError(t, db.Create(&user).Error)
 
 	def := models.FieldDefinition{
-		UserID: 1, Label: "Color", Key: "color",
+		UserID: user.ID, Label: "Color", Key: "color",
 		Target: models.FieldDefinitionTargetContact, Type: models.FieldTypeText,
 		Projection: "internal-only", Sensitivity: "normal",
 	}
 	require.NoError(t, db.Create(&def).Error)
+	dbtest.HideTable(t, db, "field_values")
 
-	contact := &models.Contact{UserID: 1, VCardUID: "33333333-3333-4333-8333-333333333332"}
+	contact := &models.Contact{UserID: user.ID, VCardUID: "33333333-3333-4333-8333-333333333332"}
 	props := []contactmodel.JCardProp{
 		{Name: "x-color", Type: "text", Value: json.RawMessage(`"green"`)},
 	}
 	plan := importFieldPlan{"x-color": def}
 
-	promoted, notes := promoteImportedCustomFields(db, 1, contact, props, plan)
+	promoted, notes := promoteImportedCustomFields(db, user.ID, contact, props, plan)
 	assert.Empty(t, promoted)
 	require.Len(t, notes, 1)
 	assert.Contains(t, notes[0], "failed to store value")
