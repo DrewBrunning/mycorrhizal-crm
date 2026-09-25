@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -207,4 +208,22 @@ func TestGetDashboard_FavoritesBlock(t *testing.T) {
 	assert.Equal(t, "Alpha", resp.Favorites[0].Firstname, "favorites must be name-ordered")
 	assert.Equal(t, "Zebra", resp.Favorites[1].Firstname)
 	assert.True(t, resp.Favorites[0].IsFavorite, "the wire flag must be true for a favorite")
+}
+
+// TestGetDashboard_DataDecayQueryFails fault-injects (dbtest.HideTable) a
+// failure in services.ListOverdueDataDecayPolicies -- the last of the
+// composite's eight per-block queries -- and pins that GetDashboard aborts
+// with a 500 rather than silently dropping the block, mirroring the error
+// contract every other block already gets from apperrors.AbortWithError.
+func TestGetDashboard_DataDecayQueryFails(t *testing.T) {
+	db, router := setupRouter(t)
+	router.GET("/dashboard", GetDashboard)
+
+	dbtest.HideTable(t, db, "data_decay_policies")
+
+	req, _ := http.NewRequest("GET", "/dashboard", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+	assert.Contains(t, w.Body.String(), "overdue data decay")
 }

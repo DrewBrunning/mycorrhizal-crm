@@ -591,9 +591,9 @@
       "branchesTotal": 14
     },
     "src/components/AuthImg.tsx": {
-      "lines": 96.55,
+      "lines": 100,
       "linesTotal": 29,
-      "branches": 68.75,
+      "branches": 75,
       "branchesTotal": 16
     },
     "src/components/BackgroundJobsPanel.tsx": {

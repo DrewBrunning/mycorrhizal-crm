@@ -142,4 +142,21 @@ func TestContactMerge_DataDecayPolicyConflict(t *testing.T) {
 	require.NoError(t, db.Where("entity_id = ? AND user_id = ?", aliceD.VCardUID, user.ID).First(&adoptedPolicy).Error)
 	assert.Equal(t, onlyLoserPolicy.ID, adoptedPolicy.ID, "the loser's policy must be silently adopted onto the keeper")
 	assert.Equal(t, 45, adoptedPolicy.IntervalDays)
+
+	// --- Pair E: a real DB failure computing the data-decay conflict (not a
+	// "not found") must abort both preview and commit with a 500, not be
+	// swallowed -- pins appendDataDecayPolicyConflict's error-wrapping branch
+	// in both PreviewContactMerge and CommitContactMerge.
+	aliceE := models.Contact{UserID: user.ID, Firstname: "AliceE"}
+	bobE := models.Contact{UserID: user.ID, Firstname: "AliceE"}
+	require.NoError(t, db.Create(&aliceE).Error)
+	require.NoError(t, db.Create(&bobE).Error)
+
+	dbtest.HideTable(t, db, "data_decay_policies")
+
+	previewE := doJSON("/contacts/merge/preview", models.ContactMergeRequest{KeepID: aliceE.ID, MergeID: bobE.ID})
+	require.Equal(t, http.StatusInternalServerError, previewE.Code, previewE.Body.String())
+
+	commitE := doJSON("/contacts/merge", models.ContactMergeRequest{KeepID: aliceE.ID, MergeID: bobE.ID})
+	require.Equal(t, http.StatusInternalServerError, commitE.Code, commitE.Body.String())
 }

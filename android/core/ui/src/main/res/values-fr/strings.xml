@@ -9,6 +9,8 @@
     <string name="dashboard_birthdays">Anniversaires à venir</string>
     <string name="dashboard_reminders">Rappels à venir</string>
     <string name="dashboard_overdue_cadences">Relations en retard</string>
+    <!-- Issue #352: data decay, contacts whose info is due for re-verification. -->
+    <string name="dashboard_data_decay_overdue">Infos à vérifier</string>
     <!-- Issue #177: event-driven reach-out suggestions. -->
     <string name="dashboard_reach_out">Raisons de reprendre contact</string>
     <string name="dashboard_random_contacts">Restez en contact</string>
@@ -1182,6 +1184,10 @@
     <string name="cd_dismiss_reach_out_suggestion">Ignorer la suggestion</string>
     <string name="cadence_last_interaction">Dernière interaction : %1$s</string>
     <string name="cadence_confirm_delete">Supprimer cette cadence ?</string>
+    <!-- Issue #352: data decay, contacts whose info is due for re-verification. -->
+    <string name="data_decay_overdue_by">En retard de %1$d jours</string>
+    <string name="data_decay_due_on">À faire le %1$s</string>
+    <string name="cd_confirm_data_decay_current">Confirmer que c\'est toujours à jour</string>
     <string name="cadence_delete_title">Supprimer la cadence</string>
     <string name="cadence_error_missing_contact_id">Identifiant de contact manquant</string>
     <string name="cadence_error_no_vcard_uid">Le contact n\'a pas d\'UID VCard</string>
