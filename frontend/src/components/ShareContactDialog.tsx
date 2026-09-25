@@ -166,7 +166,7 @@ export default function ShareContactDialog({
           {t('common.cancel')}
         </Button>
         <Button
-          onClick={handleShare}
+          onClick={() => void handleShare()}
           variant="contained"
           disabled={sharing || toUserID === '' || selected.size === 0}
         >

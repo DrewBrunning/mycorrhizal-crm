@@ -56,7 +56,7 @@ export default function AttachmentsSection({ contactId }: AttachmentsSectionProp
   }, [contactId]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,7 +108,7 @@ export default function AttachmentsSection({ contactId }: AttachmentsSectionProp
           type="file"
           style={{ display: 'none' }}
           aria-label={t('attachments.upload')}
-          onChange={handleFileChange}
+          onChange={(p0) => void handleFileChange(p0)}
         />
         <Button
           size="small"
@@ -163,7 +163,7 @@ export default function AttachmentsSection({ contactId }: AttachmentsSectionProp
                     <IconButton
                       size="small"
                       aria-label={t('attachments.delete')}
-                      onClick={() => handleDelete(attachment)}
+                      onClick={() => void handleDelete(attachment)}
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>

@@ -94,7 +94,7 @@ export default function BackgroundJobsPanel() {
         <Button
           size="small"
           startIcon={<RefreshIcon />}
-          onClick={refresh}
+          onClick={() => void refresh()}
           disabled={loading}
           sx={{ flexShrink: 0 }}
         >
@@ -130,7 +130,7 @@ function JobRow({ job }: { job: JobRunHealth }) {
     const next = !open;
     setOpen(next);
     if (next && history.data.length === 0 && !history.loading) {
-      history.load({ jobName: job.job_name, limit: 25 });
+      void history.load({ jobName: job.job_name, limit: 25 });
     }
   };
 

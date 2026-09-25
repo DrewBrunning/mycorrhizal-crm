@@ -100,7 +100,7 @@ export default function SystemStatusPage() {
   // (admin-only) snapshot is even requested.
   useEffect(() => {
     if (!isAdmin()) {
-      navigate('/');
+      void navigate('/');
     }
   }, [navigate]);
 
@@ -130,7 +130,7 @@ export default function SystemStatusPage() {
       {loading && !data ? (
         <ListSkeleton count={6} />
       ) : data ? (
-        <Snapshot status={data} onRefresh={refresh} loading={loading} />
+        <Snapshot status={data} onRefresh={() => void refresh()} loading={loading} />
       ) : null}
     </Box>
   );

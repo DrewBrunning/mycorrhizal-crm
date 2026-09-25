@@ -72,7 +72,7 @@ export default function DiagnosticsPanel() {
           size="small"
           variant="outlined"
           startIcon={<PlayArrowIcon />}
-          onClick={run}
+          onClick={() => void run()}
           disabled={loading}
           sx={{ flexShrink: 0 }}
         >

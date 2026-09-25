@@ -213,7 +213,7 @@ export default function ReminderDialog({
         <Button onClick={onClose} disabled={loading}>
           {t('common.cancel')}
         </Button>
-        <Button onClick={handleSave} variant="contained" disabled={loading}>
+        <Button onClick={() => void handleSave()} variant="contained" disabled={loading}>
           {loading ? t('common.saving') : t('common.save')}
         </Button>
       </DialogActions>

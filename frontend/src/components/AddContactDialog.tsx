@@ -460,7 +460,7 @@ export default function AddContactDialog({
         <Button onClick={handleClose} disabled={loading}>
           {t('common.cancel')}
         </Button>
-        <Button onClick={handleSubmit} variant="contained" disabled={loading}>
+        <Button onClick={() => void handleSubmit()} variant="contained" disabled={loading}>
           {loading ? t('common.saving') : t('contacts.add.create')}
         </Button>
       </DialogActions>

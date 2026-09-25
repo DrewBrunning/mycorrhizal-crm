@@ -228,7 +228,12 @@ export default function CustomFieldsSettings() {
           <Button onClick={() => setDeleteTarget(null)} disabled={deleteBusy}>
             {t('settings.customFields.deleteDialog.cancel')}
           </Button>
-          <Button onClick={handleDeleteConfirm} color="error" disabled={deleteBusy} autoFocus>
+          <Button
+            onClick={() => void handleDeleteConfirm()}
+            color="error"
+            disabled={deleteBusy}
+            autoFocus
+          >
             {t('settings.customFields.deleteDialog.confirm')}
           </Button>
         </DialogActions>

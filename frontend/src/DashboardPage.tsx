@@ -103,12 +103,12 @@ function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    loadDashboardData();
+    void loadDashboardData();
   }, [loadDashboardData]);
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setUpcomingOccasionsLoading(true);
       setUpcomingOccasionsError(null);
       try {
@@ -305,7 +305,7 @@ function DashboardPage() {
             suggestions={reachOutSuggestions}
             loading={loading}
             error={null}
-            onDismiss={handleDismissReachOutSuggestion}
+            onDismiss={(p0) => void handleDismissReachOutSuggestion(p0)}
           />
         </Box>
       )}
@@ -320,8 +320,8 @@ function DashboardPage() {
             conflicts={syncConflicts}
             loading={loading}
             error={null}
-            onRestore={handleRestoreSyncConflict}
-            onDismiss={handleDismissSyncConflict}
+            onRestore={(p0) => void handleRestoreSyncConflict(p0)}
+            onDismiss={(p0) => void handleDismissSyncConflict(p0)}
           />
         </Box>
       )}
@@ -607,7 +607,7 @@ function DashboardPage() {
                         transition: 'all 0.2s',
                       },
                     }}
-                    onClick={() => navigate(`/contacts/${reminder.contact_id}`)}
+                    onClick={() => void navigate(`/contacts/${reminder.contact_id}`)}
                   >
                     <CardContent sx={{ py: 1.5 }}>
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
@@ -668,7 +668,7 @@ function DashboardPage() {
                               color="default"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleSkipReminder(reminder.ID);
+                                void handleSkipReminder(reminder.ID);
                               }}
                               aria-label={t('reminders.skip')}
                               sx={{
@@ -687,7 +687,7 @@ function DashboardPage() {
                               color="success"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleCompleteReminder(reminder.ID);
+                                void handleCompleteReminder(reminder.ID);
                               }}
                               aria-label={t('reminders.complete')}
                               sx={{

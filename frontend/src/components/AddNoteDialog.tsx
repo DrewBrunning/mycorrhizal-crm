@@ -128,14 +128,14 @@ export default function AddNoteDialog({
   useEffect(() => {
     if (!open) return;
     const timeoutId = setTimeout(() => {
-      loadContacts(searchInput);
+      void loadContacts(searchInput);
     }, 300);
     return () => clearTimeout(timeoutId);
   }, [searchInput, open, loadContacts]);
 
   useEffect(() => {
     if (open) {
-      loadContacts();
+      void loadContacts();
     }
   }, [open, loadContacts]);
 
@@ -239,7 +239,7 @@ export default function AddNoteDialog({
         <Button onClick={handleRequestClose} disabled={saving}>
           {t('noteDialog.cancel')}
         </Button>
-        <Button onClick={handleSave} variant="contained" disabled={saving}>
+        <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('noteDialog.save')}
         </Button>
       </DialogActions>

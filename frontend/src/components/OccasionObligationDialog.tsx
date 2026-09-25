@@ -231,7 +231,7 @@ export default function OccasionObligationDialog({
         <Button onClick={onClose} disabled={saving}>
           {t('common.cancel')}
         </Button>
-        <Button onClick={handleSave} variant="contained" disabled={saving}>
+        <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('common.save')}
         </Button>
       </DialogActions>

@@ -129,9 +129,9 @@ export default function AddActivityDialog({
           console.error('Failed to load preselected contact:', err);
         }
       };
-      loadPreselected();
+      void loadPreselected();
     } else if (open) {
-      loadContacts('');
+      void loadContacts('');
     }
   }, [open, preselectedContactId, loadContacts]);
 
@@ -140,7 +140,7 @@ export default function AddActivityDialog({
     if (!open) return;
 
     const timeoutId = setTimeout(() => {
-      loadContacts(searchInput);
+      void loadContacts(searchInput);
     }, 300);
 
     return () => clearTimeout(timeoutId);
@@ -277,7 +277,7 @@ export default function AddActivityDialog({
         <Button onClick={handleRequestClose} disabled={saving}>
           {t('activityDialog.cancel')}
         </Button>
-        <Button onClick={handleSave} variant="contained" disabled={saving}>
+        <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('activityDialog.save')}
         </Button>
       </DialogActions>

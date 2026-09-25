@@ -87,7 +87,7 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
   // on submit. Skipped until the panel has first become visible.
   useEffect(() => {
     if (!visible) return;
-    refresh({ depth, relation: appliedRelation.trim() || undefined, overrideUid: contactUid });
+    void refresh({ depth, relation: appliedRelation.trim() || undefined, overrideUid: contactUid });
   }, [contactUid, depth, refresh, appliedRelation, visible]);
 
   // T114: a new result set re-collapses the preview.
@@ -97,7 +97,7 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
 
   const handleApplyRelation = () => {
     setAppliedRelation(relation.trim());
-    refresh({ depth, relation: relation.trim() || undefined, overrideUid: contactUid });
+    void refresh({ depth, relation: relation.trim() || undefined, overrideUid: contactUid });
   };
 
   const renderChain = (chain: GraphChain) => (
@@ -129,7 +129,7 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
                 component="button"
                 variant="body2"
                 underline="hover"
-                onClick={() => navigate(`/contacts/${step.contact_id}`)}
+                onClick={() => void navigate(`/contacts/${step.contact_id}`)}
                 sx={{ color: 'text.secondary' }}
               >
                 {step.contact_name}

@@ -42,7 +42,7 @@ export default function AuthImg({ src, alt, sx }: AuthImgProps) {
       }
     };
 
-    fetchImage();
+    void fetchImage();
 
     return () => {
       cancelled = true;
