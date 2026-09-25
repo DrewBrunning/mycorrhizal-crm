@@ -224,6 +224,11 @@ func TestSoftDeleteCascadeCoversV2Entities(t *testing.T) {
 	m.CadencePolicies = append(m.CadencePolicies, CadencePolicyEntry{Contact: "gone", TargetIntervalDays: 30})
 	m.ReachOutSuggestions = append(m.ReachOutSuggestions, ReachOutSuggestionEntry{Contact: "gone", Kind: "title", Status: "pending"})
 	m.OccasionObligations = append(m.OccasionObligations, OccasionObligationEntry{Contact: "gone", Kind: "card", Label: "Gone card", Active: boolPtr(true)})
+	m.OccasionEvents = append(m.OccasionEvents, OccasionEventEntry{
+		Title:        "Gone's farewell",
+		StartsInDays: intPtr(3),
+		Attendees:    []OccasionEventAttendeeEntry{{Contact: "gone", RSVP: "accepted"}, {Contact: "nadia", RSVP: "accepted"}},
+	})
 
 	ds, err := PopulateAt(db, &m, fixedNow)
 	require.NoError(t, err)
@@ -248,6 +253,103 @@ func TestSoftDeleteCascadeCoversV2Entities(t *testing.T) {
 	db.Unscoped().Model(&models.OccasionObligation{}).Where("entity_id = ? AND deleted_at IS NOT NULL", uid).Count(&sweptObligations)
 	assert.Equal(t, int64(1), sweptCadences, "the cadence row must be tombstoned, not never-created")
 	assert.Equal(t, int64(1), sweptObligations, "the obligation row must be tombstoned, not never-created")
+
+	// The attendee row is join-shaped (hard delete); the event itself and the
+	// other invitee survive.
+	var goneAttendees, farewellAttendees int64
+	require.NoError(t, db.Model(&models.OccasionEventAttendee{}).Where("entity_id = ?", uid).Count(&goneAttendees).Error)
+	require.NoError(t, db.Model(&models.OccasionEventAttendee{}).
+		Joins("JOIN occasion_events ON occasion_events.id = occasion_event_attendees.event_id").
+		Where("occasion_events.title = ?", "Gone's farewell").Count(&farewellAttendees).Error)
+	assert.Zero(t, goneAttendees, "a tombstoned contact's RSVP rows must be hard-deleted")
+	assert.Equal(t, int64(1), farewellAttendees, "the other invitee's RSVP must survive")
+}
+
+// TestSoftDeletedSelfContactClearsPointer pins that tombstoning the
+// self-contact clears users.self_contact_vcard_uid, the way DeleteContact
+// does, instead of leaving it dangling on a deleted row.
+func TestSoftDeletedSelfContactClearsPointer(t *testing.T) {
+	db := dbtest.New(t)
+	m := *readManifest(t)
+	m.Contacts = append([]ContactEntry(nil), m.Contacts...)
+	for i := range m.Contacts {
+		if m.Contacts[i].Name == m.SelfContact {
+			m.Contacts[i].SoftDeleted = true
+		}
+	}
+
+	ds, err := PopulateAt(db, &m, fixedNow)
+	require.NoError(t, err)
+
+	var user models.User
+	require.NoError(t, db.First(&user, ds.User.ID).Error)
+	assert.Nil(t, user.SelfContactVCardUID, "a tombstoned self-contact must not stay the Me pointer")
+}
+
+// TestV2SectionDefaultsAndTombstones covers the loader paths the committed
+// manifest does not exercise: omitted reach-out status and RSVP (default
+// pending), absolute occasion-event instants, an explicit-sensitivity-free
+// event, and a soft_deleted row in each new soft-delete section.
+func TestV2SectionDefaultsAndTombstones(t *testing.T) {
+	db := dbtest.New(t)
+	m := *readManifest(t)
+	starts := time.Date(2026, 12, 31, 20, 0, 0, 0, time.UTC)
+	ends := starts.Add(4 * time.Hour)
+
+	// A soft-deleted cadence row on a contact with no live policy: the partial
+	// unique index only covers live rows, but keep the test independent of it.
+	m.CadencePolicies = append(append([]CadencePolicyEntry(nil), m.CadencePolicies...),
+		CadencePolicyEntry{Contact: "marcus", TargetIntervalDays: 7, SoftDeleted: true})
+	m.ReachOutSuggestions = append(append([]ReachOutSuggestionEntry(nil), m.ReachOutSuggestions...),
+		ReachOutSuggestionEntry{Contact: "soren", Kind: "title", OldValue: "Engineer", NewValue: "Staff engineer"})
+	m.OccasionObligations = append(append([]OccasionObligationEntry(nil), m.OccasionObligations...),
+		OccasionObligationEntry{Contact: "theo", Kind: "card", Label: "Retired anniversary card", SoftDeleted: true})
+	m.OccasionEvents = append(append([]OccasionEventEntry(nil), m.OccasionEvents...),
+		OccasionEventEntry{
+			Title:     "New Year's Eve",
+			StartsAt:  &starts,
+			EndsAt:    &ends,
+			Attendees: []OccasionEventAttendeeEntry{{Contact: "theo"}},
+		},
+		OccasionEventEntry{Title: "Cancelled picnic", StartsInDays: intPtr(5), SoftDeleted: true},
+	)
+
+	ds, err := PopulateAt(db, &m, fixedNow)
+	require.NoError(t, err)
+
+	var suggestion models.ReachOutSuggestion
+	require.NoError(t, db.Where("contact_vcard_uid = ?", ds.Contacts["soren"].VCardUID).First(&suggestion).Error)
+	assert.Equal(t, models.ReachOutStatusPending, suggestion.Status, "an omitted status defaults to pending")
+
+	var nye models.OccasionEvent
+	require.NoError(t, db.Where("title = ?", "New Year's Eve").First(&nye).Error)
+	assert.True(t, starts.Equal(nye.StartsAt), "an absolute starts_at is used verbatim, not resolved against the clock")
+	require.NotNil(t, nye.EndsAt)
+	assert.True(t, ends.Equal(*nye.EndsAt))
+	var attendee models.OccasionEventAttendee
+	require.NoError(t, db.Where("event_id = ?", nye.ID).First(&attendee).Error)
+	assert.Equal(t, models.OccasionEventRSVPPending, attendee.RSVP, "an omitted rsvp defaults to pending")
+
+	var liveCadence, deadCadence int64
+	require.NoError(t, db.Model(&models.CadencePolicy{}).Where("entity_id = ?", ds.Contacts["marcus"].VCardUID).Count(&liveCadence).Error)
+	require.NoError(t, db.Unscoped().Model(&models.CadencePolicy{}).
+		Where("entity_id = ? AND deleted_at IS NOT NULL", ds.Contacts["marcus"].VCardUID).Count(&deadCadence).Error)
+	assert.Zero(t, liveCadence)
+	assert.Equal(t, int64(1), deadCadence, "a soft_deleted cadence policy is tombstoned, not skipped")
+
+	var liveObligation, deadObligation int64
+	require.NoError(t, db.Model(&models.OccasionObligation{}).Where("label = ?", "Retired anniversary card").Count(&liveObligation).Error)
+	require.NoError(t, db.Unscoped().Model(&models.OccasionObligation{}).
+		Where("label = ? AND deleted_at IS NOT NULL", "Retired anniversary card").Count(&deadObligation).Error)
+	assert.Zero(t, liveObligation)
+	assert.Equal(t, int64(1), deadObligation)
+
+	var liveEvent, deadEvent int64
+	require.NoError(t, db.Model(&models.OccasionEvent{}).Where("title = ?", "Cancelled picnic").Count(&liveEvent).Error)
+	require.NoError(t, db.Unscoped().Model(&models.OccasionEvent{}).
+		Where("title = ? AND deleted_at IS NOT NULL", "Cancelled picnic").Count(&deadEvent).Error)
+	assert.Zero(t, liveEvent)
+	assert.Equal(t, int64(1), deadEvent)
 }
 
 func boolPtr(v bool) *bool { return &v }

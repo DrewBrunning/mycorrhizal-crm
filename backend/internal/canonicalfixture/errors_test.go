@@ -307,6 +307,31 @@ func TestPopulateRejectsUnvalidatedManifest(t *testing.T) {
 			mutate:  func(m *Manifest) { m.Activities[0].Contacts = []string{"ghost"} },
 			wantErr: `unknown contact "ghost"`,
 		},
+		{
+			name:    "cadence policy references unknown contact",
+			mutate:  func(m *Manifest) { m.CadencePolicies[0].Contact = "ghost" },
+			wantErr: `unknown contact "ghost"`,
+		},
+		{
+			name:    "reach out suggestion references unknown contact",
+			mutate:  func(m *Manifest) { m.ReachOutSuggestions[0].Contact = "ghost" },
+			wantErr: `unknown contact "ghost"`,
+		},
+		{
+			name:    "occasion obligation references unknown contact",
+			mutate:  func(m *Manifest) { m.OccasionObligations[0].Contact = "ghost" },
+			wantErr: `unknown contact "ghost"`,
+		},
+		{
+			name:    "occasion event attendee references unknown contact",
+			mutate:  func(m *Manifest) { m.OccasionEvents[0].Attendees[0].Contact = "ghost" },
+			wantErr: `unknown contact "ghost"`,
+		},
+		{
+			name:    "self contact references unknown contact",
+			mutate:  func(m *Manifest) { m.SelfContact = "ghost" },
+			wantErr: `unknown contact "ghost"`,
+		},
 	}
 
 	for _, tc := range cases {

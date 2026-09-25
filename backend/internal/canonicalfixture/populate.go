@@ -711,11 +711,16 @@ func cascadeContact(db *gorm.DB, userID uint, contact models.Contact) error {
 	if err := db.Where("contact_vcard_uid = ? AND user_id = ?", uid, userID).Delete(&models.Attachment{}).Error; err != nil {
 		return err // # pragma: no cover — a DELETE over an intact schema cannot fail; failure here means a broken invariant
 	}
-	// Cadence policy and occasion obligations are user-authored content
-	// (soft delete); reach-out suggestions and occasion-event attendee rows
-	// are system-generated / join-shaped (hard delete). Mirrors
-	// controllers.deleteContactAssociations.
+	// Cadence policy, data decay policy and occasion obligations are
+	// user-authored content (soft delete); reach-out suggestions and
+	// occasion-event attendee rows are system-generated / join-shaped (hard
+	// delete). Mirrors controllers.deleteContactAssociations for every entity
+	// the manifest can seed (data decay policies are not seeded yet; the sweep
+	// is here so the cascade doesn't silently skip them once they are).
 	if err := db.Where("entity_id = ? AND user_id = ?", uid, userID).Delete(&models.CadencePolicy{}).Error; err != nil {
+		return err // # pragma: no cover — a DELETE over an intact schema cannot fail; failure here means a broken invariant
+	}
+	if err := db.Where("entity_id = ? AND user_id = ?", uid, userID).Delete(&models.DataDecayPolicy{}).Error; err != nil {
 		return err // # pragma: no cover — a DELETE over an intact schema cannot fail; failure here means a broken invariant
 	}
 	if err := db.Where("contact_vcard_uid = ? AND user_id = ?", uid, userID).Delete(&models.ReachOutSuggestion{}).Error; err != nil {
