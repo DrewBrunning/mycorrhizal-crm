@@ -48,7 +48,7 @@ export function useAudit() {
   }, [entityType, entityId, limit]);
 
   useEffect(() => {
-    fetchEvents();
+    void fetchEvents();
   }, [fetchEvents]);
 
   // A changed filter restarts the window at the default limit -- the pageless

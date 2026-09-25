@@ -35,7 +35,7 @@ export function useJobRunHealth() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   return { data, loading, error, refresh };

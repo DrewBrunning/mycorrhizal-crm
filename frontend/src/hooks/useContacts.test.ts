@@ -158,8 +158,8 @@ test('a stale loadMore response that settles after a newer loadMore does not clo
   await waitFor(() => expect(result.current.loading).toBe(false));
 
   await act(async () => {
-    result.current.loadMore();
-    result.current.loadMore();
+    void result.current.loadMore();
+    void result.current.loadMore();
   });
 
   await act(async () => {
@@ -188,8 +188,8 @@ test('a stale loadMore failure that settles after a newer loadMore does not surf
   await waitFor(() => expect(result.current.loading).toBe(false));
 
   await act(async () => {
-    result.current.loadMore();
-    result.current.loadMore();
+    void result.current.loadMore();
+    void result.current.loadMore();
   });
 
   await act(async () => {

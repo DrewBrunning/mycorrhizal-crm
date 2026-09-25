@@ -137,7 +137,7 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
   ]);
 
   useEffect(() => {
-    fetchFirst();
+    void fetchFirst();
   }, [fetchFirst]);
 
   return {
