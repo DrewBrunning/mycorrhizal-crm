@@ -129,3 +129,49 @@ on:
 	assert.Equal(t, 2, code)
 	assert.Contains(t, out.String(), "does not exist")
 }
+
+// TestRunAtMissingWorkflowsDir covers the os.ReadDir failure branch: a repo
+// root with no .github/workflows directory at all.
+func TestRunAtMissingWorkflowsDir(t *testing.T) {
+	root := t.TempDir()
+
+	var out bytes.Buffer
+	code := runAt(&out, root)
+	assert.Equal(t, 2, code)
+	assert.Contains(t, out.String(), "cannot read "+workflowsDir)
+}
+
+// TestRunAtMalformedAlertFile covers RegisteredWorkflowNames's parse-error
+// branch: the alert workflow file exists but isn't valid YAML.
+func TestRunAtMalformedAlertFile(t *testing.T) {
+	root := t.TempDir()
+	writeWorkflow(t, root, "nightly-failure-alert.yml", "not: [valid yaml")
+
+	var out bytes.Buffer
+	code := runAt(&out, root)
+	assert.Equal(t, 2, code)
+	assert.Contains(t, out.String(), "does not parse")
+}
+
+// TestRunAtSkipsSubdirectoriesAndNonYAMLFiles covers the two directory-entry
+// `continue` branches: a subdirectory (e.g. a stray editor swap dir) and a
+// non-.yml/.yaml file under .github/workflows must both be ignored rather
+// than tripping the YAML parser.
+func TestRunAtSkipsSubdirectoriesAndNonYAMLFiles(t *testing.T) {
+	root := t.TempDir()
+	writeWorkflow(t, root, "nightly-failure-alert.yml", `
+name: Nightly failure alert
+on:
+  workflow_run:
+    workflows: []
+    types: [completed]
+`)
+	workflowsPath := filepath.Join(root, ".github", "workflows")
+	require.NoError(t, os.MkdirAll(filepath.Join(workflowsPath, "a-subdir"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(workflowsPath, "README.md"), []byte("not yaml at all"), 0o644))
+
+	var out bytes.Buffer
+	code := runAt(&out, root)
+	require.Equal(t, 0, code, out.String())
+	assert.Contains(t, out.String(), "0 scheduled workflow(s)")
+}

@@ -16,4 +16,4 @@ import (
 	"golang.org/x/tools/go/analysis/singlechecker"
 )
 
-func main() { singlechecker.Main(gormerr.Analyzer) }
+func main() { singlechecker.Main(gormerr.Analyzer) } // # pragma: no cover — singlechecker.Main parses os.Args and calls os.Exit itself; the analyzer logic it drives is tested directly in internal/lint/gormerr
