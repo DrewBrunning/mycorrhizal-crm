@@ -44,11 +44,16 @@ export default defineConfig({
     // Issue #251/#267: the project-wide number stays informational; the hard
     // gate is the diff-based codecov/patch status, which reads this lcov
     // output (per-area targets in codecov.yml; frontend is 90%). `text` for
-    // the CI log, `html` for a browsable artifact, `lcov` for Codecov.
+    // the CI log, `html` for a browsable artifact, `lcov` for Codecov. `json-summary` adds
+    // coverage/coverage-summary.json's per-file line/branch % -- the input
+    // scripts/check-coverage-ratchet.mjs (the per-file no-regression
+    // ratchet, since the patch gate alone lets a PR silently zero out an
+    // untouched file's existing tests) compares against the committed
+    // frontend/coverage-baseline.json.
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
-      reporter: ['text', 'html', 'lcov'],
+      reporter: ['text', 'html', 'lcov', 'json-summary'],
       reportsDirectory: './coverage',
     },
   },

@@ -1,4 +1,4 @@
-.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backfill-at-rest rotate-at-rest-key audit-backfill audit-verify backup backup-verify gen-contract-fixtures gen-schema-fixtures gen-api-baseline gen-compat-matrix gen-integration-matrix gen-perf-baseline gen-mutation-scope gen-config-reference help
+.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backfill-at-rest rotate-at-rest-key audit-backfill audit-verify backup backup-verify gen-contract-fixtures gen-schema-fixtures gen-api-baseline gen-compat-matrix gen-integration-matrix gen-perf-baseline gen-mutation-scope gen-config-reference gen-coverage-baseline help
 
 # Database path. The migration CLI reads SQLITE_DB_PATH (the same variable the
 # server reads), so every target below EXPORTS this rather than just echoing
@@ -89,6 +89,9 @@ gen-mutation-scope: ## Regenerate the gremlins exclude-files configs under backe
 
 gen-config-reference: ## Regenerate the configuration register (issue #933, #501 action 1-2/7) from the cfgreg struct tags on config.Config. Run when a Config field or its cfgreg tag changes; the completeness + drift tests fail until this is committed.
 	@go run ./cmd/genconfigreference
+
+gen-coverage-baseline: ## Regenerate the per-file coverage no-regression ratchet's baseline from the current backend/coverage.out (run the full suite with -coverprofile first). Keeps the existing tolerance; commit the diff -- it is the review. Frontend counterpart: `yarn coverage:ratchet:update`.
+	@go run ./cmd/coverageratchet -update
 
 backup: ## Create a consistent online snapshot of the SQLite database (VACUUM INTO; safe while the server runs)
 	@echo "Backing up $(DB_PATH)..."

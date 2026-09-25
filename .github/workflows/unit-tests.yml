@@ -914,6 +914,25 @@ jobs:
         working-directory: backend
         run: go tool cover -func=coverage.out
 
+      # Per-file no-regression ratchet (frontend counterpart: the
+      # "Per-file coverage ratchet" step in the `frontend` job below).
+      # codecov/patch/backend only judges lines a PR actually changed, so a
+      # file already at 0% stays there forever and a PR that deletes a test
+      # for a file it doesn't otherwise touch trips nothing. This compares
+      # backend/coverage.out (the same merged profile Codecov gets) against
+      # the committed internal/coverageratchet/testdata/baseline.json and
+      # fails on any file's statement coverage dropping past the baseline's
+      # tolerance. docs/development/coverage.md documents the tolerance and
+      # why it is only enforced on pull_request: the same seven legs' RAPID_
+      # CHECKS property-test iteration count is tiered by trigger event
+      # (push/schedule run far deeper than a PR), so a push-triggered run's
+      # coverage numbers are not comparable to the PR-tier baseline this
+      # ratchet is generated from.
+      - name: Per-file coverage ratchet (pull_request only)
+        if: github.event_name == 'pull_request' && needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
+        working-directory: backend
+        run: go run ./cmd/coverageratchet
+
       - name: Render HTML coverage report
         if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
         working-directory: backend
@@ -985,6 +1004,20 @@ jobs:
         run: yarn test:coverage
         env:
           CI: true
+
+      # Per-file no-regression ratchet (backend counterpart:
+      # cmd/coverageratchet in the `backend` job below). Codecov's
+      # codecov/patch/frontend status only judges changed lines -- a file
+      # already at 0% stays there forever, and a PR that deletes tests for a
+      # file it doesn't otherwise touch trips nothing. This compares
+      # coverage/coverage-summary.json (json-summary reporter, just produced
+      # above) against the committed frontend/coverage-baseline.json and
+      # fails on any file's line/branch % dropping more than the baseline's
+      # tolerance. docs/development/coverage.md documents the tolerance
+      # rationale and the `yarn coverage:ratchet:update` regeneration path.
+      - name: Per-file coverage ratchet
+        working-directory: frontend
+        run: yarn coverage:ratchet
 
       # Issue #294: see the backend job's identical step for why
       # fail_ci_if_error is false.
