@@ -336,7 +336,7 @@ times.
 
 ### 5. Session cookie flags (ASVS V3.4: HttpOnly/Secure/SameSite)
 
-**Keep, verified against the exact code.** `backend/controllers/user_controller.go:234-243` sets the
+**Keep, verified against the exact code.** `backend/controllers/user_controller.go:239-248` sets the
 session cookie `HttpOnly` (always), `Secure = cfg.CookieSecure`, and `SameSite=Strict` — tightened
 from `Lax` by issue #392, which closed the residual sibling-subdomain/CSRF gap `Lax` left open. The
 only cookies still deliberately `Lax` are the transient OIDC handshake cookies — `oidc_state`/`oidc_nonce`/`oidc_pkce`

@@ -319,7 +319,7 @@ func exportViaDiscard(e *Env, handler func(*gin.Context), path string) (int64, e
 // the "rows touched" figure for an export.
 func liveContactCount(e *Env) int {
 	var n int64
-	e.seedDB.Model(&models.Contact{}).Where("user_id = ?", e.UserID).Count(&n)
+	mustCount(e.seedDB.Model(&models.Contact{}).Where("user_id = ?", e.UserID).Count(&n), "contacts")
 	return int(n)
 }
 
@@ -329,9 +329,9 @@ func liveContactCount(e *Env) int {
 func hubEdgeCount(e *Env) int {
 	uid := e.HubContact.VCardUID
 	var n int64
-	e.seedDB.Table("relationship_edges").
+	mustCount(e.seedDB.Table("relationship_edges").
 		Where("source_id = ? OR target_id = ?", uid, uid).
-		Count(&n)
+		Count(&n), "relationship_edges")
 	return int(n)
 }
 
@@ -347,6 +347,15 @@ func fileSize(path string) int64 {
 // tableRowCount counts every row in a table on db (unscoped raw count).
 func tableRowCount(db *gorm.DB, table string) int {
 	var n int64
-	db.Table(table).Count(&n)
+	mustCount(db.Table(table).Count(&n), table)
 	return int(n)
+}
+
+// mustCount panics on a failed Count. These figures are the committed
+// rows-touched baseline (PERF-03); a swallowed error would read as 0 and
+// silently rewrite or mis-gate that baseline instead of failing the run.
+func mustCount(res *gorm.DB, what string) {
+	if res.Error != nil {
+		panic(fmt.Sprintf("perfbench: counting %s: %v", what, res.Error)) // # pragma: no cover — a count on the harness's own seeded DB
+	}
 }

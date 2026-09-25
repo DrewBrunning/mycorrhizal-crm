@@ -465,6 +465,14 @@ jobs:
         working-directory: backend
         run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 run ./...
 
+      # CLAUDE.md backend trap #4: a GORM finisher (Create/Save/Updates/
+      # Delete/First/Find/Exec/...) returns *gorm.DB, not error, so errcheck
+      # cannot see a discarded `.Error`. This repo-local analyzer
+      # (backend/internal/lint/gormerr) flags every one in non-test code.
+      - name: Lint (gormerrcheck — unchecked GORM .Error)
+        working-directory: backend
+        run: go run ./cmd/gormerrcheck ./...
+
   backend-tests:
     permissions:
       contents: read

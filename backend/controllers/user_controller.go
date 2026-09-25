@@ -60,8 +60,13 @@ func RegisterUser(cfg *config.Config) gin.HandlerFunc {
 		db := context.MustGet("db").(*gorm.DB)
 
 		// Grant admin to the first registered user
+		// A failed Count must abort: left unchecked, userCount stays 0 and a
+		// transient DB error would grant admin to a non-first registrant.
 		var userCount int64
-		db.Model(&models.User{}).Count(&userCount)
+		if err := db.Model(&models.User{}).Count(&userCount).Error; err != nil {
+			apperrors.AbortWithError(context, apperrors.ErrDatabase("count users").WithError(err))
+			return
+		}
 
 		user := models.User{
 			Username: strings.ToLower(input.Username),

@@ -193,7 +193,7 @@ last runs on `main` are green, not that they were re-executed here.
 | `backend/httputil/fetch_test.go`, `services/webhook_ssrf_test.go`, `webhook_ssrf_integration_test.go`, `notification_service_test.go` (#373) | SSRF guard on the live webhook delivery path and the push path, not just the dialer in isolation. | PR |
 | `backend/models/audit_chain.go` + `cmd/audit-verify` (#381) | Tamper-evidence: each `AuditEvent` commits `SHA-256(prev_hash ‖ content)`, a `BEFORE UPDATE` trigger rejects edits, and the operator can verify the chain out-of-band. | PR + operator |
 | `database/concurrent_write_test.go` | `_txlock=immediate` — the DSN flag without which concurrent writes 500 with `database is locked` in under 5 ms. | PR |
-| CodeQL, Trivy (misconfig + secret), zizmor, actionlint, shellcheck, golangci-lint (gosec + bodyclose + errcheck/errorlint/staticcheck correctness set), govulncheck, Dependency Review | SAST/SCA/workflow-security hard gates. | PR |
+| CodeQL, Trivy (misconfig + secret), zizmor, actionlint, shellcheck, golangci-lint (gosec + bodyclose + errcheck/errorlint/staticcheck correctness set), gormerrcheck (unchecked GORM `.Error`), govulncheck, Dependency Review | SAST/SCA/workflow-security hard gates. | PR |
 | Signed SBOM (`syft-sbom.yml`), Grype, TruffleHog git-history | Supply-chain second opinions. | main |
 | Mutation testing (Stryker frontend, gremlins backend — issue #915), full-length fuzz, CIS container hardening | Test-suite quality and container baseline. | nightly |
 | **`backend/cmd/citecheck` (this pass)** | Every citation in the security checklists resolves, and no `satisfied` row cites nothing. | PR |

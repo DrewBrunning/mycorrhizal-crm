@@ -277,7 +277,9 @@ func TestWebhookDelivery(db *gorm.DB, cfg config.Config, wh models.Webhook) mode
 	if err != nil {
 		errStr := err.Error()
 		d := models.WebhookDelivery{WebhookID: wh.ID, EventType: "test", Payload: "{}", Error: &errStr, Attempts: 1}
-		db.Create(&d)
+		if cerr := db.Create(&d).Error; cerr != nil {
+			logger.Error().Err(cerr).Uint("webhook_id", wh.ID).Msg("Failed to record failed test webhook delivery")
+		}
 		return d
 	}
 	return deliverWebhook(context.Background(), db, cfg, wh, "test", body, 1)
@@ -494,7 +496,9 @@ func ProcessWebhookRetries(db *gorm.DB, cfg config.Config) {
 		var wh models.Webhook
 		if err := db.Where("id = ? AND is_active = ?", d.WebhookID, true).First(&wh).Error; err != nil {
 			logger.Warn().Err(err).Uint("webhook_id", d.WebhookID).Msg("Webhook not found or inactive for retry")
-			db.Model(&d).Update("next_retry_at", nil)
+			if uerr := db.Model(&d).Update("next_retry_at", nil).Error; uerr != nil {
+				logger.Error().Err(uerr).Uint("delivery_id", d.ID).Msg("Failed to clear next_retry_at for an orphaned delivery")
+			}
 			continue
 		}
 
