@@ -153,3 +153,60 @@ test('surfaces a load error from the hook', () => {
   render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
   expect(screen.getByText('load boom')).toBeInTheDocument();
 });
+
+// Error paths pinned directly: the per-file coverage ratchet showed these were
+// only hit incidentally (by other test files, order-dependently), so a CI run
+// that didn't exercise them read as a coverage drop.
+
+test('a successful suggested add clears the suggestion list', async () => {
+  const clearSuggestions = vi.fn();
+  vi.mocked(useOccasionEventAttendees).mockReturnValue(
+    makeHookReturn({
+      clearSuggestions,
+      suggestions: [{ contact_id: 5, contact_name: 'Bob', entity_id: 'uid-5' }],
+    }),
+  );
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+  clearSuggestions.mockClear(); // the open effect clears once on mount
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+  await waitFor(() => expect(clearSuggestions).toHaveBeenCalledTimes(1));
+});
+
+test('a failed suggested add surfaces an error and keeps the suggestions', async () => {
+  const clearSuggestions = vi.fn();
+  vi.mocked(useOccasionEventAttendees).mockReturnValue(
+    makeHookReturn({
+      clearSuggestions,
+      handleAdd: vi.fn().mockRejectedValue(new Error('boom')),
+      suggestions: [{ contact_id: 5, contact_name: 'Bob', entity_id: 'uid-5' }],
+    }),
+  );
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+  clearSuggestions.mockClear();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+  expect(await screen.findByText('Failed to update the attendee.')).toBeInTheDocument();
+  expect(clearSuggestions).not.toHaveBeenCalled();
+});
+
+test('a failed RSVP change surfaces an error', async () => {
+  vi.mocked(useOccasionEventAttendees).mockReturnValue(
+    makeHookReturn({ handleUpdateRsvp: vi.fn().mockRejectedValue(new Error('boom')) }),
+  );
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: /rsvp/i }));
+  fireEvent.click(await screen.findByRole('option', { name: 'Declined' }));
+  expect(await screen.findByText('Failed to update the attendee.')).toBeInTheDocument();
+});
+
+test('a failed circle load leaves the circle picker empty instead of crashing', async () => {
+  vi.mocked(listCircles).mockRejectedValue(new Error('boom'));
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+
+  await waitFor(() => expect(listCircles).toHaveBeenCalled());
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: /circles/i }));
+  expect(screen.queryByRole('option', { name: 'Friends' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Suggest' })).toBeDisabled();
+});
