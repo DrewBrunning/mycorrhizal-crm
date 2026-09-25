@@ -16,7 +16,7 @@ items below are recurring bug classes that have shipped broken more than once.
 | `docs/specs/` | Curated RFC 6350/2426/9553/9554/9555 excerpts — the external ground truth. |
 | `docs/golden-fixtures/` | Verbatim RFC example cards — the external test oracle. |
 | `backend/` | Go. Gin + GORM + SQLite, raw-SQL migrations. |
-| `frontend/` | React 18 + TypeScript + MUI + vitest + Playwright. |
+| `frontend/` | React 19 + TypeScript + MUI + vitest + Playwright. |
 
 **Real production data exists as of `v0.2.0-alpha-candidate`.** The user deployed that tag to their own
 server (Docker) for real-world testing on 2026-08-04. Every commit before that tag was written under the
@@ -69,6 +69,15 @@ hand-edited. A backend response-shape change is: edit the `example:` (and schema
 regenerate, commit the fixture diff. The drift test `backend/contract_fixtures_test.go` fails CI until
 they're regenerated; the spec's own validator rejects an example that doesn't fit its schema, so the
 fixtures can't silently drift from the documented contract.
+
+Generated TS API types: `frontend/src/generated/openapi.ts` is **generated** from openapi.yaml's
+`components.schemas` by `cd backend && go run ./cmd/gentsapi` (or `make gen-ts-api`) — never
+hand-edited; drift test `backend/tsapi_types_test.go`. The hand-written types in `src/api/*.ts` are
+pinned to it by `frontend/src/api/contractConformance.ts` (types only, imported by nothing): `tsc`
+fails if a hand-written response type invents a field, mistypes one, or requires a field the spec
+marks optional (frontend trap #8), or if a hand-mirrored enum list drifts (trap #4). Deliberate
+differences go in that file's commented `DeliberateException` register. A response-shape change is
+therefore: schema + example in openapi.yaml → `gentsapi` + `gencontract` → fix whatever `tsc` flags.
 
 Field compatibility matrix (DATA-01, issue #441): `docs/data-01-field-compatibility-matrix.md` is
 **generated** from the correspondence oracle + the issue #515 audit by
@@ -194,6 +203,13 @@ misreported `TIMED OUT`, not `LIVED` or `KILLED`. This produced a false 218/234-
 before priming the cache. `go-mutation.yml` runs `go clean -testcache` immediately before every
 `gremlins unleash` invocation for exactly this reason — don't remove it.
 
+**Nightly failure alerting:** the scheduled tier is the only zero-retry run (PR/push retry flakes
+once), so a red nightly *is* the flake signal. `.github/workflows/nightly-failure-alert.yml` opens (or
+comments on) a `nightly-failure` issue per workflow when a `schedule` run fails and closes it on the
+next green one. Its `workflow_run.workflows` list must equal the set of workflows with a `schedule:`
+trigger — `cd backend && go run ./cmd/nightlyalertcheck` (docs-citations job) fails otherwise, so
+adding a scheduled workflow means registering it there.
+
 **Breaking-change policy (MAINT-02, issue #491):** the `/api/v1` contract surface is pinned by a
 frozen baseline (`backend/internal/apibaseline/testdata/v1.json`) generated from `backend/openapi.yaml`
 by `cd backend && go run ./cmd/genapibaseline` (or `make gen-api-baseline`). The drift test
@@ -293,9 +309,12 @@ needs running per worktree, not just once per clone.
 - **Always:** a client-side secret scan (`gitleaks`, issue #376 — predates this section; see
   `README-developer.md`), fail-closed on a missing `gitleaks` binary.
 - **Staged `backend/` files:** `gofmt -l`, `go build ./...`, `go vet ./...`, `golangci-lint` (pinned
-  to the same v2.12.2 `unit-tests.yml` uses), plus the contract-fixtures/DATA-01/INT-01/API-baseline
-  generated-artifact drift tests (targeted `go test -run`, not the full suite).
-- **Staged `frontend/` files:** `tsc --noEmit`, `biome ci`, `eslint` (`yarn lint`).
+  to the same v2.14.0 `unit-tests.yml` uses; errcheck/errorlint/staticcheck/unused on non-test code),
+  `gormerrcheck` (discarded GORM `.Error`, trap #4), plus the contract-fixtures/DATA-01/INT-01/API-baseline
+  generated-artifact drift tests (incl. generated TS types; targeted `go test -run`, not the full
+  suite).
+- **Staged `frontend/` files:** `tsc --noEmit`, `biome ci`, `eslint` (`yarn lint` — type-aware:
+  `no-floating-promises`/`no-misused-promises`/`await-thenable` are errors).
 - **Always:** the six docs-citations/governance checks (`citecheck`, `depexceptions`, `deprecations`,
   `docscheck`, `releasegatecheck`, `governancecheck`) — CI runs these unconditionally too, since
   `docs/**` maps to nothing in `.github/filters.yaml`.
@@ -347,18 +366,36 @@ reported contexts** — if a `codecov/patch*` check ever sits stuck as "expected
 waiting for status", the ruleset is requiring a context Codecov no longer reports
 and must be re-pointed at the current names.
 
+The patch gate alone lets an old file sit at 0% forever and lets a PR delete tests from a file it
+doesn't otherwise touch. The complement is a **per-file no-regression ratchet** (not an absolute
+floor): committed per-file baselines `frontend/coverage-baseline.json` and
+`backend/internal/coverageratchet/testdata/baseline.json`, checked in `unit-tests.yml` (backend on
+`pull_request` only — deeper property-test tiers aren't comparable). A file may not drop more than the
+documented tolerance below its baseline. When tests are added, raise the baseline in the same PR
+(`cd frontend && yarn test:coverage && yarn coverage:ratchet:update`; `cd backend && make
+gen-coverage-baseline`); lowering one is a reviewed diff with a reason.
+
 ## Backend traps
 
 These are real bugs that shipped, not hypotheticals.
 
 1. **Test against the real migrated schema, not `AutoMigrate`.** GORM's column-name derivation silently
    disagrees with the hand-written migration SQL, and `AutoMigrate`-based tests cannot see it. Use
-   `database.InitDB(filepath.Join(t.TempDir(), "x.db"))` for anything touching persistence.
+   `dbtest.New(t)` (the real migrated schema) for anything touching persistence — including the shared
+   `setupRouter(t)` controller helper. `internal/dbtest/automigrate_ratchet_test.go` fails on any new
+   `AutoMigrate`/`Migrator().CreateTable` call; to test a "table missing" error path use
+   `dbtest.HideTable`. `models/schema_parity_test.go` pins every model's GORM columns **and** tag
+   defaults to the migrated schema — a new model must be added to its registry (a completeness scan
+   enforces it).
    - `HouseholdMember.MemberVCardUID` → GORM derived `member_v_card_uid`, migration said
      `member_vcard_uid`. Caught by a real-DB test.
    - `ContactSyncLink.ETag` → GORM wrote `e_tag`; the column is `etag`. **Shipped broken**, would have
      silently killed CardDAV incremental sync. Add explicit `gorm:"column:..."` tags for anything with an
      acronym or unusual casing.
+   - `gorm:"default:true"` / non-zero numeric defaults on plain `bool`/`int` fields: GORM treats an
+     explicit `false`/`0` as "unset" and writes the default instead (#1240; also calendars,
+     contact subscriptions and Immich config). The parity test rejects these outside a reviewed
+     allowlist.
 
 2. **Never set `Card`/`CRM` by direct field mutation before `Create`.** `BeforeSave` derives the flat
    denormalized columns from the nested model; mutating the struct field directly skips it and your data
@@ -381,7 +418,9 @@ These are real bugs that shipped, not hypotheticals.
      visible. A `data:`-URI photo entry with no flat photo is still dropped (that is a real delete).
 
 4. **Check `.Error` on every `db.Updates`/`db.Save`.** Three sites silently swallowed failures until
-   audited.
+   audited. Now enforced for non-test code by `cd backend && go run ./cmd/gormerrcheck ./...`
+   (`internal/lint/gormerr`, in CI and the pre-commit hook); errcheck can't see these because GORM
+   returns `*gorm.DB`, not `error`.
 
 5. **Ownership scoping is not optional.** Every handler scopes by `user_id` (or `Contact.VCardUID` for
  + graph entities). There are zero IDOR holes today — keep it that way.
@@ -501,8 +540,8 @@ These are real bugs that shipped, not hypotheticals.
   are the most recent, most complete example of the full pattern — copy that shape.
 - **TypeScript is intentionally capped at 6.x** (`typescript ^6.0.3`). TypeScript 7 is the Go-native
   rewrite (`tsgo`): its npm package ships no classic JS compiler API (`lib/typescript.js` gone, only
-  `./unstable/*` exports) and no `tsserver`, so `typescript-eslint`'s typed linting — which this repo's
-  whole `eslint.config.js` depends on — cannot load it. Latest `typescript-eslint@8.68.0` (stable and
+  `./unstable/*` exports) and no `tsserver`, so `typescript-eslint`'s typed linting — which `eslint.config.js`'s
+  `projectService` promise-safety rules depend on — cannot load it. Latest `typescript-eslint@8.68.0` (stable and
   canary) declares peer `typescript >=4.8.4 <6.1.0`; the cap is load-bearing, not advisory. Revisit when
   the toolchain supports TS 7.
 - **`nanoid` is locked to `^3.3.18` in `resolutions`** (a security pin for GHSA-2v37-7h3g-55p8 /
