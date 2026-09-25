@@ -1,0 +1,19 @@
+{
+  "limit": 25,
+  "next_cursor": "",
+  "relationship_edges": [
+    {
+      "confidence": 1,
+      "created_at": "2026-08-21T00:08:50Z",
+      "directional": false,
+      "id": "4535c2cb-34a1-4471-a195-ad18f7957a49",
+      "sensitivity": "normal",
+      "source": "user-confirmed",
+      "source_id": "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f",
+      "status": "confirmed",
+      "target_id": "0836c948-4c37-4ac8-bb27-358936e6b67c",
+      "type": "friend_of",
+      "updated_at": "2026-08-21T00:08:50Z"
+    }
+  ]
+}

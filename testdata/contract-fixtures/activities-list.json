@@ -1,0 +1,18 @@
+{
+  "activities": [
+    {
+      "CreatedAt": "2026-08-21T00:08:43Z",
+      "DeletedAt": null,
+      "ID": 2,
+      "UpdatedAt": "2026-08-21T00:08:43Z",
+      "date": "2026-08-20T18:00:00Z",
+      "description": "",
+      "location": "",
+      "revision": 1,
+      "title": "Fixture activity",
+      "uuid": "56c3cf8a-2c2e-4e9d-a5c4-fa0081de1d32"
+    }
+  ],
+  "limit": 25,
+  "next_cursor": ""
+}

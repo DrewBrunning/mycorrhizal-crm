@@ -10,6 +10,18 @@ bug class (null-vs-absent, required-field crashes) this pins.
 - `contact-detail.json` — `GET /api/v1/contacts/:id/detail` (web-only fixture;
   Android's `ApiClient` has no method for this composite endpoint yet)
 - `dashboard.json` — `GET /api/v1/dashboard`
+- Web-only list fixtures (Android reads fixtures by name and uses only the two
+  above): `contact-notes.json` (`GET /contacts/:id/notes`),
+  `activities-list.json` (`GET /activities`), `contact-reminders.json`
+  (`GET /contacts/:id/reminders`), `relationship-edges-list.json`
+  (`GET /relationship-edges`), `life-events-list.json` (`GET /life-events`),
+  `circles-list.json` (`GET /circles`), `tags-list.json` (`GET /tags`),
+  `occasion-events-list.json` (`GET /occasion-events`)
+
+The field-level shape (required vs optional, nullability, enums) of these and
+every other schema is also checked at compile time: `backend/cmd/gentsapi`
+generates `frontend/src/generated/openapi.ts` from the same spec, and
+`frontend/src/api/contractConformance.ts` pins the hand-written TS types to it.
 
 Consumed directly by:
 - `frontend/src/api/contractFixtures.test.ts` (via TS `import`, no copying)

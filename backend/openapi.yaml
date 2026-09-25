@@ -3189,6 +3189,7 @@ paths:
                   limit: { type: integer }
                   sync:
                     $ref: "#/components/schemas/SyncInfo"
+              example: {"relationship_edges": [{"id": "4535c2cb-34a1-4471-a195-ad18f7957a49", "created_at": "2026-08-21T00:08:50Z", "updated_at": "2026-08-21T00:08:50Z", "source_id": "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f", "target_id": "0836c948-4c37-4ac8-bb27-358936e6b67c", "type": "friend_of", "directional": false, "source": "user-confirmed", "confidence": 1, "status": "confirmed", "sensitivity": "normal"}], "next_cursor": "", "limit": 25}
     post:
       summary: Create a relationship edge
       operationId: createRelationshipEdge
@@ -3665,6 +3666,7 @@ paths:
                     type: string
                     description: Resume token for the next page; empty when there are no more rows.
                   limit: { type: integer }
+              example: {"notes": [{"ID": 2, "CreatedAt": "2026-08-21T00:08:42Z", "UpdatedAt": "2026-08-21T00:08:42Z", "DeletedAt": null, "content": "Contract fixture note", "date": "2026-08-20T18:00:00Z", "contact_id": 11, "revision": 1}, {"ID": 3, "CreatedAt": "2026-08-21T00:09:42Z", "UpdatedAt": "2026-08-21T00:09:42Z", "DeletedAt": null, "content": "Unfiled fixture note", "date": "2026-08-20T19:00:00Z", "contact_id": null, "revision": 2}], "next_cursor": "", "limit": 25}
         "400":
           description: Malformed cursor.
           content:
@@ -4044,6 +4046,7 @@ paths:
                   limit: { type: integer }
                   sync:
                     $ref: "#/components/schemas/SyncInfo"
+              example: {"activities": [{"ID": 2, "CreatedAt": "2026-08-21T00:08:43Z", "UpdatedAt": "2026-08-21T00:08:43Z", "DeletedAt": null, "uuid": "56c3cf8a-2c2e-4e9d-a5c4-fa0081de1d32", "title": "Fixture activity", "description": "", "location": "", "date": "2026-08-20T18:00:00Z", "revision": 1}], "next_cursor": "", "limit": 25}
     post:
       summary: Create an activity
       operationId: createActivity
@@ -4229,6 +4232,7 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/CircleMember"
+              example: {"circles": [{"id": "e7d59493-5f47-4fff-88e0-7d1ba44604df", "created_at": "2026-08-21T00:08:47Z", "updated_at": "2026-08-21T00:08:47Z", "name": "contract-fixture-circle"}], "total": 1, "next_cursor": "", "limit": 25}
     post:
       summary: Create a circle
       operationId: createCircle
@@ -4891,6 +4895,7 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/ContactTag"
+              example: {"tags": [{"id": "99814236-a948-4083-b6a9-d9ae4deb335d", "created_at": "2026-08-21T00:08:48Z", "updated_at": "2026-08-21T00:08:48Z", "name": "contract-fixture"}], "total": 1, "next_cursor": "", "limit": 25}
     post:
       summary: Create a tag
       operationId: createTag
@@ -5330,6 +5335,7 @@ paths:
                   limit: { type: integer }
                   sync:
                     $ref: "#/components/schemas/SyncInfo"
+              example: {"life_events": [{"id": "c06177b1-e498-43c7-9821-7a6669411a04", "created_at": "2026-08-21T00:08:45Z", "updated_at": "2026-08-21T00:08:45Z", "entity_id": "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f", "type": "graduated", "category": "work_education", "date": {"year": 2020, "month": 6}, "description": "Fixture life event", "revision": 1}], "next_cursor": "", "limit": 25}
     post:
       summary: Create a life event
       operationId: createLifeEvent
@@ -6395,6 +6401,7 @@ paths:
                   limit: { type: integer }
                   sync:
                     $ref: "#/components/schemas/SyncInfo"
+              example: {"occasion_events": [{"id": "7b1e0c52-5d8a-4f7e-9a51-2f3c4d5e6f70", "created_at": "2026-08-21T00:08:51Z", "updated_at": "2026-08-21T00:08:51Z", "title": "Fixture dinner", "starts_at": "2026-09-01T18:00:00Z", "location": "Fixture Hall", "sensitivity": "normal"}], "total": 1, "next_cursor": "", "limit": 25}
     post:
       summary: Create an occasion event
       operationId: createOccasionEvent
@@ -7194,6 +7201,7 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Reminder"
+              example: {"reminders": [{"ID": 2, "CreatedAt": "2026-08-21T00:08:44Z", "UpdatedAt": "2026-08-21T00:08:44Z", "DeletedAt": null, "message": "Fixture reminder", "by_mail": null, "remind_at": "2026-08-22T00:00:00Z", "recurrence": "once", "reoccur_from_completion": false, "completed": false, "email_sent": false, "last_sent": null, "contact_id": 11, "revision": 1}]}
         "404":
           description: Contact not found.
           content:
