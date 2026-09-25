@@ -10,14 +10,14 @@
       "expected_growth": "constant",
       "profiles": {
         "smoke": {
-          "queries": 1,
-          "result_size": 0,
-          "row_scale": 324
+          "queries": 3,
+          "result_size": 5,
+          "row_scale": 350
         },
         "typical": {
-          "queries": 1,
-          "result_size": 0,
-          "row_scale": 918
+          "queries": 3,
+          "result_size": 27,
+          "row_scale": 945
         }
       }
     },
@@ -28,12 +28,12 @@
         "smoke": {
           "queries": 8,
           "result_size": 0,
-          "row_scale": 324
+          "row_scale": 350
         },
         "typical": {
           "queries": 8,
           "result_size": 0,
-          "row_scale": 918
+          "row_scale": 945
         }
       }
     },
@@ -44,12 +44,12 @@
         "smoke": {
           "queries": 25,
           "result_size": 0,
-          "row_scale": 324
+          "row_scale": 350
         },
         "typical": {
           "queries": 25,
           "result_size": 0,
-          "row_scale": 918
+          "row_scale": 945
         }
       }
     },
@@ -60,12 +60,12 @@
         "smoke": {
           "queries": 20,
           "result_size": 0,
-          "row_scale": 324
+          "row_scale": 350
         },
         "typical": {
           "queries": 20,
           "result_size": 0,
-          "row_scale": 918
+          "row_scale": 945
         }
       }
     },
@@ -76,12 +76,12 @@
         "smoke": {
           "queries": 1,
           "result_size": 2,
-          "row_scale": 324
+          "row_scale": 350
         },
         "typical": {
           "queries": 1,
           "result_size": 2,
-          "row_scale": 918
+          "row_scale": 945
         }
       }
     },
@@ -92,12 +92,12 @@
         "smoke": {
           "queries": 1,
           "result_size": 50,
-          "row_scale": 324
+          "row_scale": 350
         },
         "typical": {
           "queries": 1,
           "result_size": 50,
-          "row_scale": 918
+          "row_scale": 945
         }
       }
     },
@@ -108,12 +108,12 @@
         "smoke": {
           "queries": 109,
           "result_size": 0,
-          "row_scale": 324
+          "row_scale": 350
         },
         "typical": {
           "queries": 109,
           "result_size": 0,
-          "row_scale": 918
+          "row_scale": 945
         }
       }
     },
@@ -124,12 +124,12 @@
         "smoke": {
           "queries": 11,
           "result_size": 0,
-          "row_scale": 324
+          "row_scale": 350
         },
         "typical": {
           "queries": 11,
           "result_size": 0,
-          "row_scale": 918
+          "row_scale": 945
         }
       }
     },
@@ -138,14 +138,14 @@
       "expected_growth": "constant",
       "profiles": {
         "smoke": {
-          "queries": 9,
+          "queries": 12,
           "result_size": 0,
-          "row_scale": 324
+          "row_scale": 350
         },
         "typical": {
-          "queries": 9,
+          "queries": 12,
           "result_size": 0,
-          "row_scale": 918
+          "row_scale": 945
         }
       }
     },
@@ -156,12 +156,12 @@
         "smoke": {
           "queries": 41,
           "result_size": 0,
-          "row_scale": 324
+          "row_scale": 350
         },
         "typical": {
           "queries": 41,
           "result_size": 0,
-          "row_scale": 918
+          "row_scale": 945
         }
       }
     },
@@ -171,13 +171,13 @@
       "profiles": {
         "smoke": {
           "queries": 5,
-          "result_size": 306,
-          "row_scale": 324
+          "result_size": 275,
+          "row_scale": 350
         },
         "typical": {
           "queries": 5,
-          "result_size": 11254,
-          "row_scale": 918
+          "result_size": 9504,
+          "row_scale": 945
         }
       }
     },
@@ -187,13 +187,13 @@
       "profiles": {
         "smoke": {
           "queries": 1,
-          "result_size": 12,
-          "row_scale": 324
+          "result_size": 10,
+          "row_scale": 350
         },
         "typical": {
           "queries": 1,
           "result_size": 50,
-          "row_scale": 918
+          "row_scale": 945
         }
       }
     },
@@ -204,12 +204,12 @@
         "smoke": {
           "queries": 3,
           "result_size": 10,
-          "row_scale": 324
+          "row_scale": 350
         },
         "typical": {
           "queries": 3,
           "result_size": 10,
-          "row_scale": 918
+          "row_scale": 945
         }
       }
     },
@@ -219,13 +219,13 @@
       "profiles": {
         "smoke": {
           "queries": 2,
-          "result_size": 29,
-          "row_scale": 324
+          "result_size": 24,
+          "row_scale": 350
         },
         "typical": {
           "queries": 2,
-          "result_size": 169,
-          "row_scale": 918
+          "result_size": 134,
+          "row_scale": 945
         }
       }
     },
@@ -235,13 +235,13 @@
       "profiles": {
         "smoke": {
           "queries": 2,
-          "result_size": 29,
-          "row_scale": 324
+          "result_size": 24,
+          "row_scale": 350
         },
         "typical": {
           "queries": 2,
-          "result_size": 169,
-          "row_scale": 918
+          "result_size": 134,
+          "row_scale": 945
         }
       }
     },
@@ -251,13 +251,13 @@
       "profiles": {
         "smoke": {
           "queries": 2,
-          "result_size": 9,
-          "row_scale": 324
+          "result_size": 8,
+          "row_scale": 350
         },
         "typical": {
           "queries": 2,
-          "result_size": 30,
-          "row_scale": 918
+          "result_size": 29,
+          "row_scale": 945
         }
       }
     },
@@ -268,12 +268,12 @@
         "smoke": {
           "queries": 5,
           "result_size": 0,
-          "row_scale": 324
+          "row_scale": 350
         },
         "typical": {
           "queries": 5,
           "result_size": 0,
-          "row_scale": 918
+          "row_scale": 945
         }
       }
     }

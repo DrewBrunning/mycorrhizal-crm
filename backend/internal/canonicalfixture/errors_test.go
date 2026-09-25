@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"mycorrhizal/internal/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func intPtr(v int) *int { return &v }
 
 // TestManifestValidateRejectsBreakages is the table-driven counterpart of the
 // happy-path Read() tests: each case breaks exactly one manifest invariant and
@@ -131,6 +134,46 @@ func TestManifestValidateRejectsBreakages(t *testing.T) {
 			name:    "activity contact references unknown contact",
 			mutate:  func(m *Manifest) { m.Activities[0].Contacts[0] = "ghost" },
 			wantErr: `activity contact references unknown contact "ghost"`,
+		},
+		{
+			name:    "activity without date or days_ago",
+			mutate:  func(m *Manifest) { m.Activities[0].Date = time.Time{} },
+			wantErr: "must set date or days_ago",
+		},
+		{
+			name:    "activity with both date and days_ago",
+			mutate:  func(m *Manifest) { m.Activities[0].DaysAgo = intPtr(5) },
+			wantErr: "sets both date and days_ago",
+		},
+		{
+			name:    "self_contact references unknown contact",
+			mutate:  func(m *Manifest) { m.SelfContact = "ghost" },
+			wantErr: `self_contact references unknown contact "ghost"`,
+		},
+		{
+			name:    "cadence policy references unknown contact",
+			mutate:  func(m *Manifest) { m.CadencePolicies[0].Contact = "ghost" },
+			wantErr: `cadence_policy references unknown contact "ghost"`,
+		},
+		{
+			name:    "reach out suggestion references unknown contact",
+			mutate:  func(m *Manifest) { m.ReachOutSuggestions[0].Contact = "ghost" },
+			wantErr: `reach_out_suggestion references unknown contact "ghost"`,
+		},
+		{
+			name:    "occasion obligation references unknown contact",
+			mutate:  func(m *Manifest) { m.OccasionObligations[0].Contact = "ghost" },
+			wantErr: `occasion_obligation references unknown contact "ghost"`,
+		},
+		{
+			name:    "occasion event attendee references unknown contact",
+			mutate:  func(m *Manifest) { m.OccasionEvents[0].Attendees[0].Contact = "ghost" },
+			wantErr: `occasion_event attendee references unknown contact "ghost"`,
+		},
+		{
+			name:    "occasion event without start",
+			mutate:  func(m *Manifest) { m.OccasionEvents[0].StartsInDays = nil },
+			wantErr: "must set starts_at or starts_in_days",
 		},
 	}
 

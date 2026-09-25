@@ -36,7 +36,14 @@ import (
 // understands. The manifest carries a matching "version" field; bumping the
 // schema means bumping both, and that diff is the reviewable record the
 // "version it" requirement (issue #430) is about.
-const ManifestVersion = 1
+//
+// Version 2 (the v1.2.0 fixture refresh) adds: the self-contact pointer,
+// cadence policies, reach-out suggestions and occasion obligations/events
+// sections; life-event end dates; preference proficiency levels; custom-field
+// display positions; and the optional demo-relative `days_ago` timing on
+// contacts and activities (resolved against an injectable clock, so the demo
+// dataset stays fresh while tests pin a fixed reference time).
+const ManifestVersion = 2
 
 // ManifestRelPath is the manifest's repo-root-relative path, mirroring
 // contractfixtures.FixturesDir's role for the contract fixtures.
@@ -44,22 +51,27 @@ const ManifestRelPath = "testdata/canonical-fixture/manifest.json"
 
 // Manifest is the parsed form of testdata/canonical-fixture/manifest.json.
 type Manifest struct {
-	Version            int                     `json:"version"`
-	Description        string                  `json:"description,omitempty"`
-	User               ManifestUser            `json:"user"`
-	Contacts           []ContactEntry          `json:"contacts"`
-	Notes              []NoteEntry             `json:"notes,omitempty"`
-	LifeEvents         []LifeEventEntry        `json:"life_events,omitempty"`
-	Gifts              []GiftEntry             `json:"gifts,omitempty"`
-	Relationships      []RelationshipEntry     `json:"relationships,omitempty"`
-	Households         []HouseholdEntry        `json:"households,omitempty"`
-	Circles            []CircleEntry           `json:"circles,omitempty"`
-	Tags               []TagEntry              `json:"tags,omitempty"`
-	CustomFields       []CustomFieldEntry      `json:"custom_fields,omitempty"`
-	Preferences        []PreferenceEntry       `json:"preferences,omitempty"`
-	ExternalIdentities []ExternalIdentityEntry `json:"external_identities,omitempty"`
-	Attachments        []AttachmentEntry       `json:"attachments,omitempty"`
-	Activities         []ActivityEntry         `json:"activities,omitempty"`
+	Version             int                       `json:"version"`
+	Description         string                    `json:"description,omitempty"`
+	User                ManifestUser              `json:"user"`
+	SelfContact         string                    `json:"self_contact,omitempty"`
+	Contacts            []ContactEntry            `json:"contacts"`
+	Notes               []NoteEntry               `json:"notes,omitempty"`
+	LifeEvents          []LifeEventEntry          `json:"life_events,omitempty"`
+	Gifts               []GiftEntry               `json:"gifts,omitempty"`
+	Relationships       []RelationshipEntry       `json:"relationships,omitempty"`
+	Households          []HouseholdEntry          `json:"households,omitempty"`
+	Circles             []CircleEntry             `json:"circles,omitempty"`
+	Tags                []TagEntry                `json:"tags,omitempty"`
+	CustomFields        []CustomFieldEntry        `json:"custom_fields,omitempty"`
+	Preferences         []PreferenceEntry         `json:"preferences,omitempty"`
+	ExternalIdentities  []ExternalIdentityEntry   `json:"external_identities,omitempty"`
+	Attachments         []AttachmentEntry         `json:"attachments,omitempty"`
+	Activities          []ActivityEntry           `json:"activities,omitempty"`
+	CadencePolicies     []CadencePolicyEntry      `json:"cadence_policies,omitempty"`
+	ReachOutSuggestions []ReachOutSuggestionEntry `json:"reach_out_suggestions,omitempty"`
+	OccasionObligations []OccasionObligationEntry `json:"occasion_obligations,omitempty"`
+	OccasionEvents      []OccasionEventEntry      `json:"occasion_events,omitempty"`
 }
 
 // ManifestUser is the user every row in the fixture is scoped to.
@@ -86,6 +98,19 @@ type ContactEntry struct {
 	// contact must appear earlier in the manifest and be soft_deleted.
 	RecreatesVCardUIDOf string `json:"recreates_vcard_uid_of,omitempty"`
 
+	// UpdatedDaysAgo, when set, back-dates the contact's updated_at to
+	// `now - N days` after creation. It is the raw input to the health
+	// score's LastUpdated facet (ADR 0023): a value >= 180 means the facet is
+	// floored at 30 (russula-leaning), 0 means 100. Relative so the demo
+	// dataset stays meaningful as wall-clock time advances; tests pin `now`
+	// via PopulateAt.
+	UpdatedDaysAgo *int `json:"updated_days_ago,omitempty"`
+
+	// Favorite marks the contact as a dashboard favorite (issue #173) — a
+	// CRM-local flag with no neutral-Card home, so it is a manifest-level
+	// field rather than a card/envelope one.
+	Favorite bool `json:"favorite,omitempty"`
+
 	Card        contactmodel.Card        `json:"card"`
 	CRM         contactmodel.CRMEnvelope `json:"crm"`
 	Passthrough contactmodel.Passthrough `json:"passthrough,omitempty"`
@@ -107,10 +132,13 @@ type NoteEntry struct {
 // LifeEventEntry is one LifeEvent row. RelatedEntities are manifest contact
 // names, resolved to VCardUIDs by the loader.
 type LifeEventEntry struct {
-	Contact         string                    `json:"contact"`
-	Type            string                    `json:"type,omitempty"`
-	Category        string                    `json:"category,omitempty"`
-	Date            *contactmodel.PartialDate `json:"date,omitempty"`
+	Contact  string                    `json:"contact"`
+	Type     string                    `json:"type,omitempty"`
+	Category string                    `json:"category,omitempty"`
+	Date     *contactmodel.PartialDate `json:"date,omitempty"`
+	// EndDate turns the event into a span ("worked at Acme 2019-2024"), per
+	// ADR 0025 temporal periods.
+	EndDate         *contactmodel.PartialDate `json:"end_date,omitempty"`
 	Description     string                    `json:"description,omitempty"`
 	Remind          bool                      `json:"remind,omitempty"`
 	Source          string                    `json:"source,omitempty"`
@@ -183,7 +211,10 @@ type CustomFieldEntry struct {
 	Constraints models.FieldConstraints `json:"constraints,omitempty"`
 	Projection  string                  `json:"projection,omitempty"`
 	Sensitivity string                  `json:"sensitivity,omitempty"`
-	Values      []FieldValueEntry       `json:"values,omitempty"`
+	// Position orders the definition in the user's custom-field list (issue
+	// #1210). Omitted means the DB default 0.
+	Position *int              `json:"position,omitempty"`
+	Values   []FieldValueEntry `json:"values,omitempty"`
 }
 
 // FieldValueEntry is one FieldValue for the enclosing CustomFieldEntry.
@@ -202,7 +233,11 @@ type PreferenceEntry struct {
 	Source      string   `json:"source,omitempty"`
 	Confidence  *float64 `json:"confidence,omitempty"`
 	Sensitivity string   `json:"sensitivity,omitempty"`
-	SoftDeleted bool     `json:"soft_deleted,omitempty"`
+	// Level is the optional proficiency facet for hobby-shaped preferences
+	// (issue #246): high|medium|low. Only meaningful when the category
+	// supports a level (models.PreferenceCategorySupportsLevel).
+	Level       *string `json:"level,omitempty"`
+	SoftDeleted bool    `json:"soft_deleted,omitempty"`
 }
 
 // ExternalIdentityEntry is one ExternalIdentity row.
@@ -235,10 +270,83 @@ type ActivityEntry struct {
 	Description string    `json:"description,omitempty"`
 	Location    string    `json:"location,omitempty"`
 	Date        time.Time `json:"date"`
-	Type        string    `json:"type,omitempty"`
-	Contacts    []string  `json:"contacts,omitempty"`
-	ExternalRef string    `json:"external_ref,omitempty"`
-	SoftDeleted bool      `json:"soft_deleted,omitempty"`
+	// DaysAgo, when set, is the demo-relative alternative to Date: the
+	// activity happened `now - N days` ago, resolved against the PopulateAt
+	// clock. Exactly one of Date/DaysAgo must be set. This is what lets the
+	// fixture drive the health score's Recency/Frequency facets without the
+	// bands drifting as wall-clock time advances.
+	DaysAgo     *int     `json:"days_ago,omitempty"`
+	Type        string   `json:"type,omitempty"`
+	Contacts    []string `json:"contacts,omitempty"`
+	ExternalRef string   `json:"external_ref,omitempty"`
+	SoftDeleted bool     `json:"soft_deleted,omitempty"`
+}
+
+// CadencePolicyEntry is one CadencePolicy row: "stay in touch with this
+// contact every N days" (T19). The health score's Recency/Frequency facets use
+// TargetIntervalDays as the target interval (ADR 0023).
+type CadencePolicyEntry struct {
+	Contact            string   `json:"contact"`
+	TargetIntervalDays int      `json:"target_interval_days"`
+	QualifyingTypes    []string `json:"qualifying_types,omitempty"`
+	SoftDeleted        bool     `json:"soft_deleted,omitempty"`
+}
+
+// ReachOutSuggestionEntry is one ReachOutSuggestion row (issue #177). In the
+// fixture these are authored directly (the real rows are generated by the
+// audit-diff detector); a `pending` row is a discrete health-score warning
+// (ReachOut facet, fixed 30) and feeds the dashboard's reach-out block.
+//
+// AuditEventID is a provenance pointer with no DB foreign key; the fixture
+// defaults it to 0 when omitted.
+type ReachOutSuggestionEntry struct {
+	Contact      string `json:"contact"`
+	Kind         string `json:"kind"` // organization|title|address
+	OldValue     string `json:"old_value,omitempty"`
+	NewValue     string `json:"new_value,omitempty"`
+	Status       string `json:"status,omitempty"` // pending|dismissed, default pending
+	AuditEventID uint   `json:"audit_event_id,omitempty"`
+}
+
+// OccasionObligationEntry is one OccasionObligation row — a standing recurring
+// obligation toward a contact (ADR 0024, issue #1222): a holiday card, a
+// birthday gift, an annual invite.
+type OccasionObligationEntry struct {
+	Contact      string `json:"contact"`
+	Kind         string `json:"kind"` // card|gift|invite
+	Label        string `json:"label"`
+	AnchorMonth  *int   `json:"anchor_month,omitempty"`
+	AnchorDay    *int   `json:"anchor_day,omitempty"`
+	LeadTimeDays int    `json:"lead_time_days,omitempty"`
+	// Active defaults to true when omitted. A pointer so an explicit false
+	// survives (a plain bool would be indistinguishable from "unset").
+	Active      *bool  `json:"active,omitempty"`
+	Sensitivity string `json:"sensitivity,omitempty"`
+	Notes       string `json:"notes,omitempty"`
+	SoftDeleted bool   `json:"soft_deleted,omitempty"`
+}
+
+// OccasionEventEntry is one OccasionEvent plus its invitee/RSVP ledger (ADR
+// 0026, issue #1228). StartsAt/EndsAt are RFC 3339 instants; StartsInDays /
+// EndsInDays are the demo-relative alternative resolved against the PopulateAt
+// clock, so an upcoming event stays upcoming.
+type OccasionEventEntry struct {
+	Title        string                       `json:"title"`
+	StartsAt     *time.Time                   `json:"starts_at,omitempty"`
+	StartsInDays *int                         `json:"starts_in_days,omitempty"`
+	EndsAt       *time.Time                   `json:"ends_at,omitempty"`
+	EndsInDays   *int                         `json:"ends_in_days,omitempty"`
+	Location     string                       `json:"location,omitempty"`
+	Sensitivity  string                       `json:"sensitivity,omitempty"`
+	Notes        string                       `json:"notes,omitempty"`
+	Attendees    []OccasionEventAttendeeEntry `json:"attendees,omitempty"`
+	SoftDeleted  bool                         `json:"soft_deleted,omitempty"`
+}
+
+// OccasionEventAttendeeEntry is one invitee/RSVP row for an OccasionEvent.
+type OccasionEventAttendeeEntry struct {
+	Contact string `json:"contact"`
+	RSVP    string `json:"rsvp,omitempty"` // pending|accepted|declined|maybe, default pending
 }
 
 // Load parses a manifest from r and validates its cross-references. It does
@@ -409,6 +517,45 @@ func (m *Manifest) Validate() error {
 	for _, a := range m.Activities {
 		for _, contact := range a.Contacts {
 			if err := ref("activity contact", contact); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		if a.Date.IsZero() && a.DaysAgo == nil {
+			errs = append(errs, fmt.Errorf("canonicalfixture: activity %q must set date or days_ago", a.Title))
+		}
+		if !a.Date.IsZero() && a.DaysAgo != nil {
+			errs = append(errs, fmt.Errorf("canonicalfixture: activity %q sets both date and days_ago (exactly one is required)", a.Title))
+		}
+	}
+	if m.SelfContact != "" {
+		if err := ref("self_contact", m.SelfContact); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	for _, c := range m.CadencePolicies {
+		if err := ref("cadence_policy", c.Contact); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	for _, r := range m.ReachOutSuggestions {
+		if err := ref("reach_out_suggestion", r.Contact); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	for _, o := range m.OccasionObligations {
+		if err := ref("occasion_obligation", o.Contact); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	for _, e := range m.OccasionEvents {
+		if e.StartsAt == nil && e.StartsInDays == nil {
+			errs = append(errs, fmt.Errorf("canonicalfixture: occasion_event %q must set starts_at or starts_in_days", e.Title))
+		}
+		if e.StartsAt != nil && e.StartsInDays != nil {
+			errs = append(errs, fmt.Errorf("canonicalfixture: occasion_event %q sets both starts_at and starts_in_days", e.Title))
+		}
+		for _, a := range e.Attendees {
+			if err := ref("occasion_event attendee", a.Contact); err != nil {
 				errs = append(errs, err)
 			}
 		}

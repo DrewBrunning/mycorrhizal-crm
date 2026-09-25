@@ -2,6 +2,7 @@ package canonicalfixture
 
 import (
 	"fmt"
+	"time"
 
 	"mycorrhizal/models"
 
@@ -14,20 +15,24 @@ import (
 // inspect the dataset itself). Consumers that want a fresh read should query
 // db with their own scoping.
 type Dataset struct {
-	User               models.User
-	Contacts           map[string]models.Contact
-	Notes              []models.Note
-	LifeEvents         []models.LifeEvent
-	Gifts              []models.Gift
-	Relationships      []models.RelationshipEdge
-	Households         []models.Household
-	Circles            []models.Circle
-	Tags               []models.Tag
-	FieldDefinitions   []models.FieldDefinition
-	Preferences        []models.Preference
-	ExternalIdentities []models.ExternalIdentity
-	Attachments        []models.Attachment
-	Activities         []models.Activity
+	User                models.User
+	Contacts            map[string]models.Contact
+	Notes               []models.Note
+	LifeEvents          []models.LifeEvent
+	Gifts               []models.Gift
+	Relationships       []models.RelationshipEdge
+	Households          []models.Household
+	Circles             []models.Circle
+	Tags                []models.Tag
+	FieldDefinitions    []models.FieldDefinition
+	Preferences         []models.Preference
+	ExternalIdentities  []models.ExternalIdentity
+	Attachments         []models.Attachment
+	Activities          []models.Activity
+	CadencePolicies     []models.CadencePolicy
+	ReachOutSuggestions []models.ReachOutSuggestion
+	OccasionObligations []models.OccasionObligation
+	OccasionEvents      []models.OccasionEvent
 }
 
 // Populate loads the manifest's dataset into db, which MUST be a real migrated
@@ -40,14 +45,26 @@ type Dataset struct {
 // post-delete state MIG/DATA suites want to migrate and read.
 //
 // All work runs in a single transaction; on any error nothing is persisted.
+//
+// Populate resolves the manifest's demo-relative `days_ago` fields against
+// the wall clock. Tests that need determinism use PopulateAt with a pinned
+// reference time.
 func Populate(db *gorm.DB, m *Manifest) (*Dataset, error) {
+	return PopulateAt(db, m, time.Now())
+}
+
+// PopulateAt is Populate with an explicit reference time for the manifest's
+// relative timing fields (`contacts[].updated_days_ago`, `activities[].days_ago`,
+// `occasion_events[].starts_in_days`/`ends_in_days`). Passing a fixed instant
+// makes a population fully deterministic.
+func PopulateAt(db *gorm.DB, m *Manifest, now time.Time) (*Dataset, error) {
 	if m == nil {
 		return nil, fmt.Errorf("canonicalfixture: nil manifest")
 	}
 	var ds *Dataset
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var err error
-		ds, err = populate(tx, m)
+		ds, err = populate(tx, m, now)
 		return err
 	})
 	if err != nil {
@@ -56,7 +73,16 @@ func Populate(db *gorm.DB, m *Manifest) (*Dataset, error) {
 	return ds, nil
 }
 
-func populate(db *gorm.DB, m *Manifest) (*Dataset, error) {
+// resolveDaysAgo returns abs when daysAgo is nil, else now minus daysAgo whole
+// days. It is the only place the relative-timing convention is implemented.
+func resolveDaysAgo(abs time.Time, daysAgo *int, now time.Time) time.Time {
+	if daysAgo == nil {
+		return abs
+	}
+	return now.AddDate(0, 0, -*daysAgo)
+}
+
+func populate(db *gorm.DB, m *Manifest, now time.Time) (*Dataset, error) {
 	ds := &Dataset{Contacts: map[string]models.Contact{}}
 
 	user := models.User{
@@ -138,6 +164,7 @@ func populate(db *gorm.DB, m *Manifest) (*Dataset, error) {
 			Type:             entry.Type,
 			Category:         entry.Category,
 			Date:             entry.Date,
+			EndDate:          entry.EndDate,
 			Description:      entry.Description,
 			Remind:           entry.Remind,
 			Source:           entry.Source,
@@ -300,6 +327,9 @@ func populate(db *gorm.DB, m *Manifest) (*Dataset, error) {
 			Projection:  entry.Projection,
 			Sensitivity: entry.Sensitivity,
 		}
+		if entry.Position != nil {
+			def.Position = *entry.Position
+		}
 		if err := db.Create(&def).Error; err != nil {
 			return nil, fmt.Errorf("canonicalfixture: creating custom field %q: %w", entry.Key, err) // # pragma: no cover — a freshly-migrated DB accepts every manifest row; failure here means a broken invariant
 		}
@@ -336,6 +366,7 @@ func populate(db *gorm.DB, m *Manifest) (*Dataset, error) {
 			Source:      entry.Source,
 			Confidence:  entry.Confidence,
 			Sensitivity: entry.Sensitivity,
+			Level:       entry.Level,
 		}
 		if err := db.Create(&pref).Error; err != nil {
 			return nil, fmt.Errorf("canonicalfixture: creating preference for %q: %w", entry.Contact, err) // # pragma: no cover — a freshly-migrated DB accepts every manifest row; failure here means a broken invariant
@@ -398,7 +429,7 @@ func populate(db *gorm.DB, m *Manifest) (*Dataset, error) {
 			Title:       entry.Title,
 			Description: entry.Description,
 			Location:    entry.Location,
-			Date:        entry.Date,
+			Date:        resolveDaysAgo(entry.Date, entry.DaysAgo, now),
 			Type:        entry.Type,
 			ExternalRef: entry.ExternalRef,
 		}
@@ -424,6 +455,172 @@ func populate(db *gorm.DB, m *Manifest) (*Dataset, error) {
 			}
 		}
 		ds.Activities = append(ds.Activities, activity)
+	}
+
+	for _, entry := range m.CadencePolicies {
+		uid, err := uidOf("cadence_policy", entry.Contact)
+		if err != nil {
+			return nil, err
+		}
+		policy := models.CadencePolicy{
+			UserID:             user.ID,
+			EntityID:           uid,
+			TargetIntervalDays: entry.TargetIntervalDays,
+			QualifyingTypes:    entry.QualifyingTypes,
+		}
+		if err := db.Create(&policy).Error; err != nil {
+			return nil, fmt.Errorf("canonicalfixture: creating cadence policy for %q: %w", entry.Contact, err) // # pragma: no cover — a freshly-migrated DB accepts every manifest row; failure here means a broken invariant
+		}
+		if entry.SoftDeleted {
+			if err := db.Delete(&policy).Error; err != nil {
+				return nil, fmt.Errorf("canonicalfixture: tombstoning cadence policy for %q: %w", entry.Contact, err) // # pragma: no cover — a freshly-migrated DB accepts every manifest row; failure here means a broken invariant
+			}
+		}
+		ds.CadencePolicies = append(ds.CadencePolicies, policy)
+	}
+
+	for _, entry := range m.ReachOutSuggestions {
+		uid, err := uidOf("reach_out_suggestion", entry.Contact)
+		if err != nil {
+			return nil, err
+		}
+		status := entry.Status
+		if status == "" {
+			status = models.ReachOutStatusPending
+		}
+		suggestion := models.ReachOutSuggestion{
+			UserID:          user.ID,
+			ContactVCardUID: uid,
+			Kind:            entry.Kind,
+			OldValue:        entry.OldValue,
+			NewValue:        entry.NewValue,
+			Status:          status,
+			AuditEventID:    entry.AuditEventID,
+		}
+		if err := db.Create(&suggestion).Error; err != nil {
+			return nil, fmt.Errorf("canonicalfixture: creating reach-out suggestion for %q: %w", entry.Contact, err) // # pragma: no cover — a freshly-migrated DB accepts every manifest row; failure here means a broken invariant
+		}
+		ds.ReachOutSuggestions = append(ds.ReachOutSuggestions, suggestion)
+	}
+
+	for _, entry := range m.OccasionObligations {
+		uid, err := uidOf("occasion_obligation", entry.Contact)
+		if err != nil {
+			return nil, err
+		}
+		active := true
+		if entry.Active != nil {
+			active = *entry.Active
+		}
+		sensitivity := entry.Sensitivity
+		if sensitivity == "" {
+			sensitivity = models.RelationshipSensitivityNormal
+		}
+		obligation := models.OccasionObligation{
+			UserID:       user.ID,
+			EntityID:     uid,
+			Kind:         entry.Kind,
+			Label:        entry.Label,
+			AnchorMonth:  entry.AnchorMonth,
+			AnchorDay:    entry.AnchorDay,
+			LeadTimeDays: entry.LeadTimeDays,
+			Active:       active,
+			Sensitivity:  sensitivity,
+			Notes:        entry.Notes,
+		}
+		if err := db.Create(&obligation).Error; err != nil {
+			return nil, fmt.Errorf("canonicalfixture: creating occasion obligation %q: %w", entry.Label, err) // # pragma: no cover — a freshly-migrated DB accepts every manifest row; failure here means a broken invariant
+		}
+		if entry.SoftDeleted {
+			if err := db.Delete(&obligation).Error; err != nil {
+				return nil, fmt.Errorf("canonicalfixture: tombstoning occasion obligation %q: %w", entry.Label, err) // # pragma: no cover — a freshly-migrated DB accepts every manifest row; failure here means a broken invariant
+			}
+		}
+		ds.OccasionObligations = append(ds.OccasionObligations, obligation)
+	}
+
+	for _, entry := range m.OccasionEvents {
+		event := models.OccasionEvent{
+			UserID: user.ID,
+			Title:  entry.Title,
+		}
+		if entry.StartsAt != nil {
+			event.StartsAt = *entry.StartsAt
+		} else {
+			event.StartsAt = now.AddDate(0, 0, *entry.StartsInDays)
+		}
+		if entry.EndsAt != nil {
+			event.EndsAt = entry.EndsAt
+		} else if entry.EndsInDays != nil {
+			end := now.AddDate(0, 0, *entry.EndsInDays)
+			event.EndsAt = &end
+		}
+		event.Location = entry.Location
+		if entry.Sensitivity != "" {
+			event.Sensitivity = entry.Sensitivity
+		}
+		event.Notes = entry.Notes
+		if err := db.Create(&event).Error; err != nil {
+			return nil, fmt.Errorf("canonicalfixture: creating occasion event %q: %w", entry.Title, err) // # pragma: no cover — a freshly-migrated DB accepts every manifest row; failure here means a broken invariant
+		}
+		for _, attendee := range entry.Attendees {
+			uid, err := uidOf("occasion_event attendee", attendee.Contact)
+			if err != nil {
+				return nil, err
+			}
+			rsvp := attendee.RSVP
+			if rsvp == "" {
+				rsvp = models.OccasionEventRSVPPending
+			}
+			row := models.OccasionEventAttendee{
+				UserID:   user.ID,
+				EventID:  event.ID,
+				EntityID: uid,
+				RSVP:     rsvp,
+			}
+			if err := db.Create(&row).Error; err != nil {
+				return nil, fmt.Errorf("canonicalfixture: inviting %q to occasion event %q: %w", attendee.Contact, entry.Title, err) // # pragma: no cover — a freshly-migrated DB accepts every manifest row; failure here means a broken invariant
+			}
+		}
+		if entry.SoftDeleted {
+			if err := db.Delete(&event).Error; err != nil {
+				return nil, fmt.Errorf("canonicalfixture: tombstoning occasion event %q: %w", entry.Title, err) // # pragma: no cover — a freshly-migrated DB accepts every manifest row; failure here means a broken invariant
+			}
+		}
+		ds.OccasionEvents = append(ds.OccasionEvents, event)
+	}
+
+	// The self-contact pointer (T90) drives the health score's Closeness facet
+	// (ADR 0023): without it every contact scores the neutral 50 / 90-day
+	// interval, so the demo graph could never show a moss/russula spread.
+	if m.SelfContact != "" {
+		selfUID, err := uidOf("self_contact", m.SelfContact)
+		if err != nil {
+			return nil, err
+		}
+		if err := db.Model(&models.User{}).Where("id = ?", user.ID).
+			UpdateColumn("self_contact_vcard_uid", selfUID).Error; err != nil {
+			return nil, fmt.Errorf("canonicalfixture: setting self-contact: %w", err) // # pragma: no cover — a freshly-migrated DB accepts every manifest row; failure here means a broken invariant
+		}
+		user.SelfContactVCardUID = &selfUID
+		ds.User = user
+	}
+
+	// Back-date updated_at last, after every association write, so nothing can
+	// refresh it. UpdateColumn bypasses hooks, so Contact.BeforeSave's flat
+	// derivation never runs against a stale in-memory card.
+	for _, entry := range m.Contacts {
+		if entry.UpdatedDaysAgo == nil {
+			continue
+		}
+		contact := ds.Contacts[entry.Name]
+		updated := now.AddDate(0, 0, -*entry.UpdatedDaysAgo)
+		if err := db.Model(&models.Contact{}).Where("id = ?", contact.ID).
+			UpdateColumn("updated_at", updated).Error; err != nil {
+			return nil, fmt.Errorf("canonicalfixture: back-dating %q updated_at: %w", entry.Name, err) // # pragma: no cover — a freshly-migrated DB accepts every manifest row; failure here means a broken invariant
+		}
+		contact.UpdatedAt = updated
+		ds.Contacts[entry.Name] = contact
 	}
 
 	// Phase B: cascade every soft-deleted contact's dependent rows exactly the
@@ -457,6 +654,7 @@ func createContact(db *gorm.DB, userID uint, entry ContactEntry, ds *Dataset, so
 
 	contact := models.Contact{UserID: userID}
 	models.ApplyRecordToContact(&contact, record, "")
+	contact.IsFavorite = entry.Favorite
 	if err := db.Create(&contact).Error; err != nil {
 		return models.Contact{}, err // # pragma: no cover — a DELETE over an intact schema cannot fail; failure here means a broken invariant
 	}
@@ -511,6 +709,27 @@ func cascadeContact(db *gorm.DB, userID uint, contact models.Contact) error {
 		return err // # pragma: no cover — a DELETE over an intact schema cannot fail; failure here means a broken invariant
 	}
 	if err := db.Where("contact_vcard_uid = ? AND user_id = ?", uid, userID).Delete(&models.Attachment{}).Error; err != nil {
+		return err // # pragma: no cover — a DELETE over an intact schema cannot fail; failure here means a broken invariant
+	}
+	// Cadence policy and occasion obligations are user-authored content
+	// (soft delete); reach-out suggestions and occasion-event attendee rows
+	// are system-generated / join-shaped (hard delete). Mirrors
+	// controllers.deleteContactAssociations.
+	if err := db.Where("entity_id = ? AND user_id = ?", uid, userID).Delete(&models.CadencePolicy{}).Error; err != nil {
+		return err // # pragma: no cover — a DELETE over an intact schema cannot fail; failure here means a broken invariant
+	}
+	if err := db.Where("contact_vcard_uid = ? AND user_id = ?", uid, userID).Delete(&models.ReachOutSuggestion{}).Error; err != nil {
+		return err // # pragma: no cover — a DELETE over an intact schema cannot fail; failure here means a broken invariant
+	}
+	if err := db.Where("entity_id = ? AND user_id = ?", uid, userID).Delete(&models.OccasionObligation{}).Error; err != nil {
+		return err // # pragma: no cover — a DELETE over an intact schema cannot fail; failure here means a broken invariant
+	}
+	if err := db.Where("entity_id = ? AND user_id = ?", uid, userID).Delete(&models.OccasionEventAttendee{}).Error; err != nil {
+		return err // # pragma: no cover — a DELETE over an intact schema cannot fail; failure here means a broken invariant
+	}
+	// users.self_contact_vcard_uid must not dangle on a tombstoned row.
+	if err := db.Model(&models.User{}).Where("id = ? AND self_contact_vcard_uid = ?", userID, uid).
+		UpdateColumn("self_contact_vcard_uid", nil).Error; err != nil {
 		return err // # pragma: no cover — a DELETE over an intact schema cannot fail; failure here means a broken invariant
 	}
 	return nil

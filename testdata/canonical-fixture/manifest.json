@@ -1,10 +1,11 @@
 {
-  "version": 1,
-  "description": "Canonical pathological contact dataset (TEST-02, issue #430). One reviewable manifest that every migration (MIG-*), import/export (DATA-*), round-trip (TEST-03), merge-golden (TEST-05) and performance (PERF-01) suite consumes instead of inventing its own thin fixture. Loader: backend/internal/canonicalfixture. See README.md.",
+  "version": 2,
+  "description": "Canonical pathological contact dataset (TEST-02, issue #430). One reviewable manifest that every migration (MIG-*), import/export (DATA-*), round-trip (TEST-03), merge-golden (TEST-05) and performance (PERF-01) suite consumes instead of inventing its own thin fixture — and the same manifest that pentestseed --profile demo turns into the screenshot / pen-test dataset. Loader: backend/internal/canonicalfixture. See README.md.",
   "user": {
     "username": "fixture-user",
     "email": "fixture@example.com"
   },
+  "self_contact": "me",
   "contacts": [
     {
       "name": "ada",
@@ -1002,6 +1003,207 @@
         "kind": "human",
         "how_we_met": "Met at a conference in Dublin."
       }
+    },
+    {
+      "name": "me",
+      "comment": "The user's own self-contact (T90). self_contact names this entry, so the health score's Closeness facet resolves for every contact wired to it — without it every score stays at the neutral default of 50 (ADR 0023).",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000032",
+        "kind": "individual",
+        "language": "en",
+        "name": {
+          "full": "Alex Rivera",
+          "components": [
+            { "kind": "given", "value": "Alex" },
+            { "kind": "surname", "value": "Rivera" }
+          ]
+        },
+        "emails": [{ "address": "alex.rivera@example.com", "label": "home" }],
+        "anniversaries": [
+          { "kind": "birth", "date": { "partial": { "year": 1988, "month": 4, "day": 2 } } }
+        ]
+      },
+      "crm": { "kind": "human" },
+      "updated_days_ago": 1
+    },
+    {
+      "name": "nadia",
+      "comment": "Demo persona (v1.2.0 screenshot set, issue #1220/#354/#246): a close partner with a healthy cadence and frequent recent interactions, a temporal period on her organization and title, and a hobby preference with a proficiency level. Drives a MOSS health node and the contact-detail / prep-view screenshots.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000033",
+        "kind": "individual",
+        "language": "en",
+        "name": {
+          "full": "Nadia Okonkwo",
+          "components": [
+            { "kind": "given", "value": "Nadia" },
+            { "kind": "surname", "value": "Okonkwo" }
+          ]
+        },
+        "organizations": [
+          { "id": "org-nadia-current", "name": "Lumen Studio", "units": [{ "name": "Design" }] }
+        ],
+        "titles": [
+          { "id": "title-nadia-current", "name": "Design lead", "kind": "title" }
+        ],
+        "emails": [{ "address": "nadia.okonkwo@example.com", "label": "home", "pref": 1 }],
+        "phones": [
+          { "number": "+44 20 7946 1234", "label": "cell", "features": ["cell", "voice"] }
+        ],
+        "anniversaries": [
+          { "kind": "birth", "date": { "partial": { "year": 1990, "month": 9, "day": 14 } } }
+        ],
+        "keywords": ["partner", "design"]
+      },
+      "crm": {
+        "kind": "human",
+        "how_we_met": "Met through the book club.",
+        "periods": [
+          { "kind": "organization", "entry_id": "org-nadia-current", "range": { "start": { "year": 2021 } } },
+          { "kind": "title", "entry_id": "title-nadia-current", "range": { "start": { "year": 2023 } } }
+        ]
+      },
+      "favorite": true,
+      "updated_days_ago": 2
+    },
+    {
+      "name": "theo",
+      "comment": "Demo persona (issue #1220): spouse_of the self-contact — the immediate closeness tier — with very recent interactions. The second MOSS node.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000034",
+        "kind": "individual",
+        "language": "en",
+        "name": {
+          "full": "Theo Lindqvist",
+          "components": [
+            { "kind": "given", "value": "Theo" },
+            { "kind": "surname", "value": "Lindqvist" }
+          ]
+        },
+        "emails": [{ "address": "theo.lindqvist@example.com", "label": "home" }],
+        "anniversaries": [
+          { "kind": "birth", "date": { "partial": { "year": 1987, "month": 11, "day": 30 } } },
+          { "kind": "wedding", "date": { "partial": { "year": 2019, "month": 6, "day": 8 } } }
+        ]
+      },
+      "crm": { "kind": "human" },
+      "favorite": true,
+      "updated_days_ago": 1
+    },
+    {
+      "name": "marcus",
+      "comment": "Demo persona (issue #1220): a close friend with no logged interaction yet. Recency floors at the no-interaction constant (45), so the node reads CHANTERELLE ('warming up') — the deliberate not-russula default for a fresh contact.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000035",
+        "kind": "individual",
+        "language": "en",
+        "name": {
+          "full": "Marcus Bell",
+          "components": [
+            { "kind": "given", "value": "Marcus" },
+            { "kind": "surname", "value": "Bell" }
+          ]
+        },
+        "emails": [{ "address": "marcus.bell@example.com", "label": "home" }],
+        "anniversaries": [
+          { "kind": "birth", "date": { "partial": { "year": 1985, "month": 2, "day": 17 } } }
+        ]
+      },
+      "crm": { "kind": "human" },
+      "updated_days_ago": 5
+    },
+    {
+      "name": "soren",
+      "comment": "Demo persona (issue #1220): a coworker (casual closeness tier) last spoken to ~70 days ago — a CHANTERELLE node drifting toward neglect.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000036",
+        "kind": "individual",
+        "language": "da",
+        "name": {
+          "full": "Søren Dahl",
+          "components": [
+            { "kind": "given", "value": "Søren" },
+            { "kind": "surname", "value": "Dahl" }
+          ]
+        },
+        "emails": [{ "address": "soren.dahl@example.com", "label": "work" }],
+        "anniversaries": [
+          { "kind": "birth", "date": { "partial": { "year": 1982, "month": 7, "day": 4 } } }
+        ]
+      },
+      "crm": { "kind": "human" },
+      "updated_days_ago": 20
+    },
+    {
+      "name": "bea",
+      "comment": "Demo persona (issue #1220): a distant relation long out of touch — last interaction more than 2x the distant tier's interval — the RUSSULA (neglected) node.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000037",
+        "kind": "individual",
+        "language": "fr",
+        "name": {
+          "full": "Bea Fontaine",
+          "components": [
+            { "kind": "given", "value": "Bea" },
+            { "kind": "surname", "value": "Fontaine" }
+          ]
+        },
+        "emails": [{ "address": "bea.fontaine@example.com", "label": "home" }],
+        "anniversaries": [
+          { "kind": "birth", "date": { "partial": { "year": 1978, "month": 5, "day": 21 } } }
+        ]
+      },
+      "crm": { "kind": "human" },
+      "updated_days_ago": 200
+    },
+    {
+      "name": "margaret",
+      "comment": "Deceased (issue #1193/#1238): Card.Anniversaries[kind=death] IS the state. A recent death with a DEATHPLACE — drops out of birthdays, cadence-overdue and reach-out detection, and colors the graph node with the neutral soil color regardless of health band.",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000038",
+        "kind": "individual",
+        "language": "en",
+        "name": {
+          "full": "Margaret Whitfield",
+          "components": [
+            { "kind": "given", "value": "Margaret" },
+            { "kind": "surname", "value": "Whitfield" }
+          ]
+        },
+        "emails": [{ "address": "margaret.whitfield@example.com", "label": "home" }],
+        "anniversaries": [
+          { "kind": "birth", "date": { "partial": { "year": 1940, "month": 1, "day": 22 } } },
+          {
+            "kind": "death",
+            "date": { "partial": { "year": 2024, "month": 3, "day": 12 } },
+            "place": { "full": "Leeds, United Kingdom" }
+          }
+        ]
+      },
+      "crm": { "kind": "human" },
+      "updated_days_ago": 30
+    },
+    {
+      "name": "harold",
+      "comment": "Deceased (issue #1193/#1238): a year-only death date, exercising the partial-date degradation path (no place, no month/day).",
+      "card": {
+        "uid": "10000000-0000-4000-8000-000000000039",
+        "kind": "individual",
+        "language": "en",
+        "name": {
+          "full": "Harold Nkemelu",
+          "components": [
+            { "kind": "given", "value": "Harold" },
+            { "kind": "surname", "value": "Nkemelu" }
+          ]
+        },
+        "anniversaries": [
+          { "kind": "birth", "date": { "partial": { "year": 1935 } } },
+          { "kind": "death", "date": { "partial": { "year": 1998 } } }
+        ]
+      },
+      "crm": { "kind": "human" },
+      "updated_days_ago": 400
     }
   ],
   "notes": [
@@ -1059,6 +1261,14 @@
       "category": "work_education",
       "date": { "year": 2005 },
       "description": "BSc Computer Science."
+    },
+    {
+      "contact": "nadia",
+      "type": "job_change",
+      "category": "work_education",
+      "date": { "year": 2018, "month": 3 },
+      "end_date": { "year": 2021, "month": 2 },
+      "description": "Product designer at Fieldnote, 2018-2021 (a temporal period, ADR 0025)."
     },
     {
       "contact": "celine",
@@ -1234,6 +1444,76 @@
       "sensitivity": "normal",
       "provenance": "imported",
       "confidence": 0.9
+    },
+    {
+      "source": "me",
+      "target": "nadia",
+      "type": "partner_of",
+      "comment": "self-edge: close tier (85/30), the MOSS anchor",
+      "status": "confirmed",
+      "sensitivity": "normal",
+      "provenance": "user-confirmed",
+      "confidence": 1.0
+    },
+    {
+      "source": "me",
+      "target": "theo",
+      "type": "spouse_of",
+      "comment": "self-edge: immediate tier (100/14), the second MOSS anchor",
+      "status": "confirmed",
+      "sensitivity": "normal",
+      "provenance": "user-confirmed",
+      "confidence": 1.0
+    },
+    {
+      "source": "me",
+      "target": "marcus",
+      "type": "friend_of",
+      "comment": "self-edge: close tier, but no logged interaction — CHANTERELLE",
+      "status": "confirmed",
+      "sensitivity": "normal",
+      "provenance": "user-confirmed",
+      "confidence": 1.0
+    },
+    {
+      "source": "me",
+      "target": "soren",
+      "type": "coworker_of",
+      "comment": "self-edge: casual tier (65/45), one stale interaction — CHANTERELLE",
+      "status": "confirmed",
+      "sensitivity": "normal",
+      "provenance": "user-confirmed",
+      "confidence": 1.0
+    },
+    {
+      "source": "me",
+      "target": "bea",
+      "type": "related_to",
+      "comment": "self-edge: distant tier (45/60), long out of touch — RUSSULA",
+      "status": "confirmed",
+      "sensitivity": "normal",
+      "provenance": "user-confirmed",
+      "confidence": 1.0
+    },
+    {
+      "source": "me",
+      "target": "margaret",
+      "type": "child_of",
+      "comment": "self-edge to the deceased persona; the immediate tier would score moss, but deceased overrides the graph color",
+      "status": "confirmed",
+      "sensitivity": "normal",
+      "provenance": "user-confirmed",
+      "confidence": 1.0
+    },
+    {
+      "source": "me",
+      "target": "harold",
+      "type": "related_to",
+      "comment": "self-edge to the second deceased persona",
+      "status": "confirmed",
+      "sensitivity": "normal",
+      "provenance": "user-confirmed",
+      "confidence": 1.0
     }
   ],
   "households": [
@@ -1290,6 +1570,7 @@
     {
       "key": "dietary_restrictions",
       "label": "Dietary restrictions",
+      "position": 1,
       "type": "text",
       "constraints": { "maxLength": 200 },
       "projection": "internal-only",
@@ -1302,6 +1583,7 @@
     {
       "key": "favorite_coffee",
       "label": "Favorite coffee",
+      "position": 0,
       "type": "string",
       "projection": "vcard:X-FAVORITE-COFFEE",
       "sensitivity": "normal",
@@ -1312,6 +1594,7 @@
     {
       "key": "shoe_size",
       "label": "Shoe size",
+      "position": 4,
       "type": "string",
       "projection": "internal-only",
       "sensitivity": "secret",
@@ -1322,6 +1605,7 @@
     {
       "key": "private_nickname",
       "label": "Private nickname",
+      "position": 5,
       "type": "string",
       "projection": "vcard:X-PRIVATE-NICK",
       "sensitivity": "secret",
@@ -1332,6 +1616,7 @@
     {
       "key": "languages_spoken",
       "label": "Languages spoken",
+      "position": 2,
       "type": "string",
       "constraints": { "multi": true },
       "projection": "internal-only",
@@ -1343,6 +1628,7 @@
     {
       "key": "favorite_number",
       "label": "Favorite number",
+      "position": 3,
       "type": "number",
       "projection": "internal-only",
       "sensitivity": "normal",
@@ -1353,6 +1639,7 @@
     {
       "key": "family_nickname",
       "label": "Family nickname",
+      "position": 6,
       "type": "string",
       "projection": "internal-only",
       "sensitivity": "normal",
@@ -1368,7 +1655,8 @@
       "key": "favorite",
       "value": "sailing",
       "source": "user",
-      "sensitivity": "normal"
+      "sensitivity": "normal",
+      "level": "high"
     },
     {
       "contact": "bob",
@@ -1377,7 +1665,17 @@
       "value": "chess",
       "notes": "He said 'chess, obviously'. Mentioned once over lunch.",
       "source": "conversation_note",
-      "sensitivity": "private"
+      "sensitivity": "private",
+      "level": "medium"
+    },
+    {
+      "contact": "nadia",
+      "category": "hobby",
+      "key": "favorite",
+      "value": "pottery",
+      "source": "user",
+      "sensitivity": "normal",
+      "level": "high"
     },
     {
       "contact": "celine",
@@ -1496,6 +1794,201 @@
       "type": "call",
       "contacts": ["hugo", "ida"],
       "soft_deleted": true
+    },
+    {
+      "title": "Dinner with Nadia",
+      "days_ago": 3,
+      "type": "meal",
+      "contacts": ["nadia", "theo"]
+    },
+    {
+      "title": "Long call with Nadia",
+      "days_ago": 10,
+      "type": "call",
+      "contacts": ["nadia"]
+    },
+    {
+      "title": "Weekend walk",
+      "days_ago": 20,
+      "type": "visit",
+      "contacts": ["nadia", "theo"]
+    },
+    {
+      "title": "Coffee with Nadia",
+      "days_ago": 45,
+      "type": "meal",
+      "contacts": ["nadia"]
+    },
+    {
+      "title": "Gallery visit",
+      "days_ago": 80,
+      "type": "visit",
+      "contacts": ["nadia"]
+    },
+    {
+      "title": "Phone catch-up with Nadia",
+      "days_ago": 150,
+      "type": "call",
+      "contacts": ["nadia"]
+    },
+    {
+      "title": "Morning call with Theo",
+      "days_ago": 1,
+      "type": "call",
+      "contacts": ["theo"]
+    },
+    {
+      "title": "Brunch with Theo",
+      "days_ago": 4,
+      "type": "meal",
+      "contacts": ["theo"]
+    },
+    {
+      "title": "Errand run with Theo",
+      "days_ago": 9,
+      "type": "visit",
+      "contacts": ["theo"]
+    },
+    {
+      "title": "Evening call with Theo",
+      "days_ago": 16,
+      "type": "call",
+      "contacts": ["theo"]
+    },
+    {
+      "title": "Cinema with Theo",
+      "days_ago": 25,
+      "type": "visit",
+      "contacts": ["theo"]
+    },
+    {
+      "title": "Lunch with Theo",
+      "days_ago": 40,
+      "type": "meal",
+      "contacts": ["theo"]
+    },
+    {
+      "title": "Coffee with Marcus",
+      "days_ago": 5,
+      "type": "meal",
+      "contacts": ["marcus"]
+    },
+    {
+      "title": "Call with Marcus",
+      "days_ago": 20,
+      "type": "call",
+      "contacts": ["marcus"]
+    },
+    {
+      "title": "Dinner with Marcus",
+      "days_ago": 55,
+      "type": "meal",
+      "contacts": ["marcus"]
+    },
+    {
+      "title": "Standup with Søren",
+      "days_ago": 70,
+      "type": "call",
+      "contacts": ["soren"]
+    },
+    {
+      "title": "Cousins' reunion",
+      "days_ago": 200,
+      "type": "visit",
+      "contacts": ["bea"]
+    }
+  ],
+  "cadence_policies": [
+    {
+      "contact": "nadia",
+      "target_interval_days": 21
+    },
+    {
+      "contact": "theo",
+      "target_interval_days": 14
+    },
+    {
+      "contact": "soren",
+      "target_interval_days": 45
+    },
+    {
+      "contact": "bjork",
+      "target_interval_days": 30
+    }
+  ],
+  "reach_out_suggestions": [
+    {
+      "contact": "bjork",
+      "kind": "address",
+      "old_value": "Reykjavík",
+      "new_value": "Akureyri",
+      "status": "pending"
+    },
+    {
+      "contact": "marcus",
+      "kind": "organization",
+      "old_value": "Bright Lane Co-op",
+      "new_value": "Northgate Studio",
+      "status": "dismissed"
+    }
+  ],
+  "occasion_obligations": [
+    {
+      "contact": "nadia",
+      "kind": "gift",
+      "label": "Birthday gift for Nadia",
+      "anchor_month": 9,
+      "anchor_day": 14,
+      "lead_time_days": 14,
+      "active": true,
+      "sensitivity": "normal",
+      "notes": "Something for the pottery studio."
+    },
+    {
+      "contact": "bob",
+      "kind": "card",
+      "label": "Holiday card",
+      "anchor_month": 12,
+      "anchor_day": 18,
+      "lead_time_days": 7,
+      "active": true,
+      "sensitivity": "normal"
+    },
+    {
+      "contact": "ada",
+      "kind": "invite",
+      "label": "Annual garden party invite",
+      "active": false,
+      "sensitivity": "normal",
+      "notes": "Retired — the garden party stopped in 2024."
+    }
+  ],
+  "occasion_events": [
+    {
+      "title": "Summer garden party",
+      "starts_in_days": 21,
+      "ends_in_days": 21,
+      "location": "Our garden",
+      "sensitivity": "normal",
+      "notes": "Bring the folding chairs.",
+      "attendees": [
+        { "contact": "nadia", "rsvp": "accepted" },
+        { "contact": "theo", "rsvp": "accepted" },
+        { "contact": "marcus", "rsvp": "pending" },
+        { "contact": "soren", "rsvp": "maybe" }
+      ]
+    },
+    {
+      "title": "Book club dinner",
+      "starts_in_days": 10,
+      "ends_in_days": 10,
+      "location": "Café Lune",
+      "sensitivity": "private",
+      "attendees": [
+        { "contact": "ada", "rsvp": "accepted" },
+        { "contact": "celine", "rsvp": "maybe" },
+        { "contact": "hugo", "rsvp": "declined" }
+      ]
     }
   ]
 }

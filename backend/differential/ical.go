@@ -66,6 +66,13 @@ func ICalCorpus() ([]ICalCorpusEntry, error) {
 	}
 	var out []ICalCorpusEntry
 	for i, a := range m.Activities {
+		// Demo-relative activities carry days_ago instead of an absolute date.
+		// The corpus reads the manifest directly (no PopulateAt clock), so it
+		// has no deterministic DTSTART for them; skip them — the absolute-date
+		// activities carry the serve/parse differential.
+		if a.DaysAgo != nil {
+			continue
+		}
 		out = append(out, ICalCorpusEntry{
 			ID: fmt.Sprintf("activity/%d", i),
 			Activity: &models.Activity{

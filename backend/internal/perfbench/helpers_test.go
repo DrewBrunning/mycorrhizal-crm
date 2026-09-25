@@ -65,9 +65,9 @@ func TestRatioEdges(t *testing.T) {
 
 func TestSecondHubBlock(t *testing.T) {
 	// Pure block math, given an arbitrary manifest length argument: with
-	// smoke's 162-contacts-per-user target and a 15-contact manifest it is
-	// 11 blocks, so 2 hubs land one at block 0 and one at block 5.
-	assert.Equal(t, 5, secondHubBlock(largedata.Smoke, 15))
+	// smoke's 175-contacts-per-user target and a 15-contact manifest it is
+	// 12 blocks, so 2 hubs land one at block 0 and one at block 6.
+	assert.Equal(t, 6, secondHubBlock(largedata.Smoke, 15))
 	// a one-hub / one-block shape falls back to the chain head (block 0).
 	assert.Equal(t, 0, secondHubBlock(largedata.Profile{Contacts: 15, Hubs: 1}, 15))
 	assert.Equal(t, 0, secondHubBlock(largedata.Profile{Contacts: 10, Hubs: 5}, 15))
