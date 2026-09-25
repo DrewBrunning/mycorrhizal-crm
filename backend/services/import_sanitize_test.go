@@ -85,7 +85,7 @@ func TestSanitizeImportedContact_NothingChanged_NoNotes(t *testing.T) {
 // clean text with a diagnostic, not a crash and not mojibake in the stored
 // row.
 func TestBuildContactFromRow_HostileControlCharactersAndInvalidUTF8_ImportsCleanly(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -115,7 +115,7 @@ func TestBuildContactFromRow_HostileControlCharactersAndInvalidUTF8_ImportsClean
 // -- so the payload is inert wherever it is displayed. This test proves the
 // backend half of that claim: the payload round-trips byte-for-byte.
 func TestBuildContactFromRow_HTMLScriptInFreeTextField_StoredLiterallyNotStripped(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 

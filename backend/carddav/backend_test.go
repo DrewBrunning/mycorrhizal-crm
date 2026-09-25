@@ -15,7 +15,6 @@ import (
 	"github.com/emersion/go-vcard"
 	"github.com/emersion/go-webdav"
 	webdavcarddav "github.com/emersion/go-webdav/carddav"
-	"github.com/glebarez/sqlite"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -41,13 +40,7 @@ func captureLogger(t *testing.T, buf *bytes.Buffer) {
 // controllers/activity_controller_test.go's setupRouter.
 func newTestBackend(t *testing.T) (*Backend, *gorm.DB) {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("failed to open in-memory db: %v", err)
-	}
-	if err := db.AutoMigrate(&models.Contact{}); err != nil {
-		t.Fatalf("failed to migrate Contact: %v", err)
-	}
+	db := dbtest.New(t)
 	return NewBackend(db, t.TempDir()), db
 }
 

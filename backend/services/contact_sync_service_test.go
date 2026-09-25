@@ -19,7 +19,6 @@ import (
 
 	"github.com/emersion/go-vcard"
 	"github.com/emersion/go-webdav/carddav"
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -28,18 +27,7 @@ import (
 func setupContactSyncTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-
-	sqlDB, err := db.DB()
-	require.NoError(t, err)
-	sqlDB.SetMaxOpenConns(1)
-
-	require.NoError(t, db.AutoMigrate(
-		&models.User{}, &models.Contact{},
-		&models.ContactSubscription{}, &models.ContactSyncLink{},
-		&models.ContactSyncConflict{},
-	))
+	db := dbtest.New(t)
 	return db
 }
 

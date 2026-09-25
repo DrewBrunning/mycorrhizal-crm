@@ -20,7 +20,7 @@ import (
 // services/ has its own direct _test.go sibling (birthday_service.go,
 // cadence_service.go, ...) -- this closes that gap the same way, using
 // dbtest.New(t) (CLAUDE.md backend trap #1) rather than the older
-// setupRouter()/AutoMigrate helper some sibling files in this package still
+// setupRouter(t)/AutoMigrate helper some sibling files in this package still
 // use.
 
 func occasionTestUser(t *testing.T, db *gorm.DB, username string) models.User {

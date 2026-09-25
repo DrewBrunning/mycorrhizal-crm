@@ -1,11 +1,11 @@
 package services
 
 import (
+	"mycorrhizal/internal/dbtest"
 	"testing"
 
 	"mycorrhizal/models"
 
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -14,14 +14,7 @@ import (
 func setupHouseholdServiceTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-
-	sqlDB, err := db.DB()
-	require.NoError(t, err)
-	sqlDB.SetMaxOpenConns(1)
-
-	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Contact{}, &models.Household{}, &models.HouseholdMember{}, &models.RelationshipEdge{}))
+	db := dbtest.New(t)
 	return db
 }
 

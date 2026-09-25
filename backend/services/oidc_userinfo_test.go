@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"mycorrhizal/internal/dbtest"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,7 +12,6 @@ import (
 	"mycorrhizal/models"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
@@ -128,9 +128,7 @@ func TestEnrichFromUserInfoRequiresToken(t *testing.T) {
 // setupUserDB gives an in-memory database with just the users table.
 func setupUserDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.User{}))
+	db := dbtest.New(t)
 	return db
 }
 

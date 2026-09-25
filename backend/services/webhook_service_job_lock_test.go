@@ -1,33 +1,40 @@
 package services
 
 import (
+	"fmt"
 	"mycorrhizal/config"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"testing"
 	"time"
 
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
 
+// setupWebhookRetryTestDB returns the real migrated schema with users 1 and 2
+// seeded, so webhook fixtures (newTestWebhook's UserID 1, the fan-out test's
+// userID+1) satisfy the real webhooks.user_id foreign key.
 func setupWebhookRetryTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-
-	//:memory: sqlite is per-connection; deliverWebhook and ProcessWebhookRetries
-	// dispatch through goroutines, so a second pooled connection would see an
-	// empty (table-less) database. Pin to a single connection, matching the
-	// convention used by the other services *_test.go DB setups that touch
-	// goroutines (e.g. setupCalendarSyncTestDB, setupReminderTestDB).
-	sqlDB, err := db.DB()
-	require.NoError(t, err)
-	sqlDB.SetMaxOpenConns(1)
-
-	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Webhook{}, &models.WebhookDelivery{}, &models.JobExecution{}, &models.SystemEvent{}))
+	db := dbtest.New(t)
+	for i := 1; i <= 2; i++ {
+		u := models.User{Username: fmt.Sprintf("webhook-user-%d", i), Email: fmt.Sprintf("webhook-user-%d@example.com", i), Password: "x"}
+		require.NoError(t, db.Create(&u).Error)
+		require.EqualValues(t, i, u.ID, "fresh schema assigns sequential user IDs")
+	}
 	return db
+}
+
+// seedTestWebhookID persists a webhook for user 1 and returns its ID, for
+// tests that write deliveries directly (webhook_deliveries.webhook_id is a
+// real foreign key).
+func seedTestWebhookID(t *testing.T, db *gorm.DB) uint {
+	t.Helper()
+	wh := newTestWebhook("https://receiver.example.com/hook", "secret")
+	require.NoError(t, db.Create(&wh).Error)
+	return wh.ID
 }
 
 // TestProcessWebhookRetriesSkipsWhenLocked is the regression test

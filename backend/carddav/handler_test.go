@@ -8,21 +8,16 @@ import (
 	"testing"
 
 	"mycorrhizal/internal/dbtest"
-	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 )
 
 func TestHandlerDiscovery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.Contact{}))
+	db := dbtest.New(t)
 
 	handler := NewHandler(db, t.TempDir())
 	h := handler.GinHandler()
@@ -77,9 +72,7 @@ func TestWellKnownRedirect(t *testing.T) {
 func TestHandlerDelegatesToWebDAV(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.Contact{}))
+	db := dbtest.New(t)
 
 	handler := NewHandler(db, t.TempDir())
 	h := handler.GinHandler()

@@ -2,11 +2,11 @@ package models
 
 import (
 	"fmt"
+	"mycorrhizal/internal/dbtest"
 	"regexp"
 	"testing"
 	"time"
 
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -15,14 +15,7 @@ import (
 func setupActivityTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-
-	sqlDB, err := db.DB()
-	require.NoError(t, err)
-	sqlDB.SetMaxOpenConns(1)
-
-	require.NoError(t, db.AutoMigrate(&User{}, &Contact{}, &Activity{}))
+	db := dbtest.New(t)
 	return db
 }
 
@@ -36,16 +29,7 @@ func setupActivityTestDBFrozenClock(t *testing.T) *gorm.DB {
 	t.Helper()
 
 	frozen := time.Now()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
-		NowFunc: func() time.Time { return frozen },
-	})
-	require.NoError(t, err)
-
-	sqlDB, err := db.DB()
-	require.NoError(t, err)
-	sqlDB.SetMaxOpenConns(1)
-
-	require.NoError(t, db.AutoMigrate(&User{}, &Contact{}, &Activity{}))
+	db := dbtest.New(t).Session(&gorm.Session{NowFunc: func() time.Time { return frozen }})
 	return db
 }
 

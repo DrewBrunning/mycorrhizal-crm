@@ -2,11 +2,11 @@ package services
 
 import (
 	"mycorrhizal/config"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 	"net/http"
 	"testing"
 
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -23,11 +23,7 @@ func paperlessTestConfig() config.Config {
 // newPaperlessTestDB migrates the models the Paperless service touches.
 func newPaperlessTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	sqlDB, _ := db.DB()
-	sqlDB.SetMaxOpenConns(1)
-	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Contact{}, &models.PaperlessConfig{}, &models.ExternalIdentity{}))
+	db := dbtest.New(t)
 	return db
 }
 

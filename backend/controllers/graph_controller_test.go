@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"mycorrhizal/internal/dbtest"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,10 +12,8 @@ import (
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 )
 
 func findGraphNode(nodes []models.GraphNode, id string) *models.GraphNode {
@@ -246,9 +245,7 @@ func TestGetGraph_OnlyReturnsCallingUsersData(t *testing.T) {
 
 func TestGetGraph_Unauthorized(t *testing.T) {
 	gin.SetMode(gin.ReleaseMode)
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.Contact{}, &models.RelationshipEdge{}, &models.Activity{}))
+	db := dbtest.New(t)
 
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
@@ -274,14 +271,15 @@ func TestGetGraph_Unauthorized(t *testing.T) {
 // table services.ComputeAllContactScores queries internally.
 func TestGetGraph_ScoringFailureDegradesGracefully(t *testing.T) {
 	gin.SetMode(gin.ReleaseMode)
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&models.User{}, &models.Contact{}, &models.RelationshipEdge{}, &models.Activity{}))
+	db := dbtest.New(t)
 
 	user := models.User{Username: "scorefail", Password: "x", Email: "scorefail@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 	contact := models.Contact{UserID: user.ID, Firstname: "Alice"}
 	require.NoError(t, db.Create(&contact).Error)
+	// Scoring's cadence-policy query is the one that fails: hide the table
+	// on the real migrated schema.
+	dbtest.HideTable(t, db, "cadence_policies")
 
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {

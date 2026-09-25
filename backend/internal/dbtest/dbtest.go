@@ -21,6 +21,7 @@
 package dbtest
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -151,4 +152,21 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	return out.Close()
+}
+
+// HideTable makes table unreachable under its own name, so any query against
+// it fails with "no such table" -- the error-path seam for tests that used to
+// build an AutoMigrate schema deliberately missing a table. It renames the
+// table instead of dropping it: SQLite's ALTER TABLE ... RENAME rewrites the
+// foreign keys and triggers on every other table to follow, so the rest of the
+// real migrated schema (and rows already seeded into it) keep working. Call it
+// after seeding whatever rows the test needs.
+func HideTable(tb testing.TB, db *gorm.DB, table string) {
+	tb.Helper()
+	// Identifiers cannot be bound parameters; table is a test-supplied
+	// constant, never request input.
+	stmt := fmt.Sprintf(`ALTER TABLE %q RENAME TO %q`, table, table+"__hidden_by_test")
+	if err := db.Exec(stmt).Error; err != nil {
+		tb.Fatalf("dbtest: hiding table %s: %v", table, err)
+	}
 }
