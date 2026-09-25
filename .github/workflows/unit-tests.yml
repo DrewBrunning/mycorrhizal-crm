@@ -625,6 +625,22 @@ jobs:
         if: matrix.leg == 'rest'
         run: python3 -m pip install --quiet --break-system-packages --require-hashes -r backend/differential/reference/vobject/requirements.txt
 
+      # This leg just installed vobject above, so the vCard-vobject leg's
+      # default t.Skip-when-missing (developer-machine behavior) must not
+      # apply here: MYCORRHIZAL_REQUIRE_REFERENCES turns a broken install
+      # step into a hard failure so the TEST-08 gate can't silently pass
+      # having tested nothing (internal/citest). Run as its own step, not
+      # folded into the leg's blanket test run below: the JSContact-calcard
+      # leg lives in the same package and legitimately has no reference
+      # installed here (that leg is differential-e2e.yml's job), so the
+      # blanket run must keep the default skip semantics.
+      - name: Verify the vCard-vobject differential leg is not silently skipped
+        if: matrix.leg == 'rest'
+        working-directory: backend
+        env:
+          MYCORRHIZAL_REQUIRE_REFERENCES: "1"
+        run: go test ./differential/ -run '^TestVCardVObjectDifferential$' -count=1 -v
+
       # Each leg resolves to a package list plus an optional -run regex:
       #   controllers-1 / services-1 → ./<pkg>/...  -run '^(Test|Fuzz)[A-G]'
       #   controllers-2 / services-2 → ./<pkg>/...  -run '^(Test|Fuzz)[H-Z]'

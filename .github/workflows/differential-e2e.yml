@@ -107,8 +107,14 @@ jobs:
           rust:1.93-slim@sha256:c0a38f5662afdb298898da1d70b909af4bda4e0acff2dc52aea6360a9b9c6956
           cargo build --release --locked
 
-      - name: Run the JSContact differential leg
+      # MYCORRHIZAL_REQUIRE_REFERENCES turns a missing reference (a failed
+      # pip install / cargo build above) into a hard test failure instead of
+      # the default t.Skip -- this job promises both references are
+      # installed, so a broken provisioning step here must not silently
+      # report green having tested nothing (internal/citest).
+      - name: Run the vCard-vobject and JSContact differential legs
         working-directory: backend
-        run: go test ./differential/ -run '^TestJSContactCalcardDifferential$' -count=1 -v
+        run: go test ./differential/ -run '^(TestVCardVObjectDifferential|TestJSContactCalcardDifferential)$' -count=1 -v
         env:
           MYCORRHIZAL_CALCARD_CMD: "${{ github.workspace }}/backend/differential/reference/calcard/target/release/calcard-ref"
+          MYCORRHIZAL_REQUIRE_REFERENCES: "1"
