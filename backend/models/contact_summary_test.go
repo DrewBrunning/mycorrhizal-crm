@@ -236,6 +236,33 @@ func TestNewContactRecordResponse_EmptyRelationsSerializeAsEmptyArrays(t *testin
 	}
 }
 
+// TestNewContactRecordResponse_NonEmptyRelationsPassThrough is
+// nonNilSlice's positive control: a Contact whose Notes/Activities/
+// Reminders are already populated (the common Preloaded case) must have
+// those exact slices carried through, not just the nil/empty edge case
+// above.
+func TestNewContactRecordResponse_NonEmptyRelationsPassThrough(t *testing.T) {
+	t.Parallel()
+	c := &Contact{
+		Firstname:  "Ada",
+		Notes:      []Note{{Content: "hello"}},
+		Activities: []Activity{{Title: "Coffee"}},
+		Reminders:  []Reminder{{Message: "Call back"}},
+	}
+
+	resp := NewContactRecordResponse(c, "", nil)
+
+	if len(resp.Notes) != 1 || resp.Notes[0].Content != "hello" {
+		t.Errorf("Notes = %+v, want the one populated note passed through", resp.Notes)
+	}
+	if len(resp.Activities) != 1 || resp.Activities[0].Title != "Coffee" {
+		t.Errorf("Activities = %+v, want the one populated activity passed through", resp.Activities)
+	}
+	if len(resp.Reminders) != 1 || resp.Reminders[0].Message != "Call back" {
+		t.Errorf("Reminders = %+v, want the one populated reminder passed through", resp.Reminders)
+	}
+}
+
 // TestNewContactSummaryWithRelations_EmptyRelationsSerializeAsEmptyArrays
 // is the same CLAUDE.md frontend trap #8 regression for the list-with-
 // includes= shape.

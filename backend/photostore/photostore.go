@@ -150,7 +150,7 @@ func SaveContactPhoto(photoData []byte, mediaType string, photoDir string) (stri
 	if err != nil {
 		return "", "", err
 	}
-	if err := jpeg.Encode(outFile, photoImg, &jpeg.Options{Quality: 85}); err != nil {
+	if err := jpeg.Encode(outFile, photoImg, &jpeg.Options{Quality: 85}); err != nil { // # pragma: no cover — jpeg.Encode only fails on a zero-sized image, which a real decoded photo (cropToSquare's input) cannot produce, or a write failure indistinguishable from the Close-failure case below without a fault-injectable io.Writer seam
 		_ = outFile.Close() // the encode error is the one worth reporting
 		return "", "", err
 	}
