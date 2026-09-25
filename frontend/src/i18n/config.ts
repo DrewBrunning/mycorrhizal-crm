@@ -20,7 +20,7 @@ i18n.on('languageChanged', syncHtmlLang);
 const noop = () => {};
 const origLog = console.log;
 console.log = noop;
-i18n
+void i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
@@ -55,6 +55,12 @@ i18n
   .then(() => {
     console.log = origLog;
     syncHtmlLang(i18n.resolvedLanguage || 'en');
+  })
+  .catch((err: unknown) => {
+    // Restore the patched console.log even on init failure, or the
+    // suppression above would silence every later console.log call.
+    console.log = origLog;
+    console.error('i18next init failed:', err);
   });
 
 export default i18n;
