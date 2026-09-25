@@ -49,7 +49,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -221,7 +220,11 @@ internal fun OccasionEventDialog(
     onDismiss: () -> Unit,
     onSave: (OccasionEventForm) -> Unit,
 ) {
-    val context = LocalContext.current
+    // Resolved in composition (not via the Context inside onClick) so a
+    // configuration change -- e.g. a locale switch -- re-resolves them.
+    val titleRequiredMsg = stringResource(R.string.occasions_validation_title_required)
+    val startRequiredMsg = stringResource(R.string.occasions_validation_start_required)
+    val endBeforeStartMsg = stringResource(R.string.occasions_validation_end_before_start)
     var title by remember(event) { mutableStateOf(event?.title ?: "") }
     var startsAt by remember(event) { mutableStateOf(event?.startsAt ?: "") }
     var endsAt by remember(event) { mutableStateOf(event?.endsAt ?: "") }
@@ -274,9 +277,9 @@ internal fun OccasionEventDialog(
             TextButton(onClick = {
                 val trimmed = title.trim()
                 when {
-                    trimmed.isEmpty() -> error = context.getString(R.string.occasions_validation_title_required)
-                    startsAt.isBlank() -> error = context.getString(R.string.occasions_validation_start_required)
-                    endsAt.isNotBlank() && endsAt < startsAt -> error = context.getString(R.string.occasions_validation_end_before_start)
+                    trimmed.isEmpty() -> error = titleRequiredMsg
+                    startsAt.isBlank() -> error = startRequiredMsg
+                    endsAt.isNotBlank() && endsAt < startsAt -> error = endBeforeStartMsg
                     else -> onSave(
                         OccasionEventForm(
                             title = trimmed,
