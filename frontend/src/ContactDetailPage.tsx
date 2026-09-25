@@ -899,44 +899,38 @@ export default function ContactDetailPage() {
         isMe={isMe}
         onToggleMe={handleToggleMe}
         onExportContact={(format) => {
-          if (record?.uid) {
-            exportContact(format as 'vcf3' | 'vcf4' | 'jscontact', record.uid).catch(() =>
-              showError(t('contactDetail.deleteContactError')),
-            );
-          }
+          exportContact(format as 'vcf3' | 'vcf4' | 'jscontact', record.uid).catch(() =>
+            showError(t('contactDetail.deleteContactError')),
+          );
         }}
       />
 
-      {record && (
-        <MergeContactsDialog
-          open={mergeDialogOpen}
-          onClose={() => setMergeDialogOpen(false)}
-          onMerged={async (keeperId) => {
-            // T94: this page is the same element for every /contacts/:id, so a
-            // param change never unmounts it -- own the dialog's open state
-            // here too rather than relying only on the dialog closing itself.
-            setMergeDialogOpen(false);
-            // T95: the backend repoints circle_members/contact_tags onto the
-            // keeper, but useCircles/useTags hold a list fetched for the loser
-            // and nothing remounts to refetch it. Without these the keeper
-            // renders its pre-merge membership, which looks like the merge
-            // dropped the circles.
-            await Promise.all([refreshCircles(), refreshTags()]);
-            await navigate(`/contacts/${keeperId}`);
-          }}
-          currentContactId={record.id}
-          currentContactUid={record.uid}
-          currentContactName={`${firstname} ${lastname}`.trim()}
-        />
-      )}
+      <MergeContactsDialog
+        open={mergeDialogOpen}
+        onClose={() => setMergeDialogOpen(false)}
+        onMerged={async (keeperId) => {
+          // T94: this page is the same element for every /contacts/:id, so a
+          // param change never unmounts it -- own the dialog's open state
+          // here too rather than relying only on the dialog closing itself.
+          setMergeDialogOpen(false);
+          // T95: the backend repoints circle_members/contact_tags onto the
+          // keeper, but useCircles/useTags hold a list fetched for the loser
+          // and nothing remounts to refetch it. Without these the keeper
+          // renders its pre-merge membership, which looks like the merge
+          // dropped the circles.
+          await Promise.all([refreshCircles(), refreshTags()]);
+          await navigate(`/contacts/${keeperId}`);
+        }}
+        currentContactId={record.id}
+        currentContactUid={record.uid}
+        currentContactName={`${firstname} ${lastname}`.trim()}
+      />
 
-      {record && (
-        <ShareContactDialog
-          open={shareDialogOpen}
-          onClose={() => setShareDialogOpen(false)}
-          vcardUID={record.uid}
-        />
-      )}
+      <ShareContactDialog
+        open={shareDialogOpen}
+        onClose={() => setShareDialogOpen(false)}
+        vcardUID={record.uid}
+      />
 
       {/* T31: one scrollable page grouped into anchor sections, replacing the
           tab strip. ContactJumpNav is the sticky in-page menu; each SectionGroup
@@ -1021,8 +1015,8 @@ export default function ContactDetailPage() {
           <RelationshipEdgeList
             confirmedEdges={confirmedEdges}
             suggestedEdges={suggestedEdges}
-            contactsByUid={contactsByUid || new Map()}
-            viewedContactUid={record?.uid || ''}
+            contactsByUid={contactsByUid}
+            viewedContactUid={record.uid}
             onEdit={handleEditRelationshipEdge}
             onDelete={handleDeleteRelationshipEdge}
             onAccept={handleAcceptSuggestion}
@@ -1112,12 +1106,10 @@ export default function ContactDetailPage() {
             </Button>
           }
         >
-          {id && record?.uid && (
-            <LifeEventSuggestions contactId={id} onAccepted={() => refreshLifeEvents()} />
-          )}
+          {id && <LifeEventSuggestions contactId={id} onAccepted={() => refreshLifeEvents()} />}
           <LifeEventList
             events={lifeEvents}
-            contactsByUid={lifeEventsContactsByUid || new Map()}
+            contactsByUid={lifeEventsContactsByUid}
             onEdit={lifeEventDialog.openEdit}
             onDelete={handleLifeEventDelete}
           />
@@ -1261,7 +1253,7 @@ export default function ContactDetailPage() {
       <SectionGroup id="external-links">
         <PanelCard title={t('externalLinks.title')}>
           <ExternalLinkPanel
-            contactUid={record?.uid || ''}
+            contactUid={record.uid}
             identities={externalIdentities}
             loading={externalLinksLoading}
             immichSummary={immich.summary}
@@ -1304,7 +1296,7 @@ export default function ContactDetailPage() {
         open={activityDialogOpen}
         onClose={() => setActivityDialogOpen(false)}
         onSave={handleSaveActivity}
-        preselectedContactId={record?.id}
+        preselectedContactId={record.id}
       />
 
       <ReminderDialog
@@ -1316,7 +1308,7 @@ export default function ContactDetailPage() {
         }}
         onSave={handleSaveReminder}
         reminder={editingReminder}
-        contactId={record?.id || 0}
+        contactId={record.id}
         initialValues={reminderInitialValues}
       />
 
@@ -1350,7 +1342,7 @@ export default function ContactDetailPage() {
         onClose={() => setProfilePictureDialogOpen(false)}
         onUpload={handleUploadProfilePicture}
         immich={
-          immich.configured && record?.uid
+          immich.configured
             ? {
                 contactUid: record.uid,
                 isLinked: externalIdentities.some((i) => i.system === 'immich'),
@@ -1369,14 +1361,14 @@ export default function ContactDetailPage() {
         }}
         onSave={handleRelationshipSaved}
         edge={editingEdge}
-        viewedContactUid={record?.uid || ''}
+        viewedContactUid={record.uid}
         otherPartyContact={editingEdgeOtherParty}
       />
 
       <TimelineExplorerDialog
         open={timelineExplorerOpen}
         onClose={() => setTimelineExplorerOpen(false)}
-        contactId={record?.id}
+        contactId={record.id}
         onEditItem={handleStartEditTimelineItem}
         onDeleteCompletion={handleDeleteCompletion}
         revision={timelineRevision}
@@ -1387,7 +1379,7 @@ export default function ContactDetailPage() {
         onClose={lifeEventDialog.close}
         onSave={handleSaveLifeEvent}
         initial={lifeEventDialogInitial}
-        excludeContactUid={record?.uid}
+        excludeContactUid={record.uid}
       />
 
       <PreferenceDialog
@@ -1417,7 +1409,7 @@ export default function ContactDetailPage() {
         open={cadenceDialog.open}
         onClose={cadenceDialog.close}
         onSave={handleSaveCadenceSubmit}
-        entityId={record?.uid || ''}
+        entityId={record.uid}
         policy={cadenceDialog.editing}
       />
 
