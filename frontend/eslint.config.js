@@ -135,17 +135,4 @@ export default tseslint.config(
       'react-hooks/rules-of-hooks': 'off',
     },
   },
-  {
-    // TEMPORARY carve-out, not a policy exception: ContactDetailPage.tsx (and
-    // its test file) is mid-refactor in a parallel worktree at the time the
-    // type-aware promise-safety rules below were turned on repo-wide. Every
-    // other file was fixed properly; these two are exempted only so `yarn
-    // lint` stays green while that refactor lands, and should have this
-    // override removed (plus the same real fixes applied) once it merges.
-    files: ['src/ContactDetailPage.tsx', 'src/ContactDetailPage.test.tsx'],
-    rules: {
-      '@typescript-eslint/no-floating-promises': 'off',
-      '@typescript-eslint/no-misused-promises': 'off',
-    },
-  },
 );

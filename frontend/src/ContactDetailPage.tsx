@@ -881,26 +881,30 @@ export default function ContactDetailPage() {
         allTags={allTags}
         onStartEditProfile={handleStartEditProfile}
         onCancelEditProfile={handleCancelEditProfile}
-        onSaveProfile={handleSaveProfile}
-        onDeleteContact={handleDeleteContact}
+        onSaveProfile={(...args) => void handleSaveProfile(...args)}
+        onDeleteContact={(...args) => void handleDeleteContact(...args)}
         onProfileValueChange={setProfileValues}
-        onAddCircle={handleCircleAdd}
-        onRemoveCircle={handleCircleRemove}
-        onAddTag={handleTagAdd}
-        onRemoveTag={handleTagRemove}
+        onAddCircle={(...args) => void handleCircleAdd(...args)}
+        onRemoveCircle={(...args) => void handleCircleRemove(...args)}
+        onAddTag={(...args) => void handleTagAdd(...args)}
+        onRemoveTag={(...args) => void handleTagRemove(...args)}
         onUploadProfilePicture={() => setProfilePictureDialogOpen(true)}
         onStayInTouch={record.archived ? undefined : handleStayInTouch}
-        onArchiveContact={record.archived ? undefined : handleArchiveContact}
-        onUnarchiveContact={record.archived ? handleUnarchiveContact : undefined}
-        onToggleFavorite={handleToggleFavorite}
+        onArchiveContact={
+          record.archived ? undefined : (...args) => void handleArchiveContact(...args)
+        }
+        onUnarchiveContact={
+          record.archived ? (...args) => void handleUnarchiveContact(...args) : undefined
+        }
+        onToggleFavorite={(...args) => void handleToggleFavorite(...args)}
         onMergeContact={() => setMergeDialogOpen(true)}
-        onPrepView={() => navigate(`/contacts/${record.id}/prep`)}
+        onPrepView={() => void navigate(`/contacts/${record.id}/prep`)}
         onShareContact={() => setShareDialogOpen(true)}
         isMe={isMe}
-        onToggleMe={handleToggleMe}
+        onToggleMe={(...args) => void handleToggleMe(...args)}
         onExportContact={(format) => {
           exportContact(format as 'vcf3' | 'vcf4' | 'jscontact', record.uid).catch(() =>
-            showError(t('contactDetail.deleteContactError')),
+            showError(t('contactDetail.exportContactError')),
           );
         }}
       />
@@ -960,7 +964,7 @@ export default function ContactDetailPage() {
           validationError={fieldEditing.validationError}
           onEditStart={fieldEditing.handleEditStart}
           onEditCancel={fieldEditing.handleEditCancel}
-          onEditSave={fieldEditing.handleEditSave}
+          onEditSave={(...args) => void fieldEditing.handleEditSave(...args)}
           onEditValueChange={fieldEditing.handleEditValueChange}
           onUpdateCard={fieldEditing.handleUpdateCard}
           enabledFields={enabledFields}
@@ -991,7 +995,7 @@ export default function ContactDetailPage() {
               (p) => p.category !== PREFERENCE_CLOTHING_SIZE && !isGiftsTabCategory(p.category),
             )}
             onEdit={preferenceDialog.openEdit}
-            onDelete={handlePreferenceDelete}
+            onDelete={(...args) => void handlePreferenceDelete(...args)}
           />
         </PanelCard>
       </SectionGroup>
@@ -1018,9 +1022,9 @@ export default function ContactDetailPage() {
             contactsByUid={contactsByUid}
             viewedContactUid={record.uid}
             onEdit={handleEditRelationshipEdge}
-            onDelete={handleDeleteRelationshipEdge}
-            onAccept={handleAcceptSuggestion}
-            onReject={handleRejectSuggestion}
+            onDelete={(...args) => void handleDeleteRelationshipEdge(...args)}
+            onAccept={(...args) => void handleAcceptSuggestion(...args)}
+            onReject={(...args) => void handleRejectSuggestion(...args)}
           />
         </PanelCard>
         {/* Testing feedback: Connections is a list (T10's ego-centric chain
@@ -1088,8 +1092,8 @@ export default function ContactDetailPage() {
         >
           <ContactTimeline
             timelineItems={timelineItems.slice(0, 5)}
-            onEditItem={handleStartEditTimelineItem}
-            onDeleteCompletion={handleDeleteCompletion}
+            onEditItem={(...args) => void handleStartEditTimelineItem(...args)}
+            onDeleteCompletion={(...args) => void handleDeleteCompletion(...args)}
           />
         </PanelCard>
         <PanelCard
@@ -1106,12 +1110,14 @@ export default function ContactDetailPage() {
             </Button>
           }
         >
-          {id && <LifeEventSuggestions contactId={id} onAccepted={() => refreshLifeEvents()} />}
+          {id && (
+            <LifeEventSuggestions contactId={id} onAccepted={() => void refreshLifeEvents()} />
+          )}
           <LifeEventList
             events={lifeEvents}
             contactsByUid={lifeEventsContactsByUid}
             onEdit={lifeEventDialog.openEdit}
-            onDelete={handleLifeEventDelete}
+            onDelete={(...args) => void handleLifeEventDelete(...args)}
           />
         </PanelCard>
         <PanelCard title={t('conversationAgenda.title')}>
@@ -1120,7 +1126,7 @@ export default function ContactDetailPage() {
             onAdd={handleAddAgendaItem}
             onEdit={agendaEditDialog.openEdit}
             onDiscuss={agendaDiscussDialog.openEdit}
-            onDelete={handleDeleteAgenda}
+            onDelete={(...args) => void handleDeleteAgenda(...args)}
           />
         </PanelCard>
       </SectionGroup>
@@ -1139,7 +1145,7 @@ export default function ContactDetailPage() {
             loading={cadenceLoading}
             onAdd={cadenceDialog.openCreate}
             onEdit={cadenceDialog.openEdit}
-            onDelete={handleCadenceDelete}
+            onDelete={(...args) => void handleCadenceDelete(...args)}
           />
         </PanelCard>
         <PanelCard
@@ -1211,7 +1217,7 @@ export default function ContactDetailPage() {
           <PreferenceList
             preferences={preferences.filter((p) => isGiftsTabCategory(p.category))}
             onEdit={giftPreferenceDialog.openEdit}
-            onDelete={handlePreferenceDelete}
+            onDelete={(...args) => void handlePreferenceDelete(...args)}
           />
           <Divider sx={{ my: 1.5 }} />
           <GiftList
@@ -1222,7 +1228,7 @@ export default function ContactDetailPage() {
             onAddFull={handleAddFullGift}
             onEdit={giftDialog.openEdit}
             onMarkGiven={handleMarkGivenGift}
-            onDelete={handleDeleteGift}
+            onDelete={(...args) => void handleDeleteGift(...args)}
           />
         </PanelCard>
       </SectionGroup>
@@ -1244,7 +1250,7 @@ export default function ContactDetailPage() {
           <OccasionObligationList
             obligations={occasionObligations}
             onEdit={occasionDialog.openEdit}
-            onDelete={handleDeleteOccasionObligation}
+            onDelete={(...args) => void handleDeleteOccasionObligation(...args)}
           />
         </PanelCard>
       </SectionGroup>
@@ -1369,8 +1375,8 @@ export default function ContactDetailPage() {
         open={timelineExplorerOpen}
         onClose={() => setTimelineExplorerOpen(false)}
         contactId={record.id}
-        onEditItem={handleStartEditTimelineItem}
-        onDeleteCompletion={handleDeleteCompletion}
+        onEditItem={(...args) => void handleStartEditTimelineItem(...args)}
+        onDeleteCompletion={(...args) => void handleDeleteCompletion(...args)}
         revision={timelineRevision}
       />
 

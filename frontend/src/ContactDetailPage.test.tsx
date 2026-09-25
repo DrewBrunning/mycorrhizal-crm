@@ -1364,9 +1364,8 @@ test('a failed export surfaces an error toast', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Export vCard' }));
   fireEvent.click(await screen.findByText('vCard 4.0'));
   await waitFor(() => expect(calls.some((c) => c.url.includes('/export/vcf'))).toBe(true));
-  // Pinned as-is: the export failure reuses the delete-failure copy.
   expect(
-    await screen.findByText('Failed to delete contact. Please try again.'),
+    await screen.findByText('Failed to export contact. Please try again.'),
   ).toBeInTheDocument();
 });
 
