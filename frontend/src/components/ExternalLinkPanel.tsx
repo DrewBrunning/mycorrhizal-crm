@@ -228,7 +228,7 @@ export default function ExternalLinkPanel({
                   size="small"
                   title={t('immich.panel.syncNow')}
                   aria-label={t('immich.panel.syncNow')}
-                  onClick={onSyncImmich}
+                  onClick={() => void onSyncImmich()}
                   disabled={syncing}
                 >
                   <SyncIcon fontSize="small" />
@@ -237,7 +237,7 @@ export default function ExternalLinkPanel({
                   size="small"
                   color="error"
                   title={t('immich.panel.unlink')}
-                  onClick={handleUnlink}
+                  onClick={() => void handleUnlink()}
                   aria-label={t('immich.panel.unlink')}
                 >
                   <DeleteIcon fontSize="small" />

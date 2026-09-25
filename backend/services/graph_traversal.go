@@ -270,10 +270,7 @@ func splitLeadingSeparator(s string) []string {
 	if s == "" {
 		return nil
 	}
-	if strings.HasPrefix(s, "|") {
-		s = s[1:]
-	}
-	return strings.Split(s, "|")
+	return strings.Split(strings.TrimPrefix(s, "|"), "|")
 }
 
 // sortChainsByDepth orders chains shallowest-first, breaking ties by target

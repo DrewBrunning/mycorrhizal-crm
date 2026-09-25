@@ -7,6 +7,8 @@ import (
 	"image"
 	"image/jpeg"
 	"image/png"
+	"io"
+	"io/fs"
 	"mime/multipart"
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
@@ -44,7 +46,7 @@ func GetProfilePicture(c *gin.Context, cfg *config.Config) {
 
 	// Find the contact in the database
 	if err := db.Where("user_id = ?", userID).First(&contact, contactID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			apperrors.AbortWithError(c, apperrors.ErrNotFound("Contact"))
 			return
 		}
@@ -132,7 +134,7 @@ func AddPhotoToContact(c *gin.Context, cfg *config.Config) {
 
 	// Find the contact in the database
 	if err := db.Where("user_id = ?", userID).First(&contact, contactID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			apperrors.AbortWithError(c, apperrors.ErrNotFound("Contact"))
 			return
 		}
@@ -173,14 +175,14 @@ func AddPhotoToContact(c *gin.Context, cfg *config.Config) {
 		// Save the updated contact
 		if err := db.Save(&contact).Error; err != nil {
 			// Clean up newly saved file since DB update failed
-			os.Remove(filepath.Join(cfg.ProfilePhotoDir, photoPath))
+			removePhotoFile(c, filepath.Join(cfg.ProfilePhotoDir, photoPath))
 			apperrors.AbortWithError(c, apperrors.ErrDatabase("update").WithError(err))
 			return
 		}
 
 		// Delete old photo file after db update
 		if oldPhoto != "" {
-			os.Remove(filepath.Join(cfg.ProfilePhotoDir, oldPhoto))
+			removePhotoFile(c, filepath.Join(cfg.ProfilePhotoDir, oldPhoto))
 		}
 
 		c.JSON(http.StatusOK, contact)
@@ -205,7 +207,7 @@ func processAndSavePhoto(file *multipart.FileHeader, uploadDir string) (string, 
 	if err != nil {
 		return "", "", err
 	}
-	defer src.Close()
+	defer src.Close() //nolint:errcheck // read-only upload handle
 
 	// Detect the image format
 	buf := make([]byte, 512)
@@ -233,7 +235,9 @@ func processAndSavePhoto(file *multipart.FileHeader, uploadDir string) (string, 
 	}
 
 	// Rewind the file reader
-	src.Seek(0, 0)
+	if _, err := src.Seek(0, io.SeekStart); err != nil {
+		return "", "", err // # pragma: no cover — a multipart upload is an in-memory or temp-file handle; rewinding it cannot fail
+	}
 
 	// Reject a decompression bomb (huge declared dimensions, tiny wire size)
 	// before Decode allocates its full raster — see
@@ -241,7 +245,9 @@ func processAndSavePhoto(file *multipart.FileHeader, uploadDir string) (string, 
 	if err := photostore.CheckImageDimensions(src); err != nil {
 		return "", "", err
 	}
-	src.Seek(0, 0)
+	if _, err := src.Seek(0, io.SeekStart); err != nil {
+		return "", "", err // # pragma: no cover — see the rewind above
+	}
 
 	// Decode the image (handle JPEG, PNG, and HEIC)
 	var img image.Image
@@ -327,15 +333,30 @@ func cropToSquare(img image.Image) image.Image {
 	return cropped
 }
 
-func saveImage(path string, img image.Image) error {
+func saveImage(path string, img image.Image) (err error) {
 	out, err := os.Create(path) // #nosec G304 -- path is a server-generated temp filename, not request input
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	// A written file's Close can report the write-back failure (ENOSPC, a
+	// network filesystem) that makes the photo truncated on disk.
+	defer func() {
+		if cerr := out.Close(); cerr != nil && err == nil {
+			err = cerr // # pragma: no cover — needs a filesystem that fails on close
+		}
+	}()
 
 	// Always encode as JPEG
 	return jpeg.Encode(out, img, &jpeg.Options{Quality: 85})
+}
+
+// removePhotoFile deletes a profile-photo file as best-effort cleanup. The
+// request outcome does not depend on it, but a failure leaves an orphaned
+// file on disk, so it is logged rather than silently dropped.
+func removePhotoFile(c *gin.Context, path string) {
+	if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		logger.FromContext(c).Warn().Err(err).Str("file", filepath.Base(path)).Msg("Failed to remove profile photo file; it is orphaned on disk") // # pragma: no cover — needs a remove that fails for a reason other than absence
+	}
 }
 
 // ProxyImage fetches an image from a URL and returns it to the client.

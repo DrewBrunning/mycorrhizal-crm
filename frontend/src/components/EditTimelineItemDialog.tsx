@@ -90,7 +90,7 @@ export default function EditTimelineItemDialog({
   // Load initial contacts when dialog opens in note mode.
   useEffect(() => {
     if (open && type === 'note') {
-      loadNoteContacts();
+      void loadNoteContacts();
     }
   }, [open, type, loadNoteContacts]);
 
@@ -98,7 +98,7 @@ export default function EditTimelineItemDialog({
   useEffect(() => {
     if (!open || type !== 'note') return;
     const timeoutId = setTimeout(() => {
-      loadNoteContacts(noteSearchInput);
+      void loadNoteContacts(noteSearchInput);
     }, 300);
     return () => clearTimeout(timeoutId);
   }, [noteSearchInput, open, type, loadNoteContacts]);

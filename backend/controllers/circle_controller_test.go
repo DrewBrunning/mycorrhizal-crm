@@ -13,7 +13,7 @@ import (
 )
 
 func TestCreateCircle(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/circles", withValidated(func() any { return &models.CircleInput{} }), CreateCircle)
 
 	payload := models.CircleInput{Name: "College friends"}
@@ -32,7 +32,7 @@ func TestCreateCircle(t *testing.T) {
 }
 
 func TestGetCircleIncludesMembers(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/circles/:id", GetCircle)
 
 	var user models.User
@@ -55,7 +55,7 @@ func TestGetCircleIncludesMembers(t *testing.T) {
 }
 
 func TestGetCircleNotFoundForUnknownID(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/circles/:id", GetCircle)
 
 	req, _ := http.NewRequest("GET", "/circles/does-not-exist", nil)
@@ -66,7 +66,7 @@ func TestGetCircleNotFoundForUnknownID(t *testing.T) {
 }
 
 func TestListCircles(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/circles", ListCircles)
 
 	var user models.User
@@ -87,7 +87,7 @@ func TestListCircles(t *testing.T) {
 }
 
 func TestUpdateCircle(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/circles/:id", withValidated(func() any { return &models.CircleInput{} }), UpdateCircle)
 
 	var user models.User
@@ -110,7 +110,7 @@ func TestUpdateCircle(t *testing.T) {
 }
 
 func TestDeleteCircleCascadesMembers(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/circles/:id", DeleteCircle)
 
 	var user models.User
@@ -133,7 +133,7 @@ func TestDeleteCircleCascadesMembers(t *testing.T) {
 }
 
 func TestAddCircleMember(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/circles/:id/members", withValidated(func() any { return &models.CircleMemberInput{} }), AddCircleMember)
 
 	var user models.User
@@ -158,7 +158,7 @@ func TestAddCircleMember(t *testing.T) {
 }
 
 func TestAddCircleMemberRejectsDuplicate(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/circles/:id/members", withValidated(func() any { return &models.CircleMemberInput{} }), AddCircleMember)
 
 	var user models.User
@@ -180,7 +180,7 @@ func TestAddCircleMemberRejectsDuplicate(t *testing.T) {
 }
 
 func TestAddCircleMemberRejectsContactFromAnotherUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/circles/:id/members", withValidated(func() any { return &models.CircleMemberInput{} }), AddCircleMember)
 
 	var user models.User
@@ -203,7 +203,7 @@ func TestAddCircleMemberRejectsContactFromAnotherUser(t *testing.T) {
 }
 
 func TestRemoveCircleMember(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/circles/:id/members/:vcard_uid", RemoveCircleMember)
 
 	var user models.User
@@ -226,7 +226,7 @@ func TestRemoveCircleMember(t *testing.T) {
 }
 
 func TestRemoveCircleMemberNotFound(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/circles/:id/members/:vcard_uid", RemoveCircleMember)
 
 	var user models.User

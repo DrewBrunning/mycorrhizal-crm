@@ -486,23 +486,6 @@ func normalizeUTCTimestamp(s string) string {
 	return s
 }
 
-// timestampToNeutral converts a JSContact wire Timestamp object (anniversary
-// dates; the `@type`-discriminated object form RFC 9553/9555 require for the
-// date-and-or-time union) into the neutral model.
-func timestampToNeutral(t *Timestamp) *contactmodel.Timestamp {
-	if t == nil {
-		return nil
-	}
-	return &contactmodel.Timestamp{UTC: normalizeUTCTimestamp(t.UTC)}
-}
-
-func timestampFromNeutral(t *contactmodel.Timestamp) *Timestamp {
-	if t == nil {
-		return nil
-	}
-	return &Timestamp{UTC: normalizeUTCTimestamp(t.UTC)}
-}
-
 // utcDateTimeToNeutral converts a JSContact wire UTCDateTime string (Card
 // created/updated, Note created — RFC 9553 §2.1.3/§2.1.10/§2.8.3) into the
 // neutral model.

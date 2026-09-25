@@ -152,7 +152,7 @@ export default function MonicaImportDialog({ open, onClose, onImportComplete }: 
         <Box>
           <Button
             variant="contained"
-            onClick={handleConnect}
+            onClick={() => void handleConnect()}
             disabled={connecting || !baseUrl.trim() || !apiToken}
             startIcon={connecting ? <CircularProgress size={16} color="inherit" /> : undefined}
           >

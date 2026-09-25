@@ -203,19 +203,24 @@ function AppContent({
       return;
     }
 
-    const timer = setTimeout(async () => {
-      setSearchLoading(true);
-      try {
-        const result = await getContacts({ search: searchQuery, limit: 10 });
-        if (searchRequestRef.current !== requestId) return;
-        setSearchResults(result.contacts || []);
-      } catch (err) {
-        if (searchRequestRef.current !== requestId) return;
-        console.error('Search error:', err);
-        setSearchResults([]);
-      } finally {
-        if (searchRequestRef.current === requestId) setSearchLoading(false);
-      }
+    const timer = setTimeout(() => {
+      // setTimeout's callback type is void-returning; run the async work in
+      // an IIFE and void the resulting promise instead (errors are already
+      // caught internally below).
+      void (async () => {
+        setSearchLoading(true);
+        try {
+          const result = await getContacts({ search: searchQuery, limit: 10 });
+          if (searchRequestRef.current !== requestId) return;
+          setSearchResults(result.contacts || []);
+        } catch (err) {
+          if (searchRequestRef.current !== requestId) return;
+          console.error('Search error:', err);
+          setSearchResults([]);
+        } finally {
+          if (searchRequestRef.current === requestId) setSearchLoading(false);
+        }
+      })();
     }, 300);
 
     return () => clearTimeout(timer);
@@ -227,7 +232,7 @@ function AppContent({
 
   const handleSearchSubmit = () => {
     if (searchQuery.trim()) {
-      navigate(`/contacts?search=${encodeURIComponent(searchQuery.trim())}`);
+      void navigate(`/contacts?search=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery('');
       setSearchResults([]);
     }
@@ -469,7 +474,7 @@ function AppContent({
                   </MenuItem>
                 ))}
                 <Divider sx={{ my: 0.5 }} />
-                <MenuItem onClick={handleLogout}>
+                <MenuItem onClick={() => void handleLogout()}>
                   <ListItemIcon>
                     <LogoutIcon />
                   </ListItemIcon>
@@ -490,7 +495,7 @@ function AppContent({
                 onInputChange={(_, value) => setSearchQuery(value)}
                 onChange={(_, value) => {
                   if (value && typeof value !== 'string') {
-                    navigate(`/contacts/${value.ID}`);
+                    void navigate(`/contacts/${value.ID}`);
                     setSearchQuery('');
                     setSearchResults([]);
                   }
@@ -592,7 +597,11 @@ function AppContent({
                   </li>
                 )}
               />
-              <Button color="inherit" startIcon={<LogoutIcon />} onClick={handleLogout}>
+              <Button
+                color="inherit"
+                startIcon={<LogoutIcon />}
+                onClick={() => void handleLogout()}
+              >
                 {t('app.logout')}
               </Button>
             </>
@@ -847,7 +856,8 @@ function App() {
     // Restore session after OIDC redirect: the server sets the auth cookie but
     // localStorage is empty, so we fetch user info once to populate it.
     if (!getToken()) {
-      fetchAndCacheUserInfo().then((info) => {
+      // fetchAndCacheUserInfo catches its own errors and resolves to null.
+      void fetchAndCacheUserInfo().then((info) => {
         if (info) setToken(getToken());
       });
     }

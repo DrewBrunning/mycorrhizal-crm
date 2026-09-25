@@ -31,7 +31,7 @@ export function useErrorAggregation(windowHours = 24) {
   }, [windowHours]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   return { buckets, totalEvents, loading, error, refresh };

@@ -35,7 +35,7 @@ export default function ImmichSettings() {
   const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
-    immich.refreshConfig();
+    void immich.refreshConfig();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -190,7 +190,12 @@ export default function ImmichSettings() {
             )}
 
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button variant="contained" size="small" onClick={handleSave} disabled={saving}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => void handleSave()}
+                disabled={saving}
+              >
                 {saving ? t('common.saving') : t('immich.settings.saveButton')}
               </Button>
               {immich.config?.has_api_key && (
@@ -210,7 +215,12 @@ export default function ImmichSettings() {
                 </Button>
               )}
               {immich.config && (
-                <Button variant="outlined" size="small" color="error" onClick={handleRemove}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  color="error"
+                  onClick={() => void handleRemove()}
+                >
                   {t('immich.settings.removeButton')}
                 </Button>
               )}

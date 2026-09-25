@@ -92,7 +92,7 @@ export default function ContactSyncSettings() {
   }, [t]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const openCreate = () => {
@@ -304,7 +304,7 @@ export default function ContactSyncSettings() {
                           <span>
                             <IconButton
                               size="small"
-                              onClick={() => handleSync(sub)}
+                              onClick={() => void handleSync(sub)}
                               disabled={!!syncing[sub.id]}
                               aria-label={t('settings.contactSync.syncNow')}
                             >
@@ -461,7 +461,7 @@ export default function ContactSyncSettings() {
           <Button onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
           <Button
             variant="contained"
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             disabled={saving || !form.name.trim() || !form.url.trim()}
             startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
           >
@@ -482,7 +482,7 @@ export default function ContactSyncSettings() {
           <Button
             color="error"
             variant="contained"
-            onClick={handleDeleteConfirm}
+            onClick={() => void handleDeleteConfirm()}
             disabled={deleting}
           >
             {t('common.delete')}

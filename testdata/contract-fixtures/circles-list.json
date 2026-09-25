@@ -1,0 +1,13 @@
+{
+  "circles": [
+    {
+      "created_at": "2026-08-21T00:08:47Z",
+      "id": "e7d59493-5f47-4fff-88e0-7d1ba44604df",
+      "name": "contract-fixture-circle",
+      "updated_at": "2026-08-21T00:08:47Z"
+    }
+  ],
+  "limit": 25,
+  "next_cursor": "",
+  "total": 1
+}

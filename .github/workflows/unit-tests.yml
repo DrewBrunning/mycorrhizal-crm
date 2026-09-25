@@ -5,20 +5,16 @@ on:
     branches: [main]
   pull_request:
     branches: [main, "release/**"]
-  # Issue #578, B4: the nightly run is the full-length fuzz pass — the PR
-  # path keeps the short smoke, the schedule event runs the same targets at
-  # -fuzztime=2m (see the fuzz step's FUZZTIME env). The schedule also
-  # re-runs the whole suite nightly (Tier 3 "full suite"), which is why the
-  # suite jobs exempt the schedule event from path-gating below.
+  # Issue #578, B4: nightly is the full-length fuzz pass (-fuzztime=2m, see
+  # FUZZTIME below) and re-runs the whole suite (Tier 3), which is why the
+  # suite jobs exempt `schedule` from path-gating below.
   schedule:
     - cron: '5 2 * * *' # 02:05 UTC nightly
-  # Issue #543: lets release.yml / docker-publish.yml's mandatory-gate step
-  # dispatch this workflow against an exact release commit instead of
-  # passively waiting for check-runs a `push` to release/** never produces
-  # (deliberately -- a `push: release/**` trigger here would trip zizmor's
-  # cache-poisoning audit; workflow_dispatch has no such exposure since it
-  # can only be invoked by an actor with write access, not by anyone who can
-  # merely push a branch). Not meant for ad hoc manual runs.
+  # Issue #543: lets the release mandatory-gate step dispatch this against
+  # an exact release commit instead of waiting for check-runs a `push` to
+  # release/** never produces (a `push: release/**` trigger would trip
+  # zizmor's cache-poisoning audit; workflow_dispatch needs write access,
+  # unlike a push). Not for ad hoc manual runs.
   workflow_dispatch:
   workflow_call:
     secrets:
@@ -39,11 +35,9 @@ permissions:
 
 jobs:
   # Issue #264: path-gated checks. This job always runs and computes which
-  # areas the PR/push touches (shared filters in .github/filters.yaml); the
-  # suite jobs below run only when their area is affected. A suite job that
-  # is skipped by its `if` conditional reports "Success", so every check here
-  # can be made required in branch protection without unrelated areas
-  # blocking a PR.
+  # areas changed (.github/filters.yaml); a suite job below skipped by its
+  # `if:` reports "Success", so every check here can be a required branch
+  # check without unrelated areas blocking a PR.
   changes:
     permissions:
       contents: read
@@ -71,19 +65,14 @@ jobs:
         with:
           filters: .github/filters.yaml
 
-      # Boolean outputs only, so this is safe to interpolate (the *_files
-      # outputs are the attacker-influenced ones on PRs, and we don't use them).
-      # Passed as env vars rather than inline ${{ }} in the run block so
-      # zizmor's template-injection audit has nothing to flag even if the
-      # outputs ever stopped being booleans.
+      # Boolean outputs only (the *_files outputs are the attacker-influenced
+      # ones on PRs), passed as env vars so zizmor's template-injection audit
+      # has nothing to flag.
       #
-      # workflow_dispatch forces every area true, the same "run everything"
-      # treatment schedule already gets downstream via each job's own `if:`
-      # (issue #543): this is the mandatory-gate dispatch path -- re-verifying
-      # a specific release commit's gates for real needs the whole suite to
-      # run, not whatever paths-filter computes against a manual dispatch,
-      # which has no natural diff boundary to compute against in the first
-      # place.
+      # workflow_dispatch forces every area true (issue #543): the
+      # mandatory-gate dispatch path re-verifies a release commit's gates
+      # for real, which needs the whole suite -- a manual dispatch has no
+      # diff boundary for paths-filter to compute against anyway.
       - name: Resolve gating decision
         id: resolve
         run: |
@@ -110,16 +99,10 @@ jobs:
           WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
           CHANGELOG_RELEVANT: ${{ steps.filter.outputs.changelog-relevant }}
 
-  # Issue #378: the security checklists (docs/security/asvs-l2.md,
-  # masvs-l1.md, threat-model.md) claim a `file:line` or test citation behind
-  # every control. Those citations rot when *code moves*, not when the doc is
-  # edited — the 2026-08-26 ASVS L2 verification pass found 74 line ranges
-  # that had drifted out from under their rows. So this job is deliberately
-  # NOT path-gated: a PR that touches only backend/ or only android/ can
-  # orphan a citation just as easily as one that edits the doc, and
-  # .github/filters.yaml maps docs/** to nothing. It is a few seconds of pure
-  # Go with no services, so running it unconditionally is cheaper than
-  # reasoning about which paths could invalidate a citation.
+  # Issue #378: the security checklists' `file:line`/test citations rot when
+  # *code moves*, not when the doc is edited (74 drifted before this existed)
+  # -- so this job is deliberately NOT path-gated: any PR can orphan a
+  # citation, and .github/filters.yaml maps docs/** to nothing anyway.
   docs-citations:
     permissions:
       contents: read
@@ -138,95 +121,79 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
-      # Two gates in one command. (1) Every citation resolves to a real file
-      # with an in-range line, every cited test identifier exists, and no row
-      # is `satisfied` citing nothing. (2) No line-range citation has drifted
-      # off its target beyond what docs/security/citation-drift.ignore
-      # accepts — the class (1) structurally cannot see, and the one that
-      # actually accumulated (74 of them before issue #378).
-      #
-      # `go run ./cmd/citecheck -drift` is the human tool, not a CI step: it
-      # lists every candidate including the accepted ones, which is what a
-      # verification pass wants and what CI does not.
+      # Two gates: (1) every citation resolves and every cited row has one;
+      # (2) no line-range citation has drifted past what
+      # docs/security/citation-drift.ignore accepts (74 accumulated before
+      # #378). `go run ./cmd/citecheck -drift` (not a CI step) lists every
+      # candidate including accepted ones, for a verification pass.
       - name: Verify security-doc citations (resolution + drift)
         working-directory: backend
         run: go run ./cmd/citecheck
 
-      # COMPAT-03 (issue #474): the dependency-advisory exception ledger
-      # (docs/security/dependency-exceptions.ignore) promises a fix or a
-      # renewal before an entry's `expires` date, not silence. Same job as
-      # citecheck above so this runs on every backend PR and on the nightly
-      # full-suite run (this workflow's `schedule` trigger), which is what
-      # surfaces an expired exception even with no PR activity to trip it.
+      # COMPAT-03 (#474): the dependency-advisory exception ledger promises a
+      # fix/renewal before its `expires` date. Unconditional like citecheck
+      # above (and every check below) so an expired exception surfaces even
+      # with no PR activity to trip it.
       - name: Verify dependency-exception ledger freshness
         working-directory: backend
         run: go run ./cmd/depexceptions
 
-      # MAINT-01 (issue #490): the deprecation register (docs/deprecations.md)
-      # promises that nothing on a covered surface is removed before its
-      # window — at least one minor release and at least 90 days — has fully
-      # elapsed, and that every deprecation is recorded before it ships. Same
-      # job as the two gates above, for the same reason: it runs on every
-      # backend PR and on the nightly full-suite run, so an over-window entry
-      # surfaces within a day even with no PR activity.
+      # MAINT-01 (#490): the deprecation register promises nothing on a
+      # covered surface is removed before its window (>=1 minor release,
+      # >=90 days) fully elapses.
       - name: Verify deprecation register
         working-directory: backend
         run: go run ./cmd/deprecations
 
-      # DOC-04 (issue #489): the docs structure gate. docscheck verifies that
-      # every internal link/anchor and repo-file reference in docs/ resolves,
-      # that operator-facing command blocks do not assume a toolchain their
-      # audience does not have, that the operator supported-versions page and
-      # the DOC-03 integration-ownership page have not drifted from the code
-      # (issues #486 / #488), and that deploy-smoke CI still runs the bring-up
-      # command getting-started.md documents. Deliberately unconditional, like
-      # citecheck above: a PR that edits only docs/ would never exercise a
-      # path-gated check, and .github/filters.yaml maps docs/** to nothing.
+      # DOC-04 (#489): docs/** links/anchors/repo-file refs resolve,
+      # operator command blocks assume the right toolchain, and the
+      # supported-versions/integration-ownership pages match code (#486/#488).
       - name: Verify docs structure (links, commands, drift)
         working-directory: backend
         run: go run ./cmd/docscheck
 
-      # REL-03 (issue #447): the release-gate registry. releasegatecheck
-      # verifies .github/release-gates.json is well-formed, every gate names a
-      # workflow file that exists, and docs/development/release-gates.md's table
-      # matches the registry — so a listed gate can never lack a real job.
-      # Same job/rationale as the checks above: unconditional, because a change
-      # to a workflow file or the doc must exercise it and .github/** doesn't
-      # map here.
+      # REL-03 (#447): .github/release-gates.json is well-formed, every gate
+      # names a real workflow, and release-gates.md's table matches it.
       - name: Verify release-gate registry
         working-directory: backend
         run: go run ./cmd/releasegatecheck
 
-      # #508 / #513: the governance settings. governancecheck verifies
-      # .github/rulesets/*.json parse, that main-protection.json's required
-      # checks are exactly the per-PR mandatory gates in .github/release-gates.json
-      # (the required list is derived from #447, never hand-drifted),
-      # docs/development/repo-governance.md matches, and every cosign verify
-      # identity in release-verification.md is pinned to a workflow (#513).
+      # #508/#513: .github/rulesets/*.json parse, main-protection.json's
+      # required checks are exactly the mandatory gates (derived from #447,
+      # never hand-drifted), repo-governance.md matches, and every cosign
+      # verify identity is pinned to a workflow (#513).
       - name: Verify governance settings
         working-directory: backend
         run: go run ./cmd/governancecheck
 
-      # Issue #979: codecov.yml sits at the repo root, outside every suite's
-      # own review -- a PR that edits only codecov.yml sets every `changes`
-      # output false (.github/filters.yaml maps codecov.yml to nothing), so
-      # nothing else in CI ever parses it, and a one-line target/threshold/
-      # ignore: edit merges on human review alone. Same job/rationale as the
-      # checks above: unconditional, because codecov.yml doesn't map to any
-      # path filter. codecovcheck asserts codecov.yml's patch-status targets
-      # match the documented example in docs/development/coverage.md and
-      # that every ignore: entry carries its own justifying comment.
+      # Issue #979: codecov.yml maps to no path filter, so a one-line edit to
+      # it would otherwise merge on human review alone. Asserts its
+      # patch-status targets match coverage.md and every ignore: entry
+      # carries a justifying comment.
       - name: Verify codecov.yml (patch targets, ignore justifications)
         working-directory: backend
         run: go run ./cmd/codecovcheck
 
-  # REL-05 (issue #449): a PR that touches an operator-visible surface
-  # (`changelog-relevant` in .github/filters.yaml — schema migrations, the
-  # config surface, .env.example) must carry an `## Upgrade notes` /
-  # `## Security-relevant changes` / `## Breaking changes` block in its
-  # description, so cmd/releasenotes can harvest it into the release notes, or
-  # an explicit `no-changelog: <reason>`. Pull-request only (there is no PR body
-  # on a push); a skipped job reports success so it can be a required check.
+      # nightlyalertcheck fails the build when the set of `schedule:`-
+      # triggered workflow names diverges (either direction) from
+      # nightly-failure-alert.yml's registration list, so a scheduled
+      # workflow can't silently go unwatched.
+      - name: Verify nightly-failure-alert.yml registration matches schedule triggers
+        working-directory: backend
+        run: go run ./cmd/nightlyalertcheck
+
+      # coverage.md's Override path asks for a reason on every
+      # coverage-exclusion marker; pragmacheck makes that mechanical over
+      # `# pragma: no cover` (backend) and `/* v8 ignore ... */` (frontend).
+      - name: Verify coverage-override markers carry a reason
+        working-directory: backend
+        run: go run ./cmd/pragmacheck
+
+  # REL-05 (#449): a PR touching an operator-visible surface
+  # (`changelog-relevant` in .github/filters.yaml) must carry an `##
+  # Upgrade notes`/`## Security-relevant changes`/`## Breaking changes`
+  # block, or `no-changelog: <reason>`. Pull-request only (no PR body on a
+  # push); a skipped job reports success so it can be a required check.
   # Policy: docs/changelog-policy.md.
   changelog-note:
     name: Changelog note for operator-visible change
@@ -238,8 +205,7 @@ jobs:
     steps:
       - name: Require an Upgrade notes block or an explicit opt-out
         env:
-          # Via env, never inline ${{ }} — the PR body is attacker-controlled
-          # (zizmor template-injection).
+          # Via env, never inline -- PR body is attacker-controlled.
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           set -eu
@@ -254,29 +220,21 @@ jobs:
           echo "::error::This PR changes an operator-visible surface (a migration, the config surface, or .env.example) but its description has no operator-notes block (## Upgrade notes / ## Security-relevant changes / ## Breaking changes) and no 'no-changelog: <reason>' line. See docs/changelog-policy.md."
           exit 1
 
-  # Issue #1188: Codecov only creates its `codecov/patch/<area>` check runs
-  # once it has received a coverage upload for the commit. On a PR whose
-  # changed paths trigger none of the coverage-uploading suites -- a
-  # documentation-only change (`docs/**` maps to nothing in
-  # .github/filters.yaml, so every `changes` output below is false), an
-  # infra-only one (the root Dockerfile, `docker/**`), codecov.yml itself --
-  # no report is uploaded for any flag, Codecov posts nothing at all, and the
-  # three required `codecov/patch/*` contexts sit at "Expected -- waiting for
-  # status to be reported" forever (observed on #1187, docs-only: zero
-  # codecov check runs; a docs-only PR can then only merge through a bypass).
-  #
-  # This job closes that gap the same way reproducibility.yml's go-binary job
-  # does for the byte-reproducibility check (#264/#448): it always runs on a
-  # PR and always reports. When no suite will upload coverage it posts a
-  # success commit status for each area, which is exactly the verdict Codecov
-  # would reach for a commit it never sees. It is the same-repo backstop for
-  # codecov.yml's `flag_coverage_not_uploaded_behavior: pass`, which covers
-  # the Dependabot PRs whose read-only GITHUB_TOKEN makes this job unable to
-  # post (the `head.repo.full_name` guard below).
+  # Issue #1188: Codecov only creates `codecov/patch/<area>` check runs once
+  # it gets a coverage upload for the commit. On a PR whose changed paths
+  # trigger none of the coverage-uploading suites (docs-only, infra-only,
+  # codecov.yml itself), no report is ever uploaded and the three required
+  # contexts sit at "Expected" forever (#1187: a docs-only PR could then
+  # only merge through a bypass). This job closes that gap by always
+  # running and posting a success status per area when no suite will
+  # upload -- the same verdict Codecov would reach for a commit it never
+  # sees. Same-repo backstop for codecov.yml's
+  # `flag_coverage_not_uploaded_behavior: pass`, which covers Dependabot PRs
+  # whose read-only token can't post here (the `head.repo.full_name` guard
+  # below).
   #
   # PATCH_AREAS must equal codecov.yml's coverage.status.patch keys;
-  # cmd/codecovcheck fails if the two drift, so adding a fourth patch area
-  # without adding it here is caught rather than silently stranded.
+  # cmd/codecovcheck fails on drift.
   codecov-patch-stub:
     name: Codecov patch no-op
     runs-on: ubuntu-latest
@@ -292,8 +250,8 @@ jobs:
       needs.changes.outputs.workflows != 'true'
     permissions:
       contents: read
-      # Post the codecov/patch/* commit statuses. There is no read-only way to
-      # do this; the grant is job-scoped and needed only on the no-upload path.
+      # No read-only way to post the codecov/patch/* commit statuses; the
+      # grant is job-scoped, needed only on the no-upload path.
       statuses: write
     steps:
       - name: Post a success status for every unmeasured codecov area
@@ -315,55 +273,37 @@ jobs:
           done
 
   # Issue #630: the backend test suite is split into parallel legs
-  # (`backend-tests` matrix) so `controllers` and `services` — each ~20 min
-  # under -race + -covermode=atomic on GitHub's shared runners, the latter
-  # tripping `go test`'s per-package -timeout and dragging unrelated tests
-  # into the JUnit report as bystander "failures" — get their own runner and
-  # their own wall-clock instead of serializing inside one job. Neither
-  # package has any t.Parallel yet (issue #774), so its tests run serially on
-  # one core no matter the runner size; the only lever left here is to cut
-  # each in half by test-name regex. So `controllers` and `services` are
-  # sharded into `-1` (`^(Test|Fuzz)[A-G]`) and `-2` (`^(Test|Fuzz)[H-Z]`)
-  # legs — five legs total. Split by test count it lands ~1.5:1 (the heavy
-  # half is ~55–58% of the package), so each leg is roughly half the old
-  # single one; `rest` is every other package. The "Verify shard split is
-  # exhaustive" step below fails the leg if a name ever falls outside A–Z, so
-  # a shard can never silently drop a test.
+  # (`backend-tests` matrix) so `controllers`/`services` (~20min each under
+  # -race, no t.Parallel yet -- #774) get their own runner instead of
+  # serializing. Each is sharded `-1`/`-2` by test-name regex
+  # (`^(Test|Fuzz)[A-G]`/`[H-Z]`, ~1.5:1 split); `rest` is every other
+  # package. "Verify shard split is exhaustive" below fails the leg if a
+  # name ever falls outside A-Z.
   #
-  # `internal/schemafixture` is deliberately NOT in any leg here — its
-  # migration-hop / cross-version-restore suite (~17 min under -race, the old
-  # `rest` long pole) is owned by migration-tests.yml, which already ran most
-  # of it per-release on every backend PR. That workflow gained a
-  # coverage-bearing full-package run so the `backend` Codecov flag still sees
-  # those lines.
-  # The non-test checks (fmt/vet, benchmarks, fuzz, govulncheck,
-  # golangci-lint) run once in `backend-checks`. The `backend` job below is
-  # kept as a thin gate + coverage/JUnit aggregator so the required status
-  # check keeps the name "Backend (Go)" (branch protection references it
-  # verbatim) and downstream (Codecov, test-report.yml) still sees one
-  # combined upload.
+  # `internal/schemafixture` is NOT in any leg here -- its migration-hop
+  # suite is owned by migration-tests.yml, which gained a coverage-bearing
+  # run so the `backend` Codecov flag still sees those lines.
   #
-  # Issue #251 history: -race + -covermode=atomic stack their per-access /
-  # per-block instrumentation, and every persistence test re-ran the full
-  # real-schema migration set (database.InitDB) — issue #632 replaced that
-  # with a per-package migrated-template copy (internal/dbtest), which is the
-  # other half of this speed-up. PR #285 first bumped this job 15 -> 30 min;
-  # the split plus the -timeout below (20 -> 25 min per leg) is the durable
-  # fix, each leg now owning a whole runner.
+  # Non-test checks (fmt/vet, benchmarks, fuzz, govulncheck, golangci-lint)
+  # run once here in `backend-checks`; the `backend` job below is a thin
+  # gate + aggregator so the required status check keeps the name "Backend
+  # (Go)" (branch protection references it verbatim).
+  #
+  # Issue #251 history: -race + -covermode=atomic instrumentation plus
+  # issue #632's per-package migrated-template (internal/dbtest, replacing
+  # a full database.InitDB per test) are the other half of this speed-up.
   backend-checks:
     permissions:
       contents: read
     name: Backend checks (fmt/vet/bench/fuzz/lint)
     runs-on: ubuntu-latest
-    # Issue #712: the nightly fuzz step is 8 targets at -fuzztime=2m (~16m),
-    # and the golang/go#75804 hardening retries a deadline-boundary flake
-    # once (up to +2m per target), so the schedule ceiling gets real headroom
-    # — same trigger-scaled pattern as backend-tests below. PRs stay at the
-    # tight 20m.
+    # Issue #712: nightly fuzz is 8 targets at -fuzztime=2m (~16m) plus
+    # golang/go#75804 hardening retries (up to +2m/target), so schedule gets
+    # real headroom; PRs stay tight.
     timeout-minutes: ${{ github.event_name == 'schedule' && 40 || 20 }}
     needs: changes
-    # Scheduled runs must always run the full suite (there is no diff to gate
-    # on) — same exemption pattern as zizmor.yml/sast.yml.
+    # Scheduled runs always run the full suite (no diff to gate on) -- same
+    # exemption pattern as zizmor.yml/sast.yml.
     if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
@@ -392,39 +332,25 @@ jobs:
       - name: Run benchmarks (issue #261)
         working-directory: backend
         # Issue #261: exercise every benchmark body once. The regression gate
-        # is the query-count assertions shipped alongside them (the
-        # *_QueryCountIsBounded tests fail deterministically when a hot path
-        # gains an N+1 or the reach-out job goes superlinear) — NOT wall-clock
-        # time, which varies across CI hardware. -benchtime=1x keeps this
-        # cheap while still compiling and executing the benchmark paths.
+        # is the query-count assertions shipped alongside them
+        # (*_QueryCountIsBounded), NOT wall-clock time (CI-hardware-variable).
+        # -benchtime=1x keeps this cheap.
         run: go test -run '^$' -bench . -benchtime=1x ./...
 
-      # Issue #265 (extended by #376 to the other hostile-input parsers): a
-      # short, time-boxed native Go fuzz run per target, seeded from the
-      # golden fixtures (docs/golden-fixtures — the RFC oracle) or, for the
-      # CalDAV/CSV targets, inline fixtures mirroring their existing
-      # httptest-based tests. go test -fuzz only accepts one target (a
-      # regexp matching exactly one Fuzz function) per invocation, hence one
-      # step per target. A found crash writes a regression file under
-      # <pkg>/testdata/fuzz/ and fails the step — that's not hypothetical:
-      # FuzzExtractICalEvents found a real go-ical decoder panic on its
-      # first-ever run (fixed by calendar_sync_service.go's
-      # decodeCalendarSafely, see that function's doc comment). -fuzztime is
-      # deliberately short (a few seconds each) to keep CI cost low — see
-      # each Fuzz function's own doc comment for the longer local run this
-      # is not a substitute for.
-      # Issue #712: the fuzz loop lives in a committed, tested script
-      # (.github/scripts/run-fuzz-targets.sh) rather than inline, because it
-      # is hardened against the golang/go#75804 deadline-boundary race — a
-      # clean -fuzztime run can intermittently be reported as "context
-      # deadline exceeded" when the budget expires mid-execution (fixed
-      # upstream in go1.27 CL 804900; not backported to the 1.26 toolchain
-      # this repo runs). The script retries a deadline-only failure once and
-      # soft-fails only if it repeats; a real crash ("Failing input written
-      # to", or a seed replay of a previously-found crash) still fails the
-      # step. Its behaviour is pinned by
-      # .github/scripts/tests/run-fuzz-targets.test.sh (run in
-      # actionlint.yml).
+      # Issue #265 (extended by #376): a short native Go fuzz run per target,
+      # seeded from docs/golden-fixtures or inline fixtures. One step per
+      # target since `go test -fuzz` accepts only one regexp. A crash writes
+      # a regression file under <pkg>/testdata/fuzz/ and fails the step --
+      # not hypothetical, FuzzExtractICalEvents found a real go-ical decoder
+      # panic on its first run (fixed by decodeCalendarSafely).
+      # Issue #712: the loop lives in a committed script
+      # (.github/scripts/run-fuzz-targets.sh), hardened against the
+      # golang/go#75804 deadline-boundary race (a clean run can be
+      # intermittently reported as "context deadline exceeded"; fixed
+      # upstream in go1.27, not backported to this repo's 1.26 toolchain).
+      # Retries a deadline-only failure once and soft-fails only if it
+      # repeats; a real crash still fails the step. Pinned by
+      # .github/scripts/tests/run-fuzz-targets.test.sh (run in actionlint.yml).
       - name: Run fuzz targets (issues #265, #376, #712)
         working-directory: backend
         # Issue #578, B4: the PR/push path is the short smoke (15s — the
@@ -438,59 +364,45 @@ jobs:
         working-directory: backend
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
 
-      # Issue #358: golangci-lint (config: backend/.golangci.yml) is the
-      # complementary fast analyzer to CodeQL, replacing the old standalone
-      # gosec step. Enables the security-focused set (gosec + bodyclose +
-      # govet); the standard correctness layer and noctx are deliberately
-      # deferred there — see the config's comments for the rationale (the
-      # repo documents best-effort unhandled errors as accepted, and the
-      # HTTP/DB layers don't thread contexts yet). Run via `go run ...@version`
-      # rather than the golangci-lint-action so the binary comes from the Go
-      # module proxy like every other Go tool here, not a raw release download.
-      - name: Lint (golangci-lint gosec + bodyclose)
+      # Issue #358: golangci-lint (backend/.golangci.yml), the complementary
+      # fast analyzer to CodeQL. v2.14.0: v2.12.2 panicked in
+      # staticcheck/unused under Go 1.27. `go run ...@version`, not the
+      # golangci-lint-action, so the binary comes from the Go module proxy.
+      - name: Lint (golangci-lint gosec + bodyclose + correctness set)
         working-directory: backend
-        run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run ./...
+        run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 run ./...
+
+      # CLAUDE.md backend trap #4: a GORM finisher (Create/Save/Updates/
+      # Delete/First/Find/Exec/...) returns *gorm.DB, not error, so errcheck
+      # cannot see a discarded `.Error`. This repo-local analyzer
+      # (backend/internal/lint/gormerr) flags every one in non-test code.
+      - name: Lint (gormerrcheck — unchecked GORM .Error)
+        working-directory: backend
+        run: go run ./cmd/gormerrcheck ./...
 
   backend-tests:
     permissions:
       contents: read
     name: Backend tests (${{ matrix.leg }})
     runs-on: ubuntu-latest
-    # Each leg owns a whole runner now. The ceiling is scaled by trigger: PRs
-    # and main merges stay at the tight 35 min (a hung job must not eat a
-    # runner), while the nightly schedule is allowed to run for hours — that
-    # is where the deep generative/property pass lives (see the RAPID_CHECKS
-    # notes on the test steps below), and it only needs to finish before the
-    # next night's run starts.
+    # Each leg owns a whole runner. PRs/main merges stay tight (a hung job
+    # must not eat a runner); nightly schedule runs for hours, where the
+    # deep generative/property pass lives (RAPID_CHECKS below).
     #
-    # Where the speed levers stand after issues #630 / #632 / #774:
-    #  - `runs-on` is the standard 4-vCPU `ubuntu-latest`; no paid larger
-    #    runners. If `database` / `property` / `services` legs ever regrow past
-    #    ~8 min, moving *those* legs to a larger runner label and raising
-    #    `-parallel` to match is the next lever — but only after t.Parallel
-    #    (#774): a bigger runner amplifies nothing while a package's tests run
-    #    serially on one core.
-    #  - `-p` and `-parallel` both already default to GOMAXPROCS = 4 here, so
-    #    there is nothing to raise without a bigger runner.
-    #  - The two passes below (gate `-race`, then a separate no-rerun
-    #    `-coverprofile` pass) are deliberate and must not be collapsed:
-    #    `gotestsum --rerun-fails` truncates the coverprofile on its rerun
-    #    invocation (#639), so coverage has to come from a pass with no rerun.
-    # issue #1014: services-2 (H-Z) hit BOTH the 25m and the first-attempt 30m
-    # GO_TEST_TIMEOUT bump, each time still mid-run when the wall hit (not
-    # merely close) -- two guessed small increments in a row both undershot,
-    # each costing a real ~45min dispatched CI cycle to find out. Jumping
-    # straight to a generous ceiling instead of guessing a third small step:
-    # 55m leaves ~20min of real margin versus the largest observed job time
-    # so far (2120s ~= 35min) while staying safely under the 75-minute
-    # release-gate poll deadline this workflow is dispatched under for an RC
-    # tag (docs/development/release-gates.md) -- unit-tests.yml is dispatched
-    # near the start of that window, so a 65m job timeout leaves ~10min of
-    # slack for runner queueing on top. If this still isn't enough, the
-    # right follow-up is splitting the `services` package into more than two
-    # shards (both existing shards are already comparably heavy despite
-    # H-Z covering nearly 3x more of the alphabet than A-G) -- not a further
-    # timeout increase; see the #1014 comment thread.
+    # Speed levers after #630/#632/#774: standard 4-vCPU runner, no paid
+    # larger ones -- moving a regrown leg to a bigger runner only helps
+    # after t.Parallel (#774), since a package's tests run serially on one
+    # core regardless of runner size. The two test passes below (gate
+    # `-race`, then a separate no-rerun `-coverprofile` pass) must not be
+    # collapsed: `gotestsum --rerun-fails` truncates the coverprofile on
+    # rerun (#639).
+    #
+    # issue #1014: two guessed small GO_TEST_TIMEOUT increments both
+    # undershot for services-2 (H-Z), each costing a ~45min CI cycle to find
+    # out. 65m leaves real margin over the largest observed job time while
+    # staying under the 75-minute release-gate poll deadline
+    # (docs/development/release-gates.md). If still not enough, split
+    # `services` into more shards, not another timeout bump.
     timeout-minutes: ${{ github.event_name == 'schedule' && 240 || 65 }}
     needs: changes
     if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
@@ -500,58 +412,35 @@ jobs:
       fail-fast: false
       matrix:
         # controllers-1/-2 and services-1/-2 are the same package sharded by
-        # test-name regex (see the Resolve step). `database` is the migration /
-        # persistence package — the next-heaviest after schemafixture, so it
-        # gets its own leg instead of hiding in `rest`. `property` is the
-        # rapid/large-data generative packages. `rest` is every other package.
+        # test-name regex (see the Resolve step). `database` is the
+        # migration/persistence package, next-heaviest after schemafixture.
+        # `property` is the rapid/large-data generative packages. `rest` is
+        # everything else.
         leg: [controllers-1, controllers-2, services-1, services-2, database, property, rest]
 
     env:
-      # TEST-07 (#435): the property-based tests' iteration budget, tiered by
-      # trigger. rapid reads RAPID_CHECKS natively. PRs get a bounded smoke
-      # (200) that trips the regression tripwire cheaply; a push to main
-      # (i.e. a merge) runs 5x deeper (1000); the nightly schedule is the
-      # deep search (8000) that surfaces the shape bugs the other suites
-      # cannot — and the only constraint on it is finishing before the next
-      # night's run. The companion GO_TEST_TIMEOUT scales the per-test ceiling
-      # so a deep nightly run is not killed by the PR-sized 30m timeout.
+      # TEST-07 (#435): property-test iteration budget tiered by trigger --
+      # PR 200 (cheap tripwire), push/merge 1000, nightly schedule 8000 (the
+      # deep search only the next night's run bounds). GO_TEST_TIMEOUT below
+      # scales with it so a deep run isn't killed by the PR-sized timeout.
       #
-      # issue #1014: this used to be a two-armed ternary (pull_request -> 200,
-      # push -> else-branch 8000) that silently gave EVERY other event name --
-      # workflow_dispatch included -- the nightly depth. #543's dispatch-based
-      # mandatory gates made that live: every RC-tag gate check now dispatches
-      # this workflow via workflow_dispatch, so every RC verification this
-      # whole investigation ran was quietly running property tests at
-      # nightly-schedule depth (8000/10000 iterations), not the intended
-      # moderate push-tier depth. That -- not hosted-runner hardware, not
-      # -race overhead -- is the real reason services-1 (address_normalization
-      # _property_test.go's 5 tests, all A/D-prefixed, landing in A-G) and the
-      # `property` leg (which uses RAPID_CHECKS directly) were running far
-      # heavier than a one-off dispatch should: `property` hit the 65-minute
-      # job timeout-minutes and was cancelled outright even after every actual
-      # go-test content in every OTHER leg passed clean. workflow_dispatch is
-      # now an explicit third arm at the push tier (1000/2000) instead of
-      # falling through the schedule-tier else-branch; any future new event
-      # name defaults to the same safe push tier rather than nightly depth.
+      # issue #1014: this was a two-armed ternary that silently gave every
+      # non-PR/push event (including workflow_dispatch) the nightly depth --
+      # live once #543 made every RC-tag gate dispatch this workflow, so RC
+      # verification ran property tests at 8000/10000 iterations instead of
+      # the intended push tier, and the `property` leg hit its 65-minute job
+      # timeout and was cancelled outright. workflow_dispatch is now an
+      # explicit third arm at the push tier; any future event name defaults
+      # to the same safe tier rather than nightly depth.
       RAPID_CHECKS: ${{ github.event_name == 'pull_request' && '200' || (github.event_name == 'schedule' && '8000' || '1000') }}
-      # issue #1014: services-2 (the H-Z alphabetic shard, which happens to
-      # catch every Search*/TestSearchMutationPath_* test -- 22
-      # full-index-rebuild calls in search_mutation_path_test.go alone) hit
-      # BOTH the original 25m ceiling and a first-attempt 30m bump before
-      # finally passing at 55m (job time ~45m) -- real work, not an
-      # artifact of the RAPID_CHECKS/ADDRESS_PROPERTY_ITERATIONS tier bug
-      # documented above (search_mutation_path_test.go doesn't use either
-      # env var). Kept generous rather than dialed back down now that the
-      # property-tier bug is also fixed, since services-2's real cost is
-      # still ~1.5x the original 30m budget on real hosted-runner hardware.
-      # 55m stays under the 75-minute release-gate poll deadline this
-      # workflow is dispatched under for an RC tag (docs/development/
-      # release-gates.md) with margin for runner queueing.
+      # issue #1014: services-2 (H-Z, which catches every
+      # Search*/TestSearchMutationPath_* test) needed 55m (job time ~45m)
+      # after two smaller bumps both undershot -- real cost, unrelated to
+      # the RAPID_CHECKS tier bug above. Kept generous; stays under the
+      # 75-minute release-gate poll deadline with margin for queueing.
       GO_TEST_TIMEOUT: ${{ github.event_name == 'schedule' && '200m' || '55m' }}
-      # The pre-rapid seeded property tests (services/address_normalization
-      # _property_test.go) get the same tiered treatment: 200 iterations on
-      # PR, 2000 on a merge or a workflow_dispatch (issue #1014 -- see
-      # RAPID_CHECKS above), 10000 on the nightly deep run.
+      # Same tiered treatment for the pre-rapid seeded property tests
+      # (address_normalization_property_test.go): 200/2000/10000 (#1014).
       ADDRESS_PROPERTY_ITERATIONS: ${{ github.event_name == 'pull_request' && '200' || (github.event_name == 'schedule' && '10000' || '2000') }}
 
     steps:
@@ -566,14 +455,11 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
-      # Roll the -race build cache forward. actions/setup-go already restores
-      # ~/.cache/go-build, but it keys purely on go.sum and does NOT re-save on
-      # a hit — so the race-instrumented stdlib+deps objects are frozen at
-      # whatever first populated that key, and every run after a go.sum bump
-      # recompiles the world (~4-5 min on a cold cache). A unique `key` per run
-      # + a prefix `restore-keys` fallback makes this cache restore the newest
-      # prior snapshot and save an updated one every run, so incremental
-      # compiles from source changes are carried between runs.
+      # actions/setup-go's own cache keys purely on go.sum and doesn't
+      # re-save on a hit, so the race-instrumented objects freeze at
+      # whatever first populated that key. A unique `key` per run + a
+      # prefix `restore-keys` fallback restores the newest snapshot and
+      # saves an updated one every run.
       - name: Cache Go race build objects
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -582,29 +468,31 @@ jobs:
           restore-keys: |
             go-build-race-${{ runner.os }}-${{ hashFiles('backend/go.mod', 'backend/go.sum') }}-
 
-      # Issue #680 (TEST-08): the vCard-vobject differential tests live in
-      # backend/differential, which is in the `rest` leg — so only that leg
-      # needs the pinned reference (vobject 0.9.9). Installed with
-      # --require-hashes from the committed requirements file (zizmor audits
-      # pip installs for unpinned supply-chain refs).
+      # Issue #680 (TEST-08): backend/differential lives in the `rest` leg,
+      # so only that leg needs the pinned reference (vobject 0.9.9),
+      # installed with --require-hashes (zizmor audits pip for unpinned refs).
       - name: Install vobject reference (TEST-08 differential)
         if: matrix.leg == 'rest'
         run: python3 -m pip install --quiet --break-system-packages --require-hashes -r backend/differential/reference/vobject/requirements.txt
 
-      # Each leg resolves to a package list plus an optional -run regex:
-      #   controllers-1 / services-1 → ./<pkg>/...  -run '^(Test|Fuzz)[A-G]'
-      #   controllers-2 / services-2 → ./<pkg>/...  -run '^(Test|Fuzz)[H-Z]'
-      #   database                   → ./database/...            no -run filter
-      #   property                   → the rapid/large-data pkgs no -run filter
-      #   rest                       → every OTHER package        no -run filter
-      # `rest`'s exclusion grep is anchored (`$`) so a future subpackage of an
-      # excluded tree lands in `rest` rather than being dropped from every leg.
-      # It excludes: controllers/services (their own sharded legs);
-      # internal/schemafixture (owned by migration-tests.yml — ~17 min under
-      # -race here for zero extra signal); database and the property packages
-      # (their own legs below). The [A-G]/[H-Z] shards are total only while
-      # every Test/Fuzz name starts with an uppercase letter — the next step
-      # enforces that so a shard can never silently skip a test.
+      # MYCORRHIZAL_REQUIRE_REFERENCES turns the default t.Skip-when-missing
+      # into a hard failure, so TEST-08 can't silently pass having tested
+      # nothing. A separate step, not folded into the blanket run below:
+      # the JSContact-calcard leg (same package, no reference installed
+      # here -- that's differential-e2e.yml's job) must keep default skip.
+      - name: Verify the vCard-vobject differential leg is not silently skipped
+        if: matrix.leg == 'rest'
+        working-directory: backend
+        env:
+          MYCORRHIZAL_REQUIRE_REFERENCES: "1"
+        run: go test ./differential/ -run '^TestVCardVObjectDifferential$' -count=1 -v
+
+      # Each leg resolves to a package list plus an optional -run regex (see
+      # the case below). `rest`'s exclusion grep is anchored (`$`) so a
+      # future subpackage of an excluded tree lands in `rest` rather than
+      # being dropped from every leg. The [A-G]/[H-Z] shards are total only
+      # while every Test/Fuzz name starts uppercase -- the next step
+      # enforces that.
       - name: Resolve packages for this leg
         id: pkgs
         working-directory: backend
@@ -624,11 +512,10 @@ jobs:
           echo "list=$list" >> "$GITHUB_OUTPUT"
           echo "run=$run" >> "$GITHUB_OUTPUT"
 
-      # A -run shard silently drops any Test/Fuzz func matching neither half.
-      # `rest` has the anchored-`$` package guard above; the sharded legs get
-      # this one: every `func Test*` / `func Fuzz*` in the package must start
-      # with an A–Z letter so `[A-G]` ∪ `[H-Z]` is total. Fails the leg loudly
-      # on a future `Test_foo` / lowercase / digit name, and logs the balance.
+      # A -run shard silently drops any Test/Fuzz func matching neither
+      # half; every name in a sharded package must start A-Z so [A-G] ∪
+      # [H-Z] is total. Fails loudly on a future `Test_foo`/lowercase/digit
+      # name, and logs the balance.
       - name: Verify shard split is exhaustive
         if: steps.pkgs.outputs.run != ''
         working-directory: backend
@@ -651,34 +538,20 @@ jobs:
           b="$(printf '%s\n' "$names" | grep -cE '^[H-Z]' || true)"
           echo "$dir shard balance — [A-G]=$a  [H-Z]=$b  (total $((a + b)))"
 
-      # Issue #268: the same gotestsum wrapper as before — a failed test is
-      # retried once (`--rerun-fails=1`) instead of flaking the check, a JUnit
-      # XML is produced for dorny/test-reporter (test-report.yml), and tests
-      # that only passed on retry land in the rerun report — but scoped to
-      # this leg's packages and suffixed so the three legs' artifacts don't
-      # collide. -timeout 20m -> 25m (issue #630): a leg has the whole runner
-      # now, but the inner ceiling stays explicit.
+      # Issue #268: gotestsum retries a failed test once (`--rerun-fails=1`)
+      # instead of flaking the check, and produces JUnit for test-report.yml;
+      # scoped/suffixed per leg so artifacts don't collide.
       #
-      # Issue #974: retry-everywhere with no flake budget meant a test that
-      # fails 1-in-5 reruns, passes, and stays green forever — no run ever
-      # surfaced it as a hard failure. RERUN_FAILS is 0 on the nightly
-      # `schedule` run (confirmed: `--rerun-fails=0` makes gotestsum fail on
-      # the first failure, same as never passing the flag at all) so every
-      # flake gets at least one non-retried, hard-fail surface per day; PR/push
-      # keep the retry-and-report-only behavior so a rare CI-hardware blip
+      # Issue #974: retry-everywhere with no flake budget meant a test
+      # failing 1-in-5 reruns stayed green forever with no hard-fail surface.
+      # RERUN_FAILS is 0 on `schedule` so every flake gets one non-retried
+      # surface per day; PR/push keep retry-and-report so a rare CI blip
       # doesn't flake a required check.
       #
-      # Issue #639: NO -coverprofile here. gotestsum's --rerun-fails re-invokes
-      # `go test` for just the failed test's package, and `go test`
-      # *truncates and rewrites* the coverprofile on that second invocation —
-      # so a single flaky test collapsed a whole leg's profile to just the
-      # reran test (controllers 72.4% -> 1.2%, dragging the merged Codecov
-      # number down ~10pt while the leg still reported green). Coverage is now
-      # a separate no-rerun pass below; this run is purely the gate + JUnit +
-      # flake signal. RAPID_CHECKS / GO_TEST_TIMEOUT come from the job-level
-      # env above (tiered by trigger — see the comment there).
-      # RUN is the leg's shard regex ('' for `rest`); `go test -run ''` matches
-      # every test, so it is passed unconditionally.
+      # Issue #639: NO -coverprofile here -- `--rerun-fails` re-invokes `go
+      # test` for the failed package and TRUNCATES the coverprofile on that
+      # second invocation (a single flaky test once collapsed controllers'
+      # profile 72.4% -> 1.2%). Coverage is a separate no-rerun pass below.
       - name: Run tests (retry-on-failure, except nightly)
         working-directory: backend
         env:
@@ -694,16 +567,12 @@ jobs:
           --packages="$PKGS"
           -- -race -run "$RUN" -timeout="$GO_TEST_TIMEOUT"
 
-      # Issue #639: dedicated coverage pass — no --rerun-fails, so nothing
-      # rewrites the profile mid-run; no -race, which roughly halves the
-      # wall-clock of this second pass and leaves the coverage numbers
-      # identical (race instrumentation doesn't change which statements
-      # execute). `go test` writes a complete -coverprofile even when a test
-      # fails, so a flake here still produces an accurate profile;
-      # continue-on-error keeps a flake (or an OOM/timeout) from failing the
-      # leg, and the aggregator's guard drops the Codecov upload entirely if
-      # a leg's profile went missing (carryforward then holds the last known
-      # number) rather than uploading a partial.
+      # Issue #639: dedicated coverage pass -- no --rerun-fails (nothing
+      # rewrites the profile mid-run), no -race (halves wall-clock, doesn't
+      # change which statements execute). continue-on-error keeps a flake
+      # from failing the leg; the aggregator drops the Codecov upload
+      # entirely if a leg's profile is missing rather than uploading a
+      # partial (carryforward holds the last known number).
       - name: Collect coverage (no retry)
         if: always()
         continue-on-error: true
@@ -712,19 +581,12 @@ jobs:
           LEG: ${{ matrix.leg }}
           PKGS: ${{ steps.pkgs.outputs.list }}
           RUN: ${{ steps.pkgs.outputs.run }}
-          # Same TEST-07 iteration budget as the gate run above, so the
-          # coverage profile reflects the same property-test depth the PR
-          # gate sees (a shallower coverage pass could miss generator lines
-          # the gate run hit and tank the codecov/patch status).
         run: |
           read -ra pkgs <<< "$PKGS"
           go test "${pkgs[@]}" -run "$RUN" -timeout="$GO_TEST_TIMEOUT" -coverprofile="coverage-${LEG}.out" -covermode=atomic
 
-      # Issue #268: the flake signal for Go — visibility only, does not fail
-      # the leg (the rerun exists precisely to keep the gate green). On the
-      # nightly schedule run this report is always empty (issue #974:
-      # RERUN_FAILS=0 above means the leg already hard-failed on first
-      # failure instead of reaching this point green).
+      # Issue #268: flake signal, visibility only. Always empty on the
+      # nightly run (RERUN_FAILS=0, #974).
       - name: Report flaky tests (failed once, passed on retry)
         if: always()
         working-directory: backend
@@ -802,36 +664,25 @@ jobs:
           merge-multiple: true
           path: backend
 
-      # Issue #630: `database` / `property` / `rest` cover disjoint blocks, but
-      # controllers-1/-2 (and services-1/-2) are the SAME package under
-      # disjoint -run shards, so every block appears in both profiles — count 0
-      # in the shard that didn't run it. A plain concat would list each of
-      # those blocks twice and `go tool cover` would double-count. So sum the
-      # count field per block key instead (atomic mode: counts are additive;
-      # blocks from different packages never share a key, so the unsharded legs
-      # merge the same way). First-seen order is source order — shard 1 already
-      # emits every block — which is what `go tool cover` expects.
+      # Issue #630: controllers-1/-2 (and services-1/-2) are the SAME
+      # package under disjoint -run shards, so every block appears in both
+      # profiles (count 0 in the shard that skipped it). A plain concat
+      # would double-count; sum the count field per block key instead
+      # (atomic mode: additive, and blocks from different packages never
+      # share a key).
       #
-      # Issue #639: require every leg's profile before uploading. Each leg's
-      # coverage comes from a no-rerun `go test -coverprofile` pass that is
-      # `continue-on-error`, so a crashed/timed-out coverage pass leaves its
-      # `coverage-<leg>.out` missing rather than clobbered. Merging whatever
-      # is present would silently upload a partial profile and tank the
-      # number; instead skip the upload for this commit and let Codecov's
-      # per-flag `carryforward` (codecov.yml) hold the last known coverage.
+      # Issue #639: require every leg's profile before uploading -- a
+      # crashed/timed-out no-rerun coverage pass leaves `coverage-<leg>.out`
+      # missing (continue-on-error) rather than clobbered. Merging whatever
+      # is present would silently upload a partial and tank the number;
+      # instead skip the upload and let Codecov's per-flag `carryforward`
+      # hold the last known coverage.
       #
-      # Issue #979: on a push/schedule run that's still only a `::warning::`
-      # (`ok=false` gates every coverage step below without failing the
-      # required "Backend (Go)" check — informational, matching
-      # codecov.yml's `only_pulls: true`, which doesn't gate those anyway).
-      # But on a PR, a missing leg means the codecov/patch/backend status
-      # about to be evaluated is silently running on stale carryforward
-      # data instead of this PR's real coverage -- exactly the "silently
-      # killed" failure mode #979 flagged (echoing the migration-tests.yml
-      # at-scale job precedent). So on `pull_request` this is a hard
-      # failure: `::error::` plus a non-zero exit, which fails the step and
-      # therefore the "Backend (Go)" required check, surfacing it instead
-      # of merging quietly on a stale number.
+      # Issue #979: informational `::warning::` on push/schedule (matches
+      # codecov.yml's `only_pulls: true`), but a hard failure on
+      # `pull_request` -- a missing leg there would evaluate
+      # codecov/patch/backend against stale carryforward instead of this
+      # PR's real coverage.
       - name: Merge coverage profiles
         id: merge
         if: needs.backend-tests.result == 'success'
@@ -868,12 +719,9 @@ jobs:
           ' $files > coverage.out
           echo "ok=true" >> "$GITHUB_OUTPUT"
 
-      # Issue #294: durable coverage tracking + per-PR diff comment.
-      # Informational only (see codecov.yml) — a failed upload (app not
-      # installed yet, Codecov outage) must not fail the build, hence
-      # fail_ci_if_error: false. disable_search so only the merged profile is
-      # sent, not the per-leg coverage-*.out parts sitting alongside it
-      # (issue #639).
+      # Issue #294: informational only -- a failed upload must not fail the
+      # build (fail_ci_if_error: false). disable_search so only the merged
+      # profile is sent, not the per-leg parts alongside it (#639).
       - name: Upload coverage to Codecov
         if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
@@ -892,6 +740,17 @@ jobs:
         working-directory: backend
         run: go tool cover -func=coverage.out
 
+      # Per-file no-regression ratchet (frontend counterpart below):
+      # codecov/patch/backend only judges lines a PR actually changed, so a
+      # file already at 0% trips nothing. Compares backend/coverage.out
+      # against internal/coverageratchet/testdata/baseline.json. PR-only:
+      # RAPID_CHECKS is tiered by trigger, so push/schedule coverage numbers
+      # aren't comparable to the PR-tier baseline this is generated from.
+      - name: Per-file coverage ratchet (pull_request only)
+        if: github.event_name == 'pull_request' && needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
+        working-directory: backend
+        run: go run ./cmd/coverageratchet
+
       - name: Render HTML coverage report
         if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
         working-directory: backend
@@ -907,10 +766,8 @@ jobs:
             backend/coverage.html
           retention-days: 7
 
-      # Issue #268: one combined JUnit + flake artifact (the per-leg
-      # junit-*.xml / rerun-fails-*.txt gathered above) so test-report.yml
-      # (dorny/test-reporter) needs no per-leg wiring — its `path` glob picks
-      # up every leg.
+      # Issue #268: one combined JUnit + flake artifact so test-report.yml
+      # needs no per-leg wiring.
       - name: Upload test results (JUnit + flake report)
         if: needs.backend-tests.result == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -941,15 +798,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          # COMPAT-01 (issue #472) / COMPAT-02 (issue #473): read the floor
-          # from frontend/package.json's "engines.node" (>=22.22.2, tightened
-          # from the original 22.13.0 after COMPAT-02 hand-verified that
-          # jsdom@30's own engines field, not this project's own requirement,
-          # is the true binding constraint on the 22.x line) instead of
-          # hardcoding it here, so the declared floor is the one CI actually
-          # runs. That floor comfortably covers the older reason the 20.x
-          # line was dropped in the first place: vitest's
-          # --no-experimental-webstorage flag below needs Node >= 22.4.
+          # COMPAT-01 (#472) / COMPAT-02 (#473): read the floor from
+          # package.json's "engines.node" (>=22.22.2, jsdom@30's real
+          # constraint, not this project's own) so the declared floor is
+          # the one CI actually runs.
           node-version-file: frontend/package.json
           cache: 'yarn'
           cache-dependency-path: frontend/yarn.lock
@@ -963,6 +815,14 @@ jobs:
         run: yarn test:coverage
         env:
           CI: true
+
+      # Per-file no-regression ratchet (backend counterpart:
+      # cmd/coverageratchet). Compares coverage/coverage-summary.json
+      # against frontend/coverage-baseline.json. Regenerate via
+      # `yarn coverage:ratchet:update`.
+      - name: Per-file coverage ratchet
+        working-directory: frontend
+        run: yarn coverage:ratchet
 
       # Issue #294: see the backend job's identical step for why
       # fail_ci_if_error is false.
@@ -1003,14 +863,11 @@ jobs:
           path: frontend/junit.xml
           retention-days: 7
 
-  # Issue #556 (web PERF counterpart to #468-#471): the client bundle-size
-  # budget. A production `vite build` then `yarn budget`, which fails when a
-  # chunk (or the total) grows past frontend/bundle-budget.json by more than
-  # the stated tolerance. Deterministic bytes are the gate; the per-chunk
-  # table it writes to the job summary is the attribution. Wall-clock load
-  # time is a trend, measured by the Playwright @perf specs, not here.
-  # Separate job from `frontend` above because it needs the full build the
-  # vitest/tsc/lint job deliberately skips. Same path gating.
+  # Issue #556 (web PERF counterpart to #468-#471): production `vite build`
+  # then `yarn budget`, which fails when a chunk grows past
+  # frontend/bundle-budget.json's tolerance. Wall-clock load time is a
+  # trend measured by the Playwright @perf specs, not here. Separate job
+  # from `frontend` above because it needs the full build that job skips.
   frontend-bundle-budget:
     permissions:
       contents: read

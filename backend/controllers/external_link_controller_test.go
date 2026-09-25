@@ -31,7 +31,7 @@ func doExternalLinkJSON(t *testing.T, router *gin.Engine, method, path string, b
 // TestCreateExternalIdentityRoundTrip covers the happy path: create → list
 // (filtered by contact) → get → update → delete, all through the routes.
 func TestCreateExternalIdentityRoundTrip(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/external-identities", withValidated(func() any { return &models.ExternalIdentityInput{} }), CreateExternalIdentity)
 	router.GET("/external-identities", ListExternalIdentities)
 	router.GET("/external-identities/:id", GetExternalIdentity)
@@ -98,7 +98,7 @@ func TestCreateExternalIdentityRoundTrip(t *testing.T) {
 
 // TestCreateExternalIdentityDuplicateIsConflict pins the natural-key 409.
 func TestCreateExternalIdentityDuplicateIsConflict(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/external-identities", withValidated(func() any { return &models.ExternalIdentityInput{} }), CreateExternalIdentity)
 
 	var user models.User
@@ -120,7 +120,7 @@ func TestCreateExternalIdentityDuplicateIsConflict(t *testing.T) {
 // TestCreateExternalIdentityRejectsForeignContact pins ownership scoping: an
 // identity can only be created against a contact the user owns.
 func TestCreateExternalIdentityRejectsForeignContact(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/external-identities", withValidated(func() any { return &models.ExternalIdentityInput{} }), CreateExternalIdentity)
 
 	otherUser := models.User{Username: "other", Password: "x", Email: "other-ext@example.com"}
@@ -138,7 +138,7 @@ func TestCreateExternalIdentityRejectsForeignContact(t *testing.T) {
 // delete/update) another user's identity — a cross-user fetch is a 404, not
 // a leak.
 func TestGetExternalIdentityScopesToUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/external-identities/:id", GetExternalIdentity)
 	router.DELETE("/external-identities/:id", DeleteExternalIdentity)
 
@@ -162,7 +162,7 @@ func TestGetExternalIdentityScopesToUser(t *testing.T) {
 // schemas as Immich with zero schema or controller changes. "paperless" is
 // just another value of the open `system` classifier.
 func TestExternalLinkSubstrate_IsGenericAcrossSystems(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/external-identities", withValidated(func() any { return &models.ExternalIdentityInput{} }), CreateExternalIdentity)
 	router.POST("/external-activities", withValidated(func() any { return &models.ExternalActivityInput{} }), CreateExternalActivity)
 
@@ -198,7 +198,7 @@ func TestExternalLinkSubstrate_IsGenericAcrossSystems(t *testing.T) {
 // TestCreateExternalActivityRoundTrip covers the enrichment-event happy path
 // plus the timeline-facing ?contact_id= list filter.
 func TestCreateExternalActivityRoundTrip(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/external-activities", withValidated(func() any { return &models.ExternalActivityInput{} }), CreateExternalActivity)
 	router.GET("/external-activities", ListExternalActivities)
 	router.GET("/external-activities/:id", GetExternalActivity)
@@ -252,7 +252,7 @@ func TestCreateExternalActivityRoundTrip(t *testing.T) {
 
 // TestCreateExternalActivityDuplicateIsConflict pins the natural-key 409.
 func TestCreateExternalActivityDuplicateIsConflict(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/external-activities", withValidated(func() any { return &models.ExternalActivityInput{} }), CreateExternalActivity)
 
 	var user models.User
@@ -276,7 +276,7 @@ func TestCreateExternalActivityDuplicateIsConflict(t *testing.T) {
 // TestCreateExternalActivityRejectsForeignContact pins ownership scoping on
 // the enrichment path too.
 func TestCreateExternalActivityRejectsForeignContact(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/external-activities", withValidated(func() any { return &models.ExternalActivityInput{} }), CreateExternalActivity)
 
 	otherUser := models.User{Username: "other", Password: "x", Email: "other-ea@example.com"}

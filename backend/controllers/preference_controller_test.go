@@ -31,7 +31,7 @@ func seedPreferenceContact(t *testing.T, db *gorm.DB, userID uint) models.Contac
 }
 
 func TestCreatePreference(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreferenceRoutes(t, router)
 
 	var user models.User
@@ -68,7 +68,7 @@ func TestCreatePreference(t *testing.T) {
 // hobby preference records its level and the API echoes it back (the UI reads
 // the response, not the DB).
 func TestCreatePreferencePersistsLevel(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreferenceRoutes(t, router)
 
 	var user models.User
@@ -107,7 +107,7 @@ func TestCreatePreferencePersistsLevel(t *testing.T) {
 // genuinely nullable: omitting it leaves NULL (nil), not an empty-string
 // backfill.
 func TestCreatePreferenceWithoutLevelStoresNull(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreferenceRoutes(t, router)
 
 	var user models.User
@@ -136,7 +136,7 @@ func TestCreatePreferenceWithoutLevelStoresNull(t *testing.T) {
 // scope gate ("gate the level field to hobby"): a level on a food preference
 // is a 400, not a silently stored value no surface will ever show.
 func TestCreatePreferenceRejectsLevelOnNonHobbyCategory(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreferenceRoutes(t, router)
 
 	var user models.User
@@ -166,7 +166,7 @@ func TestCreatePreferenceRejectsLevelOnNonHobbyCategory(t *testing.T) {
 // `oneof` validation through the real middleware (the test helper's
 // withValidated only binds JSON, so it would not catch this).
 func TestCreatePreferenceRejectsUnknownLevel(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/preferences",
 		middleware.ValidateJSONMiddleware(&models.PreferenceInput{}), CreatePreference)
 
@@ -197,7 +197,7 @@ func TestCreatePreferenceRejectsUnknownLevel(t *testing.T) {
 // full-replace contract: an update can set a level, and a later update that
 // omits it clears the stored value rather than leaving a stale one.
 func TestUpdatePreferenceSetsAndClearsLevel(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreferenceRoutes(t, router)
 
 	var user models.User
@@ -238,7 +238,7 @@ func TestUpdatePreferenceSetsAndClearsLevel(t *testing.T) {
 }
 
 func TestCreatePreferenceRejectsContactFromAnotherUser(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreferenceRoutes(t, router)
 
 	var user models.User
@@ -266,7 +266,7 @@ func TestCreatePreferenceRejectsContactFromAnotherUser(t *testing.T) {
 }
 
 func TestGetPreference(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreferenceRoutes(t, router)
 
 	var user models.User
@@ -290,7 +290,7 @@ func TestGetPreference(t *testing.T) {
 }
 
 func TestGetPreferenceRejectsAnotherUsersPreference(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreferenceRoutes(t, router)
 
 	var user models.User
@@ -312,7 +312,7 @@ func TestGetPreferenceRejectsAnotherUsersPreference(t *testing.T) {
 }
 
 func TestListPreferencesFiltersByEntity(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreferenceRoutes(t, router)
 
 	var user models.User
@@ -339,7 +339,7 @@ func TestListPreferencesFiltersByEntity(t *testing.T) {
 }
 
 func TestUpdatePreference(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreferenceRoutes(t, router)
 
 	var user models.User
@@ -374,7 +374,7 @@ func TestUpdatePreference(t *testing.T) {
 }
 
 func TestDeletePreference(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerPreferenceRoutes(t, router)
 
 	var user models.User

@@ -176,17 +176,6 @@ func pinned(d Difference, entryID, format, dir string) bool {
 	return false
 }
 
-// formatLabels lists every format the differential suite covers (for the
-// pins-are-current test and for leg iteration).
-var formatLabels = []struct {
-	label string
-	impl  formatName
-}{
-	{"vcard3", formatVCard3},
-	{"vcard4", formatVCard4},
-	{"jscontact", formatJSContact},
-}
-
 // DiffText renders an unexpected disagreement for failure output, naming the
 // concept and both sides' values (never "outputs differ").
 func DiffText(d Difference) string {

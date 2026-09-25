@@ -82,7 +82,7 @@ func reverseStrings(in []string) []string {
 // (lower(trim(lastname)) else lower(trim(firstname))) in both directions —
 // including the lastname/firstname fallback, the trim, and the lowercase.
 func TestGetContacts_NameSortOrdersByName(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)
@@ -115,7 +115,7 @@ func TestGetContacts_NameSortOrdersByName(t *testing.T) {
 // several with no lastname straddling page boundaries. This is the bug class
 // T17's (updated_at, id) scheme exists to prevent, now for the name sort.
 func TestGetContacts_NameSortPagingIsTotal(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)
@@ -153,7 +153,7 @@ func TestGetContacts_NameSortPagingIsTotal(t *testing.T) {
 // unrecognized sort value must be a 400, not a silent fallback to the
 // default order.
 func TestGetContacts_NameSortRejectsUnknownSort(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/contacts", GetContacts)
 
 	req, _ := http.NewRequest("GET", "/contacts?sort=firstname", nil)
@@ -170,7 +170,7 @@ func TestGetContacts_NameSortRejectsUnknownSort(t *testing.T) {
 // order, so sort=name combined with since is a 400 — NOT a silent fallback a
 // sync client could mistake for a name-ordered feed.
 func TestGetContacts_NameSortRejectsSince(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)
@@ -198,7 +198,7 @@ func TestGetContacts_NameSortRejectsSince(t *testing.T) {
 // fails DecodeNameCursor's timestamp-shape rejection; a name-shaped cursor
 // under the default sort fails DecodeCursor's time parse.
 func TestGetContacts_NameSortRejectsCrossShapedCursor(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)
@@ -223,7 +223,7 @@ func TestGetContacts_NameSortRejectsCrossShapedCursor(t *testing.T) {
 // on top of the existing list filters (search here) rather than bypassing
 // them.
 func TestGetContacts_NameSortComposesWithSearch(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)

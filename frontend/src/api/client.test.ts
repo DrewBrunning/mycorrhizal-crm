@@ -137,3 +137,25 @@ describe('apiFetch 401 handling', () => {
     expect(response.status).toBe(200);
   });
 });
+
+describe('parseErrorResponse / apiFetch fallbacks', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test('a JSON body without an error envelope falls back to status text', async () => {
+    const response = {
+      status: 502,
+      statusText: 'Bad Gateway',
+      json: async () => ({ unexpected: true }),
+    } as unknown as Response;
+    const err = await parseErrorResponse(response);
+    expect(err).toMatchObject({ message: 'Bad Gateway', code: 'UNKNOWN_ERROR', status: 502 });
+  });
+
+  test('an aborted request is reported as a timeout, not a raw AbortError', async () => {
+    const abort = Object.assign(new Error('aborted'), { name: 'AbortError' });
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(abort));
+    await expect(apiFetch('/api/v1/anything')).rejects.toThrow(/Request timeout after \d+ seconds/);
+  });
+});

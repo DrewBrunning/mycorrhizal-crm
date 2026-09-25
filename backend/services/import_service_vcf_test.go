@@ -19,7 +19,7 @@ import (
 // legacy carddav.VCardToContact mapper, and the resulting Record is turned
 // into a flat *models.Contact via models.ApplyRecordToContact.
 func TestParseVCF_BasicImport_VCard4(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -57,7 +57,7 @@ func TestParseVCF_BasicImport_VCard4(t *testing.T) {
 // TestParseVCF_VCard3Sniffing asserts a VERSION:3.0 block is routed through
 // the vcard3 adapter and still produces a usable Contact.
 func TestParseVCF_VCard3Sniffing(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -84,7 +84,7 @@ func TestParseVCF_VCard3Sniffing(t *testing.T) {
 // concatenated vCard blocks (the normal shape of a real export) is split
 // into one contact per block, not just the first one.
 func TestParseVCF_MultipleCardsSplit(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -106,7 +106,7 @@ func TestParseVCF_MultipleCardsSplit(t *testing.T) {
 // MergeImportedContact, unchanged) must keep working against the new
 // adapter-produced flat Contact fields.
 func TestParseVCF_DuplicateDetectionAndMerge(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -147,7 +147,7 @@ func TestParseVCF_DuplicateDetectionAndMerge(t *testing.T) {
 // TestParseVCF_MalformedBlockSkipped asserts a malformed block is skipped
 // (reported as an error preview row) without aborting the whole file.
 func TestParseVCF_ReadError(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -160,7 +160,7 @@ func TestParseVCF_ReadError(t *testing.T) {
 // TestParseVCF_TooManyContacts asserts the MaxVCFContacts guard applies to
 // VCF imports.
 func TestParseVCF_TooManyContacts(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -178,7 +178,7 @@ func TestParseVCF_TooManyContacts(t *testing.T) {
 // over the old 1000-contact cap, the size of a real full address-book import
 // — must parse cleanly now instead of being rejected.
 func TestParseVCF_OverLegacyLimitSucceeds(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -197,7 +197,7 @@ func TestParseVCF_OverLegacyLimitSucceeds(t *testing.T) {
 }
 
 func TestParseVCF_MalformedBlockSkipped(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -214,7 +214,7 @@ func TestParseVCF_MalformedBlockSkipped(t *testing.T) {
 // drifting from the real shape), then feeds it back through
 // services.ParseJSContact and asserts the round trip lands the same data.
 func TestParseJSContact_BasicImport(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -245,7 +245,7 @@ func TestParseJSContact_BasicImport(t *testing.T) {
 // TestParseJSContact_ArrayForm asserts the "Card set" (JSON array) shape
 // ExportContactsAsJSContact produces is also accepted on import.
 func TestParseJSContact_ArrayForm(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -268,7 +268,7 @@ func TestParseJSContact_ArrayForm(t *testing.T) {
 }
 
 func TestParseJSContact_ReadError(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -279,7 +279,7 @@ func TestParseJSContact_ReadError(t *testing.T) {
 }
 
 func TestParseJSContact_EmptyArray_Errors(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -292,7 +292,7 @@ func TestParseJSContact_EmptyArray_Errors(t *testing.T) {
 // doesn't abort the whole import — it's recorded as a per-row error preview
 // (SuggestedAction "skip") and the rest of the batch still parses.
 func TestParseJSContact_MalformedCardInArray(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -319,7 +319,7 @@ func TestParseJSContact_MalformedCardInArray(t *testing.T) {
 // final "JSContact file contains no valid contacts" branch when every card
 // in the file fails to parse.
 func TestParseJSContact_AllCardsFail_ReturnsNoValidContactsError(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -337,7 +337,7 @@ func TestParseJSContact_AllCardsFail_ReturnsNoValidContactsError(t *testing.T) {
 // import too: an existing contact matching by email is flagged as an
 // "update" suggestion rather than "add".
 func TestParseJSContact_DuplicateDetected(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 
@@ -362,7 +362,7 @@ func TestParseJSContact_DuplicateDetected(t *testing.T) {
 // TestParseJSContact_TooManyContacts asserts the MaxVCFContacts guard (shared
 // with ParseVCF) applies to JSContact imports too.
 func TestParseJSContact_TooManyContacts(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	var user models.User
 	db.First(&user)
 

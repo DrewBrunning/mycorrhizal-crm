@@ -19,7 +19,7 @@ import (
 // request into a 507 with a pointer at the paginated API, instead of an OOM.
 
 func TestExport_RefusesWhenContactCountExceedsLimit(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	require.NoError(t, db.First(&user).Error)
 
@@ -64,7 +64,7 @@ func TestExport_RefusesWhenContactCountExceedsLimit(t *testing.T) {
 }
 
 func TestExport_ProceedsWhenUnderLimit(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	require.NoError(t, db.First(&user).Error)
 	for _, name := range []string{"Ada", "Bea"} {
@@ -90,7 +90,7 @@ func TestExport_ProceedsWhenUnderLimit(t *testing.T) {
 // TestExportVCF_SingleContactExportIsNotCapped confirms the ?vcard_uid=
 // single-contact export path skips the count guard — it is inherently bounded.
 func TestExportVCF_SingleContactExportIsNotCapped(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	require.NoError(t, db.First(&user).Error)
 	var target models.Contact

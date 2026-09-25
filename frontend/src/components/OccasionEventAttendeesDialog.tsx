@@ -136,7 +136,7 @@ export default function OccasionEventAttendeesDialog({
                     label={t('occasions.events.rsvpLabel')}
                     value={attendee.rsvp}
                     onChange={(e) =>
-                      handleRsvpChange(attendee.entity_id, e.target.value as OccasionEventRSVP)
+                      void handleRsvpChange(attendee.entity_id, e.target.value as OccasionEventRSVP)
                     }
                     sx={{ width: 140 }}
                   >
@@ -150,7 +150,7 @@ export default function OccasionEventAttendeesDialog({
                     size="small"
                     color="error"
                     aria-label={t('occasions.events.removeAttendee')}
-                    onClick={() => handleRemoveAttendee(attendee.entity_id)}
+                    onClick={() => void handleRemoveAttendee(attendee.entity_id)}
                   >
                     <DeleteIcon fontSize="small" />
                   </IconButton>
@@ -179,7 +179,7 @@ export default function OccasionEventAttendeesDialog({
             />
             <Button
               variant="outlined"
-              onClick={handleSuggest}
+              onClick={() => void handleSuggest()}
               disabled={selectedCircleIds.length === 0 || suggestionsLoading}
             >
               {t('occasions.events.suggest')}
@@ -199,7 +199,7 @@ export default function OccasionEventAttendeesDialog({
                   <Button
                     size="small"
                     startIcon={<AddIcon fontSize="small" />}
-                    onClick={() => handleAddSuggestion(suggestion.entity_id)}
+                    onClick={() => void handleAddSuggestion(suggestion.entity_id)}
                   >
                     {t('occasions.events.addAttendee')}
                   </Button>

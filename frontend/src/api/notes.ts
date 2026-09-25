@@ -5,7 +5,7 @@ export interface Note {
   ID: number;
   content: string;
   date: string;
-  contact_id?: number;
+  contact_id?: number | null; // *uint without omitempty: null for an unfiled note
   CreatedAt: string;
   UpdatedAt: string;
   // Issue #591: monotonic per-row write counter, read-only (ADR 0006).
@@ -112,7 +112,7 @@ export async function createNote(
 export async function createUnassignedNote(data: {
   content: string;
   date: string;
-  contact_id?: number;
+  contact_id?: number | null; // *uint without omitempty: null for an unfiled note
 }): Promise<Note> {
   const response = await apiFetch(`${API_BASE_URL}/notes`, {
     method: 'POST',

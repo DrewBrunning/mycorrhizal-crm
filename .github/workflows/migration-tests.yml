@@ -1,44 +1,30 @@
 name: Migration Tests
 
 # Issue #437 (MIG-02): every supported historical migration path runs in CI,
-# with each supported-release fixture as a NAMED matrix entry so a failure
-# names the release that broke. The supported set is v1.0.0 and later (issue
-# #529; raised from v0.6.0 at the 1.0 major, issue #1170); the fixtures come
-# from MIG-01 (issue #436, internal/schemafixture).
+# each supported-release fixture as a NAMED matrix entry so a failure names
+# the release that broke. Supported set: v1.0.0+ (issue #529, raised from
+# v0.6.0 at the 1.0 major, #1170); fixtures from MIG-01 (#436,
+# internal/schemafixture).
 #
 # Shapes that run here:
+#   - schemafixture-suite: the whole package in one non-race coverage run --
+#     the catch-all + coverage source (moved from unit-tests.yml's `rest`
+#     leg, where it was ~17min under -race, the PR gate's long pole).
+#   - upgrade-matrix: every fixture migrated to CURRENT via database.InitDB
+#     (the real boot path), asserting final version + every table's row
+#     count. v1.0.0 is the longest supported skip. One job/subtest per release.
+#   - adjacent-hops: one release -> the next, naming the exact broken hop.
+#   - down-direction: every migration round-trips up -> down -> up against a
+#     POPULATED fixture (#530: empty-schema proves nothing), plus the
+#     no-.down.sql gate.
+#   - full-install-upgrade (DEPLOY-02, #451): the full three-piece install
+#     (database + PROFILE_PHOTO_DIR + ATTACHMENTS_DIR) upgraded in place,
+#     with row counts, semantic content (MIG-03), attachment/photo files,
+#     and the #530 pre-migration backup all verified, driven through the
+#     real HTTP stack; plus sub-floor/dirty refusals.
 #
-#   - schemafixture-suite: the whole internal/schemafixture package in one
-#     non-race run with a coverprofile (uploaded to Codecov under the `backend`
-#     flag). This is the catch-all + the coverage source; the named slices
-#     below exist for a failure that points at the release that broke. It moved
-#     here from unit-tests.yml's `rest` leg, where it was ~17 min under -race
-#     and the long pole of the backend PR gate.
-#   - upgrade-matrix: every supported-release fixture is migrated to the
-#     CURRENT schema through database.InitDB — the exact path the server boots
-#     through, not a reconstructed migration call — asserting the final version
-#     and that every table's row count survived (a migration that drops a table
-#     exits zero, so exit status alone proves nothing). The v1.0.0 entry IS the
-#     longest supported skip (v1.0.0 -> current), run through the whole chain
-#     at once. One job per release, one subtest per release.
-#   - adjacent-hops: one release -> the next, one migration or a few — catches a
-#     broken individual migration and names the exact release hop.
-#   - down-direction: every migration in the chain round-trips up -> down -> up
-#     against a POPULATED fixture (an empty-schema round trip proves nothing,
-#     issue #530), plus the "a new migration with no .down.sql fails CI" gate.
-#   - full-install-upgrade (DEPLOY-02, issue #451): the full-stack analogue —
-#     a real three-piece install (database + PROFILE_PHOTO_DIR +
-#     ATTACHMENTS_DIR) upgraded IN PLACE through database.InitDB, with row
-#     counts + MIG-03 semantic content preserved, every attachment/photo row
-#     still resolving to a real file, the #530 pre-migration backup proven to
-#     exist and be restorable, and the migrated instance driven through the
-#     real HTTP stack (login with a pre-existing account, FTS search, contact
-#     read/edit, export). Plus the sub-floor/dirty refusals on this same
-#     full-install path.
-#
-# Gate: the `backend` filter in .github/filters.yaml (the migration layer's
-# home, per docs/development/testing.md); make the migration-tests job set
-# required in branch protection — a migration change must not merge red.
+# Gate: the `backend` filter in .github/filters.yaml; required in branch
+# protection -- a migration change must not merge red.
 
 on:
   push:
@@ -106,12 +92,10 @@ jobs:
           BACKEND_CHANGED: ${{ steps.filter.outputs.backend }}
           WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
 
-  # The upgrade-matrix legs, one per supported release, derived from
-  # internal/schemafixture.SupportedReleases (the registry) rather than a
-  # hand-maintained list — a list that had already drifted (v0.6.4/v0.6.5 were
-  # registered but missing here). cmd/releaselist emits the matrix JSON; a
-  # release added by release.yml is covered on its first CI run with no edit
-  # to this file.
+  # Upgrade-matrix legs, one per supported release, derived from
+  # internal/schemafixture.SupportedReleases rather than a hand-maintained
+  # list (which had already drifted). cmd/releaselist emits the matrix
+  # JSON; a release added by release.yml is covered with no edit here.
   release-matrix:
     permissions:
       contents: read
@@ -134,8 +118,8 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
-      # Output is a bare JSON array [{release, entry}, ...] built from the Go
-      # registry — not attacker-influenced, safe to fromJSON into the matrix.
+      # Bare JSON array built from the Go registry -- not attacker-influenced,
+      # safe to fromJSON into the matrix.
       - name: List SupportedReleases as matrix JSON
         id: list
         working-directory: backend
@@ -145,10 +129,9 @@ jobs:
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
           echo "$matrix"
 
-  # One job per supported release. Each runs only that release's subtest of
-  # TestUpgradeFixtureToCurrent (issue #437 action 1: matrix over the fixtures
-  # rather than one test with a loop, so a failure names the release that
-  # broke).
+  # One job per supported release, each running only that release's subtest
+  # of TestUpgradeFixtureToCurrent (#437 action 1), so a failure names the
+  # release that broke.
   upgrade-matrix:
     permissions:
       contents: read
@@ -161,10 +144,9 @@ jobs:
       # One release's failure must not cancel the others — full signal from
       # every release on every run.
       fail-fast: false
-      # Cap the fan-out: this matrix is one leg per supported release (~22
-      # today), and a release cut composes every suite at once. Unbounded, it
+      # Cap the fan-out (~22 legs today): unbounded, a release cut
       # oversubscribes the account's runners and starves the emulator jobs
-      # beside it, which then flake (issue #1174).
+      # beside it, which then flake (#1174).
       max-parallel: 4
       matrix:
         include: ${{ fromJSON(needs.release-matrix.outputs.matrix) }}
@@ -181,26 +163,20 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
-      # `go test -run '<Test>/<release>'` exits 0 even when the release is not
-      # in SupportedReleases (no subtest matches, the parent vacuously passes),
-      # so the pass is asserted against the verbose output, not the exit code:
-      # a release that falls out of the registry fails this job rather than
-      # silently going green. The matrix release arrives via env, never inline
-      # ${{ }} (zizmor).
+      # `go test -run '<Test>/<release>'` exits 0 even when no subtest
+      # matches (vacuous pass), so the pass is asserted against verbose
+      # output, not exit code -- a release that falls out of the registry
+      # fails this job. RELEASE via env, never inline (zizmor).
       - name: Migrate ${{ matrix.release }} fixture to current
         working-directory: backend
         env:
           RELEASE: ${{ matrix.release }}
         run: |
           set -eo pipefail
-          # `|| true` on the assignment: this shell runs under -e (the step's
-          # default, and set -eo pipefail below), and `var="$(cmd)"` is itself
-          # the checked command — a failing `go test` (any test failure, not
-          # just a crash) would abort the script AT THIS LINE, before `echo
-          # "$out"` ever runs, silently discarding every line of the actual
-          # failure output. Every occurrence of this pattern in this file had
-          # that bug; the real pass/fail is the grep below, unaffected by the
-          # `|| true`.
+          # `|| true`: `var="$(cmd)"` is itself the checked command under
+          # -e, so a failing `go test` would abort here before `echo "$out"`
+          # runs, discarding the failure output. The real pass/fail is the
+          # grep below. (Same pattern repeats throughout this file.)
           out="$(go test ./internal/schemafixture/ -run "TestUpgradeFixtureToCurrent/${RELEASE}" -count=1 -v 2>&1)" || true
           echo "$out"
           if ! grep -q -- "--- PASS: TestUpgradeFixtureToCurrent/${RELEASE} " <<<"$out"; then
@@ -265,27 +241,17 @@ jobs:
         working-directory: backend
         run: go test ./database/ -run '^TestEveryMigrationHasADownMigration$' -count=1 -v
 
-  # The whole internal/schemafixture package in one non-race run, with a
-  # coverprofile. The per-release matrix / adjacent-hop / down-direction jobs
-  # above run named slices of it for a failure that points at the release that
-  # broke; this job is the catch-all that also covers the tests those slices
-  # don't (cross-version restore, semantic-content preservation, the fixture
-  # loaders, the dump/expectation unit tests) AND supplies the coverage.
+  # The whole internal/schemafixture package in one non-race run with a
+  # coverprofile -- the catch-all covering what the named slices above don't
+  # (cross-version restore, semantic-content preservation, fixture loaders,
+  # dump/expectation tests) AND the coverage source. Not on a critical path:
+  # runs in parallel with every other job here.
   #
-  # It used to run inside unit-tests.yml's `rest` leg under -race, unsharded —
-  # ~17 min and the long pole of the backend PR gate. It is not on a critical
-  # path here: this job runs in parallel with every other job in this workflow
-  # and this workflow is not itself the backend gate's bottleneck.
-  #
-  # `go test` defaults to a 10-minute self-timeout when none is given, which
-  # is independent of (and can fire well before) this job's timeout-minutes
-  # below. This package's runtime scales with SupportedReleases (every
-  # release appends an entry, per #529), and at 21 supported releases it
-  # crossed that default under -covermode=atomic — the suite was still
-  # running real work (not hung) when `go test` panicked it. Pass an explicit
-  # -timeout with headroom under the job timeout so growth in the release
-  # list doesn't silently flip this red again the next time it grows; bump
-  # both together if it ever gets close.
+  # `go test`'s 10-minute self-timeout is independent of this job's
+  # timeout-minutes and crossed at 21 supported releases (the runtime scales
+  # with SupportedReleases, per #529) while the suite was still doing real
+  # work, not hung. Explicit -timeout with headroom; bump both together if
+  # it ever gets close.
   schemafixture-suite:
     permissions:
       contents: read
@@ -306,18 +272,15 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
-      # No -run filter: the entire package. Non-race, matching this workflow's
-      # convention (the -race concurrency signal for the one backup-consistency
-      # test is an accepted loss; the database package's _txlock=immediate pin
-      # keeps its own -race coverage in unit-tests.yml).
+      # Non-race, matching this workflow's convention -- the one
+      # backup-consistency test's -race signal is an accepted loss;
+      # unit-tests.yml keeps the database package's own -race coverage.
       - name: Run the full schemafixture package with coverage
         working-directory: backend
         run: go test ./internal/schemafixture/ -count=1 -timeout=25m -covermode=atomic -coverprofile=coverage-schemafixture.out
 
-      # Issue #294 pattern: multiple `backend`-flag uploads for one commit are
-      # merged by Codecov, so this composes with unit-tests.yml's upload rather
-      # than replacing it. Informational only — a failed upload must not fail
-      # the migration gate (fail_ci_if_error: false).
+      # Issue #294: multiple `backend`-flag uploads are merged by Codecov, so
+      # this composes with unit-tests.yml's upload. Informational only.
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
@@ -355,33 +318,25 @@ jobs:
         working-directory: backend
         run: go test ./internal/schemafixture/ -run '^TestFullInstallUpgrade' -count=1 -v
 
-  # Issue #495 (large-dataset migration test): every supported release's
-  # database, populated at 134x the canonical pathological manifest (2,010
-  # contacts incl. the soft-delete + vcard-uid-recreate traps at scale),
-  # migrates to the current schema through database.InitDB with every table's
-  # row count surviving and integrity ok; plus the interrupted-migration
+  # Issue #495: every supported release's database, populated at 134x the
+  # canonical pathological manifest (2,010 contacts incl. soft-delete +
+  # vcard-uid-recreate traps at scale), migrates to current with every
+  # table's row count + integrity intact; plus interrupted-migration
   # fail-closed, backup-restore-at-scale, and cross-version-restore-at-scale
-  # (issue #923: the floor release's large-scale snapshot restored and
-  # migrated forward onto a current install) properties.
+  # (#923) properties.
   #
-  # These tests are gated behind MYCORRHIZAL_LARGE_TESTS=1 and deliberately
-  # SKIPPED in the default Go suite: at 2,010 contacts each they take minutes
-  # under -race, which every PR would pay for. This named job runs them on a
-  # main merge and nightly with a generous timeout — the scale signal is worth
-  # waiting a day for, not worth blocking every PR on.
+  # Gated behind MYCORRHIZAL_LARGE_TESTS=1, SKIPPED in the default Go suite
+  # (minutes under -race per PR is too expensive); runs on main merge and
+  # nightly instead.
   large-dataset:
     permissions:
       contents: read
     name: Large-dataset migration (issue #495)
     runs-on: ubuntu-latest
-    # Bumped from 60 with the PERF-02/03 at-scale steps below: they inherited
-    # `go test`'s 10m default and were silently killed on every main push since
-    # PERF-02 landed (#778). Those steps now pass an explicit `-timeout`, and
-    # the two genuinely non-terminating ops (graph.traverse_deep/hub — a
-    # walk-enumeration recursive CTE over the synthetically dense `large` graph)
-    # are SkipAtScale in the registry. The data-movement step is still ~20 min
-    # (duplicates.find_pairs + the 3 exporters over the full `large` fixture),
-    # so 100 leaves clear headroom over both steps' `-timeout` plus the seed.
+    # Bumped from 60: the PERF-02/03 at-scale steps below inherited `go
+    # test`'s 10m default and were silently killed on every main push since
+    # PERF-02 landed (#778). They now pass explicit `-timeout`s; 100 leaves
+    # headroom over both plus the seed.
     timeout-minutes: 100
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call')
     steps:
@@ -402,13 +357,11 @@ jobs:
           MYCORRHIZAL_LARGE_TESTS: "1"
         run: |
           set -eo pipefail
-          # `|| true`: see "Migrate ... fixture to current" above — without it,
-          # `set -e` swallows a failing run's entire output before `echo` runs.
+          # `|| true`: same reason as "Migrate ... fixture to current" above.
           out="$(go test ./internal/schemafixture/ -run '^TestLargeDatasetUpgradeToCurrent$' -count=1 -v 2>&1)" || true
           echo "$out"
-          # Fail-safe: the tests are env-gated, so a typo'd variable would
-          # silently skip them and the job would pass vacuously. Assert the
-          # longest-skip subtest actually ran and none were skipped.
+          # Fail-safe: env-gated, so a typo'd variable would silently skip
+          # these and pass vacuously.
           if ! grep -q -- "--- PASS: TestLargeDatasetUpgradeToCurrent/v1.0.0 " <<<"$out"; then
             echo "::error::expected large-dataset subtest v1.0.0 did not run (MYCORRHIZAL_LARGE_TESTS not honored?)"
             exit 1
@@ -433,12 +386,11 @@ jobs:
           MYCORRHIZAL_LARGE_TESTS: "1"
         run: |
           set -eo pipefail
-          # `|| true`: see "Migrate ... fixture to current" above — without it,
-          # `set -e` swallows a failing run's entire output before `echo` runs.
+          # `|| true`: same reason as "Migrate ... fixture to current" above.
           out="$(go test ./internal/largedata/ -count=1 -v 2>&1)" || true
           echo "$out"
-          # Fail-safe: these are env-gated, so a typo'd variable would silently
-          # skip them and the job would pass vacuously.
+          # Fail-safe: env-gated, so a typo'd variable would silently skip
+          # these and pass vacuously.
           for want in "TestScalePopulatesLargeDataset " "TestProfilePopulatesAtScale "; do
             if ! grep -q -- "--- PASS: $want" <<<"$out"; then
               echo "::error::expected large-dataset test '$want' did not run (MYCORRHIZAL_LARGE_TESTS not honored?)"
@@ -446,12 +398,9 @@ jobs:
             fi
           done
 
-      # PERF-01 (issue #468): the `large` benchmark profile is the biggest
-      # dataset a consumer (#469/#470/#498/#453) runs against. Seeding it is a
-      # ~2-minute one-off, so it is cached as a CI artifact keyed on the
-      # generator inputs and only rebuilt when they change. The seed CLI path
-      # (`migratebench seed --profile`) is the same generator the migration
-      # test uses — asserted here by using it.
+      # PERF-01 (#468): the `large` benchmark profile, the biggest dataset a
+      # consumer (#469/#470/#498/#453) runs against. Seeding is a ~2-minute
+      # one-off, cached as a CI artifact keyed on the generator inputs.
       - name: Cache the large benchmark-profile database
         id: perf01-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -469,107 +418,73 @@ jobs:
           else
             time go run ./cmd/migratebench seed --profile large --db "$db"
           fi
-          # Prove the cached/seeded artifact is a sound database at rest. The
-          # DB-01 application-invariant guarantee for the profile generator is
-          # carried by TestProfileDatasetPassesDB01 (smoke, every PR) and
-          # TestProfilePopulatesAtScale (typical, this job) — same generator,
-          # more rows.
+          # Prove the cached/seeded artifact is a sound database at rest.
+          # DB-01 guarantee: TestProfileDatasetPassesDB01 (smoke, every PR)
+          # and TestProfilePopulatesAtScale (typical, this job).
           out="$(go run ./cmd/dbinspect "$db" 2>/dev/null)"
           echo "$out"
           grep -q 'integrity_check=ok' <<<"$out" || { echo "::error::large profile DB failed integrity_check"; exit 1; }
           grep -q 'dirty=false' <<<"$out" || { echo "::error::large profile DB is dirty"; exit 1; }
 
-      # PERF-02 (issue #469): the cross-scale core-operation benchmark check —
-      # smoke + typical + large. Verifies the committed baseline is a fresh
-      # smoke+typical run, that no operation's growth class regresses, and that
-      # query counts stay bounded out to the large profile (contact list/detail,
-      # FTS, graph traversal, dashboard, cadence, reach-out, duplicate detection,
-      # merge, delete cascade). The per-PR signal is the smoke-only
-      # TestCoreOperationBenchmarks in the default `go test`; this heavier check
-      # is gated like the rest of this job. Its WithinBudgetsAtScale / WallClockTrend
-      # subtests are the PERF-04 (issue #471) release-validation budget gate:
-      # absolute wall-clock ceilings at the `typical` anchor profile + the
-      # >3x wall-clock trend `::warning::` (advisory, never fails).
+      # PERF-02 (#469): cross-scale core-operation benchmark check -- smoke +
+      # typical + large. Verifies the baseline is fresh, no operation's
+      # growth class regresses, and query counts stay bounded (contact
+      # list/detail, FTS, graph traversal, dashboard, cadence, reach-out,
+      # duplicate detection, merge, delete cascade). Its
+      # WithinBudgetsAtScale/WallClockTrend subtests are the PERF-04 (#471)
+      # release-validation gate.
       - name: Cross-scale core-operation benchmarks
         working-directory: backend
         env:
           MYCORRHIZAL_LARGE_TESTS: "1"
         run: |
           set -eo pipefail
-          # Explicit -timeout: `go test`'s 10m default silently killed this job
-          # on every main push since PERF-02 landed (#778). The graph.traverse_*
-          # blow-ups are SkipAtScale in the registry now; the remaining `large`
-          # reads still run minutes of advisory-only wall-clock (not a gate —
-          # growth is classified on query count), so give them real headroom
-          # under the job's timeout-minutes ceiling.
-          # `|| true`: see "Migrate ... fixture to current" above — without it,
-          # `set -e` swallows a failing run's entire output before `echo` runs.
+          # Explicit -timeout: `go test`'s 10m default silently killed this
+          # job on every main push since PERF-02 landed (#778); the
+          # graph.traverse_* blow-ups are now SkipAtScale in the registry.
+          # `|| true`: same reason as "Migrate ... fixture to current" above.
           out="$(go test ./internal/perfbench/ -run '^TestBenchmarksAtScale$' -count=1 -v -timeout 30m 2>&1)" || true
           echo "$out"
-          # Fail-safe: env-gated, so a typo'd variable would silently skip it
-          # and the job would pass vacuously. The trailing space matters: `go
-          # test -v` also prints subtest lines like
-          # "--- PASS: TestBenchmarksAtScale/CommittedBaselineIsCurrent", and
-          # an unanchored grep for the bare test name matches that substring
-          # even when the top-level test itself FAILed (issue found alongside
-          # #795/#796's continued step-10 failure — a subtest always passes,
-          # so the fail-safe was silently green regardless of the real
-          # result). No `/` ever follows a top-level PASS line's test name;
-          # only a space does, before the "(duration)".
+          # Fail-safe: env-gated. Trailing space matters -- an unanchored
+          # grep for the bare test name also matches subtest lines (e.g.
+          # ".../CommittedBaselineIsCurrent") even when the top-level test
+          # FAILed (#795/#796's step-10 failure stayed silently green this
+          # way). No `/` follows a top-level PASS line's test name, only a
+          # space before "(duration)".
           if ! grep -q -- "--- PASS: TestBenchmarksAtScale " <<<"$out"; then
             echo "::error::PERF-02 cross-scale benchmarks did not run (MYCORRHIZAL_LARGE_TESTS not honored?)"
             exit 1
           fi
 
-      # PERF-03 (issue #470): the cross-scale data-movement benchmark check —
-      # smoke + typical + large for import, export (3 formats), FTS rebuild,
-      # backup, restore, delete cascade and duplicate detection. Verifies the
-      # committed datamovement-baseline.json is a fresh smoke+typical run, that
-      # no operation's peak-memory class regresses across scales, that
-      # duplicate detection stays a recorded super-linear finding, and that the
-      # write probe still catches the FTS rebuild holding the write lock. Plus
-      # the migration resource envelope ("for comparability" — issue #495 owns
-      # migration depth). The per-PR signal is the smoke-only
-      # TestDataMovementBenchmarks in the default `go test`; this heavier check
-      # is gated like the rest of this job. Its WithinBudgetsAtScale subtest is
-      # the PERF-04 (issue #471) release-validation gate for the absolute
-      # peak-heap ceilings (the OOM boundary) at the `typical` anchor profile.
+      # PERF-03 (#470): cross-scale data-movement benchmark check -- smoke +
+      # typical + large for import, export (3 formats), FTS rebuild, backup,
+      # restore, delete cascade, duplicate detection; plus the migration
+      # resource envelope (#495 owns migration depth). Its
+      # WithinBudgetsAtScale subtest is the PERF-04 (#471) release-validation
+      # gate for peak-heap ceilings.
       - name: Cross-scale data-movement benchmarks
         working-directory: backend
         env:
           MYCORRHIZAL_LARGE_TESTS: "1"
         run: |
           set -eo pipefail
-          # Explicit -timeout, same reason as the core-operation step above.
-          # This one runs ~20 min locally — duplicates.find_pairs (a recorded
-          # super-linear finding, kept in: it terminates) plus the 3 exporters
-          # over the full `large` fixture — so it needs materially more than the
-          # core-op step, well past `go test`'s 10m default.
-          # `|| true`: see "Migrate ... fixture to current" above — without it,
-          # `set -e` swallows a failing run's entire output before `echo` runs.
-          # This is the step that has been failing silently for #795/#796 — this
-          # fix is what actually surfaces why.
+          # Explicit -timeout, same reason as the core-operation step above --
+          # this one runs ~20 min locally (duplicates.find_pairs's recorded
+          # super-linear finding plus the 3 exporters over `large`).
+          # `|| true`: same reason as "Migrate ... fixture to current" above.
           out="$(go test ./internal/perfbench/ -run '^TestDataMovementAtScale$|^TestMigrationAtScaleResourceEnvelope$' -count=1 -v -timeout 45m 2>&1)" || true
           echo "$out"
-          # Fail-safe: env-gated, so a typo'd variable would silently skip
-          # these and the job would pass vacuously. Trailing space on each
-          # $want, same reason as the core-operation step above: without it
-          # this grep is satisfied by any passing SUBTEST line (e.g.
-          # ".../CommittedBaselineIsCurrent") even when the top-level test
-          # FAILed — which is exactly how this step kept reporting green
-          # through #795/#796's real, ongoing failure.
+          # Fail-safe: env-gated. Trailing space on each $want, same
+          # unanchored-substring reason as the core-operation step above.
           if ! grep -q -- "--- PASS: TestDataMovementAtScale " <<<"$out"; then
             echo "::error::PERF-03 check 'TestDataMovementAtScale ' did not run (MYCORRHIZAL_LARGE_TESTS not honored?)"
             exit 1
           fi
-          # TestMigrationAtScaleResourceEnvelope measures a migration ABOVE the
-          # supported-upgrade floor. Right after a major the floor IS the newest
-          # migration, so there is nothing to measure and the test skips by
-          # design with a named reason (issue #1170: floor v1.0.0 == migration
-          # 57) — not because the variable was unset. Accept that documented
-          # skip; any other absence (including a skip for another reason) is
-          # still a fail-safe miss. When a later release adds a migration above
-          # the floor, the PASS branch takes over again with no edit here.
+          # TestMigrationAtScaleResourceEnvelope measures a migration ABOVE
+          # the supported floor; right after a major there's nothing to
+          # measure and it skips by design (#1170: floor v1.0.0 == migration
+          # 57), not because the variable was unset. Any other absence is
+          # still a fail-safe miss.
           if ! grep -q -- "--- PASS: TestMigrationAtScaleResourceEnvelope " <<<"$out" \
              && ! grep -q -- "no pending migration to measure" <<<"$out"; then
             echo "::error::PERF-03 check 'TestMigrationAtScaleResourceEnvelope ' did not run and did not skip for the floor==latest reason (MYCORRHIZAL_LARGE_TESTS not honored?)"

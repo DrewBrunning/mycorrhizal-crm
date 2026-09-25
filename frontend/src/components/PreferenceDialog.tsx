@@ -233,7 +233,7 @@ export default function PreferenceDialog({
         <Button onClick={onClose} disabled={saving}>
           {t('preference.cancel')}
         </Button>
-        <Button onClick={handleSave} variant="contained" disabled={saving}>
+        <Button onClick={() => void handleSave()} variant="contained" disabled={saving}>
           {t('preference.save')}
         </Button>
       </DialogActions>

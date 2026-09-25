@@ -35,7 +35,7 @@ export function useHouseholds(notifier?: ErrorNotifier) {
   }, []);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const handleCreate = useCallback(

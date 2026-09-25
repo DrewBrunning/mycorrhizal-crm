@@ -77,7 +77,7 @@ export default function TimelineExplorerDialog({
   // (refresh is memoized on types/bucket), or the page's timeline data
   // changes underneath us (revision). No fetch while closed.
   useEffect(() => {
-    if (open) refresh();
+    if (open) void refresh();
   }, [open, refresh, revision]);
 
   const timelineItems: Array<{ type: TimelineType; data: TimelineItem['data']; date: string }> =
@@ -183,7 +183,11 @@ export default function TimelineExplorerDialog({
               {/* Disabled during a refresh too: the cursor belongs to the page
                   it was returned with, so paging on a stale cursor mid-filter-
                   change would fetch the wrong rows. */}
-              <Button variant="outlined" onClick={loadMore} disabled={loadingMore || loading}>
+              <Button
+                variant="outlined"
+                onClick={() => void loadMore()}
+                disabled={loadingMore || loading}
+              >
                 {t('common.loadMore')}
               </Button>
             </Box>

@@ -98,7 +98,7 @@ export default function MarkDiscussedDialog({
         <Button onClick={onClose} disabled={saving}>
           {t('conversationAgenda.cancel')}
         </Button>
-        <Button onClick={handleConfirm} variant="contained" disabled={saving}>
+        <Button onClick={() => void handleConfirm()} variant="contained" disabled={saving}>
           {t('conversationAgenda.discussConfirm')}
         </Button>
       </DialogActions>

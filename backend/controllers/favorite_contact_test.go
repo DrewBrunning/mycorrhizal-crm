@@ -23,7 +23,7 @@ import (
 // persistence check.
 
 func TestFavoriteContact_SetsFlag(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts/:id/favorite", FavoriteContact)
 
 	var user models.User
@@ -43,7 +43,7 @@ func TestFavoriteContact_SetsFlag(t *testing.T) {
 }
 
 func TestUnfavoriteContact_ClearsFlag(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts/:id/unfavorite", UnfavoriteContact)
 
 	var user models.User
@@ -63,7 +63,7 @@ func TestUnfavoriteContact_ClearsFlag(t *testing.T) {
 }
 
 func TestFavoriteContact_UnknownID_404(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/contacts/:id/favorite", FavoriteContact)
 
 	req, _ := http.NewRequest("POST", "/contacts/999999/favorite", nil)
@@ -73,7 +73,7 @@ func TestFavoriteContact_UnknownID_404(t *testing.T) {
 }
 
 func TestUnfavoriteContact_UnknownID_404(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/contacts/:id/unfavorite", UnfavoriteContact)
 
 	req, _ := http.NewRequest("POST", "/contacts/999999/unfavorite", nil)
@@ -83,7 +83,7 @@ func TestUnfavoriteContact_UnknownID_404(t *testing.T) {
 }
 
 func TestFavoriteContact_ScopedToOwner(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts/:id/favorite", FavoriteContact)
 
 	other := models.User{Username: "other-favorite", Email: "other-favorite@example.com", Password: "x"}
@@ -102,7 +102,7 @@ func TestFavoriteContact_ScopedToOwner(t *testing.T) {
 }
 
 func TestUnfavoriteContact_ScopedToOwner(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/contacts/:id/unfavorite", UnfavoriteContact)
 
 	other := models.User{Username: "other-unfavorite", Email: "other-unfavorite@example.com", Password: "x"}
@@ -122,7 +122,7 @@ func TestUnfavoriteContact_ScopedToOwner(t *testing.T) {
 // contact, and a replica needs to see it. This is exactly why the handlers
 // use `Update` rather than `UpdateColumn` (which skips hooks).
 func TestFavoriteContact_BumpsETagAndChangeFeed(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	var user models.User
 	db.First(&user)
 	router.POST("/contacts/:id/favorite", FavoriteContact)
@@ -190,7 +190,7 @@ func TestFavoriteFlag_RealMigratedSchema(t *testing.T) {
 // --- GET /contacts?favorites=true ---------------------------------------------
 
 func TestGetContacts_FavoritesFilter(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts", GetContacts)
 
 	var user models.User
@@ -222,7 +222,7 @@ func TestGetContacts_FavoritesFilter(t *testing.T) {
 // omitempty) — decoding into the Go struct makes absent and false
 // indistinguishable (CLAUDE.md frontend trap 8), so this reads the raw bytes.
 func TestGetContactsSummary_AlwaysSerializesIsFavorite(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts", GetContacts)
 
 	var user models.User
@@ -245,7 +245,7 @@ func TestGetContactsSummary_AlwaysSerializesIsFavorite(t *testing.T) {
 // for favorites while browsing archived contacts gets their archived
 // favorites, not an empty list.
 func TestGetContacts_FavoritesFilterComposesWithArchived(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts", GetContacts)
 
 	var user models.User
@@ -273,7 +273,7 @@ func TestGetContacts_FavoritesFilterComposesWithArchived(t *testing.T) {
 // with search: both predicates are ANDed, so a search that matches a
 // non-favorite returns nothing when favorites=true.
 func TestGetContacts_FavoritesFilterComposesWithSearch(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts", GetContacts)
 
 	var user models.User
@@ -303,7 +303,7 @@ func TestGetContacts_FavoritesFilterComposesWithSearch(t *testing.T) {
 // ?since= change feed, which is sync state carrying every row regardless of
 // filters. A replica that saw a favorite-only feed would silently diverge.
 func TestChangeFeedIgnoresFavoritesFilter(t *testing.T) {
-	db, router := setupRouterWithRetention(30)
+	db, router := setupRouterWithRetention(t, 30)
 	var user models.User
 	db.First(&user)
 	router.GET("/contacts", GetContacts)

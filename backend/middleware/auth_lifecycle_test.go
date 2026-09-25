@@ -53,7 +53,7 @@ func seedSession(t *testing.T, db *gorm.DB, userID uint, lastSeen time.Time) str
 }
 
 func TestAuthMiddleware_JWTWithMatchingTokenVersion(t *testing.T) {
-	db, router := setupAuthTestRouter()
+	db, router := setupAuthTestRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -80,7 +80,7 @@ func TestAuthMiddleware_JWTWithMatchingTokenVersion(t *testing.T) {
 // by the same secret must still be refused as a bearer, and the gate must stay
 // total for any future purpose value.
 func TestAuthMiddleware_RejectsPurposeScopedTokens(t *testing.T) {
-	db, router := setupAuthTestRouter()
+	db, router := setupAuthTestRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -107,7 +107,7 @@ func TestAuthMiddleware_RejectsPurposeScopedTokens(t *testing.T) {
 // The point of the whole mechanism: bumping token_version (what a password
 // change or reset does) must invalidate an already-issued token.
 func TestAuthMiddleware_JWTRejectedAfterTokenVersionBump(t *testing.T) {
-	db, router := setupAuthTestRouter()
+	db, router := setupAuthTestRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -138,7 +138,7 @@ func TestAuthMiddleware_JWTRejectedAfterTokenVersionBump(t *testing.T) {
 // Tokens minted before token versioning existed carry no such claim and must be
 // rejected rather than treated as version 0.
 func TestAuthMiddleware_JWTWithoutTokenVersionClaimRejected(t *testing.T) {
-	db, router := setupAuthTestRouter()
+	db, router := setupAuthTestRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -153,7 +153,7 @@ func TestAuthMiddleware_JWTWithoutTokenVersionClaimRejected(t *testing.T) {
 }
 
 func TestAuthMiddleware_JWTForMissingUserRejected(t *testing.T) {
-	_, router := setupAuthTestRouter()
+	_, router := setupAuthTestRouter(t)
 
 	w := jwtRequest(router, signJWT(t, jwt.MapClaims{
 		"user_id":       uint(99999),
@@ -169,7 +169,7 @@ func TestAuthMiddleware_JWTForMissingUserRejected(t *testing.T) {
 // rejected, forcing one re-login — the same treatment as a missing
 // token_version.
 func TestAuthMiddleware_JWTWithoutSidClaimRejected(t *testing.T) {
-	db, router := setupAuthTestRouter()
+	db, router := setupAuthTestRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -187,7 +187,7 @@ func TestAuthMiddleware_JWTWithoutSidClaimRejected(t *testing.T) {
 // Issue #866: a token whose `sid` names no row (e.g. the row was purged, or
 // the token was minted against a different database) is rejected.
 func TestAuthMiddleware_JWTWithUnknownSidRejected(t *testing.T) {
-	db, router := setupAuthTestRouter()
+	db, router := setupAuthTestRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -209,7 +209,7 @@ func TestAuthMiddleware_JWTWithUnknownSidRejected(t *testing.T) {
 // Issue #866: the logout path revokes the session row; the very next request
 // with the same (otherwise valid, unexpired) token must fail.
 func TestAuthMiddleware_JWTRejectedAfterSessionRevoked(t *testing.T) {
-	db, router := setupAuthTestRouter()
+	db, router := setupAuthTestRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -238,7 +238,7 @@ func TestAuthMiddleware_JWTRejectedAfterSessionRevoked(t *testing.T) {
 // Issue #866: a session unused for longer than SESSION_IDLE_TIMEOUT_HOURS is
 // rejected before its absolute expiry; a fresh one is not.
 func TestAuthMiddleware_JWTRejectedAfterIdleTimeout(t *testing.T) {
-	db, router := setupAuthTestRouterWithIdle(1) // 1-hour idle window
+	db, router := setupAuthTestRouterWithIdle(t, 1) // 1-hour idle window
 
 	var user models.User
 	db.First(&user)
@@ -261,7 +261,7 @@ func TestAuthMiddleware_JWTRejectedAfterIdleTimeout(t *testing.T) {
 }
 
 func TestAuthMiddleware_ExpiredApiTokenRejected(t *testing.T) {
-	db, router := setupAuthTestRouter()
+	db, router := setupAuthTestRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -284,7 +284,7 @@ func TestAuthMiddleware_ExpiredApiTokenRejected(t *testing.T) {
 }
 
 func TestAuthMiddleware_UnexpiredApiTokenAccepted(t *testing.T) {
-	db, router := setupAuthTestRouter()
+	db, router := setupAuthTestRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -308,7 +308,7 @@ func TestAuthMiddleware_UnexpiredApiTokenAccepted(t *testing.T) {
 
 // Rows predating the expires_at column have NULL there and must keep working.
 func TestAuthMiddleware_ApiTokenWithNullExpiryAccepted(t *testing.T) {
-	db, router := setupAuthTestRouter()
+	db, router := setupAuthTestRouter(t)
 
 	var user models.User
 	db.First(&user)

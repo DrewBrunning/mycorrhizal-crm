@@ -158,8 +158,8 @@ test('a stale loadMore response that settles after a newer loadMore does not clo
   await waitFor(() => expect(result.current.loading).toBe(false));
 
   await act(async () => {
-    result.current.loadMore();
-    result.current.loadMore();
+    void result.current.loadMore();
+    void result.current.loadMore();
   });
 
   await act(async () => {
@@ -188,8 +188,8 @@ test('a stale loadMore failure that settles after a newer loadMore does not surf
   await waitFor(() => expect(result.current.loading).toBe(false));
 
   await act(async () => {
-    result.current.loadMore();
-    result.current.loadMore();
+    void result.current.loadMore();
+    void result.current.loadMore();
   });
 
   await act(async () => {
@@ -203,6 +203,51 @@ test('a stale loadMore failure that settles after a newer loadMore does not surf
   });
   expect(result.current.error).toBeNull();
   expect(result.current.contacts.map((c) => c.ID)).toEqual([1, 3]);
+});
+
+test('loadMore is a no-op when there is no next cursor', async () => {
+  vi.mocked(getContacts).mockResolvedValueOnce(page([contact(1, 'A')], ''));
+
+  const { result } = renderHook(() => useContacts());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  await act(async () => {
+    await result.current.loadMore();
+  });
+
+  expect(getContacts).toHaveBeenCalledTimes(1);
+  expect(result.current.contacts.map((c) => c.ID)).toEqual([1]);
+});
+
+test('refetch re-runs fetchFirst and replaces the list', async () => {
+  vi.mocked(getContacts)
+    .mockResolvedValueOnce(page([contact(1, 'A')], ''))
+    .mockResolvedValueOnce(page([contact(2, 'B')], ''));
+
+  const { result } = renderHook(() => useContacts());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.contacts.map((c) => c.ID)).toEqual([1]);
+
+  await act(async () => {
+    await result.current.refetch();
+  });
+
+  expect(getContacts).toHaveBeenCalledTimes(2);
+  expect(result.current.contacts.map((c) => c.ID)).toEqual([2]);
+});
+
+test('setContacts allows an optimistic local edit without refetching', async () => {
+  vi.mocked(getContacts).mockResolvedValueOnce(page([contact(1, 'A')], ''));
+
+  const { result } = renderHook(() => useContacts());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  act(() => {
+    result.current.setContacts((prev) => prev.map((c) => ({ ...c, firstname: 'Edited' })));
+  });
+
+  expect(result.current.contacts[0].firstname).toBe('Edited');
+  expect(getContacts).toHaveBeenCalledTimes(1);
 });
 
 test('does not fetch when unauthenticated', async () => {

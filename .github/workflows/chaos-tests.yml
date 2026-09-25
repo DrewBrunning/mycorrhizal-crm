@@ -1,50 +1,33 @@
 name: Chaos Tests (failure injection)
 
-# Issue #434 (TEST-06): the external-fault CI job — the faults that cannot be
-# expressed as an error across an existing interface and therefore must make
-# the process or the filesystem actually misbehave. The rule is written down
-# in docs/development/fault-injection.md:
+# Issue #434 (TEST-06): the external-fault CI job -- faults that cannot be
+# expressed as an error across an existing interface and must make the
+# process or filesystem actually misbehave (rule: docs/development/
+# fault-injection.md). Each interruption here asserts a *defined outcome*
+# (recovered, or failed closed with data intact), not merely "it errored":
 #
-#   "If the fault can be expressed as an error returned across an existing
-#   interface, inject it in-process. If it requires the process or the
-#   filesystem to actually misbehave, it belongs in the external-fault CI job."
+#   - SIGKILL mid-migration + the MIG-04 (#439/#546) fail-closed outcome:
+#     restart REFUSES on the dirty flag naming the version + recovery, and
+#     the operator-only `force` command recovers to latest, integrity ok.
+#   - real ENOSPC during backup (VACUUM INTO against a tiny tmpfs) -- fails
+#     closed, no partial output file, source database intact.
+#   - real ENOSPC during a large upgrade (#530): with the backup target on
+#     the same full disk, `migrate up` REFUSES before touching the database;
+#     with a roomy backup target, the migration itself exhausts the disk
+#     and lands dirty, refused on restart (MIG-04).
+#   - DEPLOY-03 (#452): SIGKILLs a real upgrade at every point that
+#     matters (before/during/between migrations, after migrations but
+#     before ready); each kill point has a declared outcome via dbinspect's
+#     exact-string contract, repeated kill/restart cycles converge on the
+#     same state, and the #530 pre-migration backup survives.
+#   - Issue #498: the constraint x op cells needing a real resource limit
+#     (ENOSPC during bulk write/FTS rebuild, migration under a memory cap,
+#     bulk write/FTS rebuild under a CPU cap) -- each asserts integrity_check
+#     ok and no silent partial success. Table: docs/development/
+#     capacity-under-constraint.md.
 #
-# The interruptions run here each assert a *defined outcome* (recovered, or
-# failed closed with the data intact) — not merely "it errored":
-#
-#   - SIGKILL mid-migration (cmd/migrate parked at the
-#     database.migration.statement pause fault) and the MIG-04 (issue #439/#546)
-#     fail-closed outcome: the next startup run REFUSES on the dirty flag naming
-#     the version and the recovery, and the operator-only prompted `force`
-#     command recovers to the latest schema, with PRAGMA integrity_check ok.
-#   - real ENOSPC during backup (VACUUM INTO against a tiny tmpfs) — the CLI
-#     fails closed, no partial file at the output path, the source database
-#     intact.
-#   - real ENOSPC during a large upgrade (issue #530): with the pre-migration
-#     backup target on the same full disk, `migrate up` REFUSES before touching
-#     the database (the backup is mandatory); with a roomy backup target, the
-#     migration itself exhausts the disk and lands dirty, and the restart then
-#     refuses on the dirty flag (MIG-04).
-#   - DEPLOY-03 (issue #452): the startup-interruption-kill-points job SIGKILLs
-#     a real upgrade at every point that matters — before any migration begins
-#     (database.migration.before_batch pause fault), during a migration, between
-#     two migrations (a clean intermediate checkpoint), and after migrations but
-#     before the server is ready (the real server binary, killed between its
-#     "Migrations applied" and "Server is ready" log lines). Each kill point has
-#     a declared expected outcome asserted via dbinspect's exact-string contract;
-#     repeated kill/restart cycles must converge on that same state, never a
-#     worse one; the #530 pre-migration backup must survive the interruption.
-#   - Issue #498 (capacity under constrained resources): the constraint × op
-#     cells that need a real resource limit — ENOSPC during a bulk write and
-#     during an FTS rebuild (tmpfs), and migration under a memory cap / bulk
-#     write + FTS rebuild under a CPU cap (systemd-run --scope). Each asserts
-#     the milestone's non-negotiable outcome: PRAGMA integrity_check is `ok`
-#     and there is no silent partial success. Table:
-#     docs/development/capacity-under-constraint.md.
-#
-# Gating (chaos filter in .github/filters.yaml): the suite is slow by design
-# and does NOT run on every push — only when the injection harness itself
-# changes, on the nightly schedule, or on manual dispatch.
+# Gating: slow by design, does NOT run on every push -- only when the
+# injection harness changes, nightly, or on manual dispatch.
 
 on:
   push:
@@ -133,9 +116,7 @@ jobs:
           go build -o "$RUNNER_TEMP/dbinspect" ./cmd/dbinspect
 
       # The pause fault parks cmd/migrate right after the first migration's
-      # commit, before its clean-mark — the SIGKILL window. The process is
-      # deliberately backgrounded; the next step waits for the marker, which
-      # is the proof it has actually reached the seam.
+      # commit, before its clean-mark -- the SIGKILL window.
       - name: Start a migration parked mid-flight
         working-directory: backend
         run: |
@@ -167,9 +148,8 @@ jobs:
           kill -9 "$(cat /tmp/migrate.pid)"
           echo "killed"
 
-      # The crash signature: version 1 applied and committed, clean-mark never
-      # written, PRAGMA integrity_check ok. This is the state a restart must
-      # refuse on.
+      # Crash signature: version 1 applied+committed, clean-mark never
+      # written, integrity ok -- the state a restart must refuse on.
       - name: Assert the interrupted database is dirty at the first migration
         run: |
           state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/chaos.db")"
@@ -179,10 +159,9 @@ jobs:
             *) echo "::error::unexpected post-kill state: $state"; exit 1 ;;
           esac
 
-      # Fail-closed (MIG-04, issue #439/#546): a restart WITHOUT the fault must
-      # refuse on the dirty flag and name the version + the recovery — never a
-      # warning followed by a forced boot. dbinspect confirms the database was
-      # not touched by the refusal.
+      # Fail-closed (MIG-04, #439/#546): restart WITHOUT the fault must
+      # refuse, naming the version + recovery -- never a warning + forced
+      # boot. dbinspect confirms the refusal didn't touch the database.
       - name: Restart without the fault and assert the fail-closed refusal
         run: |
           set +e
@@ -204,11 +183,9 @@ jobs:
             *) echo "::error::the refusal modified the database: $state"; exit 1 ;;
           esac
 
-      # DEPLOY-03 (issue #452) action 3: an orchestrator that keeps restarting a
-      # crashed container must not compound the damage. Restart the refused
-      # database several more times and assert the state is byte-identical every
-      # time — the refusal is not a write, so N restarts converge on the same
-      # state as one.
+      # DEPLOY-03 (#452) action 3: an orchestrator that keeps restarting a
+      # crashed container must not compound the damage -- N restarts must
+      # converge on the same state as one.
       - name: Repeated restarts of the dirty database converge (crash loop)
         run: |
           for i in 1 2 3 4 5; do
@@ -229,11 +206,9 @@ jobs:
           done
           echo "5 restarts, same defined state"
 
-      # The operator-only recovery: `migrate force` prompts for confirmation
-      # (pip 'yes'), marks version 1 clean, and re-runs pending migrations —
-      # landing on the latest schema, not dirty, integrity intact. The latest
-      # version is derived from the migration file count rather than hardcoded
-      # so the assertion does not rot as schema migrations are added.
+      # `migrate force` prompts for confirmation, marks version 1 clean, and
+      # re-runs pending migrations to latest. Latest version is derived
+      # from the migration file count, not hardcoded, so this doesn't rot.
       - name: Operator-only force recovers the interrupted database
         working-directory: backend
         run: |
@@ -340,22 +315,17 @@ jobs:
         run: |
           sudo umount /mnt/diskfull || true
 
-  # Issue #495 (large-dataset migration test), hand-verify item: "reduce the
-  # available disk below what the migration needs and confirm it fails closed
-  # rather than truncating." The migration is the one operation that touches
-  # every row and on SQLite competes with itself for disk — the exact spot a
-  # low-disk deployment corrupts. RLIMIT_FSIZE is NOT a valid in-process proxy
-  # (Linux ftruncate ignores it, and SQLite pre-extends files with ftruncate),
-  # so this is an external-fault job: a real 10k-contact floor database (~45 MB)
-  # on a tmpfs sized to hold the file plus only 1 MiB, migrated until the WAL
-  # growth the row-touching backfills need runs out of space.
+  # Issue #495 hand-verify item: reduce available disk below what a
+  # migration needs and confirm it fails closed rather than truncating.
+  # RLIMIT_FSIZE is NOT a valid in-process proxy (Linux ftruncate ignores
+  # it, and SQLite pre-extends files with ftruncate), so this is an
+  # external-fault job: a real ~45MB floor database on a tmpfs sized to
+  # hold it plus only 1 MiB, migrated until the WAL growth runs out of space.
   #
-  # Defined outcome: `migrate up` fails non-zero, the database is left DIRTY at
-  # some migration with PRAGMA integrity_check ok — never truncated, never a
-  # healthy-looking half-migration — and the next startup run REFUSES on the
-  # dirty flag. The dirty/refusal dance is the same fail-closed path the
-  # migration-kill job proves with SIGKILL; this job proves it holds when the
-  # cause is disk exhaustion on a large database.
+  # Defined outcome: `migrate up` fails non-zero, DIRTY at some migration
+  # with integrity ok -- never truncated, never a healthy-looking
+  # half-migration -- and the next startup REFUSES. Same fail-closed path
+  # migration-kill proves with SIGKILL, here from disk exhaustion instead.
   large-migration-disk-full:
     permissions:
       contents: read
@@ -366,11 +336,10 @@ jobs:
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
 
     env:
-      # The floor moved to v1.0.0 (= the current latest, issue #1170), so a
-      # version-31 floor database is sub-floor. This job's purpose is the
-      # migration/interruption behavior, not the floor refusal, so it runs the
-      # chain through the documented one-time bridge until a later release adds
-      # a migration above the floor.
+      # The floor moved to v1.0.0 (= current latest, #1170), making a
+      # version-31 database sub-floor; this job tests migration/interruption
+      # behavior, not the floor refusal, so it uses the documented bridge
+      # until a later release adds a migration above the floor.
       MYCORRHIZAL_ALLOW_SUB_FLOOR_MIGRATION: "1"
 
     steps:
@@ -392,10 +361,9 @@ jobs:
           go build -o "$RUNNER_TEMP/migrate" ./cmd/migrate
           go build -o "$RUNNER_TEMP/dbinspect" ./cmd/dbinspect
 
-      # A 10k-contact floor database needs ~16 MB of transient extra disk when
-      # its pending migrations run (WAL growth from the full-row backfills —
-      # sort-name, revision tokens, audit rebuild). That growth is what the
-      # constrained disk must exhaust.
+      # A 10k-contact floor database needs ~16 MB of transient extra disk
+      # when pending migrations run (WAL growth from full-row backfills) --
+      # that growth is what the constrained disk must exhaust.
       - name: Build a large floor database
         working-directory: backend
         run: |
@@ -405,8 +373,8 @@ jobs:
           rm -f "$RUNNER_TEMP/src.db" "$RUNNER_TEMP/src.db-wal" "$RUNNER_TEMP/src.db-shm"
           ls -la "$RUNNER_TEMP/floor.db"
 
-      # Sized at floor + 1 MiB: room for the database file itself, but not for
-      # the ~16 MB the migration needs. A real ENOSPC, not a mocked one.
+      # Sized at floor + 1 MiB: room for the file, not the ~16MB the
+      # migration needs. A real ENOSPC, not a mocked one.
       - name: Mount a constrained filesystem
         run: |
           floor_bytes="$(stat -c %s "$RUNNER_TEMP/floor.db")"
@@ -420,11 +388,9 @@ jobs:
           cp "$RUNNER_TEMP/floor.db" /mnt/diskfull/floor.db
           ls -la /mnt/diskfull/
 
-      # Scenario A — the pre-migration backup target is on the same full disk
-      # (the default: a `pre-migration/` sibling of the database). The mandatory
-      # pre-migration backup (issue #530) is fail-closed, so `migrate up`
-      # refuses BEFORE any migration runs, naming the remedy, and the database
-      # is left exactly as it was — never dirtied, never partly migrated.
+      # Scenario A: backup target on the same full disk. The mandatory
+      # pre-migration backup (#530) is fail-closed, so `migrate up` refuses
+      # BEFORE any migration runs, database left exactly as it was.
       - name: Migrate must refuse when the pre-migration backup cannot be written
         working-directory: backend
         run: |
@@ -454,10 +420,8 @@ jobs:
           # full ~1 MiB of headroom.
           rm -rf /mnt/diskfull/pre-migration /mnt/diskfull/floor.db-wal /mnt/diskfull/floor.db-shm
 
-      # Scenario B — the pre-migration backup succeeds (a roomy, separate
-      # target, the realistic prod layout: DB volume tight, backup volume
-      # large), and the migration ITSELF then exhausts the constrained disk
-      # with its WAL growth. This is the ENOSPC-mid-migration path.
+      # Scenario B: backup succeeds (roomy separate target, the realistic
+      # prod layout), and the migration ITSELF then exhausts the disk.
       - name: With a roomy backup target the migration itself hits ENOSPC
         working-directory: backend
         env:
@@ -477,8 +441,7 @@ jobs:
           # The pre-migration snapshot was taken before the migration failed.
           ls "$RUNNER_TEMP"/premig-backups/floor-pre-migration-31-to-*.db >/dev/null
 
-      # Fail-closed, not truncated: integrity ok, dirty at some migration, no
-      # partially-migrated healthy-looking schema.
+      # Fail-closed, not truncated: integrity ok, dirty at some migration.
       - name: Assert the interrupted database is dirty, not truncated
         run: |
           state="$("$RUNNER_TEMP/dbinspect" /mnt/diskfull/floor.db)"
@@ -488,10 +451,9 @@ jobs:
             *) echo "::error::unexpected post-ENOSPC state: $state"; exit 1 ;;
           esac
 
-      # The next startup run must refuse on the dirty flag (MIG-04), naming the
-      # version + recovery, and must not touch the database. A dirty database is
-      # not eligible for a pre-migration backup — it is refused first — so the
-      # roomy backup target here is set but unused.
+      # Restart must refuse on the dirty flag (MIG-04) and not touch the
+      # database. Backup target is set but unused: a dirty database is
+      # refused before it's eligible for a pre-migration backup.
       - name: Restart must refuse the dirty migration state
         working-directory: backend
         env:
@@ -518,25 +480,17 @@ jobs:
         run: |
           sudo umount /mnt/diskfull || true
 
-  # DEPLOY-03 (issue #452): SIGKILL a real upgrade at every point that matters
-  # and assert a DEFINED outcome at each — either the instance comes up correct
-  # and complete, or it refuses naming the state and the recovery. Nothing in
-  # between. Repeated kill/restart cycles must converge on the same state, never
-  # a worse one, and the #530 pre-migration backup must survive the kill.
+  # DEPLOY-03 (#452): SIGKILL a real upgrade at every point that matters,
+  # each with a DEFINED outcome (correct+complete, or refuses naming state +
+  # recovery) -- nothing in between. Repeated kill/restart cycles converge
+  # on the same state; the #530 pre-migration backup survives the kill.
   #
-  # Kill points:
-  #   before_migrations  — parked at the database.migration.before_batch pause
-  #     fault (after the pre-migration backup, before the first statement).
-  #     Defined outcome: the schema is completely untouched; a restart migrates
-  #     normally. (The "during a migration" kill point is the migration-kill job
-  #     above; not duplicated here.)
-  #   between_migrations — a clean checkpoint at latest-1 (the state a kill
-  #     between two migrations' clean-marks leaves). Defined outcome: a restart
-  #     RESUMES to latest with no force.
-  #   after_migrations   — the real server binary, SIGKILLed between its
-  #     "Migrations applied" / "No pending migrations" and "Server is ready" log
-  #     lines. Defined outcome: DB clean at latest; a restart reaches
-  #     /health/ready == 200.
+  # Kill points: before_migrations (parked before the first statement --
+  # schema untouched, restart migrates normally; "during" is migration-kill
+  # above); between_migrations (clean checkpoint at latest-1 -- restart
+  # RESUMES to latest with no force); after_migrations (real server binary
+  # killed between "Migrations applied" and "Server is ready" -- clean at
+  # latest, restart reaches /health/ready == 200).
   startup-interruption-kill-points:
     permissions:
       contents: read
@@ -547,11 +501,10 @@ jobs:
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
 
     env:
-      # The floor moved to v1.0.0 (= the current latest, issue #1170), so a
-      # version-31 floor database is sub-floor. This job's purpose is the
-      # migration/interruption behavior, not the floor refusal, so it runs the
-      # chain through the documented one-time bridge until a later release adds
-      # a migration above the floor.
+      # The floor moved to v1.0.0 (= current latest, #1170), making a
+      # version-31 database sub-floor; this job tests migration/interruption
+      # behavior, not the floor refusal, so it uses the documented bridge
+      # until a later release adds a migration above the floor.
       MYCORRHIZAL_ALLOW_SUB_FLOOR_MIGRATION: "1"
 
     steps:
@@ -592,10 +545,9 @@ jobs:
             *) echo "::error::floor database is not a clean v0.6.0 schema: $state"; exit 1 ;;
           esac
 
-      # --- Kill point 1: before any migration begins -------------------------
-      # Park at the before_batch seam and SIGKILL, three times. Every kill must
-      # leave the floor schema byte-for-byte untouched (no dirty flag, no
-      # partial DDL) — an interruption in this window is a no-op.
+      # Kill point 1: park at the before_batch seam and SIGKILL, three
+      # times. Every kill must leave the floor schema byte-for-byte
+      # untouched -- an interruption in this window is a no-op.
       - name: SIGKILL before any migration begins — crash loop
         working-directory: backend
         run: |
@@ -687,11 +639,10 @@ jobs:
             *) echo "::error::a second restart changed the state: $state"; exit 1 ;;
           esac
 
-      # --- Kill point 3: after migrations, before the server is ready --------
-      # The real server binary: SIGKILL it in the window between "migrations are
-      # done" and "listening". At the database level this is a completed
-      # upgrade, so every kill must leave it clean at latest, and a final
-      # restart must actually reach /health/ready.
+      # Kill point 3: SIGKILL the real server binary in the window between
+      # "migrations done" and "listening" -- a completed upgrade at the DB
+      # level, so every kill leaves it clean at latest, restart reaches
+      # /health/ready.
       - name: SIGKILL the server after migrations, before ready — crash loop
         run: |
           "$RUNNER_TEMP/migratebench" checkpoint --db "$RUNNER_TEMP/src.db" --version 31 --out "$RUNNER_TEMP/server.db"
@@ -741,12 +692,10 @@ jobs:
           [ "$got" = "$CONTACTS" ] || { echo "::error::contact count changed: $got != $CONTACTS"; exit 1; }
           echo "server reached /health/ready after 3 post-migration kills, data intact"
 
-  # Issue #498 (capacity under constrained resources): the constraint × operation
-  # cells that need a real resource limit rather than an in-process error seam.
-  # Each asserts the milestone's non-negotiable outcome — PRAGMA integrity_check
-  # is `ok` and no silent partial success — after the limit is hit. Slow and
-  # failed are acceptable; corrupt is not. The classification table these feed is
-  # docs/development/capacity-under-constraint.md.
+  # Issue #498: the constraint x operation cells needing a real resource
+  # limit, not an in-process error seam. Each asserts integrity_check ok
+  # and no silent partial success after the limit hits -- slow/failed is
+  # fine, corrupt is not. Table: docs/development/capacity-under-constraint.md.
 
   disk-full-write:
     permissions:
@@ -775,10 +724,9 @@ jobs:
           go build -o "$RUNNER_TEMP/migratebench" ./cmd/migratebench
           go build -o "$RUNNER_TEMP/dbinspect" ./cmd/dbinspect
 
-      # A ~2 MiB tmpfs holds the migrated schema but not thousands of seeded
-      # contact rows, so the populate transaction runs out of space partway —
-      # a real ENOSPC on an ordinary bulk write, the exact spot a low-disk box
-      # is said to corrupt.
+      # A ~2 MiB tmpfs holds the migrated schema but not thousands of
+      # seeded contact rows, so the populate transaction hits real ENOSPC
+      # mid-write -- the exact spot a low-disk box is said to corrupt.
       - name: Mount a tiny filesystem to simulate disk exhaustion
         run: |
           sudo mkdir -p /mnt/diskfull
@@ -928,11 +876,10 @@ jobs:
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.workflows == 'true'
 
     env:
-      # The floor moved to v1.0.0 (= the current latest, issue #1170), so a
-      # version-31 floor database is sub-floor. This job's purpose is the
-      # migration/interruption behavior, not the floor refusal, so it runs the
-      # chain through the documented one-time bridge until a later release adds
-      # a migration above the floor.
+      # The floor moved to v1.0.0 (= current latest, #1170), making a
+      # version-31 database sub-floor; this job tests migration/interruption
+      # behavior, not the floor refusal, so it uses the documented bridge
+      # until a later release adds a migration above the floor.
       MYCORRHIZAL_ALLOW_SUB_FLOOR_MIGRATION: "1"
 
     steps:
@@ -1060,11 +1007,10 @@ jobs:
           echo "live contacts=$live indexed=$fts"
           [ "$fts" = "$live" ] || { echo "::error::FTS rebuild under a CPU cap is inconsistent ($fts != $live)"; exit 1; }
 
-      # dbinspect is the "never corrupt" assertion; the exact row counts above
-      # are the "still correct" assertion. `doctor`'s ADR-0012 data pass is
-      # deliberately NOT run here — migratebench seeds attachment metadata rows
-      # with no backing files (scale-profiles.md), so its INV-D4 check always
-      # fires on a seeded fixture and says nothing about CPU throttling.
+      # dbinspect is the "never corrupt" assertion; the row counts above are
+      # "still correct". `doctor`'s ADR-0012 pass is deliberately NOT run
+      # here -- migratebench seeds attachment rows with no backing files,
+      # so its INV-D4 check always fires and says nothing about throttling.
       - name: The result is structurally intact
         run: |
           state="$("$RUNNER_TEMP/dbinspect" "$RUNNER_TEMP/cpu.db")"

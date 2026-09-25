@@ -62,7 +62,7 @@ export default function OccasionsPage() {
   }, [days]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   // Events (docs/adrs/0026-occasions-events.md, issue #1228): the one-off
@@ -122,7 +122,7 @@ export default function OccasionsPage() {
           <Button
             variant="contained"
             startIcon={<DownloadIcon />}
-            onClick={handleDownloadCardList}
+            onClick={() => void handleDownloadCardList()}
             disabled={downloading}
           >
             {t('occasions.cardList.download')}
@@ -246,7 +246,7 @@ export default function OccasionsPage() {
             setEditingEvent(event);
             setEventDialogOpen(true);
           }}
-          onDelete={handleDeleteEvent}
+          onDelete={(id: string) => void handleDeleteEvent(id)}
           onManageAttendees={setAttendeesEvent}
         />
       )}

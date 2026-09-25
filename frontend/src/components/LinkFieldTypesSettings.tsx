@@ -74,7 +74,7 @@ export default function LinkFieldTypesSettings() {
   } = useLinkFieldTypes({ showError });
 
   useEffect(() => {
-    refreshLinkFieldTypes();
+    void refreshLinkFieldTypes();
   }, [refreshLinkFieldTypes]);
 
   const [form, setForm] = useState<FormState>(emptyForm());
@@ -210,7 +210,7 @@ export default function LinkFieldTypesSettings() {
                         <Box sx={{ display: 'flex', gap: 0.5 }}>
                           <IconButton
                             size="small"
-                            onClick={() => handleMoveLinkFieldType(lt.id, -1)}
+                            onClick={() => void handleMoveLinkFieldType(lt.id, -1)}
                             disabled={index === 0}
                             aria-label={t('settings.linkFieldTypes.moveUp', { name: lt.name })}
                           >
@@ -218,7 +218,7 @@ export default function LinkFieldTypesSettings() {
                           </IconButton>
                           <IconButton
                             size="small"
-                            onClick={() => handleMoveLinkFieldType(lt.id, 1)}
+                            onClick={() => void handleMoveLinkFieldType(lt.id, 1)}
                             disabled={index === items.length - 1}
                             aria-label={t('settings.linkFieldTypes.moveDown', { name: lt.name })}
                           >
@@ -358,7 +358,11 @@ export default function LinkFieldTypesSettings() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
-          <Button onClick={handleSave} variant="contained" disabled={saving || !form.name.trim()}>
+          <Button
+            onClick={() => void handleSave()}
+            variant="contained"
+            disabled={saving || !form.name.trim()}
+          >
             {saving ? t('common.saving') : t('common.save')}
           </Button>
         </DialogActions>
@@ -374,7 +378,12 @@ export default function LinkFieldTypesSettings() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteTarget(null)}>{t('common.cancel')}</Button>
-          <Button onClick={handleDeleteConfirm} color="error" disabled={deleting} autoFocus>
+          <Button
+            onClick={() => void handleDeleteConfirm()}
+            color="error"
+            disabled={deleting}
+            autoFocus
+          >
             {t('common.delete')}
           </Button>
         </DialogActions>

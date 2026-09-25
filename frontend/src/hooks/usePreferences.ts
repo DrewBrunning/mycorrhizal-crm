@@ -31,7 +31,7 @@ export function usePreferences(entityId: string | undefined, notifier?: ErrorNot
   }, [entityId]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const handleSave = useCallback(

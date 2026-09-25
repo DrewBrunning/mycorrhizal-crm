@@ -41,10 +41,6 @@ var riskNames = map[string]string{
 	"3": "high",
 }
 
-// gateHighMedium are the risk names the gate enforces (issue #368: "gate on
-// high/medium findings").
-const gateHighMedium = "medium,high"
-
 type config struct {
 	reportPath   string
 	ignorePath   string
@@ -243,7 +239,7 @@ func readIgnoreList(path string) ([]ignoreRule, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck // read-only handle: Close cannot lose data
 
 	var rules []ignoreRule
 	scanner := bufio.NewScanner(f)

@@ -248,7 +248,7 @@ describe('AddNoteDialog in-app route navigation guard (issue #805)', () => {
     // Simulate the browser Back button / a programmatic in-app navigation
     // while the dirty dialog is open.
     await act(async () => {
-      router.navigate('/contacts');
+      void router.navigate('/contacts');
     });
 
     expect(router.state.location.pathname).toBe('/notes');
@@ -262,7 +262,7 @@ describe('AddNoteDialog in-app route navigation guard (issue #805)', () => {
     await typeDirtyNote();
 
     await act(async () => {
-      router.navigate('/contacts');
+      void router.navigate('/contacts');
     });
     expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
 
@@ -281,7 +281,7 @@ describe('AddNoteDialog in-app route navigation guard (issue #805)', () => {
     await typeDirtyNote();
 
     await act(async () => {
-      router.navigate('/contacts');
+      void router.navigate('/contacts');
     });
     expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
 
@@ -300,7 +300,7 @@ describe('AddNoteDialog in-app route navigation guard (issue #805)', () => {
     await waitFor(() => expect(screen.getByLabelText('Content *')).toBeInTheDocument());
 
     await act(async () => {
-      router.navigate('/contacts');
+      void router.navigate('/contacts');
     });
 
     expect(router.state.location.pathname).toBe('/contacts');

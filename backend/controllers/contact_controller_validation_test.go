@@ -40,13 +40,13 @@ import (
 	"gorm.io/gorm"
 )
 
-// newValidatedContactRouter wires a fresh setupRouter() with the real
+// newValidatedContactRouter wires a fresh setupRouter(t) with the real
 // validation + error-handling middleware in front of CreateContact/
 // UpdateContact, mirroring middleware/validation_integration_test.go's
 // established router.Use(apperrors.ErrorHandlerMiddleware()) +
 // ValidateJSONMiddleware(&Struct{}) pattern.
-func newValidatedContactRouter() (*gorm.DB, *gin.Engine) {
-	db, router := setupRouter()
+func newValidatedContactRouter(t testing.TB) (*gorm.DB, *gin.Engine) {
+	db, router := setupRouter(t)
 	router.Use(apperrors.ErrorHandlerMiddleware())
 	router.POST("/contacts", middleware.ValidateJSONMiddleware(&models.ContactRecordInput{}), CreateContact)
 	router.PUT("/contacts/:id", middleware.ValidateJSONMiddleware(&models.ContactRecordInput{}), UpdateContact)
@@ -73,7 +73,7 @@ func baseValidCardJSON() contactmodel.Card {
 }
 
 func TestCreateContact_RealValidation_GenderTooLong(t *testing.T) {
-	_, router := newValidatedContactRouter()
+	_, router := newValidatedContactRouter(t)
 
 	longGender := strings.Repeat("a", 101)
 	input := models.ContactRecordInput{
@@ -93,7 +93,7 @@ func TestCreateContact_RealValidation_GenderTooLong(t *testing.T) {
 }
 
 func TestCreateContact_RealValidation_FreeTextGenderAccepted(t *testing.T) {
-	_, router := newValidatedContactRouter()
+	_, router := newValidatedContactRouter(t)
 
 	input := models.ContactRecordInput{
 		Gender: "Non-binary",
@@ -116,7 +116,7 @@ func TestCreateContact_RealValidation_ValidGenderValues(t *testing.T) {
 
 	for _, gender := range validGenders {
 		t.Run(gender, func(t *testing.T) {
-			_, router := newValidatedContactRouter()
+			_, router := newValidatedContactRouter(t)
 
 			input := models.ContactRecordInput{
 				Gender: gender,
@@ -140,7 +140,7 @@ func TestCreateContact_RealValidation_ValidGenderValues(t *testing.T) {
 // `omitempty` keeps an empty/omitted gender accepted through the real
 // validator, not just when Gender happens to be a recognized value.
 func TestCreateContact_RealValidation_EmptyGenderAccepted(t *testing.T) {
-	_, router := newValidatedContactRouter()
+	_, router := newValidatedContactRouter(t)
 
 	// Gender omitted entirely from the JSON body (not just empty-string).
 	body := []byte(`{"card":{"name":{"components":[{"kind":"given","value":"NoGender"}]}}}`)
@@ -164,7 +164,7 @@ func TestCreateContact_RealValidation_EmptyGenderAccepted(t *testing.T) {
 // Contact with that name and nothing else, exactly what a pet or a minor
 // child's relationship-graph node ( /81) needs to exist as.
 func TestCreateContact_RealValidation_ThinEntityAccepted(t *testing.T) {
-	db, router := newValidatedContactRouter()
+	db, router := newValidatedContactRouter(t)
 
 	body := []byte(`{"card":{"name":{"components":[{"kind":"given","value":"Fluffy"}]}}}`)
 
@@ -212,7 +212,7 @@ func TestCreateContact_RealValidation_ThinEntityAccepted(t *testing.T) {
 func TestCreateContact_RealValidation_KindAccepted(t *testing.T) {
 	for _, kind := range []string{"pet", "animal", "robot"} {
 		t.Run(kind, func(t *testing.T) {
-			_, router := newValidatedContactRouter()
+			_, router := newValidatedContactRouter(t)
 
 			input := models.ContactRecordInput{
 				Card: baseValidCardJSON(),
@@ -236,7 +236,7 @@ func TestCreateContact_RealValidation_KindAccepted(t *testing.T) {
 }
 
 func TestCreateContact_RealValidation_MalformedJSON(t *testing.T) {
-	_, router := newValidatedContactRouter()
+	_, router := newValidatedContactRouter(t)
 
 	// Genuinely broken syntax: unbalanced braces, not merely semantically odd.
 	malformed := []byte(`{"card": {"name": {"components": [{"kind": "given", "value": "Broken"}]}`)
@@ -251,7 +251,7 @@ func TestCreateContact_RealValidation_MalformedJSON(t *testing.T) {
 }
 
 func TestUpdateContact_RealValidation_MalformedJSON(t *testing.T) {
-	db, router := newValidatedContactRouter()
+	db, router := newValidatedContactRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -285,7 +285,7 @@ func TestUpdateContact_RealValidation_MalformedJSON(t *testing.T) {
 // grepping the codebase for DisallowUnknownFields/
 // EnableDecoderDisallowUnknownFields, which found zero occurrences.
 func TestCreateContact_RealValidation_UnusualNestedDataAccepted(t *testing.T) {
-	_, router := newValidatedContactRouter()
+	_, router := newValidatedContactRouter(t)
 
 	body := []byte(`{
 		"gender": "",

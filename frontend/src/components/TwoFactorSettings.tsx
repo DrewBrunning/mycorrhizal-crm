@@ -70,7 +70,7 @@ export default function TwoFactorSettings() {
   };
 
   useEffect(() => {
-    refreshStatus();
+    void refreshStatus();
   }, []);
 
   const handleStartSetup = async () => {
@@ -112,7 +112,7 @@ export default function TwoFactorSettings() {
 
   const handleCopyCodes = () => {
     if (recoveryCodes) {
-      navigator.clipboard.writeText(recoveryCodes.join('\n'));
+      void navigator.clipboard.writeText(recoveryCodes.join('\n'));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -181,7 +181,7 @@ export default function TwoFactorSettings() {
               <Button
                 variant="contained"
                 size="small"
-                onClick={handleStartSetup}
+                onClick={() => void handleStartSetup()}
                 disabled={enrolling}
               >
                 {enrolling
@@ -260,7 +260,7 @@ export default function TwoFactorSettings() {
                 htmlInput: { style: { fontFamily: 'monospace' } },
               }}
             />
-            <form onSubmit={handleConfirm}>
+            <form onSubmit={(p0) => void handleConfirm(p0)}>
               <Stack spacing={1.5}>
                 <TextField
                   label={t('settings.twoFactor.setup.codeLabel')}
@@ -312,7 +312,7 @@ export default function TwoFactorSettings() {
             : t('settings.twoFactor.regenerate.title')}
         </DialogTitle>
         <DialogContent>
-          <form onSubmit={submitAction}>
+          <form onSubmit={(p0) => void submitAction(p0)}>
             <Stack spacing={1.5}>
               <Typography
                 variant="body2"

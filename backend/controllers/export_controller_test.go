@@ -73,7 +73,7 @@ func assertExportFailureDetails(t *testing.T, w *httptest.ResponseRecorder, want
 }
 
 func TestExportData_DBError_IdentifiesOperationAndCategory(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/export", ExportData)
 
 	sqlDB, err := db.DB()
@@ -89,7 +89,7 @@ func TestExportData_DBError_IdentifiesOperationAndCategory(t *testing.T) {
 }
 
 func TestExportData(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -264,7 +264,7 @@ func TestExportData(t *testing.T) {
 // row carries its value for that definition -- including the Multi join and
 // the empty-when-absent case.
 func TestExportData_CustomFieldsV2(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/export", ExportData)
 
 	var user models.User
@@ -345,7 +345,7 @@ func TestSerializeFieldValueForCSV(t *testing.T) {
 }
 
 func TestExportDataEmpty(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.GET("/export", ExportData)
 
@@ -379,7 +379,7 @@ func TestExportDataEmpty(t *testing.T) {
 }
 
 func TestExportDataUserScoping(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -462,7 +462,7 @@ func TestExportDataUserScoping(t *testing.T) {
 // ReminderCompletion.ContactID being resolved via the uint-keyed contact
 // map rather than the EntityID/VCardUID one every other new section uses).
 func TestExportData_ExtraSections(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 
 	var user models.User
 	db.First(&user)
@@ -637,7 +637,7 @@ func TestExportData_ExtraSections(t *testing.T) {
 // --- ExportContactsAsVCF ---
 
 func TestExportContactsAsVCF_DefaultVersion4(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	var user models.User
@@ -666,7 +666,7 @@ func TestExportContactsAsVCF_Version3QueryParam(t *testing.T) {
 	// "3.0" -- both "3" and "v3.0" must select vCard 3.0.
 	for _, version := range []string{"3", "v3.0"} {
 		t.Run(version, func(t *testing.T) {
-			db, router := setupRouter()
+			db, router := setupRouter(t)
 			registerVCFRoute(router, "")
 
 			var user models.User
@@ -689,7 +689,7 @@ func TestExportContactsAsVCF_Version3QueryParam(t *testing.T) {
 // TestExportContactsAsVCF_NoAuth_Unauthorized exercises the early
 // currentUserID(c) !ok return branch.
 func TestExportContactsAsVCF_NoAuth_Unauthorized(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	router := routerWithoutAuth(db)
 	router.GET("/export/vcf", func(c *gin.Context) {
 		ExportContactsAsVCF(c, "")
@@ -705,7 +705,7 @@ func TestExportContactsAsVCF_NoAuth_Unauthorized(t *testing.T) {
 // TestExportContactsAsVCF_DBError exercises the db.Find error branch by
 // closing the underlying *sql.DB out from under gorm before the request.
 func TestExportContactsAsVCF_DBError(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	sqlDB, err := db.DB()
@@ -721,7 +721,7 @@ func TestExportContactsAsVCF_DBError(t *testing.T) {
 }
 
 func TestExportContactsAsVCF_MultipleContacts(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	var user models.User
@@ -745,7 +745,7 @@ func TestExportContactsAsVCF_MultipleContacts(t *testing.T) {
 }
 
 func TestExportContactsAsVCF_UserScoping(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	var user models.User
@@ -768,7 +768,7 @@ func TestExportContactsAsVCF_UserScoping(t *testing.T) {
 }
 
 func TestExportContactsAsVCF_Empty(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	req, _ := http.NewRequest("GET", "/export/vcf", nil)
@@ -798,7 +798,7 @@ func TestExportContactsAsVCF_DiagnosticSanitization(t *testing.T) {
 		zerolog.SetGlobalLevel(oldLevel)
 	})
 
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	var user models.User
@@ -846,7 +846,7 @@ func TestExportContactsAsVCF_PhotoBridging(t *testing.T) {
 	models.DefaultPhotoDir = saveDir
 	defer func() { models.DefaultPhotoDir = origDefaultPhotoDir }()
 
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	// Deliberately mismatched: the export handler's photoDir points at an
 	// empty directory with no "avatar.png" and no PhotoThumbnail fallback on
 	// the contact row, so only the pre-baked Card.Media survives.
@@ -877,7 +877,7 @@ func TestExportContactsAsVCF_PhotoBridging(t *testing.T) {
 // --- ExportContactsAsJSContact ---
 
 func TestExportContactsAsJSContact_Basic(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerJSContactRoute(router, "")
 
 	var user models.User
@@ -918,7 +918,7 @@ func TestExportContactsAsJSContact_Basic(t *testing.T) {
 // currentUserID(c) !ok return branch (mirrors the equivalent test in
 // import_controller_test.go, reusing its routerWithoutAuth helper).
 func TestExportContactsAsJSContact_NoAuth_Unauthorized(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	router := routerWithoutAuth(db)
 	router.GET("/export/jscontact", func(c *gin.Context) {
 		c.Set("cfg", config.Config{})
@@ -935,7 +935,7 @@ func TestExportContactsAsJSContact_NoAuth_Unauthorized(t *testing.T) {
 // TestExportContactsAsJSContact_DBError exercises the db.Find error branch
 // by closing the underlying *sql.DB out from under gorm before the request.
 func TestExportContactsAsJSContact_DBError(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerJSContactRoute(router, "")
 
 	sqlDB, err := db.DB()
@@ -951,7 +951,7 @@ func TestExportContactsAsJSContact_DBError(t *testing.T) {
 }
 
 func TestExportContactsAsJSContact_UserScoping(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerJSContactRoute(router, "")
 
 	var user models.User
@@ -978,7 +978,7 @@ func TestExportContactsAsJSContact_UserScoping(t *testing.T) {
 }
 
 func TestExportContactsAsJSContact_Empty(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerJSContactRoute(router, "")
 
 	req, _ := http.NewRequest("GET", "/export/jscontact", nil)
@@ -1011,7 +1011,7 @@ func TestExportContactsAsJSContact_PhotoBridging(t *testing.T) {
 	models.DefaultPhotoDir = saveDir
 	defer func() { models.DefaultPhotoDir = origDefaultPhotoDir }()
 
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	// Mismatched on purpose: currentConfig(c).ProfilePhotoDir at export time
 	// points at an empty directory with no avatar.png and no
 	// PhotoThumbnail fallback, so only the pre-baked Card.Media survives.
@@ -1064,7 +1064,7 @@ func TestExportContactsAsJSContact_PhotoBridging(t *testing.T) {
 // The ?sections= field picker must actually narrow a vCard export, and an
 // absent param must preserve the pre-T9 all-sections behavior.
 func TestExportContactsAsVCF_SectionsFilter(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	var user models.User
@@ -1092,7 +1092,7 @@ func TestExportContactsAsVCF_SectionsFilter(t *testing.T) {
 
 // An unknown section token is an explicit 400, not a silent narrowing.
 func TestExportContactsAsVCF_UnknownSection_BadRequest(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	var user models.User
@@ -1108,7 +1108,7 @@ func TestExportContactsAsVCF_UnknownSection_BadRequest(t *testing.T) {
 // The opt-in override flows through the HTTP surface: a secret edge is
 // absent by default and present only with ?include_sensitive=true.
 func TestExportContactsAsVCF_IncludeSensitiveOptIn(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	var user models.User
@@ -1153,7 +1153,7 @@ func TestExportContactsAsVCF_IncludeSensitiveOptIn(t *testing.T) {
 // test. Only a definition with a "vcard:X-..." Projection ever reaches an
 // export at all (default "internal-only" definitions never do).
 func TestExportContactsAsVCF_SecretCustomField_ExcludedByDefault_IncludedWithOptIn(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	var user models.User
@@ -1195,7 +1195,7 @@ func TestExportContactsAsVCF_SecretCustomField_ExcludedByDefault_IncludedWithOpt
 
 // The JSContact equivalent of the VCF test above.
 func TestExportContactsAsJSContact_SecretCustomField_ExcludedByDefault_IncludedWithOptIn(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerJSContactRoute(router, "")
 
 	var user models.User
@@ -1235,7 +1235,7 @@ func TestExportContactsAsJSContact_SecretCustomField_ExcludedByDefault_IncludedW
 
 // The same picker applies to the JSContact export handler.
 func TestExportContactsAsJSContact_SectionsFilter(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerJSContactRoute(router, "")
 
 	var user models.User
@@ -1262,7 +1262,7 @@ func TestExportContactsAsJSContact_SectionsFilter(t *testing.T) {
 // "true"/"1" pair already used by the boolean-flag endpoints elsewhere in
 // the codebase (e.g. reminder "by_mail").
 func TestExportContactsAsVCF_IncludeSensitive_OneIsTrue(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	var user models.User
@@ -1292,7 +1292,7 @@ func TestExportContactsAsVCF_IncludeSensitive_OneIsTrue(t *testing.T) {
 // include_sensitive=true on its own (no ?sections=) implies all sections, and
 // the sensitive opt-in is still respected.
 func TestExportContactsAsVCF_IncludeSensitive_WithoutSectionsParam(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	var user models.User
@@ -1324,7 +1324,7 @@ func TestExportContactsAsVCF_IncludeSensitive_WithoutSectionsParam(t *testing.T)
 // An empty ?sections= value is treated identically to the absent param,
 // preserving the pre-T9 all-sections default.
 func TestExportContactsAsVCF_EmptySectionsParam_AllFields(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerVCFRoute(router, "")
 
 	var user models.User

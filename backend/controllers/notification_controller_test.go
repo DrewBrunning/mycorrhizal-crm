@@ -56,7 +56,7 @@ func (f *fakeNtfyServer) wasHit() bool {
 }
 
 func TestNotificationConfig_GetReturnsDefaults(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/notifications/config", GetNotificationConfig)
 
 	req, _ := http.NewRequest("GET", "/notifications/config", nil)
@@ -82,7 +82,7 @@ func TestNotificationConfig_GetReturnsDefaults(t *testing.T) {
 }
 
 func TestNotificationConfig_SaveAndReload(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.PUT("/notifications/config", withValidated(func() any { return &models.NotificationConfigInput{} }), SaveNotificationConfig)
 	router.GET("/notifications/config", GetNotificationConfig)
 
@@ -122,7 +122,7 @@ func TestNotificationConfig_SaveAndReload(t *testing.T) {
 }
 
 func TestNotificationConfig_InvalidURLRejected(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.PUT("/notifications/config", withValidated(func() any { return &models.NotificationConfigInput{} }), SaveNotificationConfig)
 
 	// A malformed URL is rejected at save time with a 400, not accepted and
@@ -141,7 +141,7 @@ func TestNotificationConfig_InvalidURLRejected(t *testing.T) {
 }
 
 func TestNotificationConfig_TestNtfy(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.PUT("/notifications/config", withValidated(func() any { return &models.NotificationConfigInput{} }), SaveNotificationConfig)
 	router.POST("/notifications/config/test", TestNotificationChannel)
 
@@ -176,7 +176,7 @@ func TestNotificationConfig_TestNtfy(t *testing.T) {
 }
 
 func TestNotificationConfig_TestUnconfiguredChannel(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/notifications/config/test", TestNotificationChannel)
 
 	req, _ := http.NewRequest("POST", "/notifications/config/test", bytes.NewBufferString(`{"channel":"ntfy"}`))
@@ -193,7 +193,7 @@ func TestNotificationConfig_TestUnconfiguredChannel(t *testing.T) {
 }
 
 func TestNotificationConfig_TestUnknownChannel(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/notifications/config/test", TestNotificationChannel)
 
 	req, _ := http.NewRequest("POST", "/notifications/config/test", bytes.NewBufferString(`{"channel":"sms"}`))
@@ -208,8 +208,8 @@ func TestNotificationConfig_TestUnknownChannel(t *testing.T) {
 // (config save + test button) under an explicit cfg. The shared setupRouter
 // middleware hardcodes its own cfg, so the test route is registered with a
 // per-request override to exercise the SSRF policy (issue #606).
-func newNotificationTestRouter(cfg config.Config) *gin.Engine {
-	_, router := setupRouter()
+func newNotificationTestRouter(t testing.TB, cfg config.Config) *gin.Engine {
+	_, router := setupRouter(t)
 	router.PUT("/notifications/config", withValidated(func() any { return &models.NotificationConfigInput{} }), SaveNotificationConfig)
 	router.POST("/notifications/config/test", func(c *gin.Context) {
 		c.Set("cfg", cfg)
@@ -239,7 +239,7 @@ func testChannel(t *testing.T, router http.Handler, channel string) map[string]a
 // unbounded text.
 func TestNotificationConfig_TestNtfy_ErrorTruncated(t *testing.T) {
 	buf := captureTestLogger(t)
-	router := newNotificationTestRouter(config.Config{})
+	router := newNotificationTestRouter(t, config.Config{})
 
 	long := strings.Repeat("a", 300)
 	body, _ := json.Marshal(models.NotificationConfigInput{NtfyURL: "http://" + long + ".invalid", NtfyTopic: "alerts"})
@@ -271,7 +271,7 @@ func TestNotificationConfig_TestNtfy_ErrorTruncated(t *testing.T) {
 // server log.
 func TestNotificationConfig_TestNtfy_PrivateAddressCollapsedWhenGuarded(t *testing.T) {
 	buf := captureTestLogger(t)
-	router := newNotificationTestRouter(config.Config{WebhookBlockPrivateURLs: true})
+	router := newNotificationTestRouter(t, config.Config{WebhookBlockPrivateURLs: true})
 
 	body, _ := json.Marshal(models.NotificationConfigInput{NtfyURL: "http://127.0.0.1:1", NtfyTopic: "alerts"})
 	req, _ := http.NewRequest("PUT", "/notifications/config", bytes.NewBuffer(body))
@@ -295,7 +295,7 @@ func TestNotificationConfig_TestNtfy_PrivateAddressCollapsedWhenGuarded(t *testi
 // rule a target tripped.
 func TestNotificationConfig_TestNtfy_UnresolvableCollapsedWhenGuarded(t *testing.T) {
 	buf := captureTestLogger(t)
-	router := newNotificationTestRouter(config.Config{WebhookBlockPrivateURLs: true})
+	router := newNotificationTestRouter(t, config.Config{WebhookBlockPrivateURLs: true})
 
 	body, _ := json.Marshal(models.NotificationConfigInput{NtfyURL: "http://nonexistent.invalid", NtfyTopic: "alerts"})
 	req, _ := http.NewRequest("PUT", "/notifications/config", bytes.NewBuffer(body))
@@ -329,7 +329,7 @@ func captureTestLogger(t *testing.T) *bytes.Buffer {
 }
 
 func TestPushSubscription_CRUD(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/notifications/push-subscriptions", ListPushSubscriptions)
 	router.POST("/notifications/push-subscriptions", withValidated(func() any { return &models.PushSubscriptionInput{} }), CreatePushSubscription)
 	router.DELETE("/notifications/push-subscriptions/:id", DeletePushSubscription)
@@ -371,7 +371,7 @@ func TestPushSubscription_CRUD(t *testing.T) {
 }
 
 func TestPushSubscription_DeleteOwnershipScoping(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/notifications/push-subscriptions/:id", DeletePushSubscription)
 
 	// The seeded "tester" is the current user. A subscription owned by a
@@ -398,7 +398,7 @@ func TestPushSubscription_DeleteOwnershipScoping(t *testing.T) {
 }
 
 func TestPushSubscription_CreateOwnershipScoped(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/notifications/push-subscriptions", ListPushSubscriptions)
 
 	// Another user's subscription must not leak into the current user's list.
@@ -425,7 +425,7 @@ func TestPushSubscription_CreateOwnershipScoped(t *testing.T) {
 }
 
 func TestDeviceRegistration_CRUD(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/notifications/devices", ListDeviceRegistrations)
 	router.POST("/notifications/devices", withValidated(func() any { return &models.DeviceRegistrationInput{} }), CreateDeviceRegistration)
 	router.DELETE("/notifications/devices/:id", DeleteDeviceRegistration)
@@ -466,7 +466,7 @@ func TestDeviceRegistration_CRUD(t *testing.T) {
 }
 
 func TestDeviceRegistration_InvalidClientRejected(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.POST("/notifications/devices", middleware.ValidateJSONMiddleware(&models.DeviceRegistrationInput{}), CreateDeviceRegistration)
 
 	// The middleware's oneof validator rejects an unknown push client — the
@@ -483,7 +483,7 @@ func TestDeviceRegistration_InvalidClientRejected(t *testing.T) {
 }
 
 func TestDeviceRegistration_DeleteOwnershipScoping(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.DELETE("/notifications/devices/:id", DeleteDeviceRegistration)
 
 	other := models.User{Username: "other", Password: "password123", Email: "other@example.com"}
@@ -507,7 +507,7 @@ func TestDeviceRegistration_DeleteOwnershipScoping(t *testing.T) {
 }
 
 func TestDeviceRegistration_ListOwnershipScoped(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/notifications/devices", ListDeviceRegistrations)
 
 	other := models.User{Username: "other", Password: "password123", Email: "other@example.com"}
@@ -535,7 +535,7 @@ func TestDeviceRegistration_ListOwnershipScoped(t *testing.T) {
 // bound: once a user holds MaxPushSubscriptionsPerUser registrations, the
 // next one is rejected with 409, and another user's quota is independent.
 func TestPushSubscription_OverCapRejected(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/notifications/push-subscriptions", withValidated(func() any { return &models.PushSubscriptionInput{} }), CreatePushSubscription)
 
 	var user models.User
@@ -575,7 +575,7 @@ func TestPushSubscription_OverCapRejected(t *testing.T) {
 // TestDeviceRegistration_OverCapRejected pins issue #415's per-user device
 // bound, mirroring TestPushSubscription_OverCapRejected.
 func TestDeviceRegistration_OverCapRejected(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.POST("/notifications/devices", withValidated(func() any { return &models.DeviceRegistrationInput{} }), CreateDeviceRegistration)
 
 	var user models.User

@@ -21,7 +21,7 @@ import (
 // so a naive conversion would have silently kept iterating instead of
 // stopping — this test locks in the correct (labeled-break) behavior.
 func TestGetUpcomingBirthdays_TruncatesAfterMaxResultsPastTwoWeeks(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	user := models.User{Username: "birthdaytester", Password: "password123", Email: "bday@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -63,7 +63,7 @@ func TestGetUpcomingBirthdays_TruncatesAfterMaxResultsPastTwoWeeks(t *testing.T)
 // TestGetUpcomingBirthdays_CapsAtMaxResultsWhenNoneWithinTwoWeeks asserts
 // the maxResults=5 cap applies when nothing is within the two-week window.
 func TestGetUpcomingBirthdays_CapsAtMaxResultsWhenNoneWithinTwoWeeks(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	user := models.User{Username: "birthdaytester2", Password: "password123", Email: "bday2@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -195,7 +195,7 @@ func TestDaysUntilBirthday_LeapDayCelebratedTodayOnMarchFirstNonLeap(t *testing.
 // The leap-day OR branch in GetUpcomingBirthdays must fetch it on that one
 // date so the digest and birthdays list can report it "today".
 func TestGetUpcomingBirthdays_LeapDayBirthdayReachableThroughThePreselect(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 
 	user := models.User{Username: "leapdaytester", Password: "password123", Email: "leap@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -378,7 +378,7 @@ func TestDaysUntilBirthday_AbsentAndGarbageNeverBecomeJan1YearZero(t *testing.T)
 // birthday values are filtered by the query (they must never surface as
 // "1 January year zero" or a 999-sentinel row).
 func TestGetUpcomingBirthdays_ExcludesAbsentBirthdays(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	user := models.User{Username: "absent-bday-user", Password: "password123", Email: "absent@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 
@@ -452,7 +452,7 @@ func TestDaysUntilBirthday_ZoneDecidesTodayNotStoredValue(t *testing.T) {
 // fixed instant, but already a year out (outside the window) in Kiritimati,
 // where the same instant is Mar 15.
 func TestGetUpcomingBirthdays_ZoneSelectsMembership(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	user := models.User{Username: "zone-member-user", Password: "password123", Email: "zonemember@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 	require.NoError(t, db.Create(&models.Contact{UserID: user.ID, Firstname: "Boundary", Birthday: "--03-14", Archived: false}).Error)
@@ -484,7 +484,7 @@ func TestGetUpcomingBirthdays_ZoneSelectsMembership(t *testing.T) {
 // reminder surface, even though their flat `birthday` column still falls
 // inside the fetch window.
 func TestGetUpcomingBirthdays_ExcludesDeceasedContacts(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	user := models.User{Username: "deceased-birthday-user", Password: "password123", Email: "deceasedbday@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 

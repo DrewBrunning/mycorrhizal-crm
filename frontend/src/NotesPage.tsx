@@ -107,7 +107,7 @@ const NotesPage: React.FC = () => {
         contact_id: contactId,
       });
       setAddDialogOpen(false);
-      refetch();
+      void refetch();
     } catch (err) {
       handleError(err, { operation: 'creating note' });
       throw err;
@@ -119,7 +119,7 @@ const NotesPage: React.FC = () => {
     setEditValues({
       noteContent: note.content || '',
       noteDate: note.date ? new Date(note.date).toISOString().split('T')[0] : '',
-      noteContactId: note.contact_id,
+      noteContactId: note.contact_id ?? undefined,
     });
   };
 
@@ -136,7 +136,7 @@ const NotesPage: React.FC = () => {
       });
       setEditingNote(null);
       setEditValues({});
-      refetch();
+      void refetch();
     } catch (err) {
       handleError(err, { operation: 'updating note' });
     }
@@ -154,7 +154,7 @@ const NotesPage: React.FC = () => {
       await deleteNote(editingNote.ID);
       setEditingNote(null);
       setEditValues({});
-      refetch();
+      void refetch();
     } catch (err) {
       handleError(err, { operation: 'deleting note' });
     }
@@ -365,7 +365,7 @@ const NotesPage: React.FC = () => {
             mt: 3,
           }}
         >
-          <Button variant="outlined" onClick={loadMore} disabled={loading}>
+          <Button variant="outlined" onClick={() => void loadMore()} disabled={loading}>
             {t('common.loadMore')}
           </Button>
         </Box>
@@ -381,8 +381,8 @@ const NotesPage: React.FC = () => {
         <EditTimelineItemDialog
           open={!!editingNote}
           onClose={handleCancelEdit}
-          onSave={handleSaveEdit}
-          onDelete={handleDeleteNote}
+          onSave={() => void handleSaveEdit()}
+          onDelete={() => void handleDeleteNote()}
           type="note"
           values={editValues}
           onChange={setEditValues}

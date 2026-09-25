@@ -1,51 +1,32 @@
 name: Container Hardening (CIS)
 
-# Issue #362: the runtime images already do the load-bearing hardening (non-root
-# appuser via PUID/PGID remap, pinned bases, HEALTHCHECK, no secrets in layers),
-# but nothing in CI checks the CIS Docker Benchmark controls that keep it that
-# way. A future regression — re-adding `USER root`, a setuid binary dragged in
-# by an apk bump, a `privileged: true` in compose — would go unnoticed.
+# Issue #362: nothing else in CI checks the CIS Docker Benchmark controls
+# that keep the runtime images hardened (non-root appuser, pinned bases,
+# HEALTHCHECK, no secrets in layers) -- a regression (re-adding `USER root`,
+# a setuid binary, `privileged: true`) would otherwise go unnoticed.
 #
-# This workflow builds the shipped all-in-one image and runs
-# docker/cis-hardening.sh against it: a short, deterministic CIS-aligned
-# baseline (4.1 non-root, 4.6 HEALTHCHECK, 4.8 setuid/setgid removed, 5.3 no
-# privileged/cap_add, plus appuser-owned writable dirs). Non-PASS results fail
-# unless accepted in docker/cis-hardening.ignore, the same ignore-list-with-
-# justification shape as android/.mobsf.
+# Builds the shipped all-in-one image and runs docker/cis-hardening.sh
+# against it (4.1 non-root, 4.6 HEALTHCHECK, 4.8 setuid/setgid removed, 5.3
+# no privileged/cap_add, appuser-owned writable dirs). Non-PASS fails unless
+# accepted in docker/cis-hardening.ignore. docker-bench-security is
+# deliberately not used: its image checks need --privileged + host mounts
+# and its 4.8 check never scans the filesystem.
 #
-# docker-bench-security is deliberately not used: its image checks are
-# host/daemon-oriented and need --privileged + host mounts, and its 4.8 check is
-# a NOTE no-op that never scans the filesystem. See docker/cis-hardening.sh.
+# Path-gated on `infra`/`workflows` (issue #264 pattern); the scheduled run
+# re-scans everything regardless.
 #
-# Path-gated on `infra` (Dockerfile, docker-compose*.yml, docker/**) and
-# `workflows` (issue #264 pattern); the scheduled run re-scans everything so
-# new rules are exercised even with no activity.
+# Issue #376: two more trivy passes alongside the CIS scan, both HARD GATES
+# per issue #578 (exit-code: '1'; first findings triaged into .trivyignore,
+# e.g. DS-0002's documented no-USER-instruction design) -- complementary to
+# docker-publish.yml's release-time image scan, catching misconfig/secrets
+# on every PR that touches infra instead:
+#   - `trivy config` over the Dockerfiles/compose files themselves.
+#   - `trivy fs --scanners secret` over the checked-out workspace, a CI
+#     backstop behind the gitleaks pre-commit hook for contributors who
+#     haven't opted into it locally.
 #
-# Issue #376: two more trivy passes alongside the CIS scan, both cheap and
-# complementary — docker-publish.yml's own trivy step only scans the *built*
-# image for CVEs, at release time. These run here instead, on every PR that
-# touches infra, so problems surface before a tag is ever cut:
-#   - `trivy config` (misconfig) over the Dockerfiles/compose files
-#     themselves — catches e.g. a missing HEALTHCHECK or an added
-#     `privileged: true` at review time, not release time.
-#   - `trivy fs --scanners secret` over the checked-out workspace — a CI
-#     backstop for secrets that make it past the gitleaks pre-commit hook
-#     (#376, .githooks/pre-commit), e.g. a contributor who hasn't opted into
-#     it locally.
-# Accepted findings for either go in .trivyignore (repo root), the same
-# ignore-list-with-justification shape as docker/cis-hardening.ignore.
-#
-# Issue #578: both trivy steps are now HARD GATES (exit-code: '1'), with the
-# first run's findings triaged into .trivyignore (DS-0002 — the documented
-# no-USER-instruction design, see the .trivyignore entry). The scheduled run
-# moved from weekly to nightly (see the cron below).
-#
-# Issue #578, A7 (Checkov spike): a report-only Checkov pass over the
-# Dockerfiles was trialed and found NOTHING net-new — its single finding
-# (CKV_DOCKER_3, "create a user for the container") is the same condition
-# trivy config already flags as DS-0002 and docker/cis-hardening.sh
-# documents as the intentional root-for-PUID/PGID-remap design. Checkov is
-# therefore NOT added: the coverage is "trivy config + CIS script".
+# Issue #578, A7: a report-only Checkov spike found nothing net-new over
+# trivy config + the CIS script, so Checkov was not added.
 
 on:
   push:
@@ -54,11 +35,9 @@ on:
     branches: [main, "release/**"]
   schedule:
     - cron: '20 1 * * *' # 01:20 UTC nightly
-  # Issue #543: lets release.yml / docker-publish.yml's mandatory-gate step
-  # dispatch this workflow against an exact release commit instead of
-  # passively waiting for check-runs a `push` to release/** never produces
-  # (deliberately -- see unit-tests.yml's workflow_dispatch comment for why
-  # not a `push: release/**` trigger). Not meant for ad hoc manual runs.
+  # Issue #543: lets the release mandatory-gate step dispatch this against
+  # an exact release commit (see unit-tests.yml's workflow_dispatch comment
+  # for why not a `push: release/**` trigger). Not for ad hoc manual runs.
   workflow_dispatch:
   workflow_call:
 
@@ -139,11 +118,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      # Build the same all-in-one image e2e-tests.yml builds (context ., root
-      # Dockerfile) so the scan inspects the actual shipped artifact. `load:
-      # true` puts it in the local daemon where docker/cis-hardening.sh can
-      # `docker inspect` / `docker create` it; the gha cache scope is shared
-      # with e2e-tests.yml.
+      # Same image e2e-tests.yml builds, so the scan inspects the actual
+      # shipped artifact. `load: true` puts it in the local daemon for
+      # docker/cis-hardening.sh; cache scope shared with e2e-tests.yml.
       - name: Build all-in-one image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -158,20 +135,15 @@ jobs:
         run: docker/cis-hardening.sh mycorrhizal-crm-test:latest docker/cis-hardening.ignore
 
       # Issue #376: misconfig scan over the Dockerfiles/compose files, not
-      # the built image — deliberately independent of the "Build all-in-one
-      # image" step above, so it still runs (and still catches e.g. a
-      # dropped HEALTHCHECK) even if that build were ever skipped.
-      # Same pin as docker-publish.yml's trivy step (pre-1.0, no stable
-      # major to float on; #269 tracks it via Dependabot).
+      # the built image -- deliberately independent of "Build all-in-one
+      # image" above, so it still runs if that build is skipped. Same pin
+      # as docker-publish.yml's trivy step (pre-1.0, tracked via #269).
       #
-      # Issue #578: hard gate (exit-code: '1'). The first rollout shipped
-      # informational-only pending triage; the first real run's single
-      # CRITICAL/HIGH finding (DS-0002, the documented no-USER-instruction
-      # design) is now triaged into .trivyignore. limit-severities-for-sarif
-      # is set so the exit code and the SARIF both respect the declared
-      # severity (CRITICAL,HIGH): without it the trivy-action unsets
-      # TRIVY_SEVERITY for SARIF mode and a LOW finding (DS-0026, fixed by
-      # adding HEALTHCHECKs to the split Dockerfiles) hard-failed the gate.
+      # Issue #578: hard gate. `limit-severities-for-sarif` is required --
+      # without it trivy-action unsets TRIVY_SEVERITY for SARIF mode and a
+      # LOW finding hard-fails the gate even though CRITICAL,HIGH is the
+      # declared severity (DS-0026 tripped this before HEALTHCHECKs were
+      # added to the split Dockerfiles).
       - name: Trivy misconfig scan (Dockerfiles/compose)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -191,11 +163,9 @@ jobs:
           sarif_file: 'trivy-config-results.sarif'
           category: 'trivy-config'
 
-      # Filesystem secret scan over the checked-out workspace — a CI
-      # backstop behind the gitleaks pre-commit hook, not a replacement for
-      # it (see the workflow header comment above). Hard gate like the
-      # misconfig step (issue #578): the committed tree is secret-clean, so
-      # any finding here is a real regression and fails the job.
+      # Backstop behind the gitleaks pre-commit hook, not a replacement.
+      # Hard gate (#578): the committed tree is secret-clean, so any finding
+      # here is a real regression.
       - name: Trivy filesystem secret scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -214,15 +184,12 @@ jobs:
           sarif_file: 'trivy-secret-results.sarif'
           category: 'trivy-secret'
 
-  # Issue #349: the .dockerignore files must keep editor/OS cruft out of the
-  # shipped images. `**/.DS_Store` (and `.idea`, `.vscode`) matters because a
-  # bare `.DS_Store` only matches the context root — an untracked
-  # frontend/public/.DS_Store would otherwise be copied into the web root by
-  # the all-in-one's `COPY frontend/ .` and served publicly at /.DS_Store.
-  # This plants that cruft in the build context and asserts neither shipped
-  # image carries it. The images are inspected with `docker export | tar -t`
-  # rather than `docker run find` so the check does not depend on what tools
-  # the runtime image happens to contain.
+  # Issue #349: `.dockerignore` must keep editor/OS cruft out of shipped
+  # images -- a bare `.DS_Store` pattern only matches the context root, so
+  # an untracked frontend/public/.DS_Store would otherwise be copied into
+  # the web root and served publicly. Plants that cruft, then inspects with
+  # `docker export | tar -t` (not `docker run find`, so the check doesn't
+  # depend on the runtime image's own tools).
   dockerignore-cruft:
     name: Build context excludes editor & OS cruft
     runs-on: ubuntu-latest
@@ -253,10 +220,8 @@ jobs:
             backend/.DS_Store \
             backend/internal/.idea/x.xml >/dev/null
 
-      # cache-from only (no cache-to): the planted files are .dockerignore'd, so
-      # the context hash is unchanged and the shared scopes still hit. Nothing
-      # is written back, so this job can't poison the caches e2e-tests.yml and
-      # docker-build-check.yml read.
+      # cache-from only: nothing is written back, so this job can't poison
+      # the caches e2e-tests.yml and docker-build-check.yml read.
       - name: Build all-in-one image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:

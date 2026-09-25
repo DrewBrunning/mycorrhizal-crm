@@ -133,13 +133,15 @@ func TestSaveDeliveryPersistsSuccessRecord(t *testing.T) {
 	db := setupWebhookRetryTestDB(t)
 	statusCode := 200
 
-	d := saveDelivery(db, 42, "contact.created", `{"a":1}`, &statusCode, nil, 1, nil, false, "")
+	whID := seedTestWebhookID(t, db)
+
+	d := saveDelivery(db, whID, "contact.created", `{"a":1}`, &statusCode, nil, 1, nil, false, "")
 
 	require.NotZero(t, d.ID, "saveDelivery must return the persisted record with its ID populated")
 
 	var loaded models.WebhookDelivery
 	require.NoError(t, db.First(&loaded, d.ID).Error)
-	assert.EqualValues(t, 42, loaded.WebhookID)
+	assert.Equal(t, whID, loaded.WebhookID)
 	assert.Equal(t, "contact.created", loaded.EventType)
 	assert.Equal(t, `{"a":1}`, loaded.Payload)
 	require.NotNil(t, loaded.StatusCode)
@@ -169,7 +171,7 @@ func TestSaveDeliveryPersistsFailureRecordWithRetry(t *testing.T) {
 	errMsg := "unexpected status 500"
 	next := time.Now().Add(5 * time.Minute)
 
-	d := saveDelivery(db, 7, "contact.updated", `{}`, nil, &errMsg, 1, &next, false, "")
+	d := saveDelivery(db, seedTestWebhookID(t, db), "contact.updated", `{}`, nil, &errMsg, 1, &next, false, "")
 
 	var loaded models.WebhookDelivery
 	require.NoError(t, db.First(&loaded, d.ID).Error)

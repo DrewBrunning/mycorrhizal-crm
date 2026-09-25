@@ -18,7 +18,7 @@ import (
 // brand-new contact with no data. Assert on raw JSON — decoding into the Go
 // struct makes "absent" and `[]` indistinguishable.
 func TestGetContactDetail_EmptyBlocksSerializeAsArrays(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/detail", GetContactDetail)
 
 	var user models.User
@@ -62,7 +62,7 @@ func TestGetContactDetail_EmptyBlocksSerializeAsArrays(t *testing.T) {
 // enrichments (relationship edge other-party name, life event related-entity
 // names).
 func TestGetContactDetail_ComposesAllBlocks(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/detail", GetContactDetail)
 
 	var user models.User
@@ -106,7 +106,9 @@ func TestGetContactDetail_ComposesAllBlocks(t *testing.T) {
 	gift := models.Gift{UserID: user.ID, EntityID: contact.VCardUID, Description: "Book", Status: "idea"}
 	require.NoError(t, db.Create(&gift).Error)
 
-	fieldValue := models.FieldValue{FieldDefinitionID: "some-def-id", UserID: user.ID, EntityID: contact.VCardUID, Value: json.RawMessage(`"blue"`)}
+	fieldDef := models.FieldDefinition{UserID: user.ID, Label: "Colour", Key: "colour", Target: "contact", Type: "text"}
+	require.NoError(t, db.Create(&fieldDef).Error)
+	fieldValue := models.FieldValue{FieldDefinitionID: fieldDef.ID, UserID: user.ID, EntityID: contact.VCardUID, Value: json.RawMessage(`"blue"`)}
 	require.NoError(t, db.Create(&fieldValue).Error)
 
 	identity := models.ExternalIdentity{UserID: user.ID, EntityID: contact.VCardUID, System: "paperless", ExternalID: "ext-1"}
@@ -169,7 +171,7 @@ func TestGetContactDetail_ComposesAllBlocks(t *testing.T) {
 // -- resolveConfirmedRelationships is shared code, but the composite's own
 // wiring of it deserves its own pin.
 func TestGetContactDetail_ExcludesSecretRelationships(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/detail", GetContactDetail)
 
 	var user models.User
@@ -198,7 +200,7 @@ func TestGetContactDetail_ExcludesSecretRelationships(t *testing.T) {
 }
 
 func TestGetContactDetail_ScopedToOwner(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/detail", GetContactDetail)
 
 	otherUser := models.User{Username: "other-detail", Password: "x", Email: "other-detail@example.com"}
@@ -217,7 +219,7 @@ func TestGetContactDetail_ScopedToOwner(t *testing.T) {
 // absent when the user has no Immich config, present-with-nil-summary when
 // configured but this contact has no link, present-with-summary when linked.
 func TestGetContactDetail_Immich(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/detail", GetContactDetail)
 
 	var user models.User

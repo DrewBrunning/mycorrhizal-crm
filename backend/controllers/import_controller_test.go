@@ -229,7 +229,7 @@ func routerWithoutAuth(db *gorm.DB) *gin.Engine {
 // =====================================================================================
 
 func TestUploadCSVForImport_Success(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 	var user models.User
 	db.First(&user)
@@ -257,7 +257,7 @@ func TestUploadCSVForImport_Success(t *testing.T) {
 }
 
 func TestUploadCSVForImport_MissingFile(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
 	req := newFileUploadRequestNoFile(t, "/contacts/import/upload")
@@ -270,7 +270,7 @@ func TestUploadCSVForImport_MissingFile(t *testing.T) {
 }
 
 func TestUploadCSVForImport_OversizedFile(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
 	big := make([]byte, services.MaxCSVSize+1024)
@@ -288,7 +288,7 @@ func TestUploadCSVForImport_OversizedFile(t *testing.T) {
 }
 
 func TestUploadCSVForImport_WrongExtension(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
 	content := csvFixture([3]string{"Alice", "Smith", "alice@example.com"})
@@ -303,7 +303,7 @@ func TestUploadCSVForImport_WrongExtension(t *testing.T) {
 }
 
 func TestUploadCSVForImport_MalformedCSV_Returns400NotPanic(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
 	// Headers-only, no data rows: a genuine ParseCSV error ("CSV file has no
@@ -325,7 +325,7 @@ func TestUploadCSVForImport_MalformedCSV_Returns400NotPanic(t *testing.T) {
 // and another user's quota is independent. registerImportRoutes resets the
 // package-global session manager, so this test starts empty.
 func TestUploadCSVForImport_SessionOverLimit(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 	var user models.User
 	db.First(&user)
@@ -369,7 +369,7 @@ func TestUploadCSVForImport_SessionOverLimit(t *testing.T) {
 // =====================================================================================
 
 func TestUploadVCFForImport_Success(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 	var user models.User
 	db.First(&user)
@@ -391,7 +391,7 @@ func TestUploadVCFForImport_Success(t *testing.T) {
 }
 
 func TestUploadVCFForImport_DuplicateDetected(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 	var user models.User
 	db.First(&user)
@@ -413,7 +413,7 @@ func TestUploadVCFForImport_DuplicateDetected(t *testing.T) {
 }
 
 func TestUploadVCFForImport_MissingFile(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
 	req := newFileUploadRequestNoFile(t, "/contacts/import/vcf/upload")
@@ -425,7 +425,7 @@ func TestUploadVCFForImport_MissingFile(t *testing.T) {
 }
 
 func TestUploadVCFForImport_OversizedFile(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
 	big := make([]byte, services.MaxVCFSize+1024)
@@ -443,7 +443,7 @@ func TestUploadVCFForImport_OversizedFile(t *testing.T) {
 }
 
 func TestUploadVCFForImport_WrongExtension(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
 	content := vcfFixture("Vera", "Card", "vera@example.com", "")
@@ -458,7 +458,7 @@ func TestUploadVCFForImport_WrongExtension(t *testing.T) {
 }
 
 func TestUploadVCFForImport_Malformed_Returns400NotPanic(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
 	content := []byte("this is not a vCard at all\nno BEGIN:VCARD block here\n")
@@ -476,7 +476,7 @@ func TestUploadVCFForImport_Malformed_Returns400NotPanic(t *testing.T) {
 // =====================================================================================
 
 func TestUploadJSContactForImport_Success(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 	var user models.User
 	db.First(&user)
@@ -498,7 +498,7 @@ func TestUploadJSContactForImport_Success(t *testing.T) {
 }
 
 func TestUploadJSContactForImport_WrongExtension(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
 	content := jsContactFixture("jscontact-ctrl-wrongext", "Jamie", "Fixture", "jamie@example.com")
@@ -513,7 +513,7 @@ func TestUploadJSContactForImport_WrongExtension(t *testing.T) {
 }
 
 func TestUploadJSContactForImport_MalformedJSON_Returns400NotPanic(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
 	content := []byte("{ this is not valid json at all !!! ")
@@ -534,7 +534,7 @@ func TestUploadJSContactForImport_MalformedJSON_Returns400NotPanic(t *testing.T)
 // produce a genuine persisted Contact row, exercising ConfirmVCF's real
 // tx.Create/photo pipeline end-to-end for a JSContact-sourced session.
 func TestUploadJSContactForImport_ConfirmViaVCFRoute_CreatesRealContact(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
 	registerImportRoutes(router, cfg)
 	var user models.User
@@ -573,7 +573,7 @@ func TestUploadJSContactForImport_ConfirmViaVCFRoute_CreatesRealContact(t *testi
 // =====================================================================================
 
 func TestPreviewImport_Success(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 	var user models.User
 	db.First(&user)
@@ -607,7 +607,7 @@ func TestPreviewImport_Success(t *testing.T) {
 }
 
 func TestPreviewImport_UnknownSessionID_NotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
 	req := newJSONRequest(t, "/contacts/import/preview", models.ImportPreviewRequest{
@@ -623,7 +623,7 @@ func TestPreviewImport_UnknownSessionID_NotFound(t *testing.T) {
 }
 
 func TestPreviewImport_WrongUser_Unauthorized(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 	var user models.User
 	db.First(&user)
@@ -663,7 +663,7 @@ func TestPreviewImport_WrongUser_Unauthorized(t *testing.T) {
 // =====================================================================================
 
 func TestConfirmImport_FullCSVHappyPath_PersistsRealRow(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 	var user models.User
 	db.First(&user)
@@ -708,7 +708,7 @@ func TestConfirmImport_FullCSVHappyPath_PersistsRealRow(t *testing.T) {
 }
 
 func TestConfirmImport_NoPriorPreview_InvalidInput(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 	var user models.User
 	db.First(&user)
@@ -743,7 +743,7 @@ func TestConfirmImport_NoPriorPreview_InvalidInput(t *testing.T) {
 // =====================================================================================
 
 func TestConfirmVCFImport_FullHappyPath_WithEmbeddedPhoto(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
 	registerImportRoutes(router, cfg)
 	var user models.User
@@ -810,7 +810,7 @@ func TestConfirmVCFImport_FullHappyPath_WithEmbeddedPhoto(t *testing.T) {
 // ConfirmVCF explicitly checks sessionData.importType != "vcf" before
 // touching sessionData.vcfContacts (import_session.go).
 func TestConfirmVCFImport_CSVSessionRejected(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
 	registerImportRoutes(router, cfg)
 	var user models.User
@@ -864,7 +864,7 @@ func TestConfirmVCFImport_CSVSessionRejected(t *testing.T) {
 // access. This nails down actual behavior rather than assuming symmetry with
 // the CSV-into-VCF-route case above, which the code does reject explicitly.
 func TestConfirmImport_VCFSessionAccepted_NoPanic(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
 	registerImportRoutes(router, cfg)
 	var user models.User
@@ -905,7 +905,7 @@ func TestConfirmImport_VCFSessionAccepted_NoPanic(t *testing.T) {
 // =====================================================================================
 
 func TestUploadCSVForImport_NoAuth_Unauthorized(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	router := routerWithoutAuth(db)
 	registerImportRoutes(router, &config.Config{})
 
@@ -918,7 +918,7 @@ func TestUploadCSVForImport_NoAuth_Unauthorized(t *testing.T) {
 }
 
 func TestUploadVCFForImport_NoAuth_Unauthorized(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	router := routerWithoutAuth(db)
 	registerImportRoutes(router, &config.Config{})
 
@@ -931,7 +931,7 @@ func TestUploadVCFForImport_NoAuth_Unauthorized(t *testing.T) {
 }
 
 func TestUploadJSContactForImport_NoAuth_Unauthorized(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	router := routerWithoutAuth(db)
 	registerImportRoutes(router, &config.Config{})
 
@@ -944,7 +944,7 @@ func TestUploadJSContactForImport_NoAuth_Unauthorized(t *testing.T) {
 }
 
 func TestPreviewImport_NoAuth_Unauthorized(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	router := routerWithoutAuth(db)
 	registerImportRoutes(router, &config.Config{})
 
@@ -960,7 +960,7 @@ func TestPreviewImport_NoAuth_Unauthorized(t *testing.T) {
 }
 
 func TestConfirmImport_NoAuth_Unauthorized(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	router := routerWithoutAuth(db)
 	registerImportRoutes(router, &config.Config{})
 
@@ -976,7 +976,7 @@ func TestConfirmImport_NoAuth_Unauthorized(t *testing.T) {
 }
 
 func TestConfirmVCFImport_NoAuth_Unauthorized(t *testing.T) {
-	db, _ := setupRouter()
+	db, _ := setupRouter(t)
 	router := routerWithoutAuth(db)
 	registerImportRoutes(router, &config.Config{})
 
@@ -998,7 +998,7 @@ func TestConfirmVCFImport_NoAuth_Unauthorized(t *testing.T) {
 // =====================================================================================
 
 func TestUploadJSContactForImport_MissingFile(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
 	req := newFileUploadRequestNoFile(t, "/contacts/import/jscontact/upload")
@@ -1010,7 +1010,7 @@ func TestUploadJSContactForImport_MissingFile(t *testing.T) {
 }
 
 func TestUploadJSContactForImport_OversizedFile(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
 
 	big := make([]byte, services.MaxVCFSize+1024)

@@ -190,7 +190,7 @@ func Read() (*Manifest, error) {
 	if err != nil {         // # pragma: no cover — defensive
 		return nil, fmt.Errorf("meerkatfixture: opening %s: %w", path, err) // # pragma: no cover
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck // read-only handle: Close cannot lose data
 	return Load(f)
 }
 
@@ -257,7 +257,7 @@ func (m *Manifest) Validate() error {
 				return c.ID, nil
 			}
 		}
-		return 0, fmt.Errorf("meerkatfixture: %s references contact %q without an id", section, name) // # pragma: no cover
+		return 0, fmt.Errorf("meerkatfixture: %s references contact %q without an id", section, name) // # pragma: no cover — unreachable: ref(section, name) above already proved name is in m.Contacts, so the loop always finds it before falling through
 	}
 	var errs []error
 	for _, r := range m.Relationships {

@@ -52,8 +52,8 @@ func main() {
 func run(w io.Writer) int {
 	root, err := findRepoRoot()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "governancecheck:", err) // # pragma: no cover
-		return 2                                         // # pragma: no cover
+		fmt.Fprintln(os.Stderr, "governancecheck:", err) // # pragma: no cover — findRepoRoot's own error branches are pragma'd below; this only wraps that failure for the CLI entry point, which tests bypass via runAt
+		return 2                                         // # pragma: no cover — see above
 	}
 	return runAt(w, root)
 }
@@ -116,7 +116,7 @@ func runAt(w io.Writer, root string) int {
 func findRepoRoot() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
-		return "", err // # pragma: no cover
+		return "", err // # pragma: no cover — os.Getwd fails only when the cwd has been deleted out from under the process
 	}
 	for {
 		if _, statErr := os.Stat(filepath.Join(dir, "backend", "go.mod")); statErr == nil {
@@ -124,7 +124,7 @@ func findRepoRoot() (string, error) {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", fmt.Errorf("could not locate repository root (no backend/go.mod)") // # pragma: no cover
+			return "", fmt.Errorf("could not locate repository root (no backend/go.mod)") // # pragma: no cover — only reached when no backend/go.mod exists above the working directory, which does not occur in CI or in a real checkout
 		}
 		dir = parent
 	}

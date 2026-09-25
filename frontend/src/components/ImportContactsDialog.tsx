@@ -221,7 +221,7 @@ export default function ImportContactsDialog({
   const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      handleFileUpload(file);
+      void handleFileUpload(file);
     }
     // Reset input value to allow re-selecting the same file
     event.target.value = '';
@@ -242,7 +242,7 @@ export default function ImportContactsDialog({
     setDragOver(false);
     const file = event.dataTransfer.files?.[0];
     if (file) {
-      handleFileUpload(file);
+      void handleFileUpload(file);
     }
   };
 
@@ -934,7 +934,11 @@ export default function ImportContactsDialog({
             >
               {t('common.back', 'Back')}
             </Button>
-            <Button variant="contained" onClick={handleGeneratePreview} disabled={loading}>
+            <Button
+              variant="contained"
+              onClick={() => void handleGeneratePreview()}
+              disabled={loading}
+            >
               {t('common.continue', 'Continue')}
             </Button>
           </>
@@ -996,7 +1000,7 @@ export default function ImportContactsDialog({
             </Button>
             <Button
               variant="contained"
-              onClick={handleConfirmImport}
+              onClick={() => void handleConfirmImport()}
               disabled={loading}
               startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
             >

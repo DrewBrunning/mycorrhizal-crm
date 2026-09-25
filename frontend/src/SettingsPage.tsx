@@ -136,7 +136,7 @@ export default function SettingsPage() {
   }, [t]);
 
   useEffect(() => {
-    fetchTokens();
+    void fetchTokens();
   }, [fetchTokens]);
 
   const handleCreateToken = async () => {
@@ -161,7 +161,7 @@ export default function SettingsPage() {
 
   const handleCopy = () => {
     if (createdToken) {
-      navigator.clipboard.writeText(createdToken.token);
+      void navigator.clipboard.writeText(createdToken.token);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -230,7 +230,7 @@ export default function SettingsPage() {
   const handleLanguageChange = async (event: SelectChangeEvent) => {
     const newLang = event.target.value;
     // Update frontend i18n immediately for responsive UI
-    i18n.changeLanguage(newLang);
+    void i18n.changeLanguage(newLang);
 
     // Sync to backend for email language preferences (fire and forget)
     try {
@@ -292,7 +292,7 @@ export default function SettingsPage() {
   // is currently selected.
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
         const user = await getCurrentUser();
         const uid = user.self_contact_vcard_uid ?? null;
@@ -328,7 +328,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const timeoutId = setTimeout(
-      () => loadSelfContactOptions(selfContactSearch),
+      () => void loadSelfContactOptions(selfContactSearch),
       selfContactSearch ? 300 : 0,
     );
     return () => clearTimeout(timeoutId);
@@ -380,7 +380,7 @@ export default function SettingsPage() {
               labelId="language-select-label"
               value={i18n.language}
               label={t('settings.language.label')}
-              onChange={handleLanguageChange}
+              onChange={(p0) => void handleLanguageChange(p0)}
             >
               <MenuItem value="en">English</MenuItem>
               <MenuItem value="de">Deutsch</MenuItem>
@@ -419,7 +419,7 @@ export default function SettingsPage() {
               labelId="date-format-select-label"
               value={dateFormat}
               label={t('settings.dateFormat.label')}
-              onChange={handleDateFormatChange}
+              onChange={(p0) => void handleDateFormatChange(p0)}
             >
               <MenuItem value="eu">{t('settings.dateFormat.options.eu')}</MenuItem>
               <MenuItem value="us">{t('settings.dateFormat.options.us')}</MenuItem>
@@ -498,7 +498,7 @@ export default function SettingsPage() {
             options={selfContactOptions}
             getOptionLabel={selfContactName}
             value={selfContact}
-            onChange={(_, value) => handleSelfContactSelect(value)}
+            onChange={(_, value) => void handleSelfContactSelect(value)}
             onInputChange={(_, value) => setSelfContactSearch(value)}
             filterOptions={(x) => x}
             loading={selfContactLoading}
@@ -517,7 +517,7 @@ export default function SettingsPage() {
               size="small"
               variant="outlined"
               sx={{ mt: 1 }}
-              onClick={() => handleSelfContactSelect(null)}
+              onClick={() => void handleSelfContactSelect(null)}
               disabled={selfContactSaving}
             >
               {t('settings.selfContact.clear')}
@@ -547,7 +547,7 @@ export default function SettingsPage() {
           </Box>
           <Divider sx={{ mb: 1.5 }} />
 
-          <form onSubmit={handlePasswordChange}>
+          <form onSubmit={(p0) => void handlePasswordChange(p0)}>
             <Stack spacing={1.5}>
               <Typography
                 variant="body2"
@@ -782,7 +782,7 @@ export default function SettingsPage() {
             value={newTokenName}
             onChange={(e) => setNewTokenName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') handleCreateToken();
+              if (e.key === 'Enter') void handleCreateToken();
             }}
             fullWidth
             margin="normal"
@@ -827,7 +827,7 @@ export default function SettingsPage() {
           </Button>
           <Button
             variant="contained"
-            onClick={handleCreateToken}
+            onClick={() => void handleCreateToken()}
             disabled={createLoading || !newTokenName.trim()}
           >
             {t('apiTokens.createDialog.createButton')}
@@ -915,7 +915,12 @@ export default function SettingsPage() {
           <Button onClick={() => setRevokeDialogOpen(false)} disabled={revokeLoading}>
             {t('common.cancel')}
           </Button>
-          <Button variant="contained" color="error" onClick={handleRevoke} disabled={revokeLoading}>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => void handleRevoke()}
+            disabled={revokeLoading}
+          >
             {t('apiTokens.revokeDialog.confirm')}
           </Button>
         </DialogActions>
@@ -936,7 +941,7 @@ export default function SettingsPage() {
           <Button
             variant="contained"
             color="error"
-            onClick={handleRevokeAll}
+            onClick={() => void handleRevokeAll()}
             disabled={revokeAllLoading || activeTokenCount === 0}
           >
             {t('apiTokens.revokeAllDialog.confirm')}
@@ -956,7 +961,7 @@ export default function SettingsPage() {
           <Button onClick={() => setRotateDialogOpen(false)} disabled={rotateLoading}>
             {t('common.cancel')}
           </Button>
-          <Button variant="contained" onClick={handleRotate} disabled={rotateLoading}>
+          <Button variant="contained" onClick={() => void handleRotate()} disabled={rotateLoading}>
             {t('apiTokens.rotateDialog.confirm')}
           </Button>
         </DialogActions>

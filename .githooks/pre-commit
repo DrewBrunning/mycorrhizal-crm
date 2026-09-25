@@ -113,10 +113,12 @@ if [ "$backend_changed" = true ]; then
   run_gofmt
   run "backend: go build ./..." backend go build ./...
   run "backend: go vet ./..." backend go vet ./...
-  run "backend: golangci-lint (gosec + bodyclose)" backend \
-    go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run ./...
-  run "backend: contract-fixtures drift (issue #266)" backend \
-    go test -run '^TestContractFixturesMatchSpec$' .
+  run "backend: golangci-lint (gosec + bodyclose + correctness set)" backend \
+    go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 run ./...
+  run "backend: gormerrcheck (unchecked GORM .Error, CLAUDE.md trap #4)" backend \
+    go run ./cmd/gormerrcheck ./...
+  run "backend: contract-fixtures + generated TS types drift (issue #266)" backend \
+    go test -run '^TestContractFixturesMatchSpec$|^TestGeneratedTSTypesMatchSpec$' .
   run "backend: DATA-01/INT-01 matrix drift (issues #441, #464)" backend \
     go test -run '^TestMatrixReproducesCommittedDoc$' ./correspondence/... ./integrations/...
   run "backend: API baseline drift (MAINT-02, issue #491)" backend \
@@ -150,6 +152,8 @@ run "deprecations (deprecation register)" backend go run ./cmd/deprecations
 run "docscheck (docs structure/links/drift)" backend go run ./cmd/docscheck
 run "releasegatecheck (release-gate registry)" backend go run ./cmd/releasegatecheck
 run "governancecheck (governance settings)" backend go run ./cmd/governancecheck
+run "pragmacheck (coverage-override markers carry a reason)" backend go run ./cmd/pragmacheck
+run "nightlyalertcheck (scheduled workflows registered for failure alerts)" backend go run ./cmd/nightlyalertcheck
 
 if [ "$changelog_relevant" = true ]; then
   echo ""

@@ -70,7 +70,7 @@ export function useSystemEvents() {
   }, [filters, limit]);
 
   useEffect(() => {
-    fetchEvents();
+    void fetchEvents();
   }, [fetchEvents]);
 
   // Any filter change restarts the window at the default limit, and leaves the

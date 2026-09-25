@@ -41,7 +41,7 @@ import (
 // change reintroduces the vulnerable shape on any of these routes, this
 // test starts failing with a 500 instead of the expected 400/404.
 func TestOtherControllers_MalformedID_NotServerError(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 
 	router.GET("/circles/:id", GetCircle)
 	router.GET("/households/:id", GetHousehold)
@@ -114,7 +114,7 @@ func TestOtherControllers_MalformedID_NotServerError(t *testing.T) {
 // strconv before querying -- part of the same #524 follow-up audit as
 // TestOtherControllers_MalformedID_NotServerError above.
 func TestDownloadAttachment_MalformedID_Returns400(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	cfg := &config.Config{AttachmentsDir: t.TempDir()}
 	router.GET("/attachments/:id/download", func(c *gin.Context) { DownloadAttachment(c, cfg) })
 
@@ -125,9 +125,8 @@ func TestDownloadAttachment_MalformedID_Returns400(t *testing.T) {
 }
 
 // TestUndoAuditEvent_MalformedID_Returns404 covers audit_controller.go's
-// UndoAuditEvent against the real migrated schema (models.AuditEvent isn't
-// in the AutoMigrate list setupRouter() uses elsewhere in this package, and
-// CLAUDE.md's real-DB trap applies): AuditEvent.ID is a uint PK, but
+// UndoAuditEvent against the real migrated schema (CLAUDE.md's real-DB
+// trap applies): AuditEvent.ID is a uint PK, but
 // UndoAuditEvent uses the safe db.Where("id = ? AND ...", id, ...).First(&x)
 // shape (not the vulnerable magic-second-arg one), so a malformed id is a
 // clean 404, not a 500.

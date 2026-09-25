@@ -15,8 +15,8 @@ import (
 )
 
 // TestRelationshipEdgeAndGraph_RealMigratedSchema is the real-DB check for
-// every other
-// test in this package uses AutoMigrate against:memory: sqlite, which
+// when written, every other
+// test in this package used AutoMigrate against:memory: sqlite, which
 // derives its schema from the same Go struct tags the application code
 // uses -- it cannot catch a GORM column-tag mismatch against the real
 // migration SQL (this fork's own recurring bug class, e.g.

@@ -493,7 +493,7 @@ func TestContactMerge_SharedCircleAndTag_Deduped(t *testing.T) {
 // the trivial self-merge case, on AutoMigrate (no real-DB dependency needed
 // for this check).
 func TestContactMerge_KeepEqualsMerge_Rejected(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	var user models.User
 	require.NoError(t, db.First(&user).Error)
 	contact := models.Contact{UserID: user.ID, Firstname: "Solo"}

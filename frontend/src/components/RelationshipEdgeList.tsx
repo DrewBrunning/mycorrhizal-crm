@@ -45,7 +45,7 @@ export default function RelationshipEdgeList({
   };
 
   const handleContactClick = (contactId: number) => {
-    navigate(`/contacts/${contactId}`);
+    void navigate(`/contacts/${contactId}`);
   };
 
   const otherPartyName = (edge: RelationshipEdge): { name: string; contact?: Contact } => {

@@ -18,7 +18,7 @@ import (
 func idString(id uint) string { return strconv.FormatUint(uint64(id), 10) }
 
 func TestGetContactBriefing_ComposesAllBlocks(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/briefing", GetContactBriefing)
 
 	var user models.User
@@ -146,7 +146,7 @@ func TestGetContactBriefing_ComposesAllBlocks(t *testing.T) {
 }
 
 func TestGetContactBriefing_GracefulDegradation(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/briefing", GetContactBriefing)
 
 	var user models.User
@@ -188,7 +188,7 @@ func TestGetContactBriefing_GracefulDegradation(t *testing.T) {
 // could see it. Assert on the raw JSON — that is the contract the frontend
 // actually consumes.
 func TestGetContactBriefing_EmptyBlocksSerializeAsArrays(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/briefing", GetContactBriefing)
 
 	var user models.User
@@ -223,7 +223,7 @@ func TestGetContactBriefing_EmptyBlocksSerializeAsArrays(t *testing.T) {
 }
 
 func TestGetContactBriefing_ScopedToOwner(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/briefing", GetContactBriefing)
 
 	var user models.User
@@ -241,7 +241,7 @@ func TestGetContactBriefing_ScopedToOwner(t *testing.T) {
 }
 
 func TestGetContactBriefing_ExcludesSensitiveAndSuggestedRelationships(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/briefing", GetContactBriefing)
 
 	var user models.User
@@ -295,7 +295,7 @@ func TestGetContactBriefing_ExcludesSensitiveAndSuggestedRelationships(t *testin
 }
 
 func TestGetContactBriefing_DisplayTokenInvertsWhenViewedIsSource(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/briefing", GetContactBriefing)
 
 	var user models.User
@@ -339,7 +339,7 @@ func TestGetContactBriefing_DisplayTokenInvertsWhenViewedIsSource(t *testing.T) 
 }
 
 func TestGetContactBriefing_CadenceWithNoQualifyingInteraction(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/briefing", GetContactBriefing)
 
 	var user models.User
@@ -365,7 +365,7 @@ func TestGetContactBriefing_CadenceWithNoQualifyingInteraction(t *testing.T) {
 }
 
 func TestGetContactBriefing_BirthdayAndAnniversary(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/briefing", GetContactBriefing)
 
 	var user models.User
@@ -408,7 +408,7 @@ func TestGetContactBriefing_BirthdayAndAnniversary(t *testing.T) {
 }
 
 func TestGetContactBriefing_ExcludesCompletedReminders(t *testing.T) {
-	db, router := setupRouter()
+	db, router := setupRouter(t)
 	router.GET("/contacts/:id/briefing", GetContactBriefing)
 
 	var user models.User
@@ -443,7 +443,7 @@ func TestGetContactBriefing_ExcludesCompletedReminders(t *testing.T) {
 }
 
 func TestGetContactBriefing_NotFound(t *testing.T) {
-	_, router := setupRouter()
+	_, router := setupRouter(t)
 	router.GET("/contacts/:id/briefing", GetContactBriefing)
 
 	req, _ := http.NewRequest("GET", "/contacts/999999/briefing", nil)
