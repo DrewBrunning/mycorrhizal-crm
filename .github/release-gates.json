@@ -28,6 +28,16 @@
       "criterion": "`tsc --noEmit` and `vitest run` both pass."
     },
     {
+      "name": "Frontend bundle-size budget",
+      "workflow": "unit-tests.yml",
+      "check_context": "Frontend bundle-size budget",
+      "check_kind": "check_run",
+      "tier": "per-pr",
+      "mandatory": true,
+      "release_gate": false,
+      "criterion": "`yarn build && yarn budget` passes: no emitted chunk grows past frontend/bundle-budget.json's tolerance (issue #556). Merge-time only: a client bundle is not re-polled at publication, and the release commit (a schema dump) does not change it. Path-gated to frontend/openapi/workflows, like the other unit-tests.yml required contexts."
+    },
+    {
       "name": "Run E2E Tests",
       "workflow": "e2e-tests.yml",
       "check_context": "Run E2E Tests",

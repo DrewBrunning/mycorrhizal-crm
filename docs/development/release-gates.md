@@ -127,6 +127,7 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 |---|---|---|---|---|
 | `Backend (Go)` | per-pr | yes | go build + go vet + gofmt clean and `go test ./... -race` passes; no package exceeds its -timeout. | `unit-tests.yml` |
 | `Frontend (Vitest)` | per-pr | yes | `tsc --noEmit` and `vitest run` both pass. | `unit-tests.yml` |
+| `Frontend bundle-size budget` | per-pr | yes | `yarn build && yarn budget` passes: no emitted chunk grows past frontend/bundle-budget.json's tolerance (#556). Merge-time only; path-gated like the other unit-tests.yml required contexts. | `unit-tests.yml` |
 | `Run E2E Tests` | per-pr | yes | the route-stubbed Playwright suite (including @perf specs) passes. | `e2e-tests.yml` |
 | `Android (Gradle)` | per-pr | yes | `testDebugUnitTest` (libraries) plus the flavor-qualified `:app:testObtainiumDebugUnitTest`/`:app:testFossDebugUnitTest`, `lintDebug` plus `:app:lint{Obtainium,Foss}Debug`, `detekt`, and the flavor-qualified debug assembles all pass. | `android-tests.yml` |
 | `Android E2E (emulator)` | per-pr | yes | the instrumented suite passes against the docker-compose.test.yml backend on an API-35 emulator. | `android-tests.yml` |

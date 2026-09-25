@@ -1,0 +1,45 @@
+# Review routing for the files a quality gate derives its verdict from.
+#
+# GitHub only *requests* the review here. It becomes merge-blocking only when
+# the `main-protection` ruleset sets `require_code_owner_review: true`, which
+# it deliberately does not (solo project, `required_approving_review_count:
+# 0` -- see docs/development/repo-governance.md). So this is a "a human should
+# look at this diff" list, not access control, and GitHub never counts the PR
+# author's own approval toward a required code-owner review -- which is why
+# the ruleset switch is deferred until there is a second maintainer.
+#
+# Scope: the gates a PR can otherwise move by regenerating the artifact
+# itself -- committed baselines, generated contracts, schema dumps -- plus
+# the registry/config that defines what blocks a merge. Not exhaustive and
+# not a security boundary. Add a path when you add a gate whose number or
+# allowlist is itself the enforcement.
+#
+# Rationale and the "adding a quality gate" procedure: CLAUDE.md.
+
+# Per-file coverage ratchets (the "no silent coverage loss" floor).
+/backend/internal/coverageratchet/testdata/baseline.json  @DrewBrunning
+/frontend/coverage-baseline.json                          @DrewBrunning
+
+# The gate registry, the ruleset it mirrors, and the CI path-filter map.
+/.github/release-gates.json  @DrewBrunning
+/.github/rulesets/           @DrewBrunning
+/.github/filters.yaml        @DrewBrunning
+
+# Gate definitions: the analyzer / lint / budget configuration itself.
+/backend/.golangci.yml                             @DrewBrunning
+/backend/internal/perfbench/testdata/budgets.json  @DrewBrunning
+/frontend/eslint.config.js                         @DrewBrunning
+/frontend/stryker.conf.json                        @DrewBrunning
+/frontend/bundle-budget.json                       @DrewBrunning
+
+# Generated contracts and baselines whose committed diff *is* the review.
+/backend/internal/apibaseline/testdata/v1.json                    @DrewBrunning
+/backend/internal/perfbench/testdata/baseline.json                @DrewBrunning
+/backend/internal/perfbench/testdata/datamovement-baseline.json   @DrewBrunning
+/backend/database/testdata/schemas/                               @DrewBrunning
+/frontend/src/generated/openapi.ts                                @DrewBrunning
+/testdata/contract-fixtures/                                      @DrewBrunning
+
+# The policy text these gates implement.
+/CLAUDE.md                     @DrewBrunning
+/docs/development/coverage.md  @DrewBrunning
