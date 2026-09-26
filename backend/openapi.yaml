@@ -6300,15 +6300,19 @@ paths:
       parameters:
         - name: kind
           in: query
-          description: OccasionObligation.Kind to filter on.
-          schema: { type: string, enum: [card, gift, invite], default: "card" }
+          description: >
+            OccasionObligation.Kind to filter on — an open classifier
+            (card/gift/invite are the named ones; any printable string is
+            accepted, so a custom kind round-trips). Values containing control
+            characters are rejected.
+          schema: { type: string, default: "card" }
         - name: include_sensitive
           in: query
           description: Include occasion obligations above normal sensitivity.
           schema: { type: boolean, default: false }
       responses:
         "400":
-          description: Invalid kind value.
+          description: Invalid kind value (contains control characters).
           content:
             application/json:
               schema:
