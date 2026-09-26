@@ -10,6 +10,7 @@ import (
 	"mycorrhizal/services"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -126,12 +127,43 @@ func GetOccasionCardListCSV(c *gin.Context) {
 		return
 	}
 
-	filename := fmt.Sprintf("mycorrhizal-%s-list-%s.csv", kind, time.Now().Format("2006-01-02"))
+	filename := fmt.Sprintf("mycorrhizal-%s-list-%s.csv", safeDownloadStem(kind), time.Now().Format("2006-01-02"))
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Header("Content-Type", "text/csv; charset=utf-8")
 	c.Header("Content-Length", fmt.Sprintf("%d", buf.Len()))
 	c.Data(http.StatusOK, "text/csv; charset=utf-8", buf.Bytes())
+}
+
+// safeDownloadStem reduces the user-supplied `kind` filter to characters that
+// are safe inside a Content-Disposition filename.
+//
+// `kind` is an open, unvalidated classifier (models/occasion_obligation.go) and
+// was interpolated raw into the download filename. Schemathesis generated a
+// value containing a NUL byte, Go wrote it into the `Content-Disposition`
+// response header verbatim, and the response became an invalid HTTP message:
+// curl rejects it outright ("Nul byte in header"), and the all-in-one image's
+// nginx turned it into a 502 — a real product bug the API fuzz gate caught
+// (issue #369). Keep only [A-Za-z0-9._-]; if nothing survives, fall back to a
+// fixed stem so the filename is never empty. The raw value still drives the
+// DB filter, so arbitrary kinds keep working — only the on-disk name is
+// constrained.
+func safeDownloadStem(raw string) string {
+	var b strings.Builder
+	for _, r := range raw {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9',
+			r == '.', r == '_', r == '-':
+			b.WriteRune(r)
+		}
+		if b.Len() >= 100 {
+			break
+		}
+	}
+	if b.Len() == 0 {
+		return "occasions"
+	}
+	return b.String()
 }
 
 // contactDisplayNameFlat mirrors services.contactDisplayName exactly, kept

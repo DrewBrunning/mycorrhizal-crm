@@ -176,6 +176,72 @@ func TestGetOccasionCardListCSVSensitivityFilterDiffersFromFullExport(t *testing
 	assert.Contains(t, w.Body.String(), "PrivateGuest", "include_sensitive=true must include it")
 }
 
+// TestSafeDownloadStem pins the filename sanitizer added for the schemathesis
+// finding (issue #369): `kind` is an open classifier, so arbitrary bytes —
+// including the NUL schemathesis generated — must never reach the
+// Content-Disposition header.
+func TestSafeDownloadStem(t *testing.T) {
+	cases := map[string]string{
+		"card":                   "card",
+		"gift":                   "gift",
+		"a-b_c.d":                "a-b_c.d",
+		"":                       "occasions",
+		"\x00":                   "occasions",
+		"\n\r\t":                 "occasions",
+		"\xf0\xbe\x85\xbe7":      "7",
+		"c\x00a\x0ar\x01d":       "card",
+		"../../etc/passwd":       "....etcpasswd",
+		strings.Repeat("a", 300): strings.Repeat("a", 100),
+	}
+	for in, want := range cases {
+		assert.Equal(t, want, safeDownloadStem(in), "input %q", in)
+	}
+}
+
+// TestGetOccasionCardListCSVSanitizesKindInFilename is the regression test for
+// the real schemathesis failure: a `kind` value carrying a NUL byte made Go
+// emit an invalid Content-Disposition header, which the all-in-one image's
+// nginx rejected with a 502. The response must stay a well-formed HTTP
+// response — no control bytes in the filename header — while the raw value
+// still drives the DB filter.
+func TestGetOccasionCardListCSVSanitizesKindInFilename(t *testing.T) {
+	db, router := setupRouter(t)
+	registerOccasionCardListRoute(router)
+
+	var user models.User
+	db.First(&user)
+
+	// The exact class of value schemathesis generated: a NUL plus a newline
+	// around otherwise-safe text.
+	w := doCardListGET(router, "/occasion-obligations/card-list?kind=%00card%0A")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	hdr := w.Header().Get("Content-Disposition")
+	require.NotEmpty(t, hdr)
+	for i := 0; i < len(hdr); i++ {
+		b := hdr[i]
+		assert.True(t, b == '\t' || b >= 0x20 && b != 0x7f,
+			"Content-Disposition has control byte 0x%02x at offset %d: %q", b, i, hdr)
+	}
+	assert.Contains(t, hdr, "filename=mycorrhizal-card-list-")
+	assert.True(t, strings.HasSuffix(hdr, ".csv"), hdr)
+}
+
+// TestGetOccasionCardListCSVBlacklistedKindFallsBackToDefaultStem covers the
+// other half: a kind with no safe characters still yields a usable filename
+// rather than an empty one.
+func TestGetOccasionCardListCSVBlacklistedKindFallsBackToDefaultStem(t *testing.T) {
+	db, router := setupRouter(t)
+	registerOccasionCardListRoute(router)
+
+	var user models.User
+	db.First(&user)
+
+	w := doCardListGET(router, "/occasion-obligations/card-list?kind=%00")
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Contains(t, w.Header().Get("Content-Disposition"), "filename=mycorrhizal-occasions-list-")
+}
+
 func TestGetOccasionCardListCSVNeutralizesFormulaInjection(t *testing.T) {
 	db, router := setupRouter(t)
 	registerOccasionCardListRoute(router)
