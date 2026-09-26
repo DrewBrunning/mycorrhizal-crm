@@ -6187,6 +6187,10 @@
           "schema": ""
         },
         {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
           "status": "401",
           "schema": "ref:Error"
         }

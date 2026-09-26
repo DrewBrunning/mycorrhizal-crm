@@ -82,6 +82,12 @@ func GetOccasionCardListCSV(c *gin.Context) {
 	}
 
 	kind := c.DefaultQuery("kind", models.OccasionObligationKindCard)
+	switch kind {
+	case models.OccasionObligationKindCard, models.OccasionObligationKindGift, models.OccasionObligationKindInvite:
+	default:
+		apperrors.AbortWithError(c, apperrors.ErrValidation("kind must be card, gift, or invite"))
+		return
+	}
 	includeSensitive := c.Query("include_sensitive") == "true"
 
 	query := db.Where("user_id = ? AND active = ? AND kind = ?", userID, true, kind)
