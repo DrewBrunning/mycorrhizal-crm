@@ -106,7 +106,7 @@ jobs:
       # block in reference-clients-e2e.yml, one level removed from anything
       # actionlint's own shellcheck pass can see into.
       - name: Shellcheck repo scripts
-        run: shellcheck .github/scripts/run-fuzz-targets.sh .github/scripts/tests/run-fuzz-targets.test.sh .github/scripts/min-browser-check.sh .github/scripts/assert-below-min-sdk-install.sh .github/scripts/release-register-decide.sh .github/scripts/tests/release-register-decide.test.sh .github/scripts/release-obligations.sh .github/scripts/tests/release-obligations.test.sh .github/scripts/reference-client-davx5/run.sh
+        run: shellcheck .github/scripts/run-fuzz-targets.sh .github/scripts/tests/run-fuzz-targets.test.sh .github/scripts/min-browser-check.sh .github/scripts/assert-below-min-sdk-install.sh .github/scripts/release-register-decide.sh .github/scripts/tests/release-register-decide.test.sh .github/scripts/release-obligations.sh .github/scripts/tests/release-obligations.test.sh .github/scripts/reference-client-davx5/run.sh .github/scripts/tests/reference-client-davx5.test.sh
 
       # Issue #712: exercise the fuzz runner's hardening against a stubbed
       # `go` binary (pass / deadline-race / crash / seed-replay), asserting
@@ -130,4 +130,11 @@ jobs:
       # dry-run downgrade, and the usage-error exit codes.
       - name: Test release-obligations gate script
         run: bash .github/scripts/tests/release-obligations.test.sh
+
+      # Issue #917 follow-up: pins the DAVx5 reference-client script's
+      # ANR-dialog decision — a wedged Pixel Launcher (the 2026-09-26 nightly
+      # failure) must be closed, not coaxed with "Wait", while DAVx5's own ANR
+      # keeps the app alive.
+      - name: Test DAVx5 ANR-dialog decision
+        run: bash .github/scripts/tests/reference-client-davx5.test.sh
 

@@ -50,6 +50,7 @@ type Release struct {
 var SupportedReleases = []Release{
 	{Tag: "v1.0.0", Version: 57},
 	{Tag: "v1.1.0", Version: 57},
+	{Tag: "v1.2.0", Version: 66},
 }
 
 // DumpFile returns the committed schema-dump filename for a release, e.g.
