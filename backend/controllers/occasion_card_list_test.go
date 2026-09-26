@@ -147,6 +147,35 @@ func TestGetOccasionCardListCSVFiltersByKind(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Gwen")
 }
 
+// TestGetOccasionCardListCSVRejectsUnrecognizedKind is the regression guard
+// for a real bug a Schemathesis fuzz run found: `kind` was interpolated
+// straight from the query string into the Content-Disposition filename
+// (`fmt.Sprintf("attachment; filename=mycorrhizal-%s-list-...", kind)`) with
+// no validation. A `kind` containing a raw control character (e.g. a literal
+// newline from `%0A`) corrupted the response's header framing badly enough
+// that nginx, sitting in front of the app in the shipped image, rejected the
+// upstream response outright and returned 502 to the client -- a header-
+// injection-shaped defect (CWE-113), not a proxy flake. `kind` is one of a
+// fixed three-value enum (card/gift/invite); anything else must 400 before
+// it ever reaches the filename or the DB query, the same way
+// GetUpcomingOccasions validates `days`.
+func TestGetOccasionCardListCSVRejectsUnrecognizedKind(t *testing.T) {
+	db, router := setupRouter(t)
+	registerOccasionCardListRoute(router)
+
+	var user models.User
+	db.First(&user)
+
+	w := doCardListGET(router, "/occasion-obligations/card-list?kind=not-a-real-kind")
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+
+	// The exact fuzzed value that reproduced the 502: a raw newline plus
+	// non-ASCII bytes in `kind`, URL-encoded the way Schemathesis sent it.
+	w = doCardListGET(router, "/occasion-obligations/card-list?kind=%F0%BE%85%BE%0A%C2%B1")
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assert.NotContains(t, w.Header().Get("Content-Disposition"), "\n", "a rejected kind must never reach a response header")
+}
+
 // TestGetOccasionCardListCSVSensitivityFilterDiffersFromFullExport pins the
 // ADR 0024 trap this endpoint's own doc comment names: the default here
 // (secret excluded) is the OPPOSITE of GET /api/v1/export's default (secret

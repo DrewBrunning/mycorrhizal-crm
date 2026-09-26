@@ -6301,12 +6301,18 @@ paths:
         - name: kind
           in: query
           description: OccasionObligation.Kind to filter on.
-          schema: { type: string, default: "card" }
+          schema: { type: string, enum: [card, gift, invite], default: "card" }
         - name: include_sensitive
           in: query
           description: Include occasion obligations above normal sensitivity.
           schema: { type: boolean, default: false }
       responses:
+        "400":
+          description: Invalid kind value.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
           content:
