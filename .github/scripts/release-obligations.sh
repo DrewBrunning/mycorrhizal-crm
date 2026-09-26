@@ -42,7 +42,22 @@ emit_warning() {
 }
 
 previous_tag() {
-  git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD 2>/dev/null || true
+  # promote-rc.yml checks the RC commit out *after* the RC tag already exists
+  # on it, so HEAD can itself carry a `v[0-9]*` tag (the RC being promoted).
+  # `git describe --abbrev=0` on an exact tag match returns that same tag at
+  # distance 0 -- without excluding it, `prev` becomes HEAD's own tag, every
+  # diff against HEAD is empty by construction, and the ASVS/adversarial gates
+  # below can never see a row added before the RC was cut, no matter what
+  # actually changed. Exclude every tag pointing at HEAD so this always
+  # resolves to a genuinely earlier release tag. release.yml's direct-final
+  # path is unaffected: it gates before creating the tag, so HEAD carries no
+  # matching tag there and this excludes nothing.
+  local -a exclude_args=()
+  local t
+  while IFS= read -r t; do
+    [ -n "$t" ] && exclude_args+=(--exclude "$t")
+  done < <(git tag --points-at HEAD 2>/dev/null)
+  git describe --tags --abbrev=0 --match 'v[0-9]*' "${exclude_args[@]}" HEAD 2>/dev/null || true
 }
 
 # asvs [--ack <reason>]
