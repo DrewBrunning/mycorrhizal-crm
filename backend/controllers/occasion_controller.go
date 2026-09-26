@@ -10,7 +10,9 @@ import (
 	"mycorrhizal/services"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -82,10 +84,19 @@ func GetOccasionCardListCSV(c *gin.Context) {
 	}
 
 	kind := c.DefaultQuery("kind", models.OccasionObligationKindCard)
-	switch kind {
-	case models.OccasionObligationKindCard, models.OccasionObligationKindGift, models.OccasionObligationKindInvite:
-	default:
-		apperrors.AbortWithError(c, apperrors.ErrValidation("kind must be card, gift, or invite"))
+	// `kind` is an open classifier (ADR 0024; the web dialog offers card/
+	// gift/invite as free-text suggestions, and the write path validates it
+	// only as max=100), so an unknown *value* is legitimate and must keep
+	// working. It is still untrusted input: reject control characters
+	// outright (no legitimate kind contains one), then output-encode the
+	// filename via safeDownloadStem regardless. Interpolating a raw control
+	// byte into the Content-Disposition filename made the response an invalid
+	// HTTP message that nginx answered with 502 (issue #1250); rejecting the
+	// malformed class is input validation, sanitizing the filename is the
+	// output-encoding guarantee that also covers non-control unsafe bytes
+	// (quotes, slashes, non-ASCII).
+	if !validKindQuery(kind) {
+		apperrors.AbortWithError(c, apperrors.ErrValidation("kind must not contain control characters"))
 		return
 	}
 	includeSensitive := c.Query("include_sensitive") == "true"
@@ -132,12 +143,57 @@ func GetOccasionCardListCSV(c *gin.Context) {
 		return
 	}
 
-	filename := fmt.Sprintf("mycorrhizal-%s-list-%s.csv", kind, time.Now().Format("2006-01-02"))
+	filename := fmt.Sprintf("mycorrhizal-%s-list-%s.csv", safeDownloadStem(kind), time.Now().Format("2006-01-02"))
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Header("Content-Type", "text/csv; charset=utf-8")
 	c.Header("Content-Length", fmt.Sprintf("%d", buf.Len()))
 	c.Data(http.StatusOK, "text/csv; charset=utf-8", buf.Bytes())
+}
+
+// validKindQuery reports whether a `kind` query value is free of control
+// characters. It deliberately does NOT restrict the value to the named
+// card/gift/invite set: `kind` is an open classifier (models/
+// occasion_obligation.go, docs/adrs/0024-occasions.md), the write path accepts
+// any string up to 100 chars, and the web dialog is a free-text Autocomplete —
+// so rejecting unknown values would break a supported flow. Only the malformed
+// class is rejected; output encoding for the filename is safeDownloadStem's job.
+func validKindQuery(kind string) bool {
+	for _, r := range kind {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	return true
+}
+
+// safeDownloadStem reduces the user-supplied `kind` filter to characters that
+// are safe inside a Content-Disposition filename.
+//
+// This is the output-encoding half of the fix for the 502 a Schemathesis fuzz
+// run found (issue #1250): the handler interpolated `kind` raw into the
+// download filename, so a value carrying a NUL/newline made Go emit an invalid
+// response header, which the all-in-one image's nginx rejected with a 502
+// (curl refuses the same response: "Nul byte in header"). Keep only
+// [A-Za-z0-9._-]; if nothing survives, fall back to a fixed stem so the
+// filename is never empty. The raw value still drives the DB filter, so custom
+// kinds keep working — only the on-disk name is constrained.
+func safeDownloadStem(raw string) string {
+	var b strings.Builder
+	for _, r := range raw {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9',
+			r == '.', r == '_', r == '-':
+			b.WriteRune(r)
+		}
+		if b.Len() >= 100 {
+			break
+		}
+	}
+	if b.Len() == 0 {
+		return "occasions"
+	}
+	return b.String()
 }
 
 // contactDisplayNameFlat mirrors services.contactDisplayName exactly, kept

@@ -79,27 +79,70 @@ for node in tree.iter("node"):
 PY
 }
 
+# Prints "<button><TAB><title>" for how to clear the ANR dialog currently in
+# $DUMP_XML, or nothing when there is no ANR dialog. Pure (reads only the
+# dump) so the decision is unit-testable without an emulator — see
+# .github/scripts/tests/reference-client-davx5.test.sh.
+#
+# The dialog's title names the wedged process. For an app other than the one
+# under test — in practice "Pixel Launcher isn't responding", the recurring
+# CI failure under the runner's CPU contention — tapping "Wait" does NOT let
+# it recover: a process that is genuinely starved re-ANRs within seconds, so
+# every subsequent tap lands on the dialog again and the login-form loop burns
+# its whole budget (observed: all 8 attempts, with "Sending oneway calls to
+# frozen process" in logcat throughout). "Close app" kills the wedged process
+# instead, which clears the dialog for good; the system restarts the component
+# if anything still needs it, and DAVx5 — the foreground activity, a different
+# process — is unaffected. Reserve "Wait" for DAVx5's own ANR, where closing
+# would kill the app under test.
+anr_dialog_decision() {
+	python3 - "$DUMP_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+tree = ET.parse(sys.argv[1])
+title = ""
+has_wait = has_close = False
+for node in tree.iter("node"):
+    if node.get("resource-id") == "android:id/alertTitle":
+        title = node.get("text") or ""
+    text = node.get("text") or ""
+    if text == "Wait":
+        has_wait = True
+    elif text == "Close app":
+        has_close = True
+if "isn't responding" not in title:
+    sys.exit(0)
+if "DAVx" in title and has_wait:
+    print(f"Wait\t{title}")
+elif has_close:
+    print(f"Close app\t{title}")
+elif has_wait:
+    print(f"Wait\t{title}")
+PY
+}
+
 # Diagnostic capture from a real CI failure: an "isn't responding" ANR
 # dialog for **Pixel Launcher itself** (not DAVx5), with "Close app" / "Wait"
 # buttons, showed up mid-carousel under a resource-starved emulator — pure
 # OS-level contention, unrelated to anything DAVx5 or our server does. It
 # blocks all input to the app under test until dismissed, so every tap in
 # the calling loop silently lands on the dialog instead of the intended
-# target. Call after dump_ui in a polling loop; tapping "Wait" lets the
-# stalled process recover instead of burning the loop's whole retry budget
-# against a dialog that was never going to go away on its own.
+# target. Call after dump_ui in a polling loop; anr_dialog_decision picks the
+# button that actually clears the dialog (see its comment).
 dismiss_anr_if_present() {
-	if grep -q "isn't responding" "$DUMP_XML" 2>/dev/null; then
-		local coords
-		coords="$(find_center "Wait")"
-		if [ -n "$coords" ]; then
-			log "WARNING: system ANR dialog detected, tapping 'Wait' to let it recover"
-			# shellcheck disable=SC2086
-			adb shell input tap $coords
-			sleep 2
-			dump_ui
-		fi
-	fi
+	local decision button title coords
+	decision="$(anr_dialog_decision)"
+	[ -n "$decision" ] || return 0
+	button="${decision%%$'\t'*}"
+	title="${decision#*$'\t'}"
+	coords="$(find_center "$button")"
+	[ -n "$coords" ] || return 0
+	log "WARNING: ANR dialog ($title), tapping '$button' to clear it"
+	# shellcheck disable=SC2086
+	adb shell input tap $coords
+	sleep 2
+	dump_ui
 }
 
 # Taps the element whose text/content-desc exactly matches $1. Fails loudly
@@ -284,7 +327,13 @@ fill_login_form() {
 		type_login_field 1 "$USERNAME"
 		type_login_field 2 "$PASSWORD"
 
+		# Re-check for an ANR dialog before reading the field values back: a
+		# dialog that appeared during the three fills hides every EditText
+		# from the accessibility tree, so the verification below would read
+		# empty values and fail the attempt even though the text did land.
+		# (This was the shape of the 2026-09-26 nightly failure.)
 		dump_ui
+		dismiss_anr_if_present
 		if [ "$(edit_text_value_at 0)" = "$SERVER_URL" ] \
 			&& [ "$(edit_text_value_at 1)" = "$USERNAME" ] \
 			&& [ -n "$(edit_text_value_at 2)" ]; then
