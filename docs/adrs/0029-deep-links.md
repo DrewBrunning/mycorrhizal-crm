@@ -9,6 +9,8 @@
   custom-scheme URI), issue #152 / #679 (notification deep links, `deepLinkRoute`),
   `docs/adrs/0014-local-app-lock-and-biometric-resume.md` (the app-lock gate every deep link must pass),
   `docs/adrs/0022-distribution-variants.md` (three signing keys for one `applicationId`).
+- **Related:** `docs/adrs/0028-local-only-android-mode-and-server-profiles.md` (links resolve against the
+  active server profile; a profile switch drops a pending link).
 
 ## Context
 
@@ -95,7 +97,9 @@ Rules for the set:
 - **Instance-local meaning.** An id is meaningful only on the server that minted it and only within the
   signed-in user's own scope. The app resolves it through the normal, `user_id`-scoped API: another user's
   id produces the ordinary not-found state, never a leak. Deep links are therefore **not** a cross-user
-  sharing mechanism (that is contact shares), and none of them names the server.
+  sharing mechanism (that is contact shares), and none of them names the server. Under ADR 0028's server
+  profiles, a link resolves against the **active** profile (a `Local` profile included) and never selects
+  or switches a profile itself.
 - **Adding a route** is an edit to this table, the shared test vectors (§5), and each client's parser in the
   same PR — and must satisfy §1 (no personal data, navigation-only). "Do anything" routes (`action=…`,
   `route=<arbitrary nav string>`, a pass-through of an arbitrary NavHost route) are forbidden by design.
@@ -141,7 +145,8 @@ the right user is signed in and unlocked:
   spurious "login failed" snackbar.
 - **Gate, then navigate.** A pending link is held until the main tree composes — i.e. after login, the
   server-compatibility gate, and the ADR 0014 app lock — exactly as today. Added: the pending link is
-  **dropped** on logout, on a session for a different user or server, and if it is older than 10 minutes
+  **dropped** on logout, on a session for a different user or server (including an ADR 0028 active-profile
+  switch), and if it is older than 10 minutes
   when the gate finally opens. A link fired while signed out must not wait indefinitely and then open in a
   different account.
 - **Never ahead of the lock.** No deep-link handling code path renders data, prefetches the target, or
