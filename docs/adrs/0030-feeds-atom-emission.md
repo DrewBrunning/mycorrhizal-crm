@@ -10,7 +10,8 @@
   (`controllers/timeline_controller.go`, `models/timeline.go`) as the query layer, the `ApiToken`
   model and lifecycle (`models/api_token.go`, `controllers/api_token_controller.go`,
   `services/api_token_service.go`) as the credential template, and CLAUDE.md's sensitivity rule.
-- **Feeds:** the implementation tickets on the v1.3.0 milestone listed under "Implementation" below.
+- **Feeds:** #1274, #1275, #1276 on the v1.3.0 milestone (see "Implementation" below). #1274 and #1275
+  ship as one backend PR; #1276 follows as its own PR.
 
 ## Context
 
@@ -286,16 +287,16 @@ This section files no ticket. Whoever picks B up starts from these constraints, 
 
 ## Implementation (v1.3.0 milestone)
 
-1. **Backend: `Feed` entity and management API.** The migration, model and `schema_parity` registry
+1. **#1274 — Backend: `Feed` entity and management API.** The migration, model and `schema_parity` registry
    entry; the REST routes in decision 8; token minting and hashing; the revocation sites and cascades
    in decision 6; audit events; openapi, regenerated `gencontract`/`gentsapi`/`genapibaseline`
    artifacts, and authorization-matrix rows.
-2. **Backend: Atom serving endpoint.** The composer move into `services` and its aggregate mode
+2. **#1275 — Backend: Atom serving endpoint.** The composer move into `services` and its aggregate mode
    (decision 3); the Atom renderer (decisions 2 and 4); the endpoint, headers, conditional GET and
    rate limiter (decision 7); the sensitivity completeness test (decision 5); credentials-matrix rows;
    PERF-02 registry and `budgets.json` entries; i18n keys; and the security-doc updates (ASVS rows,
    threat model, data-retention lifecycle, PII inventory).
-3. **Web: feed management UI.** The settings section and contact-page action (decision 8), in all five
+3. **#1276 — Web: feed management UI.** The settings section and contact-page action (decision 8), in all five
    locales.
 
 ## Consequences
