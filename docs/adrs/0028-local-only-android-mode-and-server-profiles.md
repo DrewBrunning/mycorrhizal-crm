@@ -1,9 +1,9 @@
 # ADR 0028: Local-only Android mode and server profiles
 
-- **Status:** proposed — Decisions 1, 3, 4 and 5 are adopted; Decision 2 names an embedded Go backend
-  as the preferred shape, **conditional on the spike** it defines. The spike's result flips this
-  ADR to `accepted` (shape A confirmed) or amends Decision 2 (shape B).
-- **Date:** 2026-09-26
+- **Status:** accepted — the spike (issue #1256, 2026-09-27) confirmed shape A (embedded Go backend)
+  against every Decision 2 criterion, packaged as an executable in `nativeLibraryDir`, **arm64-v8a
+  only**. See "Spike outcome" under Decision 2.
+- **Date:** 2026-09-26 (proposed); 2026-09-27 (accepted)
 - **Implements:** issue #1108 (Android: offline-only mode — no server required, login optional). The
   issue asked for a design pass covering the server-configuration model, the shape of a "local
   server", and the later-sync story, before any implementation. This ADR is that design pass; the
@@ -132,8 +132,9 @@ profile talks to it exactly as a `Remote` profile talks to a server.
   - `/health` reports `deployment: "embedded"` plus a capability list, which the client's existing
     `ServerCapabilities` gate consumes to hide server-only features (the list above) — no Android
     feature code branches on "is local", only on capabilities.
-- *Android:* the app hosts the server (in-process via `gomobile bind`, or as an executable shipped in
-  `nativeLibraryDir` — the Syncthing-Android precedent; the spike picks), starts it lazily from the
+- *Android:* the app hosts the server as an executable shipped as `lib<name>.so` in
+  `jniLibs/arm64-v8a` and run from `nativeLibraryDir` (the Syncthing-Android precedent; chosen by the
+  spike over `gomobile bind`, below), starts it lazily from the
   first request or worker that needs it, and routes `Local`-profile traffic over the socket through a
   profile-aware OkHttp `SocketFactory`. **The ~30 repositories, the 11 direct `ApiClient` users and
   the notification workers are unchanged** — they are already written against the API.
@@ -167,6 +168,67 @@ any of the following on the `obtainium` release build, arm64, on the maintainer'
 If A is rejected, Decision 2 is amended to B and the A-specific tickets are superseded by a Room
 local-first ticket set; Decisions 1, 3, 4 and 5 are unaffected (Decision 3's bundle is the contract
 that makes that true).
+
+**Spike outcome (issue #1256, 2026-09-27): shape A adopted.** Measured on the maintainer's Pixel 8a
+(Android 17, arm64) with the release-shaped `obtainiumBenchmark` build (R8, non-debuggable), running
+the real, unmodified backend plus a throwaway Unix-socket listener:
+
+| Criterion | Threshold that rejects A | Measured | Result |
+|---|---|---|---|
+| Release APK size increase (arm64) | > 35 MB | **+13.2 MB** (the server entry, compressed); net **+9.4 MB** against today's APK | pass |
+| Cold start → first contact list rendered | > 1.5 s (median of 10) | **995 ms** with the server booting as it does today; **748 ms** with the boot catch-up jobs deferred | pass |
+| Idle battery, app backgrounded, server stopped | any wakeups attributable to the server | **0** — no server process, no alarms; only the app's existing WorkManager jobs ran (5 h 39 m window, accepted as sufficient — below) | pass |
+| Build | cannot build or link | builds `CGO_ENABLED=0 GOOS=android GOARCH=arm64` with `-tags nodynamic` | pass |
+
+The cold-start figure is process start → a 100-contact first page fetched over the socket and drawn,
+measured in a spike activity inside the real app process (so the app's own `Application` start-up is
+included); the full 500-contact walk took a further ~60 ms.
+
+- *Packaging: executable in `nativeLibraryDir`, not `gomobile bind`.* It needs no NDK, and
+  `gomobile bind` does (it is a cgo `c-shared` build) — the same NDK/cgo cost Decision 4 declines for
+  SQLCipher — so `gomobile bind` was not measured. Executing from `nativeLibraryDir` requires
+  `packaging.jniLibs.useLegacyPackaging = true`: native libraries are stored compressed and extracted
+  at install time. That also compresses the SQLCipher libraries already in the APK (−3.9 MB), which
+  is why the net APK growth is smaller than the server's own compressed size. The installed footprint
+  grows by about 36 MB (the extracted binary). The binary's segments are 64 KB-aligned, so it is
+  compatible with 16 KB-page devices.
+- *`-tags nodynamic` is required.* `GOOS=android` satisfies the `linux` build constraint, so
+  `github.com/gen2brain/heic`'s optional libheif `dlopen` path (via `purego`) is compiled in, and on
+  Android that path needs cgo. The tag keeps the pure-WASM decoder the server already relies on.
+- *Cold start is dominated by the boot catch-up burst, not by the binary.* The server is listening
+  about 95 ms after `exec`; its first request then waits 300–500 ms (occasionally over 1 s) behind
+  the ~16 `JobTriggerInitial` catch-up jobs contending for the SQLite write lock (backend trap 9's
+  `_txlock=immediate`). Deferring those triggers by a few seconds cut exec → healthy to ~140 ms.
+  Embedded mode therefore defers them past the first request; ADR 0011's catch-up semantics are
+  unchanged, only their start time moves.
+- *First launch after an app update* took 1.4–1.9 s in both observations (the first `exec` of a newly
+  installed binary). It did not recur on later launches and does not move the median. A first launch
+  after a device reboot was not measured.
+- *Lifecycle.* Stopping the server on `ON_STOP` left no server process in every check, and
+  force-stopping the app killed the server with it.
+- *Battery window.* The idle window ran 5 h 39 m rather than 8 h, including about 50 minutes of
+  ordinary phone use, and the maintainer accepted it: the stopped server has no process, alarm or job
+  that could wake the device, and nothing in the background can start it (only the foreground UI
+  does in this design), so a longer window would only re-measure the app's own WorkManager jobs,
+  which exist today.
+- *First install* ran migrations 0→66 in 369 ms (exec → healthy 983 ms on an empty database).
+
+**arm64-v8a only.** The embedded server ships for arm64-v8a alone; on any other ABI the `Local` kind
+is not offered (the Auth screen hides "Use on this device only"). The spike found no workable route
+to the other ABIs:
+
+- `GOOS=android` links internally (`CGO_ENABLED=0`) only for `arm64`; `arm`, `amd64` and `386` require
+  external cgo linking, i.e. the NDK.
+- More fundamentally, the pure-Go SQLite stack (`modernc.org/libc`, a transpiled musl) issues raw
+  legacy syscalls on x86_64 (`lstat`, `stat`) that Android's app seccomp filter blocks, so the server
+  dies with `SIGSYS` (`SYS_SECCOMP`). `GOOS=android` and `GOOS=linux` compile the same code there, and
+  the NDK does not change which syscalls it issues, so no build route fixes it; only a different
+  SQLite driver would, which is a server-wide decision outside this ADR. arm64 has no such legacy
+  syscalls, which is why the Pixel ran cleanly.
+- The x86_64 emulator's ARM translation (`libndk_translation`) segfaults on both arm64 Go builds, so
+  it is not a route to running the arm64 binary there either.
+- 32-bit ARM would additionally need `internal/fsguard` to compile on 32-bit Linux (`Statfs_t.Type`
+  is `int32` there); no published image targets 32-bit today.
 
 ### 3. Attaching to a remote server is a one-time migration, not a sync
 
@@ -228,9 +290,20 @@ or was last exported more than 30 days ago.
 - **Upgrade policy applies on-device.** The embedded backend runs the same frozen migration chain,
   so an old local database upgrades exactly as a server does (issue #529 floor included); a local
   database below the floor refuses to start and the app offers bundle export from a read-only mode.
-- **Open risks the spike and tickets must address:** process death mid-write (the server's
-  transactions protect the database; the client must treat a dropped socket like a network error,
-  which it already does); storage use of the capped pre-migration snapshot; per-flavor APK size
-  (the FOSS flavor gets the same binary — no GMS dependency is introduced).
+- **Local mode is testable only on arm64 hardware.** The CI emulator is x86_64 (`android-tests.yml`),
+  and per "arm64-v8a only" above it cannot run the embedded server, natively or under translation.
+  The test split is therefore: the backend's embedded mode is tested in Go on the ordinary CI runner;
+  the Android profile and capability-gating logic runs on the emulator against an ordinary TCP
+  server; only the socket transport and the server lifecycle need an arm64 device (the Pixel 8a
+  runbook in `README-developer.md`, or a device farm).
+- **The release network security config gains one cleartext carve-out:** the sentinel host the local
+  transport addresses (e.g. `embedded.invalid`). The `.invalid` TLD never resolves and the bytes only
+  ever travel over the Unix socket, so the carve-out cannot reach a network host; without it the
+  release config's blanket cleartext ban rejects every local request.
+- **Open risks the tickets must address:** process death mid-write (the server's transactions
+  protect the database; the client must treat a dropped socket like a network error, which it
+  already does); storage use of the capped pre-migration snapshot; per-flavor APK size (the FOSS
+  flavor gets the same binary — no GMS dependency is introduced); the slower first launch after an
+  app update (above).
 - **What does not change:** remote profiles behave exactly as today; the Room mirror stays a cache;
   no Android feature code learns about "local", only about capabilities.
