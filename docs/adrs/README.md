@@ -34,3 +34,4 @@ ticket backlog moved to GitHub Issues.
 | [0026](0026-occasions-events.md) | Occasions — event planning & RSVP tracking | accepted |
 | [0027](0027-data-decay.md) | Data decay — periodic reminders to verify contact info is still current | accepted |
 | [0028](0028-local-only-android-mode-and-server-profiles.md) | Local-only Android mode and server profiles | proposed |
+| [0029](0029-deep-links.md) | Deep links — a custom `mycorrhizal://` scheme with a closed, navigation-only route set | accepted |
