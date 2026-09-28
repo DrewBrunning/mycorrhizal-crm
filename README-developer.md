@@ -160,7 +160,7 @@
   docker run --rm --network host \
     -e ZAP_AUTH_HEADER=Authorization -e "ZAP_AUTH_HEADER_VALUE=Bearer $TOKEN" -e ZAP_AUTH_HEADER_SITE=localhost:7300 \
     -v "$PWD/zap:/zap/wrk:rw" -v "$PWD/backend/openapi.yaml:/zap/openapi.yaml:ro" \
-    ghcr.io/zaproxy/zaproxy:stable zap.sh -Xmx3g -cmd -autorun /zap/wrk/zap-dast.yaml
+    ghcr.io/zaproxy/zaproxy:stable zap.sh -Xmx6g -cmd -autorun /zap/wrk/zap-dast.yaml
   # gate (policy: ignore-list + canary self-test)
   (cd backend && ZAPGATE_REPORT=../zap/report.json ZAPGATE_IGNORE=../zap/dast.ignore go run ./cmd/zapgate)
   docker compose -f docker-compose.test.yml down -v

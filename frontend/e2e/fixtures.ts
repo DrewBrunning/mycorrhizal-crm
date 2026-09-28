@@ -70,6 +70,60 @@ export const AAA_CONTRAST_RULE = 'color-contrast-enhanced';
 export const SKIP_A11Y_SCAN = 'skip-a11y-scan';
 
 /**
+ * Waits for any in-flight CSS transition/animation on `context` (default: the
+ * whole page) to settle before a contrast-sensitive scan runs.
+ *
+ * Root-caused a real nightly flake (issue #1279, run 36406818436): the
+ * "import dialog (light)" dialog scan only waits for
+ * `page.getByRole('dialog')` to become visible, which Playwright considers
+ * true as soon as the dialog is attached and non-zero-size -- not once MUI's
+ * ~225ms Fade/Grow open transition finishes. Neither this repo's dev server
+ * nor a manual axe-core run against the settled DOM reproduces any
+ * color-contrast violation on that dialog's helper text (it measures 6.35:1,
+ * comfortably over the 4.5:1 floor, matching the AA claim documented on
+ * `text.secondary` in theme.ts) -- but the CI failure's own violation payload
+ * reported both the foreground and background shifted several points toward
+ * each other from their steady-state hex values, consistent with axe
+ * sampling a still-fading-in frame rather than the resting one. None of the
+ * dialog-scan tests set `prefers-reduced-motion: reduce` (only one dedicated
+ * test in accessibility.spec.ts does), so the transition is genuinely
+ * running when `assertNoBlockingA11yViolations` is called right after
+ * `toBeVisible()`.
+ *
+ * `Element.getAnimations()` (Web Animations API) returns running CSS
+ * transitions as well as CSS/WAAPI animations, so this covers MUI's
+ * transition-based Dialog/Fade/Grow without needing to special-case them.
+ *
+ * Two guards keep this from hanging the scan (the bug that turned the above
+ * fix into a red `Run E2E Tests` on PR #1281, job 109021190856):
+ *
+ * 1. Skip animations that can never settle. MUI's indeterminate
+ *    `CircularProgress`/`LinearProgress`/`Skeleton` -- and a keyboard-focus
+ *    ripple's `pulsate` (`TouchRipple.js`, `animation-iteration-count:
+ *    infinite`) -- never fire `finished`, so awaiting one hangs forever. The
+ *    failing case was `reminders.spec.ts`'s "should show reminder form
+ *    fields": `Escape` closes the dialog and MUI restores focus to the
+ *    trigger button; the Escape keydown had set MUI's global keyboard-modality
+ *    flag, so the restored focus counted as focus-visible and started an
+ *    infinite pulsate ripple. `getComputedTiming().iterations` is `Infinity`
+ *    for exactly those; only finite animations can be waited out.
+ * 2. Cap the wait anyway, matching the per-test wait below. A finite
+ *    animation can still be interrupted or thrash, and the whole point of
+ *    this helper is to settle *before* a scan, not to block it.
+ */
+async function waitForAnimationsToSettle(page: Page, context?: string): Promise<void> {
+  await page.evaluate((selector) => {
+    const root = selector ? document.querySelector(selector) : document.body;
+    if (!root) return Promise.resolve();
+    const pending = root
+      .getAnimations({ subtree: true })
+      .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+      .map((a) => a.finished.catch(() => {}));
+    return Promise.race([Promise.all(pending), new Promise((resolve) => setTimeout(resolve, 500))]);
+  }, context ?? null);
+}
+
+/**
  * Runs axe-core against `page` (or, scoped via `context` -- a CSS selector,
  * typically `[role="dialog"]` -- against just that subtree) and fails on any
  * `critical`/`serious` violation. Shared by the automatic per-test check
@@ -77,6 +131,7 @@ export const SKIP_A11Y_SCAN = 'skip-a11y-scan';
  * so the two can never drift out of sync on what counts as blocking.
  */
 export async function assertNoBlockingA11yViolations(page: Page, context?: string): Promise<void> {
+  await waitForAnimationsToSettle(page, context);
   const builder = new AxeBuilder({ page }).withTags(WCAG_A11Y_TAGS);
   if (context) {
     builder.include(context);
@@ -100,6 +155,7 @@ export async function assertNoBlockingA11yViolations(page: Page, context?: strin
  * AA gate stays `assertNoBlockingA11yViolations`.
  */
 export async function assertNoAaaContrastViolations(page: Page, context: string): Promise<void> {
+  await waitForAnimationsToSettle(page, context);
   const results = await new AxeBuilder({ page })
     .withRules([AAA_CONTRAST_RULE])
     .include(context)
