@@ -239,7 +239,7 @@
     "logger/mask.go": 100,
     "logger/redact.go": 100,
     "logger/sanitize.go": 100,
-    "main.go": 13.51,
+    "main.go": 0,
     "meerkat/reader.go": 91.22,
     "metrics/metrics.go": 98.92,
     "metrics/registry.go": 97.44,

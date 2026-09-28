@@ -42,6 +42,18 @@ export interface HealthResponse {
    * absence means no floor has ever been declared.
    */
   min_client_version?: string;
+  /**
+   * The deployment shape (ADR 0028, issue #1258): "server" is the full
+   * multi-user surface; "embedded" is the single-user in-process mode the
+   * Android app runs. Always present on a server that ships the field.
+   */
+  deployment?: 'server' | 'embedded';
+  /**
+   * The surface tokens this deployment exposes; an embedded deployment omits
+   * the surfaces it does not register, so a client gates on token presence
+   * rather than branching on `deployment`. Always an array when present.
+   */
+  capabilities?: string[];
   // No `checks` field: the per-facet deep-health breakdown was removed from
   // the unauthenticated /health (issue #864). The full services.DeepHealth
   // snapshot is admin-only at GET /api/v1/admin/system-status (see

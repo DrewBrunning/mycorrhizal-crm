@@ -1,7 +1,8 @@
-package main
+package embedded
 
 import (
 	"fmt"
+
 	"mycorrhizal/config"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
@@ -10,21 +11,21 @@ import (
 	"gorm.io/gorm"
 )
 
-// This file extracts main.go's scheduler wiring (originally inline in main())
-// into a standalone, testable function. Before this, nothing tested that
-// every recurring job was actually registered with the scheduler — deleting
-// a purge registration line (a real data-retention regression) failed no
-// test at all — and every s.Every(...).Do(...) call discarded its error,
-// so a malformed .At() time or an invalid interval would silently produce a
-// job that never runs instead of failing startup.
+// This file extracts the scheduler wiring (originally inline in main()) into a
+// standalone, testable function. Before this, nothing tested that every
+// recurring job was actually registered with the scheduler — deleting a purge
+// registration line (a real data-retention regression) failed no test at all —
+// and every s.Every(...).Do(...) call discarded its error, so a malformed .At()
+// time or an invalid interval would silently produce a job that never runs
+// instead of failing startup.
 
 // manualJobReasons lists every models.JobName* token that is deliberately
 // NOT registered by registerScheduledJobs, with the reason it is
 // operator-triggered / on-demand only rather than scheduled. Keep this in
-// sync with the doc comments in models/job_execution.go — main_test.go's
-// TestRegisterScheduledJobs_EveryJobNameAccountedFor AST-scans that file for
-// every JobName* constant and fails if one is neither registered here nor
-// listed in this allowlist, so a new job name is caught automatically.
+// sync with the doc comments in models/job_execution.go — the every-job-name
+// completeness test AST-scans that file for every JobName* constant and fails
+// if one is neither registered here nor listed in this allowlist, so a new
+// job name is caught automatically.
 var manualJobReasons = map[string]string{
 	models.JobNameSearchIndexRebuild: "operator-triggered via POST /admin/search/rebuild " +
 		"and auto-run after a restore; not on a schedule (see its doc comment in " +
@@ -32,6 +33,30 @@ var manualJobReasons = map[string]string{
 	models.JobNameDerivedColumnsRebuild: "operator-triggered via POST /admin/contacts/rebuild-derived " +
 		"and auto-run after a restore; not on a schedule (see its doc comment in " +
 		"models/job_execution.go)",
+}
+
+// embeddedDisabledJobs is the set of models.JobName* tokens that are NOT
+// registered in the embedded deployment (ADR 0028 Decision 2, spike #1256):
+//
+//   - restore_drill cannot place its backup snapshot under the Android app
+//     cache dir (confirmed by the spike), and there is no operator to act on a
+//     failed drill anyway;
+//   - alert_eval dispatches through webhook + per-admin personal channels,
+//     none of which exist on a single-user phone;
+//   - webhook_retries / webhook_delivery_purge only serve the webhook surface,
+//     which embedded mode does not register;
+//   - storage_sample tracks a storage-growth trend against operator threshold
+//     alerts, which do not exist on-device.
+//
+// Everything else — reminders, cadence, reach-out, the data purges, the
+// integrity check, and calendar/Immich sync when the user configured them — is
+// registered in both deployments.
+var embeddedDisabledJobs = map[string]bool{
+	models.JobNameRestoreDrill:         true,
+	models.JobNameAlertEval:            true,
+	models.JobNameWebhookRetries:       true,
+	models.JobNameWebhookDeliveryPurge: true,
+	models.JobNameStorageSample:        true,
 }
 
 // reminderTask builds the daily reminder digest + push-style channel send.
@@ -121,21 +146,11 @@ type scheduledJobRegistration struct {
 	register func(s *gocron.Scheduler) (*gocron.Job, error)
 }
 
-// registerScheduledJobs wires every recurring background job onto s:
-// checking every .Do()/.At() error (a malformed at-time or a zero/negative
-// interval previously produced a job that silently never ran) and tagging
-// each registered gocron.Job with its canonical models.JobName* token so a
-// test can enumerate s.Jobs() and confirm every job that is supposed to be
-// scheduled actually is. It returns the first registration error
-// encountered; the caller should treat that as fatal (a job that failed to
-// register at all is worse than one that runs).
-//
-// It does not fire any job's boot-time "Initial" trigger (see runJob's doc
-// comment on trigger semantics) — those goroutines run real service logic
-// against the live database and stay in main() so this function is safe to
-// call from a test against a scratch database.
-func registerScheduledJobs(s *gocron.Scheduler, db *gorm.DB, cfg *config.Config) error {
-	regs := []scheduledJobRegistration{
+// scheduledJobRegistrations is the ordered list of recurring jobs
+// registerScheduledJobs wires up. Split out from the loop so the embedded-mode
+// gating and the completeness test can both read it.
+func scheduledJobRegistrations(db *gorm.DB, cfg *config.Config) []scheduledJobRegistration {
+	return []scheduledJobRegistration{
 		{models.JobNameDailyReminders, func(s *gocron.Scheduler) (*gocron.Job, error) {
 			return s.Every(1).Day().At(cfg.ReminderTime).Do(
 				recoverJobReport(db, models.JobNameDailyReminders, models.JobTriggerScheduled, reminderTask(db, *cfg)))
@@ -205,8 +220,29 @@ func registerScheduledJobs(s *gocron.Scheduler, db *gorm.DB, cfg *config.Config)
 				recoverJob(db, models.JobNameStorageSample, models.JobTriggerScheduled, storageSampleTask(db, *cfg)))
 		}},
 	}
+}
 
-	for _, reg := range regs {
+// registerScheduledJobs wires every recurring background job onto s:
+// checking every .Do()/.At() error (a malformed at-time or a zero/negative
+// interval previously produced a job that silently never ran) and tagging
+// each registered gocron.Job with its canonical models.JobName* token so a
+// test can enumerate s.Jobs() and confirm every job that is supposed to be
+// scheduled actually is. It returns the first registration error
+// encountered; the caller should treat that as fatal (a job that failed to
+// register at all is worse than one that runs).
+//
+// In embedded mode the tokens in embeddedDisabledJobs are skipped (ADR 0028
+// Decision 2); server mode registers all of them.
+//
+// It does not fire any job's boot-time "Initial" trigger (see runJob's doc
+// comment on trigger semantics) — those goroutines run real service logic
+// against the live database and are dispatched separately, so this function is
+// safe to call from a test against a scratch database.
+func registerScheduledJobs(s *gocron.Scheduler, db *gorm.DB, cfg *config.Config) error {
+	for _, reg := range scheduledJobRegistrations(db, cfg) {
+		if cfg.IsEmbedded() && embeddedDisabledJobs[reg.jobName] {
+			continue
+		}
 		job, err := reg.register(s)
 		if err != nil {
 			return fmt.Errorf("registering scheduled job %q: %w", reg.jobName, err)
