@@ -36,4 +36,6 @@ ticket backlog moved to GitHub Issues.
 | [0028](0028-local-only-android-mode-and-server-profiles.md) | Local-only Android mode and server profiles | accepted |
 | [0029](0029-deep-links.md) | Deep links — a custom `mycorrhizal://` scheme with a closed, navigation-only route set | accepted |
 | [0030](0030-feeds-atom-emission.md) | Feeds — private Atom emission; consumption deferred; no ActivityPub | accepted |
+| [0031](0031-contact-map-provider-and-geocoding.md) | Contact Map — provider-agnostic engine, tile-source configuration, and in-scope geocoding | proposed |
+| [0032](0032-mcp-server.md) | MCP server — streamable-HTTP, read-only high-level tools, opt-in sensitivity | proposed |
 | [0033](0033-geopulse-location-correlation.md) | GeoPulse location-history correlation — on-demand lookup, no schema change to Activity | proposed |

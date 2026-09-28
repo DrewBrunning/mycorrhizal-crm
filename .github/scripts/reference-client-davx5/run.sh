@@ -425,11 +425,22 @@ log "Account created. Enabling CardDAV + CalDAV collection sync"
 # used up far more than 20 wall-clock seconds and still wasn't enough.
 # Doubled to 40 to match this file's existing doubling convention for this
 # exact failure mode (see "Next"/"Add account" above).
+#
+# 40 wasn't enough either: a third real CI failure (issue #1279's sibling
+# run, 36408087937) timed out here with the CardDAV tab showing only the
+# account chrome, no collection row, ~127s elapsed for a nominal 40s budget
+# — the same "dump_ui itself got slow" shape as the second failure, just
+# worse. Reproduced the exact PROPFIND chain this step waits on (well-known
+# redirect, principal, addressbook-home-set, then a Depth:1 PROPFIND on the
+# home-set) by hand against a freshly `pentestseed`-seeded server: it
+# returns the "Contacts" address book correctly every time, so this is not a
+# server regression -- the client/emulator side is still the bottleneck.
+# Doubled again to 80.
 tap "CardDAV"
-wait_for "synchronize this collection" 40
+wait_for "synchronize this collection" 80
 tap "synchronize this collection"
 tap "CalDAV"
-wait_for "synchronize this collection" 40
+wait_for "synchronize this collection" 80
 tap "synchronize this collection"
 
 log "Triggering a manual sync"
